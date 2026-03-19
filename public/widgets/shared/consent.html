@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Authorize — OrgX</title>
+    <link rel="icon" type="image/png" href="/orgx-logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: { sans: ['Geist', 'sans-serif'] },
+            colors: {
+              bg: '#02040a',
+              surface: {
+                DEFAULT: 'rgba(255, 255, 255, 0.03)',
+                hover: 'rgba(255, 255, 255, 0.05)',
+                active: 'rgba(255, 255, 255, 0.08)',
+              },
+              lime: {
+                DEFAULT: '#BFFF00',
+                muted: 'rgba(191, 255, 0, 0.15)',
+                glow: 'rgba(191, 255, 0, 0.08)',
+              },
+              teal: {
+                DEFAULT: '#14B8A6',
+                muted: 'rgba(20, 184, 166, 0.15)',
+              },
+              iris: {
+                DEFAULT: '#6366F1',
+                muted: 'rgba(99, 102, 241, 0.15)',
+              },
+              amber: {
+                DEFAULT: '#F59E0B',
+                muted: 'rgba(245, 158, 11, 0.15)',
+              },
+              border: 'rgba(255, 255, 255, 0.08)',
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.4s ease-out forwards',
+              'slide-up': 'slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+              'pulse-subtle': 'pulseSubtle 2s ease-in-out infinite',
+              'scale-in': 'scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
+              },
+              slideUp: {
+                '0%': { opacity: '0', transform: 'translateY(16px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              pulseSubtle: {
+                '0%, 100%': { opacity: '1' },
+                '50%': { opacity: '0.6' },
+              },
+              scaleIn: {
+                '0%': { opacity: '0', transform: 'scale(0.95)' },
+                '100%': { opacity: '1', transform: 'scale(1)' },
+              },
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        background-color: #02040a;
+        color: #f2f7ff;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .bg-noise {
+        background: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+        opacity: 0.4;
+        pointer-events: none;
+      }
+
+      .glass-panel {
+        background: rgba(255, 255, 255, 0.02);
+        backdrop-filter: blur(24px);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+          0 32px 64px rgba(0, 0, 0, 0.5);
+      }
+
+      .permission-row {
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        border: 1px solid transparent;
+      }
+      .permission-row:hover {
+        background: rgba(255, 255, 255, 0.02);
+        border-color: rgba(255, 255, 255, 0.04);
+      }
+      .permission-row.expanded {
+        background: rgba(255, 255, 255, 0.03);
+        border-color: rgba(255, 255, 255, 0.06);
+      }
+
+      .toggle-group {
+        display: inline-flex;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(0, 0, 0, 0.3);
+      }
+
+      .toggle-btn {
+        padding: 6px 14px;
+        font-size: 11px;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.35);
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        position: relative;
+      }
+
+      .toggle-btn:not(:last-child) {
+        border-right: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .toggle-btn:hover:not(.active):not(.active-read) {
+        color: rgba(255, 255, 255, 0.6);
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .toggle-btn.active {
+        color: #02040a;
+        background: #bfff00;
+        font-weight: 600;
+      }
+
+      .toggle-btn.active-read {
+        color: white;
+        background: rgba(20, 184, 166, 0.85);
+        font-weight: 600;
+      }
+
+      .chevron {
+        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .expanded .chevron {
+        transform: rotate(90deg);
+      }
+
+      .description-panel {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+          opacity 0.2s ease, padding 0.3s ease;
+        opacity: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+      }
+      .expanded .description-panel {
+        max-height: 100px;
+        opacity: 1;
+        padding-top: 4px;
+        padding-bottom: 12px;
+      }
+
+      .authorize-btn {
+        background: linear-gradient(180deg, #bfff00 0%, #a8e600 100%);
+        box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.25) inset,
+          0 4px 16px rgba(191, 255, 0, 0.3), 0 0 0 1px rgba(191, 255, 0, 0.1);
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .authorize-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.25) inset,
+          0 8px 24px rgba(191, 255, 0, 0.35), 0 0 0 1px rgba(191, 255, 0, 0.15);
+      }
+      .authorize-btn:active {
+        transform: translateY(0);
+      }
+
+      .deny-btn {
+        transition: all 0.2s ease;
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .deny-btn:hover {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.12);
+      }
+
+      /* Custom scrollbar */
+      .permissions-list::-webkit-scrollbar {
+        width: 4px;
+      }
+      .permissions-list::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .permissions-list::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 2px;
+      }
+
+      /* Client logo shimmer */
+      @keyframes shimmer {
+        0% {
+          background-position: -200% 0;
+        }
+        100% {
+          background-position: 200% 0;
+        }
+      }
+      .client-logo-ring {
+        background: linear-gradient(
+          90deg,
+          rgba(191, 255, 0, 0) 0%,
+          rgba(191, 255, 0, 0.3) 50%,
+          rgba(191, 255, 0, 0) 100%
+        );
+        background-size: 200% 100%;
+        animation: shimmer 3s infinite linear;
+      }
+
+      /* Stagger animations */
+      .stagger-1 {
+        animation-delay: 0.05s;
+      }
+      .stagger-2 {
+        animation-delay: 0.1s;
+      }
+      .stagger-3 {
+        animation-delay: 0.15s;
+      }
+      .stagger-4 {
+        animation-delay: 0.2s;
+      }
+      .stagger-5 {
+        animation-delay: 0.25s;
+      }
+    </style>
+  </head>
+  <body
+    class="min-h-screen flex flex-col items-center justify-center p-4 overflow-x-hidden"
+  >
+    <!-- Background layers -->
+    <div class="fixed inset-0 bg-noise z-0"></div>
+    <div
+      class="fixed inset-0"
+      style="
+        background: radial-gradient(
+          ellipse at 50% 0%,
+          rgba(191, 255, 0, 0.03) 0%,
+          transparent 50%
+        );
+      "
+    ></div>
+
+    <!-- Main Card -->
+    <div class="relative z-10 w-full max-w-lg animate-slide-up">
+      <!-- Header: OrgX branding -->
+      <div class="flex items-center justify-center mb-6 animate-fade-in">
+        <div class="flex items-center gap-2.5">
+          <img src="/orgx-logo.png" alt="OrgX" class="w-7 h-7" />
+          <span class="text-white/50 text-sm font-medium tracking-tight"
+            >OrgX</span
+          >
+        </div>
+      </div>
+
+      <!-- Authorization Card -->
+      <div class="glass-panel rounded-2xl overflow-hidden animate-scale-in">
+        <!-- Card Header -->
+        <div class="px-6 pt-6 pb-5 border-b border-white/[0.04]">
+          <!-- Client + Connection Visual -->
+          <div class="flex items-center justify-center gap-4 mb-5">
+            <!-- Client Logo -->
+            <div class="relative">
+              <div
+                id="client-logo"
+                class="w-14 h-14 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center transition-all duration-300"
+              >
+                <svg
+                  class="w-7 h-7 text-white/60"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+            </div>
+
+            <!-- Connection Line -->
+            <div class="flex items-center gap-1.5">
+              <div
+                class="w-6 h-px bg-gradient-to-r from-white/15 to-lime/30"
+              ></div>
+              <div
+                class="w-2 h-2 rounded-full bg-lime/70 animate-pulse-subtle"
+              ></div>
+              <div
+                class="w-6 h-px bg-gradient-to-l from-white/15 to-lime/30"
+              ></div>
+            </div>
+
+            <!-- OrgX Logo -->
+            <div class="relative">
+              <div
+                class="absolute -inset-1 rounded-xl bg-lime/10 blur-sm"
+              ></div>
+              <div
+                class="relative w-14 h-14 rounded-xl bg-lime/10 border border-lime/30 flex items-center justify-center"
+              >
+                <img src="/orgx-logo.png" alt="OrgX" class="w-8 h-8" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Title -->
+          <h1 class="text-center text-lg font-semibold text-white mb-1.5">
+            <span id="client-name">Application</span> wants to connect
+          </h1>
+          <p class="text-center text-sm text-white/40 leading-relaxed">
+            Select what <span id="client-name-2">this app</span> can access in
+            your OrgX workspace
+          </p>
+        </div>
+
+        <!-- Account Info -->
+        <div class="px-6 py-3.5 border-b border-white/[0.04] bg-white/[0.01]">
+          <div class="flex items-center gap-3">
+            <div
+              id="user-avatar"
+              class="w-9 h-9 rounded-lg bg-gradient-to-br from-lime/20 to-teal/20 border border-white/10 flex items-center justify-center"
+            >
+              <span
+                id="user-initial"
+                class="text-sm font-semibold text-white/80"
+                >?</span
+              >
+            </div>
+            <div class="flex-1 min-w-0">
+              <div
+                id="user-email"
+                class="text-sm font-medium text-white truncate"
+              >
+                user@example.com
+              </div>
+              <div id="org-name" class="text-xs text-white/40">
+                Personal account
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Permissions Section -->
+        <div class="px-6 py-4">
+          <div class="flex items-center justify-between mb-3">
+            <span
+              class="text-xs text-white/40 uppercase tracking-wider font-medium"
+              >Permissions</span
+            >
+            <div class="toggle-group" id="all-permissions-toggle">
+              <button
+                class="toggle-btn"
+                data-value="none"
+                onclick="setAllPermissions('none')"
+              >
+                None
+              </button>
+              <button
+                class="toggle-btn"
+                data-value="read"
+                onclick="setAllPermissions('read')"
+              >
+                Read
+              </button>
+              <button
+                class="toggle-btn active"
+                data-value="write"
+                onclick="setAllPermissions('write')"
+              >
+                Full
+              </button>
+            </div>
+          </div>
+
+          <!-- Permissions List -->
+          <div
+            class="permissions-list space-y-1.5 max-h-[320px] overflow-y-auto -mx-2 px-2"
+          >
+            <!-- Decisions -->
+            <div
+              class="permission-row rounded-xl stagger-1 animate-fade-in"
+              data-scope="decisions"
+            >
+              <div
+                class="flex items-center justify-between py-3 px-3 cursor-pointer"
+                onclick="toggleExpand(this.parentElement)"
+              >
+                <div class="flex items-center gap-3">
+                  <svg
+                    class="chevron w-4 h-4 text-white/25"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                  <div
+                    class="w-8 h-8 rounded-lg bg-lime/10 flex items-center justify-center"
+                  >
+                    <svg
+                      class="w-4 h-4 text-lime"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                  </div>
+                  <span class="text-sm font-medium text-white">Decisions</span>
+                </div>
+                <div class="toggle-group">
+                  <button class="toggle-btn" data-value="none">None</button>
+                  <button class="toggle-btn" data-value="read">Read</button>
+                  <button class="toggle-btn active" data-value="write">
+                    Write
+                  </button>
+                </div>
+              </div>
+              <div class="description-panel px-3 ml-10">
+                <p class="text-xs text-white/40 leading-relaxed">
+                  <strong class="text-white/55">Read:</strong> View pending and
+                  completed decisions<br />
+                  <strong class="text-white/55">Write:</strong> Approve, reject,
+                  or create decisions
+                </p>
+              </div>
+            </div>
+
+            <!-- Agents -->
+            <div
+              class="permission-row rounded-xl stagger-2 animate-fade-in"
+              data-scope="agents"
+            >
+              <div
+                class="flex items-center justify-between py-3 px-3 cursor-pointer"
+                onclick="toggleExpand(this.parentElement)"
+              >
+                <div class="flex items-center gap-3">
+                  <svg
+                    class="chevron w-4 h-4 text-white/25"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                  <div
+                    class="w-8 h-8 rounded-lg bg-teal/10 flex items-center justify-center"
+                  >
+                    <svg
+                      class="w-4 h-4 text-teal"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                      />
+                    </svg>
+                  </div>
+                  <span class="text-sm font-medium text-white">Agents</span>
+                </div>
+                <div class="toggle-group">
+                  <button class="toggle-btn" data-value="none">None</button>
+                  <button class="toggle-btn" data-value="read">Read</button>
+                  <button class="toggle-btn active" data-value="write">
+                    Write
+                  </button>
+                </div>
+              </div>
+              <div class="description-panel px-3 ml-10">
+                <p class="text-xs text-white/40 leading-relaxed">
+                  <strong class="text-white/55">Read:</strong> View agent status
+                  and activity<br />
+                  <strong class="text-white/55">Write:</strong> Spawn tasks and
+                  configure agents
+                </p>
+              </div>
+            </div>
+
+            <!-- Initiatives -->
+            <div
+              class="permission-row rounded-xl stagger-3 animate-fade-in"
+              data-scope="initiatives"
+            >
+              <div
+                class="flex items-center justify-between py-3 px-3 cursor-pointer"
+                onclick="toggleExpand(this.parentElement)"
+              >
+                <div class="flex items-center gap-3">
+                  <svg
+                    class="chevron w-4 h-4 text-white/25"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                  <div
+                    class="w-8 h-8 rounded-lg bg-iris/10 flex items-center justify-center"
+                  >
+                    <svg
+                      class="w-4 h-4 text-iris"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                      />
+                    </svg>
+                  </div>
+                  <span class="text-sm font-medium text-white"
+                    >Initiatives</span
+                  >
+                </div>
+                <div class="toggle-group">
+                  <button class="toggle-btn" data-value="none">None</button>
+                  <button class="toggle-btn" data-value="read">Read</button>
+                  <button class="toggle-btn active" data-value="write">
+                    Write
+                  </button>
+                </div>
+              </div>
+              <div class="description-panel px-3 ml-10">
+                <p class="text-xs text-white/40 leading-relaxed">
+                  <strong class="text-white/55">Read:</strong> View initiatives,
+                  milestones, and progress<br />
+                  <strong class="text-white/55">Write:</strong> Create, update,
+                  and manage initiatives
+                </p>
+              </div>
+            </div>
+
+            <!-- Memory -->
+            <div
+              class="permission-row rounded-xl stagger-4 animate-fade-in"
+              data-scope="memory"
+            >
+              <div
+                class="flex items-center justify-between py-3 px-3 cursor-pointer"
+                onclick="toggleExpand(this.parentElement)"
+              >
+                <div class="flex items-center gap-3">
+                  <svg
+                    class="chevron w-4 h-4 text-white/25"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                  <div
+                    class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center"
+                  >
+                    <svg
+                      class="w-4 h-4 text-amber-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </div>
+                  <span class="text-sm font-medium text-white">Memory</span>
+                </div>
+                <div class="toggle-group">
+                  <button class="toggle-btn" data-value="none">None</button>
+                  <button class="toggle-btn" data-value="read">Read</button>
+                  <button class="toggle-btn active" data-value="write">
+                    Write
+                  </button>
+                </div>
+              </div>
+              <div class="description-panel px-3 ml-10">
+                <p class="text-xs text-white/40 leading-relaxed">
+                  <strong class="text-white/55">Read:</strong> Search and query
+                  organizational memory<br />
+                  <strong class="text-white/55">Write:</strong> Save and update
+                  knowledge entries
+                </p>
+              </div>
+            </div>
+
+            <!-- Planning -->
+            <div
+              class="permission-row rounded-xl stagger-5 animate-fade-in"
+              data-scope="planning"
+            >
+              <div
+                class="flex items-center justify-between py-3 px-3 cursor-pointer"
+                onclick="toggleExpand(this.parentElement)"
+              >
+                <div class="flex items-center gap-3">
+                  <svg
+                    class="chevron w-4 h-4 text-white/25"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                  <div
+                    class="w-8 h-8 rounded-lg bg-pink-500/10 flex items-center justify-center"
+                  >
+                    <svg
+                      class="w-4 h-4 text-pink-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                      />
+                    </svg>
+                  </div>
+                  <span class="text-sm font-medium text-white">Planning</span>
+                </div>
+                <div class="toggle-group">
+                  <button class="toggle-btn" data-value="none">None</button>
+                  <button class="toggle-btn" data-value="read">Read</button>
+                  <button class="toggle-btn active" data-value="write">
+                    Write
+                  </button>
+                </div>
+              </div>
+              <div class="description-panel px-3 ml-10">
+                <p class="text-xs text-white/40 leading-relaxed">
+                  <strong class="text-white/55">Read:</strong> View plan
+                  sessions and drafts<br />
+                  <strong class="text-white/55">Write:</strong> Create and
+                  refine plans collaboratively
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="px-6 py-5 border-t border-white/[0.04] bg-white/[0.01]">
+          <button
+            id="authorize-btn"
+            onclick="authorize()"
+            class="authorize-btn w-full py-3.5 rounded-xl text-sm font-semibold text-black"
+          >
+            Authorize
+          </button>
+          <button
+            id="deny-btn"
+            onclick="deny()"
+            class="deny-btn w-full mt-2.5 py-3 rounded-xl text-sm font-medium text-white/50 border border-white/10"
+          >
+            Deny
+          </button>
+        </div>
+      </div>
+
+      <!-- Footer Links -->
+      <div
+        class="flex items-center justify-center gap-4 mt-5 text-xs text-white/25 animate-fade-in stagger-5"
+      >
+        <a
+          href="https://useorgx.com/privacy"
+          class="hover:text-white/50 transition-colors"
+          >Privacy</a
+        >
+        <span>•</span>
+        <a
+          href="https://useorgx.com/terms"
+          class="hover:text-white/50 transition-colors"
+          >Terms</a
+        >
+      </div>
+    </div>
+
+    <script>
+      // ===========================================
+      // State
+      // ===========================================
+      let oauthState = null;
+      let selectedScopes = {
+        decisions: 'write',
+        agents: 'write',
+        initiatives: 'write',
+        memory: 'write',
+        planning: 'write',
+      };
+
+      // ===========================================
+      // Initialize from URL params
+      // ===========================================
+      function init() {
+        const params = new URLSearchParams(window.location.search);
+
+        // Read state_key and individual params (server-side state)
+        const stateKey = params.get('state_key');
+        const clientId = params.get('client_id') || '';
+        const scope = params.get('scope') || '';
+        const redirectUri = params.get('redirect_uri') || '';
+        const oauthStateParam = params.get('oauth_state') || '';
+
+        if (stateKey) {
+          oauthState = {
+            stateKey,
+            clientId,
+            scope,
+            redirectUri,
+            state: oauthStateParam,
+          };
+        }
+
+        // Get user info
+        const userEmail = params.get('user_email') || 'user@example.com';
+        const userId = params.get('user_id') || '';
+        const orgName = params.get('org_name') || 'Personal account';
+
+        // Update UI with user info
+        document.getElementById('user-email').textContent = userEmail;
+        document.getElementById('org-name').textContent = orgName;
+        document.getElementById('user-initial').textContent =
+          userEmail[0].toUpperCase();
+
+        // Parse client name
+        const clientName = getClientDisplayName(clientId, redirectUri);
+        document.getElementById('client-name').textContent = clientName;
+        document.getElementById('client-name-2').textContent = clientName;
+        updateClientLogo(clientName.toLowerCase());
+
+        // Parse requested scopes and set initial state
+        if (oauthState?.scope) {
+          parseRequestedScopes(oauthState.scope);
+        }
+
+        // Initialize toggle states
+        initializeToggles();
+      }
+
+      function getClientDisplayName(clientId, redirectUri) {
+        // Check redirect URI patterns first
+        if (
+          redirectUri?.includes('connector_platform_oauth_redirect') ||
+          redirectUri?.includes('chatgpt.com') ||
+          redirectUri?.includes('openai.com')
+        ) {
+          return 'ChatGPT';
+        }
+        if (
+          redirectUri?.includes('cursor.com') ||
+          redirectUri?.includes('cursor.sh')
+        ) {
+          return 'Cursor';
+        }
+        if (
+          redirectUri?.includes('claude.ai') ||
+          redirectUri?.includes('anthropic.com')
+        ) {
+          return 'Claude';
+        }
+        if (
+          redirectUri?.includes('vscode') ||
+          redirectUri?.includes('visual-studio-code')
+        ) {
+          return 'VS Code';
+        }
+
+        // Check client ID patterns
+        const knownClients = {
+          cursor: 'Cursor',
+          claude: 'Claude',
+          chatgpt: 'ChatGPT',
+          openai: 'ChatGPT',
+          vscode: 'VS Code',
+          goose: 'Goose',
+        };
+
+        for (const [key, name] of Object.entries(knownClients)) {
+          if (clientId?.toLowerCase().includes(key)) return name;
+        }
+
+        return 'Application';
+      }
+
+      function updateClientLogo(clientName) {
+        const logoContainer = document.getElementById('client-logo');
+        const logoUrls = {
+          chatgpt: 'https://cdn.simpleicons.org/openai/10A37F',
+          cursor: 'https://cdn.simpleicons.org/cursor/ffffff',
+          claude: 'https://cdn.simpleicons.org/anthropic/D97757',
+          'vs code': 'https://cdn.simpleicons.org/visualstudiocode/007ACC',
+          goose: null, // No icon available
+        };
+
+        if (logoUrls[clientName]) {
+          logoContainer.innerHTML = `<img src="${logoUrls[clientName]}" class="w-7 h-7" alt="${clientName}" onerror="this.style.display='none'" />`;
+        }
+      }
+
+      function parseRequestedScopes(scopeString) {
+        const scopes = scopeString.split(/[\s+]/).filter(Boolean);
+
+        // Reset all to none first, then set based on requested scopes
+        Object.keys(selectedScopes).forEach((key) => {
+          selectedScopes[key] = 'none';
+        });
+
+        scopes.forEach((scope) => {
+          // Handle both "scope:permission" and just "scope" formats
+          let resource, permission;
+          if (scope.includes(':')) {
+            [resource, permission] = scope.split(':');
+          } else {
+            resource = scope;
+            permission = 'read';
+          }
+
+          // Map scope names
+          const scopeMap = {
+            decisions: 'decisions',
+            agents: 'agents',
+            initiatives: 'initiatives',
+            memory: 'memory',
+            planning: 'planning',
+            plan: 'planning',
+          };
+
+          const mappedResource = scopeMap[resource] || resource;
+
+          if (selectedScopes.hasOwnProperty(mappedResource)) {
+            // Write supersedes read
+            if (permission === 'write') {
+              selectedScopes[mappedResource] = 'write';
+            } else if (
+              permission === 'read' &&
+              selectedScopes[mappedResource] !== 'write'
+            ) {
+              selectedScopes[mappedResource] = 'read';
+            }
+          }
+        });
+
+        // If no scopes were requested, default to full access
+        const hasAnyScope = Object.values(selectedScopes).some(
+          (v) => v !== 'none'
+        );
+        if (!hasAnyScope) {
+          Object.keys(selectedScopes).forEach((key) => {
+            selectedScopes[key] = 'write';
+          });
+        }
+      }
+
+      // ===========================================
+      // Toggle Interactions
+      // ===========================================
+      function initializeToggles() {
+        document.querySelectorAll('.permission-row').forEach((row) => {
+          const scope = row.dataset.scope;
+          const value = selectedScopes[scope] || 'none';
+          setToggleValue(row.querySelector('.toggle-group'), value);
+        });
+        updateAllPermissionsToggle();
+      }
+
+      function setToggleValue(toggleGroup, value) {
+        toggleGroup.querySelectorAll('.toggle-btn').forEach((btn) => {
+          btn.classList.remove('active', 'active-read');
+          if (btn.dataset.value === value) {
+            btn.classList.add(
+              value === 'write'
+                ? 'active'
+                : value === 'read'
+                ? 'active-read'
+                : 'active'
+            );
+          }
+        });
+      }
+
+      // Add click handlers to permission toggles
+      document
+        .querySelectorAll('.permission-row .toggle-group .toggle-btn')
+        .forEach((btn) => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const row = btn.closest('.permission-row');
+            const scope = row.dataset.scope;
+            const value = btn.dataset.value;
+
+            selectedScopes[scope] = value;
+            setToggleValue(btn.parentElement, value);
+            updateAllPermissionsToggle();
+          });
+        });
+
+      function setAllPermissions(value) {
+        Object.keys(selectedScopes).forEach((scope) => {
+          selectedScopes[scope] = value;
+          const row = document.querySelector(`[data-scope="${scope}"]`);
+          if (row) {
+            setToggleValue(row.querySelector('.toggle-group'), value);
+          }
+        });
+        updateAllPermissionsToggle();
+      }
+
+      function updateAllPermissionsToggle() {
+        const values = Object.values(selectedScopes);
+        const allSame = values.every((v) => v === values[0]);
+        const toggle = document.getElementById('all-permissions-toggle');
+
+        toggle.querySelectorAll('.toggle-btn').forEach((btn) => {
+          btn.classList.remove('active', 'active-read');
+          if (allSame && btn.dataset.value === values[0]) {
+            btn.classList.add(
+              values[0] === 'write'
+                ? 'active'
+                : values[0] === 'read'
+                ? 'active-read'
+                : 'active'
+            );
+          }
+        });
+      }
+
+      function toggleExpand(row) {
+        row.classList.toggle('expanded');
+      }
+
+      // ===========================================
+      // Authorization Actions
+      // ===========================================
+      function buildScopeString() {
+        const scopes = [];
+
+        Object.entries(selectedScopes).forEach(([resource, permission]) => {
+          if (permission === 'read') {
+            scopes.push(`${resource}:read`);
+          } else if (permission === 'write') {
+            scopes.push(`${resource}:read`);
+            scopes.push(`${resource}:write`);
+          }
+        });
+
+        // Add offline_access if originally requested
+        if (oauthState?.scope?.includes('offline_access')) {
+          scopes.push('offline_access');
+        }
+
+        return scopes.join(' ');
+      }
+
+      function authorize() {
+        const btn = document.getElementById('authorize-btn');
+        btn.textContent = 'Connecting...';
+        btn.disabled = true;
+        btn.style.opacity = '0.7';
+
+        const finalScope = buildScopeString();
+        const params = new URLSearchParams(window.location.search);
+
+        // Redirect to the consent-callback with state_key and final_scope
+        const callbackUrl = new URL(
+          '/oauth/consent-callback',
+          window.location.origin
+        );
+
+        callbackUrl.searchParams.set(
+          'state_key',
+          oauthState?.stateKey || params.get('state_key') || ''
+        );
+        callbackUrl.searchParams.set('final_scope', finalScope);
+        callbackUrl.searchParams.set('user_id', params.get('user_id') || '');
+        callbackUrl.searchParams.set(
+          'user_email',
+          params.get('user_email') || ''
+        );
+
+        window.location.href = callbackUrl.toString();
+      }
+
+      function deny() {
+        const params = new URLSearchParams(window.location.search);
+        const redirectUri =
+          oauthState?.redirectUri || params.get('redirect_uri');
+        const oauthStateValue = oauthState?.state || params.get('oauth_state');
+
+        if (redirectUri) {
+          const redirectUrl = new URL(redirectUri);
+          redirectUrl.searchParams.set('error', 'access_denied');
+          redirectUrl.searchParams.set(
+            'error_description',
+            'User denied the authorization request'
+          );
+          if (oauthStateValue) {
+            redirectUrl.searchParams.set('state', oauthStateValue);
+          }
+          window.location.href = redirectUrl.toString();
+        } else {
+          window.close();
+        }
+      }
+
+      // Initialize on load
+      init();
+    </script>
+  </body>
+</html>

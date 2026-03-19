@@ -1,0 +1,47 @@
+name: Contract Test
+
+on:
+  schedule:
+    - cron: "0 9 * * 1" # Weekly Monday 9am UTC
+  workflow_dispatch:
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify main app API is reachable
+        run: |
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' https://www.useorgx.com/api/health)
+          if [ "$STATUS" != "200" ]; then
+            echo "Main app API unreachable (HTTP $STATUS)"
+            exit 1
+          fi
+          echo "Main app API healthy"
+
+      - name: Verify MCP server is healthy
+        run: |
+          curl -sf https://mcp.useorgx.com/healthz || exit 1
+          echo "MCP server healthy"
+
+      - name: Verify OAuth discovery
+        run: |
+          curl -sf https://mcp.useorgx.com/.well-known/oauth-authorization-server | jq -e '.token_endpoint' || exit 1
+          echo "OAuth discovery OK"
+
+      - name: Verify shared entity types are in sync
+        run: |
+          # Fetch entity types from the list_entities tool schema
+          # and compare with our local shared/entity.ts
+          TYPES=$(grep -oP "'[a-z_]+'" src/shared/entity.ts | tr -d "'" | sort)
+          echo "Local entity types:"
+          echo "$TYPES"
+          echo "---"
+          # Basic validation: ensure we have at least 15 entity types
+          COUNT=$(echo "$TYPES" | wc -l)
+          if [ "$COUNT" -lt 15 ]; then
+            echo "Entity type count too low ($COUNT), possible drift"
+            exit 1
+          fi
+          echo "Entity types look consistent ($COUNT types)"

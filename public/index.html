@@ -1,0 +1,2267 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OrgX MCP: Agent Orchestration From Any AI Tool</title>
+    <meta
+      name="description"
+      content="Agent orchestration via MCP. Approve decisions in ChatGPT, query memory in Claude, and ship code in Cursor. One connection gives every AI tool access to your organizational context."
+    />
+    <meta
+      name="keywords"
+      content="MCP server, Model Context Protocol, agent orchestration, organizational memory, initiative management, ChatGPT connector, Claude MCP, Cursor MCP"
+    />
+
+    <link rel="canonical" href="https://mcp.useorgx.com/" />
+
+    <!-- OpenGraph -->
+    <meta
+      property="og:title"
+      content="OrgX MCP: Agent Orchestration From Any AI Tool"
+    />
+    <meta
+      property="og:description"
+      content="Approve decisions, query organizational memory, and orchestrate initiatives from ChatGPT, Claude, or Cursor via MCP."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://mcp.useorgx.com/" />
+    <meta
+      property="og:image"
+      content="https://mcp.useorgx.com/control_tower.png"
+    />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="OrgX MCP: Agent Orchestration" />
+    <meta
+      name="twitter:description"
+      content="Agent orchestration via MCP. Control initiatives, decisions, and org memory from any AI client."
+    />
+    <meta
+      name="twitter:image"
+      content="https://mcp.useorgx.com/control_tower.png"
+    />
+
+    <!-- Schema.org -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebAPI",
+        "name": "OrgX MCP",
+        "description": "Agent orchestration and organizational memory via the Model Context Protocol (MCP).",
+        "documentation": "https://useorgx.com/docs/mcp",
+        "provider": {
+          "@type": "Organization",
+          "name": "OrgX",
+          "url": "https://useorgx.com"
+        },
+        "termsOfService": "https://useorgx.com/terms",
+        "url": "https://mcp.useorgx.com/mcp"
+      }
+    </script>
+
+    <link rel="icon" type="image/png" href="/orgx-logo.png" />
+    <link rel="apple-touch-icon" href="/orgx-logo.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Geist', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            },
+            colors: {
+              bg: '#02040a',
+              surface: {
+                DEFAULT: 'rgba(255, 255, 255, 0.03)',
+                hover: 'rgba(255, 255, 255, 0.05)',
+              },
+              lime: {
+                DEFAULT: '#BFFF00',
+                glow: 'rgba(191, 255, 0, 0.15)',
+              },
+              teal: {
+                DEFAULT: '#14B8A6',
+              },
+              border: 'rgba(255, 255, 255, 0.08)',
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.6s ease-out forwards',
+              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'beam-flow': 'beamFlow 2s infinite linear',
+              progress: 'progress 4s linear forwards',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: '0', transform: 'translateY(10px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              beamFlow: {
+                '0%': { strokeDashoffset: '24' },
+                '100%': { strokeDashoffset: '0' },
+              },
+              progress: {
+                '0%': { width: '0%' },
+                '100%': { width: '100%' },
+              },
+            },
+          },
+        },
+      };
+    </script>
+
+    <style>
+      body {
+        background-color: #02040a;
+        color: #f2f7ff;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .bg-noise {
+        background: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+        opacity: 0.4;
+        pointer-events: none;
+      }
+
+      .bg-spotlight {
+        background: radial-gradient(
+          circle at 50% 0%,
+          rgba(255, 255, 255, 0.03) 0%,
+          transparent 70%
+        );
+        pointer-events: none;
+      }
+
+      .glass-panel {
+        background: rgba(255, 255, 255, 0.02);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+      }
+
+      /* Agent Card Stack Transitions */
+      .agent-card {
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 280px;
+      }
+
+      .agent-card.active {
+        transform: translateX(-50%) translateY(0) scale(1);
+        opacity: 1;
+        z-index: 30;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5),
+          0 0 30px rgba(191, 255, 0, 0.1);
+      }
+
+      .agent-card.next {
+        transform: translateX(-50%) translateY(16px) scale(0.95);
+        opacity: 0.7;
+        z-index: 20;
+      }
+
+      .agent-card.last {
+        transform: translateX(-50%) translateY(32px) scale(0.9);
+        opacity: 0.45;
+        z-index: 10;
+      }
+
+      /* Client Logo Cycling */
+      .client-logo {
+        transition: opacity 0.4s ease, transform 0.4s ease;
+      }
+      .client-logo.active {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .client-logo.inactive {
+        opacity: 0;
+        transform: translateY(8px);
+        pointer-events: none;
+      }
+
+      /* Scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      .active-tab {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: #fff;
+      }
+      .inactive-tab {
+        color: rgba(255, 255, 255, 0.4);
+      }
+      .inactive-tab:hover {
+        color: #fff;
+      }
+
+      /* Agent avatar headshot styling */
+      .agent-headshot {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        object-fit: cover;
+        border: 2px solid rgba(255, 255, 255, 0.1);
+      }
+
+      /* Scroll-reveal animation */
+      .reveal {
+        opacity: 0;
+        transform: translateY(24px);
+        filter: blur(4px);
+        transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+                    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+                    filter 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .reveal.visible {
+        opacity: 1;
+        transform: translateY(0);
+        filter: blur(0);
+      }
+      /* Stagger children within a reveal group */
+      .reveal-stagger > * {
+        opacity: 0;
+        transform: translateY(16px);
+        filter: blur(2px);
+        transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+                    transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+                    filter 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .reveal-stagger.visible > * {
+        opacity: 1;
+        transform: translateY(0);
+        filter: blur(0);
+      }
+      .reveal-stagger.visible > *:nth-child(1) { transition-delay: 0ms; }
+      .reveal-stagger.visible > *:nth-child(2) { transition-delay: 80ms; }
+      .reveal-stagger.visible > *:nth-child(3) { transition-delay: 160ms; }
+      .reveal-stagger.visible > *:nth-child(4) { transition-delay: 240ms; }
+      .reveal-stagger.visible > *:nth-child(5) { transition-delay: 320ms; }
+      .reveal-stagger.visible > *:nth-child(6) { transition-delay: 400ms; }
+
+      /* Reduced motion: respect user preference */
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+        .reveal, .reveal-stagger > * {
+          opacity: 1 !important;
+          transform: none !important;
+          filter: none !important;
+          transition: none !important;
+        }
+        .agent-card {
+          transition: none !important;
+        }
+        .client-logo {
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body
+    class="min-h-screen flex flex-col overflow-x-hidden selection:bg-lime/20 selection:text-lime"
+  >
+    <div class="fixed inset-0 bg-noise z-0"></div>
+    <div class="fixed inset-0 bg-spotlight z-0"></div>
+
+    <!-- Skip to content -->
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[60] focus:px-4 focus:py-2 focus:bg-lime focus:text-black focus:rounded-lg focus:text-sm focus:font-medium">Skip to content</a>
+
+    <!-- Navbar -->
+    <header
+      class="fixed top-0 w-full z-50 border-b border-white/[0.06] bg-[#02040a]/80 backdrop-blur-xl"
+      aria-label="Site header"
+    >
+      <div
+        class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between"
+      >
+        <a href="/" class="flex items-center gap-3 select-none" aria-label="OrgX MCP Home">
+          <img
+            src="/orgx-logo.png"
+            alt="OrgX Logo"
+            class="w-8 h-8 object-contain"
+          />
+          <div class="text-sm font-medium tracking-tight text-white/90">
+            OrgX <span class="text-white/40 font-normal ml-1">MCP</span>
+          </div>
+        </a>
+        <nav aria-label="Main navigation" class="flex items-center gap-6 text-xs font-medium tracking-wide">
+          <a
+            href="https://useorgx.com/docs"
+            class="text-white/40 hover:text-white transition-colors duration-300"
+            >DOCS</a
+          >
+          <a
+            href="https://useorgx.com"
+            class="text-white/40 hover:text-white transition-colors duration-300"
+            >OPEN ORGX</a
+          >
+        </nav>
+      </div>
+    </header>
+
+    <main id="main-content" class="relative z-10 flex-grow pt-32 pb-24" aria-label="OrgX MCP product information">
+      <div class="max-w-7xl mx-auto px-6">
+        <!-- Hero -->
+        <section aria-label="Hero" class="grid lg:grid-cols-2 gap-20 items-center">
+          <!-- Left Content -->
+          <div class="space-y-8 animate-fade-in pt-4 z-20">
+            <!-- MCP Badge -->
+            <div
+              class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-lime/20 bg-lime/5 text-[11px] font-mono tracking-wider text-lime"
+            >
+              <span class="relative flex h-1.5 w-1.5">
+                <span
+                  class="animate-ping absolute inline-flex h-full w-full rounded-full bg-lime opacity-75"
+                ></span>
+                <span
+                  class="relative inline-flex rounded-full h-1.5 w-1.5 bg-lime"
+                ></span>
+              </span>
+              MODEL CONTEXT PROTOCOL
+            </div>
+
+            <!-- Pre-headline -->
+            <div class="flex items-center gap-3">
+              <img
+                src="/orgx-logo.png"
+                alt="OrgX"
+                class="w-10 h-10 object-contain"
+              />
+              <span class="text-2xl font-semibold text-white"
+                >OrgX <span class="text-white/40 font-normal">MCP</span></span
+              >
+            </div>
+
+            <h1
+              class="text-4xl lg:text-5xl font-semibold tracking-[-0.03em] leading-[1.15] text-white"
+            >
+              Agent Orchestration From Anywhere.
+            </h1>
+
+            <p
+              class="text-lg text-white/50 leading-relaxed max-w-md font-light tracking-wide"
+            >
+              Approve decisions in ChatGPT. Query memory in Claude. Ship code in
+              Cursor. One MCP connection for agent orchestration and full org
+              context.
+            </p>
+
+            <!-- Registry badge -->
+            <a
+              href="https://registry.modelcontextprotocol.io/?q=com.useorgx%2Forgx-mcp"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-2 text-xs text-white/45 hover:text-white transition-colors"
+            >
+              Listed on the MCP Registry
+              <svg
+                class="w-3 h-3 text-white/30"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
+                ></path>
+              </svg>
+            </a>
+
+            <div class="flex flex-col sm:flex-row gap-4 pt-4">
+              <a
+                href="#connect"
+                class="group inline-flex items-center justify-center px-6 py-3 rounded-lg bg-white text-black text-sm font-medium hover:bg-white/90 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]"
+              >
+                Connect Client
+                <svg
+                  class="w-3.5 h-3.5 ml-2 transition-transform group-hover:translate-x-0.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
+                  ></path>
+                </svg>
+              </a>
+              <a
+                href="#capabilities"
+                class="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-white/10 text-white/60 text-sm font-medium hover:text-white hover:border-white/20 transition-all"
+              >
+                See Tools
+              </a>
+            </div>
+
+            <div class="pt-12 border-t border-white/[0.06] flex gap-12">
+              <div class="space-y-1">
+                <div class="text-base font-medium text-white">Decisions</div>
+                <div
+                  class="text-[10px] text-white/40 uppercase tracking-widest"
+                >
+                  Approve Anywhere
+                </div>
+              </div>
+              <div class="space-y-1">
+                <div class="text-base font-medium text-white">Agents</div>
+                <div
+                  class="text-[10px] text-white/40 uppercase tracking-widest"
+                >
+                  Spawn & Monitor
+                </div>
+              </div>
+              <div class="space-y-1">
+                <div class="text-base font-medium text-white">Memory</div>
+                <div
+                  class="text-[10px] text-white/40 uppercase tracking-widest"
+                >
+                  Query Instantly
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Visual: Unified Command -->
+          <div
+            class="relative h-[600px] flex flex-col items-center justify-center animate-fade-in"
+            style="animation-delay: 0.1s"
+          >
+            <!-- Client Logos (Cycling) using Simple Icons CDN -->
+            <div class="relative h-12 w-full flex justify-center mb-4">
+              <!-- Claude/Anthropic -->
+              <div
+                id="logo-claude"
+                class="client-logo absolute bg-[#D97757]/10 px-3 py-2 rounded-xl border border-[#D97757]/20 flex items-center gap-2"
+              >
+                <img
+                  src="https://cdn.simpleicons.org/anthropic/D97757"
+                  class="w-5 h-5"
+                  alt="Claude"
+                />
+                <span class="text-xs font-medium text-[#D97757]">Claude</span>
+              </div>
+              <!-- Cursor -->
+              <div
+                id="logo-cursor"
+                class="client-logo inactive absolute bg-white/5 px-3 py-2 rounded-xl border border-white/10 flex items-center gap-2"
+              >
+                <img
+                  src="https://cdn.simpleicons.org/cursor/ffffff"
+                  class="w-5 h-5"
+                  alt="Cursor"
+                />
+                <span class="text-xs font-medium text-white">Cursor</span>
+              </div>
+              <!-- ChatGPT/OpenAI -->
+              <div
+                id="logo-chatgpt"
+                class="client-logo inactive absolute bg-[#10A37F]/10 px-3 py-2 rounded-xl border border-[#10A37F]/20 flex items-center gap-2"
+              >
+                <img
+                  src="https://cdn.simpleicons.org/openai/10A37F"
+                  onerror="this.style.display='none'"
+                  class="w-5 h-5"
+                  alt="OpenAI"
+                />
+                <span class="text-xs font-medium text-[#10A37F]">ChatGPT</span>
+              </div>
+              <!-- Gemini -->
+              <div
+                id="logo-gemini"
+                class="client-logo inactive absolute bg-[#4E86F6]/10 px-3 py-2 rounded-xl border border-[#4E86F6]/20 flex items-center gap-2"
+              >
+                <img
+                  src="https://cdn.simpleicons.org/googlegemini/4E86F6"
+                  class="w-5 h-5"
+                  alt="Gemini"
+                />
+                <span class="text-xs font-medium text-[#4E86F6]">Gemini</span>
+              </div>
+            </div>
+
+            <!-- Chat Bar -->
+            <div
+              class="w-full max-w-md glass-panel rounded-xl p-4 mb-4 relative z-30 border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.2)]"
+            >
+              <div class="flex items-center gap-3">
+                <div class="text-white/40 font-mono text-sm">></div>
+                <div
+                  id="typing-text"
+                  class="font-mono text-sm text-white h-5 border-r-2 border-lime animate-pulse"
+                ></div>
+              </div>
+            </div>
+
+            <!-- Connection Line (static) -->
+            <div
+              class="h-12 w-px bg-gradient-to-b from-white/20 via-lime/40 to-white/20"
+            ></div>
+
+            <!-- OrgX Hub -->
+            <div class="relative z-20 mb-8">
+              <div
+                class="absolute -inset-3 bg-lime/15 blur-lg rounded-full"
+              ></div>
+              <div
+                class="w-12 h-12 rounded-xl bg-[#02040a] border border-lime/30 flex items-center justify-center relative z-10 shadow-[0_0_25px_rgba(191,255,0,0.2)]"
+              >
+                <img
+                  src="/orgx-logo.png"
+                  alt="OrgX"
+                  class="w-6 h-6 object-contain"
+                />
+              </div>
+            </div>
+
+            <!-- Agent Stack -->
+            <div
+              class="relative w-full max-w-sm h-52 flex justify-center items-start"
+              id="agent-stack"
+            >
+              <!-- Cards injected by JS -->
+            </div>
+          </div>
+        </section>
+
+        <!-- Integration Section -->
+        <section id="connect" aria-label="Integration setup" class="reveal mt-40 scroll-mt-24">
+          <div
+            class="flex items-end justify-between mb-8 border-b border-white/[0.06] pb-4"
+          >
+            <h2 class="text-2xl font-semibold tracking-tight text-white">
+              Integration
+            </h2>
+
+            <div
+              class="flex p-1 bg-white/[0.04] rounded-lg border border-white/[0.06]"
+              role="tablist"
+              aria-label="Integration client selector"
+            >
+              <button
+                class="px-4 py-1.5 rounded-md text-xs font-medium transition-all active-tab"
+                id="btn-cursor"
+                role="tab"
+                aria-selected="true"
+                onclick="switchTab('cursor')"
+              >
+                Cursor
+              </button>
+              <button
+                class="px-4 py-1.5 rounded-md text-xs font-medium transition-all inactive-tab"
+                id="btn-claude"
+                role="tab"
+                aria-selected="false"
+                onclick="switchTab('claude')"
+              >
+                Claude
+              </button>
+              <button
+                class="px-4 py-1.5 rounded-md text-xs font-medium transition-all inactive-tab"
+                id="btn-chatgpt"
+                role="tab"
+                aria-selected="false"
+                onclick="switchTab('chatgpt')"
+              >
+                ChatGPT
+              </button>
+            </div>
+          </div>
+
+          <div class="grid lg:grid-cols-2 gap-12 animate-fade-in">
+            <!-- Setup Steps -->
+            <div class="space-y-8" id="steps-container">
+              <!-- Steps will be injected here via JS -->
+            </div>
+
+            <!-- Config Preview -->
+            <div class="relative group">
+              <div
+                class="absolute -inset-1 bg-gradient-to-br from-white/5 to-white/0 rounded-xl blur opacity-0 group-hover:opacity-100 transition duration-700"
+              ></div>
+              <div
+                class="relative h-full glass-panel rounded-lg overflow-hidden flex flex-col border-white/[0.08]"
+              >
+                <div
+                  class="flex items-center justify-between px-4 py-2.5 bg-white/[0.02] border-b border-white/[0.06]"
+                >
+                  <span
+                    class="text-[10px] font-mono text-white/30 uppercase tracking-widest"
+                    id="config-filename"
+                    >~/.cursor/mcp.json</span
+                  >
+                  <button
+                    class="text-[10px] font-medium text-white/40 hover:text-white transition-colors flex items-center gap-1.5"
+                    id="copy-btn"
+                    onclick="copyConfig()"
+                  >
+                    COPY
+                  </button>
+                </div>
+                <pre
+                  class="p-5 text-[11px] font-mono leading-relaxed text-white/70 overflow-auto custom-scrollbar flex-1"
+                ><code id="code-display"></code></pre>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- How Cross-Pollination Works -->
+        <section aria-label="How memory flows" class="reveal mt-40 mb-20">
+          <div class="text-center mb-16">
+            <h2 class="text-2xl font-semibold tracking-tight text-white mb-4">
+              How Memory Flows
+            </h2>
+            <p class="text-white/40 max-w-2xl mx-auto">
+              Every conversation builds organizational memory. Work from one
+              session automatically enriches the next—across tools and domains.
+            </p>
+          </div>
+
+          <div class="grid md:grid-cols-3 gap-8 mb-16 reveal-stagger">
+            <!-- Step 1 -->
+            <div class="relative">
+              <div
+                class="text-[80px] font-bold text-white/[0.03] absolute -top-4 -left-2"
+              >
+                1
+              </div>
+              <div
+                class="relative z-10 p-6 rounded-lg border border-white/[0.06] bg-white/[0.01]"
+              >
+                <div class="text-lime mb-4">
+                  <svg
+                    class="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M12 4.5v15m7.5-7.5h-15"
+                    ></path>
+                  </svg>
+                </div>
+                <h3 class="font-medium text-white mb-2">Work in Any Tool</h3>
+                <p class="text-sm text-white/40 leading-relaxed">
+                  Create a feature spec in Claude. Draft marketing copy in
+                  ChatGPT. Build code in Cursor.
+                </p>
+              </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="relative">
+              <div
+                class="text-[80px] font-bold text-white/[0.03] absolute -top-4 -left-2"
+              >
+                2
+              </div>
+              <div
+                class="relative z-10 p-6 rounded-lg border border-teal/20 bg-teal/[0.02]"
+              >
+                <div class="text-teal mb-4">
+                  <svg
+                    class="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"
+                    ></path>
+                  </svg>
+                </div>
+                <h3 class="font-medium text-white mb-2">
+                  Auto-Captured & Tagged
+                </h3>
+                <p class="text-sm text-white/40 leading-relaxed">
+                  OrgX automatically saves artifacts and tags them by
+                  domain—Product, Engineering, Marketing, Sales.
+                </p>
+              </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="relative">
+              <div
+                class="text-[80px] font-bold text-white/[0.03] absolute -top-4 -left-2"
+              >
+                3
+              </div>
+              <div
+                class="relative z-10 p-6 rounded-lg border border-white/[0.06] bg-white/[0.01]"
+              >
+                <div class="text-[#6366F1] mb-4">
+                  <svg
+                    class="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"
+                    ></path>
+                  </svg>
+                </div>
+                <h3 class="font-medium text-white mb-2">
+                  Context Flows Forward
+                </h3>
+                <p class="text-sm text-white/40 leading-relaxed">
+                  When Marketing drafts the launch, they pull from the same
+                  spec. No re-explaining needed.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Example Flow -->
+          <div
+            class="max-w-3xl mx-auto p-6 rounded-xl border border-white/[0.06] bg-white/[0.01]"
+          >
+            <div
+              class="text-[10px] text-white/30 uppercase tracking-widest mb-4"
+            >
+              Example Flow
+            </div>
+            <div class="space-y-4">
+              <div class="flex items-start gap-4">
+                <div
+                  class="w-8 h-8 rounded-lg bg-[#D4FF00]/10 flex items-center justify-center shrink-0"
+                >
+                  <span class="text-[10px] font-bold text-[#D4FF00]">Mon</span>
+                </div>
+                <div>
+                  <div class="text-sm text-white">
+                    Create feature spec in Claude
+                  </div>
+                  <div class="text-xs text-white/40">
+                    Product → Bulk export for enterprise customers
+                  </div>
+                </div>
+              </div>
+              <div class="w-px h-4 bg-white/10 ml-4"></div>
+              <div class="flex items-start gap-4">
+                <div
+                  class="w-8 h-8 rounded-lg bg-[#6B4FFF]/10 flex items-center justify-center shrink-0"
+                >
+                  <span class="text-[10px] font-bold text-[#6B4FFF]">Wed</span>
+                </div>
+                <div>
+                  <div class="text-sm text-white">
+                    Draft launch email in ChatGPT
+                  </div>
+                  <div class="text-xs text-white/40">
+                    Marketing →
+                    <span class="text-teal">Auto-pulls spec context</span> →
+                    Aligned messaging
+                  </div>
+                </div>
+              </div>
+              <div class="w-px h-4 bg-white/10 ml-4"></div>
+              <div class="flex items-start gap-4">
+                <div
+                  class="w-8 h-8 rounded-lg bg-[#B794F6]/10 flex items-center justify-center shrink-0"
+                >
+                  <span class="text-[10px] font-bold text-[#B794F6]">Fri</span>
+                </div>
+                <div>
+                  <div class="text-sm text-white">
+                    Prep sales deck in Cursor
+                  </div>
+                  <div class="text-xs text-white/40">
+                    Sales →
+                    <span class="text-teal">Knows feature + messaging</span> →
+                    Ready to sell
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Capabilities & Agents -->
+        <section id="capabilities" aria-label="Protocol capabilities and agent fleet" class="reveal mt-40 mb-20">
+          <div class="text-center mb-16">
+            <h2 class="text-2xl font-semibold tracking-tight text-white mb-4">
+              Protocol Capabilities
+            </h2>
+            <p class="text-white/40 max-w-xl mx-auto">
+              Full organizational control across 5 domains. Read context. Take
+              action.
+            </p>
+          </div>
+
+          <!-- Tool Categories Grid -->
+          <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mb-20 reveal-stagger">
+            <!-- Decisions -->
+            <div
+              class="group p-6 rounded-xl border border-lime/20 bg-lime/[0.02] hover:bg-lime/[0.05] transition-all duration-300 hover:border-lime/40"
+            >
+              <div class="flex items-center gap-3 mb-4">
+                <div
+                  class="w-10 h-10 rounded-xl bg-lime/10 flex items-center justify-center"
+                >
+                  <svg
+                    class="w-5 h-5 text-lime"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                  </svg>
+                </div>
+                <div>
+                  <h3 class="font-medium text-white">Decisions</h3>
+                  <div class="flex gap-2 mt-0.5">
+                    <span
+                      class="text-[9px] px-1.5 py-0.5 rounded bg-lime/20 text-lime font-medium"
+                      >Read</span
+                    >
+                    <span
+                      class="text-[9px] px-1.5 py-0.5 rounded bg-lime/20 text-lime font-medium"
+                      >Write</span
+                    >
+                  </div>
+                </div>
+              </div>
+              <p class="text-sm text-white/40 leading-relaxed mb-4">
+                View pending decisions, approve or reject with notes, and access
+                decision history.
+              </p>
+              <div class="space-y-1.5">
+                <code
+                  class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
+                  >get_pending_decisions()</code
+                >
+                <code
+                  class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
+                  >approve_decision(id, note)</code
+                >
+                <code
+                  class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
+                  >reject_decision(id, reason)</code
+                >
+              </div>
+            </div>
+
+            <!-- Agents -->
+            <div
+              class="group p-6 rounded-xl border border-teal/20 bg-teal/[0.02] hover:bg-teal/[0.05] transition-all duration-300 hover:border-teal/40"
+            >
+              <div class="flex items-center gap-3 mb-4">
+                <div
+                  class="w-10 h-10 rounded-xl bg-teal/10 flex items-center justify-center"
+                >
+                  <svg
+                    class="w-5 h-5 text-teal"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M12 8V4H8"></path>
+                    <rect width="16" height="12" x="4" y="8" rx="2"></rect>
+                    <path d="M2 14h2"></path>
+                    <path d="M20 14h2"></path>
+                    <path d="M15 13v2"></path>
+                    <path d="M9 13v2"></path>
+                  </svg>
+                </div>
+                <div>
+                  <h3 class="font-medium text-white">Agents</h3>
+                  <div class="flex gap-2 mt-0.5">
+                    <span
+                      class="text-[9px] px-1.5 py-0.5 rounded bg-teal/20 text-teal font-medium"
+                      >Read</span
+                    >
+                    <span
+                      class="text-[9px] px-1.5 py-0.5 rounded bg-teal/20 text-teal font-medium"
+                      >Write</span
+                    >
+                  </div>
+                </div>
+              </div>
+              <p class="text-sm text-white/40 leading-relaxed mb-4">
+                Monitor agent status, spawn new tasks, and configure agent
+                behavior.
+              </p>
+              <div class="space-y-1.5">
+                <code
+                  class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
+                  >get_agent_status()</code
+                >
+                <code
+                  class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
+                  >spawn_agent_task(agent, task)</code
+                >
+                <code
+                  class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
+                  >configure_org(action, agent_type)</code
+                >
+              </div>
+            </div>
+
+            <!-- Initiatives -->
+            <div
+              class="group p-6 rounded-xl border border-amber-500/20 bg-amber-500/[0.02] hover:bg-amber-500/[0.05] transition-all duration-300 hover:border-amber-500/40"
+            >
+              <div class="flex items-center gap-3 mb-4">
+                <div
+                  class="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center"
+                >
+                  <svg
+                    class="w-5 h-5 text-amber-400"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <circle cx="12" cy="12" r="6"></circle>
+                    <circle cx="12" cy="12" r="2"></circle>
+                  </svg>
+                </div>
+                <div>
+                  <h3 class="font-medium text-white">Initiatives</h3>
+                  <div class="flex gap-2 mt-0.5">
+                    <span
+                      class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium"
+                      >Read</span
+                    >
+                    <span
+                      class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium"
+                      >Write</span
+                    >
+                  </div>
+                </div>
+              </div>
+              <p class="text-sm text-white/40 leading-relaxed mb-4">
+                Track initiative health, create new workstreams, and manage
+                entity lifecycles.
+              </p>
+              <div class="space-y-1.5">
+                <code
+                  class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
+                  >get_initiative_pulse()</code
+                >
+                <code
+                  class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
+                  >create_entity(type, data)</code
+                >
+                <code
+                  class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
+                  >entity_action(type, id, action)</code
+                >
+              </div>
+            </div>
+
+            <!-- Memory -->
+            <div
+              class="group p-6 rounded-xl border border-[#6366F1]/20 bg-[#6366F1]/[0.02] hover:bg-[#6366F1]/[0.05] transition-all duration-300 hover:border-[#6366F1]/40"
+            >
+              <div class="flex items-center gap-3 mb-4">
+                <div
+                  class="w-10 h-10 rounded-xl bg-[#6366F1]/10 flex items-center justify-center"
+                >
+                  <svg
+                    class="w-5 h-5 text-[#6366F1]"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  </svg>
+                </div>
+                <div>
+                  <h3 class="font-medium text-white">Memory</h3>
+                  <div class="flex gap-2 mt-0.5">
+                    <span
+                      class="text-[9px] px-1.5 py-0.5 rounded bg-[#6366F1]/20 text-[#6366F1] font-medium"
+                      >Read</span
+                    >
+                  </div>
+                </div>
+              </div>
+              <p class="text-sm text-white/40 leading-relaxed mb-4">
+                Search across all artifacts, decisions, and conversations with
+                semantic understanding.
+              </p>
+              <div class="space-y-1.5">
+                <code
+                  class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
+                  >query_org_memory(query)</code
+                >
+                <code
+                  class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
+                  >get_org_snapshot()</code
+                >
+              </div>
+            </div>
+
+            <!-- Planning -->
+            <div
+              class="group p-6 rounded-xl border border-pink-500/20 bg-pink-500/[0.02] hover:bg-pink-500/[0.05] transition-all duration-300 hover:border-pink-500/40"
+            >
+              <div class="flex items-center gap-3 mb-4">
+                <div
+                  class="w-10 h-10 rounded-xl bg-pink-500/10 flex items-center justify-center"
+                >
+                  <svg
+                    class="w-5 h-5 text-pink-400"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                    ></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                  </svg>
+                </div>
+                <div>
+                  <h3 class="font-medium text-white">Planning</h3>
+                  <div class="flex gap-2 mt-0.5">
+                    <span
+                      class="text-[9px] px-1.5 py-0.5 rounded bg-pink-500/20 text-pink-400 font-medium"
+                      >Read</span
+                    >
+                    <span
+                      class="text-[9px] px-1.5 py-0.5 rounded bg-pink-500/20 text-pink-400 font-medium"
+                      >Write</span
+                    >
+                  </div>
+                </div>
+              </div>
+              <p class="text-sm text-white/40 leading-relaxed mb-4">
+                Start collaborative planning sessions, iterate on plans, and
+                finalize initiatives.
+              </p>
+              <div class="space-y-1.5">
+                <code
+                  class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
+                  >start_plan_session(goal)</code
+                >
+                <code
+                  class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
+                  >improve_plan(session_id)</code
+                >
+                <code
+                  class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
+                  >complete_plan(session_id)</code
+                >
+              </div>
+            </div>
+
+            <!-- More Tools CTA -->
+            <div
+              class="group p-6 rounded-xl border border-white/[0.08] bg-white/[0.01] hover:bg-white/[0.03] transition-all duration-300 flex flex-col items-center justify-center text-center"
+            >
+              <div
+                class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center mb-4 group-hover:bg-white/10 transition-colors"
+              >
+                <svg
+                  class="w-5 h-5 text-white/40"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="12" cy="12" r="1"></circle>
+                  <circle cx="19" cy="12" r="1"></circle>
+                  <circle cx="5" cy="12" r="1"></circle>
+                </svg>
+              </div>
+              <h3 class="font-medium text-white/60 mb-2">+15 More Tools</h3>
+              <p class="text-xs text-white/30 leading-relaxed">
+                Workspaces, billing, streams, policies, and more.
+              </p>
+              <a
+                href="https://useorgx.com/docs/mcp"
+                class="mt-4 text-xs text-lime hover:text-lime/80 transition-colors font-medium"
+              >
+                View Full API →
+              </a>
+            </div>
+          </div>
+
+          <!-- Meet the Fleet -->
+          <div class="border-t border-white/[0.06] pt-16">
+            <h2
+              class="text-2xl font-semibold tracking-tight text-white mb-10 text-center"
+            >
+              Meet the Fleet
+            </h2>
+            <div
+              class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto reveal-stagger"
+            >
+              <!-- Pace (Product) -->
+              <div
+                class="flex items-center gap-4 p-5 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] transition-colors relative"
+              >
+                <span
+                  class="absolute top-3 right-3 px-1.5 py-0.5 text-[8px] font-bold bg-[#D4FF00] text-black rounded"
+                  >Product</span
+                >
+                <div class="relative">
+                  <img
+                    src="/product_orchestrator.png"
+                    class="agent-headshot"
+                    alt="Pace"
+                  />
+                  <div
+                    class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-indigo-500 border-2 border-[#02040a] flex items-center justify-center shadow-lg"
+                  >
+                    <svg
+                      class="w-2.5 h-2.5 text-white"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path
+                        d="M12 2L9.19 8.63L2 9.24L7.46 13.97L5.82 21L12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.63L12 2Z"
+                      />
+                    </svg>
+                  </div>
+                </div>
+                <div>
+                  <h3 class="text-sm font-medium text-white">
+                    Pace
+                    <span class="text-[10px] text-white/40 ml-1">Agent</span>
+                  </h3>
+                  <p class="text-xs text-white/40 mt-1 leading-relaxed">
+                    Manages initiatives, requirements, and updates.
+                  </p>
+                </div>
+              </div>
+              <!-- Eli (Engineering) -->
+              <div
+                class="flex items-center gap-4 p-5 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] transition-colors relative"
+              >
+                <span
+                  class="absolute top-3 right-3 px-1.5 py-0.5 text-[8px] font-bold bg-[#00FFF0] text-black rounded"
+                  >Eng</span
+                >
+                <div class="relative">
+                  <img
+                    src="/engineering_autopilot.png"
+                    class="agent-headshot"
+                    alt="Eli"
+                  />
+                  <div
+                    class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-indigo-500 border-2 border-[#02040a] flex items-center justify-center shadow-lg"
+                  >
+                    <svg
+                      class="w-2.5 h-2.5 text-white"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path
+                        d="M12 2L9.19 8.63L2 9.24L7.46 13.97L5.82 21L12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.63L12 2Z"
+                      />
+                    </svg>
+                  </div>
+                </div>
+                <div>
+                  <h3 class="text-sm font-medium text-white">
+                    Eli
+                    <span class="text-[10px] text-white/40 ml-1">Agent</span>
+                  </h3>
+                  <p class="text-xs text-white/40 mt-1 leading-relaxed">
+                    Handles specs, PR reviews, and technical implementation.
+                  </p>
+                </div>
+              </div>
+              <!-- Mark (Marketing) -->
+              <div
+                class="flex items-center gap-4 p-5 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] transition-colors relative"
+              >
+                <span
+                  class="absolute top-3 right-3 px-1.5 py-0.5 text-[8px] font-bold bg-[#6B4FFF] text-white rounded"
+                  >Marketing</span
+                >
+                <div class="relative">
+                  <img
+                    src="/launch_captain.png"
+                    class="agent-headshot"
+                    alt="Mark"
+                  />
+                  <div
+                    class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-indigo-500 border-2 border-[#02040a] flex items-center justify-center shadow-lg"
+                  >
+                    <svg
+                      class="w-2.5 h-2.5 text-white"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path
+                        d="M12 2L9.19 8.63L2 9.24L7.46 13.97L5.82 21L12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.63L12 2Z"
+                      />
+                    </svg>
+                  </div>
+                </div>
+                <div>
+                  <h3 class="text-sm font-medium text-white">
+                    Mark
+                    <span class="text-[10px] text-white/40 ml-1">Agent</span>
+                  </h3>
+                  <p class="text-xs text-white/40 mt-1 leading-relaxed">
+                    Drives campaigns and go-to-market strategy.
+                  </p>
+                </div>
+              </div>
+              <!-- Sage (Sales) -->
+              <div
+                class="flex items-center gap-4 p-5 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] transition-colors relative"
+              >
+                <span
+                  class="absolute top-3 right-3 px-1.5 py-0.5 text-[8px] font-bold bg-[#B794F6] text-black rounded"
+                  >Sales</span
+                >
+                <div class="relative">
+                  <img
+                    src="/pipeline_intelligence.png"
+                    class="agent-headshot"
+                    alt="Sage"
+                  />
+                  <div
+                    class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-indigo-500 border-2 border-[#02040a] flex items-center justify-center shadow-lg"
+                  >
+                    <svg
+                      class="w-2.5 h-2.5 text-white"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path
+                        d="M12 2L9.19 8.63L2 9.24L7.46 13.97L5.82 21L12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.63L12 2Z"
+                      />
+                    </svg>
+                  </div>
+                </div>
+                <div>
+                  <h3 class="text-sm font-medium text-white">
+                    Sage
+                    <span class="text-[10px] text-white/40 ml-1">Agent</span>
+                  </h3>
+                  <p class="text-xs text-white/40 mt-1 leading-relaxed">
+                    Monitors pipeline and revenue signals.
+                  </p>
+                </div>
+              </div>
+              <!-- Orion (Operations) -->
+              <div
+                class="flex items-center gap-4 p-5 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] transition-colors relative"
+              >
+                <span
+                  class="absolute top-3 right-3 px-1.5 py-0.5 text-[8px] font-bold bg-[#00FF80] text-black rounded"
+                  >Ops</span
+                >
+                <div class="relative">
+                  <img
+                    src="/control_tower.png"
+                    class="agent-headshot"
+                    alt="Orion"
+                  />
+                  <div
+                    class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-indigo-500 border-2 border-[#02040a] flex items-center justify-center shadow-lg"
+                  >
+                    <svg
+                      class="w-2.5 h-2.5 text-white"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path
+                        d="M12 2L9.19 8.63L2 9.24L7.46 13.97L5.82 21L12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.63L12 2Z"
+                      />
+                    </svg>
+                  </div>
+                </div>
+                <div>
+                  <h3 class="text-sm font-medium text-white">
+                    Orion
+                    <span class="text-[10px] text-white/40 ml-1">Agent</span>
+                  </h3>
+                  <p class="text-xs text-white/40 mt-1 leading-relaxed">
+                    Orchestrates cross-functional workflows.
+                  </p>
+                </div>
+              </div>
+              <!-- Dana (Design) -->
+              <div
+                class="flex items-center gap-4 p-5 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] transition-colors relative"
+              >
+                <span
+                  class="absolute top-3 right-3 px-1.5 py-0.5 text-[8px] font-bold bg-[#FF00D4] text-white rounded"
+                  >Design</span
+                >
+                <div class="relative">
+                  <img
+                    src="/design_codex.png"
+                    class="agent-headshot"
+                    alt="Dana"
+                  />
+                  <div
+                    class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-indigo-500 border-2 border-[#02040a] flex items-center justify-center shadow-lg"
+                  >
+                    <svg
+                      class="w-2.5 h-2.5 text-white"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path
+                        d="M12 2L9.19 8.63L2 9.24L7.46 13.97L5.82 21L12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.63L12 2Z"
+                      />
+                    </svg>
+                  </div>
+                </div>
+                <div>
+                  <h3 class="text-sm font-medium text-white">
+                    Dana
+                    <span class="text-[10px] text-white/40 ml-1">Agent</span>
+                  </h3>
+                  <p class="text-xs text-white/40 mt-1 leading-relaxed">
+                    Maintains brand consistency and design systems.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Go Deeper: Full Platform CTA -->
+        <section aria-label="Full platform experience" class="reveal mt-32 text-center relative">
+          <h2 class="text-3xl font-semibold text-white mb-6">
+            Ready for the full experience?
+          </h2>
+          <p
+            class="text-white/50 max-w-2xl mx-auto mb-12 text-lg leading-relaxed"
+          >
+            OrgX is more than an API. Orchestrate your entire company with
+            powerful tools designed for the autonomous age.
+          </p>
+
+          <!-- Screenshots Grid -->
+          <div
+            class="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto mb-16 relative z-10"
+          >
+            <!-- Command Center (Embedded Visual) -->
+            <div
+              class="group relative rounded-xl overflow-hidden border border-white/10 bg-[#08090D] hover:border-lime/30 transition-colors duration-500"
+            >
+              <div class="absolute top-3 right-3 z-30 px-2 py-0.5 rounded text-[9px] font-medium text-white/40 bg-white/[0.06] border border-white/[0.08] tracking-wide uppercase">Preview</div>
+              <div
+                class="aspect-[16/10] w-full overflow-hidden p-4 flex flex-col"
+              >
+                <!-- Header Bar -->
+                <div
+                  class="flex items-center justify-between px-4 py-2 border-b border-white/5 mb-3"
+                >
+                  <div class="flex items-center gap-4">
+                    <span
+                      class="text-[10px] font-medium text-white/50 tracking-wider"
+                      >COMMAND CENTER</span
+                    >
+                    <div class="flex gap-2">
+                      <span
+                        class="text-[9px] text-white/30 px-2 py-0.5 rounded bg-white/5"
+                        >Workspace Hub</span
+                      >
+                      <span
+                        class="text-[9px] text-white/30 px-2 py-0.5 rounded bg-white/5"
+                        >Intelligence Hub</span
+                      >
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2 text-[9px]">
+                    <span class="text-white/40">Context Retention</span>
+                    <div
+                      class="w-16 h-1 bg-white/10 rounded-full overflow-hidden"
+                    >
+                      <div
+                        class="h-full w-[94%] bg-gradient-to-r from-lime to-teal rounded-full"
+                      ></div>
+                    </div>
+                    <span class="text-teal font-bold">94%</span>
+                  </div>
+                </div>
+
+                <!-- Main Content Grid -->
+                <div class="flex-1 grid grid-cols-12 gap-3">
+                  <!-- Left Panel: Initiative + Decisions -->
+                  <div class="col-span-8 flex flex-col gap-3">
+                    <!-- Active Initiative -->
+                    <div class="px-3">
+                      <span
+                        class="text-[8px] text-white/30 uppercase tracking-wider"
+                        >Active Initiative</span
+                      >
+                      <div class="text-sm font-medium text-white mt-1">
+                        Usage-based pricing launch
+                      </div>
+                      <div
+                        class="flex items-center gap-3 mt-1 text-[8px] text-white/40"
+                      >
+                        <span class="flex items-center gap-1"
+                          ><span
+                            class="w-1 h-1 rounded-full bg-emerald-500"
+                          ></span>
+                          On Track</span
+                        >
+                        <span>6 agents active</span>
+                      </div>
+                    </div>
+
+                    <!-- Pending Decisions -->
+                    <div class="px-3 space-y-2">
+                      <div class="flex items-center justify-between">
+                        <span
+                          class="text-[8px] text-white/40 uppercase tracking-wider"
+                          >Pending Decisions</span
+                        >
+                        <span
+                          class="text-[8px] text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-full"
+                          >2</span
+                        >
+                      </div>
+                      <!-- Decision Card 1 with Actions -->
+                      <div
+                        class="p-2.5 rounded-lg bg-white/[0.03] border border-amber-500/20 hover:bg-white/[0.05] transition-colors"
+                      >
+                        <div class="flex justify-between items-start">
+                          <span class="text-[10px] text-white font-medium"
+                            >Approve Q4 Budget Increase</span
+                          >
+                          <span
+                            class="text-[8px] text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded"
+                            >High</span
+                          >
+                        </div>
+                        <div class="flex items-center gap-2 mt-1 text-[8px]">
+                          <span class="text-white/40"
+                            >Requested by
+                            <span class="text-white">Pace</span></span
+                          >
+                          <span class="text-white/30">• 2h left</span>
+                        </div>
+                        <!-- Action Buttons -->
+                        <div class="flex gap-1.5 mt-2">
+                          <button
+                            class="flex-1 px-2 py-1 rounded text-[8px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/25 transition-colors"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            class="flex-1 px-2 py-1 rounded text-[8px] font-medium bg-white/5 text-white/50 border border-white/10 hover:bg-white/10 transition-colors"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                      <!-- Decision Card 2 with Actions -->
+                      <div
+                        class="p-2.5 rounded-lg bg-white/[0.03] border border-white/5"
+                      >
+                        <div class="flex justify-between items-start">
+                          <span class="text-[10px] text-white font-medium"
+                            >Review Vendor Contract</span
+                          >
+                          <span
+                            class="text-[8px] text-white/50 bg-white/5 px-1.5 py-0.5 rounded"
+                            >Medium</span
+                          >
+                        </div>
+                        <div class="flex items-center gap-2 mt-1 text-[8px]">
+                          <span class="text-white/40"
+                            >Requested by
+                            <span class="text-white">Orion</span></span
+                          >
+                          <span class="text-white/30">• 4h left</span>
+                        </div>
+                        <div class="flex gap-1.5 mt-2">
+                          <button
+                            class="flex-1 px-2 py-1 rounded text-[8px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/25 transition-colors"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            class="flex-1 px-2 py-1 rounded text-[8px] font-medium bg-white/5 text-white/50 border border-white/10 hover:bg-white/10 transition-colors"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Outputs Section -->
+                    <div class="px-3 space-y-2">
+                      <div class="flex items-center justify-between">
+                        <span
+                          class="text-[8px] text-white/40 uppercase tracking-wider"
+                          >Recent Outputs</span
+                        >
+                        <span
+                          class="text-[8px] text-teal bg-teal/10 px-1.5 py-0.5 rounded-full"
+                          >4</span
+                        >
+                      </div>
+                      <!-- Output Items -->
+                      <div class="flex gap-2">
+                        <div
+                          class="flex-1 p-2 rounded-lg bg-white/[0.02] border border-white/5 hover:border-teal/20 transition-colors"
+                        >
+                          <div class="flex items-center gap-1.5 mb-1">
+                            <span
+                              class="w-1.5 h-1.5 rounded-full bg-teal"
+                            ></span>
+                            <span class="text-[8px] text-teal font-medium"
+                              >Spec</span
+                            >
+                          </div>
+                          <span class="text-[9px] text-white/70 line-clamp-1"
+                            >Pricing tier analysis</span
+                          >
+                        </div>
+                        <div
+                          class="flex-1 p-2 rounded-lg bg-white/[0.02] border border-white/5 hover:border-[#6B4FFF]/20 transition-colors"
+                        >
+                          <div class="flex items-center gap-1.5 mb-1">
+                            <span
+                              class="w-1.5 h-1.5 rounded-full bg-[#6B4FFF]"
+                            ></span>
+                            <span class="text-[8px] text-[#6B4FFF] font-medium"
+                              >Draft</span
+                            >
+                          </div>
+                          <span class="text-[9px] text-white/70 line-clamp-1"
+                            >Launch email v2</span
+                          >
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Right Panel: Agent List -->
+                  <div class="col-span-4 space-y-2 overflow-hidden">
+                    <!-- Agent Card: Pace (Product) -->
+                    <div
+                      class="p-2 rounded-lg bg-white/[0.03] border border-[#D4FF00]/20 flex items-center gap-2"
+                    >
+                      <img
+                        src="/product_orchestrator.png"
+                        class="w-7 h-7 rounded-lg object-cover border border-white/10"
+                        alt="Pace"
+                      />
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between">
+                          <span class="text-[9px] text-white font-medium"
+                            >Pace</span
+                          >
+                          <span
+                            class="text-[7px] text-amber-500 bg-amber-500/10 px-1 rounded uppercase"
+                            >Blocked</span
+                          >
+                        </div>
+                        <div class="text-[7px] text-[#D4FF00]/70 truncate">
+                          Evaluating pricing tiers...
+                        </div>
+                      </div>
+                    </div>
+                    <!-- Agent Card: Eli (Engineering) -->
+                    <div
+                      class="p-2 rounded-lg bg-white/[0.03] border border-teal/20 flex items-center gap-2"
+                    >
+                      <img
+                        src="/engineering_autopilot.png"
+                        class="w-7 h-7 rounded-lg object-cover border border-white/10"
+                        alt="Eli"
+                      />
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between">
+                          <span class="text-[9px] text-white font-medium"
+                            >Eli</span
+                          >
+                          <span
+                            class="text-[7px] text-teal bg-teal/10 px-1 rounded uppercase"
+                            >Building</span
+                          >
+                        </div>
+                        <div class="text-[7px] text-teal/70 truncate">
+                          Implementing usage tracking...
+                        </div>
+                      </div>
+                    </div>
+                    <!-- Agent Card: Mark -->
+                    <div
+                      class="p-2 rounded-lg bg-white/[0.03] border border-[#6B4FFF]/20 flex items-center gap-2"
+                    >
+                      <img
+                        src="/launch_captain.png"
+                        class="w-7 h-7 rounded-lg object-cover border border-white/10"
+                        alt="Mark"
+                      />
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between">
+                          <span class="text-[9px] text-white font-medium"
+                            >Mark</span
+                          >
+                          <span
+                            class="text-[7px] text-[#6B4FFF] bg-[#6B4FFF]/10 px-1 rounded uppercase"
+                            >Drafting</span
+                          >
+                        </div>
+                        <div class="text-[7px] text-[#6B4FFF]/70 truncate">
+                          Drafting launch email...
+                        </div>
+                      </div>
+                    </div>
+                    <!-- Agent Card: Orion (Operations) -->
+                    <div
+                      class="p-2 rounded-lg bg-white/[0.03] border border-white/5 flex items-center gap-2 opacity-60"
+                    >
+                      <img
+                        src="/control_tower.png"
+                        class="w-7 h-7 rounded-lg object-cover border border-white/10"
+                        alt="Orion"
+                      />
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between">
+                          <span class="text-[9px] text-white font-medium"
+                            >Orion</span
+                          >
+                          <span
+                            class="text-[7px] text-lime bg-lime/10 px-1 rounded uppercase"
+                            >Config</span
+                          >
+                        </div>
+                        <div class="text-[7px] text-white/40 truncate">
+                          Setting up Stripe webhooks...
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Top Edge Highlight -->
+                <div
+                  class="absolute top-0 left-[10%] right-[10%] h-[1px] bg-gradient-to-r from-transparent via-teal/40 to-transparent"
+                ></div>
+              </div>
+
+              <div
+                class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-8 pointer-events-none"
+              >
+                <div
+                  class="translate-y-2 group-hover:translate-y-0 transition-transform duration-500"
+                >
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="w-2 h-2 rounded-full bg-lime"></span>
+                    <h3 class="text-white font-semibold text-lg">
+                      Command Center
+                    </h3>
+                  </div>
+                  <p class="text-white/60 text-sm">
+                    Visualize initiatives and dependencies in one high-level
+                    view.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Agent Console (CSS Visual) -->
+            <div
+              class="group relative rounded-xl overflow-hidden border border-white/10 bg-[#05070A] hover:border-teal/30 transition-colors duration-500"
+            >
+              <div class="absolute top-3 right-3 z-30 px-2 py-0.5 rounded text-[9px] font-medium text-white/40 bg-white/[0.06] border border-white/[0.08] tracking-wide uppercase">Preview</div>
+              <div
+                class="aspect-[16/10] w-full overflow-hidden flex flex-col bg-[#0A0C10] p-6"
+              >
+                <!-- Composer UI Mock -->
+                <div
+                  class="flex-1 border border-white/10 rounded-lg bg-white/[0.02] p-4 flex flex-col"
+                >
+                  <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                      <img
+                        src="/product_orchestrator.png"
+                        class="w-7 h-7 rounded-lg object-cover"
+                        alt="Pace"
+                      />
+                      <span class="text-xs font-medium text-white"
+                        >New Task</span
+                      >
+                    </div>
+                    <span class="text-[10px] text-white/30">Draft</span>
+                  </div>
+                  <div
+                    class="flex-1 text-white/60 text-sm font-light leading-relaxed"
+                  >
+                    Analyze the Q3 churn data and identify top 3 risk factors...
+                    <span
+                      class="inline-block w-0.5 h-4 bg-teal align-middle animate-pulse ml-1"
+                    ></span>
+                  </div>
+                  <div
+                    class="mt-4 flex items-center justify-between pt-4 border-t border-white/5"
+                  >
+                    <div class="flex gap-2">
+                      <div
+                        class="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-white/40 hover:bg-white/10 cursor-pointer text-xs"
+                      >
+                        <svg
+                          class="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="1.5"
+                            d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                          ></path>
+                        </svg>
+                      </div>
+                      <div
+                        class="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-white/40 hover:bg-white/10 cursor-pointer text-xs"
+                      >
+                        <svg
+                          class="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="1.5"
+                            d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                          ></path>
+                        </svg>
+                      </div>
+                    </div>
+                    <div
+                      class="px-4 py-1.5 rounded-lg bg-teal text-black text-xs font-medium flex items-center gap-1.5 cursor-pointer hover:bg-teal/90 transition-colors"
+                    >
+                      Run Agent
+                      <svg
+                        class="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                      >
+                        <path
+                          d="M5 12h14M12 5l7 7-7 7"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                <!-- Background Elements -->
+                <div class="mt-4 flex gap-3 opacity-30">
+                  <div class="h-2 w-1/3 bg-white/10 rounded"></div>
+                  <div class="h-2 w-1/4 bg-white/10 rounded"></div>
+                </div>
+              </div>
+
+              <div
+                class="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent flex items-end p-8 pointer-events-none"
+              >
+                <div
+                  class="translate-y-2 group-hover:translate-y-0 transition-transform duration-500"
+                >
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="w-2 h-2 rounded-full bg-teal"></span>
+                    <h3 class="text-white font-semibold text-lg">
+                      Agent Console
+                    </h3>
+                  </div>
+                  <p class="text-white/60 text-sm">
+                    Train, monitor, and configure your specialized workforce.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <a
+            href="https://useorgx.com"
+            class="inline-flex items-center justify-center px-8 py-4 rounded-full bg-white text-black font-semibold hover:bg-white/90 transition-all transform hover:scale-105 shadow-lg hover:shadow-lime/20 relative z-20"
+          >
+            Open OrgX Platform
+            <svg
+              class="w-4 h-4 ml-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M17 8l4 4m0 0l-4 4m4-4H3"
+              ></path>
+            </svg>
+          </a>
+
+          <div
+            class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl h-[400px] bg-gradient-to-r from-lime/10 to-teal/10 blur-[100px] rounded-full -z-10 pointer-events-none"
+          ></div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="border-t border-white/[0.06] py-12 bg-[#02040a] mt-20" aria-label="Site footer">
+      <div
+        class="max-w-7xl mx-auto px-6 flex justify-between items-center opacity-40 hover:opacity-100 transition-opacity duration-500"
+      >
+        <div class="text-xs font-mono">ORGX INC. &copy; 2026</div>
+        <div class="flex gap-6 text-xs font-medium tracking-wide">
+          <a href="https://useorgx.com/privacy" class="hover:text-white transition-colors">PRIVACY</a>
+          <a href="https://useorgx.com/terms" class="hover:text-white transition-colors">TERMS</a>
+          <a href="https://status.useorgx.com" class="hover:text-white transition-colors">STATUS</a>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      // --- Hero Animation Data ---
+      const agents = [
+        {
+          name: 'Eli',
+          role: 'Implementing feature...',
+          avatar: '/engineering_autopilot.png',
+          color: '#00FFF0',
+          bgColor: 'rgba(0, 255, 240, 0.15)',
+          badge: 'Eng',
+          badgeBg: '#00FFF0',
+          badgeText: 'black',
+        },
+        {
+          name: 'Pace',
+          role: 'Drafting specs...',
+          avatar: '/product_orchestrator.png',
+          color: '#D4FF00',
+          bgColor: 'rgba(212, 255, 0, 0.15)',
+          badge: 'Product',
+          badgeBg: '#D4FF00',
+          badgeText: 'black',
+        },
+        {
+          name: 'Mark',
+          role: 'Launching campaign...',
+          avatar: '/launch_captain.png',
+          color: '#6B4FFF',
+          bgColor: 'rgba(107, 79, 255, 0.15)',
+          badge: 'Marketing',
+          badgeBg: '#6B4FFF',
+          badgeText: 'white',
+        },
+        {
+          name: 'Orion',
+          role: 'Coordinating teams...',
+          avatar: '/control_tower.png',
+          color: '#00FF80',
+          bgColor: 'rgba(0, 255, 128, 0.15)',
+          badge: 'Ops',
+          badgeBg: '#00FF80',
+          badgeText: 'black',
+        },
+        {
+          name: 'Sage',
+          role: 'Analyzing pipeline...',
+          avatar: '/pipeline_intelligence.png',
+          color: '#B794F6',
+          bgColor: 'rgba(183, 148, 246, 0.15)',
+          badge: 'Sales',
+          badgeBg: '#B794F6',
+          badgeText: 'black',
+        },
+      ];
+
+      let activeAgentIndex = 0;
+      const agentStack = document.getElementById('agent-stack');
+      let cycleInterval;
+      let isPaused = false;
+
+      function renderAgents() {
+        agentStack.innerHTML = '';
+
+        // Render 3 cards in reverse order for proper stacking
+        for (let i = 2; i >= 0; i--) {
+          const idx = (activeAgentIndex + i) % agents.length;
+          const agent = agents[idx];
+          const position = i === 0 ? 'active' : i === 1 ? 'next' : 'last';
+
+          const el = document.createElement('div');
+          el.className = `agent-card glass-panel rounded-xl border bg-[#08090D] ${position}`;
+          el.style.borderColor =
+            i === 0 ? agent.color + '40' : 'rgba(255,255,255,0.06)';
+
+          el.innerHTML = `
+          <div class="p-4 relative">
+            <!-- Role Badge -->
+            <span class="absolute top-3 right-3 px-1.5 py-0.5 text-[8px] font-bold rounded" style="background: ${
+              agent.badgeBg
+            }; color: ${agent.badgeText}">${agent.badge}</span>
+            
+            <div class="flex items-center gap-3">
+              <img src="${
+                agent.avatar
+              }" class="w-11 h-11 rounded-xl object-cover border border-white/10" alt="${
+            agent.name
+          }" />
+              <div class="flex-1 min-w-0 pr-12">
+                <div class="text-sm font-medium text-white truncate">${
+                  agent.name
+                } <span class="text-[10px] text-white/40">Agent</span></div>
+                <div class="text-xs mt-0.5" style="color: ${
+                  i === 0 ? agent.color : 'rgba(255,255,255,0.4)'
+                }">${agent.role}</div>
+              </div>
+            </div>
+            ${
+              i === 0
+                ? `
+              <div class="mt-3 h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                <div class="h-full rounded-full animate-progress" style="background: ${agent.color}"></div>
+              </div>
+            `
+                : ''
+            }
+          </div>
+        `;
+
+          el.addEventListener('mouseenter', () => {
+            isPaused = true;
+          });
+          el.addEventListener('mouseleave', () => {
+            isPaused = false;
+          });
+
+          agentStack.appendChild(el);
+        }
+      }
+
+      function nextAgent() {
+        if (isPaused) return;
+        activeAgentIndex = (activeAgentIndex + 1) % agents.length;
+        renderAgents();
+      }
+
+      function startCycle() {
+        clearInterval(cycleInterval);
+        cycleInterval = setInterval(nextAgent, 4000);
+      }
+
+      // --- Config & Steps Data ---
+      const steps = {
+        cursor: [
+          {
+            title: 'Add Config',
+            desc: 'Copy the config below to your mcp.json file.',
+            highlight: 'mcp.json',
+          },
+          {
+            title: 'Reload Cursor',
+            desc: 'Restart Cursor or reload the window.',
+            code: null,
+          },
+          {
+            title: 'Sign In',
+            desc: 'A browser window will open—sign in to OrgX to authenticate.',
+            code: null,
+          },
+        ],
+        claude: [
+          {
+            title: 'Add Config',
+            desc: 'Copy the config below to your Claude Desktop config.',
+            highlight: 'claude_desktop_config.json',
+          },
+          {
+            title: 'Restart Claude',
+            desc: 'Quit and reopen Claude Desktop.',
+            code: null,
+          },
+          {
+            title: 'Sign In',
+            desc: 'A browser window will open—sign in to OrgX to authenticate.',
+            code: null,
+          },
+        ],
+        chatgpt: [
+          {
+            title: 'Create GPT',
+            desc: 'Go to My GPTs -> Create a GPT.',
+            code: null,
+          },
+          {
+            title: 'Import Actions',
+            desc: 'Configure > Actions > Import from URL.',
+            highlight: 'Import URL',
+          },
+          {
+            title: 'Paste Schema',
+            desc: 'Paste the OrgX OpenAPI URL.',
+            code: 'https://mcp.useorgx.com/.well-known/openapi.json',
+          },
+        ],
+      };
+
+      const configs = {
+        cursor: `{
+  "mcpServers": {
+    "orgx": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://mcp.useorgx.com/sse"
+      ]
+    }
+  }
+}`,
+        claude: `{
+  "mcpServers": {
+    "orgx": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://mcp.useorgx.com/sse"
+      ]
+    }
+  }
+}`,
+        chatgpt: `// OpenAPI Import URL
+https://mcp.useorgx.com/.well-known/openapi.json
+
+// Note: OAuth flow is handled automatically 
+// when you first use an OrgX action.`,
+      };
+
+      const filenames = {
+        cursor: '~/.cursor/mcp.json',
+        claude:
+          '~/Library/Application Support/Claude/claude_desktop_config.json',
+        chatgpt: 'GPT Configuration',
+      };
+
+      function renderSteps(client) {
+        const container = document.getElementById('steps-container');
+
+        const stepsHtml = steps[client]
+          .map(
+            (step, i) => `
+        <div class="relative pl-8 border-l border-white/10 pb-2 last:pb-0">
+          <div class="absolute -left-[5px] top-0 w-2.5 h-2.5 rounded-full ${
+            i === 0 ? 'bg-lime' : 'bg-white/20'
+          } border-4 border-[#02040a]"></div>
+          <h3 class="text-sm font-medium text-white mb-1">${step.title}</h3>
+          <p class="text-sm text-white/50 mb-2">${step.desc}</p>
+          ${
+            step.code
+              ? `<code class="text-[10px] font-mono bg-white/5 px-2 py-1 rounded text-white/70 block w-fit">${step.code}</code>`
+              : ''
+          }
+        </div>
+      `
+          )
+          .join('');
+
+        if (client === 'chatgpt') {
+          container.innerHTML = `
+          <div class="relative">
+            <div class="absolute inset-0 z-20 backdrop-blur-sm bg-[#02040a]/60 flex items-center justify-center rounded-lg border border-white/10">
+              <div class="bg-white/10 backdrop-blur-md border border-white/10 px-4 py-2 rounded-full flex items-center gap-2">
+                <span class="relative flex h-2 w-2">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-lime opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2 w-2 bg-lime"></span>
+                </span>
+                <span class="text-xs font-medium text-white">Coming Soon</span>
+              </div>
+            </div>
+            <div class="opacity-30 pointer-events-none select-none filter blur-[2px]">
+              ${stepsHtml}
+            </div>
+          </div>
+        `;
+        } else {
+          container.innerHTML = stepsHtml;
+        }
+      }
+
+      function switchTab(tab) {
+        ['cursor', 'claude', 'chatgpt'].forEach((t) => {
+          const btn = document.getElementById('btn-' + t);
+          if (t === tab) {
+            btn.className =
+              'px-4 py-1.5 rounded-md text-xs font-medium transition-all active-tab shadow-sm';
+            btn.setAttribute('aria-selected', 'true');
+          } else {
+            btn.className =
+              'px-4 py-1.5 rounded-md text-xs font-medium transition-all inactive-tab hover:text-white';
+            btn.setAttribute('aria-selected', 'false');
+          }
+        });
+
+        const codeBlock = document.getElementById('code-display');
+        codeBlock.textContent = configs[tab];
+
+        const filenameDisplay = document.getElementById('config-filename');
+        filenameDisplay.textContent = filenames[tab];
+
+        const copyBtn = document.getElementById('copy-btn');
+        if (tab === 'chatgpt') {
+          copyBtn.style.display = 'none';
+          codeBlock.parentElement.classList.add('opacity-50');
+        } else {
+          copyBtn.style.display = 'flex';
+          codeBlock.parentElement.classList.remove('opacity-50');
+        }
+
+        renderSteps(tab);
+      }
+
+      async function copyConfig() {
+        const code = document.getElementById('code-display').textContent;
+        await navigator.clipboard.writeText(code);
+      }
+
+      // --- Hero Client Logo Animation ---
+      const clients = [
+        { id: 'claude', text: 'Create an initiative for Q3 Marketing' },
+        { id: 'cursor', text: 'Generate a migration for the users table' },
+        { id: 'chatgpt', text: 'What is the status of the mobile launch?' },
+        { id: 'gemini', text: 'Summarize the blockers for the API rewrite' },
+      ];
+      let currentClientIndex = 0;
+      let charIndex = 0;
+      let isDeleting = false;
+      let typingSpeed = 60;
+      const typingElement = document.getElementById('typing-text');
+
+      function updateHeroAnimation() {
+        const currentClient = clients[currentClientIndex];
+
+        // Update logos
+        document.querySelectorAll('.client-logo').forEach((logo) => {
+          if (logo.id === `logo-${currentClient.id}`) {
+            logo.classList.remove('inactive');
+            logo.classList.add('active');
+          } else {
+            logo.classList.remove('active');
+            logo.classList.add('inactive');
+          }
+        });
+
+        // Typing effect
+        const text = currentClient.text;
+        if (isDeleting) {
+          typingElement.textContent = text.substring(0, charIndex - 1);
+          charIndex--;
+          typingSpeed = 30;
+          if (charIndex === 0) {
+            isDeleting = false;
+            currentClientIndex = (currentClientIndex + 1) % clients.length;
+            typingSpeed = 100;
+          }
+        } else {
+          typingElement.textContent = text.substring(0, charIndex + 1);
+          charIndex++;
+          typingSpeed = 60;
+          if (charIndex === text.length) {
+            setTimeout(() => {
+              isDeleting = true;
+            }, 2500);
+            return;
+          }
+        }
+
+        setTimeout(updateHeroAnimation, typingSpeed);
+      }
+
+      // Initialize
+      switchTab('cursor');
+      updateHeroAnimation();
+      renderAgents();
+      startCycle();
+
+      // --- Scroll Reveal ---
+      const revealObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('visible');
+              revealObserver.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.1, rootMargin: '-80px 0px' }
+      );
+
+      document.querySelectorAll('.reveal, .reveal-stagger').forEach((el) => {
+        revealObserver.observe(el);
+      });
+    </script>
+  </body>
+</html>

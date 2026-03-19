@@ -1,0 +1,33 @@
+{
+  "name": "orgx-mcp-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:sdk": "node scripts/build-mcp-sdk.js",
+    "build": "pnpm build:sdk",
+    "dev": "wrangler dev --port 8787",
+    "deploy": "pnpm build && wrangler deploy",
+    "registry:keys": "./scripts/generate-registry-keys.sh",
+    "registry:validate": "./scripts/publish-to-registry.sh --dry-run",
+    "registry:publish": "./scripts/publish-to-registry.sh",
+    "smoke:endpoints": "./scripts/smoke-endpoints.sh",
+    "release": "./scripts/release.sh",
+    "release:patch": "./scripts/release.sh patch",
+    "release:minor": "./scripts/release.sh minor",
+    "release:major": "./scripts/release.sh major"
+  },
+  "dependencies": {
+    "@cloudflare/workers-oauth-provider": "0.2.4",
+    "@modelcontextprotocol/ext-apps": "1.1.2",
+    "@modelcontextprotocol/sdk": "1.27.1",
+    "agents": "0.7.2",
+    "zod": "^3.25.8"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260103.0",
+    "typescript": "^5.6.3",
+    "vite": "^6.3.4",
+    "wrangler": "^4.54.0"
+  }
+}

@@ -1,0 +1,292 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.useorgx/orgx-mcp",
+  "title": "OrgX MCP - Agent Orchestration",
+  "description": "Agent orchestration + org memory via MCP. Manage initiatives and decisions from any client.",
+  "version": "1.0.3",
+  "websiteUrl": "https://mcp.useorgx.com",
+  "vendor": {
+    "name": "OrgX",
+    "url": "https://useorgx.com"
+  },
+  "repository": {
+    "url": "https://github.com/useorgx/orgx",
+    "source": "github",
+    "subfolder": "orgx/workers/orgx-mcp"
+  },
+  "icons": [
+    {
+      "src": "https://mcp.useorgx.com/orgx-logo.png",
+      "mimeType": "image/png",
+      "sizes": ["any"]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.useorgx.com/mcp"
+    },
+    {
+      "type": "sse",
+      "url": "https://mcp.useorgx.com/sse"
+    }
+  ],
+  "auth": {
+    "type": "oauth2",
+    "authorization_endpoint": "https://mcp.useorgx.com/authorize",
+    "token_endpoint": "https://mcp.useorgx.com/token",
+    "registration_endpoint": "https://mcp.useorgx.com/register",
+    "scopes_supported": [
+      "decisions:read",
+      "decisions:write",
+      "agents:read",
+      "agents:write",
+      "initiatives:read",
+      "initiatives:write",
+      "memory:read",
+      "offline_access"
+    ],
+    "pkce_required": true
+  },
+  "capabilities": {
+    "tools": true,
+    "resources": true,
+    "prompts": true,
+    "apps": true
+  },
+  "tools": [
+    {
+      "name": "get_pending_decisions",
+      "description": "List OrgX decisions awaiting your approval. Use when the user asks what needs sign-off or wants to review pending/urgent decisions."
+    },
+    {
+      "name": "approve_decision",
+      "description": "Approve a specific pending OrgX decision after the user confirms. Notifies the relevant agent."
+    },
+    {
+      "name": "reject_decision",
+      "description": "Reject a pending OrgX decision with a reason after the user confirms. Use to request revisions."
+    },
+    {
+      "name": "get_agent_status",
+      "description": "Show what OrgX agents are currently doing (running/idle), optionally for one agent."
+    },
+    {
+      "name": "query_org_memory",
+      "description": "Search OrgX organizational memory (decisions, initiatives, artifacts) for a query. Use to find prior context or decisions."
+    },
+    {
+      "name": "get_initiative_pulse",
+      "description": "Get health, milestones, blockers, and recent activity for a single initiative."
+    },
+    {
+      "name": "spawn_agent_task",
+      "description": "Create a new task for a specialist OrgX agent. Use only when the user explicitly wants to assign work."
+    },
+    {
+      "name": "get_decision_history",
+      "description": "Search past OrgX decisions related to a topic (optionally within an initiative)."
+    },
+    {
+      "name": "start_plan_session",
+      "description": "Start a new planning session to track your feature plan. Use this when beginning to plan a new feature."
+    },
+    {
+      "name": "get_active_sessions",
+      "description": "Check for any active planning sessions you have open."
+    },
+    {
+      "name": "improve_plan",
+      "description": "Get AI suggestions to improve your plan based on your past patterns and best practices."
+    },
+    {
+      "name": "record_plan_edit",
+      "description": "Record an edit made to a plan. This helps learn your planning patterns."
+    },
+    {
+      "name": "complete_plan",
+      "description": "Mark a plan as complete and record implementation details. Call this when done building."
+    },
+    {
+      "name": "studio_brand_ingest",
+      "description": "Ingest brand sources and create/update a Content Studio brand pack."
+    },
+    {
+      "name": "studio_content_create",
+      "description": "Generate branded visual content (carousel, post, story, video, banner, thumbnail)."
+    },
+    {
+      "name": "studio_library_search",
+      "description": "Search the Content Studio library by filters and text."
+    },
+    {
+      "name": "studio_brands_list",
+      "description": "List available Content Studio brands for the user/org."
+    },
+    {
+      "name": "get_org_snapshot",
+      "description": "Fetch organization snapshot. Compact summary by default; detailed mode supports explicit include filters and pagination."
+    },
+    {
+      "name": "create_checkout_session",
+      "description": "Create a billing checkout session for plan upgrades."
+    },
+    {
+      "name": "list_entities",
+      "description": "List entities of any type (initiative, task, milestone, agent, etc.) with pagination and filtering."
+    },
+    {
+      "name": "create_entity",
+      "description": "Create a new entity of any type (initiative, task, milestone, skill, etc.)."
+    },
+    {
+      "name": "batch_create_entities",
+      "description": "Create multiple entities in one call. Useful for initiative scaffolding without repeated tool invocations."
+    },
+    {
+      "name": "scaffold_initiative",
+      "description": "Create an initiative with nested workstreams/milestones/tasks in a single call. Returns IDs and ref mappings."
+    },
+    {
+      "name": "get_task_with_context",
+      "description": "Fetch a task plus its context attachments, optionally hydrating referenced entities/artifacts/plan sessions."
+    },
+    {
+      "name": "update_entity",
+      "description": "Update an existing entity of any type. Only include fields you want to change."
+    },
+    {
+      "name": "entity_action",
+      "description": "Launch, pause, complete, or perform other actions on entities"
+    },
+    {
+      "name": "batch_delete_entities",
+      "description": "Delete multiple entities in one call using the 'delete' lifecycle action (hard delete)."
+    },
+    {
+      "name": "configure_org",
+      "description": "Check setup status, configure agents, or set org policies"
+    },
+    {
+      "name": "workspace",
+      "description": "List, get, or set workspace context"
+    },
+    {
+      "name": "stats",
+      "description": "Get personal or session statistics"
+    }
+  ],
+  "resources": [
+    {
+      "uriTemplate": "orgx://initiative/{id}",
+      "name": "Initiative",
+      "description": "Get full details of an OrgX initiative including milestones and tasks",
+      "mimeType": "text/markdown"
+    },
+    {
+      "uri": "ui://widget/decisions.html",
+      "name": "Decisions Widget",
+      "description": "Interactive widget for displaying and managing pending decisions",
+      "mimeType": "text/html;profile=mcp-app"
+    },
+    {
+      "uri": "ui://widget/agent-status.html",
+      "name": "Agent Status Widget",
+      "description": "Widget showing current agent status and activity",
+      "mimeType": "text/html;profile=mcp-app"
+    },
+    {
+      "uri": "ui://widget/search-results.html",
+      "name": "Search Results Widget",
+      "description": "Widget for displaying organizational memory search results",
+      "mimeType": "text/html;profile=mcp-app"
+    },
+    {
+      "uri": "ui://widget/initiative-pulse.html",
+      "name": "Initiative Pulse Widget",
+      "description": "Widget showing initiative health and progress metrics",
+      "mimeType": "text/html;profile=mcp-app"
+    },
+    {
+      "uri": "ui://widget/task-spawned.html",
+      "name": "Task Spawned Widget",
+      "description": "Widget confirming agent task assignment",
+      "mimeType": "text/html;profile=mcp-app"
+    },
+    {
+      "uri": "ui://widget/test-minimal.html",
+      "name": "Test Minimal Widget",
+      "description": "Minimal self-contained widget used to verify MCP Apps rendering",
+      "mimeType": "text/html;profile=mcp-app"
+    },
+    {
+      "uri": "ui://widget/decisions.skybridge.html",
+      "name": "Decisions Widget (Skybridge)",
+      "description": "ChatGPT Apps SDK widget for displaying and managing pending decisions",
+      "mimeType": "text/html+skybridge"
+    },
+    {
+      "uri": "ui://widget/agent-status.skybridge.html",
+      "name": "Agent Status Widget (Skybridge)",
+      "description": "ChatGPT Apps SDK widget showing current agent status and activity",
+      "mimeType": "text/html+skybridge"
+    },
+    {
+      "uri": "ui://widget/search-results.skybridge.html",
+      "name": "Search Results Widget (Skybridge)",
+      "description": "ChatGPT Apps SDK widget for displaying organizational memory search results",
+      "mimeType": "text/html+skybridge"
+    },
+    {
+      "uri": "ui://widget/initiative-pulse.skybridge.html",
+      "name": "Initiative Pulse Widget (Skybridge)",
+      "description": "ChatGPT Apps SDK widget showing initiative health and progress metrics",
+      "mimeType": "text/html+skybridge"
+    },
+    {
+      "uri": "ui://widget/task-spawned.skybridge.html",
+      "name": "Task Spawned Widget (Skybridge)",
+      "description": "ChatGPT Apps SDK widget confirming agent task assignment",
+      "mimeType": "text/html+skybridge"
+    },
+    {
+      "uri": "ui://widget/test-minimal.skybridge.html",
+      "name": "Test Minimal Widget (Skybridge)",
+      "description": "ChatGPT Apps SDK minimal widget used to verify widget rendering",
+      "mimeType": "text/html+skybridge"
+    }
+  ],
+  "prompts": [
+    {
+      "name": "create-roadmap",
+      "description": "Create an initiative plus supporting milestones and tasks"
+    },
+    {
+      "name": "plan_feature",
+      "description": "Plan a feature with automatic improvement suggestions and pattern learning"
+    },
+    {
+      "name": "get_my_patterns",
+      "description": "Discover your learned planning patterns and skills"
+    },
+    {
+      "name": "thursday-e2e",
+      "description": "E2E run: agent loop + MCP Apps widgets + context survival (real data)"
+    },
+    {
+      "name": "thursday-e2e-demo",
+      "description": "Alias for thursday-e2e"
+    }
+  ],
+  "tags": [
+    "agent-orchestration",
+    "ai-agents",
+    "organizational-memory",
+    "initiative-management",
+    "decision-workflows",
+    "planning",
+    "mcp",
+    "oauth2",
+    "mcp-apps"
+  ]
+}

@@ -1,0 +1,10 @@
+# Local development
+.dev.vars
+.wrangler/
+
+# MCP Registry keys - NEVER commit these
+keys/
+*.pem
+
+# Node
+node_modules/

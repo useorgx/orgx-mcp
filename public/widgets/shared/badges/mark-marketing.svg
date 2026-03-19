@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+	<defs>
+		<linearGradient id="markBadge" x1="8" y1="10" x2="56" y2="54" gradientUnits="userSpaceOnUse">
+			<stop offset="0" stop-color="#fde68a" />
+			<stop offset="1" stop-color="#f9a8d4" />
+		</linearGradient>
+	</defs>
+	<rect width="64" height="64" rx="20" fill="url(#markBadge)" />
+	<path d="M20 32c0-6.627 5.373-12 12-12s12 5.373 12 12-5.373 12-12 12-12-5.373-12-12z" fill="#ffffff"
+		fill-opacity="0.8" />
+	<path d="M24 31h16v2H24zm0 4h12v2H24z" fill="#7c2d12" fill-opacity="0.65" />
+	<path d="M28 26h8v3h-8z" fill="#be123c" fill-opacity="0.7" />
+</svg>

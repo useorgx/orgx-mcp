@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "include": ["/*"],
+  "exclude": [
+    "/sse",
+    "/sse/*",
+    "/mcp",
+    "/mcp/*",
+    "/v1/*",
+    "/authorize",
+    "/oauth/*",
+    "/token",
+    "/register",
+    "/.well-known/*",
+    "/healthz"
+  ]
+}

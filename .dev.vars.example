@@ -1,0 +1,29 @@
+# Local Development Environment Variables
+# Copy this file to .dev.vars and fill in the values
+# wrangler dev will automatically load .dev.vars
+
+# Required: Service key for API calls to OrgX backend
+ORGX_SERVICE_KEY=your-service-key-here
+
+# Required: JWT secret for token verification
+MCP_JWT_SECRET=your-jwt-secret-here
+
+# Optional: Development user ID for local testing without OAuth
+# When set, allows write tools (spawn_agent_task, approve_decision, etc.) 
+# to work without requiring OAuth authentication.
+# Use a real user ID from your local database for testing.
+DEV_USER_ID=5c52c8ca-c1d0-48cc-a177-9cf1ac2c5b06
+
+# Optional: Override API URLs for local development
+# ORGX_API_URL=http://localhost:3000
+# MCP_SERVER_URL=http://127.0.0.1:8787
+# AUTH_SERVER_URL=http://127.0.0.1:8787
+
+# Optional: MCP Registry public key for domain verification
+# Generate with: ./scripts/generate-registry-keys.sh
+# Set in production with: wrangler secret put MCP_REGISTRY_PUBKEY
+# MCP_REGISTRY_PUBKEY=your-base64-pubkey-here
+
+# Optional: PostHog telemetry (MCP tool call instrumentation)
+# POSTHOG_KEY=phc_your_project_api_key
+# POSTHOG_HOST=https://us.i.posthog.com

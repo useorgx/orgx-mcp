@@ -1,0 +1,234 @@
+name: Deploy MCP Server
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      publish_registry:
+        description: "Publish to MCP Registry after deploy"
+        type: boolean
+        default: false
+      environment:
+        description: "Environment to deploy to"
+        type: choice
+        options:
+          - production
+          - preview
+        default: production
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # Validate server.json + build + type-check before deployment
+  # ──────────────────────────────────────────────────────────────────────────
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Validate server.json
+        run: |
+          jq empty server.json
+          jq -e '.name and .version and .remotes' server.json
+          echo "server.json is valid"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check
+        run: pnpm tsc --noEmit
+
+      - name: Verify wrangler build (dry-run)
+        run: pnpm wrangler deploy --dry-run --outdir .wrangler/dist
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Deploy to production (push to main, release, or manual)
+  # ──────────────────────────────────────────────────────────────────────────
+  deploy:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    needs: validate
+    environment:
+      name: ${{ github.event_name == 'release' && 'production' || inputs.environment || 'production' }}
+      url: https://mcp.useorgx.com
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Determine version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            VERSION="${{ github.event.release.tag_name }}"
+            VERSION="${VERSION#v}"
+          else
+            VERSION="0.0.0-$(echo ${{ github.sha }} | cut -c1-7)"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Update server.json version
+        if: github.event_name == 'release'
+        run: |
+          jq --arg v "${{ steps.version.outputs.version }}" '.version = $v' \
+            server.json > tmp.json && mv tmp.json server.json
+
+      - name: Sync Worker secrets
+        run: |
+          sync_secret() {
+            local key="$1"
+            local value="$2"
+            if [ -z "$value" ]; then
+              echo "::warning::Skipping $key (not set)"
+              return
+            fi
+            printf '%s' "$value" | pnpm wrangler secret put "$key" --env production
+          }
+          sync_secret ORGX_SERVICE_KEY "$ORGX_SERVICE_KEY"
+          sync_secret OAUTH_CLIENT_ID "$OAUTH_CLIENT_ID"
+          sync_secret OAUTH_CLIENT_SECRET "$OAUTH_CLIENT_SECRET"
+          sync_secret MCP_JWT_SECRET "$MCP_JWT_SECRET"
+          sync_secret MCP_REGISTRY_PUBKEY "$MCP_REGISTRY_PUBKEY"
+          sync_secret COOKIE_ENCRYPTION_KEY "$COOKIE_ENCRYPTION_KEY"
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          ORGX_SERVICE_KEY: ${{ secrets.ORGX_SERVICE_KEY }}
+          OAUTH_CLIENT_ID: ${{ secrets.ORGX_OAUTH_CLIENT_ID }}
+          OAUTH_CLIENT_SECRET: ${{ secrets.ORGX_OAUTH_CLIENT_SECRET }}
+          MCP_JWT_SECRET: ${{ secrets.MCP_JWT_SECRET }}
+          MCP_REGISTRY_PUBKEY: ${{ secrets.MCP_REGISTRY_PUBKEY }}
+          COOKIE_ENCRYPTION_KEY: ${{ secrets.MCP_COOKIE_ENCRYPTION_KEY }}
+
+      - name: Deploy to Cloudflare
+        run: pnpm wrangler deploy --env production
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+
+      - name: Verify deployment
+        run: |
+          sleep 5
+          curl -sf https://mcp.useorgx.com/healthz || (echo "Health check failed" && exit 1)
+          echo "Health check passed"
+          curl -sf https://mcp.useorgx.com/.well-known/oauth-authorization-server | jq -e '.token_endpoint' || echo "OAuth metadata check skipped"
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Preview deploy (PRs only)
+  # ──────────────────────────────────────────────────────────────────────────
+  preview:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Sync Worker secrets (preview)
+        run: |
+          sync_secret() {
+            local key="$1"
+            local value="$2"
+            if [ -z "$value" ]; then
+              echo "::warning::Skipping $key (not set)"
+              return
+            fi
+            printf '%s' "$value" | pnpm wrangler secret put "$key" --env preview
+          }
+          sync_secret ORGX_SERVICE_KEY "$ORGX_SERVICE_KEY"
+          sync_secret OAUTH_CLIENT_ID "$OAUTH_CLIENT_ID"
+          sync_secret OAUTH_CLIENT_SECRET "$OAUTH_CLIENT_SECRET"
+          sync_secret MCP_JWT_SECRET "$MCP_JWT_SECRET"
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          ORGX_SERVICE_KEY: ${{ secrets.ORGX_SERVICE_KEY }}
+          OAUTH_CLIENT_ID: ${{ secrets.ORGX_OAUTH_CLIENT_ID }}
+          OAUTH_CLIENT_SECRET: ${{ secrets.ORGX_OAUTH_CLIENT_SECRET }}
+          MCP_JWT_SECRET: ${{ secrets.MCP_JWT_SECRET }}
+
+      - name: Deploy to Cloudflare (preview)
+        run: pnpm wrangler deploy --env preview
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Publish to MCP Registry (releases or manual trigger)
+  # ──────────────────────────────────────────────────────────────────────────
+  publish-registry:
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: |
+      github.event_name == 'release' ||
+      (github.event_name == 'workflow_dispatch' && inputs.publish_registry)
+    environment:
+      name: mcp-registry
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mcp-publisher
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+          chmod +x mcp-publisher
+          sudo mv mcp-publisher /usr/local/bin/
+          mcp-publisher --version
+
+      - name: Update server.json version
+        run: |
+          jq --arg v "${{ needs.deploy.outputs.version }}" '.version = $v' \
+            server.json > tmp.json && mv tmp.json server.json
+          cat server.json | jq '{name, version, description}'
+
+      - name: Login to MCP Registry
+        run: |
+          mcp-publisher login http \
+            --domain=useorgx.com \
+            --private-key="${{ secrets.MCP_REGISTRY_PRIVATE_KEY }}"
+
+      - name: Validate and publish
+        run: |
+          mcp-publisher validate
+          mcp-publisher publish
+          echo "Published to MCP Registry"

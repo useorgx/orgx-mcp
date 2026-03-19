@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OrgX Widget Gallery</title>
+    <style>
+      :root {
+        --app-color-bg: #ffffff;
+        --app-color-surface: #ffffff;
+        --app-color-text: #0d0d0d;
+        --app-color-text-secondary: #6e6e80;
+        --app-color-border: #e5e5e5;
+        --app-color-primary: #10a37f;
+        --app-radius-md: 8px;
+        --app-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --app-color-bg: #212121;
+          --app-color-surface: #2f2f2f;
+          --app-color-text: #ececf1;
+          --app-color-text-secondary: #8e8ea0;
+          --app-color-border: #424242;
+          --app-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui,
+          sans-serif;
+        background: var(--app-color-bg);
+        color: var(--app-color-text);
+        padding: 24px;
+        min-height: 100vh;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+
+      .subtitle {
+        color: var(--app-color-text-secondary);
+        margin-bottom: 32px;
+      }
+
+      .widget-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 16px;
+      }
+
+      .widget-card {
+        background: var(--app-color-surface);
+        border-radius: var(--app-radius-md);
+        padding: 20px;
+        box-shadow: var(--app-shadow-sm);
+        border: 1px solid var(--app-color-border);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+      }
+
+      .widget-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      .widget-name {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+
+      .widget-description {
+        font-size: 0.875rem;
+        color: var(--app-color-text-secondary);
+        line-height: 1.5;
+        margin-bottom: 16px;
+      }
+
+      .widget-links {
+        display: flex;
+        gap: 8px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 8px 16px;
+        border-radius: var(--app-radius-md);
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.15s ease;
+      }
+
+      .btn-primary {
+        background: var(--app-color-primary);
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background: #0d8a6a;
+      }
+
+      .btn-secondary {
+        background: var(--app-color-surface);
+        color: var(--app-color-text);
+        border: 1px solid var(--app-color-border);
+      }
+
+      .btn-secondary:hover {
+        background: var(--app-color-border);
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        background: #d1fae5;
+        color: #065f46;
+        margin-left: 8px;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .badge {
+          background: #064e3b;
+          color: #6ee7b7;
+        }
+      }
+
+      .quick-links {
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid var(--app-color-border);
+      }
+
+      .quick-links h2 {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 12px;
+      }
+
+      .iframe-preview {
+        width: 100%;
+        height: 400px;
+        border: 1px solid var(--app-color-border);
+        border-radius: var(--app-radius-md);
+        margin-top: 24px;
+      }
+
+      .preview-controls {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+        flex-wrap: wrap;
+      }
+
+      .preview-btn {
+        padding: 6px 12px;
+        border-radius: var(--app-radius-md);
+        font-size: 0.75rem;
+        font-weight: 500;
+        border: 1px solid var(--app-color-border);
+        background: var(--app-color-surface);
+        color: var(--app-color-text);
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+
+      .preview-btn:hover {
+        background: var(--app-color-border);
+      }
+
+      .preview-btn.active {
+        background: var(--app-color-primary);
+        color: white;
+        border-color: var(--app-color-primary);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>OrgX Widget Gallery</h1>
+      <p class="subtitle">
+        Preview and test ChatGPT App widgets with demo data
+      </p>
+
+      <div class="widget-grid">
+        <div class="widget-card">
+          <div class="widget-name">
+            Pending Decisions <span class="badge">Interactive</span>
+          </div>
+          <p class="widget-description">
+            Shows decisions awaiting user approval with approve/reject actions
+            and toast notifications.
+          </p>
+          <div class="widget-links">
+            <a href="decisions.html?demo=true" class="btn btn-primary"
+              >Demo Mode</a
+            >
+            <a href="decisions.html" class="btn btn-secondary">Empty State</a>
+          </div>
+        </div>
+
+        <div class="widget-card">
+          <div class="widget-name">Agent Status</div>
+          <p class="widget-description">
+            Displays the current status of all active agents including running
+            tasks and blockers.
+          </p>
+          <div class="widget-links">
+            <a href="agent-status.html?demo=true" class="btn btn-primary"
+              >Demo Mode</a
+            >
+            <a href="agent-status.html" class="btn btn-secondary"
+              >Empty State</a
+            >
+          </div>
+        </div>
+
+        <div class="widget-card">
+          <div class="widget-name">Search Results</div>
+          <p class="widget-description">
+            Shows search results across artifacts, decisions, and initiatives
+            with relevance scores.
+          </p>
+          <div class="widget-links">
+            <a href="search-results.html?demo=true" class="btn btn-primary"
+              >Demo Mode</a
+            >
+            <a href="search-results.html" class="btn btn-secondary"
+              >Empty State</a
+            >
+          </div>
+        </div>
+
+        <div class="widget-card">
+          <div class="widget-name">Initiative Pulse</div>
+          <p class="widget-description">
+            Displays initiative health, progress metrics, and any blockers in a
+            conversational card.
+          </p>
+          <div class="widget-links">
+            <a href="initiative-pulse.html?demo=true" class="btn btn-primary"
+              >Demo Mode</a
+            >
+            <a href="initiative-pulse.html" class="btn btn-secondary"
+              >Empty State</a
+            >
+          </div>
+        </div>
+
+        <div class="widget-card">
+          <div class="widget-name">Task Spawned</div>
+          <p class="widget-description">
+            Confirmation card shown when a task is assigned to an agent.
+          </p>
+          <div class="widget-links">
+            <a href="task-spawned.html?demo=true" class="btn btn-primary"
+              >Demo Mode</a
+            >
+            <a href="task-spawned.html" class="btn btn-secondary"
+              >Loading State</a
+            >
+          </div>
+        </div>
+
+        <div class="widget-card">
+          <div class="widget-name">Test Minimal</div>
+          <p class="widget-description">
+            Minimal widget to validate MCP Apps rendering and tool result
+            delivery across host protocols.
+          </p>
+          <div class="widget-links">
+            <a href="test-minimal.html?demo=true" class="btn btn-primary"
+              >Demo Mode</a
+            >
+            <a href="test-minimal.html" class="btn btn-secondary">Host Mode</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="quick-links">
+        <h2>Live Preview</h2>
+        <div class="preview-controls">
+          <button
+            class="preview-btn active"
+            onclick="loadPreview('decisions.html?demo=true')"
+          >
+            Decisions
+          </button>
+          <button
+            class="preview-btn"
+            onclick="loadPreview('agent-status.html?demo=true')"
+          >
+            Agent Status
+          </button>
+          <button
+            class="preview-btn"
+            onclick="loadPreview('search-results.html?demo=true')"
+          >
+            Search Results
+          </button>
+          <button
+            class="preview-btn"
+            onclick="loadPreview('initiative-pulse.html?demo=true')"
+          >
+            Initiative Pulse
+          </button>
+          <button
+            class="preview-btn"
+            onclick="loadPreview('task-spawned.html?demo=true')"
+          >
+            Task Spawned
+          </button>
+          <button
+            class="preview-btn"
+            onclick="loadPreview('test-minimal.html?demo=true')"
+          >
+            Test Minimal
+          </button>
+        </div>
+        <iframe
+          id="preview-frame"
+          class="iframe-preview"
+          src="decisions.html?demo=true"
+        ></iframe>
+      </div>
+    </div>
+
+    <script>
+      function loadPreview(url) {
+        document.getElementById('preview-frame').src = url;
+
+        // Update active button
+        document.querySelectorAll('.preview-btn').forEach((btn) => {
+          btn.classList.toggle(
+            'active',
+            btn.textContent
+              .toLowerCase()
+              .includes(
+                url.split('.html')[0].split('/').pop().replace('-', ' ')
+              )
+          );
+        });
+      }
+    </script>
+  </body>
+</html>

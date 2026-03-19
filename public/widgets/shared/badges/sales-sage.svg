@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+	<defs>
+		<linearGradient id="salesBadge" x1="8" y1="10" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+			<stop offset="0" stop-color="#bbf7d0" />
+			<stop offset="1" stop-color="#99f6e4" />
+		</linearGradient>
+	</defs>
+	<rect width="64" height="64" rx="20" fill="url(#salesBadge)" />
+	<path d="M22 38l6-8 5 5 7-10 2 3-9 13-5-5-5 6z" fill="#0f172a" fill-opacity="0.6" />
+	<circle cx="24" cy="27" r="4" fill="#ffffff" fill-opacity="0.7" />
+</svg>

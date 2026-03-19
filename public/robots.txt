@@ -1,0 +1,18 @@
+# robots.txt for mcp.useorgx.com
+User-agent: *
+Allow: /
+
+# Avoid indexing protocol/tool endpoints (traffic + noisy SERP results)
+Disallow: /mcp
+Disallow: /mcp/
+Disallow: /sse
+Disallow: /sse/
+Disallow: /v1/
+Disallow: /authorize
+Disallow: /oauth/
+Disallow: /token
+Disallow: /register
+Disallow: /.well-known/
+
+Sitemap: https://mcp.useorgx.com/sitemap.xml
+

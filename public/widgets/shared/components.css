@@ -1,0 +1,865 @@
+/*
+ * Apps SDK UI Component Classes
+ * CSS equivalents of @openai/apps-sdk-ui React components
+ * For use in vanilla HTML/CSS/JS widgets
+ * 
+ * Components:
+ * - Avatar (.avatar)
+ * - Badge (.badge)
+ * - Button (.btn)
+ * - Alert (.alert)
+ * - EmptyMessage (.empty-message)
+ * - ShimmerText (.shimmer-text)
+ * - Indicator (.indicator)
+ * - Card (.card)
+ */
+
+/* ========================================
+ * AVATAR
+ * Matches: @openai/apps-sdk-ui/components/Avatar
+ * Supports: initials, images, icons, colors, sizes
+ * ======================================== */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--app-radius-full);
+  font-weight: var(--app-font-weight-semibold);
+  flex-shrink: 0;
+  overflow: hidden;
+  user-select: none;
+  /* Default size */
+  --avatar-size: 32px;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  font-size: calc(var(--avatar-size) * 0.4);
+}
+
+/* Avatar sizes */
+.avatar-xs {
+  --avatar-size: 20px;
+}
+.avatar-sm {
+  --avatar-size: 24px;
+}
+.avatar-md {
+  --avatar-size: 32px;
+}
+.avatar-lg {
+  --avatar-size: 40px;
+}
+.avatar-xl {
+  --avatar-size: 48px;
+}
+
+/* Avatar variants - soft (default) */
+.avatar,
+.avatar-soft {
+  background: var(--app-color-surface-elevated);
+  color: var(--app-color-text-secondary);
+}
+
+/* Avatar variants - solid */
+.avatar-solid {
+  background: var(--app-color-primary);
+  color: white;
+}
+
+/* Avatar color variants (soft) */
+.avatar-primary {
+  background: rgba(16, 163, 127, 0.15);
+  color: var(--app-color-primary);
+}
+.avatar-secondary {
+  background: var(--app-color-surface-elevated);
+  color: var(--app-color-text-secondary);
+}
+.avatar-success {
+  background: var(--app-color-success-bg);
+  color: var(--app-color-success-text);
+}
+.avatar-danger {
+  background: var(--app-color-danger-bg);
+  color: var(--app-color-danger-text);
+}
+.avatar-warning {
+  background: var(--app-color-warning-bg);
+  color: var(--app-color-warning-text);
+}
+.avatar-info {
+  background: var(--app-color-info-bg);
+  color: var(--app-color-info-text);
+}
+
+/* Avatar with image */
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Interactive avatar */
+.avatar-interactive {
+  cursor: pointer;
+  transition: transform var(--app-transition-fast);
+}
+.avatar-interactive:hover {
+  transform: scale(1.05);
+}
+.avatar-interactive:focus-visible {
+  outline: 2px solid var(--app-color-primary);
+  outline-offset: 2px;
+}
+
+/* ========================================
+ * BADGE
+ * Matches: @openai/apps-sdk-ui/components/Badge
+ * Supports: colors, variants, sizes
+ * ======================================== */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--app-radius-full);
+  font-size: var(--app-font-size-xs);
+  font-weight: var(--app-font-weight-medium);
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+/* Badge sizes */
+.badge-sm {
+  padding: 1px 6px;
+  font-size: 10px;
+}
+.badge-md {
+  padding: 2px 8px;
+  font-size: var(--app-font-size-xs);
+}
+.badge-lg {
+  padding: 4px 10px;
+  font-size: var(--app-font-size-sm);
+}
+
+/* Badge variants - soft (default) */
+.badge,
+.badge-soft {
+  background: var(--app-color-neutral-bg, var(--app-color-surface-elevated));
+  color: var(--app-color-text-secondary);
+}
+
+/* Badge variants - solid */
+.badge-solid {
+  background: var(--app-color-text);
+  color: var(--app-color-bg);
+}
+
+/* Badge variants - outline */
+.badge-outline {
+  background: transparent;
+  border: 1px solid var(--app-color-border);
+  color: var(--app-color-text-secondary);
+}
+
+/* Badge color variants (soft) */
+.badge-primary {
+  background: rgba(16, 163, 127, 0.15);
+  color: var(--app-color-primary);
+}
+.badge-success {
+  background: var(--app-color-success-bg);
+  color: var(--app-color-success-text);
+}
+.badge-danger {
+  background: var(--app-color-danger-bg);
+  color: var(--app-color-danger-text);
+}
+.badge-warning {
+  background: var(--app-color-warning-bg);
+  color: var(--app-color-warning-text);
+}
+.badge-info {
+  background: var(--app-color-info-bg);
+  color: var(--app-color-info-text);
+}
+.badge-neutral {
+  background: var(--app-color-surface-elevated);
+  color: var(--app-color-text-secondary);
+}
+
+/* Badge with indicator dot */
+.badge-dot::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ========================================
+ * BUTTON
+ * Matches: @openai/apps-sdk-ui/components/Button
+ * Supports: colors, variants, sizes, loading, disabled
+ * ======================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: var(--app-radius-md);
+  font-size: var(--app-font-size-sm);
+  font-weight: var(--app-font-weight-medium);
+  font-family: inherit;
+  line-height: 1;
+  cursor: pointer;
+  transition: all var(--app-transition-fast);
+  border: none;
+  text-decoration: none;
+  white-space: nowrap;
+  /* Default - secondary solid */
+  background: var(--app-color-surface);
+  color: var(--app-color-text);
+  border: 1px solid var(--app-color-border);
+}
+
+/* Button sizes */
+.btn-xs {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+.btn-sm {
+  padding: 6px 10px;
+  font-size: var(--app-font-size-xs);
+}
+.btn-md {
+  padding: 8px 12px;
+  font-size: var(--app-font-size-sm);
+}
+.btn-lg {
+  padding: 10px 16px;
+  font-size: var(--app-font-size-md);
+}
+
+/* Button pill */
+.btn-pill {
+  border-radius: var(--app-radius-full);
+}
+
+/* Button block */
+.btn-block {
+  width: 100%;
+}
+
+/* Button primary */
+.btn-primary {
+  background: var(--app-color-primary);
+  color: white;
+  border-color: var(--app-color-primary);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--app-color-primary-hover);
+  border-color: var(--app-color-primary-hover);
+}
+
+/* Button danger */
+.btn-danger {
+  background: var(--app-color-danger);
+  color: white;
+  border-color: var(--app-color-danger);
+}
+.btn-danger:hover:not(:disabled) {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+/* Button success */
+.btn-success {
+  background: var(--app-color-success);
+  color: white;
+  border-color: var(--app-color-success);
+}
+.btn-success:hover:not(:disabled) {
+  background: var(--app-color-primary-hover);
+  border-color: var(--app-color-primary-hover);
+}
+
+/* Button secondary (default) */
+.btn-secondary {
+  background: var(--app-color-surface);
+  color: var(--app-color-text);
+  border-color: var(--app-color-border);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--app-color-surface-elevated);
+}
+
+/* Button ghost */
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--app-color-text);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--app-color-surface-elevated);
+}
+
+/* Button outline */
+.btn-outline {
+  background: transparent;
+  border-color: var(--app-color-border);
+  color: var(--app-color-text);
+}
+.btn-outline:hover:not(:disabled) {
+  background: var(--app-color-surface-elevated);
+}
+
+/* Button states */
+.btn:focus-visible {
+  outline: 2px solid var(--app-color-primary);
+  outline-offset: 2px;
+}
+
+.btn:disabled,
+.btn.btn-loading {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Button loading */
+.btn-loading {
+  position: relative;
+  color: transparent !important;
+}
+.btn-loading::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Button icon only */
+.btn-icon {
+  padding: 8px;
+}
+.btn-icon.btn-sm {
+  padding: 6px;
+}
+.btn-icon.btn-lg {
+  padding: 10px;
+}
+
+/* ========================================
+ * ALERT
+ * Matches: @openai/apps-sdk-ui/components/Alert
+ * Supports: colors, variants, icon, title, description, actions
+ * ======================================== */
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--app-radius-md);
+  /* Default - outline primary */
+  background: transparent;
+  border: 1px solid var(--app-color-border);
+}
+
+/* Alert variants */
+.alert-soft {
+  border: none;
+}
+.alert-solid {
+  border: none;
+}
+
+/* Alert colors (outline) */
+.alert-primary {
+  border-color: var(--app-color-primary);
+}
+.alert-success {
+  border-color: var(--app-color-success);
+}
+.alert-danger {
+  border-color: var(--app-color-danger);
+}
+.alert-warning {
+  border-color: var(--app-color-warning);
+}
+.alert-info {
+  border-color: var(--app-color-info);
+}
+
+/* Alert colors (soft) */
+.alert-soft.alert-primary {
+  background: rgba(16, 163, 127, 0.1);
+}
+.alert-soft.alert-success {
+  background: var(--app-color-success-bg);
+}
+.alert-soft.alert-danger {
+  background: var(--app-color-danger-bg);
+}
+.alert-soft.alert-warning {
+  background: var(--app-color-warning-bg);
+}
+.alert-soft.alert-info {
+  background: var(--app-color-info-bg);
+}
+
+/* Alert structure */
+.alert-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+.alert-content {
+  flex: 1;
+  min-width: 0;
+}
+.alert-title {
+  font-weight: var(--app-font-weight-semibold);
+  font-size: var(--app-font-size-sm);
+  margin-bottom: 2px;
+}
+.alert-description {
+  font-size: var(--app-font-size-sm);
+  color: var(--app-color-text-secondary);
+  line-height: 1.5;
+}
+.alert-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ========================================
+ * EMPTY MESSAGE
+ * Matches: @openai/apps-sdk-ui/components/EmptyMessage
+ * For empty states
+ * ======================================== */
+.empty-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 32px 16px;
+  min-height: 120px;
+}
+
+/* Empty message fill modes */
+.empty-message-static {
+  /* Default, no special sizing */
+}
+.empty-message-absolute {
+  position: absolute;
+  inset: 0;
+}
+
+/* Empty message icon badge */
+.empty-message-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--app-radius-full);
+  background: var(--app-color-surface-elevated);
+  color: var(--app-color-text-secondary);
+  font-size: 24px;
+  margin-bottom: 12px;
+}
+.empty-message-icon-sm {
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+}
+.empty-message-icon-danger {
+  background: var(--app-color-danger-bg);
+  color: var(--app-color-danger-text);
+}
+.empty-message-icon-warning {
+  background: var(--app-color-warning-bg);
+  color: var(--app-color-warning-text);
+}
+
+/* Empty message title */
+.empty-message-title {
+  font-size: var(--app-font-size-sm);
+  font-weight: var(--app-font-weight-semibold);
+  color: var(--app-color-text);
+  margin-bottom: 4px;
+}
+.empty-message-title-danger {
+  color: var(--app-color-danger-text);
+}
+
+/* Empty message description */
+.empty-message-description {
+  font-size: var(--app-font-size-sm);
+  color: var(--app-color-text-secondary);
+  line-height: 1.5;
+  max-width: 280px;
+}
+
+/* Empty message actions */
+.empty-message-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* ========================================
+ * SHIMMER TEXT
+ * Matches: @openai/apps-sdk-ui/components/ShimmerText
+ * For loading text states
+ * ======================================== */
+.shimmer-text {
+  background: linear-gradient(
+    90deg,
+    var(--app-color-text) 0%,
+    var(--app-color-text-tertiary) 50%,
+    var(--app-color-text) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmerText 2s infinite ease-in-out;
+}
+
+.shimmer-text[data-idle] {
+  animation-play-state: paused;
+  background: none;
+  -webkit-text-fill-color: currentColor;
+}
+
+@keyframes shimmerText {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ========================================
+ * INDICATOR
+ * Status dots/indicators
+ * ======================================== */
+.indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--app-color-text-secondary);
+  flex-shrink: 0;
+}
+
+/* Indicator sizes */
+.indicator-sm {
+  width: 6px;
+  height: 6px;
+}
+.indicator-md {
+  width: 8px;
+  height: 8px;
+}
+.indicator-lg {
+  width: 10px;
+  height: 10px;
+}
+
+/* Indicator colors */
+.indicator-success {
+  background: var(--app-color-success);
+}
+.indicator-danger {
+  background: var(--app-color-danger);
+}
+.indicator-warning {
+  background: var(--app-color-warning);
+}
+.indicator-info {
+  background: var(--app-color-info);
+}
+.indicator-neutral {
+  background: var(--app-color-text-secondary);
+}
+
+/* Indicator pulse animation */
+.indicator-pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Loading indicator (spinner) */
+.indicator-loading {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--app-color-border);
+  border-top-color: var(--app-color-primary);
+  animation: spin 0.8s linear infinite;
+}
+.indicator-loading-sm {
+  width: 12px;
+  height: 12px;
+  border-width: 1.5px;
+}
+.indicator-loading-lg {
+  width: 20px;
+  height: 20px;
+  border-width: 2.5px;
+}
+
+/* ========================================
+ * CARD
+ * Base card component
+ * ======================================== */
+.card {
+  background: var(--app-color-surface);
+  border-radius: var(--app-radius-md);
+  box-shadow: var(--app-shadow-sm);
+  overflow: hidden;
+}
+
+.card-bordered {
+  border: 1px solid var(--app-color-border);
+  box-shadow: none;
+}
+
+.card-elevated {
+  box-shadow: var(--app-shadow-md);
+}
+
+/* Card content padding */
+.card-body {
+  padding: var(--app-padding-card);
+}
+.card-body-compact {
+  padding: var(--app-padding-card-compact);
+}
+
+/* Card header */
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: var(--app-padding-card-compact) var(--app-padding-card);
+  border-bottom: 1px solid var(--app-color-border);
+}
+
+/* Card footer */
+.card-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: var(--app-padding-card-compact) var(--app-padding-card);
+  border-top: 1px solid var(--app-color-border);
+}
+
+/* Interactive card */
+.card-interactive {
+  cursor: pointer;
+  transition: all var(--app-transition-fast);
+}
+.card-interactive:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--app-shadow-md);
+}
+.card-interactive:focus-visible {
+  outline: 2px solid var(--app-color-primary);
+  outline-offset: 2px;
+}
+
+/* Card with left accent */
+.card-accent-left {
+  border-left: 3px solid var(--app-color-border);
+}
+.card-accent-left-primary {
+  border-left-color: var(--app-color-primary);
+}
+.card-accent-left-success {
+  border-left-color: var(--app-color-success);
+}
+.card-accent-left-danger {
+  border-left-color: var(--app-color-danger);
+}
+.card-accent-left-warning {
+  border-left-color: var(--app-color-warning);
+}
+.card-accent-left-info {
+  border-left-color: var(--app-color-info);
+}
+
+/* ========================================
+ * ICONS (SVG-based)
+ * Common icons as data URIs for consistency
+ * ======================================== */
+.icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: middle;
+  fill: currentColor;
+}
+
+.icon-sm {
+  width: 14px;
+  height: 14px;
+}
+.icon-md {
+  width: 18px;
+  height: 18px;
+}
+.icon-lg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Icon masks for common icons */
+.icon-check {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E")
+    no-repeat center;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E")
+    no-repeat center;
+  background: currentColor;
+}
+
+.icon-x {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='18' y1='6' x2='6' y2='18'%3E%3C/line%3E%3Cline x1='6' y1='6' x2='18' y2='18'%3E%3C/line%3E%3C/svg%3E")
+    no-repeat center;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='18' y1='6' x2='6' y2='18'%3E%3C/line%3E%3Cline x1='6' y1='6' x2='18' y2='18'%3E%3C/line%3E%3C/svg%3E")
+    no-repeat center;
+  background: currentColor;
+}
+
+.icon-alert-circle {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'%3E%3C/circle%3E%3Cline x1='12' y1='8' x2='12' y2='12'%3E%3C/line%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'%3E%3C/line%3E%3C/svg%3E")
+    no-repeat center;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'%3E%3C/circle%3E%3Cline x1='12' y1='8' x2='12' y2='12'%3E%3C/line%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'%3E%3C/line%3E%3C/svg%3E")
+    no-repeat center;
+  background: currentColor;
+}
+
+.icon-info {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'%3E%3C/circle%3E%3Cline x1='12' y1='16' x2='12' y2='12'%3E%3C/line%3E%3Cline x1='12' y1='8' x2='12.01' y2='8'%3E%3C/line%3E%3C/svg%3E")
+    no-repeat center;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'%3E%3C/circle%3E%3Cline x1='12' y1='16' x2='12' y2='12'%3E%3C/line%3E%3Cline x1='12' y1='8' x2='12.01' y2='8'%3E%3C/line%3E%3C/svg%3E")
+    no-repeat center;
+  background: currentColor;
+}
+
+.icon-warning {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'%3E%3C/path%3E%3Cline x1='12' y1='9' x2='12' y2='13'%3E%3C/line%3E%3Cline x1='12' y1='17' x2='12.01' y2='17'%3E%3C/line%3E%3C/svg%3E")
+    no-repeat center;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'%3E%3C/path%3E%3Cline x1='12' y1='9' x2='12' y2='13'%3E%3C/line%3E%3Cline x1='12' y1='17' x2='12.01' y2='17'%3E%3C/line%3E%3C/svg%3E")
+    no-repeat center;
+  background: currentColor;
+}
+
+.icon-check-circle {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 11.08V12a10 10 0 1 1-5.93-9.14'%3E%3C/path%3E%3Cpolyline points='22 4 12 14.01 9 11.01'%3E%3C/polyline%3E%3C/svg%3E")
+    no-repeat center;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 11.08V12a10 10 0 1 1-5.93-9.14'%3E%3C/path%3E%3Cpolyline points='22 4 12 14.01 9 11.01'%3E%3C/polyline%3E%3C/svg%3E")
+    no-repeat center;
+  background: currentColor;
+}
+
+.icon-search {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E")
+    no-repeat center;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E")
+    no-repeat center;
+  background: currentColor;
+}
+
+.icon-user {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'%3E%3C/path%3E%3Ccircle cx='12' cy='7' r='4'%3E%3C/circle%3E%3C/svg%3E")
+    no-repeat center;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'%3E%3C/path%3E%3Ccircle cx='12' cy='7' r='4'%3E%3C/circle%3E%3C/svg%3E")
+    no-repeat center;
+  background: currentColor;
+}
+
+.icon-external-link {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'%3E%3C/path%3E%3Cpolyline points='15 3 21 3 21 9'%3E%3C/polyline%3E%3Cline x1='10' y1='14' x2='21' y2='3'%3E%3C/line%3E%3C/svg%3E")
+    no-repeat center;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'%3E%3C/path%3E%3Cpolyline points='15 3 21 3 21 9'%3E%3C/polyline%3E%3Cline x1='10' y1='14' x2='21' y2='3'%3E%3C/line%3E%3C/svg%3E")
+    no-repeat center;
+  background: currentColor;
+}
+
+/* ========================================
+ * ANIMATIONS (shared)
+ * ======================================== */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Transition utility */
+.transition-all {
+  transition: all var(--app-transition-normal);
+}
+.transition-opacity {
+  transition: opacity var(--app-transition-fast);
+}

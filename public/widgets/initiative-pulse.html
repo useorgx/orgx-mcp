@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Initiative Pulse - OrgX</title>
+    <style>
+      :root {
+        /* ChatGPT SDK fallback (light mode) */
+        --app-color-bg: #ffffff;
+        --app-color-surface: #ffffff;
+        --app-color-surface-elevated: #f7f7f8;
+        --app-color-text: #0d0d0d;
+        --app-color-text-secondary: #6e6e80;
+        --app-color-border: #e5e5e5;
+        --app-color-primary: #10a37f;
+        --app-color-success: #10a37f;
+        --app-color-success-bg: #d1fae5;
+        --app-color-success-text: #065f46;
+        --app-color-warning: #f59e0b;
+        --app-color-warning-bg: #fef3c7;
+        --app-color-warning-text: #92400e;
+        --app-color-danger: #ef4444;
+        --app-color-danger-bg: #fef2f2;
+        --app-color-danger-text: #991b1b;
+        --app-color-info-bg: #dbeafe;
+        --app-color-info-text: #1e40af;
+        --app-radius-md: 8px;
+        --app-radius-full: 9999px;
+        --app-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+
+        /* OrgX brand colors (RGB triplets for rgba() use) */
+        --ox-lime: 191, 255, 0;
+        --ox-teal: 20, 184, 166;
+        --ox-iris: 99, 102, 241;
+        --ox-cyan: 10, 212, 196;
+
+        /* OrgX semantic status */
+        --ox-success: #25da8e;   --ox-success-bg: rgba(37,218,142,0.12);  --ox-success-border: rgba(37,218,142,0.3);
+        --ox-warning: #f9c770;   --ox-warning-bg: rgba(249,199,112,0.12); --ox-warning-border: rgba(249,199,112,0.3);
+        --ox-danger: #ff7688;    --ox-danger-bg: rgba(255,118,136,0.12);  --ox-danger-border: rgba(255,118,136,0.3);
+        --ox-info: #60bdff;      --ox-info-bg: rgba(96,189,255,0.12);     --ox-info-border: rgba(96,189,255,0.3);
+
+        /* Typography */
+        --ox-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        --ox-mono: ui-monospace, SFMono-Regular, 'SF Mono', monospace;
+        --ox-tracking-tight: -0.01em;
+        --ox-tracking-heading: -0.02em;
+        --ox-tracking-eyebrow: 0.08em;
+
+        /* Radii */
+        --ox-radius-sm: 6px;  --ox-radius-md: 10px;  --ox-radius-lg: 14px;
+
+        /* Motion */
+        --ox-ease: cubic-bezier(0.22, 1, 0.36, 1);
+        --ox-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+        --ox-duration: 220ms;
+        --ox-stagger: 60ms;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --app-color-bg: #02040a;
+          --app-color-surface: rgba(255,255,255,0.02);
+          --app-color-surface-elevated: rgba(255,255,255,0.04);
+          --app-color-text: #f2f7ff;
+          --app-color-text-secondary: #b4bed2;
+          --app-color-border: rgba(255,255,255,0.06);
+          --app-color-primary: rgba(var(--ox-teal), 1);
+          --app-color-success: var(--ox-success);
+          --app-color-success-bg: var(--ox-success-bg);
+          --app-color-success-text: var(--ox-success);
+          --app-color-warning: var(--ox-warning);
+          --app-color-warning-bg: var(--ox-warning-bg);
+          --app-color-warning-text: var(--ox-warning);
+          --app-color-danger: var(--ox-danger);
+          --app-color-danger-bg: var(--ox-danger-bg);
+          --app-color-danger-text: var(--ox-danger);
+          --app-color-info-bg: var(--ox-info-bg);
+          --app-color-info-text: var(--ox-info);
+          --app-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+
+          /* Glass surface system */
+          --ox-glass-bg: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+          --ox-glass-border: rgba(255,255,255,0.06);
+          --ox-glass-border-hover: rgba(255,255,255,0.1);
+          --ox-glass-blur: blur(12px) saturate(140%);
+
+          /* Shadows with inset highlight */
+          --ox-shadow-card: 0 4px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.03);
+          --ox-shadow-card-hover: 0 8px 32px rgba(0,0,0,0.35), 0 0 0 1px rgba(var(--ox-teal),0.08);
+
+          /* Glows */
+          --ox-glow-teal: 0 0 20px rgba(var(--ox-teal), 0.15);
+          --ox-glow-lime: 0 0 20px rgba(var(--ox-lime), 0.12);
+        }
+      }
+
+      /* Shared animations */
+      @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+      @keyframes breathe { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.6; transform:scale(0.85); } }
+      @keyframes cardEnter { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+
+      @media (prefers-color-scheme: dark) {
+        .skeleton-line {
+          background: linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(var(--ox-teal),0.06) 40%, rgba(var(--ox-lime),0.04) 50%, rgba(var(--ox-teal),0.06) 60%, rgba(255,255,255,0.03) 100%);
+          background-size: 200% 100%;
+          animation: shimmer 2.5s infinite ease-in-out;
+        }
+      }
+
+      .breathe-dot { animation: breathe 3.6s ease-in-out infinite; }
+
+      @media (prefers-reduced-motion: reduce) {
+        .skeleton-line, .breathe-dot, .stagger-item { animation: none; }
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: var(--ox-font);
+        font-size: 1rem;
+        line-height: 1.5;
+        letter-spacing: var(--ox-tracking-tight);
+        background: var(--app-color-bg);
+        color: var(--app-color-text);
+        padding: 16px;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        body { background: #02040a; }
+      }
+
+      .container {
+        max-width: 480px;
+        margin: 0 auto;
+      }
+
+      .pulse-card {
+        background: var(--app-color-surface);
+        border-radius: var(--ox-radius-md);
+        padding: 16px;
+        box-shadow: var(--app-shadow-sm);
+        animation: cardEnter 400ms var(--ox-ease) both;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .pulse-card {
+          background: var(--ox-glass-bg);
+          backdrop-filter: var(--ox-glass-blur);
+          -webkit-backdrop-filter: var(--ox-glass-blur);
+          border: 1px solid var(--ox-glass-border);
+          box-shadow: var(--ox-shadow-card);
+        }
+      }
+
+      .pulse-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+
+      .pulse-name {
+        font-size: 1.125rem;
+        font-weight: 600;
+        letter-spacing: var(--ox-tracking-heading);
+      }
+
+      .status-badge {
+        padding: 4px 8px;
+        border-radius: var(--app-radius-full);
+        font-size: 0.75rem;
+        font-weight: 500;
+      }
+
+      .status-active {
+        background: var(--app-color-info-bg);
+        color: var(--app-color-info-text);
+      }
+      .status-completed {
+        background: var(--app-color-success-bg);
+        color: var(--app-color-success-text);
+      }
+      .status-blocked {
+        background: var(--app-color-danger-bg);
+        color: var(--app-color-danger-text);
+      }
+      .status-pending {
+        background: var(--app-color-surface-elevated);
+        color: var(--app-color-text-secondary);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .status-active {
+          background: var(--ox-info-bg);
+          color: var(--ox-info);
+          border: 1px solid var(--ox-info-border);
+        }
+        .status-completed {
+          background: var(--ox-success-bg);
+          color: var(--ox-success);
+          border: 1px solid var(--ox-success-border);
+        }
+        .status-blocked {
+          background: var(--ox-danger-bg);
+          color: var(--ox-danger);
+          border: 1px solid var(--ox-danger-border);
+        }
+      }
+
+      /* Eyebrow metric labels */
+      .pulse-metrics {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: var(--ox-tracking-eyebrow);
+        color: var(--app-color-text-secondary);
+      }
+
+      .metric {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .metric-value {
+        font-weight: 600;
+        color: var(--app-color-text);
+      }
+
+      .separator {
+        color: var(--app-color-border);
+      }
+
+      .roi-strip {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .roi-item {
+        padding: 8px;
+        border-radius: var(--ox-radius-sm);
+        background: var(--app-color-surface-elevated);
+        border: 1px solid var(--app-color-border);
+      }
+
+      .roi-label {
+        font-size: 0.625rem;
+        text-transform: uppercase;
+        letter-spacing: var(--ox-tracking-eyebrow);
+        color: var(--app-color-text-secondary);
+        font-weight: 600;
+      }
+
+      .roi-value {
+        margin-top: 4px;
+        font-size: 0.9375rem;
+        font-family: var(--ox-mono);
+        font-weight: 700;
+        color: var(--app-color-text);
+      }
+
+      .roi-value.positive {
+        color: var(--ox-success);
+      }
+
+      .roi-value.negative {
+        color: var(--ox-danger);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .roi-item {
+          background: rgba(255,255,255,0.03);
+          border-color: rgba(255,255,255,0.08);
+        }
+      }
+
+      /* Health indicator */
+      .health-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        border-radius: var(--ox-radius-md);
+        font-size: 0.75rem;
+        font-weight: 500;
+      }
+
+      .health-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        animation: breathe 3.6s ease-in-out infinite;
+      }
+
+      .health-on-track {
+        background: var(--app-color-success-bg);
+        color: var(--app-color-success-text);
+      }
+      .health-on-track .health-dot {
+        background: var(--app-color-success);
+      }
+
+      .health-attention {
+        background: var(--app-color-warning-bg);
+        color: var(--app-color-warning-text);
+      }
+      .health-attention .health-dot {
+        background: var(--app-color-warning);
+      }
+
+      .health-at-risk {
+        background: var(--app-color-danger-bg);
+        color: var(--app-color-danger-text);
+      }
+      .health-at-risk .health-dot {
+        background: var(--app-color-danger);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .health-on-track {
+          background: var(--ox-success-bg);
+          color: var(--ox-success);
+          border: 1px solid var(--ox-success-border);
+        }
+        .health-on-track .health-dot {
+          background: var(--ox-success);
+          box-shadow: 0 0 10px rgba(37,218,142,0.4);
+        }
+
+        .health-attention {
+          background: var(--ox-warning-bg);
+          color: var(--ox-warning);
+          border: 1px solid var(--ox-warning-border);
+        }
+        .health-attention .health-dot {
+          background: var(--ox-warning);
+          box-shadow: 0 0 10px rgba(249,199,112,0.4);
+        }
+
+        .health-at-risk {
+          background: var(--ox-danger-bg);
+          color: var(--ox-danger);
+          border: 1px solid var(--ox-danger-border);
+        }
+        .health-at-risk .health-dot {
+          background: var(--ox-danger);
+          box-shadow: 0 0 10px rgba(255,118,136,0.4);
+        }
+      }
+
+      /* Blockers alert */
+      .blockers-alert {
+        margin-top: 12px;
+        padding: 10px 12px;
+        background: var(--app-color-danger-bg);
+        border-radius: var(--ox-radius-md);
+        border-left: 3px solid var(--app-color-danger);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .blockers-alert {
+          background: rgba(255,118,136,0.06);
+          border-left-color: var(--ox-danger);
+        }
+      }
+
+      .blockers-title {
+        font-size: 0.6875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: var(--ox-tracking-eyebrow);
+        color: var(--app-color-danger-text);
+        margin-bottom: 4px;
+      }
+
+      .blockers-list {
+        list-style: none;
+        font-size: 0.875rem;
+        color: var(--app-color-danger-text);
+      }
+
+      .blockers-list li {
+        padding: 2px 0;
+      }
+
+      /* EmptyMessage */
+      .empty-message {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 32px 16px;
+        min-height: 120px;
+      }
+
+      .empty-message-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
+        border-radius: 9999px;
+        background: var(--app-color-surface-elevated);
+        color: var(--app-color-text-secondary);
+        margin-bottom: 12px;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .empty-message-icon {
+          background: rgba(var(--ox-teal), 0.08);
+          border: 1px solid rgba(var(--ox-teal), 0.15);
+          color: rgba(var(--ox-teal), 0.6);
+          box-shadow: 0 0 20px rgba(var(--ox-teal), 0.06);
+        }
+      }
+
+      .empty-message-icon svg {
+        width: 24px;
+        height: 24px;
+      }
+
+      .empty-message-title {
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: var(--app-color-text);
+        margin-bottom: 4px;
+      }
+
+      .empty-message-description {
+        font-size: 0.875rem;
+        color: var(--app-color-text-secondary);
+        line-height: 1.5;
+        max-width: 280px;
+      }
+
+      /* Skeleton Loading */
+      .skeleton-card {
+        background: var(--app-color-surface);
+        border-radius: var(--ox-radius-md);
+        padding: 16px;
+        box-shadow: var(--app-shadow-sm);
+      }
+
+      .skeleton-line {
+        background: linear-gradient(
+          90deg,
+          var(--app-color-surface-elevated) 0%,
+          var(--app-color-bg) 50%,
+          var(--app-color-surface-elevated) 100%
+        );
+        background-size: 200% 100%;
+        animation: shimmer 2.5s infinite ease-in-out;
+        border-radius: 4px;
+      }
+
+      .skeleton-title {
+        height: 20px;
+        width: 180px;
+      }
+      .skeleton-badge {
+        height: 24px;
+        width: 60px;
+        border-radius: var(--app-radius-full);
+      }
+      .skeleton-text {
+        height: 14px;
+      }
+      .skeleton-health {
+        height: 28px;
+        width: 120px;
+      }
+
+      /* Accessibility */
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container" role="region" aria-label="Initiative Status">
+      <div id="content" aria-live="polite">
+        <!-- Render a skeleton immediately to avoid a "Loading..." flash before JS boots -->
+        <div
+          class="skeleton-card"
+          role="status"
+          aria-label="Loading initiative"
+        >
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 12px;
+            "
+          >
+            <div class="skeleton-line skeleton-title"></div>
+            <div class="skeleton-line skeleton-badge"></div>
+          </div>
+          <div style="display: flex; gap: 8px; margin-bottom: 12px">
+            <div class="skeleton-line skeleton-text" style="width: 80px"></div>
+            <div class="skeleton-line skeleton-text" style="width: 70px"></div>
+            <div class="skeleton-line skeleton-text" style="width: 60px"></div>
+          </div>
+          <div class="skeleton-line skeleton-health"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // ── Inline MCP Apps Bridge ──
+      function _detectProtocol(){if(typeof window.openai!=='undefined')return'chatgpt';if(window.parent&&window.parent!==window)return'mcp-apps';return'standalone';}
+      function _extractData(out){if(out==null)return null;if(typeof out==='object'&&out.structuredContent)return out.structuredContent;if(typeof out==='object'&&Array.isArray(out.content)){for(var i=0;i<out.content.length;i++){var item=out.content[i];if(item&&item.type==='text'&&item.text){try{return JSON.parse(item.text);}catch(e){continue;}}}}if(typeof out==='string'){try{return JSON.parse(out);}catch(e){return{text:out};}}return out;}
+      // ── Size reporting (MCP Apps spec) ──
+      var _lastW=0,_lastH=0;
+      function _sendSize(){var w=Math.ceil(document.documentElement.getBoundingClientRect().width+(window.innerWidth-document.documentElement.clientWidth));var h=Math.ceil(document.documentElement.getBoundingClientRect().height);if(w===_lastW&&h===_lastH)return;_lastW=w;_lastH=h;try{window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/size-changed',params:{width:w,height:h}},'*');}catch(e){}}
+      function _observeSize(){_sendSize();if(typeof ResizeObserver!=='undefined'){var _raf=0;var ro=new ResizeObserver(function(){if(_raf)cancelAnimationFrame(_raf);_raf=requestAnimationFrame(_sendSize);});ro.observe(document.documentElement);ro.observe(document.body);}}
+      function initWidget(opts){
+        var render=opts.render,getData=opts.getData||_extractData;
+        var protocol=_detectProtocol();
+        if(protocol==='chatgpt'){
+          var d=getData(window.openai&&window.openai.toolOutput);render(d);
+          window.addEventListener('openai:set_globals',function(e){var g=e.detail&&e.detail.globals;if(g&&g.toolOutput){render(getData(g.toolOutput));}},{passive:true});
+        }else if(protocol==='mcp-apps'){
+          render(null);
+          var initId=1;
+          window.parent.postMessage({jsonrpc:'2.0',id:initId,method:'ui/initialize',params:{appInfo:{name:'OrgX Widget',version:'1.0.0'},appCapabilities:{tools:{listChanged:false}},protocolVersion:'2026-01-26'}},'*');
+          window.parent.postMessage({jsonrpc:'2.0',method:'notifications/initialized'},'*');
+          window.addEventListener('message',function(event){
+            var msg=event.data;if(!msg||typeof msg!=='object')return;
+            if(msg.id===initId&&msg.result){window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized'},'*');_observeSize();return;}
+            if((msg.method==='ui/notifications/tool-result'||msg.method==='notifications/message')&&msg.params){var data=getData(msg.params);if(data)render(data);}
+          });
+        }else{render(null);}
+      }
+
+      var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="currentColor" class="icon" aria-hidden="true">'+c+'</svg>';};
+      var icons = {
+        check: function(s){return _svg('<path fillRule="evenodd" d="M18.063 5.674a1 1 0 0 1 .263 1.39l-7.5 11a1 1 0 0 1-1.533.143l-4.5-4.5a1 1 0 1 1 1.414-1.414l3.647 3.647 6.82-10.003a1 1 0 0 1 1.39-.263Z" clipRule="evenodd"/>',s);},
+        warning: function(s){return _svg('<path d="M10.42 2.006a4 4 0 0 1 3.159 0c.674.29 1.188.822 1.667 1.456.474.627 1 1.473 1.653 2.523l3.542 5.696c.72 1.16 1.3 2.09 1.682 2.854.384.766.654 1.517.59 2.292a4 4 0 0 1-1.604 2.886c-.625.463-1.405.63-2.258.709-.85.078-1.945.078-3.311.078H8.46c-1.366 0-2.46 0-3.31-.078-.854-.078-1.634-.246-2.26-.71a4 4 0 0 1-1.603-2.885c-.064-.775.206-1.526.59-2.292.383-.764.961-1.694 1.682-2.854l3.542-5.696c.653-1.05 1.18-1.896 1.653-2.523.48-.634.993-1.166 1.667-1.456Z"/><path d="M12 7.5a1 1 0 0 1 1 1v3a1 1 0 1 1-2 0v-3a1 1 0 0 1 1-1M10.851 15a1.15 1.15 0 1 1 2.3 0 1.15 1.15 0 0 1-2.3 0"/>',s);},
+        flag: function(s){return _svg('<path d="M6 4.641C8.145 3.745 9.634 4.188 11.312 4.811L11.673 4.946C13.307 5.561 15.242 6.29 17.774 5.558C17.838 5.54 17.913 5.552 17.967 5.588C17.988 5.601 17.997 5.614 18 5.618V14.252C15.858 14.789 14.355 14.317 12.64 13.778L12.055 13.595C11.069 13.294 9.982 13.009 8.736 13.015C7.881 13.02 6.98 13.16 6 13.495V4.641Z"/>',s);},
+        chart: function(s){return _svg('<path d="M11.33 5h1.33a1 1 0 0 1 1 1v13h-3.33V6a1 1 0 0 1 1-1Zm4.33 14V9H18a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-2.34Zm0-12V6a3 3 0 0 0-3-3h-1.33a3 3 0 0 0-3 3v5H6a3 3 0 0 0-3 3v4a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3v-8a3 3 0 0 0-3-3h-2.34Zm-7.33 6v6H6a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2.33Z"/>',s);},
+        clock: function(s){return _svg('<path d="M12 4C7.582 4 4 7.582 4 12C4 16.418 7.582 20 12 20C16.418 20 20 16.418 20 12C20 7.582 16.418 4 12 4ZM2 12C2 6.477 6.477 2 12 2C17.523 2 22 6.477 22 12C22 17.523 17.523 22 12 22C6.477 22 2 17.523 2 12ZM12 6C12.552 6 13 6.448 13 7V12C13 12.265 12.895 12.52 12.707 12.707L10.207 15.207C9.817 15.598 9.183 15.598 8.793 15.207C8.402 14.817 8.402 14.183 8.793 13.793L11 11.586V7C11 6.448 11.448 6 12 6Z"/>',s);},
+        dot: function(s){return _svg('<circle cx="12" cy="12" r="4"/>',s);}
+      };
+
+      var contentEl = document.getElementById('content');
+
+      // Demo Mode
+      var isDemo =
+        new URLSearchParams(window.location.search).get('demo') === 'true';
+      var demoData = {
+        name: 'Q4 Product Launch',
+        status: 'Active',
+        health_score: 78,
+        progress_pct: 64,
+        pending_decisions: 3,
+        roi_summary: {
+          period: '30d',
+          total_cost: 412.25,
+          total_value: 2190.4,
+          roi: 4.31,
+        },
+        workstream_summary: { active: 4, completed: 2, blocked: 1 },
+        blockers: [
+          'Waiting for final design assets from marketing',
+          'Need security audit completion before launch',
+        ],
+      };
+
+      // Demo mode is enabled via ?demo=true for local testing only.
+
+      // State — initWidget handles data from any host protocol
+      var pulse = isDemo ? demoData : null;
+      var isLoading = !isDemo;
+
+      // XSS Prevention - CRITICAL
+      var escapeHtml = function(str) {
+        if (str === null || str === undefined) return '';
+        var div = document.createElement('div');
+        div.textContent = String(str);
+        return div.innerHTML;
+      };
+
+      var getHealthClass = function(score) {
+        var s = Number(score) || 0;
+        if (s >= 80) return 'health-on-track';
+        if (s >= 50) return 'health-attention';
+        return 'health-at-risk';
+      };
+
+      var getHealthLabel = function(score) {
+        var s = Number(score) || 0;
+        if (s >= 80) return 'On Track';
+        if (s >= 50) return 'Needs Attention';
+        return 'At Risk';
+      };
+
+      var normalizeStatus = function(status) {
+        if (!status) return 'pending';
+        var s = String(status).toLowerCase();
+        if (['active', 'in_progress', 'running'].includes(s)) return 'active';
+        if (['completed', 'done', 'finished'].includes(s)) return 'completed';
+        if (['blocked', 'stuck', 'failed'].includes(s)) return 'blocked';
+        return 'pending';
+      };
+
+      var formatUsd = function(value) {
+        var num = Number(value) || 0;
+        return '$' + num.toFixed(2);
+      };
+
+      var formatRoi = function(value) {
+        if (value === null || value === undefined) return 'N/A';
+        var num = Number(value);
+        if (!isFinite(num)) return 'N/A';
+        return (num * 100).toFixed(0) + '%';
+      };
+
+      // Skeleton loading template
+      var renderSkeleton = function() {
+        return `
+        <div class="skeleton-card">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+            <div class="skeleton-line skeleton-title"></div>
+            <div class="skeleton-line skeleton-badge"></div>
+          </div>
+          <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+            <div class="skeleton-line skeleton-text" style="width: 80px;"></div>
+            <div class="skeleton-line skeleton-text" style="width: 70px;"></div>
+            <div class="skeleton-line skeleton-text" style="width: 60px;"></div>
+          </div>
+          <div class="skeleton-line skeleton-health"></div>
+        </div>
+      `;
+      };
+
+      var render = function() {
+        // Show skeleton while loading
+        if (isLoading) {
+          contentEl.innerHTML = renderSkeleton();
+          return;
+        }
+
+        if (!pulse || !pulse.name) {
+          contentEl.innerHTML = `
+          <div class="empty-message" role="status">
+            <div class="empty-message-icon" aria-hidden="true">
+              ${icons.chart(24)}
+            </div>
+            <div class="empty-message-title">No initiative data</div>
+            <div class="empty-message-description">Initiative details are not available.</div>
+          </div>
+        `;
+          return;
+        }
+
+        var safeName = escapeHtml(pulse.name);
+        var safeStatus = escapeHtml(pulse.status);
+        var normalizedStatus = normalizeStatus(pulse.status);
+        var healthScore = Number(pulse.health_score) || 0;
+        var progressPct = Number(pulse.progress_pct) || 0;
+        var pendingDecisions = Number(pulse.pending_decisions) || 0;
+        var activeWorkstreams = (pulse.workstream_summary && pulse.workstream_summary.active) || 0;
+        var roiSummary = pulse.roi_summary || null;
+        var roiValue = roiSummary && roiSummary.roi !== undefined ? Number(roiSummary.roi) : null;
+        var blockers = pulse.blockers || [];
+
+        contentEl.innerHTML = `
+        <div class="pulse-card" role="article" aria-label="${safeName} initiative status">
+          <div class="pulse-header">
+            <span class="pulse-name">${safeName}</span>
+            <span class="status-badge status-${normalizedStatus}" role="status">${safeStatus}</span>
+          </div>
+
+          <div class="pulse-metrics">
+            <span class="metric">
+              <span class="metric-value">${progressPct}%</span> complete
+            </span>
+            <span class="separator" aria-hidden="true">•</span>
+            <span class="metric">
+              <span class="metric-value">${pendingDecisions}</span> pending
+            </span>
+            <span class="separator" aria-hidden="true">•</span>
+            <span class="metric">
+              <span class="metric-value">${activeWorkstreams}</span> active
+            </span>
+          </div>
+
+          ${
+            roiSummary
+              ? `
+            <div class="roi-strip" role="group" aria-label="ROI summary">
+              <div class="roi-item">
+                <div class="roi-label">Cost</div>
+                <div class="roi-value">${formatUsd(roiSummary.total_cost)}</div>
+              </div>
+              <div class="roi-item">
+                <div class="roi-label">Value</div>
+                <div class="roi-value positive">${formatUsd(roiSummary.total_value)}</div>
+              </div>
+              <div class="roi-item">
+                <div class="roi-label">ROI (${escapeHtml(roiSummary.period || '30d')})</div>
+                <div class="roi-value ${roiValue !== null && roiValue >= 0 ? 'positive' : 'negative'}">${formatRoi(roiValue)}</div>
+              </div>
+            </div>
+          `
+              : ''
+          }
+
+          <div class="health-indicator ${getHealthClass(
+            healthScore
+          )}" role="status" aria-label="Health: ${getHealthLabel(healthScore)}">
+            <span class="health-dot" aria-hidden="true"></span>
+            <span>${getHealthLabel(healthScore)} (${healthScore})</span>
+          </div>
+
+          ${
+            blockers.length > 0
+              ? `
+            <div class="blockers-alert" role="alert">
+              <div class="blockers-title">${blockers.length} Blocker${
+                  blockers.length !== 1 ? 's' : ''
+                }</div>
+              <ul class="blockers-list" aria-label="List of blockers">
+                ${blockers.map(function(b) { return '<li>' + escapeHtml(b) + '</li>'; }).join('')}
+              </ul>
+            </div>
+          `
+              : ''
+          }
+        </div>
+      `;
+      };
+
+      // Wire up data reception for all host protocols
+      if (isDemo) {
+        isLoading = false;
+        render();
+      } else {
+        initWidget({
+          render: function(d) {
+            if (d) {
+              isLoading = false;
+              pulse = d;
+            }
+            render();
+          },
+          getData: _extractData,
+        });
+      }
+    </script>
+  </body>
+</html>

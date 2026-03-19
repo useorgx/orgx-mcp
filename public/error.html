@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Authorization Error — OrgX</title>
+    <link rel="icon" type="image/png" href="/orgx-logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Geist', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            },
+            colors: {
+              bg: '#02040a',
+              surface: {
+                DEFAULT: 'rgba(255, 255, 255, 0.03)',
+                hover: 'rgba(255, 255, 255, 0.05)',
+              },
+              lime: {
+                DEFAULT: '#BFFF00',
+                muted: 'rgba(191, 255, 0, 0.15)',
+              },
+              rose: {
+                DEFAULT: '#F43F5E',
+                muted: 'rgba(244, 63, 94, 0.15)',
+                glow: 'rgba(244, 63, 94, 0.08)',
+              },
+              amber: {
+                DEFAULT: '#F59E0B',
+                muted: 'rgba(245, 158, 11, 0.15)',
+              },
+              border: 'rgba(255, 255, 255, 0.08)',
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.5s ease-out forwards',
+              'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+              shake: 'shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both',
+              'pulse-slow': 'pulse 3s ease-in-out infinite',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
+              },
+              slideUp: {
+                '0%': { opacity: '0', transform: 'translateY(12px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              shake: {
+                '0%, 100%': { transform: 'translateX(0)' },
+                '10%, 30%, 50%, 70%, 90%': { transform: 'translateX(-4px)' },
+                '20%, 40%, 60%, 80%': { transform: 'translateX(4px)' },
+              },
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        background-color: #02040a;
+        color: #f2f7ff;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .bg-noise {
+        background: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+        opacity: 0.4;
+        pointer-events: none;
+      }
+
+      .glass-panel {
+        background: rgba(255, 255, 255, 0.02);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+          0 24px 48px rgba(0, 0, 0, 0.4);
+      }
+
+      .error-icon-ring {
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      .retry-btn {
+        background: linear-gradient(180deg, #bfff00 0%, #9fd500 100%);
+        box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.2) inset,
+          0 4px 12px rgba(191, 255, 0, 0.25);
+        transition: all 0.2s ease;
+      }
+      .retry-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.2) inset,
+          0 8px 20px rgba(191, 255, 0, 0.3);
+      }
+
+      .secondary-btn {
+        transition: all 0.2s ease;
+      }
+      .secondary-btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.15);
+      }
+
+      .error-code {
+        font-family: 'JetBrains Mono', monospace;
+      }
+    </style>
+  </head>
+  <body
+    class="min-h-screen flex flex-col items-center justify-center p-4 overflow-hidden"
+  >
+    <!-- Background layers -->
+    <div class="fixed inset-0 bg-noise z-0"></div>
+    <div
+      class="fixed inset-0"
+      style="
+        background: radial-gradient(
+          ellipse at 50% 0%,
+          rgba(244, 63, 94, 0.04) 0%,
+          transparent 60%
+        );
+      "
+    ></div>
+
+    <!-- Main Card -->
+    <div class="relative z-10 w-full max-w-md animate-slide-up">
+      <!-- Header: OrgX branding -->
+      <div class="flex items-center justify-center mb-8">
+        <div class="flex items-center gap-2.5">
+          <img src="/orgx-logo.png" alt="OrgX" class="w-7 h-7" />
+          <span class="text-white/50 text-sm font-medium tracking-tight"
+            >OrgX</span
+          >
+        </div>
+      </div>
+
+      <!-- Error Card -->
+      <div class="glass-panel rounded-2xl overflow-hidden">
+        <!-- Card Header with Error Icon -->
+        <div class="px-6 pt-8 pb-6 text-center">
+          <!-- Error Icon -->
+          <div class="relative inline-flex items-center justify-center mb-6">
+            <div
+              class="absolute inset-0 w-20 h-20 rounded-full bg-rose/10 error-icon-ring"
+            ></div>
+            <div
+              class="relative w-20 h-20 rounded-full bg-rose/10 border border-rose/30 flex items-center justify-center"
+            >
+              <svg
+                class="w-10 h-10 text-rose"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+                />
+              </svg>
+            </div>
+          </div>
+
+          <!-- Error Title -->
+          <h1 id="error-title" class="text-xl font-semibold text-white mb-2">
+            Authorization Failed
+          </h1>
+
+          <!-- Error Description -->
+          <p
+            id="error-description"
+            class="text-sm text-white/50 leading-relaxed max-w-sm mx-auto"
+          >
+            We couldn't complete the authorization. This might be a temporary
+            issue.
+          </p>
+        </div>
+
+        <!-- Error Details (collapsible) -->
+        <div id="error-details" class="px-6 pb-4 hidden">
+          <button
+            onclick="toggleDetails()"
+            class="w-full flex items-center justify-between py-3 px-4 rounded-lg bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] transition-colors"
+          >
+            <span
+              class="text-xs text-white/40 uppercase tracking-wider font-medium"
+              >Technical Details</span
+            >
+            <svg
+              id="details-chevron"
+              class="w-4 h-4 text-white/30 transition-transform"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div
+            id="details-content"
+            class="hidden mt-3 p-4 rounded-lg bg-black/30 border border-white/[0.04]"
+          >
+            <div class="space-y-2">
+              <div class="flex items-start gap-2">
+                <span
+                  class="text-[10px] text-white/30 uppercase tracking-wider w-14 shrink-0 pt-0.5"
+                  >Error</span
+                >
+                <code
+                  id="error-code"
+                  class="error-code text-xs text-rose break-all"
+                  >server_error</code
+                >
+              </div>
+              <div class="flex items-start gap-2">
+                <span
+                  class="text-[10px] text-white/30 uppercase tracking-wider w-14 shrink-0 pt-0.5"
+                  >Details</span
+                >
+                <code
+                  id="error-message"
+                  class="error-code text-xs text-white/60 break-all"
+                  >Failed to complete authorization</code
+                >
+              </div>
+              <div id="request-id-row" class="flex items-start gap-2 hidden">
+                <span
+                  class="text-[10px] text-white/30 uppercase tracking-wider w-14 shrink-0 pt-0.5"
+                  >Request</span
+                >
+                <code
+                  id="request-id"
+                  class="error-code text-xs text-white/40 break-all"
+                ></code>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Suggestions -->
+        <div class="px-6 pb-4">
+          <div class="p-4 rounded-lg bg-amber/[0.05] border border-amber/20">
+            <div class="flex items-start gap-3">
+              <div
+                class="w-5 h-5 rounded bg-amber/20 flex items-center justify-center shrink-0 mt-0.5"
+              >
+                <svg
+                  class="w-3 h-3 text-amber"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <div class="text-xs font-medium text-white/70 mb-1">
+                  What you can try
+                </div>
+                <ul class="text-xs text-white/40 leading-relaxed space-y-1">
+                  <li>• Go back and try authorizing again</li>
+                  <li>• Check that you're signed in to OrgX</li>
+                  <li>• Contact support if the issue persists</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="px-6 py-5 border-t border-white/[0.06] bg-white/[0.01]">
+          <button
+            id="retry-btn"
+            onclick="retry()"
+            class="retry-btn w-full py-3 rounded-xl text-sm font-semibold text-black"
+          >
+            Try Again
+          </button>
+          <div class="flex gap-3 mt-3">
+            <button
+              onclick="goHome()"
+              class="secondary-btn flex-1 py-2.5 rounded-xl text-sm font-medium text-white/50 border border-white/10"
+            >
+              Go to OrgX
+            </button>
+            <button
+              onclick="contactSupport()"
+              class="secondary-btn flex-1 py-2.5 rounded-xl text-sm font-medium text-white/50 border border-white/10"
+            >
+              Get Help
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div
+        class="flex items-center justify-center gap-4 mt-6 text-xs text-white/30"
+      >
+        <a
+          href="https://useorgx.com/docs"
+          class="hover:text-white/50 transition-colors"
+          >Docs</a
+        >
+        <span>•</span>
+        <a
+          href="https://useorgx.com/support"
+          class="hover:text-white/50 transition-colors"
+          >Support</a
+        >
+        <span>•</span>
+        <a
+          href="https://useorgx.com/changelog"
+          class="hover:text-white/50 transition-colors"
+          >Status</a
+        >
+      </div>
+    </div>
+
+    <script>
+      // ===========================================
+      // Error Mapping for User-Friendly Messages
+      // ===========================================
+      const ERROR_MESSAGES = {
+        access_denied: {
+          title: 'Access Denied',
+          description:
+            "You declined the authorization request or don't have permission to access this resource.",
+          icon: 'denied',
+        },
+        invalid_request: {
+          title: 'Invalid Request',
+          description:
+            'The authorization request was malformed or missing required parameters.',
+          icon: 'warning',
+        },
+        invalid_client: {
+          title: 'Unknown Application',
+          description:
+            'The application requesting access is not recognized. Please contact the app developer.',
+          icon: 'warning',
+        },
+        invalid_scope: {
+          title: 'Invalid Permissions',
+          description:
+            'The requested permissions are not valid or not supported.',
+          icon: 'warning',
+        },
+        server_error: {
+          title: 'Something Went Wrong',
+          description:
+            'We encountered an unexpected error. This is usually temporary — please try again.',
+          icon: 'error',
+        },
+        temporarily_unavailable: {
+          title: 'Service Unavailable',
+          description:
+            'OrgX is temporarily unavailable. Please try again in a few moments.',
+          icon: 'maintenance',
+        },
+        rate_limit_exceeded: {
+          title: 'Too Many Requests',
+          description:
+            "You've made too many authorization attempts. Please wait a moment and try again.",
+          icon: 'warning',
+        },
+        session_expired: {
+          title: 'Session Expired',
+          description:
+            'Your authorization session has expired. Please start the process again.',
+          icon: 'expired',
+        },
+      };
+
+      // ===========================================
+      // Initialize from URL params or JSON body
+      // ===========================================
+      function init() {
+        const params = new URLSearchParams(window.location.search);
+
+        // Get error info from URL params
+        let errorCode = params.get('error') || 'server_error';
+        let errorDescription = params.get('error_description') || '';
+        let requestId = params.get('request_id') || '';
+
+        // Store original URL for retry
+        window.originalUrl =
+          params.get('retry_url') || document.referrer || null;
+
+        // Get user-friendly message
+        const errorInfo =
+          ERROR_MESSAGES[errorCode] || ERROR_MESSAGES['server_error'];
+
+        // Update UI
+        document.getElementById('error-title').textContent = errorInfo.title;
+        document.getElementById('error-description').textContent =
+          errorDescription || errorInfo.description;
+
+        // Show technical details if we have them
+        if (errorCode || errorDescription) {
+          document.getElementById('error-details').classList.remove('hidden');
+          document.getElementById('error-code').textContent = errorCode;
+          document.getElementById('error-message').textContent =
+            errorDescription || 'No additional details';
+
+          if (requestId) {
+            document
+              .getElementById('request-id-row')
+              .classList.remove('hidden');
+            document.getElementById('request-id').textContent = requestId;
+          }
+        }
+
+        // Update retry button text based on error type
+        if (errorCode === 'access_denied') {
+          document.getElementById('retry-btn').textContent = 'Start Over';
+        } else if (errorCode === 'rate_limit_exceeded') {
+          document.getElementById('retry-btn').textContent = 'Wait & Retry';
+        }
+      }
+
+      // ===========================================
+      // Interactions
+      // ===========================================
+      function toggleDetails() {
+        const content = document.getElementById('details-content');
+        const chevron = document.getElementById('details-chevron');
+
+        content.classList.toggle('hidden');
+        chevron.style.transform = content.classList.contains('hidden')
+          ? ''
+          : 'rotate(180deg)';
+      }
+
+      function retry() {
+        if (window.originalUrl) {
+          window.location.href = window.originalUrl;
+        } else {
+          // Go back in history or to authorize endpoint
+          if (document.referrer && document.referrer.includes('/authorize')) {
+            window.location.href = document.referrer;
+          } else {
+            window.history.back();
+          }
+        }
+      }
+
+      function goHome() {
+        window.location.href = 'https://useorgx.com';
+      }
+
+      function contactSupport() {
+        const errorCode = document.getElementById('error-code').textContent;
+        const errorMessage =
+          document.getElementById('error-message').textContent;
+        const subject = encodeURIComponent(`OAuth Error: ${errorCode}`);
+        const body = encodeURIComponent(
+          `Hi OrgX Support,\n\nI encountered an error during authorization:\n\nError: ${errorCode}\nDetails: ${errorMessage}\n\nPlease help!\n\nThanks`
+        );
+        window.location.href = `mailto:support@useorgx.com?subject=${subject}&body=${body}`;
+      }
+
+      // Initialize on load
+      init();
+    </script>
+  </body>
+</html>

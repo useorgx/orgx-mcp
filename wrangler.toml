@@ -1,0 +1,105 @@
+name = "orgx-mcp"
+main = "src/index.ts"
+compatibility_date = "2025-11-08"
+compatibility_flags = ["nodejs_compat"]
+account_id = "5e0f62b0acf89dd1493ff769187814c4"
+
+# Static assets for landing page and widgets
+# html_handling = "none" prevents the assets handler from mapping / to index.html,
+# so POST / (MCP Streamable HTTP) passes through to the worker while
+# GET /index.html still serves the landing page directly.
+[assets]
+directory = "./public"
+html_handling = "none"
+
+# Non-secret variables (secrets like ORGX_SERVICE_KEY, MCP_JWT_SECRET should be set via `wrangler secret put`)
+# Note: Use www.useorgx.com to avoid apex→www redirect breaking API calls
+[vars]
+ORGX_API_URL = "https://www.useorgx.com"
+MCP_SERVER_URL = "https://mcp.useorgx.com"
+AUTH_SERVER_URL = "https://mcp.useorgx.com"
+ORGX_WEB_URL = "https://www.useorgx.com"
+
+[durable_objects]
+bindings = [
+  { name = "MCP_OBJECT", class_name = "OrgXMcp" },
+  { name = "OAUTH_STATE", class_name = "OAuthState" }
+]
+
+# KV namespace for OAuth provider token/grant storage
+# Create with: wrangler kv namespace create OAUTH_KV
+#              wrangler kv namespace create OAUTH_KV --preview
+[[kv_namespaces]]
+binding = "OAUTH_KV"
+id = "5bff02959fa74d43ba6708d9746121e4"
+preview_id = "8570c22420cf4cc1b287416cbe6bb7c6"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+head_sampling_rate = 1
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["OrgXMcp"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["OAuthState"]
+
+# Production environment
+[env.production]
+routes = [
+  # Serve MCP Registry auth on the apex to avoid apex->www redirects breaking verification.
+  { pattern = "useorgx.com/.well-known/mcp-registry-auth*", zone_name = "useorgx.com" },
+  { pattern = "mcp.useorgx.com", custom_domain = true, zone_name = "useorgx.com" }
+]
+
+[env.production.durable_objects]
+bindings = [
+  { name = "MCP_OBJECT", class_name = "OrgXMcp" },
+  { name = "OAUTH_STATE", class_name = "OAuthState" }
+]
+
+[[env.production.kv_namespaces]]
+binding = "OAUTH_KV"
+id = "5bff02959fa74d43ba6708d9746121e4"
+
+# Non-secret vars only; secrets (ORGX_SERVICE_KEY, MCP_JWT_SECRET, COOKIE_ENCRYPTION_KEY) set via dashboard or `wrangler secret put --env production`
+# Note: Use www.useorgx.com to avoid apex→www redirect breaking API calls
+[env.production.vars]
+ORGX_API_URL = "https://www.useorgx.com"
+ORGX_WEB_URL = "https://www.useorgx.com"
+MCP_SERVER_URL = "https://mcp.useorgx.com"
+AUTH_SERVER_URL = "https://mcp.useorgx.com"
+
+# Staging/Preview environment  
+[env.preview]
+routes = [
+  { pattern = "mcp-staging.useorgx.com", custom_domain = true, zone_name = "useorgx.com" }
+]
+
+[env.preview.durable_objects]
+bindings = [
+  { name = "MCP_OBJECT", class_name = "OrgXMcp" },
+  { name = "OAUTH_STATE", class_name = "OAuthState" }
+]
+
+[[env.preview.kv_namespaces]]
+binding = "OAUTH_KV"
+id = "8570c22420cf4cc1b287416cbe6bb7c6"
+
+# Non-secret vars only; secrets (ORGX_SERVICE_KEY, MCP_JWT_SECRET, COOKIE_ENCRYPTION_KEY) set via dashboard or `wrangler secret put --env preview`
+[env.preview.vars]
+ORGX_API_URL = "https://staging.useorgx.com"
+ORGX_WEB_URL = "https://staging.useorgx.com"
+MCP_SERVER_URL = "https://mcp-staging.useorgx.com"
+AUTH_SERVER_URL = "https://mcp-staging.useorgx.com"

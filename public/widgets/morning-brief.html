@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Morning Brief - OrgX</title>
+    <style>
+      :root {
+        --app-color-bg: #ffffff;
+        --app-color-surface: #ffffff;
+        --app-color-surface-elevated: #f7f7f8;
+        --app-color-text: #0d0d0d;
+        --app-color-text-secondary: #6e6e80;
+        --app-color-border: #e5e5e5;
+        --app-color-primary: #10a37f;
+
+        --ox-lime: 191, 255, 0;
+        --ox-teal: 20, 184, 166;
+        --ox-iris: 99, 102, 241;
+        --ox-cyan: 10, 212, 196;
+        --ox-success: #25da8e;   --ox-success-bg: rgba(37,218,142,0.12);  --ox-success-border: rgba(37,218,142,0.3);
+        --ox-warning: #f9c770;   --ox-warning-bg: rgba(249,199,112,0.12); --ox-warning-border: rgba(249,199,112,0.3);
+        --ox-danger: #ff7688;    --ox-danger-bg: rgba(255,118,136,0.12);  --ox-danger-border: rgba(255,118,136,0.3);
+        --ox-info: #60bdff;      --ox-info-bg: rgba(96,189,255,0.12);     --ox-info-border: rgba(96,189,255,0.3);
+        --ox-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        --ox-mono: ui-monospace, SFMono-Regular, 'SF Mono', monospace;
+        --ox-radius-sm: 6px;  --ox-radius-md: 10px;  --ox-radius-lg: 14px;
+        --ox-ease: cubic-bezier(0.22, 1, 0.36, 1);
+        --ox-duration: 220ms;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --app-color-bg: #02040a;
+          --app-color-surface: rgba(255,255,255,0.02);
+          --app-color-surface-elevated: rgba(255,255,255,0.04);
+          --app-color-text: #f2f7ff;
+          --app-color-text-secondary: #b4bed2;
+          --app-color-border: rgba(255,255,255,0.06);
+          --app-color-primary: rgba(var(--ox-teal), 1);
+        }
+      }
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: var(--ox-font);
+        background: var(--app-color-bg);
+        color: var(--app-color-text);
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+        padding: 16px;
+      }
+      .brief-card {
+        background: var(--app-color-surface);
+        border: 1px solid var(--app-color-border);
+        border-radius: var(--ox-radius-lg);
+        padding: 20px;
+        animation: fadeIn var(--ox-duration) var(--ox-ease);
+      }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+      .brief-header {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 16px; padding-bottom: 12px;
+        border-bottom: 1px solid var(--app-color-border);
+      }
+      .brief-title { font-size: 16px; font-weight: 600; letter-spacing: -0.02em; }
+      .brief-time { font-size: 12px; color: var(--app-color-text-secondary); }
+
+      /* ROI Strip */
+      .roi-strip {
+        display: flex; gap: 12px; margin-bottom: 16px;
+        padding: 12px; border-radius: var(--ox-radius-md);
+        background: var(--app-color-surface-elevated);
+      }
+      .roi-metric {
+        flex: 1; text-align: center;
+        padding: 8px; border-radius: var(--ox-radius-sm);
+      }
+      .roi-metric-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--app-color-text-secondary); font-weight: 600; }
+      .roi-metric-value { font-size: 20px; font-weight: 700; font-family: var(--ox-mono); letter-spacing: -0.02em; margin-top: 2px; }
+      .roi-positive { color: var(--ox-success); }
+      .roi-negative { color: var(--ox-danger); }
+
+      /* Sections */
+      .section { margin-bottom: 14px; }
+      .section-title {
+        font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+        color: var(--app-color-text-secondary); font-weight: 600; margin-bottom: 8px;
+      }
+
+      /* Exception alert */
+      .exception-alert {
+        background: var(--ox-warning-bg); border: 1px solid var(--ox-warning-border);
+        border-radius: var(--ox-radius-md); padding: 10px 12px; margin-bottom: 8px;
+      }
+      .exception-alert-title { font-size: 13px; font-weight: 600; color: var(--ox-warning); }
+      .exception-alert-text { font-size: 12px; color: var(--app-color-text-secondary); margin-top: 2px; }
+
+      /* Trust event */
+      .trust-event {
+        display: flex; align-items: center; gap: 8px;
+        padding: 6px 0; font-size: 13px;
+        border-bottom: 1px solid var(--app-color-border);
+      }
+      .trust-event:last-child { border-bottom: none; }
+      .trust-badge {
+        font-size: 10px; font-weight: 700; padding: 2px 8px;
+        border-radius: var(--ox-radius-sm); text-transform: uppercase; letter-spacing: 0.04em;
+      }
+      .trust-promoted { background: var(--ox-success-bg); color: var(--ox-success); border: 1px solid var(--ox-success-border); }
+      .trust-demoted { background: var(--ox-danger-bg); color: var(--ox-danger); border: 1px solid var(--ox-danger-border); }
+
+      /* Receipt list */
+      .receipt-row {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 6px 0; font-size: 13px;
+        border-bottom: 1px solid var(--app-color-border);
+      }
+      .receipt-row:last-child { border-bottom: none; }
+      .receipt-intent { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .receipt-value { font-family: var(--ox-mono); font-weight: 600; margin-left: 8px; }
+
+      .empty-message {
+        text-align: center; padding: 32px 16px;
+        color: var(--app-color-text-secondary);
+      }
+      .empty-message-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--app-color-text); }
+      .empty-message-description { font-size: 13px; }
+
+      .skeleton-card { padding: 20px; }
+      .skeleton-line { background: var(--app-color-surface-elevated); border-radius: 4px; height: 12px; animation: pulse 1.5s ease infinite; }
+      .skeleton-title { width: 50%; height: 16px; margin-bottom: 16px; }
+      .skeleton-strip { width: 100%; height: 60px; margin-bottom: 16px; border-radius: var(--ox-radius-md); }
+      .skeleton-text { width: 80%; height: 12px; margin-bottom: 8px; }
+      @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+    </style>
+  </head>
+  <body>
+    <!--
+      Morning Brief Widget — Intelligence Flywheel, Initiative 3
+      The ONE new widget surface: curated receipts, exceptions, ROI delta.
+      @see Intelligence Flywheel Architecture — "Initiative 3: morning-brief.html"
+    -->
+    <div id="content" role="main"></div>
+
+    <!-- Shared widget bootstrap (handles all host protocols) -->
+    <script src="shared/widget-bootstrap.js"></script>
+    <script>
+      /* global initWidget */
+      var contentEl = document.getElementById('content');
+      var isLoading = true;
+      var brief = null;
+
+      // Demo data for ?demo=true
+      var isDemo = window.location.search.indexOf('demo=true') !== -1;
+      if (isDemo) {
+        brief = {
+          session_summary: {
+            receipts_produced: 14,
+            completed: 12,
+            failed: 2,
+            total_cost: 1.42,
+            total_value: 23.80,
+            roi: 15.77,
+            session_type: 'overnight',
+            started_at: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
+            ended_at: new Date().toISOString()
+          },
+          exceptions: [
+            { exception_type: 'novel_situation', context: 'Encountered a policy conflict when processing budget approval for Q2 marketing spend.' },
+            { exception_type: 'trust_insufficient', context: 'Code review for security-critical PR requires autonomous trust level.' }
+          ],
+          trust_events: [
+            { event_type: 'promoted', agent_type: 'marketing', old_level: 'draft', new_level: 'act_with_approval', reason: 'Last 7 receipts: 0 revisions, +$12.4K value, 92% quality' },
+            { event_type: 'demoted', agent_type: 'sales', old_level: 'act_with_approval', new_level: 'draft', reason: '2 consecutive failures in outreach_draft' }
+          ],
+          top_receipts: [
+            { intent: 'Draft Q2 content calendar for LinkedIn', attributed_value_usd: 8.50, agent_type: 'marketing', cost_usd: 0.12 },
+            { intent: 'Review PR #347 — auth middleware refactor', attributed_value_usd: 6.20, agent_type: 'code', cost_usd: 0.08 },
+            { intent: 'Outreach to 5 new enterprise leads', attributed_value_usd: 5.10, agent_type: 'sales', cost_usd: 0.18 },
+            { intent: 'Competitive analysis: Acme pricing update', attributed_value_usd: 2.80, agent_type: 'research', cost_usd: 0.06 },
+            { intent: 'Design system token audit', attributed_value_usd: 1.20, agent_type: 'design', cost_usd: 0.04 }
+          ]
+        };
+      }
+
+      var _extractData = function(raw) {
+        if (!raw) return null;
+        if (raw.structuredContent) return raw.structuredContent;
+        if (raw.session_summary || raw.top_receipts) return raw;
+        if (raw.data) return raw.data;
+        return raw;
+      };
+
+      var escapeHtml = function(str) {
+        if (str === null || str === undefined) return '';
+        var div = document.createElement('div');
+        div.textContent = String(str);
+        return div.innerHTML;
+      };
+
+      var formatUsd = function(amount) {
+        var n = Number(amount) || 0;
+        return '$' + n.toFixed(2);
+      };
+
+      var formatRoi = function(roi) {
+        if (roi === null || roi === undefined) return 'N/A';
+        var n = Number(roi) || 0;
+        return (n >= 0 ? '+' : '') + n.toFixed(0) + '%';
+      };
+
+      var renderSkeleton = function() {
+        return '<div class="skeleton-card"><div class="skeleton-line skeleton-title"></div><div class="skeleton-line skeleton-strip"></div><div class="skeleton-line skeleton-text"></div><div class="skeleton-line skeleton-text" style="width:60%"></div></div>';
+      };
+
+      var render = function() {
+        if (isLoading) {
+          contentEl.innerHTML = renderSkeleton();
+          return;
+        }
+
+        if (!brief || !brief.session_summary) {
+          contentEl.innerHTML = '<div class="empty-message"><div class="empty-message-title">No morning brief</div><div class="empty-message-description">No autonomous session has completed yet. Start one to see your first brief.</div></div>';
+          return;
+        }
+
+        var s = brief.session_summary;
+        var roi = s.roi;
+        var roiClass = (roi !== null && roi >= 0) ? 'roi-positive' : 'roi-negative';
+        var exceptions = brief.exceptions || [];
+        var trustEvents = brief.trust_events || [];
+        var topReceipts = brief.top_receipts || [];
+
+        var html = '<div class="brief-card">';
+        html += '<div class="brief-header">';
+        html += '<span class="brief-title">Morning Brief</span>';
+        html += '<span class="brief-time">' + escapeHtml(s.session_type || 'session') + ' &middot; ' + (s.receipts_produced || 0) + ' receipts</span>';
+        html += '</div>';
+
+        // ROI Strip
+        html += '<div class="roi-strip">';
+        html += '<div class="roi-metric"><div class="roi-metric-label">Cost</div><div class="roi-metric-value">' + formatUsd(s.total_cost) + '</div></div>';
+        html += '<div class="roi-metric"><div class="roi-metric-label">Value</div><div class="roi-metric-value roi-positive">' + formatUsd(s.total_value) + '</div></div>';
+        html += '<div class="roi-metric"><div class="roi-metric-label">ROI</div><div class="roi-metric-value ' + roiClass + '">' + formatRoi(roi) + '</div></div>';
+        html += '</div>';
+
+        // Exceptions
+        if (exceptions.length > 0) {
+          html += '<div class="section">';
+          html += '<div class="section-title">Exceptions Needing Attention (' + exceptions.length + ')</div>';
+          for (var i = 0; i < Math.min(exceptions.length, 5); i++) {
+            var exc = exceptions[i];
+            html += '<div class="exception-alert">';
+            html += '<div class="exception-alert-title">' + escapeHtml(exc.exception_type) + '</div>';
+            html += '<div class="exception-alert-text">' + escapeHtml(String(exc.context || '').slice(0, 150)) + '</div>';
+            html += '</div>';
+          }
+          html += '</div>';
+        }
+
+        // Trust Changes
+        if (trustEvents.length > 0) {
+          html += '<div class="section">';
+          html += '<div class="section-title">Trust Changes</div>';
+          for (var j = 0; j < trustEvents.length; j++) {
+            var te = trustEvents[j];
+            var isPromo = te.event_type === 'promoted';
+            html += '<div class="trust-event">';
+            html += '<span class="trust-badge ' + (isPromo ? 'trust-promoted' : 'trust-demoted') + '">' + escapeHtml(te.event_type) + '</span>';
+            html += '<span>' + escapeHtml(te.agent_type) + ': ' + escapeHtml(te.old_level) + ' &rarr; ' + escapeHtml(te.new_level) + '</span>';
+            html += '</div>';
+          }
+          html += '</div>';
+        }
+
+        // Top Receipts
+        if (topReceipts.length > 0) {
+          html += '<div class="section">';
+          html += '<div class="section-title">Top Receipts by Value</div>';
+          for (var k = 0; k < topReceipts.length; k++) {
+            var r = topReceipts[k];
+            html += '<div class="receipt-row">';
+            html += '<span class="receipt-intent">' + escapeHtml(r.intent) + '</span>';
+            html += '<span class="receipt-value roi-positive">' + formatUsd(r.attributed_value_usd) + '</span>';
+            html += '</div>';
+          }
+          html += '</div>';
+        }
+
+        html += '</div>';
+        contentEl.innerHTML = html;
+      };
+
+      if (isDemo) {
+        isLoading = false;
+        render();
+      } else {
+        initWidget({
+          render: function(d) {
+            if (d) { isLoading = false; brief = d; }
+            render();
+          },
+          getData: _extractData,
+        });
+      }
+    </script>
+  </body>
+</html>

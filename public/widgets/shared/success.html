@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Connected — OrgX</title>
+    <link rel="icon" type="image/png" href="/orgx-logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: { sans: ['Geist', 'sans-serif'] },
+            colors: {
+              bg: '#02040a',
+              surface: {
+                DEFAULT: 'rgba(255, 255, 255, 0.03)',
+                hover: 'rgba(255, 255, 255, 0.05)',
+              },
+              lime: {
+                DEFAULT: '#BFFF00',
+                muted: 'rgba(191, 255, 0, 0.15)',
+                glow: 'rgba(191, 255, 0, 0.08)',
+              },
+              teal: {
+                DEFAULT: '#14B8A6',
+                muted: 'rgba(20, 184, 166, 0.15)',
+              },
+              iris: {
+                DEFAULT: '#6366F1',
+                muted: 'rgba(99, 102, 241, 0.15)',
+              },
+              amber: {
+                DEFAULT: '#F59E0B',
+                muted: 'rgba(245, 158, 11, 0.15)',
+              },
+              rose: {
+                DEFAULT: '#F43F5E',
+                muted: 'rgba(244, 63, 94, 0.15)',
+              },
+              cyan: {
+                DEFAULT: '#06B6D4',
+                muted: 'rgba(6, 182, 212, 0.15)',
+              },
+              border: 'rgba(255, 255, 255, 0.08)',
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.5s ease-out forwards',
+              'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+              'check-draw': 'checkDraw 0.6s ease-out 0.3s forwards',
+              'pulse-ring': 'pulseRing 1.5s ease-out infinite',
+              confetti: 'confetti 3s ease-out forwards',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
+              },
+              slideUp: {
+                '0%': { opacity: '0', transform: 'translateY(12px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              checkDraw: {
+                '0%': { strokeDashoffset: '24' },
+                '100%': { strokeDashoffset: '0' },
+              },
+              pulseRing: {
+                '0%': { transform: 'scale(1)', opacity: '0.8' },
+                '100%': { transform: 'scale(2)', opacity: '0' },
+              },
+              confetti: {
+                '0%': {
+                  transform: 'translateY(0) rotate(0deg)',
+                  opacity: '1',
+                },
+                '100%': {
+                  transform: 'translateY(400px) rotate(720deg)',
+                  opacity: '0',
+                },
+              },
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        background-color: #02040a;
+        color: #f2f7ff;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .bg-noise {
+        background: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+        opacity: 0.4;
+        pointer-events: none;
+      }
+
+      .glass-panel {
+        background: rgba(255, 255, 255, 0.02);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+          0 24px 48px rgba(0, 0, 0, 0.4);
+      }
+
+      .check-path {
+        stroke-dasharray: 24;
+        stroke-dashoffset: 24;
+      }
+
+      .confetti-piece {
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+      }
+
+      .icon-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.375rem 0.75rem;
+        border-radius: 9999px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.03);
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.6);
+      }
+      .icon-pill svg {
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
+      }
+
+      .command-btn {
+        background: linear-gradient(180deg, #bfff00 0%, #9fd500 100%);
+        box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.2) inset,
+          0 4px 12px rgba(191, 255, 0, 0.25);
+        transition: all 0.2s ease;
+      }
+      .command-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.2) inset,
+          0 8px 20px rgba(191, 255, 0, 0.3);
+      }
+
+      .secondary-btn {
+        transition: all 0.2s ease;
+      }
+      .secondary-btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.15);
+      }
+
+      .tool-card {
+        transition: background 0.15s ease, border-color 0.15s ease;
+      }
+      .tool-card:hover {
+        background: rgba(255, 255, 255, 0.04);
+        border-color: rgba(255, 255, 255, 0.1);
+      }
+    </style>
+  </head>
+  <body
+    class="min-h-screen flex flex-col items-center justify-center p-4 overflow-hidden"
+  >
+    <!-- Background layers -->
+    <div class="fixed inset-0 bg-noise z-0"></div>
+    <div
+      class="fixed inset-0"
+      style="
+        background: radial-gradient(
+          ellipse at 50% 0%,
+          rgba(191, 255, 0, 0.04) 0%,
+          transparent 60%
+        );
+      "
+    ></div>
+
+    <!-- Confetti container -->
+    <div
+      id="confetti"
+      class="fixed inset-0 pointer-events-none overflow-hidden z-50"
+    ></div>
+
+    <!-- Main Card -->
+    <div class="relative z-10 w-full max-w-md animate-slide-up">
+      <!-- Header: OrgX branding -->
+      <div class="flex items-center justify-center mb-8">
+        <div class="flex items-center gap-2.5">
+          <img src="/orgx-logo.png" alt="OrgX" class="w-7 h-7" />
+          <span class="text-white/50 text-sm font-medium tracking-tight"
+            >OrgX</span
+          >
+        </div>
+      </div>
+
+      <!-- Success Card -->
+      <div class="glass-panel rounded-2xl overflow-hidden">
+        <!-- Card Header with Success Icon -->
+        <div class="px-6 pt-8 pb-6 text-center">
+          <!-- Success Icon -->
+          <div class="relative inline-flex items-center justify-center mb-6">
+            <div
+              class="absolute w-20 h-20 rounded-full bg-lime-muted animate-pulse-ring"
+            ></div>
+            <div
+              class="absolute w-20 h-20 rounded-full bg-lime-muted animate-pulse-ring"
+              style="animation-delay: 0.5s"
+            ></div>
+            <div
+              class="relative w-20 h-20 rounded-full bg-lime/10 border border-lime/30 flex items-center justify-center"
+              style="box-shadow: 0 0 40px rgba(191, 255, 0, 0.2)"
+            >
+              <svg
+                class="w-10 h-10 text-lime"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  class="check-path animate-check-draw"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+          </div>
+
+          <!-- Title -->
+          <h1 class="text-xl font-semibold text-white mb-2">
+            Connected to OrgX
+          </h1>
+          <p
+            id="subtitle"
+            class="text-sm text-white/50 leading-relaxed max-w-sm mx-auto"
+          >
+            Your AI assistant is now connected to your organization.
+          </p>
+        </div>
+
+        <!-- Tools Available -->
+        <div class="px-6 pb-5">
+          <div class="flex items-center justify-between mb-3 px-1">
+            <span
+              class="text-xs text-white/40 uppercase tracking-wider font-medium"
+              >Now available</span
+            >
+            <span class="text-xs text-white/25">7 capabilities</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 px-1">
+            <!-- Decisions -->
+            <div
+              class="tool-card flex items-start gap-2.5 p-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02]"
+            >
+              <div
+                class="mt-0.5 w-7 h-7 rounded-md bg-lime/10 border border-lime/20 flex items-center justify-center flex-shrink-0"
+              >
+                <svg
+                  class="w-3.5 h-3.5 text-lime"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+              </div>
+              <div class="min-w-0">
+                <div class="text-xs font-medium text-white/80">Decisions</div>
+                <div class="text-[10px] text-white/35 leading-tight mt-0.5">
+                  Approve, reject, review
+                </div>
+              </div>
+            </div>
+            <!-- Memory -->
+            <div
+              class="tool-card flex items-start gap-2.5 p-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02]"
+            >
+              <div
+                class="mt-0.5 w-7 h-7 rounded-md bg-teal/10 border border-teal/20 flex items-center justify-center flex-shrink-0"
+              >
+                <svg
+                  class="w-3.5 h-3.5 text-teal"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+              </div>
+              <div class="min-w-0">
+                <div class="text-xs font-medium text-white/80">Memory</div>
+                <div class="text-[10px] text-white/35 leading-tight mt-0.5">
+                  Search org knowledge
+                </div>
+              </div>
+            </div>
+            <!-- Agents -->
+            <div
+              class="tool-card flex items-start gap-2.5 p-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02]"
+            >
+              <div
+                class="mt-0.5 w-7 h-7 rounded-md bg-iris/10 border border-iris/20 flex items-center justify-center flex-shrink-0"
+              >
+                <svg
+                  class="w-3.5 h-3.5 text-iris"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M12 8V4H8"></path>
+                  <rect width="16" height="12" x="4" y="8" rx="2"></rect>
+                  <path d="M2 14h2"></path>
+                  <path d="M20 14h2"></path>
+                  <path d="M15 13v2"></path>
+                  <path d="M9 13v2"></path>
+                </svg>
+              </div>
+              <div class="min-w-0">
+                <div class="text-xs font-medium text-white/80">Agents</div>
+                <div class="text-[10px] text-white/35 leading-tight mt-0.5">
+                  Spawn and monitor tasks
+                </div>
+              </div>
+            </div>
+            <!-- Initiatives -->
+            <div
+              class="tool-card flex items-start gap-2.5 p-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02]"
+            >
+              <div
+                class="mt-0.5 w-7 h-7 rounded-md bg-amber/10 border border-amber/20 flex items-center justify-center flex-shrink-0"
+              >
+                <svg
+                  class="w-3.5 h-3.5 text-amber"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <circle cx="12" cy="12" r="6"></circle>
+                  <circle cx="12" cy="12" r="2"></circle>
+                </svg>
+              </div>
+              <div class="min-w-0">
+                <div class="text-xs font-medium text-white/80">Initiatives</div>
+                <div class="text-[10px] text-white/35 leading-tight mt-0.5">
+                  Track pulse and streams
+                </div>
+              </div>
+            </div>
+            <!-- Planning -->
+            <div
+              class="tool-card flex items-start gap-2.5 p-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02]"
+            >
+              <div
+                class="mt-0.5 w-7 h-7 rounded-md bg-rose/10 border border-rose/20 flex items-center justify-center flex-shrink-0"
+              >
+                <svg
+                  class="w-3.5 h-3.5 text-rose"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"
+                  ></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+              </div>
+              <div class="min-w-0">
+                <div class="text-xs font-medium text-white/80">Planning</div>
+                <div class="text-[10px] text-white/35 leading-tight mt-0.5">
+                  Sessions and iteration
+                </div>
+              </div>
+            </div>
+            <!-- Entities -->
+            <div
+              class="tool-card flex items-start gap-2.5 p-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02]"
+            >
+              <div
+                class="mt-0.5 w-7 h-7 rounded-md bg-cyan/10 border border-cyan/20 flex items-center justify-center flex-shrink-0"
+              >
+                <svg
+                  class="w-3.5 h-3.5 text-cyan"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"
+                  ></path>
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                  <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                </svg>
+              </div>
+              <div class="min-w-0">
+                <div class="text-xs font-medium text-white/80">Entities</div>
+                <div class="text-[10px] text-white/35 leading-tight mt-0.5">
+                  20 types with lifecycle
+                </div>
+              </div>
+            </div>
+            <!-- Workspaces (spans full width) -->
+            <div
+              class="tool-card col-span-2 flex items-start gap-2.5 p-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02]"
+            >
+              <div
+                class="mt-0.5 w-7 h-7 rounded-md bg-white/[0.06] border border-white/10 flex items-center justify-center flex-shrink-0"
+              >
+                <svg
+                  class="w-3.5 h-3.5 text-white/50"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <rect width="7" height="7" x="3" y="3" rx="1"></rect>
+                  <rect width="7" height="7" x="14" y="3" rx="1"></rect>
+                  <rect width="7" height="7" x="14" y="14" rx="1"></rect>
+                  <rect width="7" height="7" x="3" y="14" rx="1"></rect>
+                </svg>
+              </div>
+              <div class="min-w-0">
+                <div class="text-xs font-medium text-white/80">Workspaces</div>
+                <div class="text-[10px] text-white/35 leading-tight mt-0.5">
+                  Org setup, config, and context switching
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="px-6 py-5 border-t border-white/[0.06] bg-white/[0.01]">
+          <a
+            href="https://useorgx.com/command"
+            class="command-btn w-full py-3 rounded-xl text-sm font-semibold text-black flex items-center justify-center gap-2"
+          >
+            <svg
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect width="7" height="7" x="3" y="3" rx="1"></rect>
+              <rect width="7" height="7" x="14" y="3" rx="1"></rect>
+              <rect width="7" height="7" x="14" y="14" rx="1"></rect>
+              <rect width="7" height="7" x="3" y="14" rx="1"></rect>
+            </svg>
+            Open Command Center
+          </a>
+          <button
+            onclick="window.close()"
+            class="secondary-btn w-full mt-3 py-2.5 rounded-xl text-sm font-medium text-white/50 border border-white/10 flex items-center justify-center gap-2"
+          >
+            <svg
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+            Close Window
+          </button>
+        </div>
+      </div>
+
+      <!-- Redirect notice -->
+      <div
+        id="redirect-notice"
+        class="flex items-center justify-center gap-2 mt-6 text-xs text-white/30"
+      >
+        <svg
+          class="w-3 h-3 animate-spin"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+        </svg>
+        <span>Sending you back...</span>
+      </div>
+
+      <!-- Footer Links -->
+      <div
+        class="flex items-center justify-center gap-4 mt-4 text-xs text-white/30"
+      >
+        <a
+          href="https://useorgx.com/privacy"
+          class="hover:text-white/50 transition-colors"
+          >Privacy</a
+        >
+        <span>•</span>
+        <a
+          href="https://useorgx.com/terms"
+          class="hover:text-white/50 transition-colors"
+          >Terms</a
+        >
+      </div>
+    </div>
+
+    <script>
+      // Create confetti
+      function createConfetti() {
+        const colors = ['#BFFF00', '#14B8A6', '#6366F1', '#F59E0B', '#EC4899'];
+        const container = document.getElementById('confetti');
+
+        for (let i = 0; i < 50; i++) {
+          const piece = document.createElement('div');
+          piece.className = 'confetti-piece animate-confetti';
+          piece.style.left = Math.random() * 100 + '%';
+          piece.style.top = '-20px';
+          piece.style.backgroundColor =
+            colors[Math.floor(Math.random() * colors.length)];
+          piece.style.animationDelay = Math.random() * 0.5 + 's';
+          piece.style.animationDuration = 2 + Math.random() * 2 + 's';
+          piece.style.transform = `rotate(${Math.random() * 360}deg)`;
+          container.appendChild(piece);
+        }
+
+        // Clean up after animation
+        setTimeout(() => (container.innerHTML = ''), 5000);
+      }
+
+      // Parse URL params and redirect
+      function handleRedirect() {
+        const params = new URLSearchParams(window.location.search);
+        const callbackUrl = params.get('callback_url');
+
+        if (callbackUrl) {
+          // Detect which client we're redirecting back to
+          let clientName = 'your app';
+          try {
+            const host = new URL(callbackUrl).hostname;
+            if (host.includes('chatgpt.com')) clientName = 'ChatGPT';
+            else if (host.includes('claude.ai')) clientName = 'Claude';
+            else if (host.includes('cursor.')) clientName = 'Cursor';
+          } catch (_) {}
+
+          // Update subtitle to tell the user what's happening
+          const subtitle = document.getElementById('subtitle');
+          if (subtitle) {
+            subtitle.textContent =
+              'Connection successful. Sending you back to ' +
+              clientName +
+              '...';
+          }
+
+          // callbackUrl from completeAuthorization() already contains
+          // code and state params — redirect directly
+          setTimeout(() => {
+            window.location.href = callbackUrl;
+          }, 1500);
+        } else {
+          // No redirect needed, hide the notice
+          const notice = document.getElementById('redirect-notice');
+          if (notice) notice.style.display = 'none';
+        }
+      }
+
+      // Initialize
+      createConfetti();
+      handleRedirect();
+    </script>
+  </body>
+</html>
