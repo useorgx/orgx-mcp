@@ -151,10 +151,36 @@
     .r-meta { display: flex; gap: 12px; font-family: var(--ox-mono); font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ox-text-muted); }
     
     .highlight { color: var(--ox-primary); font-weight: 600; background: rgba(var(--ox-primary-rgb), 0.1); padding: 0 2px; border-radius: 2px; }
+
+    .skeleton-line {
+      background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%);
+      background-size: 200% 100%; animation: shimmer 2s infinite linear; border-radius: 4px;
+    }
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
   </style>
 </head>
 <body>
-  <div class="container" id="content"></div>
+  <div class="container" id="content">
+    <!-- Skeleton shown during loading -->
+    <div class="skeleton-wrapper" style="display:flex; flex-direction:column; gap:16px; padding:24px;">
+      <div class="skeleton-line" style="width:180px; height:24px; margin-bottom:8px;"></div>
+      <div style="background:var(--ox-well-bg); border-radius:12px; padding:16px;">
+        <div class="skeleton-line" style="width:70%; height:16px; margin-bottom:10px;"></div>
+        <div class="skeleton-line" style="width:90%; height:12px; margin-bottom:6px;"></div>
+        <div class="skeleton-line" style="width:80%; height:12px;"></div>
+      </div>
+      <div style="background:var(--ox-well-bg); border-radius:12px; padding:16px;">
+        <div class="skeleton-line" style="width:60%; height:16px; margin-bottom:10px;"></div>
+        <div class="skeleton-line" style="width:85%; height:12px; margin-bottom:6px;"></div>
+        <div class="skeleton-line" style="width:75%; height:12px;"></div>
+      </div>
+      <div style="background:var(--ox-well-bg); border-radius:12px; padding:16px;">
+        <div class="skeleton-line" style="width:65%; height:16px; margin-bottom:10px;"></div>
+        <div class="skeleton-line" style="width:80%; height:12px; margin-bottom:6px;"></div>
+        <div class="skeleton-line" style="width:70%; height:12px;"></div>
+      </div>
+    </div>
+  </div>
   <script>
 
     // Sync theme from URL to override prefers-color-scheme

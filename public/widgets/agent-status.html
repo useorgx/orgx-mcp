@@ -124,7 +124,7 @@
       .ox-text { font-size: 0.9rem; line-height: 1.5; color: var(--ox-text); }
       
 
-    :root { --ox-primary-rgb: 191, 255, 0; }
+    :root { --ox-primary: #BFFF00; --ox-primary-rgb: 191, 255, 0; }
     
     .agent-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding-bottom:24px; border-bottom:1px solid var(--ox-border); }
     
@@ -159,7 +159,7 @@
     .t-item:last-child { padding-bottom: 0; }
     .t-dot {
       position: absolute; left: -24.5px; top: 4px; width: 10px; height: 10px; border-radius: 50%;
-      background: var(--ox-panel); border: 2px solid var(--ox-primary); box-shadow: 0 0 8px rgba(var(--ox-primary-rgb), 0.4); z-index:10;
+      background: var(--ox-primary); border: 2px solid var(--ox-primary); box-shadow: 0 0 8px rgba(var(--ox-primary-rgb), 0.4); z-index:10;
     }
 
 
@@ -170,10 +170,44 @@
     .deep-link { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; color: var(--ox-primary); text-decoration: none; transition: opacity 0.2s; }
     .deep-link:hover { opacity: 0.8; }
     .deep-link svg { width: 14px; height: 14px; }
+
+    .skeleton-line {
+      background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%);
+      background-size: 200% 100%; animation: shimmer 2s infinite linear; border-radius: 4px;
+    }
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
   </style>
 </head>
 <body>
-  <div class="container" id="content"></div>
+  <div class="container" id="content">
+    <!-- Skeleton shown during loading -->
+    <div class="skeleton-wrapper" style="display:flex; flex-direction:column; gap:20px; padding:24px;">
+      <div style="display:flex; align-items:center; gap:16px;">
+        <div class="skeleton-line" style="width:48px; height:48px; border-radius:50%;"></div>
+        <div style="flex:1;">
+          <div class="skeleton-line" style="width:40%; height:18px; margin-bottom:8px;"></div>
+          <div class="skeleton-line" style="width:60%; height:14px;"></div>
+        </div>
+        <div class="skeleton-line" style="width:80px; height:28px; border-radius:14px;"></div>
+      </div>
+      <div style="display:flex; align-items:center; gap:16px;">
+        <div class="skeleton-line" style="width:48px; height:48px; border-radius:50%;"></div>
+        <div style="flex:1;">
+          <div class="skeleton-line" style="width:35%; height:18px; margin-bottom:8px;"></div>
+          <div class="skeleton-line" style="width:55%; height:14px;"></div>
+        </div>
+        <div class="skeleton-line" style="width:80px; height:28px; border-radius:14px;"></div>
+      </div>
+      <div style="display:flex; align-items:center; gap:16px;">
+        <div class="skeleton-line" style="width:48px; height:48px; border-radius:50%;"></div>
+        <div style="flex:1;">
+          <div class="skeleton-line" style="width:45%; height:18px; margin-bottom:8px;"></div>
+          <div class="skeleton-line" style="width:50%; height:14px;"></div>
+        </div>
+        <div class="skeleton-line" style="width:80px; height:28px; border-radius:14px;"></div>
+      </div>
+    </div>
+  </div>
   <script>
 
     // Sync theme from URL to override prefers-color-scheme
