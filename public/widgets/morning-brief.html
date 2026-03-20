@@ -144,10 +144,41 @@
     .p-domain { font-family: var(--ox-mono); font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ox-text-muted); margin-bottom: 4px; font-weight: 600; }
     .p-title { font-weight: 600; font-size: 0.95rem; color: var(--ox-text); margin-bottom: 4px; }
     .p-reason { font-size: 0.85rem; color: var(--ox-text-muted); line-height: 1.4; }
+
+    .skeleton-line {
+      background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%);
+      background-size: 200% 100%; animation: shimmer 2s infinite linear; border-radius: 4px;
+    }
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
   </style>
 </head>
 <body>
-  <div class="container" id="content"></div>
+  <div class="container" id="content">
+    <!-- Skeleton shown during loading -->
+    <div class="skeleton-wrapper" style="display:flex; flex-direction:column; gap:20px; padding:24px;">
+      <div>
+        <div class="skeleton-line" style="width:140px; height:12px; margin-bottom:16px;"></div>
+        <div class="skeleton-line" style="width:80%; height:24px; margin-bottom:8px;"></div>
+        <div class="skeleton-line" style="width:100%; height:14px; margin-bottom:4px;"></div>
+        <div class="skeleton-line" style="width:90%; height:14px;"></div>
+      </div>
+      <div style="border-top:1px solid var(--ox-border); padding-top:20px;">
+        <div class="skeleton-line" style="width:100px; height:10px; margin-bottom:12px;"></div>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div style="background:var(--ox-well-bg); border-radius:10px; padding:14px;">
+            <div class="skeleton-line" style="width:60px; height:10px; margin-bottom:6px;"></div>
+            <div class="skeleton-line" style="width:70%; height:14px; margin-bottom:4px;"></div>
+            <div class="skeleton-line" style="width:90%; height:12px;"></div>
+          </div>
+          <div style="background:var(--ox-well-bg); border-radius:10px; padding:14px;">
+            <div class="skeleton-line" style="width:80px; height:10px; margin-bottom:6px;"></div>
+            <div class="skeleton-line" style="width:65%; height:14px; margin-bottom:4px;"></div>
+            <div class="skeleton-line" style="width:85%; height:12px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
   <script>
 
     // Sync theme from URL to override prefers-color-scheme

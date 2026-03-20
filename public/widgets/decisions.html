@@ -219,7 +219,21 @@
       <h1 class="ox-title" style="font-size:1.75rem;">Action Required</h1>
       <div id="summary" class="summary-grid"></div>
     </div>
-    <div id="content"></div>
+    <div id="content">
+      <!-- Skeleton shown during loading -->
+      <div class="skeleton-wrapper" style="display:flex; flex-direction:column; gap:16px;">
+        <div style="background:var(--ox-well-bg); border-radius:16px; padding:20px;">
+          <div class="skeleton-line" style="width:60%; height:18px; margin-bottom:12px;"></div>
+          <div class="skeleton-line" style="width:90%; height:14px; margin-bottom:8px;"></div>
+          <div class="skeleton-line" style="width:75%; height:14px;"></div>
+        </div>
+        <div style="background:var(--ox-well-bg); border-radius:16px; padding:20px;">
+          <div class="skeleton-line" style="width:50%; height:18px; margin-bottom:12px;"></div>
+          <div class="skeleton-line" style="width:85%; height:14px; margin-bottom:8px;"></div>
+          <div class="skeleton-line" style="width:70%; height:14px;"></div>
+        </div>
+      </div>
+    </div>
     <div id="toast-container" class="toast-container"></div>
   </div>
   <script>
@@ -391,7 +405,8 @@
     };
 
     var render = () => {
-      if(isLoading) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.check(24)}</div><div class="empty-title">All caught up</div><div class="empty-desc">No decisions require your attention right now.</div></div>`); document.getElementById('summary').innerHTML=''; return; }
+      if(isLoading) return;
+      if(!data || !data.decisions || data.decisions.length === 0) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.check(24)}</div><div class="empty-title">All caught up</div><div class="empty-desc">No decisions require your attention right now.</div></div>`); document.getElementById('summary').innerHTML=''; return; }
 
       if(data.summary) {
         document.getElementById('summary').innerHTML = Object.entries(data.summary).filter(([k,v])=>v>0).map(([k,v]) => `<span class="ox-badge" style="--ox-color:var(--ox-${k==='critical'?'danger':k==='high'?'warning':k==='medium'?'lime':'text-muted'}); --ox-color-rgb:var(--ox-${k==='critical'?'danger':k==='high'?'warning':k==='medium'?'lime':'text-muted'}-rgb, 100,100,100);">${v} ${k}</span>`).join('');
