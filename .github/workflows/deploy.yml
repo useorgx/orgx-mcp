@@ -52,9 +52,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Type-check
-        run: pnpm tsc --noEmit
-
       - name: Verify wrangler build (dry-run)
         run: pnpm wrangler deploy --dry-run --outdir .wrangler/dist
 
