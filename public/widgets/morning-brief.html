@@ -1,308 +1,260 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Morning Brief - OrgX</title>
-    <style>
-      :root {
-        --app-color-bg: #ffffff;
-        --app-color-surface: #ffffff;
-        --app-color-surface-elevated: #f7f7f8;
-        --app-color-text: #0d0d0d;
-        --app-color-text-secondary: #6e6e80;
-        --app-color-border: #e5e5e5;
-        --app-color-primary: #10a37f;
-
-        --ox-lime: 191, 255, 0;
-        --ox-teal: 20, 184, 166;
-        --ox-iris: 99, 102, 241;
-        --ox-cyan: 10, 212, 196;
-        --ox-success: #25da8e;   --ox-success-bg: rgba(37,218,142,0.12);  --ox-success-border: rgba(37,218,142,0.3);
-        --ox-warning: #f9c770;   --ox-warning-bg: rgba(249,199,112,0.12); --ox-warning-border: rgba(249,199,112,0.3);
-        --ox-danger: #ff7688;    --ox-danger-bg: rgba(255,118,136,0.12);  --ox-danger-border: rgba(255,118,136,0.3);
-        --ox-info: #60bdff;      --ox-info-bg: rgba(96,189,255,0.12);     --ox-info-border: rgba(96,189,255,0.3);
-        --ox-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-        --ox-mono: ui-monospace, SFMono-Regular, 'SF Mono', monospace;
-        --ox-radius-sm: 6px;  --ox-radius-md: 10px;  --ox-radius-lg: 14px;
-        --ox-ease: cubic-bezier(0.22, 1, 0.36, 1);
-        --ox-duration: 220ms;
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Morning Brief - OrgX</title>
+  <style>
+      :root, :root[data-theme="light"] {
+        --ox-bg: #f8fafc;
+        --ox-panel: #ffffff;
+        --ox-border: rgba(0, 0, 0, 0.08);
+        --ox-border-strong: rgba(0, 0, 0, 0.15);
+        --ox-text: #0f172a;
+        --ox-text-muted: #64748b;
+        --ox-well-bg: #f1f5f9;
+        --ox-well-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
       }
+      
       @media (prefers-color-scheme: dark) {
-        :root {
-          --app-color-bg: #02040a;
-          --app-color-surface: rgba(255,255,255,0.02);
-          --app-color-surface-elevated: rgba(255,255,255,0.04);
-          --app-color-text: #f2f7ff;
-          --app-color-text-secondary: #b4bed2;
-          --app-color-border: rgba(255,255,255,0.06);
-          --app-color-primary: rgba(var(--ox-teal), 1);
+        :root:not([data-theme="light"]) {
+          --ox-bg: #02040a;
+          --ox-panel: rgba(10, 15, 22, 0.95);
+          --ox-border: rgba(255, 255, 255, 0.08);
+          --ox-border-strong: rgba(255, 255, 255, 0.15);
+          --ox-text: #f8fafc;
+          --ox-text-muted: rgba(255, 255, 255, 0.5);
+          --ox-well-bg: rgba(0,0,0,0.3);
+          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
         }
       }
-      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      
+      :root[data-theme="dark"] {
+          --ox-bg: #02040a;
+          --ox-panel: rgba(10, 15, 22, 0.95);
+          --ox-border: rgba(255, 255, 255, 0.08);
+          --ox-border-strong: rgba(255, 255, 255, 0.15);
+          --ox-text: #f8fafc;
+          --ox-text-muted: rgba(255, 255, 255, 0.5);
+          --ox-well-bg: rgba(0,0,0,0.3);
+          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
+      }
+      
+      :root {
+        --ox-lime: #a3e635; /* Will be overwritten by specific widgets */
+        --ox-teal: #0d9488;
+        --ox-danger: #e11d48;
+        --ox-warning: #d97706;
+        --ox-iris: #4f46e5;
+        --ox-grid: rgba(0, 0, 0, 0.03);
+        --ox-shadow: 0 12px 32px -12px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.04);
+        --ox-font: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
+        --ox-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+      }
+      
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --ox-lime: #D4ED31;
+          --ox-teal: #00C9A7;
+          --ox-danger: #F43F5E;
+          --ox-warning: #FBBF24;
+          --ox-iris: #6366f1;
+          --ox-grid: rgba(255, 255, 255, 0.02);
+          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+      }
+      
+      :root[data-theme="dark"] {
+          --ox-lime: #D4ED31;
+          --ox-teal: #00C9A7;
+          --ox-danger: #F43F5E;
+          --ox-warning: #FBBF24;
+          --ox-iris: #6366f1;
+          --ox-grid: rgba(255, 255, 255, 0.02);
+          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+      }
+
+      /* Smooth UX Transitions */
+      .skeleton-wrapper { transition: opacity 0.3s ease; }
+      @keyframes fadeSlideUp {
+        from { opacity: 0; transform: translateY(16px) scale(0.98); filter: blur(4px); }
+        to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+      }
+      .animate-in { opacity: 0; animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+      .delay-1 { animation-delay: 0.1s; }
+      .delay-2 { animation-delay: 0.2s; }
+      .delay-3 { animation-delay: 0.3s; }
+      
+      .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 24px; text-align: center; background: var(--ox-well-bg); border: 1px dashed var(--ox-border-strong); border-radius: 16px; margin: 16px 0; }
+      .empty-icon { width: 48px; height: 48px; border-radius: 50%; background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
+      .empty-icon svg { width: 24px; height: 24px; }
+      .empty-title { font-size: 1.1rem; font-weight: 600; color: var(--ox-text); margin-bottom: 8px; }
+      .empty-desc { font-size: 0.9rem; color: var(--ox-text-muted); line-height: 1.5; max-width: 280px; }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+
       body {
         font-family: var(--ox-font);
-        background: var(--app-color-bg);
-        color: var(--app-color-text);
-        line-height: 1.5;
+        background: var(--ox-bg);
+        color: var(--ox-text);
+        padding: 24px 16px;
         -webkit-font-smoothing: antialiased;
-        padding: 16px;
-      }
-      .brief-card {
-        background: var(--app-color-surface);
-        border: 1px solid var(--app-color-border);
-        border-radius: var(--ox-radius-lg);
-        padding: 20px;
-        animation: fadeIn var(--ox-duration) var(--ox-ease);
-      }
-      @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-
-      .brief-header {
-        display: flex; justify-content: space-between; align-items: center;
-        margin-bottom: 16px; padding-bottom: 12px;
-        border-bottom: 1px solid var(--app-color-border);
-      }
-      .brief-title { font-size: 16px; font-weight: 600; letter-spacing: -0.02em; }
-      .brief-time { font-size: 12px; color: var(--app-color-text-secondary); }
-
-      /* ROI Strip */
-      .roi-strip {
-        display: flex; gap: 12px; margin-bottom: 16px;
-        padding: 12px; border-radius: var(--ox-radius-md);
-        background: var(--app-color-surface-elevated);
-      }
-      .roi-metric {
-        flex: 1; text-align: center;
-        padding: 8px; border-radius: var(--ox-radius-sm);
-      }
-      .roi-metric-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--app-color-text-secondary); font-weight: 600; }
-      .roi-metric-value { font-size: 20px; font-weight: 700; font-family: var(--ox-mono); letter-spacing: -0.02em; margin-top: 2px; }
-      .roi-positive { color: var(--ox-success); }
-      .roi-negative { color: var(--ox-danger); }
-
-      /* Sections */
-      .section { margin-bottom: 14px; }
-      .section-title {
-        font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
-        color: var(--app-color-text-secondary); font-weight: 600; margin-bottom: 8px;
+        min-height: 100vh;
       }
 
-      /* Exception alert */
-      .exception-alert {
-        background: var(--ox-warning-bg); border: 1px solid var(--ox-warning-border);
-        border-radius: var(--ox-radius-md); padding: 10px 12px; margin-bottom: 8px;
-      }
-      .exception-alert-title { font-size: 13px; font-weight: 600; color: var(--ox-warning); }
-      .exception-alert-text { font-size: 12px; color: var(--app-color-text-secondary); margin-top: 2px; }
-
-      /* Trust event */
-      .trust-event {
-        display: flex; align-items: center; gap: 8px;
-        padding: 6px 0; font-size: 13px;
-        border-bottom: 1px solid var(--app-color-border);
-      }
-      .trust-event:last-child { border-bottom: none; }
-      .trust-badge {
-        font-size: 10px; font-weight: 700; padding: 2px 8px;
-        border-radius: var(--ox-radius-sm); text-transform: uppercase; letter-spacing: 0.04em;
-      }
-      .trust-promoted { background: var(--ox-success-bg); color: var(--ox-success); border: 1px solid var(--ox-success-border); }
-      .trust-demoted { background: var(--ox-danger-bg); color: var(--ox-danger); border: 1px solid var(--ox-danger-border); }
-
-      /* Receipt list */
-      .receipt-row {
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 6px 0; font-size: 13px;
-        border-bottom: 1px solid var(--app-color-border);
-      }
-      .receipt-row:last-child { border-bottom: none; }
-      .receipt-intent { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .receipt-value { font-family: var(--ox-mono); font-weight: 600; margin-left: 8px; }
-
-      .empty-message {
-        text-align: center; padding: 32px 16px;
-        color: var(--app-color-text-secondary);
-      }
-      .empty-message-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--app-color-text); }
-      .empty-message-description { font-size: 13px; }
-
-      .skeleton-card { padding: 20px; }
-      .skeleton-line { background: var(--app-color-surface-elevated); border-radius: 4px; height: 12px; animation: pulse 1.5s ease infinite; }
-      .skeleton-title { width: 50%; height: 16px; margin-bottom: 16px; }
-      .skeleton-strip { width: 100%; height: 60px; margin-bottom: 16px; border-radius: var(--ox-radius-md); }
-      .skeleton-text { width: 80%; height: 12px; margin-bottom: 8px; }
-      @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-    </style>
-  </head>
-  <body>
-    <!--
-      Morning Brief Widget — Intelligence Flywheel, Initiative 3
-      The ONE new widget surface: curated receipts, exceptions, ROI delta.
-      @see Intelligence Flywheel Architecture — "Initiative 3: morning-brief.html"
-    -->
-    <div id="content" role="main"></div>
-
-    <!-- Shared widget bootstrap (handles all host protocols) -->
-    <script src="shared/widget-bootstrap.js"></script>
-    <script>
-      /* global initWidget */
-      var contentEl = document.getElementById('content');
-      var isLoading = true;
-      var brief = null;
-
-      // Demo data for ?demo=true
-      var isDemo = window.location.search.indexOf('demo=true') !== -1;
-      if (isDemo) {
-        brief = {
-          session_summary: {
-            receipts_produced: 14,
-            completed: 12,
-            failed: 2,
-            total_cost: 1.42,
-            total_value: 23.80,
-            roi: 15.77,
-            session_type: 'overnight',
-            started_at: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
-            ended_at: new Date().toISOString()
-          },
-          exceptions: [
-            { exception_type: 'novel_situation', context: 'Encountered a policy conflict when processing budget approval for Q2 marketing spend.' },
-            { exception_type: 'trust_insufficient', context: 'Code review for security-critical PR requires autonomous trust level.' }
-          ],
-          trust_events: [
-            { event_type: 'promoted', agent_type: 'marketing', old_level: 'draft', new_level: 'act_with_approval', reason: 'Last 7 receipts: 0 revisions, +$12.4K value, 92% quality' },
-            { event_type: 'demoted', agent_type: 'sales', old_level: 'act_with_approval', new_level: 'draft', reason: '2 consecutive failures in outreach_draft' }
-          ],
-          top_receipts: [
-            { intent: 'Draft Q2 content calendar for LinkedIn', attributed_value_usd: 8.50, agent_type: 'marketing', cost_usd: 0.12 },
-            { intent: 'Review PR #347 — auth middleware refactor', attributed_value_usd: 6.20, agent_type: 'code', cost_usd: 0.08 },
-            { intent: 'Outreach to 5 new enterprise leads', attributed_value_usd: 5.10, agent_type: 'sales', cost_usd: 0.18 },
-            { intent: 'Competitive analysis: Acme pricing update', attributed_value_usd: 2.80, agent_type: 'research', cost_usd: 0.06 },
-            { intent: 'Design system token audit', attributed_value_usd: 1.20, agent_type: 'design', cost_usd: 0.04 }
-          ]
-        };
+      body::before {
+        content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: radial-gradient(circle at 50% 0%, rgba(var(--ox-primary-rgb), 0.08), transparent 60%),
+                    linear-gradient(var(--ox-grid) 1px, transparent 1px),
+                    linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px);
+        background-size: 100% 100%, 20px 20px, 20px 20px;
+        z-index: -1; pointer-events: none;
       }
 
-      var _extractData = function(raw) {
-        if (!raw) return null;
-        if (raw.structuredContent) return raw.structuredContent;
-        if (raw.session_summary || raw.top_receipts) return raw;
-        if (raw.data) return raw.data;
-        return raw;
-      };
+      .container { max-width: 540px; margin: 0 auto; position: relative; }
 
-      var escapeHtml = function(str) {
-        if (str === null || str === undefined) return '';
-        var div = document.createElement('div');
-        div.textContent = String(str);
-        return div.innerHTML;
-      };
+      .ox-card {
+        background: var(--ox-panel); border: 1px solid var(--ox-border); border-radius: 16px; box-shadow: var(--ox-shadow); position: relative; overflow: hidden; margin-bottom: 16px;
+      }
+      .ox-card-inner { padding: 24px; }
+      .ox-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(var(--ox-primary-rgb), 0.5), transparent); opacity: 0.8; }
+      .ox-well { background: var(--ox-well-bg); border: 1px solid var(--ox-border); border-radius: 10px; padding: 16px; box-shadow: var(--ox-well-shadow); }
+      .ox-eyebrow { font-family: var(--ox-mono); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ox-text-muted); font-weight: 600; }
+      .ox-title { font-size: 1.15rem; font-weight: 600; letter-spacing: -0.02em; color: var(--ox-text); line-height: 1.3; }
+      .ox-text { font-size: 0.9rem; line-height: 1.5; color: var(--ox-text); }
+      
 
-      var formatUsd = function(amount) {
-        var n = Number(amount) || 0;
-        return '$' + n.toFixed(2);
-      };
+    :root { --ox-primary-rgb: 0, 201, 167; }
+    
+    .brief-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    
+    .icon-box { width: 48px; height: 48px; border-radius: 12px; background: rgba(var(--ox-primary-rgb), 0.1); border: 1px solid rgba(var(--ox-primary-rgb), 0.2); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
+    
+    .priority-list { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
+    
+    .priority-item { position: relative; padding: 16px; padding-left: 20px; background: var(--ox-well-bg); border: 1px solid var(--ox-border); border-radius: 8px; }
+    .priority-item::before { content: ''; position: absolute; left: -1px; top: -1px; bottom: -1px; width: 4px; border-radius: 4px 0 0 4px; }
+    
+    .priority-item[data-domain="product"]::before { background: var(--ox-lime); box-shadow: 0 0 10px var(--ox-lime); }
+    .priority-item[data-domain="engineering"]::before { background: var(--ox-teal); box-shadow: 0 0 10px var(--ox-teal); }
+    .priority-item[data-domain="marketing"]::before { background: var(--ox-warning); box-shadow: 0 0 10px var(--ox-warning); }
+    .priority-item[data-domain="design"]::before { background: var(--ox-iris); box-shadow: 0 0 10px var(--ox-iris); }
+    .priority-item[data-domain="sales"]::before { background: var(--ox-danger); box-shadow: 0 0 10px var(--ox-danger); }
+    
+    .p-domain { font-family: var(--ox-mono); font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ox-text-muted); margin-bottom: 4px; font-weight: 600; }
+    .p-title { font-weight: 600; font-size: 0.95rem; color: var(--ox-text); margin-bottom: 4px; }
+    .p-reason { font-size: 0.85rem; color: var(--ox-text-muted); line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <div class="container" id="content"></div>
+  <script>
 
-      var formatRoi = function(roi) {
-        if (roi === null || roi === undefined) return 'N/A';
-        var n = Number(roi) || 0;
-        return (n >= 0 ? '+' : '') + n.toFixed(0) + '%';
-      };
+    // Sync theme from URL to override prefers-color-scheme
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const theme = params.get('theme');
+      if (theme) document.documentElement.setAttribute('data-theme', theme);
+    })();
 
-      var renderSkeleton = function() {
-        return '<div class="skeleton-card"><div class="skeleton-line skeleton-title"></div><div class="skeleton-line skeleton-strip"></div><div class="skeleton-line skeleton-text"></div><div class="skeleton-line skeleton-text" style="width:60%"></div></div>';
-      };
 
-      var render = function() {
-        if (isLoading) {
-          contentEl.innerHTML = renderSkeleton();
-          return;
-        }
-
-        if (!brief || !brief.session_summary) {
-          contentEl.innerHTML = '<div class="empty-message"><div class="empty-message-title">No morning brief</div><div class="empty-message-description">No autonomous session has completed yet. Start one to see your first brief.</div></div>';
-          return;
-        }
-
-        var s = brief.session_summary;
-        var roi = s.roi;
-        var roiClass = (roi !== null && roi >= 0) ? 'roi-positive' : 'roi-negative';
-        var exceptions = brief.exceptions || [];
-        var trustEvents = brief.trust_events || [];
-        var topReceipts = brief.top_receipts || [];
-
-        var html = '<div class="brief-card">';
-        html += '<div class="brief-header">';
-        html += '<span class="brief-title">Morning Brief</span>';
-        html += '<span class="brief-time">' + escapeHtml(s.session_type || 'session') + ' &middot; ' + (s.receipts_produced || 0) + ' receipts</span>';
-        html += '</div>';
-
-        // ROI Strip
-        html += '<div class="roi-strip">';
-        html += '<div class="roi-metric"><div class="roi-metric-label">Cost</div><div class="roi-metric-value">' + formatUsd(s.total_cost) + '</div></div>';
-        html += '<div class="roi-metric"><div class="roi-metric-label">Value</div><div class="roi-metric-value roi-positive">' + formatUsd(s.total_value) + '</div></div>';
-        html += '<div class="roi-metric"><div class="roi-metric-label">ROI</div><div class="roi-metric-value ' + roiClass + '">' + formatRoi(roi) + '</div></div>';
-        html += '</div>';
-
-        // Exceptions
-        if (exceptions.length > 0) {
-          html += '<div class="section">';
-          html += '<div class="section-title">Exceptions Needing Attention (' + exceptions.length + ')</div>';
-          for (var i = 0; i < Math.min(exceptions.length, 5); i++) {
-            var exc = exceptions[i];
-            html += '<div class="exception-alert">';
-            html += '<div class="exception-alert-title">' + escapeHtml(exc.exception_type) + '</div>';
-            html += '<div class="exception-alert-text">' + escapeHtml(String(exc.context || '').slice(0, 150)) + '</div>';
-            html += '</div>';
-          }
-          html += '</div>';
-        }
-
-        // Trust Changes
-        if (trustEvents.length > 0) {
-          html += '<div class="section">';
-          html += '<div class="section-title">Trust Changes</div>';
-          for (var j = 0; j < trustEvents.length; j++) {
-            var te = trustEvents[j];
-            var isPromo = te.event_type === 'promoted';
-            html += '<div class="trust-event">';
-            html += '<span class="trust-badge ' + (isPromo ? 'trust-promoted' : 'trust-demoted') + '">' + escapeHtml(te.event_type) + '</span>';
-            html += '<span>' + escapeHtml(te.agent_type) + ': ' + escapeHtml(te.old_level) + ' &rarr; ' + escapeHtml(te.new_level) + '</span>';
-            html += '</div>';
-          }
-          html += '</div>';
-        }
-
-        // Top Receipts
-        if (topReceipts.length > 0) {
-          html += '<div class="section">';
-          html += '<div class="section-title">Top Receipts by Value</div>';
-          for (var k = 0; k < topReceipts.length; k++) {
-            var r = topReceipts[k];
-            html += '<div class="receipt-row">';
-            html += '<span class="receipt-intent">' + escapeHtml(r.intent) + '</span>';
-            html += '<span class="receipt-value roi-positive">' + formatUsd(r.attributed_value_usd) + '</span>';
-            html += '</div>';
-          }
-          html += '</div>';
-        }
-
-        html += '</div>';
-        contentEl.innerHTML = html;
-      };
-
-      if (isDemo) {
-        isLoading = false;
-        render();
+    var injectHtml = (html) => {
+      const content = document.getElementById('content');
+      const skeleton = content.querySelector('.skeleton-wrapper');
+      if (skeleton) {
+        skeleton.style.opacity = '0';
+        setTimeout(() => {
+          content.innerHTML = html;
+        }, 300);
       } else {
-        initWidget({
-          render: function(d) {
-            if (d) { isLoading = false; brief = d; }
-            render();
-          },
-          getData: _extractData,
-        });
+        content.innerHTML = html;
       }
-    </script>
-  </body>
+    };
+
+    
+      function _detectProtocol(){if(typeof window.openai!=='undefined')return'chatgpt';if(window.parent&&window.parent!==window)return'mcp-apps';return'standalone';}
+      function _extractData(out){if(out==null)return null;if(typeof out==='object'&&out.structuredContent)return out.structuredContent;if(typeof out==='object'&&Array.isArray(out.content)){for(var i=0;i<out.content.length;i++){var item=out.content[i];if(item&&item.type==='text'&&item.text){try{return JSON.parse(item.text);}catch(e){continue;}}}}if(typeof out==='string'){try{return JSON.parse(out);}catch(e){return{text:out};}}return out;}
+      var _lastW=0,_lastH=0;
+      function _sendSize(){var w=Math.ceil(document.documentElement.getBoundingClientRect().width+(window.innerWidth-document.documentElement.clientWidth));var h=Math.ceil(document.documentElement.getBoundingClientRect().height);if(w===_lastW&&h===_lastH)return;_lastW=w;_lastH=h;try{window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/size-changed',params:{width:w,height:h}},'*');}catch(e){}}
+      function _observeSize(){_sendSize();if(typeof ResizeObserver!=='undefined'){var _raf=0;var ro=new ResizeObserver(function(){if(_raf)cancelAnimationFrame(_raf);_raf=requestAnimationFrame(_sendSize);});ro.observe(document.documentElement);ro.observe(document.body);}}
+      var _mcpPending = {};
+      var _mcpNextId = 100;
+      function initWidget(opts){var render=opts.render,getData=opts.getData||_extractData;var protocol=_detectProtocol();if(protocol==='chatgpt'){var d=getData(window.openai&&window.openai.toolOutput);render(d);window.addEventListener('openai:set_globals',function(e){var g=e.detail&&e.detail.globals;if(g&&g.toolOutput){render(getData(g.toolOutput));}},{passive:true});}else if(protocol==='mcp-apps'){render(null);var initId=1;window.parent.postMessage({jsonrpc:'2.0',id:initId,method:'ui/initialize',params:{appInfo:{name:'Widget',version:'1.0'},appCapabilities:{tools:{listChanged:false}},protocolVersion:'2026-01-26'}},'*');window.parent.postMessage({jsonrpc:'2.0',method:'notifications/initialized'},'*');window.addEventListener('message',function(event){var msg=event.data;if(!msg||typeof msg!=='object')return;if(msg.id===initId&&msg.result){window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized'},'*');_observeSize();return;}if(msg.id!=null&&_mcpPending[msg.id]){var p=_mcpPending[msg.id];delete _mcpPending[msg.id];if(msg.error)p.reject(new Error(msg.error.message||'Tool call failed'));else p.resolve(msg.result);return;}if((msg.method==='ui/notifications/tool-result'||msg.method==='notifications/message')&&msg.params){var data=getData(msg.params);if(data)render(data);}});}else{render(null);}}
+      function callTool(name, args){var protocol=_detectProtocol();if(protocol==='chatgpt')return window.openai&&window.openai.callTool?window.openai.callTool(name,args):Promise.resolve(null);if(protocol==='mcp-apps'){return new Promise(function(resolve,reject){var id=_mcpNextId++;_mcpPending[id]={resolve:resolve,reject:reject};window.parent.postMessage({jsonrpc:'2.0',id:id,method:'tools/call',params:{name:name,arguments:args}},'*');setTimeout(function(){if(_mcpPending[id]){delete _mcpPending[id];reject(new Error('Tool call '+name+' timed out'));}},30000);});}return Promise.resolve(null);}
+      var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true">'+c+'</svg>';};
+      var icons = {
+        agent: function(s){return _svg('<rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><line x1="8" y1="16" x2="8" y2="16"></line><line x1="16" y1="16" x2="16" y2="16"></line>',s);},
+        search: function(s){return _svg('<circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>',s);},
+        file: function(s){return _svg('<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline>',s);},
+        external: function(s){return _svg('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>',s);},
+        sun: function(s){return _svg('<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>',s);}
+      };
+      var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
+
+    var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
+    var brief = isDemo ? {
+      date: new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }),
+      summary: 'You have 2 pending approvals blocking the Q4 Launch. Engineering is on track, but Marketing needs your sign-off on the email sequence.',
+      top_priorities: [
+        { domain: 'Engineering', title: 'Review Database Strategy', reason: 'Blocks sprint 3 deliverables.' },
+        { domain: 'Marketing', title: 'Approve Email Sequence', reason: 'Launch is in 4 days. Needs scheduling today.' },
+        { domain: 'Product', title: 'Scope V2 Features', reason: 'Draft PRD generated overnight by Pace.' }
+      ]
+    } : null;
+    var isLoading = !isDemo;
+
+    var isLoadingOverride = new URLSearchParams(window.location.search).get('loading') === 'true';
+    if (isLoadingOverride) {
+      isLoading = true;
+      isDemo = false;
+      // Overwrite initWidget to do nothing so it hangs on loading
+      initWidget = () => { render(); };
+    }
+
+
+    var render = () => {
+      if(isLoading) return;
+      if(!brief) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.sun(24)}</div><div class="empty-title">No brief available</div><div class="empty-desc">Your morning briefing hasn't been generated yet.</div></div>`); return; }
+
+      const prioritiesHtml = (brief.top_priorities || []).map((p, i) => `
+        <div class="priority-item animate-in" style="animation-delay: ${0.1 * i}s" data-domain="${escapeHtml(p.domain.toLowerCase())}">
+          <div class="p-domain" style="color: var(--ox-${p.domain.toLowerCase()==='product'?'lime':p.domain.toLowerCase()==='engineering'?'teal':p.domain.toLowerCase()==='marketing'?'warning':p.domain.toLowerCase()==='design'?'iris':'danger'})">${escapeHtml(p.domain)}</div>
+          <div class="p-title">${escapeHtml(p.title)}</div>
+          <div class="p-reason">${escapeHtml(p.reason)}</div>
+        </div>
+      `).join('');
+
+      injectHtml(`
+        <div class="ox-card animate-in">
+          <div class="ox-card-inner">
+            <div class="brief-header">
+              <div>
+                <h1 class="ox-title" style="font-size:1.5rem; margin-bottom:4px;">Morning Brief</h1>
+                <div class="ox-eyebrow">${escapeHtml(brief.date)}</div>
+              </div>
+              <div class="icon-box">${icons.sun(24)}</div>
+            </div>
+            
+            <div class="ox-well" style="margin-bottom: 32px;">
+              <div class="ox-eyebrow" style="margin-bottom:8px; color:var(--ox-primary);">TL;DR</div>
+              <div class="ox-text">${escapeHtml(brief.summary)}</div>
+            </div>
+            
+            <div>
+              <div class="ox-eyebrow" style="display:flex; align-items:center; gap:12px;">
+                Top Priorities <div style="flex:1; height:1px; background:var(--ox-border);"></div>
+              </div>
+              <div class="priority-list">
+                ${prioritiesHtml}
+              </div>
+            </div>
+          </div>
+        </div>
+      `);
+    };
+
+    if(isDemo) render();
+    else initWidget({ render: d => { if(d) brief = d; isLoading = false; render(); } });
+  </script>
+</body>
 </html>

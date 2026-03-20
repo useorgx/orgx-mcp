@@ -57,7 +57,8 @@ import {
   entityTypeEnum,
   LIFECYCLE_ENTITY_TYPES,
   lifecycleEntityTypeEnum,
-  resolveLifecycleActionAlias,
+  LAUNCH_ACTION_MAP,
+  PAUSE_ACTION_MAP,
   summarizeChatGPTToolResult,
   summarizePlanSessionResult,
   summarizeStreamToolResult,
@@ -2529,11 +2530,15 @@ export class OrgXMcp extends McpAgent<
           });
           if (authResponse) return authResponse;
 
-          // Resolve action aliases: launch/pause → type-specific action
-          const resolvedAction = resolveLifecycleActionAlias(
-            args.type,
-            args.action
-          );
+          // Resolve action aliases: launch, pause, complete → type-specific action
+          let resolvedAction = args.action;
+          if (resolvedAction === 'launch') {
+            resolvedAction = LAUNCH_ACTION_MAP[args.type] || 'launch';
+          } else if (resolvedAction === 'pause') {
+            resolvedAction = PAUSE_ACTION_MAP[args.type] || 'pause';
+          } else if (resolvedAction === 'complete') {
+            resolvedAction = 'complete';
+          }
 
           if (!resolvedAction) {
             // List available actions
@@ -2595,8 +2600,7 @@ export class OrgXMcp extends McpAgent<
             {
               method: 'POST',
               body: JSON.stringify(body),
-            },
-            { userId: resolvedUserId ?? null }
+            }
           );
           const result = (await response.json()) as {
             success?: boolean;
@@ -2655,7 +2659,7 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Verify entity completion readiness',
         description:
-          'Run pre-completion verification to confirm all child work is done. For tasks, this also checks proof-chain hard blocks that would stop entity_action action=complete. USE WHEN: before completing an entity with entity_action action=complete. NEXT: If verified, proceed with entity_action action=complete. If not, show blockers to user. Read-only.',
+          'Run pre-completion verification to confirm all child work is done. USE WHEN: before completing an entity with entity_action action=complete. NEXT: If verified, proceed with entity_action action=complete. If not, show blockers to user. Read-only.',
         inputSchema: {
           type: z
             .enum(VERIFIABLE_COMPLETION_ENTITY_TYPES)
@@ -4701,19 +4705,15 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Batch entity actions',
         description:
-          "Execute actions on multiple entities in one call (pause, launch, complete, resume, etc.). USE WHEN: bulk state changes like pausing multiple initiatives or completing multiple tasks. ACCEPTS: short ID prefixes (8+ chars) — no need to look up full UUIDs. Supports the same launch/pause aliases as entity_action. NEXT: Verify all actions succeeded. DO NOT USE: for deletes — use batch_delete_entities instead.",
+          "Execute actions on multiple entities in one call (pause, launch, complete, resume, etc.). USE WHEN: bulk state changes like pausing multiple initiatives or completing multiple tasks. ACCEPTS: short ID prefixes (8+ chars) — no need to look up full UUIDs. NEXT: Verify all actions succeeded. DO NOT USE: for deletes — use batch_delete_entities instead.",
         inputSchema: {
           actions: z
             .array(
               z.object({
                 type: lifecycleEntityTypeEnum.describe('Entity type'),
                 id: z.string().min(1).describe('Entity ID (full UUID or short prefix 8+ hex chars)'),
-                action: z.string().min(1).describe('Action to execute (pause, launch, complete, resume, etc.). launch and pause are resolved per entity type.'),
+                action: z.string().min(1).describe('Action to execute (pause, launch, complete, resume, etc.)'),
                 note: z.string().optional().describe('Optional note/reason for this action'),
-                force: z
-                  .boolean()
-                  .optional()
-                  .describe('Force action when server supports override semantics'),
               })
             )
             .min(1)
@@ -4750,7 +4750,6 @@ export class OrgXMcp extends McpAgent<
             id: string;
             action: string;
             note?: string;
-            force?: boolean;
           }>;
 
           const results: Array<Record<string, unknown>> = new Array(
@@ -4767,19 +4766,14 @@ export class OrgXMcp extends McpAgent<
 
               const target = actions[index];
               try {
-                const resolvedAction = resolveLifecycleActionAlias(
-                  target.type,
-                  target.action
-                );
                 const response = await callOrgxApiJson(
                   this.env,
-                  `/api/entities/${target.type}/${target.id}/${resolvedAction}`,
+                  `/api/entities/${target.type}/${target.id}/${target.action}`,
                   {
                     method: 'POST',
                     body: JSON.stringify({
                       note: target.note,
                       reason: target.note,
-                      force: target.force,
                     }),
                   },
                   { userId: resolvedUserId ?? null }
@@ -4794,8 +4788,7 @@ export class OrgXMcp extends McpAgent<
                   success,
                   type: target.type,
                   id: target.id,
-                  action: resolvedAction,
-                  requested_action: target.action,
+                  action: target.action,
                   message: payload.message ?? payload.error ?? undefined,
                   transition: payload.transition ?? undefined,
                 };
@@ -4806,11 +4799,7 @@ export class OrgXMcp extends McpAgent<
                   success: false,
                   type: target.type,
                   id: target.id,
-                  action: resolveLifecycleActionAlias(
-                    target.type,
-                    target.action
-                  ),
-                  requested_action: target.action,
+                  action: target.action,
                   error: error instanceof Error ? error.message : String(error),
                 };
                 shouldStop = true;

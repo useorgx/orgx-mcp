@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Initiative Scaffolded - OrgX</title>
+  <style>
+      :root, :root[data-theme="light"] {
+        --ox-bg: #f8fafc;
+        --ox-panel: #ffffff;
+        --ox-border: rgba(0, 0, 0, 0.08);
+        --ox-border-strong: rgba(0, 0, 0, 0.15);
+        --ox-text: #0f172a;
+        --ox-text-muted: #64748b;
+        --ox-well-bg: #f1f5f9;
+        --ox-well-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+      }
+      
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --ox-bg: #02040a;
+          --ox-panel: rgba(10, 15, 22, 0.95);
+          --ox-border: rgba(255, 255, 255, 0.08);
+          --ox-border-strong: rgba(255, 255, 255, 0.15);
+          --ox-text: #f8fafc;
+          --ox-text-muted: rgba(255, 255, 255, 0.5);
+          --ox-well-bg: rgba(0,0,0,0.3);
+          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
+        }
+      }
+      
+      :root[data-theme="dark"] {
+          --ox-bg: #02040a;
+          --ox-panel: rgba(10, 15, 22, 0.95);
+          --ox-border: rgba(255, 255, 255, 0.08);
+          --ox-border-strong: rgba(255, 255, 255, 0.15);
+          --ox-text: #f8fafc;
+          --ox-text-muted: rgba(255, 255, 255, 0.5);
+          --ox-well-bg: rgba(0,0,0,0.3);
+          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
+      }
+      
+      :root {
+        --ox-lime: #a3e635; /* Will be overwritten by specific widgets */
+        --ox-teal: #0d9488;
+        --ox-danger: #e11d48;
+        --ox-warning: #d97706;
+        --ox-iris: #4f46e5;
+        --ox-grid: rgba(0, 0, 0, 0.03);
+        --ox-shadow: 0 12px 32px -12px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.04);
+        --ox-font: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
+        --ox-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+      }
+      
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --ox-lime: #D4ED31;
+          --ox-teal: #00C9A7;
+          --ox-danger: #F43F5E;
+          --ox-warning: #FBBF24;
+          --ox-iris: #6366f1;
+          --ox-grid: rgba(255, 255, 255, 0.02);
+          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+      }
+      
+      :root[data-theme="dark"] {
+          --ox-lime: #D4ED31;
+          --ox-teal: #00C9A7;
+          --ox-danger: #F43F5E;
+          --ox-warning: #FBBF24;
+          --ox-iris: #6366f1;
+          --ox-grid: rgba(255, 255, 255, 0.02);
+          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+      }
+
+      /* Smooth UX Transitions */
+      .skeleton-wrapper { transition: opacity 0.3s ease; }
+      @keyframes fadeSlideUp {
+        from { opacity: 0; transform: translateY(16px) scale(0.98); filter: blur(4px); }
+        to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+      }
+      .animate-in { opacity: 0; animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+      .delay-1 { animation-delay: 0.1s; }
+      .delay-2 { animation-delay: 0.2s; }
+      .delay-3 { animation-delay: 0.3s; }
+      
+      .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 24px; text-align: center; background: var(--ox-well-bg); border: 1px dashed var(--ox-border-strong); border-radius: 16px; margin: 16px 0; }
+      .empty-icon { width: 48px; height: 48px; border-radius: 50%; background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
+      .empty-icon svg { width: 24px; height: 24px; }
+      .empty-title { font-size: 1.1rem; font-weight: 600; color: var(--ox-text); margin-bottom: 8px; }
+      .empty-desc { font-size: 0.9rem; color: var(--ox-text-muted); line-height: 1.5; max-width: 280px; }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--ox-font); background: var(--ox-bg); color: var(--ox-text); padding: 24px 16px; -webkit-font-smoothing: antialiased; min-height: 100vh; }
+    body::before { content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at 50% 0%, rgba(var(--ox-primary-rgb), 0.08), transparent 60%), linear-gradient(var(--ox-grid) 1px, transparent 1px), linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px); background-size: 100% 100%, 20px 20px, 20px 20px; z-index: -1; pointer-events: none; }
+    .container { max-width: 540px; margin: 0 auto; position: relative; }
+    
+    .ox-card { background: var(--ox-panel); border: 1px solid var(--ox-border); border-radius: 16px; box-shadow: var(--ox-shadow); position: relative; overflow: hidden; margin-bottom: 16px; }
+    .ox-card-inner { padding: 24px; }
+    .ox-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(var(--ox-primary-rgb), 0.5), transparent); opacity: 0.8; }
+    .ox-eyebrow { font-family: var(--ox-mono); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ox-text-muted); font-weight: 600; }
+    .ox-title { font-size: 1.15rem; font-weight: 600; letter-spacing: -0.02em; color: var(--ox-text); line-height: 1.3; }
+    
+
+    /* Hierarchy Specifics */
+    .h-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--ox-border); }
+    .h-icon { width: 48px; height: 48px; border-radius: 12px; background: rgba(var(--ox-primary-rgb), 0.1); border: 1px solid rgba(var(--ox-primary-rgb), 0.2); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
+    
+    .node-list { display: flex; flex-direction: column; gap: 4px; }
+    .node-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; font-size: 0.9rem; position: relative; }
+    
+    
+    .node-item.ws { background: rgba(255,255,255,0.02); font-weight: 600; color: var(--ox-text); margin-top: 12px; }
+    .node-item.ws .node-icon { color: var(--ox-teal); }
+    @media (prefers-color-scheme: light) { .node-item.ws { background: rgba(0,0,0,0.03); } }
+    
+    .node-item.ms { padding-left: 24px; color: var(--ox-text); font-weight: 500; }
+    .node-item.ms .node-icon { color: var(--ox-warning); }
+    .node-item.ms::before { content: ''; position: absolute; left: 12px; top: 0; bottom: 0; width: 1px; background: var(--ox-border); }
+    .node-item.ms::after { content: ''; position: absolute; left: 12px; top: 20px; width: 8px; height: 1px; background: var(--ox-border); }
+    
+    .node-item.tk { padding-left: 48px; color: var(--ox-text-muted); font-size: 0.85rem; }
+    .node-item.tk .node-icon { color: var(--ox-lime); }
+    .node-item.tk::before { content: ''; position: absolute; left: 12px; top: 0; bottom: 0; width: 1px; background: var(--ox-border); }
+    .node-item.tk::after { content: ''; position: absolute; left: 36px; top: 20px; width: 8px; height: 1px; background: var(--ox-border); }
+
+    
+    .badge-id { font-family: var(--ox-mono); font-size: 0.55rem; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--ox-border); color: var(--ox-text-muted); margin-left: auto; letter-spacing: 0.05em; }
+    .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary); font-family: var(--ox-mono); font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; border: 1px solid rgba(var(--ox-primary-rgb), 0.2); }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  
+    .widget-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--ox-border); }
+    .deep-link { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; color: var(--ox-primary); text-decoration: none; transition: opacity 0.2s; }
+    .deep-link:hover { opacity: 0.8; }
+    .deep-link svg { width: 14px; height: 14px; }
+  </style>
+</head>
+<body>
+  <div class="container" id="content"></div>
+  <script>
+
+    // Sync theme from URL to override prefers-color-scheme
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const theme = params.get('theme');
+      if (theme) document.documentElement.setAttribute('data-theme', theme);
+    })();
+
+
+    var injectHtml = (html) => {
+      const content = document.getElementById('content');
+      const skeleton = content.querySelector('.skeleton-wrapper');
+      if (skeleton) {
+        skeleton.style.opacity = '0';
+        setTimeout(() => {
+          content.innerHTML = html;
+        }, 300);
+      } else {
+        content.innerHTML = html;
+      }
+    };
+
+    function _detectProtocol(){if(typeof window.openai!=='undefined')return'chatgpt';if(window.parent&&window.parent!==window)return'mcp-apps';return'standalone';}
+    function _extractData(out){if(out==null)return null;if(typeof out==='object'&&out.structuredContent)return out.structuredContent;if(typeof out==='object'&&Array.isArray(out.content)){for(var i=0;i<out.content.length;i++){var item=out.content[i];if(item&&item.type==='text'&&item.text){try{return JSON.parse(item.text);}catch(e){continue;}}}}if(typeof out==='string'){try{return JSON.parse(out);}catch(e){return{text:out};}}return out;}
+    function _sendSize(){var w=Math.ceil(document.documentElement.getBoundingClientRect().width+(window.innerWidth-document.documentElement.clientWidth));var h=Math.ceil(document.documentElement.getBoundingClientRect().height);try{window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/size-changed',params:{width:w,height:h}},'*');}catch(e){}}
+    function _observeSize(){_sendSize();if(typeof ResizeObserver!=='undefined'){var ro=new ResizeObserver(() => requestAnimationFrame(_sendSize));ro.observe(document.documentElement);ro.observe(document.body);}}
+    function initWidget(opts){var render=opts.render,getData=opts.getData||_extractData;var protocol=_detectProtocol();if(protocol==='chatgpt'){var d=getData(window.openai&&window.openai.toolOutput);render(d);window.addEventListener('openai:set_globals',function(e){var g=e.detail&&e.detail.globals;if(g&&g.toolOutput){render(getData(g.toolOutput));}},{passive:true});}else if(protocol==='mcp-apps'){render(null);var initId=1;window.parent.postMessage({jsonrpc:'2.0',id:initId,method:'ui/initialize',params:{appInfo:{name:'Widget',version:'1.0'},appCapabilities:{tools:{listChanged:false}},protocolVersion:'2026-01-26'}},'*');window.addEventListener('message',function(event){var msg=event.data;if(!msg||typeof msg!=='object')return;if(msg.id===initId){_observeSize();return;}if((msg.method==='ui/notifications/tool-result'||msg.method==='notifications/message')&&msg.params){var data=getData(msg.params);if(data)render(data);}});}else{render(null);}}
+    var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+c+'</svg>';};
+    var icons = {
+
+      chevronDown: function(s){return _svg('<polyline points="6 9 12 15 18 9"></polyline>',s);},
+      chevronRight: function(s){return _svg('<polyline points="9 18 15 12 9 6"></polyline>',s);},
+
+      folder: function(s){return _svg('<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>',s);},
+      flag: function(s){return _svg('<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line>',s);},
+      check: function(s){return _svg('<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>',s);},
+      layout: function(s){return _svg('<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line>',s);},
+      initiative: function(s){return _svg('<circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle>',s);},
+      workstream: function(s){return _svg('<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>',s);},
+      milestone: function(s){return _svg('<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>',s);},
+      task: function(s){return _svg('<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line>',s);}
+    };
+    var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
+
+    var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
+    var data = isDemo ? {
+      initiative: { id: "INI-402", title: "AI Query Discovery Engine", status: "Active" },
+      hierarchy: [
+        { type: "workstream", title: "Infrastructure Scaffolding", id: "WS-1" },
+        { type: "milestone", title: "Data Pipeline Validated", id: "MS-1" },
+        { type: "task", title: "Configure ingest scripts", id: "TSK-1" },
+        { type: "task", title: "Run dry-run tests", id: "TSK-2" },
+        { type: "workstream", title: "Search UX Implementation", id: "WS-2" },
+        { type: "milestone", title: "Search Input Animated", id: "MS-2" },
+        { type: "task", title: "Implement Lenis scrolling", id: "TSK-3" }
+      ]
+    } : null;
+    var isLoading = !isDemo;
+
+    var isLoadingOverride = new URLSearchParams(window.location.search).get('loading') === 'true';
+    if (isLoadingOverride) {
+      isLoading = true;
+      isDemo = false;
+      // Overwrite initWidget to do nothing so it hangs on loading
+      initWidget = () => { render(); };
+    }
+
+
+    
+    window.toggleNode = (btn) => {
+       const parent = btn.closest('.node-item');
+       const isExpanded = btn.getAttribute('data-expanded') === 'true';
+       btn.setAttribute('data-expanded', !isExpanded);
+       btn.innerHTML = !isExpanded ? icons.chevronDown(12) : icons.chevronRight(12);
+       
+       let next = parent.nextElementSibling;
+       while (next && !next.classList.contains('ws')) {
+           if (isExpanded) {
+               next.classList.add('collapsed');
+           } else {
+               next.classList.remove('collapsed');
+           }
+           next = next.nextElementSibling;
+       }
+    };
+
+    var render = () => {
+      if(isLoading) return;
+      if(!data || !data.initiative) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.layout(24)}</div><div class="empty-title">Awaiting scaffold</div><div class="empty-desc">The structural hierarchy has not been generated yet.</div></div>`); return; }
+
+      const listHtml = (data.hierarchy || []).map(h => {
+        let icn = '';
+        let cls = '';
+        let toggle = '';
+        if(h.type === 'workstream') { 
+            icn = icons.workstream(14); 
+            cls = 'ws'; 
+            toggle = `<button onclick="toggleNode(this)" data-expanded="true" style="background:none; border:none; color:var(--ox-text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:4px; margin-right:4px;">${icons.chevronDown(12)}</button>`;
+        }
+        if(h.type === 'milestone') { icn = icons.milestone(14); cls = 'ms'; }
+        if(h.type === 'task') { icn = icons.task(14); cls = 'tk'; }
+        return `<div class="node-item ${cls}">
+          ${toggle}
+          <span class="node-icon" style="display:flex; align-items:center; margin-right:8px;">${icn}</span>
+          <span style="flex:1;">${escapeHtml(h.title)}</span>
+          ${h.id ? `<span class="badge-id">${escapeHtml(h.id)}</span>` : ''}
+        </div>`;
+      }).join('');
+
+      injectHtml(`
+        <div class="ox-card animate-in">
+          <div class="ox-card-inner">
+            <div class="h-header">
+              <div class="h-icon">${icons.initiative(24)}</div>
+              <div style="flex:1;">
+                <div class="ox-eyebrow" style="margin-bottom:4px;">Initiative Scaffolded</div>
+                <h2 class="ox-title" style="font-size:1.3rem; margin-bottom:8px;">${escapeHtml(data.initiative.title)}</h2>
+                <div class="status-pill">
+                  <div class="status-dot"></div> ${escapeHtml(data.initiative.status)}
+                </div>
+              </div>
+            </div>
+            
+            <div class="ox-eyebrow" style="margin-bottom:8px; margin-left:12px;">Work Breakdown Structure</div>
+            <div class="node-list">
+              ${listHtml}
+            </div>
+          
+            <div class="widget-footer">
+              <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
+              <a href="${data.initiative.id ? `https://console.useorgx.com/initiatives/${escapeHtml(data.initiative.id)}` : 'https://console.useorgx.com'}" target="_blank" class="deep-link">
+                Open Initiative
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+              </a>
+            </div>
+</div>
+        </div>
+      `);
+    };
+
+    if(isDemo) render();
+    else initWidget({ render: d => { if(d) data = d; isLoading = false; render(); } });
+  </script>
+</body>
+</html>

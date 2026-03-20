@@ -5,206 +5,163 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>OrgX Widget Gallery</title>
     <style>
-      :root {
-        --app-color-bg: #ffffff;
-        --app-color-surface: #ffffff;
-        --app-color-text: #0d0d0d;
-        --app-color-text-secondary: #6e6e80;
-        --app-color-border: #e5e5e5;
-        --app-color-primary: #10a37f;
-        --app-radius-md: 8px;
-        --app-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+      
+
+      
+
+
+      :root, :root[data-theme="light"] {
+        --ox-bg: #f8fafc;
+        --ox-panel: rgba(255, 255, 255, 0.95);
+        --ox-border: rgba(0, 0, 0, 0.08);
+        --ox-text: #111827;
+        --ox-text-muted: #6b7280;
+        --ox-primary: #111827;
+        --ox-primary-hover: #000;
+        --ox-shadow: 0 10px 40px -10px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04);
       }
 
       @media (prefers-color-scheme: dark) {
-        :root {
-          --app-color-bg: #212121;
-          --app-color-surface: #2f2f2f;
-          --app-color-text: #ececf1;
-          --app-color-text-secondary: #8e8ea0;
-          --app-color-border: #424242;
-          --app-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+        :root:not([data-theme="light"]) {
+          --ox-bg: #02040a;
+          --ox-panel: rgba(10, 15, 22, 0.95);
+          --ox-border: rgba(255, 255, 255, 0.08);
+          --ox-text: #f2f7ff;
+          --ox-text-muted: rgba(255, 255, 255, 0.5);
+          --ox-primary: rgba(255,255,255,0.9);
+          --ox-primary-hover: #fff;
+          --ox-shadow: 0 10px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
         }
       }
 
-      *,
-      *::before,
-      *::after {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
+      :root[data-theme="dark"] {
+          --ox-bg: #02040a;
+          --ox-panel: rgba(10, 15, 22, 0.95);
+          --ox-border: rgba(255, 255, 255, 0.08);
+          --ox-text: #f2f7ff;
+          --ox-text-muted: rgba(255, 255, 255, 0.5);
+          --ox-primary: rgba(255,255,255,0.9);
+          --ox-primary-hover: #fff;
+          --ox-shadow: 0 10px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
       }
+      
+      .theme-toggle {
+        display: flex; align-items: center; justify-content: center;
+        width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--ox-border);
+        background: var(--ox-panel); color: var(--ox-text); cursor: pointer; transition: all 0.2s;
+        box-shadow: var(--ox-shadow);
+      }
+      .theme-toggle:hover { border-color: var(--ox-text-muted); }
+      .theme-toggle svg { width: 18px; height: 18px; }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
 
       body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui,
-          sans-serif;
-        background: var(--app-color-bg);
-        color: var(--app-color-text);
-        padding: 24px;
+        font-family: var(--ox-font);
+        background: var(--ox-bg);
+        color: var(--ox-text);
+        padding: 40px 24px;
         min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
       }
 
-      .container {
-        max-width: 800px;
-        margin: 0 auto;
-      }
+      .container { max-width: 1000px; margin: 0 auto; }
 
-      h1 {
-        font-size: 1.5rem;
-        font-weight: 700;
-        margin-bottom: 8px;
-      }
-
-      .subtitle {
-        color: var(--app-color-text-secondary);
-        margin-bottom: 32px;
-      }
+      h1 { font-size: 2rem; font-weight: 600; letter-spacing: -0.03em; margin-bottom: 8px; }
+      .subtitle { color: var(--ox-text-muted); margin-bottom: 40px; font-size: 1.1rem; font-weight: 300; }
 
       .widget-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 16px;
+        gap: 20px;
       }
 
       .widget-card {
-        background: var(--app-color-surface);
-        border-radius: var(--app-radius-md);
-        padding: 20px;
-        box-shadow: var(--app-shadow-sm);
-        border: 1px solid var(--app-color-border);
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        background: var(--ox-panel);
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: var(--ox-shadow);
+        border: 1px solid var(--ox-border);
+        transition: transform 0.2s ease, border-color 0.2s ease;
       }
 
-      .widget-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      .widget-card:hover { transform: translateY(-2px); border-color: rgba(0, 201, 167, 0.4); }
+      @media (prefers-color-scheme: dark) {
+        .widget-card:hover { border-color: rgba(191, 255, 0, 0.3); }
       }
 
-      .widget-name {
-        font-size: 1rem;
-        font-weight: 600;
-        margin-bottom: 8px;
-      }
+      .widget-name { font-size: 1.1rem; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+      .widget-description { font-size: 0.9rem; color: var(--ox-text-muted); line-height: 1.6; margin-bottom: 24px; min-height: 44px; }
 
-      .widget-description {
-        font-size: 0.875rem;
-        color: var(--app-color-text-secondary);
-        line-height: 1.5;
-        margin-bottom: 16px;
-      }
-
-      .widget-links {
-        display: flex;
-        gap: 8px;
-      }
+      .widget-links { display: flex; gap: 12px; }
 
       .btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 8px 16px;
-        border-radius: var(--app-radius-md);
-        font-size: 0.875rem;
-        font-weight: 500;
-        text-decoration: none;
-        transition: all 0.15s ease;
+        display: inline-flex; align-items: center; justify-content: center;
+        flex: 1; padding: 10px 16px; border-radius: 6px; font-size: 0.85rem; font-weight: 600;
+        text-decoration: none; transition: all 0.2s ease; font-family: var(--ox-font);
       }
 
-      .btn-primary {
-        background: var(--app-color-primary);
-        color: white;
-      }
+      .btn-primary { background: var(--ox-primary); color: var(--ox-bg); border: none; }
+      .btn-primary:hover { background: var(--ox-primary-hover); transform: scale(1.02); }
 
-      .btn-primary:hover {
-        background: #0d8a6a;
-      }
-
-      .btn-secondary {
-        background: var(--app-color-surface);
-        color: var(--app-color-text);
-        border: 1px solid var(--app-color-border);
-      }
-
-      .btn-secondary:hover {
-        background: var(--app-color-border);
+      .btn-secondary { background: transparent; color: var(--ox-text); border: 1px solid var(--ox-border); }
+      .btn-secondary:hover { background: rgba(128,128,128,0.05); border-color: rgba(128,128,128,0.2); }
+      @media (prefers-color-scheme: dark) {
+        .btn-secondary:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.2); }
       }
 
       .badge {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 9999px;
-        font-size: 0.75rem;
-        font-weight: 500;
-        background: #d1fae5;
-        color: #065f46;
-        margin-left: 8px;
+        font-family: var(--ox-mono); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em;
+        padding: 4px 8px; border-radius: 4px; background: rgba(0,201,167,0.1); color: #0d9488; border: 1px solid rgba(0,201,167,0.2);
       }
+      @media (prefers-color-scheme: dark) { .badge { color: #00C9A7; } }
 
-      @media (prefers-color-scheme: dark) {
-        .badge {
-          background: #064e3b;
-          color: #6ee7b7;
-        }
-      }
+      .quick-links { margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--ox-border); }
+      .quick-links h2 { font-size: 1.25rem; font-weight: 600; margin-bottom: 20px; letter-spacing: -0.02em; }
 
-      .quick-links {
-        margin-top: 32px;
-        padding-top: 24px;
-        border-top: 1px solid var(--app-color-border);
-      }
+      .iframe-preview { width: 100%; height: 500px; border: 1px solid var(--ox-border); border-radius: 16px; margin-top: 24px; background: transparent; }
 
-      .quick-links h2 {
-        font-size: 1rem;
-        font-weight: 600;
-        margin-bottom: 12px;
-      }
-
-      .iframe-preview {
-        width: 100%;
-        height: 400px;
-        border: 1px solid var(--app-color-border);
-        border-radius: var(--app-radius-md);
-        margin-top: 24px;
-      }
-
-      .preview-controls {
-        display: flex;
-        gap: 8px;
-        margin-top: 16px;
-        flex-wrap: wrap;
-      }
+      .preview-controls { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
 
       .preview-btn {
-        padding: 6px 12px;
-        border-radius: var(--app-radius-md);
-        font-size: 0.75rem;
-        font-weight: 500;
-        border: 1px solid var(--app-color-border);
-        background: var(--app-color-surface);
-        color: var(--app-color-text);
-        cursor: pointer;
-        transition: all 0.15s ease;
+        padding: 8px 16px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; font-family: var(--ox-mono); text-transform: uppercase; letter-spacing: 0.05em;
+        border: 1px solid var(--ox-border); background: transparent; color: var(--ox-text-muted); cursor: pointer; transition: all 0.2s ease;
+      }
+      .preview-btn:hover { border-color: rgba(128,128,128,0.3); color: var(--ox-text); }
+      @media (prefers-color-scheme: dark) {
+        .preview-btn:hover { border-color: rgba(255,255,255,0.3); }
       }
 
-      .preview-btn:hover {
-        background: var(--app-color-border);
-      }
-
-      .preview-btn.active {
-        background: var(--app-color-primary);
-        color: white;
-        border-color: var(--app-color-primary);
-      }
+      .preview-btn.active { background: var(--ox-primary); color: var(--ox-bg); border-color: var(--ox-primary); }
     </style>
   </head>
   <body>
     <div class="container">
-      <h1>OrgX Widget Gallery</h1>
-      <p class="subtitle">
-        Preview and test ChatGPT App widgets with demo data
-      </p>
+      
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+        <div>
+          <h1>OrgX Widget Gallery</h1>
+          <p class="subtitle">Preview and test ChatGPT App widgets with demo data</p>
+        </div>
+        <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme" id="theme-btn">
+          <svg id="icon-sun" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+          <svg id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        </button>
+      </div>
+
 
       <div class="widget-grid">
+        <div class="widget-card">
+          <div class="widget-name">Scaffolded Initiative</div>
+          <p class="widget-description">
+            Visualizes the newly created hierarchical tree (Initiative > Workstream > Milestone > Task).
+          </p>
+          <div class="widget-links">
+            <a href="scaffolded-initiative.html?demo=true" class="btn btn-primary">Demo Mode</a>
+            <a href="scaffolded-initiative.html?loading=true" class="btn btn-secondary" style="opacity:0.8">Loading</a> <a href="scaffolded-initiative.html" class="btn btn-secondary">Empty</a>
+          </div>
+        </div>
+
         <div class="widget-card">
           <div class="widget-name">
             Pending Decisions <span class="badge">Interactive</span>
@@ -217,7 +174,7 @@
             <a href="decisions.html?demo=true" class="btn btn-primary"
               >Demo Mode</a
             >
-            <a href="decisions.html" class="btn btn-secondary">Empty State</a>
+            <a href="decisions.html?loading=true" class="btn btn-secondary" style="opacity:0.8">Loading</a> <a href="decisions.html" class="btn btn-secondary">Empty</a>
           </div>
         </div>
 
@@ -254,6 +211,18 @@
         </div>
 
         <div class="widget-card">
+          <div class="widget-name">Morning Brief</div>
+          <p class="widget-description">
+            Daily summary of blocked tasks, pending approvals, and top priorities across domains.
+          </p>
+          <div class="widget-links">
+            <a href="morning-brief.html?demo=true" class="btn btn-primary">Demo Mode</a>
+            <a href="morning-brief.html" class="btn btn-secondary">Empty State</a>
+          </div>
+        </div>
+
+
+        <div class="widget-card">
           <div class="widget-name">Initiative Pulse</div>
           <p class="widget-description">
             Displays initiative health, progress metrics, and any blockers in a
@@ -270,9 +239,9 @@
         </div>
 
         <div class="widget-card">
-          <div class="widget-name">Task Spawned</div>
+          <div class="widget-name">Entity Spawned</div>
           <p class="widget-description">
-            Confirmation card shown when a task is assigned to an agent.
+            Confirmation card shown when a Workstream, Milestone, or Task is assigned to an agent.
           </p>
           <div class="widget-links">
             <a href="task-spawned.html?demo=true" class="btn btn-primary"
@@ -301,44 +270,25 @@
 
       <div class="quick-links">
         <h2>Live Preview</h2>
+        
+        
         <div class="preview-controls">
-          <button
-            class="preview-btn active"
-            onclick="loadPreview('decisions.html?demo=true')"
-          >
-            Decisions
-          </button>
-          <button
-            class="preview-btn"
-            onclick="loadPreview('agent-status.html?demo=true')"
-          >
-            Agent Status
-          </button>
-          <button
-            class="preview-btn"
-            onclick="loadPreview('search-results.html?demo=true')"
-          >
-            Search Results
-          </button>
-          <button
-            class="preview-btn"
-            onclick="loadPreview('initiative-pulse.html?demo=true')"
-          >
-            Initiative Pulse
-          </button>
-          <button
-            class="preview-btn"
-            onclick="loadPreview('task-spawned.html?demo=true')"
-          >
-            Task Spawned
-          </button>
-          <button
-            class="preview-btn"
-            onclick="loadPreview('test-minimal.html?demo=true')"
-          >
-            Test Minimal
-          </button>
+          <button class="preview-btn active" onclick="loadPreview('decisions.html?demo=true')">Decisions</button>
+          <button class="preview-btn" onclick="loadPreview('agent-status.html?demo=true')">Agent Status</button>
+          <button class="preview-btn" onclick="loadPreview('search-results.html?demo=true')">Search Results</button>
+          <button class="preview-btn" onclick="loadPreview('morning-brief.html?demo=true')">Morning Brief</button>
+          <button class="preview-btn" onclick="loadPreview('initiative-pulse.html?demo=true')">Initiative Pulse</button>
+          <button class="preview-btn" onclick="loadPreview('task-spawned.html?demo=true')">Entity Spawned</button>
+          <button class="preview-btn" onclick="loadPreview('scaffolded-initiative.html?demo=true')">Scaffolded</button>
         </div>
+        <div class="preview-controls" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--ox-border);">
+          <span style="font-family: var(--ox-mono); font-size: 0.7rem; color: var(--ox-text-muted); text-transform: uppercase; align-self: center; margin-right: 8px;">View State:</span>
+          <button class="preview-btn" onclick="testState('demo')" style="border-color: var(--ox-lime); color: var(--ox-text);">Data Rendered</button>
+          <button class="preview-btn" onclick="testState('loading')" style="border-style: dashed; opacity: 0.8">Loading Skeleton</button>
+          <button class="preview-btn" onclick="testState('empty')" style="border-style: dotted; opacity: 0.8">Empty State</button>
+        </div>
+
+
         <iframe
           id="preview-frame"
           class="iframe-preview"
@@ -348,21 +298,60 @@
     </div>
 
     <script>
-      function loadPreview(url) {
-        document.getElementById('preview-frame').src = url;
-
-        // Update active button
-        document.querySelectorAll('.preview-btn').forEach((btn) => {
-          btn.classList.toggle(
-            'active',
-            btn.textContent
-              .toLowerCase()
-              .includes(
-                url.split('.html')[0].split('/').pop().replace('-', ' ')
-              )
-          );
-        });
+      
+      let currentTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      
+      function updateThemeUI() {
+        document.documentElement.setAttribute('data-theme', currentTheme);
+        document.getElementById('icon-sun').style.display = currentTheme === 'dark' ? 'block' : 'none';
+        document.getElementById('icon-moon').style.display = currentTheme === 'light' ? 'block' : 'none';
+        
+        // Update active iframe
+        const frame = document.getElementById('preview-frame');
+        if (frame && frame.src) {
+           const url = new URL(frame.src);
+           url.searchParams.set('theme', currentTheme);
+           frame.src = url.toString();
+        }
       }
+
+      function toggleTheme() {
+        currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        updateThemeUI();
+      }
+      
+      // Initialize
+      updateThemeUI();
+
+      
+      let currentUrlBase = 'decisions.html';
+
+      function loadPreview(urlStr) {
+        // Only update current base if it's a structural change, not just a state toggle
+        const base = urlStr.split('?')[0];
+        if (base && base.endsWith('.html')) {
+           currentUrlBase = base;
+        }
+
+        const url = new URL(urlStr, window.location.href);
+        url.searchParams.set('theme', currentTheme);
+        document.getElementById('preview-frame').src = url.toString();
+
+        // Update active button state for the top row
+        if (urlStr.includes('?demo=true')) {
+          document.querySelectorAll('.preview-controls:first-child .preview-btn').forEach((btn) => {
+            const btnUrl = btn.getAttribute('onclick').match(/'([^']+)'/)[1];
+            btn.classList.toggle('active', btnUrl === urlStr);
+          });
+        }
+      }
+
+      function testState(state) {
+         if (state === 'demo') loadPreview(currentUrlBase + '?demo=true');
+         if (state === 'loading') loadPreview(currentUrlBase + '?loading=true');
+         if (state === 'empty') loadPreview(currentUrlBase);
+      }
+
     </script>
   </body>
 </html>

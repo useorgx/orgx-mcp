@@ -5,500 +5,444 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Initiative Pulse - OrgX</title>
     <style>
+      :root, :root[data-theme="light"] {
+        --ox-bg: #f8fafc;
+        --ox-panel: #ffffff;
+        --ox-border: rgba(0, 0, 0, 0.08);
+        --ox-border-strong: rgba(0, 0, 0, 0.15);
+        --ox-text: #0f172a;
+        --ox-text-muted: #64748b;
+        --ox-well-bg: #f1f5f9;
+        --ox-well-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+      }
+      
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --ox-bg: #02040a;
+          --ox-panel: rgba(10, 15, 22, 0.95);
+          --ox-border: rgba(255, 255, 255, 0.08);
+          --ox-border-strong: rgba(255, 255, 255, 0.15);
+          --ox-text: #f8fafc;
+          --ox-text-muted: rgba(255, 255, 255, 0.5);
+          --ox-well-bg: rgba(0,0,0,0.3);
+          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
+        }
+      }
+      
+      :root[data-theme="dark"] {
+          --ox-bg: #02040a;
+          --ox-panel: rgba(10, 15, 22, 0.95);
+          --ox-border: rgba(255, 255, 255, 0.08);
+          --ox-border-strong: rgba(255, 255, 255, 0.15);
+          --ox-text: #f8fafc;
+          --ox-text-muted: rgba(255, 255, 255, 0.5);
+          --ox-well-bg: rgba(0,0,0,0.3);
+          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
+      }
+      
       :root {
-        /* ChatGPT SDK fallback (light mode) */
-        --app-color-bg: #ffffff;
-        --app-color-surface: #ffffff;
-        --app-color-surface-elevated: #f7f7f8;
-        --app-color-text: #0d0d0d;
-        --app-color-text-secondary: #6e6e80;
-        --app-color-border: #e5e5e5;
-        --app-color-primary: #10a37f;
-        --app-color-success: #10a37f;
-        --app-color-success-bg: #d1fae5;
-        --app-color-success-text: #065f46;
-        --app-color-warning: #f59e0b;
-        --app-color-warning-bg: #fef3c7;
-        --app-color-warning-text: #92400e;
-        --app-color-danger: #ef4444;
-        --app-color-danger-bg: #fef2f2;
-        --app-color-danger-text: #991b1b;
-        --app-color-info-bg: #dbeafe;
-        --app-color-info-text: #1e40af;
-        --app-radius-md: 8px;
-        --app-radius-full: 9999px;
-        --app-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-
-        /* OrgX brand colors (RGB triplets for rgba() use) */
-        --ox-lime: 191, 255, 0;
-        --ox-teal: 20, 184, 166;
-        --ox-iris: 99, 102, 241;
-        --ox-cyan: 10, 212, 196;
-
-        /* OrgX semantic status */
-        --ox-success: #25da8e;   --ox-success-bg: rgba(37,218,142,0.12);  --ox-success-border: rgba(37,218,142,0.3);
-        --ox-warning: #f9c770;   --ox-warning-bg: rgba(249,199,112,0.12); --ox-warning-border: rgba(249,199,112,0.3);
-        --ox-danger: #ff7688;    --ox-danger-bg: rgba(255,118,136,0.12);  --ox-danger-border: rgba(255,118,136,0.3);
-        --ox-info: #60bdff;      --ox-info-bg: rgba(96,189,255,0.12);     --ox-info-border: rgba(96,189,255,0.3);
-
-        /* Typography */
-        --ox-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-        --ox-mono: ui-monospace, SFMono-Regular, 'SF Mono', monospace;
-        --ox-tracking-tight: -0.01em;
-        --ox-tracking-heading: -0.02em;
-        --ox-tracking-eyebrow: 0.08em;
-
-        /* Radii */
-        --ox-radius-sm: 6px;  --ox-radius-md: 10px;  --ox-radius-lg: 14px;
-
-        /* Motion */
-        --ox-ease: cubic-bezier(0.22, 1, 0.36, 1);
-        --ox-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-        --ox-duration: 220ms;
-        --ox-stagger: 60ms;
+        --ox-lime: #a3e635; /* Will be overwritten by specific widgets */
+        --ox-teal: #0d9488;
+        --ox-danger: #e11d48;
+        --ox-warning: #d97706;
+        --ox-iris: #4f46e5;
+        --ox-grid: rgba(0, 0, 0, 0.03);
+        --ox-shadow: 0 12px 32px -12px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.04);
+        --ox-font: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
+        --ox-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
       }
-
+      
       @media (prefers-color-scheme: dark) {
-        :root {
-          --app-color-bg: #02040a;
-          --app-color-surface: rgba(255,255,255,0.02);
-          --app-color-surface-elevated: rgba(255,255,255,0.04);
-          --app-color-text: #f2f7ff;
-          --app-color-text-secondary: #b4bed2;
-          --app-color-border: rgba(255,255,255,0.06);
-          --app-color-primary: rgba(var(--ox-teal), 1);
-          --app-color-success: var(--ox-success);
-          --app-color-success-bg: var(--ox-success-bg);
-          --app-color-success-text: var(--ox-success);
-          --app-color-warning: var(--ox-warning);
-          --app-color-warning-bg: var(--ox-warning-bg);
-          --app-color-warning-text: var(--ox-warning);
-          --app-color-danger: var(--ox-danger);
-          --app-color-danger-bg: var(--ox-danger-bg);
-          --app-color-danger-text: var(--ox-danger);
-          --app-color-info-bg: var(--ox-info-bg);
-          --app-color-info-text: var(--ox-info);
-          --app-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
-
-          /* Glass surface system */
-          --ox-glass-bg: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-          --ox-glass-border: rgba(255,255,255,0.06);
-          --ox-glass-border-hover: rgba(255,255,255,0.1);
-          --ox-glass-blur: blur(12px) saturate(140%);
-
-          /* Shadows with inset highlight */
-          --ox-shadow-card: 0 4px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.03);
-          --ox-shadow-card-hover: 0 8px 32px rgba(0,0,0,0.35), 0 0 0 1px rgba(var(--ox-teal),0.08);
-
-          /* Glows */
-          --ox-glow-teal: 0 0 20px rgba(var(--ox-teal), 0.15);
-          --ox-glow-lime: 0 0 20px rgba(var(--ox-lime), 0.12);
+        :root:not([data-theme="light"]) {
+          --ox-lime: #D4ED31;
+          --ox-teal: #00C9A7;
+          --ox-danger: #F43F5E;
+          --ox-warning: #FBBF24;
+          --ox-iris: #6366f1;
+          --ox-grid: rgba(255, 255, 255, 0.02);
+          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
         }
       }
-
-      /* Shared animations */
-      @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-      @keyframes breathe { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.6; transform:scale(0.85); } }
-      @keyframes cardEnter { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
-
-      @media (prefers-color-scheme: dark) {
-        .skeleton-line {
-          background: linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(var(--ox-teal),0.06) 40%, rgba(var(--ox-lime),0.04) 50%, rgba(var(--ox-teal),0.06) 60%, rgba(255,255,255,0.03) 100%);
-          background-size: 200% 100%;
-          animation: shimmer 2.5s infinite ease-in-out;
-        }
+      
+      :root[data-theme="dark"] {
+          --ox-lime: #D4ED31;
+          --ox-teal: #00C9A7;
+          --ox-danger: #F43F5E;
+          --ox-warning: #FBBF24;
+          --ox-iris: #6366f1;
+          --ox-grid: rgba(255, 255, 255, 0.02);
+          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
       }
 
-      .breathe-dot { animation: breathe 3.6s ease-in-out infinite; }
-
-      @media (prefers-reduced-motion: reduce) {
-        .skeleton-line, .breathe-dot, .stagger-item { animation: none; }
+      /* Smooth UX Transitions */
+      .skeleton-wrapper { transition: opacity 0.3s ease; }
+      @keyframes fadeSlideUp {
+        from { opacity: 0; transform: translateY(16px) scale(0.98); filter: blur(4px); }
+        to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
       }
+      .animate-in { opacity: 0; animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+      .delay-1 { animation-delay: 0.1s; }
+      .delay-2 { animation-delay: 0.2s; }
+      .delay-3 { animation-delay: 0.3s; }
+      
+      .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 24px; text-align: center; background: var(--ox-well-bg); border: 1px dashed var(--ox-border-strong); border-radius: 16px; margin: 16px 0; }
+      .empty-icon { width: 48px; height: 48px; border-radius: 50%; background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
+      .empty-icon svg { width: 24px; height: 24px; }
+      .empty-title { font-size: 1.1rem; font-weight: 600; color: var(--ox-text); margin-bottom: 8px; }
+      .empty-desc { font-size: 0.9rem; color: var(--ox-text-muted); line-height: 1.5; max-width: 280px; }
 
-      *,
-      *::before,
-      *::after {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
 
       body {
         font-family: var(--ox-font);
-        font-size: 1rem;
-        line-height: 1.5;
-        letter-spacing: var(--ox-tracking-tight);
-        background: var(--app-color-bg);
-        color: var(--app-color-text);
+        background: var(--ox-bg);
+        color: var(--ox-text);
         padding: 16px;
         -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
       }
 
-      @media (prefers-color-scheme: dark) {
-        body { background: #02040a; }
+      /* Cinematic Background Grid & Glows */
+      body::before {
+        content: '';
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: radial-gradient(circle at 50% -20%, rgba(var(--ox-primary-rgb), 0.08), transparent 60%),
+                    linear-gradient(var(--ox-grid-color) 1px, transparent 1px),
+                    linear-gradient(90deg, var(--ox-grid-color) 1px, transparent 1px);
+        background-size: 100% 100%, 20px 20px, 20px 20px;
+        z-index: -1;
+        pointer-events: none;
       }
 
-      .container {
-        max-width: 480px;
-        margin: 0 auto;
-      }
+      .container { max-width: 520px; margin: 0 auto; position: relative; }
 
-      .pulse-card {
-        background: var(--app-color-surface);
-        border-radius: var(--ox-radius-md);
-        padding: 16px;
-        box-shadow: var(--app-shadow-sm);
-        animation: cardEnter 400ms var(--ox-ease) both;
-      }
+      .ox-card { background: var(--ox-panel); border: 1px solid var(--ox-border); border-radius: 16px; box-shadow: var(--ox-shadow); position: relative; overflow: hidden; margin-bottom: 16px; }
+      .ox-card-inner { padding: 24px; }
+      .ox-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(var(--ox-primary-rgb), 0.5), transparent); opacity: 0.8; }
+      .widget-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--ox-border); }
+      .deep-link { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; color: var(--ox-primary); text-decoration: none; transition: opacity 0.2s; }
+      .deep-link:hover { opacity: 0.8; }
+      .deep-link svg { width: 14px; height: 14px; }
 
-      @media (prefers-color-scheme: dark) {
-        .pulse-card {
-          background: var(--ox-glass-bg);
-          backdrop-filter: var(--ox-glass-blur);
-          -webkit-backdrop-filter: var(--ox-glass-blur);
-          border: 1px solid var(--ox-glass-border);
-          box-shadow: var(--ox-shadow-card);
-        }
-      }
 
-      .pulse-header {
+      
+
+      
+
+      .pulse-header, .header {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
-        margin-bottom: 12px;
+        margin-bottom: 20px;
+      }
+      
+      .header-padded {
+         padding-bottom: 16px;
+         border-bottom: 1px solid var(--ox-border);
       }
 
-      .pulse-name {
-        font-size: 1.125rem;
+      .pulse-name, .title {
+        font-size: 1.25rem;
         font-weight: 600;
-        letter-spacing: var(--ox-tracking-heading);
+        letter-spacing: -0.02em;
+        color: var(--ox-text);
+        line-height: 1.2;
       }
 
-      .status-badge {
-        padding: 4px 8px;
-        border-radius: var(--app-radius-full);
-        font-size: 0.75rem;
-        font-weight: 500;
+      .status-badge, .badge {
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-family: var(--ox-mono);
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        border: 1px solid var(--ox-border);
+        font-weight: 600;
       }
 
-      .status-active {
-        background: var(--app-color-info-bg);
-        color: var(--app-color-info-text);
-      }
-      .status-completed {
-        background: var(--app-color-success-bg);
-        color: var(--app-color-success-text);
-      }
-      .status-blocked {
-        background: var(--app-color-danger-bg);
-        color: var(--app-color-danger-text);
-      }
-      .status-pending {
-        background: var(--app-color-surface-elevated);
-        color: var(--app-color-text-secondary);
-      }
+      .status-active { background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary); border-color: rgba(var(--ox-primary-rgb), 0.2); }
+      .status-completed { background: rgba(0,201,167,0.1); color: var(--ox-teal); border-color: rgba(0,201,167,0.2); }
+      .status-blocked { background: rgba(225,29,72,0.1); color: var(--ox-danger); border-color: rgba(225,29,72,0.2); }
 
       @media (prefers-color-scheme: dark) {
-        .status-active {
-          background: var(--ox-info-bg);
-          color: var(--ox-info);
-          border: 1px solid var(--ox-info-border);
-        }
-        .status-completed {
-          background: var(--ox-success-bg);
-          color: var(--ox-success);
-          border: 1px solid var(--ox-success-border);
-        }
-        .status-blocked {
-          background: var(--ox-danger-bg);
-          color: var(--ox-danger);
-          border: 1px solid var(--ox-danger-border);
-        }
+         .status-blocked { background: rgba(244,63,94,0.1); border-color: rgba(244,63,94,0.2); }
       }
 
-      /* Eyebrow metric labels */
       .pulse-metrics {
         display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-bottom: 12px;
-        font-size: 0.6875rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: var(--ox-tracking-eyebrow);
-        color: var(--app-color-text-secondary);
+        gap: 16px;
+        margin-bottom: 24px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid var(--ox-border);
       }
 
       .metric {
         display: flex;
-        align-items: center;
+        flex-direction: column;
         gap: 4px;
       }
 
-      .metric-value {
+      .metric-label, .detail-label {
+        font-family: var(--ox-mono);
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--ox-text-muted);
         font-weight: 600;
-        color: var(--app-color-text);
       }
 
-      .separator {
-        color: var(--app-color-border);
+      .metric-value {
+        font-size: 1.5rem;
+        font-weight: 500;
+        color: var(--ox-text);
+        font-family: var(--ox-mono);
+        letter-spacing: -0.03em;
       }
 
       .roi-strip {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 8px;
-        margin-bottom: 12px;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 24px;
       }
 
       .roi-item {
-        padding: 8px;
-        border-radius: var(--ox-radius-sm);
-        background: var(--app-color-surface-elevated);
-        border: 1px solid var(--app-color-border);
+        background: rgba(128,128,128,0.03);
+        border: 1px solid var(--ox-border);
+        border-radius: 8px;
+        padding: 12px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      @media (prefers-color-scheme: dark) {
+         .roi-item { background: rgba(255,255,255,0.02); }
+      }
+
+      .roi-item::before {
+        content: '';
+        position: absolute;
+        top: 0; right: 0; width: 50%; height: 100%;
+        background: radial-gradient(circle at top right, rgba(var(--ox-primary-rgb),0.05), transparent);
+        pointer-events: none;
       }
 
       .roi-label {
-        font-size: 0.625rem;
+        font-family: var(--ox-mono);
+        font-size: 0.6rem;
         text-transform: uppercase;
-        letter-spacing: var(--ox-tracking-eyebrow);
-        color: var(--app-color-text-secondary);
+        letter-spacing: 0.1em;
+        color: var(--ox-text-muted);
         font-weight: 600;
       }
 
       .roi-value {
-        margin-top: 4px;
-        font-size: 0.9375rem;
+        margin-top: 6px;
+        font-size: 1.125rem;
         font-family: var(--ox-mono);
-        font-weight: 700;
-        color: var(--app-color-text);
+        color: var(--ox-text);
+        font-weight: 600;
       }
 
-      .roi-value.positive {
-        color: var(--ox-success);
-      }
-
-      .roi-value.negative {
-        color: var(--ox-danger);
-      }
+      .roi-value.positive { color: var(--ox-teal); }
+      .roi-value.negative { color: var(--ox-danger); }
 
       @media (prefers-color-scheme: dark) {
-        .roi-item {
-          background: rgba(255,255,255,0.03);
-          border-color: rgba(255,255,255,0.08);
-        }
+         .roi-value.positive { color: var(--ox-lime); text-shadow: 0 0 10px rgba(191,255,0,0.3); }
       }
 
-      /* Health indicator */
       .health-indicator {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        padding: 4px 8px;
-        border-radius: var(--ox-radius-md);
+        gap: 8px;
+        font-family: var(--ox-mono);
         font-size: 0.75rem;
-        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        font-weight: 600;
       }
 
       .health-dot {
-        width: 8px;
-        height: 8px;
+        width: 8px; height: 8px;
         border-radius: 50%;
-        animation: breathe 3.6s ease-in-out infinite;
+        box-shadow: 0 0 8px currentColor;
       }
-
-      .health-on-track {
-        background: var(--app-color-success-bg);
-        color: var(--app-color-success-text);
-      }
-      .health-on-track .health-dot {
-        background: var(--app-color-success);
-      }
-
-      .health-attention {
-        background: var(--app-color-warning-bg);
-        color: var(--app-color-warning-text);
-      }
-      .health-attention .health-dot {
-        background: var(--app-color-warning);
-      }
-
-      .health-at-risk {
-        background: var(--app-color-danger-bg);
-        color: var(--app-color-danger-text);
-      }
-      .health-at-risk .health-dot {
-        background: var(--app-color-danger);
-      }
+      
+      .health-on-track { color: var(--ox-teal); }
+      .health-attention { color: var(--ox-warning); }
+      .health-at-risk { color: var(--ox-danger); }
 
       @media (prefers-color-scheme: dark) {
-        .health-on-track {
-          background: var(--ox-success-bg);
-          color: var(--ox-success);
-          border: 1px solid var(--ox-success-border);
-        }
-        .health-on-track .health-dot {
-          background: var(--ox-success);
-          box-shadow: 0 0 10px rgba(37,218,142,0.4);
-        }
-
-        .health-attention {
-          background: var(--ox-warning-bg);
-          color: var(--ox-warning);
-          border: 1px solid var(--ox-warning-border);
-        }
-        .health-attention .health-dot {
-          background: var(--ox-warning);
-          box-shadow: 0 0 10px rgba(249,199,112,0.4);
-        }
-
-        .health-at-risk {
-          background: var(--ox-danger-bg);
-          color: var(--ox-danger);
-          border: 1px solid var(--ox-danger-border);
-        }
-        .health-at-risk .health-dot {
-          background: var(--ox-danger);
-          box-shadow: 0 0 10px rgba(255,118,136,0.4);
-        }
+          .health-on-track { color: var(--ox-lime); }
       }
 
-      /* Blockers alert */
       .blockers-alert {
-        margin-top: 12px;
-        padding: 10px 12px;
-        background: var(--app-color-danger-bg);
-        border-radius: var(--ox-radius-md);
-        border-left: 3px solid var(--app-color-danger);
+        margin-top: 24px;
+        padding: 16px;
+        background: rgba(225,29,72,0.05);
+        border: 1px solid rgba(225,29,72,0.2);
+        border-radius: 8px;
+        position: relative;
       }
 
       @media (prefers-color-scheme: dark) {
-        .blockers-alert {
-          background: rgba(255,118,136,0.06);
-          border-left-color: var(--ox-danger);
-        }
+         .blockers-alert { background: rgba(244,63,94,0.05); border-color: rgba(244,63,94,0.2); }
+      }
+
+      .blockers-alert::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; bottom: 0; width: 3px;
+        background: var(--ox-danger);
+        box-shadow: 0 0 8px var(--ox-danger);
       }
 
       .blockers-title {
-        font-size: 0.6875rem;
-        font-weight: 600;
+        font-family: var(--ox-mono);
+        font-size: 0.65rem;
         text-transform: uppercase;
-        letter-spacing: var(--ox-tracking-eyebrow);
-        color: var(--app-color-danger-text);
-        margin-bottom: 4px;
+        letter-spacing: 0.1em;
+        color: var(--ox-danger);
+        margin-bottom: 8px;
+        font-weight: 700;
       }
 
       .blockers-list {
         list-style: none;
         font-size: 0.875rem;
-        color: var(--app-color-danger-text);
+        color: var(--ox-text);
+        line-height: 1.6;
+      }
+      .blockers-list li { margin-bottom: 4px; padding-left: 14px; position: relative; font-weight: 500; }
+      .blockers-list li::before {
+        content: '›';
+        position: absolute; left: 0; color: var(--ox-danger); opacity: 0.8; font-weight: bold;
       }
 
-      .blockers-list li {
-        padding: 2px 0;
+      /* Shared Widget Specifics */
+      .icon-container {
+        width: 40px; height: 40px;
+        border-radius: 10px;
+        background: rgba(var(--ox-primary-rgb), 0.1);
+        border: 1px solid rgba(var(--ox-primary-rgb), 0.2);
+        color: var(--ox-primary);
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
       }
-
-      /* EmptyMessage */
-      .empty-message {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        padding: 32px 16px;
-        min-height: 120px;
-      }
-
-      .empty-message-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 48px;
-        height: 48px;
-        border-radius: 9999px;
-        background: var(--app-color-surface-elevated);
-        color: var(--app-color-text-secondary);
-        margin-bottom: 12px;
-      }
-
       @media (prefers-color-scheme: dark) {
-        .empty-message-icon {
-          background: rgba(var(--ox-teal), 0.08);
-          border: 1px solid rgba(var(--ox-teal), 0.15);
-          color: rgba(var(--ox-teal), 0.6);
-          box-shadow: 0 0 20px rgba(var(--ox-teal), 0.06);
-        }
+         .icon-container { box-shadow: 0 0 15px rgba(var(--ox-primary-rgb), 0.2); }
+      }
+      .icon-container svg { width: 20px; height: 20px; }
+
+      .agent-avatar {
+        width: 48px; height: 48px;
+        border-radius: 12px;
+        background: rgba(128,128,128,0.05);
+        border: 1px solid var(--ox-border);
+        display: flex; align-items: center; justify-content: center;
+        font-family: var(--ox-mono); font-weight: bold; font-size: 1.1rem;
+        color: var(--ox-primary);
+      }
+      @media (prefers-color-scheme: dark) {
+         .agent-avatar { box-shadow: 0 0 20px rgba(var(--ox-primary-rgb),0.1); text-shadow: 0 0 10px rgba(var(--ox-primary-rgb),0.5); }
       }
 
-      .empty-message-icon svg {
-        width: 24px;
-        height: 24px;
+      .agent-info { flex: 1; min-width: 0; }
+      .agent-role, .eyebrow {
+        font-family: var(--ox-mono); font-size: 0.65rem; text-transform: uppercase;
+        letter-spacing: 0.1em; color: var(--ox-primary); margin-bottom: 4px; font-weight: 600;
+      }
+      
+      .status-indicator {
+        display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px;
+        border-radius: 6px; background: rgba(var(--ox-primary-rgb),0.1); border: 1px solid rgba(var(--ox-primary-rgb),0.2);
+        color: var(--ox-primary); font-family: var(--ox-mono); font-size: 0.7rem; text-transform: uppercase;
+        letter-spacing: 0.1em; font-weight: 600;
       }
 
-      .empty-message-title {
-        font-size: 0.9375rem;
-        font-weight: 600;
-        color: var(--app-color-text);
-        margin-bottom: 4px;
+      .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulse 2s infinite; }
+      @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.8); } }
+      @media (prefers-color-scheme: dark) { .status-dot { box-shadow: 0 0 8px currentColor; } }
+
+      .activity-item { display: flex; gap: 16px; position: relative; padding-bottom: 24px; }
+      .activity-item:last-child { padding-bottom: 0; }
+      .activity-item::before { content: ''; position: absolute; left: 5px; top: 12px; bottom: 0; width: 1px; background: var(--ox-border); }
+      .activity-item:last-child::before { display: none; }
+      .activity-dot {
+        width: 11px; height: 11px; border-radius: 50%; background: var(--ox-bg);
+        border: 2px solid var(--ox-primary); position: relative; z-index: 1; margin-top: 4px;
+      }
+      @media (prefers-color-scheme: dark) { .activity-dot { box-shadow: 0 0 10px rgba(var(--ox-primary-rgb),0.4); } }
+      .activity-time { font-family: var(--ox-mono); font-size: 0.6rem; color: var(--ox-text-muted); margin-bottom: 4px; font-weight: 600; }
+      .activity-text { font-size: 0.9rem; color: var(--ox-text); line-height: 1.5; font-weight: 500; }
+
+      .priority-item, .decision-item {
+        display: flex; flex-direction: column; gap: 12px; padding: 16px; background: rgba(128,128,128,0.03);
+        border: 1px solid var(--ox-border); border-radius: 12px; margin-bottom: 12px; position: relative; overflow: hidden;
+      }
+      @media (prefers-color-scheme: dark) { .priority-item, .decision-item { background: rgba(255,255,255,0.02); } }
+      
+      .priority-item::before, .decision-item::before {
+        content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--ox-primary);
+      }
+      @media (prefers-color-scheme: dark) { .priority-item::before, .decision-item::before { box-shadow: 0 0 10px var(--ox-primary); } }
+
+      .priority-domain, .decision-meta {
+        font-family: var(--ox-mono); font-size: 0.6rem; text-transform: uppercase;
+        letter-spacing: 0.1em; color: var(--ox-primary); margin-bottom: 6px; font-weight: 700;
+        display: flex; justify-content: space-between;
+      }
+      .priority-title, .decision-title { font-size: 0.95rem; color: var(--ox-text); font-weight: 600; margin-bottom: 6px; line-height: 1.4; }
+      .priority-reason, .decision-context { font-size: 0.85rem; color: var(--ox-text-muted); line-height: 1.5; }
+      
+      .decision-actions { display: flex; gap: 8px; margin-top: 16px; }
+      .btn { flex: 1; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; text-align: center; cursor: pointer; font-family: var(--ox-font); transition: all 0.2s; border: none; }
+      
+      .btn-primary { background: var(--ox-primary); color: #fff; }
+      .btn-secondary { background: rgba(128,128,128,0.1); color: var(--ox-text); border: 1px solid var(--ox-border); }
+      @media (prefers-color-scheme: dark) {
+        .btn-primary { color: #000; box-shadow: 0 0 15px rgba(var(--ox-primary-rgb),0.2); }
+        .btn-primary:hover { box-shadow: 0 0 20px rgba(var(--ox-primary-rgb),0.4); }
+        .btn-secondary { background: rgba(255,255,255,0.05); color: #fff; }
       }
 
-      .empty-message-description {
-        font-size: 0.875rem;
-        color: var(--app-color-text-secondary);
-        line-height: 1.5;
-        max-width: 280px;
+      
+      /* Smooth UX Transitions */
+      .skeleton-wrapper { transition: opacity 0.3s ease; }
+      @keyframes fadeSlideUp {
+        from { opacity: 0; transform: translateY(16px) scale(0.98); filter: blur(4px); }
+        to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
       }
-
-      /* Skeleton Loading */
-      .skeleton-card {
-        background: var(--app-color-surface);
-        border-radius: var(--ox-radius-md);
-        padding: 16px;
-        box-shadow: var(--app-shadow-sm);
-      }
-
+      .animate-in { opacity: 0; animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+      .delay-1 { animation-delay: 0.1s; }
+      .delay-2 { animation-delay: 0.2s; }
+      .delay-3 { animation-delay: 0.3s; }
+      
+      .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 24px; text-align: center; background: var(--ox-well-bg); border: 1px dashed var(--ox-border-strong); border-radius: 16px; margin: 16px 0; }
+      .empty-icon { width: 48px; height: 48px; border-radius: 50%; background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
+      .empty-icon svg { width: 24px; height: 24px; }
+      .empty-title { font-size: 1.1rem; font-weight: 600; color: var(--ox-text); margin-bottom: 8px; }
+      .empty-desc { font-size: 0.9rem; color: var(--ox-text-muted); line-height: 1.5; max-width: 280px; }
+    
+      /* Skeleton Animations */
+      @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
       .skeleton-line {
-        background: linear-gradient(
-          90deg,
-          var(--app-color-surface-elevated) 0%,
-          var(--app-color-bg) 50%,
-          var(--app-color-surface-elevated) 100%
-        );
+        background: linear-gradient(90deg, rgba(128,128,128,0.1) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, rgba(128,128,128,0.1) 75%);
         background-size: 200% 100%;
-        animation: shimmer 2.5s infinite ease-in-out;
+        animation: shimmer 2s infinite linear;
         border-radius: 4px;
       }
-
-      .skeleton-title {
-        height: 20px;
-        width: 180px;
-      }
-      .skeleton-badge {
-        height: 24px;
-        width: 60px;
-        border-radius: var(--app-radius-full);
-      }
-      .skeleton-text {
-        height: 14px;
-      }
-      .skeleton-health {
-        height: 28px;
-        width: 120px;
+      @media (prefers-color-scheme: dark) {
+         .skeleton-line { background: linear-gradient(90deg, rgba(255,255,255,0.02) 25%, rgba(var(--ox-primary-rgb),0.05) 50%, rgba(255,255,255,0.02) 75%); background-size: 200% 100%; }
       }
 
-      /* Accessibility */
-      .sr-only {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        padding: 0;
-        margin: -1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
-        white-space: nowrap;
-        border: 0;
-      }
-    </style>
+      
+    
+    .widget-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--ox-border); }
+    .deep-link { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; color: var(--ox-primary); text-decoration: none; transition: opacity 0.2s; }
+    .deep-link:hover { opacity: 0.8; }
+    .deep-link svg { width: 14px; height: 14px; }
+  </style>
   </head>
   <body>
     <div class="container" role="region" aria-label="Initiative Status">
@@ -530,247 +474,140 @@
     </div>
 
     <script>
-      // ── Inline MCP Apps Bridge ──
-      function _detectProtocol(){if(typeof window.openai!=='undefined')return'chatgpt';if(window.parent&&window.parent!==window)return'mcp-apps';return'standalone';}
-      function _extractData(out){if(out==null)return null;if(typeof out==='object'&&out.structuredContent)return out.structuredContent;if(typeof out==='object'&&Array.isArray(out.content)){for(var i=0;i<out.content.length;i++){var item=out.content[i];if(item&&item.type==='text'&&item.text){try{return JSON.parse(item.text);}catch(e){continue;}}}}if(typeof out==='string'){try{return JSON.parse(out);}catch(e){return{text:out};}}return out;}
-      // ── Size reporting (MCP Apps spec) ──
-      var _lastW=0,_lastH=0;
-      function _sendSize(){var w=Math.ceil(document.documentElement.getBoundingClientRect().width+(window.innerWidth-document.documentElement.clientWidth));var h=Math.ceil(document.documentElement.getBoundingClientRect().height);if(w===_lastW&&h===_lastH)return;_lastW=w;_lastH=h;try{window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/size-changed',params:{width:w,height:h}},'*');}catch(e){}}
-      function _observeSize(){_sendSize();if(typeof ResizeObserver!=='undefined'){var _raf=0;var ro=new ResizeObserver(function(){if(_raf)cancelAnimationFrame(_raf);_raf=requestAnimationFrame(_sendSize);});ro.observe(document.documentElement);ro.observe(document.body);}}
-      function initWidget(opts){
-        var render=opts.render,getData=opts.getData||_extractData;
-        var protocol=_detectProtocol();
-        if(protocol==='chatgpt'){
-          var d=getData(window.openai&&window.openai.toolOutput);render(d);
-          window.addEventListener('openai:set_globals',function(e){var g=e.detail&&e.detail.globals;if(g&&g.toolOutput){render(getData(g.toolOutput));}},{passive:true});
-        }else if(protocol==='mcp-apps'){
-          render(null);
-          var initId=1;
-          window.parent.postMessage({jsonrpc:'2.0',id:initId,method:'ui/initialize',params:{appInfo:{name:'OrgX Widget',version:'1.0.0'},appCapabilities:{tools:{listChanged:false}},protocolVersion:'2026-01-26'}},'*');
-          window.parent.postMessage({jsonrpc:'2.0',method:'notifications/initialized'},'*');
-          window.addEventListener('message',function(event){
-            var msg=event.data;if(!msg||typeof msg!=='object')return;
-            if(msg.id===initId&&msg.result){window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized'},'*');_observeSize();return;}
-            if((msg.method==='ui/notifications/tool-result'||msg.method==='notifications/message')&&msg.params){var data=getData(msg.params);if(data)render(data);}
-          });
-        }else{render(null);}
+    // Sync theme from URL to override prefers-color-scheme
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const theme = params.get('theme');
+      if (theme) document.documentElement.setAttribute('data-theme', theme);
+    })();
+
+    var injectHtml = (html) => {
+      const content = document.getElementById('content');
+      if (!content) return;
+      const skeleton = content.querySelector('.skeleton-wrapper');
+      if (skeleton) {
+        skeleton.style.opacity = '0';
+        setTimeout(() => { content.innerHTML = html; }, 300);
+      } else {
+        content.innerHTML = html;
       }
+    };
 
-      var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="currentColor" class="icon" aria-hidden="true">'+c+'</svg>';};
-      var icons = {
-        check: function(s){return _svg('<path fillRule="evenodd" d="M18.063 5.674a1 1 0 0 1 .263 1.39l-7.5 11a1 1 0 0 1-1.533.143l-4.5-4.5a1 1 0 1 1 1.414-1.414l3.647 3.647 6.82-10.003a1 1 0 0 1 1.39-.263Z" clipRule="evenodd"/>',s);},
-        warning: function(s){return _svg('<path d="M10.42 2.006a4 4 0 0 1 3.159 0c.674.29 1.188.822 1.667 1.456.474.627 1 1.473 1.653 2.523l3.542 5.696c.72 1.16 1.3 2.09 1.682 2.854.384.766.654 1.517.59 2.292a4 4 0 0 1-1.604 2.886c-.625.463-1.405.63-2.258.709-.85.078-1.945.078-3.311.078H8.46c-1.366 0-2.46 0-3.31-.078-.854-.078-1.634-.246-2.26-.71a4 4 0 0 1-1.603-2.885c-.064-.775.206-1.526.59-2.292.383-.764.961-1.694 1.682-2.854l3.542-5.696c.653-1.05 1.18-1.896 1.653-2.523.48-.634.993-1.166 1.667-1.456Z"/><path d="M12 7.5a1 1 0 0 1 1 1v3a1 1 0 1 1-2 0v-3a1 1 0 0 1 1-1M10.851 15a1.15 1.15 0 1 1 2.3 0 1.15 1.15 0 0 1-2.3 0"/>',s);},
-        flag: function(s){return _svg('<path d="M6 4.641C8.145 3.745 9.634 4.188 11.312 4.811L11.673 4.946C13.307 5.561 15.242 6.29 17.774 5.558C17.838 5.54 17.913 5.552 17.967 5.588C17.988 5.601 17.997 5.614 18 5.618V14.252C15.858 14.789 14.355 14.317 12.64 13.778L12.055 13.595C11.069 13.294 9.982 13.009 8.736 13.015C7.881 13.02 6.98 13.16 6 13.495V4.641Z"/>',s);},
-        chart: function(s){return _svg('<path d="M11.33 5h1.33a1 1 0 0 1 1 1v13h-3.33V6a1 1 0 0 1 1-1Zm4.33 14V9H18a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-2.34Zm0-12V6a3 3 0 0 0-3-3h-1.33a3 3 0 0 0-3 3v5H6a3 3 0 0 0-3 3v4a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3v-8a3 3 0 0 0-3-3h-2.34Zm-7.33 6v6H6a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2.33Z"/>',s);},
-        clock: function(s){return _svg('<path d="M12 4C7.582 4 4 7.582 4 12C4 16.418 7.582 20 12 20C16.418 20 20 16.418 20 12C20 7.582 16.418 4 12 4ZM2 12C2 6.477 6.477 2 12 2C17.523 2 22 6.477 22 12C22 17.523 17.523 22 12 22C6.477 22 2 17.523 2 12ZM12 6C12.552 6 13 6.448 13 7V12C13 12.265 12.895 12.52 12.707 12.707L10.207 15.207C9.817 15.598 9.183 15.598 8.793 15.207C8.402 14.817 8.402 14.183 8.793 13.793L11 11.586V7C11 6.448 11.448 6 12 6Z"/>',s);},
-        dot: function(s){return _svg('<circle cx="12" cy="12" r="4"/>',s);}
-      };
+    function _detectProtocol(){if(typeof window.openai!=='undefined')return'chatgpt';if(window.parent&&window.parent!==window)return'mcp-apps';return'standalone';}
+    function _extractData(out){if(out==null)return null;if(typeof out==='object'&&out.structuredContent)return out.structuredContent;if(typeof out==='object'&&Array.isArray(out.content)){for(var i=0;i<out.content.length;i++){var item=out.content[i];if(item&&item.type==='text'&&item.text){try{return JSON.parse(item.text);}catch(e){continue;}}}}if(typeof out==='string'){try{return JSON.parse(out);}catch(e){return{text:out};}}return out;}
+    function _sendSize(){var w=Math.ceil(document.documentElement.getBoundingClientRect().width+(window.innerWidth-document.documentElement.clientWidth));var h=Math.ceil(document.documentElement.getBoundingClientRect().height);try{window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/size-changed',params:{width:w,height:h}},'*');}catch(e){}}
+    function _observeSize(){_sendSize();if(typeof ResizeObserver!=='undefined'){var ro=new ResizeObserver(() => requestAnimationFrame(_sendSize));ro.observe(document.documentElement);ro.observe(document.body);}}
+    function initWidget(opts){var render=opts.render,getData=opts.getData||_extractData;var protocol=_detectProtocol();if(protocol==='chatgpt'){var d=getData(window.openai&&window.openai.toolOutput);render(d);window.addEventListener('openai:set_globals',function(e){var g=e.detail&&e.detail.globals;if(g&&g.toolOutput){render(getData(g.toolOutput));}},{passive:true});}else if(protocol==='mcp-apps'){render(null);var initId=1;window.parent.postMessage({jsonrpc:'2.0',id:initId,method:'ui/initialize',params:{appInfo:{name:'Widget',version:'1.0'},appCapabilities:{tools:{listChanged:false}},protocolVersion:'2026-01-26'}},'*');window.addEventListener('message',function(event){var msg=event.data;if(!msg||typeof msg!=='object')return;if(msg.id===initId){_observeSize();return;}if((msg.method==='ui/notifications/tool-result'||msg.method==='notifications/message')&&msg.params){var data=getData(msg.params);if(data)render(data);}});}else{render(null);}}
+    
+    var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+c+'</svg>';};
+    var icons = {
+      external: function(s){return _svg('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>',s);},
+      check: function(s){return _svg('<polyline points="20 6 9 17 4 12"></polyline>',s);},
+    };
+    var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
 
-      var contentEl = document.getElementById('content');
-
-      // Demo Mode
-      var isDemo =
-        new URLSearchParams(window.location.search).get('demo') === 'true';
-      var demoData = {
-        name: 'Q4 Product Launch',
-        status: 'Active',
-        health_score: 78,
+    var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
+    var isLoadingOverride = new URLSearchParams(window.location.search).get('loading') === 'true';
+    
+    var pulse = isDemo ? {
+        id: "INI-402",
+        name: "Q4 Product Launch",
+        status: "active",
         progress_pct: 64,
         pending_decisions: 3,
-        roi_summary: {
-          period: '30d',
-          total_cost: 412.25,
-          total_value: 2190.4,
-          roi: 4.31,
-        },
-        workstream_summary: { active: 4, completed: 2, blocked: 1 },
-        blockers: [
-          'Waiting for final design assets from marketing',
-          'Need security audit completion before launch',
-        ],
-      };
+        active_workstreams: 4,
+        roi_summary: { total_cost: 412.25, total_value: 2190.40, period: "30d" },
+        health_score: 78,
+        blockers: ["Waiting for final design assets from marketing", "Need security audit completion before launch"]
+    } : null;
+    
+    var isLoading = !isDemo;
+    if (isLoadingOverride) { isLoading = true; isDemo = false; initWidget = () => { render(); }; }
 
-      // Demo mode is enabled via ?demo=true for local testing only.
+    var formatUsd = (value) => { const num = Number(value); if (!Number.isFinite(num)) return null; return '$' + num.toFixed(2); };
+    var formatRoi = (value) => { if (value === null) return 'N/A'; const pct = Math.round(value * 100); return (pct > 0 ? '+' : '') + pct + '%'; };
 
-      // State — initWidget handles data from any host protocol
-      var pulse = isDemo ? demoData : null;
-      var isLoading = !isDemo;
-
-      // XSS Prevention - CRITICAL
-      var escapeHtml = function(str) {
-        if (str === null || str === undefined) return '';
-        var div = document.createElement('div');
-        div.textContent = String(str);
-        return div.innerHTML;
-      };
-
-      var getHealthClass = function(score) {
-        var s = Number(score) || 0;
-        if (s >= 80) return 'health-on-track';
-        if (s >= 50) return 'health-attention';
-        return 'health-at-risk';
-      };
-
-      var getHealthLabel = function(score) {
-        var s = Number(score) || 0;
-        if (s >= 80) return 'On Track';
-        if (s >= 50) return 'Needs Attention';
-        return 'At Risk';
-      };
-
-      var normalizeStatus = function(status) {
-        if (!status) return 'pending';
-        var s = String(status).toLowerCase();
-        if (['active', 'in_progress', 'running'].includes(s)) return 'active';
-        if (['completed', 'done', 'finished'].includes(s)) return 'completed';
-        if (['blocked', 'stuck', 'failed'].includes(s)) return 'blocked';
-        return 'pending';
-      };
-
-      var formatUsd = function(value) {
-        var num = Number(value) || 0;
-        return '$' + num.toFixed(2);
-      };
-
-      var formatRoi = function(value) {
-        if (value === null || value === undefined) return 'N/A';
-        var num = Number(value);
-        if (!isFinite(num)) return 'N/A';
-        return (num * 100).toFixed(0) + '%';
-      };
-
-      // Skeleton loading template
-      var renderSkeleton = function() {
-        return `
-        <div class="skeleton-card">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
-            <div class="skeleton-line skeleton-title"></div>
-            <div class="skeleton-line skeleton-badge"></div>
-          </div>
-          <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-            <div class="skeleton-line skeleton-text" style="width: 80px;"></div>
-            <div class="skeleton-line skeleton-text" style="width: 70px;"></div>
-            <div class="skeleton-line skeleton-text" style="width: 60px;"></div>
-          </div>
-          <div class="skeleton-line skeleton-health"></div>
-        </div>
-      `;
-      };
-
-      var render = function() {
-        // Show skeleton while loading
-        if (isLoading) {
-          contentEl.innerHTML = renderSkeleton();
-          return;
-        }
-
-        if (!pulse || !pulse.name) {
-          contentEl.innerHTML = `
-          <div class="empty-message" role="status">
-            <div class="empty-message-icon" aria-hidden="true">
-              ${icons.chart(24)}
-            </div>
-            <div class="empty-message-title">No initiative data</div>
-            <div class="empty-message-description">Initiative details are not available.</div>
-          </div>
-        `;
-          return;
-        }
-
-        var safeName = escapeHtml(pulse.name);
-        var safeStatus = escapeHtml(pulse.status);
-        var normalizedStatus = normalizeStatus(pulse.status);
-        var healthScore = Number(pulse.health_score) || 0;
-        var progressPct = Number(pulse.progress_pct) || 0;
-        var pendingDecisions = Number(pulse.pending_decisions) || 0;
-        var activeWorkstreams = (pulse.workstream_summary && pulse.workstream_summary.active) || 0;
-        var roiSummary = pulse.roi_summary || null;
-        var roiValue = roiSummary && roiSummary.roi !== undefined ? Number(roiSummary.roi) : null;
-        var blockers = pulse.blockers || [];
-
-        contentEl.innerHTML = `
-        <div class="pulse-card" role="article" aria-label="${safeName} initiative status">
-          <div class="pulse-header">
-            <span class="pulse-name">${safeName}</span>
-            <span class="status-badge status-${normalizedStatus}" role="status">${safeStatus}</span>
-          </div>
-
-          <div class="pulse-metrics">
-            <span class="metric">
-              <span class="metric-value">${progressPct}%</span> complete
-            </span>
-            <span class="separator" aria-hidden="true">•</span>
-            <span class="metric">
-              <span class="metric-value">${pendingDecisions}</span> pending
-            </span>
-            <span class="separator" aria-hidden="true">•</span>
-            <span class="metric">
-              <span class="metric-value">${activeWorkstreams}</span> active
-            </span>
-          </div>
-
-          ${
-            roiSummary
-              ? `
-            <div class="roi-strip" role="group" aria-label="ROI summary">
-              <div class="roi-item">
-                <div class="roi-label">Cost</div>
-                <div class="roi-value">${formatUsd(roiSummary.total_cost)}</div>
-              </div>
-              <div class="roi-item">
-                <div class="roi-label">Value</div>
-                <div class="roi-value positive">${formatUsd(roiSummary.total_value)}</div>
-              </div>
-              <div class="roi-item">
-                <div class="roi-label">ROI (${escapeHtml(roiSummary.period || '30d')})</div>
-                <div class="roi-value ${roiValue !== null && roiValue >= 0 ? 'positive' : 'negative'}">${formatRoi(roiValue)}</div>
-              </div>
-            </div>
-          `
-              : ''
-          }
-
-          <div class="health-indicator ${getHealthClass(
-            healthScore
-          )}" role="status" aria-label="Health: ${getHealthLabel(healthScore)}">
-            <span class="health-dot" aria-hidden="true"></span>
-            <span>${getHealthLabel(healthScore)} (${healthScore})</span>
-          </div>
-
-          ${
-            blockers.length > 0
-              ? `
-            <div class="blockers-alert" role="alert">
-              <div class="blockers-title">${blockers.length} Blocker${
-                  blockers.length !== 1 ? 's' : ''
-                }</div>
-              <ul class="blockers-list" aria-label="List of blockers">
-                ${blockers.map(function(b) { return '<li>' + escapeHtml(b) + '</li>'; }).join('')}
-              </ul>
-            </div>
-          `
-              : ''
-          }
-        </div>
-      `;
-      };
-
-      // Wire up data reception for all host protocols
-      if (isDemo) {
-        isLoading = false;
-        render();
-      } else {
-        initWidget({
-          render: function(d) {
-            if (d) {
-              isLoading = false;
-              pulse = d;
-            }
-            render();
-          },
-          getData: _extractData,
-        });
+    var render = () => {
+      if (isLoading) {
+        injectHtml(`<div class="skeleton-wrapper"><div class="ox-card"><div class="ox-card-inner"><div style="display:flex; justify-content:space-between; margin-bottom:24px;"><div class="skeleton-line" style="width:150px; height:24px;"></div><div class="skeleton-line" style="width:80px; height:24px; border-radius:4px;"></div></div><div style="display:flex; gap:16px; margin-bottom:24px;"><div class="skeleton-line" style="width:60px; height:40px;"></div><div class="skeleton-line" style="width:60px; height:40px;"></div></div><div class="skeleton-line" style="width:100%; height:60px;"></div></div></div></div>`);
+        return;
       }
-    </script>
+      if (!pulse) {
+        injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.external(24)}</div><div class="empty-title">Awaiting telemetry</div><div class="empty-desc">No recent pulse data was found for this initiative.</div></div>`);
+        return;
+      }
+
+      const safeName = escapeHtml(pulse.name);
+      const safeStatus = escapeHtml(pulse.status).toUpperCase();
+      const progressPct = typeof pulse.progress_pct === 'number' ? pulse.progress_pct : 0;
+      const pendingDecisions = typeof pulse.pending_decisions === 'number' ? pulse.pending_decisions : 0;
+      const activeWorkstreams = typeof pulse.active_workstreams === 'number' ? pulse.active_workstreams : 0;
+      const healthScore = typeof pulse.health_score === 'number' ? pulse.health_score : 100;
+      const normalizedStatus = escapeHtml(pulse.status).toLowerCase();
+      const roiSummary = pulse.roi_summary || null;
+      let roiValue = null;
+      
+      if (roiSummary && roiSummary.total_cost > 0) {
+        roiValue = (roiSummary.total_value - roiSummary.total_cost) / roiSummary.total_cost;
+      } else if (roiSummary && roiSummary.total_value > 0) {
+        roiValue = 1;
+      }
+
+      const getHealthClass = (score) => { if (score >= 90) return 'health-on-track'; if (score >= 70) return 'health-attention'; return 'health-at-risk'; };
+      const getHealthLabel = (score) => { if (score >= 90) return 'On Track'; if (score >= 70) return 'Needs Attention'; return 'At Risk'; };
+
+      const blockersHtml = (pulse.blockers || []).length > 0 ? `
+        <div class="blockers-alert">
+          <div class="blockers-title">${pulse.blockers.length} Blocker${pulse.blockers.length !== 1 ? 's' : ''}</div>
+          <ul class="blockers-list">
+            ${pulse.blockers.map(b => '<li>' + escapeHtml(b) + '</li>').join('')}
+          </ul>
+        </div>
+      ` : '';
+
+      injectHtml(`
+        <div class="ox-card animate-in">
+          <div class="ox-card-inner">
+            <div class="pulse-header">
+              <span class="pulse-name">${safeName}</span>
+              <span class="status-badge status-${normalizedStatus}">${safeStatus}</span>
+            </div>
+
+            <div class="pulse-metrics">
+              <div class="metric"><span class="metric-label">Progress</span><span class="metric-value">${progressPct}%</span></div>
+              <div class="metric"><span class="metric-label">Pending</span><span class="metric-value">${pendingDecisions}</span></div>
+              <div class="metric"><span class="metric-label">Active</span><span class="metric-value">${activeWorkstreams}</span></div>
+            </div>
+
+            ${roiSummary ? `
+              <div class="roi-strip">
+                <div class="roi-item"><div class="roi-label">Cost</div><div class="roi-value">${formatUsd(roiSummary.total_cost)}</div></div>
+                <div class="roi-item"><div class="roi-label">Value</div><div class="roi-value positive">${formatUsd(roiSummary.total_value)}</div></div>
+                <div class="roi-item"><div class="roi-label">ROI (${escapeHtml(roiSummary.period || '30d')})</div><div class="roi-value ${roiValue !== null && roiValue >= 0 ? 'positive' : 'negative'}">${formatRoi(roiValue)}</div></div>
+              </div>
+            ` : ''}
+
+            <div class="health-indicator ${getHealthClass(healthScore)}">
+              <span class="health-dot bg-current"></span>
+              <span>${getHealthLabel(healthScore)} (${healthScore})</span>
+            </div>
+
+            ${blockersHtml}
+
+            <div class="widget-footer">
+              <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
+              <a href="${pulse.id ? `https://console.useorgx.com/initiatives/${escapeHtml(pulse.id)}` : 'https://console.useorgx.com'}" target="_blank" class="deep-link">
+                View Dashboard
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+              </a>
+            </div>
+          </div>
+        </div>
+      `);
+    };
+
+    if(isDemo) render();
+    else initWidget({ render: d => { if(d) pulse = d; isLoading = false; render(); } });
+  </script>
   </body>
 </html>
