@@ -2158,12 +2158,18 @@ export class OrgXMcp extends McpAgent<
             .string()
             .optional()
             .describe(
-              'Filter by initiative (for milestones, tasks, workstreams)'
+              'Filter by initiative (for workstreams, milestones, tasks, streams, decisions)'
             ),
           workstream_id: z
             .string()
             .optional()
-            .describe('Filter by workstream (for tasks)'),
+            .describe(
+              'Filter by workstream (for milestones, tasks, streams, decisions)'
+            ),
+          milestone_id: z
+            .string()
+            .optional()
+            .describe('Filter by milestone (for tasks)'),
           domain: z
             .string()
             .optional()
@@ -2271,6 +2277,8 @@ export class OrgXMcp extends McpAgent<
             params.set('initiative_id', args.initiative_id);
           if (args.workstream_id)
             params.set('workstream_id', args.workstream_id);
+          if (args.milestone_id)
+            params.set('milestone_id', args.milestone_id);
           if (args.domain) params.set('domain', args.domain);
           if (args.include_relationships)
             params.set('include_relationships', 'true');
@@ -3614,7 +3622,13 @@ export class OrgXMcp extends McpAgent<
             .array(scaffoldWorkstreamSchema)
             .optional()
             .describe(
-              'Nested workstreams. Include domain, dependencies, and estimate fields when possible. If omitted, the scaffold builder auto-fills subtasks/dependencies and OrgX re-estimates domain+agent+cost with model-guided baselines.'
+              'Nested workstreams. When provided, scaffold_initiative preserves this hierarchy exactly and disables initiative auto-planning by default to avoid duplicate generated work. If omitted, OrgX leaves auto-planning enabled so a planner can synthesize structure later.'
+            ),
+          auto_plan: z
+            .boolean()
+            .optional()
+            .describe(
+              'Override initiative auto-planning. Defaults to false when workstreams are provided, true when they are omitted.'
             ),
           owner_id: z.string().optional(),
           user_id: z.string().optional(),
