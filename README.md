@@ -172,6 +172,7 @@ For the common case of creating an initiative plus its full hierarchy, use `scaf
 ```json
 {
   "title": "AI Legibility Foundation",
+  "auto_plan": false,
   "launch_after_create": true,
   "workstreams": [
     {
@@ -190,9 +191,23 @@ For the common case of creating an initiative plus its full hierarchy, use `scaf
 }
 ```
 
-By default, `scaffold_initiative` now auto-launches the created initiative (`launch_after_create: true`) so stream dispatch can begin immediately. Set `launch_after_create: false` to keep the initiative in draft state after scaffold creation.
+When `workstreams` are provided, `scaffold_initiative` now preserves that explicit hierarchy and disables initiative auto-planning by default (`auto_plan: false`) so OrgX does not generate a second overlapping structure on top of the scaffold. If you omit `workstreams`, auto-planning remains enabled by default so a planner can synthesize the hierarchy later.
+
+`launch_after_create` still defaults to `true`, so stream dispatch can begin immediately after the scaffold is created. Set `launch_after_create: false` to keep the initiative in draft state after scaffold creation.
 
 The tool returns a nested hierarchy with IDs (plus `created[]`, `failed[]`, `ref_map`, and launch outcome metadata for chaining).
+
+### `list_entities`: hierarchy-scoped reads
+
+`list_entities` supports hierarchy filters so clients can read one branch without reconstructing the tree client-side:
+
+- `initiative_id` for `workstream`, `milestone`, `task`, `stream`, `decision`
+- `workstream_id` for `milestone`, `task`, `stream`, `decision`
+- `milestone_id` for `task`
+
+The `fields` parameter also accepts generic aliases such as `title` and `summary`; OrgX maps them to the correct storage columns per entity type (for example, `workstream` uses `name` under the hood).
+
+Contract note: the canonical behavior for initiative creation and hierarchy reads lives in the OrgX API. This worker must mirror that contract, especially `auto_plan` defaults, supported hierarchy filters, and generic field alias handling.
 
 ### Context attachments: `context[]` pointers on core entities
 

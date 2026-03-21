@@ -335,6 +335,17 @@ export function buildScaffoldInitiativeBatch(
     ),
     1
   );
+  const hasExplicitWorkstreams = workstreamsInput.length > 0;
+  const autoPlanOverride =
+    typeof args.auto_plan === 'boolean'
+      ? args.auto_plan
+      : typeof args.autoPlan === 'boolean'
+      ? args.autoPlan
+      : null;
+
+  delete initiativeEntity.autoPlan;
+  initiativeEntity.auto_plan =
+    autoPlanOverride ?? !hasExplicitWorkstreams;
 
   // Ensure scaffolded initiatives default to public live visibility so the
   // /live/[initiativeId] room is accessible immediately after creation.
