@@ -29,7 +29,7 @@ import { buildEntityLink, entityLinkMarkdown, buildLiveUrl } from './deepLinks';
 import { formatInitiativeMarkdown, type OrgXInitiative } from './formatters';
 import { formatForLLM } from './responseSummarizer';
 import { resolveProfileToolSet } from './toolProfiles';
-import { withSseKeepAlive } from './mcpTransport';
+import { withCorsAndHeaders, withSseKeepAlive } from './mcpTransport';
 import { callOrgxApiJson, callOrgxApiRaw } from './orgxApi';
 import { batchCreateEntities as runBatchCreateEntities } from './batchCreate';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
@@ -57,8 +57,7 @@ import {
   entityTypeEnum,
   LIFECYCLE_ENTITY_TYPES,
   lifecycleEntityTypeEnum,
-  LAUNCH_ACTION_MAP,
-  PAUSE_ACTION_MAP,
+  resolveLifecycleActionAlias,
   summarizeChatGPTToolResult,
   summarizePlanSessionResult,
   summarizeStreamToolResult,
@@ -72,6 +71,8 @@ import {
   injectWidgetBase,
   resolveWidgetBaseUrl,
 } from './widgetConfig';
+import { checkEdgeRateLimit } from './edgeRateLimit';
+import { DEFAULT_SKILL_CATALOG } from './skillCatalog';
 import {
   parseStoredSessionAuth,
   parseStoredSessionContext,
@@ -109,6 +110,51 @@ function computeServerVersion(): string {
 
 const MCP_SERVER_VERSION = computeServerVersion();
 
+type AccountTier = 'free' | 'pro' | 'enterprise';
+
+function mapPlanToAccountTier(plan: string | null | undefined): AccountTier {
+  const normalized = (plan ?? 'free').trim().toLowerCase();
+  if (
+    normalized === 'enterprise' ||
+    normalized === 'enterprise_plus' ||
+    normalized === 'enterprise-pro'
+  ) {
+    return 'enterprise';
+  }
+  if (
+    normalized === 'pro' ||
+    normalized === 'team' ||
+    normalized === 'starter' ||
+    normalized === 'growth' ||
+    normalized === 'scale'
+  ) {
+    return 'pro';
+  }
+  return 'free';
+}
+
+function getTierHourlyLimit(tier: AccountTier): number | null {
+  if (tier === 'enterprise') return null;
+  return tier === 'pro' ? 1000 : 100;
+}
+
+function getUpgradeOptions(
+  tier: AccountTier
+): Array<{ plan: 'pro' | 'enterprise'; label: string; available: boolean }> {
+  return [
+    {
+      plan: 'pro',
+      label: 'Pro',
+      available: tier === 'free',
+    },
+    {
+      plan: 'enterprise',
+      label: 'Enterprise',
+      available: tier !== 'enterprise',
+    },
+  ];
+}
+
 interface Env extends OAuthEnv {
   ORGX_API_URL: string;
   ORGX_SERVICE_KEY: string;
@@ -133,6 +179,9 @@ interface Env extends OAuthEnv {
   // Set this to enable publishing to the official MCP Registry
   // Format: base64-encoded 32-byte Ed25519 public key
   MCP_REGISTRY_PUBKEY?: string;
+  // Optional Upstash Redis REST credentials for distributed edge rate limiting
+  UPSTASH_REDIS_REST_URL?: string;
+  UPSTASH_REDIS_REST_TOKEN?: string;
 }
 
 // =============================================================================
@@ -2036,53 +2085,263 @@ export class OrgXMcp extends McpAgent<
         })
     );
 
-    const checkoutSchema = {
-      plan: z.enum(['starter', 'team']),
-      user_id: z.string().optional(),
-    };
-
-    if (shouldRegister('create_checkout_session'))
-    this.server.registerTool(
-      'create_checkout_session',
-      {
-        title: 'Create a billing checkout session',
-        inputSchema: checkoutSchema,
-        _meta: { 'openai/visibility': 'private' },
-      },
-      async (args) =>
-        this.withOrgx(async () => {
-          const userId = this.assertUserId(args.user_id);
-          const response = await callOrgxApiJson(
-            this.env,
-            '/api/stripe/checkout',
-            {
-              method: 'POST',
-              body: JSON.stringify({ plan: args.plan, user_id: userId }),
-            },
-            { userId }
-          );
-          if (!response.ok) {
-            const errorBody = (await response.json().catch(() => null)) as {
-              error?: string;
-            } | null;
-            const message =
-              typeof errorBody?.error === 'string'
-                ? errorBody.error
-                : 'Stripe checkout session failed';
-            console.error('[mcp] create_checkout_session failed', {
-              status: response.status,
-              error: message,
+    if (shouldRegister('account_status'))
+      this.server.registerTool(
+        'account_status',
+        {
+          title: 'Get current account tier and usage',
+          inputSchema: {
+            user_id: z.string().optional(),
+          },
+          _meta: { 'openai/visibility': 'private' },
+        },
+        async (args) =>
+          this.withOrgx(async () => {
+            const resolvedUserId = this.resolveUserId(args.user_id);
+            const authResponse = buildAuthRequiredResponse({
+              toolId: 'account_status',
+              securitySchemes: SECURITY_SCHEMES.authRequired,
+              userId: resolvedUserId ?? undefined,
+              serverUrl: this.env.MCP_SERVER_URL,
+              featureDescription: 'view account status',
             });
-            return this.toolError(message);
-          }
-          const { checkout_url: checkoutUrl } = (await response.json()) as {
-            checkout_url: string;
-          };
-          return {
-            content: [{ type: 'text', text: `Checkout URL: ${checkoutUrl}` }],
-          };
-        })
-    );
+            if (authResponse) return authResponse;
+
+            const userId = this.assertUserId(args.user_id);
+            const response = await callOrgxApiJson(
+              this.env,
+              '/api/billing/usage',
+              { method: 'GET' },
+              { userId }
+            );
+            const usage = (await response.json()) as Record<string, unknown>;
+
+            const plan =
+              typeof usage.plan === 'string' && usage.plan.trim().length > 0
+                ? usage.plan.trim().toLowerCase()
+                : 'free';
+            const tier = mapPlanToAccountTier(plan);
+            const hourlyLimit = getTierHourlyLimit(tier);
+            const mcpCallsUsed =
+              typeof usage.mcpCallsUsed === 'number'
+                ? usage.mcpCallsUsed
+                : typeof usage.mcp_calls_used === 'number'
+                ? usage.mcp_calls_used
+                : 0;
+            const remainingCalls =
+              hourlyLimit === null ? null : Math.max(hourlyLimit - mcpCallsUsed, 0);
+
+            const summaryLines = [
+              `Tier: ${tier} (plan=${plan})`,
+              `MCP calls this period: ${mcpCallsUsed}${
+                typeof usage.mcpCallsIncluded === 'number'
+                  ? ` / ${usage.mcpCallsIncluded}`
+                  : ''
+              }`,
+              `Edge limit (req/hr): ${
+                hourlyLimit === null ? 'unlimited' : hourlyLimit
+              }${
+                remainingCalls === null ? '' : ` (remaining: ${remainingCalls})`
+              }`,
+              `Scaffolds: ${
+                typeof usage.scaffoldsUsed === 'number' ? usage.scaffoldsUsed : 0
+              }${
+                typeof usage.scaffoldsIncluded === 'number'
+                  ? ` / ${usage.scaffoldsIncluded}`
+                  : ''
+              }`,
+            ];
+
+            const payload = {
+              user_id: userId,
+              plan,
+              tier,
+              usage,
+              rate_limit_status: {
+                window: '1h',
+                limit_per_hour: hourlyLimit,
+                remaining: remainingCalls,
+              },
+              available_upgrade_options: getUpgradeOptions(tier),
+              pricing_url: buildPricingUrl(this.env.ORGX_WEB_URL),
+              billing_settings_url: buildBillingSettingsUrl(
+                this.env.ORGX_WEB_URL
+              ),
+            };
+
+            return {
+              content: [{ type: 'text', text: summaryLines.join('\n') }],
+              structuredContent: payload,
+            };
+          })
+      );
+
+    if (shouldRegister('account_upgrade'))
+      this.server.registerTool(
+        'account_upgrade',
+        {
+          title: 'Upgrade account tier',
+          inputSchema: {
+            target_plan: z.enum(['pro', 'enterprise']).default('pro'),
+            billing_cycle: z
+              .enum(['monthly', 'annual'])
+              .optional()
+              .default('monthly'),
+            user_id: z.string().optional(),
+          },
+          _meta: { 'openai/visibility': 'private' },
+        },
+        async (args) =>
+          this.withOrgx(async () => {
+            const resolvedUserId = this.resolveUserId(args.user_id);
+            const authResponse = buildAuthRequiredResponse({
+              toolId: 'account_upgrade',
+              securitySchemes: SECURITY_SCHEMES.authRequired,
+              userId: resolvedUserId ?? undefined,
+              serverUrl: this.env.MCP_SERVER_URL,
+              featureDescription: 'upgrade account',
+            });
+            if (authResponse) return authResponse;
+
+            const userId = this.assertUserId(args.user_id);
+            if (args.target_plan === 'enterprise') {
+              const contactSalesUrl = buildPricingUrl(this.env.ORGX_WEB_URL, {
+                plan: 'enterprise',
+              });
+              const text = `Enterprise plans are handled via sales. Start here: ${contactSalesUrl}`;
+              return {
+                content: [{ type: 'text', text }],
+                structuredContent: {
+                  target_plan: 'enterprise',
+                  checkout_required: false,
+                  contact_sales_url: contactSalesUrl,
+                },
+              };
+            }
+
+            const response = await callOrgxApiJson(
+              this.env,
+              '/api/stripe/checkout',
+              {
+                method: 'POST',
+                body: JSON.stringify({
+                  plan: 'team',
+                  billing_cycle: args.billing_cycle,
+                  user_id: userId,
+                }),
+              },
+              { userId }
+            );
+            const data = (await response.json()) as {
+              checkout_url?: string;
+              url?: string;
+            };
+            const checkoutUrl =
+              (typeof data.checkout_url === 'string' && data.checkout_url) ||
+              (typeof data.url === 'string' && data.url) ||
+              null;
+            if (!checkoutUrl) {
+              return this.toolError('Failed to create checkout session');
+            }
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Checkout URL: ${checkoutUrl}`,
+                },
+              ],
+              structuredContent: {
+                target_plan: args.target_plan,
+                billing_cycle: args.billing_cycle,
+                checkout_url: checkoutUrl,
+              },
+            };
+          })
+      );
+
+    if (shouldRegister('account_usage_report'))
+      this.server.registerTool(
+        'account_usage_report',
+        {
+          title: 'Get detailed account usage report',
+          inputSchema: {
+            user_id: z.string().optional(),
+          },
+          _meta: { 'openai/visibility': 'private' },
+        },
+        async (args) =>
+          this.withOrgx(async () => {
+            const resolvedUserId = this.resolveUserId(args.user_id);
+            const authResponse = buildAuthRequiredResponse({
+              toolId: 'account_usage_report',
+              securitySchemes: SECURITY_SCHEMES.authRequired,
+              userId: resolvedUserId ?? undefined,
+              serverUrl: this.env.MCP_SERVER_URL,
+              featureDescription: 'view usage report',
+            });
+            if (authResponse) return authResponse;
+
+            const userId = this.assertUserId(args.user_id);
+            const response = await callOrgxApiJson(
+              this.env,
+              '/api/billing/usage',
+              { method: 'GET' },
+              { userId }
+            );
+            const usage = (await response.json()) as Record<string, unknown>;
+            const plan =
+              typeof usage.plan === 'string' && usage.plan.trim().length > 0
+                ? usage.plan.trim().toLowerCase()
+                : 'free';
+            const tier = mapPlanToAccountTier(plan);
+            const limit = getTierHourlyLimit(tier);
+            const mcpCallsUsed =
+              typeof usage.mcpCallsUsed === 'number'
+                ? usage.mcpCallsUsed
+                : typeof usage.mcp_calls_used === 'number'
+                ? usage.mcp_calls_used
+                : 0;
+            const mcpCallsRemaining =
+              limit === null ? null : Math.max(limit - mcpCallsUsed, 0);
+
+            const text = [
+              `Usage report (${plan})`,
+              `Period: ${String(usage.periodStart ?? 'n/a')} → ${String(
+                usage.periodEnd ?? 'n/a'
+              )}`,
+              `Credits: ${String(usage.creditsUsed ?? 0)} / ${String(
+                usage.creditsIncluded ?? 'unlimited'
+              )}`,
+              `Scaffolds: ${String(usage.scaffoldsUsed ?? 0)} / ${String(
+                usage.scaffoldsIncluded ?? 'unlimited'
+              )}`,
+              `MCP calls: ${mcpCallsUsed}${
+                typeof usage.mcpCallsIncluded === 'number'
+                  ? ` / ${usage.mcpCallsIncluded}`
+                  : ''
+              }`,
+              `Edge limit remaining (hour): ${
+                mcpCallsRemaining === null ? 'unlimited' : mcpCallsRemaining
+              }`,
+            ].join('\n');
+
+            return {
+              content: [{ type: 'text', text }],
+              structuredContent: {
+                user_id: userId,
+                plan,
+                tier,
+                usage,
+                edge_rate_limit: {
+                  window: '1h',
+                  limit_per_hour: limit,
+                  remaining: mcpCallsRemaining,
+                },
+              },
+            };
+          })
+      );
 
     // =========================================================================
     // GENERIC ENTITY TOOLS
@@ -2158,18 +2417,12 @@ export class OrgXMcp extends McpAgent<
             .string()
             .optional()
             .describe(
-              'Filter by initiative (for workstreams, milestones, tasks, streams, decisions)'
+              'Filter by initiative (for milestones, tasks, workstreams)'
             ),
           workstream_id: z
             .string()
             .optional()
-            .describe(
-              'Filter by workstream (for milestones, tasks, streams, decisions)'
-            ),
-          milestone_id: z
-            .string()
-            .optional()
-            .describe('Filter by milestone (for tasks)'),
+            .describe('Filter by workstream (for tasks)'),
           domain: z
             .string()
             .optional()
@@ -2198,6 +2451,12 @@ export class OrgXMcp extends McpAgent<
             .optional()
             .describe(
               'Fields to return per entity (e.g. ["id","title","status"]). Omit for all fields. Always includes id.'
+            ),
+          seed_defaults: z
+            .boolean()
+            .optional()
+            .describe(
+              'For type=skill only: when true, seed the default skill catalog if no skills exist for the current user.'
             ),
           search: z
             .string()
@@ -2263,7 +2522,9 @@ export class OrgXMcp extends McpAgent<
           const filterUserId =
             explicitUserId ??
             (resolvedUserId &&
-            (args.type === 'studio_brand' || args.type === 'studio_content')
+            (args.type === 'studio_brand' ||
+              args.type === 'studio_content' ||
+              args.type === 'skill')
               ? resolvedUserId
               : null);
 
@@ -2277,8 +2538,6 @@ export class OrgXMcp extends McpAgent<
             params.set('initiative_id', args.initiative_id);
           if (args.workstream_id)
             params.set('workstream_id', args.workstream_id);
-          if (args.milestone_id)
-            params.set('milestone_id', args.milestone_id);
           if (args.domain) params.set('domain', args.domain);
           if (args.include_relationships)
             params.set('include_relationships', 'true');
@@ -2331,27 +2590,64 @@ export class OrgXMcp extends McpAgent<
             params.set('workspace_id', effectiveWorkspaceId);
           }
 
-          const response = await callOrgxApiJson(
-            this.env,
-            `/api/entities?${params.toString()}`,
-            undefined,
-            { userId: authUserId }
-          );
-          const result = (await response.json()) as {
-            type: string;
-            data: Array<{
-              id: string;
-              title?: string;
-              name?: string;
-              [key: string]: unknown;
-            }>;
-            pagination: {
-              total: number;
-              limit: number;
-              offset: number;
-              has_more: boolean;
+          const fetchEntities = async () => {
+            const response = await callOrgxApiJson(
+              this.env,
+              `/api/entities?${params.toString()}`,
+              undefined,
+              { userId: authUserId }
+            );
+            return (await response.json()) as {
+              type: string;
+              data: Array<{
+                id: string;
+                title?: string;
+                name?: string;
+                [key: string]: unknown;
+              }>;
+              pagination: {
+                total: number;
+                limit: number;
+                offset: number;
+                has_more: boolean;
+              };
             };
           };
+
+          let result = await fetchEntities();
+
+          if (
+            args.type === 'skill' &&
+            args.seed_defaults === true &&
+            authUserId &&
+            Array.isArray(result.data) &&
+            result.data.length === 0
+          ) {
+            for (const skill of DEFAULT_SKILL_CATALOG) {
+              try {
+                await callOrgxApiJson(
+                  this.env,
+                  '/api/entities',
+                  {
+                    method: 'POST',
+                    body: JSON.stringify({
+                      type: 'skill',
+                      user_id: authUserId,
+                      ...skill,
+                    }),
+                  },
+                  { userId: authUserId }
+                );
+              } catch (error) {
+                console.warn('[mcp] failed to seed default skill', {
+                  skill: skill.name,
+                  error:
+                    error instanceof Error ? error.message : String(error),
+                });
+              }
+            }
+            result = await fetchEntities();
+          }
 
           const { data, pagination } = result;
           const summary = `${args.type}s: showing ${data.length} of ${
@@ -2381,7 +2677,9 @@ export class OrgXMcp extends McpAgent<
               const nestedFilterUserId =
                 explicitUserId ??
                 (resolvedUserId &&
-                (type === 'studio_brand' || type === 'studio_content')
+                (type === 'studio_brand' ||
+                  type === 'studio_content' ||
+                  type === 'skill')
                   ? resolvedUserId
                   : null);
 
@@ -2470,7 +2768,13 @@ export class OrgXMcp extends McpAgent<
             .string()
             .optional()
             .describe(
-              'Action to execute (leave empty to list available actions). Aliases: launch, pause, complete (resolved per type). For initiatives: reassign_streams. Supports delete for hard delete. For studio_content: render, validate, status, remix, vary, upscale'
+              'Action to execute (leave empty to list available actions). Aliases: launch, pause, complete (resolved per type). Supports update (patch fields), delete for hard delete. For initiatives: reassign_streams. For studio_content: render, validate, status, remix, vary, upscale'
+            ),
+          fields: z
+            .record(z.unknown())
+            .optional()
+            .describe(
+              'For action=update only: partial fields to patch on the entity (same payload style as update_entity minus type/id).'
             ),
           note: z.string().optional().describe('Optional note/reason'),
           force: z
@@ -2538,15 +2842,11 @@ export class OrgXMcp extends McpAgent<
           });
           if (authResponse) return authResponse;
 
-          // Resolve action aliases: launch, pause, complete → type-specific action
-          let resolvedAction = args.action;
-          if (resolvedAction === 'launch') {
-            resolvedAction = LAUNCH_ACTION_MAP[args.type] || 'launch';
-          } else if (resolvedAction === 'pause') {
-            resolvedAction = PAUSE_ACTION_MAP[args.type] || 'pause';
-          } else if (resolvedAction === 'complete') {
-            resolvedAction = 'complete';
-          }
+          // Resolve action aliases: launch/pause → type-specific action
+          const resolvedAction = resolveLifecycleActionAlias(
+            args.type,
+            args.action
+          );
 
           if (!resolvedAction) {
             // List available actions
@@ -2581,6 +2881,53 @@ export class OrgXMcp extends McpAgent<
             };
           }
 
+          if (resolvedAction === 'update') {
+            if (!args.fields || typeof args.fields !== 'object') {
+              return this.toolError(
+                'action=update requires fields (object) with at least one field to patch'
+              );
+            }
+            const fields = args.fields as Record<string, unknown>;
+            if (Object.keys(fields).length === 0) {
+              return this.toolError(
+                'action=update requires fields (object) with at least one field to patch'
+              );
+            }
+
+            const response = await callOrgxApiJson(
+              this.env,
+              '/api/entities',
+              {
+                method: 'PATCH',
+                body: JSON.stringify({
+                  type: args.type,
+                  id: args.id,
+                  ...fields,
+                }),
+              },
+              { userId: resolvedUserId ?? null }
+            );
+            const result = (await response.json()) as {
+              type?: string;
+              data?: Record<string, unknown>;
+            };
+            const payload = {
+              ...result,
+              action: 'update',
+              updated_fields: Object.keys(fields),
+            };
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: formatForLLM('entity_action', payload),
+                },
+              ],
+              structuredContent: payload,
+            };
+          }
+
           // Build request body - include studio-specific and initiative-specific fields
           const body: Record<string, unknown> = {
             note: args.note,
@@ -2608,7 +2955,8 @@ export class OrgXMcp extends McpAgent<
             {
               method: 'POST',
               body: JSON.stringify(body),
-            }
+            },
+            { userId: resolvedUserId ?? null }
           );
           const result = (await response.json()) as {
             success?: boolean;
@@ -2667,7 +3015,7 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Verify entity completion readiness',
         description:
-          'Run pre-completion verification to confirm all child work is done. USE WHEN: before completing an entity with entity_action action=complete. NEXT: If verified, proceed with entity_action action=complete. If not, show blockers to user. Read-only.',
+          'Run pre-completion verification to confirm all child work is done. For tasks, this also checks proof-chain hard blocks that would stop entity_action action=complete. USE WHEN: before completing an entity with entity_action action=complete. NEXT: If verified, proceed with entity_action action=complete. If not, show blockers to user. Read-only.',
         inputSchema: {
           type: z
             .enum(VERIFIABLE_COMPLETION_ENTITY_TYPES)
@@ -3622,13 +3970,7 @@ export class OrgXMcp extends McpAgent<
             .array(scaffoldWorkstreamSchema)
             .optional()
             .describe(
-              'Nested workstreams. When provided, scaffold_initiative preserves this hierarchy exactly and disables initiative auto-planning by default to avoid duplicate generated work. If omitted, OrgX leaves auto-planning enabled so a planner can synthesize structure later.'
-            ),
-          auto_plan: z
-            .boolean()
-            .optional()
-            .describe(
-              'Override initiative auto-planning. Defaults to false when workstreams are provided, true when they are omitted.'
+              'Nested workstreams. Include domain, dependencies, and estimate fields when possible. If omitted, the scaffold builder auto-fills subtasks/dependencies and OrgX re-estimates domain+agent+cost with model-guided baselines.'
             ),
           owner_id: z.string().optional(),
           user_id: z.string().optional(),
@@ -4719,15 +5061,19 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Batch entity actions',
         description:
-          "Execute actions on multiple entities in one call (pause, launch, complete, resume, etc.). USE WHEN: bulk state changes like pausing multiple initiatives or completing multiple tasks. ACCEPTS: short ID prefixes (8+ chars) — no need to look up full UUIDs. NEXT: Verify all actions succeeded. DO NOT USE: for deletes — use batch_delete_entities instead.",
+          "Execute actions on multiple entities in one call (pause, launch, complete, resume, etc.). USE WHEN: bulk state changes like pausing multiple initiatives or completing multiple tasks. ACCEPTS: short ID prefixes (8+ chars) — no need to look up full UUIDs. Supports the same launch/pause aliases as entity_action. NEXT: Verify all actions succeeded. DO NOT USE: for deletes — use batch_delete_entities instead.",
         inputSchema: {
           actions: z
             .array(
               z.object({
                 type: lifecycleEntityTypeEnum.describe('Entity type'),
                 id: z.string().min(1).describe('Entity ID (full UUID or short prefix 8+ hex chars)'),
-                action: z.string().min(1).describe('Action to execute (pause, launch, complete, resume, etc.)'),
+                action: z.string().min(1).describe('Action to execute (pause, launch, complete, resume, etc.). launch and pause are resolved per entity type.'),
                 note: z.string().optional().describe('Optional note/reason for this action'),
+                force: z
+                  .boolean()
+                  .optional()
+                  .describe('Force action when server supports override semantics'),
               })
             )
             .min(1)
@@ -4764,6 +5110,7 @@ export class OrgXMcp extends McpAgent<
             id: string;
             action: string;
             note?: string;
+            force?: boolean;
           }>;
 
           const results: Array<Record<string, unknown>> = new Array(
@@ -4780,14 +5127,19 @@ export class OrgXMcp extends McpAgent<
 
               const target = actions[index];
               try {
+                const resolvedAction = resolveLifecycleActionAlias(
+                  target.type,
+                  target.action
+                );
                 const response = await callOrgxApiJson(
                   this.env,
-                  `/api/entities/${target.type}/${target.id}/${target.action}`,
+                  `/api/entities/${target.type}/${target.id}/${resolvedAction}`,
                   {
                     method: 'POST',
                     body: JSON.stringify({
                       note: target.note,
                       reason: target.note,
+                      force: target.force,
                     }),
                   },
                   { userId: resolvedUserId ?? null }
@@ -4802,7 +5154,8 @@ export class OrgXMcp extends McpAgent<
                   success,
                   type: target.type,
                   id: target.id,
-                  action: target.action,
+                  action: resolvedAction,
+                  requested_action: target.action,
                   message: payload.message ?? payload.error ?? undefined,
                   transition: payload.transition ?? undefined,
                 };
@@ -4813,7 +5166,11 @@ export class OrgXMcp extends McpAgent<
                   success: false,
                   type: target.type,
                   id: target.id,
-                  action: target.action,
+                  action: resolveLifecycleActionAlias(
+                    target.type,
+                    target.action
+                  ),
+                  requested_action: target.action,
                   error: error instanceof Error ? error.message : String(error),
                 };
                 shouldStop = true;
@@ -6362,18 +6719,52 @@ Steps:
 const sseHandler = OrgXMcp.serveSSE('/sse');
 const httpHandler = OrgXMcp.serve('/mcp');
 
+function buildRateLimitedResponse(
+  rateLimit: Awaited<ReturnType<typeof checkEdgeRateLimit>>
+): Response {
+  const body = {
+    error: 'Rate limit exceeded',
+    tier: rateLimit.tier,
+    retry_after_seconds: rateLimit.retryAfterSeconds ?? 60,
+  };
+  const response = new Response(JSON.stringify(body), {
+    status: 429,
+    headers: {
+      'Content-Type': 'application/json',
+      'Retry-After': String(rateLimit.retryAfterSeconds ?? 60),
+    },
+  });
+  return withCorsAndHeaders(response, rateLimit.headers);
+}
+
+const rateLimitedHttpHandler = {
+  async fetch(
+    request: Request,
+    env: Env,
+    ctx: ExecutionContext
+  ): Promise<Response> {
+    const rateLimit = await checkEdgeRateLimit(request, env);
+    if (!rateLimit.allowed) {
+      return buildRateLimitedResponse(rateLimit);
+    }
+
+    const response = await httpHandler.fetch(request, env, ctx);
+    return withCorsAndHeaders(response, rateLimit.headers);
+  },
+};
+
 /**
  * Expose httpHandler for use by authHandler.ts (WebSocket + root URL routing)
  */
 export function getHttpHandler() {
-  return httpHandler;
+  return rateLimitedHttpHandler;
 }
 
 /**
  * Expose sseHandler for use by authHandler.ts (root URL SSE routing)
  */
 export function getSseHandler() {
-  return sseHandler;
+  return rateLimitedSseHandler;
 }
 
 // =============================================================================
@@ -6381,12 +6772,17 @@ export function getSseHandler() {
 // OpenAI MCP client compatibility: POST /sse → /mcp
 // =============================================================================
 
-const sseWithPostRewrite = {
+const rateLimitedSseHandler = {
   async fetch(
     request: Request,
-    env: any,
+    env: Env,
     ctx: ExecutionContext
   ): Promise<Response> {
+    const rateLimit = await checkEdgeRateLimit(request, env);
+    if (!rateLimit.allowed) {
+      return buildRateLimitedResponse(rateLimit);
+    }
+
     // POST /sse → rewrite to /mcp (OpenAI client sends JSON-RPC to /sse)
     if (request.method === 'POST') {
       console.info('[mcp] route POST /sse -> /mcp (http JSON-RPC)');
@@ -6398,12 +6794,13 @@ const sseWithPostRewrite = {
         headers: cloned.headers,
         body: cloned.body,
       });
-      return httpHandler.fetch(httpReq, env, ctx);
+      const response = await httpHandler.fetch(httpReq, env, ctx);
+      return withCorsAndHeaders(response, rateLimit.headers);
     }
 
     // GET /sse → SSE transport (default behavior)
     const resp = await sseHandler.fetch(request, env, ctx);
-    return withSseKeepAlive(resp);
+    return withCorsAndHeaders(withSseKeepAlive(resp), rateLimit.headers);
   },
 };
 
@@ -6419,8 +6816,8 @@ const sseWithPostRewrite = {
 
 export default new OAuthProvider({
   apiHandlers: {
-    '/mcp': httpHandler,
-    '/sse': sseWithPostRewrite,
+    '/mcp': rateLimitedHttpHandler,
+    '/sse': rateLimitedSseHandler,
   },
   defaultHandler: authHandler,
   authorizeEndpoint: '/authorize',

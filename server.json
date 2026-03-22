@@ -128,8 +128,16 @@
       "description": "Fetch organization snapshot. Compact summary by default; detailed mode supports explicit include filters and pagination."
     },
     {
-      "name": "create_checkout_session",
-      "description": "Create a billing checkout session for plan upgrades."
+      "name": "account_status",
+      "description": "Get current account tier, usage, and hourly MCP rate-limit status."
+    },
+    {
+      "name": "account_upgrade",
+      "description": "Start a plan upgrade flow and return checkout/contact URL."
+    },
+    {
+      "name": "account_usage_report",
+      "description": "Get detailed usage metrics and current edge rate-limit allowance."
     },
     {
       "name": "list_entities",

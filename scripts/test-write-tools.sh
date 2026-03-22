@@ -198,7 +198,7 @@ for t in create_entity update_entity entity_action \
          approve_decision reject_decision spawn_agent_task \
          start_plan_session improve_plan record_plan_edit complete_plan \
          configure_org workspace stats update_stream_progress \
-         create_checkout_session; do
+         account_status account_upgrade account_usage_report; do
   if echo "$LIST_RESP" | jq -e ".result.tools[] | select(.name == \"$t\")" >/dev/null 2>&1; then
     printf "  ✓ %s\n" "$t"
   else
@@ -404,11 +404,25 @@ echo ""
 # -- Billing tools --
 echo -e "${CYAN}[Billing Tools]${NC}"
 
-echo "  Testing create_checkout_session..."
-RESP=$(call_tool "create_checkout_session" '{
-  "plan": "pro"
+echo "  Testing account_status..."
+RESP=$(call_tool "account_status" '{
+  "user_id": "00000000-0000-0000-0000-000000000000"
 }')
-check_result "create_checkout_session" "$RESP"
+check_result "account_status" "$RESP"
+
+echo "  Testing account_usage_report..."
+RESP=$(call_tool "account_usage_report" '{
+  "user_id": "00000000-0000-0000-0000-000000000000"
+}')
+check_result "account_usage_report" "$RESP"
+
+echo "  Testing account_upgrade..."
+RESP=$(call_tool "account_upgrade" '{
+  "target_plan": "pro",
+  "billing_cycle": "monthly",
+  "user_id": "00000000-0000-0000-0000-000000000000"
+}')
+check_result "account_upgrade" "$RESP"
 
 # ---------------------------------------------------------------------------
 # 4. Summary
