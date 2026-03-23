@@ -2,6 +2,18 @@
 
 A Cloudflare Workers deployment that exposes OrgX initiatives, milestones, tasks, org snapshots, and Stripe upgrades over the Model Context Protocol (MCP). The worker reuses the Next.js API routes inside this repo, so shipped business logic stays in one place.
 
+## Source Of Truth
+
+This repository is the canonical source for the OrgX MCP worker.
+
+The copy inside `useorgx/orgx` at `orgx/workers/orgx-mcp` is a vendored mirror used for monorepo integration and verification. After worker changes land here, sync them into the monorepo with:
+
+```bash
+pnpm sync:orgx
+```
+
+Use `pnpm sync:orgx:check` to confirm the monorepo mirror is current before opening or merging a PR.
+
 ## Prerequisites
 
 - `pnpm` (matches the repo's package manager)
