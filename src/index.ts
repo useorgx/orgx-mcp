@@ -34,6 +34,10 @@ import { callOrgxApiJson, callOrgxApiRaw } from './orgxApi';
 import { batchCreateEntities as runBatchCreateEntities } from './batchCreate';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
 import {
+  captureWorkerPosthogEvent,
+  resolveAnonymousDistinctId,
+} from './posthogTelemetry';
+import {
   buildAccountStatusResult,
   buildAccountUsageReportResult,
   buildEnterpriseUpgradeResult,
@@ -646,11 +650,7 @@ export class OrgXMcp extends McpAgent<
   }
 
   private resolveAnonymousDistinctId(): string {
-    try {
-      const id = (this.ctx as any)?.id?.toString?.();
-      if (typeof id === 'string' && id.length > 0) return `mcp:${id}`;
-    } catch {}
-    return 'mcp:anonymous';
+    return resolveAnonymousDistinctId(this.ctx);
   }
 
   private capturePosthogEvent(
@@ -660,47 +660,14 @@ export class OrgXMcp extends McpAgent<
       properties,
     }: { distinctId: string; properties?: Record<string, unknown> }
   ): void {
-    try {
-      const apiKey = this.env.POSTHOG_KEY;
-      if (!apiKey || apiKey === 'test-posthog-key') return;
-
-      const host = (
-        this.env.POSTHOG_HOST || 'https://us.i.posthog.com'
-      ).replace(/\/+$/, '');
-
-      const sentAt = new Date().toISOString();
-      const payload = {
-        api_key: apiKey,
-        batch: [
-          {
-            type: 'capture',
-            event,
-            distinct_id: distinctId,
-            properties: {
-              ...(properties ?? {}),
-              $lib: 'orgx-mcp',
-              $lib_version: MCP_SERVER_VERSION,
-              mcp_server_version: MCP_SERVER_VERSION,
-            },
-            timestamp: sentAt,
-          },
-        ],
-        sent_at: sentAt,
-      };
-
-      const req = fetch(`${host}/batch/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-        .then(() => undefined)
-        .catch(() => undefined);
-
-      // Never block tool execution on telemetry.
-      (this.ctx as any)?.waitUntil?.(req);
-    } catch {
-      // ignore
-    }
+    captureWorkerPosthogEvent({
+      env: this.env,
+      ctx: this.ctx as any,
+      event,
+      distinctId,
+      properties,
+      serverVersion: MCP_SERVER_VERSION,
+    });
   }
 
   private captureMcpToolEvent(

@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { handleMcpRequest } from '../src/mcpTransport';
+import {
+  DEPRECATION_SUNSET_AT_ISO,
+  DEPRECATION_SUNSET_HEADER,
+  DEPRECATION_WINDOW_DAYS,
+} from '../src/deprecatedTools';
 
 const env = {} as unknown as Record<string, unknown>;
 
@@ -284,6 +289,82 @@ describe('mcpTransport', () => {
       'account_upgrade'
     );
     expect(response.headers.get('x-orgx-deprecation-routed')).toBe('true');
+    expect(response.headers.get('x-orgx-deprecation-sunset-at')).toBe(
+      DEPRECATION_SUNSET_AT_ISO
+    );
+    expect(response.headers.get('x-orgx-deprecation-window-days')).toBe(
+      String(DEPRECATION_WINDOW_DAYS)
+    );
+    expect(response.headers.get('Sunset')).toBe(DEPRECATION_SUNSET_HEADER);
+  });
+
+  it('captures telemetry for deprecated tool usage when PostHog is configured', async () => {
+    const waitUntil = vi.fn();
+    const ctx = { waitUntil } as any;
+    const telemetryFetch = vi.fn(async () => new Response(null, { status: 200 }));
+    const originalFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', telemetryFetch);
+
+    try {
+      const request = new Request('http://localhost/mcp', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          method: 'tools/call',
+          params: {
+            name: 'create_checkout_session',
+            arguments: { plan: 'starter', user_id: 'user-123' },
+          },
+        }),
+      });
+
+      await handleMcpRequest(
+        request,
+        {
+          POSTHOG_KEY: 'phc_test_key',
+          POSTHOG_HOST: 'https://app.posthog.com',
+        } as any,
+        ctx,
+        {
+          fetch: vi.fn(async () =>
+            new Response(JSON.stringify({ ok: true }), {
+              headers: { 'content-type': 'application/json' },
+            })
+          ),
+        },
+        vi.fn(async () => ({ userId: 'user-123', scope: 'mcp:all' }))
+      );
+
+      expect(waitUntil).toHaveBeenCalledTimes(1);
+      expect(telemetryFetch).toHaveBeenCalledTimes(1);
+      expect(telemetryFetch).toHaveBeenCalledWith(
+        'https://app.posthog.com/batch/',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+
+      const payload = JSON.parse(
+        telemetryFetch.mock.calls[0][1].body as string
+      ) as {
+        batch: Array<{ event: string; properties: Record<string, unknown> }>;
+      };
+      expect(payload.batch[0]?.event).toBe('mcp_deprecated_tool_called');
+      expect(payload.batch[0]?.properties).toMatchObject({
+        deprecated_tool_id: 'create_checkout_session',
+        replacement_tool_id: 'account_upgrade',
+        routed: true,
+        auth_scope: 'mcp:all',
+        has_user_id: true,
+        deprecation_sunset_at: DEPRECATION_SUNSET_AT_ISO,
+        deprecation_window_days: DEPRECATION_WINDOW_DAYS,
+        $lib: 'orgx-mcp',
+      });
+    } finally {
+      vi.stubGlobal('fetch', originalFetch);
+      vi.unstubAllGlobals();
+    }
   });
 
   it('preserves non-tools/call payloads', async () => {
