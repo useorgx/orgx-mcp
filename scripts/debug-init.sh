@@ -2,7 +2,8 @@
 # Debug MCP initialize to capture session headers
 set -euo pipefail
 
-ENDPOINT="${MCP_URL:-http://127.0.0.1:8787}/mcp"
+BASE_URL="${MCP_URL:-http://127.0.0.1:8787}"
+ENDPOINT="${BASE_URL%/}/"
 HEADERS_FILE="/tmp/mcp_debug_headers.txt"
 
 echo "Sending initialize to $ENDPOINT..."

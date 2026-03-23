@@ -99,6 +99,7 @@ import {
 } from './welcomeBackContext';
 import {
   WIDGET_URIS,
+  OUTPUT_TEMPLATE_URIS,
   OAUTH_SCOPES_SUPPORTED,
   SECURITY_SCHEMES,
   PLAN_SESSION_TOOLS,
@@ -123,6 +124,8 @@ import {
   buildWidgetMeta,
   injectWidgetBase,
   resolveWidgetBaseUrl,
+  SKYBRIDGE_MIME_TYPE,
+  toSkybridgeResourceUri,
 } from './widgetConfig';
 import { checkEdgeRateLimit } from './edgeRateLimit';
 import { DEFAULT_SKILL_CATALOG } from './skillCatalog';
@@ -156,6 +159,7 @@ function computeServerVersion(): string {
     ...PLAN_SESSION_TOOLS,
     ...CLIENT_INTEGRATION_TOOL_DEFINITIONS,
     ...STREAM_TOOL_DEFINITIONS,
+    ...FLYWHEEL_TOOL_DEFINITIONS,
   ]
     .map((t) => t.id)
     .sort()
@@ -2693,7 +2697,7 @@ export class OrgXMcp extends McpAgent<
               toolId: 'list_entities',
               securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
               userId: authUserId ?? undefined,
-              serverUrl: this.env.MCP_SERVER_URL,
+              serverUrl: this.env.MCP_SERVER_URL ?? undefined,
               featureDescription: 'read entity context',
             });
             if (authResponse) return authResponse;
@@ -6526,103 +6530,128 @@ export class OrgXMcp extends McpAgent<
 
     // --- get_morning_brief ---
     if (shouldRegister('get_morning_brief'))
-    this.server.registerTool(
-      'get_morning_brief',
-      {
-        title: 'Get Morning Brief',
-        description:
-          `Curated receipts, exceptions, ROI delta, and value signals from the most recent autonomous session. The brief IS curated receipts, not a separate data structure. ${preferredToolCallout(
-            'outcomeAttribution'
-          )}`,
-        inputSchema: this.withClientContext({
-          workspace_id: z.string(),
-          session_id: z.string().optional(),
-        }),
-        _meta: {
-          'openai/readOnlyHint': true,
-          'ui/outputTemplate': WIDGET_URIS.morningBrief,
-        },
-      },
-      async (args) =>
-        this.withOrgx(async () => {
-          const wsId = (args.workspace_id as string) ?? this.sessionContext?.workspaceId;
-          if (!wsId) return this.toolError('workspace_id required');
-          const resolvedUserId = this.resolveUserId();
-
-          const response = await callOrgxApiJson(
-            this.env,
-            `/api/flywheel/briefs?workspace_id=${wsId}${args.session_id ? `&session_id=${args.session_id}` : ''}`,
-            undefined,
-            { userId: resolvedUserId ?? undefined }
-          );
-          const result = await response.json() as Record<string, unknown>;
-          const [outcomeAttribution, workspacePulse] = await Promise.all([
-            this.fetchOrgxJsonOrNull<Record<string, unknown>>(
-              `/api/flywheel/attribution?workspace_id=${wsId}&period=30d`,
-              resolvedUserId
-            ),
-            this.fetchOrgxJsonOrNull<Record<string, unknown>>(
-              `/api/v1/workspaces/${wsId}/dashboard/pulse`,
-              resolvedUserId
-            ),
-          ]);
-          const valueDashboard = buildMorningBriefValueDashboard({
-            brief: result,
-            outcomeAttribution,
-            workspacePulse,
-          });
-
-          const sourceClient = resolveSourceClientFromContext(args._context);
-          const activationEvents = await this.recordMcpActivationObservation({
-            toolId: 'get_morning_brief',
-            args: args as Record<string, unknown>,
-            data: result,
-            userId: resolvedUserId,
-            sourceClient,
-            workspaceId: wsId,
-            initiativeId: this.sessionContext?.initiativeId ?? null,
-          });
-          const activationPayload = this.buildClientActivationPayload({
-            sourceClient,
-            events: activationEvents,
-          });
-          const payload = {
-            ...result,
-            value_dashboard: valueDashboard,
-            ...(outcomeAttribution
-              ? { outcome_attribution: outcomeAttribution }
-              : {}),
-            ...(workspacePulse
-              ? {
-                  workspace_pulse: {
-                    stats:
-                      typeof workspacePulse.stats === 'object' &&
-                      workspacePulse.stats
-                        ? workspacePulse.stats
-                        : null,
-                    generatedAt:
-                      typeof workspacePulse.generatedAt === 'string'
-                        ? workspacePulse.generatedAt
-                        : null,
-                  },
-                }
-              : {}),
-            ...(activationPayload.experience
-              ? { client_activation: activationPayload.experience }
-              : {}),
-          };
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text:
-                  formatMorningBriefSummary(payload) + activationPayload.text,
-              },
+      registerAppTool(
+        this.server,
+        'get_morning_brief',
+        {
+          title: 'Get Morning Brief',
+          description:
+            `Curated receipts, exceptions, ROI delta, and value signals from the most recent autonomous session. The brief IS curated receipts, not a separate data structure. ${preferredToolCallout(
+              'outcomeAttribution'
+            )}`,
+          inputSchema: this.withClientContext({
+            workspace_id: z.string(),
+            session_id: z.string().optional(),
+          }),
+          annotations: {
+            readOnlyHint: true,
+            destructiveHint: false,
+            openWorldHint: false,
+          },
+          _meta: {
+            'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.morningBrief,
+            'openai/toolInvocation/invoking': 'Loading morning brief...',
+            'openai/toolInvocation/invoked': 'Morning brief ready',
+            'openai/readOnlyHint': true,
+            'openai/visibility': 'public',
+            'mcp/securitySchemes': [
+              { type: 'oauth2', scopes: ['initiatives:read'] },
             ],
-            structuredContent: payload,
-          };
-        })
-    );
+            ui: { resourceUri: WIDGET_URIS.morningBrief },
+          },
+        },
+        async (args: Record<string, unknown>) =>
+          this.withOrgx(async () => {
+            const authResponse = buildAuthRequiredResponse({
+              toolId: 'get_morning_brief',
+              securitySchemes: [
+                { type: 'oauth2', scopes: ['initiatives:read'] },
+              ],
+              userId: this.resolveUserId() ?? undefined,
+              serverUrl: this.env.MCP_SERVER_URL ?? undefined,
+              featureDescription: 'view your OrgX morning brief',
+            });
+            if (authResponse) return authResponse;
+
+            const wsId =
+              (args.workspace_id as string) ?? this.sessionContext?.workspaceId;
+            if (!wsId) return this.toolError('workspace_id required');
+            const resolvedUserId = this.resolveUserId();
+
+            const response = await callOrgxApiJson(
+              this.env,
+              `/api/flywheel/briefs?workspace_id=${wsId}${args.session_id ? `&session_id=${args.session_id}` : ''}`,
+              undefined,
+              { userId: resolvedUserId ?? undefined }
+            );
+            const result = (await response.json()) as Record<string, unknown>;
+            const [outcomeAttribution, workspacePulse] = await Promise.all([
+              this.fetchOrgxJsonOrNull<Record<string, unknown>>(
+                `/api/flywheel/attribution?workspace_id=${wsId}&period=30d`,
+                resolvedUserId
+              ),
+              this.fetchOrgxJsonOrNull<Record<string, unknown>>(
+                `/api/v1/workspaces/${wsId}/dashboard/pulse`,
+                resolvedUserId
+              ),
+            ]);
+            const valueDashboard = buildMorningBriefValueDashboard({
+              brief: result,
+              outcomeAttribution,
+              workspacePulse,
+            });
+
+            const sourceClient = resolveSourceClientFromContext(args._context);
+            const activationEvents = await this.recordMcpActivationObservation({
+              toolId: 'get_morning_brief',
+              args: args as Record<string, unknown>,
+              data: result,
+              userId: resolvedUserId,
+              sourceClient,
+              workspaceId: wsId,
+              initiativeId: this.sessionContext?.initiativeId ?? null,
+            });
+            const activationPayload = this.buildClientActivationPayload({
+              sourceClient,
+              events: activationEvents,
+            });
+            const payload = {
+              ...result,
+              value_dashboard: valueDashboard,
+              ...(outcomeAttribution
+                ? { outcome_attribution: outcomeAttribution }
+                : {}),
+              ...(workspacePulse
+                ? {
+                    workspace_pulse: {
+                      stats:
+                        typeof workspacePulse.stats === 'object' &&
+                        workspacePulse.stats
+                          ? workspacePulse.stats
+                          : null,
+                      generatedAt:
+                        typeof workspacePulse.generatedAt === 'string'
+                          ? workspacePulse.generatedAt
+                          : null,
+                    },
+                  }
+                : {}),
+              ...(activationPayload.experience
+                ? { client_activation: activationPayload.experience }
+                : {}),
+            };
+            return {
+              content: [
+                {
+                  type: 'text' as const,
+                  text:
+                    formatMorningBriefSummary(payload) + activationPayload.text,
+                },
+              ],
+              structuredContent: payload,
+            };
+          })
+      );
 
     // --- get_relevant_learnings ---
     if (shouldRegister('get_relevant_learnings'))
@@ -6904,126 +6933,161 @@ export class OrgXMcp extends McpAgent<
         uri: WIDGET_URIS.testMinimal,
         title: 'Minimal Test Widget (no external deps)',
       },
+      {
+        name: 'morning-brief-widget',
+        uri: WIDGET_URIS.morningBrief,
+        title: 'Morning Brief Widget',
+      },
     ] as const;
 
-    const widgetBaseUrl = resolveWidgetBaseUrl(this.env);
     const widgetMeta = buildWidgetMeta(this.env);
     const mcpAppsMeta = buildMcpAppsMeta(this.env);
-    const contentMeta = { ...widgetMeta, ...mcpAppsMeta };
+    const mcpAppsContentMeta = { ...widgetMeta, ...mcpAppsMeta };
 
     for (const widget of widgets) {
-      const widgetFile = widget.uri.replace('ui://widget/', '');
-      const widgetPath = `/${widgetFile}`;
-      const assetUrl = new URL(widgetFile, widgetBaseUrl).toString();
-
       registerAppResource(
         this.server,
         widget.name,
         widget.uri,
         {
           description: widget.title,
-          _meta: contentMeta,
+          _meta: mcpAppsContentMeta,
         },
-          async () => {
-            let assetStatus: number | null = null;
-            let apiStatus: number | null = null;
-            let source: 'assets' | 'api' | 'fallback' = 'assets';
-            let assetFetchError: string | null = null;
+        async () =>
+          this.buildWidgetResourceResponse(
+            widget.uri,
+            widget.title,
+            RESOURCE_MIME_TYPE,
+            mcpAppsContentMeta
+          )
+      );
 
-            this.appendWidgetDebugEvent({
-              phase: 'resource_read_start',
-              resourceUri: widget.uri,
-              mimeType: RESOURCE_MIME_TYPE,
-              details: {
-                widgetFile,
-                assetUrl,
-              },
-            });
+      const outputTemplateUri = toSkybridgeResourceUri(widget.uri);
+      this.server.registerResource(
+        `${widget.name}-skybridge`,
+        outputTemplateUri,
+        {
+          description: `${widget.title} (ChatGPT)`,
+          mimeType: SKYBRIDGE_MIME_TYPE,
+          _meta: widgetMeta,
+        },
+        async () =>
+          this.buildWidgetResourceResponse(
+            widget.uri,
+            widget.title,
+            SKYBRIDGE_MIME_TYPE,
+            widgetMeta,
+            outputTemplateUri
+          )
+      );
+    }
+  }
 
-            try {
-              let html: string | null = null;
-              try {
-                const assetResponse = await fetch(assetUrl, {
-                  headers: { accept: 'text/html,application/xhtml+xml,*/*' },
-                });
-                assetStatus = assetResponse.status;
-                if (assetResponse.ok) {
-                  html = await assetResponse.text();
-                  source = 'assets';
-                }
-              } catch (error) {
-                assetFetchError =
-                  error instanceof Error ? error.message : String(error);
-              }
+  private async buildWidgetResourceResponse(
+    widgetUri: string,
+    widgetTitle: string,
+    mimeType: string,
+    meta: Record<string, unknown>,
+    responseUri = widgetUri
+  ) {
+    const widgetBaseUrl = resolveWidgetBaseUrl(this.env);
+    const widgetFile = widgetUri.replace('ui://widget/', '');
+    const widgetPath = `/${widgetFile}`;
+    const assetUrl = new URL(widgetFile, widgetBaseUrl).toString();
 
-              if (!html) {
-                const response = await callOrgxApiRaw(
-                  this.env,
-                  `/api/chatgpt/widgets${widgetPath}`,
-                  undefined,
-                  {
-                    accept: 'text/html,application/xhtml+xml,*/*',
-                  }
-                );
-                apiStatus = response.status;
-                html = await response.text();
-                source = 'api';
-              }
+    let assetStatus: number | null = null;
+    let apiStatus: number | null = null;
+    let source: 'assets' | 'api' | 'fallback' = 'assets';
+    let assetFetchError: string | null = null;
 
-              const htmlWithBase = injectWidgetBase(html, widgetBaseUrl);
-              const baseInjected = htmlWithBase !== html;
+    this.appendWidgetDebugEvent({
+      phase: 'resource_read_start',
+      resourceUri: responseUri,
+      mimeType,
+      details: {
+        widgetFile,
+        assetUrl,
+      },
+    });
 
-              this.appendWidgetDebugEvent({
-                phase: 'resource_read_complete',
-                resourceUri: widget.uri,
-                mimeType: RESOURCE_MIME_TYPE,
-                details: {
-                  source,
-                  assetStatus,
-                  apiStatus,
-                  assetFetchError,
-                  baseInjected,
-                  htmlBytes: htmlWithBase.length,
-                },
-              });
+    try {
+      let html: string | null = null;
+      try {
+        const assetResponse = await fetch(assetUrl, {
+          headers: { accept: 'text/html,application/xhtml+xml,*/*' },
+        });
+        assetStatus = assetResponse.status;
+        if (assetResponse.ok) {
+          html = await assetResponse.text();
+          source = 'assets';
+        }
+      } catch (error) {
+        assetFetchError = error instanceof Error ? error.message : String(error);
+      }
 
-              // MCP Apps spec requires exactly 1 content item per resource.
-              return {
-                contents: [
-                  {
-                    uri: widget.uri,
-                    mimeType: RESOURCE_MIME_TYPE,
-                    text: htmlWithBase,
-                    _meta: contentMeta,
-                  },
-                ],
-              };
-            } catch (error) {
-              source = 'fallback';
-              const errorMessage =
-                error instanceof Error ? error.message : String(error);
-              this.appendWidgetDebugEvent({
-                phase: 'resource_read_error',
-                resourceUri: widget.uri,
-                mimeType: RESOURCE_MIME_TYPE,
-                details: {
-                  source,
-                  assetStatus,
-                  apiStatus,
-                  assetFetchError,
-                  error: errorMessage,
-                },
-              });
+      if (!html) {
+        const response = await callOrgxApiRaw(
+          this.env,
+          `/api/chatgpt/widgets${widgetPath}`,
+          undefined,
+          {
+            accept: 'text/html,application/xhtml+xml,*/*',
+          }
+        );
+        apiStatus = response.status;
+        html = await response.text();
+        source = 'api';
+      }
 
-              // Fallback: Return a simple placeholder
-              // UX: Use a ChatGPT-style skeleton first, then show a helpful error
-              // if we still can't load (avoids an infinite "loading..." state).
-              const fallbackHtml = `<!doctype html>
+      const htmlWithBase = injectWidgetBase(html, widgetBaseUrl);
+      const baseInjected = htmlWithBase !== html;
+
+      this.appendWidgetDebugEvent({
+        phase: 'resource_read_complete',
+        resourceUri: responseUri,
+        mimeType,
+        details: {
+          source,
+          assetStatus,
+          apiStatus,
+          assetFetchError,
+          baseInjected,
+          htmlBytes: htmlWithBase.length,
+        },
+      });
+
+      return {
+        contents: [
+          {
+            uri: responseUri,
+            mimeType,
+            text: htmlWithBase,
+            _meta: meta,
+          },
+        ],
+      };
+    } catch (error) {
+      source = 'fallback';
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.appendWidgetDebugEvent({
+        phase: 'resource_read_error',
+        resourceUri: responseUri,
+        mimeType,
+        details: {
+          source,
+          assetStatus,
+          apiStatus,
+          assetFetchError,
+          error: errorMessage,
+        },
+      });
+
+      const fallbackHtml = `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>OrgX Widget</title>
+    <title>${widgetTitle}</title>
     <style>
       :root {
         --app-color-bg: #ffffff;
@@ -7116,7 +7180,6 @@ export class OrgXMcp extends McpAgent<
       </div>
     </div>
     <script>
-      // If we hit this fallback, show a helpful message after a short delay.
       setTimeout(function () {
         var el = document.getElementById('fallback-alert');
         if (el) el.style.display = 'block';
@@ -7124,19 +7187,17 @@ export class OrgXMcp extends McpAgent<
     </script>
   </body>
 </html>`;
-              return {
-                contents: [
-                  {
-                    uri: widget.uri,
-                    mimeType: RESOURCE_MIME_TYPE,
-                    text: fallbackHtml,
-                    _meta: contentMeta,
-                  },
-                ],
-              };
-            }
-          }
-        );
+
+      return {
+        contents: [
+          {
+            uri: responseUri,
+            mimeType,
+            text: fallbackHtml,
+            _meta: meta,
+          },
+        ],
+      };
     }
   }
 

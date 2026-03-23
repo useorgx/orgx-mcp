@@ -6,6 +6,7 @@ export interface WidgetEnv {
 
 // Standard MIME type for MCP Apps widget resources (ChatGPT, Claude, VS Code, etc.)
 export const MCP_APPS_MIME_TYPE = 'text/html;profile=mcp-app';
+export const SKYBRIDGE_MIME_TYPE = 'text/html+skybridge';
 
 const DEFAULT_WIDGET_BASE_URL = 'https://mcp.useorgx.com/widgets/';
 const DEFAULT_WIDGET_DOMAIN = 'mcp.useorgx.com';
@@ -28,6 +29,10 @@ export function resolveWidgetBaseUrl(env: WidgetEnv): string {
 export function resolveWidgetDomain(env: WidgetEnv): string {
   const url = normalizeUrl(env.MCP_SERVER_URL);
   return url?.host ?? DEFAULT_WIDGET_DOMAIN;
+}
+
+export function toSkybridgeResourceUri(uri: string): string {
+  return uri.replace(/\.html$/, '.skybridge.html');
 }
 
 function addOrigin(origins: Set<string>, value?: string | null) {

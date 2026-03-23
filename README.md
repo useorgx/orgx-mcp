@@ -68,14 +68,16 @@ CI expects matching GitHub Secrets:
 - `ORGX_SERVICE_KEY`
 - `MCP_JWT_SECRET`
 
-The worker publishes two transports:
+The public MCP entrypoint is the bare root URL:
 
-- `POST /mcp` – streamable HTTP (Cloudflare Agents recommendation)
-- `GET /sse` – legacy SSE transport for clients that still expect it
+- `POST /` – streamable HTTP for MCP clients
+- `GET /` – SSE when the client requests `text/event-stream`
+
+The raw `/mcp` and `/sse` routes are still used internally, but they sit behind the OAuth provider and are not the recommended discovery URLs for external clients.
 
 ## Cursor / Claude Configuration
 
-For local MCP clients like Cursor, you can connect directly using the SSE transport.
+For local MCP clients like Cursor and Claude, point `mcp-remote` at the root MCP URL.
 
 Add the worker to Cursor's MCP config (macOS/Linux `~/.cursor/mcp.json`):
 
@@ -86,7 +88,7 @@ Add the worker to Cursor's MCP config (macOS/Linux `~/.cursor/mcp.json`):
       "command": "npx",
       "args": [
         "mcp-remote",
-        "https://mcp.useorgx.com/sse",
+        "https://mcp.useorgx.com/",
         "--header",
         "Authorization: Bearer <access-token>"
       ]
@@ -98,7 +100,7 @@ Add the worker to Cursor's MCP config (macOS/Linux `~/.cursor/mcp.json`):
 Quick CLI test:
 
 ```bash
-npx mcp-remote https://mcp.useorgx.com/sse \
+npx mcp-remote https://mcp.useorgx.com/ \
   --header "Authorization: Bearer <access-token>" \
   --health-check
 ```
@@ -445,8 +447,8 @@ The `server.json` file describes OrgX MCP for the registry:
   "description": "AI agent orchestration and organizational memory...",
   "version": "1.0.3",
   "remotes": [
-    { "type": "streamable-http", "url": "https://mcp.useorgx.com/mcp" },
-    { "type": "sse", "url": "https://mcp.useorgx.com/sse" }
+    { "type": "streamable-http", "url": "https://mcp.useorgx.com/" },
+    { "type": "sse", "url": "https://mcp.useorgx.com/" }
   ],
   "tools": [...],
   "resources": [...],
