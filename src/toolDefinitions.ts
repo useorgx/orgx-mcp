@@ -19,6 +19,10 @@ import {
   MISSION_CONTROL_NODE_TYPES,
 } from './shared/entity';
 import { CONFIGURE_ORG_POLICY_TYPES } from './configureOrgPolicy';
+import {
+  compatibilityAliasDescription,
+  preferredToolCallout,
+} from './preferredToolGuidance';
 
 // =============================================================================
 // WIDGET URIs
@@ -335,7 +339,10 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'get_pending_decisions',
     title: 'Get Pending Decisions',
     description:
-      'List OrgX decisions awaiting approval. USE WHEN: user asks what needs sign-off, review, or attention. NEXT: Present each decision with title and urgency, then ask which to approve_decision or reject_decision. DO NOT USE: for past decisions — use get_decision_history instead. Read-only.',
+      compatibilityAliasDescription(
+        'pendingDecisions',
+        'List OrgX decisions awaiting approval. USE WHEN: older clients still call this tool directly. NEXT: Present each decision with title and urgency, then ask which to approve_decision or reject_decision. DO NOT USE: for new prompts or skills. Read-only.'
+      ),
     inputSchema: {
       limit: z
         .number()
@@ -358,7 +365,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'approve_decision',
     title: 'Approve Decision',
     description:
-      'Approve a specific pending OrgX decision after the user confirms. USE WHEN: user says to approve a decision from get_pending_decisions. NEXT: Confirm approval to user; agent is notified automatically. DO NOT USE: without showing the decision to the user first. Requires decisions:write.',
+      'Approve a specific pending OrgX decision after the user confirms. USE WHEN: user says to approve a decision returned from list_entities with type=decision and status=pending (or the legacy get_pending_decisions alias). NEXT: Confirm approval to user; agent is notified automatically. DO NOT USE: without showing the decision to the user first. Requires decisions:write.',
     inputSchema: {
       decision_id: z.string().min(1),
       note: z.string().optional(),
@@ -425,7 +432,9 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'query_org_memory',
     title: 'Query Organizational Memory',
     description:
-      'Search OrgX organizational memory (decisions, initiatives, artifacts) for a query. USE WHEN: user asks about past decisions, context, or knowledge. NEXT: Present relevant results; suggest drill-down with list_entities or get_decision_history. DO NOT USE: for listing current entities — use list_entities instead. Read-only.',
+      `Search OrgX organizational memory (decisions, initiatives, artifacts) for a query. USE WHEN: user asks about past decisions, context, or knowledge. NEXT: Present relevant results; suggest drill-down with list_entities. ${preferredToolCallout(
+        'decisionHistory'
+      )} DO NOT USE: for listing current entities — use list_entities instead. Read-only.`,
     inputSchema: {
       query: z.string().min(1),
       scope: z
@@ -616,7 +625,10 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'get_decision_history',
     title: 'Get Decision History',
     description:
-      'Search past OrgX decisions related to a topic. USE WHEN: user asks about historical decisions, retrospectives, or policy questions. NEXT: Present results with context; suggest approve_decision or reject_decision if relevant pending ones exist. DO NOT USE: for pending decisions — use get_pending_decisions instead. Read-only.',
+      compatibilityAliasDescription(
+        'decisionHistory',
+        'Search past OrgX decisions related to a topic. USE WHEN: older clients still call this tool directly. NEXT: Present results with context; suggest approve_decision or reject_decision if relevant pending ones exist. DO NOT USE: for new prompts or skills. Read-only.'
+      ),
     inputSchema: {
       topic: z.string().min(1),
       initiative_id: z.string().optional(),
@@ -639,7 +651,10 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'score_next_up_queue',
     title: 'Score Next Up Queue',
     description:
-      'Run the composite scoring engine and return ranked queue items with factor breakdowns. USE WHEN: user asks what to work on next, or wants to see prioritized workstreams. NEXT: Execute the top-ranked item via entity_action or spawn_agent_task. DO NOT USE: for initiative health — use get_initiative_pulse instead. Read-only.',
+      compatibilityAliasDescription(
+        'nextUpQueue',
+        'Run the composite scoring engine and return ranked queue items with factor breakdowns. USE WHEN: older clients explicitly need raw queue scoring output. NEXT: Execute the top-ranked item via entity_action or spawn_agent_task. DO NOT USE: for new prompts or skills. Read-only.'
+      ),
     inputSchema: {
       initiative_id: z.string().optional().describe('Initiative UUID to score'),
       workspace_id: z
@@ -690,7 +705,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'scoring_config',
     title: 'Scoring Configuration',
     description:
-      'Read or update scoring engine configuration. USE WHEN: user asks about scoring setup, wants to toggle scoring, adjust weights, or change active signals. action=get to read, action=update to modify. NEXT: Run score_next_up_queue to see effects. Read-only for get, requires initiatives:write for update.',
+      'Read or update scoring engine configuration. USE WHEN: user asks about scoring setup, wants to toggle scoring, adjust weights, or change active signals. action=get to read, action=update to modify. NEXT: Run recommend_next_action to see effects in the preferred workflow, or score_next_up_queue if you need raw queue scoring. Read-only for get, requires initiatives:write for update.',
     inputSchema: {
       action: z.enum(['get', 'update']).describe('get=read config, update=modify settings'),
       workspace_id: z.string().optional().describe('Workspace UUID'),
