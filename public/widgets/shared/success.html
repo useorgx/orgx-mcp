@@ -11,6 +11,8 @@
       href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="interaction-kit.css" />
+    <script src="interaction-kit.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -91,6 +93,16 @@
       };
     </script>
     <style>
+      :root {
+        --ox-primary-rgb: 191, 255, 0;
+        --ox-primary-contrast: #02040a;
+        --ox-border: rgba(255, 255, 255, 0.08);
+        --ox-border-strong: rgba(255, 255, 255, 0.15);
+        --ox-text: #f2f7ff;
+        --ox-text-muted: rgba(255, 255, 255, 0.52);
+        --ox-well-bg: rgba(255, 255, 255, 0.03);
+      }
+
       body {
         background-color: #02040a;
         color: #f2f7ff;
@@ -141,23 +153,12 @@
       }
 
       .command-btn {
-        background: linear-gradient(180deg, #bfff00 0%, #9fd500 100%);
-        box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.2) inset,
-          0 4px 12px rgba(191, 255, 0, 0.25);
-        transition: all 0.2s ease;
-      }
-      .command-btn:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.2) inset,
-          0 8px 20px rgba(191, 255, 0, 0.3);
+        font-weight: 700;
+        letter-spacing: -0.01em;
       }
 
       .secondary-btn {
-        transition: all 0.2s ease;
-      }
-      .secondary-btn:hover {
-        background: rgba(255, 255, 255, 0.08);
-        border-color: rgba(255, 255, 255, 0.15);
+        color: rgba(255, 255, 255, 0.72);
       }
 
       .tool-card {
@@ -469,7 +470,7 @@
         <div class="px-6 py-5 border-t border-white/[0.06] bg-white/[0.01]">
           <a
             href="https://useorgx.com/command"
-            class="command-btn w-full py-3 rounded-xl text-sm font-semibold text-black flex items-center justify-center gap-2"
+            class="command-btn ox-action-btn ox-action-btn--primary ox-action-btn--full w-full py-3 rounded-xl text-sm font-semibold text-black flex items-center justify-center gap-2"
           >
             <svg
               class="w-4 h-4"
@@ -488,8 +489,10 @@
             Open Command Center
           </a>
           <button
-            onclick="window.close()"
-            class="secondary-btn w-full mt-3 py-2.5 rounded-xl text-sm font-medium text-white/50 border border-white/10 flex items-center justify-center gap-2"
+            type="button"
+            id="close-btn"
+            onclick="closeWindow()"
+            class="secondary-btn ox-action-btn ox-action-btn--ghost ox-action-btn--full w-full mt-3 py-2.5 rounded-xl text-sm font-medium text-white/50 border border-white/10 flex items-center justify-center gap-2"
           >
             <svg
               class="w-4 h-4"
@@ -602,6 +605,16 @@
           const notice = document.getElementById('redirect-notice');
           if (notice) notice.style.display = 'none';
         }
+      }
+
+      function closeWindow() {
+        const button = document.getElementById('close-btn');
+        if (window.OrgXWidgetUX) {
+          window.OrgXWidgetUX.setLoading(button, { loadingLabel: 'Closing…' });
+        }
+        window.setTimeout(() => {
+          window.close();
+        }, 60);
       }
 
       // Initialize

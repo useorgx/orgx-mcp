@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Entity Spawned - OrgX</title>
+  <link rel="stylesheet" href="shared/interaction-kit.css" />
+  <script src="shared/interaction-kit.js"></script>
   <style>
       :root, :root[data-theme="light"] {
         --ox-bg: #f8fafc;
@@ -157,31 +159,6 @@
         border: 1px solid rgba(var(--ox-color-rgb), 0.2);
       }
 
-      .ox-btn {
-        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-        padding: 10px 16px; border-radius: 8px; font-size: 0.85rem; font-weight: 600;
-        font-family: var(--ox-font); cursor: pointer; transition: all 0.2s; border: none;
-        width: 100%; text-decoration: none;
-      }
-      
-      .ox-btn-primary { background: var(--ox-primary); color: #000; box-shadow: 0 4px 12px rgba(var(--ox-primary-rgb), 0.2); }
-      .ox-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(var(--ox-primary-rgb), 0.4); }
-      @media (prefers-color-scheme: light) { .ox-btn-primary { color: #fff; } }
-
-      .ox-btn-ghost { background: var(--ox-well-bg); color: var(--ox-text); border: 1px solid var(--ox-border); }
-      .ox-btn-ghost:hover { background: rgba(var(--ox-text-rgb), 0.05); border-color: var(--ox-border-strong); }
-
-      .toast-container { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 8px; z-index: 9999; }
-      .toast {
-        display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 8px;
-        font-size: 0.85rem; font-weight: 500; color: #fff;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3); animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      .toast-success { background: var(--ox-teal); }
-      .toast-error { background: var(--ox-danger); }
-      @keyframes toastSlideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-      @keyframes toastSlideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
-
       .skeleton-line {
         background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%);
         background-size: 200% 100%; animation: shimmer 2s infinite linear; border-radius: 4px;
@@ -199,13 +176,48 @@
     .task-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
     .well-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px; }
     
-    .platform-links { display: flex; flex-direction: column; gap: 8px; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--ox-border); }
-    .platform-link { 
-      display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; 
-      background: var(--ox-well-bg); border: 1px solid var(--ox-border); border-radius: 8px;
-      color: var(--ox-text); font-size: 0.85rem; font-weight: 500; text-decoration: none; transition: all 0.2s;
+    .platform-links {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--ox-border);
     }
-    .platform-link:hover { border-color: var(--ox-border-strong); background: rgba(var(--ox-primary-rgb), 0.05); }
+
+    .platform-link {
+      width: 100%;
+      justify-content: space-between;
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: var(--ox-text);
+    }
+
+    .platform-link__meta {
+      opacity: 0.68;
+      font-family: var(--ox-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.03em;
+    }
+
+    .deep-link {
+      color: var(--ox-primary);
+      min-height: 40px;
+      padding-inline: 14px;
+      font-size: 0.82rem;
+    }
+
+    @media (max-width: 560px) {
+      .widget-footer {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 12px;
+      }
+
+      .deep-link {
+        width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
@@ -345,11 +357,11 @@
       if (!entity) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.check(24)}</div><div class="empty-title">Entity unverified</div><div class="empty-desc">The dispatched entity payload is empty.</div></div>`); return; }
 
       const linksHtml = (entity.links || []).map(l => `
-        <a href="${escapeHtml(l.url)}" target="_blank" class="platform-link">
+        <a href="${escapeHtml(l.url)}" target="_blank" rel="noreferrer" class="platform-link ox-link-btn ox-link-btn--ghost">
           <span style="display:flex; align-items:center; gap:6px;">
             ${icons.external(12)} ${escapeHtml(l.platform)}
           </span>
-          <span style="opacity:0.6; font-family:var(--ox-mono); font-size:0.7rem;">${escapeHtml(l.label)}</span>
+          <span class="platform-link__meta">${escapeHtml(l.label)}</span>
         </a>
       `).join('');
       
@@ -407,7 +419,7 @@
 
             <div class="widget-footer" style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid var(--ox-border);">
               <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Live Sync Active</span>
-              <a href="${consoleUrl}" target="_blank" class="deep-link" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; color: var(--ox-primary); text-decoration: none;">
+              <a href="${consoleUrl}" target="_blank" rel="noreferrer" class="deep-link ox-link-btn ox-link-btn--quiet" style="display: inline-flex; align-items: center; gap: 6px;">
                 Track Execution 
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
               </a>
