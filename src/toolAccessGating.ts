@@ -2,8 +2,8 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { callOrgxApiJson } from './orgxApi';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
+import { mapPlanToAccountTier, type AccountTier } from './accountTools';
 
-type AccountTier = 'free' | 'pro' | 'enterprise';
 type ToolAccessFeature = 'spawn_agent_task' | 'start_autonomous_session';
 
 type ToolAccessRule = {
@@ -55,27 +55,6 @@ const TOOL_ACCESS_RULES: Record<ToolAccessFeature, ToolAccessRule> = {
     message: 'Upgrade to Pro to start autonomous execution sessions.',
   },
 };
-
-function mapPlanToAccountTier(plan: string | null | undefined): AccountTier {
-  const normalized = (plan ?? 'free').trim().toLowerCase();
-  if (
-    normalized === 'enterprise' ||
-    normalized === 'enterprise_plus' ||
-    normalized === 'enterprise-pro'
-  ) {
-    return 'enterprise';
-  }
-  if (
-    normalized === 'pro' ||
-    normalized === 'team' ||
-    normalized === 'starter' ||
-    normalized === 'growth' ||
-    normalized === 'scale'
-  ) {
-    return 'pro';
-  }
-  return 'free';
-}
 
 function hasTierAccess(
   tier: AccountTier,
