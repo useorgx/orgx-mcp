@@ -74,6 +74,17 @@ import {
   type McpActivationState,
 } from './mcpActivationTracker';
 import {
+  buildWelcomeBackNextActions,
+  createEmptyMcpSessionReentryState,
+  formatWelcomeBackDigest,
+  MCP_SESSION_REENTRY_STORAGE_KEY,
+  parseStoredMcpSessionReentryState,
+  recordSuccessfulSessionTool,
+  recordWelcomeBackShown,
+  shouldShowWelcomeBack,
+  type McpSessionReentryState,
+} from './welcomeBackContext';
+import {
   WIDGET_URIS,
   OAUTH_SCOPES_SUPPORTED,
   SECURITY_SCHEMES,
@@ -252,6 +263,8 @@ export class OrgXMcp extends McpAgent<
   // Session-scoped activation funnel state for MCP onboarding telemetry.
   private mcpActivationState: McpActivationState =
     createEmptyMcpActivationState();
+  private mcpSessionReentryState: McpSessionReentryState =
+    createEmptyMcpSessionReentryState();
 
   // Set to true when a user authenticates for the first time in this session.
   // Used to prepend a welcome message to the first tool call response.
@@ -582,6 +595,30 @@ export class OrgXMcp extends McpAgent<
     }
   }
 
+  private async loadMcpSessionReentryState() {
+    try {
+      const stored = await this.ctx.storage.get<Record<string, unknown>>(
+        MCP_SESSION_REENTRY_STORAGE_KEY
+      );
+      const parsed = parseStoredMcpSessionReentryState(stored);
+      if (!parsed) return;
+      this.mcpSessionReentryState = parsed;
+    } catch (error) {
+      console.warn('[mcp:session] Failed to load reentry state', { error });
+    }
+  }
+
+  private async saveMcpSessionReentryState() {
+    try {
+      await this.ctx.storage.put(
+        MCP_SESSION_REENTRY_STORAGE_KEY,
+        this.mcpSessionReentryState
+      );
+    } catch (error) {
+      console.warn('[mcp:session] Failed to save reentry state', { error });
+    }
+  }
+
   async init() {
     // Deduplicate concurrent init() calls. When two requests arrive
     // simultaneously (e.g. onStart + handleMcpMessage), both call init().
@@ -621,6 +658,7 @@ export class OrgXMcp extends McpAgent<
     await this.loadSessionAuth();
     await this.loadSessionContext();
     await this.loadMcpActivationState();
+    await this.loadMcpSessionReentryState();
 
     // Diagnostic: log what the DO received from the provider
     console.info('[mcp:init] DO initialized', {
@@ -792,17 +830,155 @@ export class OrgXMcp extends McpAgent<
     }
   }
 
+  private async buildWelcomeBackBlock(
+    userId?: string | null
+  ): Promise<{ type: 'text'; text: string } | null> {
+    const lastSeenAt = this.mcpSessionReentryState.last_success_at;
+    if (!lastSeenAt) return null;
+
+    const workspaceId = this.sessionContext.workspaceId ?? null;
+    const workspaceName = this.sessionContext.workspaceName ?? null;
+
+    let stats = {
+      active_initiatives: 0,
+      pending_decisions: 0,
+      running_agents: 0,
+    };
+    let recentActivity: Array<{
+      title: string;
+      timestamp: string;
+      actor_name: string | null;
+    }> = [];
+    let pendingDecisions: Array<{
+      title: string;
+      waiting_for: string;
+      priority: string | null;
+    }> = [];
+
+    if (workspaceId) {
+      try {
+        const response = await callOrgxApiJson(
+          this.env,
+          `/api/v1/workspaces/${workspaceId}/dashboard/pulse`,
+          undefined,
+          { userId }
+        );
+        const pulse = (await response.json()) as {
+          stats?: {
+            activeInitiatives?: number;
+            pendingDecisions?: number;
+            runningAgents?: number;
+          };
+          activity?: Array<{
+            title?: string;
+            timestamp?: string;
+            actor?: { name?: string | null };
+          }>;
+          decisions?: Array<{
+            title?: string;
+            waitingFor?: string;
+            priority?: string | null;
+          }>;
+        };
+
+        stats = {
+          active_initiatives: pulse.stats?.activeInitiatives ?? 0,
+          pending_decisions: pulse.stats?.pendingDecisions ?? 0,
+          running_agents: pulse.stats?.runningAgents ?? 0,
+        };
+        recentActivity = Array.isArray(pulse.activity)
+          ? pulse.activity
+              .filter(
+                (item) =>
+                  typeof item?.timestamp === 'string' &&
+                  item.timestamp > lastSeenAt
+              )
+              .map((item) => ({
+                title:
+                  typeof item?.title === 'string'
+                    ? item.title
+                    : 'Workspace updated',
+                timestamp: item.timestamp as string,
+                actor_name:
+                  typeof item?.actor?.name === 'string'
+                    ? item.actor.name
+                    : null,
+              }))
+          : [];
+        pendingDecisions = Array.isArray(pulse.decisions)
+          ? pulse.decisions.map((item) => ({
+              title:
+                typeof item?.title === 'string'
+                  ? item.title
+                  : 'Pending decision',
+              waiting_for:
+                typeof item?.waitingFor === 'string'
+                  ? item.waitingFor
+                  : 'for review',
+              priority:
+                typeof item?.priority === 'string' ? item.priority : null,
+            }))
+          : [];
+      } catch (error) {
+        console.warn('[mcp:session] Failed to fetch welcome-back pulse', {
+          workspaceId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    const digest = {
+      workspace_id: workspaceId,
+      workspace_name: workspaceName,
+      last_seen_at: lastSeenAt,
+      live_url: workspaceId
+        ? buildLiveUrl(undefined, undefined, { workspace: workspaceId })
+        : null,
+      stats,
+      recent_activity: recentActivity,
+      pending_decisions: pendingDecisions,
+      next_actions: buildWelcomeBackNextActions({
+        pendingDecisionCount: pendingDecisions.length,
+        recentActivityCount: recentActivity.length,
+        hasWorkspace: Boolean(workspaceId),
+      }),
+    };
+
+    return {
+      type: 'text',
+      text: formatWelcomeBackDigest(digest),
+    };
+  }
+
   private async withOrgx(
     runner: () => Promise<CallToolResult>
   ): Promise<CallToolResult> {
     try {
       const result = await runner();
+      const now = new Date().toISOString();
+      const shouldShowReentry = shouldShowWelcomeBack({
+        state: this.mcpSessionReentryState,
+        now,
+      });
+      let leadingBlock:
+        | {
+            type: 'text';
+            text: string;
+          }
+        | null = null;
+
+      if (shouldShowReentry) {
+        leadingBlock = await this.buildWelcomeBackBlock(this.resolveUserId());
+        this.mcpSessionReentryState = recordWelcomeBackShown(
+          this.mcpSessionReentryState,
+          now
+        );
+      }
 
       // On the very first tool call after a new authentication, prepend a
       // welcome message so the user knows what OrgX can do for them.
-      if (this._isNewSession) {
-        this._isNewSession = false;
-        const welcomeBlock = {
+      if (!leadingBlock && this._isNewSession) {
+        leadingBlock = {
           type: 'text' as const,
           text: [
             `Welcome to OrgX! You're connected and ready to go.`,
@@ -817,10 +993,23 @@ export class OrgXMcp extends McpAgent<
             `Just describe what you'd like to accomplish and I'll pick the right tool.`,
           ].join('\n'),
         };
+      }
+
+      if (this._isNewSession) {
+        this._isNewSession = false;
+      }
+
+      this.mcpSessionReentryState = recordSuccessfulSessionTool(
+        this.mcpSessionReentryState,
+        now
+      );
+      await this.saveMcpSessionReentryState();
+
+      if (leadingBlock) {
         const existingContent = Array.isArray(result.content)
           ? result.content
           : [];
-        return { ...result, content: [welcomeBlock, ...existingContent] };
+        return { ...result, content: [leadingBlock, ...existingContent] };
       }
 
       return result;
