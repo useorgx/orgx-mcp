@@ -73,6 +73,13 @@ import {
 } from './widgetConfig';
 import { checkEdgeRateLimit } from './edgeRateLimit';
 import { DEFAULT_SKILL_CATALOG } from './skillCatalog';
+import { buildEntityActionAttachPayload } from './entityActionAttach';
+import {
+  applyHydrationAccessTier,
+  resolveHydrationAccessContext,
+  resolveHydrationMaxChars,
+} from './contextAccessTier';
+import { buildRateLimitedResponse } from './rateLimitResponse';
 import {
   parseStoredSessionAuth,
   parseStoredSessionContext,
@@ -2497,10 +2504,6 @@ export class OrgXMcp extends McpAgent<
           const authUserId = resolvedUserId ?? explicitUserId;
 
           const hydrateContext = args.hydrate_context === true;
-          const maxChars = Math.max(
-            1000,
-            Math.min(args.max_chars ?? 20000, 50000)
-          );
 
           if (hydrateContext) {
             if (!args.id) {
@@ -2668,6 +2671,15 @@ export class OrgXMcp extends McpAgent<
               return this.toolError(`${args.type} not found: ${args.id}`);
             }
 
+            const hydrationAccess = await resolveHydrationAccessContext(
+              this.env,
+              authUserId!
+            );
+            const maxChars = resolveHydrationMaxChars(
+              args.max_chars,
+              hydrationAccess.tier
+            );
+
             const fetchEntity = async (type: string, id: string) => {
               const nested = new URLSearchParams();
               nested.set('type', type);
@@ -2704,11 +2716,17 @@ export class OrgXMcp extends McpAgent<
               ? ((row as any).context as unknown[])
               : [];
 
-            const { hydrated, truncated, usedChars } = await hydrateTaskContext(
+            const hydratedResult = await hydrateTaskContext({
+              context,
+              fetchEntity,
+              maxChars,
+            });
+            const { hydrated, truncated, usedChars } = applyHydrationAccessTier(
               {
-                context,
-                fetchEntity,
+                hydrated: hydratedResult.hydrated,
                 maxChars,
+                tier: hydrationAccess.tier,
+                truncated: hydratedResult.truncated,
               }
             );
 
@@ -2719,6 +2737,8 @@ export class OrgXMcp extends McpAgent<
               truncated,
               max_chars: maxChars,
               used_chars: usedChars,
+              context_access_tier: hydrationAccess.tier,
+              context_plan: hydrationAccess.plan,
             };
 
             return {
@@ -2768,7 +2788,7 @@ export class OrgXMcp extends McpAgent<
             .string()
             .optional()
             .describe(
-              'Action to execute (leave empty to list available actions). Aliases: launch, pause, complete (resolved per type). Supports update (patch fields), delete for hard delete. For initiatives: reassign_streams. For studio_content: render, validate, status, remix, vary, upscale'
+              'Action to execute (leave empty to list available actions). Aliases: launch, pause, complete (resolved per type). Supports update (patch fields), attach (create an artifact linked to the entity), delete for hard delete. For initiatives: reassign_streams. For studio_content: render, validate, status, remix, vary, upscale'
             ),
           fields: z
             .record(z.unknown())
@@ -2776,6 +2796,61 @@ export class OrgXMcp extends McpAgent<
             .describe(
               'For action=update only: partial fields to patch on the entity (same payload style as update_entity minus type/id).'
             ),
+          artifact_id: z
+            .string()
+            .optional()
+            .describe('For action=attach only: optional artifact UUID for idempotent create.'),
+          name: z
+            .string()
+            .optional()
+            .describe('For action=attach only: artifact name/title.'),
+          artifact_type: z
+            .string()
+            .optional()
+            .describe('For action=attach only: artifact type code, such as eng.diff_pack.'),
+          description: z
+            .string()
+            .optional()
+            .describe('For action=attach only: artifact description.'),
+          artifact_url: z
+            .string()
+            .optional()
+            .describe('For action=attach only: internal artifact URL. Requires artifact_url or external_url.'),
+          external_url: z
+            .string()
+            .optional()
+            .describe('For action=attach only: external artifact URL. Requires artifact_url or external_url.'),
+          preview_markdown: z
+            .string()
+            .optional()
+            .describe('For action=attach only: markdown preview stored with the artifact.'),
+          status: z
+            .enum([
+              'draft',
+              'in_review',
+              'approved',
+              'changes_requested',
+              'superseded',
+              'archived',
+            ])
+            .optional()
+            .describe('For action=attach only: artifact workflow status.'),
+          metadata: z
+            .record(z.unknown())
+            .optional()
+            .describe('For action=attach only: artifact metadata payload.'),
+          created_by_type: z
+            .enum(['human', 'agent'])
+            .optional()
+            .describe('For action=attach only: creator type for the artifact.'),
+          created_by_id: z
+            .string()
+            .optional()
+            .describe('For action=attach only: creator user UUID or external user id.'),
+          initiative_id: z
+            .string()
+            .optional()
+            .describe('For action=attach only: optional initiative reference to resolve alongside the target entity.'),
           note: z.string().optional().describe('Optional note/reason'),
           force: z
             .boolean()
@@ -2915,6 +2990,69 @@ export class OrgXMcp extends McpAgent<
               ...result,
               action: 'update',
               updated_fields: Object.keys(fields),
+            };
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: formatForLLM('entity_action', payload),
+                },
+              ],
+              structuredContent: payload,
+            };
+          }
+
+          if (resolvedAction === 'attach') {
+            const attachPayload = buildEntityActionAttachPayload({
+              type: args.type,
+              id: args.id,
+              artifact_id: args.artifact_id,
+              initiative_id: args.initiative_id,
+              name: args.name,
+              artifact_type: args.artifact_type,
+              description: args.description,
+              artifact_url: args.artifact_url,
+              external_url: args.external_url,
+              preview_markdown: args.preview_markdown,
+              status: args.status,
+              metadata: args.metadata,
+              created_by_type: args.created_by_type,
+              created_by_id: args.created_by_id,
+            });
+
+            const response = await callOrgxApiJson(
+              this.env,
+              '/api/client/artifacts',
+              {
+                method: 'POST',
+                body: JSON.stringify(attachPayload),
+              },
+              { userId: resolvedUserId ?? null }
+            );
+            const result = (await response.json()) as {
+              ok?: boolean;
+              skipped?: boolean;
+              reason?: string;
+              artifact?: Record<string, unknown>;
+              artifactTypeFallbackApplied?: boolean;
+              effectiveArtifactType?: string;
+            };
+            const artifactId =
+              result.artifact &&
+              typeof result.artifact.id === 'string' &&
+              result.artifact.id.length > 0
+                ? result.artifact.id
+                : null;
+            const payload = {
+              ...result,
+              _action: 'attach',
+              entity_type: attachPayload.entity_type,
+              entity_id: attachPayload.entity_id,
+              artifact_id: artifactId ?? attachPayload.artifact_id ?? null,
+              message: result.skipped
+                ? `Artifact attach skipped: ${result.reason ?? 'unknown'}`
+                : `Attached artifact "${attachPayload.name}" to ${attachPayload.entity_type} ${attachPayload.entity_id}`,
             };
 
             return {
@@ -4857,10 +4995,6 @@ export class OrgXMcp extends McpAgent<
           if (authResponse) return authResponse;
 
           const hydrate = args.hydrate !== false;
-          const maxChars = Math.max(
-            1000,
-            Math.min(args.max_chars ?? 20000, 50000)
-          );
 
           const fetchEntity = async (type: string, id: string) => {
             const params = new URLSearchParams();
@@ -4901,10 +5035,24 @@ export class OrgXMcp extends McpAgent<
               structuredContent: payload,
             };
           }
-          const { hydrated, truncated, usedChars } = await hydrateTaskContext({
+          const hydrationAccess = await resolveHydrationAccessContext(
+            this.env,
+            resolvedUserId!
+          );
+          const maxChars = resolveHydrationMaxChars(
+            args.max_chars,
+            hydrationAccess.tier
+          );
+          const hydratedResult = await hydrateTaskContext({
             context,
             fetchEntity,
             maxChars,
+          });
+          const { hydrated, truncated, usedChars } = applyHydrationAccessTier({
+            hydrated: hydratedResult.hydrated,
+            maxChars,
+            tier: hydrationAccess.tier,
+            truncated: hydratedResult.truncated,
           });
 
           const payload = {
@@ -4914,6 +5062,8 @@ export class OrgXMcp extends McpAgent<
             truncated,
             max_chars: maxChars,
             used_chars: usedChars,
+            context_access_tier: hydrationAccess.tier,
+            context_plan: hydrationAccess.plan,
           };
 
           return {
@@ -6719,24 +6869,6 @@ Steps:
 const sseHandler = OrgXMcp.serveSSE('/sse');
 const httpHandler = OrgXMcp.serve('/mcp');
 
-function buildRateLimitedResponse(
-  rateLimit: Awaited<ReturnType<typeof checkEdgeRateLimit>>
-): Response {
-  const body = {
-    error: 'Rate limit exceeded',
-    tier: rateLimit.tier,
-    retry_after_seconds: rateLimit.retryAfterSeconds ?? 60,
-  };
-  const response = new Response(JSON.stringify(body), {
-    status: 429,
-    headers: {
-      'Content-Type': 'application/json',
-      'Retry-After': String(rateLimit.retryAfterSeconds ?? 60),
-    },
-  });
-  return withCorsAndHeaders(response, rateLimit.headers);
-}
-
 const rateLimitedHttpHandler = {
   async fetch(
     request: Request,
@@ -6745,7 +6877,7 @@ const rateLimitedHttpHandler = {
   ): Promise<Response> {
     const rateLimit = await checkEdgeRateLimit(request, env);
     if (!rateLimit.allowed) {
-      return buildRateLimitedResponse(rateLimit);
+      return buildRateLimitedResponse(rateLimit, env.ORGX_WEB_URL);
     }
 
     const response = await httpHandler.fetch(request, env, ctx);
@@ -6780,7 +6912,7 @@ const rateLimitedSseHandler = {
   ): Promise<Response> {
     const rateLimit = await checkEdgeRateLimit(request, env);
     if (!rateLimit.allowed) {
-      return buildRateLimitedResponse(rateLimit);
+      return buildRateLimitedResponse(rateLimit, env.ORGX_WEB_URL);
     }
 
     // POST /sse → rewrite to /mcp (OpenAI client sends JSON-RPC to /sse)

@@ -289,6 +289,30 @@ RESP=$(call_tool "entity_action" '{
 }')
 check_result "entity_action (list)" "$RESP"
 
+# entity_action attach (use created task when possible)
+echo "  Testing entity_action (attach)..."
+if [[ -n "$CREATED_TASK_ID" ]]; then
+  RESP=$(call_tool "entity_action" "{
+    \"type\": \"task\",
+    \"id\": \"$CREATED_TASK_ID\",
+    \"action\": \"attach\",
+    \"name\": \"MCP smoke artifact\",
+    \"artifact_type\": \"eng.diff_pack\",
+    \"external_url\": \"https://example.com/mcp-smoke-artifact\",
+    \"description\": \"Created by test-write-tools.sh to verify artifact attachment.\"
+  }")
+else
+  RESP=$(call_tool "entity_action" '{
+    "type": "task",
+    "id": "00000000-0000-0000-0000-000000000000",
+    "action": "attach",
+    "name": "MCP smoke artifact",
+    "artifact_type": "eng.diff_pack",
+    "external_url": "https://example.com/mcp-smoke-artifact"
+  }')
+fi
+check_result "entity_action (attach)" "$RESP"
+
 echo ""
 
 # -- Decision tools --

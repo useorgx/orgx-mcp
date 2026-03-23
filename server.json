@@ -165,7 +165,7 @@
     },
     {
       "name": "entity_action",
-      "description": "Launch, pause, complete, or perform other actions on entities"
+      "description": "Launch, pause, complete, attach artifacts, or perform other actions on entities"
     },
     {
       "name": "batch_delete_entities",
