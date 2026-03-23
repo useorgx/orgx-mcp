@@ -151,6 +151,10 @@
     .r-meta { display: flex; gap: 12px; font-family: var(--ox-mono); font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ox-text-muted); }
     
     .highlight { color: var(--ox-primary); font-weight: 600; background: rgba(var(--ox-primary-rgb), 0.1); padding: 0 2px; border-radius: 2px; }
+    .error-state { border-style: solid; border-color: rgba(225,29,72,0.2); background: rgba(225,29,72,0.04); }
+    .error-state .empty-icon { color: var(--ox-danger); background: rgba(225,29,72,0.08); box-shadow: none; }
+    .error-state .empty-title { color: var(--ox-text); }
+    .error-state .empty-desc { max-width: 360px; }
 
     .skeleton-line {
       background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%);
@@ -222,9 +226,57 @@
         external: function(s){return _svg('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>',s);},
         sun: function(s){return _svg('<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>',s);},
         initiative: function(s){return _svg('<circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle>',s);},
-        check: function(s){return _svg('<polyline points="20 6 9 17 4 12"></polyline>',s);}
+        check: function(s){return _svg('<polyline points="20 6 9 17 4 12"></polyline>',s);},
+        error: function(s){return _svg('<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>',s);}
       };
       var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
+      var formatRelativeDate = (value) => {
+        if (!value) return '';
+        var date = new Date(value);
+        if (isNaN(date.getTime())) return '';
+        var diffMs = Date.now() - date.getTime();
+        var diffMins = Math.floor(diffMs / 60000);
+        var diffHours = Math.floor(diffMs / 3600000);
+        var diffDays = Math.floor(diffMs / 86400000);
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return diffMins + 'm ago';
+        if (diffHours < 24) return diffHours + 'h ago';
+        if (diffDays < 7) return diffDays + 'd ago';
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      };
+      var coerceScore = (value) => {
+        if (value === null || value === undefined || value === '') return null;
+        var num = Number(value);
+        if (!Number.isFinite(num)) return null;
+        if (num > 1 && num <= 100) num = num / 100;
+        if (num < 0) num = 0;
+        if (num > 1) num = 1;
+        return num;
+      };
+      var buildEntityUrl = (item) => {
+        if (item && typeof item.url === 'string' && item.url.trim()) return item.url;
+        var type = item && typeof item.type === 'string' ? item.type.toLowerCase() : '';
+        var id = item && typeof item.id === 'string' ? item.id : '';
+        if (!id) return 'https://useorgx.com';
+        if (type === 'initiative') return 'https://useorgx.com/live/' + encodeURIComponent(id);
+        if (type === 'decision') return 'https://useorgx.com/decisions/' + encodeURIComponent(id);
+        if (type === 'artifact') return 'https://useorgx.com/artifacts/' + encodeURIComponent(id);
+        if (type === 'task') return 'https://useorgx.com/live?view=mission-control&task=' + encodeURIComponent(id);
+        if (type === 'workstream') return 'https://useorgx.com/live?view=mission-control&workstream=' + encodeURIComponent(id);
+        if (type === 'milestone') return 'https://useorgx.com/live?view=mission-control&milestone=' + encodeURIComponent(id);
+        return 'https://useorgx.com';
+      };
+      var normalizeResult = (item) => {
+        var score = coerceScore(item && (item.score ?? item.relevance_score ?? item.vector_score));
+        return {
+          title: item && typeof item.title === 'string' ? item.title : 'Untitled',
+          type: item && typeof item.type === 'string' ? item.type : 'result',
+          snippet: item && typeof item.snippet === 'string' ? item.snippet : item && typeof item.summary === 'string' ? item.summary : item && typeof item.description === 'string' ? item.description : 'No excerpt available yet.',
+          score: score,
+          url: buildEntityUrl(item || {}),
+          date: formatRelativeDate(item && (item.date || item.created_at || item.updated_at)) || 'Recently updated'
+        };
+      };
 
     var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
     var data = isDemo ? {
@@ -253,9 +305,13 @@
     
     var render = () => {
       if(isLoading) return;
+      if(data && data.error) {
+        injectHtml(`<div class="empty-state error-state animate-in"><div class="empty-icon">${icons.error(24)}</div><div class="empty-title">Search unavailable</div><div class="empty-desc">${escapeHtml(data.error)}</div></div>`);
+        return;
+      }
       if(!data) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.search(24)}</div><div class="empty-title">No results found</div><div class="empty-desc">Try adjusting your query or expanding your search scope.</div></div>`); return; }
 
-      const resultsHtml = (data.results || []).map(r => `
+      const resultsHtml = (data.results || []).map(normalizeResult).map(r => `
         <a href="${escapeHtml(r.url)}" target="_blank" class="result-card">
           
           <div class="r-header">
@@ -263,10 +319,10 @@
               <span style="color:var(--ox-text-muted); display:flex; align-items:center;">${r.type === 'document' ? icons.file(16) : r.type === 'decision' ? icons.check(16) : r.type === 'initiative' ? icons.initiative(16) : icons.external(16)}</span>
               ${escapeHtml(r.title)}
             </div>
-            <div class="score-pill ${r.score >= 0.9 ? 'score-high' : r.score >= 0.7 ? 'score-med' : 'score-low'}">${Math.round(r.score * 100)}% Match</div>
+            ${r.score !== null ? `<div class="score-pill ${r.score >= 0.9 ? 'score-high' : r.score >= 0.7 ? 'score-med' : 'score-low'}">${Math.round(r.score * 100)}% Match</div>` : ''}
           </div>
 
-          <div class="r-snippet">${r.snippet}</div> <!-- snippet contains span highlight so do not escape entirely -->
+          <div class="r-snippet">${escapeHtml(r.snippet)}</div>
           <div class="r-meta">
             <span>${escapeHtml(r.type)}</span>
             <span style="color:var(--ox-border-strong)">•</span>

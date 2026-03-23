@@ -211,6 +211,83 @@
     .params-well { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
     .param-chip { background: var(--ox-well-bg); border: 1px solid var(--ox-border); padding: 4px 8px; border-radius: 4px; font-family: var(--ox-mono); font-size: 0.65rem; color: var(--ox-text-muted); text-transform: uppercase; }
     .param-chip strong { color: var(--ox-text); margin-left: 4px; }
+
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 4px 4px 0;
+      margin-top: -4px;
+    }
+
+    .page-info {
+      flex: 1;
+      text-align: center;
+      font-family: var(--ox-mono);
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--ox-text-muted);
+      font-weight: 600;
+    }
+
+    .page-btn {
+      min-height: 44px;
+      min-width: 132px;
+      padding: 0 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border-radius: 10px;
+      border: 1px solid var(--ox-border);
+      background: var(--ox-well-bg);
+      color: var(--ox-text);
+      font-family: var(--ox-font);
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+      box-shadow: var(--ox-well-shadow);
+    }
+
+    .page-btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      border-color: var(--ox-border-strong);
+      background: rgba(var(--ox-primary-rgb), 0.08);
+      box-shadow: 0 10px 24px -18px rgba(var(--ox-primary-rgb), 0.8);
+      color: var(--ox-text);
+    }
+
+    .page-btn:focus-visible {
+      outline: 2px solid rgba(var(--ox-primary-rgb), 0.65);
+      outline-offset: 2px;
+    }
+
+    .page-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+      transform: none;
+      box-shadow: none;
+    }
+
+    @media (max-width: 560px) {
+      .pagination {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .page-info {
+        order: -1;
+      }
+
+      .page-btn {
+        width: 100%;
+        min-width: 0;
+      }
+    }
   </style>
 </head>
 <body>
@@ -452,9 +529,9 @@
       if (totalPages > 1) {
         html += `
           <div class="pagination">
-            <button class="page-btn" onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}>&lt; Prev</button>
+            <button class="page-btn" onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}>← Previous</button>
             <span class="page-info">Page ${currentPage} of ${totalPages}</span>
-            <button class="page-btn" onclick="changePage(1)" ${currentPage === totalPages ? 'disabled' : ''}>Next &gt;</button>
+            <button class="page-btn" onclick="changePage(1)" ${currentPage === totalPages ? 'disabled' : ''}>Next →</button>
           </div>
         `;
       }
