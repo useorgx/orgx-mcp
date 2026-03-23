@@ -367,6 +367,150 @@ describe('mcpTransport', () => {
     }
   });
 
+  it('routes compatible batch_create_entities initiative hierarchies to scaffold_initiative', async () => {
+    let received: any = null;
+    const handler = {
+      fetch: vi.fn(async (req: Request) => {
+        received = await req.json();
+        return new Response(JSON.stringify({ ok: true }), {
+          headers: { 'content-type': 'application/json' },
+        });
+      }),
+    };
+
+    const request = new Request('http://localhost/mcp', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        method: 'tools/call',
+        params: {
+          name: 'batch_create_entities',
+          arguments: {
+            owner_id: 'user-123',
+            concurrency: 2,
+            continue_on_error: false,
+            entities: [
+              {
+                type: 'initiative',
+                ref: 'init',
+                title: 'Launch OrgX MCP',
+                summary: 'Ship the launch hierarchy',
+                workspace_id: 'ws-123',
+              },
+              {
+                type: 'workstream',
+                ref: 'ws-eng',
+                title: 'Engineering',
+                initiative_ref: 'init',
+              },
+              {
+                type: 'milestone',
+                ref: 'ms-worker',
+                title: 'Worker ready',
+                initiative_ref: 'init',
+                workstream_ref: 'ws-eng',
+              },
+              {
+                type: 'task',
+                title: 'Ship worker',
+                initiative_ref: 'init',
+                workstream_ref: 'ws-eng',
+                milestone_ref: 'ms-worker',
+              },
+            ],
+          },
+        },
+      }),
+    });
+
+    const response = await handleMcpRequest(
+      request,
+      env,
+      createCtx(),
+      handler,
+      vi.fn(async () => ({}))
+    );
+
+    expect(received?.params?.name).toBe('scaffold_initiative');
+    expect(received?.params?.arguments).toEqual({
+      title: 'Launch OrgX MCP',
+      summary: 'Ship the launch hierarchy',
+      workspace_id: 'ws-123',
+      owner_id: 'user-123',
+      continue_on_error: false,
+      concurrency: 2,
+      workstreams: [
+        {
+          ref: 'ws-eng',
+          title: 'Engineering',
+          milestones: [
+            {
+              ref: 'ms-worker',
+              title: 'Worker ready',
+              tasks: [{ title: 'Ship worker' }],
+            },
+          ],
+        },
+      ],
+    });
+    expect(response.headers.get('x-orgx-deprecated-tool')).toBe(
+      'batch_create_entities'
+    );
+    expect(response.headers.get('x-orgx-replacement-tool')).toBe(
+      'scaffold_initiative'
+    );
+    expect(response.headers.get('x-orgx-deprecation-routed')).toBe('true');
+  });
+
+  it('preserves batch_create_entities when the payload is not a single initiative hierarchy', async () => {
+    let received: any = null;
+    const handler = {
+      fetch: vi.fn(async (req: Request) => {
+        received = await req.json();
+        return new Response(JSON.stringify({ ok: true }), {
+          headers: { 'content-type': 'application/json' },
+        });
+      }),
+    };
+
+    const request = new Request('http://localhost/mcp', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        method: 'tools/call',
+        params: {
+          name: 'batch_create_entities',
+          arguments: {
+            entities: [
+              { type: 'initiative', ref: 'init-a', title: 'Init A' },
+              { type: 'initiative', ref: 'init-b', title: 'Init B' },
+            ],
+          },
+        },
+      }),
+    });
+
+    const response = await handleMcpRequest(
+      request,
+      env,
+      createCtx(),
+      handler,
+      vi.fn(async () => ({}))
+    );
+
+    expect(received?.params?.name).toBe('batch_create_entities');
+    expect(received?.params?.arguments).toEqual({
+      entities: [
+        { type: 'initiative', ref: 'init-a', title: 'Init A' },
+        { type: 'initiative', ref: 'init-b', title: 'Init B' },
+      ],
+    });
+    expect(response.headers.get('x-orgx-deprecated-tool')).toBe(
+      'batch_create_entities'
+    );
+    expect(response.headers.get('x-orgx-deprecation-routed')).toBe('false');
+  });
+
   it('preserves non-tools/call payloads', async () => {
     let received: any = null;
     const handler = {
