@@ -88,6 +88,7 @@ import {
   toStoredSessionAuth,
   toStoredSessionContext,
 } from './sessionStorage';
+import { checkToolPlanAccess } from './toolAccessGating';
 
 // Re-export OAuthState Durable Object
 export { OAuthState };
@@ -1105,6 +1106,27 @@ export class OrgXMcp extends McpAgent<
       }
       // Auth blocked - already logged in buildAuthRequiredResponse
       return authResponse;
+    }
+
+    if (toolId === 'spawn_agent_task') {
+      const planResponse = await checkToolPlanAccess({
+        env: this.env,
+        userId: resolvedUserId ?? null,
+        feature: 'spawn_agent_task',
+      });
+      if (planResponse) {
+        this.captureMcpToolEvent('mcp_tool_failed', {
+          toolId,
+          toolFamily: 'chatgpt',
+          userId: resolvedUserId,
+          authSource,
+          ok: false,
+          latencyMs: Date.now() - startTime,
+          error: 'plan_restricted',
+          isWidgetTool,
+        });
+        return planResponse;
+      }
     }
 
     if (isWidgetTool) {
@@ -6100,7 +6122,13 @@ export class OrgXMcp extends McpAgent<
     );
 
     // --- start_autonomous_session ---
-    if (shouldRegister('start_autonomous_session'))
+    if (shouldRegister('start_autonomous_session')) {
+    const startAutonomousSessionDefinition = FLYWHEEL_TOOL_DEFINITIONS.find(
+      (tool) => tool.id === 'start_autonomous_session'
+    );
+    const startAutonomousSessionSecuritySchemes =
+      startAutonomousSessionDefinition?.securitySchemes ??
+      SECURITY_SCHEMES.authRequired;
     this.server.registerTool(
       'start_autonomous_session',
       {
@@ -6113,9 +6141,29 @@ export class OrgXMcp extends McpAgent<
           max_cost_usd: z.number().positive().default(5.0),
           max_receipts: z.number().int().positive().default(50),
         },
+        _meta: {
+          'mcp/securitySchemes': startAutonomousSessionSecuritySchemes,
+        },
       },
-      async (args) =>
-        this.withOrgx(async () => {
+      async (args) => {
+        const resolvedUserId = this.resolveUserId();
+        const authResponse = buildAuthRequiredResponse({
+          toolId: 'start_autonomous_session',
+          securitySchemes: startAutonomousSessionSecuritySchemes,
+          userId: resolvedUserId ?? undefined,
+          serverUrl: this.env.MCP_SERVER_URL,
+          featureDescription: 'start autonomous sessions',
+        });
+        if (authResponse) return authResponse;
+
+        const planResponse = await checkToolPlanAccess({
+          env: this.env,
+          userId: resolvedUserId ?? null,
+          feature: 'start_autonomous_session',
+        });
+        if (planResponse) return planResponse;
+
+        return this.withOrgx(async () => {
           const wsId = (args.workspace_id as string) ?? this.sessionContext?.workspaceId;
           if (!wsId) return this.toolError('workspace_id required');
           const { workspace_id: _workspaceId, ...restArgs } = args;
@@ -6130,7 +6178,7 @@ export class OrgXMcp extends McpAgent<
                 workspace_id: wsId,
               }),
             },
-            { userId: this.resolveUserId() }
+            { userId: resolvedUserId ?? undefined }
           );
           const result = await response.json() as Record<string, unknown>;
           return {
@@ -6138,7 +6186,9 @@ export class OrgXMcp extends McpAgent<
             structuredContent: result,
           };
         })
+      }
     );
+    }
 
     // --- get_morning_brief ---
     if (shouldRegister('get_morning_brief'))
