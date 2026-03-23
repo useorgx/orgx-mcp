@@ -56,13 +56,23 @@ import {
 import {
   buildClientSkillOnboarding,
   formatClientSkillOnboarding,
+  resolveSourceClientFromContext,
 } from './clientSkillOnboarding';
+import { buildSkillCatalogView } from './skillCatalogView';
 import {
   INJECTION_TRIGGERS,
   enrichResultWithContext,
   inferDomainFromTool,
+  type SourceClient,
   type RelatedContext,
 } from './cross-pollination';
+import {
+  applyMcpActivationObservation,
+  createEmptyMcpActivationState,
+  MCP_ACTIVATION_STORAGE_KEY,
+  parseStoredMcpActivationState,
+  type McpActivationState,
+} from './mcpActivationTracker';
 import {
   WIDGET_URIS,
   OAUTH_SCOPES_SUPPORTED,
@@ -238,6 +248,10 @@ export class OrgXMcp extends McpAgent<
     email?: string;
     authenticatedAt?: number;
   } = {};
+
+  // Session-scoped activation funnel state for MCP onboarding telemetry.
+  private mcpActivationState: McpActivationState =
+    createEmptyMcpActivationState();
 
   // Set to true when a user authenticates for the first time in this session.
   // Used to prepend a welcome message to the first tool call response.
@@ -540,6 +554,34 @@ export class OrgXMcp extends McpAgent<
     }
   }
 
+  private async loadMcpActivationState() {
+    try {
+      const stored = await this.ctx.storage.get<Record<string, unknown>>(
+        MCP_ACTIVATION_STORAGE_KEY
+      );
+      const parsed = parseStoredMcpActivationState(stored);
+      if (!parsed) return;
+      this.mcpActivationState = parsed;
+    } catch (error) {
+      console.warn('[mcp:activation] Failed to load activation state', {
+        error,
+      });
+    }
+  }
+
+  private async saveMcpActivationState() {
+    try {
+      await this.ctx.storage.put(
+        MCP_ACTIVATION_STORAGE_KEY,
+        this.mcpActivationState
+      );
+    } catch (error) {
+      console.warn('[mcp:activation] Failed to save activation state', {
+        error,
+      });
+    }
+  }
+
   async init() {
     // Deduplicate concurrent init() calls. When two requests arrive
     // simultaneously (e.g. onStart + handleMcpMessage), both call init().
@@ -578,6 +620,7 @@ export class OrgXMcp extends McpAgent<
     // This handles DO resets after deployments
     await this.loadSessionAuth();
     await this.loadSessionContext();
+    await this.loadMcpActivationState();
 
     // Diagnostic: log what the DO received from the provider
     console.info('[mcp:init] DO initialized', {
@@ -706,6 +749,47 @@ export class OrgXMcp extends McpAgent<
         is_widget_tool: params.isWidgetTool,
       },
     });
+  }
+
+  private async recordMcpActivationObservation(params: {
+    toolId: string;
+    args?: Record<string, unknown> | null;
+    data?: Record<string, unknown> | null;
+    userId?: string | null;
+    sourceClient?: SourceClient | null;
+    workspaceId?: string | null;
+    initiativeId?: string | null;
+  }): Promise<void> {
+    try {
+      const { state, events } = applyMcpActivationObservation(
+        this.mcpActivationState,
+        {
+          toolId: params.toolId,
+          args: params.args ?? undefined,
+          data: params.data ?? undefined,
+          sourceClient: params.sourceClient ?? undefined,
+          workspaceId: params.workspaceId ?? undefined,
+          initiativeId: params.initiativeId ?? undefined,
+        }
+      );
+
+      this.mcpActivationState = state;
+      await this.saveMcpActivationState();
+
+      if (events.length === 0) return;
+      const distinctId = params.userId ?? this.resolveAnonymousDistinctId();
+      for (const event of events) {
+        this.capturePosthogEvent(event.event, {
+          distinctId,
+          properties: event.properties,
+        });
+      }
+    } catch (error) {
+      console.warn('[mcp:activation] Failed to record activation event', {
+        toolId: params.toolId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   private async withOrgx(
@@ -2517,9 +2601,6 @@ export class OrgXMcp extends McpAgent<
           }
 
           const { data, pagination } = result;
-          const summary = `${args.type}s: showing ${data.length} of ${
-            pagination.total
-          }${pagination.has_more ? ' (more available)' : ''}`;
 
           // Add deep links to each entity
           const dataWithLinks = data.map((item) => ({
@@ -2528,6 +2609,27 @@ export class OrgXMcp extends McpAgent<
               label: item.title ?? item.name ?? undefined,
             }).url,
           }));
+          const skillCatalogView =
+            args.type === 'skill'
+              ? buildSkillCatalogView({
+                  skills: dataWithLinks,
+                  defaultCatalog: DEFAULT_SKILL_CATALOG,
+                  search:
+                    typeof args.search === 'string' ? args.search : undefined,
+                })
+              : null;
+          const visibleData = skillCatalogView?.entries ?? dataWithLinks;
+          const effectivePagination = skillCatalogView
+            ? {
+                total: skillCatalogView.available_count,
+                limit: pagination.limit,
+                offset: pagination.offset,
+                has_more: pagination.has_more,
+              }
+            : pagination;
+          const summary = `${args.type}s: showing ${visibleData.length} of ${
+            effectivePagination.total
+          }${effectivePagination.has_more ? ' (more available)' : ''}`;
           const skillOnboarding =
             args.type === 'skill'
               ? buildClientSkillOnboarding({
@@ -2607,7 +2709,18 @@ export class OrgXMcp extends McpAgent<
 
             const payload = {
               ...result,
-              data: dataWithLinks,
+              data: visibleData,
+              pagination: effectivePagination,
+              summary,
+              ...(skillCatalogView
+                ? {
+                    skill_catalog: {
+                      installed_count: skillCatalogView.installed_count,
+                      available_count: skillCatalogView.available_count,
+                      visible_count: skillCatalogView.visible_count,
+                    },
+                  }
+                : {}),
               ...(skillOnboarding ? { skill_onboarding: skillOnboarding } : {}),
               hydrated_context: hydrated,
               truncated,
@@ -2633,9 +2746,35 @@ export class OrgXMcp extends McpAgent<
 
           const payload = {
             ...result,
-            data: dataWithLinks,
+            data: visibleData,
+            pagination: effectivePagination,
+            summary,
+            ...(skillCatalogView
+              ? {
+                  skill_catalog: {
+                    installed_count: skillCatalogView.installed_count,
+                    available_count: skillCatalogView.available_count,
+                    visible_count: skillCatalogView.visible_count,
+                  },
+                }
+              : {}),
             ...(skillOnboarding ? { skill_onboarding: skillOnboarding } : {}),
           };
+
+          if (args.type === 'skill') {
+            await this.recordMcpActivationObservation({
+              toolId: 'list_entities',
+              args: args as Record<string, unknown>,
+              data: payload,
+              userId: authUserId,
+              sourceClient: resolveSourceClientFromContext(args._context),
+              workspaceId: effectiveWorkspaceId,
+              initiativeId:
+                typeof args.initiative_id === 'string'
+                  ? args.initiative_id
+                  : this.sessionContext?.initiativeId ?? null,
+            });
+          }
 
           return {
             content: [
@@ -3098,7 +3237,7 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Create an entity',
         description: `Create a new entity of any type. USE WHEN: adding a single task, milestone, workstream, or other entity to an existing hierarchy. NEXT: Use entity_action to launch/start the entity. DO NOT USE: for creating a full initiative hierarchy — use scaffold_initiative instead.`,
-        inputSchema: {
+        inputSchema: this.withClientContext({
           type: entityTypeEnum.describe('Entity type to create'),
           title: z
             .string()
@@ -3278,7 +3417,7 @@ export class OrgXMcp extends McpAgent<
             })
             .optional()
             .describe('Generation options (for studio_content)'),
-        },
+        }),
         _meta: { securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth },
       },
       async (args) =>
@@ -3531,6 +3670,22 @@ export class OrgXMcp extends McpAgent<
             message,
           });
           message = enrichment.message;
+          const structuredPayload = {
+            ...(enrichment.data ?? {}),
+            ...(liveUrl ? { live_url: liveUrl } : {}),
+            id: result.data.id,
+            type: args.type,
+          };
+
+          await this.recordMcpActivationObservation({
+            toolId: 'create_entity',
+            args: args as Record<string, unknown>,
+            data: structuredPayload,
+            userId: ownerId ?? resolvedUserId ?? null,
+            sourceClient: resolveSourceClientFromContext(args._context),
+            workspaceId: effectiveWorkspaceId,
+            initiativeId: initiativeIdForContext,
+          });
 
           return {
             content: [
@@ -3539,11 +3694,7 @@ export class OrgXMcp extends McpAgent<
                 text: message,
               },
             ],
-            structuredContent: {
-              ...(enrichment.data ?? {}),
-              ...(liveUrl ? { live_url: liveUrl } : {}),
-              id: result.data.id,
-            },
+            structuredContent: structuredPayload,
           };
         })
     );
@@ -3969,7 +4120,7 @@ export class OrgXMcp extends McpAgent<
         title: 'Scaffold an initiative hierarchy',
         description:
           'Create a complete initiative with workstreams, milestones, and tasks in one call. USE WHEN: user wants to plan a new initiative from scratch. NEXT: Use entity_action type=initiative action=launch to start execution (auto-launches by default). DO NOT USE: for adding a single task to an existing initiative — use create_entity instead.',
-        inputSchema: {
+        inputSchema: this.withClientContext({
           title: z.string().min(1).describe('Initiative title'),
           summary: z.string().optional().describe('Initiative summary'),
           description: z.string().optional().describe('Initiative description'),
@@ -4010,7 +4161,7 @@ export class OrgXMcp extends McpAgent<
             .max(20)
             .optional()
             .describe('Parallel creation concurrency (default 8)'),
-        },
+        }),
         _meta: { securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth },
       },
       async (args) =>
@@ -4813,6 +4964,16 @@ export class OrgXMcp extends McpAgent<
 		                ? `\n\nLaunch: skipped (credentials required)${credentialWarning}${agentAssignmentSummary}`
 		                : '\n\nLaunch: skipped (launch_after_create=false)'
 		            : '';
+
+              await this.recordMcpActivationObservation({
+                toolId: 'scaffold_initiative',
+                args: args as Record<string, unknown>,
+                data: machinePayload,
+                userId: ownerId ?? resolvedUserId ?? null,
+                sourceClient: resolveSourceClientFromContext(args._context),
+                workspaceId: effectiveCommandCenterId,
+                initiativeId: createdInitiativeId,
+              });
 
               return {
                 content: [
@@ -6094,10 +6255,10 @@ export class OrgXMcp extends McpAgent<
         title: 'Get Morning Brief',
         description:
           'Curated receipts + exceptions + ROI delta from the most recent autonomous session. The brief IS curated receipts, not a separate data structure.',
-        inputSchema: {
+        inputSchema: this.withClientContext({
           workspace_id: z.string(),
           session_id: z.string().optional(),
-        },
+        }),
         _meta: {
           'openai/readOnlyHint': true,
           'ui/outputTemplate': WIDGET_URIS.morningBrief,
@@ -6115,6 +6276,15 @@ export class OrgXMcp extends McpAgent<
             { userId: this.resolveUserId() }
           );
           const result = await response.json() as Record<string, unknown>;
+          await this.recordMcpActivationObservation({
+            toolId: 'get_morning_brief',
+            args: args as Record<string, unknown>,
+            data: result,
+            userId: this.resolveUserId(),
+            sourceClient: resolveSourceClientFromContext(args._context),
+            workspaceId: wsId,
+            initiativeId: this.sessionContext?.initiativeId ?? null,
+          });
           return {
             content: [{ type: 'text' as const, text: formatForLLM('get_morning_brief', result) }],
             structuredContent: result,

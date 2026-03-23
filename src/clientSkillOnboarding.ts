@@ -4,6 +4,10 @@ import {
   type SourceClient,
 } from './cross-pollination';
 import type { SkillSeed } from './skillCatalog';
+import {
+  buildSkillCatalogView,
+  normalizeSkillCatalogSearchTerms,
+} from './skillCatalogView';
 
 type SkillLike = {
   id?: string;
@@ -72,53 +76,6 @@ const CLIENT_DOMAIN_WEIGHTS: Record<SourceClient, Record<string, number>> = {
   other: { product: 1, engineering: 1, operations: 1 },
 };
 
-function asStringArray(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value
-        .filter((entry): entry is string => typeof entry === 'string')
-        .map((entry) => entry.trim())
-        .filter(Boolean)
-    : [];
-}
-
-function normalizeSkill(skill: SkillLike | SkillSeed) {
-  const rawTitle =
-    'title' in skill && typeof skill.title === 'string'
-      ? skill.title.trim()
-      : '';
-  const name =
-    (typeof skill.name === 'string' && skill.name.trim()) ||
-    rawTitle ||
-    'unknown_skill';
-  const title =
-    rawTitle ||
-    (typeof skill.name === 'string' && skill.name.trim()) ||
-    name;
-  const description =
-    typeof skill.description === 'string' ? skill.description.trim() : '';
-
-  return {
-    name,
-    title,
-    description,
-    triggerKeywords: asStringArray(
-      'trigger_keywords' in skill ? skill.trigger_keywords : []
-    ),
-    triggerDomains: asStringArray(
-      'trigger_domains' in skill ? skill.trigger_domains : []
-    ),
-  };
-}
-
-function normalizeSearchTerms(search?: string | null): string[] {
-  if (!search || !search.trim()) return [];
-  return search
-    .toLowerCase()
-    .split(/[^a-z0-9]+/i)
-    .map((term) => term.trim())
-    .filter((term) => term.length >= 3);
-}
-
 export function resolveSourceClientFromContext(
   context: unknown
 ): SourceClient | null {
@@ -139,21 +96,22 @@ export function buildClientSkillOnboarding(params: {
   seededDefaults?: boolean;
 }): ClientSkillOnboarding | null {
   const sourceClient = resolveSourceClientFromContext(params.context);
-  const searchTerms = normalizeSearchTerms(params.search);
-  const availableSkills = params.skills.map(normalizeSkill);
-  const catalog = params.defaultCatalog.map(normalizeSkill);
-  const byName = new Map<string, ReturnType<typeof normalizeSkill>>();
-
-  for (const skill of catalog) byName.set(skill.name, skill);
-  for (const skill of availableSkills) byName.set(skill.name, skill);
-
-  const candidatePool = Array.from(byName.values());
-  const availableNames = new Set(availableSkills.map((skill) => skill.name));
-  const firstUse = availableSkills.length === 0;
+  const searchTerms = normalizeSkillCatalogSearchTerms(params.search);
+  const skillCatalog = buildSkillCatalogView({
+    skills: params.skills,
+    defaultCatalog: params.defaultCatalog,
+    search: params.search,
+  });
+  const availableNames = new Set(
+    skillCatalog.entries
+      .filter((skill) => skill.installed)
+      .map((skill) => skill.name)
+  );
+  const firstUse = skillCatalog.installed_count === 0;
   const domainWeights = CLIENT_DOMAIN_WEIGHTS[sourceClient ?? 'other'];
   const starterSkills = CLIENT_STARTER_SKILLS[sourceClient ?? 'other'];
 
-  const suggestions = candidatePool
+  const suggestions = skillCatalog.entries
     .map((skill) => {
       let score = 0;
       const reasons: string[] = [];
@@ -167,7 +125,7 @@ export function buildClientSkillOnboarding(params: {
         );
       }
 
-      const domainScore = skill.triggerDomains.reduce(
+      const domainScore = skill.trigger_domains.reduce(
         (sum, domain) => sum + (domainWeights[domain] ?? 0),
         0
       );
@@ -181,7 +139,7 @@ export function buildClientSkillOnboarding(params: {
           skill.name.toLowerCase().includes(term) ||
           skill.title.toLowerCase().includes(term) ||
           skill.description.toLowerCase().includes(term) ||
-          skill.triggerKeywords.some((keyword) =>
+          skill.trigger_keywords.some((keyword) =>
             keyword.toLowerCase().includes(term)
           )
         );
