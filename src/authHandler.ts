@@ -330,11 +330,6 @@ export const authHandler = {
         capabilities: { tools: true, resources: true, prompts: true },
         tools: [
           {
-            name: 'get_pending_decisions',
-            description: 'Get pending decisions awaiting approval',
-            readOnly: true,
-          },
-          {
             name: 'approve_decision',
             description: 'Approve a pending decision',
           },
@@ -349,7 +344,8 @@ export const authHandler = {
           },
           {
             name: 'list_entities',
-            description: 'List any entity type with pagination',
+            description:
+              'List any entity type with filters, including pending decisions via type=decision and status=pending',
             readOnly: true,
           },
           {
@@ -391,7 +387,20 @@ export const authHandler = {
           },
           {
             name: 'query_org_memory',
-            description: 'Search organizational knowledge base',
+            description:
+              'Search organizational memory, including historical decisions and artifacts',
+            readOnly: true,
+          },
+          {
+            name: 'recommend_next_action',
+            description:
+              'Recommend the next best action for a workspace or initiative',
+            readOnly: true,
+          },
+          {
+            name: 'get_morning_brief',
+            description:
+              'Summarize the latest autonomous run, value signals, and exceptions',
             readOnly: true,
           },
           {
@@ -432,7 +441,7 @@ bearer_token_env_var = "ORGX_API_TOKEN"
 startup_timeout_sec = 30
 tool_timeout_sec = 60
 # Optional: limit to specific tools
-# enabled_tools = ["get_pending_decisions", "query_org_memory", "list_entities"]
+# enabled_tools = ["list_entities", "query_org_memory", "recommend_next_action"]
 
 # To authenticate, set your token:
 # export ORGX_API_TOKEN="your-token-here"

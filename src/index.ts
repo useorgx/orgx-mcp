@@ -79,6 +79,10 @@ import {
   type McpActivationState,
 } from './mcpActivationTracker';
 import {
+  compatibilityAliasDescription,
+  preferredToolCallout,
+} from './preferredToolGuidance';
+import {
   buildMorningBriefValueDashboard,
   formatMorningBriefSummary,
 } from './morningBriefValue';
@@ -1026,8 +1030,9 @@ export class OrgXMcp extends McpAgent<
             `Here's what you can do:`,
             `• **scaffold_initiative** — Create a full initiative with workstreams, milestones, and tasks in one call`,
             `• **get_org_snapshot** — See a bird's-eye view of all your initiatives and progress`,
-            `• **get_pending_decisions** — Review and approve/reject decisions awaiting your input`,
+            `• **list_entities** — Review pending decisions with \`type=decision\` and \`status=pending\``,
             `• **query_org_memory** — Search your organization's knowledge base`,
+            `• **recommend_next_action** — See the next best action for your workspace or initiative`,
             `• **spawn_agent_task** — Delegate work to specialized AI agents`,
             ``,
             `Just describe what you'd like to accomplish and I'll pick the right tool.`,
@@ -6341,7 +6346,10 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Get Outcome Attribution',
         description:
-          'ROI summary from the economic ledger. Returns cost/value/ROI by agent, capability, and time period.',
+          compatibilityAliasDescription(
+            'outcomeAttribution',
+            'ROI summary from the economic ledger. Returns cost/value/ROI by agent, capability, and time period.'
+          ),
         inputSchema: {
           workspace_id: z.string().describe('Workspace ID'),
           period: z.enum(['7d', '30d', '90d']).default('30d'),
@@ -6523,7 +6531,9 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Get Morning Brief',
         description:
-          'Curated receipts + exceptions + ROI delta from the most recent autonomous session. The brief IS curated receipts, not a separate data structure.',
+          `Curated receipts, exceptions, ROI delta, and value signals from the most recent autonomous session. The brief IS curated receipts, not a separate data structure. ${preferredToolCallout(
+            'outcomeAttribution'
+          )}`,
         inputSchema: this.withClientContext({
           workspace_id: z.string(),
           session_id: z.string().optional(),
@@ -6735,10 +6745,10 @@ export class OrgXMcp extends McpAgent<
         name: 'Morning Briefing',
         version: '1.0.0',
         description:
-          'Get your daily OrgX briefing - pending decisions, blocked work, agent status, and initiative health.',
+          'Get your daily OrgX briefing - morning brief value signals, pending decisions via list_entities, blocked work, agent status, and initiative health.',
         domain: 'operations',
         requiredTools: [
-          'mcp__orgx__get_pending_decisions',
+          'mcp__orgx__get_morning_brief',
           'mcp__orgx__get_agent_status',
           'mcp__orgx__list_entities',
           'mcp__orgx__get_initiative_pulse',
@@ -7270,7 +7280,7 @@ Steps:
 	   - Capture the created task IDs from the scaffold JSON so you can update progress as you go.
 4) Call \`get_initiative_pulse\` WITHOUT passing \`initiative_id\` (prove context survival via session defaults).
 5) Create a pending decision under that initiative via \`create_entity\` (type=decision) titled "Approve next step" with a short summary and priority=high.
-6) Call \`get_pending_decisions\` (limit=10) so the Decisions widget renders, then call \`approve_decision\` for the decision you just created.
+6) Call \`list_entities\` with \`type=decision\`, \`status=pending\`, and \`limit=10\` so the Decisions widget renders, then call \`approve_decision\` for the decision you just created.
 	   - Mark the corresponding scaffolded task \`in_progress\` then \`done\` using \`update_entity\` (type=task).
 7) Call \`spawn_agent_task\` to assign \`engineering-agent\` a small task linked to the initiative, but OMIT \`initiative_id\` (prove context survival).
 8) Call \`get_agent_status\` and \`get_initiative_pulse\` to show the loop in motion.

@@ -9,6 +9,10 @@
  */
 
 import { z } from 'zod';
+import {
+  compatibilityAliasDescription,
+  preferredToolCallout,
+} from './preferredToolGuidance';
 
 // =============================================================================
 // NEW TOOLS
@@ -20,7 +24,10 @@ export const FLYWHEEL_TOOL_DEFINITIONS = [
     id: 'get_outcome_attribution',
     title: 'Get Outcome Attribution',
     description:
-      'ROI summary from the economic ledger. Human: "3.2x ROI this month." Agent: "My outreach_draft receipts average $0.26 attributed value." Returns cost/value/ROI breakdowns by agent, capability, and time period.',
+      compatibilityAliasDescription(
+        'outcomeAttribution',
+        'ROI summary from the economic ledger. Human: "3.2x ROI this month." Agent: "My outreach_draft receipts average $0.26 attributed value." Returns cost/value/ROI breakdowns by agent, capability, and time period.'
+      ),
     inputSchema: z.object({
       workspace_id: z.string().describe('Workspace ID'),
       period: z
@@ -107,7 +114,9 @@ export const FLYWHEEL_TOOL_DEFINITIONS = [
     id: 'get_morning_brief',
     title: 'Get Morning Brief',
     description:
-      'Returns the morning brief: curated receipts + exceptions + ROI delta from the most recent autonomous session. Defaults to the most recent session if no session ID is provided.',
+      `Returns the morning brief: curated receipts, exceptions, ROI delta, and value signals from the most recent autonomous session. Defaults to the most recent session if no session ID is provided. ${preferredToolCallout(
+        'outcomeAttribution'
+      )}`,
     inputSchema: z.object({
       workspace_id: z.string().describe('Workspace ID'),
       session_id: z.string().optional().describe('Specific session ID (defaults to most recent)'),

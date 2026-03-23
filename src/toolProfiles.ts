@@ -25,7 +25,8 @@ export interface ToolProfile {
 
 export const TOOL_PROFILES: Record<string, ToolProfile> = {
   commander: {
-    description: 'Human operators: decisions, status, entity CRUD, org overview',
+    description:
+      'Human operators: decisions via list_entities, history via query_org_memory, prioritization via recommend_next_action, plus status and entity CRUD',
     tools: [
       'get_pending_decisions',
       'approve_decision',
@@ -94,7 +95,8 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
     ],
   },
   observer: {
-    description: 'Read-only monitoring and reporting',
+    description:
+      'Read-only monitoring and reporting with list_entities, query_org_memory, recommend_next_action, and initiative health',
     tools: [
       'get_pending_decisions',
       'get_agent_status',
