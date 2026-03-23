@@ -34,6 +34,12 @@ import { callOrgxApiJson, callOrgxApiRaw } from './orgxApi';
 import { batchCreateEntities as runBatchCreateEntities } from './batchCreate';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
 import {
+  buildAccountStatusResult,
+  buildAccountUsageReportResult,
+  buildEnterpriseUpgradeResult,
+  resolveCheckoutUrl,
+} from './accountTools';
+import {
   buildScaffoldHierarchy,
   buildScaffoldInitiativeBatch,
 } from './scaffoldInitiative';
@@ -117,51 +123,6 @@ function computeServerVersion(): string {
 }
 
 const MCP_SERVER_VERSION = computeServerVersion();
-
-type AccountTier = 'free' | 'pro' | 'enterprise';
-
-function mapPlanToAccountTier(plan: string | null | undefined): AccountTier {
-  const normalized = (plan ?? 'free').trim().toLowerCase();
-  if (
-    normalized === 'enterprise' ||
-    normalized === 'enterprise_plus' ||
-    normalized === 'enterprise-pro'
-  ) {
-    return 'enterprise';
-  }
-  if (
-    normalized === 'pro' ||
-    normalized === 'team' ||
-    normalized === 'starter' ||
-    normalized === 'growth' ||
-    normalized === 'scale'
-  ) {
-    return 'pro';
-  }
-  return 'free';
-}
-
-function getTierHourlyLimit(tier: AccountTier): number | null {
-  if (tier === 'enterprise') return null;
-  return tier === 'pro' ? 1000 : 100;
-}
-
-function getUpgradeOptions(
-  tier: AccountTier
-): Array<{ plan: 'pro' | 'enterprise'; label: string; available: boolean }> {
-  return [
-    {
-      plan: 'pro',
-      label: 'Pro',
-      available: tier === 'free',
-    },
-    {
-      plan: 'enterprise',
-      label: 'Enterprise',
-      available: tier !== 'enterprise',
-    },
-  ];
-}
 
 interface Env extends OAuthEnv {
   ORGX_API_URL: string;
@@ -2144,62 +2105,14 @@ export class OrgXMcp extends McpAgent<
               { userId }
             );
             const usage = (await response.json()) as Record<string, unknown>;
-
-            const plan =
-              typeof usage.plan === 'string' && usage.plan.trim().length > 0
-                ? usage.plan.trim().toLowerCase()
-                : 'free';
-            const tier = mapPlanToAccountTier(plan);
-            const hourlyLimit = getTierHourlyLimit(tier);
-            const mcpCallsUsed =
-              typeof usage.mcpCallsUsed === 'number'
-                ? usage.mcpCallsUsed
-                : typeof usage.mcp_calls_used === 'number'
-                ? usage.mcp_calls_used
-                : 0;
-            const remainingCalls =
-              hourlyLimit === null ? null : Math.max(hourlyLimit - mcpCallsUsed, 0);
-
-            const summaryLines = [
-              `Tier: ${tier} (plan=${plan})`,
-              `MCP calls this period: ${mcpCallsUsed}${
-                typeof usage.mcpCallsIncluded === 'number'
-                  ? ` / ${usage.mcpCallsIncluded}`
-                  : ''
-              }`,
-              `Edge limit (req/hr): ${
-                hourlyLimit === null ? 'unlimited' : hourlyLimit
-              }${
-                remainingCalls === null ? '' : ` (remaining: ${remainingCalls})`
-              }`,
-              `Scaffolds: ${
-                typeof usage.scaffoldsUsed === 'number' ? usage.scaffoldsUsed : 0
-              }${
-                typeof usage.scaffoldsIncluded === 'number'
-                  ? ` / ${usage.scaffoldsIncluded}`
-                  : ''
-              }`,
-            ];
-
-            const payload = {
-              user_id: userId,
-              plan,
-              tier,
+            const { text, payload } = buildAccountStatusResult({
+              userId,
               usage,
-              rate_limit_status: {
-                window: '1h',
-                limit_per_hour: hourlyLimit,
-                remaining: remainingCalls,
-              },
-              available_upgrade_options: getUpgradeOptions(tier),
-              pricing_url: buildPricingUrl(this.env.ORGX_WEB_URL),
-              billing_settings_url: buildBillingSettingsUrl(
-                this.env.ORGX_WEB_URL
-              ),
-            };
+              orgxWebUrl: this.env.ORGX_WEB_URL,
+            });
 
             return {
-              content: [{ type: 'text', text: summaryLines.join('\n') }],
+              content: [{ type: 'text', text }],
               structuredContent: payload,
             };
           })
@@ -2234,17 +2147,12 @@ export class OrgXMcp extends McpAgent<
 
             const userId = this.assertUserId(args.user_id);
             if (args.target_plan === 'enterprise') {
-              const contactSalesUrl = buildPricingUrl(this.env.ORGX_WEB_URL, {
-                plan: 'enterprise',
-              });
-              const text = `Enterprise plans are handled via sales. Start here: ${contactSalesUrl}`;
+              const { text, payload } = buildEnterpriseUpgradeResult(
+                this.env.ORGX_WEB_URL
+              );
               return {
                 content: [{ type: 'text', text }],
-                structuredContent: {
-                  target_plan: 'enterprise',
-                  checkout_required: false,
-                  contact_sales_url: contactSalesUrl,
-                },
+                structuredContent: payload,
               };
             }
 
@@ -2265,10 +2173,7 @@ export class OrgXMcp extends McpAgent<
               checkout_url?: string;
               url?: string;
             };
-            const checkoutUrl =
-              (typeof data.checkout_url === 'string' && data.checkout_url) ||
-              (typeof data.url === 'string' && data.url) ||
-              null;
+            const checkoutUrl = resolveCheckoutUrl(data);
             if (!checkoutUrl) {
               return this.toolError('Failed to create checkout session');
             }
@@ -2319,55 +2224,14 @@ export class OrgXMcp extends McpAgent<
               { userId }
             );
             const usage = (await response.json()) as Record<string, unknown>;
-            const plan =
-              typeof usage.plan === 'string' && usage.plan.trim().length > 0
-                ? usage.plan.trim().toLowerCase()
-                : 'free';
-            const tier = mapPlanToAccountTier(plan);
-            const limit = getTierHourlyLimit(tier);
-            const mcpCallsUsed =
-              typeof usage.mcpCallsUsed === 'number'
-                ? usage.mcpCallsUsed
-                : typeof usage.mcp_calls_used === 'number'
-                ? usage.mcp_calls_used
-                : 0;
-            const mcpCallsRemaining =
-              limit === null ? null : Math.max(limit - mcpCallsUsed, 0);
-
-            const text = [
-              `Usage report (${plan})`,
-              `Period: ${String(usage.periodStart ?? 'n/a')} → ${String(
-                usage.periodEnd ?? 'n/a'
-              )}`,
-              `Credits: ${String(usage.creditsUsed ?? 0)} / ${String(
-                usage.creditsIncluded ?? 'unlimited'
-              )}`,
-              `Scaffolds: ${String(usage.scaffoldsUsed ?? 0)} / ${String(
-                usage.scaffoldsIncluded ?? 'unlimited'
-              )}`,
-              `MCP calls: ${mcpCallsUsed}${
-                typeof usage.mcpCallsIncluded === 'number'
-                  ? ` / ${usage.mcpCallsIncluded}`
-                  : ''
-              }`,
-              `Edge limit remaining (hour): ${
-                mcpCallsRemaining === null ? 'unlimited' : mcpCallsRemaining
-              }`,
-            ].join('\n');
+            const { text, payload } = buildAccountUsageReportResult({
+              userId,
+              usage,
+            });
 
             return {
               content: [{ type: 'text', text }],
-              structuredContent: {
-                user_id: userId,
-                plan,
-                tier,
-                usage,
-                edge_rate_limit: {
-                  window: '1h',
-                  limit_per_hour: limit,
-                  remaining: mcpCallsRemaining,
-                },
-              },
+              structuredContent: payload,
             };
           })
       );
