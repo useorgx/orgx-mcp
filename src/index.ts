@@ -49,6 +49,15 @@ import {
 } from './scaffoldInitiative';
 import { hydrateTaskContext } from './taskContextHydrator';
 import {
+  CONFIGURE_ORG_POLICY_TYPES,
+  describeAppliedPolicy,
+  resolveConfigureOrgWorkspaceId,
+} from './configureOrgPolicy';
+import {
+  buildClientSkillOnboarding,
+  formatClientSkillOnboarding,
+} from './clientSkillOnboarding';
+import {
   INJECTION_TRIGGERS,
   enrichResultWithContext,
   inferDomainFromTool,
@@ -2241,7 +2250,7 @@ export class OrgXMcp extends McpAgent<
         description: `List entities with filtering. Returns FULL UUIDs usable with entity_action/batch_action. Use fields=["id","title","status"] for compact output when you only need IDs. Supported types: ${ENTITY_TYPES.join(
           ', '
         )}. USE WHEN: browsing, searching, or getting entity IDs for bulk operations. NEXT: For initiatives, suggest get_initiative_pulse for health. For tasks, suggest entity_action to change status. For full context on one entity, add hydrate_context=true with id. DO NOT USE: for org-wide overview — use get_org_snapshot instead. Read-only.`,
-        inputSchema: {
+        inputSchema: this.withClientContext({
           type: entityTypeEnum.describe('Entity type to list'),
           limit: z
             .number()
@@ -2340,7 +2349,7 @@ export class OrgXMcp extends McpAgent<
             .describe(
               'Deprecated alias for workspace_id. Defaults to current session workspace when set.'
             ),
-        },
+        }),
         _meta: { 'openai/visibility': 'public', 'openai/readOnlyHint': true, securitySchemes: SECURITY_SCHEMES.readOptionalAuth },
       },
       async (args) =>
@@ -2471,6 +2480,7 @@ export class OrgXMcp extends McpAgent<
           };
 
           let result = await fetchEntities();
+          let seededDefaults = false;
 
           if (
             args.type === 'skill' &&
@@ -2503,6 +2513,7 @@ export class OrgXMcp extends McpAgent<
               }
             }
             result = await fetchEntities();
+            seededDefaults = true;
           }
 
           const { data, pagination } = result;
@@ -2517,6 +2528,17 @@ export class OrgXMcp extends McpAgent<
               label: item.title ?? item.name ?? undefined,
             }).url,
           }));
+          const skillOnboarding =
+            args.type === 'skill'
+              ? buildClientSkillOnboarding({
+                  context: args._context,
+                  search:
+                    typeof args.search === 'string' ? args.search : undefined,
+                  skills: dataWithLinks,
+                  defaultCatalog: DEFAULT_SKILL_CATALOG,
+                  seededDefaults,
+                })
+              : null;
 
           if (hydrateContext) {
             const row = dataWithLinks[0] ?? null;
@@ -2586,6 +2608,7 @@ export class OrgXMcp extends McpAgent<
             const payload = {
               ...result,
               data: dataWithLinks,
+              ...(skillOnboarding ? { skill_onboarding: skillOnboarding } : {}),
               hydrated_context: hydrated,
               truncated,
               max_chars: maxChars,
@@ -2598,27 +2621,33 @@ export class OrgXMcp extends McpAgent<
               content: [
                 {
                   type: 'text',
-                  text: formatForLLM('list_entities', payload, {
-                    entityType: args.type,
-                  }),
+                  text:
+                    formatForLLM('list_entities', payload, {
+                      entityType: args.type,
+                    }) + formatClientSkillOnboarding(skillOnboarding),
                 },
               ],
               structuredContent: payload,
             };
           }
 
+          const payload = {
+            ...result,
+            data: dataWithLinks,
+            ...(skillOnboarding ? { skill_onboarding: skillOnboarding } : {}),
+          };
+
           return {
             content: [
               {
                 type: 'text',
-                text: formatForLLM(
-                  'list_entities',
-                  { ...result, data: dataWithLinks },
-                  { entityType: args.type }
-                ),
+                text:
+                  formatForLLM('list_entities', payload, {
+                    entityType: args.type,
+                  }) + formatClientSkillOnboarding(skillOnboarding),
               },
             ],
-            structuredContent: { ...result, data: dataWithLinks },
+            structuredContent: payload,
           };
         })
     );
@@ -5402,8 +5431,10 @@ export class OrgXMcp extends McpAgent<
           focus_areas: z.array(z.string()).optional().describe('Agent focus areas (configure_agent only)'),
           approval_required: z.array(z.string()).optional().describe('Actions requiring approval (configure_agent only)'),
           skip_approval: z.array(z.string()).optional().describe('Actions without approval (configure_agent only)'),
-          policy_type: z.enum(['approvals', 'notifications', 'working_hours', 'budget']).optional().describe('Policy type (set_policy only)'),
+          policy_type: z.enum(CONFIGURE_ORG_POLICY_TYPES).optional().describe('Policy type (set_policy only)'),
           config: z.record(z.any()).optional().describe('Policy configuration (set_policy only)'),
+          workspace_id: z.string().optional().describe('Workspace UUID to scope policy overrides (set_policy only)'),
+          command_center_id: z.string().optional().describe('Deprecated alias for workspace_id (set_policy only)'),
         },
         _meta: { securitySchemes: SECURITY_SCHEMES.readOptionalAuth },
       },
@@ -5502,6 +5533,23 @@ export class OrgXMcp extends McpAgent<
             }
 
             case 'set_policy': {
+              const authResponse = buildAuthRequiredResponse({
+                toolId: 'configure_org',
+                securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
+                userId: resolvedUserId,
+                serverUrl: this.env.MCP_SERVER_URL,
+                featureDescription: 'set organization policies',
+              });
+              if (authResponse) return authResponse;
+
+              const workspaceResolution = resolveConfigureOrgWorkspaceId(
+                args,
+                this.sessionContext.workspaceId
+              );
+              if (workspaceResolution.error) {
+                return this.toolError(workspaceResolution.error);
+              }
+
               const response = await callOrgxApiJson(
                 this.env,
                 '/api/setup/policies',
@@ -5510,12 +5558,29 @@ export class OrgXMcp extends McpAgent<
                   body: JSON.stringify({
                     policy_type: args.policy_type,
                     config: args.config,
+                    ...(workspaceResolution.workspaceId
+                      ? { workspace_id: workspaceResolution.workspaceId }
+                      : {}),
                   }),
-                }
+                },
+                { userId: resolvedUserId }
               );
-              await response.json();
+              const result = (await response.json()) as {
+                policy_type?: string;
+                config?: Record<string, unknown>;
+                workspace_id?: string | null;
+              };
               return {
-                content: [{ type: 'text', text: `✓ Applied ${args.policy_type} policy` }],
+                content: [
+                  {
+                    type: 'text',
+                    text: describeAppliedPolicy(
+                      result.policy_type ?? args.policy_type,
+                      result.config ?? args.config,
+                      result.workspace_id ?? workspaceResolution.workspaceId
+                    ),
+                  },
+                ],
               };
             }
 
