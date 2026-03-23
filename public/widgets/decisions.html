@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Pending Decisions - OrgX</title>
+  <link rel="stylesheet" href="shared/interaction-kit.css" />
+  <script src="shared/interaction-kit.js"></script>
   <style>
       :root, :root[data-theme="light"] {
         --ox-bg: #f8fafc;
@@ -158,29 +160,38 @@
       }
 
       .ox-btn {
-        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-        padding: 10px 16px; border-radius: 8px; font-size: 0.85rem; font-weight: 600;
-        font-family: var(--ox-font); cursor: pointer; transition: all 0.2s; border: none;
-        width: 100%; text-decoration: none;
+        width: 100%;
+        font-size: 0.85rem;
+        letter-spacing: -0.01em;
       }
-      
-      .ox-btn-primary { background: var(--ox-primary); color: #000; box-shadow: 0 4px 12px rgba(var(--ox-primary-rgb), 0.2); }
-      .ox-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(var(--ox-primary-rgb), 0.4); }
-      @media (prefers-color-scheme: light) { .ox-btn-primary { color: #fff; } }
 
-      .ox-btn-ghost { background: var(--ox-well-bg); color: var(--ox-text); border: 1px solid var(--ox-border); }
-      .ox-btn-ghost:hover { background: rgba(var(--ox-text-rgb), 0.05); border-color: var(--ox-border-strong); }
-
-      .toast-container { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 8px; z-index: 9999; }
-      .toast {
-        display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 8px;
-        font-size: 0.85rem; font-weight: 500; color: #fff;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3); animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      .ox-btn-primary {
+        --ox-primary-contrast: #02040a;
       }
-      .toast-success { background: var(--ox-teal); }
-      .toast-error { background: var(--ox-danger); }
-      @keyframes toastSlideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-      @keyframes toastSlideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+
+      .ox-btn-primary.is-card-tone {
+        background: linear-gradient(
+          180deg,
+          rgba(var(--ox-button-accent-rgb), 1) 0%,
+          rgba(var(--ox-button-accent-rgb), 0.86) 100%
+        );
+        border-color: rgba(var(--ox-button-accent-rgb), 0.28);
+        color: var(--ox-primary-contrast);
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.18) inset,
+          0 18px 34px -24px rgba(var(--ox-button-accent-rgb), 0.82);
+      }
+
+      .ox-btn-ghost {
+        background:
+          linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.03) 0%,
+            rgba(255, 255, 255, 0.01) 100%
+          ),
+          var(--ox-well-bg);
+        color: var(--ox-text);
+      }
 
       .skeleton-line {
         background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%);
@@ -191,9 +202,58 @@
 
     :root { --ox-primary-rgb: 251, 191, 36; }
     
-    .summary-grid { display: flex; gap: 8px; margin-bottom: 24px; }
+    .summary-grid { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-bottom: 24px; }
     
-    .decision-card { margin-bottom: 24px; }
+    .decision-shell {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .decision-shell[data-page-direction="forward"] .decision-card {
+      animation-name: decisionSlideForward;
+    }
+
+    .decision-shell[data-page-direction="backward"] .decision-card {
+      animation-name: decisionSlideBackward;
+    }
+
+    .decision-card {
+      margin-bottom: 8px;
+      transition:
+        opacity 180ms ease,
+        transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+        filter 220ms ease;
+    }
+
+    .decision-card.is-resolving {
+      opacity: 0;
+      transform: translateY(-8px) scale(0.985);
+      filter: blur(6px);
+    }
+
+    @keyframes decisionSlideForward {
+      from {
+        opacity: 0;
+        transform: translateX(12px) translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0) translateY(0);
+      }
+    }
+
+    @keyframes decisionSlideBackward {
+      from {
+        opacity: 0;
+        transform: translateX(-12px) translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0) translateY(0);
+      }
+    }
+
     .decision-card.urgency-critical { --ox-card-color-rgb: 225, 29, 72; --ox-card-color: var(--ox-danger); }
     .decision-card.urgency-high { --ox-card-color-rgb: 217, 119, 6; --ox-card-color: var(--ox-warning); }
     .decision-card.urgency-medium { --ox-card-color-rgb: 132, 204, 22; --ox-card-color: var(--ox-lime); }
@@ -206,7 +266,124 @@
     .agent-tag { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.9rem; }
     .agent-avatar { width: 24px; height: 24px; border-radius: 6px; background: rgba(var(--ox-card-color-rgb), 0.15); color: var(--ox-card-color); display: flex; align-items: center; justify-content: center; font-family: var(--ox-mono); font-size: 0.7rem; }
     
-    .actions-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-top: 24px; }
+    .actions-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .actions-grid .ox-action-btn,
+    .actions-grid .ox-link-btn {
+      width: 100%;
+    }
+
+    .reject-composer {
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(var(--ox-card-color-rgb), 0.2);
+      background:
+        radial-gradient(circle at top left, rgba(var(--ox-card-color-rgb), 0.12), transparent 50%),
+        var(--ox-well-bg);
+      box-shadow: var(--ox-well-shadow);
+      animation: rejectComposerIn 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes rejectComposerIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.985);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .reject-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .reject-heading h4 {
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--ox-text);
+    }
+
+    .reject-meta {
+      font-family: var(--ox-mono);
+      font-size: 0.66rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ox-text-muted);
+    }
+
+    .reject-textarea {
+      width: 100%;
+      min-height: 92px;
+      resize: vertical;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(2, 6, 14, 0.24);
+      color: var(--ox-text);
+      padding: 12px 14px;
+      font: inherit;
+      font-size: 0.9rem;
+      line-height: 1.45;
+      transition:
+        border-color 0.18s ease,
+        box-shadow 0.18s ease,
+        background 0.18s ease;
+    }
+
+    .reject-textarea::placeholder {
+      color: rgba(248, 250, 252, 0.38);
+    }
+
+    @media (prefers-color-scheme: light) {
+      .reject-textarea {
+        background: rgba(255, 255, 255, 0.86);
+      }
+
+      .reject-textarea::placeholder {
+        color: rgba(15, 23, 42, 0.32);
+      }
+    }
+
+    .reject-textarea:focus {
+      outline: none;
+      border-color: rgba(var(--ox-card-color-rgb), 0.45);
+      box-shadow: 0 0 0 3px rgba(var(--ox-card-color-rgb), 0.12);
+    }
+
+    .reject-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .reject-toolbar-copy {
+      font-size: 0.78rem;
+      line-height: 1.45;
+      color: var(--ox-text-muted);
+    }
+
+    .reject-toolbar-copy strong {
+      color: var(--ox-text);
+      font-weight: 600;
+    }
+
+    .reject-submit {
+      min-width: 152px;
+    }
     
     .params-well { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
     .param-chip { background: var(--ox-well-bg); border: 1px solid var(--ox-border); padding: 4px 8px; border-radius: 4px; font-family: var(--ox-mono); font-size: 0.65rem; color: var(--ox-text-muted); text-transform: uppercase; }
@@ -233,47 +410,23 @@
     }
 
     .page-btn {
-      min-height: 44px;
       min-width: 132px;
-      padding: 0 16px;
+      padding-inline: 18px;
+      font-size: 0.82rem;
+      letter-spacing: -0.01em;
+    }
+
+    .page-btn .ox-action-btn__label {
       display: inline-flex;
       align-items: center;
-      justify-content: center;
       gap: 8px;
-      border-radius: 10px;
-      border: 1px solid var(--ox-border);
-      background: var(--ox-well-bg);
-      color: var(--ox-text);
-      font-family: var(--ox-font);
-      font-size: 0.82rem;
-      font-weight: 600;
-      letter-spacing: -0.01em;
-      cursor: pointer;
-      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
-      box-shadow: var(--ox-well-shadow);
-    }
-
-    .page-btn:hover:not(:disabled) {
-      transform: translateY(-1px);
-      border-color: var(--ox-border-strong);
-      background: rgba(var(--ox-primary-rgb), 0.08);
-      box-shadow: 0 10px 24px -18px rgba(var(--ox-primary-rgb), 0.8);
-      color: var(--ox-text);
-    }
-
-    .page-btn:focus-visible {
-      outline: 2px solid rgba(var(--ox-primary-rgb), 0.65);
-      outline-offset: 2px;
-    }
-
-    .page-btn:disabled {
-      cursor: not-allowed;
-      opacity: 0.45;
-      transform: none;
-      box-shadow: none;
     }
 
     @media (max-width: 560px) {
+      .summary-grid {
+        justify-content: flex-start;
+      }
+
       .pagination {
         flex-direction: column;
         align-items: stretch;
@@ -284,6 +437,20 @@
       }
 
       .page-btn {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .actions-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .reject-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .reject-submit {
         width: 100%;
         min-width: 0;
       }
@@ -311,7 +478,6 @@
         </div>
       </div>
     </div>
-    <div id="toast-container" class="toast-container"></div>
   </div>
   <script>
 
@@ -395,20 +561,6 @@
         div.textContent = str;
         return div.innerHTML;
       };
-      
-      var showToast = (message, type = 'success', duration = 3000) => {
-        const toastContainer = document.getElementById('toast-container');
-        if (!toastContainer) return;
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        const icon = type === 'success' ? icons.check(16) : icons.error(16);
-        toast.innerHTML = `<span style="display:flex;align-items:center">${icon}</span><span>${escapeHtml(message)}</span>`;
-        toastContainer.appendChild(toast);
-        setTimeout(() => {
-          toast.style.animation = 'toastSlideOut 0.2s ease-in forwards';
-          setTimeout(() => toast.remove(), 200);
-        }, duration);
-      };
 
     var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
     var data = isDemo ? {
@@ -427,6 +579,55 @@
       // Overwrite initWidget to do nothing so it hangs on loading
       initWidget = () => { render(); };
     }
+
+    var ux = window.OrgXWidgetUX || null;
+    var rejectComposerId = null;
+    var rejectDrafts = {};
+    var pendingDecisionId = null;
+    var currentPage = 1;
+    var itemsPerPage = 3;
+    var pageDirection = 'forward';
+
+    var notify = (tone, title, message, duration) => {
+      if (ux && ux.toast && typeof ux.toast.show === 'function') {
+        return ux.toast.show({ tone, title, message, duration });
+      }
+      return null;
+    };
+
+    var updateSummaryFromDecisions = () => {
+      if (!data || !Array.isArray(data.decisions)) return;
+      const nextSummary = {};
+      data.decisions.forEach((decision) => {
+        const urgency = (decision.urgency || 'low').toLowerCase();
+        nextSummary[urgency] = (nextSummary[urgency] || 0) + 1;
+      });
+      data.summary = nextSummary;
+    };
+
+    var removeDecisionFromState = (id) => {
+      if (!data || !Array.isArray(data.decisions)) return;
+      data.decisions = data.decisions.filter((decision) => decision.id !== id);
+      updateSummaryFromDecisions();
+      const totalPages = Math.max(1, Math.ceil(data.decisions.length / itemsPerPage));
+      currentPage = Math.min(currentPage, totalPages);
+    };
+
+    var setPageButtonsDisabled = (disabled) => {
+      document.querySelectorAll('.page-btn').forEach((button) => {
+        button.disabled = !!disabled;
+      });
+    };
+
+    var setCardControlsDisabled = (card, disabled) => {
+      if (!card) return;
+      card.querySelectorAll('button').forEach((button) => {
+        if (button.classList.contains('is-loading')) return;
+        button.disabled = !!disabled;
+      });
+      const textarea = card.querySelector('textarea');
+      if (textarea) textarea.disabled = !!disabled;
+    };
 
 
     
@@ -450,34 +651,85 @@
     var formatUsd = v => Number.isFinite(Number(v)) ? '$'+Number(v).toFixed(2) : null;
     var timeAgo = d => { const m = Math.floor((new Date() - new Date(d))/60000); return m<1?'Just now':m<60?m+'m ago':Math.floor(m/60)+'h ago'; };
 
-    window.handleAction = async (id, action, btn) => {
-      if(btn.disabled) return;
+    window.toggleRejectComposer = (id) => {
+      if (pendingDecisionId) return;
+      rejectComposerId = rejectComposerId === id ? null : id;
+      render();
+    };
+
+    window.syncRejectDraft = (id, textarea) => {
+      rejectDrafts[id] = textarea.value;
+      const submitButton = textarea.closest('.reject-composer')?.querySelector('.reject-submit');
+      if (submitButton) submitButton.disabled = !textarea.value.trim();
+    };
+
+    window.approveDecision = async (id, btn) => {
+      if (btn.disabled || pendingDecisionId) return;
       const card = btn.closest('.decision-card');
-      card.querySelectorAll('button').forEach(b => b.disabled = true);
-      btn.innerHTML = '...';
+      pendingDecisionId = id;
+      setPageButtonsDisabled(true);
+      setCardControlsDisabled(card, true);
+      if (ux) ux.setLoading(btn, { loadingLabel: 'Approving…' });
+
       try {
-        let args = { decision_id: id };
-        if(action === 'reject') {
-          const reason = prompt('Reason for rejection:');
-          if(!reason) { card.querySelectorAll('button').forEach(b => b.disabled = false); btn.innerHTML = 'Reject'; return; }
-          args.reason = reason;
-        }
-        await callTool(action+'_decision', args);
-        showToast('Decision '+action+'ed', 'success');
-        card.style.opacity = 0; setTimeout(() => card.remove(), 300);
-      } catch(e) {
-        showToast('Failed to '+action, 'error');
-        card.querySelectorAll('button').forEach(b => b.disabled = false);
-        btn.innerHTML = action === 'approve' ? 'Approve' : 'Reject';
+        await callTool('approve_decision', { decision_id: id });
+        notify('success', 'Decision approved', 'The agent can continue with the approved path.');
+        if (card) card.classList.add('is-resolving');
+        window.setTimeout(() => {
+          removeDecisionFromState(id);
+          if (rejectComposerId === id) rejectComposerId = null;
+          delete rejectDrafts[id];
+          pendingDecisionId = null;
+          render();
+        }, 180);
+      } catch (error) {
+        pendingDecisionId = null;
+        setPageButtonsDisabled(false);
+        setCardControlsDisabled(card, false);
+        if (ux) ux.clearLoading(btn);
+        notify('error', 'Approval failed', error?.message || 'Try again in a moment.');
       }
     };
 
-    
-    var currentPage = 1;
-    var itemsPerPage = 3;
+    window.submitReject = async (id, btn) => {
+      const reason = (rejectDrafts[id] || '').trim();
+      if (!reason || pendingDecisionId) return;
+      const card = btn.closest('.decision-card');
+      pendingDecisionId = id;
+      setPageButtonsDisabled(true);
+      setCardControlsDisabled(card, true);
+      if (ux) ux.setLoading(btn, { loadingLabel: 'Sending note…' });
+
+      try {
+        await callTool('reject_decision', { decision_id: id, reason });
+        notify(
+          'success',
+          'Decision rejected',
+          'Your note was attached so the agent can revise course.'
+        );
+        if (card) card.classList.add('is-resolving');
+        window.setTimeout(() => {
+          removeDecisionFromState(id);
+          if (rejectComposerId === id) rejectComposerId = null;
+          delete rejectDrafts[id];
+          pendingDecisionId = null;
+          render();
+        }, 180);
+      } catch (error) {
+        pendingDecisionId = null;
+        setPageButtonsDisabled(false);
+        setCardControlsDisabled(card, false);
+        if (ux) ux.clearLoading(btn);
+        notify('error', 'Rejection failed', error?.message || 'Try again in a moment.');
+      }
+    };
 
     window.changePage = (delta) => {
-      currentPage += delta;
+      const totalPages = Math.max(1, Math.ceil((data?.decisions?.length || 0) / itemsPerPage));
+      const nextPage = Math.min(totalPages, Math.max(1, currentPage + delta));
+      if (nextPage === currentPage) return;
+      pageDirection = delta > 0 ? 'forward' : 'backward';
+      currentPage = nextPage;
       render();
     };
 
@@ -493,7 +745,15 @@
       const startIdx = (currentPage - 1) * itemsPerPage;
       const paginated = data.decisions.slice(startIdx, startIdx + itemsPerPage);
 
-      let html = paginated.map((d, i) => `
+      const activeDirection = pageDirection;
+      pageDirection = 'forward';
+
+      let html = paginated.map((d, i) => {
+        const isRejecting = rejectComposerId === d.id;
+        const rejectValue = rejectDrafts[d.id] || '';
+        const rejectEnabled = rejectValue.trim().length > 0;
+        const rejectActionLabel = isRejecting ? 'Hide note' : 'Reject';
+        return `
         <div class="decision-card urgency-${escapeHtml(d.urgency)} animate-in" style="animation-delay: ${0.1 * i}s">
           <div class="ox-card">
             <div class="ox-card-inner">
@@ -518,25 +778,67 @@
               </div>
 
               <div class="actions-grid">
-                <button class="ox-btn ox-btn-primary" style="background:var(--ox-card-color);" onclick="handleAction('${escapeHtml(d.id)}', 'approve', this)">Approve</button>
-                <button class="ox-btn ox-btn-ghost" onclick="handleAction('${escapeHtml(d.id)}', 'reject', this)">Reject</button>
+                <button
+                  type="button"
+                  class="ox-btn ox-action-btn ox-action-btn--primary ox-btn-primary is-card-tone"
+                  style="--ox-button-accent-rgb: var(--ox-card-color-rgb); --ox-primary-contrast: ${d.urgency === 'high' || d.urgency === 'critical' ? '#fff' : '#02040a'};"
+                  data-loading-label="Approving…"
+                  onclick="approveDecision('${escapeHtml(d.id)}', this)"
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  class="ox-btn ox-action-btn ox-action-btn--ghost ox-btn-ghost"
+                  onclick="toggleRejectComposer('${escapeHtml(d.id)}')"
+                  aria-expanded="${isRejecting ? 'true' : 'false'}"
+                >
+                  ${rejectActionLabel}
+                </button>
               </div>
+
+              ${isRejecting ? `
+                <div class="reject-composer">
+                  <div class="reject-heading">
+                    <h4>Send a rejection note</h4>
+                    <span class="reject-meta">Visible to ${escapeHtml(d.agent_name)}</span>
+                  </div>
+                  <textarea
+                    class="reject-textarea"
+                    placeholder="Tell the agent what changed, what constraint was missed, or what decision path you want instead."
+                    oninput="syncRejectDraft('${escapeHtml(d.id)}', this)"
+                  >${escapeHtml(rejectValue)}</textarea>
+                  <div class="reject-toolbar">
+                    <div class="reject-toolbar-copy"><strong>Required.</strong> A clear reason prevents back-and-forth and keeps the next attempt on-rail.</div>
+                    <button
+                      type="button"
+                      class="ox-action-btn ox-action-btn--danger reject-submit"
+                      data-loading-label="Sending note…"
+                      onclick="submitReject('${escapeHtml(d.id)}', this)"
+                      ${rejectEnabled ? '' : 'disabled'}
+                    >
+                      Reject decision
+                    </button>
+                  </div>
+                </div>
+              ` : ''}
             </div>
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
 
       if (totalPages > 1) {
         html += `
           <div class="pagination">
-            <button class="page-btn" onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}>← Previous</button>
+            <button type="button" class="page-btn ox-action-btn ox-action-btn--ghost" onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}>← Previous</button>
             <span class="page-info">Page ${currentPage} of ${totalPages}</span>
-            <button class="page-btn" onclick="changePage(1)" ${currentPage === totalPages ? 'disabled' : ''}>Next →</button>
+            <button type="button" class="page-btn ox-action-btn ox-action-btn--ghost" onclick="changePage(1)" ${currentPage === totalPages ? 'disabled' : ''}>Next →</button>
           </div>
         `;
       }
 
-      injectHtml(`<div class="animate-in">${html}</div>`);
+      injectHtml(`<div class="decision-shell animate-in" data-page-direction="${activeDirection}">${html}</div>`);
     };
 
 

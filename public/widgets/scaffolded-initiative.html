@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Initiative Scaffolded - OrgX</title>
+  <link rel="stylesheet" href="shared/interaction-kit.css" />
+  <script src="shared/interaction-kit.js"></script>
   <style>
       :root, :root[data-theme="light"] {
         --ox-bg: #f8fafc;
@@ -110,7 +112,34 @@
     .h-icon { width: 48px; height: 48px; border-radius: 12px; background: rgba(var(--ox-primary-rgb), 0.1); border: 1px solid rgba(var(--ox-primary-rgb), 0.2); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
     
     .node-list { display: flex; flex-direction: column; gap: 4px; }
-    .node-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; font-size: 0.9rem; position: relative; }
+    .node-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      position: relative;
+      overflow: hidden;
+      max-height: 72px;
+      transition:
+        opacity 0.2s ease,
+        transform 0.2s ease,
+        max-height 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+        padding 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+        margin 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .node-item.collapsed {
+      opacity: 0;
+      transform: translateY(-6px);
+      max-height: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+      margin-top: 0;
+      margin-bottom: 0;
+      pointer-events: none;
+    }
     
     
     .node-item.ws { background: rgba(255,255,255,0.02); font-weight: 600; color: var(--ox-text); margin-top: 12px; }
@@ -133,10 +162,43 @@
     .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; animation: pulse 2s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
   
-    .widget-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--ox-border); }
-    .deep-link { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; color: var(--ox-primary); text-decoration: none; transition: opacity 0.2s; }
-    .deep-link:hover { opacity: 0.8; }
+    .node-toggle {
+      width: 34px;
+      min-width: 34px;
+      height: 34px;
+      margin-right: 2px;
+      color: var(--ox-text-muted);
+    }
+
+    .node-toggle[aria-expanded="true"] {
+      color: var(--ox-primary);
+      background: rgba(var(--ox-primary-rgb), 0.08);
+      border-color: rgba(var(--ox-primary-rgb), 0.18);
+    }
+
+    .widget-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--ox-border); gap: 12px; }
+    .deep-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 40px;
+      padding-inline: 14px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--ox-primary);
+    }
     .deep-link svg { width: 14px; height: 14px; }
+
+    @media (max-width: 560px) {
+      .widget-footer {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .deep-link {
+        width: 100%;
+      }
+    }
 
     .skeleton-line {
       background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb), 0.1) 50%, var(--ox-border) 75%);
@@ -244,6 +306,7 @@
        const parent = btn.closest('.node-item');
        const isExpanded = btn.getAttribute('data-expanded') === 'true';
        btn.setAttribute('data-expanded', !isExpanded);
+       btn.setAttribute('aria-expanded', String(!isExpanded));
        btn.innerHTML = !isExpanded ? icons.chevronDown(12) : icons.chevronRight(12);
        
        let next = parent.nextElementSibling;
@@ -268,7 +331,7 @@
         if(h.type === 'workstream') { 
             icn = icons.workstream(14); 
             cls = 'ws'; 
-            toggle = `<button onclick="toggleNode(this)" data-expanded="true" style="background:none; border:none; color:var(--ox-text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:4px; margin-right:4px;">${icons.chevronDown(12)}</button>`;
+            toggle = `<button type="button" class="node-toggle ox-icon-btn ox-icon-btn--sm" onclick="toggleNode(this)" data-expanded="true" aria-expanded="true" aria-label="Collapse workstream">${icons.chevronDown(12)}</button>`;
         }
         if(h.type === 'milestone') { icn = icons.milestone(14); cls = 'ms'; }
         if(h.type === 'task') { icn = icons.task(14); cls = 'tk'; }
@@ -301,7 +364,7 @@
           
             <div class="widget-footer">
               <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
-              <a href="${data.initiative.id ? `https://console.useorgx.com/initiatives/${escapeHtml(data.initiative.id)}` : 'https://console.useorgx.com'}" target="_blank" class="deep-link">
+              <a href="${data.initiative.id ? `https://console.useorgx.com/initiatives/${escapeHtml(data.initiative.id)}` : 'https://console.useorgx.com'}" target="_blank" rel="noreferrer" class="deep-link ox-link-btn ox-link-btn--quiet">
                 Open Initiative
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
               </a>

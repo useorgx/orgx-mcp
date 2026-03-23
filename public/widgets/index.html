@@ -4,6 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>OrgX Widget Gallery</title>
+    <link rel="stylesheet" href="shared/interaction-kit.css" />
+    <script src="shared/interaction-kit.js"></script>
     <style>
       
 
@@ -14,10 +16,12 @@
         --ox-bg: #f8fafc;
         --ox-panel: rgba(255, 255, 255, 0.95);
         --ox-border: rgba(0, 0, 0, 0.08);
+        --ox-border-strong: rgba(0, 0, 0, 0.15);
         --ox-text: #111827;
         --ox-text-muted: #6b7280;
         --ox-primary: #111827;
         --ox-primary-hover: #000;
+        --ox-primary-rgb: 17, 24, 39;
         --ox-shadow: 0 10px 40px -10px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04);
       }
 
@@ -26,10 +30,12 @@
           --ox-bg: #02040a;
           --ox-panel: rgba(10, 15, 22, 0.95);
           --ox-border: rgba(255, 255, 255, 0.08);
+          --ox-border-strong: rgba(255, 255, 255, 0.15);
           --ox-text: #f2f7ff;
           --ox-text-muted: rgba(255, 255, 255, 0.5);
           --ox-primary: rgba(255,255,255,0.9);
           --ox-primary-hover: #fff;
+          --ox-primary-rgb: 242, 247, 255;
           --ox-shadow: 0 10px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
         }
       }
@@ -38,20 +44,20 @@
           --ox-bg: #02040a;
           --ox-panel: rgba(10, 15, 22, 0.95);
           --ox-border: rgba(255, 255, 255, 0.08);
+          --ox-border-strong: rgba(255, 255, 255, 0.15);
           --ox-text: #f2f7ff;
           --ox-text-muted: rgba(255, 255, 255, 0.5);
           --ox-primary: rgba(255,255,255,0.9);
           --ox-primary-hover: #fff;
+          --ox-primary-rgb: 242, 247, 255;
           --ox-shadow: 0 10px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
       }
       
       .theme-toggle {
-        display: flex; align-items: center; justify-content: center;
-        width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--ox-border);
-        background: var(--ox-panel); color: var(--ox-text); cursor: pointer; transition: all 0.2s;
-        box-shadow: var(--ox-shadow);
+        width: 40px;
+        height: 40px;
+        color: var(--ox-text);
       }
-      .theme-toggle:hover { border-color: var(--ox-text-muted); }
       .theme-toggle svg { width: 18px; height: 18px; }
 
       * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -96,19 +102,13 @@
       .widget-links { display: flex; gap: 12px; }
 
       .btn {
-        display: inline-flex; align-items: center; justify-content: center;
-        flex: 1; padding: 10px 16px; border-radius: 6px; font-size: 0.85rem; font-weight: 600;
-        text-decoration: none; transition: all 0.2s ease; font-family: var(--ox-font);
+        flex: 1;
+        font-size: 0.85rem;
+        text-decoration: none;
+        font-family: var(--ox-font);
       }
 
-      .btn-primary { background: var(--ox-primary); color: var(--ox-bg); border: none; }
-      .btn-primary:hover { background: var(--ox-primary-hover); transform: scale(1.02); }
-
-      .btn-secondary { background: transparent; color: var(--ox-text); border: 1px solid var(--ox-border); }
-      .btn-secondary:hover { background: rgba(128,128,128,0.05); border-color: rgba(128,128,128,0.2); }
-      @media (prefers-color-scheme: dark) {
-        .btn-secondary:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.2); }
-      }
+      .btn-primary { color: var(--ox-bg); }
 
       .badge {
         font-family: var(--ox-mono); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em;
@@ -124,15 +124,22 @@
       .preview-controls { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
 
       .preview-btn {
-        padding: 8px 16px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; font-family: var(--ox-mono); text-transform: uppercase; letter-spacing: 0.05em;
-        border: 1px solid var(--ox-border); background: transparent; color: var(--ox-text-muted); cursor: pointer; transition: all 0.2s ease;
-      }
-      .preview-btn:hover { border-color: rgba(128,128,128,0.3); color: var(--ox-text); }
-      @media (prefers-color-scheme: dark) {
-        .preview-btn:hover { border-color: rgba(255,255,255,0.3); }
+        min-height: 40px;
+        padding-inline: 14px;
+        border-radius: 10px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        font-family: var(--ox-mono);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--ox-text-muted);
       }
 
-      .preview-btn.active { background: var(--ox-primary); color: var(--ox-bg); border-color: var(--ox-primary); }
+      .preview-btn.active {
+        background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 1) 0%, rgba(var(--ox-primary-rgb), 0.84) 100%);
+        color: var(--ox-bg);
+        border-color: rgba(var(--ox-primary-rgb), 0.4);
+      }
     </style>
   </head>
   <body>
@@ -143,7 +150,7 @@
           <h1>OrgX Widget Gallery</h1>
           <p class="subtitle">Preview and test ChatGPT App widgets with demo data</p>
         </div>
-        <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme" id="theme-btn">
+        <button class="theme-toggle ox-icon-btn" type="button" onclick="toggleTheme()" aria-label="Toggle theme" id="theme-btn">
           <svg id="icon-sun" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
           <svg id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
         </button>
@@ -157,8 +164,8 @@
             Visualizes the newly created hierarchical tree (Initiative > Workstream > Milestone > Task).
           </p>
           <div class="widget-links">
-            <a href="scaffolded-initiative.html?demo=true" class="btn btn-primary">Demo Mode</a>
-            <a href="scaffolded-initiative.html?loading=true" class="btn btn-secondary" style="opacity:0.8">Loading</a> <a href="scaffolded-initiative.html" class="btn btn-secondary">Empty</a>
+            <a href="scaffolded-initiative.html?demo=true" class="btn btn-primary ox-link-btn ox-link-btn--primary">Demo Mode</a>
+            <a href="scaffolded-initiative.html?loading=true" class="btn btn-secondary ox-link-btn ox-link-btn--ghost" style="opacity:0.8">Loading</a> <a href="scaffolded-initiative.html" class="btn btn-secondary ox-link-btn ox-link-btn--ghost">Empty</a>
           </div>
         </div>
 
@@ -171,10 +178,10 @@
             and toast notifications.
           </p>
           <div class="widget-links">
-            <a href="decisions.html?demo=true" class="btn btn-primary"
+            <a href="decisions.html?demo=true" class="btn btn-primary ox-link-btn ox-link-btn--primary"
               >Demo Mode</a
             >
-            <a href="decisions.html?loading=true" class="btn btn-secondary" style="opacity:0.8">Loading</a> <a href="decisions.html" class="btn btn-secondary">Empty</a>
+            <a href="decisions.html?loading=true" class="btn btn-secondary ox-link-btn ox-link-btn--ghost" style="opacity:0.8">Loading</a> <a href="decisions.html" class="btn btn-secondary ox-link-btn ox-link-btn--ghost">Empty</a>
           </div>
         </div>
 
@@ -185,13 +192,13 @@
             tasks and blockers.
           </p>
           <div class="widget-links">
-            <a href="agent-status.html?demo=true" class="btn btn-primary"
+            <a href="agent-status.html?demo=true" class="btn btn-primary ox-link-btn ox-link-btn--primary"
               >Demo Mode</a
             >
-            <a href="agent-status.html?loading=true" class="btn btn-secondary" style="opacity:0.8"
+            <a href="agent-status.html?loading=true" class="btn btn-secondary ox-link-btn ox-link-btn--ghost" style="opacity:0.8"
               >Loading</a
             >
-            <a href="agent-status.html" class="btn btn-secondary"
+            <a href="agent-status.html" class="btn btn-secondary ox-link-btn ox-link-btn--ghost"
               >Empty State</a
             >
           </div>
@@ -204,13 +211,13 @@
             with relevance scores.
           </p>
           <div class="widget-links">
-            <a href="search-results.html?demo=true" class="btn btn-primary"
+            <a href="search-results.html?demo=true" class="btn btn-primary ox-link-btn ox-link-btn--primary"
               >Demo Mode</a
             >
-            <a href="search-results.html?loading=true" class="btn btn-secondary" style="opacity:0.8"
+            <a href="search-results.html?loading=true" class="btn btn-secondary ox-link-btn ox-link-btn--ghost" style="opacity:0.8"
               >Loading</a
             >
-            <a href="search-results.html" class="btn btn-secondary"
+            <a href="search-results.html" class="btn btn-secondary ox-link-btn ox-link-btn--ghost"
               >Empty State</a
             >
           </div>
@@ -222,9 +229,9 @@
             Daily summary of blocked tasks, pending approvals, and top priorities across domains.
           </p>
           <div class="widget-links">
-            <a href="morning-brief.html?demo=true" class="btn btn-primary">Demo Mode</a>
-            <a href="morning-brief.html?loading=true" class="btn btn-secondary" style="opacity:0.8">Loading</a>
-            <a href="morning-brief.html" class="btn btn-secondary">Empty State</a>
+            <a href="morning-brief.html?demo=true" class="btn btn-primary ox-link-btn ox-link-btn--primary">Demo Mode</a>
+            <a href="morning-brief.html?loading=true" class="btn btn-secondary ox-link-btn ox-link-btn--ghost" style="opacity:0.8">Loading</a>
+            <a href="morning-brief.html" class="btn btn-secondary ox-link-btn ox-link-btn--ghost">Empty State</a>
           </div>
         </div>
 
@@ -236,13 +243,13 @@
             conversational card.
           </p>
           <div class="widget-links">
-            <a href="initiative-pulse.html?demo=true" class="btn btn-primary"
+            <a href="initiative-pulse.html?demo=true" class="btn btn-primary ox-link-btn ox-link-btn--primary"
               >Demo Mode</a
             >
-            <a href="initiative-pulse.html?loading=true" class="btn btn-secondary" style="opacity:0.8"
+            <a href="initiative-pulse.html?loading=true" class="btn btn-secondary ox-link-btn ox-link-btn--ghost" style="opacity:0.8"
               >Loading</a
             >
-            <a href="initiative-pulse.html" class="btn btn-secondary"
+            <a href="initiative-pulse.html" class="btn btn-secondary ox-link-btn ox-link-btn--ghost"
               >Empty State</a
             >
           </div>
@@ -254,13 +261,13 @@
             Confirmation card shown when a Workstream, Milestone, or Task is assigned to an agent.
           </p>
           <div class="widget-links">
-            <a href="task-spawned.html?demo=true" class="btn btn-primary"
+            <a href="task-spawned.html?demo=true" class="btn btn-primary ox-link-btn ox-link-btn--primary"
               >Demo Mode</a
             >
-            <a href="task-spawned.html?loading=true" class="btn btn-secondary"
+            <a href="task-spawned.html?loading=true" class="btn btn-secondary ox-link-btn ox-link-btn--ghost"
               >Loading State</a
             >
-            <a href="task-spawned.html" class="btn btn-secondary"
+            <a href="task-spawned.html" class="btn btn-secondary ox-link-btn ox-link-btn--ghost"
               >Empty State</a
             >
           </div>
@@ -273,10 +280,10 @@
             delivery across host protocols.
           </p>
           <div class="widget-links">
-            <a href="test-minimal.html?demo=true" class="btn btn-primary"
+            <a href="test-minimal.html?demo=true" class="btn btn-primary ox-link-btn ox-link-btn--primary"
               >Demo Mode</a
             >
-            <a href="test-minimal.html" class="btn btn-secondary">Host Mode</a>
+            <a href="test-minimal.html" class="btn btn-secondary ox-link-btn ox-link-btn--ghost">Host Mode</a>
           </div>
         </div>
       </div>
@@ -286,19 +293,19 @@
         
         
         <div class="preview-controls">
-          <button class="preview-btn active" onclick="loadPreview('decisions.html?demo=true')">Decisions</button>
-          <button class="preview-btn" onclick="loadPreview('agent-status.html?demo=true')">Agent Status</button>
-          <button class="preview-btn" onclick="loadPreview('search-results.html?demo=true')">Search Results</button>
-          <button class="preview-btn" onclick="loadPreview('morning-brief.html?demo=true')">Morning Brief</button>
-          <button class="preview-btn" onclick="loadPreview('initiative-pulse.html?demo=true')">Initiative Pulse</button>
-          <button class="preview-btn" onclick="loadPreview('task-spawned.html?demo=true')">Entity Spawned</button>
-          <button class="preview-btn" onclick="loadPreview('scaffolded-initiative.html?demo=true')">Scaffolded</button>
+          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost active" onclick="loadPreview('decisions.html?demo=true')">Decisions</button>
+          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="loadPreview('agent-status.html?demo=true')">Agent Status</button>
+          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="loadPreview('search-results.html?demo=true')">Search Results</button>
+          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="loadPreview('morning-brief.html?demo=true')">Morning Brief</button>
+          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="loadPreview('initiative-pulse.html?demo=true')">Initiative Pulse</button>
+          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="loadPreview('task-spawned.html?demo=true')">Entity Spawned</button>
+          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="loadPreview('scaffolded-initiative.html?demo=true')">Scaffolded</button>
         </div>
         <div class="preview-controls" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--ox-border);">
           <span style="font-family: var(--ox-mono); font-size: 0.7rem; color: var(--ox-text-muted); text-transform: uppercase; align-self: center; margin-right: 8px;">View State:</span>
-          <button class="preview-btn" onclick="testState('demo')" style="border-color: var(--ox-lime); color: var(--ox-text);">Data Rendered</button>
-          <button class="preview-btn" onclick="testState('loading')" style="border-style: dashed; opacity: 0.8">Loading Skeleton</button>
-          <button class="preview-btn" onclick="testState('empty')" style="border-style: dotted; opacity: 0.8">Empty State</button>
+          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="testState('demo')" style="border-color: var(--ox-lime); color: var(--ox-text);">Data Rendered</button>
+          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="testState('loading')" style="border-style: dashed; opacity: 0.8">Loading Skeleton</button>
+          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="testState('empty')" style="border-style: dotted; opacity: 0.8">Empty State</button>
         </div>
 
 

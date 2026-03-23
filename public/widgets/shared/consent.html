@@ -11,6 +11,8 @@
       href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="interaction-kit.css" />
+    <script src="interaction-kit.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -73,6 +75,16 @@
       };
     </script>
     <style>
+      :root {
+        --ox-primary-rgb: 191, 255, 0;
+        --ox-primary-contrast: #02040a;
+        --ox-border: rgba(255, 255, 255, 0.08);
+        --ox-border-strong: rgba(255, 255, 255, 0.15);
+        --ox-text: #f2f7ff;
+        --ox-text-muted: rgba(255, 255, 255, 0.52);
+        --ox-well-bg: rgba(255, 255, 255, 0.03);
+      }
+
       body {
         background-color: #02040a;
         color: #f2f7ff;
@@ -108,43 +120,65 @@
 
       .toggle-group {
         display: inline-flex;
-        border-radius: 10px;
+        border-radius: 12px;
         overflow: hidden;
+        padding: 2px;
         border: 1px solid rgba(255, 255, 255, 0.1);
         background: rgba(0, 0, 0, 0.3);
+        gap: 2px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
       }
 
       .toggle-btn {
-        padding: 6px 14px;
+        min-height: 36px;
+        padding: 8px 14px;
         font-size: 11px;
-        font-weight: 500;
+        font-weight: 600;
         color: rgba(255, 255, 255, 0.35);
         background: transparent;
         border: none;
         cursor: pointer;
-        transition: all 0.15s ease;
+        border-radius: 10px;
+        transition:
+          transform 0.16s cubic-bezier(0.16, 1, 0.3, 1),
+          color 0.16s ease,
+          background 0.16s ease,
+          box-shadow 0.16s ease;
         position: relative;
       }
 
       .toggle-btn:not(:last-child) {
-        border-right: 1px solid rgba(255, 255, 255, 0.06);
+        border-right: none;
       }
 
       .toggle-btn:hover:not(.active):not(.active-read) {
         color: rgba(255, 255, 255, 0.6);
-        background: rgba(255, 255, 255, 0.03);
+        background: rgba(255, 255, 255, 0.04);
+        transform: translateY(-1px);
+      }
+
+      .toggle-btn:active {
+        transform: translateY(0) scale(0.985);
+      }
+
+      .toggle-btn:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(191, 255, 0, 0.16);
+        z-index: 1;
       }
 
       .toggle-btn.active {
         color: #02040a;
         background: #bfff00;
         font-weight: 600;
+        box-shadow: 0 10px 24px -18px rgba(191, 255, 0, 0.8);
       }
 
       .toggle-btn.active-read {
         color: white;
         background: rgba(20, 184, 166, 0.85);
         font-weight: 600;
+        box-shadow: 0 10px 24px -18px rgba(20, 184, 166, 0.72);
       }
 
       .chevron {
@@ -171,27 +205,37 @@
       }
 
       .authorize-btn {
-        background: linear-gradient(180deg, #bfff00 0%, #a8e600 100%);
-        box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.25) inset,
-          0 4px 16px rgba(191, 255, 0, 0.3), 0 0 0 1px rgba(191, 255, 0, 0.1);
-        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      .authorize-btn:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.25) inset,
-          0 8px 24px rgba(191, 255, 0, 0.35), 0 0 0 1px rgba(191, 255, 0, 0.15);
-      }
-      .authorize-btn:active {
-        transform: translateY(0);
+        font-weight: 700;
+        letter-spacing: -0.01em;
       }
 
       .deny-btn {
-        transition: all 0.2s ease;
         background: rgba(255, 255, 255, 0.02);
+        color: rgba(255, 255, 255, 0.72);
       }
-      .deny-btn:hover {
-        background: rgba(255, 255, 255, 0.06);
-        border-color: rgba(255, 255, 255, 0.12);
+
+      @media (max-width: 480px) {
+        .permissions-header,
+        .permission-row-header {
+          flex-direction: column;
+          align-items: stretch !important;
+          gap: 12px;
+        }
+
+        .permissions-header .toggle-group,
+        .permission-row-header .toggle-group {
+          width: 100%;
+        }
+
+        .permissions-header .toggle-btn,
+        .permission-row-header .toggle-btn {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .permission-row-header > div:first-child {
+          width: 100%;
+        }
       }
 
       /* Custom scrollbar */
@@ -365,7 +409,7 @@
 
         <!-- Permissions Section -->
         <div class="px-6 py-4">
-          <div class="flex items-center justify-between mb-3">
+          <div class="permissions-header flex items-center justify-between mb-3">
             <span
               class="text-xs text-white/40 uppercase tracking-wider font-medium"
               >Permissions</span
@@ -405,7 +449,7 @@
               data-scope="decisions"
             >
               <div
-                class="flex items-center justify-between py-3 px-3 cursor-pointer"
+                class="permission-row-header flex items-center justify-between py-3 px-3 cursor-pointer"
                 onclick="toggleExpand(this.parentElement)"
               >
                 <div class="flex items-center gap-3">
@@ -465,7 +509,7 @@
               data-scope="agents"
             >
               <div
-                class="flex items-center justify-between py-3 px-3 cursor-pointer"
+                class="permission-row-header flex items-center justify-between py-3 px-3 cursor-pointer"
                 onclick="toggleExpand(this.parentElement)"
               >
                 <div class="flex items-center gap-3">
@@ -525,7 +569,7 @@
               data-scope="initiatives"
             >
               <div
-                class="flex items-center justify-between py-3 px-3 cursor-pointer"
+                class="permission-row-header flex items-center justify-between py-3 px-3 cursor-pointer"
                 onclick="toggleExpand(this.parentElement)"
               >
                 <div class="flex items-center gap-3">
@@ -587,7 +631,7 @@
               data-scope="memory"
             >
               <div
-                class="flex items-center justify-between py-3 px-3 cursor-pointer"
+                class="permission-row-header flex items-center justify-between py-3 px-3 cursor-pointer"
                 onclick="toggleExpand(this.parentElement)"
               >
                 <div class="flex items-center gap-3">
@@ -647,7 +691,7 @@
               data-scope="planning"
             >
               <div
-                class="flex items-center justify-between py-3 px-3 cursor-pointer"
+                class="permission-row-header flex items-center justify-between py-3 px-3 cursor-pointer"
                 onclick="toggleExpand(this.parentElement)"
               >
                 <div class="flex items-center gap-3">
@@ -707,15 +751,19 @@
         <div class="px-6 py-5 border-t border-white/[0.04] bg-white/[0.01]">
           <button
             id="authorize-btn"
+            type="button"
             onclick="authorize()"
-            class="authorize-btn w-full py-3.5 rounded-xl text-sm font-semibold text-black"
+            data-loading-label="Connecting…"
+            class="authorize-btn ox-action-btn ox-action-btn--primary ox-action-btn--full w-full py-3.5 rounded-xl text-sm font-semibold text-black"
           >
             Authorize
           </button>
           <button
             id="deny-btn"
+            type="button"
             onclick="deny()"
-            class="deny-btn w-full mt-2.5 py-3 rounded-xl text-sm font-medium text-white/50 border border-white/10"
+            data-loading-label="Closing…"
+            class="deny-btn ox-action-btn ox-action-btn--ghost ox-action-btn--full w-full mt-2.5 py-3 rounded-xl text-sm font-medium text-white/50 border border-white/10"
           >
             Deny
           </button>
@@ -850,7 +898,8 @@
       function updateClientLogo(clientName) {
         const logoContainer = document.getElementById('client-logo');
         const logoUrls = {
-          chatgpt: 'https://cdn.simpleicons.org/openai/10A37F',
+          chatgpt:
+            'data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22%2310A37F%22%3E%3Cpath%20d%3D%22M22.2819%209.8211a5.9847%205.9847%200%200%200-.5157-4.9108%206.0462%206.0462%200%200%200-6.5098-2.9A6.0651%206.0651%200%200%200%204.9807%204.1818a5.9847%205.9847%200%200%200-3.9977%202.9%206.0462%206.0462%200%200%200%20.7427%207.0966%205.98%205.98%200%200%200%20.511%204.9107%206.051%206.051%200%200%200%206.5146%202.9001A5.9847%205.9847%200%200%200%2013.2599%2024a6.0557%206.0557%200%200%200%205.7718-4.2058%205.9894%205.9894%200%200%200%203.9977-2.9001%206.0557%206.0557%200%200%200-.7475-7.0729zm-9.022%2012.6081a4.4755%204.4755%200%200%201-2.8764-1.0408l.1419-.0804%204.7783-2.7582a.7948.7948%200%200%200%20.3927-.6813v-6.7369l2.02%201.1686a.071.071%200%200%201%20.038.052v5.5826a4.504%204.504%200%200%201-4.4945%204.4944zm-9.6607-4.1254a4.4708%204.4708%200%200%201-.5346-3.0137l.142.0852%204.783%202.7582a.7712.7712%200%200%200%20.7806%200l5.8428-3.3685v2.3324a.0804.0804%200%200%201-.0332.0615L9.74%2019.9502a4.4992%204.4992%200%200%201-6.1408-1.6464zM2.3408%207.8956a4.485%204.485%200%200%201%202.3655-1.9728V11.6a.7664.7664%200%200%200%20.3879.6765l5.8144%203.3543-2.0201%201.1685a.0757.0757%200%200%201-.071%200l-4.8303-2.7865A4.504%204.504%200%200%201%202.3408%207.872zm16.5963%203.8558L13.1038%208.364%2015.1192%207.2a.0757.0757%200%200%201%20.071%200l4.8303%202.7913a4.4944%204.4944%200%200%201-.6765%208.1042v-5.6772a.79.79%200%200%200-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759%200%200%200-.7854%200L9.409%209.2297V6.8974a.0662.0662%200%200%201%20.0284-.0615l4.8303-2.7866a4.4992%204.4992%200%200%201%206.6802%204.66zM8.3065%2012.863l-2.02-1.1638a.0804.0804%200%200%201-.038-.0567V6.0742a4.4992%204.4992%200%200%201%207.3757-3.4537l-.142.0805L8.704%205.459a.7948.7948%200%200%200-.3927.6813zm1.0976-2.3654l2.602-1.4998%202.6069%201.4998v2.9994l-2.5974%201.4997-2.6067-1.4997Z%22%2F%3E%3C%2Fsvg%3E',
           cursor: 'https://cdn.simpleicons.org/cursor/ffffff',
           claude: 'https://cdn.simpleicons.org/anthropic/D97757',
           'vs code': 'https://cdn.simpleicons.org/visualstudiocode/007ACC',
@@ -1018,9 +1067,16 @@
 
       function authorize() {
         const btn = document.getElementById('authorize-btn');
-        btn.textContent = 'Connecting...';
-        btn.disabled = true;
-        btn.style.opacity = '0.7';
+        const denyButton = document.getElementById('deny-btn');
+        if (window.OrgXWidgetUX) {
+          window.OrgXWidgetUX.setLoading(btn, { loadingLabel: 'Connecting…' });
+          window.OrgXWidgetUX.setDisabled(denyButton, true);
+        } else {
+          btn.textContent = 'Connecting...';
+          btn.disabled = true;
+          btn.style.opacity = '0.7';
+          denyButton.disabled = true;
+        }
 
         const finalScope = buildScopeString();
         const params = new URLSearchParams(window.location.search);
@@ -1046,6 +1102,12 @@
       }
 
       function deny() {
+        const denyButton = document.getElementById('deny-btn');
+        const authorizeButton = document.getElementById('authorize-btn');
+        if (window.OrgXWidgetUX) {
+          window.OrgXWidgetUX.setLoading(denyButton, { loadingLabel: 'Closing…' });
+          window.OrgXWidgetUX.setDisabled(authorizeButton, true);
+        }
         const params = new URLSearchParams(window.location.search);
         const redirectUri =
           oauthState?.redirectUri || params.get('redirect_uri');
