@@ -18,6 +18,7 @@ import {
   LIFECYCLE_ENTITY_TYPES as SHARED_LIFECYCLE_ENTITY_TYPES,
   MISSION_CONTROL_NODE_TYPES,
 } from './shared/entity';
+import { CONFIGURE_ORG_POLICY_TYPES } from './configureOrgPolicy';
 
 // =============================================================================
 // WIDGET URIs
@@ -754,8 +755,10 @@ export const CHATGPT_TOOL_DEFINITIONS = [
       focus_areas: z.array(z.string()).optional().describe('Agent focus areas (configure_agent only)'),
       approval_required: z.array(z.string()).optional().describe('Actions requiring approval (configure_agent only)'),
       skip_approval: z.array(z.string()).optional().describe('Actions without approval (configure_agent only)'),
-      policy_type: z.enum(['approvals', 'notifications', 'working_hours', 'budget']).optional().describe('Policy type (set_policy only)'),
+      policy_type: z.enum(CONFIGURE_ORG_POLICY_TYPES).optional().describe('Policy type (set_policy only)'),
       config: z.record(z.any()).optional().describe('Policy configuration (set_policy only)'),
+      workspace_id: z.string().optional().describe('Workspace UUID to scope policy overrides (set_policy only)'),
+      command_center_id: z.string().optional().describe('Deprecated alias for workspace_id (set_policy only)'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.readOptionalAuth,

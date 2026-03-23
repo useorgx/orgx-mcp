@@ -10,9 +10,8 @@
     "url": "https://useorgx.com"
   },
   "repository": {
-    "url": "https://github.com/useorgx/orgx",
-    "source": "github",
-    "subfolder": "orgx/workers/orgx-mcp"
+    "url": "https://github.com/useorgx/orgx-mcp",
+    "source": "github"
   },
   "icons": [
     {

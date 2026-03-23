@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { handleMcpRequest } from '../src/mcpTransport';
+import {
+  DEPRECATION_SUNSET_AT_ISO,
+  DEPRECATION_SUNSET_HEADER,
+  DEPRECATION_WINDOW_DAYS,
+} from '../src/deprecatedTools';
 
 const env = {} as unknown as Record<string, unknown>;
 
@@ -284,6 +289,226 @@ describe('mcpTransport', () => {
       'account_upgrade'
     );
     expect(response.headers.get('x-orgx-deprecation-routed')).toBe('true');
+    expect(response.headers.get('x-orgx-deprecation-sunset-at')).toBe(
+      DEPRECATION_SUNSET_AT_ISO
+    );
+    expect(response.headers.get('x-orgx-deprecation-window-days')).toBe(
+      String(DEPRECATION_WINDOW_DAYS)
+    );
+    expect(response.headers.get('Sunset')).toBe(DEPRECATION_SUNSET_HEADER);
+  });
+
+  it('captures telemetry for deprecated tool usage when PostHog is configured', async () => {
+    const waitUntil = vi.fn();
+    const ctx = { waitUntil } as any;
+    const telemetryFetch = vi.fn(async () => new Response(null, { status: 200 }));
+    const originalFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', telemetryFetch);
+
+    try {
+      const request = new Request('http://localhost/mcp', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          method: 'tools/call',
+          params: {
+            name: 'create_checkout_session',
+            arguments: { plan: 'starter', user_id: 'user-123' },
+          },
+        }),
+      });
+
+      await handleMcpRequest(
+        request,
+        {
+          POSTHOG_KEY: 'phc_test_key',
+          POSTHOG_HOST: 'https://app.posthog.com',
+        } as any,
+        ctx,
+        {
+          fetch: vi.fn(async () =>
+            new Response(JSON.stringify({ ok: true }), {
+              headers: { 'content-type': 'application/json' },
+            })
+          ),
+        },
+        vi.fn(async () => ({ userId: 'user-123', scope: 'mcp:all' }))
+      );
+
+      expect(waitUntil).toHaveBeenCalledTimes(1);
+      expect(telemetryFetch).toHaveBeenCalledTimes(1);
+      expect(telemetryFetch).toHaveBeenCalledWith(
+        'https://app.posthog.com/batch/',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+
+      const payload = JSON.parse(
+        telemetryFetch.mock.calls[0][1].body as string
+      ) as {
+        batch: Array<{ event: string; properties: Record<string, unknown> }>;
+      };
+      expect(payload.batch[0]?.event).toBe('mcp_deprecated_tool_called');
+      expect(payload.batch[0]?.properties).toMatchObject({
+        deprecated_tool_id: 'create_checkout_session',
+        replacement_tool_id: 'account_upgrade',
+        routed: true,
+        auth_scope: 'mcp:all',
+        has_user_id: true,
+        deprecation_sunset_at: DEPRECATION_SUNSET_AT_ISO,
+        deprecation_window_days: DEPRECATION_WINDOW_DAYS,
+        $lib: 'orgx-mcp',
+      });
+    } finally {
+      vi.stubGlobal('fetch', originalFetch);
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('routes compatible batch_create_entities initiative hierarchies to scaffold_initiative', async () => {
+    let received: any = null;
+    const handler = {
+      fetch: vi.fn(async (req: Request) => {
+        received = await req.json();
+        return new Response(JSON.stringify({ ok: true }), {
+          headers: { 'content-type': 'application/json' },
+        });
+      }),
+    };
+
+    const request = new Request('http://localhost/mcp', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        method: 'tools/call',
+        params: {
+          name: 'batch_create_entities',
+          arguments: {
+            owner_id: 'user-123',
+            concurrency: 2,
+            continue_on_error: false,
+            entities: [
+              {
+                type: 'initiative',
+                ref: 'init',
+                title: 'Launch OrgX MCP',
+                summary: 'Ship the launch hierarchy',
+                workspace_id: 'ws-123',
+              },
+              {
+                type: 'workstream',
+                ref: 'ws-eng',
+                title: 'Engineering',
+                initiative_ref: 'init',
+              },
+              {
+                type: 'milestone',
+                ref: 'ms-worker',
+                title: 'Worker ready',
+                initiative_ref: 'init',
+                workstream_ref: 'ws-eng',
+              },
+              {
+                type: 'task',
+                title: 'Ship worker',
+                initiative_ref: 'init',
+                workstream_ref: 'ws-eng',
+                milestone_ref: 'ms-worker',
+              },
+            ],
+          },
+        },
+      }),
+    });
+
+    const response = await handleMcpRequest(
+      request,
+      env,
+      createCtx(),
+      handler,
+      vi.fn(async () => ({}))
+    );
+
+    expect(received?.params?.name).toBe('scaffold_initiative');
+    expect(received?.params?.arguments).toEqual({
+      title: 'Launch OrgX MCP',
+      summary: 'Ship the launch hierarchy',
+      workspace_id: 'ws-123',
+      owner_id: 'user-123',
+      continue_on_error: false,
+      concurrency: 2,
+      workstreams: [
+        {
+          ref: 'ws-eng',
+          title: 'Engineering',
+          milestones: [
+            {
+              ref: 'ms-worker',
+              title: 'Worker ready',
+              tasks: [{ title: 'Ship worker' }],
+            },
+          ],
+        },
+      ],
+    });
+    expect(response.headers.get('x-orgx-deprecated-tool')).toBe(
+      'batch_create_entities'
+    );
+    expect(response.headers.get('x-orgx-replacement-tool')).toBe(
+      'scaffold_initiative'
+    );
+    expect(response.headers.get('x-orgx-deprecation-routed')).toBe('true');
+  });
+
+  it('preserves batch_create_entities when the payload is not a single initiative hierarchy', async () => {
+    let received: any = null;
+    const handler = {
+      fetch: vi.fn(async (req: Request) => {
+        received = await req.json();
+        return new Response(JSON.stringify({ ok: true }), {
+          headers: { 'content-type': 'application/json' },
+        });
+      }),
+    };
+
+    const request = new Request('http://localhost/mcp', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        method: 'tools/call',
+        params: {
+          name: 'batch_create_entities',
+          arguments: {
+            entities: [
+              { type: 'initiative', ref: 'init-a', title: 'Init A' },
+              { type: 'initiative', ref: 'init-b', title: 'Init B' },
+            ],
+          },
+        },
+      }),
+    });
+
+    const response = await handleMcpRequest(
+      request,
+      env,
+      createCtx(),
+      handler,
+      vi.fn(async () => ({}))
+    );
+
+    expect(received?.params?.name).toBe('batch_create_entities');
+    expect(received?.params?.arguments).toEqual({
+      entities: [
+        { type: 'initiative', ref: 'init-a', title: 'Init A' },
+        { type: 'initiative', ref: 'init-b', title: 'Init B' },
+      ],
+    });
+    expect(response.headers.get('x-orgx-deprecated-tool')).toBe(
+      'batch_create_entities'
+    );
+    expect(response.headers.get('x-orgx-deprecation-routed')).toBe('false');
   });
 
   it('preserves non-tools/call payloads', async () => {

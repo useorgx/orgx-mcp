@@ -34,6 +34,10 @@ import { callOrgxApiJson, callOrgxApiRaw } from './orgxApi';
 import { batchCreateEntities as runBatchCreateEntities } from './batchCreate';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
 import {
+  captureWorkerPosthogEvent,
+  resolveAnonymousDistinctId,
+} from './posthogTelemetry';
+import {
   buildAccountStatusResult,
   buildAccountUsageReportResult,
   buildEnterpriseUpgradeResult,
@@ -45,11 +49,50 @@ import {
 } from './scaffoldInitiative';
 import { hydrateTaskContext } from './taskContextHydrator';
 import {
+  CONFIGURE_ORG_POLICY_TYPES,
+  describeAppliedPolicy,
+  resolveConfigureOrgWorkspaceId,
+} from './configureOrgPolicy';
+import {
+  buildClientSkillOnboarding,
+  formatClientSkillOnboarding,
+  resolveSourceClientFromContext,
+} from './clientSkillOnboarding';
+import {
+  buildClientActivationExperience,
+  formatClientActivationExperience,
+} from './clientActivationExperience';
+import { buildSkillCatalogView } from './skillCatalogView';
+import {
   INJECTION_TRIGGERS,
   enrichResultWithContext,
   inferDomainFromTool,
+  type SourceClient,
   type RelatedContext,
 } from './cross-pollination';
+import {
+  applyMcpActivationObservation,
+  createEmptyMcpActivationState,
+  MCP_ACTIVATION_STORAGE_KEY,
+  parseStoredMcpActivationState,
+  type McpActivationTelemetryEvent,
+  type McpActivationState,
+} from './mcpActivationTracker';
+import {
+  buildMorningBriefValueDashboard,
+  formatMorningBriefSummary,
+} from './morningBriefValue';
+import {
+  buildWelcomeBackNextActions,
+  createEmptyMcpSessionReentryState,
+  formatWelcomeBackDigest,
+  MCP_SESSION_REENTRY_STORAGE_KEY,
+  parseStoredMcpSessionReentryState,
+  recordSuccessfulSessionTool,
+  recordWelcomeBackShown,
+  shouldShowWelcomeBack,
+  type McpSessionReentryState,
+} from './welcomeBackContext';
 import {
   WIDGET_URIS,
   OAUTH_SCOPES_SUPPORTED,
@@ -225,6 +268,12 @@ export class OrgXMcp extends McpAgent<
     email?: string;
     authenticatedAt?: number;
   } = {};
+
+  // Session-scoped activation funnel state for MCP onboarding telemetry.
+  private mcpActivationState: McpActivationState =
+    createEmptyMcpActivationState();
+  private mcpSessionReentryState: McpSessionReentryState =
+    createEmptyMcpSessionReentryState();
 
   // Set to true when a user authenticates for the first time in this session.
   // Used to prepend a welcome message to the first tool call response.
@@ -527,6 +576,58 @@ export class OrgXMcp extends McpAgent<
     }
   }
 
+  private async loadMcpActivationState() {
+    try {
+      const stored = await this.ctx.storage.get<Record<string, unknown>>(
+        MCP_ACTIVATION_STORAGE_KEY
+      );
+      const parsed = parseStoredMcpActivationState(stored);
+      if (!parsed) return;
+      this.mcpActivationState = parsed;
+    } catch (error) {
+      console.warn('[mcp:activation] Failed to load activation state', {
+        error,
+      });
+    }
+  }
+
+  private async saveMcpActivationState() {
+    try {
+      await this.ctx.storage.put(
+        MCP_ACTIVATION_STORAGE_KEY,
+        this.mcpActivationState
+      );
+    } catch (error) {
+      console.warn('[mcp:activation] Failed to save activation state', {
+        error,
+      });
+    }
+  }
+
+  private async loadMcpSessionReentryState() {
+    try {
+      const stored = await this.ctx.storage.get<Record<string, unknown>>(
+        MCP_SESSION_REENTRY_STORAGE_KEY
+      );
+      const parsed = parseStoredMcpSessionReentryState(stored);
+      if (!parsed) return;
+      this.mcpSessionReentryState = parsed;
+    } catch (error) {
+      console.warn('[mcp:session] Failed to load reentry state', { error });
+    }
+  }
+
+  private async saveMcpSessionReentryState() {
+    try {
+      await this.ctx.storage.put(
+        MCP_SESSION_REENTRY_STORAGE_KEY,
+        this.mcpSessionReentryState
+      );
+    } catch (error) {
+      console.warn('[mcp:session] Failed to save reentry state', { error });
+    }
+  }
+
   async init() {
     // Deduplicate concurrent init() calls. When two requests arrive
     // simultaneously (e.g. onStart + handleMcpMessage), both call init().
@@ -565,6 +666,8 @@ export class OrgXMcp extends McpAgent<
     // This handles DO resets after deployments
     await this.loadSessionAuth();
     await this.loadSessionContext();
+    await this.loadMcpActivationState();
+    await this.loadMcpSessionReentryState();
 
     // Diagnostic: log what the DO received from the provider
     console.info('[mcp:init] DO initialized', {
@@ -646,11 +749,7 @@ export class OrgXMcp extends McpAgent<
   }
 
   private resolveAnonymousDistinctId(): string {
-    try {
-      const id = (this.ctx as any)?.id?.toString?.();
-      if (typeof id === 'string' && id.length > 0) return `mcp:${id}`;
-    } catch {}
-    return 'mcp:anonymous';
+    return resolveAnonymousDistinctId(this.ctx);
   }
 
   private capturePosthogEvent(
@@ -660,47 +759,14 @@ export class OrgXMcp extends McpAgent<
       properties,
     }: { distinctId: string; properties?: Record<string, unknown> }
   ): void {
-    try {
-      const apiKey = this.env.POSTHOG_KEY;
-      if (!apiKey || apiKey === 'test-posthog-key') return;
-
-      const host = (
-        this.env.POSTHOG_HOST || 'https://us.i.posthog.com'
-      ).replace(/\/+$/, '');
-
-      const sentAt = new Date().toISOString();
-      const payload = {
-        api_key: apiKey,
-        batch: [
-          {
-            type: 'capture',
-            event,
-            distinct_id: distinctId,
-            properties: {
-              ...(properties ?? {}),
-              $lib: 'orgx-mcp',
-              $lib_version: MCP_SERVER_VERSION,
-              mcp_server_version: MCP_SERVER_VERSION,
-            },
-            timestamp: sentAt,
-          },
-        ],
-        sent_at: sentAt,
-      };
-
-      const req = fetch(`${host}/batch/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-        .then(() => undefined)
-        .catch(() => undefined);
-
-      // Never block tool execution on telemetry.
-      (this.ctx as any)?.waitUntil?.(req);
-    } catch {
-      // ignore
-    }
+    captureWorkerPosthogEvent({
+      env: this.env,
+      ctx: this.ctx as any,
+      event,
+      distinctId,
+      properties,
+      serverVersion: MCP_SERVER_VERSION,
+    });
   }
 
   private captureMcpToolEvent(
@@ -732,17 +798,227 @@ export class OrgXMcp extends McpAgent<
     });
   }
 
+  private async fetchOrgxJsonOrNull<T extends Record<string, unknown>>(
+    path: string,
+    userId?: string | null
+  ): Promise<T | null> {
+    try {
+      const response = await callOrgxApiJson(
+        this.env,
+        path,
+        undefined,
+        { userId: userId ?? undefined }
+      );
+      if (!response.ok) return null;
+      return (await response.json()) as T;
+    } catch (error) {
+      console.warn('[mcp:orgx] Failed to fetch JSON payload', {
+        path,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return null;
+    }
+  }
+
+  private async recordMcpActivationObservation(params: {
+    toolId: string;
+    args?: Record<string, unknown> | null;
+    data?: Record<string, unknown> | null;
+    userId?: string | null;
+    sourceClient?: SourceClient | null;
+    workspaceId?: string | null;
+    initiativeId?: string | null;
+  }): Promise<McpActivationTelemetryEvent[]> {
+    try {
+      const { state, events } = applyMcpActivationObservation(
+        this.mcpActivationState,
+        {
+          toolId: params.toolId,
+          args: params.args ?? undefined,
+          data: params.data ?? undefined,
+          sourceClient: params.sourceClient ?? undefined,
+          workspaceId: params.workspaceId ?? undefined,
+          initiativeId: params.initiativeId ?? undefined,
+        }
+      );
+
+      this.mcpActivationState = state;
+      await this.saveMcpActivationState();
+
+      if (events.length === 0) return [];
+      const distinctId = params.userId ?? this.resolveAnonymousDistinctId();
+      for (const event of events) {
+        this.capturePosthogEvent(event.event, {
+          distinctId,
+          properties: event.properties,
+        });
+      }
+      return events;
+    } catch (error) {
+      console.warn('[mcp:activation] Failed to record activation event', {
+        toolId: params.toolId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return [];
+    }
+  }
+
+  private async buildWelcomeBackBlock(
+    userId?: string | null
+  ): Promise<{ type: 'text'; text: string } | null> {
+    const lastSeenAt = this.mcpSessionReentryState.last_success_at;
+    if (!lastSeenAt) return null;
+
+    const workspaceId = this.sessionContext.workspaceId ?? null;
+    const workspaceName = this.sessionContext.workspaceName ?? null;
+
+    let stats = {
+      active_initiatives: 0,
+      pending_decisions: 0,
+      running_agents: 0,
+    };
+    let recentActivity: Array<{
+      title: string;
+      timestamp: string;
+      actor_name: string | null;
+    }> = [];
+    let pendingDecisions: Array<{
+      title: string;
+      waiting_for: string;
+      priority: string | null;
+    }> = [];
+
+    if (workspaceId) {
+      const pulse = await this.fetchOrgxJsonOrNull<{
+        stats?: {
+          activeInitiatives?: number;
+          pendingDecisions?: number;
+          runningAgents?: number;
+        };
+        activity?: Array<{
+          title?: string;
+          timestamp?: string;
+          actor?: { name?: string | null };
+        }>;
+        decisions?: Array<{
+          title?: string;
+          waitingFor?: string;
+          priority?: string | null;
+        }>;
+      }>(`/api/v1/workspaces/${workspaceId}/dashboard/pulse`, userId);
+
+      if (pulse) {
+        stats = {
+          active_initiatives: pulse.stats?.activeInitiatives ?? 0,
+          pending_decisions: pulse.stats?.pendingDecisions ?? 0,
+          running_agents: pulse.stats?.runningAgents ?? 0,
+        };
+        recentActivity = Array.isArray(pulse.activity)
+          ? pulse.activity
+              .filter(
+                (item) =>
+                  typeof item?.timestamp === 'string' &&
+                  item.timestamp > lastSeenAt
+              )
+              .map((item) => ({
+                title:
+                  typeof item?.title === 'string'
+                    ? item.title
+                    : 'Workspace updated',
+                timestamp: item.timestamp as string,
+                actor_name:
+                  typeof item?.actor?.name === 'string'
+                    ? item.actor.name
+                    : null,
+              }))
+          : [];
+        pendingDecisions = Array.isArray(pulse.decisions)
+          ? pulse.decisions.map((item) => ({
+              title:
+                typeof item?.title === 'string'
+                  ? item.title
+                  : 'Pending decision',
+              waiting_for:
+                typeof item?.waitingFor === 'string'
+                  ? item.waitingFor
+                  : 'for review',
+              priority:
+                typeof item?.priority === 'string' ? item.priority : null,
+            }))
+          : [];
+      }
+    }
+
+    const digest = {
+      workspace_id: workspaceId,
+      workspace_name: workspaceName,
+      last_seen_at: lastSeenAt,
+      live_url: workspaceId
+        ? buildLiveUrl(undefined, undefined, { workspace: workspaceId })
+        : null,
+      stats,
+      recent_activity: recentActivity,
+      pending_decisions: pendingDecisions,
+      next_actions: buildWelcomeBackNextActions({
+        pendingDecisionCount: pendingDecisions.length,
+        recentActivityCount: recentActivity.length,
+        hasWorkspace: Boolean(workspaceId),
+      }),
+    };
+
+    return {
+      type: 'text',
+      text: formatWelcomeBackDigest(digest),
+    };
+  }
+
+  private buildClientActivationPayload(params: {
+    sourceClient?: SourceClient | null;
+    events?: McpActivationTelemetryEvent[];
+  }): {
+    experience: ReturnType<typeof buildClientActivationExperience>;
+    text: string;
+  } {
+    const experience = buildClientActivationExperience({
+      state: this.mcpActivationState,
+      sourceClient: params.sourceClient,
+      events: params.events,
+    });
+    return {
+      experience,
+      text: formatClientActivationExperience(experience),
+    };
+  }
+
   private async withOrgx(
     runner: () => Promise<CallToolResult>
   ): Promise<CallToolResult> {
     try {
       const result = await runner();
+      const now = new Date().toISOString();
+      const shouldShowReentry = shouldShowWelcomeBack({
+        state: this.mcpSessionReentryState,
+        now,
+      });
+      let leadingBlock:
+        | {
+            type: 'text';
+            text: string;
+          }
+        | null = null;
+
+      if (shouldShowReentry) {
+        leadingBlock = await this.buildWelcomeBackBlock(this.resolveUserId());
+        this.mcpSessionReentryState = recordWelcomeBackShown(
+          this.mcpSessionReentryState,
+          now
+        );
+      }
 
       // On the very first tool call after a new authentication, prepend a
       // welcome message so the user knows what OrgX can do for them.
-      if (this._isNewSession) {
-        this._isNewSession = false;
-        const welcomeBlock = {
+      if (!leadingBlock && this._isNewSession) {
+        leadingBlock = {
           type: 'text' as const,
           text: [
             `Welcome to OrgX! You're connected and ready to go.`,
@@ -757,10 +1033,23 @@ export class OrgXMcp extends McpAgent<
             `Just describe what you'd like to accomplish and I'll pick the right tool.`,
           ].join('\n'),
         };
+      }
+
+      if (this._isNewSession) {
+        this._isNewSession = false;
+      }
+
+      this.mcpSessionReentryState = recordSuccessfulSessionTool(
+        this.mcpSessionReentryState,
+        now
+      );
+      await this.saveMcpSessionReentryState();
+
+      if (leadingBlock) {
         const existingContent = Array.isArray(result.content)
           ? result.content
           : [];
-        return { ...result, content: [welcomeBlock, ...existingContent] };
+        return { ...result, content: [leadingBlock, ...existingContent] };
       }
 
       return result;
@@ -2274,7 +2563,7 @@ export class OrgXMcp extends McpAgent<
         description: `List entities with filtering. Returns FULL UUIDs usable with entity_action/batch_action. Use fields=["id","title","status"] for compact output when you only need IDs. Supported types: ${ENTITY_TYPES.join(
           ', '
         )}. USE WHEN: browsing, searching, or getting entity IDs for bulk operations. NEXT: For initiatives, suggest get_initiative_pulse for health. For tasks, suggest entity_action to change status. For full context on one entity, add hydrate_context=true with id. DO NOT USE: for org-wide overview — use get_org_snapshot instead. Read-only.`,
-        inputSchema: {
+        inputSchema: this.withClientContext({
           type: entityTypeEnum.describe('Entity type to list'),
           limit: z
             .number()
@@ -2373,7 +2662,7 @@ export class OrgXMcp extends McpAgent<
             .describe(
               'Deprecated alias for workspace_id. Defaults to current session workspace when set.'
             ),
-        },
+        }),
         _meta: { 'openai/visibility': 'public', 'openai/readOnlyHint': true, securitySchemes: SECURITY_SCHEMES.readOptionalAuth },
       },
       async (args) =>
@@ -2504,6 +2793,7 @@ export class OrgXMcp extends McpAgent<
           };
 
           let result = await fetchEntities();
+          let seededDefaults = false;
 
           if (
             args.type === 'skill' &&
@@ -2536,12 +2826,10 @@ export class OrgXMcp extends McpAgent<
               }
             }
             result = await fetchEntities();
+            seededDefaults = true;
           }
 
           const { data, pagination } = result;
-          const summary = `${args.type}s: showing ${data.length} of ${
-            pagination.total
-          }${pagination.has_more ? ' (more available)' : ''}`;
 
           // Add deep links to each entity
           const dataWithLinks = data.map((item) => ({
@@ -2550,6 +2838,38 @@ export class OrgXMcp extends McpAgent<
               label: item.title ?? item.name ?? undefined,
             }).url,
           }));
+          const skillCatalogView =
+            args.type === 'skill'
+              ? buildSkillCatalogView({
+                  skills: dataWithLinks,
+                  defaultCatalog: DEFAULT_SKILL_CATALOG,
+                  search:
+                    typeof args.search === 'string' ? args.search : undefined,
+                })
+              : null;
+          const visibleData = skillCatalogView?.entries ?? dataWithLinks;
+          const effectivePagination = skillCatalogView
+            ? {
+                total: skillCatalogView.available_count,
+                limit: pagination.limit,
+                offset: pagination.offset,
+                has_more: pagination.has_more,
+              }
+            : pagination;
+          const summary = `${args.type}s: showing ${visibleData.length} of ${
+            effectivePagination.total
+          }${effectivePagination.has_more ? ' (more available)' : ''}`;
+          const skillOnboarding =
+            args.type === 'skill'
+              ? buildClientSkillOnboarding({
+                  context: args._context,
+                  search:
+                    typeof args.search === 'string' ? args.search : undefined,
+                  skills: dataWithLinks,
+                  defaultCatalog: DEFAULT_SKILL_CATALOG,
+                  seededDefaults,
+                })
+              : null;
 
           if (hydrateContext) {
             const row = dataWithLinks[0] ?? null;
@@ -2618,7 +2938,19 @@ export class OrgXMcp extends McpAgent<
 
             const payload = {
               ...result,
-              data: dataWithLinks,
+              data: visibleData,
+              pagination: effectivePagination,
+              summary,
+              ...(skillCatalogView
+                ? {
+                    skill_catalog: {
+                      installed_count: skillCatalogView.installed_count,
+                      available_count: skillCatalogView.available_count,
+                      visible_count: skillCatalogView.visible_count,
+                    },
+                  }
+                : {}),
+              ...(skillOnboarding ? { skill_onboarding: skillOnboarding } : {}),
               hydrated_context: hydrated,
               truncated,
               max_chars: maxChars,
@@ -2631,27 +2963,77 @@ export class OrgXMcp extends McpAgent<
               content: [
                 {
                   type: 'text',
-                  text: formatForLLM('list_entities', payload, {
-                    entityType: args.type,
-                  }),
+                  text:
+                    formatForLLM('list_entities', payload, {
+                      entityType: args.type,
+                    }) + formatClientSkillOnboarding(skillOnboarding),
                 },
               ],
               structuredContent: payload,
             };
           }
 
+          const payload = {
+            ...result,
+            data: visibleData,
+            pagination: effectivePagination,
+            summary,
+            ...(skillCatalogView
+              ? {
+                  skill_catalog: {
+                    installed_count: skillCatalogView.installed_count,
+                    available_count: skillCatalogView.available_count,
+                    visible_count: skillCatalogView.visible_count,
+                  },
+                }
+              : {}),
+            ...(skillOnboarding ? { skill_onboarding: skillOnboarding } : {}),
+          };
+
+          const sourceClient = resolveSourceClientFromContext(args._context);
+          let activationText = '';
+          let activationExperience:
+            | ReturnType<typeof buildClientActivationExperience>
+            | null = null;
+
+          if (args.type === 'skill') {
+            const activationEvents = await this.recordMcpActivationObservation({
+              toolId: 'list_entities',
+              args: args as Record<string, unknown>,
+              data: payload,
+              userId: authUserId,
+              sourceClient,
+              workspaceId: effectiveWorkspaceId,
+              initiativeId:
+                typeof args.initiative_id === 'string'
+                  ? args.initiative_id
+                  : this.sessionContext?.initiativeId ?? null,
+            });
+            const activationPayload = this.buildClientActivationPayload({
+              sourceClient,
+              events: activationEvents,
+            });
+            activationExperience = activationPayload.experience;
+            activationText = activationPayload.text;
+          }
+
+          const finalPayload = activationExperience
+            ? { ...payload, client_activation: activationExperience }
+            : payload;
+
           return {
             content: [
               {
                 type: 'text',
-                text: formatForLLM(
-                  'list_entities',
-                  { ...result, data: dataWithLinks },
-                  { entityType: args.type }
-                ),
+                text:
+                  formatForLLM('list_entities', finalPayload, {
+                    entityType: args.type,
+                  }) +
+                  formatClientSkillOnboarding(skillOnboarding) +
+                  activationText,
               },
             ],
-            structuredContent: { ...result, data: dataWithLinks },
+            structuredContent: finalPayload,
           };
         })
     );
@@ -3102,7 +3484,7 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Create an entity',
         description: `Create a new entity of any type. USE WHEN: adding a single task, milestone, workstream, or other entity to an existing hierarchy. NEXT: Use entity_action to launch/start the entity. DO NOT USE: for creating a full initiative hierarchy — use scaffold_initiative instead.`,
-        inputSchema: {
+        inputSchema: this.withClientContext({
           type: entityTypeEnum.describe('Entity type to create'),
           title: z
             .string()
@@ -3282,7 +3664,7 @@ export class OrgXMcp extends McpAgent<
             })
             .optional()
             .describe('Generation options (for studio_content)'),
-        },
+        }),
         _meta: { securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth },
       },
       async (args) =>
@@ -3535,19 +3917,42 @@ export class OrgXMcp extends McpAgent<
             message,
           });
           message = enrichment.message;
+          const structuredPayload = {
+            ...(enrichment.data ?? {}),
+            ...(liveUrl ? { live_url: liveUrl } : {}),
+            id: result.data.id,
+            type: args.type,
+          };
+
+          const sourceClient = resolveSourceClientFromContext(args._context);
+          const activationEvents = await this.recordMcpActivationObservation({
+            toolId: 'create_entity',
+            args: args as Record<string, unknown>,
+            data: structuredPayload,
+            userId: ownerId ?? resolvedUserId ?? null,
+            sourceClient,
+            workspaceId: effectiveWorkspaceId,
+            initiativeId: initiativeIdForContext,
+          });
+          const activationPayload = this.buildClientActivationPayload({
+            sourceClient,
+            events: activationEvents,
+          });
+          const finalPayload = activationPayload.experience
+            ? {
+                ...structuredPayload,
+                client_activation: activationPayload.experience,
+              }
+            : structuredPayload;
 
           return {
             content: [
               {
                 type: 'text',
-                text: message,
+                text: message + activationPayload.text,
               },
             ],
-            structuredContent: {
-              ...(enrichment.data ?? {}),
-              ...(liveUrl ? { live_url: liveUrl } : {}),
-              id: result.data.id,
-            },
+            structuredContent: finalPayload,
           };
         })
     );
@@ -3973,7 +4378,7 @@ export class OrgXMcp extends McpAgent<
         title: 'Scaffold an initiative hierarchy',
         description:
           'Create a complete initiative with workstreams, milestones, and tasks in one call. USE WHEN: user wants to plan a new initiative from scratch. NEXT: Use entity_action type=initiative action=launch to start execution (auto-launches by default). DO NOT USE: for adding a single task to an existing initiative — use create_entity instead.',
-        inputSchema: {
+        inputSchema: this.withClientContext({
           title: z.string().min(1).describe('Initiative title'),
           summary: z.string().optional().describe('Initiative summary'),
           description: z.string().optional().describe('Initiative description'),
@@ -4014,7 +4419,7 @@ export class OrgXMcp extends McpAgent<
             .max(20)
             .optional()
             .describe('Parallel creation concurrency (default 8)'),
-        },
+        }),
         _meta: { securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth },
       },
       async (args) =>
@@ -4818,16 +5223,37 @@ export class OrgXMcp extends McpAgent<
 		                : '\n\nLaunch: skipped (launch_after_create=false)'
 		            : '';
 
+              const sourceClient = resolveSourceClientFromContext(args._context);
+              const activationEvents = await this.recordMcpActivationObservation({
+                toolId: 'scaffold_initiative',
+                args: args as Record<string, unknown>,
+                data: machinePayload,
+                userId: ownerId ?? resolvedUserId ?? null,
+                sourceClient,
+                workspaceId: effectiveCommandCenterId,
+                initiativeId: createdInitiativeId,
+              });
+              const activationPayload = this.buildClientActivationPayload({
+                sourceClient,
+                events: activationEvents,
+              });
+              const finalPayload = activationPayload.experience
+                ? {
+                    ...machinePayload,
+                    client_activation: activationPayload.experience,
+                  }
+                : machinePayload;
+
               return {
                 content: [
                   {
                     type: 'text',
                     text: `${result.summary}${
                       liveUrl ? `\n\n📺 Live view: ${liveUrl}` : ''
-                    }${launchSummary}`,
+                    }${launchSummary}${activationPayload.text}`,
                   },
                 ],
-                structuredContent: machinePayload,
+                structuredContent: finalPayload,
               };
             } catch (error) {
               return buildHumanErrorResponse({
@@ -5435,8 +5861,10 @@ export class OrgXMcp extends McpAgent<
           focus_areas: z.array(z.string()).optional().describe('Agent focus areas (configure_agent only)'),
           approval_required: z.array(z.string()).optional().describe('Actions requiring approval (configure_agent only)'),
           skip_approval: z.array(z.string()).optional().describe('Actions without approval (configure_agent only)'),
-          policy_type: z.enum(['approvals', 'notifications', 'working_hours', 'budget']).optional().describe('Policy type (set_policy only)'),
+          policy_type: z.enum(CONFIGURE_ORG_POLICY_TYPES).optional().describe('Policy type (set_policy only)'),
           config: z.record(z.any()).optional().describe('Policy configuration (set_policy only)'),
+          workspace_id: z.string().optional().describe('Workspace UUID to scope policy overrides (set_policy only)'),
+          command_center_id: z.string().optional().describe('Deprecated alias for workspace_id (set_policy only)'),
         },
         _meta: { securitySchemes: SECURITY_SCHEMES.readOptionalAuth },
       },
@@ -5535,6 +5963,23 @@ export class OrgXMcp extends McpAgent<
             }
 
             case 'set_policy': {
+              const authResponse = buildAuthRequiredResponse({
+                toolId: 'configure_org',
+                securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
+                userId: resolvedUserId,
+                serverUrl: this.env.MCP_SERVER_URL,
+                featureDescription: 'set organization policies',
+              });
+              if (authResponse) return authResponse;
+
+              const workspaceResolution = resolveConfigureOrgWorkspaceId(
+                args,
+                this.sessionContext.workspaceId
+              );
+              if (workspaceResolution.error) {
+                return this.toolError(workspaceResolution.error);
+              }
+
               const response = await callOrgxApiJson(
                 this.env,
                 '/api/setup/policies',
@@ -5543,12 +5988,29 @@ export class OrgXMcp extends McpAgent<
                   body: JSON.stringify({
                     policy_type: args.policy_type,
                     config: args.config,
+                    ...(workspaceResolution.workspaceId
+                      ? { workspace_id: workspaceResolution.workspaceId }
+                      : {}),
                   }),
-                }
+                },
+                { userId: resolvedUserId }
               );
-              await response.json();
+              const result = (await response.json()) as {
+                policy_type?: string;
+                config?: Record<string, unknown>;
+                workspace_id?: string | null;
+              };
               return {
-                content: [{ type: 'text', text: `✓ Applied ${args.policy_type} policy` }],
+                content: [
+                  {
+                    type: 'text',
+                    text: describeAppliedPolicy(
+                      result.policy_type ?? args.policy_type,
+                      result.config ?? args.config,
+                      result.workspace_id ?? workspaceResolution.workspaceId
+                    ),
+                  },
+                ],
               };
             }
 
@@ -6062,10 +6524,10 @@ export class OrgXMcp extends McpAgent<
         title: 'Get Morning Brief',
         description:
           'Curated receipts + exceptions + ROI delta from the most recent autonomous session. The brief IS curated receipts, not a separate data structure.',
-        inputSchema: {
+        inputSchema: this.withClientContext({
           workspace_id: z.string(),
           session_id: z.string().optional(),
-        },
+        }),
         _meta: {
           'openai/readOnlyHint': true,
           'ui/outputTemplate': WIDGET_URIS.morningBrief,
@@ -6075,17 +6537,79 @@ export class OrgXMcp extends McpAgent<
         this.withOrgx(async () => {
           const wsId = (args.workspace_id as string) ?? this.sessionContext?.workspaceId;
           if (!wsId) return this.toolError('workspace_id required');
+          const resolvedUserId = this.resolveUserId();
 
           const response = await callOrgxApiJson(
             this.env,
             `/api/flywheel/briefs?workspace_id=${wsId}${args.session_id ? `&session_id=${args.session_id}` : ''}`,
             undefined,
-            { userId: this.resolveUserId() }
+            { userId: resolvedUserId ?? undefined }
           );
           const result = await response.json() as Record<string, unknown>;
+          const [outcomeAttribution, workspacePulse] = await Promise.all([
+            this.fetchOrgxJsonOrNull<Record<string, unknown>>(
+              `/api/flywheel/attribution?workspace_id=${wsId}&period=30d`,
+              resolvedUserId
+            ),
+            this.fetchOrgxJsonOrNull<Record<string, unknown>>(
+              `/api/v1/workspaces/${wsId}/dashboard/pulse`,
+              resolvedUserId
+            ),
+          ]);
+          const valueDashboard = buildMorningBriefValueDashboard({
+            brief: result,
+            outcomeAttribution,
+            workspacePulse,
+          });
+
+          const sourceClient = resolveSourceClientFromContext(args._context);
+          const activationEvents = await this.recordMcpActivationObservation({
+            toolId: 'get_morning_brief',
+            args: args as Record<string, unknown>,
+            data: result,
+            userId: resolvedUserId,
+            sourceClient,
+            workspaceId: wsId,
+            initiativeId: this.sessionContext?.initiativeId ?? null,
+          });
+          const activationPayload = this.buildClientActivationPayload({
+            sourceClient,
+            events: activationEvents,
+          });
+          const payload = {
+            ...result,
+            value_dashboard: valueDashboard,
+            ...(outcomeAttribution
+              ? { outcome_attribution: outcomeAttribution }
+              : {}),
+            ...(workspacePulse
+              ? {
+                  workspace_pulse: {
+                    stats:
+                      typeof workspacePulse.stats === 'object' &&
+                      workspacePulse.stats
+                        ? workspacePulse.stats
+                        : null,
+                    generatedAt:
+                      typeof workspacePulse.generatedAt === 'string'
+                        ? workspacePulse.generatedAt
+                        : null,
+                  },
+                }
+              : {}),
+            ...(activationPayload.experience
+              ? { client_activation: activationPayload.experience }
+              : {}),
+          };
           return {
-            content: [{ type: 'text' as const, text: formatForLLM('get_morning_brief', result) }],
-            structuredContent: result,
+            content: [
+              {
+                type: 'text' as const,
+                text:
+                  formatMorningBriefSummary(payload) + activationPayload.text,
+              },
+            ],
+            structuredContent: payload,
           };
         })
     );

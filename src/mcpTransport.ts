@@ -1,8 +1,15 @@
 import {
+  DEPRECATION_SUNSET_AT_ISO,
+  DEPRECATION_WINDOW_DAYS,
   resolveDeprecatedToolCall,
   withDeprecatedToolWarningHeaders,
   type DeprecatedToolWarning,
 } from './deprecatedTools';
+import {
+  captureWorkerPosthogEvent,
+  resolveAnonymousDistinctId,
+  type PosthogTelemetryEnv,
+} from './posthogTelemetry';
 
 export type ExecutionContextWithProps<Props> = ExecutionContext & {
   props?: Props;
@@ -126,6 +133,33 @@ async function normalizeRequestBody(request: Request): Promise<{
   }
 }
 
+function captureDeprecatedToolTelemetry<Env>(
+  env: Env,
+  ctx: ExecutionContextWithProps<unknown>,
+  auth: AuthResult,
+  warning?: DeprecatedToolWarning
+): void {
+  if (!warning) return;
+
+  const distinctId = auth.userId ?? resolveAnonymousDistinctId(ctx);
+  captureWorkerPosthogEvent({
+    env: env as PosthogTelemetryEnv,
+    ctx,
+    event: 'mcp_deprecated_tool_called',
+    distinctId,
+    properties: {
+      deprecated_tool_id: warning.deprecatedToolId,
+      replacement_tool_id: warning.replacementToolId,
+      replacement_action: warning.replacementAction,
+      routed: warning.routed,
+      auth_scope: auth.scope,
+      has_user_id: Boolean(auth.userId),
+      deprecation_sunset_at: DEPRECATION_SUNSET_AT_ISO,
+      deprecation_window_days: DEPRECATION_WINDOW_DAYS,
+    },
+  });
+}
+
 export async function handleMcpRequest<Env, Props>(
   request: Request,
   env: Env,
@@ -158,6 +192,7 @@ export async function handleMcpRequest<Env, Props>(
   const { request: normalizedRequest, warning } = await normalizeRequestBody(
     request
   );
+  captureDeprecatedToolTelemetry(env, ctx as ExecutionContextWithProps<unknown>, auth, warning);
 
   const response = await handler.fetch(normalizedRequest, env, ctx);
   return withCors(withDeprecatedToolWarningHeaders(response, warning));

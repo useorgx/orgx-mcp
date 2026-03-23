@@ -1,4 +1,10 @@
-type ToolArgs = Record<string, unknown>;
+import { routeBatchCreateEntitiesToScaffoldInitiative } from './batchCreateHierarchyRoute';
+import {
+  asFiniteNumber,
+  asNonEmptyString,
+  compactArgs,
+  type ToolArgs,
+} from './toolRoutingUtils';
 
 export type DeprecatedToolWarning = {
   deprecatedToolId: string;
@@ -7,33 +13,27 @@ export type DeprecatedToolWarning = {
   routed: boolean;
 };
 
+const DEPRECATION_ANNOUNCED_AT_ISO = '2026-03-23T00:00:00.000Z';
+export const DEPRECATION_WINDOW_DAYS = 90;
+export const DEPRECATION_SUNSET_AT_ISO = new Date(
+  Date.parse(DEPRECATION_ANNOUNCED_AT_ISO) +
+    DEPRECATION_WINDOW_DAYS * 24 * 60 * 60 * 1000
+).toISOString();
+export const DEPRECATION_SUNSET_HEADER = new Date(
+  DEPRECATION_SUNSET_AT_ISO
+).toUTCString();
+
 type DeprecatedToolRoute = {
   replacementToolId: string;
   replacementAction?: string;
   route?: (args: ToolArgs) => ToolArgs | null;
 };
 
-function asNonEmptyString(value: unknown): string | undefined {
-  return typeof value === 'string' && value.trim().length > 0
-    ? value.trim()
-    : undefined;
-}
-
-function asFiniteNumber(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
-}
-
 function asBillingCycle(value: unknown): 'monthly' | 'annual' | undefined {
   const normalized = asNonEmptyString(value);
   return normalized === 'monthly' || normalized === 'annual'
     ? normalized
     : undefined;
-}
-
-function compactArgs(args: ToolArgs): ToolArgs {
-  return Object.fromEntries(
-    Object.entries(args).filter(([, value]) => value !== undefined)
-  );
 }
 
 const DEPRECATED_TOOL_ROUTES: Record<string, DeprecatedToolRoute> = {
@@ -83,6 +83,7 @@ const DEPRECATED_TOOL_ROUTES: Record<string, DeprecatedToolRoute> = {
   },
   batch_create_entities: {
     replacementToolId: 'scaffold_initiative',
+    route: routeBatchCreateEntitiesToScaffoldInitiative,
   },
   start_autonomous_session: {
     replacementToolId: 'entity_action',
@@ -176,6 +177,12 @@ export function withDeprecatedToolWarningHeaders(
   headers.set('x-orgx-deprecated-tool', warning.deprecatedToolId);
   headers.set('x-orgx-replacement-tool', warning.replacementToolId);
   headers.set('x-orgx-deprecation-routed', warning.routed ? 'true' : 'false');
+  headers.set('x-orgx-deprecation-sunset-at', DEPRECATION_SUNSET_AT_ISO);
+  headers.set(
+    'x-orgx-deprecation-window-days',
+    String(DEPRECATION_WINDOW_DAYS)
+  );
+  headers.set('Sunset', DEPRECATION_SUNSET_HEADER);
 
   if (warning.replacementAction) {
     headers.set('x-orgx-replacement-action', warning.replacementAction);
@@ -185,8 +192,8 @@ export function withDeprecatedToolWarningHeaders(
     ? `${warning.replacementToolId} (action=${warning.replacementAction})`
     : warning.replacementToolId;
   const suffix = warning.routed
-    ? ' The request was routed automatically.'
-    : ' The legacy tool was left in place for compatibility.';
+    ? ` The request was routed automatically. Migrate before ${DEPRECATION_SUNSET_AT_ISO}.`
+    : ` The legacy tool was left in place for compatibility. Migrate before ${DEPRECATION_SUNSET_AT_ISO}.`;
   headers.set(
     'Warning',
     `299 orgx-mcp "${warning.deprecatedToolId} is deprecated; use ${replacement}.${suffix}"`

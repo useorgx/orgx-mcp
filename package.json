@@ -8,6 +8,8 @@
     "build": "pnpm build:sdk",
     "dev": "wrangler dev --port 8787",
     "deploy": "pnpm build && wrangler deploy",
+    "sync:orgx": "./scripts/sync-to-orgx-monorepo.sh",
+    "sync:orgx:check": "./scripts/sync-to-orgx-monorepo.sh --check",
     "type-check": "tsc --noEmit",
     "test": "vitest",
     "test:watch": "vitest --watch",
