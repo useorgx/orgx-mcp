@@ -1,3 +1,9 @@
+import {
+  resolveDeprecatedToolCall,
+  withDeprecatedToolWarningHeaders,
+  type DeprecatedToolWarning,
+} from './deprecatedTools';
+
 export type ExecutionContextWithProps<Props> = ExecutionContext & {
   props?: Props;
 };
@@ -60,45 +66,63 @@ function normalizeToolName(name: string): string {
  * Normalize MCP request body if it's a tools/call request.
  * This ensures tool names work regardless of namespace prefixes.
  */
-async function normalizeRequestBody(request: Request): Promise<Request> {
+async function normalizeRequestBody(request: Request): Promise<{
+  request: Request;
+  warning?: DeprecatedToolWarning;
+}> {
   // Only process POST requests with JSON body
-  if (request.method !== 'POST') return request;
+  if (request.method !== 'POST') return { request };
 
   const contentType = request.headers.get('content-type') ?? '';
-  if (!contentType.includes('application/json')) return request;
+  if (!contentType.includes('application/json')) return { request };
 
   try {
     const body = (await request.clone().json()) as {
       method?: string;
-      params?: { name?: string };
+      params?: { name?: string; arguments?: Record<string, unknown> };
     };
 
     // Only normalize tools/call requests
     if (body.method !== 'tools/call' || !body.params?.name) {
-      return request;
+      return { request };
     }
 
     const originalName = body.params.name;
     const normalizedName = normalizeToolName(originalName);
+    const originalArgs =
+      body.params.arguments && typeof body.params.arguments === 'object'
+        ? body.params.arguments
+        : {};
+    const { resolvedToolId, resolvedArgs, warning } = resolveDeprecatedToolCall(
+      normalizedName,
+      originalArgs
+    );
 
-    // If name unchanged, return original request
-    if (normalizedName === originalName) {
-      return request;
+    // If nothing changed and there is no warning, return the original request.
+    if (
+      resolvedToolId === originalName &&
+      resolvedArgs === originalArgs &&
+      !warning
+    ) {
+      return { request };
     }
 
     // Create new request with normalized tool name
     const newBody = {
       ...body,
-      params: { ...body.params, name: normalizedName },
+      params: { ...body.params, name: resolvedToolId, arguments: resolvedArgs },
     };
-    return new Request(request.url, {
-      method: request.method,
-      headers: request.headers,
-      body: JSON.stringify(newBody),
-    });
+    return {
+      request: new Request(request.url, {
+        method: request.method,
+        headers: request.headers,
+        body: JSON.stringify(newBody),
+      }),
+      warning,
+    };
   } catch {
     // If parsing fails, return original request
-    return request;
+    return { request };
   }
 }
 
@@ -131,10 +155,12 @@ export async function handleMcpRequest<Env, Props>(
   } as unknown as Props;
 
   // Normalize tool names in the request body (strips server prefixes like "Orgx:")
-  const normalizedRequest = await normalizeRequestBody(request);
+  const { request: normalizedRequest, warning } = await normalizeRequestBody(
+    request
+  );
 
   const response = await handler.fetch(normalizedRequest, env, ctx);
-  return withCors(response);
+  return withCors(withDeprecatedToolWarningHeaders(response, warning));
 }
 
 export function withSseKeepAlive(
