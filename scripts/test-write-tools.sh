@@ -13,7 +13,8 @@
 set -euo pipefail
 
 MCP_URL="${MCP_URL:-http://127.0.0.1:8787}"
-ENDPOINT="$MCP_URL/mcp"
+BASE_URL="${MCP_URL%/}"
+ENDPOINT="${BASE_URL}/"
 SESSION_ID=""
 PASS=0
 FAIL=0
@@ -151,7 +152,7 @@ echo ""
 
 # Check connectivity
 echo -n "Checking server health... "
-HEALTH=$(curl -sS -o /dev/null -w "%{http_code}" "$MCP_URL/healthz" 2>&1) || HEALTH="0"
+HEALTH=$(curl -sS -o /dev/null -w "%{http_code}" "$BASE_URL/healthz" 2>&1) || HEALTH="0"
 if [[ "$HEALTH" != "200" ]]; then
   echo -e "${RED}FAIL${NC} (HTTP $HEALTH)"
   echo "Start the MCP worker: cd workers/orgx-mcp && pnpm dev"

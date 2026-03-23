@@ -23,6 +23,7 @@ import {
   compatibilityAliasDescription,
   preferredToolCallout,
 } from './preferredToolGuidance';
+import { toSkybridgeResourceUri } from './widgetConfig';
 
 // =============================================================================
 // WIDGET URIs
@@ -37,6 +38,17 @@ export const WIDGET_URIS = {
   decisionHistory: 'ui://widget/search-results.html', // Reuse search results widget
   testMinimal: 'ui://widget/test-minimal.html', // Minimal widget to validate MCP Apps rendering
   morningBrief: 'ui://widget/morning-brief.html', // Intelligence Flywheel: curated receipts + exceptions + ROI delta
+} as const;
+
+export const OUTPUT_TEMPLATE_URIS = {
+  decisions: toSkybridgeResourceUri(WIDGET_URIS.decisions),
+  agentStatus: toSkybridgeResourceUri(WIDGET_URIS.agentStatus),
+  searchResults: toSkybridgeResourceUri(WIDGET_URIS.searchResults),
+  initiativePulse: toSkybridgeResourceUri(WIDGET_URIS.initiativePulse),
+  taskSpawned: toSkybridgeResourceUri(WIDGET_URIS.taskSpawned),
+  decisionHistory: toSkybridgeResourceUri(WIDGET_URIS.decisionHistory),
+  testMinimal: toSkybridgeResourceUri(WIDGET_URIS.testMinimal),
+  morningBrief: toSkybridgeResourceUri(WIDGET_URIS.morningBrief),
 } as const;
 
 
@@ -354,7 +366,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
     _meta: {
-      'openai/outputTemplate': WIDGET_URIS.decisions,
+      'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.decisions,
       'openai/toolInvocation/invoking': 'Checking your decision queue...',
       'openai/toolInvocation/invoked': 'Found your pending decisions',
       'openai/readOnlyHint': true,
@@ -379,7 +391,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
     _meta: {
-      'openai/outputTemplate': WIDGET_URIS.decisions,
+      'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.decisions,
       'openai/toolInvocation/invoking': 'Approving decision...',
       'openai/toolInvocation/invoked': 'Decision approved',
       ui: { resourceUri: WIDGET_URIS.decisions },
@@ -403,7 +415,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
     _meta: {
-      'openai/outputTemplate': WIDGET_URIS.decisions,
+      'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.decisions,
       'openai/toolInvocation/invoking': 'Rejecting decision...',
       'openai/toolInvocation/invoked': 'Decision rejected',
       ui: { resourceUri: WIDGET_URIS.decisions },
@@ -421,7 +433,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
     _meta: {
-      'openai/outputTemplate': WIDGET_URIS.agentStatus,
+      'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.agentStatus,
       'openai/toolInvocation/invoking': 'Checking agent status...',
       'openai/toolInvocation/invoked': "Here's what your agents are doing",
       'openai/readOnlyHint': true,
@@ -445,7 +457,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
     _meta: {
-      'openai/outputTemplate': WIDGET_URIS.searchResults,
+      'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.searchResults,
       'openai/toolInvocation/invoking': 'Searching organizational memory...',
       'openai/toolInvocation/invoked': 'Found relevant information',
       'openai/readOnlyHint': true,
@@ -472,7 +484,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
     _meta: {
-      'openai/outputTemplate': WIDGET_URIS.initiativePulse,
+      'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.initiativePulse,
       'openai/toolInvocation/invoking': 'Getting initiative health...',
       'openai/toolInvocation/invoked': "Here's the initiative status",
       'openai/readOnlyHint': true,
@@ -531,7 +543,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.agentRequiresAuth,
     _meta: {
-      'openai/outputTemplate': WIDGET_URIS.taskSpawned,
+      'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.taskSpawned,
       'openai/toolInvocation/invoking': 'Assigning task to agent...',
       'openai/toolInvocation/invoked': 'Task assigned',
       ui: { resourceUri: WIDGET_URIS.taskSpawned },
@@ -566,7 +578,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.handoffRequiresAuth,
     _meta: {
-      'openai/outputTemplate': WIDGET_URIS.taskSpawned,
+      'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.taskSpawned,
       'openai/toolInvocation/invoking': 'Handing off task...',
       'openai/toolInvocation/invoked': 'Task handed off',
       ui: { resourceUri: WIDGET_URIS.taskSpawned },
@@ -614,7 +626,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
     _meta: {
-      'openai/outputTemplate': WIDGET_URIS.searchResults,
+      'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.searchResults,
       'openai/toolInvocation/invoking': 'Computing next actions...',
       'openai/toolInvocation/invoked': 'Recommended next actions',
       'openai/readOnlyHint': true,
@@ -637,7 +649,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
     _meta: {
-      'openai/outputTemplate': WIDGET_URIS.decisionHistory,
+      'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.decisionHistory,
       'openai/toolInvocation/invoking': 'Searching decision history...',
       'openai/toolInvocation/invoked': 'Found past decisions',
       'openai/readOnlyHint': true,
