@@ -756,6 +756,40 @@ export class OrgXMcp extends McpAgent<
     return { content: [{ type: 'text', text: message }], isError: true };
   }
 
+  private widgetToolError(
+    toolId: string,
+    message: string,
+    outputTemplate?: string,
+    details: Record<string, unknown> = {}
+  ): CallToolResult {
+    const payload = {
+      ...details,
+      ok: false,
+      tool_id: toolId,
+      error: message,
+      error_type: 'tool_execution_failed',
+    };
+
+    this.appendWidgetDebugEvent({
+      phase: 'tool_result',
+      toolId,
+      outputTemplate,
+      details: {
+        widgetError: true,
+        message,
+        payloadKeys: Object.keys(payload),
+      },
+    });
+
+    return {
+      content: [
+        { type: 'text', text: JSON.stringify(payload) },
+        { type: 'text', text: message },
+      ],
+      structuredContent: payload,
+    };
+  }
+
   private resolveAnonymousDistinctId(): string {
     return resolveAnonymousDistinctId(this.ctx);
   }
@@ -1463,7 +1497,16 @@ export class OrgXMcp extends McpAgent<
             error: result.error ?? 'tool_execution_failed',
             isWidgetTool,
           });
-          return this.toolError(result.error ?? 'Tool execution failed');
+          const errorMessage = result.error ?? 'Tool execution failed';
+          if (isWidgetTool) {
+            return this.widgetToolError(
+              toolId,
+              errorMessage,
+              typeof outputTemplate === 'string' ? outputTemplate : undefined,
+              result.data ?? {}
+            );
+          }
+          return this.toolError(errorMessage);
         }
 
         console.info('[mcp] Tool executed successfully', { toolId, latencyMs });
@@ -1560,6 +1603,13 @@ export class OrgXMcp extends McpAgent<
           error: error instanceof Error ? error.message : String(error),
           isWidgetTool,
         });
+        if (isWidgetTool) {
+          return this.widgetToolError(
+            toolId,
+            error instanceof Error ? error.message : String(error),
+            typeof outputTemplate === 'string' ? outputTemplate : undefined
+          );
+        }
         throw error;
       }
     });

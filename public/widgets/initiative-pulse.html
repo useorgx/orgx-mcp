@@ -90,6 +90,9 @@
       .empty-icon svg { width: 24px; height: 24px; }
       .empty-title { font-size: 1.1rem; font-weight: 600; color: var(--ox-text); margin-bottom: 8px; }
       .empty-desc { font-size: 0.9rem; color: var(--ox-text-muted); line-height: 1.5; max-width: 280px; }
+      .error-state { border-style: solid; border-color: rgba(225,29,72,0.2); background: rgba(225,29,72,0.04); }
+      .error-state .empty-icon { color: var(--ox-danger); background: rgba(225,29,72,0.08); box-shadow: none; }
+      .error-state .empty-desc { max-width: 360px; }
 
       * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -503,6 +506,7 @@
     var icons = {
       external: function(s){return _svg('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>',s);},
       check: function(s){return _svg('<polyline points="20 6 9 17 4 12"></polyline>',s);},
+      error: function(s){return _svg('<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>',s);},
     };
     var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
 
@@ -530,6 +534,18 @@
     var render = () => {
       if (isLoading) {
         injectHtml(`<div class="skeleton-wrapper"><div class="ox-card"><div class="ox-card-inner"><div style="display:flex; justify-content:space-between; margin-bottom:24px;"><div class="skeleton-line" style="width:150px; height:24px;"></div><div class="skeleton-line" style="width:80px; height:24px; border-radius:4px;"></div></div><div style="display:flex; gap:16px; margin-bottom:24px;"><div class="skeleton-line" style="width:60px; height:40px;"></div><div class="skeleton-line" style="width:60px; height:40px;"></div></div><div class="skeleton-line" style="width:100%; height:60px;"></div></div></div></div>`);
+        return;
+      }
+      if (pulse && pulse.error) {
+        var errorTitle = /multiple initiatives match/i.test(pulse.error)
+          ? 'Multiple initiatives matched'
+          : /not found/i.test(pulse.error)
+          ? 'Initiative not found'
+          : 'Initiative pulse unavailable';
+        var errorDesc = /multiple initiatives match/i.test(pulse.error)
+          ? pulse.error + ' Retry with the specific initiative UUID to load a stable pulse view.'
+          : pulse.error;
+        injectHtml(`<div class="empty-state error-state animate-in"><div class="empty-icon">${icons.error(24)}</div><div class="empty-title">${escapeHtml(errorTitle)}</div><div class="empty-desc">${escapeHtml(errorDesc)}</div></div>`);
         return;
       }
       if (!pulse) {
