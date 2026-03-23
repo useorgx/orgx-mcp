@@ -8,3 +8,4 @@ keys/
 
 # Node
 node_modules/
+dist/
