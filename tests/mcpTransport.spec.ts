@@ -236,6 +236,56 @@ describe('mcpTransport', () => {
     expect(response.headers.get('x-orgx-deprecation-routed')).toBe('true');
   });
 
+  it('routes create_checkout_session to account_upgrade', async () => {
+    let received: any = null;
+    const handler = {
+      fetch: vi.fn(async (req: Request) => {
+        received = await req.json();
+        return new Response(JSON.stringify({ ok: true }), {
+          headers: { 'content-type': 'application/json' },
+        });
+      }),
+    };
+
+    const request = new Request('http://localhost/mcp', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        method: 'tools/call',
+        params: {
+          name: 'mcp__orgx__create_checkout_session',
+          arguments: {
+            plan: 'team',
+            billing_cycle: 'annual',
+            user_id: 'user-123',
+          },
+        },
+      }),
+    });
+
+    const response = await handleMcpRequest(
+      request,
+      env,
+      createCtx(),
+      handler,
+      vi.fn(async () => ({}))
+    );
+
+    expect(received?.params?.name).toBe('account_upgrade');
+    expect(received?.params?.arguments).toEqual({
+      target_plan: 'pro',
+      billing_cycle: 'annual',
+      user_id: 'user-123',
+    });
+    expect(response.headers.get('x-orgx-deprecated-tool')).toBe(
+      'create_checkout_session'
+    );
+    expect(response.headers.get('x-orgx-replacement-tool')).toBe(
+      'account_upgrade'
+    );
+    expect(response.headers.get('x-orgx-deprecation-routed')).toBe('true');
+  });
+
   it('preserves non-tools/call payloads', async () => {
     let received: any = null;
     const handler = {

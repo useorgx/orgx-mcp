@@ -23,6 +23,13 @@ function asFiniteNumber(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
+function asBillingCycle(value: unknown): 'monthly' | 'annual' | undefined {
+  const normalized = asNonEmptyString(value);
+  return normalized === 'monthly' || normalized === 'annual'
+    ? normalized
+    : undefined;
+}
+
 function compactArgs(args: ToolArgs): ToolArgs {
   return Object.fromEntries(
     Object.entries(args).filter(([, value]) => value !== undefined)
@@ -87,6 +94,21 @@ const DEPRECATED_TOOL_ROUTES: Record<string, DeprecatedToolRoute> = {
   },
   get_outcome_attribution: {
     replacementToolId: 'get_morning_brief',
+  },
+  create_checkout_session: {
+    replacementToolId: 'account_upgrade',
+    route: (args) => {
+      const plan = asNonEmptyString(args.plan);
+      if (plan && plan !== 'starter' && plan !== 'team') {
+        return null;
+      }
+
+      return compactArgs({
+        target_plan: 'pro',
+        billing_cycle: asBillingCycle(args.billing_cycle),
+        user_id: asNonEmptyString(args.user_id),
+      });
+    },
   },
 };
 
