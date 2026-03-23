@@ -1209,6 +1209,20 @@ export const PAUSE_ACTION_MAP: Record<string, string> = {
   stream: 'block',
 };
 
+export function resolveLifecycleActionAlias(
+  type: string,
+  action: string | undefined
+): string | undefined {
+  if (!action) return action;
+  if (action === 'launch') {
+    return LAUNCH_ACTION_MAP[type] || action;
+  }
+  if (action === 'pause') {
+    return PAUSE_ACTION_MAP[type] || action;
+  }
+  return action;
+}
+
 // =============================================================================
 // TOOL RESULT SUMMARIZERS
 // =============================================================================

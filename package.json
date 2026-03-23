@@ -8,6 +8,11 @@
     "build": "pnpm build:sdk",
     "dev": "wrangler dev --port 8787",
     "deploy": "pnpm build && wrangler deploy",
+    "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:mcp-contract": "vitest run tests/mcpTransport.spec.ts tests/mcp.sessionStorage.spec.ts tests/mcpLifecycleActionAliases.spec.ts tests/reporting.mcp-tools.spec.ts tests/mcpWorker.toolRegistration.spec.ts tests/mcpWorker.contextAccessTier.spec.ts tests/mcpWorker.edgeRateLimit.spec.ts tests/mcpWorker.entityActionAttach.spec.ts tests/mcpWorker.taskContextHydrator.spec.ts",
+    "verify": "pnpm type-check && pnpm test:mcp-contract && pnpm build",
     "registry:keys": "./scripts/generate-registry-keys.sh",
     "registry:validate": "./scripts/publish-to-registry.sh --dry-run",
     "registry:publish": "./scripts/publish-to-registry.sh",
@@ -28,6 +33,7 @@
     "@cloudflare/workers-types": "^4.20260103.0",
     "typescript": "^5.6.3",
     "vite": "^6.3.4",
+    "vitest": "^3.2.4",
     "wrangler": "^4.54.0"
   }
 }
