@@ -224,9 +224,20 @@ jobs:
 
       - name: Login to MCP Registry
         run: |
+          registry_private_key="$(
+            printf '%s\n' "${{ secrets.MCP_REGISTRY_PRIVATE_KEY }}" \
+              | grep -v '^[[:space:]]*#' \
+              | tr -d '[:space:]'
+          )"
+
+          if [[ -z "$registry_private_key" ]]; then
+            echo "::error::MCP_REGISTRY_PRIVATE_KEY resolved to an empty value after stripping comments/whitespace"
+            exit 1
+          fi
+
           mcp-publisher login http \
             --domain=useorgx.com \
-            --private-key="${{ secrets.MCP_REGISTRY_PRIVATE_KEY }}"
+            --private-key="$registry_private_key"
 
       - name: Validate and publish
         run: |
