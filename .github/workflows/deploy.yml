@@ -224,9 +224,25 @@ jobs:
 
       - name: Login to MCP Registry
         run: |
+          private_key="$(
+            python3 - <<'PY'
+            import os
+
+            raw = os.environ.get("MCP_REGISTRY_PRIVATE_KEY", "")
+            sanitized = []
+            for line in raw.splitlines():
+              trimmed = line.split("#", 1)[0].strip()
+              if trimmed:
+                sanitized.append(trimmed)
+            print("".join(sanitized), end="")
+            PY
+          )"
+
           mcp-publisher login http \
             --domain=useorgx.com \
-            --private-key="${{ secrets.MCP_REGISTRY_PRIVATE_KEY }}"
+            --private-key="$private_key"
+        env:
+          MCP_REGISTRY_PRIVATE_KEY: ${{ secrets.MCP_REGISTRY_PRIVATE_KEY }}
 
       - name: Validate and publish
         run: |
