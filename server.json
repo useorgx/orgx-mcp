@@ -3,7 +3,7 @@
   "name": "com.useorgx/orgx-mcp",
   "title": "OrgX MCP - Agent Orchestration",
   "description": "Agent orchestration + org memory via MCP. Manage initiatives and decisions from any client.",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "websiteUrl": "https://mcp.useorgx.com",
   "vendor": {
     "name": "OrgX",
