@@ -222,6 +222,57 @@ jobs:
             server.json > tmp.json && mv tmp.json server.json
           cat server.json | jq '{name, version, description}'
 
+      - name: Ensure MCP Registry DNS proof
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          MCP_REGISTRY_PUBKEY: ${{ secrets.MCP_REGISTRY_PUBKEY }}
+        run: |
+          proof_record="v=MCPv1; k=ed25519; p=${MCP_REGISTRY_PUBKEY}"
+
+          zone_response="$(curl -fsS \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            "https://api.cloudflare.com/client/v4/zones?name=useorgx.com")"
+          zone_id="$(printf '%s' "$zone_response" | jq -r '.result[0].id // empty')"
+
+          if [[ -z "$zone_id" ]]; then
+            echo "::error::Could not resolve Cloudflare zone for useorgx.com"
+            printf '%s\n' "$zone_response"
+            exit 1
+          fi
+
+          records_response="$(curl -fsS \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            "https://api.cloudflare.com/client/v4/zones/${zone_id}/dns_records?type=TXT&name=useorgx.com")"
+
+          existing_record_id="$(
+            printf '%s' "$records_response" \
+              | jq -r --arg proof "$proof_record" '.result[] | select(.content == $proof) | .id' \
+              | head -n 1
+          )"
+
+          if [[ -n "$existing_record_id" ]]; then
+            echo "Registry DNS proof already present on useorgx.com"
+            exit 0
+          fi
+
+          create_payload="$(
+            jq -n \
+              --arg name "useorgx.com" \
+              --arg content "$proof_record" \
+              '{type:"TXT", name:$name, content:$content, ttl:1}'
+          )"
+
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$create_payload" \
+            "https://api.cloudflare.com/client/v4/zones/${zone_id}/dns_records" \
+            >/dev/null
+
+          echo "Created registry DNS proof TXT record for useorgx.com"
+
       - name: Login to MCP Registry
         run: |
           registry_private_key="$(
@@ -235,7 +286,7 @@ jobs:
             exit 1
           fi
 
-          mcp-publisher login http \
+          mcp-publisher login dns \
             --domain=useorgx.com \
             --private-key="$registry_private_key"
 
