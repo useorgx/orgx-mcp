@@ -102,21 +102,23 @@ jobs:
 
       - name: Sync Worker secrets
         run: |
-          sync_secret() {
-            local key="$1"
-            local value="$2"
-            if [ -z "$value" ]; then
-              echo "::warning::Skipping $key (not set)"
-              return
-            fi
-            printf '%s' "$value" | pnpm wrangler secret put "$key" --env production
+          secrets_file="$(mktemp)"
+          python3 - <<'PY' > "$secrets_file"
+          import json
+          import os
+
+          payload = {
+              "ORGX_SERVICE_KEY": os.environ.get("ORGX_SERVICE_KEY"),
+              "OAUTH_CLIENT_ID": os.environ.get("OAUTH_CLIENT_ID"),
+              "OAUTH_CLIENT_SECRET": os.environ.get("OAUTH_CLIENT_SECRET"),
+              "MCP_JWT_SECRET": os.environ.get("MCP_JWT_SECRET"),
+              "MCP_REGISTRY_PUBKEY": os.environ.get("MCP_REGISTRY_PUBKEY"),
+              "COOKIE_ENCRYPTION_KEY": os.environ.get("COOKIE_ENCRYPTION_KEY"),
           }
-          sync_secret ORGX_SERVICE_KEY "$ORGX_SERVICE_KEY"
-          sync_secret OAUTH_CLIENT_ID "$OAUTH_CLIENT_ID"
-          sync_secret OAUTH_CLIENT_SECRET "$OAUTH_CLIENT_SECRET"
-          sync_secret MCP_JWT_SECRET "$MCP_JWT_SECRET"
-          sync_secret MCP_REGISTRY_PUBKEY "$MCP_REGISTRY_PUBKEY"
-          sync_secret COOKIE_ENCRYPTION_KEY "$COOKIE_ENCRYPTION_KEY"
+          print(json.dumps({k: v for k, v in payload.items() if v}))
+          PY
+          pnpm wrangler secret bulk "$secrets_file" --env production
+          rm -f "$secrets_file"
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
@@ -164,19 +166,21 @@ jobs:
 
       - name: Sync Worker secrets (preview)
         run: |
-          sync_secret() {
-            local key="$1"
-            local value="$2"
-            if [ -z "$value" ]; then
-              echo "::warning::Skipping $key (not set)"
-              return
-            fi
-            printf '%s' "$value" | pnpm wrangler secret put "$key" --env preview
+          secrets_file="$(mktemp)"
+          python3 - <<'PY' > "$secrets_file"
+          import json
+          import os
+
+          payload = {
+              "ORGX_SERVICE_KEY": os.environ.get("ORGX_SERVICE_KEY"),
+              "OAUTH_CLIENT_ID": os.environ.get("OAUTH_CLIENT_ID"),
+              "OAUTH_CLIENT_SECRET": os.environ.get("OAUTH_CLIENT_SECRET"),
+              "MCP_JWT_SECRET": os.environ.get("MCP_JWT_SECRET"),
           }
-          sync_secret ORGX_SERVICE_KEY "$ORGX_SERVICE_KEY"
-          sync_secret OAUTH_CLIENT_ID "$OAUTH_CLIENT_ID"
-          sync_secret OAUTH_CLIENT_SECRET "$OAUTH_CLIENT_SECRET"
-          sync_secret MCP_JWT_SECRET "$MCP_JWT_SECRET"
+          print(json.dumps({k: v for k, v in payload.items() if v}))
+          PY
+          pnpm wrangler secret bulk "$secrets_file" --env preview
+          rm -f "$secrets_file"
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
