@@ -102,6 +102,7 @@
         padding: 24px 16px;
         -webkit-font-smoothing: antialiased;
         min-height: 100vh;
+        overflow-x: hidden;
       }
 
       body::before {
@@ -163,6 +164,15 @@
         width: 100%;
         font-size: 0.85rem;
         letter-spacing: -0.01em;
+        min-height: 44px;
+        padding: 0 16px;
+        border-radius: 12px;
+        border: 1px solid var(--ox-border);
+        background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015)), var(--ox-well-bg);
+        color: var(--ox-text);
+        box-shadow: 0 14px 30px -24px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255,255,255,0.06);
+        cursor: pointer;
+        transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 240ms cubic-bezier(0.16, 1, 0.3, 1), border-color 160ms cubic-bezier(0.16, 1, 0.3, 1), opacity 160ms cubic-bezier(0.16, 1, 0.3, 1);
       }
 
       .ox-btn-primary {
@@ -192,6 +202,16 @@
           var(--ox-well-bg);
         color: var(--ox-text);
       }
+      .ox-btn:hover:not(:disabled) {
+        transform: translateY(-1px);
+        border-color: var(--ox-border-strong);
+      }
+      .ox-btn:disabled {
+        cursor: not-allowed;
+        opacity: 0.56;
+        transform: none;
+        box-shadow: none;
+      }
 
       .skeleton-line {
         background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%);
@@ -202,7 +222,8 @@
 
     :root { --ox-primary-rgb: 251, 191, 36; }
     
-    .summary-grid { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-bottom: 24px; }
+    .summary-grid { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
+    .queue-subtitle { font-size: 0.92rem; line-height: 1.5; color: var(--ox-text-muted); max-width: 420px; }
     
     .decision-shell {
       display: flex;
@@ -261,10 +282,90 @@
     
     .decision-card .ox-card::after { background: linear-gradient(90deg, transparent, rgba(var(--ox-card-color-rgb), 0.6), transparent); }
     
-    .decision-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-    
-    .agent-tag { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.9rem; }
+    .decision-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .decision-header-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    .agent-tag {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      flex: 1 1 220px;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .agent-tag span {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
     .agent-avatar { width: 24px; height: 24px; border-radius: 6px; background: rgba(var(--ox-card-color-rgb), 0.15); color: var(--ox-card-color); display: flex; align-items: center; justify-content: center; font-family: var(--ox-mono); font-size: 0.7rem; }
+
+    .decision-header-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+
+    .decision-open-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(var(--ox-card-color-rgb), 0.2);
+      background: rgba(var(--ox-card-color-rgb), 0.08);
+      color: var(--ox-text);
+      text-decoration: none;
+      font-family: var(--ox-mono);
+      font-size: 0.66rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+      transition:
+        transform 160ms cubic-bezier(0.16, 1, 0.3, 1),
+        border-color 160ms cubic-bezier(0.16, 1, 0.3, 1),
+        background 160ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .decision-open-link:hover {
+      transform: translateY(-1px);
+      border-color: rgba(var(--ox-card-color-rgb), 0.34);
+      background: rgba(var(--ox-card-color-rgb), 0.12);
+    }
+
+    .decision-open-link svg {
+      width: 14px;
+      height: 14px;
+      color: var(--ox-card-color);
+      flex-shrink: 0;
+    }
+
+    .decision-title-link {
+      color: inherit;
+      text-decoration: none;
+      transition: color 160ms ease, opacity 160ms ease;
+    }
+
+    .decision-title-link:hover {
+      color: var(--ox-card-color);
+    }
     
     .actions-grid {
       display: grid;
@@ -276,6 +377,31 @@
     .actions-grid .ox-action-btn,
     .actions-grid .ox-link-btn {
       width: 100%;
+    }
+
+    .decision-action-copy {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      text-align: center;
+      min-width: 0;
+    }
+
+    .decision-action-title {
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .decision-action-detail {
+      font-size: 0.68rem;
+      line-height: 1.3;
+      color: currentColor;
+      opacity: 0.76;
+      letter-spacing: 0;
+      text-transform: none;
+      max-width: 100%;
+      overflow-wrap: anywhere;
     }
 
     .reject-composer {
@@ -386,34 +512,93 @@
     }
     
     .params-well { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
-    .param-chip { background: var(--ox-well-bg); border: 1px solid var(--ox-border); padding: 4px 8px; border-radius: 4px; font-family: var(--ox-mono); font-size: 0.65rem; color: var(--ox-text-muted); text-transform: uppercase; }
+    .param-chip {
+      max-width: 100%;
+      background: var(--ox-well-bg);
+      border: 1px solid var(--ox-border);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-family: var(--ox-mono);
+      font-size: 0.65rem;
+      color: var(--ox-text-muted);
+      text-transform: uppercase;
+      overflow-wrap: anywhere;
+    }
     .param-chip strong { color: var(--ox-text); margin-left: 4px; }
 
     .pagination {
-      display: flex;
+      display: grid;
+      grid-template-columns: minmax(0, 152px) minmax(0, 1fr) minmax(0, 152px);
       align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 4px 4px 0;
-      margin-top: -4px;
+      gap: 14px;
+      padding: 14px 16px;
+      margin-top: 8px;
+      border: 1px solid var(--ox-border);
+      border-radius: 20px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.01)),
+        var(--ox-panel);
+      box-shadow:
+        0 18px 34px -26px rgba(0, 0, 0, 0.68),
+        inset 0 1px 0 rgba(255,255,255,0.04);
     }
 
     .page-info {
-      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
       text-align: center;
+      min-width: 0;
+    }
+
+    .page-label {
       font-family: var(--ox-mono);
-      font-size: 0.68rem;
+      font-size: 0.62rem;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
+      letter-spacing: 0.18em;
       color: var(--ox-text-muted);
+      font-weight: 700;
+    }
+
+    .page-title {
+      font-family: var(--ox-mono);
+      font-size: 0.88rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--ox-text);
       font-weight: 600;
     }
 
+    .page-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 92px;
+      padding: 10px 16px;
+      border-radius: 999px;
+      background:
+        linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.12), rgba(var(--ox-primary-rgb), 0.06)),
+        rgba(var(--ox-primary-rgb), 0.04);
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.22);
+      color: var(--ox-warning);
+      font-family: var(--ox-mono);
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+
     .page-btn {
-      min-width: 132px;
-      padding-inline: 18px;
-      font-size: 0.82rem;
-      letter-spacing: -0.01em;
+      width: 100%;
+      min-width: 0;
+      padding-inline: 16px;
+      font-size: 0.78rem;
+      letter-spacing: 0;
+      justify-content: center;
+      border-radius: 14px;
+      color: var(--ox-text);
     }
 
     .page-btn .ox-action-btn__label {
@@ -422,27 +607,125 @@
       gap: 8px;
     }
 
+    .page-btn--prev .ox-action-btn__label::before {
+      content: '←';
+      opacity: 0.72;
+    }
+
+    .page-btn--next .ox-action-btn__label::after {
+      content: '→';
+      opacity: 0.72;
+    }
+
+    .resolution-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+      justify-content: center;
+    }
+
+    .resolution-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      text-decoration: none;
+      color: var(--ox-primary);
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
+      background: rgba(var(--ox-primary-rgb), 0.08);
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .resolution-banner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 16px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
+      background:
+        radial-gradient(circle at top left, rgba(var(--ox-primary-rgb), 0.12), transparent 52%),
+        var(--ox-well-bg);
+      box-shadow: var(--ox-well-shadow);
+    }
+
+    .resolution-banner-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+      flex: 1 1 240px;
+    }
+
+    .resolution-banner-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      line-height: 1.25;
+      color: var(--ox-text);
+      overflow-wrap: anywhere;
+    }
+
+    .resolution-banner-detail {
+      font-size: 0.8rem;
+      line-height: 1.45;
+      color: var(--ox-text-muted);
+      overflow-wrap: anywhere;
+    }
+
+    .resolution-banner-meta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.2);
+      background: rgba(var(--ox-primary-rgb), 0.08);
+      color: var(--ox-primary);
+      font-family: var(--ox-mono);
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
     @media (max-width: 560px) {
       .summary-grid {
         justify-content: flex-start;
       }
 
       .pagination {
-        flex-direction: column;
+        grid-template-columns: 1fr 1fr;
         align-items: stretch;
       }
 
       .page-info {
-        order: -1;
+        grid-column: 1 / -1;
+        padding-bottom: 4px;
       }
 
       .page-btn {
         width: 100%;
-        min-width: 0;
+        flex-basis: auto;
       }
 
       .actions-grid {
         grid-template-columns: 1fr;
+      }
+
+      .decision-header {
+        flex-direction: column;
+      }
+
+      .decision-header-meta {
+        width: 100%;
+        justify-content: space-between;
       }
 
       .reject-toolbar {
@@ -454,13 +737,26 @@
         width: 100%;
         min-width: 0;
       }
+
+      .resolution-banner {
+        align-items: flex-start;
+      }
+
+      .resolution-banner-meta {
+        width: 100%;
+        white-space: normal;
+        text-align: center;
+      }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:24px;">
-      <h1 class="ox-title" style="font-size:1.75rem;">Action Required</h1>
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:16px; margin-bottom:24px;">
+      <div>
+        <h1 class="ox-title" style="font-size:1.75rem; margin-bottom:8px;">Action Required</h1>
+        <div id="queueSubtitle" class="queue-subtitle">Approve to unblock execution, or reject with clear guidance so the next attempt stays on-rail.</div>
+      </div>
       <div id="summary" class="summary-grid"></div>
     </div>
     <div id="content">
@@ -542,6 +838,16 @@
         }
         return Promise.resolve(null);
       }
+      function openWidgetLink(url,event){
+        if(!url)return false;
+        var protocol=_detectProtocol();
+        if(protocol==='mcp-apps'){
+          if(event&&typeof event.preventDefault==='function')event.preventDefault();
+          window.parent.postMessage({jsonrpc:'2.0',id:_mcpNextId++,method:'ui/open-link',params:{url:url}},'*');
+          return false;
+        }
+        return true;
+      }
 
       var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true">'+c+'</svg>';};
       var icons = {
@@ -561,6 +867,7 @@
         div.textContent = str;
         return div.innerHTML;
       };
+      var ORGX_BASE_URL = 'https://useorgx.com';
 
     var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
     var data = isDemo ? {
@@ -584,6 +891,7 @@
     var rejectComposerId = null;
     var rejectDrafts = {};
     var pendingDecisionId = null;
+    var lastResolution = null;
     var currentPage = 1;
     var itemsPerPage = 3;
     var pageDirection = 'forward';
@@ -593,6 +901,103 @@
         return ux.toast.show({ tone, title, message, duration });
       }
       return null;
+    };
+    var buildAgentStatusUrl = () => ORGX_BASE_URL + '/settings/agents';
+    var buildDecisionSurfaceUrl = (decision) => {
+      if (!decision || !decision.id) return ORGX_BASE_URL + '/decisions';
+      if (typeof decision.url === 'string' && decision.url.trim()) return decision.url.trim();
+      if (typeof decision.link === 'string' && decision.link.trim()) return decision.link.trim();
+      if (typeof decision.initiative_id === 'string' && decision.initiative_id.trim()) {
+        return ORGX_BASE_URL + '/initiatives/' + encodeURIComponent(decision.initiative_id.trim()) + '?focus=decisions&decision=' + encodeURIComponent(decision.id);
+      }
+      return ORGX_BASE_URL + '/decisions/' + encodeURIComponent(decision.id);
+    };
+
+    var firstString = (...values) => {
+      for (const value of values) {
+        if (typeof value === 'string' && value.trim()) return value.trim();
+      }
+      return '';
+    };
+
+    var normalizeDecision = (decision, index) => {
+      if (!decision || typeof decision !== 'object') return null;
+      const id =
+        firstString(
+          decision.id,
+          decision.decision_id,
+          decision.uuid,
+          decision.entity_id
+        ) || `decision-${index + 1}`;
+      const summary =
+        firstString(
+          decision.summary,
+          decision.title,
+          decision.name,
+          decision.prompt,
+          decision.description
+        ) || 'Untitled decision';
+      const urgency = firstString(
+        decision.urgency,
+        decision.urgency_level,
+        decision.priority
+      ).toLowerCase() || 'medium';
+      return {
+        ...decision,
+        id,
+        agent_name:
+          firstString(
+            decision.agent_name,
+            decision.owner_agent,
+            decision.assigned_agent,
+            decision.domain
+          ) || 'OrgX',
+        type: firstString(decision.type, decision.entity_type) || 'Decision',
+        summary,
+        urgency,
+        created_at:
+          firstString(decision.created_at, decision.createdAt, decision.updated_at) ||
+          new Date().toISOString(),
+      };
+    };
+
+    var buildDecisionKey = (decision) => {
+      const stableId = firstString(decision.id, decision.decision_id, decision.uuid, decision.entity_id);
+      if (stableId) return `id:${stableId}`;
+      return [
+        firstString(decision.agent_name, decision.owner_agent, decision.assigned_agent, decision.domain).toLowerCase(),
+        firstString(decision.summary, decision.title, decision.name, decision.prompt, decision.description).toLowerCase(),
+        firstString(decision.urgency, decision.urgency_level, decision.priority).toLowerCase(),
+        firstString(decision.type, decision.entity_type).toLowerCase(),
+        firstString(decision.initiative_id, decision.run_id).toLowerCase(),
+      ].join('::');
+    };
+
+    var normalizeDecisionQueue = (payload) => {
+      if (!payload || typeof payload !== 'object') return null;
+      const rawDecisions = Array.isArray(payload.decisions) ? payload.decisions : [];
+      const seen = new Set();
+      const decisions = [];
+      rawDecisions.forEach((item, index) => {
+        const normalized = normalizeDecision(item, index);
+        if (!normalized) return;
+        const key = buildDecisionKey(normalized);
+        if (seen.has(key)) return;
+        seen.add(key);
+        decisions.push(normalized);
+      });
+
+      const summary = {};
+      decisions.forEach((decision) => {
+        const urgency = (decision.urgency || 'low').toLowerCase();
+        summary[urgency] = (summary[urgency] || 0) + 1;
+      });
+
+      return {
+        ...payload,
+        decisions,
+        summary,
+      };
     };
 
     var updateSummaryFromDecisions = () => {
@@ -612,6 +1017,7 @@
       const totalPages = Math.max(1, Math.ceil(data.decisions.length / itemsPerPage));
       currentPage = Math.min(currentPage, totalPages);
     };
+    var getDecisionById = (id) => Array.isArray(data && data.decisions) ? data.decisions.find((decision) => decision.id === id) || null : null;
 
     var setPageButtonsDisabled = (disabled) => {
       document.querySelectorAll('.page-btn').forEach((button) => {
@@ -631,21 +1037,23 @@
 
 
     
+      var WIDGET_ASSET_BASE = 'https://mcp.useorgx.com/widgets/shared/';
       var getAvatarUrl = (name) => {
         const n = (name || '').toLowerCase();
-        if (n.includes('pace') || n.includes('product')) return 'https://useorgx.com/product_orchestrator.png';
-        if (n.includes('eli') || n.includes('engineer')) return 'https://useorgx.com/engineering_autopilot.png';
-        if (n.includes('mark') || n.includes('market')) return 'https://useorgx.com/launch_captain.png';
-        if (n.includes('sage') || n.includes('sale')) return 'https://useorgx.com/pipeline_intelligence.png';
-        if (n.includes('orion') || n.includes('op')) return 'https://useorgx.com/control_tower.png';
-        if (n.includes('dana') || n.includes('design')) return 'https://useorgx.com/design_codex.png';
-        if (n.includes('xandy') || n.includes('orchestrator')) return 'https://useorgx.com/xandy_orchestrator.png';
+        if (n.includes('pace') || n.includes('product')) return WIDGET_ASSET_BASE + 'product_orchestrator.png';
+        if (n.includes('eli') || n.includes('engineer')) return WIDGET_ASSET_BASE + 'engineering_autopilot.png';
+        if (n.includes('mark') || n.includes('market')) return WIDGET_ASSET_BASE + 'launch_captain.png';
+        if (n.includes('sage') || n.includes('sale')) return WIDGET_ASSET_BASE + 'pipeline_intelligence.png';
+        if (n.includes('orion') || n.includes('op')) return WIDGET_ASSET_BASE + 'control_tower.png';
+        if (n.includes('dana') || n.includes('design')) return WIDGET_ASSET_BASE + 'design_codex.png';
+        if (n.includes('xandy') || n.includes('orchestrator')) return WIDGET_ASSET_BASE + 'xandy_orchestrator.png';
         return null;
       };
       var renderAvatar = (name, sizePx) => {
         const url = getAvatarUrl(name);
-        if (url) return `<img src="${url}" alt="${escapeHtml(name)}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" />`;
-        return escapeHtml(name ? name[0].toUpperCase() : '?');
+        const fallback = escapeHtml(name ? name[0].toUpperCase() : '?');
+        if (url) return `<span style="display:none;align-items:center;justify-content:center;width:100%;height:100%;font-family:var(--ox-mono);font-size:0.7rem;">${fallback}</span><img src="${url}" alt="${escapeHtml(name)}" loading="eager" decoding="sync" draggable="false" style="display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.style.display='none'; if (this.previousElementSibling) this.previousElementSibling.style.display='flex';" />`;
+        return fallback;
       };
 
     var formatUsd = v => Number.isFinite(Number(v)) ? '$'+Number(v).toFixed(2) : null;
@@ -666,6 +1074,7 @@
     window.approveDecision = async (id, btn) => {
       if (btn.disabled || pendingDecisionId) return;
       const card = btn.closest('.decision-card');
+      const decision = getDecisionById(id);
       pendingDecisionId = id;
       setPageButtonsDisabled(true);
       setCardControlsDisabled(card, true);
@@ -673,7 +1082,12 @@
 
       try {
         await callTool('approve_decision', { decision_id: id });
-        notify('success', 'Decision approved', 'The agent can continue with the approved path.');
+        lastResolution = {
+          action: 'approved',
+          summary: decision && decision.summary ? decision.summary : 'This decision',
+          agent_name: decision && decision.agent_name ? decision.agent_name : 'the assigned agent'
+        };
+        notify('success', 'Decision approved', 'Recorded and sent to ' + lastResolution.agent_name + ' so execution can continue.');
         if (card) card.classList.add('is-resolving');
         window.setTimeout(() => {
           removeDecisionFromState(id);
@@ -695,6 +1109,7 @@
       const reason = (rejectDrafts[id] || '').trim();
       if (!reason || pendingDecisionId) return;
       const card = btn.closest('.decision-card');
+      const decision = getDecisionById(id);
       pendingDecisionId = id;
       setPageButtonsDisabled(true);
       setCardControlsDisabled(card, true);
@@ -702,10 +1117,16 @@
 
       try {
         await callTool('reject_decision', { decision_id: id, reason });
+        lastResolution = {
+          action: 'rejected',
+          summary: decision && decision.summary ? decision.summary : 'This decision',
+          agent_name: decision && decision.agent_name ? decision.agent_name : 'the assigned agent',
+          note: reason
+        };
         notify(
           'success',
           'Decision rejected',
-          'Your note was attached so the agent can revise course.'
+          'Guidance sent to ' + lastResolution.agent_name + ' so the next pass can address the issue directly.'
         );
         if (card) card.classList.add('is-resolving');
         window.setTimeout(() => {
@@ -735,7 +1156,26 @@
 
     var render = () => {
       if(isLoading) return;
-      if(!data || !data.decisions || data.decisions.length === 0) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.check(24)}</div><div class="empty-title">All caught up</div><div class="empty-desc">No decisions require your attention right now.</div></div>`); document.getElementById('summary').innerHTML=''; return; }
+      data = normalizeDecisionQueue(data);
+      var queueSubtitle = document.getElementById('queueSubtitle');
+      if(!data || !data.decisions || data.decisions.length === 0) {
+        var resolvedHtml = lastResolution
+          ? `<div class="empty-title">${lastResolution.action === 'approved' ? 'Decision approved' : 'Decision sent back'}</div><div class="empty-desc">${escapeHtml(lastResolution.summary)} ${lastResolution.action === 'approved' ? 'is now unblocked and ' + lastResolution.agent_name + ' can keep moving.' : 'was returned to ' + lastResolution.agent_name + ' with your note so the next revision addresses the right constraint.'}</div><div class="resolution-actions"><a href="${buildAgentStatusUrl()}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(buildAgentStatusUrl())}, event)' class="resolution-link">${icons.agent(14)} Open agent status</a></div>`
+          : `<div class="empty-title">All caught up</div><div class="empty-desc">No decisions require your attention right now. New approvals will appear here as soon as work needs operator input.</div>`;
+        injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.check(24)}</div>${resolvedHtml}</div>`);
+        document.getElementById('summary').innerHTML='';
+        if (queueSubtitle) {
+          queueSubtitle.textContent = lastResolution
+            ? 'The queue is clear. You can monitor follow-through in Agent Status.'
+            : 'No operator approvals are waiting right now.';
+        }
+        return;
+      }
+
+      if (queueSubtitle) {
+        var pendingCount = data.decisions.length;
+        queueSubtitle.textContent = pendingCount + ' pending decision' + (pendingCount === 1 ? '' : 's') + ' need operator input. Approve to unblock execution, or reject with clear guidance so the next attempt stays on-rail.';
+      }
 
       if(data.summary) {
         document.getElementById('summary').innerHTML = Object.entries(data.summary).filter(([k,v])=>v>0).map(([k,v]) => `<span class="ox-badge" style="--ox-color:var(--ox-${k==='critical'?'danger':k==='high'?'warning':k==='medium'?'lime':'text-muted'}); --ox-color-rgb:var(--ox-${k==='critical'?'danger':k==='high'?'warning':k==='medium'?'lime':'text-muted'}-rgb, 100,100,100);">${v} ${k}</span>`).join('');
@@ -753,22 +1193,36 @@
         const rejectValue = rejectDrafts[d.id] || '';
         const rejectEnabled = rejectValue.trim().length > 0;
         const rejectActionLabel = isRejecting ? 'Hide note' : 'Reject';
+        const decisionUrl = buildDecisionSurfaceUrl(d);
         return `
         <div class="decision-card urgency-${escapeHtml(d.urgency)} animate-in" style="animation-delay: ${0.1 * i}s">
           <div class="ox-card">
             <div class="ox-card-inner">
               <div class="decision-header">
-                <div class="agent-tag">
-                  <div class="agent-avatar">${renderAvatar(d.agent_name, 24)}</div>
-                  <span>${escapeHtml(d.agent_name)}</span>
+                <div class="decision-header-copy">
+                  <div class="agent-tag">
+                    <div class="agent-avatar">${renderAvatar(d.agent_name, 24)}</div>
+                    <span>${escapeHtml(d.agent_name)}</span>
+                  </div>
+                  <h3 class="ox-title" style="margin-bottom:0;">
+                    <a href="${escapeHtml(decisionUrl)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(decisionUrl || ''))}, event)' class="decision-title-link">
+                      ${escapeHtml(d.summary)}
+                    </a>
+                  </h3>
                 </div>
-                <div class="ox-eyebrow" style="color: var(--ox-card-color); display:flex; align-items:center; gap:6px;">
-                  <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor;"></span>
-                  ${escapeHtml(d.urgency)}
+                <div class="decision-header-meta">
+                  <div class="ox-eyebrow" style="color: var(--ox-card-color); display:flex; align-items:center; gap:6px;">
+                    <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor;"></span>
+                    ${escapeHtml(d.urgency)}
+                  </div>
+                  <a href="${escapeHtml(decisionUrl)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(decisionUrl || ''))}, event)' class="decision-open-link">
+                    ${icons.link(14)}
+                    <span>Open in OrgX</span>
+                  </a>
                 </div>
               </div>
-              
-              <h3 class="ox-title" style="margin-bottom:8px;">${escapeHtml(d.summary)}</h3>
+
+              <div class="ox-text" style="margin-bottom: 4px;">${escapeHtml(d.urgency === 'critical' ? 'Needs a fast operator call to keep critical-path work moving.' : d.urgency === 'high' ? 'High-signal operator decision with downstream execution impact.' : 'Review and confirm the preferred execution path.')}</div>
               
               <div class="params-well">
                 <div class="param-chip">Type <strong>${escapeHtml(d.type)}</strong></div>
@@ -785,7 +1239,10 @@
                   data-loading-label="Approving…"
                   onclick="approveDecision('${escapeHtml(d.id)}', this)"
                 >
-                  Approve
+                  <span class="decision-action-copy">
+                    <span class="decision-action-title">Approve</span>
+                    <span class="decision-action-detail">Unblock ${escapeHtml(d.agent_name)} and continue execution</span>
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -793,7 +1250,10 @@
                   onclick="toggleRejectComposer('${escapeHtml(d.id)}')"
                   aria-expanded="${isRejecting ? 'true' : 'false'}"
                 >
-                  ${rejectActionLabel}
+                  <span class="decision-action-copy">
+                    <span class="decision-action-title">${rejectActionLabel === 'Hide note' ? 'Hide note' : 'Reject with note'}</span>
+                    <span class="decision-action-detail">${isRejecting ? 'Collapse the feedback panel' : 'Send revision guidance instead of blocking silently'}</span>
+                  </span>
                 </button>
               </div>
 
@@ -828,12 +1288,34 @@
       `;
       }).join('');
 
+      if (lastResolution) {
+        const remainingCount = data.decisions.length;
+        const actionVerb = lastResolution.action === 'approved' ? 'approved' : 'sent back';
+        const followThrough =
+          lastResolution.action === 'approved'
+            ? `${escapeHtml(lastResolution.agent_name)} can keep moving on the next step without waiting on another manual handoff.`
+            : `${escapeHtml(lastResolution.agent_name)} now has your note and can revise against a concrete instruction instead of guessing.`;
+        html = `
+          <div class="resolution-banner animate-in">
+            <div class="resolution-banner-copy">
+              <div class="resolution-banner-title">${escapeHtml(lastResolution.summary)} ${actionVerb}.</div>
+              <div class="resolution-banner-detail">${followThrough}</div>
+            </div>
+            <div class="resolution-banner-meta">${remainingCount} decision${remainingCount === 1 ? '' : 's'} remaining</div>
+          </div>
+        ` + html;
+      }
+
       if (totalPages > 1) {
         html += `
           <div class="pagination">
-            <button type="button" class="page-btn ox-action-btn ox-action-btn--ghost" onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}>← Previous</button>
-            <span class="page-info">Page ${currentPage} of ${totalPages}</span>
-            <button type="button" class="page-btn ox-action-btn ox-action-btn--ghost" onclick="changePage(1)" ${currentPage === totalPages ? 'disabled' : ''}>Next →</button>
+            <button type="button" class="page-btn page-btn--prev ox-action-btn ox-action-btn--ghost" onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}><span class="ox-action-btn__label">Previous</span></button>
+            <div class="page-info">
+              <span class="page-label">Decision queue</span>
+              <span class="page-count">${currentPage} / ${totalPages}</span>
+              <span class="page-title">Page ${currentPage} of ${totalPages}</span>
+            </div>
+            <button type="button" class="page-btn page-btn--next ox-action-btn ox-action-btn--ghost" onclick="changePage(1)" ${currentPage === totalPages ? 'disabled' : ''}><span class="ox-action-btn__label">Next</span></button>
           </div>
         `;
       }

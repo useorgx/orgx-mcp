@@ -46,7 +46,10 @@
         --ox-danger: #e11d48;
         --ox-warning: #d97706;
         --ox-iris: #4f46e5;
+        --ox-primary: #00C9A7;
+        --ox-primary-rgb: 0, 201, 167;
         --ox-grid: rgba(0, 0, 0, 0.03);
+        --ox-grid-color: rgba(0, 0, 0, 0.03);
         --ox-shadow: 0 12px 32px -12px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.04);
         --ox-font: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
         --ox-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
@@ -60,6 +63,7 @@
           --ox-warning: #FBBF24;
           --ox-iris: #6366f1;
           --ox-grid: rgba(255, 255, 255, 0.02);
+          --ox-grid-color: rgba(255, 255, 255, 0.02);
           --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
         }
       }
@@ -71,6 +75,7 @@
           --ox-warning: #FBBF24;
           --ox-iris: #6366f1;
           --ox-grid: rgba(255, 255, 255, 0.02);
+          --ox-grid-color: rgba(255, 255, 255, 0.02);
           --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
       }
 
@@ -123,10 +128,44 @@
       .ox-card { background: var(--ox-panel); border: 1px solid var(--ox-border); border-radius: 16px; box-shadow: var(--ox-shadow); position: relative; overflow: hidden; margin-bottom: 16px; }
       .ox-card-inner { padding: 24px; }
       .ox-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(var(--ox-primary-rgb), 0.5), transparent); opacity: 0.8; }
-      .widget-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--ox-border); }
-      .deep-link { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; color: var(--ox-primary); text-decoration: none; transition: opacity 0.2s; }
-      .deep-link:hover { opacity: 0.8; }
-      .deep-link svg { width: 14px; height: 14px; }
+      .widget-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 24px;
+        padding-top: 16px;
+        border-top: 1px solid var(--ox-border);
+      }
+      .deep-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 48px;
+        max-width: 100%;
+        padding: 12px 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(var(--ox-primary-rgb), 0.28);
+        background: rgba(var(--ox-primary-rgb), 0.08);
+        font-size: 0.84rem;
+        font-weight: 700;
+        color: var(--ox-text);
+        text-decoration: none;
+        text-align: center;
+        line-height: 1.15;
+        transition:
+          transform 0.18s ease,
+          border-color 0.18s ease,
+          background 0.18s ease;
+      }
+      .deep-link:hover {
+        transform: translateY(-1px);
+        border-color: rgba(var(--ox-primary-rgb), 0.38);
+        background: rgba(var(--ox-primary-rgb), 0.12);
+      }
+      .deep-link svg { width: 16px; height: 16px; flex-shrink: 0; }
 
 
       
@@ -251,6 +290,129 @@
       .roi-value.positive { color: var(--ox-teal); }
       .roi-value.negative { color: var(--ox-danger); }
 
+      .pulse-message {
+        margin-top: 18px;
+        padding: 14px 16px;
+        border-radius: 12px;
+        border: 1px solid rgba(var(--ox-primary-rgb), 0.14);
+        background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.08), rgba(var(--ox-primary-rgb), 0.03));
+        color: var(--ox-text);
+        line-height: 1.55;
+      }
+
+      .insight-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      .insight-card {
+        min-width: 0;
+        padding: 14px;
+        border-radius: 12px;
+        border: 1px solid var(--ox-border);
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .insight-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .insight-list li {
+        position: relative;
+        padding-left: 12px;
+        color: var(--ox-text);
+        line-height: 1.45;
+      }
+
+      .insight-list li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.6em;
+        width: 4px;
+        height: 4px;
+        border-radius: 999px;
+        background: var(--ox-primary);
+        opacity: 0.8;
+      }
+
+      .insight-empty {
+        margin-top: 10px;
+        font-size: 0.84rem;
+        color: var(--ox-text-muted);
+        line-height: 1.45;
+      }
+
+      .pulse-cta-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 20px;
+      }
+
+      .cta-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 42px;
+        padding: 0 15px;
+        border-radius: 12px;
+        border: 1px solid rgba(var(--ox-primary-rgb), 0.22);
+        background: rgba(var(--ox-primary-rgb), 0.12);
+        color: var(--ox-text);
+        text-decoration: none;
+        font-size: 0.84rem;
+        font-weight: 600;
+        transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+      }
+
+      .cta-button:hover {
+        transform: translateY(-1px);
+        border-color: rgba(var(--ox-primary-rgb), 0.35);
+        background: rgba(var(--ox-primary-rgb), 0.16);
+      }
+
+      .milestone-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 24px;
+      }
+
+      .milestone-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: center;
+        padding: 12px 14px;
+        border-radius: 10px;
+        border: 1px solid var(--ox-border);
+        background: rgba(128,128,128,0.03);
+      }
+
+      .milestone-title {
+        font-size: 0.92rem;
+        color: var(--ox-text);
+        font-weight: 600;
+        line-height: 1.35;
+      }
+
+      .milestone-meta {
+        margin-top: 4px;
+        font-family: var(--ox-mono);
+        font-size: 0.62rem;
+        color: var(--ox-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
       @media (prefers-color-scheme: dark) {
          .roi-value.positive { color: var(--ox-lime); text-shadow: 0 0 10px rgba(191,255,0,0.3); }
       }
@@ -321,6 +483,32 @@
       .blockers-list li::before {
         content: '›';
         position: absolute; left: 0; color: var(--ox-danger); opacity: 0.8; font-weight: bold;
+      }
+
+      @media (max-width: 560px) {
+        .pulse-header,
+        .widget-footer {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 12px;
+        }
+
+        .pulse-metrics,
+        .roi-strip,
+        .insight-grid {
+          grid-template-columns: 1fr;
+          flex-direction: column;
+        }
+
+        .pulse-cta-row {
+          flex-direction: column;
+        }
+
+        .cta-button,
+        .deep-link {
+          width: 100%;
+          justify-content: center;
+        }
       }
 
       /* Shared Widget Specifics */
@@ -426,7 +614,16 @@
       .empty-icon svg { width: 24px; height: 24px; }
       .empty-title { font-size: 1.1rem; font-weight: 600; color: var(--ox-text); margin-bottom: 8px; }
       .empty-desc { font-size: 0.9rem; color: var(--ox-text-muted); line-height: 1.5; max-width: 280px; }
-    
+    @media (max-width: 560px) {
+      .widget-footer {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .deep-link {
+        width: 100%;
+      }
+    }
       /* Skeleton Animations */
       @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
       .skeleton-line {
@@ -498,9 +695,11 @@
 
     function _detectProtocol(){if(typeof window.openai!=='undefined')return'chatgpt';if(window.parent&&window.parent!==window)return'mcp-apps';return'standalone';}
     function _extractData(out){if(out==null)return null;if(typeof out==='object'&&out.structuredContent)return out.structuredContent;if(typeof out==='object'&&Array.isArray(out.content)){for(var i=0;i<out.content.length;i++){var item=out.content[i];if(item&&item.type==='text'&&item.text){try{return JSON.parse(item.text);}catch(e){continue;}}}}if(typeof out==='string'){try{return JSON.parse(out);}catch(e){return{text:out};}}return out;}
-    function _sendSize(){var w=Math.ceil(document.documentElement.getBoundingClientRect().width+(window.innerWidth-document.documentElement.clientWidth));var h=Math.ceil(document.documentElement.getBoundingClientRect().height);try{window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/size-changed',params:{width:w,height:h}},'*');}catch(e){}}
-    function _observeSize(){_sendSize();if(typeof ResizeObserver!=='undefined'){var ro=new ResizeObserver(() => requestAnimationFrame(_sendSize));ro.observe(document.documentElement);ro.observe(document.body);}}
-    function initWidget(opts){var render=opts.render,getData=opts.getData||_extractData;var protocol=_detectProtocol();if(protocol==='chatgpt'){var d=getData(window.openai&&window.openai.toolOutput);render(d);window.addEventListener('openai:set_globals',function(e){var g=e.detail&&e.detail.globals;if(g&&g.toolOutput){render(getData(g.toolOutput));}},{passive:true});}else if(protocol==='mcp-apps'){render(null);var initId=1;window.parent.postMessage({jsonrpc:'2.0',id:initId,method:'ui/initialize',params:{appInfo:{name:'Widget',version:'1.0'},appCapabilities:{tools:{listChanged:false}},protocolVersion:'2026-01-26'}},'*');window.addEventListener('message',function(event){var msg=event.data;if(!msg||typeof msg!=='object')return;if(msg.id===initId){_observeSize();return;}if((msg.method==='ui/notifications/tool-result'||msg.method==='notifications/message')&&msg.params){var data=getData(msg.params);if(data)render(data);}});}else{render(null);}}
+    var _lastW=0,_lastH=0;
+    function _sendSize(){var w=Math.ceil(document.documentElement.getBoundingClientRect().width+(window.innerWidth-document.documentElement.clientWidth));var h=Math.ceil(document.documentElement.getBoundingClientRect().height);if(w===_lastW&&h===_lastH)return;_lastW=w;_lastH=h;try{window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/size-changed',params:{width:w,height:h}},'*');}catch(e){}}
+    function _observeSize(){_sendSize();if(typeof ResizeObserver!=='undefined'){var _raf=0;var ro=new ResizeObserver(function(){if(_raf)cancelAnimationFrame(_raf);_raf=requestAnimationFrame(_sendSize);});ro.observe(document.documentElement);ro.observe(document.body);}}
+    function initWidget(opts){var render=opts.render,getData=opts.getData||_extractData;var protocol=_detectProtocol();if(protocol==='chatgpt'){var d=getData(window.openai&&window.openai.toolOutput);render(d);window.addEventListener('openai:set_globals',function(e){var g=e.detail&&e.detail.globals;if(g&&g.toolOutput){render(getData(g.toolOutput));}},{passive:true});}else if(protocol==='mcp-apps'){render(null);var initId=1;window.parent.postMessage({jsonrpc:'2.0',id:initId,method:'ui/initialize',params:{appInfo:{name:'Widget',version:'1.0'},appCapabilities:{tools:{listChanged:false}},protocolVersion:'2026-01-26'}},'*');window.parent.postMessage({jsonrpc:'2.0',method:'notifications/initialized'},'*');window.addEventListener('message',function(event){var msg=event.data;if(!msg||typeof msg!=='object')return;if(msg.id===initId&&msg.result){window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized'},'*');_observeSize();return;}if((msg.method==='ui/notifications/tool-result'||msg.method==='notifications/message')&&msg.params){var data=getData(msg.params);if(data)render(data);}});}else{render(null);}}
+    function openWidgetLink(url,event){if(!url)return false;var protocol=_detectProtocol();if(protocol==='mcp-apps'){if(event&&typeof event.preventDefault==='function')event.preventDefault();window.parent.postMessage({jsonrpc:'2.0',id:100 + Math.floor(Math.random()*10000),method:'ui/open-link',params:{url:url}},'*');return false;}return true;}
     
     var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+c+'</svg>';};
     var icons = {
@@ -530,6 +729,27 @@
 
     var formatUsd = (value) => { const num = Number(value); if (!Number.isFinite(num)) return null; return '$' + num.toFixed(2); };
     var formatRoi = (value) => { if (value === null) return 'N/A'; const pct = Math.round(value * 100); return (pct > 0 ? '+' : '') + pct + '%'; };
+    var normalizePulse = payload => {
+      if (!payload) return null;
+      var workstreamSummary = payload.workstream_summary && typeof payload.workstream_summary === 'object' ? payload.workstream_summary : {};
+      return {
+        id: payload.id || payload.initiative_id || null,
+        name: payload.name || payload.title || 'Initiative',
+        status: payload.status || 'active',
+        progress_pct: typeof payload.progress_pct === 'number' ? payload.progress_pct : 0,
+        pending_decisions: typeof payload.pending_decisions === 'number' ? payload.pending_decisions : 0,
+        active_workstreams: typeof payload.active_workstreams === 'number' ? payload.active_workstreams : typeof workstreamSummary.active === 'number' ? workstreamSummary.active : 0,
+        total_workstreams: typeof payload.total_workstreams === 'number' ? payload.total_workstreams : typeof workstreamSummary.total === 'number' ? workstreamSummary.total : 0,
+        blocked_workstreams: typeof payload.blocked_workstreams === 'number' ? payload.blocked_workstreams : typeof workstreamSummary.blocked === 'number' ? workstreamSummary.blocked : 0,
+        health_score: typeof payload.health_score === 'number' ? payload.health_score : 100,
+        blockers: Array.isArray(payload.blockers) ? payload.blockers : [],
+        milestones: Array.isArray(payload.milestones) ? payload.milestones : [],
+        roi_summary: payload.roi_summary || null,
+        message: payload.message || null,
+        live_url: typeof payload.live_url === 'string' ? payload.live_url : null,
+        next_steps: Array.isArray(payload.next_steps) ? payload.next_steps : []
+      };
+    };
 
     var render = () => {
       if (isLoading) {
@@ -553,14 +773,22 @@
         return;
       }
 
-      const safeName = escapeHtml(pulse.name);
+      pulse = normalizePulse(pulse);
+      if (!pulse) {
+        injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.external(24)}</div><div class="empty-title">Awaiting telemetry</div><div class="empty-desc">No recent pulse data was found for this initiative.</div></div>`);
+        return;
+      }
+
+      const safeName = escapeHtml(pulse.name || pulse.title || 'Initiative');
       const safeStatus = escapeHtml(pulse.status).toUpperCase();
       const progressPct = typeof pulse.progress_pct === 'number' ? pulse.progress_pct : 0;
       const pendingDecisions = typeof pulse.pending_decisions === 'number' ? pulse.pending_decisions : 0;
       const activeWorkstreams = typeof pulse.active_workstreams === 'number' ? pulse.active_workstreams : 0;
+      const totalWorkstreams = typeof pulse.total_workstreams === 'number' ? pulse.total_workstreams : 0;
       const healthScore = typeof pulse.health_score === 'number' ? pulse.health_score : 100;
       const normalizedStatus = escapeHtml(pulse.status).toLowerCase();
       const roiSummary = pulse.roi_summary || null;
+      const safeMessage = pulse.message ? escapeHtml(pulse.message) : '';
       let roiValue = null;
       
       if (roiSummary && roiSummary.total_cost > 0) {
@@ -580,6 +808,35 @@
           </ul>
         </div>
       ` : '';
+      const nextStepsHtml = (pulse.next_steps || []).length ? `
+        <ul class="insight-list">
+          ${(pulse.next_steps || []).slice(0, 3).map(step => `<li>${escapeHtml(step)}</li>`).join('')}
+        </ul>
+      ` : `<div class="insight-empty">No prescribed next steps yet. Use the live view to inspect workstreams and unblock the sprint.</div>`;
+      const blockerPanelHtml = (pulse.blockers || []).length ? blockersHtml : `
+        <div class="insight-card">
+          <div class="detail-label">Blockers</div>
+          <div class="insight-empty">No blockers reported in the current pulse.</div>
+        </div>
+      `;
+      const milestonesHtml = (pulse.milestones || []).length ? `
+        <div class="milestone-list">
+          ${(pulse.milestones || []).slice(0, 4).map(milestone => `
+            <div class="milestone-row">
+              <div>
+                <div class="milestone-title">${escapeHtml(milestone.name || milestone.title || 'Untitled milestone')}</div>
+                <div class="milestone-meta">${escapeHtml((milestone.status || 'planned').replace(/_/g, ' '))}</div>
+              </div>
+              <div class="status-indicator">
+                <span class="status-dot"></span>
+                ${escapeHtml(String(typeof milestone.progress === 'number' ? milestone.progress : 0))}%
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      ` : '';
+
+      var dashboardUrl = pulse.live_url || (pulse.id ? `https://useorgx.com/live/${encodeURIComponent(pulse.id)}` : 'https://useorgx.com/live?view=mission-control');
 
       injectHtml(`
         <div class="ox-card animate-in">
@@ -592,7 +849,7 @@
             <div class="pulse-metrics">
               <div class="metric"><span class="metric-label">Progress</span><span class="metric-value">${progressPct}%</span></div>
               <div class="metric"><span class="metric-label">Pending</span><span class="metric-value">${pendingDecisions}</span></div>
-              <div class="metric"><span class="metric-label">Active</span><span class="metric-value">${activeWorkstreams}</span></div>
+              <div class="metric"><span class="metric-label">Workstreams</span><span class="metric-value">${activeWorkstreams}${totalWorkstreams ? `/${totalWorkstreams}` : ''}</span></div>
             </div>
 
             ${roiSummary ? `
@@ -608,14 +865,34 @@
               <span>${getHealthLabel(healthScore)} (${healthScore})</span>
             </div>
 
-            ${blockersHtml}
+            ${safeMessage ? `<div class="pulse-message">${safeMessage}</div>` : ''}
+
+            <div class="insight-grid">
+              <div class="insight-card">
+                <div class="detail-label">Immediate next steps</div>
+                ${nextStepsHtml}
+              </div>
+              <div class="insight-card">
+                <div class="detail-label">Workstream state</div>
+                <ul class="insight-list">
+                  <li>${activeWorkstreams} active workstream${activeWorkstreams === 1 ? '' : 's'}</li>
+                  <li>${pulse.blocked_workstreams || 0} blocked workstream${(pulse.blocked_workstreams || 0) === 1 ? '' : 's'}</li>
+                  <li>${pendingDecisions} pending decision${pendingDecisions === 1 ? '' : 's'}</li>
+                </ul>
+              </div>
+            </div>
+
+            ${milestonesHtml}
+            ${blockerPanelHtml}
 
             <div class="widget-footer">
               <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
-              <a href="${pulse.id ? `https://console.useorgx.com/initiatives/${escapeHtml(pulse.id)}` : 'https://console.useorgx.com'}" target="_blank" class="deep-link">
-                View Dashboard
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-              </a>
+              <div class="pulse-cta-row">
+                <a href="${dashboardUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(dashboardUrl || ''))}, event)' class="cta-button">
+                  ${pulse.live_url ? 'Open Live View' : 'Open Dashboard'}
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </a>
+              </div>
             </div>
           </div>
         </div>

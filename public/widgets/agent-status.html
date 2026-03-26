@@ -100,6 +100,7 @@
         padding: 24px 16px;
         -webkit-font-smoothing: antialiased;
         min-height: 100vh;
+        overflow-x: hidden;
       }
 
       body::before {
@@ -111,7 +112,7 @@
         z-index: -1; pointer-events: none;
       }
 
-      .container { max-width: 540px; margin: 0 auto; position: relative; }
+      .container { max-width: 720px; margin: 0 auto; position: relative; }
 
       .ox-card {
         background: var(--ox-panel); border: 1px solid var(--ox-border); border-radius: 16px; box-shadow: var(--ox-shadow); position: relative; overflow: hidden; margin-bottom: 16px;
@@ -131,15 +132,37 @@
     .avatar-ring {
       position: relative; width: 56px; height: 56px; border-radius: 12px;
       display: flex; align-items: center; justify-content: center;
-      background: rgba(var(--ox-primary-rgb), 0.05); border: 1px solid rgba(var(--ox-primary-rgb), 0.2);
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.08), rgba(var(--ox-primary-rgb), 0.03));
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
       font-family: var(--ox-mono); font-size: 1.5rem; font-weight: bold; color: var(--ox-primary);
-      box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.15);
+      box-shadow: 0 10px 24px -20px rgba(var(--ox-primary-rgb), 0.55);
     }
     .avatar-ring::before {
-      content: ''; position: absolute; inset: -6px; border: 1px dashed var(--ox-primary); border-radius: 20px;
-      opacity: 0.5; animation: spin 15s linear infinite;
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      box-shadow: inset 0 0 0 1px rgba(var(--ox-primary-rgb), 0.08);
+      pointer-events: none;
     }
-    @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    .avatar-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .avatar-fallback {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--ox-primary);
+      background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.12), rgba(var(--ox-primary-rgb), 0.04));
+    }
 
     .status-pill {
       display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 6px;
@@ -149,6 +172,117 @@
     }
     .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; animation: pulse 2s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .summary-card {
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid var(--ox-border);
+      background: var(--ox-well-bg);
+      box-shadow: var(--ox-well-shadow);
+    }
+
+    .summary-value {
+      font-family: var(--ox-mono);
+      font-size: 1.3rem;
+      line-height: 1;
+      font-weight: 600;
+      color: var(--ox-text);
+      margin-top: 8px;
+    }
+
+    .agent-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .agent-row-card {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--ox-border);
+      background: var(--ox-well-bg);
+      box-shadow: var(--ox-well-shadow);
+    }
+
+    .agent-row-main {
+      min-width: 0;
+    }
+
+    .agent-name {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--ox-text);
+      line-height: 1.3;
+    }
+
+    .agent-role-line {
+      margin-top: 2px;
+      font-family: var(--ox-mono);
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ox-text-muted);
+      font-weight: 600;
+    }
+
+    .agent-task {
+      margin-top: 8px;
+      font-size: 0.86rem;
+      color: var(--ox-text-muted);
+      line-height: 1.45;
+    }
+
+    .agent-task strong {
+      color: var(--ox-text);
+    }
+
+    .agent-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .agent-progress {
+      font-family: var(--ox-mono);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ox-text-muted);
+      font-weight: 600;
+    }
+
+    .status-running { color: var(--ox-lime); background: rgba(212, 237, 49, 0.12); border-color: rgba(212, 237, 49, 0.22); }
+    .status-queued { color: var(--ox-iris); background: rgba(99, 102, 241, 0.12); border-color: rgba(99, 102, 241, 0.22); }
+    .status-blocked { color: var(--ox-danger); background: rgba(244, 63, 94, 0.12); border-color: rgba(244, 63, 94, 0.22); }
+    .status-idle { color: var(--ox-text-muted); background: rgba(148, 163, 184, 0.12); border-color: rgba(148, 163, 184, 0.22); }
+
+    @media (max-width: 560px) {
+      .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .agent-row-card {
+        grid-template-columns: auto minmax(0, 1fr);
+      }
+
+      .agent-meta {
+        grid-column: 1 / -1;
+        align-items: flex-start;
+        padding-left: 72px;
+      }
+    }
 
     
     
@@ -166,10 +300,257 @@
     .t-time { font-family: var(--ox-mono); font-size: 0.6rem; color: var(--ox-text-muted); margin-bottom: 4px; font-weight: 600; letter-spacing: 0.05em; }
     .t-content { font-size: 0.9rem; color: var(--ox-text); line-height: 1.5; }
   
-    .widget-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--ox-border); }
-    .deep-link { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; color: var(--ox-primary); text-decoration: none; transition: opacity 0.2s; }
-    .deep-link:hover { opacity: 0.8; }
-    .deep-link svg { width: 14px; height: 14px; }
+    .widget-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--ox-border);
+    }
+    .deep-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 48px;
+      max-width: 100%;
+      padding: 12px 16px;
+      border-radius: 14px;
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.28);
+      background: rgba(var(--ox-primary-rgb), 0.08);
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: var(--ox-text);
+      text-decoration: none;
+      text-align: center;
+      line-height: 1.15;
+      overflow-wrap: anywhere;
+      transition:
+        transform 0.18s ease,
+        border-color 0.18s ease,
+        background 0.18s ease;
+    }
+    .deep-link:hover {
+      transform: translateY(-1px);
+      border-color: rgba(var(--ox-primary-rgb), 0.38);
+      background: rgba(var(--ox-primary-rgb), 0.12);
+    }
+    .deep-link svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .summary-card {
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid var(--ox-border);
+      background: var(--ox-well-bg);
+      box-shadow: var(--ox-well-shadow);
+    }
+
+    .summary-card strong {
+      display: block;
+      margin-top: 6px;
+      font-family: var(--ox-mono);
+      font-size: 1.05rem;
+      color: var(--ox-text);
+    }
+
+    .agent-board {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .agent-item {
+      background: var(--ox-panel);
+      border: 1px solid var(--ox-border);
+      border-radius: 16px;
+      box-shadow: var(--ox-shadow);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .agent-item::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(var(--ox-primary-rgb), 0.45), transparent);
+      opacity: 0.85;
+    }
+
+    .agent-item-inner {
+      padding: 20px;
+    }
+
+    .agent-meta {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding-bottom: 18px;
+      margin-bottom: 18px;
+      border-bottom: 1px solid var(--ox-border);
+    }
+
+    .agent-title {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .agent-title-copy {
+      min-width: 0;
+    }
+
+    .agent-name {
+      font-size: 1.1rem;
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--ox-text);
+      overflow-wrap: anywhere;
+    }
+
+    .agent-role {
+      margin-top: 4px;
+      font-family: var(--ox-mono);
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ox-text-muted);
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+
+    .agent-task-block {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .task-lead {
+      font-size: 0.93rem;
+      line-height: 1.45;
+      color: var(--ox-text);
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+
+    .task-subcopy {
+      font-size: 0.82rem;
+      line-height: 1.5;
+      color: var(--ox-text-muted);
+      overflow-wrap: anywhere;
+    }
+
+    .task-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .task-chip {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--ox-border);
+      background: var(--ox-well-bg);
+      box-shadow: var(--ox-well-shadow);
+      font-size: 0.74rem;
+      line-height: 1.3;
+      color: var(--ox-text);
+      max-width: 100%;
+      overflow-wrap: anywhere;
+    }
+
+    .progress-row {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .progress-copy {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-family: var(--ox-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ox-text-muted);
+      font-weight: 600;
+    }
+
+    .progress-track {
+      height: 8px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, rgba(var(--ox-primary-rgb), 0.72), rgba(var(--ox-primary-rgb), 1));
+      box-shadow: 0 0 18px rgba(var(--ox-primary-rgb), 0.24);
+    }
+
+    .blockers {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(225, 29, 72, 0.2);
+      background: rgba(225, 29, 72, 0.06);
+    }
+
+    .blockers ul {
+      margin: 0;
+      padding-left: 16px;
+      color: var(--ox-text);
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
+    .blockers li + li {
+      margin-top: 4px;
+    }
+
+    @media (max-width: 560px) {
+      body {
+        padding: 16px 12px;
+      }
+
+      .agent-board {
+        grid-template-columns: 1fr;
+      }
+
+      .agent-title {
+        flex-direction: column;
+      }
+
+      .widget-footer {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .deep-link {
+        width: 100%;
+      }
+    }
 
     .skeleton-line {
       background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%);
@@ -241,6 +622,7 @@
       var _mcpNextId = 100;
       function initWidget(opts){var render=opts.render,getData=opts.getData||_extractData;var protocol=_detectProtocol();if(protocol==='chatgpt'){var d=getData(window.openai&&window.openai.toolOutput);render(d);window.addEventListener('openai:set_globals',function(e){var g=e.detail&&e.detail.globals;if(g&&g.toolOutput){render(getData(g.toolOutput));}},{passive:true});}else if(protocol==='mcp-apps'){render(null);var initId=1;window.parent.postMessage({jsonrpc:'2.0',id:initId,method:'ui/initialize',params:{appInfo:{name:'Widget',version:'1.0'},appCapabilities:{tools:{listChanged:false}},protocolVersion:'2026-01-26'}},'*');window.parent.postMessage({jsonrpc:'2.0',method:'notifications/initialized'},'*');window.addEventListener('message',function(event){var msg=event.data;if(!msg||typeof msg!=='object')return;if(msg.id===initId&&msg.result){window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized'},'*');_observeSize();return;}if(msg.id!=null&&_mcpPending[msg.id]){var p=_mcpPending[msg.id];delete _mcpPending[msg.id];if(msg.error)p.reject(new Error(msg.error.message||'Tool call failed'));else p.resolve(msg.result);return;}if((msg.method==='ui/notifications/tool-result'||msg.method==='notifications/message')&&msg.params){var data=getData(msg.params);if(data)render(data);}});}else{render(null);}}
       function callTool(name, args){var protocol=_detectProtocol();if(protocol==='chatgpt')return window.openai&&window.openai.callTool?window.openai.callTool(name,args):Promise.resolve(null);if(protocol==='mcp-apps'){return new Promise(function(resolve,reject){var id=_mcpNextId++;_mcpPending[id]={resolve:resolve,reject:reject};window.parent.postMessage({jsonrpc:'2.0',id:id,method:'tools/call',params:{name:name,arguments:args}},'*');setTimeout(function(){if(_mcpPending[id]){delete _mcpPending[id];reject(new Error('Tool call '+name+' timed out'));}},30000);});}return Promise.resolve(null);}
+      function openWidgetLink(url,event){if(!url)return false;var protocol=_detectProtocol();if(protocol==='mcp-apps'){if(event&&typeof event.preventDefault==='function')event.preventDefault();window.parent.postMessage({jsonrpc:'2.0',id:_mcpNextId++,method:'ui/open-link',params:{url:url}},'*');return false;}return true;}
       var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true">'+c+'</svg>';};
       var icons = {
         agent: function(s){return _svg('<rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><line x1="8" y1="16" x2="8" y2="16"></line><line x1="16" y1="16" x2="16" y2="16"></line>',s);},
@@ -272,30 +654,282 @@
 
 
     
-      var getAvatarUrl = (name) => {
-        const n = (name || '').toLowerCase();
-        if (n.includes('pace') || n.includes('product')) return 'https://useorgx.com/product_orchestrator.png';
-        if (n.includes('eli') || n.includes('engineer')) return 'https://useorgx.com/engineering_autopilot.png';
-        if (n.includes('mark') || n.includes('market')) return 'https://useorgx.com/launch_captain.png';
-        if (n.includes('sage') || n.includes('sale')) return 'https://useorgx.com/pipeline_intelligence.png';
-        if (n.includes('orion') || n.includes('op')) return 'https://useorgx.com/control_tower.png';
-        if (n.includes('dana') || n.includes('design')) return 'https://useorgx.com/design_codex.png';
-        if (n.includes('xandy') || n.includes('orchestrator')) return 'https://useorgx.com/xandy_orchestrator.png';
+      function resolveWidgetAsset(path){
+        try {
+          return new URL('shared/' + path, window.location.href).toString();
+        } catch (error) {
+          return 'https://mcp.useorgx.com/widgets/shared/' + path;
+        }
+      }
+      var ORGX_BASE_URL = 'https://useorgx.com';
+      var buildAgentUrl = function(agentId) {
+        return agentId
+          ? ORGX_BASE_URL + '/settings/agents?agent=' + encodeURIComponent(agentId)
+          : ORGX_BASE_URL + '/settings/agents';
+      };
+      var AGENT_DIRECTORY = {
+        pace: { name: 'Pace', role: 'Product', avatar: resolveWidgetAsset('product_orchestrator.png') },
+        product: { name: 'Pace', role: 'Product', avatar: resolveWidgetAsset('product_orchestrator.png') },
+        eli: { name: 'Eli', role: 'Engineering', avatar: resolveWidgetAsset('engineering_autopilot.png') },
+        engineering: { name: 'Eli', role: 'Engineering', avatar: resolveWidgetAsset('engineering_autopilot.png') },
+        mark: { name: 'Mark', role: 'Marketing', avatar: resolveWidgetAsset('launch_captain.png') },
+        marketing: { name: 'Mark', role: 'Marketing', avatar: resolveWidgetAsset('launch_captain.png') },
+        sage: { name: 'Sage', role: 'Sales', avatar: resolveWidgetAsset('pipeline_intelligence.png') },
+        sales: { name: 'Sage', role: 'Sales', avatar: resolveWidgetAsset('pipeline_intelligence.png') },
+        orion: { name: 'Orion', role: 'Operations', avatar: resolveWidgetAsset('control_tower.png') },
+        operations: { name: 'Orion', role: 'Operations', avatar: resolveWidgetAsset('control_tower.png') },
+        dana: { name: 'Dana', role: 'Design', avatar: resolveWidgetAsset('design_codex.png') },
+        design: { name: 'Dana', role: 'Design', avatar: resolveWidgetAsset('design_codex.png') },
+        xandy: { name: 'Xandy', role: 'Orchestrator', avatar: resolveWidgetAsset('xandy_orchestrator.png') },
+        orchestrator: { name: 'Xandy', role: 'Orchestrator', avatar: resolveWidgetAsset('xandy_orchestrator.png') }
+      };
+
+      var firstString = function(values) {
+        for (var i = 0; i < values.length; i += 1) {
+          var value = values[i];
+          if (typeof value === 'string' && value.trim()) return value.trim();
+        }
+        return '';
+      };
+
+      var humanize = function(value) {
+        var safe = firstString([value]);
+        if (!safe) return '';
+        return safe
+          .replace(/[_-]+/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .replace(/\b\w/g, function(match) { return match.toUpperCase(); });
+      };
+
+      var firstArray = function(values) {
+        for (var i = 0; i < values.length; i += 1) {
+          if (Array.isArray(values[i])) return values[i];
+        }
+        return [];
+      };
+
+      var firstNumber = function(values) {
+        for (var i = 0; i < values.length; i += 1) {
+          var value = values[i];
+          if (typeof value === 'number' && isFinite(value)) return value;
+        }
         return null;
       };
-      var renderAvatar = (name, sizePx) => {
-        const url = getAvatarUrl(name);
-        if (url) return `<img src="${url}" alt="${escapeHtml(name)}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" />`;
-        return escapeHtml(name ? name[0].toUpperCase() : '?');
+
+      var normalizeAgentRecord = function(input) {
+        if (!input || typeof input !== 'object') return null;
+        var nestedAgent = input.agent && typeof input.agent === 'object' ? input.agent : {};
+        var source = Object.assign({}, nestedAgent, input);
+        return {
+          agent_id: firstString([
+            source.agent_id,
+            source.agentId,
+            source.id
+          ]) || null,
+          agent_name: firstString([
+            source.agent_name,
+            source.agentName,
+            source.name,
+            source.title,
+            source.label,
+            source.agent_id,
+            source.agentId
+          ]),
+          role: firstString([
+            source.role,
+            source.persona
+          ]),
+          agent_type: firstString([
+            source.agent_type,
+            source.agentType,
+            source.type
+          ]),
+          domain: firstString([
+            source.domain,
+            source.agent_domain,
+            source.agentDomain,
+            source.specialization
+          ]),
+          status: firstString([
+            source.status,
+            source.state
+          ]) || 'idle',
+          current_task: firstString([
+            source.current_task,
+            source.currentTask,
+            source.active_task,
+            source.activeTask,
+            source.task_summary,
+            source.taskSummary,
+            source.task,
+            source.message
+          ]) || null,
+          current_tasks: firstArray([
+            source.current_tasks,
+            source.currentTasks
+          ]),
+          active_tasks: firstArray([
+            source.active_tasks,
+            source.activeTasks
+          ]),
+          tasks: firstArray([
+            source.tasks,
+            source.items
+          ]),
+          blockers: firstArray([
+            source.blockers,
+            source.blocking_reasons,
+            source.blockingReasons
+          ]),
+          progress: firstNumber([
+            source.progress,
+            source.progress_pct,
+            source.progressPct
+          ]),
+          started_at: firstString([
+            source.started_at,
+            source.startedAt
+          ]) || null,
+          execution_target: firstString([
+            source.execution_target,
+            source.executionTarget
+          ]) || null,
+          run_id: firstString([
+            source.run_id,
+            source.runId
+          ]) || null
+        };
       };
 
+      var resolveAgentProfile = function(agent) {
+        var directName = firstString([
+          agent.agent_name,
+          agent.name,
+          agent.title
+        ]);
+        var directRole = firstString([
+          agent.role,
+          agent.persona,
+          agent.domain,
+          agent.agent_domain
+        ]);
+        var agentType = firstString([
+          agent.agent_type,
+          agent.type,
+          agent.domain,
+          agent.agent_domain
+        ]).toLowerCase();
+        var nameKey = directName.toLowerCase();
+        var roleKey = directRole.toLowerCase();
+        var profile =
+          AGENT_DIRECTORY[nameKey] ||
+          AGENT_DIRECTORY[agentType] ||
+          AGENT_DIRECTORY[roleKey] ||
+          null;
+        return {
+          name: directName || (profile && profile.name) || 'OrgX Agent',
+          role: directRole || (profile && profile.role) || humanize(agentType) || 'OrgX agent',
+          avatar: (profile && profile.avatar) || null
+        };
+      };
+
+      var getAvatarUrl = function(agent) {
+        var profile = resolveAgentProfile(agent || {});
+        return profile.avatar;
+      };
+
+      var renderAvatar = function(agent) {
+        var profile = resolveAgentProfile(agent || {});
+        var fallback = escapeHtml(profile.name ? profile.name[0].toUpperCase() : '?');
+        if (profile.avatar) {
+          return '<span class="avatar-fallback" style="display:none;">' + fallback + '</span><img src="' + profile.avatar + '" alt="' + escapeHtml(profile.name) + '" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.style.display=\'none\'; if (this.previousElementSibling) this.previousElementSibling.style.display=\'flex\';" />';
+        }
+        return '<span class="avatar-fallback">' + fallback + '</span>';
+      };
+
+    var extractTasks = function(agent) {
+      var raw = [];
+      var candidateArrays = [agent.current_tasks, agent.active_tasks, agent.tasks];
+      candidateArrays.forEach(function(candidate) {
+        if (!Array.isArray(candidate)) return;
+        candidate.forEach(function(item) {
+          if (typeof item === 'string' && item.trim()) raw.push(item.trim());
+          else if (item && typeof item === 'object') {
+            var text = firstString([item.title, item.summary, item.name, item.description]);
+            if (text) raw.push(text);
+          }
+        });
+      });
+      var primary = firstString([
+        agent.current_task,
+        agent.active_task,
+        agent.task_summary,
+        agent.task,
+        agent.message
+      ]);
+      if (primary) raw.unshift(primary);
+      return raw.filter(function(task, idx) { return task && raw.indexOf(task) === idx; });
+    };
+
     var formatTime = d => { const dt = new Date(d); return `[${dt.getHours().toString().padStart(2,'0')}:${dt.getMinutes().toString().padStart(2,'0')}:${dt.getSeconds().toString().padStart(2,'0')}]`; };
+    var titleCase = value => String(value || '').replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    var inferRole = agent => {
+      const source = [agent.role, agent.agent_name, agent.agent_id].filter(Boolean).join(' ').toLowerCase();
+      if (source.includes('product')) return 'Product';
+      if (source.includes('engineer')) return 'Engineering';
+      if (source.includes('market')) return 'Marketing';
+      if (source.includes('sale')) return 'Sales';
+      if (source.includes('design')) return 'Design';
+      if (source.includes('oper')) return 'Operations';
+      if (source.includes('orchestr')) return 'Orchestrator';
+      if (source.includes('chatgpt')) return 'App';
+      return 'Agent';
+    };
+    var isVisibleAgent = agent => {
+      const source = [agent.agent_id, agent.agent_name].filter(Boolean).join(' ').toLowerCase();
+      return !source.includes('chatgpt-app') && !source.includes('orgx chatgpt app');
+    };
+    var normalizeAgentPayload = payload => {
+      if (!payload) return null;
+      if (Array.isArray(payload.agents)) {
+        var agents = payload.agents
+          .map(normalizeAgentRecord)
+          .filter(Boolean)
+          .filter(isVisibleAgent);
+        var summary = payload.summary || {};
+        var running = agents.filter(agent => agent.status === 'running').length;
+        var queued = agents.filter(agent => agent.status === 'queued').length;
+        var blocked = agents.filter(agent => agent.status === 'blocked').length;
+        var idle = agents.filter(agent => agent.status === 'idle').length;
+        return {
+          mode: 'fleet',
+          agents: agents,
+          summary: {
+            total: agents.length,
+            running: running,
+            queued: queued,
+            blocked: blocked,
+            idle: idle
+          },
+          message: payload.message || (running === 0 ? 'No agents currently running.' : 'Live orchestration state across specialist agents.'),
+          next_steps: Array.isArray(payload.next_steps) ? payload.next_steps : []
+        };
+      }
+      if (payload.agent_name || payload.agent_id || payload.agent || payload.agentType || payload.agent_type) {
+        var singleAgent = normalizeAgentRecord(payload);
+        return {
+          mode: 'single',
+          agents: [singleAgent],
+          activity: Array.isArray(payload.activity) ? payload.activity : []
+        };
+      }
+      return null;
+    };
 
-    var render = () => {
-      if(isLoading) return;
-      if(!data) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.agent(24)}</div><div class="empty-title">Agent on standby</div><div class="empty-desc">This agent is currently idle with no active tasks.</div></div>`); return; }
-
-      const timelineHtml = (data.activity || []).map(a => `
+    var renderLegacyAgent = function(agent) {
+      const profile = resolveAgentProfile(agent || {});
+      const timelineHtml = (agent.activity || []).map(a => `
         <div class="t-item">
           <div class="t-dot"></div>
           <div class="t-time">${formatTime(a.timestamp)}</div>
@@ -303,33 +937,156 @@
         </div>
       `).join('');
 
-      injectHtml(`
+      return `
         <div class="ox-card animate-in">
           <div class="ox-card-inner">
             <div class="agent-header">
-              <div class="avatar-ring">${renderAvatar(data.agent_name, 56)}</div>
+              <div class="avatar-ring">${renderAvatar(agent)}</div>
               <div style="flex:1;">
-                <div class="ox-eyebrow" style="margin-bottom:4px;">${escapeHtml(data.role)}</div>
-                <h2 class="ox-title" style="font-size:1.3rem; margin-bottom:8px;">${escapeHtml(data.agent_name)}</h2>
+                <div class="ox-eyebrow" style="margin-bottom:4px;">${escapeHtml(profile.role)}</div>
+                <h2 class="ox-title" style="font-size:1.3rem; margin-bottom:8px;">${escapeHtml(profile.name)}</h2>
                 <div class="status-pill">
-                  <div class="status-dot"></div> ${escapeHtml(data.status)}
+                  <div class="status-dot"></div> ${escapeHtml(humanize(agent.status) || 'Idle')}
                 </div>
               </div>
             </div>
-            
-            <div class="timeline">
-              ${timelineHtml}
-            </div>
-          
+            <div class="timeline">${timelineHtml}</div>
             <div class="widget-footer">
               <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
-              <a href="${data.agent_id ? `https://console.useorgx.com/agents/${escapeHtml(data.agent_id)}` : 'https://console.useorgx.com/agents'}" target="_blank" class="deep-link">
-                View Telemetry
+              <a href="${buildAgentUrl(agent.agent_id)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(buildAgentUrl(agent.agent_id))}, event)' class="deep-link">
+                Open Agent View
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
               </a>
             </div>
-</div>
+          </div>
         </div>
+      `;
+    };
+
+    var render = () => {
+      if(isLoading) return;
+      var payload = normalizeAgentPayload(data);
+      if(!payload) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.agent(24)}</div><div class="empty-title">Agent on standby</div><div class="empty-desc">No agent telemetry is available yet.</div></div>`); return; }
+
+      if (payload.mode === 'single') {
+        injectHtml(renderLegacyAgent(Object.assign({}, payload.agents[0], { activity: payload.activity || [] })));
+        return;
+      }
+
+      if (payload.agents.length === 0) {
+        injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.agent(24)}</div><div class="empty-title">No agents in motion</div><div class="empty-desc">Launch work or include idle agents to see the multi-agent board.</div></div>`);
+        return;
+      }
+
+      var summary = payload.summary || {};
+      var counts = ['running', 'blocked', 'queued', 'idle'].map(function(statusKey) {
+        var count = typeof summary[statusKey] === 'number'
+          ? summary[statusKey]
+          : payload.agents.filter(function(agent) {
+              return firstString([agent.status]).toLowerCase() === statusKey;
+            }).length;
+        return { key: statusKey, label: humanize(statusKey), count: count };
+      }).filter(function(item) { return item.count > 0; });
+
+      var summaryHtml = counts.map(function(item) {
+        return `
+          <div class="summary-card">
+            <span class="ox-eyebrow">${escapeHtml(item.label)}</span>
+            <strong>${item.count}</strong>
+          </div>
+        `;
+      }).join('');
+
+      var cardsHtml = payload.agents.map(function(agent, index) {
+        var profile = resolveAgentProfile(agent || {});
+        var tasks = extractTasks(agent || {});
+        var isIdle = firstString([agent.status]).toLowerCase() === 'idle';
+        var primaryTask = tasks[0] || (isIdle ? 'Awaiting next assignment' : 'No active task');
+        var extraTasks = tasks.slice(1, 4);
+        var hiddenTaskCount = Math.max(0, tasks.length - 1 - extraTasks.length);
+        var statusLabel = humanize(agent.status) || (tasks.length > 0 ? 'Active' : 'Idle');
+        var progress = typeof agent.progress === 'number' && isFinite(agent.progress)
+          ? Math.max(0, Math.min(100, agent.progress))
+          : null;
+        var blockers = Array.isArray(agent.blockers)
+          ? agent.blockers.filter(function(item) { return typeof item === 'string' && item.trim(); })
+          : [];
+        var href = buildAgentUrl(agent.agent_id);
+
+        return `
+          <div class="agent-item animate-in" style="animation-delay:${(index % 6) * 0.06}s">
+            <div class="agent-item-inner">
+              <div class="agent-meta">
+                <div class="avatar-ring">${renderAvatar(agent)}</div>
+                <div class="agent-title">
+                  <div class="agent-title-copy">
+                    <div class="agent-name">${escapeHtml(profile.name)}</div>
+                    <div class="agent-role">${escapeHtml(profile.role)}</div>
+                  </div>
+                  <div class="status-pill">
+                    <div class="status-dot"></div>
+                    ${escapeHtml(statusLabel)}
+                  </div>
+                </div>
+              </div>
+
+              <div class="agent-task-block">
+                <div>
+                  <div class="ox-eyebrow" style="margin-bottom:6px;">Current focus</div>
+                  <div class="task-lead">${escapeHtml(primaryTask)}</div>
+                  <div class="task-subcopy">${
+                    tasks.length > 1
+                      ? `${tasks.length} tasks in view`
+                      : tasks.length === 1
+                      ? 'Single-task focus'
+                      : isIdle
+                      ? 'Standing by for routed work'
+                      : 'No routed tasks yet'
+                  }</div>
+                </div>
+
+                ${extraTasks.length > 0 ? `
+                  <div class="task-list">
+                    ${extraTasks.map(function(task) { return `<span class="task-chip">${escapeHtml(task)}</span>`; }).join('')}
+                    ${hiddenTaskCount > 0 ? `<span class="task-chip">+${hiddenTaskCount} more</span>` : ''}
+                  </div>
+                ` : ''}
+
+                ${progress !== null ? `
+                  <div class="progress-row">
+                    <div class="progress-copy">
+                      <span>Progress</span>
+                      <span>${progress}%</span>
+                    </div>
+                    <div class="progress-track"><div class="progress-fill" style="width:${progress}%"></div></div>
+                  </div>
+                ` : ''}
+
+                ${blockers.length > 0 ? `
+                  <div class="blockers">
+                    <div class="ox-eyebrow" style="color:var(--ox-danger);">Blocked on</div>
+                    <ul>
+                      ${blockers.map(function(item) { return `<li>${escapeHtml(item)}</li>`; }).join('')}
+                    </ul>
+                  </div>
+                ` : ''}
+              </div>
+
+              <div class="widget-footer">
+                <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
+                <a href="${href}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(href || ''))}, event)' class="deep-link">
+                  Open telemetry
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </a>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      injectHtml(`
+        <div class="summary-grid animate-in">${summaryHtml}</div>
+        <div class="agent-board">${cardsHtml}</div>
       `);
     };
 
