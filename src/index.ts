@@ -89,6 +89,11 @@ import {
 import { normalizeAgentDispatchPayload } from './agentDispatchPayload';
 import { normalizeAgentStatusPayload } from './agentStatusPayload';
 import {
+  enrichAgentStatusWithArtifacts,
+  enrichInitiativePulseWithArtifacts,
+  enrichMorningBriefWithArtifacts,
+} from './widgetArtifactProof';
+import {
   buildWelcomeBackNextActions,
   createEmptyMcpSessionReentryState,
   formatWelcomeBackDigest,
@@ -1231,6 +1236,159 @@ export class OrgXMcp extends McpAgent<
     return payload.data?.[0] ?? null;
   }
 
+  private async fetchEntityCollection(params: {
+    type: string;
+    userId: string | null;
+    limit?: number;
+    initiativeId?: string | null;
+    workspaceId?: string | null;
+  }): Promise<Array<Record<string, unknown>>> {
+    const search = new URLSearchParams();
+    search.set('type', params.type);
+    if (params.limit) search.set('limit', String(params.limit));
+    if (params.initiativeId) search.set('initiative_id', params.initiativeId);
+    if (params.workspaceId) search.set('workspace_id', params.workspaceId);
+
+    const response = await callOrgxApiJson(
+      this.env,
+      `/api/entities?${search.toString()}`,
+      undefined,
+      params.userId ? { userId: params.userId } : undefined
+    );
+    const payload = (await response.json()) as {
+      data?: Array<Record<string, unknown>>;
+    };
+    return Array.isArray(payload.data) ? payload.data : [];
+  }
+
+  private async maybeEnrichWithArtifactProof(params: {
+    toolId: string;
+    args: Record<string, unknown>;
+    data: Record<string, unknown>;
+    userId: string | null;
+  }): Promise<Record<string, unknown>> {
+    if (
+      params.toolId !== 'get_initiative_pulse' &&
+      params.toolId !== 'get_agent_status' &&
+      params.toolId !== 'get_morning_brief'
+    ) {
+      return params.data;
+    }
+
+    try {
+      const initiativeIds = new Set<string>();
+      const workspaceId =
+        (typeof params.args.workspace_id === 'string' &&
+          params.args.workspace_id.trim().length > 0 &&
+          params.args.workspace_id.trim()) ||
+        this.sessionContext?.workspaceId ||
+        null;
+
+      const directInitiativeId =
+        (typeof params.data.initiative_id === 'string' &&
+          params.data.initiative_id.trim().length > 0 &&
+          params.data.initiative_id.trim()) ||
+        (typeof params.data.id === 'string' &&
+          params.toolId === 'get_initiative_pulse' &&
+          params.data.id.trim().length > 0 &&
+          params.data.id.trim()) ||
+        (typeof params.args.initiative_id === 'string' &&
+          params.args.initiative_id.trim().length > 0 &&
+          params.args.initiative_id.trim()) ||
+        this.sessionContext?.initiativeId ||
+        null;
+      if (directInitiativeId) initiativeIds.add(directInitiativeId);
+
+      if (Array.isArray(params.data.agents)) {
+        for (const rawAgent of params.data.agents) {
+          if (!rawAgent || typeof rawAgent !== 'object') continue;
+          const record = rawAgent as Record<string, unknown>;
+          const candidateIds = [
+            record.initiative_id,
+            record.initiativeId,
+            record.workspace_initiative_id,
+          ];
+          for (const candidate of candidateIds) {
+            if (typeof candidate === 'string' && candidate.trim().length > 0) {
+              initiativeIds.add(candidate.trim());
+            }
+          }
+          const taskArrays = [
+            record.current_tasks,
+            record.currentTasks,
+            record.active_tasks,
+            record.activeTasks,
+            record.tasks,
+            record.items,
+          ];
+          for (const candidateArray of taskArrays) {
+            if (!Array.isArray(candidateArray)) continue;
+            for (const item of candidateArray) {
+              if (!item || typeof item !== 'object') continue;
+              const task = item as Record<string, unknown>;
+              const taskInitiativeId =
+                (typeof task.initiative_id === 'string' && task.initiative_id.trim()) ||
+                (typeof task.initiativeId === 'string' && task.initiativeId.trim()) ||
+                null;
+              if (taskInitiativeId) initiativeIds.add(taskInitiativeId);
+            }
+          }
+        }
+      }
+
+      const artifactMap = new Map<string, Record<string, unknown>>();
+      if (initiativeIds.size > 0) {
+        for (const initiativeId of initiativeIds) {
+          const records = await this.fetchEntityCollection({
+            type: 'artifact',
+            userId: params.userId,
+            initiativeId,
+            limit: params.toolId === 'get_agent_status' ? 24 : 8,
+          });
+          for (const record of records) {
+            const key =
+              (typeof record.id === 'string' && record.id.trim()) ||
+              `${record.title ?? record.name ?? 'artifact'}:${record.status ?? 'draft'}`;
+            artifactMap.set(String(key), record);
+          }
+        }
+      } else if (workspaceId && params.toolId === 'get_morning_brief') {
+        const records = await this.fetchEntityCollection({
+          type: 'artifact',
+          userId: params.userId,
+          workspaceId,
+          limit: 8,
+        });
+        for (const record of records) {
+          const key =
+            (typeof record.id === 'string' && record.id.trim()) ||
+            `${record.title ?? record.name ?? 'artifact'}:${record.status ?? 'draft'}`;
+          artifactMap.set(String(key), record);
+        }
+      }
+
+      const artifacts = Array.from(artifactMap.values());
+      if (artifacts.length === 0) return params.data;
+
+      if (params.toolId === 'get_initiative_pulse') {
+        return enrichInitiativePulseWithArtifacts(params.data, artifacts);
+      }
+      if (params.toolId === 'get_agent_status') {
+        return enrichAgentStatusWithArtifacts(params.data, artifacts);
+      }
+      if (params.toolId === 'get_morning_brief') {
+        return enrichMorningBriefWithArtifacts(params.data, artifacts);
+      }
+      return params.data;
+    } catch (error) {
+      console.warn('[mcp:artifact-proof] enrichment skipped', {
+        toolId: params.toolId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return params.data;
+    }
+  }
+
   private async maybeNormalizeAgentDispatchData(params: {
     toolId: string;
     args: Record<string, unknown>;
@@ -1620,6 +1778,12 @@ export class OrgXMcp extends McpAgent<
         data = enrichment.data;
         message = enrichment.message;
         data = await this.maybeNormalizeAgentDispatchData({
+          toolId,
+          args: effectiveArgs,
+          data,
+          userId: resolvedUserId ?? null,
+        });
+        data = await this.maybeEnrichWithArtifactProof({
           toolId,
           args: effectiveArgs,
           data,
