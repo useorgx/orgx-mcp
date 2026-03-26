@@ -135,12 +135,16 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
 
+      - name: Sync production triggers
+        run: pnpm wrangler triggers deploy --env production
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+
       - name: Verify deployment
         run: |
           sleep 5
-          curl -sf https://mcp.useorgx.com/healthz || (echo "Health check failed" && exit 1)
-          echo "Health check passed"
-          curl -sf https://mcp.useorgx.com/.well-known/oauth-authorization-server | jq -e '.token_endpoint' || echo "OAuth metadata check skipped"
+          ./scripts/smoke-endpoints.sh https://mcp.useorgx.com https://useorgx.com
 
   # ──────────────────────────────────────────────────────────────────────────
   # Preview deploy (PRs only)
@@ -191,6 +195,12 @@ jobs:
 
       - name: Deploy to Cloudflare (preview)
         run: pnpm wrangler deploy --env preview
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+
+      - name: Sync preview triggers
+        run: pnpm wrangler triggers deploy --env preview
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}

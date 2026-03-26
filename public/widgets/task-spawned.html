@@ -339,6 +339,50 @@
         if (url) return `<img src="${url}" alt="${escapeHtml(name)}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" />`;
         return escapeHtml(name ? name[0].toUpperCase() : '?');
     };
+    var inferDomain = payload => {
+      const source = [payload.domain, payload.agent_name, payload.agent_id].filter(Boolean).join(' ').toLowerCase();
+      if (source.includes('product') || source.includes('pace')) return 'Product';
+      if (source.includes('engineer') || source.includes('eli')) return 'Engineering';
+      if (source.includes('market') || source.includes('mark')) return 'Marketing';
+      if (source.includes('sale') || source.includes('sage')) return 'Sales';
+      if (source.includes('design') || source.includes('dana')) return 'Design';
+      if (source.includes('oper') || source.includes('orion')) return 'Operations';
+      if (source.includes('orchestr') || source.includes('xandy')) return 'Orchestrator';
+      return 'OrgX';
+    };
+    var normalizeEntityPayload = payload => {
+      if (!payload) return null;
+      if (payload.title && payload.agent_name && payload.workspace_name) {
+        return payload;
+      }
+      if (payload.entity && typeof payload.entity === 'object') {
+        return {
+          id: payload.entity.id || payload.id || payload.task_id || payload.run_id || null,
+          type: payload.entity.type || payload.type || 'task',
+          title: payload.entity.title || payload.title || payload.task_summary || payload.task_title || 'Dispatched execution',
+          agent_name: payload.agent_name || payload.entity.agent_name || 'Assigned agent',
+          domain: payload.domain || inferDomain(payload),
+          workspace_name: payload.workspace_name || payload.initiative_name || 'OrgX workspace',
+          status: payload.status || payload.entity.status || 'queued',
+          links: Array.isArray(payload.links) ? payload.links : [],
+          console_url: payload.live_url || payload.url || null
+        };
+      }
+      return {
+        id: payload.run_id || payload.task_id || null,
+        type: payload.spawned_run_id ? 'handoff' : 'task',
+        title: payload.task_summary || payload.task_title || payload.task || payload.message || 'Dispatched execution',
+        agent_name: payload.agent_name || 'Assigned agent',
+        domain: inferDomain(payload),
+        workspace_name: payload.initiative_name || 'OrgX workspace',
+        status: payload.status || 'queued',
+        links: [
+          payload.task_id ? { platform: 'Task', url: `https://console.useorgx.com/tasks/${encodeURIComponent(payload.task_id)}`, label: payload.task_short_id || payload.task_id.slice(0, 8) } : null,
+          payload.run_id ? { platform: 'Run', url: payload.live_url || `https://console.useorgx.com/runs/${encodeURIComponent(payload.run_id)}`, label: payload.run_short_id || payload.run_id.slice(0, 8) } : null
+        ].filter(Boolean),
+        console_url: payload.live_url || (payload.run_id ? `https://console.useorgx.com/runs/${encodeURIComponent(payload.run_id)}` : payload.task_id ? `https://console.useorgx.com/tasks/${encodeURIComponent(payload.task_id)}` : null)
+      };
+    };
 
     var render = () => {
       if (isLoading) {
@@ -354,6 +398,7 @@
           </div></div></div>`);
         return;
       }
+      entity = normalizeEntityPayload(entity);
       if (!entity) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.check(24)}</div><div class="empty-title">Entity unverified</div><div class="empty-desc">The dispatched entity payload is empty.</div></div>`); return; }
 
       const linksHtml = (entity.links || []).map(l => `
@@ -372,7 +417,7 @@
       if (typeRaw === 'milestone') typeIcon = icons.milestone(16);
 
       const typeDisplay = escapeHtml(entity.type || 'Entity').toUpperCase();
-      const consoleUrl = entity.id ? `https://console.useorgx.com/entities/${escapeHtml(entity.id)}` : 'https://console.useorgx.com';
+      const consoleUrl = entity.console_url || (entity.id ? `https://console.useorgx.com/entities/${encodeURIComponent(entity.id)}` : 'https://console.useorgx.com');
 
       injectHtml(`
         <div class="ox-card animate-in">
@@ -407,11 +452,11 @@
             <div class="meta-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px;">
               <div>
                 <div class="ox-eyebrow" style="margin-bottom:6px;">Domain</div>
-                <div style="font-size:0.95rem; font-weight:500; color:var(--ox-text);">${escapeHtml(entity.domain)}</div>
+                <div style="font-size:0.95rem; font-weight:500; color:var(--ox-text);">${escapeHtml(entity.domain || 'OrgX')}</div>
               </div>
               <div>
                 <div class="ox-eyebrow" style="margin-bottom:6px;">Workspace</div>
-                <div style="font-size:0.95rem; font-weight:500; color:var(--ox-text);">${escapeHtml(entity.workspace_name)}</div>
+                <div style="font-size:0.95rem; font-weight:500; color:var(--ox-text);">${escapeHtml(entity.workspace_name || 'OrgX workspace')}</div>
               </div>
             </div>
 

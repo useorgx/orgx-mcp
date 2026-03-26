@@ -150,6 +150,117 @@
     .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; animation: pulse 2s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .summary-card {
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid var(--ox-border);
+      background: var(--ox-well-bg);
+      box-shadow: var(--ox-well-shadow);
+    }
+
+    .summary-value {
+      font-family: var(--ox-mono);
+      font-size: 1.3rem;
+      line-height: 1;
+      font-weight: 600;
+      color: var(--ox-text);
+      margin-top: 8px;
+    }
+
+    .agent-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .agent-row-card {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--ox-border);
+      background: var(--ox-well-bg);
+      box-shadow: var(--ox-well-shadow);
+    }
+
+    .agent-row-main {
+      min-width: 0;
+    }
+
+    .agent-name {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--ox-text);
+      line-height: 1.3;
+    }
+
+    .agent-role-line {
+      margin-top: 2px;
+      font-family: var(--ox-mono);
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ox-text-muted);
+      font-weight: 600;
+    }
+
+    .agent-task {
+      margin-top: 8px;
+      font-size: 0.86rem;
+      color: var(--ox-text-muted);
+      line-height: 1.45;
+    }
+
+    .agent-task strong {
+      color: var(--ox-text);
+    }
+
+    .agent-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .agent-progress {
+      font-family: var(--ox-mono);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ox-text-muted);
+      font-weight: 600;
+    }
+
+    .status-running { color: var(--ox-lime); background: rgba(212, 237, 49, 0.12); border-color: rgba(212, 237, 49, 0.22); }
+    .status-queued { color: var(--ox-iris); background: rgba(99, 102, 241, 0.12); border-color: rgba(99, 102, 241, 0.22); }
+    .status-blocked { color: var(--ox-danger); background: rgba(244, 63, 94, 0.12); border-color: rgba(244, 63, 94, 0.22); }
+    .status-idle { color: var(--ox-text-muted); background: rgba(148, 163, 184, 0.12); border-color: rgba(148, 163, 184, 0.22); }
+
+    @media (max-width: 560px) {
+      .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .agent-row-card {
+        grid-template-columns: auto minmax(0, 1fr);
+      }
+
+      .agent-meta {
+        grid-column: 1 / -1;
+        align-items: flex-start;
+        padding-left: 72px;
+      }
+    }
+
     
     
     .timeline { position: relative; margin-left: 8px; padding-left: 24px; }
@@ -290,45 +401,172 @@
       };
 
     var formatTime = d => { const dt = new Date(d); return `[${dt.getHours().toString().padStart(2,'0')}:${dt.getMinutes().toString().padStart(2,'0')}:${dt.getSeconds().toString().padStart(2,'0')}]`; };
+    var titleCase = value => String(value || '').replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    var inferRole = agent => {
+      const source = [agent.role, agent.agent_name, agent.agent_id].filter(Boolean).join(' ').toLowerCase();
+      if (source.includes('product')) return 'Product';
+      if (source.includes('engineer')) return 'Engineering';
+      if (source.includes('market')) return 'Marketing';
+      if (source.includes('sale')) return 'Sales';
+      if (source.includes('design')) return 'Design';
+      if (source.includes('oper')) return 'Operations';
+      if (source.includes('orchestr')) return 'Orchestrator';
+      if (source.includes('chatgpt')) return 'App';
+      return 'Agent';
+    };
+    var normalizeAgentPayload = payload => {
+      if (!payload) return null;
+      if (Array.isArray(payload.agents)) {
+        var agents = payload.agents.map(agent => ({
+          agent_id: agent.agent_id || null,
+          agent_name: agent.agent_name || agent.agent_id || 'Unknown agent',
+          role: inferRole(agent),
+          status: agent.status || 'idle',
+          current_task: agent.current_task || null,
+          blockers: Array.isArray(agent.blockers) ? agent.blockers : [],
+          progress: typeof agent.progress === 'number' ? agent.progress : null,
+          started_at: agent.started_at || null,
+          execution_target: agent.execution_target || null,
+          run_id: agent.run_id || null
+        }));
+        var summary = payload.summary || {};
+        return {
+          mode: 'fleet',
+          agents: agents,
+          summary: {
+            total: typeof summary.total === 'number' ? summary.total : agents.length,
+            running: typeof summary.running === 'number' ? summary.running : agents.filter(agent => agent.status === 'running').length,
+            queued: typeof summary.queued === 'number' ? summary.queued : agents.filter(agent => agent.status === 'queued').length,
+            blocked: typeof summary.blocked === 'number' ? summary.blocked : agents.filter(agent => agent.status === 'blocked').length,
+            idle: typeof summary.idle === 'number' ? summary.idle : agents.filter(agent => agent.status === 'idle').length
+          },
+          message: payload.message || '',
+          next_steps: Array.isArray(payload.next_steps) ? payload.next_steps : []
+        };
+      }
+      if (payload.agent_name || payload.agent_id) {
+        return {
+          mode: 'single',
+          agents: [{
+            agent_id: payload.agent_id || null,
+            agent_name: payload.agent_name || payload.agent_id || 'Unknown agent',
+            role: payload.role || inferRole(payload),
+            status: payload.status || 'idle',
+            current_task: null,
+            blockers: [],
+            progress: null,
+            started_at: null,
+            execution_target: null,
+            run_id: null
+          }],
+          activity: Array.isArray(payload.activity) ? payload.activity : []
+        };
+      }
+      return null;
+    };
 
     var render = () => {
       if(isLoading) return;
-      if(!data) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.agent(24)}</div><div class="empty-title">Agent on standby</div><div class="empty-desc">This agent is currently idle with no active tasks.</div></div>`); return; }
+      var payload = normalizeAgentPayload(data);
+      if(!payload) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.agent(24)}</div><div class="empty-title">Agent on standby</div><div class="empty-desc">No agent telemetry is available yet.</div></div>`); return; }
 
-      const timelineHtml = (data.activity || []).map(a => `
-        <div class="t-item">
-          <div class="t-dot"></div>
-          <div class="t-time">${formatTime(a.timestamp)}</div>
-          <div class="t-content">${escapeHtml(a.message)}</div>
+      if (payload.mode === 'single') {
+        const agent = payload.agents[0];
+        const timelineHtml = (payload.activity || []).map(a => `
+          <div class="t-item">
+            <div class="t-dot"></div>
+            <div class="t-time">${formatTime(a.timestamp)}</div>
+            <div class="t-content">${escapeHtml(a.message)}</div>
+          </div>
+        `).join('');
+        injectHtml(`
+          <div class="ox-card animate-in">
+            <div class="ox-card-inner">
+              <div class="agent-header">
+                <div class="avatar-ring">${renderAvatar(agent.agent_name, 56)}</div>
+                <div style="flex:1;">
+                  <div class="ox-eyebrow" style="margin-bottom:4px;">${escapeHtml(agent.role)}</div>
+                  <h2 class="ox-title" style="font-size:1.3rem; margin-bottom:8px;">${escapeHtml(agent.agent_name)}</h2>
+                  <div class="status-pill status-${escapeHtml(agent.status).toLowerCase()}">
+                    <div class="status-dot"></div> ${escapeHtml(titleCase(agent.status))}
+                  </div>
+                </div>
+              </div>
+              <div class="timeline">${timelineHtml}</div>
+              <div class="widget-footer">
+                <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
+                <a href="${agent.agent_id ? `https://console.useorgx.com/agents/${escapeHtml(agent.agent_id)}` : 'https://console.useorgx.com/agents'}" target="_blank" class="deep-link">
+                  View Telemetry
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </a>
+              </div>
+            </div>
+          </div>
+        `);
+        return;
+      }
+
+      const summaryHtml = [
+        ['Running', payload.summary.running],
+        ['Queued', payload.summary.queued],
+        ['Blocked', payload.summary.blocked],
+        ['Idle', payload.summary.idle]
+      ].map(([label, value]) => `
+        <div class="summary-card">
+          <div class="ox-eyebrow">${escapeHtml(label)}</div>
+          <div class="summary-value">${escapeHtml(String(value))}</div>
         </div>
       `).join('');
+
+      const agentsHtml = payload.agents.map(agent => {
+        var status = String(agent.status || 'idle').toLowerCase();
+        var taskLine = agent.current_task
+          ? `<div class="agent-task"><strong>Current:</strong> ${escapeHtml(agent.current_task)}</div>`
+          : agent.blockers.length
+          ? `<div class="agent-task"><strong>Blocked by:</strong> ${escapeHtml(agent.blockers.join(', '))}</div>`
+          : `<div class="agent-task"><strong>Current:</strong> No active task</div>`;
+        var progressLine = typeof agent.progress === 'number'
+          ? `${Math.max(0, Math.min(100, Math.round(agent.progress)))}%`
+          : agent.execution_target
+          ? titleCase(agent.execution_target)
+          : 'Standby';
+        return `
+          <div class="agent-row-card">
+            <div class="avatar-ring" style="width:56px;height:56px;">${renderAvatar(agent.agent_name, 56)}</div>
+            <div class="agent-row-main">
+              <div class="agent-name">${escapeHtml(agent.agent_name)}</div>
+              <div class="agent-role-line">${escapeHtml(agent.role)}</div>
+              ${taskLine}
+            </div>
+            <div class="agent-meta">
+              <div class="status-pill status-${escapeHtml(status)}"><div class="status-dot"></div>${escapeHtml(titleCase(status))}</div>
+              <div class="agent-progress">${escapeHtml(progressLine)}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
 
       injectHtml(`
         <div class="ox-card animate-in">
           <div class="ox-card-inner">
             <div class="agent-header">
-              <div class="avatar-ring">${renderAvatar(data.agent_name, 56)}</div>
+              <div class="avatar-ring">${payload.summary.running > 0 ? payload.summary.running : payload.summary.total}</div>
               <div style="flex:1;">
-                <div class="ox-eyebrow" style="margin-bottom:4px;">${escapeHtml(data.role)}</div>
-                <h2 class="ox-title" style="font-size:1.3rem; margin-bottom:8px;">${escapeHtml(data.agent_name)}</h2>
-                <div class="status-pill">
-                  <div class="status-dot"></div> ${escapeHtml(data.status)}
-                </div>
+                <div class="ox-eyebrow" style="margin-bottom:4px;">OrgX Fleet</div>
+                <h2 class="ox-title" style="font-size:1.3rem; margin-bottom:8px;">Agent Status</h2>
+                <div class="ox-text">${escapeHtml(payload.message || 'Live orchestration state across specialist agents.')}</div>
               </div>
             </div>
-            
-            <div class="timeline">
-              ${timelineHtml}
-            </div>
-          
+            <div class="summary-grid">${summaryHtml}</div>
+            <div class="agent-list">${agentsHtml}</div>
             <div class="widget-footer">
-              <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
-              <a href="${data.agent_id ? `https://console.useorgx.com/agents/${escapeHtml(data.agent_id)}` : 'https://console.useorgx.com/agents'}" target="_blank" class="deep-link">
+              <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">${payload.summary.total} agents tracked</span>
+              <a href="https://console.useorgx.com/agents" target="_blank" class="deep-link">
                 View Telemetry
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
               </a>
             </div>
-</div>
+          </div>
         </div>
       `);
     };
