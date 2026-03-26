@@ -100,6 +100,7 @@
         padding: 24px 16px;
         -webkit-font-smoothing: antialiased;
         min-height: 100vh;
+        overflow-x: hidden;
       }
 
       body::before {
@@ -352,6 +353,7 @@
       var _mcpNextId = 100;
       function initWidget(opts){var render=opts.render,getData=opts.getData||_extractData;var protocol=_detectProtocol();if(protocol==='chatgpt'){var d=getData(window.openai&&window.openai.toolOutput);render(d);window.addEventListener('openai:set_globals',function(e){var g=e.detail&&e.detail.globals;if(g&&g.toolOutput){render(getData(g.toolOutput));}},{passive:true});}else if(protocol==='mcp-apps'){render(null);var initId=1;window.parent.postMessage({jsonrpc:'2.0',id:initId,method:'ui/initialize',params:{appInfo:{name:'Widget',version:'1.0'},appCapabilities:{tools:{listChanged:false}},protocolVersion:'2026-01-26'}},'*');window.parent.postMessage({jsonrpc:'2.0',method:'notifications/initialized'},'*');window.addEventListener('message',function(event){var msg=event.data;if(!msg||typeof msg!=='object')return;if(msg.id===initId&&msg.result){window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized'},'*');_observeSize();return;}if(msg.id!=null&&_mcpPending[msg.id]){var p=_mcpPending[msg.id];delete _mcpPending[msg.id];if(msg.error)p.reject(new Error(msg.error.message||'Tool call failed'));else p.resolve(msg.result);return;}if((msg.method==='ui/notifications/tool-result'||msg.method==='notifications/message')&&msg.params){var data=getData(msg.params);if(data)render(data);}});}else{render(null);}}
       function callTool(name, args){var protocol=_detectProtocol();if(protocol==='chatgpt')return window.openai&&window.openai.callTool?window.openai.callTool(name,args):Promise.resolve(null);if(protocol==='mcp-apps'){return new Promise(function(resolve,reject){var id=_mcpNextId++;_mcpPending[id]={resolve:resolve,reject:reject};window.parent.postMessage({jsonrpc:'2.0',id:id,method:'tools/call',params:{name:name,arguments:args}},'*');setTimeout(function(){if(_mcpPending[id]){delete _mcpPending[id];reject(new Error('Tool call '+name+' timed out'));}},30000);});}return Promise.resolve(null);}
+      function openWidgetLink(url,event){if(!url)return false;var protocol=_detectProtocol();if(protocol==='mcp-apps'){if(event&&typeof event.preventDefault==='function')event.preventDefault();window.parent.postMessage({jsonrpc:'2.0',id:_mcpNextId++,method:'ui/open-link',params:{url:url}},'*');return false;}return true;}
       var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true">'+c+'</svg>';};
       var icons = {
         agent: function(s){return _svg('<rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><line x1="8" y1="16" x2="8" y2="16"></line><line x1="16" y1="16" x2="16" y2="16"></line>',s);},
@@ -383,15 +385,16 @@
 
 
     
+      var WIDGET_ASSET_BASE = 'https://mcp.useorgx.com/widgets/shared/';
       var getAvatarUrl = (name) => {
         const n = (name || '').toLowerCase();
-        if (n.includes('pace') || n.includes('product')) return 'https://useorgx.com/product_orchestrator.png';
-        if (n.includes('eli') || n.includes('engineer')) return 'https://useorgx.com/engineering_autopilot.png';
-        if (n.includes('mark') || n.includes('market')) return 'https://useorgx.com/launch_captain.png';
-        if (n.includes('sage') || n.includes('sale')) return 'https://useorgx.com/pipeline_intelligence.png';
-        if (n.includes('orion') || n.includes('op')) return 'https://useorgx.com/control_tower.png';
-        if (n.includes('dana') || n.includes('design')) return 'https://useorgx.com/design_codex.png';
-        if (n.includes('xandy') || n.includes('orchestrator')) return 'https://useorgx.com/xandy_orchestrator.png';
+        if (n.includes('pace') || n.includes('product')) return WIDGET_ASSET_BASE + 'product_orchestrator.png';
+        if (n.includes('eli') || n.includes('engineer')) return WIDGET_ASSET_BASE + 'engineering_autopilot.png';
+        if (n.includes('mark') || n.includes('market')) return WIDGET_ASSET_BASE + 'launch_captain.png';
+        if (n.includes('sage') || n.includes('sale')) return WIDGET_ASSET_BASE + 'pipeline_intelligence.png';
+        if (n.includes('orion') || n.includes('op')) return WIDGET_ASSET_BASE + 'control_tower.png';
+        if (n.includes('dana') || n.includes('design')) return WIDGET_ASSET_BASE + 'design_codex.png';
+        if (n.includes('xandy') || n.includes('orchestrator')) return WIDGET_ASSET_BASE + 'xandy_orchestrator.png';
         return null;
       };
       var ORGX_BASE_URL = 'https://useorgx.com';
@@ -402,7 +405,7 @@
       };
       var renderAvatar = (name, sizePx) => {
         const url = getAvatarUrl(name);
-        if (url) return `<img src="${url}" alt="${escapeHtml(name)}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" />`;
+        if (url) return `<img src="${url}" alt="${escapeHtml(name)}" loading="eager" decoding="sync" draggable="false" style="display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit;" />`;
         return escapeHtml(name ? name[0].toUpperCase() : '?');
       };
 
@@ -501,8 +504,8 @@
               <div class="timeline">${timelineHtml}</div>
               <div class="widget-footer">
                 <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
-                <a href="${buildAgentUrl(agent.agent_id)}" target="_blank" rel="noreferrer" class="deep-link">
-                  View Telemetry
+                <a href="${buildAgentUrl(agent.agent_id)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(buildAgentUrl(agent.agent_id))}, event)' class="deep-link">
+                  Open Agent View
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </a>
               </div>
@@ -567,8 +570,8 @@
             <div class="agent-list">${agentsHtml}</div>
             <div class="widget-footer">
               <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">${payload.summary.total} agents tracked</span>
-              <a href="${buildAgentUrl(null)}" target="_blank" rel="noreferrer" class="deep-link">
-                View Telemetry
+              <a href="${buildAgentUrl(null)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(buildAgentUrl(null))}, event)' class="deep-link">
+                Open Agent View
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
               </a>
             </div>

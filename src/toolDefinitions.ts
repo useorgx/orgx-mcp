@@ -1275,10 +1275,10 @@ export function summarizeChatGPTToolResult(
     }
 
     case 'approve_decision':
-      return 'Decision approved. The agent has been notified.';
+      return 'Decision approved. The assigned agent can continue, and you can track follow-through in agent status or the live view.';
 
     case 'reject_decision':
-      return 'Decision rejected. The agent will revise their approach.';
+      return 'Decision rejected with guidance. The assigned agent will revise their approach before attempting the work again.';
 
     case 'get_agent_status': {
       const agents = Array.isArray(data.agents) ? data.agents : [];
