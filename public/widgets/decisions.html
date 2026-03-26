@@ -379,6 +379,31 @@
       width: 100%;
     }
 
+    .decision-action-copy {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      text-align: center;
+      min-width: 0;
+    }
+
+    .decision-action-title {
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .decision-action-detail {
+      font-size: 0.68rem;
+      line-height: 1.3;
+      color: currentColor;
+      opacity: 0.76;
+      letter-spacing: 0;
+      text-transform: none;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+    }
+
     .reject-composer {
       margin-top: 14px;
       padding: 14px;
@@ -614,6 +639,62 @@
       font-weight: 600;
     }
 
+    .resolution-banner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 16px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
+      background:
+        radial-gradient(circle at top left, rgba(var(--ox-primary-rgb), 0.12), transparent 52%),
+        var(--ox-well-bg);
+      box-shadow: var(--ox-well-shadow);
+    }
+
+    .resolution-banner-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+      flex: 1 1 240px;
+    }
+
+    .resolution-banner-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      line-height: 1.25;
+      color: var(--ox-text);
+      overflow-wrap: anywhere;
+    }
+
+    .resolution-banner-detail {
+      font-size: 0.8rem;
+      line-height: 1.45;
+      color: var(--ox-text-muted);
+      overflow-wrap: anywhere;
+    }
+
+    .resolution-banner-meta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.2);
+      background: rgba(var(--ox-primary-rgb), 0.08);
+      color: var(--ox-primary);
+      font-family: var(--ox-mono);
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
     @media (max-width: 560px) {
       .summary-grid {
         justify-content: flex-start;
@@ -655,6 +736,16 @@
       .reject-submit {
         width: 100%;
         min-width: 0;
+      }
+
+      .resolution-banner {
+        align-items: flex-start;
+      }
+
+      .resolution-banner-meta {
+        width: 100%;
+        white-space: normal;
+        text-align: center;
       }
     }
   </style>
@@ -822,6 +913,93 @@
       return ORGX_BASE_URL + '/decisions/' + encodeURIComponent(decision.id);
     };
 
+    var firstString = (...values) => {
+      for (const value of values) {
+        if (typeof value === 'string' && value.trim()) return value.trim();
+      }
+      return '';
+    };
+
+    var normalizeDecision = (decision, index) => {
+      if (!decision || typeof decision !== 'object') return null;
+      const id =
+        firstString(
+          decision.id,
+          decision.decision_id,
+          decision.uuid,
+          decision.entity_id
+        ) || `decision-${index + 1}`;
+      const summary =
+        firstString(
+          decision.summary,
+          decision.title,
+          decision.name,
+          decision.prompt,
+          decision.description
+        ) || 'Untitled decision';
+      const urgency = firstString(
+        decision.urgency,
+        decision.urgency_level,
+        decision.priority
+      ).toLowerCase() || 'medium';
+      return {
+        ...decision,
+        id,
+        agent_name:
+          firstString(
+            decision.agent_name,
+            decision.owner_agent,
+            decision.assigned_agent,
+            decision.domain
+          ) || 'OrgX',
+        type: firstString(decision.type, decision.entity_type) || 'Decision',
+        summary,
+        urgency,
+        created_at:
+          firstString(decision.created_at, decision.createdAt, decision.updated_at) ||
+          new Date().toISOString(),
+      };
+    };
+
+    var buildDecisionKey = (decision) => {
+      const stableId = firstString(decision.id, decision.decision_id, decision.uuid, decision.entity_id);
+      if (stableId) return `id:${stableId}`;
+      return [
+        firstString(decision.agent_name, decision.owner_agent, decision.assigned_agent, decision.domain).toLowerCase(),
+        firstString(decision.summary, decision.title, decision.name, decision.prompt, decision.description).toLowerCase(),
+        firstString(decision.urgency, decision.urgency_level, decision.priority).toLowerCase(),
+        firstString(decision.type, decision.entity_type).toLowerCase(),
+        firstString(decision.initiative_id, decision.run_id).toLowerCase(),
+      ].join('::');
+    };
+
+    var normalizeDecisionQueue = (payload) => {
+      if (!payload || typeof payload !== 'object') return null;
+      const rawDecisions = Array.isArray(payload.decisions) ? payload.decisions : [];
+      const seen = new Set();
+      const decisions = [];
+      rawDecisions.forEach((item, index) => {
+        const normalized = normalizeDecision(item, index);
+        if (!normalized) return;
+        const key = buildDecisionKey(normalized);
+        if (seen.has(key)) return;
+        seen.add(key);
+        decisions.push(normalized);
+      });
+
+      const summary = {};
+      decisions.forEach((decision) => {
+        const urgency = (decision.urgency || 'low').toLowerCase();
+        summary[urgency] = (summary[urgency] || 0) + 1;
+      });
+
+      return {
+        ...payload,
+        decisions,
+        summary,
+      };
+    };
+
     var updateSummaryFromDecisions = () => {
       if (!data || !Array.isArray(data.decisions)) return;
       const nextSummary = {};
@@ -873,8 +1051,9 @@
       };
       var renderAvatar = (name, sizePx) => {
         const url = getAvatarUrl(name);
-        if (url) return `<img src="${url}" alt="${escapeHtml(name)}" loading="eager" decoding="sync" draggable="false" style="display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit;" />`;
-        return escapeHtml(name ? name[0].toUpperCase() : '?');
+        const fallback = escapeHtml(name ? name[0].toUpperCase() : '?');
+        if (url) return `<span style="display:none;align-items:center;justify-content:center;width:100%;height:100%;font-family:var(--ox-mono);font-size:0.7rem;">${fallback}</span><img src="${url}" alt="${escapeHtml(name)}" loading="eager" decoding="sync" draggable="false" style="display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.style.display='none'; if (this.previousElementSibling) this.previousElementSibling.style.display='flex';" />`;
+        return fallback;
       };
 
     var formatUsd = v => Number.isFinite(Number(v)) ? '$'+Number(v).toFixed(2) : null;
@@ -977,6 +1156,7 @@
 
     var render = () => {
       if(isLoading) return;
+      data = normalizeDecisionQueue(data);
       var queueSubtitle = document.getElementById('queueSubtitle');
       if(!data || !data.decisions || data.decisions.length === 0) {
         var resolvedHtml = lastResolution
@@ -1059,7 +1239,10 @@
                   data-loading-label="Approving…"
                   onclick="approveDecision('${escapeHtml(d.id)}', this)"
                 >
-                  Approve
+                  <span class="decision-action-copy">
+                    <span class="decision-action-title">Approve</span>
+                    <span class="decision-action-detail">Unblock ${escapeHtml(d.agent_name)} and continue execution</span>
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -1067,7 +1250,10 @@
                   onclick="toggleRejectComposer('${escapeHtml(d.id)}')"
                   aria-expanded="${isRejecting ? 'true' : 'false'}"
                 >
-                  ${rejectActionLabel}
+                  <span class="decision-action-copy">
+                    <span class="decision-action-title">${rejectActionLabel === 'Hide note' ? 'Hide note' : 'Reject with note'}</span>
+                    <span class="decision-action-detail">${isRejecting ? 'Collapse the feedback panel' : 'Send revision guidance instead of blocking silently'}</span>
+                  </span>
                 </button>
               </div>
 
@@ -1101,6 +1287,24 @@
         </div>
       `;
       }).join('');
+
+      if (lastResolution) {
+        const remainingCount = data.decisions.length;
+        const actionVerb = lastResolution.action === 'approved' ? 'approved' : 'sent back';
+        const followThrough =
+          lastResolution.action === 'approved'
+            ? `${escapeHtml(lastResolution.agent_name)} can keep moving on the next step without waiting on another manual handoff.`
+            : `${escapeHtml(lastResolution.agent_name)} now has your note and can revise against a concrete instruction instead of guessing.`;
+        html = `
+          <div class="resolution-banner animate-in">
+            <div class="resolution-banner-copy">
+              <div class="resolution-banner-title">${escapeHtml(lastResolution.summary)} ${actionVerb}.</div>
+              <div class="resolution-banner-detail">${followThrough}</div>
+            </div>
+            <div class="resolution-banner-meta">${remainingCount} decision${remainingCount === 1 ? '' : 's'} remaining</div>
+          </div>
+        ` + html;
+      }
 
       if (totalPages > 1) {
         html += `

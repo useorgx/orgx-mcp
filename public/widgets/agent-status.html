@@ -327,6 +327,7 @@
       text-decoration: none;
       text-align: center;
       line-height: 1.15;
+      overflow-wrap: anywhere;
       transition:
         transform 0.18s ease,
         border-color 0.18s ease,
@@ -418,6 +419,7 @@
       font-weight: 700;
       line-height: 1.2;
       color: var(--ox-text);
+      overflow-wrap: anywhere;
     }
 
     .agent-role {
@@ -428,6 +430,7 @@
       letter-spacing: 0.08em;
       color: var(--ox-text-muted);
       font-weight: 600;
+      overflow-wrap: anywhere;
     }
 
     .agent-task-block {
@@ -441,12 +444,14 @@
       line-height: 1.45;
       color: var(--ox-text);
       font-weight: 600;
+      overflow-wrap: anywhere;
     }
 
     .task-subcopy {
       font-size: 0.82rem;
       line-height: 1.5;
       color: var(--ox-text-muted);
+      overflow-wrap: anywhere;
     }
 
     .task-list {
@@ -464,6 +469,8 @@
       font-size: 0.74rem;
       line-height: 1.3;
       color: var(--ox-text);
+      max-width: 100%;
+      overflow-wrap: anywhere;
     }
 
     .progress-row {
@@ -695,6 +702,106 @@
           .replace(/\b\w/g, function(match) { return match.toUpperCase(); });
       };
 
+      var firstArray = function(values) {
+        for (var i = 0; i < values.length; i += 1) {
+          if (Array.isArray(values[i])) return values[i];
+        }
+        return [];
+      };
+
+      var firstNumber = function(values) {
+        for (var i = 0; i < values.length; i += 1) {
+          var value = values[i];
+          if (typeof value === 'number' && isFinite(value)) return value;
+        }
+        return null;
+      };
+
+      var normalizeAgentRecord = function(input) {
+        if (!input || typeof input !== 'object') return null;
+        var nestedAgent = input.agent && typeof input.agent === 'object' ? input.agent : {};
+        var source = Object.assign({}, nestedAgent, input);
+        return {
+          agent_id: firstString([
+            source.agent_id,
+            source.agentId,
+            source.id
+          ]) || null,
+          agent_name: firstString([
+            source.agent_name,
+            source.agentName,
+            source.name,
+            source.title,
+            source.label,
+            source.agent_id,
+            source.agentId
+          ]),
+          role: firstString([
+            source.role,
+            source.persona
+          ]),
+          agent_type: firstString([
+            source.agent_type,
+            source.agentType,
+            source.type
+          ]),
+          domain: firstString([
+            source.domain,
+            source.agent_domain,
+            source.agentDomain,
+            source.specialization
+          ]),
+          status: firstString([
+            source.status,
+            source.state
+          ]) || 'idle',
+          current_task: firstString([
+            source.current_task,
+            source.currentTask,
+            source.active_task,
+            source.activeTask,
+            source.task_summary,
+            source.taskSummary,
+            source.task,
+            source.message
+          ]) || null,
+          current_tasks: firstArray([
+            source.current_tasks,
+            source.currentTasks
+          ]),
+          active_tasks: firstArray([
+            source.active_tasks,
+            source.activeTasks
+          ]),
+          tasks: firstArray([
+            source.tasks,
+            source.items
+          ]),
+          blockers: firstArray([
+            source.blockers,
+            source.blocking_reasons,
+            source.blockingReasons
+          ]),
+          progress: firstNumber([
+            source.progress,
+            source.progress_pct,
+            source.progressPct
+          ]),
+          started_at: firstString([
+            source.started_at,
+            source.startedAt
+          ]) || null,
+          execution_target: firstString([
+            source.execution_target,
+            source.executionTarget
+          ]) || null,
+          run_id: firstString([
+            source.run_id,
+            source.runId
+          ]) || null
+        };
+      };
+
       var resolveAgentProfile = function(agent) {
         var directName = firstString([
           agent.agent_name,
@@ -703,7 +810,9 @@
         ]);
         var directRole = firstString([
           agent.role,
-          agent.persona
+          agent.persona,
+          agent.domain,
+          agent.agent_domain
         ]);
         var agentType = firstString([
           agent.agent_type,
@@ -712,7 +821,12 @@
           agent.agent_domain
         ]).toLowerCase();
         var nameKey = directName.toLowerCase();
-        var profile = AGENT_DIRECTORY[nameKey] || AGENT_DIRECTORY[agentType] || null;
+        var roleKey = directRole.toLowerCase();
+        var profile =
+          AGENT_DIRECTORY[nameKey] ||
+          AGENT_DIRECTORY[agentType] ||
+          AGENT_DIRECTORY[roleKey] ||
+          null;
         return {
           name: directName || (profile && profile.name) || 'OrgX Agent',
           role: directRole || (profile && profile.role) || humanize(agentType) || 'OrgX agent',
@@ -727,10 +841,11 @@
 
       var renderAvatar = function(agent) {
         var profile = resolveAgentProfile(agent || {});
+        var fallback = escapeHtml(profile.name ? profile.name[0].toUpperCase() : '?');
         if (profile.avatar) {
-          return '<img src="' + profile.avatar + '" alt="' + escapeHtml(profile.name) + '" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" />';
+          return '<span class="avatar-fallback" style="display:none;">' + fallback + '</span><img src="' + profile.avatar + '" alt="' + escapeHtml(profile.name) + '" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.style.display=\'none\'; if (this.previousElementSibling) this.previousElementSibling.style.display=\'flex\';" />';
         }
-        return escapeHtml(profile.name ? profile.name[0].toUpperCase() : '?');
+        return '<span class="avatar-fallback">' + fallback + '</span>';
       };
 
     var extractTasks = function(agent) {
@@ -778,23 +893,10 @@
     var normalizeAgentPayload = payload => {
       if (!payload) return null;
       if (Array.isArray(payload.agents)) {
-        var agents = payload.agents.filter(isVisibleAgent).map(agent => ({
-          agent_id: agent.agent_id || null,
-          agent_name: agent.agent_name || agent.name || agent.title || agent.agent_id || '',
-          role: agent.role || agent.persona || '',
-          agent_type: agent.agent_type || agent.type || '',
-          domain: agent.domain || agent.agent_domain || '',
-          status: agent.status || 'idle',
-          current_task: agent.current_task || agent.active_task || agent.task_summary || agent.task || null,
-          current_tasks: Array.isArray(agent.current_tasks) ? agent.current_tasks : [],
-          active_tasks: Array.isArray(agent.active_tasks) ? agent.active_tasks : [],
-          tasks: Array.isArray(agent.tasks) ? agent.tasks : [],
-          blockers: Array.isArray(agent.blockers) ? agent.blockers : [],
-          progress: typeof agent.progress === 'number' ? agent.progress : (typeof agent.progress_pct === 'number' ? agent.progress_pct : null),
-          started_at: agent.started_at || null,
-          execution_target: agent.execution_target || null,
-          run_id: agent.run_id || null
-        }));
+        var agents = payload.agents
+          .map(normalizeAgentRecord)
+          .filter(Boolean)
+          .filter(isVisibleAgent);
         var summary = payload.summary || {};
         var running = agents.filter(agent => agent.status === 'running').length;
         var queued = agents.filter(agent => agent.status === 'queued').length;
@@ -814,26 +916,11 @@
           next_steps: Array.isArray(payload.next_steps) ? payload.next_steps : []
         };
       }
-      if (payload.agent_name || payload.agent_id) {
+      if (payload.agent_name || payload.agent_id || payload.agent || payload.agentType || payload.agent_type) {
+        var singleAgent = normalizeAgentRecord(payload);
         return {
           mode: 'single',
-          agents: [{
-            agent_id: payload.agent_id || null,
-            agent_name: payload.agent_name || payload.name || payload.title || payload.agent_id || '',
-            role: payload.role || payload.persona || '',
-            agent_type: payload.agent_type || payload.type || '',
-            domain: payload.domain || payload.agent_domain || '',
-            status: payload.status || 'idle',
-            current_task: payload.current_task || payload.active_task || payload.task_summary || payload.task || null,
-            current_tasks: Array.isArray(payload.current_tasks) ? payload.current_tasks : [],
-            active_tasks: Array.isArray(payload.active_tasks) ? payload.active_tasks : [],
-            tasks: Array.isArray(payload.tasks) ? payload.tasks : [],
-            blockers: [],
-            progress: typeof payload.progress === 'number' ? payload.progress : (typeof payload.progress_pct === 'number' ? payload.progress_pct : null),
-            started_at: null,
-            execution_target: null,
-            run_id: null
-          }],
+          agents: [singleAgent],
           activity: Array.isArray(payload.activity) ? payload.activity : []
         };
       }
