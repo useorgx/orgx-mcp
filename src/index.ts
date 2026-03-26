@@ -86,6 +86,7 @@ import {
   buildMorningBriefValueDashboard,
   formatMorningBriefSummary,
 } from './morningBriefValue';
+import { normalizeAgentDispatchPayload } from './agentDispatchPayload';
 import {
   buildWelcomeBackNextActions,
   createEmptyMcpSessionReentryState,
@@ -1161,6 +1162,50 @@ export class OrgXMcp extends McpAgent<
     return null;
   }
 
+  private async fetchEntityRecord(
+    type: string,
+    id: string,
+    userId: string | null
+  ): Promise<Record<string, unknown> | null> {
+    const params = new URLSearchParams();
+    params.set('type', type);
+    params.set('id', id);
+    params.set('limit', '1');
+
+    const response = await callOrgxApiJson(
+      this.env,
+      `/api/entities?${params.toString()}`,
+      undefined,
+      userId ? { userId } : undefined
+    );
+    const payload = (await response.json()) as {
+      data?: Array<Record<string, unknown>>;
+    };
+    return payload.data?.[0] ?? null;
+  }
+
+  private async maybeNormalizeAgentDispatchData(params: {
+    toolId: string;
+    args: Record<string, unknown>;
+    data: Record<string, unknown>;
+    userId: string | null;
+  }): Promise<Record<string, unknown>> {
+    if (
+      params.toolId !== 'spawn_agent_task' &&
+      params.toolId !== 'handoff_task'
+    ) {
+      return params.data;
+    }
+
+    return normalizeAgentDispatchPayload({
+      toolId: params.toolId,
+      args: params.args,
+      data: params.data,
+      sessionContext: this.sessionContext,
+      lookupEntity: (type, id) => this.fetchEntityRecord(type, id, params.userId),
+    });
+  }
+
   /**
    * Apply session-scoped defaults to tool args.
    *
@@ -1527,6 +1572,12 @@ export class OrgXMcp extends McpAgent<
         });
         data = enrichment.data;
         message = enrichment.message;
+        data = await this.maybeNormalizeAgentDispatchData({
+          toolId,
+          args: effectiveArgs,
+          data,
+          userId: resolvedUserId ?? null,
+        });
 
         this.maybeUpdateSessionInitiativeContext({
           toolId,
