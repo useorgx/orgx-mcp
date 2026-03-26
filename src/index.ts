@@ -87,6 +87,7 @@ import {
   formatMorningBriefSummary,
 } from './morningBriefValue';
 import { normalizeAgentDispatchPayload } from './agentDispatchPayload';
+import { normalizeAgentStatusPayload } from './agentStatusPayload';
 import {
   buildWelcomeBackNextActions,
   createEmptyMcpSessionReentryState,
@@ -1578,6 +1579,9 @@ export class OrgXMcp extends McpAgent<
           data,
           userId: resolvedUserId ?? null,
         });
+        if (toolId === 'get_agent_status') {
+          data = normalizeAgentStatusPayload(data);
+        }
 
         this.maybeUpdateSessionInitiativeContext({
           toolId,

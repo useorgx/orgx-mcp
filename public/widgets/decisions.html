@@ -282,10 +282,76 @@
     
     .decision-card .ox-card::after { background: linear-gradient(90deg, transparent, rgba(var(--ox-card-color-rgb), 0.6), transparent); }
     
-    .decision-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-    
+    .decision-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .decision-header-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
     .agent-tag { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.9rem; }
     .agent-avatar { width: 24px; height: 24px; border-radius: 6px; background: rgba(var(--ox-card-color-rgb), 0.15); color: var(--ox-card-color); display: flex; align-items: center; justify-content: center; font-family: var(--ox-mono); font-size: 0.7rem; }
+
+    .decision-header-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+
+    .decision-open-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(var(--ox-card-color-rgb), 0.2);
+      background: rgba(var(--ox-card-color-rgb), 0.08);
+      color: var(--ox-text);
+      text-decoration: none;
+      font-family: var(--ox-mono);
+      font-size: 0.66rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+      transition:
+        transform 160ms cubic-bezier(0.16, 1, 0.3, 1),
+        border-color 160ms cubic-bezier(0.16, 1, 0.3, 1),
+        background 160ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .decision-open-link:hover {
+      transform: translateY(-1px);
+      border-color: rgba(var(--ox-card-color-rgb), 0.34);
+      background: rgba(var(--ox-card-color-rgb), 0.12);
+    }
+
+    .decision-open-link svg {
+      width: 14px;
+      height: 14px;
+      color: var(--ox-card-color);
+      flex-shrink: 0;
+    }
+
+    .decision-title-link {
+      color: inherit;
+      text-decoration: none;
+      transition: color 160ms ease, opacity 160ms ease;
+    }
+
+    .decision-title-link:hover {
+      color: var(--ox-card-color);
+    }
     
     .actions-grid {
       display: grid;
@@ -411,25 +477,46 @@
     .param-chip strong { color: var(--ox-text); margin-left: 4px; }
 
     .pagination {
-      display: flex;
+      display: grid;
+      grid-template-columns: minmax(0, 152px) minmax(0, 1fr) minmax(0, 152px);
       align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 14px;
-      margin-top: -2px;
+      gap: 14px;
+      padding: 14px 16px;
+      margin-top: 8px;
       border: 1px solid var(--ox-border);
-      border-radius: 16px;
-      background: var(--ox-panel);
-      box-shadow: var(--ox-shadow);
+      border-radius: 20px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.01)),
+        var(--ox-panel);
+      box-shadow:
+        0 18px 34px -26px rgba(0, 0, 0, 0.68),
+        inset 0 1px 0 rgba(255,255,255,0.04);
     }
 
     .page-info {
-      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
       text-align: center;
+      min-width: 0;
+    }
+
+    .page-label {
       font-family: var(--ox-mono);
-      font-size: 0.68rem;
+      font-size: 0.62rem;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
+      letter-spacing: 0.18em;
+      color: var(--ox-text-muted);
+      font-weight: 700;
+    }
+
+    .page-title {
+      font-family: var(--ox-mono);
+      font-size: 0.88rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
       color: var(--ox-text);
       font-weight: 600;
     }
@@ -437,30 +524,47 @@
     .page-count {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 6px 10px;
+      justify-content: center;
+      min-width: 92px;
+      padding: 10px 16px;
       border-radius: 999px;
-      background: rgba(var(--ox-primary-rgb), 0.08);
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
+      background:
+        linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.12), rgba(var(--ox-primary-rgb), 0.06)),
+        rgba(var(--ox-primary-rgb), 0.04);
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.22);
       color: var(--ox-warning);
       font-family: var(--ox-mono);
-      font-size: 0.66rem;
+      font-size: 1rem;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.16em;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
     }
 
     .page-btn {
-      min-width: 132px;
-      padding-inline: 18px;
-      font-size: 0.82rem;
-      letter-spacing: -0.01em;
+      width: 100%;
+      min-width: 0;
+      padding-inline: 16px;
+      font-size: 0.78rem;
+      letter-spacing: 0;
       justify-content: center;
+      border-radius: 14px;
+      color: var(--ox-text);
     }
 
     .page-btn .ox-action-btn__label {
       display: inline-flex;
       align-items: center;
       gap: 8px;
+    }
+
+    .page-btn--prev .ox-action-btn__label::before {
+      content: '←';
+      opacity: 0.72;
+    }
+
+    .page-btn--next .ox-action-btn__label::after {
+      content: '→';
+      opacity: 0.72;
     }
 
     .resolution-actions {
@@ -491,12 +595,13 @@
       }
 
       .pagination {
-        flex-direction: column;
+        grid-template-columns: 1fr 1fr;
         align-items: stretch;
       }
 
       .page-info {
-        order: -1;
+        grid-column: 1 / -1;
+        padding-bottom: 4px;
       }
 
       .page-btn {
@@ -506,6 +611,15 @@
 
       .actions-grid {
         grid-template-columns: 1fr;
+      }
+
+      .decision-header {
+        flex-direction: column;
+      }
+
+      .decision-header-meta {
+        width: 100%;
+        justify-content: space-between;
       }
 
       .reject-toolbar {
@@ -673,6 +787,15 @@
       return null;
     };
     var buildAgentStatusUrl = () => ORGX_BASE_URL + '/settings/agents';
+    var buildDecisionSurfaceUrl = (decision) => {
+      if (!decision || !decision.id) return ORGX_BASE_URL + '/decisions';
+      if (typeof decision.url === 'string' && decision.url.trim()) return decision.url.trim();
+      if (typeof decision.link === 'string' && decision.link.trim()) return decision.link.trim();
+      if (typeof decision.initiative_id === 'string' && decision.initiative_id.trim()) {
+        return ORGX_BASE_URL + '/initiatives/' + encodeURIComponent(decision.initiative_id.trim()) + '?focus=decisions&decision=' + encodeURIComponent(decision.id);
+      }
+      return ORGX_BASE_URL + '/decisions/' + encodeURIComponent(decision.id);
+    };
 
     var updateSummaryFromDecisions = () => {
       if (!data || !Array.isArray(data.decisions)) return;
@@ -865,22 +988,35 @@
         const rejectValue = rejectDrafts[d.id] || '';
         const rejectEnabled = rejectValue.trim().length > 0;
         const rejectActionLabel = isRejecting ? 'Hide note' : 'Reject';
+        const decisionUrl = buildDecisionSurfaceUrl(d);
         return `
         <div class="decision-card urgency-${escapeHtml(d.urgency)} animate-in" style="animation-delay: ${0.1 * i}s">
           <div class="ox-card">
             <div class="ox-card-inner">
               <div class="decision-header">
-                <div class="agent-tag">
-                  <div class="agent-avatar">${renderAvatar(d.agent_name, 24)}</div>
-                  <span>${escapeHtml(d.agent_name)}</span>
+                <div class="decision-header-copy">
+                  <div class="agent-tag">
+                    <div class="agent-avatar">${renderAvatar(d.agent_name, 24)}</div>
+                    <span>${escapeHtml(d.agent_name)}</span>
+                  </div>
+                  <h3 class="ox-title" style="margin-bottom:0;">
+                    <a href="${escapeHtml(decisionUrl)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(decisionUrl || ''))}, event)' class="decision-title-link">
+                      ${escapeHtml(d.summary)}
+                    </a>
+                  </h3>
                 </div>
-                <div class="ox-eyebrow" style="color: var(--ox-card-color); display:flex; align-items:center; gap:6px;">
-                  <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor;"></span>
-                  ${escapeHtml(d.urgency)}
+                <div class="decision-header-meta">
+                  <div class="ox-eyebrow" style="color: var(--ox-card-color); display:flex; align-items:center; gap:6px;">
+                    <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor;"></span>
+                    ${escapeHtml(d.urgency)}
+                  </div>
+                  <a href="${escapeHtml(decisionUrl)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(decisionUrl || ''))}, event)' class="decision-open-link">
+                    ${icons.link(14)}
+                    <span>Open in OrgX</span>
+                  </a>
                 </div>
               </div>
-              
-              <h3 class="ox-title" style="margin-bottom:8px;">${escapeHtml(d.summary)}</h3>
+
               <div class="ox-text" style="margin-bottom: 4px;">${escapeHtml(d.urgency === 'critical' ? 'Needs a fast operator call to keep critical-path work moving.' : d.urgency === 'high' ? 'High-signal operator decision with downstream execution impact.' : 'Review and confirm the preferred execution path.')}</div>
               
               <div class="params-well">
@@ -944,9 +1080,13 @@
       if (totalPages > 1) {
         html += `
           <div class="pagination">
-            <button type="button" class="page-btn ox-action-btn ox-action-btn--ghost" onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}><span class="ox-action-btn__label">← Previous page</span></button>
-            <span class="page-info"><span class="page-count">${currentPage} / ${totalPages}</span> Decision queue page ${currentPage} of ${totalPages}</span>
-            <button type="button" class="page-btn ox-action-btn ox-action-btn--ghost" onclick="changePage(1)" ${currentPage === totalPages ? 'disabled' : ''}><span class="ox-action-btn__label">Next page →</span></button>
+            <button type="button" class="page-btn page-btn--prev ox-action-btn ox-action-btn--ghost" onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}><span class="ox-action-btn__label">Previous</span></button>
+            <div class="page-info">
+              <span class="page-label">Decision queue</span>
+              <span class="page-count">${currentPage} / ${totalPages}</span>
+              <span class="page-title">Page ${currentPage} of ${totalPages}</span>
+            </div>
+            <button type="button" class="page-btn page-btn--next ox-action-btn ox-action-btn--ghost" onclick="changePage(1)" ${currentPage === totalPages ? 'disabled' : ''}><span class="ox-action-btn__label">Next</span></button>
           </div>
         `;
       }
