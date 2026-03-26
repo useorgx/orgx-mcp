@@ -287,6 +287,7 @@
       align-items: flex-start;
       justify-content: space-between;
       gap: 14px;
+      flex-wrap: wrap;
       margin-bottom: 14px;
     }
 
@@ -298,7 +299,20 @@
       flex: 1 1 auto;
     }
 
-    .agent-tag { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.9rem; }
+    .agent-tag {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      flex: 1 1 220px;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .agent-tag span {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
     .agent-avatar { width: 24px; height: 24px; border-radius: 6px; background: rgba(var(--ox-card-color-rgb), 0.15); color: var(--ox-card-color); display: flex; align-items: center; justify-content: center; font-family: var(--ox-mono); font-size: 0.7rem; }
 
     .decision-header-meta {
@@ -473,7 +487,18 @@
     }
     
     .params-well { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
-    .param-chip { background: var(--ox-well-bg); border: 1px solid var(--ox-border); padding: 4px 8px; border-radius: 4px; font-family: var(--ox-mono); font-size: 0.65rem; color: var(--ox-text-muted); text-transform: uppercase; }
+    .param-chip {
+      max-width: 100%;
+      background: var(--ox-well-bg);
+      border: 1px solid var(--ox-border);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-family: var(--ox-mono);
+      font-size: 0.65rem;
+      color: var(--ox-text-muted);
+      text-transform: uppercase;
+      overflow-wrap: anywhere;
+    }
     .param-chip strong { color: var(--ox-text); margin-left: 4px; }
 
     .pagination {
@@ -606,7 +631,7 @@
 
       .page-btn {
         width: 100%;
-        min-width: 0;
+        flex-basis: auto;
       }
 
       .actions-grid {
