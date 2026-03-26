@@ -112,7 +112,7 @@
         z-index: -1; pointer-events: none;
       }
 
-      .container { max-width: 540px; margin: 0 auto; position: relative; }
+      .container { max-width: 720px; margin: 0 auto; position: relative; }
 
       .ox-card {
         background: var(--ox-panel); border: 1px solid var(--ox-border); border-radius: 16px; box-shadow: var(--ox-shadow); position: relative; overflow: hidden; margin-bottom: 16px;
@@ -300,10 +300,250 @@
     .t-time { font-family: var(--ox-mono); font-size: 0.6rem; color: var(--ox-text-muted); margin-bottom: 4px; font-weight: 600; letter-spacing: 0.05em; }
     .t-content { font-size: 0.9rem; color: var(--ox-text); line-height: 1.5; }
   
-    .widget-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--ox-border); }
-    .deep-link { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; color: var(--ox-primary); text-decoration: none; transition: opacity 0.2s; }
-    .deep-link:hover { opacity: 0.8; }
-    .deep-link svg { width: 14px; height: 14px; }
+    .widget-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--ox-border);
+    }
+    .deep-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 48px;
+      max-width: 100%;
+      padding: 12px 16px;
+      border-radius: 14px;
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.28);
+      background: rgba(var(--ox-primary-rgb), 0.08);
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: var(--ox-text);
+      text-decoration: none;
+      text-align: center;
+      line-height: 1.15;
+      transition:
+        transform 0.18s ease,
+        border-color 0.18s ease,
+        background 0.18s ease;
+    }
+    .deep-link:hover {
+      transform: translateY(-1px);
+      border-color: rgba(var(--ox-primary-rgb), 0.38);
+      background: rgba(var(--ox-primary-rgb), 0.12);
+    }
+    .deep-link svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .summary-card {
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid var(--ox-border);
+      background: var(--ox-well-bg);
+      box-shadow: var(--ox-well-shadow);
+    }
+
+    .summary-card strong {
+      display: block;
+      margin-top: 6px;
+      font-family: var(--ox-mono);
+      font-size: 1.05rem;
+      color: var(--ox-text);
+    }
+
+    .agent-board {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .agent-item {
+      background: var(--ox-panel);
+      border: 1px solid var(--ox-border);
+      border-radius: 16px;
+      box-shadow: var(--ox-shadow);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .agent-item::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(var(--ox-primary-rgb), 0.45), transparent);
+      opacity: 0.85;
+    }
+
+    .agent-item-inner {
+      padding: 20px;
+    }
+
+    .agent-meta {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding-bottom: 18px;
+      margin-bottom: 18px;
+      border-bottom: 1px solid var(--ox-border);
+    }
+
+    .agent-title {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .agent-title-copy {
+      min-width: 0;
+    }
+
+    .agent-name {
+      font-size: 1.1rem;
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--ox-text);
+    }
+
+    .agent-role {
+      margin-top: 4px;
+      font-family: var(--ox-mono);
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ox-text-muted);
+      font-weight: 600;
+    }
+
+    .agent-task-block {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .task-lead {
+      font-size: 0.93rem;
+      line-height: 1.45;
+      color: var(--ox-text);
+      font-weight: 600;
+    }
+
+    .task-subcopy {
+      font-size: 0.82rem;
+      line-height: 1.5;
+      color: var(--ox-text-muted);
+    }
+
+    .task-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .task-chip {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--ox-border);
+      background: var(--ox-well-bg);
+      box-shadow: var(--ox-well-shadow);
+      font-size: 0.74rem;
+      line-height: 1.3;
+      color: var(--ox-text);
+    }
+
+    .progress-row {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .progress-copy {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-family: var(--ox-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ox-text-muted);
+      font-weight: 600;
+    }
+
+    .progress-track {
+      height: 8px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, rgba(var(--ox-primary-rgb), 0.72), rgba(var(--ox-primary-rgb), 1));
+      box-shadow: 0 0 18px rgba(var(--ox-primary-rgb), 0.24);
+    }
+
+    .blockers {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(225, 29, 72, 0.2);
+      background: rgba(225, 29, 72, 0.06);
+    }
+
+    .blockers ul {
+      margin: 0;
+      padding-left: 16px;
+      color: var(--ox-text);
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
+    .blockers li + li {
+      margin-top: 4px;
+    }
+
+    @media (max-width: 560px) {
+      body {
+        padding: 16px 12px;
+      }
+
+      .agent-board {
+        grid-template-columns: 1fr;
+      }
+
+      .agent-title {
+        flex-direction: column;
+      }
+
+      .widget-footer {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .deep-link {
+        width: 100%;
+      }
+    }
 
     .skeleton-line {
       background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%);
@@ -414,31 +654,108 @@
           return 'https://mcp.useorgx.com/widgets/shared/' + path;
         }
       }
-      var getAvatarUrl = (name) => {
-        const n = (name || '').toLowerCase();
-        if (n.includes('pace') || n.includes('product')) return resolveWidgetAsset('product_orchestrator.png');
-        if (n.includes('eli') || n.includes('engineer')) return resolveWidgetAsset('engineering_autopilot.png');
-        if (n.includes('mark') || n.includes('market')) return resolveWidgetAsset('launch_captain.png');
-        if (n.includes('sage') || n.includes('sale')) return resolveWidgetAsset('pipeline_intelligence.png');
-        if (n.includes('orion') || n.includes('op')) return resolveWidgetAsset('control_tower.png');
-        if (n.includes('dana') || n.includes('design')) return resolveWidgetAsset('design_codex.png');
-        if (n.includes('xandy') || n.includes('orchestrator')) return resolveWidgetAsset('xandy_orchestrator.png');
-        return null;
-      };
       var ORGX_BASE_URL = 'https://useorgx.com';
       var buildAgentUrl = function(agentId) {
         return agentId
           ? ORGX_BASE_URL + '/settings/agents?agent=' + encodeURIComponent(agentId)
           : ORGX_BASE_URL + '/settings/agents';
       };
-      var renderAvatar = (name, sizePx) => {
-        const url = getAvatarUrl(name);
-        const fallback = escapeHtml(name ? name[0].toUpperCase() : '?');
-        if (url) {
-          return `<img src="${url}" alt="" class="avatar-image" loading="eager" decoding="sync" draggable="false" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" /><span class="avatar-fallback" style="display:none;">${fallback}</span>`;
-        }
-        return `<span class="avatar-fallback" style="display:flex;">${fallback}</span>`;
+      var AGENT_DIRECTORY = {
+        pace: { name: 'Pace', role: 'Product', avatar: resolveWidgetAsset('product_orchestrator.png') },
+        product: { name: 'Pace', role: 'Product', avatar: resolveWidgetAsset('product_orchestrator.png') },
+        eli: { name: 'Eli', role: 'Engineering', avatar: resolveWidgetAsset('engineering_autopilot.png') },
+        engineering: { name: 'Eli', role: 'Engineering', avatar: resolveWidgetAsset('engineering_autopilot.png') },
+        mark: { name: 'Mark', role: 'Marketing', avatar: resolveWidgetAsset('launch_captain.png') },
+        marketing: { name: 'Mark', role: 'Marketing', avatar: resolveWidgetAsset('launch_captain.png') },
+        sage: { name: 'Sage', role: 'Sales', avatar: resolveWidgetAsset('pipeline_intelligence.png') },
+        sales: { name: 'Sage', role: 'Sales', avatar: resolveWidgetAsset('pipeline_intelligence.png') },
+        orion: { name: 'Orion', role: 'Operations', avatar: resolveWidgetAsset('control_tower.png') },
+        operations: { name: 'Orion', role: 'Operations', avatar: resolveWidgetAsset('control_tower.png') },
+        dana: { name: 'Dana', role: 'Design', avatar: resolveWidgetAsset('design_codex.png') },
+        design: { name: 'Dana', role: 'Design', avatar: resolveWidgetAsset('design_codex.png') },
+        xandy: { name: 'Xandy', role: 'Orchestrator', avatar: resolveWidgetAsset('xandy_orchestrator.png') },
+        orchestrator: { name: 'Xandy', role: 'Orchestrator', avatar: resolveWidgetAsset('xandy_orchestrator.png') }
       };
+
+      var firstString = function(values) {
+        for (var i = 0; i < values.length; i += 1) {
+          var value = values[i];
+          if (typeof value === 'string' && value.trim()) return value.trim();
+        }
+        return '';
+      };
+
+      var humanize = function(value) {
+        var safe = firstString([value]);
+        if (!safe) return '';
+        return safe
+          .replace(/[_-]+/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .replace(/\b\w/g, function(match) { return match.toUpperCase(); });
+      };
+
+      var resolveAgentProfile = function(agent) {
+        var directName = firstString([
+          agent.agent_name,
+          agent.name,
+          agent.title
+        ]);
+        var directRole = firstString([
+          agent.role,
+          agent.persona
+        ]);
+        var agentType = firstString([
+          agent.agent_type,
+          agent.type,
+          agent.domain,
+          agent.agent_domain
+        ]).toLowerCase();
+        var nameKey = directName.toLowerCase();
+        var profile = AGENT_DIRECTORY[nameKey] || AGENT_DIRECTORY[agentType] || null;
+        return {
+          name: directName || (profile && profile.name) || 'OrgX Agent',
+          role: directRole || (profile && profile.role) || humanize(agentType) || 'OrgX agent',
+          avatar: (profile && profile.avatar) || null
+        };
+      };
+
+      var getAvatarUrl = function(agent) {
+        var profile = resolveAgentProfile(agent || {});
+        return profile.avatar;
+      };
+
+      var renderAvatar = function(agent) {
+        var profile = resolveAgentProfile(agent || {});
+        if (profile.avatar) {
+          return '<img src="' + profile.avatar + '" alt="' + escapeHtml(profile.name) + '" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" />';
+        }
+        return escapeHtml(profile.name ? profile.name[0].toUpperCase() : '?');
+      };
+
+    var extractTasks = function(agent) {
+      var raw = [];
+      var candidateArrays = [agent.current_tasks, agent.active_tasks, agent.tasks];
+      candidateArrays.forEach(function(candidate) {
+        if (!Array.isArray(candidate)) return;
+        candidate.forEach(function(item) {
+          if (typeof item === 'string' && item.trim()) raw.push(item.trim());
+          else if (item && typeof item === 'object') {
+            var text = firstString([item.title, item.summary, item.name, item.description]);
+            if (text) raw.push(text);
+          }
+        });
+      });
+      var primary = firstString([
+        agent.current_task,
+        agent.active_task,
+        agent.task_summary,
+        agent.task,
+        agent.message
+      ]);
+      if (primary) raw.unshift(primary);
+      return raw.filter(function(task, idx) { return task && raw.indexOf(task) === idx; });
+    };
 
     var formatTime = d => { const dt = new Date(d); return `[${dt.getHours().toString().padStart(2,'0')}:${dt.getMinutes().toString().padStart(2,'0')}:${dt.getSeconds().toString().padStart(2,'0')}]`; };
     var titleCase = value => String(value || '').replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -463,12 +780,17 @@
       if (Array.isArray(payload.agents)) {
         var agents = payload.agents.filter(isVisibleAgent).map(agent => ({
           agent_id: agent.agent_id || null,
-          agent_name: agent.agent_name || agent.agent_id || 'Unknown agent',
-          role: inferRole(agent),
+          agent_name: agent.agent_name || agent.name || agent.title || agent.agent_id || '',
+          role: agent.role || agent.persona || '',
+          agent_type: agent.agent_type || agent.type || '',
+          domain: agent.domain || agent.agent_domain || '',
           status: agent.status || 'idle',
-          current_task: agent.current_task || null,
+          current_task: agent.current_task || agent.active_task || agent.task_summary || agent.task || null,
+          current_tasks: Array.isArray(agent.current_tasks) ? agent.current_tasks : [],
+          active_tasks: Array.isArray(agent.active_tasks) ? agent.active_tasks : [],
+          tasks: Array.isArray(agent.tasks) ? agent.tasks : [],
           blockers: Array.isArray(agent.blockers) ? agent.blockers : [],
-          progress: typeof agent.progress === 'number' ? agent.progress : null,
+          progress: typeof agent.progress === 'number' ? agent.progress : (typeof agent.progress_pct === 'number' ? agent.progress_pct : null),
           started_at: agent.started_at || null,
           execution_target: agent.execution_target || null,
           run_id: agent.run_id || null
@@ -497,12 +819,17 @@
           mode: 'single',
           agents: [{
             agent_id: payload.agent_id || null,
-            agent_name: payload.agent_name || payload.agent_id || 'Unknown agent',
-            role: payload.role || inferRole(payload),
+            agent_name: payload.agent_name || payload.name || payload.title || payload.agent_id || '',
+            role: payload.role || payload.persona || '',
+            agent_type: payload.agent_type || payload.type || '',
+            domain: payload.domain || payload.agent_domain || '',
             status: payload.status || 'idle',
-            current_task: null,
+            current_task: payload.current_task || payload.active_task || payload.task_summary || payload.task || null,
+            current_tasks: Array.isArray(payload.current_tasks) ? payload.current_tasks : [],
+            active_tasks: Array.isArray(payload.active_tasks) ? payload.active_tasks : [],
+            tasks: Array.isArray(payload.tasks) ? payload.tasks : [],
             blockers: [],
-            progress: null,
+            progress: typeof payload.progress === 'number' ? payload.progress : (typeof payload.progress_pct === 'number' ? payload.progress_pct : null),
             started_at: null,
             execution_target: null,
             run_id: null
@@ -513,109 +840,166 @@
       return null;
     };
 
-    var render = () => {
-      if(isLoading) return;
-      var payload = normalizeAgentPayload(data);
-      if(!payload) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.agent(24)}</div><div class="empty-title">Agent on standby</div><div class="empty-desc">No agent telemetry is available yet.</div></div>`); return; }
-
-      if (payload.mode === 'single') {
-        const agent = payload.agents[0];
-        const timelineHtml = (payload.activity || []).map(a => `
-          <div class="t-item">
-            <div class="t-dot"></div>
-            <div class="t-time">${formatTime(a.timestamp)}</div>
-            <div class="t-content">${escapeHtml(a.message)}</div>
-          </div>
-        `).join('');
-        injectHtml(`
-          <div class="ox-card animate-in">
-            <div class="ox-card-inner">
-              <div class="agent-header">
-                <div class="avatar-ring">${renderAvatar(agent.agent_name, 56)}</div>
-                <div style="flex:1;">
-                  <div class="ox-eyebrow" style="margin-bottom:4px;">${escapeHtml(agent.role)}</div>
-                  <h2 class="ox-title" style="font-size:1.3rem; margin-bottom:8px;">${escapeHtml(agent.agent_name)}</h2>
-                  <div class="status-pill status-${escapeHtml(agent.status).toLowerCase()}">
-                    <div class="status-dot"></div> ${escapeHtml(titleCase(agent.status))}
-                  </div>
-                </div>
-              </div>
-              <div class="timeline">${timelineHtml}</div>
-              <div class="widget-footer">
-                <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
-                <a href="${buildAgentUrl(agent.agent_id)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(buildAgentUrl(agent.agent_id))}, event)' class="deep-link">
-                  Open Agent View
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                </a>
-              </div>
-            </div>
-          </div>
-        `);
-        return;
-      }
-
-      const summaryHtml = [
-        ['Running', payload.summary.running],
-        ['Queued', payload.summary.queued],
-        ['Blocked', payload.summary.blocked],
-        ['Idle', payload.summary.idle]
-      ].map(([label, value]) => `
-        <div class="summary-card">
-          <div class="ox-eyebrow">${escapeHtml(label)}</div>
-          <div class="summary-value">${escapeHtml(String(value))}</div>
+    var renderLegacyAgent = function(agent) {
+      const profile = resolveAgentProfile(agent || {});
+      const timelineHtml = (agent.activity || []).map(a => `
+        <div class="t-item">
+          <div class="t-dot"></div>
+          <div class="t-time">${formatTime(a.timestamp)}</div>
+          <div class="t-content">${escapeHtml(a.message)}</div>
         </div>
       `).join('');
 
-      const agentsHtml = payload.agents.map(agent => {
-        var status = String(agent.status || 'idle').toLowerCase();
-        var taskLine = agent.current_task
-          ? `<div class="agent-task"><strong>Current:</strong> ${escapeHtml(agent.current_task)}</div>`
-          : agent.blockers.length
-          ? `<div class="agent-task"><strong>Blocked by:</strong> ${escapeHtml(agent.blockers.join(', '))}</div>`
-          : `<div class="agent-task"><strong>Current:</strong> No active task</div>`;
-        var progressLine = typeof agent.progress === 'number'
-          ? `${Math.max(0, Math.min(100, Math.round(agent.progress)))}%`
-          : agent.execution_target
-          ? titleCase(agent.execution_target)
-          : 'Standby';
-        return `
-          <div class="agent-row-card">
-            <div class="avatar-ring" style="width:56px;height:56px;">${renderAvatar(agent.agent_name, 56)}</div>
-            <div class="agent-row-main">
-              <div class="agent-name">${escapeHtml(agent.agent_name)}</div>
-              <div class="agent-role-line">${escapeHtml(agent.role)}</div>
-              ${taskLine}
-            </div>
-            <div class="agent-meta">
-              <div class="status-pill status-${escapeHtml(status)}"><div class="status-dot"></div>${escapeHtml(titleCase(status))}</div>
-              <div class="agent-progress">${escapeHtml(progressLine)}</div>
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      injectHtml(`
+      return `
         <div class="ox-card animate-in">
           <div class="ox-card-inner">
             <div class="agent-header">
-              <div class="avatar-ring">${payload.summary.running > 0 ? payload.summary.running : payload.summary.total}</div>
+              <div class="avatar-ring">${renderAvatar(agent)}</div>
               <div style="flex:1;">
-                <div class="ox-eyebrow" style="margin-bottom:4px;">OrgX Fleet</div>
-                <h2 class="ox-title" style="font-size:1.3rem; margin-bottom:8px;">Agent Status</h2>
-                <div class="ox-text">${escapeHtml(payload.message || 'Live orchestration state across specialist agents.')}</div>
+                <div class="ox-eyebrow" style="margin-bottom:4px;">${escapeHtml(profile.role)}</div>
+                <h2 class="ox-title" style="font-size:1.3rem; margin-bottom:8px;">${escapeHtml(profile.name)}</h2>
+                <div class="status-pill">
+                  <div class="status-dot"></div> ${escapeHtml(humanize(agent.status) || 'Idle')}
+                </div>
               </div>
             </div>
-            <div class="summary-grid">${summaryHtml}</div>
-            <div class="agent-list">${agentsHtml}</div>
+            <div class="timeline">${timelineHtml}</div>
             <div class="widget-footer">
-              <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">${payload.summary.total} agents tracked</span>
-              <a href="${buildAgentUrl(null)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(buildAgentUrl(null))}, event)' class="deep-link">
+              <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
+              <a href="${buildAgentUrl(agent.agent_id)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(buildAgentUrl(agent.agent_id))}, event)' class="deep-link">
                 Open Agent View
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
               </a>
             </div>
           </div>
         </div>
+      `;
+    };
+
+    var render = () => {
+      if(isLoading) return;
+      var payload = normalizeAgentPayload(data);
+      if(!payload) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.agent(24)}</div><div class="empty-title">Agent on standby</div><div class="empty-desc">No agent telemetry is available yet.</div></div>`); return; }
+
+      if (payload.mode === 'single') {
+        injectHtml(renderLegacyAgent(Object.assign({}, payload.agents[0], { activity: payload.activity || [] })));
+        return;
+      }
+
+      if (payload.agents.length === 0) {
+        injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.agent(24)}</div><div class="empty-title">No agents in motion</div><div class="empty-desc">Launch work or include idle agents to see the multi-agent board.</div></div>`);
+        return;
+      }
+
+      var summary = payload.summary || {};
+      var counts = ['running', 'blocked', 'queued', 'idle'].map(function(statusKey) {
+        var count = typeof summary[statusKey] === 'number'
+          ? summary[statusKey]
+          : payload.agents.filter(function(agent) {
+              return firstString([agent.status]).toLowerCase() === statusKey;
+            }).length;
+        return { key: statusKey, label: humanize(statusKey), count: count };
+      }).filter(function(item) { return item.count > 0; });
+
+      var summaryHtml = counts.map(function(item) {
+        return `
+          <div class="summary-card">
+            <span class="ox-eyebrow">${escapeHtml(item.label)}</span>
+            <strong>${item.count}</strong>
+          </div>
+        `;
+      }).join('');
+
+      var cardsHtml = payload.agents.map(function(agent, index) {
+        var profile = resolveAgentProfile(agent || {});
+        var tasks = extractTasks(agent || {});
+        var isIdle = firstString([agent.status]).toLowerCase() === 'idle';
+        var primaryTask = tasks[0] || (isIdle ? 'Awaiting next assignment' : 'No active task');
+        var extraTasks = tasks.slice(1, 4);
+        var hiddenTaskCount = Math.max(0, tasks.length - 1 - extraTasks.length);
+        var statusLabel = humanize(agent.status) || (tasks.length > 0 ? 'Active' : 'Idle');
+        var progress = typeof agent.progress === 'number' && isFinite(agent.progress)
+          ? Math.max(0, Math.min(100, agent.progress))
+          : null;
+        var blockers = Array.isArray(agent.blockers)
+          ? agent.blockers.filter(function(item) { return typeof item === 'string' && item.trim(); })
+          : [];
+        var href = buildAgentUrl(agent.agent_id);
+
+        return `
+          <div class="agent-item animate-in" style="animation-delay:${(index % 6) * 0.06}s">
+            <div class="agent-item-inner">
+              <div class="agent-meta">
+                <div class="avatar-ring">${renderAvatar(agent)}</div>
+                <div class="agent-title">
+                  <div class="agent-title-copy">
+                    <div class="agent-name">${escapeHtml(profile.name)}</div>
+                    <div class="agent-role">${escapeHtml(profile.role)}</div>
+                  </div>
+                  <div class="status-pill">
+                    <div class="status-dot"></div>
+                    ${escapeHtml(statusLabel)}
+                  </div>
+                </div>
+              </div>
+
+              <div class="agent-task-block">
+                <div>
+                  <div class="ox-eyebrow" style="margin-bottom:6px;">Current focus</div>
+                  <div class="task-lead">${escapeHtml(primaryTask)}</div>
+                  <div class="task-subcopy">${
+                    tasks.length > 1
+                      ? `${tasks.length} tasks in view`
+                      : tasks.length === 1
+                      ? 'Single-task focus'
+                      : isIdle
+                      ? 'Standing by for routed work'
+                      : 'No routed tasks yet'
+                  }</div>
+                </div>
+
+                ${extraTasks.length > 0 ? `
+                  <div class="task-list">
+                    ${extraTasks.map(function(task) { return `<span class="task-chip">${escapeHtml(task)}</span>`; }).join('')}
+                    ${hiddenTaskCount > 0 ? `<span class="task-chip">+${hiddenTaskCount} more</span>` : ''}
+                  </div>
+                ` : ''}
+
+                ${progress !== null ? `
+                  <div class="progress-row">
+                    <div class="progress-copy">
+                      <span>Progress</span>
+                      <span>${progress}%</span>
+                    </div>
+                    <div class="progress-track"><div class="progress-fill" style="width:${progress}%"></div></div>
+                  </div>
+                ` : ''}
+
+                ${blockers.length > 0 ? `
+                  <div class="blockers">
+                    <div class="ox-eyebrow" style="color:var(--ox-danger);">Blocked on</div>
+                    <ul>
+                      ${blockers.map(function(item) { return `<li>${escapeHtml(item)}</li>`; }).join('')}
+                    </ul>
+                  </div>
+                ` : ''}
+              </div>
+
+              <div class="widget-footer">
+                <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
+                <a href="${href}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(href || ''))}, event)' class="deep-link">
+                  Open telemetry
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </a>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      injectHtml(`
+        <div class="summary-grid animate-in">${summaryHtml}</div>
+        <div class="agent-board">${cardsHtml}</div>
       `);
     };
 
