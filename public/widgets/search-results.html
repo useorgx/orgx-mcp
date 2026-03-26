@@ -126,19 +126,54 @@
 
     :root { --ox-primary-rgb: 0, 201, 167; }
     
-    .search-box { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--ox-border); }
+    .search-box { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--ox-border); }
     .search-icon { color: var(--ox-primary); filter: drop-shadow(0 0 10px rgba(var(--ox-primary-rgb), 0.4)); }
     .search-query { font-family: var(--ox-mono); font-size: 1rem; color: var(--ox-text); font-weight: 500; letter-spacing: -0.02em; }
     @media (prefers-color-scheme: dark) { .search-query { color: #fff; } }
+    .search-meta { display: flex; flex-direction: column; gap: 8px; }
+    .search-subtitle { font-size: 0.82rem; line-height: 1.45; color: var(--ox-text-muted); }
+    .search-helper {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--ox-border);
+      background: rgba(255, 255, 255, 0.03);
+      width: fit-content;
+      font-size: 0.75rem;
+      color: var(--ox-text-muted);
+    }
     
     .result-list { display: flex; flex-direction: column; gap: 12px; }
     .result-list--recommendations { gap: 14px; }
     
-    .result-card { display: block; text-decoration: none; padding: 16px; background: var(--ox-well-bg); border: 1px solid var(--ox-border); border-radius: 12px; transition: all 0.2s; position: relative; overflow: hidden; }
-    .result-card:hover { border-color: rgba(var(--ox-primary-rgb), 0.4); background: rgba(var(--ox-primary-rgb), 0.05); transform: translateY(-2px); }
+    .result-card {
+      display: block;
+      text-decoration: none;
+      padding: 18px;
+      background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.04), transparent 45%), var(--ox-well-bg);
+      border: 1px solid var(--ox-border);
+      border-radius: 14px;
+      transition: border-color 0.2s, background 0.2s, transform 0.2s, box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    }
+    .result-card:hover,
+    .result-card:focus-visible {
+      border-color: rgba(var(--ox-primary-rgb), 0.38);
+      background: rgba(var(--ox-primary-rgb), 0.06);
+      transform: translateY(-2px);
+      box-shadow: 0 16px 28px -24px rgba(0, 0, 0, 0.45);
+      outline: none;
+    }
     
-    .r-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-    .r-title { font-size: 0.95rem; font-weight: 600; color: var(--ox-text); display: flex; align-items: center; gap: 8px; }
+    .r-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 10px; }
+    .r-title { font-size: 1rem; font-weight: 600; color: var(--ox-text); display: flex; align-items: flex-start; gap: 10px; flex: 1; line-height: 1.35; }
+    .r-title-copy { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+    .r-kicker { font-family: var(--ox-mono); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ox-text-muted); font-weight: 700; }
+    .r-rank { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 28px; border-radius: 999px; border: 1px solid rgba(var(--ox-primary-rgb), 0.22); background: rgba(var(--ox-primary-rgb), 0.09); color: var(--ox-primary); font-family: var(--ox-mono); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.03em; flex-shrink: 0; }
     
     
     .score-pill { font-family: var(--ox-mono); font-size: 0.65rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; border: 1px solid currentColor; }
@@ -147,18 +182,29 @@
     .score-low { color: var(--ox-warning); background: rgba(251,191,36,0.1); }
 
     
-    .r-snippet { font-size: 0.85rem; color: var(--ox-text-muted); line-height: 1.5; margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .r-snippet { font-size: 0.88rem; color: var(--ox-text-muted); line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
     
-    .r-meta { display: flex; gap: 12px; font-family: var(--ox-mono); font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ox-text-muted); }
+    .r-meta { display: flex; flex-wrap: wrap; gap: 8px; font-family: var(--ox-mono); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ox-text-muted); }
+    .r-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; border: 1px solid var(--ox-border); background: rgba(255, 255, 255, 0.03); }
     .r-body { display: flex; flex-direction: column; gap: 10px; }
     .r-reason {
-      font-size: 0.86rem;
-      line-height: 1.5;
+      font-size: 0.82rem;
+      line-height: 1.55;
       color: var(--ox-text);
       padding: 10px 12px;
       border-radius: 10px;
-      background: rgba(var(--ox-primary-rgb), 0.08);
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
+      background: rgba(var(--ox-primary-rgb), 0.07);
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.14);
+    }
+    .r-reason-label {
+      display: inline-block;
+      margin-right: 6px;
+      font-family: var(--ox-mono);
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ox-primary);
+      font-weight: 700;
     }
     .r-flag {
       display: inline-flex;
@@ -175,12 +221,28 @@
       background: rgba(var(--ox-primary-rgb), 0.1);
       border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
     }
+    .r-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--ox-border); }
+    .r-open-hint { display: inline-flex; align-items: center; gap: 8px; color: var(--ox-primary); font-size: 0.82rem; font-weight: 600; letter-spacing: -0.01em; }
+    .r-open-hint small { color: var(--ox-text-muted); font-size: 0.68rem; font-weight: 500; letter-spacing: 0; }
+    .history-status { padding: 4px 8px; border-radius: 999px; border: 1px solid rgba(var(--ox-primary-rgb), 0.18); background: rgba(var(--ox-primary-rgb), 0.08); color: var(--ox-primary); font-family: var(--ox-mono); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
     
     .highlight { color: var(--ox-primary); font-weight: 600; background: rgba(var(--ox-primary-rgb), 0.1); padding: 0 2px; border-radius: 2px; }
     .error-state { border-style: solid; border-color: rgba(225,29,72,0.2); background: rgba(225,29,72,0.04); }
     .error-state .empty-icon { color: var(--ox-danger); background: rgba(225,29,72,0.08); box-shadow: none; }
     .error-state .empty-title { color: var(--ox-text); }
     .error-state .empty-desc { max-width: 360px; }
+
+    @media (max-width: 560px) {
+      .r-header,
+      .r-footer {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .score-pill {
+        align-self: flex-start;
+      }
+    }
 
     .skeleton-line {
       background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%);
@@ -244,6 +306,7 @@
       var _mcpNextId = 100;
       function initWidget(opts){var render=opts.render,getData=opts.getData||_extractData;var protocol=_detectProtocol();if(protocol==='chatgpt'){var d=getData(window.openai&&window.openai.toolOutput);render(d);window.addEventListener('openai:set_globals',function(e){var g=e.detail&&e.detail.globals;if(g&&g.toolOutput){render(getData(g.toolOutput));}},{passive:true});}else if(protocol==='mcp-apps'){render(null);var initId=1;window.parent.postMessage({jsonrpc:'2.0',id:initId,method:'ui/initialize',params:{appInfo:{name:'Widget',version:'1.0'},appCapabilities:{tools:{listChanged:false}},protocolVersion:'2026-01-26'}},'*');window.parent.postMessage({jsonrpc:'2.0',method:'notifications/initialized'},'*');window.addEventListener('message',function(event){var msg=event.data;if(!msg||typeof msg!=='object')return;if(msg.id===initId&&msg.result){window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized'},'*');_observeSize();return;}if(msg.id!=null&&_mcpPending[msg.id]){var p=_mcpPending[msg.id];delete _mcpPending[msg.id];if(msg.error)p.reject(new Error(msg.error.message||'Tool call failed'));else p.resolve(msg.result);return;}if((msg.method==='ui/notifications/tool-result'||msg.method==='notifications/message')&&msg.params){var data=getData(msg.params);if(data)render(data);}});}else{render(null);}}
       function callTool(name, args){var protocol=_detectProtocol();if(protocol==='chatgpt')return window.openai&&window.openai.callTool?window.openai.callTool(name,args):Promise.resolve(null);if(protocol==='mcp-apps'){return new Promise(function(resolve,reject){var id=_mcpNextId++;_mcpPending[id]={resolve:resolve,reject:reject};window.parent.postMessage({jsonrpc:'2.0',id:id,method:'tools/call',params:{name:name,arguments:args}},'*');setTimeout(function(){if(_mcpPending[id]){delete _mcpPending[id];reject(new Error('Tool call '+name+' timed out'));}},30000);});}return Promise.resolve(null);}
+      function openWidgetLink(url,event){if(!url)return false;var protocol=_detectProtocol();if(protocol==='mcp-apps'){if(event&&typeof event.preventDefault==='function')event.preventDefault();window.parent.postMessage({jsonrpc:'2.0',id:_mcpNextId++,method:'ui/open-link',params:{url:url}},'*');return false;}return true;}
       var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true">'+c+'</svg>';};
       var icons = {
         agent: function(s){return _svg('<rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><line x1="8" y1="16" x2="8" y2="16"></line><line x1="16" y1="16" x2="16" y2="16"></line>',s);},
@@ -256,6 +319,15 @@
         error: function(s){return _svg('<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>',s);}
       };
       var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
+      var renderSnippet = (snippet) => {
+        var text = typeof snippet === 'string' ? snippet : '';
+        if (!text) return '';
+        return escapeHtml(text)
+          .replace(/&lt;span class=&quot;highlight&quot;&gt;/g, '<span class="highlight">')
+          .replace(/&lt;\/span&gt;/g, '</span>');
+      };
+      var serializeJsString = (value) => JSON.stringify(String(value || ''));
+      var titleCase = value => String(value || '').replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
       var formatRelativeDate = (value) => {
         if (!value) return '';
         var date = new Date(value);
@@ -336,6 +408,49 @@
           date: formatRelativeDate(item && (item.date || item.created_at || item.updated_at)) || 'Recently updated'
         };
       };
+      var normalizeDecisionHistoryItem = (item) => {
+        return {
+          title: item && typeof item.title === 'string' && item.title.trim()
+            ? item.title
+            : item && typeof item.summary === 'string' && item.summary.trim()
+            ? item.summary
+            : 'Historical decision',
+          summary: item && typeof item.summary === 'string' && item.summary.trim()
+            ? item.summary
+            : item && typeof item.reason === 'string' && item.reason.trim()
+            ? item.reason
+            : item && typeof item.rationale === 'string' && item.rationale.trim()
+            ? item.rationale
+            : 'No decision summary was provided.',
+          status: item && typeof item.status === 'string' && item.status.trim()
+            ? item.status
+            : item && typeof item.outcome === 'string' && item.outcome.trim()
+            ? item.outcome
+            : 'resolved',
+          date: formatRelativeDate(item && (item.decided_at || item.created_at || item.updated_at)) || 'Previously',
+          url: buildEntityUrl({
+            type: 'decision',
+            id: item && typeof item.id === 'string' ? item.id : '',
+            initiative_id: item && typeof item.initiative_id === 'string' ? item.initiative_id : '',
+            url: item && typeof item.url === 'string' ? item.url : ''
+          })
+        };
+      };
+      var sanitizeScopeLabel = (label) => {
+        var value = typeof label === 'string' ? label.trim() : '';
+        if (!value) return '';
+        var normalized = value.toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+        if (
+          normalized === 'workspace scope' ||
+          normalized === 'initiative scope' ||
+          normalized === 'entity scope' ||
+          normalized === 'scope' ||
+          normalized === 'workspace'
+        ) {
+          return '';
+        }
+        return value;
+      };
       var normalizeRecommendation = (item, index) => {
         var metadata = item && typeof item.metadata === 'object' && !Array.isArray(item.metadata) ? item.metadata : {};
         var score = coerceScore(item && (item.score ?? item.confidence ?? item.priority_score));
@@ -357,6 +472,7 @@
         var url = buildEntityUrl({
           type: entityType,
           id: typeof metadata.workstreamId === 'string' ? metadata.workstreamId : item && item.key,
+          initiative_id: typeof metadata.initiativeId === 'string' ? metadata.initiativeId : item && item.initiative_id,
           url: typeof item.url === 'string' ? item.url : null
         });
         return {
@@ -375,6 +491,18 @@
           url: url,
           nextTask: typeof metadata.nextTaskTitle === 'string' ? metadata.nextTaskTitle : null
         };
+      };
+      var buildScopeLabel = (payload) => {
+        if (!payload || typeof payload !== 'object') return '';
+        var scopeLabel = sanitizeScopeLabel(payload.scope_label);
+        if (scopeLabel) return scopeLabel;
+        if (typeof payload.workspace_name === 'string' && payload.workspace_name.trim()) return payload.workspace_name.trim();
+        if (typeof payload.initiative_name === 'string' && payload.initiative_name.trim()) return payload.initiative_name.trim();
+        if (typeof payload.entity_name === 'string' && payload.entity_name.trim()) return payload.entity_name.trim();
+        if (typeof payload.entity_type === 'string' && payload.entity_type.trim() && payload.entity_type.toLowerCase() !== 'workspace') {
+          return titleCase(payload.entity_type) + ' scope';
+        }
+        return '';
       };
 
     var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
@@ -410,6 +538,53 @@
       }
       if(!data) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.search(24)}</div><div class="empty-title">No results found</div><div class="empty-desc">Try adjusting your query or expanding your search scope.</div></div>`); return; }
       var recommendationMode = Array.isArray(data.recommendations) || !!data.next_action;
+      var historyMode = Array.isArray(data.decisions) || data.scope === 'decisions' || !!data.topic;
+
+      if (historyMode) {
+        var history = (Array.isArray(data.decisions) ? data.decisions : Array.isArray(data.results) ? data.results : []).map(normalizeDecisionHistoryItem);
+        if (!history.length) {
+          injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.check(24)}</div><div class="empty-title">No matching decisions</div><div class="empty-desc">${escapeHtml(data.topic ? 'OrgX did not find any prior decisions for \"' + data.topic + '\".' : 'OrgX did not find any historical decisions for this request yet.')}</div></div>`);
+          return;
+        }
+        var historyHtml = history.map((r, index) => `
+          <a href="${escapeHtml(r.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${serializeJsString(r.url)}, event)' class="result-card">
+            <div class="r-header">
+              <div class="r-title">
+                <div class="r-rank">${index + 1}</div>
+                <div class="r-title-copy">
+                  <div class="r-kicker">Decision history</div>
+                  <div>${escapeHtml(r.title)}</div>
+                </div>
+              </div>
+              <div class="history-status">${escapeHtml(titleCase(r.status))}</div>
+            </div>
+            <div class="r-snippet">${escapeHtml(r.summary)}</div>
+            <div class="r-footer">
+              <div class="r-meta">
+                <span class="r-chip">Decision</span>
+                <span class="r-chip">${escapeHtml(r.date)}</span>
+              </div>
+              <div class="r-open-hint">${icons.external(14)} Open in OrgX <small>new tab</small></div>
+            </div>
+          </a>
+        `).join('');
+        injectHtml(`
+          <div class="ox-card animate-in">
+            <div class="ox-card-inner">
+              <div class="search-box">
+                <div class="search-icon">${icons.search(24)}</div>
+                <div class="search-meta">
+                  <div class="search-query">> decision history${data.topic ? ' "' + escapeHtml(data.topic) + '"' : ''}</div>
+                  <div class="search-subtitle">Past approvals and rejections that may inform the current call.</div>
+                  <div class="search-helper">${icons.external(12)} Click any card to open the full decision in a new tab.</div>
+                </div>
+              </div>
+              <div class="result-list result-list--recommendations">${historyHtml}</div>
+            </div>
+          </div>
+        `);
+        return;
+      }
 
       if (recommendationMode) {
         var recommendations = (data.recommendations || []).map(normalizeRecommendation);
@@ -420,23 +595,30 @@
           injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.search(24)}</div><div class="empty-title">No recommendations available</div><div class="empty-desc">${escapeHtml(data.message || 'OrgX did not find a clear next action yet.')}</div></div>`);
           return;
         }
+        var scopeLabel = buildScopeLabel(data);
         var recommendationsHtml = recommendations.map(r => `
-          <a href="${escapeHtml(r.url)}" target="_blank" rel="noreferrer" class="result-card">
+          <a href="${escapeHtml(r.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${serializeJsString(r.url)}, event)' class="result-card">
             <div class="r-header">
               <div class="r-title">
-                <span style="color:var(--ox-text-muted); display:flex; align-items:center;">${r.type === 'decision' ? icons.check(16) : r.type === 'initiative' ? icons.initiative(16) : icons.external(16)}</span>
-                ${escapeHtml(r.title)}
+                <div class="r-rank">${r.rank}</div>
+                <div class="r-title-copy">
+                  <div class="r-kicker">${r.ready ? 'Ready now' : 'Recommended follow-up'}</div>
+                  <div style="display:flex; align-items:flex-start; gap:8px;"><span style="color:var(--ox-text-muted); display:flex; align-items:center; margin-top:2px;">${r.type === 'decision' ? icons.check(16) : r.type === 'initiative' ? icons.initiative(16) : icons.external(16)}</span><span>${escapeHtml(r.title)}</span></div>
+                </div>
               </div>
               ${r.score !== null ? `<div class="score-pill ${r.score >= 0.9 ? 'score-high' : r.score >= 0.7 ? 'score-med' : 'score-low'}">${Math.round(r.score * 100)}% Confidence</div>` : ''}
             </div>
             <div class="r-body">
-              <div class="r-snippet">${escapeHtml(r.summary)}</div>
-              <div class="r-reason">${escapeHtml(r.reason)}</div>
+              <div class="r-snippet">${renderSnippet(r.summary)}</div>
+              <div class="r-reason"><span class="r-reason-label">Why now</span>${escapeHtml(r.reason)}</div>
             </div>
-            <div class="r-meta">
-              <span>${escapeHtml(r.type)}</span>
-              ${r.source ? `<span style="color:var(--ox-border-strong)">•</span><span>${escapeHtml(String(r.source).replace(/_/g, ' '))}</span>` : ''}
-              ${r.nextTask ? `<span style="color:var(--ox-border-strong)">•</span><span>${escapeHtml(r.nextTask)}</span>` : ''}
+            <div class="r-footer">
+              <div class="r-meta">
+                <span class="r-chip">${escapeHtml(titleCase(r.type))}</span>
+                ${r.source ? `<span class="r-chip">${escapeHtml(String(r.source).replace(/_/g, ' '))}</span>` : ''}
+                ${r.nextTask ? `<span class="r-chip">${escapeHtml(r.nextTask)}</span>` : ''}
+              </div>
+              <div class="r-open-hint">${icons.external(14)} Open in OrgX <small>new tab</small></div>
             </div>
           </a>
         `).join('');
@@ -445,9 +627,10 @@
             <div class="ox-card-inner">
               <div class="search-box">
                 <div class="search-icon">${icons.search(24)}</div>
-                <div style="display:flex; flex-direction:column; gap:6px;">
+                <div class="search-meta">
                   <div class="search-query">> recommend next action</div>
-                  <div class="r-flag">${escapeHtml(data.entity_type || 'workspace')} scope</div>
+                  ${scopeLabel ? `<div class="r-flag">Recommended for ${escapeHtml(scopeLabel)}</div>` : `<div class="search-subtitle">Ranked follow-up actions based on current OrgX context.</div>`}
+                  <div class="search-helper">${icons.external(12)} Click any card to open the next step in a new tab.</div>
                 </div>
               </div>
               <div class="result-list result-list--recommendations">
@@ -459,22 +642,32 @@
         return;
       }
 
-      const resultsHtml = (data.results || []).map(normalizeResult).map(r => `
-        <a href="${escapeHtml(r.url)}" target="_blank" rel="noreferrer" class="result-card">
+      var normalizedResults = Array.isArray(data.results) ? data.results.map(normalizeResult) : [];
+      if (!normalizedResults.length) {
+        injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.search(24)}</div><div class="empty-title">No results found</div><div class="empty-desc">${escapeHtml(data.query ? 'OrgX could not find a strong match for \"' + data.query + '\". Try a broader phrase or a different scope.' : 'Try adjusting your query or expanding your search scope.')}</div></div>`);
+        return;
+      }
+
+      const resultsHtml = normalizedResults.map(r => `
+        <a href="${escapeHtml(r.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${serializeJsString(r.url)}, event)' class="result-card">
           
           <div class="r-header">
             <div class="r-title">
-              <span style="color:var(--ox-text-muted); display:flex; align-items:center;">${r.type === 'document' ? icons.file(16) : r.type === 'decision' ? icons.check(16) : r.type === 'initiative' ? icons.initiative(16) : icons.external(16)}</span>
-              ${escapeHtml(r.title)}
+              <div class="r-title-copy">
+                <div class="r-kicker">${escapeHtml(r.type)}</div>
+                <div style="display:flex; align-items:flex-start; gap:8px;"><span style="color:var(--ox-text-muted); display:flex; align-items:center; margin-top:2px;">${r.type === 'document' ? icons.file(16) : r.type === 'decision' ? icons.check(16) : r.type === 'initiative' ? icons.initiative(16) : icons.external(16)}</span><span>${escapeHtml(r.title)}</span></div>
+              </div>
             </div>
             ${r.score !== null ? `<div class="score-pill ${r.score >= 0.9 ? 'score-high' : r.score >= 0.7 ? 'score-med' : 'score-low'}">${Math.round(r.score * 100)}% Match</div>` : ''}
           </div>
 
-          <div class="r-snippet">${escapeHtml(r.snippet)}</div>
-          <div class="r-meta">
-            <span>${escapeHtml(r.type)}</span>
-            <span style="color:var(--ox-border-strong)">•</span>
-            <span>${escapeHtml(r.date)}</span>
+          <div class="r-snippet">${renderSnippet(r.snippet)}</div>
+          <div class="r-footer">
+            <div class="r-meta">
+              <span class="r-chip">${escapeHtml(titleCase(r.type))}</span>
+              <span class="r-chip">${escapeHtml(r.date)}</span>
+            </div>
+            <div class="r-open-hint">${icons.external(14)} Open in OrgX <small>new tab</small></div>
           </div>
         </a>
       `).join('');
@@ -484,7 +677,11 @@
           <div class="ox-card-inner">
             <div class="search-box">
               <div class="search-icon">${icons.search(24)}</div>
-              <div class="search-query">> search "${escapeHtml(data.query)}"</div>
+              <div class="search-meta">
+                <div class="search-query">> search "${escapeHtml(data.query)}"</div>
+                <div class="search-subtitle">Matching artifacts, initiatives, and decisions from organizational memory.</div>
+                <div class="search-helper">${icons.external(12)} Click any card to open the full record in a new tab.</div>
+              </div>
             </div>
             <div class="result-list">
               ${resultsHtml}

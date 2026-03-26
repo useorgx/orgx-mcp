@@ -102,6 +102,7 @@
         padding: 24px 16px;
         -webkit-font-smoothing: antialiased;
         min-height: 100vh;
+        overflow-x: hidden;
       }
 
       body::before {
@@ -208,6 +209,23 @@
     }
 
     @media (max-width: 560px) {
+      .dispatch-header {
+        flex-direction: column;
+        align-items: flex-start !important;
+      }
+
+      .agent-row {
+        align-items: flex-start !important;
+      }
+
+      .meta-grid {
+        grid-template-columns: 1fr !important;
+      }
+
+      .ox-title {
+        overflow-wrap: anywhere;
+      }
+
       .widget-footer {
         flex-direction: column;
         align-items: stretch !important;
@@ -322,21 +340,23 @@
     var entity = isDemo ? { id: 'TSK-942', type: 'task', title: 'Implement rate limiting middleware for public API', agent_name: 'Eli', status: 'In Progress', domain: 'Engineering', workspace_name: 'Core Platform', links: [{ platform: 'Linear', url: '#', label: 'ENG-142' }] } : null;
     var isLoading = !isDemo;
     if (isLoadingOverride) { isLoading = true; isDemo = false; initWidget = () => { render(); }; }
+    function openWidgetLink(url,event){if(!url)return false;var protocol=_detectProtocol();if(protocol==='mcp-apps'){if(event&&typeof event.preventDefault==='function')event.preventDefault();window.parent.postMessage({jsonrpc:'2.0',id:_mcpNextId++,method:'ui/open-link',params:{url:url}},'*');return false;}return true;}
 
+    var WIDGET_ASSET_BASE = 'https://mcp.useorgx.com/widgets/shared/';
     var getAvatarUrl = (name) => {
         const n = (name || '').toLowerCase();
-        if (n.includes('pace') || n.includes('product')) return 'https://useorgx.com/product_orchestrator.png';
-        if (n.includes('eli') || n.includes('engineer')) return 'https://useorgx.com/engineering_autopilot.png';
-        if (n.includes('mark') || n.includes('market')) return 'https://useorgx.com/launch_captain.png';
-        if (n.includes('sage') || n.includes('sale')) return 'https://useorgx.com/pipeline_intelligence.png';
-        if (n.includes('orion') || n.includes('op')) return 'https://useorgx.com/control_tower.png';
-        if (n.includes('dana') || n.includes('design')) return 'https://useorgx.com/design_codex.png';
-        if (n.includes('xandy') || n.includes('orchestrator')) return 'https://useorgx.com/xandy_orchestrator.png';
+        if (n.includes('pace') || n.includes('product')) return WIDGET_ASSET_BASE + 'product_orchestrator.png';
+        if (n.includes('eli') || n.includes('engineer')) return WIDGET_ASSET_BASE + 'engineering_autopilot.png';
+        if (n.includes('mark') || n.includes('market')) return WIDGET_ASSET_BASE + 'launch_captain.png';
+        if (n.includes('sage') || n.includes('sale')) return WIDGET_ASSET_BASE + 'pipeline_intelligence.png';
+        if (n.includes('orion') || n.includes('op')) return WIDGET_ASSET_BASE + 'control_tower.png';
+        if (n.includes('dana') || n.includes('design')) return WIDGET_ASSET_BASE + 'design_codex.png';
+        if (n.includes('xandy') || n.includes('orchestrator')) return WIDGET_ASSET_BASE + 'xandy_orchestrator.png';
         return null;
     };
     var renderAvatar = (name, sizePx) => {
         const url = getAvatarUrl(name);
-        if (url) return `<img src="${url}" alt="${escapeHtml(name)}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" />`;
+        if (url) return `<img src="${url}" alt="${escapeHtml(name)}" loading="eager" decoding="sync" draggable="false" style="display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit;" />`;
         return escapeHtml(name ? name[0].toUpperCase() : '?');
     };
     var ORGX_BASE_URL = 'https://useorgx.com';
@@ -434,11 +454,11 @@
       if (!entity) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.check(24)}</div><div class="empty-title">Entity unverified</div><div class="empty-desc">The dispatched entity payload is empty.</div></div>`); return; }
 
       const linksHtml = (entity.links || []).map(l => `
-        <a href="${escapeHtml(l.url)}" target="_blank" rel="noreferrer" class="platform-link ox-link-btn ox-link-btn--ghost">
+        <a href="${escapeHtml(l.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(l.url || ''))}, event)' class="platform-link ox-link-btn ox-link-btn--ghost">
           <span style="display:flex; align-items:center; gap:6px;">
-            ${icons.external(12)} ${escapeHtml(l.platform)}
+            ${icons.external(12)} Open ${escapeHtml(l.platform)}
           </span>
-          <span class="platform-link__meta">${escapeHtml(l.label)}</span>
+          <span class="platform-link__meta">${escapeHtml(l.label)} · new tab</span>
         </a>
       `).join('');
       
@@ -496,8 +516,8 @@
 
             <div class="widget-footer" style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid var(--ox-border);">
               <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Live Sync Active</span>
-              <a href="${consoleUrl}" target="_blank" rel="noreferrer" class="deep-link ox-link-btn ox-link-btn--quiet" style="display: inline-flex; align-items: center; gap: 6px;">
-                Track Execution 
+              <a href="${consoleUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(consoleUrl || ''))}, event)' class="deep-link ox-link-btn ox-link-btn--quiet" style="display: inline-flex; align-items: center; gap: 6px;">
+                Open execution view
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
               </a>
             </div>

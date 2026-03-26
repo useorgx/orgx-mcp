@@ -102,6 +102,7 @@
         padding: 24px 16px;
         -webkit-font-smoothing: antialiased;
         min-height: 100vh;
+        overflow-x: hidden;
       }
 
       body::before {
@@ -221,7 +222,8 @@
 
     :root { --ox-primary-rgb: 251, 191, 36; }
     
-    .summary-grid { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-bottom: 24px; }
+    .summary-grid { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
+    .queue-subtitle { font-size: 0.92rem; line-height: 1.5; color: var(--ox-text-muted); max-width: 420px; }
     
     .decision-shell {
       display: flex;
@@ -413,8 +415,12 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      padding: 4px 4px 0;
-      margin-top: -4px;
+      padding: 14px;
+      margin-top: -2px;
+      border: 1px solid var(--ox-border);
+      border-radius: 16px;
+      background: var(--ox-panel);
+      box-shadow: var(--ox-shadow);
     }
 
     .page-info {
@@ -424,8 +430,23 @@
       font-size: 0.68rem;
       text-transform: uppercase;
       letter-spacing: 0.1em;
-      color: var(--ox-text-muted);
+      color: var(--ox-text);
       font-weight: 600;
+    }
+
+    .page-count {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(var(--ox-primary-rgb), 0.08);
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
+      color: var(--ox-warning);
+      font-family: var(--ox-mono);
+      font-size: 0.66rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
     }
 
     .page-btn {
@@ -433,12 +454,35 @@
       padding-inline: 18px;
       font-size: 0.82rem;
       letter-spacing: -0.01em;
+      justify-content: center;
     }
 
     .page-btn .ox-action-btn__label {
       display: inline-flex;
       align-items: center;
       gap: 8px;
+    }
+
+    .resolution-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+      justify-content: center;
+    }
+
+    .resolution-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      text-decoration: none;
+      color: var(--ox-primary);
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
+      background: rgba(var(--ox-primary-rgb), 0.08);
+      font-size: 0.82rem;
+      font-weight: 600;
     }
 
     @media (max-width: 560px) {
@@ -478,8 +522,11 @@
 </head>
 <body>
   <div class="container">
-    <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:24px;">
-      <h1 class="ox-title" style="font-size:1.75rem;">Action Required</h1>
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:16px; margin-bottom:24px;">
+      <div>
+        <h1 class="ox-title" style="font-size:1.75rem; margin-bottom:8px;">Action Required</h1>
+        <div id="queueSubtitle" class="queue-subtitle">Approve to unblock execution, or reject with clear guidance so the next attempt stays on-rail.</div>
+      </div>
       <div id="summary" class="summary-grid"></div>
     </div>
     <div id="content">
@@ -561,6 +608,16 @@
         }
         return Promise.resolve(null);
       }
+      function openWidgetLink(url,event){
+        if(!url)return false;
+        var protocol=_detectProtocol();
+        if(protocol==='mcp-apps'){
+          if(event&&typeof event.preventDefault==='function')event.preventDefault();
+          window.parent.postMessage({jsonrpc:'2.0',id:_mcpNextId++,method:'ui/open-link',params:{url:url}},'*');
+          return false;
+        }
+        return true;
+      }
 
       var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true">'+c+'</svg>';};
       var icons = {
@@ -580,6 +637,7 @@
         div.textContent = str;
         return div.innerHTML;
       };
+      var ORGX_BASE_URL = 'https://useorgx.com';
 
     var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
     var data = isDemo ? {
@@ -603,6 +661,7 @@
     var rejectComposerId = null;
     var rejectDrafts = {};
     var pendingDecisionId = null;
+    var lastResolution = null;
     var currentPage = 1;
     var itemsPerPage = 3;
     var pageDirection = 'forward';
@@ -613,6 +672,7 @@
       }
       return null;
     };
+    var buildAgentStatusUrl = () => ORGX_BASE_URL + '/settings/agents';
 
     var updateSummaryFromDecisions = () => {
       if (!data || !Array.isArray(data.decisions)) return;
@@ -631,6 +691,7 @@
       const totalPages = Math.max(1, Math.ceil(data.decisions.length / itemsPerPage));
       currentPage = Math.min(currentPage, totalPages);
     };
+    var getDecisionById = (id) => Array.isArray(data && data.decisions) ? data.decisions.find((decision) => decision.id === id) || null : null;
 
     var setPageButtonsDisabled = (disabled) => {
       document.querySelectorAll('.page-btn').forEach((button) => {
@@ -650,20 +711,21 @@
 
 
     
+      var WIDGET_ASSET_BASE = 'https://mcp.useorgx.com/widgets/shared/';
       var getAvatarUrl = (name) => {
         const n = (name || '').toLowerCase();
-        if (n.includes('pace') || n.includes('product')) return 'https://useorgx.com/product_orchestrator.png';
-        if (n.includes('eli') || n.includes('engineer')) return 'https://useorgx.com/engineering_autopilot.png';
-        if (n.includes('mark') || n.includes('market')) return 'https://useorgx.com/launch_captain.png';
-        if (n.includes('sage') || n.includes('sale')) return 'https://useorgx.com/pipeline_intelligence.png';
-        if (n.includes('orion') || n.includes('op')) return 'https://useorgx.com/control_tower.png';
-        if (n.includes('dana') || n.includes('design')) return 'https://useorgx.com/design_codex.png';
-        if (n.includes('xandy') || n.includes('orchestrator')) return 'https://useorgx.com/xandy_orchestrator.png';
+        if (n.includes('pace') || n.includes('product')) return WIDGET_ASSET_BASE + 'product_orchestrator.png';
+        if (n.includes('eli') || n.includes('engineer')) return WIDGET_ASSET_BASE + 'engineering_autopilot.png';
+        if (n.includes('mark') || n.includes('market')) return WIDGET_ASSET_BASE + 'launch_captain.png';
+        if (n.includes('sage') || n.includes('sale')) return WIDGET_ASSET_BASE + 'pipeline_intelligence.png';
+        if (n.includes('orion') || n.includes('op')) return WIDGET_ASSET_BASE + 'control_tower.png';
+        if (n.includes('dana') || n.includes('design')) return WIDGET_ASSET_BASE + 'design_codex.png';
+        if (n.includes('xandy') || n.includes('orchestrator')) return WIDGET_ASSET_BASE + 'xandy_orchestrator.png';
         return null;
       };
       var renderAvatar = (name, sizePx) => {
         const url = getAvatarUrl(name);
-        if (url) return `<img src="${url}" alt="${escapeHtml(name)}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" />`;
+        if (url) return `<img src="${url}" alt="${escapeHtml(name)}" loading="eager" decoding="sync" draggable="false" style="display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit;" />`;
         return escapeHtml(name ? name[0].toUpperCase() : '?');
       };
 
@@ -685,6 +747,7 @@
     window.approveDecision = async (id, btn) => {
       if (btn.disabled || pendingDecisionId) return;
       const card = btn.closest('.decision-card');
+      const decision = getDecisionById(id);
       pendingDecisionId = id;
       setPageButtonsDisabled(true);
       setCardControlsDisabled(card, true);
@@ -692,7 +755,12 @@
 
       try {
         await callTool('approve_decision', { decision_id: id });
-        notify('success', 'Decision approved', 'The agent can continue with the approved path.');
+        lastResolution = {
+          action: 'approved',
+          summary: decision && decision.summary ? decision.summary : 'This decision',
+          agent_name: decision && decision.agent_name ? decision.agent_name : 'the assigned agent'
+        };
+        notify('success', 'Decision approved', 'Recorded and sent to ' + lastResolution.agent_name + ' so execution can continue.');
         if (card) card.classList.add('is-resolving');
         window.setTimeout(() => {
           removeDecisionFromState(id);
@@ -714,6 +782,7 @@
       const reason = (rejectDrafts[id] || '').trim();
       if (!reason || pendingDecisionId) return;
       const card = btn.closest('.decision-card');
+      const decision = getDecisionById(id);
       pendingDecisionId = id;
       setPageButtonsDisabled(true);
       setCardControlsDisabled(card, true);
@@ -721,10 +790,16 @@
 
       try {
         await callTool('reject_decision', { decision_id: id, reason });
+        lastResolution = {
+          action: 'rejected',
+          summary: decision && decision.summary ? decision.summary : 'This decision',
+          agent_name: decision && decision.agent_name ? decision.agent_name : 'the assigned agent',
+          note: reason
+        };
         notify(
           'success',
           'Decision rejected',
-          'Your note was attached so the agent can revise course.'
+          'Guidance sent to ' + lastResolution.agent_name + ' so the next pass can address the issue directly.'
         );
         if (card) card.classList.add('is-resolving');
         window.setTimeout(() => {
@@ -754,7 +829,25 @@
 
     var render = () => {
       if(isLoading) return;
-      if(!data || !data.decisions || data.decisions.length === 0) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.check(24)}</div><div class="empty-title">All caught up</div><div class="empty-desc">No decisions require your attention right now.</div></div>`); document.getElementById('summary').innerHTML=''; return; }
+      var queueSubtitle = document.getElementById('queueSubtitle');
+      if(!data || !data.decisions || data.decisions.length === 0) {
+        var resolvedHtml = lastResolution
+          ? `<div class="empty-title">${lastResolution.action === 'approved' ? 'Decision approved' : 'Decision sent back'}</div><div class="empty-desc">${escapeHtml(lastResolution.summary)} ${lastResolution.action === 'approved' ? 'is now unblocked and ' + lastResolution.agent_name + ' can keep moving.' : 'was returned to ' + lastResolution.agent_name + ' with your note so the next revision addresses the right constraint.'}</div><div class="resolution-actions"><a href="${buildAgentStatusUrl()}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(buildAgentStatusUrl())}, event)' class="resolution-link">${icons.agent(14)} Open agent status</a></div>`
+          : `<div class="empty-title">All caught up</div><div class="empty-desc">No decisions require your attention right now. New approvals will appear here as soon as work needs operator input.</div>`;
+        injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.check(24)}</div>${resolvedHtml}</div>`);
+        document.getElementById('summary').innerHTML='';
+        if (queueSubtitle) {
+          queueSubtitle.textContent = lastResolution
+            ? 'The queue is clear. You can monitor follow-through in Agent Status.'
+            : 'No operator approvals are waiting right now.';
+        }
+        return;
+      }
+
+      if (queueSubtitle) {
+        var pendingCount = data.decisions.length;
+        queueSubtitle.textContent = pendingCount + ' pending decision' + (pendingCount === 1 ? '' : 's') + ' need operator input. Approve to unblock execution, or reject with clear guidance so the next attempt stays on-rail.';
+      }
 
       if(data.summary) {
         document.getElementById('summary').innerHTML = Object.entries(data.summary).filter(([k,v])=>v>0).map(([k,v]) => `<span class="ox-badge" style="--ox-color:var(--ox-${k==='critical'?'danger':k==='high'?'warning':k==='medium'?'lime':'text-muted'}); --ox-color-rgb:var(--ox-${k==='critical'?'danger':k==='high'?'warning':k==='medium'?'lime':'text-muted'}-rgb, 100,100,100);">${v} ${k}</span>`).join('');
@@ -788,6 +881,7 @@
               </div>
               
               <h3 class="ox-title" style="margin-bottom:8px;">${escapeHtml(d.summary)}</h3>
+              <div class="ox-text" style="margin-bottom: 4px;">${escapeHtml(d.urgency === 'critical' ? 'Needs a fast operator call to keep critical-path work moving.' : d.urgency === 'high' ? 'High-signal operator decision with downstream execution impact.' : 'Review and confirm the preferred execution path.')}</div>
               
               <div class="params-well">
                 <div class="param-chip">Type <strong>${escapeHtml(d.type)}</strong></div>
@@ -850,9 +944,9 @@
       if (totalPages > 1) {
         html += `
           <div class="pagination">
-            <button type="button" class="page-btn ox-action-btn ox-action-btn--ghost" onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}>← Previous</button>
-            <span class="page-info">Page ${currentPage} of ${totalPages}</span>
-            <button type="button" class="page-btn ox-action-btn ox-action-btn--ghost" onclick="changePage(1)" ${currentPage === totalPages ? 'disabled' : ''}>Next →</button>
+            <button type="button" class="page-btn ox-action-btn ox-action-btn--ghost" onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}><span class="ox-action-btn__label">← Previous page</span></button>
+            <span class="page-info"><span class="page-count">${currentPage} / ${totalPages}</span> Decision queue page ${currentPage} of ${totalPages}</span>
+            <button type="button" class="page-btn ox-action-btn ox-action-btn--ghost" onclick="changePage(1)" ${currentPage === totalPages ? 'disabled' : ''}><span class="ox-action-btn__label">Next page →</span></button>
           </div>
         `;
       }

@@ -130,9 +130,17 @@
     
     .icon-box { width: 48px; height: 48px; border-radius: 12px; background: rgba(var(--ox-primary-rgb), 0.1); border: 1px solid rgba(var(--ox-primary-rgb), 0.2); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
     
-    .priority-list { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
+    .metrics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 28px; }
+    .metric-card { padding: 14px 16px; border-radius: 12px; border: 1px solid var(--ox-border); background: var(--ox-well-bg); box-shadow: var(--ox-well-shadow); }
+    .metric-value { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.03em; color: var(--ox-text); margin-top: 6px; }
+    .metric-copy { font-size: 0.8rem; color: var(--ox-text-muted); line-height: 1.45; margin-top: 4px; }
+
+    .section-title { display:flex; align-items:center; gap:12px; margin-bottom: 12px; }
+    .section-title .rule { flex:1; height:1px; background:var(--ox-border); }
+
+    .priority-list { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
     
-    .priority-item { position: relative; padding: 16px; padding-left: 20px; background: var(--ox-well-bg); border: 1px solid var(--ox-border); border-radius: 8px; }
+    .priority-item { position: relative; padding: 16px; padding-left: 20px; background: var(--ox-well-bg); border: 1px solid var(--ox-border); border-radius: 12px; box-shadow: var(--ox-well-shadow); }
     .priority-item::before { content: ''; position: absolute; left: -1px; top: -1px; bottom: -1px; width: 4px; border-radius: 4px 0 0 4px; }
     
     .priority-item[data-domain="product"]::before { background: var(--ox-lime); box-shadow: 0 0 10px var(--ox-lime); }
@@ -144,6 +152,38 @@
     .p-domain { font-family: var(--ox-mono); font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ox-text-muted); margin-bottom: 4px; font-weight: 600; }
     .p-title { font-weight: 600; font-size: 0.95rem; color: var(--ox-text); margin-bottom: 4px; }
     .p-reason { font-size: 0.85rem; color: var(--ox-text-muted); line-height: 1.4; }
+    .brief-note { padding: 14px 16px; border-radius: 12px; border: 1px solid rgba(var(--ox-primary-rgb), 0.18); background: rgba(var(--ox-primary-rgb), 0.08); color: var(--ox-text); line-height: 1.55; margin-bottom: 20px; }
+    .exception-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .exception-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(var(--ox-primary-rgb), 0.18); background: rgba(var(--ox-primary-rgb), 0.08); color: var(--ox-text); font-family: var(--ox-mono); font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; }
+    .signal-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+    .signal-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--ox-border);
+      background: var(--ox-well-bg);
+      box-shadow: var(--ox-well-shadow);
+    }
+    .signal-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--ox-primary);
+      box-shadow: 0 0 12px rgba(var(--ox-primary-rgb), 0.4);
+      margin-top: 6px;
+      flex-shrink: 0;
+    }
+    .signal-copy { display: flex; flex-direction: column; gap: 4px; }
+    .signal-title { font-size: 0.84rem; font-weight: 600; color: var(--ox-text); }
+    .signal-desc { font-size: 0.8rem; line-height: 1.5; color: var(--ox-text-muted); }
+
+    @media (max-width: 560px) {
+      .metrics-grid {
+        grid-template-columns: 1fr;
+      }
+    }
 
     .skeleton-line {
       background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%);
@@ -224,13 +264,21 @@
 
     var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
     var brief = isDemo ? {
-      date: new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }),
-      summary: 'You have 2 pending approvals blocking the Q4 Launch. Engineering is on track, but Marketing needs your sign-off on the email sequence.',
+      generated_at: new Date().toISOString(),
+      session_summary: { session_type: 'overnight', receipts_produced: 6, completed: 4, failed: 1 },
+      value_dashboard: { value_delivered_usd: 1840, roi_display: '610%', decisions_resolved: 3, completed_this_week: 5 },
+      summary: 'You have 2 pending approvals blocking the Q4 launch. Engineering is on track, but Marketing still needs your sign-off on the email sequence.',
       top_priorities: [
         { domain: 'Engineering', title: 'Review Database Strategy', reason: 'Blocks sprint 3 deliverables.' },
         { domain: 'Marketing', title: 'Approve Email Sequence', reason: 'Launch is in 4 days. Needs scheduling today.' },
         { domain: 'Product', title: 'Scope V2 Features', reason: 'Draft PRD generated overnight by Pace.' }
-      ]
+      ],
+      top_receipts: [
+        { intent: 'Closed launch QA loop', attributed_value_usd: 420 },
+        { intent: 'Resolved routing regression', attributed_value_usd: 310 }
+      ],
+      exceptions: [{ exception_type: 'budget_guardrail' }],
+      brief_markdown: '# Morning Brief'
     } : null;
     var isLoading = !isDemo;
 
@@ -241,17 +289,156 @@
       // Overwrite initWidget to do nothing so it hangs on loading
       initWidget = () => { render(); };
     }
-
+    var formatCurrency = (value) => {
+      var num = Number(value);
+      if (!Number.isFinite(num)) return null;
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: num >= 100 ? 0 : 2 }).format(num);
+    };
+    var formatDate = (value) => {
+      var date = value ? new Date(value) : new Date();
+      if (isNaN(date.getTime())) date = new Date();
+      return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    };
+    var normalizeBrief = (payload) => {
+      if (!payload) return null;
+      var sessionSummary = payload.session_summary && typeof payload.session_summary === 'object' ? payload.session_summary : {};
+      var valueDashboard = payload.value_dashboard && typeof payload.value_dashboard === 'object' ? payload.value_dashboard : {};
+      var workspacePulse = payload.workspace_pulse && typeof payload.workspace_pulse === 'object' ? payload.workspace_pulse : {};
+      var workspaceStats = workspacePulse.stats && typeof workspacePulse.stats === 'object' ? workspacePulse.stats : {};
+      var topReceipts = Array.isArray(payload.top_receipts) ? payload.top_receipts : [];
+      var exceptions = Array.isArray(payload.exceptions) ? payload.exceptions : [];
+      var nextActions = Array.isArray(payload.next_actions)
+        ? payload.next_actions
+        : Array.isArray(payload.recommended_actions)
+        ? payload.recommended_actions
+        : [];
+      var pendingDecisions = Number(
+        payload.pending_decisions ??
+        workspaceStats.pendingDecisions ??
+        workspaceStats.pending_decisions
+      );
+      var activeInitiatives = Number(
+        workspaceStats.activeInitiatives ??
+        workspaceStats.active_initiatives
+      );
+      var blockedWork = Number(
+        payload.blocked_workstreams ??
+        payload.blocked_items ??
+        workspaceStats.blockedWorkstreams ??
+        workspaceStats.blocked_workstreams
+      );
+      var summary = typeof payload.summary === 'string' && payload.summary.trim()
+        ? payload.summary.trim()
+        : typeof payload.message === 'string' && payload.message.trim()
+        ? payload.message.trim()
+        : null;
+      if (!summary) {
+        var sessionType = typeof sessionSummary.session_type === 'string' ? sessionSummary.session_type : 'recent';
+        var receiptsProduced = Number(sessionSummary.receipts_produced);
+        var completed = Number(sessionSummary.completed);
+        var failed = Number(sessionSummary.failed);
+        var clauses = [];
+        if (Number.isFinite(receiptsProduced)) clauses.push(receiptsProduced + ' receipt' + (receiptsProduced === 1 ? '' : 's') + ' produced');
+        if (Number.isFinite(completed)) clauses.push(completed + ' completed');
+        if (Number.isFinite(failed) && failed > 0) clauses.push(failed + ' flagged');
+        if (!clauses.length) clauses.push('continuity signals updated');
+        summary = titleCase(sessionType) + ' session: ' + clauses.join(', ') + '.';
+      }
+      var priorities = Array.isArray(payload.top_priorities) ? payload.top_priorities.slice() : [];
+      if (!priorities.length && nextActions.length) {
+        priorities = nextActions.slice(0, 3).map((action) => ({
+          domain: action.domain || action.type || 'Execution',
+          title: action.title || action.label || 'Recommended follow-up',
+          reason: action.reason || action.summary || action.message || 'OrgX flagged this as the next best move.'
+        }));
+      }
+      if (!priorities.length) {
+        priorities = topReceipts.slice(0, 3).map((receipt) => ({
+          domain: 'Execution',
+          title: typeof receipt.intent === 'string' && receipt.intent.trim() ? receipt.intent.trim() : 'Recent execution receipt',
+          reason: formatCurrency(receipt.attributed_value_usd) ? 'Attributed value: ' + formatCurrency(receipt.attributed_value_usd) : 'Captured as part of the latest brief.'
+        }));
+      }
+      var metrics = [
+        { label: 'Value delivered', value: formatCurrency(valueDashboard.value_delivered_usd) || 'N/A', copy: 'Attributed delivery from the recent autonomous window.' },
+        { label: 'ROI', value: typeof valueDashboard.roi_display === 'string' && valueDashboard.roi_display ? valueDashboard.roi_display : 'N/A', copy: 'Economic proof from the 30-day ledger.' },
+        Number.isFinite(pendingDecisions)
+          ? { label: 'Pending decisions', value: String(Math.max(0, pendingDecisions)), copy: 'Operator approvals still waiting in the current workspace.' }
+          : { label: 'Decisions resolved', value: Number.isFinite(Number(valueDashboard.decisions_resolved)) ? String(valueDashboard.decisions_resolved) : '0', copy: 'Approvals and corrections closed across the recent cycle.' },
+        Number.isFinite(activeInitiatives) && activeInitiatives > 0
+          ? { label: 'Active initiatives', value: String(activeInitiatives), copy: 'Initiatives still in flight across the workspace.' }
+          : { label: 'Completed this week', value: Number.isFinite(Number(valueDashboard.completed_this_week)) ? String(valueDashboard.completed_this_week) : '0', copy: 'Workstreams or initiatives closed in the current week.' }
+      ];
+      var attentionSignals = [];
+      if (Number.isFinite(pendingDecisions) && pendingDecisions > 0) {
+        attentionSignals.push({
+          title: pendingDecisions + ' pending decision' + (pendingDecisions === 1 ? '' : 's'),
+          description: 'Approvals are still waiting for an operator call before downstream execution can continue.'
+        });
+      }
+      if (Number.isFinite(blockedWork) && blockedWork > 0) {
+        attentionSignals.push({
+          title: blockedWork + ' blocked workstream' + (blockedWork === 1 ? '' : 's'),
+          description: 'Blocked execution surfaced in the workspace pulse and should be reviewed with the owning agent.'
+        });
+      }
+      if (exceptions.length > 0) {
+        attentionSignals.push({
+          title: exceptions.length + ' exception' + (exceptions.length === 1 ? '' : 's') + ' need review',
+          description: 'Guardrail, budget, or routing exceptions were captured in the latest autonomous session.'
+        });
+      }
+      return {
+        date: formatDate(payload.generated_at || payload.created_at || (payload.workspace_pulse && payload.workspace_pulse.generatedAt)),
+        summary: summary,
+        metrics: metrics,
+        priorities: priorities,
+        exceptions: exceptions,
+        topReceipts: topReceipts,
+        attentionSignals: attentionSignals,
+        narrativeAvailable: typeof payload.brief_markdown === 'string' && payload.brief_markdown.trim().length > 0
+      };
+    };
+    var titleCase = value => String(value || '').replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
     var render = () => {
       if(isLoading) return;
-      if(!brief) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.sun(24)}</div><div class="empty-title">No brief available</div><div class="empty-desc">Your morning briefing hasn't been generated yet.</div></div>`); return; }
+      var normalized = normalizeBrief(brief);
+      if(!normalized) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.sun(24)}</div><div class="empty-title">No brief available</div><div class="empty-desc">Your morning briefing has not been generated yet.</div></div>`); return; }
 
-      const prioritiesHtml = (brief.top_priorities || []).map((p, i) => `
-        <div class="priority-item animate-in" style="animation-delay: ${0.1 * i}s" data-domain="${escapeHtml(p.domain.toLowerCase())}">
-          <div class="p-domain" style="color: var(--ox-${p.domain.toLowerCase()==='product'?'lime':p.domain.toLowerCase()==='engineering'?'teal':p.domain.toLowerCase()==='marketing'?'warning':p.domain.toLowerCase()==='design'?'iris':'danger'})">${escapeHtml(p.domain)}</div>
-          <div class="p-title">${escapeHtml(p.title)}</div>
-          <div class="p-reason">${escapeHtml(p.reason)}</div>
+      const metricsHtml = normalized.metrics.map((metric) => `
+        <div class="metric-card">
+          <div class="ox-eyebrow">${escapeHtml(metric.label)}</div>
+          <div class="metric-value">${escapeHtml(metric.value)}</div>
+          <div class="metric-copy">${escapeHtml(metric.copy)}</div>
+        </div>
+      `).join('');
+      const prioritiesHtml = normalized.priorities.map((p, i) => {
+        var domain = String(p.domain || 'execution').toLowerCase();
+        var accent = domain === 'product' ? 'lime' : domain === 'engineering' ? 'teal' : domain === 'marketing' ? 'warning' : domain === 'design' ? 'iris' : domain === 'sales' ? 'danger' : 'teal';
+        return `
+          <div class="priority-item animate-in" style="animation-delay: ${0.1 * i}s" data-domain="${escapeHtml(domain)}">
+            <div class="p-domain" style="color: var(--ox-${accent})">${escapeHtml(titleCase(p.domain || 'Execution'))}</div>
+            <div class="p-title">${escapeHtml(p.title || 'Priority item')}</div>
+            <div class="p-reason">${escapeHtml(p.reason || 'No rationale provided.')}</div>
+          </div>
+        `;
+      }).join('');
+      const receiptsHtml = normalized.topReceipts.slice(0, 2).map((receipt) => `
+        <div class="priority-item" data-domain="engineering">
+          <div class="p-domain" style="color: var(--ox-teal)">Receipt</div>
+          <div class="p-title">${escapeHtml(receipt.intent || 'Execution receipt')}</div>
+          <div class="p-reason">${escapeHtml(formatCurrency(receipt.attributed_value_usd) ? 'Attributed value: ' + formatCurrency(receipt.attributed_value_usd) : 'Captured in the most recent brief.')}</div>
+        </div>
+      `).join('');
+      const exceptionsHtml = normalized.exceptions.slice(0, 4).map((item) => `<span class="exception-pill">${escapeHtml(titleCase(item.exception_type || item.type || 'Review'))}</span>`).join('');
+      const attentionHtml = (normalized.attentionSignals || []).map((item) => `
+        <div class="signal-item">
+          <div class="signal-dot"></div>
+          <div class="signal-copy">
+            <div class="signal-title">${escapeHtml(item.title)}</div>
+            <div class="signal-desc">${escapeHtml(item.description)}</div>
+          </div>
         </div>
       `).join('');
 
@@ -261,24 +448,47 @@
             <div class="brief-header">
               <div>
                 <h1 class="ox-title" style="font-size:1.5rem; margin-bottom:4px;">Morning Brief</h1>
-                <div class="ox-eyebrow">${escapeHtml(brief.date)}</div>
+                <div class="ox-eyebrow">${escapeHtml(normalized.date)}</div>
               </div>
               <div class="icon-box">${icons.sun(24)}</div>
             </div>
             
-            <div class="ox-well" style="margin-bottom: 32px;">
+            <div class="brief-note">
               <div class="ox-eyebrow" style="margin-bottom:8px; color:var(--ox-primary);">TL;DR</div>
-              <div class="ox-text">${escapeHtml(brief.summary)}</div>
+              <div class="ox-text">${escapeHtml(normalized.summary)}</div>
             </div>
-            
-            <div>
-              <div class="ox-eyebrow" style="display:flex; align-items:center; gap:12px;">
-                Top Priorities <div style="flex:1; height:1px; background:var(--ox-border);"></div>
+
+            <div class="metrics-grid">${metricsHtml}</div>
+
+            <div style="margin-bottom: 24px;">
+              <div class="section-title">
+                <div class="ox-eyebrow">Top priorities</div>
+                <div class="rule"></div>
               </div>
-              <div class="priority-list">
-                ${prioritiesHtml}
-              </div>
+              <div class="priority-list">${prioritiesHtml || `<div class="ox-well"><div class="ox-text">No priority follow-ups were captured in this brief.</div></div>`}</div>
             </div>
+
+            ${receiptsHtml ? `
+              <div style="margin-bottom: 24px;">
+                <div class="section-title">
+                  <div class="ox-eyebrow">Top receipts</div>
+                  <div class="rule"></div>
+                </div>
+                <div class="priority-list">${receiptsHtml}</div>
+              </div>
+            ` : ''}
+
+            ${attentionHtml || exceptionsHtml || normalized.narrativeAvailable ? `
+              <div>
+                <div class="section-title">
+                  <div class="ox-eyebrow">Needs attention</div>
+                  <div class="rule"></div>
+                </div>
+                ${attentionHtml ? `<div class="signal-list">${attentionHtml}</div>` : ''}
+                ${exceptionsHtml ? `<div class="exception-list">${exceptionsHtml}</div>` : ''}
+                ${normalized.narrativeAvailable ? `<div class="brief-note" style="margin-top: 12px; margin-bottom: 0;">A narrative brief is available in the payload for downstream clients that want the full written summary.</div>` : ''}
+              </div>
+            ` : ''}
           </div>
         </div>
       `);
