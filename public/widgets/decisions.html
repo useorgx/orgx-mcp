@@ -304,7 +304,7 @@
       align-items: center;
       gap: 8px;
       min-width: 0;
-      flex: 1 1 220px;
+      flex: 0 1 auto;
       font-weight: 600;
       font-size: 0.9rem;
     }
@@ -313,7 +313,36 @@
       min-width: 0;
       overflow-wrap: anywhere;
     }
-    .agent-avatar { width: 24px; height: 24px; border-radius: 6px; background: rgba(var(--ox-card-color-rgb), 0.15); color: var(--ox-card-color); display: flex; align-items: center; justify-content: center; font-family: var(--ox-mono); font-size: 0.7rem; }
+    .agent-avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      background: rgba(var(--ox-card-color-rgb), 0.15);
+      color: var(--ox-card-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--ox-mono);
+      font-size: 0.7rem;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .agent-avatar--system {
+      background:
+        linear-gradient(180deg, rgba(0, 201, 167, 0.12), rgba(0, 201, 167, 0.06)),
+        rgba(0, 201, 167, 0.06);
+      color: var(--ox-teal);
+      box-shadow: inset 0 0 0 1px rgba(0, 201, 167, 0.18);
+    }
+
+    .agent-avatar img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: inherit;
+    }
 
     .decision-header-meta {
       display: flex;
@@ -527,56 +556,61 @@
     .param-chip strong { color: var(--ox-text); margin-left: 4px; }
 
     .pagination {
-      display: grid;
-      grid-template-columns: minmax(0, 152px) minmax(0, 1fr) minmax(0, 152px);
+      display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 14px;
-      padding: 14px 16px;
-      margin-top: 8px;
+      padding: 12px 14px;
+      margin-top: 4px;
       border: 1px solid var(--ox-border);
-      border-radius: 20px;
+      border-radius: 18px;
       background:
         linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.01)),
         var(--ox-panel);
       box-shadow:
-        0 18px 34px -26px rgba(0, 0, 0, 0.68),
+        0 14px 30px -26px rgba(0, 0, 0, 0.68),
         inset 0 1px 0 rgba(255,255,255,0.04);
     }
 
     .page-info {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      text-align: center;
+      gap: 7px;
       min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    .page-info-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex-wrap: wrap;
     }
 
     .page-label {
       font-family: var(--ox-mono);
       font-size: 0.62rem;
       text-transform: uppercase;
-      letter-spacing: 0.18em;
+      letter-spacing: 0.16em;
       color: var(--ox-text-muted);
       font-weight: 700;
     }
 
-    .page-title {
-      font-family: var(--ox-mono);
-      font-size: 0.88rem;
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-      color: var(--ox-text);
-      font-weight: 600;
+    .page-range {
+      font-size: 0.78rem;
+      line-height: 1.35;
+      color: var(--ox-text-muted);
+      white-space: nowrap;
     }
 
     .page-count {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: 92px;
-      padding: 10px 16px;
+      gap: 6px;
+      min-width: 70px;
+      padding: 7px 12px;
       border-radius: 999px;
       background:
         linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.12), rgba(var(--ox-primary-rgb), 0.06)),
@@ -584,21 +618,47 @@
       border: 1px solid rgba(var(--ox-primary-rgb), 0.22);
       color: var(--ox-warning);
       font-family: var(--ox-mono);
-      font-size: 1rem;
+      font-size: 0.78rem;
       text-transform: uppercase;
-      letter-spacing: 0.16em;
+      letter-spacing: 0.1em;
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+      flex-shrink: 0;
+    }
+
+    .page-progress {
+      position: relative;
+      width: 100%;
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      overflow: hidden;
+    }
+
+    .page-progress-bar {
+      position: absolute;
+      inset: 0 auto 0 0;
+      border-radius: inherit;
+      background: linear-gradient(90deg, rgba(var(--ox-primary-rgb), 0.54), rgba(var(--ox-primary-rgb), 1));
+      box-shadow: 0 0 18px rgba(var(--ox-primary-rgb), 0.28);
+    }
+
+    .page-controls {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
     }
 
     .page-btn {
-      width: 100%;
-      min-width: 0;
-      padding-inline: 16px;
-      font-size: 0.78rem;
+      width: auto;
+      min-width: 116px;
+      padding-inline: 14px;
+      font-size: 0.76rem;
       letter-spacing: 0;
       justify-content: center;
-      border-radius: 14px;
+      border-radius: 12px;
       color: var(--ox-text);
+      flex-shrink: 0;
     }
 
     .page-btn .ox-action-btn__label {
@@ -622,7 +682,7 @@
       flex-wrap: wrap;
       gap: 10px;
       margin-top: 16px;
-      justify-content: center;
+      justify-content: flex-start;
     }
 
     .resolution-link {
@@ -637,6 +697,12 @@
       background: rgba(var(--ox-primary-rgb), 0.08);
       font-size: 0.82rem;
       font-weight: 600;
+    }
+
+    .resolution-link--secondary {
+      color: var(--ox-text);
+      border-color: var(--ox-border);
+      background: rgba(255, 255, 255, 0.03);
     }
 
     .resolution-banner {
@@ -695,24 +761,44 @@
       white-space: nowrap;
     }
 
+    .resolution-banner-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      width: 100%;
+    }
+
     @media (max-width: 560px) {
       .summary-grid {
         justify-content: flex-start;
       }
 
       .pagination {
-        grid-template-columns: 1fr 1fr;
+        flex-direction: column;
         align-items: stretch;
       }
 
       .page-info {
-        grid-column: 1 / -1;
-        padding-bottom: 4px;
+        order: 1;
+      }
+
+      .page-info-top {
+        justify-content: space-between;
+      }
+
+      .page-range {
+        white-space: normal;
+      }
+
+      .page-controls {
+        order: 2;
+        width: 100%;
       }
 
       .page-btn {
         width: 100%;
-        flex-basis: auto;
+        min-width: 0;
+        flex: 1 1 0;
       }
 
       .actions-grid {
@@ -746,6 +832,16 @@
         width: 100%;
         white-space: normal;
         text-align: center;
+      }
+
+      .resolution-actions,
+      .resolution-banner-actions {
+        width: 100%;
+      }
+
+      .resolution-link {
+        width: 100%;
+        justify-content: center;
       }
     }
   </style>
@@ -903,6 +999,7 @@
       return null;
     };
     var buildAgentStatusUrl = () => ORGX_BASE_URL + '/settings/agents';
+    var buildDecisionsUrl = () => ORGX_BASE_URL + '/decisions';
     var buildDecisionSurfaceUrl = (decision) => {
       if (!decision || !decision.id) return ORGX_BASE_URL + '/decisions';
       if (typeof decision.url === 'string' && decision.url.trim()) return decision.url.trim();
@@ -919,6 +1016,8 @@
       }
       return '';
     };
+
+    var resolveWidgetAsset = (path) => new URL('shared/' + path, window.location.href).toString();
 
     var normalizeDecision = (decision, index) => {
       if (!decision || typeof decision !== 'object') return null;
@@ -942,16 +1041,21 @@
         decision.urgency_level,
         decision.priority
       ).toLowerCase() || 'medium';
+      const rawOwner = firstString(
+        decision.agent_name,
+        decision.owner_agent,
+        decision.assigned_agent,
+        decision.domain
+      );
+      const isSystemDecision =
+        !rawOwner ||
+        ['system', 'orgx', 'orgx system'].includes(rawOwner.toLowerCase()) ||
+        firstString(decision.source, decision.created_by_type, decision.created_by).toLowerCase() === 'system';
       return {
         ...decision,
         id,
-        agent_name:
-          firstString(
-            decision.agent_name,
-            decision.owner_agent,
-            decision.assigned_agent,
-            decision.domain
-          ) || 'OrgX',
+        agent_name: isSystemDecision ? 'OrgX System' : rawOwner,
+        is_system: isSystemDecision,
         type: firstString(decision.type, decision.entity_type) || 'Decision',
         summary,
         urgency,
@@ -1049,10 +1153,27 @@
         if (n.includes('xandy') || n.includes('orchestrator')) return WIDGET_ASSET_BASE + 'xandy_orchestrator.png';
         return null;
       };
-      var renderAvatar = (name, sizePx) => {
+      var getDecisionOwner = (decision) => {
+        const label = firstString(
+          decision.agent_name,
+          decision.owner_agent,
+          decision.assigned_agent,
+          decision.domain
+        );
+        const isSystem = Boolean(decision.is_system) || !label || ['system', 'orgx', 'orgx system'].includes(label.toLowerCase());
+        return {
+          label: isSystem ? 'OrgX System' : label,
+          isSystem,
+        };
+      };
+      var renderAvatar = (name, sizePx, isSystem) => {
+        if (isSystem) {
+          const systemUrl = resolveWidgetAsset('orgx-logo.png');
+          return `<span style="display:none;align-items:center;justify-content:center;width:100%;height:100%;font-family:var(--ox-mono);font-size:0.7rem;">OX</span><img src="${systemUrl}" alt="OrgX System" loading="eager" decoding="sync" draggable="false" onerror="this.style.display='none'; if (this.previousElementSibling) this.previousElementSibling.style.display='flex';" />`;
+        }
         const url = getAvatarUrl(name);
         const fallback = escapeHtml(name ? name[0].toUpperCase() : '?');
-        if (url) return `<span style="display:none;align-items:center;justify-content:center;width:100%;height:100%;font-family:var(--ox-mono);font-size:0.7rem;">${fallback}</span><img src="${url}" alt="${escapeHtml(name)}" loading="eager" decoding="sync" draggable="false" style="display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.style.display='none'; if (this.previousElementSibling) this.previousElementSibling.style.display='flex';" />`;
+        if (url) return `<span style="display:none;align-items:center;justify-content:center;width:100%;height:100%;font-family:var(--ox-mono);font-size:0.7rem;">${fallback}</span><img src="${url}" alt="${escapeHtml(name)}" loading="eager" decoding="sync" draggable="false" onerror="this.style.display='none'; if (this.previousElementSibling) this.previousElementSibling.style.display='flex';" />`;
         return fallback;
       };
 
@@ -1158,10 +1279,12 @@
       if(isLoading) return;
       data = normalizeDecisionQueue(data);
       var queueSubtitle = document.getElementById('queueSubtitle');
+      var decisionsUrl = buildDecisionsUrl();
+      var agentStatusUrl = buildAgentStatusUrl();
       if(!data || !data.decisions || data.decisions.length === 0) {
         var resolvedHtml = lastResolution
-          ? `<div class="empty-title">${lastResolution.action === 'approved' ? 'Decision approved' : 'Decision sent back'}</div><div class="empty-desc">${escapeHtml(lastResolution.summary)} ${lastResolution.action === 'approved' ? 'is now unblocked and ' + lastResolution.agent_name + ' can keep moving.' : 'was returned to ' + lastResolution.agent_name + ' with your note so the next revision addresses the right constraint.'}</div><div class="resolution-actions"><a href="${buildAgentStatusUrl()}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(buildAgentStatusUrl())}, event)' class="resolution-link">${icons.agent(14)} Open agent status</a></div>`
-          : `<div class="empty-title">All caught up</div><div class="empty-desc">No decisions require your attention right now. New approvals will appear here as soon as work needs operator input.</div>`;
+          ? `<div class="empty-title">${lastResolution.action === 'approved' ? 'Decision approved' : 'Decision sent back'}</div><div class="empty-desc">${escapeHtml(lastResolution.summary)} ${lastResolution.action === 'approved' ? 'is now unblocked and ' + lastResolution.agent_name + ' can keep moving.' : 'was returned to ' + lastResolution.agent_name + ' with your note so the next revision addresses the right constraint.'}</div><div class="resolution-actions"><a href="${decisionsUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(decisionsUrl)}, event)' class="resolution-link">${icons.link(14)} View all decisions in OrgX</a><a href="${agentStatusUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(agentStatusUrl)}, event)' class="resolution-link resolution-link--secondary">${icons.agent(14)} Open agent status</a></div>`
+          : `<div class="empty-title">All caught up</div><div class="empty-desc">No decisions require your attention right now. New approvals will appear here as soon as work needs operator input.</div><div class="resolution-actions"><a href="${decisionsUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(decisionsUrl)}, event)' class="resolution-link">${icons.link(14)} View all decisions in OrgX</a></div>`;
         injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.check(24)}</div>${resolvedHtml}</div>`);
         document.getElementById('summary').innerHTML='';
         if (queueSubtitle) {
@@ -1194,6 +1317,7 @@
         const rejectEnabled = rejectValue.trim().length > 0;
         const rejectActionLabel = isRejecting ? 'Hide note' : 'Reject';
         const decisionUrl = buildDecisionSurfaceUrl(d);
+        const owner = getDecisionOwner(d);
         return `
         <div class="decision-card urgency-${escapeHtml(d.urgency)} animate-in" style="animation-delay: ${0.1 * i}s">
           <div class="ox-card">
@@ -1201,8 +1325,8 @@
               <div class="decision-header">
                 <div class="decision-header-copy">
                   <div class="agent-tag">
-                    <div class="agent-avatar">${renderAvatar(d.agent_name, 24)}</div>
-                    <span>${escapeHtml(d.agent_name)}</span>
+                    <div class="agent-avatar ${owner.isSystem ? 'agent-avatar--system' : ''}">${renderAvatar(owner.label, 24, owner.isSystem)}</div>
+                    <span>${escapeHtml(owner.label)}</span>
                   </div>
                   <h3 class="ox-title" style="margin-bottom:0;">
                     <a href="${escapeHtml(decisionUrl)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(decisionUrl || ''))}, event)' class="decision-title-link">
@@ -1241,7 +1365,7 @@
                 >
                   <span class="decision-action-copy">
                     <span class="decision-action-title">Approve</span>
-                    <span class="decision-action-detail">Unblock ${escapeHtml(d.agent_name)} and continue execution</span>
+                    <span class="decision-action-detail">Unblock ${escapeHtml(owner.label)} and continue execution</span>
                   </span>
                 </button>
                 <button
@@ -1261,7 +1385,7 @@
                 <div class="reject-composer">
                   <div class="reject-heading">
                     <h4>Send a rejection note</h4>
-                    <span class="reject-meta">Visible to ${escapeHtml(d.agent_name)}</span>
+                    <span class="reject-meta">Visible to ${escapeHtml(owner.label)}</span>
                   </div>
                   <textarea
                     class="reject-textarea"
@@ -1302,20 +1426,33 @@
               <div class="resolution-banner-detail">${followThrough}</div>
             </div>
             <div class="resolution-banner-meta">${remainingCount} decision${remainingCount === 1 ? '' : 's'} remaining</div>
+            <div class="resolution-banner-actions">
+              <a href="${decisionsUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(decisionsUrl)}, event)' class="resolution-link">${icons.link(14)} View all decisions in OrgX</a>
+            </div>
           </div>
         ` + html;
       }
 
       if (totalPages > 1) {
+        const start = startIdx + 1;
+        const end = Math.min(startIdx + paginated.length, data.decisions.length);
+        const progress = Math.max(14, Math.round((currentPage / totalPages) * 100));
         html += `
           <div class="pagination">
-            <button type="button" class="page-btn page-btn--prev ox-action-btn ox-action-btn--ghost" onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}><span class="ox-action-btn__label">Previous</span></button>
             <div class="page-info">
-              <span class="page-label">Decision queue</span>
-              <span class="page-count">${currentPage} / ${totalPages}</span>
-              <span class="page-title">Page ${currentPage} of ${totalPages}</span>
+              <div class="page-info-top">
+                <span class="page-label">Decision queue</span>
+                <span class="page-count">${currentPage}<span>/</span>${totalPages}</span>
+                <span class="page-range">Showing ${start}-${end} of ${data.decisions.length}</span>
+              </div>
+              <div class="page-progress" aria-hidden="true">
+                <span class="page-progress-bar" style="width:${progress}%"></span>
+              </div>
             </div>
-            <button type="button" class="page-btn page-btn--next ox-action-btn ox-action-btn--ghost" onclick="changePage(1)" ${currentPage === totalPages ? 'disabled' : ''}><span class="ox-action-btn__label">Next</span></button>
+            <div class="page-controls">
+              <button type="button" class="page-btn page-btn--prev ox-action-btn ox-action-btn--ghost" onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}><span class="ox-action-btn__label">Previous</span></button>
+              <button type="button" class="page-btn page-btn--next ox-action-btn ox-action-btn--ghost" onclick="changePage(1)" ${currentPage === totalPages ? 'disabled' : ''}><span class="ox-action-btn__label">Next</span></button>
+            </div>
           </div>
         `;
       }

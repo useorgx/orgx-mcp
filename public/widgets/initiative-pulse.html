@@ -351,19 +351,21 @@
 
       .pulse-cta-row {
         display: flex;
+        align-items: center;
+        justify-content: flex-end;
         gap: 10px;
-        flex-wrap: wrap;
-        margin-top: 0;
+        flex-wrap: nowrap;
         margin-left: auto;
+        min-width: 0;
       }
 
       .cta-button {
         display: inline-flex;
         align-items: center;
-        justify-content: center;
-        gap: 8px;
+        justify-content: space-between;
+        gap: 12px;
         min-height: 48px;
-        min-width: 220px;
+        min-width: 196px;
         max-width: 100%;
         padding: 0 18px;
         border-radius: 12px;
@@ -375,7 +377,14 @@
         font-weight: 700;
         line-height: 1;
         white-space: nowrap;
+        flex-shrink: 0;
         transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+      }
+
+      .cta-button__label {
+        display: inline-flex;
+        align-items: center;
+        white-space: nowrap;
       }
 
       .cta-button svg {
@@ -515,12 +524,13 @@
           flex-direction: column;
           width: 100%;
           margin-left: 0;
+          align-items: stretch;
         }
 
         .cta-button,
         .deep-link {
           width: 100%;
-          justify-content: center;
+          min-width: 0;
         }
       }
 
@@ -897,7 +907,7 @@
               <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
               <div class="pulse-cta-row">
                 <a href="${dashboardUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(dashboardUrl || ''))}, event)' class="cta-button">
-                  <span>${pulse.live_url ? 'Open Live View' : 'Open Dashboard'}</span>
+                  <span class="cta-button__label">${pulse.live_url ? 'Open Live View' : 'Open Dashboard'}</span>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </a>
               </div>

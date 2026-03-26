@@ -242,6 +242,20 @@
       background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.12), rgba(var(--ox-primary-rgb), 0.04));
     }
 
+    .spawn-avatar {
+      position: relative;
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.24);
+      box-shadow:
+        0 0 0 1px rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.1) inset,
+        0 0 18px rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.18);
+      flex-shrink: 0;
+      background: linear-gradient(180deg, rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.14), rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.05));
+    }
+
     .deep-link {
       color: var(--ox-primary);
       min-height: 40px;
@@ -390,22 +404,42 @@
             return 'https://mcp.useorgx.com/widgets/shared/' + path;
         }
     }
-    var getAvatarUrl = (name) => {
-        const n = (name || '').toLowerCase();
-        if (n.includes('pace') || n.includes('product')) return resolveWidgetAsset('product_orchestrator.png');
-        if (n.includes('eli') || n.includes('engineer')) return resolveWidgetAsset('engineering_autopilot.png');
-        if (n.includes('mark') || n.includes('market')) return resolveWidgetAsset('launch_captain.png');
-        if (n.includes('sage') || n.includes('sale')) return resolveWidgetAsset('pipeline_intelligence.png');
-        if (n.includes('orion') || n.includes('op')) return resolveWidgetAsset('control_tower.png');
-        if (n.includes('dana') || n.includes('design')) return resolveWidgetAsset('design_codex.png');
-        if (n.includes('xandy') || n.includes('orchestrator')) return resolveWidgetAsset('xandy_orchestrator.png');
-        return null;
+    var REMOTE_WIDGET_ASSET_BASE = 'https://mcp.useorgx.com/widgets/shared/';
+    var AGENT_DIRECTORY = {
+      pace: { name: 'Pace', role: 'Product', avatarPath: 'product_orchestrator.png', accentRgb: '22, 163, 74' },
+      product: { name: 'Pace', role: 'Product', avatarPath: 'product_orchestrator.png', accentRgb: '22, 163, 74' },
+      eli: { name: 'Eli', role: 'Engineering', avatarPath: 'engineering_autopilot.png', accentRgb: '6, 182, 212' },
+      engineering: { name: 'Eli', role: 'Engineering', avatarPath: 'engineering_autopilot.png', accentRgb: '6, 182, 212' },
+      mark: { name: 'Mark', role: 'Marketing', avatarPath: 'launch_captain.png', accentRgb: '249, 115, 22' },
+      marketing: { name: 'Mark', role: 'Marketing', avatarPath: 'launch_captain.png', accentRgb: '249, 115, 22' },
+      sage: { name: 'Sage', role: 'Sales', avatarPath: 'pipeline_intelligence.png', accentRgb: '168, 85, 247' },
+      sales: { name: 'Sage', role: 'Sales', avatarPath: 'pipeline_intelligence.png', accentRgb: '168, 85, 247' },
+      orion: { name: 'Orion', role: 'Operations', avatarPath: 'control_tower.png', accentRgb: '245, 158, 11' },
+      operations: { name: 'Orion', role: 'Operations', avatarPath: 'control_tower.png', accentRgb: '245, 158, 11' },
+      dana: { name: 'Dana', role: 'Design', avatarPath: 'design_codex.png', accentRgb: '236, 72, 153' },
+      design: { name: 'Dana', role: 'Design', avatarPath: 'design_codex.png', accentRgb: '236, 72, 153' },
+      xandy: { name: 'Xandy', role: 'Orchestrator', avatarPath: 'xandy_orchestrator.png', accentRgb: '20, 184, 166' },
+      orchestrator: { name: 'Xandy', role: 'Orchestrator', avatarPath: 'xandy_orchestrator.png', accentRgb: '20, 184, 166' }
     };
-    var renderAvatar = (name, sizePx) => {
-        const url = getAvatarUrl(name);
-        const fallback = escapeHtml(name ? name[0].toUpperCase() : '?');
-        if (url) {
-            return `<img src="${url}" alt="" class="avatar-image" loading="eager" decoding="sync" draggable="false" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" /><span class="avatar-fallback" style="display:none;">${fallback}</span>`;
+    var resolveAgentProfile = (name) => {
+      const safeName = String(name || '').trim();
+      const key = safeName.toLowerCase();
+      const matchedKey = Object.keys(AGENT_DIRECTORY).find((candidate) => key.includes(candidate));
+      const profile = AGENT_DIRECTORY[key] || (matchedKey ? AGENT_DIRECTORY[matchedKey] : null);
+      return {
+        name: safeName || (profile && profile.name) || 'Agent',
+        role: (profile && profile.role) || null,
+        avatarPath: (profile && profile.avatarPath) || null,
+        accentRgb: (profile && profile.accentRgb) || '99, 102, 241'
+      };
+    };
+    var renderAvatar = (name) => {
+        const profile = resolveAgentProfile(name);
+        const fallback = escapeHtml(profile.name ? profile.name[0].toUpperCase() : '?');
+        if (profile.avatarPath) {
+            const localSrc = resolveWidgetAsset(profile.avatarPath);
+            const remoteSrc = REMOTE_WIDGET_ASSET_BASE + profile.avatarPath;
+            return `<img src="${localSrc}" data-remote-src="${remoteSrc}" alt="${escapeHtml(profile.name)}" class="avatar-image" loading="eager" decoding="sync" draggable="false" onerror="if(!this.dataset.remoteTried){this.dataset.remoteTried='1';this.src=this.dataset.remoteSrc;return;} this.style.display='none';this.nextElementSibling.style.display='flex';" /><span class="avatar-fallback" style="display:none;">${fallback}</span>`;
         }
         return `<span class="avatar-fallback" style="display:flex;">${fallback}</span>`;
     };
@@ -527,6 +561,7 @@
       }
       entity = normalizeEntityPayload(entity);
       if (!entity) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.check(24)}</div><div class="empty-title">Entity unverified</div><div class="empty-desc">The dispatched entity payload is empty.</div></div>`); return; }
+      const agentProfile = resolveAgentProfile(entity.agent_name || entity.domain || '');
 
       const linksHtml = (entity.links || []).map(l => `
         <a href="${escapeHtml(l.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(l.url || ''))}, event)' class="platform-link ox-link-btn ox-link-btn--ghost">
@@ -547,7 +582,7 @@
       const consoleUrl = entity.console_url || (entity.id ? buildEntityUrl(entity.type, entity.id, entity.initiative_id) : ORGX_BASE_URL);
 
       injectHtml(`
-        <div class="ox-card animate-in">
+        <div class="ox-card animate-in" style="--agent-accent-rgb:${agentProfile.accentRgb};">
           <div class="ox-card-inner">
             
             <div class="dispatch-header" style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--ox-border); display: flex; align-items: center; justify-content: space-between;">
@@ -569,8 +604,8 @@
             ${!entity.agent_ready || !entity.workspace_ready ? `<div class="dispatch-note">OrgX accepted the dispatch, but the canonical handoff context is still syncing. The card will update once the server returns the assigned agent and workspace.</div>` : ''}
             
             <div class="agent-row" style="display:flex; align-items:center; gap:16px; padding:16px; background:var(--ox-well-bg); border:1px solid var(--ox-border); border-radius:12px; margin-bottom:24px; box-shadow:var(--ox-well-shadow);">
-              <div style="position:relative;width:48px; height:48px; border-radius:12px; overflow:hidden; border:1px solid var(--ox-border); box-shadow:0 0 15px rgba(var(--ox-primary-rgb),0.15); flex-shrink:0;">
-                ${renderAvatar(entity.agent_name || 'Pending', 48)}
+              <div class="spawn-avatar">
+                ${renderAvatar(entity.agent_name || entity.domain || 'Pending')}
               </div>
               <div class="agent-meta" style="flex:1;">
                 <div style="font-family:var(--ox-mono); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ox-text-muted); margin-bottom:4px; font-weight:600;">Assigned Agent</div>

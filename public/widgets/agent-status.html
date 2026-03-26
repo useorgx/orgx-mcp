@@ -133,17 +133,17 @@
       position: relative; width: 56px; height: 56px; border-radius: 12px;
       display: flex; align-items: center; justify-content: center;
       overflow: hidden;
-      background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.08), rgba(var(--ox-primary-rgb), 0.03));
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
-      font-family: var(--ox-mono); font-size: 1.5rem; font-weight: bold; color: var(--ox-primary);
-      box-shadow: 0 10px 24px -20px rgba(var(--ox-primary-rgb), 0.55);
+      background: linear-gradient(180deg, rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.12), rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.04));
+      border: 1px solid rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.24);
+      font-family: var(--ox-mono); font-size: 1.5rem; font-weight: bold; color: rgb(var(--agent-accent-rgb, var(--ox-primary-rgb)));
+      box-shadow: 0 10px 24px -20px rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.55);
     }
     .avatar-ring::before {
       content: '';
       position: absolute;
       inset: 0;
       border-radius: inherit;
-      box-shadow: inset 0 0 0 1px rgba(var(--ox-primary-rgb), 0.08);
+      box-shadow: inset 0 0 0 1px rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.12);
       pointer-events: none;
     }
 
@@ -160,8 +160,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      color: var(--ox-primary);
-      background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.12), rgba(var(--ox-primary-rgb), 0.04));
+      color: rgb(var(--agent-accent-rgb, var(--ox-primary-rgb)));
+      background: linear-gradient(180deg, rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.16), rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.05));
     }
 
     .status-pill {
@@ -169,6 +169,7 @@
       background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary);
       font-family: var(--ox-mono); font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em;
       border: 1px solid rgba(var(--ox-primary-rgb), 0.2);
+      flex-shrink: 0;
     }
     .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; animation: pulse 2s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
@@ -306,8 +307,8 @@
       align-items: center;
       gap: 12px;
       flex-wrap: wrap;
-      margin-top: 24px;
-      padding-top: 16px;
+      margin-top: auto;
+      padding-top: 24px;
       border-top: 1px solid var(--ox-border);
     }
     .deep-link {
@@ -376,6 +377,7 @@
       box-shadow: var(--ox-shadow);
       overflow: hidden;
       position: relative;
+      display: flex;
     }
 
     .agent-item::after {
@@ -385,12 +387,16 @@
       left: 0;
       right: 0;
       height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(var(--ox-primary-rgb), 0.45), transparent);
+      background: linear-gradient(90deg, transparent, rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.45), transparent);
       opacity: 0.85;
     }
 
     .agent-item-inner {
       padding: 20px;
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+      width: 100%;
     }
 
     .agent-meta {
@@ -437,6 +443,7 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
+      flex: 1 1 auto;
     }
 
     .task-lead {
@@ -667,21 +674,22 @@
           ? ORGX_BASE_URL + '/settings/agents?agent=' + encodeURIComponent(agentId)
           : ORGX_BASE_URL + '/settings/agents';
       };
+      var REMOTE_WIDGET_ASSET_BASE = 'https://mcp.useorgx.com/widgets/shared/';
       var AGENT_DIRECTORY = {
-        pace: { name: 'Pace', role: 'Product', avatar: resolveWidgetAsset('product_orchestrator.png') },
-        product: { name: 'Pace', role: 'Product', avatar: resolveWidgetAsset('product_orchestrator.png') },
-        eli: { name: 'Eli', role: 'Engineering', avatar: resolveWidgetAsset('engineering_autopilot.png') },
-        engineering: { name: 'Eli', role: 'Engineering', avatar: resolveWidgetAsset('engineering_autopilot.png') },
-        mark: { name: 'Mark', role: 'Marketing', avatar: resolveWidgetAsset('launch_captain.png') },
-        marketing: { name: 'Mark', role: 'Marketing', avatar: resolveWidgetAsset('launch_captain.png') },
-        sage: { name: 'Sage', role: 'Sales', avatar: resolveWidgetAsset('pipeline_intelligence.png') },
-        sales: { name: 'Sage', role: 'Sales', avatar: resolveWidgetAsset('pipeline_intelligence.png') },
-        orion: { name: 'Orion', role: 'Operations', avatar: resolveWidgetAsset('control_tower.png') },
-        operations: { name: 'Orion', role: 'Operations', avatar: resolveWidgetAsset('control_tower.png') },
-        dana: { name: 'Dana', role: 'Design', avatar: resolveWidgetAsset('design_codex.png') },
-        design: { name: 'Dana', role: 'Design', avatar: resolveWidgetAsset('design_codex.png') },
-        xandy: { name: 'Xandy', role: 'Orchestrator', avatar: resolveWidgetAsset('xandy_orchestrator.png') },
-        orchestrator: { name: 'Xandy', role: 'Orchestrator', avatar: resolveWidgetAsset('xandy_orchestrator.png') }
+        pace: { name: 'Pace', role: 'Product', avatarPath: 'product_orchestrator.png', accentRgb: '22, 163, 74' },
+        product: { name: 'Pace', role: 'Product', avatarPath: 'product_orchestrator.png', accentRgb: '22, 163, 74' },
+        eli: { name: 'Eli', role: 'Engineering', avatarPath: 'engineering_autopilot.png', accentRgb: '6, 182, 212' },
+        engineering: { name: 'Eli', role: 'Engineering', avatarPath: 'engineering_autopilot.png', accentRgb: '6, 182, 212' },
+        mark: { name: 'Mark', role: 'Marketing', avatarPath: 'launch_captain.png', accentRgb: '249, 115, 22' },
+        marketing: { name: 'Mark', role: 'Marketing', avatarPath: 'launch_captain.png', accentRgb: '249, 115, 22' },
+        sage: { name: 'Sage', role: 'Sales', avatarPath: 'pipeline_intelligence.png', accentRgb: '168, 85, 247' },
+        sales: { name: 'Sage', role: 'Sales', avatarPath: 'pipeline_intelligence.png', accentRgb: '168, 85, 247' },
+        orion: { name: 'Orion', role: 'Operations', avatarPath: 'control_tower.png', accentRgb: '245, 158, 11' },
+        operations: { name: 'Orion', role: 'Operations', avatarPath: 'control_tower.png', accentRgb: '245, 158, 11' },
+        dana: { name: 'Dana', role: 'Design', avatarPath: 'design_codex.png', accentRgb: '236, 72, 153' },
+        design: { name: 'Dana', role: 'Design', avatarPath: 'design_codex.png', accentRgb: '236, 72, 153' },
+        xandy: { name: 'Xandy', role: 'Orchestrator', avatarPath: 'xandy_orchestrator.png', accentRgb: '20, 184, 166' },
+        orchestrator: { name: 'Xandy', role: 'Orchestrator', avatarPath: 'xandy_orchestrator.png', accentRgb: '20, 184, 166' }
       };
 
       var firstString = function(values) {
@@ -830,20 +838,23 @@
         return {
           name: directName || (profile && profile.name) || 'OrgX Agent',
           role: directRole || (profile && profile.role) || humanize(agentType) || 'OrgX agent',
-          avatar: (profile && profile.avatar) || null
+          avatarPath: (profile && profile.avatarPath) || null,
+          accentRgb: (profile && profile.accentRgb) || null
         };
       };
 
       var getAvatarUrl = function(agent) {
         var profile = resolveAgentProfile(agent || {});
-        return profile.avatar;
+        return profile.avatarPath ? resolveWidgetAsset(profile.avatarPath) : null;
       };
 
       var renderAvatar = function(agent) {
         var profile = resolveAgentProfile(agent || {});
         var fallback = escapeHtml(profile.name ? profile.name[0].toUpperCase() : '?');
-        if (profile.avatar) {
-          return '<span class="avatar-fallback" style="display:none;">' + fallback + '</span><img src="' + profile.avatar + '" alt="' + escapeHtml(profile.name) + '" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.style.display=\'none\'; if (this.previousElementSibling) this.previousElementSibling.style.display=\'flex\';" />';
+        if (profile.avatarPath) {
+          var localSrc = resolveWidgetAsset(profile.avatarPath);
+          var remoteSrc = REMOTE_WIDGET_ASSET_BASE + profile.avatarPath;
+          return '<span class="avatar-fallback" style="display:none;">' + fallback + '</span><img class="avatar-image" src="' + localSrc + '" data-remote-src="' + remoteSrc + '" alt="' + escapeHtml(profile.name) + '" loading="eager" decoding="sync" draggable="false" onerror="if(!this.dataset.remoteTried){this.dataset.remoteTried=\'1\'; this.src=this.dataset.remoteSrc; return;} this.style.display=\'none\'; if (this.previousElementSibling) this.previousElementSibling.style.display=\'flex\';" />';
         }
         return '<span class="avatar-fallback">' + fallback + '</span>';
       };
@@ -929,6 +940,7 @@
 
     var renderLegacyAgent = function(agent) {
       const profile = resolveAgentProfile(agent || {});
+      var accentRgb = profile.accentRgb || '191, 255, 0';
       const timelineHtml = (agent.activity || []).map(a => `
         <div class="t-item">
           <div class="t-dot"></div>
@@ -938,7 +950,7 @@
       `).join('');
 
       return `
-        <div class="ox-card animate-in">
+        <div class="ox-card animate-in" style="--agent-accent-rgb:${accentRgb};">
           <div class="ox-card-inner">
             <div class="agent-header">
               <div class="avatar-ring">${renderAvatar(agent)}</div>
@@ -999,6 +1011,7 @@
 
       var cardsHtml = payload.agents.map(function(agent, index) {
         var profile = resolveAgentProfile(agent || {});
+        var accentRgb = profile.accentRgb || '191, 255, 0';
         var tasks = extractTasks(agent || {});
         var isIdle = firstString([agent.status]).toLowerCase() === 'idle';
         var primaryTask = tasks[0] || (isIdle ? 'Awaiting next assignment' : 'No active task');
@@ -1014,7 +1027,7 @@
         var href = buildAgentUrl(agent.agent_id);
 
         return `
-          <div class="agent-item animate-in" style="animation-delay:${(index % 6) * 0.06}s">
+          <div class="agent-item animate-in" style="animation-delay:${(index % 6) * 0.06}s; --agent-accent-rgb:${accentRgb};">
             <div class="agent-item-inner">
               <div class="agent-meta">
                 <div class="avatar-ring">${renderAvatar(agent)}</div>
