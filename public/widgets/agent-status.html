@@ -461,6 +461,29 @@
       overflow-wrap: anywhere;
     }
 
+    .focus-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 6px;
+    }
+
+    .focus-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--ox-border);
+      background: rgba(255, 255, 255, 0.02);
+      font-family: var(--ox-mono);
+      font-size: 0.64rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--ox-text-muted);
+    }
+
     .task-list {
       display: flex;
       flex-wrap: wrap;
@@ -534,6 +557,111 @@
 
     .blockers li + li {
       margin-top: 4px;
+    }
+
+    .output-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 6px;
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px solid var(--ox-border);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .output-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .output-count {
+      font-family: var(--ox-mono);
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ox-text-muted);
+      font-weight: 600;
+    }
+
+    .artifact-mini-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .artifact-mini {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: start;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--ox-border);
+      background: var(--ox-well-bg);
+      box-shadow: var(--ox-well-shadow);
+    }
+
+    .artifact-mini-title {
+      font-size: 0.84rem;
+      line-height: 1.4;
+      color: var(--ox-text);
+      font-weight: 600;
+    }
+
+    .artifact-mini-copy {
+      margin-top: 5px;
+      font-size: 0.76rem;
+      color: var(--ox-text-muted);
+      line-height: 1.45;
+    }
+
+    .artifact-mini-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--ox-border);
+      background: rgba(255, 255, 255, 0.02);
+      font-family: var(--ox-mono);
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--ox-text-muted);
+    }
+
+    .artifact-mini-status.status-approved {
+      color: var(--ox-teal);
+      border-color: rgba(0, 201, 167, 0.18);
+      background: rgba(0, 201, 167, 0.08);
+    }
+
+    .artifact-mini-status.status-in_review,
+    .artifact-mini-status.status-draft {
+      color: var(--ox-warning);
+      border-color: rgba(251, 191, 36, 0.22);
+      background: rgba(251, 191, 36, 0.08);
+    }
+
+    .workload-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .workload-pill {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--ox-border);
+      background: rgba(255, 255, 255, 0.02);
+      font-family: var(--ox-mono);
+      font-size: 0.66rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--ox-text-muted);
     }
 
     @media (max-width: 560px) {
@@ -799,6 +927,10 @@
             source.started_at,
             source.startedAt
           ]) || null,
+          initiative_id: firstString([
+            source.initiative_id,
+            source.initiativeId
+          ]) || null,
           execution_target: firstString([
             source.execution_target,
             source.executionTarget
@@ -806,7 +938,17 @@
           run_id: firstString([
             source.run_id,
             source.runId
-          ]) || null
+          ]) || null,
+          artifacts: firstArray([
+            source.artifacts,
+            source.session_output,
+            source.sessionOutput
+          ]),
+          artifact_count: firstNumber([
+            source.artifact_count,
+            source.artifactCount
+          ]),
+          workload: source.workload && typeof source.workload === 'object' ? source.workload : {}
         };
       };
 
@@ -1017,6 +1159,7 @@
         var primaryTask = tasks[0] || (isIdle ? 'Awaiting next assignment' : 'No active task');
         var extraTasks = tasks.slice(1, 4);
         var hiddenTaskCount = Math.max(0, tasks.length - 1 - extraTasks.length);
+        var taskCount = tasks.length;
         var statusLabel = humanize(agent.status) || (tasks.length > 0 ? 'Active' : 'Idle');
         var progress = typeof agent.progress === 'number' && isFinite(agent.progress)
           ? Math.max(0, Math.min(100, agent.progress))
@@ -1024,7 +1167,39 @@
         var blockers = Array.isArray(agent.blockers)
           ? agent.blockers.filter(function(item) { return typeof item === 'string' && item.trim(); })
           : [];
-        var href = buildAgentUrl(agent.agent_id);
+        var artifacts = Array.isArray(agent.artifacts) ? agent.artifacts : [];
+        var artifactCount = typeof agent.artifact_count === 'number' && isFinite(agent.artifact_count)
+          ? agent.artifact_count
+          : artifacts.length;
+        var workload = agent.workload && typeof agent.workload === 'object' ? agent.workload : {};
+        var tasksInProgress = typeof workload.tasks_in_progress === 'number' && isFinite(workload.tasks_in_progress)
+          ? workload.tasks_in_progress
+          : taskCount;
+        var blockedCount = typeof workload.blocked_count === 'number' && isFinite(workload.blocked_count)
+          ? workload.blocked_count
+          : blockers.length;
+        var streamCount = typeof workload.stream_count === 'number' && isFinite(workload.stream_count)
+          ? workload.stream_count
+          : 0;
+        var href = agent.initiative_id
+          ? ORGX_BASE_URL + '/live/' + encodeURIComponent(agent.initiative_id)
+          : buildAgentUrl(agent.agent_id);
+        var artifactMiniHtml = artifacts.slice(0, 3).map(function(artifact) {
+          var title = escapeHtml(artifact.title || artifact.name || 'Untitled artifact');
+          var type = escapeHtml(String(artifact.artifact_type || artifact.type || 'artifact').replace(/_/g, '.'));
+          var status = escapeHtml(String(artifact.status || 'draft').replace(/_/g, ' '));
+          var statusClass = 'status-' + String(artifact.status || 'draft').replace(/[^a-zA-Z0-9_-]/g, '_');
+          var summary = escapeHtml(artifact.summary || artifact.description || '');
+          return `
+            <div class="artifact-mini">
+              <div>
+                <div class="artifact-mini-title">${title}</div>
+                <div class="artifact-mini-copy">${type}${summary ? ' · ' + summary : ''}</div>
+              </div>
+              <div class="artifact-mini-status ${statusClass}">${status}</div>
+            </div>
+          `;
+        }).join('');
 
         return `
           <div class="agent-item animate-in" style="animation-delay:${(index % 6) * 0.06}s; --agent-accent-rgb:${accentRgb};">
@@ -1047,15 +1222,18 @@
                 <div>
                   <div class="ox-eyebrow" style="margin-bottom:6px;">Current focus</div>
                   <div class="task-lead">${escapeHtml(primaryTask)}</div>
-                  <div class="task-subcopy">${
-                    tasks.length > 1
-                      ? `${tasks.length} tasks in view`
+                  <div class="focus-meta">
+                    <div class="task-subcopy">${
+                    taskCount > 1
+                      ? `${taskCount} tasks in view`
                       : tasks.length === 1
                       ? 'Single-task focus'
                       : isIdle
                       ? 'Standing by for routed work'
                       : 'No routed tasks yet'
-                  }</div>
+                    }</div>
+                    ${taskCount > 1 ? `<span class="focus-pill">1 / ${taskCount}</span>` : ''}
+                  </div>
                 </div>
 
                 ${extraTasks.length > 0 ? `
@@ -1083,12 +1261,29 @@
                     </ul>
                   </div>
                 ` : ''}
+
+                <div class="output-panel">
+                  <div class="output-header">
+                    <div class="ox-eyebrow">Session output</div>
+                    <div class="output-count">${artifactCount} artifact${artifactCount === 1 ? '' : 's'}</div>
+                  </div>
+                  ${artifactMiniHtml ? `<div class="artifact-mini-list">${artifactMiniHtml}</div>` : `<div class="task-subcopy">No artifacts surfaced yet for this agent in the current initiative context.</div>`}
+                </div>
+
+                <div>
+                  <div class="ox-eyebrow" style="margin-bottom:8px;">Workload</div>
+                  <div class="workload-row">
+                    <span class="workload-pill">${tasksInProgress} task${tasksInProgress === 1 ? '' : 's'} in progress</span>
+                    <span class="workload-pill">${blockedCount} blocked</span>
+                    <span class="workload-pill">${streamCount} stream${streamCount === 1 ? '' : 's'}</span>
+                  </div>
+                </div>
               </div>
 
               <div class="widget-footer">
                 <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
                 <a href="${href}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(href || ''))}, event)' class="deep-link">
-                  Open telemetry
+                  Open live view
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </a>
               </div>
