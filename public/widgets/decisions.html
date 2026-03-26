@@ -398,9 +398,10 @@
     
     .actions-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 12px;
-      margin-top: 24px;
+      margin-top: 22px;
+      align-items: stretch;
     }
 
     .actions-grid .ox-action-btn,
@@ -408,23 +409,73 @@
       width: 100%;
     }
 
+    .decision-action-btn {
+      display: flex;
+      align-items: stretch;
+      justify-content: flex-start;
+      min-height: 88px;
+      padding: 0;
+      border-radius: 16px;
+      overflow: hidden;
+      text-align: left;
+    }
+
+    .decision-action-btn.ox-btn-ghost {
+      border-color: rgba(255, 255, 255, 0.08);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)),
+        rgba(255,255,255,0.01);
+    }
+
+    .decision-action-btn.ox-btn-ghost:hover:not(:disabled) {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015)),
+        rgba(255,255,255,0.015);
+    }
+
     .decision-action-copy {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      align-items: center;
+      width: 100%;
+      min-width: 0;
+      padding: 16px 18px;
+      text-align: left;
+    }
+
+    .decision-action-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.08);
+      color: currentColor;
+      flex-shrink: 0;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+
+    .decision-action-text {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      gap: 3px;
-      text-align: center;
+      gap: 4px;
       min-width: 0;
     }
 
     .decision-action-title {
+      display: block;
+      font-size: 1rem;
       font-weight: 700;
       line-height: 1.1;
+      letter-spacing: -0.02em;
     }
 
     .decision-action-detail {
-      font-size: 0.68rem;
-      line-height: 1.3;
+      display: block;
+      font-size: 0.76rem;
+      line-height: 1.4;
       color: currentColor;
       opacity: 0.76;
       letter-spacing: 0;
@@ -556,16 +607,15 @@
     .param-chip strong { color: var(--ox-text); margin-left: 4px; }
 
     .pagination {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-      padding: 12px 14px;
-      margin-top: 4px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px 18px;
+      padding: 14px 16px;
+      margin-top: 8px;
       border: 1px solid var(--ox-border);
       border-radius: 18px;
       background:
-        linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.01)),
+        linear-gradient(180deg, rgba(255,255,255,0.022), rgba(255,255,255,0.008)),
         var(--ox-panel);
       box-shadow:
         0 14px 30px -26px rgba(0, 0, 0, 0.68),
@@ -575,15 +625,15 @@
     .page-info {
       display: flex;
       flex-direction: column;
-      gap: 7px;
+      gap: 10px;
       min-width: 0;
-      flex: 1 1 auto;
     }
 
-    .page-info-top {
+    .page-kicker {
       display: flex;
       align-items: center;
-      gap: 10px;
+      justify-content: space-between;
+      gap: 12px;
       min-width: 0;
       flex-wrap: wrap;
     }
@@ -597,32 +647,44 @@
       font-weight: 700;
     }
 
-    .page-range {
-      font-size: 0.78rem;
-      line-height: 1.35;
-      color: var(--ox-text-muted);
-      white-space: nowrap;
-    }
-
     .page-count {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      min-width: 70px;
-      padding: 7px 12px;
+      gap: 5px;
+      padding: 6px 11px;
       border-radius: 999px;
       background:
-        linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.12), rgba(var(--ox-primary-rgb), 0.06)),
-        rgba(var(--ox-primary-rgb), 0.04);
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.22);
+        linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.12), rgba(var(--ox-primary-rgb), 0.05)),
+        rgba(var(--ox-primary-rgb), 0.03);
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.2);
       color: var(--ox-warning);
       font-family: var(--ox-mono);
-      font-size: 0.78rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
       flex-shrink: 0;
+    }
+
+    .page-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-width: 0;
+      flex-wrap: wrap;
+    }
+
+    .page-range {
+      font-size: 0.8rem;
+      line-height: 1.35;
+      color: var(--ox-text);
+      font-weight: 600;
+    }
+
+    .page-total {
+      font-size: 0.76rem;
+      line-height: 1.35;
+      color: var(--ox-text-muted);
     }
 
     .page-progress {
@@ -646,14 +708,15 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      flex-shrink: 0;
+      align-self: center;
     }
 
     .page-btn {
       width: auto;
-      min-width: 116px;
+      min-width: 96px;
+      min-height: 38px;
       padding-inline: 14px;
-      font-size: 0.76rem;
+      font-size: 0.74rem;
       letter-spacing: 0;
       justify-content: center;
       border-radius: 12px;
@@ -774,25 +837,17 @@
       }
 
       .pagination {
+        grid-template-columns: 1fr;
+      }
+
+      .page-summary {
         flex-direction: column;
-        align-items: stretch;
-      }
-
-      .page-info {
-        order: 1;
-      }
-
-      .page-info-top {
-        justify-content: space-between;
-      }
-
-      .page-range {
-        white-space: normal;
+        align-items: flex-start;
       }
 
       .page-controls {
-        order: 2;
         width: 100%;
+        justify-content: stretch;
       }
 
       .page-btn {
@@ -1168,8 +1223,9 @@
       };
       var renderAvatar = (name, sizePx, isSystem) => {
         if (isSystem) {
-          const systemUrl = resolveWidgetAsset('orgx-logo.png');
-          return `<span style="display:none;align-items:center;justify-content:center;width:100%;height:100%;font-family:var(--ox-mono);font-size:0.7rem;">OX</span><img src="${systemUrl}" alt="OrgX System" loading="eager" decoding="sync" draggable="false" onerror="this.style.display='none'; if (this.previousElementSibling) this.previousElementSibling.style.display='flex';" />`;
+          const localUrl = resolveWidgetAsset('orgx-logo.png');
+          const remoteUrl = WIDGET_ASSET_BASE + 'orgx-logo.png';
+          return `<span style="display:none;align-items:center;justify-content:center;width:100%;height:100%;font-family:var(--ox-mono);font-size:0.7rem;">OX</span><img src="${localUrl}" alt="OrgX System" loading="eager" decoding="sync" draggable="false" onerror="if(!this.dataset.retried){this.dataset.retried='1';this.src='${remoteUrl}';return;}this.style.display='none'; if (this.previousElementSibling) this.previousElementSibling.style.display='flex';" />`;
         }
         const url = getAvatarUrl(name);
         const fallback = escapeHtml(name ? name[0].toUpperCase() : '?');
@@ -1358,25 +1414,31 @@
               <div class="actions-grid">
                 <button
                   type="button"
-                  class="ox-btn ox-action-btn ox-action-btn--primary ox-btn-primary is-card-tone"
+                  class="ox-btn ox-action-btn ox-action-btn--primary ox-btn-primary is-card-tone decision-action-btn"
                   style="--ox-button-accent-rgb: var(--ox-card-color-rgb); --ox-primary-contrast: ${d.urgency === 'high' || d.urgency === 'critical' ? '#fff' : '#02040a'};"
                   data-loading-label="Approving…"
                   onclick="approveDecision('${escapeHtml(d.id)}', this)"
                 >
                   <span class="decision-action-copy">
-                    <span class="decision-action-title">Approve</span>
-                    <span class="decision-action-detail">Unblock ${escapeHtml(owner.label)} and continue execution</span>
+                    <span class="decision-action-icon">${icons.check(18)}</span>
+                    <span class="decision-action-text">
+                      <span class="decision-action-title">Approve decision</span>
+                      <span class="decision-action-detail">Continue this path.</span>
+                    </span>
                   </span>
                 </button>
                 <button
                   type="button"
-                  class="ox-btn ox-action-btn ox-action-btn--ghost ox-btn-ghost"
+                  class="ox-btn ox-action-btn ox-action-btn--ghost ox-btn-ghost decision-action-btn"
                   onclick="toggleRejectComposer('${escapeHtml(d.id)}')"
                   aria-expanded="${isRejecting ? 'true' : 'false'}"
                 >
                   <span class="decision-action-copy">
-                    <span class="decision-action-title">${rejectActionLabel === 'Hide note' ? 'Hide note' : 'Reject with note'}</span>
-                    <span class="decision-action-detail">${isRejecting ? 'Collapse the feedback panel' : 'Send revision guidance instead of blocking silently'}</span>
+                    <span class="decision-action-icon">${isRejecting ? icons.check(18) : icons.error(18)}</span>
+                    <span class="decision-action-text">
+                      <span class="decision-action-title">${rejectActionLabel === 'Hide note' ? 'Hide feedback panel' : 'Request revision'}</span>
+                      <span class="decision-action-detail">${isRejecting ? 'Return to actions.' : 'Send revision guidance.'}</span>
+                    </span>
                   </span>
                 </button>
               </div>
@@ -1440,10 +1502,13 @@
         html += `
           <div class="pagination">
             <div class="page-info">
-              <div class="page-info-top">
+              <div class="page-kicker">
                 <span class="page-label">Decision queue</span>
                 <span class="page-count">${currentPage}<span>/</span>${totalPages}</span>
-                <span class="page-range">Showing ${start}-${end} of ${data.decisions.length}</span>
+              </div>
+              <div class="page-summary">
+                <span class="page-range">Showing ${start}-${end}</span>
+                <span class="page-total">${data.decisions.length} decisions total</span>
               </div>
               <div class="page-progress" aria-hidden="true">
                 <span class="page-progress-bar" style="width:${progress}%"></span>
