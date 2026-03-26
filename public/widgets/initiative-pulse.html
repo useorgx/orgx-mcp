@@ -256,6 +256,95 @@
       .roi-value.positive { color: var(--ox-teal); }
       .roi-value.negative { color: var(--ox-danger); }
 
+      .pulse-message {
+        margin-top: 18px;
+        padding: 14px 16px;
+        border-radius: 12px;
+        border: 1px solid rgba(var(--ox-primary-rgb), 0.14);
+        background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.08), rgba(var(--ox-primary-rgb), 0.03));
+        color: var(--ox-text);
+        line-height: 1.55;
+      }
+
+      .insight-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      .insight-card {
+        min-width: 0;
+        padding: 14px;
+        border-radius: 12px;
+        border: 1px solid var(--ox-border);
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .insight-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .insight-list li {
+        position: relative;
+        padding-left: 12px;
+        color: var(--ox-text);
+        line-height: 1.45;
+      }
+
+      .insight-list li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.6em;
+        width: 4px;
+        height: 4px;
+        border-radius: 999px;
+        background: var(--ox-primary);
+        opacity: 0.8;
+      }
+
+      .insight-empty {
+        margin-top: 10px;
+        font-size: 0.84rem;
+        color: var(--ox-text-muted);
+        line-height: 1.45;
+      }
+
+      .pulse-cta-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 20px;
+      }
+
+      .cta-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 42px;
+        padding: 0 15px;
+        border-radius: 12px;
+        border: 1px solid rgba(var(--ox-primary-rgb), 0.22);
+        background: rgba(var(--ox-primary-rgb), 0.12);
+        color: var(--ox-text);
+        text-decoration: none;
+        font-size: 0.84rem;
+        font-weight: 600;
+        transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+      }
+
+      .cta-button:hover {
+        transform: translateY(-1px);
+        border-color: rgba(var(--ox-primary-rgb), 0.35);
+        background: rgba(var(--ox-primary-rgb), 0.16);
+      }
+
       .milestone-list {
         display: flex;
         flex-direction: column;
@@ -360,6 +449,32 @@
       .blockers-list li::before {
         content: '›';
         position: absolute; left: 0; color: var(--ox-danger); opacity: 0.8; font-weight: bold;
+      }
+
+      @media (max-width: 560px) {
+        .pulse-header,
+        .widget-footer {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 12px;
+        }
+
+        .pulse-metrics,
+        .roi-strip,
+        .insight-grid {
+          grid-template-columns: 1fr;
+          flex-direction: column;
+        }
+
+        .pulse-cta-row {
+          flex-direction: column;
+        }
+
+        .cta-button,
+        .deep-link {
+          width: 100%;
+          justify-content: center;
+        }
       }
 
       /* Shared Widget Specifics */
@@ -537,9 +652,11 @@
 
     function _detectProtocol(){if(typeof window.openai!=='undefined')return'chatgpt';if(window.parent&&window.parent!==window)return'mcp-apps';return'standalone';}
     function _extractData(out){if(out==null)return null;if(typeof out==='object'&&out.structuredContent)return out.structuredContent;if(typeof out==='object'&&Array.isArray(out.content)){for(var i=0;i<out.content.length;i++){var item=out.content[i];if(item&&item.type==='text'&&item.text){try{return JSON.parse(item.text);}catch(e){continue;}}}}if(typeof out==='string'){try{return JSON.parse(out);}catch(e){return{text:out};}}return out;}
-    function _sendSize(){var w=Math.ceil(document.documentElement.getBoundingClientRect().width+(window.innerWidth-document.documentElement.clientWidth));var h=Math.ceil(document.documentElement.getBoundingClientRect().height);try{window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/size-changed',params:{width:w,height:h}},'*');}catch(e){}}
-    function _observeSize(){_sendSize();if(typeof ResizeObserver!=='undefined'){var ro=new ResizeObserver(() => requestAnimationFrame(_sendSize));ro.observe(document.documentElement);ro.observe(document.body);}}
-    function initWidget(opts){var render=opts.render,getData=opts.getData||_extractData;var protocol=_detectProtocol();if(protocol==='chatgpt'){var d=getData(window.openai&&window.openai.toolOutput);render(d);window.addEventListener('openai:set_globals',function(e){var g=e.detail&&e.detail.globals;if(g&&g.toolOutput){render(getData(g.toolOutput));}},{passive:true});}else if(protocol==='mcp-apps'){render(null);var initId=1;window.parent.postMessage({jsonrpc:'2.0',id:initId,method:'ui/initialize',params:{appInfo:{name:'Widget',version:'1.0'},appCapabilities:{tools:{listChanged:false}},protocolVersion:'2026-01-26'}},'*');window.addEventListener('message',function(event){var msg=event.data;if(!msg||typeof msg!=='object')return;if(msg.id===initId){_observeSize();return;}if((msg.method==='ui/notifications/tool-result'||msg.method==='notifications/message')&&msg.params){var data=getData(msg.params);if(data)render(data);}});}else{render(null);}}
+    var _lastW=0,_lastH=0;
+    function _sendSize(){var w=Math.ceil(document.documentElement.getBoundingClientRect().width+(window.innerWidth-document.documentElement.clientWidth));var h=Math.ceil(document.documentElement.getBoundingClientRect().height);if(w===_lastW&&h===_lastH)return;_lastW=w;_lastH=h;try{window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/size-changed',params:{width:w,height:h}},'*');}catch(e){}}
+    function _observeSize(){_sendSize();if(typeof ResizeObserver!=='undefined'){var _raf=0;var ro=new ResizeObserver(function(){if(_raf)cancelAnimationFrame(_raf);_raf=requestAnimationFrame(_sendSize);});ro.observe(document.documentElement);ro.observe(document.body);}}
+    function initWidget(opts){var render=opts.render,getData=opts.getData||_extractData;var protocol=_detectProtocol();if(protocol==='chatgpt'){var d=getData(window.openai&&window.openai.toolOutput);render(d);window.addEventListener('openai:set_globals',function(e){var g=e.detail&&e.detail.globals;if(g&&g.toolOutput){render(getData(g.toolOutput));}},{passive:true});}else if(protocol==='mcp-apps'){render(null);var initId=1;window.parent.postMessage({jsonrpc:'2.0',id:initId,method:'ui/initialize',params:{appInfo:{name:'Widget',version:'1.0'},appCapabilities:{tools:{listChanged:false}},protocolVersion:'2026-01-26'}},'*');window.parent.postMessage({jsonrpc:'2.0',method:'notifications/initialized'},'*');window.addEventListener('message',function(event){var msg=event.data;if(!msg||typeof msg!=='object')return;if(msg.id===initId&&msg.result){window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized'},'*');_observeSize();return;}if((msg.method==='ui/notifications/tool-result'||msg.method==='notifications/message')&&msg.params){var data=getData(msg.params);if(data)render(data);}});}else{render(null);}}
+    function openWidgetLink(url,event){if(!url)return false;var protocol=_detectProtocol();if(protocol==='mcp-apps'){if(event&&typeof event.preventDefault==='function')event.preventDefault();window.parent.postMessage({jsonrpc:'2.0',id:100 + Math.floor(Math.random()*10000),method:'ui/open-link',params:{url:url}},'*');return false;}return true;}
     
     var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+c+'</svg>';};
     var icons = {
@@ -585,7 +702,9 @@
         blockers: Array.isArray(payload.blockers) ? payload.blockers : [],
         milestones: Array.isArray(payload.milestones) ? payload.milestones : [],
         roi_summary: payload.roi_summary || null,
-        message: payload.message || null
+        message: payload.message || null,
+        live_url: typeof payload.live_url === 'string' ? payload.live_url : null,
+        next_steps: Array.isArray(payload.next_steps) ? payload.next_steps : []
       };
     };
 
@@ -626,6 +745,7 @@
       const healthScore = typeof pulse.health_score === 'number' ? pulse.health_score : 100;
       const normalizedStatus = escapeHtml(pulse.status).toLowerCase();
       const roiSummary = pulse.roi_summary || null;
+      const safeMessage = pulse.message ? escapeHtml(pulse.message) : '';
       let roiValue = null;
       
       if (roiSummary && roiSummary.total_cost > 0) {
@@ -645,6 +765,17 @@
           </ul>
         </div>
       ` : '';
+      const nextStepsHtml = (pulse.next_steps || []).length ? `
+        <ul class="insight-list">
+          ${(pulse.next_steps || []).slice(0, 3).map(step => `<li>${escapeHtml(step)}</li>`).join('')}
+        </ul>
+      ` : `<div class="insight-empty">No prescribed next steps yet. Use the live view to inspect workstreams and unblock the sprint.</div>`;
+      const blockerPanelHtml = (pulse.blockers || []).length ? blockersHtml : `
+        <div class="insight-card">
+          <div class="detail-label">Blockers</div>
+          <div class="insight-empty">No blockers reported in the current pulse.</div>
+        </div>
+      `;
       const milestonesHtml = (pulse.milestones || []).length ? `
         <div class="milestone-list">
           ${(pulse.milestones || []).slice(0, 4).map(milestone => `
@@ -691,15 +822,34 @@
               <span>${getHealthLabel(healthScore)} (${healthScore})</span>
             </div>
 
+            ${safeMessage ? `<div class="pulse-message">${safeMessage}</div>` : ''}
+
+            <div class="insight-grid">
+              <div class="insight-card">
+                <div class="detail-label">Immediate next steps</div>
+                ${nextStepsHtml}
+              </div>
+              <div class="insight-card">
+                <div class="detail-label">Workstream state</div>
+                <ul class="insight-list">
+                  <li>${activeWorkstreams} active workstream${activeWorkstreams === 1 ? '' : 's'}</li>
+                  <li>${pulse.blocked_workstreams || 0} blocked workstream${(pulse.blocked_workstreams || 0) === 1 ? '' : 's'}</li>
+                  <li>${pendingDecisions} pending decision${pendingDecisions === 1 ? '' : 's'}</li>
+                </ul>
+              </div>
+            </div>
+
             ${milestonesHtml}
-            ${blockersHtml}
+            ${blockerPanelHtml}
 
             <div class="widget-footer">
               <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
-              <a href="${dashboardUrl}" target="_blank" rel="noreferrer" class="deep-link">
-                View Dashboard
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-              </a>
+              <div class="pulse-cta-row">
+                <a href="${dashboardUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(dashboardUrl || ''))}, event)' class="cta-button">
+                  Open Live View
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </a>
+              </div>
             </div>
           </div>
         </div>

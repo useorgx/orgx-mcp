@@ -577,6 +577,30 @@ describe('mcpTransport', () => {
     });
   });
 
+  it('hydrates handoff_task payload from alternate routing keys', async () => {
+    const result = await normalizeAgentDispatchPayload({
+      toolId: 'handoff_task',
+      args: {
+        task_id: 'task-1',
+        target_agent_id: 'design-agent',
+      },
+      data: {
+        task_id: 'task-1',
+        workspaceName: 'The Loop Ships',
+        commandCenterId: 'ws-loop',
+      },
+    });
+
+    expect(result).toMatchObject({
+      agent_id: 'design-agent',
+      agent_name: 'Dana',
+      domain: 'Design',
+      workspace_id: 'ws-loop',
+      command_center_id: 'ws-loop',
+      workspace_name: 'The Loop Ships',
+    });
+  });
+
   it('preserves non-tools/call payloads', async () => {
     let received: any = null;
     const handler = {

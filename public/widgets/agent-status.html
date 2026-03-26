@@ -132,15 +132,37 @@
     .avatar-ring {
       position: relative; width: 56px; height: 56px; border-radius: 12px;
       display: flex; align-items: center; justify-content: center;
-      background: rgba(var(--ox-primary-rgb), 0.05); border: 1px solid rgba(var(--ox-primary-rgb), 0.2);
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.08), rgba(var(--ox-primary-rgb), 0.03));
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
       font-family: var(--ox-mono); font-size: 1.5rem; font-weight: bold; color: var(--ox-primary);
-      box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.15);
+      box-shadow: 0 10px 24px -20px rgba(var(--ox-primary-rgb), 0.55);
     }
     .avatar-ring::before {
-      content: ''; position: absolute; inset: -6px; border: 1px dashed var(--ox-primary); border-radius: 20px;
-      opacity: 0.5; animation: spin 15s linear infinite;
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      box-shadow: inset 0 0 0 1px rgba(var(--ox-primary-rgb), 0.08);
+      pointer-events: none;
     }
-    @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    .avatar-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .avatar-fallback {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--ox-primary);
+      background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.12), rgba(var(--ox-primary-rgb), 0.04));
+    }
 
     .status-pill {
       display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 6px;
@@ -385,16 +407,22 @@
 
 
     
-      var WIDGET_ASSET_BASE = 'https://mcp.useorgx.com/widgets/shared/';
+      function resolveWidgetAsset(path){
+        try {
+          return new URL('shared/' + path, window.location.href).toString();
+        } catch (error) {
+          return 'https://mcp.useorgx.com/widgets/shared/' + path;
+        }
+      }
       var getAvatarUrl = (name) => {
         const n = (name || '').toLowerCase();
-        if (n.includes('pace') || n.includes('product')) return WIDGET_ASSET_BASE + 'product_orchestrator.png';
-        if (n.includes('eli') || n.includes('engineer')) return WIDGET_ASSET_BASE + 'engineering_autopilot.png';
-        if (n.includes('mark') || n.includes('market')) return WIDGET_ASSET_BASE + 'launch_captain.png';
-        if (n.includes('sage') || n.includes('sale')) return WIDGET_ASSET_BASE + 'pipeline_intelligence.png';
-        if (n.includes('orion') || n.includes('op')) return WIDGET_ASSET_BASE + 'control_tower.png';
-        if (n.includes('dana') || n.includes('design')) return WIDGET_ASSET_BASE + 'design_codex.png';
-        if (n.includes('xandy') || n.includes('orchestrator')) return WIDGET_ASSET_BASE + 'xandy_orchestrator.png';
+        if (n.includes('pace') || n.includes('product')) return resolveWidgetAsset('product_orchestrator.png');
+        if (n.includes('eli') || n.includes('engineer')) return resolveWidgetAsset('engineering_autopilot.png');
+        if (n.includes('mark') || n.includes('market')) return resolveWidgetAsset('launch_captain.png');
+        if (n.includes('sage') || n.includes('sale')) return resolveWidgetAsset('pipeline_intelligence.png');
+        if (n.includes('orion') || n.includes('op')) return resolveWidgetAsset('control_tower.png');
+        if (n.includes('dana') || n.includes('design')) return resolveWidgetAsset('design_codex.png');
+        if (n.includes('xandy') || n.includes('orchestrator')) return resolveWidgetAsset('xandy_orchestrator.png');
         return null;
       };
       var ORGX_BASE_URL = 'https://useorgx.com';
@@ -405,8 +433,11 @@
       };
       var renderAvatar = (name, sizePx) => {
         const url = getAvatarUrl(name);
-        if (url) return `<img src="${url}" alt="${escapeHtml(name)}" loading="eager" decoding="sync" draggable="false" style="display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit;" />`;
-        return escapeHtml(name ? name[0].toUpperCase() : '?');
+        const fallback = escapeHtml(name ? name[0].toUpperCase() : '?');
+        if (url) {
+          return `<img src="${url}" alt="" class="avatar-image" loading="eager" decoding="sync" draggable="false" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" /><span class="avatar-fallback" style="display:none;">${fallback}</span>`;
+        }
+        return `<span class="avatar-fallback" style="display:flex;">${fallback}</span>`;
       };
 
     var formatTime = d => { const dt = new Date(d); return `[${dt.getHours().toString().padStart(2,'0')}:${dt.getMinutes().toString().padStart(2,'0')}:${dt.getSeconds().toString().padStart(2,'0')}]`; };
@@ -423,10 +454,14 @@
       if (source.includes('chatgpt')) return 'App';
       return 'Agent';
     };
+    var isVisibleAgent = agent => {
+      const source = [agent.agent_id, agent.agent_name].filter(Boolean).join(' ').toLowerCase();
+      return !source.includes('chatgpt-app') && !source.includes('orgx chatgpt app');
+    };
     var normalizeAgentPayload = payload => {
       if (!payload) return null;
       if (Array.isArray(payload.agents)) {
-        var agents = payload.agents.map(agent => ({
+        var agents = payload.agents.filter(isVisibleAgent).map(agent => ({
           agent_id: agent.agent_id || null,
           agent_name: agent.agent_name || agent.agent_id || 'Unknown agent',
           role: inferRole(agent),
@@ -439,17 +474,21 @@
           run_id: agent.run_id || null
         }));
         var summary = payload.summary || {};
+        var running = agents.filter(agent => agent.status === 'running').length;
+        var queued = agents.filter(agent => agent.status === 'queued').length;
+        var blocked = agents.filter(agent => agent.status === 'blocked').length;
+        var idle = agents.filter(agent => agent.status === 'idle').length;
         return {
           mode: 'fleet',
           agents: agents,
           summary: {
-            total: typeof summary.total === 'number' ? summary.total : agents.length,
-            running: typeof summary.running === 'number' ? summary.running : agents.filter(agent => agent.status === 'running').length,
-            queued: typeof summary.queued === 'number' ? summary.queued : agents.filter(agent => agent.status === 'queued').length,
-            blocked: typeof summary.blocked === 'number' ? summary.blocked : agents.filter(agent => agent.status === 'blocked').length,
-            idle: typeof summary.idle === 'number' ? summary.idle : agents.filter(agent => agent.status === 'idle').length
+            total: agents.length,
+            running: running,
+            queued: queued,
+            blocked: blocked,
+            idle: idle
           },
-          message: payload.message || '',
+          message: payload.message || (running === 0 ? 'No agents currently running.' : 'Live orchestration state across specialist agents.'),
           next_steps: Array.isArray(payload.next_steps) ? payload.next_steps : []
         };
       }

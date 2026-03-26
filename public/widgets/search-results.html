@@ -150,6 +150,7 @@
     
     .result-card {
       display: block;
+      color: inherit;
       text-decoration: none;
       padding: 18px;
       background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.04), transparent 45%), var(--ox-well-bg);
@@ -227,6 +228,33 @@
     .history-status { padding: 4px 8px; border-radius: 999px; border: 1px solid rgba(var(--ox-primary-rgb), 0.18); background: rgba(var(--ox-primary-rgb), 0.08); color: var(--ox-primary); font-family: var(--ox-mono); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
     
     .highlight { color: var(--ox-primary); font-weight: 600; background: rgba(var(--ox-primary-rgb), 0.1); padding: 0 2px; border-radius: 2px; }
+    .r-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .r-open-hint {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 0 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
+      background: rgba(var(--ox-primary-rgb), 0.08);
+      color: var(--ox-text);
+      font-size: 0.78rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .r-open-hint small {
+      color: var(--ox-text-muted);
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
     .error-state { border-style: solid; border-color: rgba(225,29,72,0.2); background: rgba(225,29,72,0.04); }
     .error-state .empty-icon { color: var(--ox-danger); background: rgba(225,29,72,0.08); box-shadow: none; }
     .error-state .empty-title { color: var(--ox-text); }
@@ -356,6 +384,12 @@
         var explicitUrl =
           item && typeof item.url === 'string' && item.url.trim()
             ? item.url.trim()
+            : item && typeof item.live_url === 'string' && item.live_url.trim()
+            ? item.live_url.trim()
+            : item && typeof item.action_url === 'string' && item.action_url.trim()
+            ? item.action_url.trim()
+            : item && typeof item.start_url === 'string' && item.start_url.trim()
+            ? item.start_url.trim()
             : item && typeof item.link === 'string' && item.link.trim()
             ? item.link.trim()
             : item && typeof item._link === 'string' && item._link.trim()
@@ -471,9 +505,29 @@
           : summary;
         var url = buildEntityUrl({
           type: entityType,
-          id: typeof metadata.workstreamId === 'string' ? metadata.workstreamId : item && item.key,
+          id:
+            typeof item.id === 'string'
+              ? item.id
+              : typeof metadata.workstreamId === 'string'
+              ? metadata.workstreamId
+              : typeof metadata.entityId === 'string'
+              ? metadata.entityId
+              : item && item.key,
           initiative_id: typeof metadata.initiativeId === 'string' ? metadata.initiativeId : item && item.initiative_id,
-          url: typeof item.url === 'string' ? item.url : null
+          url:
+            typeof item.url === 'string'
+              ? item.url
+              : typeof item.live_url === 'string'
+              ? item.live_url
+              : typeof item.action_url === 'string'
+              ? item.action_url
+              : typeof item.start_url === 'string'
+              ? item.start_url
+              : typeof metadata.live_url === 'string'
+              ? metadata.live_url
+              : typeof metadata.action_url === 'string'
+              ? metadata.action_url
+              : null
         });
         return {
           rank: index + 1,
@@ -595,7 +649,6 @@
           injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.search(24)}</div><div class="empty-title">No recommendations available</div><div class="empty-desc">${escapeHtml(data.message || 'OrgX did not find a clear next action yet.')}</div></div>`);
           return;
         }
-        var scopeLabel = buildScopeLabel(data);
         var recommendationsHtml = recommendations.map(r => `
           <a href="${escapeHtml(r.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${serializeJsString(r.url)}, event)' class="result-card">
             <div class="r-header">
@@ -618,7 +671,7 @@
                 ${r.source ? `<span class="r-chip">${escapeHtml(String(r.source).replace(/_/g, ' '))}</span>` : ''}
                 ${r.nextTask ? `<span class="r-chip">${escapeHtml(r.nextTask)}</span>` : ''}
               </div>
-              <div class="r-open-hint">${icons.external(14)} Open in OrgX <small>new tab</small></div>
+              <div class="r-open-hint">${icons.external(14)} ${r.ready ? 'Start in OrgX' : 'Review in OrgX'} <small>new tab</small></div>
             </div>
           </a>
         `).join('');
@@ -629,7 +682,7 @@
                 <div class="search-icon">${icons.search(24)}</div>
                 <div class="search-meta">
                   <div class="search-query">> recommend next action</div>
-                  ${scopeLabel ? `<div class="r-flag">Recommended for ${escapeHtml(scopeLabel)}</div>` : `<div class="search-subtitle">Ranked follow-up actions based on current OrgX context.</div>`}
+                  <div class="search-subtitle">Ranked follow-up actions based on current OrgX context. Use the CTA on each card to start the next step directly.</div>
                   <div class="search-helper">${icons.external(12)} Click any card to open the next step in a new tab.</div>
                 </div>
               </div>
