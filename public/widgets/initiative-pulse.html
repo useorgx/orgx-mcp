@@ -662,6 +662,8 @@
         </div>
       ` : '';
 
+      var dashboardUrl = pulse.live_url || (pulse.id ? `https://useorgx.com/live/${encodeURIComponent(pulse.id)}` : 'https://useorgx.com/live?view=mission-control');
+
       injectHtml(`
         <div class="ox-card animate-in">
           <div class="ox-card-inner">
@@ -694,7 +696,7 @@
 
             <div class="widget-footer">
               <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
-              <a href="${pulse.id ? `https://console.useorgx.com/initiatives/${encodeURIComponent(pulse.id)}` : 'https://console.useorgx.com'}" target="_blank" class="deep-link">
+              <a href="${dashboardUrl}" target="_blank" rel="noreferrer" class="deep-link">
                 View Dashboard
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
               </a>

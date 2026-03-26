@@ -343,6 +343,8 @@
         </div>`;
       }).join('');
 
+      const initiativeUrl = data.live_url || (data.initiative.id ? `https://useorgx.com/live/${encodeURIComponent(data.initiative.id)}` : 'https://useorgx.com/live?view=mission-control');
+
       injectHtml(`
         <div class="ox-card animate-in">
           <div class="ox-card-inner">
@@ -364,7 +366,7 @@
           
             <div class="widget-footer">
               <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
-              <a href="${data.initiative.id ? `https://console.useorgx.com/initiatives/${escapeHtml(data.initiative.id)}` : 'https://console.useorgx.com'}" target="_blank" rel="noreferrer" class="deep-link ox-link-btn ox-link-btn--quiet">
+              <a href="${initiativeUrl}" target="_blank" rel="noreferrer" class="deep-link ox-link-btn ox-link-btn--quiet">
                 Open Initiative
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
               </a>

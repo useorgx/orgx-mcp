@@ -339,6 +339,36 @@
         if (url) return `<img src="${url}" alt="${escapeHtml(name)}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" />`;
         return escapeHtml(name ? name[0].toUpperCase() : '?');
     };
+    var ORGX_BASE_URL = 'https://useorgx.com';
+    var buildEntityUrl = (type, id, initiativeId) => {
+      if (!id) return ORGX_BASE_URL;
+      var normalizedType = String(type || '').toLowerCase();
+      if (normalizedType === 'run' || normalizedType === 'agent_run') {
+        return ORGX_BASE_URL + '/agents/runs/' + encodeURIComponent(id);
+      }
+      if (normalizedType === 'task') {
+        return initiativeId
+          ? ORGX_BASE_URL + '/live/' + encodeURIComponent(initiativeId) + '?task=' + encodeURIComponent(id)
+          : ORGX_BASE_URL + '/live?view=mission-control&task=' + encodeURIComponent(id);
+      }
+      if (normalizedType === 'initiative') {
+        return ORGX_BASE_URL + '/live/' + encodeURIComponent(id);
+      }
+      if (normalizedType === 'workstream') {
+        return initiativeId
+          ? ORGX_BASE_URL + '/live/' + encodeURIComponent(initiativeId) + '?workstream=' + encodeURIComponent(id)
+          : ORGX_BASE_URL + '/live?view=mission-control&workstream=' + encodeURIComponent(id);
+      }
+      if (normalizedType === 'milestone') {
+        return initiativeId
+          ? ORGX_BASE_URL + '/live/' + encodeURIComponent(initiativeId) + '?milestone=' + encodeURIComponent(id)
+          : ORGX_BASE_URL + '/live?view=mission-control&milestone=' + encodeURIComponent(id);
+      }
+      if (normalizedType === 'agent') {
+        return ORGX_BASE_URL + '/settings/agents?agent=' + encodeURIComponent(id);
+      }
+      return ORGX_BASE_URL;
+    };
     var inferDomain = payload => {
       const source = [payload.domain, payload.agent_name, payload.agent_id].filter(Boolean).join(' ').toLowerCase();
       if (source.includes('product') || source.includes('pace')) return 'Product';
@@ -363,6 +393,7 @@
           agent_name: payload.agent_name || payload.entity.agent_name || 'Assigned agent',
           domain: payload.domain || inferDomain(payload),
           workspace_name: payload.workspace_name || payload.initiative_name || 'OrgX workspace',
+          initiative_id: payload.initiative_id || payload.entity.initiative_id || null,
           status: payload.status || payload.entity.status || 'queued',
           links: Array.isArray(payload.links) ? payload.links : [],
           console_url: payload.live_url || payload.url || null
@@ -375,12 +406,13 @@
         agent_name: payload.agent_name || 'Assigned agent',
         domain: inferDomain(payload),
         workspace_name: payload.initiative_name || 'OrgX workspace',
+        initiative_id: payload.initiative_id || null,
         status: payload.status || 'queued',
         links: [
-          payload.task_id ? { platform: 'Task', url: `https://console.useorgx.com/tasks/${encodeURIComponent(payload.task_id)}`, label: payload.task_short_id || payload.task_id.slice(0, 8) } : null,
-          payload.run_id ? { platform: 'Run', url: payload.live_url || `https://console.useorgx.com/runs/${encodeURIComponent(payload.run_id)}`, label: payload.run_short_id || payload.run_id.slice(0, 8) } : null
+          payload.task_id ? { platform: 'Task', url: buildEntityUrl('task', payload.task_id, payload.initiative_id), label: payload.task_short_id || payload.task_id.slice(0, 8) } : null,
+          payload.run_id ? { platform: 'Run', url: payload.live_url || buildEntityUrl('run', payload.run_id), label: payload.run_short_id || payload.run_id.slice(0, 8) } : null
         ].filter(Boolean),
-        console_url: payload.live_url || (payload.run_id ? `https://console.useorgx.com/runs/${encodeURIComponent(payload.run_id)}` : payload.task_id ? `https://console.useorgx.com/tasks/${encodeURIComponent(payload.task_id)}` : null)
+        console_url: payload.live_url || (payload.run_id ? buildEntityUrl('run', payload.run_id) : payload.task_id ? buildEntityUrl('task', payload.task_id, payload.initiative_id) : null)
       };
     };
 
@@ -417,7 +449,7 @@
       if (typeRaw === 'milestone') typeIcon = icons.milestone(16);
 
       const typeDisplay = escapeHtml(entity.type || 'Entity').toUpperCase();
-      const consoleUrl = entity.console_url || (entity.id ? `https://console.useorgx.com/entities/${encodeURIComponent(entity.id)}` : 'https://console.useorgx.com');
+      const consoleUrl = entity.console_url || (entity.id ? buildEntityUrl(entity.type, entity.id, entity.initiative_id) : ORGX_BASE_URL);
 
       injectHtml(`
         <div class="ox-card animate-in">

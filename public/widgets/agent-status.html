@@ -394,6 +394,12 @@
         if (n.includes('xandy') || n.includes('orchestrator')) return 'https://useorgx.com/xandy_orchestrator.png';
         return null;
       };
+      var ORGX_BASE_URL = 'https://useorgx.com';
+      var buildAgentUrl = function(agentId) {
+        return agentId
+          ? ORGX_BASE_URL + '/settings/agents?agent=' + encodeURIComponent(agentId)
+          : ORGX_BASE_URL + '/settings/agents';
+      };
       var renderAvatar = (name, sizePx) => {
         const url = getAvatarUrl(name);
         if (url) return `<img src="${url}" alt="${escapeHtml(name)}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" />`;
@@ -495,7 +501,7 @@
               <div class="timeline">${timelineHtml}</div>
               <div class="widget-footer">
                 <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
-                <a href="${agent.agent_id ? `https://console.useorgx.com/agents/${escapeHtml(agent.agent_id)}` : 'https://console.useorgx.com/agents'}" target="_blank" class="deep-link">
+                <a href="${buildAgentUrl(agent.agent_id)}" target="_blank" rel="noreferrer" class="deep-link">
                   View Telemetry
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </a>
@@ -561,7 +567,7 @@
             <div class="agent-list">${agentsHtml}</div>
             <div class="widget-footer">
               <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">${payload.summary.total} agents tracked</span>
-              <a href="https://console.useorgx.com/agents" target="_blank" class="deep-link">
+              <a href="${buildAgentUrl(null)}" target="_blank" rel="noreferrer" class="deep-link">
                 View Telemetry
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
               </a>

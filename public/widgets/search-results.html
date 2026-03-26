@@ -279,18 +279,51 @@
         if (num > 1) num = 1;
         return num;
       };
+      var ORGX_BASE_URL = 'https://useorgx.com';
       var buildEntityUrl = (item) => {
-        if (item && typeof item.url === 'string' && item.url.trim()) return item.url;
-        var type = item && typeof item.type === 'string' ? item.type.toLowerCase() : '';
+        var explicitUrl =
+          item && typeof item.url === 'string' && item.url.trim()
+            ? item.url.trim()
+            : item && typeof item.link === 'string' && item.link.trim()
+            ? item.link.trim()
+            : item && typeof item._link === 'string' && item._link.trim()
+            ? item._link.trim()
+            : '';
+        if (explicitUrl) return explicitUrl;
+
+        var type = item && typeof item.type === 'string'
+          ? item.type.toLowerCase().replace(/-/g, '_')
+          : '';
         var id = item && typeof item.id === 'string' ? item.id : '';
-        if (!id) return 'https://useorgx.com';
-        if (type === 'initiative') return 'https://useorgx.com/live/' + encodeURIComponent(id);
-        if (type === 'decision') return 'https://useorgx.com/decisions/' + encodeURIComponent(id);
-        if (type === 'artifact') return 'https://useorgx.com/artifacts/' + encodeURIComponent(id);
-        if (type === 'task') return 'https://useorgx.com/live?view=mission-control&task=' + encodeURIComponent(id);
-        if (type === 'workstream') return 'https://useorgx.com/live?view=mission-control&workstream=' + encodeURIComponent(id);
-        if (type === 'milestone') return 'https://useorgx.com/live?view=mission-control&milestone=' + encodeURIComponent(id);
-        return 'https://useorgx.com';
+        var initiativeId = item && typeof item.initiative_id === 'string' ? item.initiative_id : '';
+        if (!id) return ORGX_BASE_URL;
+
+        if (type === 'initiative') return ORGX_BASE_URL + '/live/' + encodeURIComponent(id);
+        if (type === 'decision') {
+          return initiativeId
+            ? ORGX_BASE_URL + '/initiatives/' + encodeURIComponent(initiativeId) + '?focus=decisions&decision=' + encodeURIComponent(id)
+            : ORGX_BASE_URL + '/decisions/' + encodeURIComponent(id);
+        }
+        if (type === 'artifact') return ORGX_BASE_URL + '/artifacts/' + encodeURIComponent(id);
+        if (type === 'task') {
+          return initiativeId
+            ? ORGX_BASE_URL + '/live/' + encodeURIComponent(initiativeId) + '?task=' + encodeURIComponent(id)
+            : ORGX_BASE_URL + '/live?view=mission-control&task=' + encodeURIComponent(id);
+        }
+        if (type === 'workstream') {
+          return initiativeId
+            ? ORGX_BASE_URL + '/live/' + encodeURIComponent(initiativeId) + '?workstream=' + encodeURIComponent(id)
+            : ORGX_BASE_URL + '/live?view=mission-control&workstream=' + encodeURIComponent(id);
+        }
+        if (type === 'milestone') {
+          return initiativeId
+            ? ORGX_BASE_URL + '/live/' + encodeURIComponent(initiativeId) + '?milestone=' + encodeURIComponent(id)
+            : ORGX_BASE_URL + '/live?view=mission-control&milestone=' + encodeURIComponent(id);
+        }
+        if (type === 'agent') return ORGX_BASE_URL + '/settings/agents?agent=' + encodeURIComponent(id);
+        if (type === 'run' || type === 'agent_run') return ORGX_BASE_URL + '/agents/runs/' + encodeURIComponent(id);
+        if (type === 'workspace' || type === 'command_center') return ORGX_BASE_URL + '/command?center=' + encodeURIComponent(id);
+        return ORGX_BASE_URL;
       };
       var normalizeResult = (item) => {
         var score = coerceScore(item && (item.score ?? item.relevance_score ?? item.vector_score));
@@ -388,7 +421,7 @@
           return;
         }
         var recommendationsHtml = recommendations.map(r => `
-          <a href="${escapeHtml(r.url)}" target="_blank" class="result-card">
+          <a href="${escapeHtml(r.url)}" target="_blank" rel="noreferrer" class="result-card">
             <div class="r-header">
               <div class="r-title">
                 <span style="color:var(--ox-text-muted); display:flex; align-items:center;">${r.type === 'decision' ? icons.check(16) : r.type === 'initiative' ? icons.initiative(16) : icons.external(16)}</span>
@@ -427,7 +460,7 @@
       }
 
       const resultsHtml = (data.results || []).map(normalizeResult).map(r => `
-        <a href="${escapeHtml(r.url)}" target="_blank" class="result-card">
+        <a href="${escapeHtml(r.url)}" target="_blank" rel="noreferrer" class="result-card">
           
           <div class="r-header">
             <div class="r-title">
