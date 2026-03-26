@@ -46,7 +46,10 @@
         --ox-danger: #e11d48;
         --ox-warning: #d97706;
         --ox-iris: #4f46e5;
+        --ox-primary: #00C9A7;
+        --ox-primary-rgb: 0, 201, 167;
         --ox-grid: rgba(0, 0, 0, 0.03);
+        --ox-grid-color: rgba(0, 0, 0, 0.03);
         --ox-shadow: 0 12px 32px -12px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.04);
         --ox-font: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
         --ox-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
@@ -60,6 +63,7 @@
           --ox-warning: #FBBF24;
           --ox-iris: #6366f1;
           --ox-grid: rgba(255, 255, 255, 0.02);
+          --ox-grid-color: rgba(255, 255, 255, 0.02);
           --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
         }
       }
@@ -71,6 +75,7 @@
           --ox-warning: #FBBF24;
           --ox-iris: #6366f1;
           --ox-grid: rgba(255, 255, 255, 0.02);
+          --ox-grid-color: rgba(255, 255, 255, 0.02);
           --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
       }
 
@@ -250,6 +255,40 @@
 
       .roi-value.positive { color: var(--ox-teal); }
       .roi-value.negative { color: var(--ox-danger); }
+
+      .milestone-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 24px;
+      }
+
+      .milestone-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: center;
+        padding: 12px 14px;
+        border-radius: 10px;
+        border: 1px solid var(--ox-border);
+        background: rgba(128,128,128,0.03);
+      }
+
+      .milestone-title {
+        font-size: 0.92rem;
+        color: var(--ox-text);
+        font-weight: 600;
+        line-height: 1.35;
+      }
+
+      .milestone-meta {
+        margin-top: 4px;
+        font-family: var(--ox-mono);
+        font-size: 0.62rem;
+        color: var(--ox-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
 
       @media (prefers-color-scheme: dark) {
          .roi-value.positive { color: var(--ox-lime); text-shadow: 0 0 10px rgba(191,255,0,0.3); }
@@ -530,6 +569,25 @@
 
     var formatUsd = (value) => { const num = Number(value); if (!Number.isFinite(num)) return null; return '$' + num.toFixed(2); };
     var formatRoi = (value) => { if (value === null) return 'N/A'; const pct = Math.round(value * 100); return (pct > 0 ? '+' : '') + pct + '%'; };
+    var normalizePulse = payload => {
+      if (!payload) return null;
+      var workstreamSummary = payload.workstream_summary && typeof payload.workstream_summary === 'object' ? payload.workstream_summary : {};
+      return {
+        id: payload.id || payload.initiative_id || null,
+        name: payload.name || payload.title || 'Initiative',
+        status: payload.status || 'active',
+        progress_pct: typeof payload.progress_pct === 'number' ? payload.progress_pct : 0,
+        pending_decisions: typeof payload.pending_decisions === 'number' ? payload.pending_decisions : 0,
+        active_workstreams: typeof payload.active_workstreams === 'number' ? payload.active_workstreams : typeof workstreamSummary.active === 'number' ? workstreamSummary.active : 0,
+        total_workstreams: typeof payload.total_workstreams === 'number' ? payload.total_workstreams : typeof workstreamSummary.total === 'number' ? workstreamSummary.total : 0,
+        blocked_workstreams: typeof payload.blocked_workstreams === 'number' ? payload.blocked_workstreams : typeof workstreamSummary.blocked === 'number' ? workstreamSummary.blocked : 0,
+        health_score: typeof payload.health_score === 'number' ? payload.health_score : 100,
+        blockers: Array.isArray(payload.blockers) ? payload.blockers : [],
+        milestones: Array.isArray(payload.milestones) ? payload.milestones : [],
+        roi_summary: payload.roi_summary || null,
+        message: payload.message || null
+      };
+    };
 
     var render = () => {
       if (isLoading) {
@@ -553,11 +611,18 @@
         return;
       }
 
+      pulse = normalizePulse(pulse);
+      if (!pulse) {
+        injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.external(24)}</div><div class="empty-title">Awaiting telemetry</div><div class="empty-desc">No recent pulse data was found for this initiative.</div></div>`);
+        return;
+      }
+
       const safeName = escapeHtml(pulse.name);
       const safeStatus = escapeHtml(pulse.status).toUpperCase();
       const progressPct = typeof pulse.progress_pct === 'number' ? pulse.progress_pct : 0;
       const pendingDecisions = typeof pulse.pending_decisions === 'number' ? pulse.pending_decisions : 0;
       const activeWorkstreams = typeof pulse.active_workstreams === 'number' ? pulse.active_workstreams : 0;
+      const totalWorkstreams = typeof pulse.total_workstreams === 'number' ? pulse.total_workstreams : 0;
       const healthScore = typeof pulse.health_score === 'number' ? pulse.health_score : 100;
       const normalizedStatus = escapeHtml(pulse.status).toLowerCase();
       const roiSummary = pulse.roi_summary || null;
@@ -580,6 +645,22 @@
           </ul>
         </div>
       ` : '';
+      const milestonesHtml = (pulse.milestones || []).length ? `
+        <div class="milestone-list">
+          ${(pulse.milestones || []).slice(0, 4).map(milestone => `
+            <div class="milestone-row">
+              <div>
+                <div class="milestone-title">${escapeHtml(milestone.name || milestone.title || 'Untitled milestone')}</div>
+                <div class="milestone-meta">${escapeHtml((milestone.status || 'planned').replace(/_/g, ' '))}</div>
+              </div>
+              <div class="status-indicator">
+                <span class="status-dot"></span>
+                ${escapeHtml(String(typeof milestone.progress === 'number' ? milestone.progress : 0))}%
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      ` : '';
 
       injectHtml(`
         <div class="ox-card animate-in">
@@ -592,7 +673,7 @@
             <div class="pulse-metrics">
               <div class="metric"><span class="metric-label">Progress</span><span class="metric-value">${progressPct}%</span></div>
               <div class="metric"><span class="metric-label">Pending</span><span class="metric-value">${pendingDecisions}</span></div>
-              <div class="metric"><span class="metric-label">Active</span><span class="metric-value">${activeWorkstreams}</span></div>
+              <div class="metric"><span class="metric-label">Workstreams</span><span class="metric-value">${activeWorkstreams}${totalWorkstreams ? `/${totalWorkstreams}` : ''}</span></div>
             </div>
 
             ${roiSummary ? `
@@ -608,11 +689,12 @@
               <span>${getHealthLabel(healthScore)} (${healthScore})</span>
             </div>
 
+            ${milestonesHtml}
             ${blockersHtml}
 
             <div class="widget-footer">
               <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
-              <a href="${pulse.id ? `https://console.useorgx.com/initiatives/${escapeHtml(pulse.id)}` : 'https://console.useorgx.com'}" target="_blank" class="deep-link">
+              <a href="${pulse.id ? `https://console.useorgx.com/initiatives/${encodeURIComponent(pulse.id)}` : 'https://console.useorgx.com'}" target="_blank" class="deep-link">
                 View Dashboard
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
               </a>

@@ -132,6 +132,7 @@
     @media (prefers-color-scheme: dark) { .search-query { color: #fff; } }
     
     .result-list { display: flex; flex-direction: column; gap: 12px; }
+    .result-list--recommendations { gap: 14px; }
     
     .result-card { display: block; text-decoration: none; padding: 16px; background: var(--ox-well-bg); border: 1px solid var(--ox-border); border-radius: 12px; transition: all 0.2s; position: relative; overflow: hidden; }
     .result-card:hover { border-color: rgba(var(--ox-primary-rgb), 0.4); background: rgba(var(--ox-primary-rgb), 0.05); transform: translateY(-2px); }
@@ -149,6 +150,31 @@
     .r-snippet { font-size: 0.85rem; color: var(--ox-text-muted); line-height: 1.5; margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     
     .r-meta { display: flex; gap: 12px; font-family: var(--ox-mono); font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ox-text-muted); }
+    .r-body { display: flex; flex-direction: column; gap: 10px; }
+    .r-reason {
+      font-size: 0.86rem;
+      line-height: 1.5;
+      color: var(--ox-text);
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(var(--ox-primary-rgb), 0.08);
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
+    }
+    .r-flag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-family: var(--ox-mono);
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+      color: var(--ox-primary);
+      background: rgba(var(--ox-primary-rgb), 0.1);
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
+    }
     
     .highlight { color: var(--ox-primary); font-weight: 600; background: rgba(var(--ox-primary-rgb), 0.1); padding: 0 2px; border-radius: 2px; }
     .error-state { border-style: solid; border-color: rgba(225,29,72,0.2); background: rgba(225,29,72,0.04); }
@@ -277,6 +303,46 @@
           date: formatRelativeDate(item && (item.date || item.created_at || item.updated_at)) || 'Recently updated'
         };
       };
+      var normalizeRecommendation = (item, index) => {
+        var metadata = item && typeof item.metadata === 'object' && !Array.isArray(item.metadata) ? item.metadata : {};
+        var score = coerceScore(item && (item.score ?? item.confidence ?? item.priority_score));
+        var entityType = item && typeof item.entityType === 'string'
+          ? item.entityType
+          : item && typeof item.type === 'string'
+          ? item.type
+          : 'recommendation';
+        var summary = item && typeof item.summary === 'string' && item.summary.trim()
+          ? item.summary
+          : item && typeof item.message === 'string' && item.message.trim()
+          ? item.message
+          : 'Review this recommendation in OrgX.';
+        var reason = item && typeof item.reason === 'string' && item.reason.trim()
+          ? item.reason
+          : item && typeof item.rationale === 'string' && item.rationale.trim()
+          ? item.rationale
+          : summary;
+        var url = buildEntityUrl({
+          type: entityType,
+          id: typeof metadata.workstreamId === 'string' ? metadata.workstreamId : item && item.key,
+          url: typeof item.url === 'string' ? item.url : null
+        });
+        return {
+          rank: index + 1,
+          title: item && typeof item.label === 'string' && item.label.trim()
+            ? item.label
+            : item && typeof item.title === 'string' && item.title.trim()
+            ? item.title
+            : 'Next action',
+          type: entityType,
+          summary: summary,
+          reason: reason,
+          score: score,
+          ready: !!(item && item.ready),
+          source: item && typeof item.source === 'string' ? item.source : null,
+          url: url,
+          nextTask: typeof metadata.nextTaskTitle === 'string' ? metadata.nextTaskTitle : null
+        };
+      };
 
     var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
     var data = isDemo ? {
@@ -310,6 +376,55 @@
         return;
       }
       if(!data) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.search(24)}</div><div class="empty-title">No results found</div><div class="empty-desc">Try adjusting your query or expanding your search scope.</div></div>`); return; }
+      var recommendationMode = Array.isArray(data.recommendations) || !!data.next_action;
+
+      if (recommendationMode) {
+        var recommendations = (data.recommendations || []).map(normalizeRecommendation);
+        if (!recommendations.length && data.next_action) {
+          recommendations = [normalizeRecommendation(data.next_action, 0)];
+        }
+        if (!recommendations.length) {
+          injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.search(24)}</div><div class="empty-title">No recommendations available</div><div class="empty-desc">${escapeHtml(data.message || 'OrgX did not find a clear next action yet.')}</div></div>`);
+          return;
+        }
+        var recommendationsHtml = recommendations.map(r => `
+          <a href="${escapeHtml(r.url)}" target="_blank" class="result-card">
+            <div class="r-header">
+              <div class="r-title">
+                <span style="color:var(--ox-text-muted); display:flex; align-items:center;">${r.type === 'decision' ? icons.check(16) : r.type === 'initiative' ? icons.initiative(16) : icons.external(16)}</span>
+                ${escapeHtml(r.title)}
+              </div>
+              ${r.score !== null ? `<div class="score-pill ${r.score >= 0.9 ? 'score-high' : r.score >= 0.7 ? 'score-med' : 'score-low'}">${Math.round(r.score * 100)}% Confidence</div>` : ''}
+            </div>
+            <div class="r-body">
+              <div class="r-snippet">${escapeHtml(r.summary)}</div>
+              <div class="r-reason">${escapeHtml(r.reason)}</div>
+            </div>
+            <div class="r-meta">
+              <span>${escapeHtml(r.type)}</span>
+              ${r.source ? `<span style="color:var(--ox-border-strong)">•</span><span>${escapeHtml(String(r.source).replace(/_/g, ' '))}</span>` : ''}
+              ${r.nextTask ? `<span style="color:var(--ox-border-strong)">•</span><span>${escapeHtml(r.nextTask)}</span>` : ''}
+            </div>
+          </a>
+        `).join('');
+        injectHtml(`
+          <div class="ox-card animate-in">
+            <div class="ox-card-inner">
+              <div class="search-box">
+                <div class="search-icon">${icons.search(24)}</div>
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                  <div class="search-query">> recommend next action</div>
+                  <div class="r-flag">${escapeHtml(data.entity_type || 'workspace')} scope</div>
+                </div>
+              </div>
+              <div class="result-list result-list--recommendations">
+                ${recommendationsHtml}
+              </div>
+            </div>
+          </div>
+        `);
+        return;
+      }
 
       const resultsHtml = (data.results || []).map(normalizeResult).map(r => `
         <a href="${escapeHtml(r.url)}" target="_blank" class="result-card">
