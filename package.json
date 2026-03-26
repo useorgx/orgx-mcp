@@ -1,6 +1,6 @@
 {
   "name": "orgx-mcp-worker",
-  "version": "1.0.0",
+  "version": "1.0.4",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,7 +13,7 @@
     "type-check": "tsc --noEmit",
     "test": "vitest",
     "test:watch": "vitest --watch",
-    "test:mcp-contract": "vitest run tests/mcpTransport.spec.ts tests/mcp.sessionStorage.spec.ts tests/mcpLifecycleActionAliases.spec.ts tests/reporting.mcp-tools.spec.ts tests/mcpWorker.toolRegistration.spec.ts tests/mcpWorker.contextAccessTier.spec.ts tests/mcpWorker.edgeRateLimit.spec.ts tests/mcpWorker.entityActionAttach.spec.ts tests/mcpWorker.taskContextHydrator.spec.ts tests/mcpWorker.toolAccessGating.spec.ts tests/mcpWorker.accountTools.spec.ts",
+    "test:mcp-contract": "vitest run tests/mcpTransport.spec.ts tests/mcp.sessionStorage.spec.ts tests/mcpLifecycleActionAliases.spec.ts tests/reporting.mcp-tools.spec.ts tests/mcpWorker.toolRegistration.spec.ts tests/mcpWorker.contextAccessTier.spec.ts tests/mcpWorker.edgeRateLimit.spec.ts tests/mcpWorker.entityActionAttach.spec.ts tests/mcpWorker.taskContextHydrator.spec.ts tests/mcpWorker.toolAccessGating.spec.ts tests/mcpWorker.accountTools.spec.ts tests/planSessionContract.spec.ts tests/schemaIntrospection.spec.ts tests/contractTools.spec.ts",
     "verify": "pnpm type-check && pnpm test:mcp-contract && pnpm build",
     "registry:keys": "./scripts/generate-registry-keys.sh",
     "registry:validate": "./scripts/publish-to-registry.sh --dry-run",

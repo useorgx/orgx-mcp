@@ -478,6 +478,108 @@ tool_timeout_sec = 60
       );
     }
 
+    if (url.pathname === '/cursor') {
+      const cursorMetadata = {
+        name: '@useorgx/cursor-plugin',
+        version: '0.1.0',
+        description:
+          'OrgX execution control plane for Cursor with bootstrap, resumable workstreams, proof, and decision loops.',
+        homepage: 'https://useorgx.com',
+        documentation: 'https://docs.useorgx.com/integrations/cursor',
+        source_client: 'cursor',
+        capabilities: {
+          mcp: true,
+          bootstrap: true,
+          hooks: true,
+          rules: true,
+          async_subagents: true,
+        },
+        endpoints: {
+          mcp: `${serverUrl}/mcp`,
+          sse: `${serverUrl}/sse`,
+          bootstrap: `${webUrl}/api/client/bootstrap?source_client=cursor`,
+          config: `${serverUrl}/cursor/config`,
+        },
+        bundle: {
+          commands: [
+            'OrgX: Start Workstream',
+            'OrgX: Resume Workstream',
+            'OrgX: Show Proof Status',
+            'OrgX: Review Pending Decisions',
+          ],
+          rules: ['orgx-execution-loop.mdc'],
+          subagents: [
+            'engineering',
+            'product',
+            'design',
+            'operations',
+            'marketing',
+            'sales',
+            'orchestrator',
+          ],
+        },
+      };
+      return withCors(
+        Response.json(cursorMetadata, {
+          headers: { 'Cache-Control': 'public, max-age=3600' },
+        })
+      );
+    }
+
+    if (url.pathname === '/cursor/config') {
+      const cursorConfig = {
+        name: '@useorgx/cursor-plugin',
+        sourceClient: 'cursor',
+        bootstrap: {
+          url: `${webUrl}/api/client/bootstrap?source_client=cursor`,
+          auth: 'bearer_api_key',
+        },
+        mcpServers: {
+          orgx: {
+            type: 'http',
+            url: `${serverUrl}/mcp`,
+            description:
+              'OrgX execution control plane for initiatives, workstreams, proof, decisions, and memory',
+          },
+        },
+        overlay: {
+          manifest: '.cursor/orgx/manifest.json',
+          lookupPaths: ['.cursor/orgx', '.cursor/commands', '.cursor/rules'],
+        },
+        bundle: {
+          hooks: ['SessionStart', 'PostToolUse', 'Stop'],
+          commands: [
+            'OrgX: Start Workstream',
+            'OrgX: Resume Workstream',
+            'OrgX: Show Proof Status',
+            'OrgX: Review Pending Decisions',
+          ],
+          rules: ['orgx-execution-loop.mdc'],
+          subagents: [
+            'engineering',
+            'product',
+            'design',
+            'operations',
+            'marketing',
+            'sales',
+            'orchestrator',
+          ],
+        },
+        manualFallback: {
+          mcpConfigPath: '~/.cursor/mcp.json',
+          note: 'Prefer the hosted plugin bundle or Marketplace install; use raw MCP config only as fallback.',
+        },
+      };
+      return withCors(
+        Response.json(cursorConfig, {
+          headers: {
+            'Content-Disposition': 'inline; filename="orgx-cursor-plugin.json"',
+            'Cache-Control': 'public, max-age=3600',
+          },
+        })
+      );
+    }
+
     // =========================================================================
     // 404 for everything else
     // =========================================================================

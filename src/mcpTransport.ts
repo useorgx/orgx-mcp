@@ -279,6 +279,7 @@ export async function handleMcpWebSocket<Env, Props>(
         ? sessionHeader.trim()
         : null,
   };
+  const socketState = { closed: false };
 
   server.accept();
 
@@ -295,14 +296,23 @@ export async function handleMcpWebSocket<Env, Props>(
         ctxWithProps,
         handler,
         session,
-        server
-      )
+        server,
+        socketState
+      ).catch((error) => {
+        if (!socketState.closed) {
+          console.error('[mcp] websocket bridge error', error);
+        }
+      })
     );
   });
 
   // Intentionally no auto-DELETE on close: clients may reconnect and resume
   // the same MCP session ID after transient disconnects.
+  server.addEventListener('close', () => {
+    socketState.closed = true;
+  });
   server.addEventListener('error', (error) => {
+    socketState.closed = true;
     console.error('[mcp] websocket error', error);
   });
 
@@ -360,13 +370,16 @@ async function forwardMcpMessage<Env, Props>(
   ctx: ExecutionContextWithProps<Props>,
   handler: AgentHandler<Env, Props>,
   session: { id: string | null },
-  ws: WebSocket
+  ws: WebSocket,
+  socketState: { closed: boolean }
 ) {
   let parsedBody: { method?: string; params?: { name?: string } };
   try {
     parsedBody = JSON.parse(body);
   } catch {
-    ws.send(
+    sendWebSocketPayload(
+      ws,
+      socketState,
       JSON.stringify({
         event: 'error',
         data: { message: 'Invalid JSON-RPC payload' },
@@ -413,7 +426,9 @@ async function forwardMcpMessage<Env, Props>(
     const text = await response
       .text()
       .catch(() => 'Failed to execute MCP request');
-    ws.send(
+    sendWebSocketPayload(
+      ws,
+      socketState,
       JSON.stringify({
         event: 'error',
         data: { status: response.status, message: text },
@@ -431,10 +446,14 @@ async function forwardMcpMessage<Env, Props>(
     return;
   }
 
-  await pumpSseToWebSocket(response, ws);
+  await pumpSseToWebSocket(response, ws, socketState);
 }
 
-async function pumpSseToWebSocket(response: Response, ws: WebSocket) {
+async function pumpSseToWebSocket(
+  response: Response,
+  ws: WebSocket,
+  socketState: { closed: boolean }
+) {
   const reader = response.body?.getReader();
   if (!reader) return;
 
@@ -442,6 +461,11 @@ async function pumpSseToWebSocket(response: Response, ws: WebSocket) {
   let buffer = '';
 
   while (true) {
+    if (socketState.closed) {
+      await reader.cancel().catch(() => undefined);
+      return;
+    }
+
     const { done, value } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
@@ -468,9 +492,36 @@ async function pumpSseToWebSocket(response: Response, ws: WebSocket) {
         } catch {
           // keep as string
         }
-        ws.send(JSON.stringify({ event: eventName, data }));
+        if (
+          !sendWebSocketPayload(
+            ws,
+            socketState,
+            JSON.stringify({ event: eventName, data })
+          )
+        ) {
+          await reader.cancel().catch(() => undefined);
+          return;
+        }
       }
       separatorIndex = buffer.indexOf('\n\n');
     }
+  }
+}
+
+function sendWebSocketPayload(
+  ws: WebSocket,
+  socketState: { closed: boolean },
+  payload: string
+) {
+  if (socketState.closed) {
+    return false;
+  }
+
+  try {
+    ws.send(payload);
+    return true;
+  } catch {
+    socketState.closed = true;
+    return false;
   }
 }

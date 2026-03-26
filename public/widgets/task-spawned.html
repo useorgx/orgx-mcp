@@ -102,6 +102,7 @@
         padding: 24px 16px;
         -webkit-font-smoothing: antialiased;
         min-height: 100vh;
+        overflow-x: hidden;
       }
 
       body::before {
@@ -200,6 +201,47 @@
       letter-spacing: 0.03em;
     }
 
+    .dispatch-note {
+      margin-bottom: 18px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      background: rgba(99, 102, 241, 0.08);
+      color: var(--ox-text);
+      line-height: 1.5;
+    }
+
+    .dispatch-value {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--ox-text);
+      line-height: 1.4;
+    }
+
+    .dispatch-value--pending {
+      color: var(--ox-text-muted);
+      font-style: italic;
+    }
+
+    .avatar-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .avatar-fallback {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--ox-mono);
+      font-weight: 700;
+      color: var(--ox-primary);
+      background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.12), rgba(var(--ox-primary-rgb), 0.04));
+    }
+
     .deep-link {
       color: var(--ox-primary);
       min-height: 40px;
@@ -208,6 +250,23 @@
     }
 
     @media (max-width: 560px) {
+      .dispatch-header {
+        flex-direction: column;
+        align-items: flex-start !important;
+      }
+
+      .agent-row {
+        align-items: flex-start !important;
+      }
+
+      .meta-grid {
+        grid-template-columns: 1fr !important;
+      }
+
+      .ox-title {
+        overflow-wrap: anywhere;
+      }
+
       .widget-footer {
         flex-direction: column;
         align-items: stretch !important;
@@ -322,22 +381,134 @@
     var entity = isDemo ? { id: 'TSK-942', type: 'task', title: 'Implement rate limiting middleware for public API', agent_name: 'Eli', status: 'In Progress', domain: 'Engineering', workspace_name: 'Core Platform', links: [{ platform: 'Linear', url: '#', label: 'ENG-142' }] } : null;
     var isLoading = !isDemo;
     if (isLoadingOverride) { isLoading = true; isDemo = false; initWidget = () => { render(); }; }
+    function openWidgetLink(url,event){if(!url)return false;var protocol=_detectProtocol();if(protocol==='mcp-apps'){if(event&&typeof event.preventDefault==='function')event.preventDefault();window.parent.postMessage({jsonrpc:'2.0',id:_mcpNextId++,method:'ui/open-link',params:{url:url}},'*');return false;}return true;}
 
+    function resolveWidgetAsset(path){
+        try {
+            return new URL('shared/' + path, window.location.href).toString();
+        } catch (error) {
+            return 'https://mcp.useorgx.com/widgets/shared/' + path;
+        }
+    }
     var getAvatarUrl = (name) => {
         const n = (name || '').toLowerCase();
-        if (n.includes('pace') || n.includes('product')) return 'https://useorgx.com/product_orchestrator.png';
-        if (n.includes('eli') || n.includes('engineer')) return 'https://useorgx.com/engineering_autopilot.png';
-        if (n.includes('mark') || n.includes('market')) return 'https://useorgx.com/launch_captain.png';
-        if (n.includes('sage') || n.includes('sale')) return 'https://useorgx.com/pipeline_intelligence.png';
-        if (n.includes('orion') || n.includes('op')) return 'https://useorgx.com/control_tower.png';
-        if (n.includes('dana') || n.includes('design')) return 'https://useorgx.com/design_codex.png';
-        if (n.includes('xandy') || n.includes('orchestrator')) return 'https://useorgx.com/xandy_orchestrator.png';
+        if (n.includes('pace') || n.includes('product')) return resolveWidgetAsset('product_orchestrator.png');
+        if (n.includes('eli') || n.includes('engineer')) return resolveWidgetAsset('engineering_autopilot.png');
+        if (n.includes('mark') || n.includes('market')) return resolveWidgetAsset('launch_captain.png');
+        if (n.includes('sage') || n.includes('sale')) return resolveWidgetAsset('pipeline_intelligence.png');
+        if (n.includes('orion') || n.includes('op')) return resolveWidgetAsset('control_tower.png');
+        if (n.includes('dana') || n.includes('design')) return resolveWidgetAsset('design_codex.png');
+        if (n.includes('xandy') || n.includes('orchestrator')) return resolveWidgetAsset('xandy_orchestrator.png');
         return null;
     };
     var renderAvatar = (name, sizePx) => {
         const url = getAvatarUrl(name);
-        if (url) return `<img src="${url}" alt="${escapeHtml(name)}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" />`;
-        return escapeHtml(name ? name[0].toUpperCase() : '?');
+        const fallback = escapeHtml(name ? name[0].toUpperCase() : '?');
+        if (url) {
+            return `<img src="${url}" alt="" class="avatar-image" loading="eager" decoding="sync" draggable="false" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" /><span class="avatar-fallback" style="display:none;">${fallback}</span>`;
+        }
+        return `<span class="avatar-fallback" style="display:flex;">${fallback}</span>`;
+    };
+    var ORGX_BASE_URL = 'https://useorgx.com';
+    var buildEntityUrl = (type, id, initiativeId) => {
+      if (!id) return ORGX_BASE_URL;
+      var normalizedType = String(type || '').toLowerCase();
+      if (normalizedType === 'run' || normalizedType === 'agent_run') {
+        return ORGX_BASE_URL + '/agents/runs/' + encodeURIComponent(id);
+      }
+      if (normalizedType === 'task') {
+        return initiativeId
+          ? ORGX_BASE_URL + '/live/' + encodeURIComponent(initiativeId) + '?task=' + encodeURIComponent(id)
+          : ORGX_BASE_URL + '/live?view=mission-control&task=' + encodeURIComponent(id);
+      }
+      if (normalizedType === 'initiative') {
+        return ORGX_BASE_URL + '/live/' + encodeURIComponent(id);
+      }
+      if (normalizedType === 'workstream') {
+        return initiativeId
+          ? ORGX_BASE_URL + '/live/' + encodeURIComponent(initiativeId) + '?workstream=' + encodeURIComponent(id)
+          : ORGX_BASE_URL + '/live?view=mission-control&workstream=' + encodeURIComponent(id);
+      }
+      if (normalizedType === 'milestone') {
+        return initiativeId
+          ? ORGX_BASE_URL + '/live/' + encodeURIComponent(initiativeId) + '?milestone=' + encodeURIComponent(id)
+          : ORGX_BASE_URL + '/live?view=mission-control&milestone=' + encodeURIComponent(id);
+      }
+      if (normalizedType === 'agent') {
+        return ORGX_BASE_URL + '/settings/agents?agent=' + encodeURIComponent(id);
+      }
+      return ORGX_BASE_URL;
+    };
+    var inferDomain = payload => {
+      const source = [payload.domain, payload.agent_name, payload.agent_id].filter(Boolean).join(' ').toLowerCase();
+      if (source.includes('product') || source.includes('pace')) return 'Product';
+      if (source.includes('engineer') || source.includes('eli')) return 'Engineering';
+      if (source.includes('market') || source.includes('mark')) return 'Marketing';
+      if (source.includes('sale') || source.includes('sage')) return 'Sales';
+      if (source.includes('design') || source.includes('dana')) return 'Design';
+      if (source.includes('oper') || source.includes('orion')) return 'Operations';
+      if (source.includes('orchestr') || source.includes('xandy')) return 'Orchestrator';
+      return null;
+    };
+    var inferAgentName = payload => {
+      const source = [payload.agent_id, payload.agent, payload.domain].filter(Boolean).join(' ').toLowerCase();
+      if (source.includes('pace') || source.includes('product')) return 'Pace';
+      if (source.includes('eli') || source.includes('engineer')) return 'Eli';
+      if (source.includes('mark') || source.includes('market')) return 'Mark';
+      if (source.includes('sage') || source.includes('sale')) return 'Sage';
+      if (source.includes('dana') || source.includes('design')) return 'Dana';
+      if (source.includes('orion') || source.includes('oper')) return 'Orion';
+      if (source.includes('xandy') || source.includes('orchestr')) return 'Xandy';
+      return null;
+    };
+    var normalizeEntityPayload = payload => {
+      if (!payload) return null;
+      if (payload.title && payload.agent_name && payload.workspace_name) {
+        return { ...payload, agent_ready: true, workspace_ready: true, domain_ready: !!payload.domain, initiative_name: payload.initiative_name || null };
+      }
+      var inferredAgentName = payload.agent_name || inferAgentName(payload);
+      var inferredDomain = payload.domain || inferDomain(payload);
+      var workspaceName = payload.workspace_name || payload.command_center_name || null;
+      var initiativeName = payload.initiative_name || payload.initiative_title || null;
+      if (payload.entity && typeof payload.entity === 'object') {
+        return {
+          id: payload.entity.id || payload.id || payload.task_id || payload.run_id || null,
+          type: payload.entity.type || payload.type || 'task',
+          title: payload.entity.title || payload.title || payload.task_summary || payload.task_title || 'Execution dispatched',
+          agent_name: inferredAgentName || payload.entity.agent_name || null,
+          domain: inferredDomain,
+          workspace_name: workspaceName,
+          initiative_name: initiativeName,
+          initiative_id: payload.initiative_id || payload.entity.initiative_id || null,
+          status: payload.status || payload.entity.status || 'queued',
+          links: Array.isArray(payload.links) ? payload.links : [],
+          console_url: payload.live_url || payload.url || null,
+          agent_ready: !!(inferredAgentName || payload.entity.agent_name),
+          workspace_ready: !!workspaceName,
+          domain_ready: !!inferredDomain,
+          note: payload.message || null
+        };
+      }
+      return {
+        id: payload.run_id || payload.task_id || null,
+        type: payload.spawned_run_id ? 'handoff' : 'task',
+        title: payload.task_summary || payload.task_title || payload.task || payload.message || 'Execution dispatched',
+        agent_name: inferredAgentName,
+        domain: inferredDomain,
+        workspace_name: workspaceName,
+        initiative_name: initiativeName,
+        initiative_id: payload.initiative_id || null,
+        status: payload.status || 'queued',
+        links: [
+          payload.task_id ? { platform: 'Task', url: buildEntityUrl('task', payload.task_id, payload.initiative_id), label: payload.task_short_id || payload.task_id.slice(0, 8) } : null,
+          payload.run_id ? { platform: 'Run', url: payload.live_url || buildEntityUrl('run', payload.run_id), label: payload.run_short_id || payload.run_id.slice(0, 8) } : null
+        ].filter(Boolean),
+        console_url: payload.live_url || (payload.run_id ? buildEntityUrl('run', payload.run_id) : payload.task_id ? buildEntityUrl('task', payload.task_id, payload.initiative_id) : null),
+        agent_ready: !!inferredAgentName,
+        workspace_ready: !!workspaceName,
+        domain_ready: !!inferredDomain,
+        note: payload.message || null
+      };
     };
 
     var render = () => {
@@ -354,14 +525,15 @@
           </div></div></div>`);
         return;
       }
+      entity = normalizeEntityPayload(entity);
       if (!entity) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.check(24)}</div><div class="empty-title">Entity unverified</div><div class="empty-desc">The dispatched entity payload is empty.</div></div>`); return; }
 
       const linksHtml = (entity.links || []).map(l => `
-        <a href="${escapeHtml(l.url)}" target="_blank" rel="noreferrer" class="platform-link ox-link-btn ox-link-btn--ghost">
+        <a href="${escapeHtml(l.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(l.url || ''))}, event)' class="platform-link ox-link-btn ox-link-btn--ghost">
           <span style="display:flex; align-items:center; gap:6px;">
-            ${icons.external(12)} ${escapeHtml(l.platform)}
+            ${icons.external(12)} Open ${escapeHtml(l.platform)}
           </span>
-          <span class="platform-link__meta">${escapeHtml(l.label)}</span>
+          <span class="platform-link__meta">${escapeHtml(l.label)} · new tab</span>
         </a>
       `).join('');
       
@@ -372,7 +544,7 @@
       if (typeRaw === 'milestone') typeIcon = icons.milestone(16);
 
       const typeDisplay = escapeHtml(entity.type || 'Entity').toUpperCase();
-      const consoleUrl = entity.id ? `https://console.useorgx.com/entities/${escapeHtml(entity.id)}` : 'https://console.useorgx.com';
+      const consoleUrl = entity.console_url || (entity.id ? buildEntityUrl(entity.type, entity.id, entity.initiative_id) : ORGX_BASE_URL);
 
       injectHtml(`
         <div class="ox-card animate-in">
@@ -393,34 +565,37 @@
             </div>
             
             <h2 class="ox-title" style="font-size:1.3rem; margin-bottom:24px; line-height:1.4;">${escapeHtml(entity.title)}</h2>
+            ${entity.note ? `<div class="dispatch-note">${escapeHtml(entity.note)}</div>` : ''}
+            ${!entity.agent_ready || !entity.workspace_ready ? `<div class="dispatch-note">OrgX accepted the dispatch, but the canonical handoff context is still syncing. The card will update once the server returns the assigned agent and workspace.</div>` : ''}
             
             <div class="agent-row" style="display:flex; align-items:center; gap:16px; padding:16px; background:var(--ox-well-bg); border:1px solid var(--ox-border); border-radius:12px; margin-bottom:24px; box-shadow:var(--ox-well-shadow);">
-              <div style="width:48px; height:48px; border-radius:12px; overflow:hidden; border:1px solid var(--ox-border); box-shadow:0 0 15px rgba(var(--ox-primary-rgb),0.15); flex-shrink:0;">
-                ${renderAvatar(entity.agent_name, 48)}
+              <div style="position:relative;width:48px; height:48px; border-radius:12px; overflow:hidden; border:1px solid var(--ox-border); box-shadow:0 0 15px rgba(var(--ox-primary-rgb),0.15); flex-shrink:0;">
+                ${renderAvatar(entity.agent_name || 'Pending', 48)}
               </div>
               <div class="agent-meta" style="flex:1;">
                 <div style="font-family:var(--ox-mono); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ox-text-muted); margin-bottom:4px; font-weight:600;">Assigned Agent</div>
-                <div style="font-size:1.1rem; font-weight:600; color:var(--ox-text);">${escapeHtml(entity.agent_name)}</div>
+                <div class="dispatch-value ${entity.agent_ready ? '' : 'dispatch-value--pending'}">${escapeHtml(entity.agent_name || 'Awaiting agent confirmation')}</div>
               </div>
             </div>
             
             <div class="meta-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px;">
               <div>
                 <div class="ox-eyebrow" style="margin-bottom:6px;">Domain</div>
-                <div style="font-size:0.95rem; font-weight:500; color:var(--ox-text);">${escapeHtml(entity.domain)}</div>
+                <div class="dispatch-value ${entity.domain_ready ? '' : 'dispatch-value--pending'}">${escapeHtml(entity.domain || 'Pending routing')}</div>
               </div>
               <div>
                 <div class="ox-eyebrow" style="margin-bottom:6px;">Workspace</div>
-                <div style="font-size:0.95rem; font-weight:500; color:var(--ox-text);">${escapeHtml(entity.workspace_name)}</div>
+                <div class="dispatch-value ${entity.workspace_ready ? '' : 'dispatch-value--pending'}">${escapeHtml(entity.workspace_name || 'Pending context sync')}</div>
               </div>
             </div>
+            ${entity.initiative_name ? `<div style="margin-top:-8px; margin-bottom:24px;"><div class="ox-eyebrow" style="margin-bottom:6px;">Initiative</div><div class="dispatch-value">${escapeHtml(entity.initiative_name)}</div></div>` : ''}
 
             ${linksHtml ? `<div class="platform-links" style="display:flex; gap:8px; margin-bottom: 24px;">${linksHtml}</div>` : ''}
 
             <div class="widget-footer" style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid var(--ox-border);">
               <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Live Sync Active</span>
-              <a href="${consoleUrl}" target="_blank" rel="noreferrer" class="deep-link ox-link-btn ox-link-btn--quiet" style="display: inline-flex; align-items: center; gap: 6px;">
-                Track Execution 
+              <a href="${consoleUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(consoleUrl || ''))}, event)' class="deep-link ox-link-btn ox-link-btn--quiet" style="display: inline-flex; align-items: center; gap: 6px;">
+                Open execution view
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
               </a>
             </div>

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { normalizeAgentDispatchPayload } from '../src/agentDispatchPayload';
 import { handleMcpRequest } from '../src/mcpTransport';
 import {
   DEPRECATION_SUNSET_AT_ISO,
@@ -509,6 +510,95 @@ describe('mcpTransport', () => {
       'batch_create_entities'
     );
     expect(response.headers.get('x-orgx-deprecation-routed')).toBe('false');
+  });
+
+  it('hydrates spawn_agent_task payload with domain and workspace from initiative context', async () => {
+    const lookupEntity = vi.fn(async (type: string, id: string) => {
+      if (type === 'initiative' && id === 'init-1') {
+        return { id, command_center_id: 'ws-1', name: 'Pipeline Refresh' };
+      }
+      if (type === 'command_center' && id === 'ws-1') {
+        return { id, name: 'Core Platform' };
+      }
+      return null;
+    });
+
+    const result = await normalizeAgentDispatchPayload({
+      toolId: 'spawn_agent_task',
+      args: { agent: 'engineering-agent', initiative_id: 'init-1' },
+      data: {
+        run_id: 'run-1',
+        initiative_id: 'init-1',
+        task_summary: 'Ship it',
+      },
+      lookupEntity,
+    });
+
+    expect(result).toMatchObject({
+      agent_id: 'engineering-agent',
+      agent_name: 'Eli',
+      domain: 'Engineering',
+      workspace_id: 'ws-1',
+      command_center_id: 'ws-1',
+      workspace_name: 'Core Platform',
+      initiative_name: 'Pipeline Refresh',
+    });
+  });
+
+  it('hydrates handoff_task payload with workspace from task context and session fallback', async () => {
+    const lookupEntity = vi.fn(async (type: string, id: string) => {
+      if (type === 'task' && id === 'task-1') {
+        return { id, workspace_id: 'ws-2', initiative_id: 'init-2' };
+      }
+      if (type === 'command_center' && id === 'ws-2') {
+        return { id, name: 'Revenue Ops' };
+      }
+      return null;
+    });
+
+    const result = await normalizeAgentDispatchPayload({
+      toolId: 'handoff_task',
+      args: { task_id: 'task-1', agent: 'sales-agent' },
+      data: { task_id: 'task-1', run_id: 'run-2' },
+      sessionContext: {
+        workspaceId: 'ws-2',
+        workspaceName: 'Revenue Ops',
+      },
+      lookupEntity,
+    });
+
+    expect(result).toMatchObject({
+      agent_id: 'sales-agent',
+      agent_name: 'Sage',
+      domain: 'Sales',
+      workspace_id: 'ws-2',
+      command_center_id: 'ws-2',
+      workspace_name: 'Revenue Ops',
+    });
+  });
+
+  it('hydrates handoff_task payload from alternate routing keys', async () => {
+    const result = await normalizeAgentDispatchPayload({
+      toolId: 'handoff_task',
+      args: {
+        task_id: 'task-1',
+        target_agent_id: 'design-agent',
+      },
+      data: {
+        task_id: 'task-1',
+        workspaceName: 'The Loop Ships',
+        commandCenterId: 'ws-loop',
+      },
+    });
+
+    expect(result).toMatchObject({
+      agent_id: 'design-agent',
+      agent_name: 'Dana',
+      domain: 'Design',
+      workspace_id: 'ws-loop',
+      command_center_id: 'ws-loop',
+      workspace_name: 'The Loop Ships',
+    });
   });
 
   it('preserves non-tools/call payloads', async () => {

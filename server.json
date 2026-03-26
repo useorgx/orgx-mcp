@@ -3,7 +3,7 @@
   "name": "com.useorgx/orgx-mcp",
   "title": "OrgX MCP - Agent Orchestration",
   "description": "Agent orchestration + org memory via MCP. Manage initiatives and decisions from any client.",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "websiteUrl": "https://mcp.useorgx.com",
   "vendor": {
     "name": "OrgX",
@@ -91,12 +91,28 @@
       "description": "Get the most recent autonomous session brief, including curated receipts, exceptions, and ROI deltas."
     },
     {
+      "name": "orgx_bootstrap",
+      "description": "Discover the current OrgX profile, workspace scope, granted scopes, safe first calls, accepted ID forms, and recommended workflows. Use first in a fresh session."
+    },
+    {
+      "name": "orgx_describe_tool",
+      "description": "Return the live contract for an OrgX tool, including expected fields, auth requirements, and next-step guidance."
+    },
+    {
+      "name": "orgx_describe_action",
+      "description": "Describe valid entity_action operations, aliases, and special payload requirements before calling entity_action."
+    },
+    {
       "name": "start_plan_session",
       "description": "Start a new planning session to track your feature plan. Use this when beginning to plan a new feature."
     },
     {
       "name": "get_active_sessions",
-      "description": "Check for any active planning sessions you have open."
+      "description": "Check for any active planning sessions you have open. Returns canonical session references to chain into improve_plan, record_plan_edit, complete_plan, or resume_plan_session."
+    },
+    {
+      "name": "resume_plan_session",
+      "description": "Load a specific planning session using the canonical UUID or orgx:// URI returned by OrgX tools, or resume the most recent active session."
     },
     {
       "name": "improve_plan",
@@ -151,6 +167,18 @@
       "description": "Create a new entity of any type (initiative, task, milestone, skill, etc.)."
     },
     {
+      "name": "create_task",
+      "description": "Create a task through an agent-friendly wrapper around the generic entity APIs."
+    },
+    {
+      "name": "create_milestone",
+      "description": "Create a milestone through an agent-friendly wrapper around the generic entity APIs."
+    },
+    {
+      "name": "create_decision",
+      "description": "Create a decision through an agent-friendly wrapper around the generic entity APIs."
+    },
+    {
       "name": "batch_create_entities",
       "description": "Create multiple entities in one call. Useful for initiative scaffolding without repeated tool invocations."
     },
@@ -169,6 +197,14 @@
     {
       "name": "entity_action",
       "description": "Launch, pause, complete, attach artifacts, or perform other actions on entities"
+    },
+    {
+      "name": "validate_studio_content",
+      "description": "Validate a studio_content entity without composing a generic entity_action payload manually."
+    },
+    {
+      "name": "pin_workstream",
+      "description": "Pin a workstream to the top of the Next Up queue without composing a generic queue action manually."
     },
     {
       "name": "batch_delete_entities",
