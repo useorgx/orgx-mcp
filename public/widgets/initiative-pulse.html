@@ -353,7 +353,8 @@
         display: flex;
         gap: 10px;
         flex-wrap: wrap;
-        margin-top: 20px;
+        margin-top: 0;
+        margin-left: auto;
       }
 
       .cta-button {
@@ -361,16 +362,26 @@
         align-items: center;
         justify-content: center;
         gap: 8px;
-        min-height: 42px;
-        padding: 0 15px;
+        min-height: 48px;
+        min-width: 220px;
+        max-width: 100%;
+        padding: 0 18px;
         border-radius: 12px;
         border: 1px solid rgba(var(--ox-primary-rgb), 0.22);
         background: rgba(var(--ox-primary-rgb), 0.12);
         color: var(--ox-text);
         text-decoration: none;
         font-size: 0.84rem;
-        font-weight: 600;
+        font-weight: 700;
+        line-height: 1;
+        white-space: nowrap;
         transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+      }
+
+      .cta-button svg {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
       }
 
       .cta-button:hover {
@@ -502,6 +513,8 @@
 
         .pulse-cta-row {
           flex-direction: column;
+          width: 100%;
+          margin-left: 0;
         }
 
         .cta-button,
@@ -637,11 +650,6 @@
       }
 
       
-    
-    .widget-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--ox-border); }
-    .deep-link { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; color: var(--ox-primary); text-decoration: none; transition: opacity 0.2s; }
-    .deep-link:hover { opacity: 0.8; }
-    .deep-link svg { width: 14px; height: 14px; }
   </style>
   </head>
   <body>
@@ -889,7 +897,7 @@
               <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
               <div class="pulse-cta-row">
                 <a href="${dashboardUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(dashboardUrl || ''))}, event)' class="cta-button">
-                  ${pulse.live_url ? 'Open Live View' : 'Open Dashboard'}
+                  <span>${pulse.live_url ? 'Open Live View' : 'Open Dashboard'}</span>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </a>
               </div>
