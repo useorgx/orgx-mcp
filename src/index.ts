@@ -30,7 +30,7 @@ import { formatInitiativeMarkdown, type OrgXInitiative } from './formatters';
 import { formatForLLM } from './responseSummarizer';
 import { resolveProfileToolSet } from './toolProfiles';
 import { withCorsAndHeaders, withSseKeepAlive } from './mcpTransport';
-import { callOrgxApiJson, callOrgxApiRaw } from './orgxApi';
+import { callOrgxApiJson, callOrgxApiRaw, OrgXApiError } from './orgxApi';
 import { batchCreateEntities as runBatchCreateEntities } from './batchCreate';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
 import {
@@ -147,6 +147,17 @@ import {
   toStoredSessionContext,
 } from './sessionStorage';
 import { checkToolPlanAccess } from './toolAccessGating';
+import {
+  CONTRACT_TOOL_DEFINITIONS,
+  getKnownToolContract,
+  getKnownToolContracts,
+} from './contractTools';
+import { describeInputShape } from './schemaIntrospection';
+import {
+  PLAN_SESSION_ACCEPTED_ID_FORMS,
+  enrichPlanSessionResult,
+  normalizePlanSessionId,
+} from './planSessionContract';
 
 // Re-export OAuthState Durable Object
 export { OAuthState };
@@ -161,6 +172,7 @@ function computeServerVersion(): string {
     ...PLAN_SESSION_TOOLS,
     ...CLIENT_INTEGRATION_TOOL_DEFINITIONS,
     ...STREAM_TOOL_DEFINITIONS,
+    ...CONTRACT_TOOL_DEFINITIONS,
     ...FLYWHEEL_TOOL_DEFINITIONS,
   ]
     .map((t) => t.id)
@@ -754,8 +766,23 @@ export class OrgXMcp extends McpAgent<
     return userId;
   }
 
-  private toolError(message: string): CallToolResult {
-    return { content: [{ type: 'text', text: message }], isError: true };
+  private toolError(
+    message: string,
+    options: {
+      code?: string;
+      status?: number;
+      details?: Record<string, unknown>;
+    } = {}
+  ): CallToolResult {
+    return authToolError(message, options);
+  }
+
+  private parseGrantedScopes(): string[] {
+    const rawScope = this.props?.scope ?? this.sessionAuth.scope ?? '';
+    return rawScope
+      .split(/\s+/)
+      .map((scope) => scope.trim())
+      .filter((scope) => scope.length > 0);
   }
 
   private widgetToolError(
@@ -1100,6 +1127,25 @@ export class OrgXMcp extends McpAgent<
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      if (error instanceof OrgXApiError) {
+        return this.toolError(message, {
+          code:
+            error.statusCode === 401 || error.statusCode === 403
+              ? 'permission_denied'
+              : error.statusCode === 404
+              ? 'entity_not_found'
+              : error.statusCode === 400
+              ? 'invalid_input'
+              : error.statusCode && error.statusCode >= 500
+              ? 'upstream_unavailable'
+              : 'tool_execution_failed',
+          status: error.statusCode,
+          details: {
+            retryable: Boolean(error.statusCode && error.statusCode >= 500),
+            suggested_next_calls: [{ tool: 'orgx_bootstrap', args: {} }],
+          },
+        });
+      }
       return this.toolError(message);
     }
   }
@@ -2002,29 +2048,56 @@ export class OrgXMcp extends McpAgent<
         }
 
         // Build request
+        const normalizedArgs = Object.fromEntries(
+          Object.entries(args).filter(([key]) => key !== '_context')
+        ) as Record<string, unknown>;
+
+        if (
+          toolId === 'improve_plan' ||
+          toolId === 'record_plan_edit' ||
+          toolId === 'complete_plan'
+        ) {
+          const normalizedSessionId = normalizePlanSessionId(normalizedArgs.session_id);
+          if (!normalizedSessionId) {
+            return this.toolError(
+              'session_id must be a plan session UUID or orgx://plan_session/<uuid>',
+              {
+                code: 'invalid_input',
+                status: 400,
+                details: {
+                  field: 'session_id',
+                  accepted_id_forms: PLAN_SESSION_ACCEPTED_ID_FORMS,
+                  suggested_next_calls: [
+                    { tool: 'get_active_sessions', args: {} },
+                    { tool: 'resume_plan_session', args: {} },
+                  ],
+                },
+              }
+            );
+          }
+          normalizedArgs.session_id = normalizedSessionId;
+        }
+
         let path = mapping.path;
         const init: RequestInit = { method: mapping.method };
 
         if (mapping.method === 'GET') {
           // Add query params for GET requests
           const url = new URL(path, 'https://placeholder.com');
-          if (toolId === 'list_plan_skills' && args.domain) {
-            url.searchParams.set('domain', args.domain as string);
-          }
           if (resolvedUserId) {
             url.searchParams.set('user_id', resolvedUserId);
           }
           path = url.pathname + url.search;
         } else {
           // Transform args for POST requests
-          const body: Record<string, unknown> = { ...args };
+          const body: Record<string, unknown> = { ...normalizedArgs };
           if (resolvedUserId) {
             body.user_id = resolvedUserId;
           }
 
           // Map feature_name to title for start_plan_session
           if (toolId === 'start_plan_session') {
-            body.title = args.feature_name || 'Untitled Plan';
+            body.title = normalizedArgs.feature_name || 'Untitled Plan';
           }
 
           init.body = JSON.stringify(body);
@@ -2033,7 +2106,8 @@ export class OrgXMcp extends McpAgent<
         const response = await callOrgxApiJson(this.env, path, init, {
           userId: resolvedUserId,
         });
-        const result = (await response.json()) as Record<string, unknown>;
+        const rawResult = (await response.json()) as Record<string, unknown>;
+        const result = enrichPlanSessionResult(toolId, rawResult);
 
         this.captureMcpToolEvent('mcp_tool_succeeded', {
           toolId,
@@ -2052,6 +2126,24 @@ export class OrgXMcp extends McpAgent<
           structuredContent: result,
         } as CallToolResult;
       } catch (error) {
+        if (
+          error instanceof OrgXApiError &&
+          error.statusCode === 404 &&
+          /Session not found/i.test(error.message)
+        ) {
+          return this.toolError(error.message, {
+            code: 'entity_not_found',
+            status: 404,
+            details: {
+              entity_type: 'plan_session',
+              accepted_id_forms: PLAN_SESSION_ACCEPTED_ID_FORMS,
+              suggested_next_calls: [
+                { tool: 'get_active_sessions', args: {} },
+                { tool: 'resume_plan_session', args: {} },
+              ],
+            },
+          });
+        }
         const latencyMs = Date.now() - startTime;
         this.captureMcpToolEvent('mcp_tool_failed', {
           toolId,
@@ -2317,6 +2409,508 @@ export class OrgXMcp extends McpAgent<
     }
   }
 
+  private buildBootstrapPayload(allowedTools: Set<string> | null) {
+    const profile = this.props?.profile ?? 'full';
+    const visibleTools = allowedTools
+      ? Array.from(allowedTools).sort()
+      : getKnownToolContracts()
+          .map((tool) => tool.id)
+          .sort();
+
+    const safeFirstCallsByProfile: Record<
+      string,
+      Array<{ tool: string; args: Record<string, unknown> }>
+    > = {
+      commander: [
+        { tool: 'workspace', args: { action: 'get' } },
+        { tool: 'get_org_snapshot', args: { view: 'summary' } },
+      ],
+      planner: [
+        { tool: 'workspace', args: { action: 'get' } },
+        { tool: 'get_active_sessions', args: {} },
+      ],
+      executor: [
+        { tool: 'workspace', args: { action: 'get' } },
+        { tool: 'sync_client_state', args: {} },
+      ],
+      observer: [
+        { tool: 'workspace', args: { action: 'get' } },
+        { tool: 'get_org_snapshot', args: { view: 'summary' } },
+      ],
+      full: [
+        { tool: 'workspace', args: { action: 'get' } },
+        { tool: 'get_org_snapshot', args: { view: 'summary' } },
+      ],
+    };
+
+    return {
+      server_version: MCP_SERVER_VERSION,
+      profile,
+      workspace: this.sessionContext.workspaceId
+        ? {
+            id: this.sessionContext.workspaceId,
+            name: this.sessionContext.workspaceName ?? null,
+          }
+        : null,
+      initiative: this.sessionContext.initiativeId
+        ? { id: this.sessionContext.initiativeId }
+        : null,
+      granted_scopes: this.parseGrantedScopes(),
+      safe_first_calls: safeFirstCallsByProfile[profile] ?? safeFirstCallsByProfile.full,
+      accepted_id_forms: {
+        plan_session: PLAN_SESSION_ACCEPTED_ID_FORMS,
+        initiative: ['uuid'],
+        task: ['uuid', '8+ char prefix'],
+      },
+      recommended_workflows: {
+        plan_feature: [
+          'orgx_bootstrap',
+          'start_plan_session',
+          'improve_plan',
+          'record_plan_edit',
+          'complete_plan',
+        ],
+        execute_task: [
+          'workspace',
+          'get_task_with_context',
+          'check_spawn_guard',
+          'spawn_agent_task',
+          'orgx_emit_activity',
+        ],
+      },
+      visible_tools_count: visibleTools.length,
+      visible_tools: allowedTools ? visibleTools : undefined,
+    };
+  }
+
+  private buildKnownToolDescriptor(toolId: string) {
+    const contract = getKnownToolContract(toolId);
+    if (!contract) return null;
+
+    return {
+      id: contract.id,
+      title: contract.title,
+      description: contract.description,
+      source: contract.source,
+      security_schemes: contract.securitySchemes ?? [],
+      annotations: contract.annotations ?? {},
+      input_contract: contract.inputSchema
+        ? describeInputShape(contract.inputSchema)
+        : null,
+      accepted_id_forms:
+        contract.id === 'resume_plan_session' ||
+        PLAN_SESSION_TOOLS.some((tool) => tool.id === contract.id)
+          ? PLAN_SESSION_ACCEPTED_ID_FORMS
+          : undefined,
+      notes:
+        contract.source === 'inline'
+          ? 'This tool is handled inline in the worker. Prefer typed wrappers when available.'
+          : undefined,
+    };
+  }
+
+  private async executeContractTool(
+    toolId: string,
+    args: Record<string, unknown>,
+    securitySchemes?: readonly { type: string; scopes?: readonly string[] }[],
+    allowedTools?: Set<string> | null
+  ): Promise<CallToolResult> {
+    const resolvedUserId = this.resolveUserId();
+    const authResponse = buildAuthRequiredResponse({
+      toolId,
+      securitySchemes,
+      userId: resolvedUserId ?? undefined,
+      serverUrl: this.env.MCP_SERVER_URL,
+      featureDescription: `use ${toolId.replace(/_/g, ' ')}`,
+    });
+    if (authResponse) return authResponse;
+
+    return this.withOrgx(async () => {
+      switch (toolId) {
+        case 'orgx_bootstrap': {
+          const payload = this.buildBootstrapPayload(allowedTools ?? null);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `OrgX contract ready. Profile: ${payload.profile}. Visible tools: ${payload.visible_tools_count}.`,
+              },
+            ],
+            structuredContent: payload,
+          };
+        }
+
+        case 'orgx_describe_tool': {
+          const toolIdArg =
+            typeof args.tool_id === 'string' ? args.tool_id.trim() : '';
+          const descriptor = this.buildKnownToolDescriptor(toolIdArg);
+          if (!descriptor) {
+            return this.toolError(`Unknown tool: ${toolIdArg}`, {
+              code: 'entity_not_found',
+              status: 404,
+              details: {
+                entity_type: 'tool',
+                suggested_next_calls: [{ tool: 'orgx_bootstrap', args: {} }],
+              },
+            });
+          }
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Tool ${descriptor.id}: ${descriptor.title}`,
+              },
+            ],
+            structuredContent: descriptor,
+          };
+        }
+
+        case 'orgx_describe_action': {
+          const type = String(args.type);
+          const action =
+            typeof args.action === 'string' && args.action.trim().length > 0
+              ? args.action.trim()
+              : null;
+          const resolvedAction = action
+            ? resolveLifecycleActionAlias(type, action) ?? action
+            : null;
+
+          let liveAvailability: Record<string, unknown> | null = null;
+          if (resolvedUserId && typeof args.id === 'string' && args.id.trim().length > 0) {
+            try {
+              const response = await callOrgxApiJson(
+                this.env,
+                `/api/entities/${type}/${args.id}/actions`,
+                undefined,
+                { userId: resolvedUserId }
+              );
+              liveAvailability = (await response.json()) as Record<string, unknown>;
+            } catch {
+              liveAvailability = null;
+            }
+          }
+
+          const specialContracts = {
+            update: {
+              requires: ['fields'],
+              notes: 'fields must include at least one mutable property',
+            },
+            attach: {
+              requires: ['name', 'artifact_type', 'artifact_url|external_url'],
+              notes: 'artifact_url or external_url is required',
+            },
+            validate: {
+              type_specific: 'studio_content',
+              requires: ['id'],
+              optional: ['spec', 'note'],
+            },
+            reassign_streams: {
+              type_specific: 'initiative',
+              optional: ['mappings', 'dry_run'],
+            },
+          };
+
+          const payload = {
+            entity_type: type,
+            requested_action: action,
+            resolved_action: resolvedAction,
+            aliases: action
+              ? undefined
+              : {
+                  launch: resolveLifecycleActionAlias(type, 'launch'),
+                  pause: resolveLifecycleActionAlias(type, 'pause'),
+                },
+            special_action_contracts: specialContracts,
+            live_availability: liveAvailability,
+          };
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: resolvedAction
+                  ? `Action ${action} resolves to ${resolvedAction} for ${type}.`
+                  : `Described entity actions for ${type}.`,
+              },
+            ],
+            structuredContent: payload,
+          };
+        }
+
+        case 'resume_plan_session': {
+          const normalizedSessionId = args.session_id
+            ? normalizePlanSessionId(args.session_id)
+            : null;
+          if (args.session_id && !normalizedSessionId) {
+            return this.toolError(
+              'session_id must be a plan session UUID or orgx://plan_session/<uuid>',
+              {
+                code: 'invalid_input',
+                status: 400,
+                details: {
+                  field: 'session_id',
+                  accepted_id_forms: PLAN_SESSION_ACCEPTED_ID_FORMS,
+                },
+              }
+            );
+          }
+
+          const url = new URL('/api/plan-sessions', 'https://placeholder.invalid');
+          if (normalizedSessionId) {
+            url.searchParams.set('id', normalizedSessionId);
+          } else {
+            url.searchParams.set('status', 'active');
+          }
+          if (resolvedUserId) {
+            url.searchParams.set('user_id', resolvedUserId);
+          }
+
+          const response = await callOrgxApiJson(
+            this.env,
+            `${url.pathname}?${url.searchParams.toString()}`,
+            undefined,
+            { userId: resolvedUserId }
+          );
+          const rawResult = (await response.json()) as Record<string, unknown>;
+          const payload = normalizedSessionId
+            ? enrichPlanSessionResult('start_plan_session', rawResult)
+            : enrichPlanSessionResult('get_active_sessions', rawResult);
+          const selected =
+            normalizedSessionId ||
+            (Array.isArray(payload.sessions) &&
+            payload.sessions[0] &&
+            typeof payload.sessions[0] === 'object'
+              ? (payload.sessions[0] as Record<string, unknown>)
+              : null);
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: normalizedSessionId
+                  ? `Loaded plan session ${normalizedSessionId}.`
+                  : Array.isArray(payload.sessions) && payload.sessions.length > 0
+                  ? 'Loaded the most recent active plan session.'
+                  : 'No active planning sessions found.',
+              },
+            ],
+            structuredContent:
+              normalizedSessionId || !selected
+                ? payload
+                : {
+                    ...payload,
+                    selected_session: selected,
+                  },
+          };
+        }
+
+        case 'create_task':
+          return this.executeCreateEntityWrapper('task', args);
+        case 'create_milestone':
+          return this.executeCreateEntityWrapper('milestone', args);
+        case 'create_decision':
+          return this.executeCreateEntityWrapper('decision', args);
+
+        case 'validate_studio_content': {
+          const response = await callOrgxApiJson(
+            this.env,
+            `/api/entities/studio_content/${args.id}/validate`,
+            {
+              method: 'POST',
+              body: JSON.stringify({
+                spec: args.spec,
+                note: args.note,
+                reason: args.note,
+                user_id: resolvedUserId,
+              }),
+            },
+            { userId: resolvedUserId }
+          );
+          const result = (await response.json()) as Record<string, unknown>;
+          const payload = {
+            ...(result.data as Record<string, unknown> | undefined),
+            ...(result.data ? {} : result),
+            _action: 'validate',
+          };
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatForLLM('entity_action', payload),
+              },
+            ],
+            structuredContent: payload,
+          };
+        }
+
+        case 'pin_workstream': {
+          const response = await callOrgxApiJson(
+            this.env,
+            '/api/tools/execute',
+            {
+              method: 'POST',
+              body: JSON.stringify({
+                tool_id: 'pin_queue_item',
+                args: {
+                  initiative_id: args.initiative_id,
+                  workstream_id: args.workstream_id,
+                  workspace_id: args.workspace_id,
+                  command_center_id: args.command_center_id,
+                  rank: args.rank,
+                },
+                user_id: resolvedUserId,
+              }),
+            },
+            { userId: resolvedUserId }
+          );
+          const result = (await response.json()) as {
+            ok?: boolean;
+            data?: Record<string, unknown>;
+            error?: string;
+          };
+          if (result.ok === false) {
+            return this.toolError(result.error ?? 'Unable to pin workstream');
+          }
+          const data = result.data ?? {};
+          return {
+            content: [
+              {
+                type: 'text',
+                text:
+                  typeof data.message === 'string'
+                    ? data.message
+                    : 'Workstream pinned.',
+              },
+            ],
+            structuredContent: data,
+          };
+        }
+
+        default:
+          return this.toolError(`Unknown contract tool: ${toolId}`);
+      }
+    });
+  }
+
+  private async executeCreateEntityWrapper(
+    type: 'task' | 'milestone' | 'decision',
+    args: Record<string, unknown>
+  ): Promise<CallToolResult> {
+    const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId ?? null;
+    const ownerId = this.resolveUserId(
+      (args.owner_id as string | undefined) ?? (args.user_id as string | undefined)
+    );
+
+    const workspaceId =
+      typeof args.workspace_id === 'string' && args.workspace_id.trim().length > 0
+        ? args.workspace_id.trim()
+        : typeof args.command_center_id === 'string' &&
+          args.command_center_id.trim().length > 0
+        ? args.command_center_id.trim()
+        : this.sessionContext.workspaceId ?? null;
+
+    if (
+      typeof args.workspace_id === 'string' &&
+      typeof args.command_center_id === 'string' &&
+      args.workspace_id.trim() &&
+      args.command_center_id.trim() &&
+      args.workspace_id.trim() !== args.command_center_id.trim()
+    ) {
+      return this.toolError(
+        'workspace_id and command_center_id must match when both are provided',
+        { code: 'invalid_input', status: 400 }
+      );
+    }
+
+    const payload: Record<string, unknown> = {
+      type,
+      title: args.title,
+      name: args.title,
+      summary: args.summary ?? args.description,
+      description: args.description ?? args.summary,
+    };
+
+    if (ownerId) payload.owner_id = ownerId;
+    if (workspaceId) payload.workspace_id = workspaceId;
+    if (args.initiative_id) payload.initiative_id = args.initiative_id;
+    if (args.workstream_id) payload.workstream_id = args.workstream_id;
+    if (args.milestone_id) payload.milestone_id = args.milestone_id;
+    if (args.due_date && (type === 'task' || type === 'milestone')) {
+      payload.due_date = args.due_date;
+    }
+    if (args.priority) payload.priority = args.priority;
+    if (args.sequence !== undefined && (type === 'task' || type === 'milestone')) {
+      payload.sequence = args.sequence;
+    }
+    if (args.domain && type !== 'decision') payload.domain = args.domain;
+    if (args.depends_on && type === 'task') payload.depends_on = args.depends_on;
+    if (args.assigned_agent_ids && type === 'task') {
+      payload.assigned_agent_ids = args.assigned_agent_ids;
+    }
+
+    const response = await callOrgxApiJson(
+      this.env,
+      '/api/entities',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      { userId: ownerId ?? resolvedUserId }
+    );
+    const result = (await response.json()) as {
+      type?: string;
+      data?: { id: string; title?: string; name?: string };
+    };
+    const data = result.data ?? { id: '' };
+    const name = data.title ?? data.name ?? String(args.title ?? type);
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `✓ Created ${type}: ${entityLinkMarkdown(type, data.id, name)}`,
+        },
+      ],
+      structuredContent: {
+        id: data.id,
+        type,
+        title: data.title ?? data.name ?? null,
+        initiative_id: args.initiative_id ?? null,
+      },
+    };
+  }
+
+  private registerContractTools(allowedTools: Set<string> | null) {
+    for (const tool of CONTRACT_TOOL_DEFINITIONS) {
+      if (allowedTools && !allowedTools.has(tool.id)) continue;
+      const metaObj = tool._meta as Record<string, unknown> | undefined;
+      const isReadOnly = metaObj?.['openai/readOnlyHint'] === true;
+      const meta = {
+        ...tool._meta,
+        'openai/visibility': isReadOnly ? 'public' : 'private',
+        'mcp/securitySchemes': tool.securitySchemes,
+      };
+
+      this.server.registerTool(
+        tool.id,
+        {
+          title: tool.title,
+          description: tool.description,
+          inputSchema: this.withClientContext(tool.inputSchema),
+          annotations: tool.annotations,
+          _meta: meta,
+        },
+        async (args: Record<string, unknown>) =>
+          this.executeContractTool(
+            tool.id,
+            args,
+            tool.securitySchemes,
+            allowedTools
+          )
+      );
+    }
+  }
+
   private registerTools() {
     // Resolve tool profile from connection props (e.g. ?profile=executor).
     // null means register all tools (default / 'full' profile).
@@ -2336,6 +2930,9 @@ export class OrgXMcp extends McpAgent<
 
     // Register client integration tools (direct endpoint routing)
     this.registerClientIntegrationTools(allowedTools);
+
+    // Register additive contract/introspection tools and safe wrappers
+    this.registerContractTools(allowedTools);
 
     // =========================================================================
     // CORE UTILITY TOOLS

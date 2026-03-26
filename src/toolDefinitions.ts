@@ -230,7 +230,7 @@ export const PLAN_SESSION_TOOLS = [
     title: 'Get Active Plan Sessions',
     description: 'Check for any active planning sessions you have open. USE WHEN: resuming a conversation or checking if a plan session exists. NEXT: Continue with improve_plan or complete_plan. Read-only.',
     inputSchema: {},
-    securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
+    securitySchemes: SECURITY_SCHEMES.authRequired,
     _meta: {
       'openai/toolInvocation/invoking': 'Checking active sessions...',
       'openai/toolInvocation/invoked': 'Retrieved active sessions',
@@ -1416,12 +1416,15 @@ export function summarizePlanSessionResult(
 ): string {
   switch (toolId) {
     case 'start_plan_session': {
-      const id = data.id as string | undefined;
+      const id =
+        (data.session_id as string | undefined) ??
+        (data.id as string | undefined);
       const title = data.title as string | undefined;
-      return `📋 Started plan session "${title || 'Untitled'}" (ID: ${id?.slice(
-        0,
-        8
-      )}...)\n\nI'll track your edits and learn from your planning patterns. Use improve_plan to get suggestions, and complete_plan when you're done building.`;
+      const uri = data.uri as string | undefined;
+      const refLine = id
+        ? `Session ID: ${id}${uri ? `\nSession URI: ${uri}` : ''}`
+        : 'Session created.';
+      return `📋 Started plan session "${title || 'Untitled'}"\n${refLine}\n\nI'll track your edits and learn from your planning patterns. Use improve_plan to get suggestions, and complete_plan when you're done building.`;
     }
 
     case 'get_active_sessions': {
@@ -1435,7 +1438,12 @@ export function summarizePlanSessionResult(
       }
       const list = sessions
         .map(
-          (s) => `- "${s.title || s.feature_name}" (ID: ${s.id})`
+          (s) => {
+            const sessionId =
+              (s as Record<string, unknown>).session_id ??
+              (s as Record<string, unknown>).id;
+            return `- "${s.title || s.feature_name}" (session_id: ${sessionId})`;
+          }
         )
         .join('\n');
       return `📋 Active planning sessions:\n${list}\n\nContinue an existing session or start a new one.`;
