@@ -1,3 +1,5 @@
+import { buildEntityLink, buildLiveUrl } from './deepLinks';
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -50,6 +52,10 @@ export type NormalizedArtifact = {
   initiative_id: string | null;
   task_id: string | null;
   metadata: Record<string, unknown>;
+  primary_url?: string | null;
+  primary_label?: string | null;
+  task_url?: string | null;
+  live_url?: string | null;
 };
 
 export function normalizeArtifactRecord(input: unknown): NormalizedArtifact | null {
@@ -183,6 +189,50 @@ function artifactMatchesAgent(
   return false;
 }
 
+function attachArtifactLinks(
+  artifact: NormalizedArtifact,
+  fallbackInitiativeId: string | null = null
+): NormalizedArtifact {
+  const initiativeId = artifact.initiative_id ?? fallbackInitiativeId ?? null;
+  const taskUrl =
+    artifact.task_id && initiativeId
+      ? buildEntityLink('task', artifact.task_id, {
+          initiativeId,
+          label: 'Open task',
+        }).url
+      : artifact.task_id
+      ? buildEntityLink('task', artifact.task_id, {
+          label: 'Open task',
+        }).url
+      : null;
+  const liveUrl = initiativeId ? buildLiveUrl(initiativeId) : null;
+
+  let primaryUrl: string | null = null;
+  let primaryLabel: string | null = null;
+
+  if (artifact.id) {
+    primaryUrl = buildEntityLink('artifact', artifact.id, {
+      initiativeId: initiativeId ?? undefined,
+      label: 'Open artifact',
+    }).url;
+    primaryLabel = 'Open artifact';
+  } else if (taskUrl) {
+    primaryUrl = taskUrl;
+    primaryLabel = 'Open task';
+  } else if (liveUrl) {
+    primaryUrl = liveUrl;
+    primaryLabel = 'Open live view';
+  }
+
+  return {
+    ...artifact,
+    primary_url: primaryUrl,
+    primary_label: primaryLabel,
+    task_url: taskUrl,
+    live_url: liveUrl,
+  };
+}
+
 export function enrichAgentStatusWithArtifacts(
   data: Record<string, unknown>,
   artifactsInput: unknown[]
@@ -197,9 +247,14 @@ export function enrichAgentStatusWithArtifacts(
     if (!agent) return rawAgent;
     const taskIds = collectAgentTaskIds(agent);
     const identityTokens = collectAgentIdentityTokens(agent);
-    const matchedArtifacts = artifacts.filter((artifact) =>
-      artifactMatchesAgent(artifact, taskIds, identityTokens)
-    );
+    const matchedArtifacts = artifacts
+      .filter((artifact) => artifactMatchesAgent(artifact, taskIds, identityTokens))
+      .map((artifact) =>
+        attachArtifactLinks(
+          artifact,
+          firstString(agent, ['initiative_id', 'initiativeId'])
+        )
+      );
 
     const totalTasks = collectTaskEntries(agent).length;
     const blockedCount = Array.isArray(agent.blockers) ? agent.blockers.length : 0;
@@ -227,12 +282,16 @@ export function enrichInitiativePulseWithArtifacts(
   data: Record<string, unknown>,
   artifactsInput: unknown[]
 ): Record<string, unknown> {
+  const initiativeId =
+    firstString(data, ['initiative_id', 'initiativeId', 'id']) ?? null;
   const artifacts = artifactsInput
     .map(normalizeArtifactRecord)
     .filter((item): item is NormalizedArtifact => Boolean(item));
   return {
     ...data,
-    recent_artifacts: artifacts.slice(0, 5),
+    recent_artifacts: artifacts
+      .map((artifact) => attachArtifactLinks(artifact, initiativeId))
+      .slice(0, 5),
     artifact_summary: {
       total: artifacts.length,
       approved: artifacts.filter((item) => toSlug(item.status) === 'approved').length,
@@ -245,6 +304,8 @@ export function enrichMorningBriefWithArtifacts(
   data: Record<string, unknown>,
   artifactsInput: unknown[]
 ): Record<string, unknown> {
+  const initiativeId =
+    firstString(data, ['initiative_id', 'initiativeId']) ?? null;
   const artifacts = artifactsInput
     .map(normalizeArtifactRecord)
     .filter((item): item is NormalizedArtifact => Boolean(item));
@@ -259,8 +320,12 @@ export function enrichMorningBriefWithArtifacts(
 
   return {
     ...data,
-    artifacts_produced: artifacts.slice(0, 6),
-    review_items: reviewItems.slice(0, 4),
+    artifacts_produced: artifacts
+      .map((artifact) => attachArtifactLinks(artifact, initiativeId))
+      .slice(0, 6),
+    review_items: reviewItems
+      .map((artifact) => attachArtifactLinks(artifact, initiativeId))
+      .slice(0, 4),
     artifact_summary: {
       total: artifacts.length,
       approved: approvedItems.length,

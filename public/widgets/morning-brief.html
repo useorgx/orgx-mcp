@@ -137,6 +137,20 @@
 
     .section-title { display:flex; align-items:center; gap:12px; margin-bottom: 12px; }
     .section-title .rule { flex:1; height:1px; background:var(--ox-border); }
+    .section-title-copy { display:flex; align-items:center; gap:10px; min-width:0; }
+    .section-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 9px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(var(--ox-primary-rgb), 0.1);
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.2);
+      color: var(--ox-primary);
+      flex-shrink: 0;
+    }
+    .section-icon svg { width: 15px; height: 15px; }
 
     .priority-list { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
     
@@ -197,6 +211,26 @@
       background: var(--ox-well-bg);
       box-shadow: var(--ox-well-shadow);
     }
+    .artifact-output-main { display:flex; gap:12px; min-width:0; }
+    .artifact-output-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(var(--ox-primary-rgb), 0.08);
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
+      color: var(--ox-primary);
+      flex-shrink: 0;
+    }
+    .artifact-output-icon svg { width: 16px; height: 16px; }
+    .artifact-output-icon--review {
+      color: var(--ox-warning);
+      background: rgba(251, 191, 36, 0.08);
+      border-color: rgba(251, 191, 36, 0.18);
+    }
+    .artifact-output-body { min-width: 0; }
 
     .artifact-output-title {
       font-size: 0.9rem;
@@ -262,6 +296,33 @@
       letter-spacing: 0.06em;
       text-transform: uppercase;
       text-decoration: none;
+    }
+    .artifact-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .artifact-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--ox-border);
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--ox-text);
+      font-family: var(--ox-mono);
+      font-size: 0.66rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .artifact-link:hover {
+      border-color: rgba(var(--ox-primary-rgb), 0.22);
+      background: rgba(var(--ox-primary-rgb), 0.08);
     }
 
     @media (max-width: 560px) {
@@ -344,7 +405,11 @@
         search: function(s){return _svg('<circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>',s);},
         file: function(s){return _svg('<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline>',s);},
         external: function(s){return _svg('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>',s);},
-        sun: function(s){return _svg('<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>',s);}
+        sun: function(s){return _svg('<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>',s);},
+        layers: function(s){return _svg('<polygon points="12 2 22 8 12 14 2 8 12 2"></polygon><polyline points="2 12 12 18 22 12"></polyline><polyline points="2 16 12 22 22 16"></polyline>',s);},
+        eye: function(s){return _svg('<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>',s);},
+        alert: function(s){return _svg('<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>',s);},
+        clipboard: function(s){return _svg('<rect x="9" y="2" width="6" height="4" rx="1"></rect><path d="M9 4H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2"></path><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="16" x2="13" y2="16"></line>',s);}
       };
       var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
 
@@ -364,13 +429,13 @@
         { intent: 'Resolved routing regression', attributed_value_usd: 310 }
       ],
       artifacts_produced: [
-        { id: 'artifact-1', name: 'server.json manifest', status: 'approved', artifact_type: 'eng.config', created_by_name: 'Eli', summary: 'Manifest drafted and validated for registry submission.' },
-        { id: 'artifact-2', name: 'MCP Inspector test plan', status: 'in_review', artifact_type: 'eng.report', created_by_name: 'Eli', summary: 'Manual + automated checks packaged for review.' },
-        { id: 'artifact-3', name: 'Connector description', status: 'in_review', artifact_type: 'mktg.copy', created_by_name: 'Mark', summary: 'Marketplace copy drafted for founder approval.' }
+        { id: 'artifact-1', name: 'server.json manifest', status: 'approved', artifact_type: 'eng.config', created_by_name: 'Eli', summary: 'Manifest drafted and validated for registry submission.', primary_url: 'https://useorgx.com/artifacts/artifact-1', primary_label: 'Open artifact', live_url: 'https://useorgx.com/live/INI-402' },
+        { id: 'artifact-2', name: 'MCP Inspector test plan', status: 'in_review', artifact_type: 'eng.report', created_by_name: 'Eli', summary: 'Manual + automated checks packaged for review.', primary_url: 'https://useorgx.com/artifacts/artifact-2', primary_label: 'Open artifact', live_url: 'https://useorgx.com/live/INI-402' },
+        { id: 'artifact-3', name: 'Connector description', status: 'in_review', artifact_type: 'mktg.copy', created_by_name: 'Mark', summary: 'Marketplace copy drafted for founder approval.', primary_url: 'https://useorgx.com/artifacts/artifact-3', primary_label: 'Open artifact', live_url: 'https://useorgx.com/live/INI-402' }
       ],
       review_items: [
-        { id: 'artifact-2', name: 'MCP Inspector test plan', status: 'in_review', artifact_type: 'eng.report', created_by_name: 'Eli' },
-        { id: 'artifact-3', name: 'Connector description', status: 'in_review', artifact_type: 'mktg.copy', created_by_name: 'Mark' }
+        { id: 'artifact-2', name: 'MCP Inspector test plan', status: 'in_review', artifact_type: 'eng.report', created_by_name: 'Eli', primary_url: 'https://useorgx.com/artifacts/artifact-2', primary_label: 'Review in OrgX', live_url: 'https://useorgx.com/live/INI-402' },
+        { id: 'artifact-3', name: 'Connector description', status: 'in_review', artifact_type: 'mktg.copy', created_by_name: 'Mark', primary_url: 'https://useorgx.com/artifacts/artifact-3', primary_label: 'Review in OrgX', live_url: 'https://useorgx.com/live/INI-402' }
       ],
       exceptions: [{ exception_type: 'budget_guardrail' }],
       brief_markdown: '# Morning Brief'
@@ -505,6 +570,21 @@
       };
     };
     var titleCase = value => String(value || '').replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    var artifactLink = function(artifact, fallbackUrl) {
+      if (artifact && typeof artifact.primary_url === 'string' && artifact.primary_url) return artifact.primary_url;
+      if (artifact && typeof artifact.live_url === 'string' && artifact.live_url) return artifact.live_url;
+      return fallbackUrl;
+    };
+    var artifactLinkLabel = function(artifact, fallbackLabel) {
+      return escapeHtml((artifact && typeof artifact.primary_label === 'string' && artifact.primary_label) || fallbackLabel);
+    };
+    var artifactIcon = function(artifactType, reviewMode) {
+      if (reviewMode) return icons.eye(16);
+      var type = String(artifactType || '').toLowerCase();
+      if (type.indexOf('report') >= 0 || type.indexOf('plan') >= 0) return icons.clipboard(16);
+      if (type.indexOf('copy') >= 0 || type.indexOf('content') >= 0) return icons.file(16);
+      return icons.layers(16);
+    };
 
     var render = () => {
       if(isLoading) return;
@@ -543,31 +623,43 @@
         var statusClass = 'status-' + String(artifact.status || 'draft').replace(/[^a-zA-Z0-9_-]/g, '_');
         var author = escapeHtml(artifact.created_by_name || artifact.created_by || 'OrgX agent');
         var summary = escapeHtml(artifact.summary || artifact.description || '');
+        var primaryUrl = artifactLink(artifact, 'https://useorgx.com/live?view=mission-control');
+        var primaryLabel = artifactLinkLabel(artifact, 'Open artifact');
         return `
           <div class="artifact-output-item">
-            <div>
-              <div class="artifact-output-title">${title}</div>
-              <div class="artifact-output-copy">${summary || 'Captured as proof-of-work from the latest execution window.'}</div>
-              <div class="artifact-output-meta">
-                <span class="artifact-badge">${type}</span>
-                <span class="artifact-badge">${author}</span>
+            <div class="artifact-output-main">
+              <div class="artifact-output-icon">${artifactIcon(artifact.artifact_type, false)}</div>
+              <div class="artifact-output-body">
+                <div class="artifact-output-title">${title}</div>
+                <div class="artifact-output-copy">${summary || 'Captured as proof-of-work from the latest execution window.'}</div>
+                <div class="artifact-output-meta">
+                  <span class="artifact-badge">${type}</span>
+                  <span class="artifact-badge">${author}</span>
+                </div>
               </div>
             </div>
-            <div class="artifact-badge ${statusClass}">${status}</div>
+            <div class="artifact-actions">
+              <div class="artifact-badge ${statusClass}">${status}</div>
+              <a href="${primaryUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(primaryUrl))}, event)' class="artifact-link">${icons.external(14)} ${primaryLabel}</a>
+            </div>
           </div>
         `;
       }).join('');
-      const reviewUrl = 'https://useorgx.com/live?view=mission-control';
       const reviewItemsHtml = normalized.reviewItems.slice(0, 3).map((artifact) => {
         var title = escapeHtml(artifact.title || artifact.name || 'Review item');
         var type = escapeHtml(String(artifact.artifact_type || artifact.type || 'artifact').replace(/_/g, '.'));
+        var reviewUrl = artifactLink(artifact, 'https://useorgx.com/live?view=mission-control');
+        var reviewLabel = 'Review in OrgX';
         return `
           <div class="artifact-output-item">
-            <div>
-              <div class="artifact-output-title">${title}</div>
-              <div class="artifact-output-copy">${type} ready for an operator call before execution continues.</div>
+            <div class="artifact-output-main">
+              <div class="artifact-output-icon artifact-output-icon--review">${artifactIcon(artifact.artifact_type, true)}</div>
+              <div class="artifact-output-body">
+                <div class="artifact-output-title">${title}</div>
+                <div class="artifact-output-copy">${type} ready for an operator call before execution continues.</div>
+              </div>
             </div>
-            <a href="${reviewUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(reviewUrl))}, event)' class="review-link">Review →</a>
+            <a href="${reviewUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(reviewUrl))}, event)' class="review-link">${icons.eye(14)} ${reviewLabel}</a>
           </div>
         `;
       }).join('');
@@ -602,7 +694,7 @@
 
             <div style="margin-bottom: 24px;">
               <div class="section-title">
-                <div class="ox-eyebrow">Top priorities</div>
+                <div class="section-title-copy"><span class="section-icon">${icons.layers(15)}</span><div class="ox-eyebrow">Top priorities</div></div>
                 <div class="rule"></div>
               </div>
               <div class="priority-list">${prioritiesHtml || `<div class="ox-well"><div class="ox-text">No priority follow-ups were captured in this brief.</div></div>`}</div>
@@ -611,7 +703,7 @@
             ${receiptsHtml ? `
               <div style="margin-bottom: 24px;">
                 <div class="section-title">
-                  <div class="ox-eyebrow">Top receipts</div>
+                  <div class="section-title-copy"><span class="section-icon">${icons.clipboard(15)}</span><div class="ox-eyebrow">Top receipts</div></div>
                   <div class="rule"></div>
                 </div>
                 <div class="priority-list">${receiptsHtml}</div>
@@ -621,7 +713,7 @@
             ${artifactOutputHtml ? `
               <div style="margin-bottom: 24px;">
                 <div class="section-title">
-                  <div class="ox-eyebrow">Overnight output</div>
+                  <div class="section-title-copy"><span class="section-icon">${icons.file(15)}</span><div class="ox-eyebrow">Overnight output</div></div>
                   <div class="rule"></div>
                 </div>
                 <div class="artifact-output-grid">${artifactOutputHtml}</div>
@@ -631,7 +723,7 @@
             ${reviewItemsHtml ? `
               <div style="margin-bottom: 24px;">
                 <div class="section-title">
-                  <div class="ox-eyebrow">Needs your review</div>
+                  <div class="section-title-copy"><span class="section-icon">${icons.eye(15)}</span><div class="ox-eyebrow">Needs your review</div></div>
                   <div class="rule"></div>
                 </div>
                 <div class="artifact-output-grid">${reviewItemsHtml}</div>
@@ -641,7 +733,7 @@
             ${attentionHtml || exceptionsHtml || normalized.narrativeAvailable ? `
               <div>
                 <div class="section-title">
-                  <div class="ox-eyebrow">Needs attention</div>
+                  <div class="section-title-copy"><span class="section-icon">${icons.alert(15)}</span><div class="ox-eyebrow">Needs attention</div></div>
                   <div class="rule"></div>
                 </div>
                 ${attentionHtml ? `<div class="signal-list">${attentionHtml}</div>` : ''}
