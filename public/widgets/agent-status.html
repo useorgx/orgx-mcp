@@ -646,21 +646,147 @@
       background: rgba(251, 191, 36, 0.08);
     }
 
-    .workload-row {
+    .workload-panel {
       display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 6px;
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px solid var(--ox-border);
+      background:
+        linear-gradient(180deg, rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.05), transparent 35%),
+        rgba(255, 255, 255, 0.02);
     }
 
-    .workload-pill {
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--ox-border);
-      background: rgba(255, 255, 255, 0.02);
+    .workload-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .workload-head-stats {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .workload-head-stat {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 4px;
       font-family: var(--ox-mono);
-      font-size: 0.66rem;
-      letter-spacing: 0.05em;
+      font-size: 0.68rem;
       text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--ox-text-muted);
+      white-space: nowrap;
+    }
+
+    .workload-head-stat strong {
+      font-size: 1rem;
+      color: var(--ox-text);
+      line-height: 1;
+      letter-spacing: -0.03em;
+    }
+
+    .workload-head-stat.is-alert {
+      color: var(--ox-warning);
+    }
+
+    .workload-head-stat.is-alert strong {
+      color: var(--ox-warning);
+    }
+
+    .workload-track {
+      display: flex;
+      height: 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .workload-segment {
+      height: 100%;
+      min-width: 0;
+    }
+
+    .workload-segment-todo {
+      background: rgba(148, 163, 184, 0.24);
+    }
+
+    .workload-segment-active {
+      background: linear-gradient(90deg, rgba(var(--ox-primary-rgb), 1), rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.96));
+      box-shadow: 0 0 20px rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.24);
+    }
+
+    .workload-segment-blocked {
+      background: linear-gradient(90deg, rgba(251, 191, 36, 0.88), rgba(245, 158, 11, 0.96));
+    }
+
+    .workload-segment-done {
+      background: rgba(0, 201, 167, 0.88);
+    }
+
+    .workload-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .workload-stat {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .workload-stat-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      border: 1px solid rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.18);
+      background: rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.12);
+      color: rgb(var(--agent-accent-rgb, var(--ox-primary-rgb)));
+    }
+
+    .workload-stat.is-blocked .workload-stat-icon {
+      border-color: rgba(251, 191, 36, 0.22);
+      background: rgba(251, 191, 36, 0.1);
+      color: var(--ox-warning);
+    }
+
+    .workload-stat.is-streams .workload-stat-icon {
+      border-color: rgba(148, 163, 184, 0.22);
+      background: rgba(148, 163, 184, 0.08);
+      color: var(--ox-text-muted);
+    }
+
+    .workload-stat-copy {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .workload-stat-value {
+      font-size: 0.88rem;
+      font-weight: 600;
+      line-height: 1.2;
+      color: var(--ox-text);
+    }
+
+    .workload-stat-label {
+      font-size: 0.72rem;
+      line-height: 1.35;
       color: var(--ox-text-muted);
     }
 
@@ -684,6 +810,19 @@
 
       .deep-link {
         width: 100%;
+      }
+
+      .workload-head {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .workload-head-stats {
+        justify-content: flex-start;
+      }
+
+      .workload-stats {
+        grid-template-columns: 1fr;
       }
     }
 
@@ -764,18 +903,41 @@
         search: function(s){return _svg('<circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>',s);},
         file: function(s){return _svg('<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline>',s);},
         external: function(s){return _svg('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>',s);},
-        sun: function(s){return _svg('<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>',s);}
+        sun: function(s){return _svg('<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>',s);},
+        task: function(s){return _svg('<path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>',s);},
+        blocked: function(s){return _svg('<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>',s);},
+        stream: function(s){return _svg('<path d="M5 7h14"></path><path d="M5 12h8"></path><path d="M5 17h14"></path><circle cx="17" cy="12" r="3"></circle>',s);}
       };
       var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
 
     var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
     var data = isDemo ? {
-      agent_name: 'Pace', role: 'Product', status: 'Executing Task',
-      activity: [
-        { timestamp: new Date().toISOString(), message: 'Generated pricing tier recommendations.' },
-        { timestamp: new Date(Date.now() - 300000).toISOString(), message: 'Analyzed competitor pricing pages.' },
-        { timestamp: new Date(Date.now() - 1800000).toISOString(), message: 'Task initialized: Market Research' }
-      ]
+      agents: [
+        {
+          agent_name: 'Pace',
+          role: 'Product',
+          status: 'running',
+          progress: 65,
+          initiative_id: 'init-demo-1',
+          tasks: [
+            { id: 'task-1', title: 'Create velocity calculation: points completed / points planned', status: 'in_progress' },
+            { id: 'task-2', title: 'Audit activation loop for conversion drop-off', status: 'blocked' },
+            { id: 'task-3', title: 'Package founder outreach test', status: 'done' }
+          ],
+          blockers: ['Waiting on pricing approval'],
+          workload: {
+            tasks_in_progress: 1,
+            blocked_count: 1,
+            stream_count: 2
+          },
+          artifacts: [
+            { title: 'Velocity model draft', artifact_type: 'prod.analysis', status: 'approved', summary: 'Initial planning model reviewed and accepted.' },
+            { title: 'Activation loop audit', artifact_type: 'prod.report', status: 'in_review', summary: 'Drop-off analysis ready for review.' }
+          ],
+          artifact_count: 2
+        }
+      ],
+      message: 'Live orchestration state across specialist agents.'
     } : null;
     var isLoading = !isDemo;
 
@@ -786,6 +948,23 @@
       // Overwrite initWidget to do nothing so it hangs on loading
       initWidget = () => { render(); };
     }
+    var bootStartedAt = Date.now();
+    var MIN_LOADING_MS = 220;
+    var loadingSettled = false;
+    var applyBootPayload = function(assign) {
+      var commit = function() {
+        if (typeof assign === 'function') assign();
+        isLoading = false;
+        render();
+      };
+      if (loadingSettled) {
+        commit();
+        return;
+      }
+      loadingSettled = true;
+      var delay = Math.max(0, MIN_LOADING_MS - (Date.now() - bootStartedAt));
+      window.setTimeout(commit, delay);
+    };
 
 
     
@@ -1025,6 +1204,103 @@
       return raw.filter(function(task, idx) { return task && raw.indexOf(task) === idx; });
     };
 
+    var normalizeTaskStatus = function(value) {
+      var slug = firstString([value]).toLowerCase().replace(/[^a-z0-9]+/g, '_');
+      if (!slug) return '';
+      if (['in_progress', 'running', 'active', 'executing', 'working'].indexOf(slug) !== -1) return 'in_progress';
+      if (['blocked', 'paused', 'waiting', 'at_risk'].indexOf(slug) !== -1) return 'blocked';
+      if (['done', 'complete', 'completed', 'approved', 'shipped'].indexOf(slug) !== -1) return 'done';
+      if (['todo', 'not_started', 'queued', 'pending', 'draft', 'backlog'].indexOf(slug) !== -1) return 'todo';
+      return '';
+    };
+
+    var extractTaskRecords = function(agent) {
+      var records = [];
+      var arrays = [agent.current_tasks, agent.active_tasks, agent.tasks];
+      arrays.forEach(function(candidate) {
+        if (!Array.isArray(candidate)) return;
+        candidate.forEach(function(item) {
+          if (item && typeof item === 'object') {
+            var title = firstString([item.title, item.summary, item.name, item.description]);
+            if (!title) return;
+            records.push({
+              id: firstString([item.id, item.task_id, item.taskId, item.entity_id, item.entityId]) || title,
+              title: title,
+              status: normalizeTaskStatus(firstString([item.status, item.state])),
+            });
+            return;
+          }
+          if (typeof item === 'string' && item.trim()) {
+            records.push({ id: item.trim(), title: item.trim(), status: '' });
+          }
+        });
+      });
+      var primary = firstString([
+        agent.current_task,
+        agent.active_task,
+        agent.task_summary,
+        agent.task,
+        agent.message
+      ]);
+      if (primary) {
+        records.unshift({
+          id: primary,
+          title: primary,
+          status: normalizeTaskStatus(agent.status)
+        });
+      }
+      var seen = {};
+      return records.filter(function(record) {
+        var key = record.id || record.title;
+        if (!key || seen[key]) return false;
+        seen[key] = true;
+        return true;
+      });
+    };
+
+    var summarizeWorkload = function(agent, fallback) {
+      var workload = fallback && typeof fallback === 'object' ? fallback : {};
+      var taskRecords = extractTaskRecords(agent || {});
+      var derived = { todo: 0, in_progress: 0, blocked: 0, done: 0 };
+      taskRecords.forEach(function(task) {
+        var status = normalizeTaskStatus(task.status);
+        if (status && derived[status] !== undefined) derived[status] += 1;
+      });
+
+      var activeCount = derived.in_progress > 0
+        ? derived.in_progress
+        : (typeof workload.tasks_in_progress === 'number' && isFinite(workload.tasks_in_progress) ? workload.tasks_in_progress : taskRecords.length);
+      var blockedCount = derived.blocked > 0
+        ? derived.blocked
+        : (typeof workload.blocked_count === 'number' && isFinite(workload.blocked_count) ? workload.blocked_count : (Array.isArray(agent.blockers) ? agent.blockers.length : 0));
+      var doneCount = derived.done;
+      var todoCount = derived.todo;
+      var taskTotal = taskRecords.length > 0
+        ? taskRecords.length
+        : Math.max(activeCount + blockedCount + doneCount + todoCount, 0);
+
+      if (taskTotal < activeCount + blockedCount + doneCount) {
+        taskTotal = activeCount + blockedCount + doneCount;
+      }
+
+      if (taskTotal === 0 && activeCount > 0) {
+        taskTotal = activeCount + blockedCount;
+      }
+
+      var streamCount = typeof workload.stream_count === 'number' && isFinite(workload.stream_count)
+        ? workload.stream_count
+        : 0;
+
+      return {
+        total: taskTotal,
+        active: activeCount,
+        blocked: blockedCount,
+        done: doneCount,
+        todo: Math.max(0, taskTotal - activeCount - blockedCount - doneCount, todoCount),
+        streams: streamCount
+      };
+    };
+
     var formatTime = d => { const dt = new Date(d); return `[${dt.getHours().toString().padStart(2,'0')}:${dt.getMinutes().toString().padStart(2,'0')}:${dt.getSeconds().toString().padStart(2,'0')}]`; };
     var titleCase = value => String(value || '').replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     var inferRole = agent => {
@@ -1172,15 +1448,18 @@
           ? agent.artifact_count
           : artifacts.length;
         var workload = agent.workload && typeof agent.workload === 'object' ? agent.workload : {};
-        var tasksInProgress = typeof workload.tasks_in_progress === 'number' && isFinite(workload.tasks_in_progress)
-          ? workload.tasks_in_progress
-          : taskCount;
-        var blockedCount = typeof workload.blocked_count === 'number' && isFinite(workload.blocked_count)
-          ? workload.blocked_count
-          : blockers.length;
-        var streamCount = typeof workload.stream_count === 'number' && isFinite(workload.stream_count)
-          ? workload.stream_count
-          : 0;
+        var workloadSummary = summarizeWorkload(agent, workload);
+        var tasksInProgress = workloadSummary.active;
+        var blockedCount = workloadSummary.blocked;
+        var streamCount = workloadSummary.streams;
+        var totalTasks = workloadSummary.total;
+        var todoCount = workloadSummary.todo;
+        var doneCount = workloadSummary.done;
+        var distributionDenominator = Math.max(totalTasks, tasksInProgress + blockedCount + doneCount + todoCount, 1);
+        var activeShare = Math.max(0, Math.min(100, (tasksInProgress / distributionDenominator) * 100));
+        var blockedShare = Math.max(0, Math.min(100, (blockedCount / distributionDenominator) * 100));
+        var doneShare = Math.max(0, Math.min(100, (doneCount / distributionDenominator) * 100));
+        var todoShare = Math.max(0, 100 - activeShare - blockedShare - doneShare);
         var href = agent.initiative_id
           ? ORGX_BASE_URL + '/live/' + encodeURIComponent(agent.initiative_id)
           : buildAgentUrl(agent.agent_id);
@@ -1270,12 +1549,42 @@
                   ${artifactMiniHtml ? `<div class="artifact-mini-list">${artifactMiniHtml}</div>` : `<div class="task-subcopy">No artifacts surfaced yet for this agent in the current initiative context.</div>`}
                 </div>
 
-                <div>
-                  <div class="ox-eyebrow" style="margin-bottom:8px;">Workload</div>
-                  <div class="workload-row">
-                    <span class="workload-pill">${tasksInProgress} task${tasksInProgress === 1 ? '' : 's'} in progress</span>
-                    <span class="workload-pill">${blockedCount} blocked</span>
-                    <span class="workload-pill">${streamCount} stream${streamCount === 1 ? '' : 's'}</span>
+                <div class="workload-panel">
+                  <div class="workload-head">
+                    <div class="ox-eyebrow">Task distribution</div>
+                    <div class="workload-head-stats">
+                      <span class="workload-head-stat"><strong>${totalTasks}</strong> total</span>
+                      <span class="workload-head-stat${blockedCount > 0 ? ' is-alert' : ''}"><strong>${blockedCount}</strong> blocked</span>
+                    </div>
+                  </div>
+                  <div class="workload-track" aria-hidden="true">
+                    ${todoShare > 0 ? `<span class="workload-segment workload-segment-todo" style="width:${todoShare}%"></span>` : ''}
+                    ${activeShare > 0 ? `<span class="workload-segment workload-segment-active" style="width:${activeShare}%"></span>` : ''}
+                    ${doneShare > 0 ? `<span class="workload-segment workload-segment-done" style="width:${doneShare}%"></span>` : ''}
+                    ${blockedShare > 0 ? `<span class="workload-segment workload-segment-blocked" style="width:${blockedShare}%"></span>` : ''}
+                  </div>
+                  <div class="workload-stats">
+                    <div class="workload-stat">
+                      <div class="workload-stat-icon">${icons.task(14)}</div>
+                      <div class="workload-stat-copy">
+                        <div class="workload-stat-value">${tasksInProgress} active task${tasksInProgress === 1 ? '' : 's'}</div>
+                        <div class="workload-stat-label">${tasksInProgress > 0 ? 'Currently routed to this agent' : 'No active task in motion'}</div>
+                      </div>
+                    </div>
+                    <div class="workload-stat is-blocked">
+                      <div class="workload-stat-icon">${icons.blocked(14)}</div>
+                      <div class="workload-stat-copy">
+                        <div class="workload-stat-value">${blockedCount} blocked</div>
+                        <div class="workload-stat-label">${blockedCount > 0 ? 'Needs decision or dependency relief' : 'No active blockers right now'}</div>
+                      </div>
+                    </div>
+                    <div class="workload-stat is-streams">
+                      <div class="workload-stat-icon">${icons.stream(14)}</div>
+                      <div class="workload-stat-copy">
+                        <div class="workload-stat-value">${streamCount} stream${streamCount === 1 ? '' : 's'}</div>
+                        <div class="workload-stat-label">${streamCount > 0 ? 'Initiative lanes currently touching this agent' : 'No parallel stream context attached'}</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1298,8 +1607,8 @@
       `);
     };
 
-    if(isDemo) render();
-    else initWidget({ render: d => { if(d) data = d; isLoading = false; render(); } });
+    if(isDemo) applyBootPayload();
+    else initWidget({ render: d => { applyBootPayload(function(){ if(d) data = d; }); } });
   </script>
 </body>
 </html>
