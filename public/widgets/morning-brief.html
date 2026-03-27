@@ -384,6 +384,23 @@
       // Overwrite initWidget to do nothing so it hangs on loading
       initWidget = () => { render(); };
     }
+    var bootStartedAt = Date.now();
+    var MIN_LOADING_MS = 220;
+    var loadingSettled = false;
+    var applyBootPayload = function(assign) {
+      var commit = function() {
+        if (typeof assign === 'function') assign();
+        isLoading = false;
+        render();
+      };
+      if (loadingSettled) {
+        commit();
+        return;
+      }
+      loadingSettled = true;
+      var delay = Math.max(0, MIN_LOADING_MS - (Date.now() - bootStartedAt));
+      window.setTimeout(commit, delay);
+    };
     var formatCurrency = (value) => {
       var num = Number(value);
       if (!Number.isFinite(num)) return null;
@@ -654,8 +671,8 @@
       `);
     };
 
-    if(isDemo) render();
-    else initWidget({ render: d => { if(d) brief = d; isLoading = false; render(); } });
+    if(isDemo) applyBootPayload();
+    else initWidget({ render: d => { applyBootPayload(function(){ if(d) brief = d; }); } });
   </script>
 </body>
 </html>

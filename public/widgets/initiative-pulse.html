@@ -777,7 +777,7 @@
       <div id="content" aria-live="polite">
         <!-- Render a skeleton immediately to avoid a "Loading..." flash before JS boots -->
         <div
-          class="skeleton-card"
+          class="skeleton-wrapper skeleton-card"
           role="status"
           aria-label="Loading initiative"
         >
@@ -860,6 +860,23 @@
     
     var isLoading = !isDemo;
     if (isLoadingOverride) { isLoading = true; isDemo = false; initWidget = () => { render(); }; }
+    var bootStartedAt = Date.now();
+    var MIN_LOADING_MS = 220;
+    var loadingSettled = false;
+    var applyBootPayload = function(assign) {
+      var commit = function() {
+        if (typeof assign === 'function') assign();
+        isLoading = false;
+        render();
+      };
+      if (loadingSettled) {
+        commit();
+        return;
+      }
+      loadingSettled = true;
+      var delay = Math.max(0, MIN_LOADING_MS - (Date.now() - bootStartedAt));
+      window.setTimeout(commit, delay);
+    };
 
     var formatUsd = (value) => { const num = Number(value); if (!Number.isFinite(num)) return null; return '$' + num.toFixed(2); };
     var formatRoi = (value) => { if (value === null) return 'N/A'; const pct = Math.round(value * 100); return (pct > 0 ? '+' : '') + pct + '%'; };
@@ -1085,8 +1102,8 @@
       `);
     };
 
-    if(isDemo) render();
-    else initWidget({ render: d => { if(d) pulse = d; isLoading = false; render(); } });
+    if(isDemo) applyBootPayload();
+    else initWidget({ render: d => { applyBootPayload(function(){ if(d) pulse = d; }); } });
   </script>
   </body>
 </html>

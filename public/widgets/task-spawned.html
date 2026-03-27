@@ -395,6 +395,23 @@
     var entity = isDemo ? { id: 'TSK-942', type: 'task', title: 'Implement rate limiting middleware for public API', agent_name: 'Eli', status: 'In Progress', domain: 'Engineering', workspace_name: 'Core Platform', links: [{ platform: 'Linear', url: '#', label: 'ENG-142' }] } : null;
     var isLoading = !isDemo;
     if (isLoadingOverride) { isLoading = true; isDemo = false; initWidget = () => { render(); }; }
+    var bootStartedAt = Date.now();
+    var MIN_LOADING_MS = 220;
+    var loadingSettled = false;
+    var applyBootPayload = function(assign) {
+      var commit = function() {
+        if (typeof assign === 'function') assign();
+        isLoading = false;
+        render();
+      };
+      if (loadingSettled) {
+        commit();
+        return;
+      }
+      loadingSettled = true;
+      var delay = Math.max(0, MIN_LOADING_MS - (Date.now() - bootStartedAt));
+      window.setTimeout(commit, delay);
+    };
     function openWidgetLink(url,event){if(!url)return false;var protocol=_detectProtocol();if(protocol==='mcp-apps'){if(event&&typeof event.preventDefault==='function')event.preventDefault();window.parent.postMessage({jsonrpc:'2.0',id:_mcpNextId++,method:'ui/open-link',params:{url:url}},'*');return false;}return true;}
 
     function resolveWidgetAsset(path){
@@ -641,8 +658,8 @@
     };
 
 
-    if (isDemo) render();
-    else initWidget({ render: d => { if(d) entity = d; isLoading = false; render(); } });
+    if (isDemo) applyBootPayload();
+    else initWidget({ render: d => { applyBootPayload(function(){ if(d) entity = d; }); } });
 
   </script>
 </body>
