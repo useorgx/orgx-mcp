@@ -421,6 +421,25 @@
         gap: 12px;
         margin-bottom: 14px;
       }
+      .artifact-panel-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+      .artifact-panel-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(var(--ox-primary-rgb), 0.1);
+        border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
+        color: var(--ox-primary);
+        flex-shrink: 0;
+      }
+      .artifact-panel-icon svg { width: 16px; height: 16px; }
 
       .artifact-count {
         font-family: var(--ox-mono);
@@ -443,6 +462,25 @@
         background: var(--ox-well-bg);
         box-shadow: var(--ox-well-shadow);
       }
+      .artifact-row-main {
+        display: flex;
+        gap: 12px;
+        min-width: 0;
+      }
+      .artifact-row-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(var(--ox-primary-rgb), 0.08);
+        border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
+        color: var(--ox-primary);
+        flex-shrink: 0;
+      }
+      .artifact-row-icon svg { width: 16px; height: 16px; }
+      .artifact-row-body { min-width: 0; flex: 1; }
 
       .artifact-row-header {
         display: flex;
@@ -505,6 +543,31 @@
         display: flex;
         justify-content: flex-end;
       }
+      .detail-header {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .detail-icon {
+        width: 24px;
+        height: 24px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(var(--ox-primary-rgb), 0.08);
+        border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
+        color: var(--ox-primary);
+        flex-shrink: 0;
+      }
+      .detail-icon svg { width: 13px; height: 13px; }
+      .milestone-section-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 24px;
+        margin-bottom: 12px;
+      }
 
       .artifact-link {
         display: inline-flex;
@@ -514,6 +577,31 @@
         font-weight: 600;
         color: var(--ox-text);
         text-decoration: none;
+      }
+      .artifact-row-actions {
+        margin-top: 12px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .artifact-chip-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--ox-border);
+        background: rgba(255, 255, 255, 0.02);
+        color: var(--ox-text);
+        text-decoration: none;
+        font-family: var(--ox-mono);
+        font-size: 0.66rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .artifact-chip-link:hover {
+        border-color: rgba(var(--ox-primary-rgb), 0.22);
+        background: rgba(var(--ox-primary-rgb), 0.08);
       }
 
       .milestone-row {
@@ -834,6 +922,9 @@
       external: function(s){return _svg('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>',s);},
       check: function(s){return _svg('<polyline points="20 6 9 17 4 12"></polyline>',s);},
       error: function(s){return _svg('<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>',s);},
+      layers: function(s){return _svg('<polygon points="12 2 22 8 12 14 2 8 12 2"></polygon><polyline points="2 12 12 18 22 12"></polyline><polyline points="2 16 12 22 22 16"></polyline>',s);},
+      file: function(s){return _svg('<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline>',s);},
+      clipboard: function(s){return _svg('<rect x="9" y="2" width="6" height="4" rx="1"></rect><path d="M9 4H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2"></path><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="16" x2="13" y2="16"></line>',s);},
     };
     var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
 
@@ -851,9 +942,9 @@
         health_score: 78,
         blockers: ["Waiting for final design assets from marketing", "Need security audit completion before launch"],
         recent_artifacts: [
-          { id: 'artifact-1', name: 'server.json manifest', status: 'approved', artifact_type: 'eng.config', created_at: new Date(Date.now() - 1000 * 60 * 120).toISOString(), created_by_name: 'Eli', summary: 'App Store manifest drafted for registry submission and compliance review.' },
-          { id: 'artifact-2', name: 'DNS verification report', status: 'approved', artifact_type: 'eng.report', created_at: new Date(Date.now() - 1000 * 60 * 105).toISOString(), created_by_name: 'Eli', summary: 'TXT record resolved and verified against the domain challenge.' },
-          { id: 'artifact-3', name: 'Connector description', status: 'in_review', artifact_type: 'mktg.copy', created_at: new Date(Date.now() - 1000 * 60 * 75).toISOString(), created_by_name: 'Mark', summary: 'Store listing copy drafted for founder review.' }
+          { id: 'artifact-1', name: 'server.json manifest', status: 'approved', artifact_type: 'eng.config', created_at: new Date(Date.now() - 1000 * 60 * 120).toISOString(), created_by_name: 'Eli', summary: 'App Store manifest drafted for registry submission and compliance review.', primary_url: 'https://useorgx.com/artifacts/artifact-1', primary_label: 'Open artifact', live_url: 'https://useorgx.com/live/INI-402' },
+          { id: 'artifact-2', name: 'DNS verification report', status: 'approved', artifact_type: 'eng.report', created_at: new Date(Date.now() - 1000 * 60 * 105).toISOString(), created_by_name: 'Eli', summary: 'TXT record resolved and verified against the domain challenge.', primary_url: 'https://useorgx.com/artifacts/artifact-2', primary_label: 'Open artifact', live_url: 'https://useorgx.com/live/INI-402' },
+          { id: 'artifact-3', name: 'Connector description', status: 'in_review', artifact_type: 'mktg.copy', created_at: new Date(Date.now() - 1000 * 60 * 75).toISOString(), created_by_name: 'Mark', summary: 'Store listing copy drafted for founder review.', primary_url: 'https://useorgx.com/artifacts/artifact-3', primary_label: 'Review in OrgX', live_url: 'https://useorgx.com/live/INI-402' }
         ],
         artifact_summary: { total: 3, approved: 2, in_review: 1 }
     } : null;
@@ -873,6 +964,20 @@
       if (hours < 24) return hours + 'h ago';
       var days = Math.round(hours / 24);
       return days + 'd ago';
+    };
+    var artifactUrl = function(artifact, fallbackUrl) {
+      if (artifact && typeof artifact.primary_url === 'string' && artifact.primary_url) return artifact.primary_url;
+      if (artifact && typeof artifact.live_url === 'string' && artifact.live_url) return artifact.live_url;
+      return fallbackUrl;
+    };
+    var artifactLabel = function(artifact) {
+      return escapeHtml((artifact && typeof artifact.primary_label === 'string' && artifact.primary_label) || 'Open artifact');
+    };
+    var artifactIcon = function(artifactType) {
+      var type = String(artifactType || '').toLowerCase();
+      if (type.indexOf('report') >= 0 || type.indexOf('plan') >= 0) return icons.clipboard(16);
+      if (type.indexOf('copy') >= 0 || type.indexOf('content') >= 0) return icons.file(16);
+      return icons.layers(16);
     };
     var normalizePulse = payload => {
       if (!payload) return null;
@@ -962,11 +1067,12 @@
       ` : `<div class="insight-empty">No prescribed next steps yet. Use the live view to inspect workstreams and unblock the sprint.</div>`;
       const blockerPanelHtml = (pulse.blockers || []).length ? blockersHtml : `
         <div class="insight-card">
-          <div class="detail-label">Blockers</div>
+          <div class="detail-header"><span class="detail-icon">${icons.error(13)}</span><div class="detail-label">Blockers</div></div>
           <div class="insight-empty">No blockers reported in the current pulse.</div>
         </div>
       `;
       const milestonesHtml = (pulse.milestones || []).length ? `
+        <div class="milestone-section-title"><span class="detail-icon">${icons.layers(13)}</span><div class="detail-label">Milestone progress</div></div>
         <div class="milestone-list">
           ${(pulse.milestones || []).slice(0, 4).map(milestone => `
             <div class="milestone-row">
@@ -986,7 +1092,7 @@
       const recentArtifactsHtml = (pulse.recent_artifacts || []).length ? `
         <div class="artifact-panel">
           <div class="artifact-panel-header">
-            <div class="detail-label">Recent artifacts</div>
+            <div class="artifact-panel-title"><span class="artifact-panel-icon">${icons.layers(16)}</span><div class="detail-label">Recent artifacts</div></div>
             <div class="artifact-count">${escapeHtml(String((pulse.artifact_summary && pulse.artifact_summary.total) || pulse.recent_artifacts.length))} total</div>
           </div>
           <div class="artifact-list">
@@ -998,18 +1104,28 @@
               var author = escapeHtml(artifact.created_by_name || artifact.created_by || 'OrgX agent');
               var age = formatRelative(artifact.created_at || artifact.updated_at);
               var summary = escapeHtml(artifact.summary || artifact.description || '');
+              var primaryUrl = artifactUrl(artifact, dashboardUrl);
+              var primaryLabel = artifactLabel(artifact);
               return `
                 <div class="artifact-row">
-                  <div class="artifact-row-header">
-                    <div class="artifact-title">${title}</div>
-                    <span class="artifact-pill ${statusClass}">${status}</span>
+                  <div class="artifact-row-main">
+                    <div class="artifact-row-icon">${artifactIcon(artifact.artifact_type)}</div>
+                    <div class="artifact-row-body">
+                      <div class="artifact-row-header">
+                        <div class="artifact-title">${title}</div>
+                        <span class="artifact-pill ${statusClass}">${status}</span>
+                      </div>
+                      <div class="artifact-meta">
+                        <span class="artifact-pill">${type}</span>
+                        <span class="artifact-pill">${author}</span>
+                        ${age ? `<span class="artifact-pill">${escapeHtml(age)}</span>` : ''}
+                      </div>
+                      ${summary ? `<div class="artifact-copy">${summary}</div>` : ''}
+                      <div class="artifact-row-actions">
+                        <a href="${primaryUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(primaryUrl))}, event)' class="artifact-chip-link">${icons.external(14)} ${primaryLabel}</a>
+                      </div>
+                    </div>
                   </div>
-                  <div class="artifact-meta">
-                    <span class="artifact-pill">${type}</span>
-                    <span class="artifact-pill">${author}</span>
-                    ${age ? `<span class="artifact-pill">${escapeHtml(age)}</span>` : ''}
-                  </div>
-                  ${summary ? `<div class="artifact-copy">${summary}</div>` : ''}
                 </div>
               `;
             }).join('')}
@@ -1054,11 +1170,11 @@
 
             <div class="insight-grid">
               <div class="insight-card">
-                <div class="detail-label">Immediate next steps</div>
+                <div class="detail-header"><span class="detail-icon">${icons.clipboard(13)}</span><div class="detail-label">Immediate next steps</div></div>
                 ${nextStepsHtml}
               </div>
               <div class="insight-card">
-                <div class="detail-label">Workstream state</div>
+                <div class="detail-header"><span class="detail-icon">${icons.layers(13)}</span><div class="detail-label">Workstream state</div></div>
                 <ul class="insight-list">
                   <li>${activeWorkstreams} active workstream${activeWorkstreams === 1 ? '' : 's'}</li>
                   <li>${pulse.blocked_workstreams || 0} blocked workstream${(pulse.blocked_workstreams || 0) === 1 ? '' : 's'}</li>

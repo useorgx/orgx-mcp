@@ -90,6 +90,11 @@ describe('widget artifact proof helpers', () => {
       approved: 2,
       in_review: 0,
     });
+    expect((payload.recent_artifacts as Array<Record<string, unknown>>)[0]).toMatchObject({
+      primary_label: 'Open artifact',
+      primary_url: 'https://useorgx.com/artifacts/artifact-1',
+      live_url: 'https://useorgx.com/live/init-1',
+    });
   });
 
   it('adds overnight output and review items to morning briefs', () => {
@@ -107,6 +112,10 @@ describe('widget artifact proof helpers', () => {
       total: 2,
       approved: 1,
       in_review: 1,
+    });
+    expect((payload.review_items as Array<Record<string, unknown>>)[0]).toMatchObject({
+      primary_label: 'Open artifact',
+      primary_url: 'https://useorgx.com/artifacts/artifact-2',
     });
   });
 });
