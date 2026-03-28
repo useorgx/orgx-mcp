@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Initiative Pulse - OrgX</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Initiative Pulse - OrgX</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='15' fill='none' stroke='%2300C9A7' stroke-width='6'/%3E%3Cpath d='M20 34l7-7 6 6 12-12' stroke='%2300C9A7' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="shared/widget-foundation.css" />
     <style>
       :root, :root[data-theme="light"] {
         --ox-bg: #f8fafc;
@@ -1168,12 +1170,25 @@
       ` : '';
 
       injectHtml(`
-        <div class="ox-card animate-in">
-          <div class="ox-card-inner">
-            <div class="pulse-header">
-              <span class="pulse-name">${safeName}</span>
-              <span class="status-badge status-${normalizedStatus}">${safeStatus}</span>
-            </div>
+        <div class="widget-shell-card animate-in">
+          <div class="ox-card">
+            <div class="ox-card-inner">
+              <div class="widget-hero">
+                <div class="widget-hero-copy">
+                  <div class="widget-kicker">Initiative Pulse</div>
+                  <div class="widget-title-lg">${safeName}</div>
+                  <div class="widget-subtitle">${safeMessage || 'Health, momentum, blockers, and recent output for the current initiative.'}</div>
+                  <div class="widget-pill-row">
+                    <span class="widget-note-pill">${progressPct}% progress</span>
+                    <span class="widget-note-pill">${pendingDecisions} pending decisions</span>
+                    <span class="widget-note-pill">${activeWorkstreams}${totalWorkstreams ? ` / ${totalWorkstreams}` : ''} active workstreams</span>
+                  </div>
+                </div>
+                <div class="widget-stack" style="align-items:flex-end; gap:10px;">
+                  <div class="widget-icon-frame">${icons.layers(20)}</div>
+                  <span class="status-badge status-${normalizedStatus}">${safeStatus}</span>
+                </div>
+              </div>
 
             <div class="pulse-metrics">
               <div class="metric"><span class="metric-label">Progress</span><span class="metric-value">${progressPct}%</span></div>
@@ -1194,8 +1209,6 @@
               <span>${getHealthLabel(healthScore)} (${healthScore})</span>
             </div>
 
-            ${safeMessage ? `<div class="pulse-message">${safeMessage}</div>` : ''}
-
             <div class="insight-grid">
               <div class="insight-card">
                 <div class="detail-header"><span class="detail-icon">${icons.clipboard(13)}</span><div class="detail-label">Immediate next steps</div></div>
@@ -1215,13 +1228,14 @@
             ${milestonesHtml}
             ${blockerPanelHtml}
 
-            <div class="widget-footer">
-              <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
-              <div class="pulse-cta-row">
-                <a href="${dashboardUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(dashboardUrl || ''))}, event)' class="cta-button">
-                  <span class="cta-button__label">${pulse.live_url ? 'Open Live View' : 'Open Dashboard'}</span>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                </a>
+              <div class="widget-footer">
+                <span class="widget-footer-meta">Synced</span>
+                <div class="pulse-cta-row">
+                  <a href="${dashboardUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(dashboardUrl || ''))}, event)' class="cta-button">
+                    <span class="cta-button__label">${pulse.live_url ? 'Open Live View' : 'Open Dashboard'}</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                  </a>
+                </div>
               </div>
             </div>
           </div>

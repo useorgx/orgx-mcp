@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Morning Brief - OrgX</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='12' fill='%23FBBF24'/%3E%3Cg stroke='%23FBBF24' stroke-width='4' stroke-linecap='round'%3E%3Cpath d='M32 6v10'/%3E%3Cpath d='M32 48v10'/%3E%3Cpath d='M6 32h10'/%3E%3Cpath d='M48 32h10'/%3E%3Cpath d='M13 13l7 7'/%3E%3Cpath d='M44 44l7 7'/%3E%3Cpath d='M13 51l7-7'/%3E%3Cpath d='M44 20l7-7'/%3E%3C/g%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="shared/widget-foundation.css" />
   <style>
       :root, :root[data-theme="light"] {
         --ox-bg: #f8fafc;
@@ -692,72 +694,80 @@
       `).join('');
 
       injectHtml(`
-        <div class="ox-card animate-in">
-          <div class="ox-card-inner">
-            <div class="brief-header">
-              <div>
-                <h1 class="ox-title" style="font-size:1.5rem; margin-bottom:4px;">Morning Brief</h1>
-                <div class="ox-eyebrow">${escapeHtml(normalized.date)}</div>
+        <div class="widget-shell-card animate-in">
+          <div class="ox-card">
+            <div class="ox-card-inner">
+              <div class="widget-hero">
+                <div class="widget-hero-copy">
+                  <div class="widget-kicker">Morning Brief</div>
+                  <div class="widget-title-lg">${escapeHtml(normalized.date)}</div>
+                  <div class="widget-subtitle">${escapeHtml(normalized.summary)}</div>
+                  <div class="widget-pill-row">
+                    <span class="widget-note-pill">${normalized.priorities.length} priorities</span>
+                    ${normalized.attentionSignals && normalized.attentionSignals.length ? `<span class="widget-note-pill">${normalized.attentionSignals.length} attention signals</span>` : ''}
+                    ${normalized.exceptions && normalized.exceptions.length ? `<span class="widget-note-pill">${normalized.exceptions.length} exceptions</span>` : ''}
+                  </div>
+                </div>
+                <div class="widget-icon-frame">${icons.sun(20)}</div>
               </div>
-              <div class="icon-box">${icons.sun(24)}</div>
-            </div>
-            
-            <div class="brief-note">
-              <div class="ox-eyebrow" style="margin-bottom:8px; color:var(--ox-primary);">TL;DR</div>
-              <div class="ox-text">${escapeHtml(normalized.summary)}</div>
-            </div>
 
-            <div class="metrics-grid">${metricsHtml}</div>
+              <div class="metrics-grid">${metricsHtml}</div>
 
-            <div style="margin-bottom: 24px;">
-              <div class="section-title">
-                <div class="section-title-copy"><span class="section-icon">${icons.layers(15)}</span><div class="ox-eyebrow">Top priorities</div></div>
-                <div class="rule"></div>
+              <div class="widget-section-block">
+                <div class="widget-section-header">
+                  <span class="widget-section-icon">${icons.layers(15)}</span>
+                  <div class="widget-section-title">Top priorities</div>
+                  <div class="widget-section-rule"></div>
+                </div>
+                <div class="priority-list">${prioritiesHtml || `<div class="ox-well"><div class="ox-text">No priority follow-ups were captured in this brief.</div></div>`}</div>
               </div>
-              <div class="priority-list">${prioritiesHtml || `<div class="ox-well"><div class="ox-text">No priority follow-ups were captured in this brief.</div></div>`}</div>
-            </div>
 
             ${receiptsHtml ? `
-              <div style="margin-bottom: 24px;">
-                <div class="section-title">
-                  <div class="section-title-copy"><span class="section-icon">${icons.clipboard(15)}</span><div class="ox-eyebrow">Top receipts</div></div>
-                  <div class="rule"></div>
+              <div class="widget-section-block">
+                <div class="widget-section-header">
+                  <span class="widget-section-icon">${icons.clipboard(15)}</span>
+                  <div class="widget-section-title">Top receipts</div>
+                  <div class="widget-section-rule"></div>
                 </div>
                 <div class="priority-list">${receiptsHtml}</div>
               </div>
             ` : ''}
 
             ${artifactOutputHtml ? `
-              <div style="margin-bottom: 24px;">
-                <div class="section-title">
-                  <div class="section-title-copy"><span class="section-icon">${icons.file(15)}</span><div class="ox-eyebrow">Overnight output</div></div>
-                  <div class="rule"></div>
+              <div class="widget-section-block">
+                <div class="widget-section-header">
+                  <span class="widget-section-icon">${icons.file(15)}</span>
+                  <div class="widget-section-title">Overnight output</div>
+                  <div class="widget-section-rule"></div>
                 </div>
                 <div class="artifact-output-grid">${artifactOutputHtml}</div>
               </div>
             ` : ''}
 
             ${reviewItemsHtml ? `
-              <div style="margin-bottom: 24px;">
-                <div class="section-title">
-                  <div class="section-title-copy"><span class="section-icon">${icons.eye(15)}</span><div class="ox-eyebrow">Needs your review</div></div>
-                  <div class="rule"></div>
+              <div class="widget-section-block">
+                <div class="widget-section-header">
+                  <span class="widget-section-icon">${icons.eye(15)}</span>
+                  <div class="widget-section-title">Needs your review</div>
+                  <div class="widget-section-rule"></div>
                 </div>
                 <div class="artifact-output-grid">${reviewItemsHtml}</div>
               </div>
             ` : ''}
 
             ${attentionHtml || exceptionsHtml || normalized.narrativeAvailable ? `
-              <div>
-                <div class="section-title">
-                  <div class="section-title-copy"><span class="section-icon">${icons.alert(15)}</span><div class="ox-eyebrow">Needs attention</div></div>
-                  <div class="rule"></div>
+              <div class="widget-section-block">
+                <div class="widget-section-header">
+                  <span class="widget-section-icon">${icons.alert(15)}</span>
+                  <div class="widget-section-title">Needs attention</div>
+                  <div class="widget-section-rule"></div>
                 </div>
                 ${attentionHtml ? `<div class="signal-list">${attentionHtml}</div>` : ''}
                 ${exceptionsHtml ? `<div class="exception-list">${exceptionsHtml}</div>` : ''}
                 ${normalized.narrativeAvailable ? `<div class="brief-note" style="margin-top: 12px; margin-bottom: 0;">A narrative brief is available in the payload for downstream clients that want the full written summary.</div>` : ''}
               </div>
             ` : ''}
+            </div>
           </div>
         </div>
       `);

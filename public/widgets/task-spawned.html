@@ -4,7 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Entity Spawned - OrgX</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='15' fill='none' stroke='%236366f1' stroke-width='6'/%3E%3Cpath d='M24 32h16' stroke='%236366f1' stroke-width='6' stroke-linecap='round'/%3E%3Cpath d='M32 24v16' stroke='%236366f1' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
+  <link rel="stylesheet" href="shared/widget-foundation.css" />
   <script src="shared/interaction-kit.js"></script>
   <style>
       :root, :root[data-theme="light"] {
@@ -599,59 +601,64 @@
       const consoleUrl = entity.console_url || (entity.id ? buildEntityUrl(entity.type, entity.id, entity.initiative_id) : ORGX_BASE_URL);
 
       injectHtml(`
-        <div class="ox-card animate-in" style="--agent-accent-rgb:${agentProfile.accentRgb};">
-          <div class="ox-card-inner">
-            
-            <div class="dispatch-header" style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--ox-border); display: flex; align-items: center; justify-content: space-between;">
-              <div>
-                <div class="ox-eyebrow" style="color: var(--ox-primary); margin-bottom:6px;">Agent Dispatched</div>
-                <div style="display:flex; align-items:center; gap:8px; font-family:var(--ox-mono); font-size:0.75rem; color:var(--ox-text-muted); font-weight:600;">
-                  <span style="color:var(--ox-text); display:flex; align-items:center;">${typeIcon}</span>
-                  ${typeDisplay} <span style="color:var(--ox-text);">${escapeHtml(entity.id)}</span>
+        <div class="widget-shell-card animate-in" style="--agent-accent-rgb:${agentProfile.accentRgb};">
+          <div class="ox-card">
+            <div class="ox-card-inner">
+              <div class="widget-hero">
+                <div class="widget-hero-copy">
+                  <div class="widget-kicker">Agent Dispatched</div>
+                  <div class="widget-title-lg">${escapeHtml(entity.title)}</div>
+                  <div class="widget-subtitle">${entity.note ? escapeHtml(entity.note) : 'OrgX accepted the dispatch and is handing the work to the assigned execution surface.'}</div>
+                  <div class="widget-pill-row">
+                    <span class="widget-note-pill">${typeDisplay}</span>
+                    <span class="widget-note-pill">${escapeHtml(entity.id)}</span>
+                    ${entity.initiative_name ? `<span class="widget-note-pill">${escapeHtml(entity.initiative_name)}</span>` : ''}
+                  </div>
+                </div>
+                <div class="widget-stack" style="align-items:flex-end; gap:10px;">
+                  <div class="widget-icon-frame">${typeIcon}</div>
+                  <div class="radar-container" aria-label="Agent Active" title="Agent is executing">
+                    <div class="radar-ring"></div>
+                    <div class="radar-dot"></div>
+                  </div>
                 </div>
               </div>
-              <div class="radar-container" aria-label="Agent Active" title="Agent is executing">
-                <div class="radar-ring"></div>
-                <div class="radar-dot"></div>
-              </div>
-            </div>
-            
-            <h2 class="ox-title" style="font-size:1.3rem; margin-bottom:24px; line-height:1.4;">${escapeHtml(entity.title)}</h2>
-            ${entity.note ? `<div class="dispatch-note">${escapeHtml(entity.note)}</div>` : ''}
-            ${!entity.agent_ready || !entity.workspace_ready ? `<div class="dispatch-note">OrgX accepted the dispatch, but the canonical handoff context is still syncing. The card will update once the server returns the assigned agent and workspace.</div>` : ''}
-            
-            <div class="agent-row" style="display:flex; align-items:center; gap:16px; padding:16px; background:var(--ox-well-bg); border:1px solid var(--ox-border); border-radius:12px; margin-bottom:24px; box-shadow:var(--ox-well-shadow);">
-              <div class="spawn-avatar">
-                ${renderAvatar(entity.agent_name || entity.domain || 'Pending')}
-              </div>
-              <div class="agent-meta" style="flex:1;">
-                <div style="font-family:var(--ox-mono); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ox-text-muted); margin-bottom:4px; font-weight:600;">Assigned Agent</div>
-                <div class="dispatch-value ${entity.agent_ready ? '' : 'dispatch-value--pending'}">${escapeHtml(entity.agent_name || 'Awaiting agent confirmation')}</div>
-              </div>
-            </div>
-            
-            <div class="meta-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px;">
-              <div>
-                <div class="ox-eyebrow" style="margin-bottom:6px;">Domain</div>
-                <div class="dispatch-value ${entity.domain_ready ? '' : 'dispatch-value--pending'}">${escapeHtml(entity.domain || 'Pending routing')}</div>
-              </div>
-              <div>
-                <div class="ox-eyebrow" style="margin-bottom:6px;">Workspace</div>
-                <div class="dispatch-value ${entity.workspace_ready ? '' : 'dispatch-value--pending'}">${escapeHtml(entity.workspace_name || 'Pending context sync')}</div>
-              </div>
-            </div>
-            ${entity.initiative_name ? `<div style="margin-top:-8px; margin-bottom:24px;"><div class="ox-eyebrow" style="margin-bottom:6px;">Initiative</div><div class="dispatch-value">${escapeHtml(entity.initiative_name)}</div></div>` : ''}
 
-            ${linksHtml ? `<div class="platform-links" style="display:flex; gap:8px; margin-bottom: 24px;">${linksHtml}</div>` : ''}
+              ${!entity.agent_ready || !entity.workspace_ready ? `<div class="dispatch-note">OrgX accepted the dispatch, but the canonical handoff context is still syncing. The card will update once the server returns the assigned agent and workspace.</div>` : ''}
+            
+              <div class="widget-stack">
+                <div class="agent-row" style="display:flex; align-items:center; gap:16px; padding:16px; background:var(--ox-well-bg); border:1px solid var(--ox-border); border-radius:12px; box-shadow:var(--ox-well-shadow);">
+                  <div class="spawn-avatar">
+                    ${renderAvatar(entity.agent_name || entity.domain || 'Pending')}
+                  </div>
+                  <div class="agent-meta" style="flex:1;">
+                    <div style="font-family:var(--ox-mono); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ox-text-muted); margin-bottom:4px; font-weight:600;">Assigned Agent</div>
+                    <div class="dispatch-value ${entity.agent_ready ? '' : 'dispatch-value--pending'}">${escapeHtml(entity.agent_name || 'Awaiting agent confirmation')}</div>
+                  </div>
+                </div>
+                
+                <div class="meta-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                  <div class="widget-panel">
+                    <div class="ox-eyebrow" style="margin-bottom:6px;">Domain</div>
+                    <div class="dispatch-value ${entity.domain_ready ? '' : 'dispatch-value--pending'}">${escapeHtml(entity.domain || 'Pending routing')}</div>
+                  </div>
+                  <div class="widget-panel">
+                    <div class="ox-eyebrow" style="margin-bottom:6px;">Workspace</div>
+                    <div class="dispatch-value ${entity.workspace_ready ? '' : 'dispatch-value--pending'}">${escapeHtml(entity.workspace_name || 'Pending context sync')}</div>
+                  </div>
+                </div>
 
-            <div class="widget-footer" style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid var(--ox-border);">
-              <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Live Sync Active</span>
-              <a href="${consoleUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(consoleUrl || ''))}, event)' class="deep-link ox-link-btn ox-link-btn--quiet" style="display: inline-flex; align-items: center; gap: 6px;">
-                Open execution view
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-              </a>
+                ${linksHtml ? `<div class="platform-links" style="display:flex; gap:8px;">${linksHtml}</div>` : ''}
+              </div>
+            
+              <div class="widget-footer">
+                <span class="widget-footer-meta">Live sync active</span>
+                <a href="${consoleUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(consoleUrl || ''))}, event)' class="deep-link ox-link-btn ox-link-btn--quiet" style="display: inline-flex; align-items: center; gap: 6px;">
+                  Open execution view
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </a>
+              </div>
             </div>
-
           </div>
         </div>
       `);
