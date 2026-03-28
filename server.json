@@ -249,6 +249,12 @@
       "mimeType": "text/html;profile=mcp-app"
     },
     {
+      "uri": "ui://widget/scaffolded-initiative.html",
+      "name": "Scaffolded Initiative Widget",
+      "description": "Widget for displaying scaffolded initiative hierarchy with execution status",
+      "mimeType": "text/html;profile=mcp-app"
+    },
+    {
       "uri": "ui://widget/initiative-pulse.html",
       "name": "Initiative Pulse Widget",
       "description": "Widget showing initiative health and progress metrics",
@@ -288,6 +294,12 @@
       "uri": "ui://widget/search-results.skybridge.html",
       "name": "Search Results Widget (Skybridge)",
       "description": "ChatGPT Apps SDK widget for displaying organizational memory search results",
+      "mimeType": "text/html+skybridge"
+    },
+    {
+      "uri": "ui://widget/scaffolded-initiative.skybridge.html",
+      "name": "Scaffolded Initiative Widget (Skybridge)",
+      "description": "ChatGPT Apps SDK widget for displaying scaffolded initiative hierarchy with execution status",
       "mimeType": "text/html+skybridge"
     },
     {
