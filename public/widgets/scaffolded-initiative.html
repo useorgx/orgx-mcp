@@ -113,14 +113,15 @@
     .h-icon { width: 48px; height: 48px; border-radius: 12px; background: rgba(var(--ox-primary-rgb), 0.1); border: 1px solid rgba(var(--ox-primary-rgb), 0.2); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
     
     .node-list {
-      --ms-indent: 34px;
-      --tk-indent: 56px;
-      --tree-outer-x: 14px;
-      --tree-inner-x: 34px;
+      --ms-indent: 38px;
+      --tk-indent: 60px;
+      --tree-outer-x: 12px;
+      --tree-inner-x: 30px;
       --tree-elbow-rise: 10px;
-      --tree-elbow-run-outer: 18px;
-      --tree-elbow-run-inner: 18px;
+      --tree-elbow-run-outer: 24px;
+      --tree-elbow-run-inner: 24px;
       --tree-stroke: 1.5px;
+      --tree-bleed: 5px;
       display: flex;
       flex-direction: column;
       gap: 4px;
@@ -457,12 +458,12 @@
     .tree-line--outer { left: var(--tree-outer-x); }
     .tree-line--inner { left: var(--tree-inner-x); }
     .tree-line--top {
-      top: 0;
+      top: calc(-1 * var(--tree-bleed));
       bottom: calc(50% - var(--tree-elbow-rise));
     }
     .tree-line--bottom {
       top: 50%;
-      bottom: 0;
+      bottom: calc(-1 * var(--tree-bleed));
     }
 
     .tree-elbow {
@@ -552,13 +553,14 @@
       }
 
       .node-list {
-        --ms-indent: 30px;
-        --tk-indent: 48px;
-        --tree-outer-x: 12px;
-        --tree-inner-x: 28px;
+        --ms-indent: 34px;
+        --tk-indent: 54px;
+        --tree-outer-x: 10px;
+        --tree-inner-x: 26px;
         --tree-elbow-rise: 9px;
-        --tree-elbow-run-outer: 14px;
-        --tree-elbow-run-inner: 16px;
+        --tree-elbow-run-outer: 22px;
+        --tree-elbow-run-inner: 22px;
+        --tree-bleed: 4px;
       }
 
       .node-item.ws {
