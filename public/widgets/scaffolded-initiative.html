@@ -157,16 +157,16 @@
     
     
     .node-item.ws { background: rgba(255,255,255,0.02); font-weight: 600; color: var(--ox-text); margin-top: 14px; }
-    .node-item.ws .node-icon { color: var(--ox-teal); margin-top: 7px; }
+    .node-item.ws .node-icon { color: var(--ox-teal); }
     @media (prefers-color-scheme: light) { .node-item.ws { background: rgba(0,0,0,0.03); } }
 
     .node-item.ws {
       display: grid;
       grid-template-columns: auto auto minmax(0, 1fr) auto;
-      align-items: start;
-      gap: 10px;
+      align-items: center;
+      gap: 12px;
       max-height: none;
-      padding: 12px 14px 12px 10px;
+      padding: 10px 14px 10px 10px;
       border: 1px solid rgba(var(--ox-primary-rgb), 0.08);
       background:
         linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.055), rgba(255,255,255,0.015)),
@@ -177,8 +177,8 @@
       min-width: 0;
       display: flex;
       flex-direction: column;
-      gap: 4px;
-      padding-top: 2px;
+      gap: 0;
+      justify-content: center;
     }
 
     .ws-header {
@@ -192,7 +192,7 @@
       min-width: 0;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 0;
     }
 
     .ws-title-row {
@@ -204,8 +204,8 @@
     }
 
     .ws-title {
-      font-size: 0.96rem;
-      line-height: 1.28;
+      font-size: 0.93rem;
+      line-height: 1.18;
       color: var(--ox-text);
       letter-spacing: -0.015em;
       min-width: 0;
@@ -223,9 +223,13 @@
       display: inline-flex;
       align-items: center;
       justify-content: flex-end;
-      gap: 10px;
+      gap: 9px;
       align-self: center;
       padding-left: 8px;
+    }
+
+    .node-item.ws .badge-id {
+      align-self: center;
     }
 
     .agent-presence {
@@ -499,10 +503,10 @@
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
   
     .node-toggle {
-      width: 34px;
-      min-width: 34px;
-      height: 34px;
-      margin-right: 2px;
+      width: 30px;
+      min-width: 30px;
+      height: 30px;
+      margin-right: 0;
       color: var(--ox-text-muted);
     }
 
@@ -564,12 +568,13 @@
       }
 
       .node-item.ws {
-        gap: 8px;
-        padding-right: 10px;
+        gap: 10px;
+        padding: 9px 10px 9px 10px;
       }
 
       .ws-rail {
         gap: 8px;
+        margin-left: 0;
       }
 
       .status-badge {
