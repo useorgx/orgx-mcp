@@ -121,7 +121,7 @@
       --tree-elbow-run-outer: 24px;
       --tree-elbow-run-inner: 24px;
       --tree-stroke: 1.5px;
-      --tree-bleed: 5px;
+      --tree-gap: 4px;
       display: flex;
       flex-direction: column;
       gap: 4px;
@@ -449,35 +449,31 @@
     .tree-line,
     .tree-elbow {
       position: absolute;
-      border-color: var(--ox-border-strong);
-      opacity: 0.96;
     }
 
     .tree-line {
-      width: 0;
-      border-left-style: solid;
-      border-left-width: var(--tree-stroke);
+      width: var(--tree-stroke);
+      background: var(--ox-border-strong);
     }
 
-    .tree-line--outer { left: var(--tree-outer-x); }
-    .tree-line--inner { left: var(--tree-inner-x); }
+    .tree-line--outer {
+      left: calc(var(--tree-outer-x) - (var(--tree-stroke) / 2));
+    }
+    .tree-line--inner {
+      left: calc(var(--tree-inner-x) - (var(--tree-stroke) / 2));
+    }
     .tree-line--top {
-      top: calc(-1 * var(--tree-bleed));
+      top: 0;
       bottom: calc(50% - var(--tree-elbow-rise));
     }
     .tree-line--bottom {
       top: 50%;
-      bottom: calc(-1 * var(--tree-bleed));
+      bottom: calc(-1 * var(--tree-gap));
     }
 
     .tree-elbow {
       top: calc(50% - var(--tree-elbow-rise));
       height: var(--tree-elbow-rise);
-      border-left-style: solid;
-      border-left-width: var(--tree-stroke);
-      border-bottom-style: solid;
-      border-bottom-width: var(--tree-stroke);
-      border-bottom-left-radius: var(--tree-elbow-rise);
     }
 
     .tree-elbow--outer {
@@ -488,6 +484,21 @@
     .tree-elbow--inner {
       left: var(--tree-inner-x);
       width: var(--tree-elbow-run-inner);
+    }
+
+    .tree-elbow svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .tree-elbow path {
+      fill: none;
+      stroke: var(--ox-border-strong);
+      stroke-width: var(--tree-stroke);
+      stroke-linecap: butt;
+      stroke-linejoin: round;
     }
 
     .tree-label {
@@ -564,7 +575,7 @@
         --tree-elbow-rise: 9px;
         --tree-elbow-run-outer: 22px;
         --tree-elbow-run-inner: 22px;
-        --tree-bleed: 4px;
+        --tree-gap: 4px;
       }
 
       .node-item.ws {
@@ -700,7 +711,7 @@
               outerTop: true,
               outerBottom: milestoneHasFollowingSibling,
               outerElbow: true,
-              innerSeedBottom: tasks.length > 0,
+              innerBottom: tasks.length > 0,
             },
           });
           tasks.forEach((task, taskIndex) => {
@@ -857,14 +868,14 @@
     };
     var renderTreeRail = (connector) => {
       if (!connector || typeof connector !== 'object') return '';
+      var elbowSvg = '<svg viewBox="0 0 24 10" preserveAspectRatio="none" aria-hidden="true"><path d="M0 0 A10 10 0 0 0 10 10 H24"></path></svg>';
       var parts = ['<span class="tree-rail" aria-hidden="true">'];
       if (connector.outerTop) parts.push('<span class="tree-line tree-line--outer tree-line--top"></span>');
       if (connector.outerBottom) parts.push('<span class="tree-line tree-line--outer tree-line--bottom"></span>');
       if (connector.innerTop) parts.push('<span class="tree-line tree-line--inner tree-line--top"></span>');
       if (connector.innerBottom) parts.push('<span class="tree-line tree-line--inner tree-line--bottom"></span>');
-      if (connector.innerSeedBottom) parts.push('<span class="tree-line tree-line--inner tree-line--bottom"></span>');
-      if (connector.outerElbow) parts.push('<span class="tree-elbow tree-elbow--outer"></span>');
-      if (connector.innerElbow) parts.push('<span class="tree-elbow tree-elbow--inner"></span>');
+      if (connector.outerElbow) parts.push('<span class="tree-elbow tree-elbow--outer">' + elbowSvg + '</span>');
+      if (connector.innerElbow) parts.push('<span class="tree-elbow tree-elbow--inner">' + elbowSvg + '</span>');
       parts.push('</span>');
       return parts.join('');
     };
