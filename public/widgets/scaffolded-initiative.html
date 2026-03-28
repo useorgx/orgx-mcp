@@ -987,32 +987,35 @@
         ? { outerX: 10, innerX: 26, rise: 9, outerRun: 22, innerRun: 22 }
         : { outerX: 12, innerX: 30, rise: 10, outerRun: 24, innerRun: 24 };
     };
-    var buildElbowPath = (x, startY, rise, run) => {
-      return 'M ' + x + ' ' + startY + ' A ' + rise + ' ' + rise + ' 0 0 0 ' + (x + rise) + ' ' + (startY + rise) + ' H ' + (x + run);
-    };
     var createTreePath = (d, delay, duration) => ({ d: d, delay: delay || 0, duration: duration || 0 });
-    var buildVerticalPath = (x, start, end, delay, duration) => {
-      if (!(end > start)) return null;
-      return createTreePath('M ' + x + ' ' + start + ' V ' + end, delay, duration);
+    var buildConnectorPath = (x, fromY, startY, rise, run, delay, duration) => {
+      if (!(startY >= fromY)) return null;
+      return createTreePath(
+        'M ' + x + ' ' + fromY + ' V ' + startY + ' A ' + rise + ' ' + rise + ' 0 0 0 ' + (x + rise) + ' ' + (startY + rise) + ' H ' + (x + run),
+        delay,
+        duration
+      );
     };
     var readHierarchyBaseDelay = (children) => {
       if (!children || !children.dataset) return 0;
       var raw = Number(children.dataset.drawBaseDelay || 0);
       return Number.isFinite(raw) ? raw : 0;
     };
+    var getMilestoneEnterDelay = (groupDelay, milestoneIndex) => groupDelay + 60 + milestoneIndex * 210;
+    var getTaskEnterDelay = (groupDelay, milestoneIndex, taskIndex) => groupDelay + 145 + milestoneIndex * 210 + taskIndex * 95;
     var animateHierarchyRows = (children, baseDelay) => {
       var groupDelay = typeof baseDelay === 'number' ? baseDelay : readHierarchyBaseDelay(children);
       var milestones = Array.from(children.querySelectorAll('[data-ms-block]'));
       milestones.forEach((block, milestoneIndex) => {
         var milestoneRow = block.querySelector('[data-ms-row]');
         if (milestoneRow) {
-          milestoneRow.style.setProperty('--enter-delay', (groupDelay + 60 + milestoneIndex * 210) + 'ms');
+          milestoneRow.style.setProperty('--enter-delay', getMilestoneEnterDelay(groupDelay, milestoneIndex) + 'ms');
           milestoneRow.classList.remove('row-enter');
           void milestoneRow.offsetWidth;
           milestoneRow.classList.add('row-enter');
         }
         Array.from(block.querySelectorAll('[data-tk-row]')).forEach((taskRow, taskIndex) => {
-          taskRow.style.setProperty('--enter-delay', (groupDelay + 145 + milestoneIndex * 210 + taskIndex * 95) + 'ms');
+          taskRow.style.setProperty('--enter-delay', getTaskEnterDelay(groupDelay, milestoneIndex, taskIndex) + 'ms');
           taskRow.classList.remove('row-enter');
           void taskRow.offsetWidth;
           taskRow.classList.add('row-enter');
@@ -1021,10 +1024,8 @@
     };
     var layoutTreeOverlays = (animate) => {
       var metrics = getTreeMetrics();
-      var lineDrawMs = 150;
-      var elbowDrawMs = 180;
-      var handoffOverlapMs = 24;
-      var advanceBy = (duration) => duration - handoffOverlapMs;
+      var milestoneDrawMs = 300;
+      var taskDrawMs = 260;
       document.querySelectorAll('[data-ws-children]').forEach((children) => {
         var inner = children.querySelector('[data-ws-children-inner]');
         var overlay = children.querySelector('[data-tree-overlay]');
@@ -1056,44 +1057,40 @@
           var mid = rect.top - bounds.top + rect.height / 2;
           return { entry: entry, mid: mid, start: mid - metrics.rise };
         });
-        var outerCursor = baseDelay;
-        var initialOuterPath = buildVerticalPath(metrics.outerX, 0, milestonePoints[0].start, outerCursor, lineDrawMs);
-        if (initialOuterPath) {
-          paths.push(initialOuterPath);
-          outerCursor += advanceBy(lineDrawMs);
-        }
+        var outerAnchorY = 0;
         milestonePoints.forEach((point, index) => {
-          var milestoneElbowDelay = outerCursor;
-          paths.push(createTreePath(buildElbowPath(metrics.outerX, point.start, metrics.rise, metrics.outerRun), milestoneElbowDelay, elbowDrawMs));
-          outerCursor += advanceBy(elbowDrawMs);
-          var nextPoint = milestonePoints[index + 1];
+          var milestoneDelay = getMilestoneEnterDelay(baseDelay, index);
+          var milestonePath = buildConnectorPath(
+            metrics.outerX,
+            outerAnchorY,
+            point.start,
+            metrics.rise,
+            metrics.outerRun,
+            milestoneDelay,
+            milestoneDrawMs
+          );
+          if (milestonePath) paths.push(milestonePath);
+          outerAnchorY = point.start + metrics.rise;
           if (!point.entry.tasks.length) return;
           var taskPoints = point.entry.tasks.map((row) => {
             var rect = row.getBoundingClientRect();
             var mid = rect.top - bounds.top + rect.height / 2;
             return { mid: mid, start: mid - metrics.rise };
           });
-          var innerCursor = milestoneElbowDelay + advanceBy(elbowDrawMs);
-          var initialInnerPath = buildVerticalPath(metrics.innerX, point.mid, taskPoints[0].start, innerCursor, lineDrawMs);
-          if (initialInnerPath) {
-            paths.push(initialInnerPath);
-            innerCursor += advanceBy(lineDrawMs);
-          }
+          var innerAnchorY = point.mid;
           taskPoints.forEach((taskPoint, taskIndex) => {
-            paths.push(createTreePath(buildElbowPath(metrics.innerX, taskPoint.start, metrics.rise, metrics.innerRun), innerCursor, elbowDrawMs));
-            innerCursor += advanceBy(elbowDrawMs);
-            var nextTask = taskPoints[taskIndex + 1];
-            var nextInnerPath = nextTask ? buildVerticalPath(metrics.innerX, taskPoint.start + metrics.rise, nextTask.start, innerCursor, lineDrawMs) : null;
-            if (nextInnerPath) {
-              paths.push(nextInnerPath);
-              innerCursor += advanceBy(lineDrawMs);
-            }
+            var taskPath = buildConnectorPath(
+              metrics.innerX,
+              innerAnchorY,
+              taskPoint.start,
+              metrics.rise,
+              metrics.innerRun,
+              getTaskEnterDelay(baseDelay, index, taskIndex),
+              taskDrawMs
+            );
+            if (taskPath) paths.push(taskPath);
+            innerAnchorY = taskPoint.start + metrics.rise;
           });
-          var nextOuterPath = nextPoint ? buildVerticalPath(metrics.outerX, point.start + metrics.rise, nextPoint.start, outerCursor, lineDrawMs) : null;
-          if (nextOuterPath) {
-            paths.push(nextOuterPath);
-            outerCursor += advanceBy(lineDrawMs);
-          }
         });
         overlay.innerHTML = '<svg viewBox="0 0 ' + Math.ceil(bounds.width) + ' ' + Math.ceil(bounds.height) + '" preserveAspectRatio="none" aria-hidden="true">' + paths.map((path, index) => {
           var delay = path.delay || 0;
