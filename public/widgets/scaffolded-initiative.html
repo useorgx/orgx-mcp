@@ -124,7 +124,13 @@
       --tree-gap: 4px;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 16px;
+    }
+
+    .ws-block {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
     }
     .node-item {
       display: flex;
@@ -135,28 +141,11 @@
       font-size: 0.9rem;
       position: relative;
       overflow: hidden;
-      max-height: 72px;
-      transition:
-        opacity 0.2s ease,
-        transform 0.2s ease,
-        max-height 0.24s cubic-bezier(0.16, 1, 0.3, 1),
-        padding 0.24s cubic-bezier(0.16, 1, 0.3, 1),
-        margin 0.24s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .node-item.collapsed {
-      opacity: 0;
-      transform: translateY(-6px);
-      max-height: 0;
-      padding-top: 0;
-      padding-bottom: 0;
-      margin-top: 0;
-      margin-bottom: 0;
-      pointer-events: none;
+      z-index: 1;
     }
     
     
-    .node-item.ws { background: rgba(255,255,255,0.02); font-weight: 600; color: var(--ox-text); margin-top: 14px; }
+    .node-item.ws { background: rgba(255,255,255,0.02); font-weight: 600; color: var(--ox-text); }
     .node-item.ws .node-icon { color: var(--ox-teal); }
     @media (prefers-color-scheme: light) { .node-item.ws { background: rgba(0,0,0,0.03); } }
 
@@ -425,6 +414,64 @@
       padding-left: var(--tk-indent);
       color: var(--ox-text-muted);
       font-size: 0.85rem;
+    }
+
+    .ws-children {
+      display: grid;
+      grid-template-rows: 1fr;
+      transition: grid-template-rows 240ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .ws-children.is-collapsed {
+      grid-template-rows: 0fr;
+    }
+
+    .ws-children-inner {
+      position: relative;
+      min-height: 0;
+      overflow: hidden;
+      padding-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: var(--tree-gap);
+      transition: opacity 180ms ease, transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .ws-children.is-collapsed .ws-children-inner {
+      opacity: 0;
+      transform: translateY(-8px);
+      pointer-events: none;
+    }
+
+    .ms-block,
+    .ms-tasks {
+      display: flex;
+      flex-direction: column;
+      gap: var(--tree-gap);
+      position: relative;
+    }
+
+    .tree-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .tree-overlay svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      overflow: visible;
+    }
+
+    .tree-overlay path {
+      fill: none;
+      stroke: var(--ox-border-strong);
+      stroke-width: var(--tree-stroke);
+      stroke-linecap: butt;
+      stroke-linejoin: round;
+      vector-effect: non-scaling-stroke;
     }
 
     .node-item.ms .node-icon { color: var(--ox-warning); }
@@ -736,6 +783,29 @@
     var normalizeTextKey = (value) => {
       return typeof value === 'string' ? value.trim().toLowerCase() : '';
     };
+    var groupHierarchy = (items) => {
+      var sections = [];
+      var currentWorkstream = null;
+      var currentMilestone = null;
+      (items || []).forEach((item) => {
+        if (!item || typeof item !== 'object') return;
+        if (item.type === 'workstream') {
+          currentWorkstream = Object.assign({}, item, { milestones: [] });
+          currentMilestone = null;
+          sections.push(currentWorkstream);
+          return;
+        }
+        if (item.type === 'milestone' && currentWorkstream) {
+          currentMilestone = Object.assign({}, item, { tasks: [] });
+          currentWorkstream.milestones.push(currentMilestone);
+          return;
+        }
+        if (item.type === 'task' && currentMilestone) {
+          currentMilestone.tasks.push(item);
+        }
+      });
+      return sections;
+    };
     var titleCase = (value) => {
       if (typeof value !== 'string') return '';
       return value
@@ -879,6 +949,79 @@
       parts.push('</span>');
       return parts.join('');
     };
+    var getTreeMetrics = () => {
+      var compact = window.matchMedia('(max-width: 420px)').matches;
+      return compact
+        ? { outerX: 10, innerX: 26, rise: 9, outerRun: 22, innerRun: 22 }
+        : { outerX: 12, innerX: 30, rise: 10, outerRun: 24, innerRun: 24 };
+    };
+    var buildElbowPath = (x, startY, rise, run) => {
+      return 'M ' + x + ' ' + startY + ' A ' + rise + ' ' + rise + ' 0 0 0 ' + (x + rise) + ' ' + (startY + rise) + ' H ' + (x + run);
+    };
+    var layoutTreeOverlays = () => {
+      var metrics = getTreeMetrics();
+      document.querySelectorAll('[data-ws-children]').forEach((children) => {
+        var inner = children.querySelector('[data-ws-children-inner]');
+        var overlay = children.querySelector('[data-tree-overlay]');
+        if (!inner || !overlay) return;
+        if (children.classList.contains('is-collapsed')) {
+          overlay.innerHTML = '';
+          return;
+        }
+        var bounds = inner.getBoundingClientRect();
+        if (!bounds.width || !bounds.height) {
+          overlay.innerHTML = '';
+          return;
+        }
+        var milestones = Array.from(inner.querySelectorAll('[data-ms-block]')).map((block) => {
+          return {
+            block: block,
+            row: block.querySelector('[data-ms-row]'),
+            tasks: Array.from(block.querySelectorAll('[data-tk-row]')),
+          };
+        }).filter((entry) => entry.row);
+        if (!milestones.length) {
+          overlay.innerHTML = '';
+          return;
+        }
+        var paths = [];
+        var milestonePoints = milestones.map((entry) => {
+          var rect = entry.row.getBoundingClientRect();
+          var mid = rect.top - bounds.top + rect.height / 2;
+          return { entry: entry, mid: mid, start: mid - metrics.rise };
+        });
+        var outerEnd = milestonePoints[milestonePoints.length - 1].start;
+        if (outerEnd > 0) {
+          paths.push('<path d="M ' + metrics.outerX + ' 0 V ' + outerEnd + '"></path>');
+        }
+        milestonePoints.forEach((point) => {
+          paths.push('<path d="' + buildElbowPath(metrics.outerX, point.start, metrics.rise, metrics.outerRun) + '"></path>');
+          if (!point.entry.tasks.length) return;
+          var taskPoints = point.entry.tasks.map((row) => {
+            var rect = row.getBoundingClientRect();
+            var mid = rect.top - bounds.top + rect.height / 2;
+            return { mid: mid, start: mid - metrics.rise };
+          });
+          var innerEnd = taskPoints[taskPoints.length - 1].start;
+          if (innerEnd > point.mid) {
+            paths.push('<path d="M ' + metrics.innerX + ' ' + point.mid + ' V ' + innerEnd + '"></path>');
+          }
+          taskPoints.forEach((taskPoint) => {
+            paths.push('<path d="' + buildElbowPath(metrics.innerX, taskPoint.start, metrics.rise, metrics.innerRun) + '"></path>');
+          });
+        });
+        overlay.innerHTML = '<svg viewBox="0 0 ' + Math.ceil(bounds.width) + ' ' + Math.ceil(bounds.height) + '" preserveAspectRatio="none" aria-hidden="true">' + paths.join('') + '</svg>';
+      });
+    };
+    var queueTreeLayout = (() => {
+      var raf = 0;
+      return () => {
+        if (raf) window.cancelAnimationFrame(raf);
+        raf = window.requestAnimationFrame(() => {
+          raf = window.requestAnimationFrame(layoutTreeOverlays);
+        });
+      };
+    })();
 
     var normalizeScaffoldData = (raw) => {
       if (!raw || typeof raw !== 'object') return null;
@@ -1096,21 +1239,17 @@
 
     
     window.toggleNode = (btn) => {
-       const parent = btn.closest('.node-item');
+       const block = btn.closest('[data-ws-block]');
+       const children = block ? block.querySelector('[data-ws-children]') : null;
+       if (!children) return;
        const isExpanded = btn.getAttribute('data-expanded') === 'true';
-       btn.setAttribute('data-expanded', !isExpanded);
-       btn.setAttribute('aria-expanded', String(!isExpanded));
-       btn.innerHTML = !isExpanded ? icons.chevronDown(12) : icons.chevronRight(12);
-       
-       let next = parent.nextElementSibling;
-       while (next && !next.classList.contains('ws')) {
-           if (isExpanded) {
-               next.classList.add('collapsed');
-           } else {
-               next.classList.remove('collapsed');
-           }
-           next = next.nextElementSibling;
-       }
+       const nextExpanded = !isExpanded;
+       btn.setAttribute('data-expanded', String(nextExpanded));
+       btn.setAttribute('aria-expanded', String(nextExpanded));
+       btn.innerHTML = nextExpanded ? icons.chevronDown(12) : icons.chevronRight(12);
+       children.classList.toggle('is-collapsed', !nextExpanded);
+       queueTreeLayout();
+       window.setTimeout(queueTreeLayout, 260);
     };
 
     var render = () => {
@@ -1118,30 +1257,38 @@
       var scaffold = normalizeScaffoldData(data);
       if(!scaffold || !scaffold.initiative) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.layout(24)}</div><div class="empty-title">Awaiting scaffold</div><div class="empty-desc">The structural hierarchy has not been generated yet.</div></div>`); return; }
 
-      const listHtml = (scaffold.hierarchy || []).map(h => {
-        let icn = '';
-        let cls = '';
-        let toggle = '';
-        if(h.type === 'workstream') { 
-            icn = icons.workstream(14); 
-            cls = 'ws'; 
-            toggle = `<button type="button" class="node-toggle ox-icon-btn ox-icon-btn--sm" onclick="toggleNode(this)" data-expanded="true" aria-expanded="true" aria-label="Collapse workstream">${icons.chevronDown(12)}</button>`;
-        }
-        if(h.type === 'milestone') { icn = icons.milestone(14); cls = 'ms'; }
-        if(h.type === 'task') { icn = icons.task(14); cls = 'tk'; }
-        if(h.type === 'workstream') {
-          var execution = h.execution || {};
+      const sections = groupHierarchy(scaffold.hierarchy || []);
+      const renderTask = (task) => {
+        return `<div class="node-item tk" data-tk-row>
+          <span class="node-icon" style="display:flex; align-items:center;">${icons.task(14)}</span>
+          <span class="tree-label">${escapeHtml(readLabel(task, 'Untitled'))}</span>
+          ${task.id ? `<span class="badge-id">${escapeHtml(task.id)}</span>` : ''}
+        </div>`;
+      };
+      const renderMilestone = (milestone) => {
+        return `<div class="ms-block" data-ms-block>
+          <div class="node-item ms" data-ms-row>
+            <span class="node-icon" style="display:flex; align-items:center;">${icons.milestone(14)}</span>
+            <span class="tree-label">${escapeHtml(readLabel(milestone, 'Untitled'))}</span>
+            ${milestone.id ? `<span class="badge-id">${escapeHtml(milestone.id)}</span>` : ''}
+          </div>
+          ${milestone.tasks && milestone.tasks.length ? `<div class="ms-tasks">${milestone.tasks.map(renderTask).join('')}</div>` : ''}
+        </div>`;
+      };
+      const listHtml = sections.map((section) => {
+          var execution = section.execution || {};
           var status = execution.status || classifyStatus('not_started');
           var progress = typeof execution.progress_pct === 'number' ? execution.progress_pct : 0;
-          return `<div class="node-item ${cls}">
-            ${toggle}
-            <span class="node-icon" style="display:flex; align-items:center;">${icn}</span>
+          return `<div class="ws-block" data-ws-block>
+          <div class="node-item ws">
+            <button type="button" class="node-toggle ox-icon-btn ox-icon-btn--sm" onclick="toggleNode(this)" data-expanded="true" aria-expanded="true" aria-label="Collapse workstream">${icons.chevronDown(12)}</button>
+            <span class="node-icon" style="display:flex; align-items:center;">${icons.workstream(14)}</span>
             <div class="ws-shell">
               <div class="ws-header">
                 <div class="ws-title-wrap">
                   <div class="ws-title-row">
-                    <span class="ws-title">${escapeHtml(readLabel(h, 'Untitled'))}</span>
-                    ${h.id ? `<span class="badge-id">${escapeHtml(h.id)}</span>` : ''}
+                    <span class="ws-title">${escapeHtml(readLabel(section, 'Untitled'))}</span>
+                    ${section.id ? `<span class="badge-id">${escapeHtml(section.id)}</span>` : ''}
                   </div>
                 </div>
               </div>
@@ -1151,13 +1298,13 @@
               ${renderProgressRing(progress, status.tone)}
               <span class="status-badge ${escapeHtml(status.tone)}" aria-label="${escapeHtml(status.label)}">${status.icon}<span>${escapeHtml(status.shortLabel || status.label)}</span></span>
             </div>
-          </div>`;
-        }
-        return `<div class="node-item ${cls}">
-          ${renderTreeRail(h.connector)}
-          <span class="node-icon" style="display:flex; align-items:center;">${icn}</span>
-          <span class="tree-label">${escapeHtml(readLabel(h, 'Untitled'))}</span>
-          ${h.id ? `<span class="badge-id">${escapeHtml(h.id)}</span>` : ''}
+          </div>
+          <div class="ws-children" data-ws-children>
+            <div class="ws-children-inner" data-ws-children-inner>
+              <div class="tree-overlay" data-tree-overlay aria-hidden="true"></div>
+              ${(section.milestones || []).map(renderMilestone).join('')}
+            </div>
+          </div>
         </div>`;
       }).join('');
 
@@ -1192,7 +1339,10 @@
 </div>
         </div>
       `);
+      queueTreeLayout();
     };
+
+    window.addEventListener('resize', queueTreeLayout);
 
     if(isDemo) applyBootPayload();
     else initWidget({ render: d => { applyBootPayload(function(){ if(d) data = d; }); } });
