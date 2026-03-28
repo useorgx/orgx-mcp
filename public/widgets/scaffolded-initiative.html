@@ -13,6 +13,7 @@
         --ox-panel: #ffffff;
         --ox-border: rgba(0, 0, 0, 0.08);
         --ox-border-strong: rgba(0, 0, 0, 0.15);
+        --ox-tree: #cfd6e0;
         --ox-text: #0f172a;
         --ox-text-muted: #64748b;
         --ox-well-bg: #f1f5f9;
@@ -25,6 +26,7 @@
           --ox-panel: rgba(10, 15, 22, 0.95);
           --ox-border: rgba(255, 255, 255, 0.08);
           --ox-border-strong: rgba(255, 255, 255, 0.15);
+          --ox-tree: #3a4049;
           --ox-text: #f8fafc;
           --ox-text-muted: rgba(255, 255, 255, 0.5);
           --ox-well-bg: rgba(0,0,0,0.3);
@@ -37,6 +39,7 @@
           --ox-panel: rgba(10, 15, 22, 0.95);
           --ox-border: rgba(255, 255, 255, 0.08);
           --ox-border-strong: rgba(255, 255, 255, 0.15);
+          --ox-tree: #3a4049;
           --ox-text: #f8fafc;
           --ox-text-muted: rgba(255, 255, 255, 0.5);
           --ox-well-bg: rgba(0,0,0,0.3);
@@ -467,11 +470,40 @@
 
     .tree-overlay path {
       fill: none;
-      stroke: var(--ox-border-strong);
+      stroke: var(--ox-tree);
       stroke-width: var(--tree-stroke);
       stroke-linecap: butt;
       stroke-linejoin: round;
       vector-effect: non-scaling-stroke;
+    }
+
+    .tree-overlay path.is-drawing {
+      animation: treeDrawIn 260ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation-delay: var(--draw-delay, 0ms);
+      stroke-dasharray: var(--path-length, 0);
+      stroke-dashoffset: var(--path-length, 0);
+    }
+
+    @keyframes treeDrawIn {
+      from { stroke-dashoffset: var(--path-length, 0); }
+      to { stroke-dashoffset: 0; }
+    }
+
+    .node-item.ms.row-enter,
+    .node-item.tk.row-enter {
+      animation: hierarchyRowEnter 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+      animation-delay: var(--enter-delay, 0ms);
+    }
+
+    @keyframes hierarchyRowEnter {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .node-item.ms .node-icon { color: var(--ox-warning); }
@@ -958,7 +990,30 @@
     var buildElbowPath = (x, startY, rise, run) => {
       return 'M ' + x + ' ' + startY + ' A ' + rise + ' ' + rise + ' 0 0 0 ' + (x + rise) + ' ' + (startY + rise) + ' H ' + (x + run);
     };
-    var layoutTreeOverlays = () => {
+    var buildVerticalSegments = (x, spans) => {
+      return spans
+        .filter((span) => span && span.end > span.start)
+        .map((span) => ({ d: 'M ' + x + ' ' + span.start + ' V ' + span.end, delay: span.delay || 0 }));
+    };
+    var animateHierarchyRows = (children) => {
+      var milestones = Array.from(children.querySelectorAll('[data-ms-block]'));
+      milestones.forEach((block, milestoneIndex) => {
+        var milestoneRow = block.querySelector('[data-ms-row]');
+        if (milestoneRow) {
+          milestoneRow.style.setProperty('--enter-delay', (35 + milestoneIndex * 150) + 'ms');
+          milestoneRow.classList.remove('row-enter');
+          void milestoneRow.offsetWidth;
+          milestoneRow.classList.add('row-enter');
+        }
+        Array.from(block.querySelectorAll('[data-tk-row]')).forEach((taskRow, taskIndex) => {
+          taskRow.style.setProperty('--enter-delay', (95 + milestoneIndex * 150 + taskIndex * 55) + 'ms');
+          taskRow.classList.remove('row-enter');
+          void taskRow.offsetWidth;
+          taskRow.classList.add('row-enter');
+        });
+      });
+    };
+    var layoutTreeOverlays = (animate) => {
       var metrics = getTreeMetrics();
       document.querySelectorAll('[data-ws-children]').forEach((children) => {
         var inner = children.querySelector('[data-ws-children-inner]');
@@ -990,35 +1045,63 @@
           var mid = rect.top - bounds.top + rect.height / 2;
           return { entry: entry, mid: mid, start: mid - metrics.rise };
         });
-        var outerEnd = milestonePoints[milestonePoints.length - 1].start;
-        if (outerEnd > 0) {
-          paths.push('<path d="M ' + metrics.outerX + ' 0 V ' + outerEnd + '"></path>');
+        var outerSegments = [];
+        if (milestonePoints[0].start > 0) {
+          outerSegments.push({ start: 0, end: milestonePoints[0].start, delay: 0 });
         }
-        milestonePoints.forEach((point) => {
-          paths.push('<path d="' + buildElbowPath(metrics.outerX, point.start, metrics.rise, metrics.outerRun) + '"></path>');
+        milestonePoints.forEach((point, index) => {
+          paths.push({ d: buildElbowPath(metrics.outerX, point.start, metrics.rise, metrics.outerRun), delay: 20 + index * 150 });
+          var nextPoint = milestonePoints[index + 1];
+          if (nextPoint && nextPoint.start > point.start + metrics.rise) {
+            outerSegments.push({ start: point.start + metrics.rise, end: nextPoint.start, delay: 20 + index * 150 });
+          }
           if (!point.entry.tasks.length) return;
           var taskPoints = point.entry.tasks.map((row) => {
             var rect = row.getBoundingClientRect();
             var mid = rect.top - bounds.top + rect.height / 2;
             return { mid: mid, start: mid - metrics.rise };
           });
-          var innerEnd = taskPoints[taskPoints.length - 1].start;
-          if (innerEnd > point.mid) {
-            paths.push('<path d="M ' + metrics.innerX + ' ' + point.mid + ' V ' + innerEnd + '"></path>');
+          var innerSegments = [];
+          if (taskPoints[0].start > point.mid) {
+            innerSegments.push({ start: point.mid, end: taskPoints[0].start, delay: 60 + index * 150 });
           }
-          taskPoints.forEach((taskPoint) => {
-            paths.push('<path d="' + buildElbowPath(metrics.innerX, taskPoint.start, metrics.rise, metrics.innerRun) + '"></path>');
+          taskPoints.forEach((taskPoint, taskIndex) => {
+            paths.push({ d: buildElbowPath(metrics.innerX, taskPoint.start, metrics.rise, metrics.innerRun), delay: 100 + index * 150 + taskIndex * 55 });
+            var nextTask = taskPoints[taskIndex + 1];
+            if (nextTask && nextTask.start > taskPoint.start + metrics.rise) {
+              innerSegments.push({ start: taskPoint.start + metrics.rise, end: nextTask.start, delay: 100 + index * 150 + taskIndex * 55 });
+            }
           });
+          paths.push.apply(paths, buildVerticalSegments(metrics.innerX, innerSegments));
         });
-        overlay.innerHTML = '<svg viewBox="0 0 ' + Math.ceil(bounds.width) + ' ' + Math.ceil(bounds.height) + '" preserveAspectRatio="none" aria-hidden="true">' + paths.join('') + '</svg>';
+        paths.push.apply(paths, buildVerticalSegments(metrics.outerX, outerSegments));
+        overlay.innerHTML = '<svg viewBox="0 0 ' + Math.ceil(bounds.width) + ' ' + Math.ceil(bounds.height) + '" preserveAspectRatio="none" aria-hidden="true">' + paths.map((path, index) => {
+          var delay = path.delay || 0;
+          return '<path d="' + path.d + '" data-path-index="' + index + '" style="--draw-delay:' + delay + 'ms"></path>';
+        }).join('') + '</svg>';
+        if (animate) {
+          Array.from(overlay.querySelectorAll('path')).forEach((path) => {
+            var length = path.getTotalLength ? path.getTotalLength() : 0;
+            path.style.setProperty('--path-length', String(length));
+            path.classList.remove('is-drawing');
+            void path.getBoundingClientRect();
+            path.classList.add('is-drawing');
+          });
+        }
       });
     };
     var queueTreeLayout = (() => {
       var raf = 0;
-      return () => {
+      var shouldAnimate = false;
+      return (animate) => {
+        shouldAnimate = shouldAnimate || !!animate;
         if (raf) window.cancelAnimationFrame(raf);
         raf = window.requestAnimationFrame(() => {
-          raf = window.requestAnimationFrame(layoutTreeOverlays);
+          raf = window.requestAnimationFrame(() => {
+            var animateNow = shouldAnimate;
+            shouldAnimate = false;
+            layoutTreeOverlays(animateNow);
+          });
         });
       };
     })();
@@ -1248,8 +1331,9 @@
        btn.setAttribute('aria-expanded', String(nextExpanded));
        btn.innerHTML = nextExpanded ? icons.chevronDown(12) : icons.chevronRight(12);
        children.classList.toggle('is-collapsed', !nextExpanded);
-       queueTreeLayout();
-       window.setTimeout(queueTreeLayout, 260);
+       if (nextExpanded) animateHierarchyRows(children);
+       queueTreeLayout(nextExpanded);
+       window.setTimeout(() => queueTreeLayout(false), 260);
     };
 
     var render = () => {
