@@ -124,7 +124,7 @@
       --tree-elbow-run-outer: 24px;
       --tree-elbow-run-inner: 24px;
       --tree-stroke: 1.5px;
-      --tree-gap: 4px;
+      --tree-gap: 8px;
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -437,7 +437,7 @@
       display: flex;
       flex-direction: column;
       gap: var(--tree-gap);
-      transition: opacity 180ms ease, transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+      transition: opacity 220ms ease, transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .ws-children.is-collapsed .ws-children-inner {
@@ -478,7 +478,7 @@
     }
 
     .tree-overlay path.is-drawing {
-      animation: treeDrawIn 260ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation: treeDrawIn 360ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
       animation-delay: var(--draw-delay, 0ms);
       stroke-dasharray: var(--path-length, 0);
       stroke-dashoffset: var(--path-length, 0);
@@ -491,7 +491,7 @@
 
     .node-item.ms.row-enter,
     .node-item.tk.row-enter {
-      animation: hierarchyRowEnter 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+      animation: hierarchyRowEnter 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
       animation-delay: var(--enter-delay, 0ms);
     }
 
@@ -654,7 +654,7 @@
         --tree-elbow-rise: 9px;
         --tree-elbow-run-outer: 22px;
         --tree-elbow-run-inner: 22px;
-        --tree-gap: 4px;
+        --tree-gap: 7px;
       }
 
       .node-item.ws {
@@ -1006,13 +1006,13 @@
       milestones.forEach((block, milestoneIndex) => {
         var milestoneRow = block.querySelector('[data-ms-row]');
         if (milestoneRow) {
-          milestoneRow.style.setProperty('--enter-delay', (groupDelay + 35 + milestoneIndex * 150) + 'ms');
+          milestoneRow.style.setProperty('--enter-delay', (groupDelay + 60 + milestoneIndex * 210) + 'ms');
           milestoneRow.classList.remove('row-enter');
           void milestoneRow.offsetWidth;
           milestoneRow.classList.add('row-enter');
         }
         Array.from(block.querySelectorAll('[data-tk-row]')).forEach((taskRow, taskIndex) => {
-          taskRow.style.setProperty('--enter-delay', (groupDelay + 95 + milestoneIndex * 150 + taskIndex * 55) + 'ms');
+          taskRow.style.setProperty('--enter-delay', (groupDelay + 145 + milestoneIndex * 210 + taskIndex * 95) + 'ms');
           taskRow.classList.remove('row-enter');
           void taskRow.offsetWidth;
           taskRow.classList.add('row-enter');
@@ -1057,10 +1057,10 @@
           outerSegments.push({ start: 0, end: milestonePoints[0].start, delay: baseDelay });
         }
         milestonePoints.forEach((point, index) => {
-          paths.push({ d: buildElbowPath(metrics.outerX, point.start, metrics.rise, metrics.outerRun), delay: baseDelay + 20 + index * 150 });
+          paths.push({ d: buildElbowPath(metrics.outerX, point.start, metrics.rise, metrics.outerRun), delay: baseDelay + 45 + index * 210 });
           var nextPoint = milestonePoints[index + 1];
           if (nextPoint && nextPoint.start > point.start + metrics.rise) {
-            outerSegments.push({ start: point.start + metrics.rise, end: nextPoint.start, delay: baseDelay + 20 + index * 150 });
+            outerSegments.push({ start: point.start + metrics.rise, end: nextPoint.start, delay: baseDelay + 45 + index * 210 });
           }
           if (!point.entry.tasks.length) return;
           var taskPoints = point.entry.tasks.map((row) => {
@@ -1070,13 +1070,13 @@
           });
           var innerSegments = [];
           if (taskPoints[0].start > point.mid) {
-            innerSegments.push({ start: point.mid, end: taskPoints[0].start, delay: baseDelay + 60 + index * 150 });
+            innerSegments.push({ start: point.mid, end: taskPoints[0].start, delay: baseDelay + 110 + index * 210 });
           }
           taskPoints.forEach((taskPoint, taskIndex) => {
-            paths.push({ d: buildElbowPath(metrics.innerX, taskPoint.start, metrics.rise, metrics.innerRun), delay: baseDelay + 100 + index * 150 + taskIndex * 55 });
+            paths.push({ d: buildElbowPath(metrics.innerX, taskPoint.start, metrics.rise, metrics.innerRun), delay: baseDelay + 165 + index * 210 + taskIndex * 95 });
             var nextTask = taskPoints[taskIndex + 1];
             if (nextTask && nextTask.start > taskPoint.start + metrics.rise) {
-              innerSegments.push({ start: taskPoint.start + metrics.rise, end: nextTask.start, delay: baseDelay + 100 + index * 150 + taskIndex * 55 });
+              innerSegments.push({ start: taskPoint.start + metrics.rise, end: nextTask.start, delay: baseDelay + 165 + index * 210 + taskIndex * 95 });
             }
           });
           paths.push.apply(paths, buildVerticalSegments(metrics.innerX, innerSegments));
@@ -1340,7 +1340,7 @@
        children.classList.toggle('is-collapsed', !nextExpanded);
        if (nextExpanded) animateHierarchyRows(children);
        queueTreeLayout(nextExpanded);
-       window.setTimeout(() => queueTreeLayout(false), 260);
+       window.setTimeout(() => queueTreeLayout(false), 620);
     };
 
     var render = () => {
@@ -1432,12 +1432,12 @@
       `);
       const workstreamChildren = Array.from(document.querySelectorAll('[data-ws-children]'));
       workstreamChildren.forEach((children, index) => {
-        const baseDelay = index * 140;
+        const baseDelay = index * 210;
         children.dataset.drawBaseDelay = String(baseDelay);
         animateHierarchyRows(children, baseDelay);
       });
       queueTreeLayout(true);
-      window.setTimeout(() => queueTreeLayout(false), 420 + Math.max(0, workstreamChildren.length - 1) * 140);
+      window.setTimeout(() => queueTreeLayout(false), 760 + Math.max(0, workstreamChildren.length - 1) * 210);
     };
 
     window.addEventListener('resize', queueTreeLayout);
