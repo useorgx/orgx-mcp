@@ -4,7 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>OrgX Widget Gallery</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='15' fill='none' stroke='%236366f1' stroke-width='6'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%236366f1'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="shared/interaction-kit.css" />
+    <link rel="stylesheet" href="shared/widget-foundation.css" />
     <script src="shared/interaction-kit.js"></script>
     <style>
       
@@ -73,9 +75,6 @@
 
       .container { max-width: 1000px; margin: 0 auto; }
 
-      h1 { font-size: 2rem; font-weight: 600; letter-spacing: -0.03em; margin-bottom: 8px; }
-      .subtitle { color: var(--ox-text-muted); margin-bottom: 40px; font-size: 1.1rem; font-weight: 300; }
-
       .widget-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -84,7 +83,7 @@
 
       .widget-card {
         background: var(--ox-panel);
-        border-radius: 12px;
+        border-radius: 16px;
         padding: 24px;
         box-shadow: var(--ox-shadow);
         border: 1px solid var(--ox-border);
@@ -116,8 +115,32 @@
       }
       @media (prefers-color-scheme: dark) { .badge { color: #00C9A7; } }
 
-      .quick-links { margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--ox-border); }
-      .quick-links h2 { font-size: 1.25rem; font-weight: 600; margin-bottom: 20px; letter-spacing: -0.02em; }
+      .gallery-shell {
+        margin-bottom: 28px;
+      }
+
+      .gallery-toolbar {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: flex-start;
+      }
+
+      .gallery-shell .widget-pill-row {
+        margin-top: 16px;
+      }
+
+      .quick-links {
+        margin-top: 40px;
+      }
+
+      .preview-shell {
+        background: var(--ox-panel);
+        border-radius: 18px;
+        border: 1px solid var(--ox-border);
+        box-shadow: var(--ox-shadow);
+        padding: 24px;
+      }
 
       .iframe-preview { width: 100%; height: 500px; border: 1px solid var(--ox-border); border-radius: 16px; margin-top: 24px; background: transparent; }
 
@@ -140,20 +163,52 @@
         color: var(--ox-bg);
         border-color: rgba(var(--ox-primary-rgb), 0.4);
       }
+
+      .state-switcher {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--ox-border);
+      }
+
+      .state-label {
+        font-family: var(--ox-mono);
+        font-size: 0.7rem;
+        color: var(--ox-text-muted);
+        text-transform: uppercase;
+        align-self: center;
+        margin-right: 8px;
+        letter-spacing: 0.08em;
+      }
+
+      @media (max-width: 720px) {
+        .gallery-toolbar {
+          flex-direction: column;
+          align-items: stretch;
+        }
+      }
     </style>
   </head>
   <body>
     <div class="container">
-      
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-        <div>
-          <h1>OrgX Widget Gallery</h1>
-          <p class="subtitle">Preview and test ChatGPT App widgets with demo data</p>
+      <div class="gallery-shell widget-shell-card">
+        <div class="preview-shell">
+          <div class="gallery-toolbar">
+            <div class="widget-hero-copy">
+              <div class="widget-kicker">OrgX Widgets</div>
+              <div class="widget-title-lg">Widget gallery</div>
+              <div class="widget-subtitle">Preview and QA the production widget set across demo, loading, and empty states without changing the widget URIs or host behavior.</div>
+              <div class="widget-pill-row">
+                <span class="widget-note-pill">Production widgets</span>
+                <span class="widget-note-pill">Live preview harness</span>
+                <span class="widget-note-pill">Theme-aware</span>
+              </div>
+            </div>
+            <button class="theme-toggle ox-icon-btn" type="button" onclick="toggleTheme()" aria-label="Toggle theme" id="theme-btn">
+              <svg id="icon-sun" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+              <svg id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+            </button>
+          </div>
         </div>
-        <button class="theme-toggle ox-icon-btn" type="button" onclick="toggleTheme()" aria-label="Toggle theme" id="theme-btn">
-          <svg id="icon-sun" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-          <svg id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-        </button>
       </div>
 
 
@@ -289,10 +344,16 @@
       </div>
 
       <div class="quick-links">
-        <h2>Live Preview</h2>
-        
-        
-        <div class="preview-controls">
+        <div class="preview-shell">
+          <div class="widget-section-header">
+            <span class="widget-section-icon">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"></rect><path d="M8 20h8"></path></svg>
+            </span>
+            <div class="widget-section-title">Live preview</div>
+            <div class="widget-section-rule"></div>
+          </div>
+
+          <div class="preview-controls">
           <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost active" onclick="loadPreview('decisions.html?demo=true')">Decisions</button>
           <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="loadPreview('agent-status.html?demo=true')">Agent Status</button>
           <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="loadPreview('search-results.html?demo=true')">Search Results</button>
@@ -300,20 +361,20 @@
           <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="loadPreview('initiative-pulse.html?demo=true')">Initiative Pulse</button>
           <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="loadPreview('task-spawned.html?demo=true')">Entity Spawned</button>
           <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="loadPreview('scaffolded-initiative.html?demo=true')">Scaffolded</button>
-        </div>
-        <div class="preview-controls" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--ox-border);">
-          <span style="font-family: var(--ox-mono); font-size: 0.7rem; color: var(--ox-text-muted); text-transform: uppercase; align-self: center; margin-right: 8px;">View State:</span>
-          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="testState('demo')" style="border-color: var(--ox-lime); color: var(--ox-text);">Data Rendered</button>
-          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="testState('loading')" style="border-style: dashed; opacity: 0.8">Loading Skeleton</button>
-          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="testState('empty')" style="border-style: dotted; opacity: 0.8">Empty State</button>
-        </div>
+          </div>
+          <div class="preview-controls state-switcher">
+            <span class="state-label">View state</span>
+            <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="testState('demo')" style="border-color: var(--ox-lime); color: var(--ox-text);">Data Rendered</button>
+            <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="testState('loading')" style="border-style: dashed; opacity: 0.8">Loading Skeleton</button>
+            <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="testState('empty')" style="border-style: dotted; opacity: 0.8">Empty State</button>
+          </div>
 
-
-        <iframe
-          id="preview-frame"
-          class="iframe-preview"
-          src="decisions.html?demo=true"
-        ></iframe>
+          <iframe
+            id="preview-frame"
+            class="iframe-preview"
+            src="decisions.html?demo=true"
+          ></iframe>
+        </div>
       </div>
     </div>
 

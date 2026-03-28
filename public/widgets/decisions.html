@@ -4,7 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Pending Decisions - OrgX</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='15' fill='none' stroke='%23FBBF24' stroke-width='6'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%23FBBF24'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
+  <link rel="stylesheet" href="shared/widget-foundation.css" />
   <script src="shared/interaction-kit.js"></script>
   <style>
       :root, :root[data-theme="light"] {
@@ -222,8 +224,13 @@
 
     :root { --ox-primary-rgb: 251, 191, 36; }
     
-    .summary-grid { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
-    .queue-subtitle { font-size: 0.92rem; line-height: 1.5; color: var(--ox-text-muted); max-width: 420px; }
+    .summary-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+    .queue-subtitle { font-size: 0.92rem; line-height: 1.6; color: var(--ox-text-muted); max-width: 56ch; }
     
     .decision-shell {
       display: flex;
@@ -903,12 +910,26 @@
 </head>
 <body>
   <div class="container">
-    <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:16px; margin-bottom:24px;">
-      <div>
-        <h1 class="ox-title" style="font-size:1.75rem; margin-bottom:8px;">Action Required</h1>
-        <div id="queueSubtitle" class="queue-subtitle">Approve to unblock execution, or reject with clear guidance so the next attempt stays on-rail.</div>
+    <div class="widget-shell-card animate-in">
+      <div class="ox-card">
+        <div class="ox-card-inner">
+          <div class="widget-hero">
+            <div class="widget-hero-copy">
+              <div class="widget-kicker">Operator Queue</div>
+              <div class="widget-title-lg">Action required</div>
+              <div id="queueSubtitle" class="queue-subtitle">Approve to unblock execution, or reject with clear guidance so the next attempt stays on-rail.</div>
+            </div>
+            <div class="widget-icon-frame" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3v10"></path>
+                <path d="M12 17h.01"></path>
+                <circle cx="12" cy="12" r="9"></circle>
+              </svg>
+            </div>
+          </div>
+          <div id="summary" class="summary-grid"></div>
+        </div>
       </div>
-      <div id="summary" class="summary-grid"></div>
     </div>
     <div id="content">
       <!-- Skeleton shown during loading -->
@@ -1373,9 +1394,9 @@
         queueSubtitle.textContent = pendingCount + ' pending decision' + (pendingCount === 1 ? '' : 's') + ' need operator input. Approve to unblock execution, or reject with clear guidance so the next attempt stays on-rail.';
       }
 
-      if(data.summary) {
-        document.getElementById('summary').innerHTML = Object.entries(data.summary).filter(([k,v])=>v>0).map(([k,v]) => `<span class="ox-badge" style="--ox-color:var(--ox-${k==='critical'?'danger':k==='high'?'warning':k==='medium'?'lime':'text-muted'}); --ox-color-rgb:var(--ox-${k==='critical'?'danger':k==='high'?'warning':k==='medium'?'lime':'text-muted'}-rgb, 100,100,100);">${v} ${k}</span>`).join('');
-      }
+      document.getElementById('summary').innerHTML = data.summary
+        ? Object.entries(data.summary).filter(([k,v])=>v>0).map(([k,v]) => `<span class="widget-note-pill">${v} ${escapeHtml(k)}</span>`).join('')
+        : '';
 
       const totalPages = Math.ceil(data.decisions.length / itemsPerPage);
       const startIdx = (currentPage - 1) * itemsPerPage;

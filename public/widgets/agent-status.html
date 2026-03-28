@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Agent Status - OrgX</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='15' fill='none' stroke='%23BFFF00' stroke-width='6'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%23BFFF00'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="shared/widget-foundation.css" />
   <style>
       :root, :root[data-theme="light"] {
         --ox-bg: #f8fafc;
@@ -175,27 +177,27 @@
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
     .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
-      margin-bottom: 24px;
+      margin-bottom: 18px;
     }
 
     .summary-card {
-      padding: 14px;
-      border-radius: 12px;
-      border: 1px solid var(--ox-border);
-      background: var(--ox-well-bg);
-      box-shadow: var(--ox-well-shadow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .summary-card::after {
+      content: '';
+      position: absolute;
+      inset: 0 auto auto 0;
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(var(--ox-primary-rgb), 0.28), transparent 72%);
+      opacity: 0.7;
+      pointer-events: none;
     }
 
     .summary-value {
-      font-family: var(--ox-mono);
-      font-size: 1.3rem;
-      line-height: 1;
-      font-weight: 600;
-      color: var(--ox-text);
-      margin-top: 8px;
+      margin-top: 2px;
     }
 
     .agent-list {
@@ -1484,11 +1486,31 @@
         return { key: statusKey, label: humanize(statusKey), count: count };
       }).filter(function(item) { return item.count > 0; });
 
+      var runningCountItem = counts.find(function(item) { return item.key === 'running'; });
+      var blockedCountItem = counts.find(function(item) { return item.key === 'blocked'; });
+      var runningCount = runningCountItem ? runningCountItem.count : 0;
+      var blockedCount = blockedCountItem ? blockedCountItem.count : 0;
+      var subtitleCopy = runningCount > 0
+        ? runningCount + ' agents are actively executing'
+        : 'No agents are actively executing';
+      if (blockedCount > 0) {
+        subtitleCopy += ' while ' + blockedCount + ' need unblock help.';
+      } else {
+        subtitleCopy += ' and the board is clear of active blockers.';
+      }
+
       var summaryHtml = counts.map(function(item) {
         return `
-          <div class="summary-card">
-            <span class="ox-eyebrow">${escapeHtml(item.label)}</span>
-            <strong>${item.count}</strong>
+          <div class="summary-card widget-stat-card">
+            <span class="summary-value widget-stat-value">${item.count}</span>
+            <span class="widget-stat-label">${escapeHtml(item.label)}</span>
+            <span class="widget-stat-copy">${item.key === 'running'
+              ? 'Currently in motion'
+              : item.key === 'blocked'
+              ? 'Need dependency relief'
+              : item.key === 'queued'
+              ? 'Waiting to start'
+              : 'Visible but not active'}</span>
           </div>
         `;
       }).join('');
@@ -1677,7 +1699,26 @@
       }).join('');
 
       injectHtml(`
-        <div class="summary-grid animate-in">${summaryHtml}</div>
+        <div class="widget-shell-card animate-in">
+          <div class="ox-card">
+            <div class="ox-card-inner">
+              <div class="widget-hero">
+                <div class="widget-hero-copy">
+                  <div class="widget-kicker">Live Agent Board</div>
+                  <div class="widget-title-lg">Multi-agent execution</div>
+                  <div class="widget-subtitle">${escapeHtml(subtitleCopy)}</div>
+                  <div class="widget-pill-row">
+                    <span class="widget-note-pill">${payload.agents.length} tracked agents</span>
+                    ${summary.blocked > 0 ? `<span class="widget-note-pill">${summary.blocked} blocked</span>` : ''}
+                    ${summary.queued > 0 ? `<span class="widget-note-pill">${summary.queued} queued</span>` : ''}
+                  </div>
+                </div>
+                <div class="widget-icon-frame">${icons.agent(20)}</div>
+              </div>
+              <div class="summary-grid widget-stat-grid">${summaryHtml}</div>
+            </div>
+          </div>
+        </div>
         <div class="agent-board">${cardsHtml}</div>
       `);
     };
