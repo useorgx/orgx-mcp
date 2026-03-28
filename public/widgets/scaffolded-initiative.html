@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Initiative Scaffolded - OrgX</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='18' fill='none' stroke='%236366f1' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='9' fill='none' stroke='%236366f1' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='3' fill='%236366f1'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <script src="shared/interaction-kit.js"></script>
   <style>
@@ -142,43 +143,60 @@
     }
     
     
-    .node-item.ws { background: rgba(255,255,255,0.02); font-weight: 600; color: var(--ox-text); margin-top: 12px; }
-    .node-item.ws .node-icon { color: var(--ox-teal); }
+    .node-item.ws { background: rgba(255,255,255,0.02); font-weight: 600; color: var(--ox-text); margin-top: 14px; }
+    .node-item.ws .node-icon { color: var(--ox-teal); margin-top: 7px; }
     @media (prefers-color-scheme: light) { .node-item.ws { background: rgba(0,0,0,0.03); } }
 
     .node-item.ws {
-      align-items: flex-start;
-      padding: 14px 14px 14px 12px;
+      display: grid;
+      grid-template-columns: auto auto minmax(0, 1fr) auto;
+      align-items: start;
+      gap: 10px;
+      max-height: none;
+      padding: 12px 14px 12px 10px;
       border: 1px solid rgba(var(--ox-primary-rgb), 0.08);
+      background:
+        linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.055), rgba(255,255,255,0.015)),
+        rgba(255,255,255,0.02);
     }
 
     .ws-shell {
-      flex: 1;
       min-width: 0;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 4px;
+      padding-top: 2px;
     }
 
     .ws-header {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
-      gap: 12px;
+      gap: 8px;
     }
 
     .ws-title-wrap {
       min-width: 0;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 4px;
+    }
+
+    .ws-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      flex-wrap: wrap;
     }
 
     .ws-title {
       font-size: 0.96rem;
-      line-height: 1.35;
+      line-height: 1.28;
       color: var(--ox-text);
-      letter-spacing: -0.01em;
+      letter-spacing: -0.015em;
+      min-width: 0;
+      flex: 0 1 auto;
     }
 
     .ws-meta {
@@ -188,31 +206,26 @@
       gap: 8px;
     }
 
-    .ws-execution {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      padding: 10px 12px;
-      border-radius: 10px;
-      background: rgba(var(--ox-primary-rgb), 0.06);
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.1);
-    }
-
-    .agent-chip {
+    .ws-rail {
       display: inline-flex;
       align-items: center;
+      justify-content: flex-end;
       gap: 10px;
-      min-width: 0;
-      max-width: 100%;
+      align-self: center;
+      padding-left: 8px;
+    }
+
+    .agent-presence {
+      position: relative;
+      width: 30px;
+      height: 30px;
+      flex: none;
     }
 
     .agent-avatar {
-      width: 32px;
-      height: 32px;
-      min-width: 32px;
-      border-radius: 10px;
+      width: 100%;
+      height: 100%;
+      border-radius: 9px;
       overflow: hidden;
       display: flex;
       align-items: center;
@@ -221,9 +234,11 @@
       border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
       color: var(--ox-primary);
       font-family: var(--ox-mono);
-      font-size: 0.82rem;
+      font-size: 0.76rem;
       font-weight: 700;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+      box-shadow:
+        0 10px 18px -12px rgba(var(--ox-primary-rgb), 0.45),
+        inset 0 1px 0 rgba(255,255,255,0.05);
     }
 
     .agent-avatar img {
@@ -232,86 +247,107 @@
       object-fit: cover;
     }
 
-    .agent-copy {
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .agent-name {
-      font-size: 0.82rem;
-      font-weight: 600;
-      color: var(--ox-text);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .agent-domain {
-      font-size: 0.68rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--ox-text-muted);
-      font-family: var(--ox-mono);
-    }
-
-    .progress-cluster {
-      min-width: min(100%, 180px);
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .progress-copy {
+    .domain-badge {
+      position: absolute;
+      right: -3px;
+      bottom: -3px;
+      width: 15px;
+      height: 15px;
+      border-radius: 999px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      font-size: 0.72rem;
-      font-family: var(--ox-mono);
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      color: var(--ox-text-muted);
+      justify-content: center;
+      background: var(--ox-panel);
+      border: 1px solid var(--ox-border);
+      color: var(--ox-primary);
+      box-shadow: 0 6px 14px -10px rgba(0,0,0,0.55);
     }
 
-    .progress-value {
+    .domain-badge svg {
+      width: 9px;
+      height: 9px;
+    }
+
+    .domain-badge.engineering { color: #38bdf8; }
+    .domain-badge.design { color: #f472b6; }
+    .domain-badge.product { color: #22c55e; }
+    .domain-badge.marketing { color: #f97316; }
+    .domain-badge.sales { color: #fb7185; }
+    .domain-badge.operations { color: #facc15; }
+    .domain-badge.orchestrator { color: #a78bfa; }
+
+    .progress-ring {
+      position: relative;
+      width: 36px;
+      height: 36px;
+      flex: none;
       color: var(--ox-text);
-      font-weight: 700;
     }
 
-    .progress-track {
+    .progress-ring svg {
       width: 100%;
-      height: 8px;
-      border-radius: 999px;
-      overflow: hidden;
-      background: rgba(148, 163, 184, 0.18);
-      border: 1px solid rgba(148, 163, 184, 0.14);
+      height: 100%;
+      display: block;
+      transform: rotate(-90deg);
     }
 
-    .progress-fill {
-      display: block;
-      height: 100%;
-      border-radius: inherit;
-      background: linear-gradient(90deg, rgba(var(--ox-primary-rgb), 0.7), var(--ox-primary));
-      box-shadow: 0 0 18px rgba(var(--ox-primary-rgb), 0.26);
+    .progress-ring-track {
+      fill: none;
+      stroke: rgba(148, 163, 184, 0.18);
+      stroke-width: 2.5;
+    }
+
+    .progress-ring-bar {
+      fill: none;
+      stroke: var(--ox-primary);
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 180ms ease, stroke 180ms ease;
+    }
+
+    .progress-ring.active .progress-ring-bar { stroke: var(--ox-teal); }
+    .progress-ring.ready .progress-ring-bar,
+    .progress-ring.pending .progress-ring-bar,
+    .progress-ring.not-started .progress-ring-bar { stroke: var(--ox-warning); }
+    .progress-ring.complete .progress-ring-bar { stroke: var(--ox-lime); }
+    .progress-ring.blocked .progress-ring-bar,
+    .progress-ring.failed .progress-ring-bar { stroke: var(--ox-danger); }
+    .progress-ring.paused .progress-ring-bar { stroke: rgba(148, 163, 184, 0.7); }
+
+    .progress-ring__value {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--ox-mono);
+      font-size: 0.56rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--ox-text);
+    }
+
+    .progress-ring__value span {
+      font-size: 0.42rem;
+      opacity: 0.68;
+      margin-left: 1px;
     }
 
     .status-badge {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      min-height: 28px;
-      padding: 4px 10px;
+      gap: 5px;
+      min-height: 24px;
+      padding: 0 8px;
       border-radius: 999px;
-      font-size: 0.68rem;
+      font-size: 0.61rem;
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
       font-family: var(--ox-mono);
       border: 1px solid currentColor;
       white-space: nowrap;
+      align-self: center;
     }
 
     .status-badge svg {
@@ -362,7 +398,7 @@
     .node-item.tk::after { content: ''; position: absolute; left: 36px; top: 20px; width: 8px; height: 1px; background: var(--ox-border); }
 
     
-    .badge-id { font-family: var(--ox-mono); font-size: 0.55rem; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--ox-border); color: var(--ox-text-muted); margin-left: auto; letter-spacing: 0.05em; }
+    .badge-id { font-family: var(--ox-mono); font-size: 0.53rem; padding: 2px 6px; border-radius: 999px; border: 1px solid var(--ox-border); color: var(--ox-text-muted); letter-spacing: 0.05em; line-height: 1; }
     .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary); font-family: var(--ox-mono); font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; border: 1px solid rgba(var(--ox-primary-rgb), 0.2); }
     .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; animation: pulse 2s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
@@ -404,17 +440,35 @@
         width: 100%;
       }
 
-      .ws-header {
-        flex-direction: column;
-        align-items: stretch;
+      .node-item.ws {
+        grid-template-columns: auto auto minmax(0, 1fr);
       }
 
-      .ws-execution {
-        align-items: stretch;
+      .ws-rail {
+        grid-column: 2 / -1;
+        justify-content: flex-start;
+        padding-left: 0;
+        margin-left: 4px;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .ox-card-inner {
+        padding: 20px 18px;
       }
 
-      .progress-cluster {
-        min-width: 100%;
+      .node-item.ws {
+        gap: 8px;
+        padding-right: 10px;
+      }
+
+      .ws-rail {
+        gap: 8px;
+      }
+
+      .status-badge {
+        padding: 0 7px;
+        font-size: 0.57rem;
       }
     }
 
@@ -497,6 +551,12 @@
       ,pause: function(s){return _svg('<rect x="8" y="7" width="3" height="10" rx="1" fill="currentColor" stroke="none"></rect><rect x="13" y="7" width="3" height="10" rx="1" fill="currentColor" stroke="none"></rect>',s);}
       ,alert: function(s){return _svg('<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>',s);}
       ,checkCircle: function(s){return _svg('<circle cx="12" cy="12" r="9"></circle><path d="m8.5 12.5 2.2 2.2 4.8-5"></path>',s);}
+      ,code: function(s){return _svg('<polyline points="9 8 5 12 9 16"></polyline><polyline points="15 8 19 12 15 16"></polyline>',s);}
+      ,spark: function(s){return _svg('<path d="m12 4 1.3 4.2L17.5 9.5l-4.2 1.3L12 15l-1.3-4.2L6.5 9.5l4.2-1.3z" fill="currentColor" stroke="none"></path>',s);}
+      ,megaphone: function(s){return _svg('<path d="M3 11v2"></path><path d="M6 10v4"></path><path d="M9 9v6"></path><path d="M9 10c5 0 8-4 8-4v12s-3-4-8-4"></path>',s);}
+      ,trend: function(s){return _svg('<path d="M5 15 10 10 13 13 19 7"></path><path d="M15 7h4v4"></path>',s);}
+      ,gear: function(s){return _svg('<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V20a2 2 0 0 1-4 0v-.2a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H4a2 2 0 0 1 0-4h.2a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2 1 1 0 0 0 .6-.9V4a2 2 0 0 1 4 0v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1 1 1 0 0 0 .9.6H20a2 2 0 0 1 0 4h-.2a1 1 0 0 0-.4.1"></path>',s);}
+      ,nodes: function(s){return _svg('<circle cx="6" cy="12" r="2" fill="currentColor" stroke="none"></circle><circle cx="18" cy="7" r="2" fill="currentColor" stroke="none"></circle><circle cx="18" cy="17" r="2" fill="currentColor" stroke="none"></circle><path d="M8 12h6"></path><path d="M16.2 8.3 12.8 11"></path><path d="M16.2 15.7 12.8 13"></path>',s);}
     };
     var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
     var readLabel = (item, fallback) => {
@@ -565,15 +625,39 @@
       var label = typeof name === 'string' && name.trim() ? name.trim() : titleCase(domain || 'Agent');
       return escapeHtml(label.charAt(0).toUpperCase() || '?');
     };
+    var getDomainTone = (domain) => {
+      var key = normalizeTextKey(domain);
+      if (['engineering', 'design', 'product', 'marketing', 'sales', 'operations', 'orchestrator'].includes(key)) return key;
+      return 'orchestrator';
+    };
+    var renderDomainIcon = (domain) => {
+      var key = getDomainTone(domain);
+      var icon = icons.nodes(9);
+      if (key === 'engineering') icon = icons.code(9);
+      else if (key === 'design') icon = icons.spark(9);
+      else if (key === 'product') icon = icons.initiative(9);
+      else if (key === 'marketing') icon = icons.megaphone(9);
+      else if (key === 'sales') icon = icons.trend(9);
+      else if (key === 'operations') icon = icons.gear(9);
+      return '<span class="domain-badge ' + escapeHtml(key) + '" aria-hidden="true">' + icon + '</span>';
+    };
+    var renderAgentPresence = (execution) => {
+      var name = execution && execution.agent_name ? execution.agent_name : 'Unassigned';
+      var domain = execution && execution.domain ? execution.domain : 'orchestrator';
+      return '<span class="agent-presence" title="' + escapeHtml(name + ' · ' + titleCase(domain)) + '">' +
+        '<span class="agent-avatar">' + renderAvatar(name, domain) + '</span>' +
+        renderDomainIcon(domain) +
+        '</span>';
+    };
     var classifyStatus = (status) => {
       var normalized = normalizeTextKey(status);
-      if (!normalized || normalized === 'not_started' || normalized === 'not started') return { tone: 'not-started', label: 'Not started', icon: icons.clock(12) };
-      if (['ready', 'queued', 'pending'].includes(normalized)) return { tone: normalized === 'ready' ? 'ready' : 'pending', label: titleCase(normalized), icon: icons.clock(12) };
-      if (['active', 'in_progress', 'in progress', 'running', 'executing'].includes(normalized)) return { tone: 'active', label: normalized === 'in_progress' || normalized === 'in progress' ? 'In progress' : titleCase(normalized), icon: icons.play(12) };
-      if (['complete', 'completed', 'done', 'success', 'succeeded'].includes(normalized)) return { tone: 'complete', label: normalized === 'complete' ? 'Completed' : titleCase(normalized), icon: icons.checkCircle(12) };
-      if (['blocked', 'error', 'failed'].includes(normalized)) return { tone: normalized === 'failed' ? 'failed' : 'blocked', label: titleCase(normalized), icon: icons.alert(12) };
-      if (['paused', 'cancelled', 'canceled'].includes(normalized)) return { tone: 'paused', label: normalized === 'canceled' ? 'Cancelled' : titleCase(normalized), icon: icons.pause(12) };
-      return { tone: 'pending', label: titleCase(normalized), icon: icons.clock(12) };
+      if (!normalized || normalized === 'not_started' || normalized === 'not started') return { tone: 'not-started', label: 'Not started', shortLabel: 'Idle', icon: icons.clock(12) };
+      if (['ready', 'queued', 'pending'].includes(normalized)) return { tone: normalized === 'ready' ? 'ready' : 'pending', label: titleCase(normalized), shortLabel: normalized === 'ready' ? 'Ready' : 'Queued', icon: icons.clock(12) };
+      if (['active', 'in_progress', 'in progress', 'running', 'executing'].includes(normalized)) return { tone: 'active', label: normalized === 'in_progress' || normalized === 'in progress' ? 'In progress' : titleCase(normalized), shortLabel: 'Active', icon: icons.play(12) };
+      if (['complete', 'completed', 'done', 'success', 'succeeded'].includes(normalized)) return { tone: 'complete', label: normalized === 'complete' ? 'Completed' : titleCase(normalized), shortLabel: 'Done', icon: icons.checkCircle(12) };
+      if (['blocked', 'error', 'failed'].includes(normalized)) return { tone: normalized === 'failed' ? 'failed' : 'blocked', label: titleCase(normalized), shortLabel: normalized === 'failed' ? 'Failed' : 'Blocked', icon: icons.alert(12) };
+      if (['paused', 'cancelled', 'canceled'].includes(normalized)) return { tone: 'paused', label: normalized === 'canceled' ? 'Cancelled' : titleCase(normalized), shortLabel: 'Paused', icon: icons.pause(12) };
+      return { tone: 'pending', label: titleCase(normalized), shortLabel: 'Queued', icon: icons.clock(12) };
     };
     var readProgress = (stream) => {
       var raw = stream && typeof stream.progress_pct === 'number' ? stream.progress_pct : null;
@@ -582,6 +666,19 @@
         return statusKey === 'complete' || statusKey === 'completed' || statusKey === 'done' ? 100 : 0;
       }
       return Math.max(0, Math.min(100, Math.round(raw)));
+    };
+    var renderProgressRing = (progress, tone) => {
+      var safeProgress = Math.max(0, Math.min(100, Math.round(progress || 0)));
+      var radius = 15;
+      var circumference = 2 * Math.PI * radius;
+      var offset = circumference - (safeProgress / 100) * circumference;
+      return '<span class="progress-ring ' + escapeHtml(tone || 'not-started') + '" aria-label="' + escapeHtml(String(safeProgress)) + '% complete">' +
+        '<svg viewBox="0 0 36 36" aria-hidden="true">' +
+          '<circle class="progress-ring-track" cx="18" cy="18" r="' + radius + '"></circle>' +
+          '<circle class="progress-ring-bar" cx="18" cy="18" r="' + radius + '" style="stroke-dasharray:' + circumference.toFixed(2) + ';stroke-dashoffset:' + offset.toFixed(2) + ';"></circle>' +
+        '</svg>' +
+        '<span class="progress-ring__value">' + escapeHtml(String(safeProgress)) + '<span>%</span></span>' +
+      '</span>';
     };
     var enrichHierarchy = (hierarchy, raw) => {
       var assignments = raw && raw.agent_assignment && Array.isArray(raw.agent_assignment.assignments)
@@ -648,15 +745,38 @@
     var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
     var data = isDemo ? {
       initiative: { id: "INI-402", title: "AI Query Discovery Engine", status: "Active" },
-      hierarchy: [
-        { type: "workstream", title: "Infrastructure Scaffolding", id: "WS-1" },
-        { type: "milestone", title: "Data Pipeline Validated", id: "MS-1" },
-        { type: "task", title: "Configure ingest scripts", id: "TSK-1" },
-        { type: "task", title: "Run dry-run tests", id: "TSK-2" },
-        { type: "workstream", title: "Search UX Implementation", id: "WS-2" },
-        { type: "milestone", title: "Search Input Animated", id: "MS-2" },
-        { type: "task", title: "Implement Lenis scrolling", id: "TSK-3" }
-      ],
+      hierarchy: {
+        initiative: { id: "INI-402", title: "AI Query Discovery Engine", status: "Active" },
+        workstreams: [
+          {
+            id: "WS-1",
+            title: "Infrastructure Scaffolding",
+            milestones: [
+              {
+                id: "MS-1",
+                title: "Data Pipeline Validated",
+                tasks: [
+                  { id: "TSK-1", title: "Configure ingest scripts" },
+                  { id: "TSK-2", title: "Run dry-run tests" }
+                ]
+              }
+            ]
+          },
+          {
+            id: "WS-2",
+            title: "Search UX Implementation",
+            milestones: [
+              {
+                id: "MS-2",
+                title: "Search Input Animated",
+                tasks: [
+                  { id: "TSK-3", title: "Implement Lenis scrolling" }
+                ]
+              }
+            ]
+          }
+        ]
+      },
       agent_assignment: {
         assignments: [
           { workstream_id: "WS-1", domain: "engineering", agent_id: "engineering-agent", agent_name: "Eli" },
@@ -737,36 +857,23 @@
           var execution = h.execution || {};
           var status = execution.status || classifyStatus('not_started');
           var progress = typeof execution.progress_pct === 'number' ? execution.progress_pct : 0;
-          var domainLabel = execution.domain ? titleCase(execution.domain) : 'Agent pending';
           return `<div class="node-item ${cls}">
             ${toggle}
-            <span class="node-icon" style="display:flex; align-items:center; margin-right:8px; margin-top:6px;">${icn}</span>
+            <span class="node-icon" style="display:flex; align-items:center;">${icn}</span>
             <div class="ws-shell">
               <div class="ws-header">
                 <div class="ws-title-wrap">
-                  <span class="ws-title">${escapeHtml(readLabel(h, 'Untitled'))}</span>
-                  <div class="ws-meta">
+                  <div class="ws-title-row">
+                    <span class="ws-title">${escapeHtml(readLabel(h, 'Untitled'))}</span>
                     ${h.id ? `<span class="badge-id">${escapeHtml(h.id)}</span>` : ''}
                   </div>
                 </div>
-                <span class="status-badge ${escapeHtml(status.tone)}">${status.icon}<span>${escapeHtml(status.label)}</span></span>
               </div>
-              <div class="ws-execution">
-                <div class="agent-chip">
-                  <span class="agent-avatar">${renderAvatar(execution.agent_name, execution.domain)}</span>
-                  <span class="agent-copy">
-                    <span class="agent-name">${escapeHtml(execution.agent_name || 'Unassigned')}</span>
-                    <span class="agent-domain">${escapeHtml(domainLabel)}</span>
-                  </span>
-                </div>
-                <div class="progress-cluster">
-                  <div class="progress-copy">
-                    <span>Completion</span>
-                    <span class="progress-value">${escapeHtml(String(progress))}%</span>
-                  </div>
-                  <span class="progress-track"><span class="progress-fill" style="width:${escapeHtml(String(progress))}%"></span></span>
-                </div>
-              </div>
+            </div>
+            <div class="ws-rail">
+              ${renderAgentPresence(execution)}
+              ${renderProgressRing(progress, status.tone)}
+              <span class="status-badge ${escapeHtml(status.tone)}" aria-label="${escapeHtml(status.label)}">${status.icon}<span>${escapeHtml(status.shortLabel || status.label)}</span></span>
             </div>
           </div>`;
         }
