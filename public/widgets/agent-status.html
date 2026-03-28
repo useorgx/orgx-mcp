@@ -564,6 +564,7 @@
       flex-direction: column;
       gap: 10px;
       margin-top: 6px;
+      min-height: 132px;
       padding: 14px;
       border-radius: 14px;
       border: 1px solid var(--ox-border);
@@ -649,7 +650,7 @@
     .workload-panel {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 14px;
       margin-top: 6px;
       padding: 14px;
       border-radius: 14px;
@@ -661,7 +662,7 @@
 
     .workload-head {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: space-between;
       gap: 12px;
     }
@@ -669,7 +670,7 @@
     .workload-head-stats {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       flex-wrap: wrap;
       justify-content: flex-end;
     }
@@ -732,6 +733,48 @@
       background: rgba(0, 201, 167, 0.88);
     }
 
+    .workload-legend {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .workload-legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      font-size: 0.74rem;
+      line-height: 1.2;
+      color: var(--ox-text-muted);
+      white-space: nowrap;
+    }
+
+    .workload-legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      flex-shrink: 0;
+    }
+
+    .workload-legend-dot.todo {
+      background: rgba(148, 163, 184, 0.32);
+    }
+
+    .workload-legend-dot.active {
+      background: linear-gradient(90deg, rgba(var(--ox-primary-rgb), 1), rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.96));
+      box-shadow: 0 0 10px rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.24);
+    }
+
+    .workload-legend-dot.done {
+      background: rgba(0, 201, 167, 0.88);
+    }
+
+    .workload-legend-dot.blocked {
+      background: linear-gradient(90deg, rgba(251, 191, 36, 0.88), rgba(245, 158, 11, 0.96));
+    }
+
     .workload-stats {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -739,10 +782,15 @@
     }
 
     .workload-stat {
-      display: flex;
-      align-items: center;
-      gap: 10px;
       min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.02);
     }
 
     .workload-stat-icon {
@@ -774,18 +822,27 @@
       min-width: 0;
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 4px;
     }
 
     .workload-stat-value {
-      font-size: 0.88rem;
+      font-size: 1rem;
       font-weight: 600;
       line-height: 1.2;
       color: var(--ox-text);
     }
 
     .workload-stat-label {
-      font-size: 0.72rem;
+      font-size: 0.68rem;
+      line-height: 1.4;
+      color: var(--ox-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-family: var(--ox-mono);
+    }
+
+    .workload-stat-note {
+      font-size: 0.74rem;
       line-height: 1.35;
       color: var(--ox-text-muted);
     }
@@ -823,6 +880,15 @@
 
       .workload-stats {
         grid-template-columns: 1fr;
+      }
+
+      .workload-stat {
+        flex-direction: row;
+        align-items: center;
+      }
+
+      .workload-stat-copy {
+        gap: 2px;
       }
     }
 
@@ -1563,26 +1629,35 @@
                     ${doneShare > 0 ? `<span class="workload-segment workload-segment-done" style="width:${doneShare}%"></span>` : ''}
                     ${blockedShare > 0 ? `<span class="workload-segment workload-segment-blocked" style="width:${blockedShare}%"></span>` : ''}
                   </div>
+                  <div class="workload-legend" aria-hidden="true">
+                    <span class="workload-legend-item"><span class="workload-legend-dot todo"></span>To do (${Math.round(todoShare)}%)</span>
+                    <span class="workload-legend-item"><span class="workload-legend-dot active"></span>In progress (${Math.round(activeShare)}%)</span>
+                    <span class="workload-legend-item"><span class="workload-legend-dot done"></span>Done (${Math.round(doneShare)}%)</span>
+                    ${blockedShare > 0 ? `<span class="workload-legend-item"><span class="workload-legend-dot blocked"></span>Blocked (${Math.round(blockedShare)}%)</span>` : ''}
+                  </div>
                   <div class="workload-stats">
                     <div class="workload-stat">
                       <div class="workload-stat-icon">${icons.task(14)}</div>
                       <div class="workload-stat-copy">
-                        <div class="workload-stat-value">${tasksInProgress} active task${tasksInProgress === 1 ? '' : 's'}</div>
-                        <div class="workload-stat-label">${tasksInProgress > 0 ? 'Currently routed to this agent' : 'No active task in motion'}</div>
+                        <div class="workload-stat-label">Active tasks</div>
+                        <div class="workload-stat-value">${tasksInProgress}</div>
+                        <div class="workload-stat-note">${tasksInProgress > 0 ? 'Currently routed to this agent' : 'No active task in motion'}</div>
                       </div>
                     </div>
                     <div class="workload-stat is-blocked">
                       <div class="workload-stat-icon">${icons.blocked(14)}</div>
                       <div class="workload-stat-copy">
-                        <div class="workload-stat-value">${blockedCount} blocked</div>
-                        <div class="workload-stat-label">${blockedCount > 0 ? 'Needs decision or dependency relief' : 'No active blockers right now'}</div>
+                        <div class="workload-stat-label">Blocked</div>
+                        <div class="workload-stat-value">${blockedCount}</div>
+                        <div class="workload-stat-note">${blockedCount > 0 ? 'Needs decision or dependency relief' : 'No active blockers right now'}</div>
                       </div>
                     </div>
                     <div class="workload-stat is-streams">
                       <div class="workload-stat-icon">${icons.stream(14)}</div>
                       <div class="workload-stat-copy">
-                        <div class="workload-stat-value">${streamCount} stream${streamCount === 1 ? '' : 's'}</div>
-                        <div class="workload-stat-label">${streamCount > 0 ? 'Initiative lanes currently touching this agent' : 'No parallel stream context attached'}</div>
+                        <div class="workload-stat-label">Streams</div>
+                        <div class="workload-stat-value">${streamCount}</div>
+                        <div class="workload-stat-note">${streamCount > 0 ? 'Initiative lanes currently touching this agent' : 'No parallel stream context attached'}</div>
                       </div>
                     </div>
                   </div>
