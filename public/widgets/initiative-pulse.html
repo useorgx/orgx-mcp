@@ -1049,13 +1049,14 @@
       }
 
       const safeName = escapeHtml(pulse.name || pulse.title || 'Initiative');
-      const safeStatus = escapeHtml(pulse.status).toUpperCase();
+      const safeStatus = escapeHtml(String(pulse.status || 'active').replace(/_/g, ' ')).toUpperCase();
       const progressPct = typeof pulse.progress_pct === 'number' ? pulse.progress_pct : 0;
       const pendingDecisions = typeof pulse.pending_decisions === 'number' ? pulse.pending_decisions : 0;
       const activeWorkstreams = typeof pulse.active_workstreams === 'number' ? pulse.active_workstreams : 0;
       const totalWorkstreams = typeof pulse.total_workstreams === 'number' ? pulse.total_workstreams : 0;
       const healthScore = typeof pulse.health_score === 'number' ? pulse.health_score : 100;
-      const normalizedStatus = escapeHtml(pulse.status).toLowerCase();
+      const normalizedStatus = escapeHtml(String(pulse.status || 'active')).toLowerCase();
+      const lifecycleStage = String(pulse.lifecycle_stage || '').toLowerCase();
       const roiSummary = pulse.roi_summary || null;
       const safeMessage = pulse.message ? escapeHtml(pulse.message) : '';
       let roiValue = null;
@@ -1066,8 +1067,18 @@
         roiValue = 1;
       }
 
-      const getHealthClass = (score) => { if (score >= 90) return 'health-on-track'; if (score >= 70) return 'health-attention'; return 'health-at-risk'; };
-      const getHealthLabel = (score) => { if (score >= 90) return 'On Track'; if (score >= 70) return 'Needs Attention'; return 'At Risk'; };
+      const getHealthClass = (score) => {
+        if (lifecycleStage === 'ramping_up' || normalizedStatus === 'ramping_up') return 'health-attention';
+        if (score >= 90) return 'health-on-track';
+        if (score >= 70) return 'health-attention';
+        return 'health-at-risk';
+      };
+      const getHealthLabel = (score) => {
+        if (lifecycleStage === 'ramping_up' || normalizedStatus === 'ramping_up') return 'Ramping Up';
+        if (score >= 90) return 'On Track';
+        if (score >= 70) return 'Needs Attention';
+        return 'At Risk';
+      };
 
       const blockersHtml = (pulse.blockers || []).length > 0 ? `
         <div class="blockers-alert">
