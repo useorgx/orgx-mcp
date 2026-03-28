@@ -478,7 +478,7 @@
     }
 
     .tree-overlay path.is-drawing {
-      animation: treeDrawIn 360ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation: treeDrawIn var(--draw-duration, 360ms) cubic-bezier(0.16, 1, 0.3, 1) forwards;
       animation-delay: var(--draw-delay, 0ms);
       stroke-dasharray: var(--path-length, 0);
       stroke-dashoffset: var(--path-length, 0);
@@ -990,10 +990,10 @@
     var buildElbowPath = (x, startY, rise, run) => {
       return 'M ' + x + ' ' + startY + ' A ' + rise + ' ' + rise + ' 0 0 0 ' + (x + rise) + ' ' + (startY + rise) + ' H ' + (x + run);
     };
-    var buildVerticalSegments = (x, spans) => {
-      return spans
-        .filter((span) => span && span.end > span.start)
-        .map((span) => ({ d: 'M ' + x + ' ' + span.start + ' V ' + span.end, delay: span.delay || 0 }));
+    var createTreePath = (d, delay, duration) => ({ d: d, delay: delay || 0, duration: duration || 0 });
+    var buildVerticalPath = (x, start, end, delay, duration) => {
+      if (!(end > start)) return null;
+      return createTreePath('M ' + x + ' ' + start + ' V ' + end, delay, duration);
     };
     var readHierarchyBaseDelay = (children) => {
       if (!children || !children.dataset) return 0;
@@ -1021,6 +1021,10 @@
     };
     var layoutTreeOverlays = (animate) => {
       var metrics = getTreeMetrics();
+      var lineDrawMs = 150;
+      var elbowDrawMs = 180;
+      var handoffOverlapMs = 24;
+      var advanceBy = (duration) => duration - handoffOverlapMs;
       document.querySelectorAll('[data-ws-children]').forEach((children) => {
         var inner = children.querySelector('[data-ws-children-inner]');
         var overlay = children.querySelector('[data-tree-overlay]');
@@ -1052,39 +1056,49 @@
           var mid = rect.top - bounds.top + rect.height / 2;
           return { entry: entry, mid: mid, start: mid - metrics.rise };
         });
-        var outerSegments = [];
-        if (milestonePoints[0].start > 0) {
-          outerSegments.push({ start: 0, end: milestonePoints[0].start, delay: baseDelay });
+        var outerCursor = baseDelay;
+        var initialOuterPath = buildVerticalPath(metrics.outerX, 0, milestonePoints[0].start, outerCursor, lineDrawMs);
+        if (initialOuterPath) {
+          paths.push(initialOuterPath);
+          outerCursor += advanceBy(lineDrawMs);
         }
         milestonePoints.forEach((point, index) => {
-          paths.push({ d: buildElbowPath(metrics.outerX, point.start, metrics.rise, metrics.outerRun), delay: baseDelay + 45 + index * 210 });
+          var milestoneElbowDelay = outerCursor;
+          paths.push(createTreePath(buildElbowPath(metrics.outerX, point.start, metrics.rise, metrics.outerRun), milestoneElbowDelay, elbowDrawMs));
+          outerCursor += advanceBy(elbowDrawMs);
           var nextPoint = milestonePoints[index + 1];
-          if (nextPoint && nextPoint.start > point.start + metrics.rise) {
-            outerSegments.push({ start: point.start + metrics.rise, end: nextPoint.start, delay: baseDelay + 45 + index * 210 });
-          }
           if (!point.entry.tasks.length) return;
           var taskPoints = point.entry.tasks.map((row) => {
             var rect = row.getBoundingClientRect();
             var mid = rect.top - bounds.top + rect.height / 2;
             return { mid: mid, start: mid - metrics.rise };
           });
-          var innerSegments = [];
-          if (taskPoints[0].start > point.mid) {
-            innerSegments.push({ start: point.mid, end: taskPoints[0].start, delay: baseDelay + 110 + index * 210 });
+          var innerCursor = milestoneElbowDelay + advanceBy(elbowDrawMs);
+          var initialInnerPath = buildVerticalPath(metrics.innerX, point.mid, taskPoints[0].start, innerCursor, lineDrawMs);
+          if (initialInnerPath) {
+            paths.push(initialInnerPath);
+            innerCursor += advanceBy(lineDrawMs);
           }
           taskPoints.forEach((taskPoint, taskIndex) => {
-            paths.push({ d: buildElbowPath(metrics.innerX, taskPoint.start, metrics.rise, metrics.innerRun), delay: baseDelay + 165 + index * 210 + taskIndex * 95 });
+            paths.push(createTreePath(buildElbowPath(metrics.innerX, taskPoint.start, metrics.rise, metrics.innerRun), innerCursor, elbowDrawMs));
+            innerCursor += advanceBy(elbowDrawMs);
             var nextTask = taskPoints[taskIndex + 1];
-            if (nextTask && nextTask.start > taskPoint.start + metrics.rise) {
-              innerSegments.push({ start: taskPoint.start + metrics.rise, end: nextTask.start, delay: baseDelay + 165 + index * 210 + taskIndex * 95 });
+            var nextInnerPath = nextTask ? buildVerticalPath(metrics.innerX, taskPoint.start + metrics.rise, nextTask.start, innerCursor, lineDrawMs) : null;
+            if (nextInnerPath) {
+              paths.push(nextInnerPath);
+              innerCursor += advanceBy(lineDrawMs);
             }
           });
-          paths.push.apply(paths, buildVerticalSegments(metrics.innerX, innerSegments));
+          var nextOuterPath = nextPoint ? buildVerticalPath(metrics.outerX, point.start + metrics.rise, nextPoint.start, outerCursor, lineDrawMs) : null;
+          if (nextOuterPath) {
+            paths.push(nextOuterPath);
+            outerCursor += advanceBy(lineDrawMs);
+          }
         });
-        paths.push.apply(paths, buildVerticalSegments(metrics.outerX, outerSegments));
         overlay.innerHTML = '<svg viewBox="0 0 ' + Math.ceil(bounds.width) + ' ' + Math.ceil(bounds.height) + '" preserveAspectRatio="none" aria-hidden="true">' + paths.map((path, index) => {
           var delay = path.delay || 0;
-          return '<path d="' + path.d + '" data-path-index="' + index + '" style="--draw-delay:' + delay + 'ms"></path>';
+          var duration = path.duration || 0;
+          return '<path d="' + path.d + '" data-path-index="' + index + '" style="--draw-delay:' + delay + 'ms;--draw-duration:' + duration + 'ms"></path>';
         }).join('') + '</svg>';
         if (animate) {
           Array.from(overlay.querySelectorAll('path')).forEach((path) => {
