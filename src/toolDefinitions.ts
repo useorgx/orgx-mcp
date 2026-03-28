@@ -33,6 +33,7 @@ export const WIDGET_URIS = {
   decisions: 'ui://widget/decisions.html',
   agentStatus: 'ui://widget/agent-status.html',
   searchResults: 'ui://widget/search-results.html',
+  scaffoldedInitiative: 'ui://widget/scaffolded-initiative.html',
   initiativePulse: 'ui://widget/initiative-pulse.html',
   taskSpawned: 'ui://widget/task-spawned.html',
   decisionHistory: 'ui://widget/search-results.html', // Reuse search results widget
@@ -44,11 +45,62 @@ export const OUTPUT_TEMPLATE_URIS = {
   decisions: toSkybridgeResourceUri(WIDGET_URIS.decisions),
   agentStatus: toSkybridgeResourceUri(WIDGET_URIS.agentStatus),
   searchResults: toSkybridgeResourceUri(WIDGET_URIS.searchResults),
+  scaffoldedInitiative: toSkybridgeResourceUri(WIDGET_URIS.scaffoldedInitiative),
   initiativePulse: toSkybridgeResourceUri(WIDGET_URIS.initiativePulse),
   taskSpawned: toSkybridgeResourceUri(WIDGET_URIS.taskSpawned),
   decisionHistory: toSkybridgeResourceUri(WIDGET_URIS.decisionHistory),
   testMinimal: toSkybridgeResourceUri(WIDGET_URIS.testMinimal),
   morningBrief: toSkybridgeResourceUri(WIDGET_URIS.morningBrief),
+} as const;
+
+export const WIDGET_RESOURCES = [
+  {
+    name: 'decisions-widget',
+    uri: WIDGET_URIS.decisions,
+    title: 'Pending Decisions Widget',
+  },
+  {
+    name: 'agent-status-widget',
+    uri: WIDGET_URIS.agentStatus,
+    title: 'Agent Status Widget',
+  },
+  {
+    name: 'search-results-widget',
+    uri: WIDGET_URIS.searchResults,
+    title: 'Search Results Widget',
+  },
+  {
+    name: 'scaffolded-initiative-widget',
+    uri: WIDGET_URIS.scaffoldedInitiative,
+    title: 'Scaffolded Initiative Widget',
+  },
+  {
+    name: 'initiative-pulse-widget',
+    uri: WIDGET_URIS.initiativePulse,
+    title: 'Initiative Pulse Widget',
+  },
+  {
+    name: 'task-spawned-widget',
+    uri: WIDGET_URIS.taskSpawned,
+    title: 'Task Spawned Widget',
+  },
+  {
+    name: 'test-minimal-widget',
+    uri: WIDGET_URIS.testMinimal,
+    title: 'Minimal Test Widget (no external deps)',
+  },
+  {
+    name: 'morning-brief-widget',
+    uri: WIDGET_URIS.morningBrief,
+    title: 'Morning Brief Widget',
+  },
+] as const;
+
+export const SCAFFOLD_INITIATIVE_WIDGET_META = {
+  'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.scaffoldedInitiative,
+  'openai/toolInvocation/invoking': 'Scaffolding initiative hierarchy...',
+  'openai/toolInvocation/invoked': 'Initiative scaffolded',
+  ui: { resourceUri: WIDGET_URIS.scaffoldedInitiative },
 } as const;
 
 

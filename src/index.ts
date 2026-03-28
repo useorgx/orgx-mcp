@@ -100,6 +100,8 @@ import {
 import {
   WIDGET_URIS,
   OUTPUT_TEMPLATE_URIS,
+  WIDGET_RESOURCES,
+  SCAFFOLD_INITIATIVE_WIDGET_META,
   OAUTH_SCOPES_SUPPORTED,
   SECURITY_SCHEMES,
   PLAN_SESSION_TOOLS,
@@ -4479,7 +4481,10 @@ export class OrgXMcp extends McpAgent<
             .optional()
             .describe('Parallel creation concurrency (default 8)'),
         }),
-        _meta: { securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth },
+        _meta: {
+          securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
+          ...SCAFFOLD_INITIATIVE_WIDGET_META,
+        },
       },
       async (args) =>
         this.withOrgx(async () => {
@@ -6952,49 +6957,11 @@ export class OrgXMcp extends McpAgent<
    * Widgets receive data via structuredContent and window.openai.toolOutput.
    */
   private registerWidgetResources() {
-    const widgets = [
-      {
-        name: 'decisions-widget',
-        uri: WIDGET_URIS.decisions,
-        title: 'Pending Decisions Widget',
-      },
-      {
-        name: 'agent-status-widget',
-        uri: WIDGET_URIS.agentStatus,
-        title: 'Agent Status Widget',
-      },
-      {
-        name: 'search-results-widget',
-        uri: WIDGET_URIS.searchResults,
-        title: 'Search Results Widget',
-      },
-      {
-        name: 'initiative-pulse-widget',
-        uri: WIDGET_URIS.initiativePulse,
-        title: 'Initiative Pulse Widget',
-      },
-      {
-        name: 'task-spawned-widget',
-        uri: WIDGET_URIS.taskSpawned,
-        title: 'Task Spawned Widget',
-      },
-      {
-        name: 'test-minimal-widget',
-        uri: WIDGET_URIS.testMinimal,
-        title: 'Minimal Test Widget (no external deps)',
-      },
-      {
-        name: 'morning-brief-widget',
-        uri: WIDGET_URIS.morningBrief,
-        title: 'Morning Brief Widget',
-      },
-    ] as const;
-
     const widgetMeta = buildWidgetMeta(this.env);
     const mcpAppsMeta = buildMcpAppsMeta(this.env);
     const mcpAppsContentMeta = { ...widgetMeta, ...mcpAppsMeta };
 
-    for (const widget of widgets) {
+    for (const widget of WIDGET_RESOURCES) {
       registerAppResource(
         this.server,
         widget.name,

@@ -79,6 +79,41 @@ export const authHandler = {
     }
 
     // =========================================================================
+    // ChatGPT widget compatibility routes
+    // ChatGPT Apps may request widget HTML via /api/chatgpt/widgets/*
+    // while the canonical assets live under /widgets/*. Proxy these requests
+    // to the static asset path so both URLs stay valid.
+    // =========================================================================
+    if (
+      request.method === 'GET' &&
+      url.pathname.startsWith('/api/chatgpt/widgets/')
+    ) {
+      const widgetPath = url.pathname.replace('/api/chatgpt/widgets/', '');
+      if (!widgetPath || widgetPath.includes('..')) {
+        return withCors(
+          Response.json(
+            {
+              error: 'not_found',
+              error_description: `Route ${url.pathname} not found`,
+            },
+            { status: 404 }
+          )
+        );
+      }
+
+      const assetUrl = new URL(`/widgets/${widgetPath}`, url.origin);
+      const assetResponse = await fetch(assetUrl.toString(), {
+        method: 'GET',
+        headers: {
+          accept: request.headers.get('accept') ?? 'text/html,*/*',
+        },
+      });
+
+      const proxied = new Response(assetResponse.body, assetResponse);
+      return withCors(proxied);
+    }
+
+    // =========================================================================
     // Protected Resource Metadata (RFC 9728)
     // MCP clients need this to discover that OAuth is required and where
     // the authorization server lives. Without this, clients connect anonymously.

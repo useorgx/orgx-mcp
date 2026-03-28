@@ -634,12 +634,25 @@ export function buildScaffoldHierarchy(params: {
     }
   }
 
+  const readLabel = (record: Record<string, unknown> | null | undefined) => {
+    if (!record) return null;
+    const title = record.title;
+    if (typeof title === 'string' && title.trim().length > 0) return title.trim();
+    const name = record.name;
+    if (typeof name === 'string' && name.trim().length > 0) return name.trim();
+    return null;
+  };
+
   const nodeForRef = (ref: string) => {
     const info = byRef.get(ref);
+    const data =
+      info?.data && typeof info.data === 'object' ? { ...info.data } : {};
+    const label = readLabel(data);
     return {
       ref,
       success: info?.success ?? false,
-      ...(info?.data ?? {}),
+      ...data,
+      ...(label && typeof data.title !== 'string' ? { title: label } : {}),
       ...(info?.success === false ? { error: info?.error } : {}),
     };
   };

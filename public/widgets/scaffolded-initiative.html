@@ -145,6 +145,211 @@
     .node-item.ws { background: rgba(255,255,255,0.02); font-weight: 600; color: var(--ox-text); margin-top: 12px; }
     .node-item.ws .node-icon { color: var(--ox-teal); }
     @media (prefers-color-scheme: light) { .node-item.ws { background: rgba(0,0,0,0.03); } }
+
+    .node-item.ws {
+      align-items: flex-start;
+      padding: 14px 14px 14px 12px;
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.08);
+    }
+
+    .ws-shell {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .ws-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .ws-title-wrap {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .ws-title {
+      font-size: 0.96rem;
+      line-height: 1.35;
+      color: var(--ox-text);
+      letter-spacing: -0.01em;
+    }
+
+    .ws-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ws-execution {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(var(--ox-primary-rgb), 0.06);
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.1);
+    }
+
+    .agent-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    .agent-avatar {
+      width: 32px;
+      height: 32px;
+      min-width: 32px;
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(var(--ox-primary-rgb), 0.12);
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
+      color: var(--ox-primary);
+      font-family: var(--ox-mono);
+      font-size: 0.82rem;
+      font-weight: 700;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+
+    .agent-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .agent-copy {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .agent-name {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--ox-text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .agent-domain {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ox-text-muted);
+      font-family: var(--ox-mono);
+    }
+
+    .progress-cluster {
+      min-width: min(100%, 180px);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .progress-copy {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 0.72rem;
+      font-family: var(--ox-mono);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--ox-text-muted);
+    }
+
+    .progress-value {
+      color: var(--ox-text);
+      font-weight: 700;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 8px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(148, 163, 184, 0.18);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+    }
+
+    .progress-fill {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, rgba(var(--ox-primary-rgb), 0.7), var(--ox-primary));
+      box-shadow: 0 0 18px rgba(var(--ox-primary-rgb), 0.26);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 28px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-family: var(--ox-mono);
+      border: 1px solid currentColor;
+      white-space: nowrap;
+    }
+
+    .status-badge svg {
+      flex: none;
+    }
+
+    .status-badge.active {
+      color: var(--ox-teal);
+      background: rgba(13, 148, 136, 0.12);
+      border-color: rgba(13, 148, 136, 0.24);
+    }
+
+    .status-badge.pending,
+    .status-badge.ready,
+    .status-badge.not-started {
+      color: var(--ox-warning);
+      background: rgba(217, 119, 6, 0.12);
+      border-color: rgba(217, 119, 6, 0.22);
+    }
+
+    .status-badge.complete {
+      color: var(--ox-lime);
+      background: rgba(163, 230, 53, 0.14);
+      border-color: rgba(163, 230, 53, 0.24);
+    }
+
+    .status-badge.blocked,
+    .status-badge.failed {
+      color: var(--ox-danger);
+      background: rgba(225, 29, 72, 0.12);
+      border-color: rgba(225, 29, 72, 0.24);
+    }
+
+    .status-badge.paused {
+      color: var(--ox-text-muted);
+      background: rgba(100, 116, 139, 0.12);
+      border-color: rgba(100, 116, 139, 0.22);
+    }
     
     .node-item.ms { padding-left: 24px; color: var(--ox-text); font-weight: 500; }
     .node-item.ms .node-icon { color: var(--ox-warning); }
@@ -197,6 +402,19 @@
 
       .deep-link {
         width: 100%;
+      }
+
+      .ws-header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .ws-execution {
+        align-items: stretch;
+      }
+
+      .progress-cluster {
+        min-width: 100%;
       }
     }
 
@@ -274,8 +492,158 @@
       workstream: function(s){return _svg('<rect x="2" y="2" width="20" height="20" rx="6" fill="currentColor" fill-opacity="0.1" stroke="none"></rect><path d="M6 6c3 0 5 6 8 6"></path><path d="M6 18c3 0 5-6 8-6"></path><path d="M6 12h12"></path><path d="m14 8 4 4-4 4"></path><circle cx="6" cy="6" r="1.5" fill="currentColor" stroke="none"></circle><circle cx="6" cy="12" r="1.5" fill="currentColor" stroke="none"></circle><circle cx="6" cy="18" r="1.5" fill="currentColor" stroke="none"></circle>',s);},
       milestone: function(s){return _svg('<path d="M5 3v18"></path><path d="m5 4 12 1-2 4 2 4-12-1z" fill="currentColor" fill-opacity="0.1"></path>',s);},
       task: function(s){return _svg('<rect x="4" y="4" width="16" height="16" rx="4" fill="currentColor" fill-opacity="0.12"></rect><path d="M9 12.2 11 14.2 15.2 10"></path>',s);}
+      ,play: function(s){return _svg('<polygon points="10 8 17 12 10 16 10 8" fill="currentColor" stroke="none"></polygon>',s);}
+      ,clock: function(s){return _svg('<circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path>',s);}
+      ,pause: function(s){return _svg('<rect x="8" y="7" width="3" height="10" rx="1" fill="currentColor" stroke="none"></rect><rect x="13" y="7" width="3" height="10" rx="1" fill="currentColor" stroke="none"></rect>',s);}
+      ,alert: function(s){return _svg('<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>',s);}
+      ,checkCircle: function(s){return _svg('<circle cx="12" cy="12" r="9"></circle><path d="m8.5 12.5 2.2 2.2 4.8-5"></path>',s);}
     };
     var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
+    var readLabel = (item, fallback) => {
+      if (!item || typeof item !== 'object') return fallback || '';
+      if (typeof item.title === 'string' && item.title.trim()) return item.title.trim();
+      if (typeof item.name === 'string' && item.name.trim()) return item.name.trim();
+      return fallback || '';
+    };
+    var flattenHierarchy = (hierarchy) => {
+      if (Array.isArray(hierarchy)) return hierarchy;
+      if (!hierarchy || typeof hierarchy !== 'object') return [];
+      var flattened = [];
+      var workstreams = Array.isArray(hierarchy.workstreams) ? hierarchy.workstreams : [];
+      workstreams.forEach((workstream) => {
+        flattened.push({
+          type: 'workstream',
+          title: readLabel(workstream, 'Untitled workstream'),
+          id: workstream && typeof workstream.id === 'string' ? workstream.id : workstream && typeof workstream.ref === 'string' ? workstream.ref : '',
+        });
+        var milestones = workstream && Array.isArray(workstream.milestones) ? workstream.milestones : [];
+        milestones.forEach((milestone) => {
+          flattened.push({
+            type: 'milestone',
+            title: readLabel(milestone, 'Untitled milestone'),
+            id: milestone && typeof milestone.id === 'string' ? milestone.id : milestone && typeof milestone.ref === 'string' ? milestone.ref : '',
+          });
+          var tasks = milestone && Array.isArray(milestone.tasks) ? milestone.tasks : [];
+          tasks.forEach((task) => {
+            flattened.push({
+              type: 'task',
+              title: readLabel(task, 'Untitled task'),
+              id: task && typeof task.id === 'string' ? task.id : task && typeof task.ref === 'string' ? task.ref : '',
+            });
+          });
+        });
+      });
+      return flattened;
+    };
+    var normalizeTextKey = (value) => {
+      return typeof value === 'string' ? value.trim().toLowerCase() : '';
+    };
+    var titleCase = (value) => {
+      if (typeof value !== 'string') return '';
+      return value
+        .replace(/[-_]+/g, ' ')
+        .split(' ')
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+    };
+    var getAvatarUrl = (name, domain) => {
+      var n = normalizeTextKey(name);
+      var d = normalizeTextKey(domain);
+      if (n.includes('pace') || n.includes('product') || d === 'product') return 'https://useorgx.com/product_orchestrator.png';
+      if (n.includes('eli') || n.includes('engineer') || d === 'engineering') return 'https://useorgx.com/engineering_autopilot.png';
+      if (n.includes('mark') || n.includes('market') || d === 'marketing') return 'https://useorgx.com/launch_captain.png';
+      if (n.includes('sage') || n.includes('sale') || d === 'sales') return 'https://useorgx.com/pipeline_intelligence.png';
+      if (n.includes('orion') || n.includes('op') || d === 'operations') return 'https://useorgx.com/control_tower.png';
+      if (n.includes('dana') || n.includes('design') || d === 'design') return 'https://useorgx.com/design_codex.png';
+      if (n.includes('xandy') || n.includes('orchestrator') || d === 'orchestrator') return 'https://useorgx.com/xandy_orchestrator.png';
+      return null;
+    };
+    var renderAvatar = (name, domain) => {
+      var url = getAvatarUrl(name, domain);
+      if (url) return '<img src="' + url + '" alt="' + escapeHtml(name || domain || 'Agent') + '" loading="lazy" />';
+      var label = typeof name === 'string' && name.trim() ? name.trim() : titleCase(domain || 'Agent');
+      return escapeHtml(label.charAt(0).toUpperCase() || '?');
+    };
+    var classifyStatus = (status) => {
+      var normalized = normalizeTextKey(status);
+      if (!normalized || normalized === 'not_started' || normalized === 'not started') return { tone: 'not-started', label: 'Not started', icon: icons.clock(12) };
+      if (['ready', 'queued', 'pending'].includes(normalized)) return { tone: normalized === 'ready' ? 'ready' : 'pending', label: titleCase(normalized), icon: icons.clock(12) };
+      if (['active', 'in_progress', 'in progress', 'running', 'executing'].includes(normalized)) return { tone: 'active', label: normalized === 'in_progress' || normalized === 'in progress' ? 'In progress' : titleCase(normalized), icon: icons.play(12) };
+      if (['complete', 'completed', 'done', 'success', 'succeeded'].includes(normalized)) return { tone: 'complete', label: normalized === 'complete' ? 'Completed' : titleCase(normalized), icon: icons.checkCircle(12) };
+      if (['blocked', 'error', 'failed'].includes(normalized)) return { tone: normalized === 'failed' ? 'failed' : 'blocked', label: titleCase(normalized), icon: icons.alert(12) };
+      if (['paused', 'cancelled', 'canceled'].includes(normalized)) return { tone: 'paused', label: normalized === 'canceled' ? 'Cancelled' : titleCase(normalized), icon: icons.pause(12) };
+      return { tone: 'pending', label: titleCase(normalized), icon: icons.clock(12) };
+    };
+    var readProgress = (stream) => {
+      var raw = stream && typeof stream.progress_pct === 'number' ? stream.progress_pct : null;
+      if (raw == null) {
+        var statusKey = normalizeTextKey(stream && stream.status);
+        return statusKey === 'complete' || statusKey === 'completed' || statusKey === 'done' ? 100 : 0;
+      }
+      return Math.max(0, Math.min(100, Math.round(raw)));
+    };
+    var enrichHierarchy = (hierarchy, raw) => {
+      var assignments = raw && raw.agent_assignment && Array.isArray(raw.agent_assignment.assignments)
+        ? raw.agent_assignment.assignments
+        : [];
+      var streams = raw && raw.streams && Array.isArray(raw.streams.items)
+        ? raw.streams.items
+        : [];
+      var assignmentsByWorkstream = new Map();
+      assignments.forEach((assignment) => {
+        if (!assignment || typeof assignment !== 'object' || typeof assignment.workstream_id !== 'string') return;
+        assignmentsByWorkstream.set(assignment.workstream_id, assignment);
+      });
+      var streamsByWorkstream = new Map();
+      streams.forEach((stream) => {
+        if (!stream || typeof stream !== 'object' || typeof stream.workstream_id !== 'string') return;
+        streamsByWorkstream.set(stream.workstream_id, stream);
+      });
+
+      return flattenHierarchy(hierarchy).map((item) => {
+        if (!item || item.type !== 'workstream') return item;
+        var assignment = item.id ? assignmentsByWorkstream.get(item.id) : null;
+        var stream = item.id ? streamsByWorkstream.get(item.id) : null;
+        var domain = assignment && typeof assignment.domain === 'string' && assignment.domain.trim()
+          ? assignment.domain.trim()
+          : stream && typeof stream.agent_domain === 'string' && stream.agent_domain.trim()
+          ? stream.agent_domain.trim()
+          : item && typeof item.domain === 'string' && item.domain.trim()
+          ? item.domain.trim()
+          : item && typeof item.persona === 'string' && item.persona.trim()
+          ? item.persona.trim()
+          : null;
+        var agentName = assignment && typeof assignment.agent_name === 'string' && assignment.agent_name.trim()
+          ? assignment.agent_name.trim()
+          : domain
+          ? titleCase(domain)
+          : 'Unassigned';
+        var status = classifyStatus(stream && typeof stream.status === 'string' ? stream.status : 'not_started');
+        return Object.assign({}, item, {
+          execution: {
+            domain: domain,
+            agent_id: assignment && typeof assignment.agent_id === 'string' ? assignment.agent_id : null,
+            agent_name: agentName,
+            progress_pct: readProgress(stream),
+            status: status,
+          },
+        });
+      });
+    };
+    var normalizeScaffoldData = (raw) => {
+      if (!raw || typeof raw !== 'object') return null;
+      var initiative = raw.initiative || (raw.hierarchy && raw.hierarchy.initiative) || null;
+      if (!initiative || typeof initiative !== 'object') return null;
+      return {
+        initiative: {
+          id: typeof initiative.id === 'string' ? initiative.id : typeof initiative.ref === 'string' ? initiative.ref : '',
+          title: readLabel(initiative, 'Untitled initiative'),
+          status: typeof initiative.status === 'string' && initiative.status.trim() ? initiative.status.trim() : 'scaffolded',
+        },
+        hierarchy: enrichHierarchy(raw.hierarchy, raw),
+      };
+    };
 
     var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
     var data = isDemo ? {
@@ -288,7 +656,19 @@
         { type: "workstream", title: "Search UX Implementation", id: "WS-2" },
         { type: "milestone", title: "Search Input Animated", id: "MS-2" },
         { type: "task", title: "Implement Lenis scrolling", id: "TSK-3" }
-      ]
+      ],
+      agent_assignment: {
+        assignments: [
+          { workstream_id: "WS-1", domain: "engineering", agent_id: "engineering-agent", agent_name: "Eli" },
+          { workstream_id: "WS-2", domain: "design", agent_id: "design-agent", agent_name: "Dana" }
+        ]
+      },
+      streams: {
+        items: [
+          { workstream_id: "WS-1", status: "active", agent_domain: "engineering", progress_pct: 42 },
+          { workstream_id: "WS-2", status: "ready", agent_domain: "design", progress_pct: 12 }
+        ]
+      }
     } : null;
     var isLoading = !isDemo;
 
@@ -322,9 +702,10 @@
 
     var render = () => {
       if(isLoading) return;
-      if(!data || !data.initiative) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.layout(24)}</div><div class="empty-title">Awaiting scaffold</div><div class="empty-desc">The structural hierarchy has not been generated yet.</div></div>`); return; }
+      var scaffold = normalizeScaffoldData(data);
+      if(!scaffold || !scaffold.initiative) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.layout(24)}</div><div class="empty-title">Awaiting scaffold</div><div class="empty-desc">The structural hierarchy has not been generated yet.</div></div>`); return; }
 
-      const listHtml = (data.hierarchy || []).map(h => {
+      const listHtml = (scaffold.hierarchy || []).map(h => {
         let icn = '';
         let cls = '';
         let toggle = '';
@@ -335,10 +716,47 @@
         }
         if(h.type === 'milestone') { icn = icons.milestone(14); cls = 'ms'; }
         if(h.type === 'task') { icn = icons.task(14); cls = 'tk'; }
+        if(h.type === 'workstream') {
+          var execution = h.execution || {};
+          var status = execution.status || classifyStatus('not_started');
+          var progress = typeof execution.progress_pct === 'number' ? execution.progress_pct : 0;
+          var domainLabel = execution.domain ? titleCase(execution.domain) : 'Agent pending';
+          return `<div class="node-item ${cls}">
+            ${toggle}
+            <span class="node-icon" style="display:flex; align-items:center; margin-right:8px; margin-top:6px;">${icn}</span>
+            <div class="ws-shell">
+              <div class="ws-header">
+                <div class="ws-title-wrap">
+                  <span class="ws-title">${escapeHtml(readLabel(h, 'Untitled'))}</span>
+                  <div class="ws-meta">
+                    ${h.id ? `<span class="badge-id">${escapeHtml(h.id)}</span>` : ''}
+                  </div>
+                </div>
+                <span class="status-badge ${escapeHtml(status.tone)}">${status.icon}<span>${escapeHtml(status.label)}</span></span>
+              </div>
+              <div class="ws-execution">
+                <div class="agent-chip">
+                  <span class="agent-avatar">${renderAvatar(execution.agent_name, execution.domain)}</span>
+                  <span class="agent-copy">
+                    <span class="agent-name">${escapeHtml(execution.agent_name || 'Unassigned')}</span>
+                    <span class="agent-domain">${escapeHtml(domainLabel)}</span>
+                  </span>
+                </div>
+                <div class="progress-cluster">
+                  <div class="progress-copy">
+                    <span>Completion</span>
+                    <span class="progress-value">${escapeHtml(String(progress))}%</span>
+                  </div>
+                  <span class="progress-track"><span class="progress-fill" style="width:${escapeHtml(String(progress))}%"></span></span>
+                </div>
+              </div>
+            </div>
+          </div>`;
+        }
         return `<div class="node-item ${cls}">
           ${toggle}
           <span class="node-icon" style="display:flex; align-items:center; margin-right:8px;">${icn}</span>
-          <span style="flex:1;">${escapeHtml(h.title)}</span>
+          <span style="flex:1;">${escapeHtml(readLabel(h, 'Untitled'))}</span>
           ${h.id ? `<span class="badge-id">${escapeHtml(h.id)}</span>` : ''}
         </div>`;
       }).join('');
@@ -350,9 +768,9 @@
               <div class="h-icon">${icons.initiative(24)}</div>
               <div style="flex:1;">
                 <div class="ox-eyebrow" style="margin-bottom:4px;">Initiative Scaffolded</div>
-                <h2 class="ox-title" style="font-size:1.3rem; margin-bottom:8px;">${escapeHtml(data.initiative.title)}</h2>
+                <h2 class="ox-title" style="font-size:1.3rem; margin-bottom:8px;">${escapeHtml(scaffold.initiative.title)}</h2>
                 <div class="status-pill">
-                  <div class="status-dot"></div> ${escapeHtml(data.initiative.status)}
+                  <div class="status-dot"></div> ${escapeHtml(scaffold.initiative.status)}
                 </div>
               </div>
             </div>
@@ -364,7 +782,7 @@
           
             <div class="widget-footer">
               <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
-              <a href="${data.initiative.id ? `https://console.useorgx.com/initiatives/${escapeHtml(data.initiative.id)}` : 'https://console.useorgx.com'}" target="_blank" rel="noreferrer" class="deep-link ox-link-btn ox-link-btn--quiet">
+              <a href="${scaffold.initiative.id ? `https://console.useorgx.com/initiatives/${escapeHtml(scaffold.initiative.id)}` : 'https://console.useorgx.com'}" target="_blank" rel="noreferrer" class="deep-link ox-link-btn ox-link-btn--quiet">
                 Open Initiative
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
               </a>
