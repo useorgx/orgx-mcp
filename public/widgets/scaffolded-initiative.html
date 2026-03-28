@@ -112,7 +112,18 @@
     .h-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--ox-border); }
     .h-icon { width: 48px; height: 48px; border-radius: 12px; background: rgba(var(--ox-primary-rgb), 0.1); border: 1px solid rgba(var(--ox-primary-rgb), 0.2); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
     
-    .node-list { display: flex; flex-direction: column; gap: 4px; }
+    .node-list {
+      --tree-rail-width: 58px;
+      --tree-outer-x: 16px;
+      --tree-inner-x: 38px;
+      --tree-elbow-rise: 10px;
+      --tree-elbow-run-outer: 16px;
+      --tree-elbow-run-inner: 14px;
+      --tree-stroke: 1.5px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
     .node-item {
       display: flex;
       align-items: center;
@@ -387,15 +398,88 @@
       border-color: rgba(100, 116, 139, 0.22);
     }
     
-    .node-item.ms { padding-left: 24px; color: var(--ox-text); font-weight: 500; }
+    .node-item.ms,
+    .node-item.tk {
+      display: grid;
+      grid-template-columns: var(--tree-rail-width) auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px 8px 0;
+      background: transparent;
+      max-height: none;
+      overflow: visible;
+    }
+
+    .node-item.ms {
+      color: var(--ox-text);
+      font-weight: 500;
+    }
+
+    .node-item.tk {
+      color: var(--ox-text-muted);
+      font-size: 0.85rem;
+    }
+
     .node-item.ms .node-icon { color: var(--ox-warning); }
-    .node-item.ms::before { content: ''; position: absolute; left: 12px; top: 0; bottom: 0; width: 1px; background: var(--ox-border); }
-    .node-item.ms::after { content: ''; position: absolute; left: 12px; top: 20px; width: 8px; height: 1px; background: var(--ox-border); }
-    
-    .node-item.tk { padding-left: 48px; color: var(--ox-text-muted); font-size: 0.85rem; }
     .node-item.tk .node-icon { color: var(--ox-lime); }
-    .node-item.tk::before { content: ''; position: absolute; left: 12px; top: 0; bottom: 0; width: 1px; background: var(--ox-border); }
-    .node-item.tk::after { content: ''; position: absolute; left: 36px; top: 20px; width: 8px; height: 1px; background: var(--ox-border); }
+
+    .tree-rail {
+      position: relative;
+      width: var(--tree-rail-width);
+      min-height: 34px;
+      height: 100%;
+      align-self: stretch;
+    }
+
+    .tree-line,
+    .tree-elbow {
+      position: absolute;
+      border-color: var(--ox-border-strong);
+      opacity: 0.96;
+      pointer-events: none;
+    }
+
+    .tree-line {
+      width: 0;
+      border-left-style: solid;
+      border-left-width: var(--tree-stroke);
+    }
+
+    .tree-line--outer { left: var(--tree-outer-x); }
+    .tree-line--inner { left: var(--tree-inner-x); }
+    .tree-line--top {
+      top: 0;
+      bottom: calc(50% - var(--tree-elbow-rise));
+    }
+    .tree-line--bottom {
+      top: 50%;
+      bottom: 0;
+    }
+
+    .tree-elbow {
+      top: calc(50% - var(--tree-elbow-rise));
+      height: var(--tree-elbow-rise);
+      border-left-style: solid;
+      border-left-width: var(--tree-stroke);
+      border-bottom-style: solid;
+      border-bottom-width: var(--tree-stroke);
+      border-bottom-left-radius: var(--tree-elbow-rise);
+    }
+
+    .tree-elbow--outer {
+      left: var(--tree-outer-x);
+      width: var(--tree-elbow-run-outer);
+    }
+
+    .tree-elbow--inner {
+      left: var(--tree-inner-x);
+      width: var(--tree-elbow-run-inner);
+    }
+
+    .tree-label {
+      min-width: 0;
+      line-height: 1.38;
+    }
 
     
     .badge-id { font-family: var(--ox-mono); font-size: 0.53rem; padding: 2px 6px; border-radius: 999px; border: 1px solid var(--ox-border); color: var(--ox-text-muted); letter-spacing: 0.05em; line-height: 1; }
@@ -455,6 +539,15 @@
     @media (max-width: 420px) {
       .ox-card-inner {
         padding: 20px 18px;
+      }
+
+      .node-list {
+        --tree-rail-width: 50px;
+        --tree-outer-x: 14px;
+        --tree-inner-x: 32px;
+        --tree-elbow-rise: 9px;
+        --tree-elbow-run-outer: 14px;
+        --tree-elbow-run-inner: 12px;
       }
 
       .node-item.ws {
@@ -577,18 +670,33 @@
           id: workstream && typeof workstream.id === 'string' ? workstream.id : workstream && typeof workstream.ref === 'string' ? workstream.ref : '',
         });
         var milestones = workstream && Array.isArray(workstream.milestones) ? workstream.milestones : [];
-        milestones.forEach((milestone) => {
+        milestones.forEach((milestone, milestoneIndex) => {
+          var tasks = milestone && Array.isArray(milestone.tasks) ? milestone.tasks : [];
+          var milestoneIsLast = milestoneIndex === milestones.length - 1;
+          var milestoneHasFollowingSibling = !milestoneIsLast;
           flattened.push({
             type: 'milestone',
             title: readLabel(milestone, 'Untitled milestone'),
             id: milestone && typeof milestone.id === 'string' ? milestone.id : milestone && typeof milestone.ref === 'string' ? milestone.ref : '',
+            connector: {
+              outerTop: true,
+              outerBottom: milestoneHasFollowingSibling,
+              outerElbow: true,
+            },
           });
-          var tasks = milestone && Array.isArray(milestone.tasks) ? milestone.tasks : [];
-          tasks.forEach((task) => {
+          tasks.forEach((task, taskIndex) => {
+            var taskIsLast = taskIndex === tasks.length - 1;
             flattened.push({
               type: 'task',
               title: readLabel(task, 'Untitled task'),
               id: task && typeof task.id === 'string' ? task.id : task && typeof task.ref === 'string' ? task.ref : '',
+              connector: {
+                outerTop: milestoneHasFollowingSibling,
+                outerBottom: milestoneHasFollowingSibling,
+                innerTop: true,
+                innerBottom: !taskIsLast,
+                innerElbow: true,
+              },
             });
           });
         });
@@ -728,6 +836,19 @@
         });
       });
     };
+    var renderTreeRail = (connector) => {
+      if (!connector || typeof connector !== 'object') return '';
+      var parts = ['<span class="tree-rail" aria-hidden="true">'];
+      if (connector.outerTop) parts.push('<span class="tree-line tree-line--outer tree-line--top"></span>');
+      if (connector.outerBottom) parts.push('<span class="tree-line tree-line--outer tree-line--bottom"></span>');
+      if (connector.innerTop) parts.push('<span class="tree-line tree-line--inner tree-line--top"></span>');
+      if (connector.innerBottom) parts.push('<span class="tree-line tree-line--inner tree-line--bottom"></span>');
+      if (connector.outerElbow) parts.push('<span class="tree-elbow tree-elbow--outer"></span>');
+      if (connector.innerElbow) parts.push('<span class="tree-elbow tree-elbow--inner"></span>');
+      parts.push('</span>');
+      return parts.join('');
+    };
+
     var normalizeScaffoldData = (raw) => {
       if (!raw || typeof raw !== 'object') return null;
       var initiative = raw.initiative || (raw.hierarchy && raw.hierarchy.initiative) || null;
@@ -742,8 +863,11 @@
       };
     };
 
-    var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
-    var data = isDemo ? {
+    var queryParams = new URLSearchParams(window.location.search);
+    var isDemo = queryParams.get('demo') === 'true';
+    var demoScenario = queryParams.get('scenario') || 'default';
+    var demoScenarios = {
+      default: {
       initiative: { id: "INI-402", title: "AI Query Discovery Engine", status: "Active" },
       hierarchy: {
         initiative: { id: "INI-402", title: "AI Query Discovery Engine", status: "Active" },
@@ -789,10 +913,131 @@
           { workstream_id: "WS-2", status: "ready", agent_domain: "design", progress_pct: 12 }
         ]
       }
-    } : null;
+      },
+      branchy: {
+        initiative: { id: "INI-913", title: "Autonomous Revenue Command Center", status: "Active" },
+        hierarchy: {
+          initiative: { id: "INI-913", title: "Autonomous Revenue Command Center", status: "Active" },
+          workstreams: [
+            {
+              id: "WS-1",
+              title: "Signal Ingestion",
+              milestones: [
+                {
+                  id: "MS-1",
+                  title: "Pipeline Baseline Locked",
+                  tasks: [
+                    { id: "TSK-1", title: "Backfill CRM exports" },
+                    { id: "TSK-2", title: "Validate webhook retries" },
+                    { id: "TSK-3", title: "Ship anomaly snapshots" }
+                  ]
+                },
+                {
+                  id: "MS-2",
+                  title: "Warehouse Contracts Normalized",
+                  tasks: [
+                    { id: "TSK-4", title: "Map identity joins" }
+                  ]
+                },
+                {
+                  id: "MS-3",
+                  title: "Recovery Runbook Published",
+                  tasks: []
+                }
+              ]
+            },
+            {
+              id: "WS-2",
+              title: "Operator Console",
+              milestones: [
+                {
+                  id: "MS-4",
+                  title: "Live Query Composer",
+                  tasks: [
+                    { id: "TSK-5", title: "Refine prompt shortcuts" },
+                    { id: "TSK-6", title: "Tune zero-results state" }
+                  ]
+                },
+                {
+                  id: "MS-5",
+                  title: "Narrative Timeline QA",
+                  tasks: [
+                    { id: "TSK-7", title: "Tighten event grouping" }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        agent_assignment: {
+          assignments: [
+            { workstream_id: "WS-1", domain: "engineering", agent_id: "engineering-agent", agent_name: "Eli" },
+            { workstream_id: "WS-2", domain: "design", agent_id: "design-agent", agent_name: "Dana" }
+          ]
+        },
+        streams: {
+          items: [
+            { workstream_id: "WS-1", status: "active", agent_domain: "engineering", progress_pct: 57 },
+            { workstream_id: "WS-2", status: "active", agent_domain: "design", progress_pct: 34 }
+          ]
+        }
+      },
+      dense: {
+        initiative: { id: "INI-118", title: "Search Copilot Readiness", status: "Active" },
+        hierarchy: {
+          initiative: { id: "INI-118", title: "Search Copilot Readiness", status: "Active" },
+          workstreams: [
+            {
+              id: "WS-1",
+              title: "Retrieval Quality",
+              milestones: [
+                {
+                  id: "MS-1",
+                  title: "Ground Truth Coverage",
+                  tasks: [
+                    { id: "TSK-1", title: "Label 50 failure cases" },
+                    { id: "TSK-2", title: "Tune ranking weights" },
+                    { id: "TSK-3", title: "Add regression alerts" },
+                    { id: "TSK-4", title: "Publish reviewer rubric" }
+                  ]
+                }
+              ]
+            },
+            {
+              id: "WS-2",
+              title: "Response Design",
+              milestones: [
+                {
+                  id: "MS-2",
+                  title: "Insight Cards Hardened",
+                  tasks: [
+                    { id: "TSK-5", title: "Compact multi-source citations" },
+                    { id: "TSK-6", title: "Polish overflow behaviors" },
+                    { id: "TSK-7", title: "Stress-test mobile line wraps" }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        agent_assignment: {
+          assignments: [
+            { workstream_id: "WS-1", domain: "product", agent_id: "product-agent", agent_name: "Pace" },
+            { workstream_id: "WS-2", domain: "design", agent_id: "design-agent", agent_name: "Dana" }
+          ]
+        },
+        streams: {
+          items: [
+            { workstream_id: "WS-1", status: "ready", agent_domain: "product", progress_pct: 19 },
+            { workstream_id: "WS-2", status: "active", agent_domain: "design", progress_pct: 63 }
+          ]
+        }
+      }
+    };
+    var data = isDemo ? (demoScenarios[demoScenario] || demoScenarios.default) : null;
     var isLoading = !isDemo;
 
-    var isLoadingOverride = new URLSearchParams(window.location.search).get('loading') === 'true';
+    var isLoadingOverride = queryParams.get('loading') === 'true';
     if (isLoadingOverride) {
       isLoading = true;
       isDemo = false;
@@ -878,9 +1123,9 @@
           </div>`;
         }
         return `<div class="node-item ${cls}">
-          ${toggle}
-          <span class="node-icon" style="display:flex; align-items:center; margin-right:8px;">${icn}</span>
-          <span style="flex:1;">${escapeHtml(readLabel(h, 'Untitled'))}</span>
+          ${renderTreeRail(h.connector)}
+          <span class="node-icon" style="display:flex; align-items:center;">${icn}</span>
+          <span class="tree-label">${escapeHtml(readLabel(h, 'Untitled'))}</span>
           ${h.id ? `<span class="badge-id">${escapeHtml(h.id)}</span>` : ''}
         </div>`;
       }).join('');
