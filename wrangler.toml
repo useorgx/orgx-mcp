@@ -11,6 +11,7 @@ account_id = "5e0f62b0acf89dd1493ff769187814c4"
 [assets]
 directory = "./public"
 html_handling = "none"
+binding = "ASSETS"
 
 # Non-secret variables (secrets like ORGX_SERVICE_KEY, MCP_JWT_SECRET should be set via `wrangler secret put`)
 # Note: Use www.useorgx.com to avoid apex→www redirect breaking API calls

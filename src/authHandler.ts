@@ -33,6 +33,7 @@ interface AuthHandlerEnv {
   ORGX_WEB_URL: string;
   MCP_SERVER_URL: string;
   AUTH_SERVER_URL: string;
+  ASSETS?: Fetcher;
   OAUTH_KV: KVNamespace;
   OAUTH_PROVIDER: OAuthHelpers;
   MCP_REGISTRY_PUBKEY?: string;
@@ -101,13 +102,15 @@ export const authHandler = {
         );
       }
 
-      const assetUrl = new URL(`/widgets/${widgetPath}`, url.origin);
-      const assetResponse = await fetch(assetUrl.toString(), {
+      const assetRequest = new Request(new URL(`/widgets/${widgetPath}`, request.url).toString(), {
         method: 'GET',
         headers: {
           accept: request.headers.get('accept') ?? 'text/html,*/*',
         },
       });
+      const assetResponse = env.ASSETS
+        ? await env.ASSETS.fetch(assetRequest)
+        : await fetch(assetRequest);
 
       const proxied = new Response(assetResponse.body, assetResponse);
       return withCors(proxied);

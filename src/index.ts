@@ -202,6 +202,7 @@ interface Env extends OAuthEnv {
   MCP_JWT_SECRET: string;
   MCP_SERVER_URL: string;
   AUTH_SERVER_URL: string;
+  ASSETS?: Fetcher;
   ORGX_WEB_URL: string;
   // PostHog telemetry (optional). In production, set via `wrangler secret put`.
   POSTHOG_KEY?: string;
