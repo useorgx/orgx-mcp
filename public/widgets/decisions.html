@@ -224,12 +224,6 @@
 
     :root { --ox-primary-rgb: 251, 191, 36; }
     
-    .summary-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 18px;
-    }
     .queue-subtitle { font-size: 0.92rem; line-height: 1.6; color: var(--ox-text-muted); max-width: 56ch; }
     
     .decision-shell {
@@ -839,10 +833,6 @@
     }
 
     @media (max-width: 560px) {
-      .summary-grid {
-        justify-content: flex-start;
-      }
-
       .pagination {
         grid-template-columns: 1fr;
       }
@@ -927,7 +917,6 @@
               </svg>
             </div>
           </div>
-          <div id="summary" class="summary-grid"></div>
         </div>
       </div>
     </div>
@@ -1393,10 +1382,6 @@
         var pendingCount = data.decisions.length;
         queueSubtitle.textContent = pendingCount + ' pending decision' + (pendingCount === 1 ? '' : 's') + ' need operator input. Approve to unblock execution, or reject with clear guidance so the next attempt stays on-rail.';
       }
-
-      document.getElementById('summary').innerHTML = data.summary
-        ? Object.entries(data.summary).filter(([k,v])=>v>0).map(([k,v]) => `<span class="widget-note-pill">${v} ${escapeHtml(k)}</span>`).join('')
-        : '';
 
       const totalPages = Math.ceil(data.decisions.length / itemsPerPage);
       const startIdx = (currentPage - 1) * itemsPerPage;

@@ -702,11 +702,6 @@
                   <div class="widget-kicker">Morning Brief</div>
                   <div class="widget-title-lg">${escapeHtml(normalized.date)}</div>
                   <div class="widget-subtitle">${escapeHtml(normalized.summary)}</div>
-                  <div class="widget-pill-row">
-                    <span class="widget-note-pill">${normalized.priorities.length} priorities</span>
-                    ${normalized.attentionSignals && normalized.attentionSignals.length ? `<span class="widget-note-pill">${normalized.attentionSignals.length} attention signals</span>` : ''}
-                    ${normalized.exceptions && normalized.exceptions.length ? `<span class="widget-note-pill">${normalized.exceptions.length} exceptions</span>` : ''}
-                  </div>
                 </div>
                 <div class="widget-icon-frame">${icons.sun(20)}</div>
               </div>
