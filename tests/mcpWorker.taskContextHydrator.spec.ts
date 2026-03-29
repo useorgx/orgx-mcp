@@ -64,4 +64,30 @@ describe('task context hydrator', () => {
       entry: { artifact_id: 'artifact-1' },
     });
   });
+
+  it('deduplicates repeated fetch targets before hydrating', async () => {
+    const fetchEntity = vi.fn(async (type: string, id: string) => ({
+      id,
+      entity_type: type,
+      title: `Hydrated ${id}`,
+    }));
+
+    const result = await hydrateTaskContext({
+      context: [
+        { type: 'artifact', artifact_id: 'artifact-1' },
+        { type: 'artifact', artifact_id: 'artifact-1' },
+        { type: 'entity', entity_type: 'task', entity_id: 'task-1' },
+        { type: 'entity', entity_type: 'task', entity_id: 'task-1' },
+      ],
+      fetchEntity,
+      maxChars: 4000,
+    });
+
+    expect(fetchEntity).toHaveBeenCalledTimes(2);
+    expect(fetchEntity).toHaveBeenNthCalledWith(1, 'artifact', 'artifact-1');
+    expect(fetchEntity).toHaveBeenNthCalledWith(2, 'task', 'task-1');
+    expect(result.hydrated).toHaveLength(4);
+    expect(result.hydrated[0]?.hydrated).toEqual(result.hydrated[1]?.hydrated);
+    expect(result.hydrated[2]?.hydrated).toEqual(result.hydrated[3]?.hydrated);
+  });
 });

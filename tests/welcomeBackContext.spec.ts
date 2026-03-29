@@ -89,10 +89,10 @@ describe('welcomeBackContext', () => {
       }),
     });
 
-    expect(digest).toContain('Welcome back.');
-    expect(digest).toContain('Pending decisions: 1');
-    expect(digest).toContain('Approve rollout [high]');
-    expect(digest).toContain('Suggested next actions:');
+    expect(digest).toContain('Welcome back to Command Center.');
+    expect(digest).toContain('1 pending decisions');
+    expect(digest).toContain('First pending decision: Approve rollout.');
+    expect(digest).toContain('Next: Review 1 pending decision first.');
     expect(digest).toContain('Live view:');
   });
 });

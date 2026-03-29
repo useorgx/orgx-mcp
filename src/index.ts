@@ -104,6 +104,7 @@ import {
   shouldShowWelcomeBack,
   type McpSessionReentryState,
 } from './welcomeBackContext';
+import { buildNewSessionWelcomeText } from './sessionMessaging';
 import {
   WIDGET_URIS,
   OUTPUT_TEMPLATE_URIS,
@@ -821,7 +822,6 @@ export class OrgXMcp extends McpAgent<
 
     return {
       content: [
-        { type: 'text', text: JSON.stringify(payload) },
         { type: 'text', text: message },
       ],
       structuredContent: payload,
@@ -1100,19 +1100,7 @@ export class OrgXMcp extends McpAgent<
       if (!leadingBlock && this._isNewSession) {
         leadingBlock = {
           type: 'text' as const,
-          text: [
-            `Welcome to OrgX! You're connected and ready to go.`,
-            ``,
-            `Here's what you can do:`,
-            `• **scaffold_initiative** — Create a full initiative with workstreams, milestones, and tasks in one call`,
-            `• **get_org_snapshot** — See a bird's-eye view of all your initiatives and progress`,
-            `• **list_entities** — Review pending decisions with \`type=decision\` and \`status=pending\``,
-            `• **query_org_memory** — Search your organization's knowledge base`,
-            `• **recommend_next_action** — See the next best action for your workspace or initiative`,
-            `• **spawn_agent_task** — Delegate work to specialized AI agents`,
-            ``,
-            `Just describe what you'd like to accomplish and I'll pick the right tool.`,
-          ].join('\n'),
+          text: buildNewSessionWelcomeText(),
         };
       }
 
@@ -3150,18 +3138,23 @@ export class OrgXMcp extends McpAgent<
         },
         _meta: { 'openai/visibility': 'public', 'openai/readOnlyHint': true, securitySchemes: SECURITY_SCHEMES.readOptionalAuth },
       },
-      async (args) =>
+      async (args: Record<string, unknown>) =>
         this.withOrgx(async () => {
           const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
           const params = new URLSearchParams();
-          if (args?.view) params.set('view', args.view);
-          if (args?.initiative_status) {
+          if (typeof args?.view === 'string' && args.view.length > 0) {
+            params.set('view', args.view);
+          }
+          if (
+            typeof args?.initiative_status === 'string' &&
+            args.initiative_status.length > 0
+          ) {
             params.set('initiative_status', args.initiative_status);
           }
           if (typeof args?.limit === 'number') {
             params.set('limit', String(args.limit));
           }
-          if (args?.cursor) {
+          if (typeof args?.cursor === 'string' && args.cursor.length > 0) {
             params.set('cursor', args.cursor);
           }
           if (Array.isArray(args?.include) && args.include.length > 0) {

@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   applyHydrationAccessTier,
+  resetHydrationAccessContextCache,
   resolveHydrationAccessContext,
   resolveHydrationMaxChars,
 } from '../src/contextAccessTier';
@@ -11,6 +12,11 @@ vi.mock('../src/orgxApi', () => ({
 }));
 
 describe('context hydration access tiers', () => {
+  beforeEach(() => {
+    resetHydrationAccessContextCache();
+    vi.clearAllMocks();
+  });
+
   it('caps free-tier hydration to 4000 chars', () => {
     expect(resolveHydrationMaxChars(undefined, 'free')).toBe(4000);
     expect(resolveHydrationMaxChars(6000, 'free')).toBe(4000);
@@ -109,6 +115,29 @@ describe('context hydration access tiers', () => {
       tier: 'paid',
       plan: 'starter',
     });
+  });
+
+  it('caches resolved access per user for the ttl window', async () => {
+    const { callOrgxApiJson } = await import('../src/orgxApi');
+    vi.mocked(callOrgxApiJson).mockResolvedValue({
+      json: async () => ({ plan: 'starter' }),
+    } as Response);
+
+    const env = {
+      ORGX_API_URL: 'https://example.com',
+      ORGX_SERVICE_KEY: 'oxk-test',
+    };
+
+    await expect(resolveHydrationAccessContext(env, 'user-1')).resolves.toEqual({
+      tier: 'paid',
+      plan: 'starter',
+    });
+    await expect(resolveHydrationAccessContext(env, 'user-1')).resolves.toEqual({
+      tier: 'paid',
+      plan: 'starter',
+    });
+
+    expect(callOrgxApiJson).toHaveBeenCalledTimes(1);
   });
 
   it('falls back to free access when billing usage fails', async () => {
