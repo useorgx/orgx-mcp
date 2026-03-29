@@ -1707,11 +1707,6 @@
                   <div class="widget-kicker">Live Agent Board</div>
                   <div class="widget-title-lg">Multi-agent execution</div>
                   <div class="widget-subtitle">${escapeHtml(subtitleCopy)}</div>
-                  <div class="widget-pill-row">
-                    <span class="widget-note-pill">${payload.agents.length} tracked agents</span>
-                    ${summary.blocked > 0 ? `<span class="widget-note-pill">${summary.blocked} blocked</span>` : ''}
-                    ${summary.queued > 0 ? `<span class="widget-note-pill">${summary.queued} queued</span>` : ''}
-                  </div>
                 </div>
                 <div class="widget-icon-frame">${icons.agent(20)}</div>
               </div>

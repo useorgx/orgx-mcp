@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildMcpAppsMeta,
   rewriteWidgetHtmlAssetUrls,
+  sanitizeMcpAppsHtml,
 } from '../src/widgetConfig';
 
 describe('widgetConfig', () => {
@@ -56,5 +57,36 @@ describe('widgetConfig', () => {
     expect(meta.ui.csp.resourceDomains).toContain('https://mcp.useorgx.com');
     expect(meta.ui.csp.baseUriDomains).toContain('https://mcp.useorgx.com');
     expect(meta.ui.csp.baseUriDomains).toContain('https://www.useorgx.com');
+  });
+
+  it('sanitizes MCP Apps HTML by removing icon links and inlining shared assets', () => {
+    const html = `<!doctype html>
+<html>
+  <head>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg%3E" />
+    <link rel="stylesheet" href="https://mcp.useorgx.com/widgets/shared/interaction-kit.css" />
+    <script src="https://mcp.useorgx.com/widgets/shared/interaction-kit.js"></script>
+  </head>
+  <body>
+    <div>Widget</div>
+  </body>
+</html>`;
+
+    const sanitized = sanitizeMcpAppsHtml(html, {
+      interactionKitCss: '.ox-test { color: red; }',
+      interactionKitJs: 'window.__oxTest = true;',
+    });
+
+    expect(sanitized).not.toContain('rel="icon"');
+    expect(sanitized).toContain('data-inline-asset="interaction-kit.css"');
+    expect(sanitized).toContain('.ox-test { color: red; }');
+    expect(sanitized).toContain('data-inline-asset="interaction-kit.js"');
+    expect(sanitized).toContain('window.__oxTest = true;');
+    expect(sanitized).not.toContain(
+      'href="https://mcp.useorgx.com/widgets/shared/interaction-kit.css"'
+    );
+    expect(sanitized).not.toContain(
+      'src="https://mcp.useorgx.com/widgets/shared/interaction-kit.js"'
+    );
   });
 });

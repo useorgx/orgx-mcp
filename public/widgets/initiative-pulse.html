@@ -213,35 +213,13 @@
          .status-blocked { background: rgba(244,63,94,0.1); border-color: rgba(244,63,94,0.2); }
       }
 
-      .pulse-metrics {
-        display: flex;
-        gap: 16px;
-        margin-bottom: 24px;
-        padding-bottom: 24px;
-        border-bottom: 1px solid var(--ox-border);
-      }
-
-      .metric {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-
-      .metric-label, .detail-label {
+      .detail-label {
         font-family: var(--ox-mono);
         font-size: 0.65rem;
         text-transform: uppercase;
         letter-spacing: 0.1em;
         color: var(--ox-text-muted);
         font-weight: 600;
-      }
-
-      .metric-value {
-        font-size: 1.5rem;
-        font-weight: 500;
-        color: var(--ox-text);
-        font-family: var(--ox-mono);
-        letter-spacing: -0.03em;
       }
 
       .roi-strip {
@@ -713,7 +691,6 @@
           gap: 12px;
         }
 
-        .pulse-metrics,
         .roi-strip,
         .insight-grid {
           grid-template-columns: 1fr;
@@ -1178,23 +1155,12 @@
                   <div class="widget-kicker">Initiative Pulse</div>
                   <div class="widget-title-lg">${safeName}</div>
                   <div class="widget-subtitle">${safeMessage || 'Health, momentum, blockers, and recent output for the current initiative.'}</div>
-                  <div class="widget-pill-row">
-                    <span class="widget-note-pill">${progressPct}% progress</span>
-                    <span class="widget-note-pill">${pendingDecisions} pending decisions</span>
-                    <span class="widget-note-pill">${activeWorkstreams}${totalWorkstreams ? ` / ${totalWorkstreams}` : ''} active workstreams</span>
-                  </div>
                 </div>
                 <div class="widget-stack" style="align-items:flex-end; gap:10px;">
                   <div class="widget-icon-frame">${icons.layers(20)}</div>
                   <span class="status-badge status-${normalizedStatus}">${safeStatus}</span>
                 </div>
               </div>
-
-            <div class="pulse-metrics">
-              <div class="metric"><span class="metric-label">Progress</span><span class="metric-value">${progressPct}%</span></div>
-              <div class="metric"><span class="metric-label">Pending</span><span class="metric-value">${pendingDecisions}</span></div>
-              <div class="metric"><span class="metric-label">Workstreams</span><span class="metric-value">${activeWorkstreams}${totalWorkstreams ? `/${totalWorkstreams}` : ''}</span></div>
-            </div>
 
             ${roiSummary ? `
               <div class="roi-strip">

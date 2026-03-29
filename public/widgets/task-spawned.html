@@ -608,12 +608,7 @@
                 <div class="widget-hero-copy">
                   <div class="widget-kicker">Agent Dispatched</div>
                   <div class="widget-title-lg">${escapeHtml(entity.title)}</div>
-                  <div class="widget-subtitle">${entity.note ? escapeHtml(entity.note) : 'OrgX accepted the dispatch and is handing the work to the assigned execution surface.'}</div>
-                  <div class="widget-pill-row">
-                    <span class="widget-note-pill">${typeDisplay}</span>
-                    <span class="widget-note-pill">${escapeHtml(entity.id)}</span>
-                    ${entity.initiative_name ? `<span class="widget-note-pill">${escapeHtml(entity.initiative_name)}</span>` : ''}
-                  </div>
+                  <div class="widget-subtitle">${entity.note ? escapeHtml(entity.note) : 'OrgX accepted the dispatch and is handing the work to the assigned execution surface.'}${entity.initiative_name ? ' Initiative: ' + escapeHtml(entity.initiative_name) + '.' : ''}</div>
                 </div>
                 <div class="widget-stack" style="align-items:flex-end; gap:10px;">
                   <div class="widget-icon-frame">${typeIcon}</div>

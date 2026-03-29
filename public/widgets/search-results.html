@@ -795,11 +795,7 @@
                   <div class="widget-hero-copy">
                     <div class="widget-kicker">Org Memory Search</div>
                     <div class="widget-title-lg">Decision history</div>
-                    <div class="widget-subtitle">Past approvals and rejections that may inform the current call.</div>
-                    <div class="widget-pill-row">
-                      <span class="widget-note-pill">${history.length} matching decisions</span>
-                      ${data.topic ? `<span class="widget-note-pill">${escapeHtml(data.topic)}</span>` : ''}
-                    </div>
+                    <div class="widget-subtitle">Past approvals and rejections that may inform the current call${data.topic ? ' for “' + escapeHtml(data.topic) + '”' : ''}.</div>
                   </div>
                   <div class="widget-icon-frame">${icons.search(20)}</div>
                 </div>
@@ -854,11 +850,7 @@
                   <div class="widget-hero-copy">
                     <div class="widget-kicker">Org Memory Search</div>
                     <div class="widget-title-lg">Recommended next action</div>
-                    <div class="widget-subtitle">Ranked follow-up actions based on current OrgX context. Use the CTA on each card to start the next step directly.</div>
-                    <div class="widget-pill-row">
-                      <span class="widget-note-pill">${recommendations.length} ranked options</span>
-                      ${data.message ? `<span class="widget-note-pill">${escapeHtml(data.message)}</span>` : ''}
-                    </div>
+                    <div class="widget-subtitle">${escapeHtml(data.message || 'Ranked follow-up actions based on current OrgX context. Use the CTA on each card to start the next step directly.')}</div>
                   </div>
                   <div class="widget-icon-frame">${icons.search(20)}</div>
                 </div>
@@ -916,11 +908,7 @@
                 <div class="widget-hero-copy">
                   <div class="widget-kicker">Org Memory Search</div>
                   <div class="widget-title-lg">Search results</div>
-                  <div class="widget-subtitle">Matching artifacts, initiatives, and decisions from organizational memory.</div>
-                  <div class="widget-pill-row">
-                    <span class="widget-note-pill">${normalizedResults.length} matches</span>
-                    ${data.query ? `<span class="widget-note-pill">${escapeHtml(data.query)}</span>` : ''}
-                  </div>
+                  <div class="widget-subtitle">Matching artifacts, initiatives, and decisions from organizational memory${data.query ? ' for “' + escapeHtml(data.query) + '”' : ''}.</div>
                 </div>
                 <div class="widget-icon-frame">${icons.search(20)}</div>
               </div>
