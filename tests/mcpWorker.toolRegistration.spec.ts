@@ -6,6 +6,7 @@ import {
   PLAN_SESSION_TOOLS,
   STREAM_TOOL_DEFINITIONS,
 } from '../src/toolDefinitions';
+import { CONTRACT_TOOL_DEFINITIONS } from '../src/contractTools';
 import { FLYWHEEL_TOOL_DEFINITIONS } from '../src/flywheelTools';
 
 const INLINE_REGISTERED_TOOL_IDS = [
@@ -56,6 +57,9 @@ describe('MCP Worker tool registration integrity', () => {
   const clientIds = extractIds(
     CLIENT_INTEGRATION_TOOL_DEFINITIONS as unknown as { id: string }[]
   );
+  const contractIds = extractIds(
+    CONTRACT_TOOL_DEFINITIONS as unknown as { id: string }[]
+  );
   const inlineIds = [...INLINE_REGISTERED_TOOL_IDS];
   const flywheelIds = extractIds(
     FLYWHEEL_TOOL_DEFINITIONS as unknown as { id: string }[]
@@ -77,8 +81,18 @@ describe('MCP Worker tool registration integrity', () => {
     expect(findDuplicates(clientIds)).toEqual([]);
   });
 
+  it('CONTRACT_TOOL_DEFINITIONS has no duplicate IDs', () => {
+    expect(findDuplicates(contractIds)).toEqual([]);
+  });
+
   it('definition arrays have no overlapping IDs', () => {
-    const allDefinitionIds = [...chatgptIds, ...planIds, ...streamIds, ...clientIds];
+    const allDefinitionIds = [
+      ...chatgptIds,
+      ...planIds,
+      ...streamIds,
+      ...clientIds,
+      ...contractIds,
+    ];
     const dupes = findDuplicates(allDefinitionIds);
     expect(dupes).toEqual([]);
   });
@@ -113,8 +127,20 @@ describe('MCP Worker tool registration integrity', () => {
     expect(overlap).toEqual([]);
   });
 
+  it('CONTRACT_TOOL_DEFINITIONS does not overlap with inline registrations', () => {
+    const inlineSet = new Set(inlineIds);
+    const overlap = contractIds.filter((id) => inlineSet.has(id));
+    expect(overlap).toEqual([]);
+  });
+
   it('flywheel tools do not overlap with definition arrays', () => {
-    const allDefIds = new Set([...chatgptIds, ...planIds, ...streamIds, ...clientIds]);
+    const allDefIds = new Set([
+      ...chatgptIds,
+      ...planIds,
+      ...streamIds,
+      ...clientIds,
+      ...contractIds,
+    ]);
     const overlap = flywheelIds.filter((id) => allDefIds.has(id));
     expect(overlap).toEqual([]);
   });
@@ -125,6 +151,7 @@ describe('MCP Worker tool registration integrity', () => {
       ...planIds,
       ...streamIds,
       ...clientIds,
+      ...contractIds,
       ...inlineIds,
       ...flywheelIds,
     ];
@@ -146,6 +173,7 @@ describe('MCP Worker tool registration integrity', () => {
       ...planIds,
       ...streamIds,
       ...clientIds,
+      ...contractIds,
       ...inlineIds,
       ...flywheelIds,
     ];

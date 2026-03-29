@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Morning Brief - OrgX</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='12' fill='%23FBBF24'/%3E%3Cg stroke='%23FBBF24' stroke-width='4' stroke-linecap='round'%3E%3Cpath d='M32 6v10'/%3E%3Cpath d='M32 48v10'/%3E%3Cpath d='M6 32h10'/%3E%3Cpath d='M48 32h10'/%3E%3Cpath d='M13 13l7 7'/%3E%3Cpath d='M44 44l7 7'/%3E%3Cpath d='M13 51l7-7'/%3E%3Cpath d='M44 20l7-7'/%3E%3C/g%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="shared/widget-foundation.css" />
   <style>
       :root, :root[data-theme="light"] {
         --ox-bg: #f8fafc;
@@ -130,9 +132,31 @@
     
     .icon-box { width: 48px; height: 48px; border-radius: 12px; background: rgba(var(--ox-primary-rgb), 0.1); border: 1px solid rgba(var(--ox-primary-rgb), 0.2); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
     
-    .priority-list { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
+    .metrics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 28px; }
+    .metric-card { padding: 14px 16px; border-radius: 12px; border: 1px solid var(--ox-border); background: var(--ox-well-bg); box-shadow: var(--ox-well-shadow); }
+    .metric-value { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.03em; color: var(--ox-text); margin-top: 6px; }
+    .metric-copy { font-size: 0.8rem; color: var(--ox-text-muted); line-height: 1.45; margin-top: 4px; }
+
+    .section-title { display:flex; align-items:center; gap:12px; margin-bottom: 12px; }
+    .section-title .rule { flex:1; height:1px; background:var(--ox-border); }
+    .section-title-copy { display:flex; align-items:center; gap:10px; min-width:0; }
+    .section-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 9px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(var(--ox-primary-rgb), 0.1);
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.2);
+      color: var(--ox-primary);
+      flex-shrink: 0;
+    }
+    .section-icon svg { width: 15px; height: 15px; }
+
+    .priority-list { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
     
-    .priority-item { position: relative; padding: 16px; padding-left: 20px; background: var(--ox-well-bg); border: 1px solid var(--ox-border); border-radius: 8px; }
+    .priority-item { position: relative; padding: 16px; padding-left: 20px; background: var(--ox-well-bg); border: 1px solid var(--ox-border); border-radius: 12px; box-shadow: var(--ox-well-shadow); }
     .priority-item::before { content: ''; position: absolute; left: -1px; top: -1px; bottom: -1px; width: 4px; border-radius: 4px 0 0 4px; }
     
     .priority-item[data-domain="product"]::before { background: var(--ox-lime); box-shadow: 0 0 10px var(--ox-lime); }
@@ -144,6 +168,170 @@
     .p-domain { font-family: var(--ox-mono); font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ox-text-muted); margin-bottom: 4px; font-weight: 600; }
     .p-title { font-weight: 600; font-size: 0.95rem; color: var(--ox-text); margin-bottom: 4px; }
     .p-reason { font-size: 0.85rem; color: var(--ox-text-muted); line-height: 1.4; }
+    .brief-note { padding: 14px 16px; border-radius: 12px; border: 1px solid rgba(var(--ox-primary-rgb), 0.18); background: rgba(var(--ox-primary-rgb), 0.08); color: var(--ox-text); line-height: 1.55; margin-bottom: 20px; }
+    .exception-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .exception-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(var(--ox-primary-rgb), 0.18); background: rgba(var(--ox-primary-rgb), 0.08); color: var(--ox-text); font-family: var(--ox-mono); font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; }
+    .signal-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+    .signal-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--ox-border);
+      background: var(--ox-well-bg);
+      box-shadow: var(--ox-well-shadow);
+    }
+    .signal-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--ox-primary);
+      box-shadow: 0 0 12px rgba(var(--ox-primary-rgb), 0.4);
+      margin-top: 6px;
+      flex-shrink: 0;
+    }
+    .signal-copy { display: flex; flex-direction: column; gap: 4px; }
+    .signal-title { font-size: 0.84rem; font-weight: 600; color: var(--ox-text); }
+    .signal-desc { font-size: 0.8rem; line-height: 1.5; color: var(--ox-text-muted); }
+
+    .artifact-output-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .artifact-output-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: start;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid var(--ox-border);
+      background: var(--ox-well-bg);
+      box-shadow: var(--ox-well-shadow);
+    }
+    .artifact-output-main { display:flex; gap:12px; min-width:0; }
+    .artifact-output-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(var(--ox-primary-rgb), 0.08);
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
+      color: var(--ox-primary);
+      flex-shrink: 0;
+    }
+    .artifact-output-icon svg { width: 16px; height: 16px; }
+    .artifact-output-icon--review {
+      color: var(--ox-warning);
+      background: rgba(251, 191, 36, 0.08);
+      border-color: rgba(251, 191, 36, 0.18);
+    }
+    .artifact-output-body { min-width: 0; }
+
+    .artifact-output-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      line-height: 1.4;
+      color: var(--ox-text);
+    }
+
+    .artifact-output-copy {
+      margin-top: 5px;
+      font-size: 0.8rem;
+      line-height: 1.5;
+      color: var(--ox-text-muted);
+    }
+
+    .artifact-output-meta {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .artifact-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--ox-border);
+      background: rgba(255, 255, 255, 0.02);
+      font-family: var(--ox-mono);
+      font-size: 0.64rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ox-text-muted);
+    }
+
+    .artifact-badge.status-approved {
+      color: var(--ox-teal);
+      border-color: rgba(0, 201, 167, 0.18);
+      background: rgba(0, 201, 167, 0.08);
+    }
+
+    .artifact-badge.status-in_review,
+    .artifact-badge.status-draft {
+      color: var(--ox-warning);
+      border-color: rgba(251, 191, 36, 0.22);
+      background: rgba(251, 191, 36, 0.08);
+    }
+
+    .review-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      align-self: center;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
+      background: rgba(var(--ox-primary-rgb), 0.08);
+      color: var(--ox-text);
+      font-family: var(--ox-mono);
+      font-size: 0.66rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      text-decoration: none;
+    }
+    .artifact-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .artifact-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--ox-border);
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--ox-text);
+      font-family: var(--ox-mono);
+      font-size: 0.66rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .artifact-link:hover {
+      border-color: rgba(var(--ox-primary-rgb), 0.22);
+      background: rgba(var(--ox-primary-rgb), 0.08);
+    }
+
+    @media (max-width: 560px) {
+      .metrics-grid {
+        grid-template-columns: 1fr;
+      }
+    }
 
     .skeleton-line {
       background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%);
@@ -212,25 +400,47 @@
       var _mcpNextId = 100;
       function initWidget(opts){var render=opts.render,getData=opts.getData||_extractData;var protocol=_detectProtocol();if(protocol==='chatgpt'){var d=getData(window.openai&&window.openai.toolOutput);render(d);window.addEventListener('openai:set_globals',function(e){var g=e.detail&&e.detail.globals;if(g&&g.toolOutput){render(getData(g.toolOutput));}},{passive:true});}else if(protocol==='mcp-apps'){render(null);var initId=1;window.parent.postMessage({jsonrpc:'2.0',id:initId,method:'ui/initialize',params:{appInfo:{name:'Widget',version:'1.0'},appCapabilities:{tools:{listChanged:false}},protocolVersion:'2026-01-26'}},'*');window.parent.postMessage({jsonrpc:'2.0',method:'notifications/initialized'},'*');window.addEventListener('message',function(event){var msg=event.data;if(!msg||typeof msg!=='object')return;if(msg.id===initId&&msg.result){window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized'},'*');_observeSize();return;}if(msg.id!=null&&_mcpPending[msg.id]){var p=_mcpPending[msg.id];delete _mcpPending[msg.id];if(msg.error)p.reject(new Error(msg.error.message||'Tool call failed'));else p.resolve(msg.result);return;}if((msg.method==='ui/notifications/tool-result'||msg.method==='notifications/message')&&msg.params){var data=getData(msg.params);if(data)render(data);}});}else{render(null);}}
       function callTool(name, args){var protocol=_detectProtocol();if(protocol==='chatgpt')return window.openai&&window.openai.callTool?window.openai.callTool(name,args):Promise.resolve(null);if(protocol==='mcp-apps'){return new Promise(function(resolve,reject){var id=_mcpNextId++;_mcpPending[id]={resolve:resolve,reject:reject};window.parent.postMessage({jsonrpc:'2.0',id:id,method:'tools/call',params:{name:name,arguments:args}},'*');setTimeout(function(){if(_mcpPending[id]){delete _mcpPending[id];reject(new Error('Tool call '+name+' timed out'));}},30000);});}return Promise.resolve(null);}
+      function openWidgetLink(url,event){if(!url)return false;var protocol=_detectProtocol();if(protocol==='mcp-apps'){if(event&&typeof event.preventDefault==='function')event.preventDefault();window.parent.postMessage({jsonrpc:'2.0',id:_mcpNextId++,method:'ui/open-link',params:{url:url}},'*');return false;}return true;}
       var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true">'+c+'</svg>';};
       var icons = {
         agent: function(s){return _svg('<rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><line x1="8" y1="16" x2="8" y2="16"></line><line x1="16" y1="16" x2="16" y2="16"></line>',s);},
         search: function(s){return _svg('<circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>',s);},
         file: function(s){return _svg('<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline>',s);},
         external: function(s){return _svg('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>',s);},
-        sun: function(s){return _svg('<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>',s);}
+        sun: function(s){return _svg('<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>',s);},
+        layers: function(s){return _svg('<polygon points="12 2 22 8 12 14 2 8 12 2"></polygon><polyline points="2 12 12 18 22 12"></polyline><polyline points="2 16 12 22 22 16"></polyline>',s);},
+        eye: function(s){return _svg('<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>',s);},
+        alert: function(s){return _svg('<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>',s);},
+        clipboard: function(s){return _svg('<rect x="9" y="2" width="6" height="4" rx="1"></rect><path d="M9 4H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2"></path><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="16" x2="13" y2="16"></line>',s);}
       };
       var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
 
     var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
     var brief = isDemo ? {
-      date: new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }),
-      summary: 'You have 2 pending approvals blocking the Q4 Launch. Engineering is on track, but Marketing needs your sign-off on the email sequence.',
+      generated_at: new Date().toISOString(),
+      session_summary: { session_type: 'overnight', receipts_produced: 6, completed: 4, failed: 1 },
+      value_dashboard: { value_delivered_usd: 1840, roi_display: '610%', decisions_resolved: 3, completed_this_week: 5 },
+      summary: 'You have 2 pending approvals blocking the Q4 launch. Engineering is on track, but Marketing still needs your sign-off on the email sequence.',
       top_priorities: [
         { domain: 'Engineering', title: 'Review Database Strategy', reason: 'Blocks sprint 3 deliverables.' },
         { domain: 'Marketing', title: 'Approve Email Sequence', reason: 'Launch is in 4 days. Needs scheduling today.' },
         { domain: 'Product', title: 'Scope V2 Features', reason: 'Draft PRD generated overnight by Pace.' }
-      ]
+      ],
+      top_receipts: [
+        { intent: 'Closed launch QA loop', attributed_value_usd: 420 },
+        { intent: 'Resolved routing regression', attributed_value_usd: 310 }
+      ],
+      artifacts_produced: [
+        { id: 'artifact-1', name: 'server.json manifest', status: 'approved', artifact_type: 'eng.config', created_by_name: 'Eli', summary: 'Manifest drafted and validated for registry submission.', primary_url: 'https://useorgx.com/artifacts/artifact-1', primary_label: 'Open artifact', live_url: 'https://useorgx.com/live/INI-402' },
+        { id: 'artifact-2', name: 'MCP Inspector test plan', status: 'in_review', artifact_type: 'eng.report', created_by_name: 'Eli', summary: 'Manual + automated checks packaged for review.', primary_url: 'https://useorgx.com/artifacts/artifact-2', primary_label: 'Open artifact', live_url: 'https://useorgx.com/live/INI-402' },
+        { id: 'artifact-3', name: 'Connector description', status: 'in_review', artifact_type: 'mktg.copy', created_by_name: 'Mark', summary: 'Marketplace copy drafted for founder approval.', primary_url: 'https://useorgx.com/artifacts/artifact-3', primary_label: 'Open artifact', live_url: 'https://useorgx.com/live/INI-402' }
+      ],
+      review_items: [
+        { id: 'artifact-2', name: 'MCP Inspector test plan', status: 'in_review', artifact_type: 'eng.report', created_by_name: 'Eli', primary_url: 'https://useorgx.com/artifacts/artifact-2', primary_label: 'Review in OrgX', live_url: 'https://useorgx.com/live/INI-402' },
+        { id: 'artifact-3', name: 'Connector description', status: 'in_review', artifact_type: 'mktg.copy', created_by_name: 'Mark', primary_url: 'https://useorgx.com/artifacts/artifact-3', primary_label: 'Review in OrgX', live_url: 'https://useorgx.com/live/INI-402' }
+      ],
+      exceptions: [{ exception_type: 'budget_guardrail' }],
+      brief_markdown: '# Morning Brief'
     } : null;
     var isLoading = !isDemo;
 
@@ -241,51 +451,325 @@
       // Overwrite initWidget to do nothing so it hangs on loading
       initWidget = () => { render(); };
     }
-
+    var bootStartedAt = Date.now();
+    var MIN_LOADING_MS = 220;
+    var loadingSettled = false;
+    var applyBootPayload = function(assign) {
+      var commit = function() {
+        if (typeof assign === 'function') assign();
+        isLoading = false;
+        render();
+      };
+      if (loadingSettled) {
+        commit();
+        return;
+      }
+      loadingSettled = true;
+      var delay = Math.max(0, MIN_LOADING_MS - (Date.now() - bootStartedAt));
+      window.setTimeout(commit, delay);
+    };
+    var formatCurrency = (value) => {
+      var num = Number(value);
+      if (!Number.isFinite(num)) return null;
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: num >= 100 ? 0 : 2 }).format(num);
+    };
+    var formatDate = (value) => {
+      var date = value ? new Date(value) : new Date();
+      if (isNaN(date.getTime())) date = new Date();
+      return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    };
+    var normalizeBrief = (payload) => {
+      if (!payload) return null;
+      var sessionSummary = payload.session_summary && typeof payload.session_summary === 'object' ? payload.session_summary : {};
+      var valueDashboard = payload.value_dashboard && typeof payload.value_dashboard === 'object' ? payload.value_dashboard : {};
+      var workspacePulse = payload.workspace_pulse && typeof payload.workspace_pulse === 'object' ? payload.workspace_pulse : {};
+      var workspaceStats = workspacePulse.stats && typeof workspacePulse.stats === 'object' ? workspacePulse.stats : {};
+      var topReceipts = Array.isArray(payload.top_receipts) ? payload.top_receipts : [];
+      var artifactsProduced = Array.isArray(payload.artifacts_produced) ? payload.artifacts_produced : [];
+      var reviewItems = Array.isArray(payload.review_items) ? payload.review_items : [];
+      var exceptions = Array.isArray(payload.exceptions) ? payload.exceptions : [];
+      var nextActions = Array.isArray(payload.next_actions)
+        ? payload.next_actions
+        : Array.isArray(payload.recommended_actions)
+        ? payload.recommended_actions
+        : [];
+      var pendingDecisions = Number(
+        payload.pending_decisions ??
+        workspaceStats.pendingDecisions ??
+        workspaceStats.pending_decisions
+      );
+      var activeInitiatives = Number(
+        workspaceStats.activeInitiatives ??
+        workspaceStats.active_initiatives
+      );
+      var blockedWork = Number(
+        payload.blocked_workstreams ??
+        payload.blocked_items ??
+        workspaceStats.blockedWorkstreams ??
+        workspaceStats.blocked_workstreams
+      );
+      var summary = typeof payload.summary === 'string' && payload.summary.trim()
+        ? payload.summary.trim()
+        : typeof payload.message === 'string' && payload.message.trim()
+        ? payload.message.trim()
+        : null;
+      if (!summary) {
+        var sessionType = typeof sessionSummary.session_type === 'string' ? sessionSummary.session_type : 'recent';
+        var receiptsProduced = Number(sessionSummary.receipts_produced);
+        var completed = Number(sessionSummary.completed);
+        var failed = Number(sessionSummary.failed);
+        var clauses = [];
+        if (Number.isFinite(receiptsProduced)) clauses.push(receiptsProduced + ' receipt' + (receiptsProduced === 1 ? '' : 's') + ' produced');
+        if (Number.isFinite(completed)) clauses.push(completed + ' completed');
+        if (Number.isFinite(failed) && failed > 0) clauses.push(failed + ' flagged');
+        if (!clauses.length) clauses.push('continuity signals updated');
+        summary = titleCase(sessionType) + ' session: ' + clauses.join(', ') + '.';
+      }
+      var priorities = Array.isArray(payload.top_priorities) ? payload.top_priorities.slice() : [];
+      if (!priorities.length && nextActions.length) {
+        priorities = nextActions.slice(0, 3).map((action) => ({
+          domain: action.domain || action.type || 'Execution',
+          title: action.title || action.label || 'Recommended follow-up',
+          reason: action.reason || action.summary || action.message || 'OrgX flagged this as the next best move.'
+        }));
+      }
+      if (!priorities.length) {
+        priorities = topReceipts.slice(0, 3).map((receipt) => ({
+          domain: 'Execution',
+          title: typeof receipt.intent === 'string' && receipt.intent.trim() ? receipt.intent.trim() : 'Recent execution receipt',
+          reason: formatCurrency(receipt.attributed_value_usd) ? 'Attributed value: ' + formatCurrency(receipt.attributed_value_usd) : 'Captured as part of the latest brief.'
+        }));
+      }
+      var metrics = [
+        { label: 'Value delivered', value: formatCurrency(valueDashboard.value_delivered_usd) || 'N/A', copy: 'Attributed delivery from the recent autonomous window.' },
+        { label: 'ROI', value: typeof valueDashboard.roi_display === 'string' && valueDashboard.roi_display ? valueDashboard.roi_display : 'N/A', copy: 'Economic proof from the 30-day ledger.' },
+        Number.isFinite(pendingDecisions)
+          ? { label: 'Pending decisions', value: String(Math.max(0, pendingDecisions)), copy: 'Operator approvals still waiting in the current workspace.' }
+          : { label: 'Decisions resolved', value: Number.isFinite(Number(valueDashboard.decisions_resolved)) ? String(valueDashboard.decisions_resolved) : '0', copy: 'Approvals and corrections closed across the recent cycle.' },
+        Number.isFinite(activeInitiatives) && activeInitiatives > 0
+          ? { label: 'Active initiatives', value: String(activeInitiatives), copy: 'Initiatives still in flight across the workspace.' }
+          : { label: 'Completed this week', value: Number.isFinite(Number(valueDashboard.completed_this_week)) ? String(valueDashboard.completed_this_week) : '0', copy: 'Workstreams or initiatives closed in the current week.' }
+      ];
+      var attentionSignals = [];
+      if (Number.isFinite(pendingDecisions) && pendingDecisions > 0) {
+        attentionSignals.push({
+          title: pendingDecisions + ' pending decision' + (pendingDecisions === 1 ? '' : 's'),
+          description: 'Approvals are still waiting for an operator call before downstream execution can continue.'
+        });
+      }
+      if (Number.isFinite(blockedWork) && blockedWork > 0) {
+        attentionSignals.push({
+          title: blockedWork + ' blocked workstream' + (blockedWork === 1 ? '' : 's'),
+          description: 'Blocked execution surfaced in the workspace pulse and should be reviewed with the owning agent.'
+        });
+      }
+      if (exceptions.length > 0) {
+        attentionSignals.push({
+          title: exceptions.length + ' exception' + (exceptions.length === 1 ? '' : 's') + ' need review',
+          description: 'Guardrail, budget, or routing exceptions were captured in the latest autonomous session.'
+        });
+      }
+      if (reviewItems.length > 0) {
+        attentionSignals.unshift({
+          title: reviewItems.length + ' artifact' + (reviewItems.length === 1 ? '' : 's') + ' need review',
+          description: 'Agent output is waiting on a founder or operator call before the next task can continue.'
+        });
+      }
+      return {
+        date: formatDate(payload.generated_at || payload.created_at || (payload.workspace_pulse && payload.workspace_pulse.generatedAt)),
+        summary: summary,
+        metrics: metrics,
+        priorities: priorities,
+        exceptions: exceptions,
+        topReceipts: topReceipts,
+        artifactsProduced: artifactsProduced,
+        reviewItems: reviewItems,
+        attentionSignals: attentionSignals,
+        narrativeAvailable: typeof payload.brief_markdown === 'string' && payload.brief_markdown.trim().length > 0
+      };
+    };
+    var titleCase = value => String(value || '').replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    var artifactLink = function(artifact, fallbackUrl) {
+      if (artifact && typeof artifact.primary_url === 'string' && artifact.primary_url) return artifact.primary_url;
+      if (artifact && typeof artifact.live_url === 'string' && artifact.live_url) return artifact.live_url;
+      return fallbackUrl;
+    };
+    var artifactLinkLabel = function(artifact, fallbackLabel) {
+      return escapeHtml((artifact && typeof artifact.primary_label === 'string' && artifact.primary_label) || fallbackLabel);
+    };
+    var artifactIcon = function(artifactType, reviewMode) {
+      if (reviewMode) return icons.eye(16);
+      var type = String(artifactType || '').toLowerCase();
+      if (type.indexOf('report') >= 0 || type.indexOf('plan') >= 0) return icons.clipboard(16);
+      if (type.indexOf('copy') >= 0 || type.indexOf('content') >= 0) return icons.file(16);
+      return icons.layers(16);
+    };
 
     var render = () => {
       if(isLoading) return;
-      if(!brief) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.sun(24)}</div><div class="empty-title">No brief available</div><div class="empty-desc">Your morning briefing hasn't been generated yet.</div></div>`); return; }
+      var normalized = normalizeBrief(brief);
+      if(!normalized) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.sun(24)}</div><div class="empty-title">No brief available</div><div class="empty-desc">Your morning briefing has not been generated yet.</div></div>`); return; }
 
-      const prioritiesHtml = (brief.top_priorities || []).map((p, i) => `
-        <div class="priority-item animate-in" style="animation-delay: ${0.1 * i}s" data-domain="${escapeHtml(p.domain.toLowerCase())}">
-          <div class="p-domain" style="color: var(--ox-${p.domain.toLowerCase()==='product'?'lime':p.domain.toLowerCase()==='engineering'?'teal':p.domain.toLowerCase()==='marketing'?'warning':p.domain.toLowerCase()==='design'?'iris':'danger'})">${escapeHtml(p.domain)}</div>
-          <div class="p-title">${escapeHtml(p.title)}</div>
-          <div class="p-reason">${escapeHtml(p.reason)}</div>
+      const metricsHtml = normalized.metrics.map((metric) => `
+        <div class="metric-card">
+          <div class="ox-eyebrow">${escapeHtml(metric.label)}</div>
+          <div class="metric-value">${escapeHtml(metric.value)}</div>
+          <div class="metric-copy">${escapeHtml(metric.copy)}</div>
+        </div>
+      `).join('');
+      const prioritiesHtml = normalized.priorities.map((p, i) => {
+        var domain = String(p.domain || 'execution').toLowerCase();
+        var accent = domain === 'product' ? 'lime' : domain === 'engineering' ? 'teal' : domain === 'marketing' ? 'warning' : domain === 'design' ? 'iris' : domain === 'sales' ? 'danger' : 'teal';
+        return `
+          <div class="priority-item animate-in" style="animation-delay: ${0.1 * i}s" data-domain="${escapeHtml(domain)}">
+            <div class="p-domain" style="color: var(--ox-${accent})">${escapeHtml(titleCase(p.domain || 'Execution'))}</div>
+            <div class="p-title">${escapeHtml(p.title || 'Priority item')}</div>
+            <div class="p-reason">${escapeHtml(p.reason || 'No rationale provided.')}</div>
+          </div>
+        `;
+      }).join('');
+      const receiptsHtml = normalized.topReceipts.slice(0, 2).map((receipt) => `
+        <div class="priority-item" data-domain="engineering">
+          <div class="p-domain" style="color: var(--ox-teal)">Receipt</div>
+          <div class="p-title">${escapeHtml(receipt.intent || 'Execution receipt')}</div>
+          <div class="p-reason">${escapeHtml(formatCurrency(receipt.attributed_value_usd) ? 'Attributed value: ' + formatCurrency(receipt.attributed_value_usd) : 'Captured in the most recent brief.')}</div>
+        </div>
+      `).join('');
+      const artifactOutputHtml = normalized.artifactsProduced.slice(0, 4).map((artifact) => {
+        var title = escapeHtml(artifact.title || artifact.name || 'Untitled artifact');
+        var type = escapeHtml(String(artifact.artifact_type || artifact.type || 'artifact').replace(/_/g, '.'));
+        var status = escapeHtml(String(artifact.status || 'draft').replace(/_/g, ' '));
+        var statusClass = 'status-' + String(artifact.status || 'draft').replace(/[^a-zA-Z0-9_-]/g, '_');
+        var author = escapeHtml(artifact.created_by_name || artifact.created_by || 'OrgX agent');
+        var summary = escapeHtml(artifact.summary || artifact.description || '');
+        var primaryUrl = artifactLink(artifact, 'https://useorgx.com/live?view=mission-control');
+        var primaryLabel = artifactLinkLabel(artifact, 'Open artifact');
+        return `
+          <div class="artifact-output-item">
+            <div class="artifact-output-main">
+              <div class="artifact-output-icon">${artifactIcon(artifact.artifact_type, false)}</div>
+              <div class="artifact-output-body">
+                <div class="artifact-output-title">${title}</div>
+                <div class="artifact-output-copy">${summary || 'Captured as proof-of-work from the latest execution window.'}</div>
+                <div class="artifact-output-meta">
+                  <span class="artifact-badge">${type}</span>
+                  <span class="artifact-badge">${author}</span>
+                </div>
+              </div>
+            </div>
+            <div class="artifact-actions">
+              <div class="artifact-badge ${statusClass}">${status}</div>
+              <a href="${primaryUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(primaryUrl))}, event)' class="artifact-link">${icons.external(14)} ${primaryLabel}</a>
+            </div>
+          </div>
+        `;
+      }).join('');
+      const reviewItemsHtml = normalized.reviewItems.slice(0, 3).map((artifact) => {
+        var title = escapeHtml(artifact.title || artifact.name || 'Review item');
+        var type = escapeHtml(String(artifact.artifact_type || artifact.type || 'artifact').replace(/_/g, '.'));
+        var reviewUrl = artifactLink(artifact, 'https://useorgx.com/live?view=mission-control');
+        var reviewLabel = 'Review in OrgX';
+        return `
+          <div class="artifact-output-item">
+            <div class="artifact-output-main">
+              <div class="artifact-output-icon artifact-output-icon--review">${artifactIcon(artifact.artifact_type, true)}</div>
+              <div class="artifact-output-body">
+                <div class="artifact-output-title">${title}</div>
+                <div class="artifact-output-copy">${type} ready for an operator call before execution continues.</div>
+              </div>
+            </div>
+            <a href="${reviewUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(reviewUrl))}, event)' class="review-link">${icons.eye(14)} ${reviewLabel}</a>
+          </div>
+        `;
+      }).join('');
+      const exceptionsHtml = normalized.exceptions.slice(0, 4).map((item) => `<span class="exception-pill">${escapeHtml(titleCase(item.exception_type || item.type || 'Review'))}</span>`).join('');
+      const attentionHtml = (normalized.attentionSignals || []).map((item) => `
+        <div class="signal-item">
+          <div class="signal-dot"></div>
+          <div class="signal-copy">
+            <div class="signal-title">${escapeHtml(item.title)}</div>
+            <div class="signal-desc">${escapeHtml(item.description)}</div>
+          </div>
         </div>
       `).join('');
 
       injectHtml(`
-        <div class="ox-card animate-in">
-          <div class="ox-card-inner">
-            <div class="brief-header">
-              <div>
-                <h1 class="ox-title" style="font-size:1.5rem; margin-bottom:4px;">Morning Brief</h1>
-                <div class="ox-eyebrow">${escapeHtml(brief.date)}</div>
+        <div class="widget-shell-card animate-in">
+          <div class="ox-card">
+            <div class="ox-card-inner">
+              <div class="widget-hero">
+                <div class="widget-hero-copy">
+                  <div class="widget-kicker">Morning Brief</div>
+                  <div class="widget-title-lg">${escapeHtml(normalized.date)}</div>
+                  <div class="widget-subtitle">${escapeHtml(normalized.summary)}</div>
+                </div>
+                <div class="widget-icon-frame">${icons.sun(20)}</div>
               </div>
-              <div class="icon-box">${icons.sun(24)}</div>
-            </div>
-            
-            <div class="ox-well" style="margin-bottom: 32px;">
-              <div class="ox-eyebrow" style="margin-bottom:8px; color:var(--ox-primary);">TL;DR</div>
-              <div class="ox-text">${escapeHtml(brief.summary)}</div>
-            </div>
-            
-            <div>
-              <div class="ox-eyebrow" style="display:flex; align-items:center; gap:12px;">
-                Top Priorities <div style="flex:1; height:1px; background:var(--ox-border);"></div>
+
+              <div class="metrics-grid">${metricsHtml}</div>
+
+              <div class="widget-section-block">
+                <div class="widget-section-header">
+                  <span class="widget-section-icon">${icons.layers(15)}</span>
+                  <div class="widget-section-title">Top priorities</div>
+                  <div class="widget-section-rule"></div>
+                </div>
+                <div class="priority-list">${prioritiesHtml || `<div class="ox-well"><div class="ox-text">No priority follow-ups were captured in this brief.</div></div>`}</div>
               </div>
-              <div class="priority-list">
-                ${prioritiesHtml}
+
+            ${receiptsHtml ? `
+              <div class="widget-section-block">
+                <div class="widget-section-header">
+                  <span class="widget-section-icon">${icons.clipboard(15)}</span>
+                  <div class="widget-section-title">Top receipts</div>
+                  <div class="widget-section-rule"></div>
+                </div>
+                <div class="priority-list">${receiptsHtml}</div>
               </div>
+            ` : ''}
+
+            ${artifactOutputHtml ? `
+              <div class="widget-section-block">
+                <div class="widget-section-header">
+                  <span class="widget-section-icon">${icons.file(15)}</span>
+                  <div class="widget-section-title">Overnight output</div>
+                  <div class="widget-section-rule"></div>
+                </div>
+                <div class="artifact-output-grid">${artifactOutputHtml}</div>
+              </div>
+            ` : ''}
+
+            ${reviewItemsHtml ? `
+              <div class="widget-section-block">
+                <div class="widget-section-header">
+                  <span class="widget-section-icon">${icons.eye(15)}</span>
+                  <div class="widget-section-title">Needs your review</div>
+                  <div class="widget-section-rule"></div>
+                </div>
+                <div class="artifact-output-grid">${reviewItemsHtml}</div>
+              </div>
+            ` : ''}
+
+            ${attentionHtml || exceptionsHtml || normalized.narrativeAvailable ? `
+              <div class="widget-section-block">
+                <div class="widget-section-header">
+                  <span class="widget-section-icon">${icons.alert(15)}</span>
+                  <div class="widget-section-title">Needs attention</div>
+                  <div class="widget-section-rule"></div>
+                </div>
+                ${attentionHtml ? `<div class="signal-list">${attentionHtml}</div>` : ''}
+                ${exceptionsHtml ? `<div class="exception-list">${exceptionsHtml}</div>` : ''}
+                ${normalized.narrativeAvailable ? `<div class="brief-note" style="margin-top: 12px; margin-bottom: 0;">A narrative brief is available in the payload for downstream clients that want the full written summary.</div>` : ''}
+              </div>
+            ` : ''}
             </div>
           </div>
         </div>
       `);
     };
 
-    if(isDemo) render();
-    else initWidget({ render: d => { if(d) brief = d; isLoading = false; render(); } });
+    if(isDemo) applyBootPayload();
+    else initWidget({ render: d => { applyBootPayload(function(){ if(d) brief = d; }); } });
   </script>
 </body>
 </html>

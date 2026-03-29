@@ -328,6 +328,7 @@ export function buildScaffoldInitiativeBatch(
         'launch_after_create',
         'continue_on_error',
         'concurrency',
+        '_context',
         // owner_id intentionally NOT omitted — it must propagate into the
         // batch so the POST handler can set it on the initiative row.
         'user_id',

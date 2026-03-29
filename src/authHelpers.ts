@@ -26,6 +26,21 @@ export interface AuthCheckResult {
   shouldBlock: boolean;
 }
 
+export interface ToolErrorEnvelope {
+  code: string;
+  status?: number;
+  message: string;
+  details?: Record<string, unknown>;
+}
+
+function buildToolErrorResult(error: ToolErrorEnvelope): CallToolResult {
+  return {
+    content: [{ type: 'text', text: error.message }],
+    structuredContent: { error },
+    isError: true,
+  };
+}
+
 /**
  * Check if a tool requires authentication based on its security schemes.
  */
@@ -98,6 +113,22 @@ export function buildAuthRequiredResponse(
         text: `Authentication required: Please sign in to OrgX to ${description}.`,
       },
     ],
+    structuredContent: {
+      error: {
+        code: 'permission_denied',
+        status: 401,
+        message: `Authentication required: Please sign in to OrgX to ${description}.`,
+        details: {
+          required_scopes:
+            securitySchemes
+              ?.filter((s) => s.type === 'oauth2')
+              .flatMap((s) => s.scopes ?? []) ?? [],
+          granted_scopes: [],
+          retryable: false,
+          suggested_next_calls: [{ tool: 'orgx_bootstrap', args: {} }],
+        },
+      },
+    },
     _meta: {
       'mcp/www_authenticate': [challenge],
     },
@@ -108,8 +139,16 @@ export function buildAuthRequiredResponse(
 /**
  * Tool error helper - creates a consistent error response.
  */
-export function toolError(message: string): CallToolResult {
-  return { content: [{ type: 'text', text: message }], isError: true };
+export function toolError(
+  message: string,
+  options: Partial<ToolErrorEnvelope> = {}
+): CallToolResult {
+  return buildToolErrorResult({
+    code: options.code ?? 'tool_execution_failed',
+    status: options.status,
+    message,
+    details: options.details,
+  });
 }
 
 /**
