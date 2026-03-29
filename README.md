@@ -2,6 +2,24 @@
 
 A Cloudflare Workers deployment that exposes OrgX initiatives, milestones, tasks, org snapshots, and Stripe upgrades over the Model Context Protocol (MCP). The worker reuses the Next.js API routes inside this repo, so shipped business logic stays in one place.
 
+## What OrgX MCP Does
+
+OrgX MCP connects Claude and other MCP-capable clients to OrgX so users can:
+
+- review pending decisions and approvals,
+- inspect agent activity and initiative health,
+- query organizational memory,
+- scaffold initiative hierarchies,
+- assign work to OrgX agents,
+- render OrgX widgets in MCP Apps-compatible hosts.
+
+## Directory Quick Links
+
+- Privacy Policy: [docs/privacy-policy.md](./docs/privacy-policy.md) and <https://github.com/useorgx/orgx-mcp/blob/main/docs/privacy-policy.md>
+- Support: [docs/support.md](./docs/support.md) and <https://github.com/useorgx/orgx-mcp/issues>
+- Security & Data Handling: [docs/security-data-handling.md](./docs/security-data-handling.md) and <https://github.com/useorgx/orgx-mcp/blob/main/docs/security-data-handling.md>
+- Anthropic Directory Review Guide: [docs/anthropic-directory.md](./docs/anthropic-directory.md) and <https://github.com/useorgx/orgx-mcp/blob/main/docs/anthropic-directory.md>
+
 ## Source Of Truth
 
 This repository is the canonical source for the OrgX MCP worker.
@@ -118,6 +136,21 @@ OAuth client credentials are stored in the **OAuthState Durable Object** (not en
 
 Durable Objects (`OrgXMcp` class) keep each MCP session isolated so both transports can run simultaneously.
 
+## Authentication For Reviewers
+
+Reviewers need:
+
+- a provisioned OrgX test account with representative sample data,
+- OAuth callbacks allowlisted for Claude and localhost MCP clients,
+- active credentials shared through a secure submission channel outside this repository.
+
+Required callback URLs:
+
+- `http://localhost:6274/oauth/callback`
+- `http://localhost:6274/oauth/callback/debug`
+- `https://claude.ai/api/mcp/auth_callback`
+- `https://claude.com/api/mcp/auth_callback`
+
 ## Local workflow checklist
 
 1. Start the worker: `pnpm dev` (uses `.dev.vars`)
@@ -141,6 +174,32 @@ Widget protocol notes:
 - ChatGPT Apps SDK templates use `openai/outputTemplate` + `text/html+skybridge`.
 - MCP Apps hosts use `ui.resourceUri` + `text/html;profile=mcp-app`.
 - This worker registers both URI variants for each widget and serves the same HTML payload.
+
+## Examples
+
+### Example 1: Review pending decisions
+
+**User prompt:** `Show me the pending decisions that need approval today.`
+
+**Expected behavior:** The worker calls `get_pending_decisions`, returns seeded decisions for the authenticated workspace, and renders the decisions widget in compatible hosts.
+
+### Example 2: Check initiative health
+
+**User prompt:** `Give me the pulse for the Search Copilot Readiness initiative.`
+
+**Expected behavior:** The worker calls `get_initiative_pulse`, returns milestones, blockers, and activity, and renders the initiative pulse widget in compatible hosts.
+
+### Example 3: Scaffold a hierarchy
+
+**User prompt:** `Scaffold a launch initiative with two workstreams, one milestone each, and two tasks per milestone.`
+
+**Expected behavior:** The worker calls `scaffold_initiative`, creates the nested hierarchy in OrgX, and returns the scaffold widget with the created initiative tree.
+
+### Example 4: Assign work to an agent
+
+**User prompt:** `Assign the engineering agent a task to audit the onboarding funnel.`
+
+**Expected behavior:** The worker calls `spawn_agent_task`, records the assignment in OrgX, and returns the task or handoff result.
 
 ## Hierarchy Scaffolding (Speed Fix) + Context Attachments
 
@@ -480,3 +539,33 @@ Key points:
 **"Rate limited"**
 
 - The registry is in preview; retry after a few minutes
+
+## Privacy Policy
+
+See [docs/privacy-policy.md](./docs/privacy-policy.md) for the repository-level policy covering the hosted MCP worker. Public link: <https://github.com/useorgx/orgx-mcp/blob/main/docs/privacy-policy.md>
+
+## Support
+
+- Primary web support channel: <https://github.com/useorgx/orgx-mcp/issues>
+- Support guidance: [docs/support.md](./docs/support.md)
+
+## Security & Data Handling
+
+See [docs/security-data-handling.md](./docs/security-data-handling.md) for the operational security summary, OAuth callback allowlist requirements, and reviewer handling guidance.
+
+## Anthropic Directory Review
+
+Submission and reviewer checklist: [docs/anthropic-directory.md](./docs/anthropic-directory.md)
+
+Pre-submit repo check:
+
+```bash
+pnpm directory:preflight
+```
+
+## Limitations
+
+- OrgX MCP requires an OrgX account and authenticated workspace for most meaningful operations.
+- Write-capable tools mutate OrgX state and must be used with deliberate user intent.
+- `account_upgrade` returns a checkout or contact URL; it does not silently purchase a plan.
+- Widget rendering depends on an MCP Apps-compatible host. Non-widget hosts still receive structured tool output.

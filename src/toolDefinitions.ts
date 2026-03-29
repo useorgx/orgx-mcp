@@ -440,7 +440,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
           'Optional decision option id when the decision includes selectable options.'
         ),
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.decisions,
@@ -464,7 +464,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
           'Optional decision option id when the decision includes selectable options.'
         ),
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.decisions,
@@ -592,7 +592,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
           'Preferred execution backend. Use openai for cloud-safe execution, claude for Claude SDK routing, or auto to let OrgX decide.'
         ),
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.agentRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.taskSpawned,
@@ -627,7 +627,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
           'If true (default), spawn a new agent run for the target agent'
         ),
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.handoffRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.taskSpawned,
@@ -778,7 +778,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
       active_signals: z.array(z.string()).optional().describe('Signal names to activate (action=update only)'),
       weights: z.record(z.number()).optional().describe('Partial weight overrides e.g. { priority: 300 } (action=update only)'),
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Managing scoring config...',
@@ -799,7 +799,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
       rank: z.number().optional().describe('Position among pinned items, 0=top (pin only)'),
       duration_minutes: z.number().optional().describe('Skip duration in minutes, default 60, max 10080 (skip only)'),
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Updating queue...',
@@ -815,7 +815,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
       action: z.enum(['list', 'get', 'set']).describe('list=show all, get=current, set=switch active'),
       workspace_id: z.string().optional().describe('Workspace UUID to switch to (action=set only)'),
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Managing workspace...',
@@ -839,7 +839,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
       workspace_id: z.string().optional().describe('Workspace UUID to scope policy overrides (set_policy only)'),
       command_center_id: z.string().optional().describe('Deprecated alias for workspace_id (set_policy only)'),
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Configuring organization...',

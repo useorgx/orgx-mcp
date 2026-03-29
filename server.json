@@ -1,10 +1,10 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "com.useorgx/orgx-mcp",
-  "title": "OrgX MCP - Agent Orchestration",
-  "description": "Agent orchestration + org memory via MCP. Manage initiatives and decisions from any client.",
+  "title": "OrgX MCP",
+  "description": "Agent orchestration, initiative execution, decision workflows, and org memory for Claude and other MCP clients.",
   "version": "1.0.4",
-  "websiteUrl": "https://mcp.useorgx.com",
+  "websiteUrl": "https://useorgx.com",
   "vendor": {
     "name": "OrgX",
     "url": "https://useorgx.com"
@@ -152,7 +152,7 @@
     },
     {
       "name": "account_upgrade",
-      "description": "Start a plan upgrade flow and return checkout/contact URL."
+      "description": "Start a plan upgrade flow and return a checkout or contact URL after explicit user confirmation. Does not charge automatically."
     },
     {
       "name": "account_usage_report",
