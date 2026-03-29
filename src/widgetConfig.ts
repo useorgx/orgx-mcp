@@ -170,3 +170,39 @@ export function rewriteWidgetHtmlAssetUrls(html: string, widgetBaseUrl: string) 
 
   return rewritten;
 }
+
+export interface McpAppsHtmlAssets {
+  interactionKitCss?: string | null;
+  interactionKitJs?: string | null;
+}
+
+export function sanitizeMcpAppsHtml(
+  html: string,
+  assets: McpAppsHtmlAssets = {}
+) {
+  let sanitized = html;
+
+  // Claude's sandbox renderer appears to choke on percent-encoded favicon data
+  // URIs inside the injected resource document. Favicons are not useful inside
+  // the chat iframe, so drop them from MCP Apps payloads.
+  sanitized = sanitized.replace(
+    /<link\b[^>]*\brel=("|')[^"']*\b(?:icon|apple-touch-icon)\b[^"']*\1[^>]*>\s*/gi,
+    ''
+  );
+
+  if (assets.interactionKitCss) {
+    sanitized = sanitized.replace(
+      /<link\b[^>]*\bhref=("|')[^"']*interaction-kit\.css[^"']*\1[^>]*>\s*/gi,
+      `<style data-inline-asset="interaction-kit.css">\n${assets.interactionKitCss}\n</style>\n`
+    );
+  }
+
+  if (assets.interactionKitJs) {
+    sanitized = sanitized.replace(
+      /<script\b[^>]*\bsrc=("|')[^"']*interaction-kit\.js[^"']*\1[^>]*><\/script>\s*/gi,
+      `<script data-inline-asset="interaction-kit.js">\n${assets.interactionKitJs}\n</script>\n`
+    );
+  }
+
+  return sanitized;
+}

@@ -132,6 +132,7 @@ import {
   buildMcpAppsMeta,
   buildWidgetMeta,
   rewriteWidgetHtmlAssetUrls,
+  sanitizeMcpAppsHtml,
   resolveWidgetBaseUrl,
   SKYBRIDGE_MIME_TYPE,
   toSkybridgeResourceUri,
@@ -7904,6 +7905,46 @@ export class OrgXMcp extends McpAgent<
         widgetBaseUrl
       );
       const assetUrlsRewritten = htmlWithAbsoluteAssets !== html;
+      let responseHtml = htmlWithAbsoluteAssets;
+      let interactionKitInlined = false;
+      let faviconStripped = false;
+
+      if (mimeType === RESOURCE_MIME_TYPE) {
+        let interactionKitCss: string | null = null;
+        let interactionKitJs: string | null = null;
+
+        if (responseHtml.includes('interaction-kit.css')) {
+          try {
+            interactionKitCss = await fetch(
+              new URL('shared/interaction-kit.css', widgetBaseUrl).toString(),
+              { headers: { accept: 'text/css,*/*' } }
+            ).then(async (response) => (response.ok ? response.text() : null));
+          } catch {
+            interactionKitCss = null;
+          }
+        }
+
+        if (responseHtml.includes('interaction-kit.js')) {
+          try {
+            interactionKitJs = await fetch(
+              new URL('shared/interaction-kit.js', widgetBaseUrl).toString(),
+              { headers: { accept: 'text/javascript,application/javascript,*/*' } }
+            ).then(async (response) => (response.ok ? response.text() : null));
+          } catch {
+            interactionKitJs = null;
+          }
+        }
+
+        const sanitizedHtml = sanitizeMcpAppsHtml(responseHtml, {
+          interactionKitCss,
+          interactionKitJs,
+        });
+        faviconStripped = sanitizedHtml !== responseHtml && !sanitizedHtml.includes('rel="icon"');
+        interactionKitInlined =
+          sanitizedHtml.includes('data-inline-asset="interaction-kit.css"') ||
+          sanitizedHtml.includes('data-inline-asset="interaction-kit.js"');
+        responseHtml = sanitizedHtml;
+      }
 
       this.appendWidgetDebugEvent({
         phase: 'resource_read_complete',
@@ -7915,7 +7956,9 @@ export class OrgXMcp extends McpAgent<
           apiStatus,
           assetFetchError,
           assetUrlsRewritten,
-          htmlBytes: htmlWithAbsoluteAssets.length,
+          interactionKitInlined,
+          faviconStripped,
+          htmlBytes: responseHtml.length,
         },
       });
 
@@ -7924,7 +7967,7 @@ export class OrgXMcp extends McpAgent<
           {
             uri: responseUri,
             mimeType,
-            text: htmlWithAbsoluteAssets,
+            text: responseHtml,
             _meta: meta,
           },
         ],
