@@ -17,4 +17,10 @@ describe('scaffold_initiative widget registration', () => {
       /'scaffold_initiative'[\s\S]*?SCAFFOLD_INITIATIVE_WIDGET_META/
     );
   });
+
+  it('returns scaffold widget payload as the first text content block for MCP app hosts', () => {
+    expect(source).toMatch(
+      /content:\s*\[\s*\{\s*type:\s*'text',\s*text:\s*JSON\.stringify\(finalPayload\)[\s\S]*?structuredContent:\s*finalPayload/m
+    );
+  });
 });
