@@ -131,7 +131,7 @@ import { FLYWHEEL_TOOL_DEFINITIONS } from './flywheelTools';
 import {
   buildMcpAppsMeta,
   buildWidgetMeta,
-  injectWidgetBase,
+  rewriteWidgetHtmlAssetUrls,
   resolveWidgetBaseUrl,
   SKYBRIDGE_MIME_TYPE,
   toSkybridgeResourceUri,
@@ -7899,8 +7899,11 @@ export class OrgXMcp extends McpAgent<
         source = 'api';
       }
 
-      const htmlWithBase = injectWidgetBase(html, widgetBaseUrl);
-      const baseInjected = htmlWithBase !== html;
+      const htmlWithAbsoluteAssets = rewriteWidgetHtmlAssetUrls(
+        html,
+        widgetBaseUrl
+      );
+      const assetUrlsRewritten = htmlWithAbsoluteAssets !== html;
 
       this.appendWidgetDebugEvent({
         phase: 'resource_read_complete',
@@ -7911,8 +7914,8 @@ export class OrgXMcp extends McpAgent<
           assetStatus,
           apiStatus,
           assetFetchError,
-          baseInjected,
-          htmlBytes: htmlWithBase.length,
+          assetUrlsRewritten,
+          htmlBytes: htmlWithAbsoluteAssets.length,
         },
       });
 
@@ -7921,7 +7924,7 @@ export class OrgXMcp extends McpAgent<
           {
             uri: responseUri,
             mimeType,
-            text: htmlWithBase,
+            text: htmlWithAbsoluteAssets,
             _meta: meta,
           },
         ],

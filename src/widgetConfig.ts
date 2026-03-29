@@ -26,6 +26,38 @@ export function resolveWidgetBaseUrl(env: WidgetEnv): string {
   return new URL('/widgets/', url).toString();
 }
 
+function shouldRewriteAssetUrl(value: string): boolean {
+  if (!value) return false;
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (
+    trimmed.startsWith('#') ||
+    trimmed.startsWith('data:') ||
+    trimmed.startsWith('blob:') ||
+    trimmed.startsWith('javascript:') ||
+    trimmed.startsWith('mailto:') ||
+    trimmed.startsWith('tel:')
+  ) {
+    return false;
+  }
+  if (/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(trimmed)) {
+    return false;
+  }
+  if (trimmed.startsWith('//')) {
+    return false;
+  }
+  return true;
+}
+
+function rewriteAssetUrl(value: string, widgetBaseUrl: string): string {
+  if (!shouldRewriteAssetUrl(value)) return value;
+  try {
+    return new URL(value, widgetBaseUrl).toString();
+  } catch {
+    return value;
+  }
+}
+
 export function resolveWidgetDomain(env: WidgetEnv): string {
   const url = normalizeUrl(env.MCP_SERVER_URL);
   return url?.host ?? DEFAULT_WIDGET_DOMAIN;
@@ -86,16 +118,55 @@ export function buildMcpAppsMeta(env: WidgetEnv) {
         resourceDomains: csp.resource_domains,
         // connectDomains allows fetch/XHR/WebSocket connections
         connectDomains: csp.connect_domains,
+        // Keep base-uri permissive for future compatibility, but widgets should
+        // not depend on it because some hosts reject runtime base injection.
+        baseUriDomains: csp.resource_domains,
       },
     },
   };
 }
 
-export function injectWidgetBase(html: string, baseHref: string) {
-  if (!baseHref || /<base\s/i.test(html)) return html;
-  const baseTag = `  <base href="${baseHref}">`;
-  if (/<head[^>]*>/i.test(html)) {
-    return html.replace(/<head[^>]*>/i, (match) => `${match}\n${baseTag}`);
-  }
-  return `${baseTag}\n${html}`;
+export function rewriteWidgetHtmlAssetUrls(html: string, widgetBaseUrl: string) {
+  if (!widgetBaseUrl) return html;
+
+  let rewritten = html.replace(/<base\b[^>]*>\s*/gi, '');
+
+  rewritten = rewritten.replace(
+    /\b(href|src|poster)=("([^"]*)"|'([^']*)')/gi,
+    (match, attr, quotedValue, doubleQuotedValue, singleQuotedValue) => {
+      const value =
+        typeof doubleQuotedValue === 'string'
+          ? doubleQuotedValue
+          : singleQuotedValue;
+      const nextValue = rewriteAssetUrl(value, widgetBaseUrl);
+      if (nextValue === value) return match;
+      const quote = quotedValue[0] === "'" ? "'" : '"';
+      return `${attr}=${quote}${nextValue}${quote}`;
+    }
+  );
+
+  rewritten = rewritten.replace(
+    /\bsrcset=("([^"]*)"|'([^']*)')/gi,
+    (match, quotedValue, doubleQuotedValue, singleQuotedValue) => {
+      const value =
+        typeof doubleQuotedValue === 'string'
+          ? doubleQuotedValue
+          : singleQuotedValue;
+      const rewrittenCandidates = value
+        .split(',')
+        .map((candidate: string) => {
+          const trimmed = candidate.trim();
+          if (!trimmed) return trimmed;
+          const [url, descriptor] = trimmed.split(/\s+/, 2);
+          const nextUrl = rewriteAssetUrl(url, widgetBaseUrl);
+          return descriptor ? `${nextUrl} ${descriptor}` : nextUrl;
+        })
+        .join(', ');
+      if (rewrittenCandidates === value) return match;
+      const quote = quotedValue[0] === "'" ? "'" : '"';
+      return `srcset=${quote}${rewrittenCandidates}${quote}`;
+    }
+  );
+
+  return rewritten;
 }
