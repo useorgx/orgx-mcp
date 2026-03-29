@@ -1036,12 +1036,9 @@
 
 
     
+      var REMOTE_WIDGET_ASSET_BASE = 'https://mcp.useorgx.com/widgets/shared/';
       function resolveWidgetAsset(path){
-        try {
-          return new URL('shared/' + path, window.location.href).toString();
-        } catch (error) {
-          return 'https://mcp.useorgx.com/widgets/shared/' + path;
-        }
+        return REMOTE_WIDGET_ASSET_BASE + path;
       }
       var ORGX_BASE_URL = 'https://useorgx.com';
       var buildAgentUrl = function(agentId) {
@@ -1049,7 +1046,6 @@
           ? ORGX_BASE_URL + '/settings/agents?agent=' + encodeURIComponent(agentId)
           : ORGX_BASE_URL + '/settings/agents';
       };
-      var REMOTE_WIDGET_ASSET_BASE = 'https://mcp.useorgx.com/widgets/shared/';
       var AGENT_DIRECTORY = {
         pace: { name: 'Pace', role: 'Product', avatarPath: 'product_orchestrator.png', accentRgb: '22, 163, 74' },
         product: { name: 'Pace', role: 'Product', avatarPath: 'product_orchestrator.png', accentRgb: '22, 163, 74' },
@@ -1241,9 +1237,8 @@
         var profile = resolveAgentProfile(agent || {});
         var fallback = escapeHtml(profile.name ? profile.name[0].toUpperCase() : '?');
         if (profile.avatarPath) {
-          var localSrc = resolveWidgetAsset(profile.avatarPath);
-          var remoteSrc = REMOTE_WIDGET_ASSET_BASE + profile.avatarPath;
-          return '<span class="avatar-fallback" style="display:none;">' + fallback + '</span><img class="avatar-image" src="' + localSrc + '" data-remote-src="' + remoteSrc + '" alt="' + escapeHtml(profile.name) + '" loading="eager" decoding="sync" draggable="false" onerror="if(!this.dataset.remoteTried){this.dataset.remoteTried=\'1\'; this.src=this.dataset.remoteSrc; return;} this.style.display=\'none\'; if (this.previousElementSibling) this.previousElementSibling.style.display=\'flex\';" />';
+          var avatarSrc = resolveWidgetAsset(profile.avatarPath);
+          return '<span class="avatar-fallback" style="display:none;">' + fallback + '</span><img class="avatar-image" src="' + avatarSrc + '" alt="' + escapeHtml(profile.name) + '" loading="eager" decoding="sync" draggable="false" onerror="this.style.display=\'none\'; if (this.previousElementSibling) this.previousElementSibling.style.display=\'flex\';" />';
         }
         return '<span class="avatar-fallback">' + fallback + '</span>';
       };

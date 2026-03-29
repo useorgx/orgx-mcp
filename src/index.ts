@@ -6189,6 +6189,10 @@ export class OrgXMcp extends McpAgent<
                 content: [
                   {
                     type: 'text',
+                    text: JSON.stringify(finalPayload),
+                  },
+                  {
+                    type: 'text',
                     text: `${result.summary}${
                       liveUrl ? `\n\n📺 Live view: ${liveUrl}` : ''
                     }${launchSummary}${activationPayload.text}`,

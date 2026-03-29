@@ -732,7 +732,7 @@
     function _extractData(out){if(out==null)return null;if(typeof out==='object'&&out.structuredContent)return out.structuredContent;if(typeof out==='object'&&Array.isArray(out.content)){for(var i=0;i<out.content.length;i++){var item=out.content[i];if(item&&item.type==='text'&&item.text){try{return JSON.parse(item.text);}catch(e){continue;}}}}if(typeof out==='string'){try{return JSON.parse(out);}catch(e){return{text:out};}}return out;}
     function _sendSize(){var w=Math.ceil(document.documentElement.getBoundingClientRect().width+(window.innerWidth-document.documentElement.clientWidth));var h=Math.ceil(document.documentElement.getBoundingClientRect().height);try{window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/size-changed',params:{width:w,height:h}},'*');}catch(e){}}
     function _observeSize(){_sendSize();if(typeof ResizeObserver!=='undefined'){var ro=new ResizeObserver(() => requestAnimationFrame(_sendSize));ro.observe(document.documentElement);ro.observe(document.body);}}
-    function initWidget(opts){var render=opts.render,getData=opts.getData||_extractData;var protocol=_detectProtocol();if(protocol==='chatgpt'){var d=getData(window.openai&&window.openai.toolOutput);render(d);window.addEventListener('openai:set_globals',function(e){var g=e.detail&&e.detail.globals;if(g&&g.toolOutput){render(getData(g.toolOutput));}},{passive:true});}else if(protocol==='mcp-apps'){render(null);var initId=1;window.parent.postMessage({jsonrpc:'2.0',id:initId,method:'ui/initialize',params:{appInfo:{name:'Widget',version:'1.0'},appCapabilities:{tools:{listChanged:false}},protocolVersion:'2026-01-26'}},'*');window.addEventListener('message',function(event){var msg=event.data;if(!msg||typeof msg!=='object')return;if(msg.id===initId){_observeSize();return;}if((msg.method==='ui/notifications/tool-result'||msg.method==='notifications/message')&&msg.params){var data=getData(msg.params);if(data)render(data);}});}else{render(null);}}
+    function initWidget(opts){var render=opts.render,getData=opts.getData||_extractData;var protocol=_detectProtocol();if(protocol==='chatgpt'){var d=getData(window.openai&&window.openai.toolOutput);render(d);window.addEventListener('openai:set_globals',function(e){var g=e.detail&&e.detail.globals;if(g&&g.toolOutput){render(getData(g.toolOutput));}},{passive:true});}else if(protocol==='mcp-apps'){render(null);var initId=1;window.parent.postMessage({jsonrpc:'2.0',id:initId,method:'ui/initialize',params:{appInfo:{name:'Widget',version:'1.0'},appCapabilities:{tools:{listChanged:false}},protocolVersion:'2026-01-26'}},'*');window.parent.postMessage({jsonrpc:'2.0',method:'notifications/initialized'},'*');window.addEventListener('message',function(event){var msg=event.data;if(!msg||typeof msg!=='object')return;if(msg.id===initId&&msg.result){window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized'},'*');_observeSize();return;}if((msg.method==='ui/notifications/tool-result'||msg.method==='notifications/message')&&msg.params){var data=getData(msg.params);if(data)render(data);}});}else{render(null);}}
     var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+c+'</svg>';};
     var icons = {
 
@@ -847,21 +847,22 @@
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(' ');
     };
+    var WIDGET_ASSET_BASE = 'https://mcp.useorgx.com/widgets/shared/';
     var getAvatarUrl = (name, domain) => {
       var n = normalizeTextKey(name);
       var d = normalizeTextKey(domain);
-      if (n.includes('pace') || n.includes('product') || d === 'product') return 'https://useorgx.com/product_orchestrator.png';
-      if (n.includes('eli') || n.includes('engineer') || d === 'engineering') return 'https://useorgx.com/engineering_autopilot.png';
-      if (n.includes('mark') || n.includes('market') || d === 'marketing') return 'https://useorgx.com/launch_captain.png';
-      if (n.includes('sage') || n.includes('sale') || d === 'sales') return 'https://useorgx.com/pipeline_intelligence.png';
-      if (n.includes('orion') || n.includes('op') || d === 'operations') return 'https://useorgx.com/control_tower.png';
-      if (n.includes('dana') || n.includes('design') || d === 'design') return 'https://useorgx.com/design_codex.png';
-      if (n.includes('xandy') || n.includes('orchestrator') || d === 'orchestrator') return 'https://useorgx.com/xandy_orchestrator.png';
+      if (n.includes('pace') || n.includes('product') || d === 'product') return WIDGET_ASSET_BASE + 'product_orchestrator.png';
+      if (n.includes('eli') || n.includes('engineer') || d === 'engineering') return WIDGET_ASSET_BASE + 'engineering_autopilot.png';
+      if (n.includes('mark') || n.includes('market') || d === 'marketing') return WIDGET_ASSET_BASE + 'launch_captain.png';
+      if (n.includes('sage') || n.includes('sale') || d === 'sales') return WIDGET_ASSET_BASE + 'pipeline_intelligence.png';
+      if (n.includes('orion') || n.includes('op') || d === 'operations') return WIDGET_ASSET_BASE + 'control_tower.png';
+      if (n.includes('dana') || n.includes('design') || d === 'design') return WIDGET_ASSET_BASE + 'design_codex.png';
+      if (n.includes('xandy') || n.includes('orchestrator') || d === 'orchestrator') return WIDGET_ASSET_BASE + 'xandy_orchestrator.png';
       return null;
     };
     var renderAvatar = (name, domain) => {
       var url = getAvatarUrl(name, domain);
-      if (url) return '<img src="' + url + '" alt="' + escapeHtml(name || domain || 'Agent') + '" loading="lazy" />';
+      if (url) return '<img src="' + url + '" alt="' + escapeHtml(name || domain || 'Agent') + '" loading="lazy" onerror="this.style.display=\'none\'; this.parentNode.textContent=\'' + escapeHtml(((typeof name === 'string' && name.trim() ? name.trim() : titleCase(domain || 'Agent')).charAt(0).toUpperCase() || '?')) + '\';" />';
       var label = typeof name === 'string' && name.trim() ? name.trim() : titleCase(domain || 'Agent');
       return escapeHtml(label.charAt(0).toUpperCase() || '?');
     };
