@@ -34,6 +34,51 @@ export async function hydrateTaskContext(params: {
 }) {
   const { context, fetchEntity, maxChars } = params;
 
+  const fetchKeys = new Map<string, { type: string; id: string }>();
+  for (const entry of context) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
+    const record = entry as Record<string, unknown>;
+    const entryType = typeof record.type === 'string' ? record.type : null;
+
+    if (
+      entryType === 'entity' &&
+      typeof record.entity_type === 'string' &&
+      typeof record.entity_id === 'string'
+    ) {
+      fetchKeys.set(`entity:${record.entity_type}:${record.entity_id}`, {
+        type: record.entity_type,
+        id: record.entity_id,
+      });
+      continue;
+    }
+
+    if (entryType === 'artifact' && typeof record.artifact_id === 'string') {
+      fetchKeys.set(`artifact:${record.artifact_id}`, {
+        type: 'artifact',
+        id: record.artifact_id,
+      });
+      continue;
+    }
+
+    if (
+      entryType === 'plan_session' &&
+      typeof record.session_id === 'string'
+    ) {
+      fetchKeys.set(`plan_session:${record.session_id}`, {
+        type: 'plan_session',
+        id: record.session_id,
+      });
+    }
+  }
+
+  const resolvedEntries = new Map<string, Record<string, unknown> | null>();
+  await Promise.all(
+    Array.from(fetchKeys.entries()).map(async ([key, target]) => {
+      const value = await fetchEntity(target.type, target.id);
+      resolvedEntries.set(key, value);
+    })
+  );
+
   const hydrated: Array<Record<string, unknown>> = [];
   let usedChars = 0;
   let truncated = false;
@@ -54,26 +99,35 @@ export async function hydrateTaskContext(params: {
       typeof record.entity_type === 'string' &&
       typeof record.entity_id === 'string'
     ) {
-      hydratedValue = await fetchEntity(record.entity_type, record.entity_id);
+      hydratedValue =
+        resolvedEntries.get(
+          `entity:${record.entity_type}:${record.entity_id}`
+        ) ?? null;
     } else if (
       entryType === 'artifact' &&
       typeof record.artifact_id === 'string'
     ) {
-      hydratedValue = await fetchEntity('artifact', record.artifact_id);
+      hydratedValue =
+        resolvedEntries.get(`artifact:${record.artifact_id}`) ?? null;
     } else if (
       entryType === 'plan_session' &&
       typeof record.session_id === 'string'
     ) {
-      const session = await fetchEntity('plan_session', record.session_id);
+      const session =
+        resolvedEntries.get(`plan_session:${record.session_id}`) ?? null;
       if (session && typeof (session as any).current_plan === 'string') {
         const full = (session as any).current_plan as string;
         const section =
           typeof record.section === 'string' ? record.section : null;
-        (session as any).current_plan = section
+        hydratedValue = {
+          ...session,
+          current_plan: section
           ? extractMarkdownSection(full, section, 8000)
-          : full.slice(0, 8000);
+          : full.slice(0, 8000),
+        };
+      } else {
+        hydratedValue = session;
       }
-      hydratedValue = session;
     }
 
     const hydratedEntry = { index: i, entry: record, hydrated: hydratedValue };

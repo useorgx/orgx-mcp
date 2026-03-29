@@ -380,10 +380,10 @@ export function formatClientActivationExperience(
   const lines: string[] = [''];
 
   if (experience.celebration) {
-    lines.push(`Activation complete: ${experience.celebration.message}`);
+    lines.push('Activation complete.');
     if (experience.celebration.next_action) {
       lines.push(
-        `Next: ${experience.celebration.next_action.prompt}`
+        `Next: ${experience.celebration.next_action.label}.`
       );
     }
     return lines.join('\n');
@@ -394,11 +394,8 @@ export function formatClientActivationExperience(
   }
 
   lines.push(
-    `Activation progress: ${experience.progress_pct}% via ${experience.playbook}.`
+    `Activation ${experience.progress_pct}% via ${experience.playbook}.`
   );
-  if (experience.optimization_hint) {
-    lines.push(experience.optimization_hint);
-  }
-  lines.push(`Next: ${experience.next_action.prompt}`);
+  lines.push(`Next: ${experience.next_action.label}.`);
   return lines.join('\n');
 }

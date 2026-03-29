@@ -203,20 +203,19 @@ export function formatClientSkillOnboarding(
 ): string {
   if (!onboarding || onboarding.suggestions.length === 0) return '';
 
-  const lines: string[] = [''];
-  if (onboarding.message) {
-    lines.push(onboarding.message);
-  }
-  lines.push('Recommended skills:');
-  for (const suggestion of onboarding.suggestions) {
-    lines.push(
-      `- ${suggestion.title}: ${suggestion.reason || 'recommended for this workflow'}`
-    );
-  }
-  if (onboarding.first_use && !onboarding.seeded_defaults) {
-    lines.push(
-      'Tip: set `seed_defaults=true` on `list_entities type=skill` to seed the default skill catalog first.'
-    );
-  }
-  return lines.join('\n');
+  const summary = onboarding.suggestions
+    .map((suggestion) => suggestion.title)
+    .join(', ');
+  const parts = [
+    '',
+    onboarding.source_client
+      ? `Detected ${onboarding.source_client}.`
+      : onboarding.message,
+    `Recommended skills: ${summary}.`,
+    onboarding.first_use && !onboarding.seeded_defaults
+      ? 'Use `seed_defaults=true` to install the default catalog.'
+      : null,
+  ];
+
+  return parts.filter(Boolean).join('\n');
 }

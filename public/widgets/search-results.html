@@ -156,6 +156,128 @@
     .error-state .empty-title { color: var(--ox-text); }
     .error-state .empty-desc { max-width: 360px; }
 
+    .pagination {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px 18px;
+      margin-top: 16px;
+      padding: 14px 16px;
+      border: 1px solid var(--ox-border);
+      border-radius: 14px;
+      background: var(--ox-panel);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
+    }
+
+    .page-info {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .page-kicker {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .page-label {
+      font-family: var(--ox-mono);
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ox-text-muted);
+    }
+
+    .page-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 6px 11px;
+      border-radius: 999px;
+      background: rgba(var(--ox-primary-rgb), 0.08);
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
+      color: var(--ox-primary);
+      font-family: var(--ox-mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      flex-shrink: 0;
+    }
+
+    .page-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .page-range {
+      font-size: 0.8rem;
+      line-height: 1.4;
+      color: var(--ox-text);
+      font-weight: 600;
+    }
+
+    .page-total {
+      font-size: 0.76rem;
+      line-height: 1.4;
+      color: var(--ox-text-muted);
+    }
+
+    .page-progress {
+      position: relative;
+      width: 100%;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--ox-well-bg);
+      overflow: hidden;
+    }
+
+    .page-progress-bar {
+      position: absolute;
+      inset: 0 auto 0 0;
+      border-radius: inherit;
+      background: linear-gradient(90deg, rgba(var(--ox-primary-rgb), 0.5), rgba(var(--ox-primary-rgb), 1));
+      box-shadow: 0 0 16px rgba(var(--ox-primary-rgb), 0.24);
+    }
+
+    .page-controls {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      align-self: center;
+    }
+
+    .page-btn {
+      min-width: 96px;
+      min-height: 38px;
+      padding: 0 14px;
+      border-radius: 10px;
+      border: 1px solid var(--ox-border);
+      background: var(--ox-well-bg);
+      color: var(--ox-text);
+      font: inherit;
+      font-size: 0.76rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .page-btn:hover:not(:disabled) {
+      border-color: rgba(var(--ox-primary-rgb), 0.28);
+      background: rgba(var(--ox-primary-rgb), 0.08);
+    }
+
+    .page-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
     .skeleton-line {
       background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%);
       background-size: 200% 100%; animation: shimmer 2s infinite linear; border-radius: 4px;
@@ -292,6 +414,8 @@
 
     } : null;
     var isLoading = !isDemo;
+    var currentPage = 1;
+    var itemsPerPage = 3;
 
     var isLoadingOverride = new URLSearchParams(window.location.search).get('loading') === 'true';
     if (isLoadingOverride) {
@@ -303,6 +427,14 @@
 
 
     
+    window.changePage = (delta) => {
+      const totalPages = Math.max(1, Math.ceil(((data && data.results) || []).length / itemsPerPage));
+      const nextPage = Math.min(totalPages, Math.max(1, currentPage + delta));
+      if (nextPage === currentPage) return;
+      currentPage = nextPage;
+      render();
+    };
+
     var render = () => {
       if(isLoading) return;
       if(data && data.error) {
@@ -311,7 +443,14 @@
       }
       if(!data) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.search(24)}</div><div class="empty-title">No results found</div><div class="empty-desc">Try adjusting your query or expanding your search scope.</div></div>`); return; }
 
-      const resultsHtml = (data.results || []).map(normalizeResult).map(r => `
+      const results = Array.isArray(data.results) ? data.results : [];
+      const totalPages = Math.max(1, Math.ceil(results.length / itemsPerPage));
+      currentPage = Math.min(currentPage, totalPages);
+      const startIdx = (currentPage - 1) * itemsPerPage;
+      const paginatedResults = results.slice(startIdx, startIdx + itemsPerPage);
+      const progress = Math.max(14, Math.round((currentPage / totalPages) * 100));
+
+      const resultsHtml = paginatedResults.map(normalizeResult).map(r => `
         <a href="${escapeHtml(r.url)}" target="_blank" class="result-card">
           
           <div class="r-header">
@@ -341,6 +480,27 @@
             <div class="result-list">
               ${resultsHtml}
             </div>
+            ${totalPages > 1 ? `
+              <div class="pagination">
+                <div class="page-info">
+                  <div class="page-kicker">
+                    <span class="page-label">Search results</span>
+                    <span class="page-count">${currentPage}<span>/</span>${totalPages}</span>
+                  </div>
+                  <div class="page-summary">
+                    <span class="page-range">Showing ${startIdx + 1}-${Math.min(startIdx + paginatedResults.length, results.length)}</span>
+                    <span class="page-total">${results.length} results total</span>
+                  </div>
+                  <div class="page-progress" aria-hidden="true">
+                    <span class="page-progress-bar" style="width:${progress}%"></span>
+                  </div>
+                </div>
+                <div class="page-controls">
+                  <button type="button" class="page-btn" onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}>Previous</button>
+                  <button type="button" class="page-btn" onclick="changePage(1)" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>
+                </div>
+              </div>
+            ` : ''}
           </div>
         </div>
       `);

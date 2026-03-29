@@ -97,6 +97,7 @@ import {
   shouldShowWelcomeBack,
   type McpSessionReentryState,
 } from './welcomeBackContext';
+import { buildNewSessionWelcomeText } from './sessionMessaging';
 import {
   WIDGET_URIS,
   OUTPUT_TEMPLATE_URIS,
@@ -785,7 +786,6 @@ export class OrgXMcp extends McpAgent<
 
     return {
       content: [
-        { type: 'text', text: JSON.stringify(payload) },
         { type: 'text', text: message },
       ],
       structuredContent: payload,
@@ -1064,19 +1064,7 @@ export class OrgXMcp extends McpAgent<
       if (!leadingBlock && this._isNewSession) {
         leadingBlock = {
           type: 'text' as const,
-          text: [
-            `Welcome to OrgX! You're connected and ready to go.`,
-            ``,
-            `Here's what you can do:`,
-            `• **scaffold_initiative** — Create a full initiative with workstreams, milestones, and tasks in one call`,
-            `• **get_org_snapshot** — See a bird's-eye view of all your initiatives and progress`,
-            `• **list_entities** — Review pending decisions with \`type=decision\` and \`status=pending\``,
-            `• **query_org_memory** — Search your organization's knowledge base`,
-            `• **recommend_next_action** — See the next best action for your workspace or initiative`,
-            `• **spawn_agent_task** — Delegate work to specialized AI agents`,
-            ``,
-            `Just describe what you'd like to accomplish and I'll pick the right tool.`,
-          ].join('\n'),
+          text: buildNewSessionWelcomeText(),
         };
       }
 
@@ -2332,18 +2320,23 @@ export class OrgXMcp extends McpAgent<
         },
         _meta: { 'openai/visibility': 'public', 'openai/readOnlyHint': true, securitySchemes: SECURITY_SCHEMES.readOptionalAuth },
       },
-      async (args) =>
+      async (args: Record<string, unknown>) =>
         this.withOrgx(async () => {
           const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
           const params = new URLSearchParams();
-          if (args?.view) params.set('view', args.view);
-          if (args?.initiative_status) {
+          if (typeof args?.view === 'string' && args.view.length > 0) {
+            params.set('view', args.view);
+          }
+          if (
+            typeof args?.initiative_status === 'string' &&
+            args.initiative_status.length > 0
+          ) {
             params.set('initiative_status', args.initiative_status);
           }
           if (typeof args?.limit === 'number') {
             params.set('limit', String(args.limit));
           }
-          if (args?.cursor) {
+          if (typeof args?.cursor === 'string' && args.cursor.length > 0) {
             params.set('cursor', args.cursor);
           }
           if (Array.isArray(args?.include) && args.include.length > 0) {
@@ -4433,7 +4426,8 @@ export class OrgXMcp extends McpAgent<
       .passthrough();
 
     if (shouldRegister('scaffold_initiative'))
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'scaffold_initiative',
       {
         title: 'Scaffold an initiative hierarchy',
@@ -4481,12 +4475,19 @@ export class OrgXMcp extends McpAgent<
             .optional()
             .describe('Parallel creation concurrency (default 8)'),
         }),
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: false,
+          openWorldHint: false,
+        },
         _meta: {
+          'openai/visibility': 'private',
+          'mcp/securitySchemes': SECURITY_SCHEMES.entityWriteRequiresAuth,
           securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
           ...SCAFFOLD_INITIATIVE_WIDGET_META,
         },
       },
-      async (args) =>
+      async (args: Record<string, unknown>) =>
         this.withOrgx(async () => {
           const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
           const authResponse = buildAuthRequiredResponse({
@@ -4528,10 +4529,24 @@ export class OrgXMcp extends McpAgent<
           };
 
           try {
-            const ownerId = this.resolveUserId(args.owner_id ?? args.user_id);
-            const continueOnError = args.continue_on_error !== false;
-            const launchAfterCreate = args.launch_after_create !== false;
-            const concurrency = Math.max(1, Math.min(args.concurrency ?? 8, 20));
+            const explicitOwnerId =
+              typeof args.owner_id === 'string'
+                ? args.owner_id
+                : typeof args.user_id === 'string'
+                ? args.user_id
+                : undefined;
+            const ownerId = this.resolveUserId(explicitOwnerId);
+            const continueOnError =
+              typeof args.continue_on_error === 'boolean'
+                ? args.continue_on_error
+                : true;
+            const launchAfterCreate =
+              typeof args.launch_after_create === 'boolean'
+                ? args.launch_after_create
+                : true;
+            const concurrencyInput =
+              typeof args.concurrency === 'number' ? args.concurrency : 8;
+            const concurrency = Math.max(1, Math.min(concurrencyInput, 20));
 
             // Free-tier guardrail: limit scaffolds per billing period.
             // Best-effort: if the billing endpoint is unavailable, don't block scaffolding.
@@ -5287,7 +5302,11 @@ export class OrgXMcp extends McpAgent<
 		                : '\n\nLaunch: skipped (launch_after_create=false)'
 		            : '';
 
-              const sourceClient = resolveSourceClientFromContext(args._context);
+              const sourceClient = resolveSourceClientFromContext(
+                (args._context ?? undefined) as
+                  | Record<string, unknown>
+                  | undefined
+              );
               const activationEvents = await this.recordMcpActivationObservation({
                 toolId: 'scaffold_initiative',
                 args: args as Record<string, unknown>,

@@ -126,42 +126,20 @@ export function buildWelcomeBackNextActions(params: {
 }
 
 export function formatWelcomeBackDigest(digest: WelcomeBackDigest): string {
-  const lines: string[] = [
-    `Welcome back.${digest.workspace_name ? ` ${digest.workspace_name} has changed since your last session.` : ' Here is what changed since your last session.'}`,
-    '',
-    `Active initiatives: ${digest.stats.active_initiatives}`,
-    `Pending decisions: ${digest.stats.pending_decisions}`,
-    `Running agents: ${digest.stats.running_agents}`,
+  const workspaceLabel = digest.workspace_name ?? 'your workspace';
+  const recentCount = digest.recent_activity.length;
+  const firstDecision = digest.pending_decisions[0];
+  const firstAction = digest.next_actions[0];
+  const parts = [
+    `Welcome back to ${workspaceLabel}.`,
+    `${digest.stats.active_initiatives} active initiatives, ${digest.stats.pending_decisions} pending decisions, ${digest.stats.running_agents} running agents.`,
+    recentCount > 0 ? `${recentCount} new update${recentCount === 1 ? '' : 's'} since your last session.` : null,
+    firstDecision
+      ? `First pending decision: ${firstDecision.title}.`
+      : null,
+    firstAction ? `Next: ${firstAction}` : null,
+    digest.live_url ? `Live view: ${digest.live_url}` : null,
   ];
 
-  if (digest.recent_activity.length > 0) {
-    lines.push('', 'Recent activity since you were last here:');
-    for (const item of digest.recent_activity.slice(0, 3)) {
-      lines.push(
-        `- ${item.title}${item.actor_name ? ` (${item.actor_name})` : ''}`
-      );
-    }
-  }
-
-  if (digest.pending_decisions.length > 0) {
-    lines.push('', 'Pending decisions:');
-    for (const decision of digest.pending_decisions.slice(0, 3)) {
-      lines.push(
-        `- ${decision.title}${decision.priority ? ` [${decision.priority}]` : ''} — waiting ${decision.waiting_for}`
-      );
-    }
-  }
-
-  if (digest.next_actions.length > 0) {
-    lines.push('', 'Suggested next actions:');
-    for (const action of digest.next_actions) {
-      lines.push(`- ${action}`);
-    }
-  }
-
-  if (digest.live_url) {
-    lines.push('', `Live view: ${digest.live_url}`);
-  }
-
-  return lines.join('\n');
+  return parts.filter(Boolean).join(' ');
 }
