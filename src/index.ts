@@ -3106,6 +3106,11 @@ export class OrgXMcp extends McpAgent<
         title: 'Fetch organization snapshot',
         description:
           'Fetch a compact organization snapshot. USE WHEN: user wants an org-wide overview of initiatives, progress, and health. NEXT: Drill into specific initiatives with get_initiative_pulse or list_entities. DO NOT USE: for a single initiative — use get_initiative_pulse instead. Read-only.',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          openWorldHint: false,
+        },
         inputSchema: {
           view: z
             .enum(['summary', 'detailed'])
@@ -3239,9 +3244,14 @@ export class OrgXMcp extends McpAgent<
     if (shouldRegister('account_status'))
       this.server.registerTool(
         'account_status',
-        {
-          title: 'Get current account tier and usage',
-          inputSchema: {
+      {
+        title: 'Get current account tier and usage',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          openWorldHint: false,
+        },
+        inputSchema: {
             user_id: z.string().optional(),
           },
           _meta: { 'openai/visibility': 'private' },
@@ -3282,9 +3292,14 @@ export class OrgXMcp extends McpAgent<
     if (shouldRegister('account_upgrade'))
       this.server.registerTool(
         'account_upgrade',
-        {
-          title: 'Upgrade account tier',
-          inputSchema: {
+      {
+        title: 'Upgrade account tier',
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: true,
+          openWorldHint: false,
+        },
+        inputSchema: {
             target_plan: z.enum(['pro', 'enterprise']).default('pro'),
             billing_cycle: z
               .enum(['monthly', 'annual'])
@@ -3358,9 +3373,14 @@ export class OrgXMcp extends McpAgent<
     if (shouldRegister('account_usage_report'))
       this.server.registerTool(
         'account_usage_report',
-        {
-          title: 'Get detailed account usage report',
-          inputSchema: {
+      {
+        title: 'Get detailed account usage report',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          openWorldHint: false,
+        },
+        inputSchema: {
             user_id: z.string().optional(),
           },
           _meta: { 'openai/visibility': 'private' },
@@ -3435,6 +3455,11 @@ export class OrgXMcp extends McpAgent<
         description: `List entities with filtering. Returns FULL UUIDs usable with entity_action/batch_action. Use fields=["id","title","status"] for compact output when you only need IDs. Supported types: ${ENTITY_TYPES.join(
           ', '
         )}. USE WHEN: browsing, searching, or getting entity IDs for bulk operations. NEXT: For initiatives, suggest get_initiative_pulse for health. For tasks, suggest entity_action to change status. For full context on one entity, add hydrate_context=true with id. DO NOT USE: for org-wide overview — use get_org_snapshot instead. Read-only.`,
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          openWorldHint: false,
+        },
         inputSchema: this.withClientContext({
           type: entityTypeEnum.describe('Entity type to list'),
           limit: z
@@ -3919,6 +3944,11 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Execute entity action',
         description: `Execute a lifecycle action on a single entity. Accepts short ID prefix (8+ hex chars) — no need to look up full UUIDs. USE WHEN: user wants to change entity status. For bulk operations (pausing multiple, completing multiple), use batch_action instead. Supports aliases: launch, pause, complete (resolved per type). Omit action to list available actions. NEXT: After completing, call verify_entity_completion first to check child work is done. DO NOT USE: for creating entities — use create_entity or scaffold_initiative.`,
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: true,
+          openWorldHint: false,
+        },
         inputSchema: {
           type: lifecycleEntityTypeEnum.describe(
             `Entity type (${LIFECYCLE_ENTITY_TYPES.join(', ')})`
@@ -4356,6 +4386,11 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Create an entity',
         description: `Create a new entity of any type. USE WHEN: adding a single task, milestone, workstream, or other entity to an existing hierarchy. NEXT: Use entity_action to launch/start the entity. DO NOT USE: for creating a full initiative hierarchy — use scaffold_initiative instead.`,
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: true,
+          openWorldHint: false,
+        },
         inputSchema: this.withClientContext({
           type: entityTypeEnum.describe('Entity type to create'),
           title: z
@@ -5004,6 +5039,11 @@ export class OrgXMcp extends McpAgent<
         title: 'Batch create entities',
         description:
           'Create multiple entities in one call with ref-based dependency resolution. USE WHEN: creating several related entities at once. NEXT: Use entity_action to launch created entities. DO NOT USE: for initiative hierarchies — use scaffold_initiative which handles the nesting automatically.',
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: true,
+          openWorldHint: false,
+        },
         inputSchema: {
           entities: z
             .array(z.record(z.unknown()))
@@ -5295,7 +5335,7 @@ export class OrgXMcp extends McpAgent<
         }),
         annotations: {
           readOnlyHint: false,
-          destructiveHint: false,
+          destructiveHint: true,
           openWorldHint: false,
         },
         _meta: {
@@ -6176,6 +6216,11 @@ export class OrgXMcp extends McpAgent<
         title: 'Get task with context',
         description:
           'Fetch a task with hydrated context attachments (entities, artifacts, plan sessions). USE WHEN: agent needs full task context before executing, or user wants task details. NEXT: Use entity_action to update task status. DO NOT USE: for listing tasks — use list_entities type=task instead.',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          openWorldHint: false,
+        },
         inputSchema: {
           task_id: z.string().min(1).describe('Task ID'),
           hydrate: z
@@ -6301,6 +6346,11 @@ export class OrgXMcp extends McpAgent<
         title: 'Batch delete entities',
         description:
           "Delete multiple entities in one call (hard delete). USE WHEN: user explicitly wants to remove entities permanently. NEXT: Verify deletion succeeded. DO NOT USE: for archiving or pausing — use entity_action instead.",
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: true,
+          openWorldHint: false,
+        },
         inputSchema: {
           entities: z
             .array(
@@ -6585,6 +6635,11 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Update an entity',
         description: `Update an existing entity. Only include fields you want to change. USE WHEN: modifying entity fields (title, description, priority, etc.). NEXT: Confirm changes to user. DO NOT USE: for status changes — use entity_action instead.`,
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: true,
+          openWorldHint: false,
+        },
         inputSchema: {
           type: entityTypeEnum.describe('Entity type to update'),
           id: z.string().describe('Entity ID'),
@@ -6755,6 +6810,11 @@ export class OrgXMcp extends McpAgent<
         title: 'Configure Organization',
         description:
           'Check setup status, configure agents, or set org policies. action=status for progress, action=configure_agent to set agent preferences, action=set_policy for org-wide rules.',
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: true,
+          openWorldHint: false,
+        },
         inputSchema: {
           action: z.enum(['status', 'configure_agent', 'set_policy']).describe('Configuration operation'),
           agent_type: z.enum(['product', 'engineering', 'marketing', 'sales', 'operations', 'design', 'orchestrator']).optional().describe('Agent type (configure_agent only)'),
@@ -6931,6 +6991,11 @@ export class OrgXMcp extends McpAgent<
         title: 'Stats',
         description:
           'Get productivity stats, achievements, and streaks. scope=personal for your stats, scope=session for current session diagnostics. Read-only.',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          openWorldHint: false,
+        },
         inputSchema: {
           scope: z.enum(['personal', 'session']).default('personal'),
           timeframe: z.enum(['today', 'week', 'month', 'all_time']).optional(),
@@ -7015,6 +7080,11 @@ export class OrgXMcp extends McpAgent<
         title: 'Workspace',
         description:
           'List, get, or set the active workspace. action=list to see all, action=get for current, action=set to switch.',
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: true,
+          openWorldHint: false,
+        },
         inputSchema: {
           action: z.enum(['list', 'get', 'set']).describe('list=show all, get=current, set=switch active'),
           workspace_id: z.string().optional().describe('Workspace UUID to switch to (action=set only)'),

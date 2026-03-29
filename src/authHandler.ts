@@ -24,6 +24,7 @@ import {
 } from './mcpTransport';
 import { authenticateRequest } from './requestAuth';
 import { OAUTH_SCOPES_SUPPORTED } from './toolDefinitions';
+import serverManifest from '../server.json';
 
 // Re-export type for use in index.ts
 export type { OAuthHelpers };
@@ -77,6 +78,21 @@ export const authHandler = {
     // =========================================================================
     if (url.pathname === '/healthz' || url.pathname === '/health') {
       return withCors(new Response('ok'));
+    }
+
+    // =========================================================================
+    // Directory manifest
+    // Expose the repository-backed MCP manifest on the production worker origin
+    // so directory reviewers can validate the live metadata directly.
+    // =========================================================================
+    if (request.method === 'GET' && url.pathname === '/server.json') {
+      return withCors(
+        Response.json(serverManifest, {
+          headers: {
+            'Cache-Control': 'public, max-age=300',
+          },
+        })
+      );
     }
 
     // =========================================================================
