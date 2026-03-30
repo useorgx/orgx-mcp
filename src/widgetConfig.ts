@@ -129,46 +129,64 @@ export function buildMcpAppsMeta(env: WidgetEnv) {
 export function rewriteWidgetHtmlAssetUrls(html: string, widgetBaseUrl: string) {
   if (!widgetBaseUrl) return html;
 
-  let rewritten = html.replace(/<base\b[^>]*>\s*/gi, '');
+  const rewriteHtmlFragment = (fragment: string) => {
+    let rewritten = fragment.replace(/<base\b[^>]*>\s*/gi, '');
 
-  rewritten = rewritten.replace(
-    /\b(href|src|poster)=("([^"]*)"|'([^']*)')/gi,
-    (match, attr, quotedValue, doubleQuotedValue, singleQuotedValue) => {
-      const value =
-        typeof doubleQuotedValue === 'string'
-          ? doubleQuotedValue
-          : singleQuotedValue;
-      const nextValue = rewriteAssetUrl(value, widgetBaseUrl);
-      if (nextValue === value) return match;
-      const quote = quotedValue[0] === "'" ? "'" : '"';
-      return `${attr}=${quote}${nextValue}${quote}`;
-    }
+    rewritten = rewritten.replace(
+      /\b(href|src|poster)=("([^"]*)"|'([^']*)')/gi,
+      (match, attr, quotedValue, doubleQuotedValue, singleQuotedValue) => {
+        const value =
+          typeof doubleQuotedValue === 'string'
+            ? doubleQuotedValue
+            : singleQuotedValue;
+        const nextValue = rewriteAssetUrl(value, widgetBaseUrl);
+        if (nextValue === value) return match;
+        const quote = quotedValue[0] === "'" ? "'" : '"';
+        return `${attr}=${quote}${nextValue}${quote}`;
+      }
+    );
+
+    rewritten = rewritten.replace(
+      /\bsrcset=("([^"]*)"|'([^']*)')/gi,
+      (match, quotedValue, doubleQuotedValue, singleQuotedValue) => {
+        const value =
+          typeof doubleQuotedValue === 'string'
+            ? doubleQuotedValue
+            : singleQuotedValue;
+        const rewrittenCandidates = value
+          .split(',')
+          .map((candidate: string) => {
+            const trimmed = candidate.trim();
+            if (!trimmed) return trimmed;
+            const [url, descriptor] = trimmed.split(/\s+/, 2);
+            const nextUrl = rewriteAssetUrl(url, widgetBaseUrl);
+            return descriptor ? `${nextUrl} ${descriptor}` : nextUrl;
+          })
+          .join(', ');
+        if (rewrittenCandidates === value) return match;
+        const quote = quotedValue[0] === "'" ? "'" : '"';
+        return `srcset=${quote}${rewrittenCandidates}${quote}`;
+      }
+    );
+
+    return rewritten;
+  };
+
+  // Only rewrite actual HTML markup, not inline JavaScript template strings.
+  const blocks = html.split(
+    /(<script\b[\s\S]*?<\/script\s*>|<style\b[\s\S]*?<\/style\s*>)/gi
   );
-
-  rewritten = rewritten.replace(
-    /\bsrcset=("([^"]*)"|'([^']*)')/gi,
-    (match, quotedValue, doubleQuotedValue, singleQuotedValue) => {
-      const value =
-        typeof doubleQuotedValue === 'string'
-          ? doubleQuotedValue
-          : singleQuotedValue;
-      const rewrittenCandidates = value
-        .split(',')
-        .map((candidate: string) => {
-          const trimmed = candidate.trim();
-          if (!trimmed) return trimmed;
-          const [url, descriptor] = trimmed.split(/\s+/, 2);
-          const nextUrl = rewriteAssetUrl(url, widgetBaseUrl);
-          return descriptor ? `${nextUrl} ${descriptor}` : nextUrl;
-        })
-        .join(', ');
-      if (rewrittenCandidates === value) return match;
-      const quote = quotedValue[0] === "'" ? "'" : '"';
-      return `srcset=${quote}${rewrittenCandidates}${quote}`;
-    }
-  );
-
-  return rewritten;
+  return blocks
+    .map((block, index) => {
+      if (index % 2 === 0) return rewriteHtmlFragment(block);
+      if (/^<script\b/i.test(block) || /^<style\b/i.test(block)) {
+        return block.replace(/^<(script|style)\b[^>]*>/i, (openingTag) =>
+          rewriteHtmlFragment(openingTag)
+        );
+      }
+      return block;
+    })
+    .join('');
 }
 
 export interface McpAppsHtmlAssets {

@@ -48,6 +48,41 @@ describe('widgetConfig', () => {
     expect(rewritten).toContain('src="https://assets.example.com/widget.js"');
   });
 
+  it('does not rewrite href/src fragments inside inline scripts', () => {
+    const html = `<!doctype html>
+<html>
+  <head>
+    <link rel="stylesheet" href="shared/widget-foundation.css" />
+    <script>
+      const avatarHtml = '<img src="' + avatarSrc + '" alt="avatar" />';
+      const linkHtml = \`<a href="\${buildUrl(id)}">Open</a>\`;
+    </script>
+  </head>
+  <body></body>
+</html>`;
+
+    const rewritten = rewriteWidgetHtmlAssetUrls(
+      html,
+      'https://mcp.useorgx.com/widgets/'
+    );
+
+    expect(rewritten).toContain(
+      'href="https://mcp.useorgx.com/widgets/shared/widget-foundation.css"'
+    );
+    expect(rewritten).toContain(
+      `const avatarHtml = '<img src="' + avatarSrc + '" alt="avatar" />';`
+    );
+    expect(rewritten).toContain(
+      'const linkHtml = `<a href="${buildUrl(id)}">Open</a>`;'
+    );
+    expect(rewritten).not.toContain(
+      "src=\"https://mcp.useorgx.com/widgets/' + avatarSrc + '\""
+    );
+    expect(rewritten).not.toContain(
+      'href="https://mcp.useorgx.com/widgets/$%7BbuildUrl(id)%7D"'
+    );
+  });
+
   it('includes baseUriDomains for MCP Apps sandbox compatibility', () => {
     const meta = buildMcpAppsMeta({
       MCP_SERVER_URL: 'https://mcp.useorgx.com',
