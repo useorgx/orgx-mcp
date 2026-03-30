@@ -86,6 +86,7 @@ import {
   buildMorningBriefValueDashboard,
   formatMorningBriefSummary,
 } from './morningBriefValue';
+import { buildInitiativeListWidgetPayload } from './initiativeWidgetPayload';
 import { normalizeAgentDispatchPayload } from './agentDispatchPayload';
 import { normalizeAgentStatusPayload } from './agentStatusPayload';
 import {
@@ -3917,6 +3918,30 @@ export class OrgXMcp extends McpAgent<
           const finalPayload = activationExperience
             ? { ...payload, client_activation: activationExperience }
             : payload;
+
+          const initiativeWidgetPayload =
+            buildInitiativeListWidgetPayload(finalPayload);
+          if (initiativeWidgetPayload) {
+            return {
+              _meta: SCAFFOLD_INITIATIVE_WIDGET_META,
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(initiativeWidgetPayload),
+                },
+                {
+                  type: 'text',
+                  text:
+                    formatForLLM('list_entities', initiativeWidgetPayload, {
+                      entityType: args.type,
+                    }) +
+                    formatClientSkillOnboarding(skillOnboarding) +
+                    activationText,
+                },
+              ],
+              structuredContent: initiativeWidgetPayload,
+            };
+          }
 
           return {
             content: [
