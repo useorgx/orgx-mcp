@@ -689,11 +689,37 @@ async function handleAuthorize(
   serverUrl: string,
   webUrl: string
 ): Promise<Response> {
+  const url = new URL(request.url);
+  const requestedClientId = url.searchParams.get('client_id');
+  const requestedRedirectUri = url.searchParams.get('redirect_uri');
+  const requestedResponseType = url.searchParams.get('response_type');
+  const requestedScope = url.searchParams.get('scope');
+  const requestedCodeChallengeMethod =
+    url.searchParams.get('code_challenge_method');
+
+  console.info('[auth] Received authorization request', {
+    clientId: requestedClientId,
+    redirectUri: requestedRedirectUri,
+    responseType: requestedResponseType,
+    scope: requestedScope,
+    codeChallengeMethod: requestedCodeChallengeMethod,
+    userAgent: request.headers.get('user-agent')?.substring(0, 120),
+    cfWorker: request.headers.get('cf-worker') ?? null,
+  });
+
   let oauthReqInfo: AuthRequest;
   try {
     oauthReqInfo = await env.OAUTH_PROVIDER.parseAuthRequest(request);
   } catch (error) {
-    console.error('[auth] Failed to parse auth request:', error);
+    console.error('[auth] Failed to parse auth request:', error, {
+      clientId: requestedClientId,
+      redirectUri: requestedRedirectUri,
+      responseType: requestedResponseType,
+      scope: requestedScope,
+      codeChallengeMethod: requestedCodeChallengeMethod,
+      userAgent: request.headers.get('user-agent')?.substring(0, 120),
+      cfWorker: request.headers.get('cf-worker') ?? null,
+    });
     return errorRedirect(
       'invalid_request',
       'The application made an invalid request. Please contact the app developer.',
