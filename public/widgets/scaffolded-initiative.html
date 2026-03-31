@@ -775,7 +775,7 @@
         flattened.push({
           type: 'workstream',
           title: readLabel(workstream, 'Untitled workstream'),
-          id: workstream && typeof workstream.id === 'string' ? workstream.id : workstream && typeof workstream.ref === 'string' ? workstream.ref : '',
+          id: workstream && typeof workstream.ref === 'string' ? workstream.ref : workstream && typeof workstream.id === 'string' ? workstream.id : '',
         });
         var milestones = workstream && Array.isArray(workstream.milestones) ? workstream.milestones : [];
         milestones.forEach((milestone, milestoneIndex) => {
@@ -785,7 +785,7 @@
           flattened.push({
             type: 'milestone',
             title: readLabel(milestone, 'Untitled milestone'),
-            id: milestone && typeof milestone.id === 'string' ? milestone.id : milestone && typeof milestone.ref === 'string' ? milestone.ref : '',
+            id: milestone && typeof milestone.ref === 'string' ? milestone.ref : milestone && typeof milestone.id === 'string' ? milestone.id : '',
             connector: {
               outerTop: true,
               outerBottom: milestoneHasFollowingSibling,
@@ -798,7 +798,7 @@
             flattened.push({
               type: 'task',
               title: readLabel(task, 'Untitled task'),
-              id: task && typeof task.id === 'string' ? task.id : task && typeof task.ref === 'string' ? task.ref : '',
+              id: task && typeof task.ref === 'string' ? task.ref : task && typeof task.id === 'string' ? task.id : '',
               connector: {
                 outerTop: milestoneHasFollowingSibling,
                 outerBottom: milestoneHasFollowingSibling,
