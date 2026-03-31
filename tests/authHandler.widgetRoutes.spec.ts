@@ -65,4 +65,46 @@ describe('authHandler widget compatibility routes', () => {
     expect(fetchMock).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
+
+  it('returns an OAuth challenge for non-browser GET / discovery requests', async () => {
+    const response = await authHandler.fetch(
+      new Request('https://mcp.useorgx.com/', {
+        headers: { accept: 'application/json' },
+      }),
+      {
+        MCP_SERVER_URL: 'https://mcp.useorgx.com',
+        ORGX_WEB_URL: 'https://www.useorgx.com',
+      },
+      {} as ExecutionContext
+    );
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get('www-authenticate')).toContain(
+      'resource_metadata="https://mcp.useorgx.com/.well-known/oauth-protected-resource"'
+    );
+    const body = (await response.json()) as {
+      error?: string;
+      error_description?: string;
+    };
+    expect(body.error).toBe('invalid_token');
+    expect(body.error_description).toBe('Missing or invalid access token');
+  });
+
+  it('keeps GET / browser navigations on the landing page', async () => {
+    const response = await authHandler.fetch(
+      new Request('https://mcp.useorgx.com/', {
+        headers: { accept: 'text/html' },
+      }),
+      {
+        MCP_SERVER_URL: 'https://mcp.useorgx.com',
+        ORGX_WEB_URL: 'https://www.useorgx.com',
+      },
+      {} as ExecutionContext
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe(
+      'https://mcp.useorgx.com/index.html'
+    );
+  });
 });

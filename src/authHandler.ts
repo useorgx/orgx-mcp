@@ -320,11 +320,29 @@ export const authHandler = {
         return withSseKeepAlive(resp);
       }
 
-      // GET / from browser → landing page
+      // GET / from browsers → landing page
       if (request.method === 'GET') {
-        return Response.redirect(
-          new URL('/index.html', url.origin).toString(),
-          302
+        if (accept.includes('text/html')) {
+          return Response.redirect(
+            new URL('/index.html', url.origin).toString(),
+            302
+          );
+        }
+
+        const resourceMetadataUrl = `${serverUrl}/.well-known/oauth-protected-resource`;
+        return withCors(
+          Response.json(
+            {
+              error: 'invalid_token',
+              error_description: 'Missing or invalid access token',
+            },
+            {
+              status: 401,
+              headers: {
+                'WWW-Authenticate': `Bearer realm="OAuth", resource_metadata="${resourceMetadataUrl}", error="invalid_token", error_description="Missing or invalid access token"`,
+              },
+            }
+          )
         );
       }
     }
