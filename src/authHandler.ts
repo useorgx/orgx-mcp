@@ -322,7 +322,16 @@ export const authHandler = {
 
       // GET / from browsers → landing page
       if (request.method === 'GET') {
-        if (accept.includes('text/html')) {
+        const secFetchMode = request.headers.get('sec-fetch-mode') ?? '';
+        const secFetchDest = request.headers.get('sec-fetch-dest') ?? '';
+        const upgradeInsecureRequests =
+          request.headers.get('upgrade-insecure-requests') ?? '';
+        const isDocumentNavigation =
+          secFetchMode === 'navigate' &&
+          secFetchDest === 'document' &&
+          upgradeInsecureRequests === '1';
+
+        if (isDocumentNavigation) {
           return Response.redirect(
             new URL('/index.html', url.origin).toString(),
             302

@@ -93,7 +93,12 @@ describe('authHandler widget compatibility routes', () => {
   it('keeps GET / browser navigations on the landing page', async () => {
     const response = await authHandler.fetch(
       new Request('https://mcp.useorgx.com/', {
-        headers: { accept: 'text/html' },
+        headers: {
+          accept: 'text/html',
+          'sec-fetch-mode': 'navigate',
+          'sec-fetch-dest': 'document',
+          'upgrade-insecure-requests': '1',
+        },
       }),
       {
         MCP_SERVER_URL: 'https://mcp.useorgx.com',
@@ -105,6 +110,24 @@ describe('authHandler widget compatibility routes', () => {
     expect(response.status).toBe(302);
     expect(response.headers.get('location')).toBe(
       'https://mcp.useorgx.com/index.html'
+    );
+  });
+
+  it('returns an OAuth challenge for text/html callers that are not real navigations', async () => {
+    const response = await authHandler.fetch(
+      new Request('https://mcp.useorgx.com/', {
+        headers: { accept: 'text/html' },
+      }),
+      {
+        MCP_SERVER_URL: 'https://mcp.useorgx.com',
+        ORGX_WEB_URL: 'https://www.useorgx.com',
+      },
+      {} as ExecutionContext
+    );
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get('www-authenticate')).toContain(
+      'resource_metadata="https://mcp.useorgx.com/.well-known/oauth-protected-resource"'
     );
   });
 });
