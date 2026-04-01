@@ -148,6 +148,7 @@ import {
   resolveHydrationMaxChars,
 } from './contextAccessTier';
 import { buildRateLimitedResponse } from './rateLimitResponse';
+export { configSchema } from './smitheryConfig';
 import {
   parseStoredSessionAuth,
   parseStoredSessionContext,
@@ -241,6 +242,8 @@ interface OrgXMcpProps extends Record<string, unknown> {
   scope?: string;
   email?: string;
   profile?: string;
+  workspace_id?: string;
+  initiative_id?: string;
 }
 
 type WidgetDebugEventPhase =
@@ -707,8 +710,38 @@ export class OrgXMcp extends McpAgent<
       hasProps: !!this.props,
       propsUserId: this.props?.userId ?? null,
       propsScope: this.props?.scope ?? null,
+      propsWorkspaceId: this.props?.workspace_id ?? null,
+      propsInitiativeId: this.props?.initiative_id ?? null,
       sessionUserId: this.sessionAuth.userId ?? null,
     });
+
+    const propsWorkspaceId =
+      typeof this.props?.workspace_id === 'string'
+        ? this.props.workspace_id
+        : undefined;
+    const propsInitiativeId =
+      typeof this.props?.initiative_id === 'string'
+        ? this.props.initiative_id
+        : undefined;
+
+    if (propsWorkspaceId && propsWorkspaceId !== this.sessionContext.workspaceId) {
+      this.sessionContext = {
+        ...this.sessionContext,
+        workspaceId: propsWorkspaceId,
+      };
+      await this.saveSessionContext();
+    }
+
+    if (
+      propsInitiativeId &&
+      propsInitiativeId !== this.sessionContext.initiativeId
+    ) {
+      this.sessionContext = {
+        ...this.sessionContext,
+        initiativeId: propsInitiativeId,
+      };
+      await this.saveSessionContext();
+    }
 
     // Then, update from props if user authenticated with a new token
     if (this.props?.userId) {
@@ -4349,6 +4382,11 @@ export class OrgXMcp extends McpAgent<
         title: 'Verify entity completion readiness',
         description:
           'Run pre-completion verification to confirm all child work is done. For tasks, this also checks proof-chain hard blocks that would stop entity_action action=complete. USE WHEN: before completing an entity with entity_action action=complete. NEXT: If verified, proceed with entity_action action=complete. If not, show blockers to user. Read-only.',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          openWorldHint: false,
+        },
         inputSchema: {
           type: z
             .enum(VERIFIABLE_COMPLETION_ENTITY_TYPES)

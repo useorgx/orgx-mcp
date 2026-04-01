@@ -23,11 +23,11 @@
   "remotes": [
     {
       "type": "streamable-http",
-      "url": "https://mcp.useorgx.com/"
+      "url": "https://mcp.useorgx.com/mcp"
     },
     {
       "type": "sse",
-      "url": "https://mcp.useorgx.com/"
+      "url": "https://mcp.useorgx.com/sse"
     }
   ],
   "auth": {
