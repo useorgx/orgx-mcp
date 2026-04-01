@@ -37,7 +37,6 @@ export const WIDGET_URIS = {
   initiativePulse: 'ui://widget/initiative-pulse.html',
   taskSpawned: 'ui://widget/task-spawned.html',
   decisionHistory: 'ui://widget/search-results.html', // Reuse search results widget
-  testMinimal: 'ui://widget/test-minimal.html', // Minimal widget to validate MCP Apps rendering
   morningBrief: 'ui://widget/morning-brief.html', // Intelligence Flywheel: curated receipts + exceptions + ROI delta
 } as const;
 
@@ -49,7 +48,6 @@ export const OUTPUT_TEMPLATE_URIS = {
   initiativePulse: toSkybridgeResourceUri(WIDGET_URIS.initiativePulse),
   taskSpawned: toSkybridgeResourceUri(WIDGET_URIS.taskSpawned),
   decisionHistory: toSkybridgeResourceUri(WIDGET_URIS.decisionHistory),
-  testMinimal: toSkybridgeResourceUri(WIDGET_URIS.testMinimal),
   morningBrief: toSkybridgeResourceUri(WIDGET_URIS.morningBrief),
 } as const;
 
@@ -83,11 +81,6 @@ export const WIDGET_RESOURCES = [
     name: 'task-spawned-widget',
     uri: WIDGET_URIS.taskSpawned,
     title: 'Task Spawned Widget',
-  },
-  {
-    name: 'test-minimal-widget',
-    uri: WIDGET_URIS.testMinimal,
-    title: 'Minimal Test Widget (no external deps)',
   },
   {
     name: 'morning-brief-widget',

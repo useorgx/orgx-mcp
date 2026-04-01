@@ -12,7 +12,7 @@ import {
 } from '../src/toolDefinitions';
 import { CONTRACT_TOOL_DEFINITIONS } from '../src/contractTools';
 import { FLYWHEEL_TOOL_DEFINITIONS } from '../src/flywheelTools';
-import { configSchema } from '../src/smitheryConfig';
+import { smitheryConfigSchema } from '../src/smitheryConfig';
 
 const root = process.cwd();
 const serverJson = JSON.parse(
@@ -20,6 +20,7 @@ const serverJson = JSON.parse(
 ) as {
   remotes?: Array<{ type?: string; url?: string }>;
 };
+const indexSource = readFileSync(resolve(root, 'src/index.ts'), 'utf8');
 
 function inputShapeEntries(
   inputSchema: unknown
@@ -44,13 +45,16 @@ describe('Smithery metadata coverage', () => {
   ];
 
   it('exports a Smithery config schema with optional connection defaults', () => {
-    const parsed = configSchema.parse({});
+    const parsed = smitheryConfigSchema.parse({});
     expect(parsed.profile).toBe('full');
 
-    const shape = configSchema.shape;
+    const shape = smitheryConfigSchema.shape;
     expect(shape.profile.description).toContain('tool profile');
     expect(shape.workspace_id.description).toContain('workspace UUID');
     expect(shape.initiative_id.description).toContain('initiative UUID');
+    expect(indexSource).toContain(
+      'export const configSchema = buildSmitheryConfigSchema();'
+    );
   });
 
   it('publishes direct MCP remotes instead of the landing-page root URL', () => {
@@ -58,6 +62,12 @@ describe('Smithery metadata coverage', () => {
       { type: 'streamable-http', url: 'https://mcp.useorgx.com/mcp' },
       { type: 'sse', url: 'https://mcp.useorgx.com/sse' },
     ]);
+  });
+
+  it('does not expose the test widget in production metadata', () => {
+    const serializedServerJson = JSON.stringify(serverJson);
+    expect(serializedServerJson).not.toContain('test-minimal');
+    expect(indexSource).not.toContain('testMinimal:');
   });
 
   it('gives every shared tool explicit annotations', () => {
@@ -80,5 +90,86 @@ describe('Smithery metadata coverage', () => {
       }
     }
   });
-});
 
+  it('keeps audited inline tools annotated with described top-level parameters', () => {
+    const expectations: Record<string, string[]> = {
+      account_status: ['description:', "user_id: z.string().optional().describe("],
+      account_upgrade: [
+        'description:',
+        "target_plan: z",
+        "billing_cycle: z",
+        "user_id: z.string().optional().describe(",
+      ],
+      account_usage_report: [
+        'description:',
+        "user_id: z.string().optional().describe(",
+      ],
+      comment_on_entity: [
+        'annotations: {',
+        "entity_type: z.enum([",
+        '.describe(\'Entity type to comment on.',
+        '.describe(\'Comment body in plain text or markdown.',
+        '.describe(\'Optional structured metadata attached to the comment.',
+      ],
+      list_entity_comments: [
+        'annotations: {',
+        '.describe(\'Entity type to read comments for.',
+        '.describe(\'Pagination cursor from a previous response.',
+      ],
+      batch_action: [
+        'annotations: {',
+        'List of lifecycle actions to execute in bulk.',
+      ],
+      stats: [
+        'Whether to return personal stats or current-session diagnostics.',
+        'Time window for the requested statistics.',
+      ],
+      get_outcome_attribution: [
+        'annotations: {',
+        'Time period for ROI calculation.',
+        'Optional capability key filter.',
+      ],
+      record_outcome: [
+        'annotations: {',
+        'Outcome type key, such as deal_closed or meeting_booked.',
+        'Optional structured context attached to the outcome record.',
+      ],
+      get_my_trust_context: [
+        'annotations: {',
+        'Agent type to fetch trust data for.',
+      ],
+      start_autonomous_session: [
+        'annotations: {',
+        'Autonomy session mode to start.',
+        'Maximum number of receipts the session may produce.',
+      ],
+      get_relevant_learnings: [
+        'annotations: {',
+        'Optional keywords for semantic matching.',
+      ],
+      submit_learning: [
+        'annotations: {',
+        'Type of learning being submitted.',
+        'Optional receipt IDs that support the learning.',
+      ],
+    };
+
+    for (const [toolId, snippets] of Object.entries(expectations)) {
+      const registrationMatch = new RegExp(
+        `registerTool\\(\\s*'${toolId}'([\\s\\S]*?)(?=registerTool\\(|registerAppTool\\(|private registerResources\\()`,
+        'm'
+      ).exec(indexSource);
+      expect(
+        registrationMatch,
+        `Missing registration block for ${toolId}`
+      ).not.toBeNull();
+      const block = registrationMatch![1];
+
+      for (const snippet of snippets) {
+        expect(block, `${toolId} is missing snippet: ${snippet}`).toContain(
+          snippet
+        );
+      }
+    }
+  });
+});
