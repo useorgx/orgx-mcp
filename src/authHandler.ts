@@ -58,6 +58,36 @@ function errorRedirect(
   return Response.redirect(errorUrl.toString(), 302);
 }
 
+function buildDerivedServerCard(manifest: typeof serverManifest) {
+  return {
+    serverInfo: {
+      name: manifest.title ?? manifest.name,
+      version: manifest.version,
+    },
+    authentication: manifest.auth
+      ? {
+          required: true,
+          schemes: [manifest.auth.type],
+        }
+      : undefined,
+    tools: (manifest.tools ?? []).map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      // server.json is the source of truth for the published catalog, but it
+      // does not carry full MCP JSON Schemas. Expose a permissive object shape
+      // here so directory scanners still get valid tool entries without a
+      // second hand-maintained metadata source.
+      inputSchema: {
+        type: 'object',
+        properties: {},
+        additionalProperties: true,
+      },
+    })),
+    resources: manifest.resources ?? [],
+    prompts: manifest.prompts ?? [],
+  };
+}
+
 /**
  * Auth handler — serves as the `defaultHandler` for OAuthProvider.
  * Receives all requests that are NOT matched by apiHandlers (i.e., not /mcp or /sse).
@@ -88,6 +118,19 @@ export const authHandler = {
     if (request.method === 'GET' && url.pathname === '/server.json') {
       return withCors(
         Response.json(serverManifest, {
+          headers: {
+            'Cache-Control': 'public, max-age=300',
+          },
+        })
+      );
+    }
+
+    if (
+      request.method === 'GET' &&
+      url.pathname === '/.well-known/mcp/server-card.json'
+    ) {
+      return withCors(
+        Response.json(buildDerivedServerCard(serverManifest), {
           headers: {
             'Cache-Control': 'public, max-age=300',
           },

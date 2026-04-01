@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -68,6 +68,9 @@ describe('Smithery metadata coverage', () => {
     const serializedServerJson = JSON.stringify(serverJson);
     expect(serializedServerJson).not.toContain('test-minimal');
     expect(indexSource).not.toContain('testMinimal:');
+    expect(existsSync(resolve(root, 'public/widgets/test-minimal.html'))).toBe(
+      false
+    );
   });
 
   it('gives every shared tool explicit annotations', () => {
