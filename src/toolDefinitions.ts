@@ -271,6 +271,7 @@ export const PLAN_SESSION_TOOLS = [
         .optional()
         .describe('Initial plan content if any'),
     },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Starting plan session...',
@@ -282,6 +283,7 @@ export const PLAN_SESSION_TOOLS = [
     title: 'Get Active Plan Sessions',
     description: 'Check for any active planning sessions you have open. USE WHEN: resuming a conversation or checking if a plan session exists. NEXT: Continue with improve_plan or complete_plan. Read-only.',
     inputSchema: {},
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.authRequired,
     _meta: {
       'openai/toolInvocation/invoking': 'Checking active sessions...',
@@ -301,6 +303,7 @@ export const PLAN_SESSION_TOOLS = [
         .min(1)
         .describe('Current plan content to analyze'),
     },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Analyzing plan for improvements...',
@@ -335,6 +338,7 @@ export const PLAN_SESSION_TOOLS = [
         .describe('Section path like "## API Design"'),
       user_reason: z.string().optional().describe('Why this edit was made'),
     },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Recording edit...',
@@ -386,6 +390,7 @@ export const PLAN_SESSION_TOOLS = [
           'Optional: attach this plan session as context on target entities (pointers, not payloads).'
         ),
     },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Completing plan session...',
@@ -412,8 +417,14 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         .number()
         .optional()
         .describe('Maximum number of decisions to return'),
-      urgency_filter: z.enum(['all', 'critical', 'high']).optional(),
-      initiative_id: z.string().optional(),
+      urgency_filter: z
+        .enum(['all', 'critical', 'high'])
+        .optional()
+        .describe('Optional urgency filter for the pending decision list'),
+      initiative_id: z
+        .string()
+        .optional()
+        .describe('Optional initiative UUID to scope pending decisions'),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
@@ -431,8 +442,8 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     description:
       'Approve a specific pending OrgX decision after the user confirms. USE WHEN: user says to approve a decision returned from list_entities with type=decision and status=pending (or the legacy get_pending_decisions alias). NEXT: Confirm approval to user; agent is notified automatically. DO NOT USE: without showing the decision to the user first. Requires decisions:write.',
     inputSchema: {
-      decision_id: z.string().min(1),
-      note: z.string().optional(),
+      decision_id: z.string().min(1).describe('Decision ID to approve'),
+      note: z.string().optional().describe('Optional note recorded with the approval'),
       option_id: z
         .string()
         .optional()
@@ -455,8 +466,8 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     description:
       'Reject a pending OrgX decision with a reason. USE WHEN: user wants to reject or request revisions on a decision. NEXT: Agent will revise their approach based on the reason. DO NOT USE: without a reason — always include why. Requires decisions:write.',
     inputSchema: {
-      decision_id: z.string().min(1),
-      reason: z.string().min(1),
+      decision_id: z.string().min(1).describe('Decision ID to reject'),
+      reason: z.string().min(1).describe('Reason for rejecting the decision'),
       option_id: z
         .string()
         .optional()
@@ -479,8 +490,11 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     description:
       'Show what OrgX agents are currently doing (running/idle). USE WHEN: user asks about agent activity, progress, or what agents are working on. NEXT: If agents are stuck, suggest approve_decision or entity_action. DO NOT USE: to check initiative health — use get_initiative_pulse instead. Read-only.',
     inputSchema: {
-      agent_id: z.string().optional(),
-      include_idle: z.boolean().optional(),
+      agent_id: z.string().optional().describe('Optional agent ID to inspect'),
+      include_idle: z
+        .boolean()
+        .optional()
+        .describe('Include idle agents in the response'),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
@@ -500,11 +514,15 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         'decisionHistory'
       )} DO NOT USE: for listing current entities — use list_entities instead. Read-only.`,
     inputSchema: {
-      query: z.string().min(1),
+      query: z.string().min(1).describe('Search query for OrgX memory'),
       scope: z
         .enum(['all', 'artifacts', 'decisions', 'initiatives'])
-        .optional(),
-      limit: z.number().optional(),
+        .optional()
+        .describe('Optional scope filter for the memory search'),
+      limit: z
+        .number()
+        .optional()
+        .describe('Maximum number of results to return'),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
@@ -549,10 +567,16 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     description:
       'Assign work to a specialist OrgX agent. Automatically checks authorization, rate limits, and quality gates before spawning. Returns modelTier and run details on success, or blockedReason if spawn is denied. USE WHEN: user explicitly wants to delegate work to an agent. NEXT: Use get_agent_status to monitor progress. DO NOT USE: for creating tasks in the hierarchy — use create_entity type=task instead. Requires agents:write.',
     inputSchema: {
-      agent: z.string().min(1),
-      task: z.string().min(1),
-      context: z.string().optional(),
-      initiative_id: z.string().optional(),
+      agent: z.string().min(1).describe('Target agent identifier or alias'),
+      task: z.string().min(1).describe('Task instructions for the target agent'),
+      context: z
+        .string()
+        .optional()
+        .describe('Optional supporting context or background for the task'),
+      initiative_id: z
+        .string()
+        .optional()
+        .describe('Optional initiative UUID to associate with the spawned task'),
       initiative_name: z
         .string()
         .optional()
@@ -694,9 +718,15 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         'Search past OrgX decisions related to a topic. USE WHEN: older clients still call this tool directly. NEXT: Present results with context; suggest approve_decision or reject_decision if relevant pending ones exist. DO NOT USE: for new prompts or skills. Read-only.'
       ),
     inputSchema: {
-      topic: z.string().min(1),
-      initiative_id: z.string().optional(),
-      limit: z.number().optional(),
+      topic: z.string().min(1).describe('Topic or theme to search decision history for'),
+      initiative_id: z
+        .string()
+        .optional()
+        .describe('Optional initiative UUID to scope decision history'),
+      limit: z
+        .number()
+        .optional()
+        .describe('Maximum number of historical decisions to return'),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
@@ -1015,12 +1045,29 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
       source_client: reportingSourceClientSchema
         .optional()
         .describe('Required when run_id is not provided'),
-      phase: reportingPhaseSchema.optional(),
-      progress_pct: z.number().min(0).max(100).optional(),
-      level: z.enum(['info', 'warn', 'error']).optional(),
-      next_step: z.string().optional(),
-      metadata: z.record(z.unknown()).optional(),
+      phase: reportingPhaseSchema
+        .optional()
+        .describe('Optional reporting phase for the activity event'),
+      progress_pct: z
+        .number()
+        .min(0)
+        .max(100)
+        .optional()
+        .describe('Optional progress percentage associated with this activity'),
+      level: z
+        .enum(['info', 'warn', 'error'])
+        .optional()
+        .describe('Optional severity level for the activity event'),
+      next_step: z
+        .string()
+        .optional()
+        .describe('Optional next step to surface after this activity event'),
+      metadata: z
+        .record(z.unknown())
+        .optional()
+        .describe('Optional structured metadata to attach to the activity event'),
     },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.authRequired,
     _meta: {
       'openai/toolInvocation/invoking': 'Emitting activity...',
@@ -1039,7 +1086,11 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         .min(1)
         .max(120)
         .describe('Idempotency key for safe retries'),
-      operations: z.array(applyChangesetOperationSchema).min(1).max(25),
+      operations: z
+        .array(applyChangesetOperationSchema)
+        .min(1)
+        .max(25)
+        .describe('Ordered task, milestone, and decision mutations to apply atomically'),
       run_id: z.string().uuid().optional().describe('Existing run UUID'),
       correlation_id: z
         .string()
@@ -1049,6 +1100,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         .optional()
         .describe('Required when run_id is not provided'),
     },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.authRequired,
     _meta: {
       'openai/toolInvocation/invoking': 'Applying changeset...',
@@ -1064,6 +1116,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
       memory: z.string().optional().describe('Local MEMORY.md content to push'),
       daily_log: z.string().optional().describe("Today's session log to push"),
     },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.authRequired,
     _meta: {
       'openai/toolInvocation/invoking': 'Syncing with OrgX...',
@@ -1089,6 +1142,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         .describe('Task title (for model routing if task_id not provided)'),
       task_description: z.string().optional().describe('Task description'),
     },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.agentRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Checking spawn authorization...',
@@ -1117,6 +1171,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         .describe('Who scored this'),
       notes: z.string().optional().describe('Notes on the score'),
     },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Recording quality score...',
@@ -1137,6 +1192,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         .describe('Entity type: task, decision, initiative'),
       domain: z.string().optional().describe('Agent domain'),
     },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Classifying task complexity...',
@@ -1175,6 +1231,7 @@ export const STREAM_TOOL_DEFINITIONS = [
         .optional()
         .describe('For optimistic locking'),
     },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.agentRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Updating stream progress...',
@@ -1189,6 +1246,7 @@ export const STREAM_TOOL_DEFINITIONS = [
     inputSchema: {
       initiative_id: z.string().min(1).describe('The initiative ID'),
     },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Getting initiative stream state...',
