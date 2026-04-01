@@ -3,6 +3,33 @@ import { describe, expect, it, vi } from 'vitest';
 import { authHandler } from '../src/authHandler';
 
 describe('authHandler widget compatibility routes', () => {
+  it('serves a derived Smithery server card from the worker origin', async () => {
+    const response = await authHandler.fetch(
+      new Request('https://mcp.useorgx.com/.well-known/mcp/server-card.json'),
+      {
+        MCP_SERVER_URL: 'https://mcp.useorgx.com',
+        ORGX_WEB_URL: 'https://www.useorgx.com',
+      },
+      {} as ExecutionContext
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('application/json');
+    const body = (await response.json()) as {
+      serverInfo?: { name?: string; version?: string };
+      authentication?: { required?: boolean; schemes?: string[] };
+      tools?: Array<{ name?: string; inputSchema?: { type?: string } }>;
+    };
+    expect(body.serverInfo?.name).toBe('OrgX MCP');
+    expect(body.serverInfo?.version).toBeTruthy();
+    expect(body.authentication).toEqual({
+      required: true,
+      schemes: ['oauth2'],
+    });
+    expect(body.tools?.length).toBeGreaterThan(0);
+    expect(body.tools?.[0]?.inputSchema?.type).toBe('object');
+  });
+
   it('serves the live server.json manifest from the worker origin', async () => {
     const response = await authHandler.fetch(
       new Request('https://mcp.useorgx.com/server.json'),
