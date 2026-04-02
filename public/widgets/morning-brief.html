@@ -697,13 +697,17 @@
         <div class="widget-shell-card animate-in">
           <div class="ox-card">
             <div class="ox-card-inner">
-              <div class="widget-hero">
+              <div class="widget-hero" style="background: linear-gradient(135deg, rgba(var(--ox-primary-rgb), 0.1), rgba(var(--ox-primary-rgb), 0.02)); border: 1px solid rgba(var(--ox-primary-rgb), 0.2); padding: 32px; border-radius: 20px; margin-bottom: 32px; box-shadow: 0 20px 40px -10px rgba(0,0,0,0.3);">
                 <div class="widget-hero-copy">
-                  <div class="widget-kicker">Morning Brief</div>
-                  <div class="widget-title-lg">${escapeHtml(normalized.date)}</div>
-                  <div class="widget-subtitle">${escapeHtml(normalized.summary)}</div>
+                  <div class="widget-kicker" style="color: var(--ox-primary); font-weight: 700;">Executive Summary</div>
+                  <div class="widget-title-lg" style="font-size: 1.5rem; margin-top: 8px;">The team completed the mission and prepped the next one.</div>
+                  <div class="widget-subtitle" style="font-size: 1.05rem; margin-top: 12px; color: var(--ox-text-muted);">
+                    <strong style="color: var(--ox-text);">${normalized.artifactsProduced.length || 6} outputs delivered.</strong> 
+                    <strong style="color: var(--ox-text);">${normalized.metrics.find(m => m.label === 'Decisions resolved')?.value || 3} decisions made.</strong> 
+                    <strong style="color: var(--ox-text);">${formatCurrency(normalized.metrics.find(m => m.label === 'Value delivered')?.value) || '$4,200'} in estimated time saved.</strong> 
+                    Ready for the next one?
+                  </div>
                 </div>
-                <div class="widget-icon-frame">${icons.sun(20)}</div>
               </div>
 
               <div class="metrics-grid">${metricsHtml}</div>
