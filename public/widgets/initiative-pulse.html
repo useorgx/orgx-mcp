@@ -222,24 +222,12 @@
         font-weight: 600;
       }
 
-      .roi-strip {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 12px;
-        margin-bottom: 24px;
-      }
+      
 
-      .roi-item {
-        background: rgba(128,128,128,0.03);
-        border: 1px solid var(--ox-border);
-        border-radius: 8px;
-        padding: 12px;
-        position: relative;
-        overflow: hidden;
-      }
+      
 
       @media (prefers-color-scheme: dark) {
-         .roi-item { background: rgba(255,255,255,0.02); }
+         
       }
 
       .roi-item::before {
@@ -250,22 +238,9 @@
         pointer-events: none;
       }
 
-      .roi-label {
-        font-family: var(--ox-mono);
-        font-size: 0.6rem;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        color: var(--ox-text-muted);
-        font-weight: 600;
-      }
+      
 
-      .roi-value {
-        margin-top: 6px;
-        font-size: 1.125rem;
-        font-family: var(--ox-mono);
-        color: var(--ox-text);
-        font-weight: 600;
-      }
+      
 
       .roi-value.positive { color: var(--ox-teal); }
       .roi-value.negative { color: var(--ox-danger); }
@@ -837,7 +812,68 @@
       }
 
       
-  </style>
+  
+  /* Smooth UX Transitions */
+  .skeleton-wrapper { transition: opacity 0.3s ease; }
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(16px) scale(0.98); filter: blur(4px); }
+    to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+  }
+  .animate-in { opacity: 0; animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  .delay-1 { animation-delay: 0.1s; }
+  .delay-2 { animation-delay: 0.2s; }
+  .delay-3 { animation-delay: 0.3s; }
+  
+  .ox-card {
+    background: var(--ox-panel); border: 1px solid var(--ox-border); border-radius: 16px; box-shadow: var(--ox-shadow); position: relative; overflow: hidden; margin-bottom: 16px;
+  }
+  .ox-card-inner { padding: 24px; }
+  
+  /* Upgraded ROI Strip to match Executive Design */
+  .roi-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .roi-item {
+    position: relative;
+    overflow: hidden;
+    background: var(--ox-well-bg);
+    border: 1px solid var(--ox-border);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: var(--ox-well-shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  
+  .roi-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border-color: rgba(var(--ox-primary-rgb), 0.3);
+  }
+
+  .roi-label {
+    font-family: var(--ox-mono);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ox-text-muted);
+    font-weight: 600;
+  }
+  
+  .roi-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--ox-text);
+    letter-spacing: -0.02em;
+  }
+
+</style>
   </head>
   <body>
     <div class="container" role="region" aria-label="Initiative Status">
@@ -917,9 +953,15 @@
         progress_pct: 64,
         pending_decisions: 3,
         active_workstreams: 4,
+        eta_seconds: 145,
+        current_cost: 0.84,
         roi_summary: { total_cost: 412.25, total_value: 2190.40, period: "30d" },
         health_score: 78,
-        blockers: ["Waiting for final design assets from marketing", "Need security audit completion before launch"],
+        blockers: ["Needs your input: which audience to target for the email campaign?"],
+        recent_events: [
+          { agent: "Mark", text: "is drafting campaign copy...", time: "Just now" },
+          { agent: "Eli", text: "verified DNS records.", time: "2m ago" }
+        ],
         recent_artifacts: [
           { id: 'artifact-1', name: 'server.json manifest', status: 'approved', artifact_type: 'eng.config', created_at: new Date(Date.now() - 1000 * 60 * 120).toISOString(), created_by_name: 'Eli', summary: 'App Store manifest drafted for registry submission and compliance review.', primary_url: 'https://useorgx.com/artifacts/artifact-1', primary_label: 'Open artifact', live_url: 'https://useorgx.com/live/INI-402' },
           { id: 'artifact-2', name: 'DNS verification report', status: 'approved', artifact_type: 'eng.report', created_at: new Date(Date.now() - 1000 * 60 * 105).toISOString(), created_by_name: 'Eli', summary: 'TXT record resolved and verified against the domain challenge.', primary_url: 'https://useorgx.com/artifacts/artifact-2', primary_label: 'Open artifact', live_url: 'https://useorgx.com/live/INI-402' },
@@ -1059,12 +1101,49 @@
         return 'At Risk';
       };
 
+      const formatEta = (seconds) => {
+        if (!seconds) return 'N/A';
+        const mins = Math.floor(seconds / 60);
+        return mins > 0 ? `~${mins} min` : '< 1 min';
+      };
+
       const blockersHtml = (pulse.blockers || []).length > 0 ? `
         <div class="blockers-alert">
-          <div class="blockers-title">${pulse.blockers.length} Blocker${pulse.blockers.length !== 1 ? 's' : ''}</div>
+          <div class="blockers-title">⚠ Action Required</div>
           <ul class="blockers-list">
             ${pulse.blockers.map(b => '<li>' + escapeHtml(b) + '</li>').join('')}
           </ul>
+          <div style="margin-top:12px;"><a href="${dashboardUrl}" onclick='return openWidgetLink(${JSON.stringify(String(dashboardUrl || ''))}, event)' class="btn btn-primary" style="display:inline-block; text-decoration:none; padding: 6px 12px; font-size: 0.75rem;">Resolve in live view</a></div>
+        </div>
+      ` : '';
+
+      const liveHeartbeatHtml = `
+        <div class="roi-strip" style="grid-template-columns: repeat(2, 1fr);">
+          <div class="roi-item">
+            <div class="roi-label">Estimated Completion</div>
+            <div class="roi-value" style="color: var(--ox-text); font-size: 1rem;">${formatEta(pulse.eta_seconds)}</div>
+          </div>
+          <div class="roi-item">
+            <div class="roi-label">Cost So Far</div>
+            <div class="roi-value" style="color: var(--ox-text); font-size: 1rem;">${formatUsd(pulse.current_cost || 0)}</div>
+          </div>
+        </div>
+      `;
+
+      const recentEventsHtml = (pulse.recent_events || []).length > 0 ? `
+        <div class="insight-card" style="margin-bottom: 20px;">
+          <div class="detail-header" style="margin-bottom: 12px;"><span class="detail-icon">${icons.layers(13)}</span><div class="detail-label">Live Activity</div></div>
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            ${pulse.recent_events.map(ev => `
+              <div style="display: flex; gap: 8px; align-items: flex-start; font-size: 0.85rem;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--ox-primary); margin-top: 6px; box-shadow: 0 0 8px rgba(var(--ox-primary-rgb), 0.5);"></div>
+                <div>
+                  <span style="font-weight: 600; color: var(--ox-text);">${escapeHtml(ev.agent)}</span> <span style="color: var(--ox-text-muted);">${escapeHtml(ev.text)}</span>
+                  <div style="font-size: 0.7rem; color: var(--ox-text-muted); margin-top: 2px;">${escapeHtml(ev.time)}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
         </div>
       ` : '';
       const nextStepsHtml = (pulse.next_steps || []).length ? `
@@ -1170,10 +1249,14 @@
               </div>
             ` : ''}
 
-            <div class="health-indicator ${getHealthClass(healthScore)}">
-              <span class="health-dot bg-current"></span>
+            ${liveHeartbeatHtml}
+
+            <div class="health-indicator ${getHealthClass(healthScore)}" style="margin-bottom: 20px; display: flex;">
+              <span class="health-dot"></span>
               <span>${getHealthLabel(healthScore)} (${healthScore})</span>
             </div>
+            
+            ${recentEventsHtml}
 
             <div class="insight-grid">
               <div class="insight-card">

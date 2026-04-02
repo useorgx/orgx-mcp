@@ -49,7 +49,9 @@ const DOMAIN_ALIASES: Record<string, string> = {
   operations: 'operations',
   pace: 'product',
   eli: 'engineering',
+  orion: 'operations',
   dana: 'design',
+  xandy: 'orchestrator',
 };
 
 const DOMAIN_DEFAULT_AGENT_ID: Record<string, string> = {
@@ -120,6 +122,15 @@ function dedupeStrings(values: string[]): string[] {
   return out;
 }
 
+function canonicalizeAgentId(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return '';
+  if (normalized.endsWith('-agent')) return normalized;
+  const domain = normalizeDomain(normalized);
+  if (!domain) return normalized;
+  return defaultAgentIdForDomain(domain) ?? normalized;
+}
+
 function titleCaseFromAgentId(agentId: string): string {
   return agentId
     .replace(/-agent$/i, '')
@@ -152,7 +163,7 @@ function resolveAssignedAgentIds(
     primaryAgent,
     metadataOwnerAgent,
     metadataPrimaryAgent,
-  ]);
+  ].map(canonicalizeAgentId).filter(Boolean));
 }
 
 function resolveAssignedAgentNames(
@@ -382,7 +393,7 @@ export function buildScaffoldInitiativeBatch(
     taskRefs[wsIdx] = [];
 
     const wsEntity = withDefaultSequence(
-      omitKeys(ws, new Set(['milestones'])),
+      omitKeys(ws, new Set(['milestones', 'ownerAgent', 'primaryAgent'])),
       wsIdx + 1
     );
     const normalizedDomain = normalizeDomain(
@@ -470,7 +481,7 @@ export function buildScaffoldInitiativeBatch(
               typeof ms.title === 'string' ? ms.title : `Milestone ${msIdx + 1}`
             );
       const msEntityBase = withDefaultSequence(
-        omitKeys(ms, new Set(['tasks'])),
+        omitKeys(ms, new Set(['tasks', 'ownerAgent', 'primaryAgent'])),
         msIdx + 1
       );
       const msTaskCount = Math.max(1, msTasks.length);
@@ -547,10 +558,13 @@ export function buildScaffoldInitiativeBatch(
           Math.round(taskHours * TOKENS_PER_HOUR)
         );
         const taskEntity = withEstimateDefaults(
-          withDefaultSequence(task, tIdx + 1),
+          withDefaultSequence(
+            omitKeys(task, new Set(['ownerAgent', 'primaryAgent'])),
+            tIdx + 1
+          ),
           {
-          expectedTokens: taskExpectedTokens,
-          expectedHours: taskHours,
+            expectedTokens: taskExpectedTokens,
+            expectedHours: taskHours,
           }
         );
         if (tIdx > 0 && !hasDependsOn(taskEntity)) {
@@ -635,27 +649,35 @@ export function buildScaffoldHierarchy(params: {
     }
   }
 
-  const readLabel = (record: Record<string, unknown> | null | undefined) => {
-    if (!record) return null;
-    const title = record.title;
-    if (typeof title === 'string' && title.trim().length > 0) return title.trim();
-    const name = record.name;
-    if (typeof name === 'string' && name.trim().length > 0) return name.trim();
-    return null;
+  const normalizeHierarchyNode = (node: Record<string, unknown>) => {
+    const next = { ...node };
+    const title =
+      typeof next.title === 'string' && next.title.trim().length > 0
+        ? next.title.trim()
+        : null;
+    const name =
+      typeof next.name === 'string' && next.name.trim().length > 0
+        ? next.name.trim()
+        : null;
+
+    if (!title && name) {
+      next.title = name;
+    }
+    if (!name && title) {
+      next.name = title;
+    }
+
+    return next;
   };
 
   const nodeForRef = (ref: string) => {
     const info = byRef.get(ref);
-    const data =
-      info?.data && typeof info.data === 'object' ? { ...info.data } : {};
-    const label = readLabel(data);
-    return {
+    return normalizeHierarchyNode({
       ref,
       success: info?.success ?? false,
-      ...data,
-      ...(label && typeof data.title !== 'string' ? { title: label } : {}),
+      ...(info?.data ?? {}),
       ...(info?.success === false ? { error: info?.error } : {}),
-    };
+    });
   };
 
   return {

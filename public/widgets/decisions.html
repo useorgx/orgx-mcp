@@ -1427,6 +1427,28 @@
 
               <div class="ox-text" style="margin-bottom: 4px;">${escapeHtml(d.urgency === 'critical' ? 'Needs a fast operator call to keep critical-path work moving.' : d.urgency === 'high' ? 'High-signal operator decision with downstream execution impact.' : 'Review and confirm the preferred execution path.')}</div>
               
+              ${d.context || d.recommendation || d.impact ? `
+              <div style="margin: 20px 0; display: flex; flex-direction: column; gap: 16px; border-left: 2px solid rgba(var(--ox-card-color-rgb), 0.4); padding-left: 14px;">
+                ${d.context ? `<div><div class="ox-eyebrow" style="margin-bottom:4px;">Why it matters</div><div class="ox-text" style="color:var(--ox-text);">${escapeHtml(d.context)}</div></div>` : ''}
+                ${d.recommendation ? `<div><div class="ox-eyebrow" style="margin-bottom:4px; color:var(--ox-teal);">Recommendation</div><div class="ox-text" style="color:var(--ox-text); font-weight:500;">${escapeHtml(d.recommendation)}</div></div>` : ''}
+                ${d.impact ? `<div><div class="ox-eyebrow" style="margin-bottom:4px; color:var(--ox-warning);">Impact if ignored</div><div class="ox-text">${escapeHtml(d.impact)}</div></div>` : ''}
+              </div>
+              ` : ''}
+
+              ${d.tradeoffs && d.tradeoffs.length > 0 ? `
+              <div style="margin-bottom: 20px;">
+                <div class="ox-eyebrow" style="margin-bottom: 8px;">Tradeoffs</div>
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                  ${d.tradeoffs.map(t => `
+                    <div style="background:var(--ox-well-bg); padding:10px 12px; border-radius:8px; border:1px solid var(--ox-border); font-size:0.85rem;">
+                      <strong style="color:var(--ox-text); display:block; margin-bottom:2px;">${escapeHtml(t.option)}</strong>
+                      <span style="color:var(--ox-text-muted);">${escapeHtml(t.detail)}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+              ` : ''}
+
               <div class="params-well">
                 <div class="param-chip">Type <strong>${escapeHtml(d.type)}</strong></div>
                 <div class="param-chip">Age <strong>${timeAgo(d.created_at)}</strong></div>

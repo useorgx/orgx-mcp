@@ -6178,12 +6178,32 @@ export class OrgXMcp extends McpAgent<
                 sourceClient,
                 events: activationEvents,
               });
+              const countTasks = (v: any): number => {
+                if (!v) return 0;
+                if (Array.isArray(v)) return v.reduce((sum, i) => sum + countTasks(i), 0);
+                if (typeof v !== 'object') return 0;
+                let c = v.type === 'task' || v.entity_type === 'task' ? 1 : 0;
+                for (const k of ['tasks', 'workstreams', 'milestones', 'hierarchy', 'data']) {
+                  if (k in v) c += countTasks(v[k]);
+                }
+                return c;
+              };
+              const expectedTokens = Math.max(8_000, countTasks(machinePayload) * 4_500);
+              const etaSeconds = Math.max(120, Math.floor(expectedTokens / (6500 / 3600)));
+              const estimatedCost = Number(((expectedTokens / 1000) * 0.012).toFixed(4));
+              
               const finalPayload = activationPayload.experience
                 ? {
                     ...machinePayload,
+                    estimated_time_seconds: etaSeconds,
+                    estimated_cost: estimatedCost,
                     client_activation: activationPayload.experience,
                   }
-                : machinePayload;
+                : {
+                    ...machinePayload,
+                    estimated_time_seconds: etaSeconds,
+                    estimated_cost: estimatedCost,
+                  };
 
               return {
                 content: [
