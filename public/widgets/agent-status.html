@@ -4,15 +4,70 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Agent Status - OrgX</title>
+  <link rel="stylesheet" href="shared/interaction-kit.css" />
+  <link rel="stylesheet" href="shared/widget-foundation.css" />
+  <script src="shared/interaction-kit.js"></script>
   <style>
-    @import url('./shared/tokens.css');
+    
+    :root, :root[data-theme="light"] {
+      --ox-bg: #f8fafc;
+      --ox-panel: #ffffff;
+      --ox-border: rgba(0, 0, 0, 0.08);
+      --ox-border-strong: rgba(0, 0, 0, 0.15);
+      --ox-text: #0f172a;
+      --ox-text-muted: #64748b;
+      --ox-text-dim: #94a3b8;
+      --ox-well-bg: #f1f5f9;
+      --ox-well-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+      --ox-primary: #00c9a7;
+      --ox-grid: rgba(0, 0, 0, 0.03);
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --ox-bg: #02040a;
+        --ox-panel: rgba(10, 15, 22, 0.95);
+        --ox-border: rgba(255, 255, 255, 0.08);
+        --ox-border-strong: rgba(255, 255, 255, 0.15);
+        --ox-text: #f8fafc;
+        --ox-text-muted: rgba(255, 255, 255, 0.5);
+        --ox-text-dim: rgba(255, 255, 255, 0.32);
+        --ox-well-bg: rgba(0,0,0,0.3);
+        --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
+        --ox-primary: #00c9a7;
+        --ox-grid: rgba(255, 255, 255, 0.02);
+      }
+    }
+    
+    :root[data-theme="dark"] {
+        --ox-bg: #02040a;
+        --ox-panel: rgba(10, 15, 22, 0.95);
+        --ox-border: rgba(255, 255, 255, 0.08);
+        --ox-border-strong: rgba(255, 255, 255, 0.15);
+        --ox-text: #f8fafc;
+        --ox-text-muted: rgba(255, 255, 255, 0.5);
+        --ox-text-dim: rgba(255, 255, 255, 0.32);
+        --ox-well-bg: rgba(0,0,0,0.3);
+        --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
+        --ox-primary: #00c9a7;
+        --ox-grid: rgba(255, 255, 255, 0.02);
+    }
+    
+    :root {
+      --ox-lime: #d4ed31;
+      --ox-warning: #fbbf24;
+      --ox-danger: #f43f5e;
+      --ox-font: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+      --ox-mono: "JetBrains Mono", "SF Mono", ui-monospace, SFMono-Regular, monospace;
+    }
+
 
     :root {
       --agent-surface-max: 560px;
       --agent-running: #10a37f;
-      --agent-blocked: var(--app-color-attention);
-      --agent-review: var(--app-color-review);
-      --agent-idle: var(--app-color-text-tertiary);
+      --agent-blocked: var(--ox-danger);
+      --agent-review: var(--ox-warning);
+      --agent-idle: var(--ox-text-dim);
     }
 
     * {
@@ -22,13 +77,26 @@
     }
 
     body {
+      font-family: var(--ox-font);
+      background: var(--ox-bg);
+      color: var(--ox-text);
+      padding: 16px;
       min-height: 100vh;
-      padding: var(--app-space-5) var(--app-space-3) var(--app-space-6);
-      background:
-        radial-gradient(circle at top right, rgba(16, 163, 127, 0.08), transparent 40%),
-        var(--app-color-bg);
-      color: var(--app-color-text);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
     }
+    body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: radial-gradient(circle at 50% -18%, rgba(0, 201, 167, 0.08), transparent 56%),
+                    linear-gradient(var(--ox-grid) 1px, transparent 1px),
+                    linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px);
+        background-size: 100% 100%, 22px 22px, 22px 22px;
+        pointer-events: none;
+        z-index: -1;
+    }
+    
 
     .agent-board {
       width: 100%;
@@ -36,16 +104,16 @@
       margin: 0 auto;
       display: flex;
       flex-direction: column;
-      gap: var(--app-space-3);
+      gap: var(12px);
     }
 
     .surface-label {
       display: flex;
       align-items: center;
-      gap: var(--app-space-3);
-      color: var(--app-color-text-tertiary);
-      font-size: var(--app-font-size-xs);
-      font-weight: var(--app-font-weight-medium);
+      gap: var(12px);
+      color: var(--ox-text-dim);
+      font-size: var(0.75rem);
+      font-weight: var(500);
       letter-spacing: 0.1em;
       text-transform: uppercase;
     }
@@ -54,16 +122,21 @@
       content: '';
       flex: 1;
       height: 1px;
-      background: var(--app-color-divider);
+      background: var(--ox-border);
     }
 
     .agent-card {
+      background: var(--ox-panel);
+      border: 1px solid var(--ox-border);
+      border-radius: 16px;
+      box-shadow: 0 12px 32px -12px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.04);
+
       position: relative;
       overflow: hidden;
       transition:
-        transform var(--app-transition-fast),
-        border-color var(--app-transition-fast),
-        box-shadow var(--app-transition-fast);
+        transform var(160ms ease),
+        border-color var(160ms ease),
+        box-shadow var(160ms ease);
     }
 
     .agent-card::before {
@@ -74,7 +147,7 @@
       height: 1px;
       background: linear-gradient(90deg, transparent, rgba(16, 163, 127, 0.4), transparent);
       opacity: 0;
-      transition: opacity var(--app-transition-fast);
+      transition: opacity var(160ms ease);
     }
 
     .agent-card[data-priority='blocked']::before,
@@ -95,15 +168,15 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: var(--app-space-3);
-      padding: var(--app-space-4) var(--app-space-4) var(--app-space-3);
+      gap: var(12px);
+      padding: var(16px) var(16px) var(12px);
     }
 
     .agent-identity {
       min-width: 0;
       display: flex;
       align-items: center;
-      gap: var(--app-space-3);
+      gap: var(12px);
     }
 
     .agent-mark {
@@ -112,14 +185,14 @@
       border-radius: 10px;
       overflow: hidden;
       flex-shrink: 0;
-      border: 1px solid var(--app-color-border);
-      background: var(--app-color-surface-soft);
+      border: 1px solid var(--ox-border);
+      background: var(--ox-well-bg);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: var(--app-color-text-secondary);
-      font-size: var(--app-font-size-xs);
-      font-weight: var(--app-font-weight-semibold);
+      color: var(--ox-text-muted);
+      font-size: var(0.75rem);
+      font-weight: var(600);
     }
 
     .agent-mark img {
@@ -147,37 +220,37 @@
     .agent-name-row {
       display: flex;
       align-items: baseline;
-      gap: var(--app-space-2);
+      gap: var(8px);
       min-width: 0;
       flex-wrap: wrap;
     }
 
     .agent-name {
-      font-size: var(--app-font-size-md);
-      font-weight: var(--app-font-weight-semibold);
+      font-size: var(1rem);
+      font-weight: var(600);
       line-height: 1.2;
-      color: var(--app-color-text);
+      color: var(--ox-text);
       min-width: 0;
     }
 
     .agent-role {
-      color: var(--app-color-text-tertiary);
-      font-size: var(--app-font-size-xs);
-      font-weight: var(--app-font-weight-medium);
+      color: var(--ox-text-dim);
+      font-size: var(0.75rem);
+      font-weight: var(500);
       letter-spacing: 0.08em;
       text-transform: uppercase;
     }
 
     .agent-subline {
-      color: var(--app-color-text-secondary);
-      font-size: var(--app-font-size-sm);
+      color: var(--ox-text-muted);
+      font-size: var(0.875rem);
       line-height: 1.35;
       min-width: 0;
     }
 
     .agent-subline strong {
-      color: var(--app-color-text);
-      font-weight: var(--app-font-weight-medium);
+      color: var(--ox-text);
+      font-weight: var(500);
     }
 
     .agent-chip {
@@ -194,7 +267,7 @@
     }
 
     .agent-attention {
-      margin: 0 var(--app-space-3) var(--app-space-3);
+      margin: 0 var(12px) var(12px);
     }
 
     .attention-copy {
@@ -206,15 +279,15 @@
 
     .attention-title {
       color: currentColor;
-      font-size: var(--app-font-size-xs);
-      font-weight: var(--app-font-weight-semibold);
+      font-size: var(0.75rem);
+      font-weight: var(600);
       letter-spacing: 0.08em;
       text-transform: uppercase;
     }
 
     .attention-body {
-      color: var(--app-color-text);
-      font-size: var(--app-font-size-sm);
+      color: var(--ox-text);
+      font-size: var(0.875rem);
       line-height: 1.4;
     }
 
@@ -229,23 +302,23 @@
       border: 1px solid currentColor;
       background: transparent;
       color: inherit;
-      font-size: var(--app-font-size-xs);
-      font-weight: var(--app-font-weight-semibold);
+      font-size: var(0.75rem);
+      font-weight: var(600);
       text-decoration: none;
       white-space: nowrap;
     }
 
     .focus-strip {
-      padding: 0 var(--app-space-4) var(--app-space-4);
+      padding: 0 var(16px) var(16px);
       display: flex;
       flex-direction: column;
       gap: 6px;
     }
 
     .focus-task {
-      color: var(--app-color-text);
+      color: var(--ox-text);
       font-size: 0.95rem;
-      font-weight: var(--app-font-weight-medium);
+      font-weight: var(500);
       line-height: 1.45;
     }
 
@@ -254,8 +327,8 @@
       align-items: center;
       flex-wrap: wrap;
       gap: 8px;
-      color: var(--app-color-text-secondary);
-      font-size: var(--app-font-size-sm);
+      color: var(--ox-text-muted);
+      font-size: var(0.875rem);
       line-height: 1.35;
     }
 
@@ -270,18 +343,18 @@
       width: 3px;
       height: 3px;
       border-radius: 999px;
-      background: var(--app-color-text-tertiary);
+      background: var(--ox-text-dim);
       margin-right: 8px;
     }
 
     .metric-row {
-      border-top: 1px solid var(--app-color-divider);
-      border-bottom: 1px solid var(--app-color-divider);
+      border-top: 1px solid var(--ox-border);
+      border-bottom: 1px solid var(--ox-border);
     }
 
     .metric-button {
       min-height: 72px;
-      padding: var(--app-space-3) var(--app-space-2);
+      padding: var(12px) var(8px);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -299,22 +372,22 @@
 
     .metric-value {
       font-size: 1.05rem;
-      font-weight: var(--app-font-weight-semibold);
+      font-weight: var(600);
       line-height: 1;
-      color: var(--app-color-text);
+      color: var(--ox-text);
     }
 
     .metric-label {
-      font-size: var(--app-font-size-xs);
-      font-weight: var(--app-font-weight-medium);
+      font-size: var(0.75rem);
+      font-weight: var(500);
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: var(--app-color-text-tertiary);
+      color: var(--ox-text-dim);
     }
 
     .agent-section {
       display: none;
-      padding: 0 var(--app-space-4) var(--app-space-4);
+      padding: 0 var(16px) var(16px);
     }
 
     .agent-section.is-open {
@@ -322,20 +395,20 @@
     }
 
     .agent-section-trigger {
-      border-top: 1px solid var(--app-color-divider);
+      border-top: 1px solid var(--ox-border);
     }
 
     .disclosure-title {
       display: inline-flex;
       align-items: center;
-      gap: var(--app-space-2);
+      gap: var(8px);
       min-width: 0;
     }
 
     .disclosure-count {
-      color: var(--app-color-text-tertiary);
-      font-size: var(--app-font-size-xs);
-      font-weight: var(--app-font-weight-medium);
+      color: var(--ox-text-dim);
+      font-size: var(0.75rem);
+      font-weight: var(500);
       letter-spacing: 0.08em;
       text-transform: uppercase;
     }
@@ -343,8 +416,8 @@
     .chevron {
       width: 14px;
       height: 14px;
-      color: var(--app-color-text-tertiary);
-      transition: transform var(--app-transition-fast);
+      color: var(--ox-text-dim);
+      transition: transform var(160ms ease);
       flex-shrink: 0;
     }
 
@@ -360,13 +433,13 @@
     .section-row {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: var(--app-space-3);
+      gap: var(12px);
       align-items: start;
-      padding: var(--app-space-3) 0;
+      padding: var(12px) 0;
     }
 
     .section-row + .section-row {
-      border-top: 1px solid var(--app-color-divider);
+      border-top: 1px solid var(--ox-border);
     }
 
     .section-copy {
@@ -377,22 +450,22 @@
     }
 
     .section-heading {
-      color: var(--app-color-text);
-      font-size: var(--app-font-size-sm);
-      font-weight: var(--app-font-weight-medium);
+      color: var(--ox-text);
+      font-size: var(0.875rem);
+      font-weight: var(500);
       line-height: 1.4;
     }
 
     .section-detail {
-      color: var(--app-color-text-secondary);
-      font-size: var(--app-font-size-sm);
+      color: var(--ox-text-muted);
+      font-size: var(0.875rem);
       line-height: 1.45;
     }
 
     .section-inline-meta {
-      color: var(--app-color-text-tertiary);
-      font-size: var(--app-font-size-xs);
-      font-weight: var(--app-font-weight-medium);
+      color: var(--ox-text-dim);
+      font-size: var(0.75rem);
+      font-weight: var(500);
       letter-spacing: 0.04em;
       text-transform: uppercase;
     }
@@ -405,11 +478,11 @@
       min-height: 28px;
       padding: 0 10px;
       border-radius: 999px;
-      background: var(--app-color-surface-soft);
-      color: var(--app-color-text-secondary);
-      border: 1px solid var(--app-color-border);
-      font-size: var(--app-font-size-xs);
-      font-weight: var(--app-font-weight-semibold);
+      background: var(--ox-well-bg);
+      color: var(--ox-text-muted);
+      border: 1px solid var(--ox-border);
+      font-size: var(0.75rem);
+      font-weight: var(600);
       white-space: nowrap;
     }
 
@@ -417,57 +490,57 @@
     .section-status[data-tone='done'],
     .section-status[data-tone='approved'] {
       color: var(--agent-running);
-      background: var(--app-color-accent-soft);
+      background: var(--ox-primary);
       border-color: rgba(16, 163, 127, 0.2);
     }
 
     .section-status[data-tone='blocked'] {
       color: var(--agent-blocked);
-      background: var(--app-color-attention-bg);
+      background: var(--ox-danger-bg);
       border-color: rgba(220, 38, 38, 0.2);
     }
 
     .section-status[data-tone='review'] {
       color: var(--agent-review);
-      background: var(--app-color-review-bg);
+      background: var(--ox-warning-bg);
       border-color: rgba(217, 119, 6, 0.2);
     }
 
     .section-status[data-tone='queued'],
     .section-status[data-tone='idle'] {
-      color: var(--app-color-text-secondary);
+      color: var(--ox-text-muted);
     }
 
     .progress-header {
       display: flex;
       align-items: baseline;
       justify-content: space-between;
-      gap: var(--app-space-3);
-      padding-top: var(--app-space-3);
+      gap: var(12px);
+      padding-top: var(12px);
     }
 
     .progress-value {
-      color: var(--app-color-text);
+      color: var(--ox-text);
       font-size: 1.5rem;
-      font-weight: var(--app-font-weight-semibold);
+      font-weight: var(600);
       line-height: 1;
     }
 
     .progress-context {
-      color: var(--app-color-text-tertiary);
-      font-size: var(--app-font-size-xs);
-      font-weight: var(--app-font-weight-medium);
+      color: var(--ox-text-dim);
+      font-size: var(0.75rem);
+      font-weight: var(500);
       letter-spacing: 0.08em;
       text-transform: uppercase;
       text-align: right;
     }
 
     .progress-bar {
-      margin-top: var(--app-space-3);
+      margin-top: var(12px);
       width: 100%;
       height: 5px;
       border-radius: 999px;
-      background: var(--app-color-surface-soft);
+      background: var(--ox-well-bg);
       overflow: hidden;
     }
 
@@ -478,16 +551,16 @@
     }
 
     .progress-note {
-      margin-top: var(--app-space-3);
-      color: var(--app-color-text-secondary);
-      font-size: var(--app-font-size-sm);
+      margin-top: var(12px);
+      color: var(--ox-text-muted);
+      font-size: var(0.875rem);
       line-height: 1.45;
     }
 
     .empty-slot {
-      padding-top: var(--app-space-3);
-      color: var(--app-color-text-secondary);
-      font-size: var(--app-font-size-sm);
+      padding-top: var(12px);
+      color: var(--ox-text-muted);
+      font-size: var(0.875rem);
       line-height: 1.5;
     }
 
@@ -495,15 +568,15 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: var(--app-space-3);
-      padding: var(--app-space-3) var(--app-space-4) var(--app-space-4);
-      border-top: 1px solid var(--app-color-divider);
+      gap: var(12px);
+      padding: var(12px) var(16px) var(16px);
+      border-top: 1px solid var(--ox-border);
     }
 
     .sync-copy {
-      color: var(--app-color-text-tertiary);
-      font-size: var(--app-font-size-xs);
-      font-weight: var(--app-font-weight-medium);
+      color: var(--ox-text-dim);
+      font-size: var(0.75rem);
+      font-weight: var(500);
       letter-spacing: 0.08em;
       text-transform: uppercase;
     }
@@ -512,9 +585,9 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      color: var(--app-color-text-secondary);
-      font-size: var(--app-font-size-sm);
-      font-weight: var(--app-font-weight-medium);
+      color: var(--ox-text-muted);
+      font-size: var(0.875rem);
+      font-weight: var(500);
       text-decoration: none;
     }
 
@@ -524,23 +597,23 @@
     }
 
     .empty-state {
-      padding: var(--app-space-6);
+      padding: var(32px);
       text-align: center;
       display: flex;
       flex-direction: column;
-      gap: var(--app-space-2);
+      gap: var(8px);
       align-items: center;
     }
 
     .empty-state strong {
-      color: var(--app-color-text);
-      font-size: var(--app-font-size-md);
-      font-weight: var(--app-font-weight-semibold);
+      color: var(--ox-text);
+      font-size: var(1rem);
+      font-weight: var(600);
     }
 
     .empty-state p {
-      color: var(--app-color-text-secondary);
-      font-size: var(--app-font-size-sm);
+      color: var(--ox-text-muted);
+      font-size: var(0.875rem);
       line-height: 1.5;
       max-width: 28ch;
     }
@@ -548,27 +621,27 @@
     .skeleton-wrapper {
       display: flex;
       flex-direction: column;
-      gap: var(--app-space-3);
+      gap: var(12px);
     }
 
     .skeleton-card {
-      border-radius: var(--app-radius-card);
-      border: 1px solid var(--app-color-border);
-      background: var(--app-color-surface);
-      padding: var(--app-space-4);
+      border-radius: var(16px);
+      border: 1px solid var(--ox-border);
+      background: var(--ox-panel);
+      padding: var(16px);
       display: flex;
       flex-direction: column;
-      gap: var(--app-space-3);
+      gap: var(12px);
     }
 
     .skeleton-line {
-      border-radius: var(--app-radius-sm);
+      border-radius: var(8px);
       background:
         linear-gradient(
           90deg,
-          var(--app-color-surface-soft) 0%,
+          var(--ox-well-bg) 0%,
           rgba(16, 163, 127, 0.12) 50%,
-          var(--app-color-surface-soft) 100%
+          var(--ox-well-bg) 100%
         );
       background-size: 200% 100%;
       animation: shimmer 1.8s linear infinite;
@@ -581,7 +654,7 @@
 
     @media (max-width: 420px) {
       body {
-        padding: var(--app-space-4) var(--app-space-2) var(--app-space-5);
+        padding: var(16px) var(8px) var(24px);
       }
 
       .agent-head {
@@ -601,6 +674,136 @@
         letter-spacing: 0.05em;
       }
     }
+  
+.app-metric-rail {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.app-metric-button {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--ox-border);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  margin: 0;
+}
+
+.app-metric-button:last-child {
+  border-right: 0;
+}
+
+.app-metric-button:hover,
+.app-metric-button[aria-pressed='true'] {
+  background: var(rgba(0, 201, 167, 0.1));
+}
+
+.app-attention-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(12px);
+  padding: var(12px) var(--app-space-4);
+  border-radius: 12px;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  background: var(--ox-danger-bg);
+  color: var(--ox-danger);
+}
+
+.app-attention-banner[data-tone='review'] {
+  border-color: rgba(217, 119, 6, 0.22);
+  background: var(--ox-warning-bg);
+  color: var(--ox-warning);
+}
+
+.app-disclosure-trigger {
+  width: 100%;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  margin: 0;
+  padding: var(12px) 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(12px);
+  text-align: left;
+}
+
+.app-disclosure-body {
+  border-top: 1px solid var(--ox-border);
+}
+
+
+.app-metric-rail {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.app-metric-button {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(var(--ox-border));
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  margin: 0;
+}
+
+.app-metric-button:last-child {
+  border-right: 0;
+}
+
+.app-metric-button:hover,
+.app-metric-button[aria-pressed='true'] {
+  background: var(rgba(0, 201, 167, 0.1));
+}
+
+.app-attention-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(12px);
+  padding: var(12px) var(16px);
+  border-radius: 12px;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  background: var(rgba(220, 38, 38, 0.12));
+  color: var(var(--ox-danger));
+}
+
+.app-attention-banner[data-tone='review'] {
+  border-color: rgba(217, 119, 6, 0.22);
+  background: var(rgba(217, 119, 6, 0.12));
+  color: var(var(--ox-warning));
+}
+
+.app-disclosure-trigger {
+  width: 100%;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  margin: 0;
+  padding: var(12px) 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(12px);
+  text-align: left;
+}
+
+.app-disclosure-body {
+  border-top: 1px solid var(var(--ox-border));
+}
+
   </style>
 </head>
 <body>
@@ -610,16 +813,16 @@
       <div class="skeleton-card">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
           <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
-            <div class="skeleton-line" style="width:32px;height:32px;border-radius:10px;"></div>
+            <div class="skeleton-line" style="width:32px;height:32px;border-radius:10px;background:linear-gradient(90deg, var(--ox-border) 25%, rgba(0,201,167,0.1) 50%, var(--ox-border) 75%);background-size:200% 100%;animation:shimmer 2s infinite linear;"></div>
             <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;">
-              <div class="skeleton-line" style="width:42%;height:16px;"></div>
-              <div class="skeleton-line" style="width:68%;height:12px;"></div>
+              <div class="skeleton-line" style="width:42%;height:16px;background:linear-gradient(90deg, var(--ox-border) 25%, rgba(0,201,167,0.1) 50%, var(--ox-border) 75%);background-size:200% 100%;animation:shimmer 2s infinite linear;"></div>
+              <div class="skeleton-line" style="width:68%;height:12px;background:linear-gradient(90deg, var(--ox-border) 25%, rgba(0,201,167,0.1) 50%, var(--ox-border) 75%);background-size:200% 100%;animation:shimmer 2s infinite linear;"></div>
             </div>
           </div>
-          <div class="skeleton-line" style="width:88px;height:28px;border-radius:999px;"></div>
+          <div class="skeleton-line" style="width:88px;height:28px;border-radius:999px;background:linear-gradient(90deg, var(--ox-border) 25%, rgba(0,201,167,0.1) 50%, var(--ox-border) 75%);background-size:200% 100%;animation:shimmer 2s infinite linear;"></div>
         </div>
-        <div class="skeleton-line" style="width:100%;height:52px;border-radius:12px;"></div>
-        <div class="skeleton-line" style="width:100%;height:40px;border-radius:10px;"></div>
+        <div class="skeleton-line" style="width:100%;height:52px;border-radius:12px;background:linear-gradient(90deg, var(--ox-border) 25%, rgba(0,201,167,0.1) 50%, var(--ox-border) 75%);background-size:200% 100%;animation:shimmer 2s infinite linear;"></div>
+        <div class="skeleton-line" style="width:100%;height:40px;border-radius:10px;background:linear-gradient(90deg, var(--ox-border) 25%, rgba(0,201,167,0.1) 50%, var(--ox-border) 75%);background-size:200% 100%;animation:shimmer 2s infinite linear;"></div>
       </div>
     </div>
   </main>
@@ -1090,7 +1293,7 @@
         : String((agent.artifacts.find(function (artifact) { return artifact.status === 'review'; }) || {}).title || 'An artifact is ready for review.');
       var action = agent.status === 'blocked' ? 'Resolve blocker' : 'Review now';
       return (
-        '<div class="agent-attention app-attention-banner" data-tone="' + tone + '">' +
+        '<div class="agent-attention ox-well" data-tone="' + tone + '">' +
           '<div class="attention-copy">' +
             '<div class="attention-title">' + title + '</div>' +
             '<div class="attention-body">' + escapeHtml(body) + '</div>' +
@@ -1210,7 +1413,7 @@
       var reviewMetricTone = agent.reviewCount > 0 ? 'review' : '';
       var blockedMetricTone = agent.blockedCount > 0 ? 'blocked' : '';
       return (
-        '<article class="agent-card app-flat-card" data-priority="' + escapeHtml(agent.status) + '">' +
+        '<article class="agent-card ox-card" data-priority="' + escapeHtml(agent.status) + '">' +
           '<div class="agent-head">' +
             '<div class="agent-identity">' +
               '<div class="agent-mark">' + renderAvatar(agent) + '</div>' +
@@ -1222,7 +1425,7 @@
                 '<div class="agent-subline"><strong>' + escapeHtml(agent.currentTask) + '</strong></div>' +
               '</div>' +
             '</div>' +
-            '<div class="agent-chip app-status-chip"' + chipTone + '><span class="chip-dot"></span>' + escapeHtml(agent.statusLabel) + '</div>' +
+            '<div class="agent-chip ox-badge"' + chipTone + '><span class="chip-dot"></span>' + escapeHtml(agent.statusLabel) + '</div>' +
           '</div>' +
           renderAttention(agent) +
           '<div class="focus-strip">' +
@@ -1272,7 +1475,7 @@
       if (!agents.length) {
         injectHtml(
           '<div class="surface-label">Agent Status</div>' +
-          '<div class="empty-state app-flat-card">' +
+          '<div class="empty-state ox-card">' +
             '<strong>No agents need you right now</strong>' +
             '<p>Everything is moving in the background. Expand a metric only when you need to act, then return to the quiet state.</p>' +
           '</div>'
