@@ -14,11 +14,13 @@
   --app-color-bg: #ffffff;
   --app-color-surface: #ffffff;
   --app-color-surface-elevated: #f7f7f8;
+  --app-color-surface-soft: #f3f4f6;
   --app-color-text: #0d0d0d;
   --app-color-text-secondary: #6e6e80;
   --app-color-text-tertiary: #8e8ea0;
   --app-color-border: #e5e5e5;
   --app-color-border-light: #ebebeb;
+  --app-color-divider: rgba(13, 13, 13, 0.08);
 
   /* ChatGPT Accent - Use for primary buttons only */
   --app-color-primary: #10a37f;
@@ -33,14 +35,19 @@
   --app-color-warning: #f59e0b;
   --app-color-warning-bg: #fef3c7;
   --app-color-warning-text: #92400e;
+  --app-color-review: #d97706;
+  --app-color-review-bg: rgba(217, 119, 6, 0.12);
 
   --app-color-danger: #ef4444;
   --app-color-danger-bg: #fef2f2;
   --app-color-danger-text: #991b1b;
+  --app-color-attention: #dc2626;
+  --app-color-attention-bg: rgba(220, 38, 38, 0.1);
 
   --app-color-info: #3b82f6;
   --app-color-info-bg: #dbeafe;
   --app-color-info-text: #1e40af;
+  --app-color-accent-soft: rgba(16, 163, 127, 0.1);
 
   /* Neutral (for badges, backgrounds) */
   --app-color-neutral-bg: #f7f7f8;
@@ -94,6 +101,7 @@
   --app-radius-sm: 4px;
   --app-radius-md: 8px; /* Standard - use for cards, buttons */
   --app-radius-lg: 12px; /* Use sparingly */
+  --app-radius-card: 16px;
   --app-radius-full: 9999px; /* Pills, avatars */
 
   /* ========================================
@@ -109,6 +117,7 @@
    * ======================================== */
   --app-transition-fast: 0.15s ease;
   --app-transition-normal: 0.2s ease;
+  --app-ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* ========================================
@@ -119,11 +128,13 @@
     --app-color-bg: #212121;
     --app-color-surface: #2f2f2f;
     --app-color-surface-elevated: #424242;
+    --app-color-surface-soft: #3a3a3d;
     --app-color-text: #ececf1;
     --app-color-text-secondary: #c5c5d2;
     --app-color-text-tertiary: #8e8ea0;
     --app-color-border: #424242;
     --app-color-border-light: #525252;
+    --app-color-divider: rgba(255, 255, 255, 0.08);
 
     /* Semantic colors in dark mode */
     --app-color-success-bg: #064e3b;
@@ -131,12 +142,17 @@
 
     --app-color-warning-bg: #78350f;
     --app-color-warning-text: #fcd34d;
+    --app-color-review: #fbbf24;
+    --app-color-review-bg: rgba(251, 191, 36, 0.14);
 
     --app-color-danger-bg: #7f1d1d;
     --app-color-danger-text: #fca5a5;
+    --app-color-attention: #fb7185;
+    --app-color-attention-bg: rgba(251, 113, 133, 0.14);
 
     --app-color-info-bg: #1e3a8a;
     --app-color-info-text: #93c5fd;
+    --app-color-accent-soft: rgba(16, 163, 127, 0.16);
 
     /* Neutral colors in dark mode */
     --app-color-neutral-bg: #424242;
@@ -222,4 +238,103 @@ body {
 .focusable:focus-visible {
   outline: 2px solid var(--app-color-primary);
   outline-offset: 2px;
+}
+
+/* Shared widget primitives */
+.app-flat-card {
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-card);
+  background: var(--app-color-surface);
+  box-shadow: var(--app-shadow-sm);
+}
+
+.app-section-divider {
+  border-top: 1px solid var(--app-color-divider);
+}
+
+.app-kicker {
+  color: var(--app-color-text-tertiary);
+  font-size: var(--app-font-size-xs);
+  font-weight: var(--app-font-weight-medium);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: var(--app-radius-full);
+  border: 1px solid var(--app-color-border);
+  background: var(--app-color-surface-soft);
+  color: var(--app-color-text-secondary);
+  font-size: var(--app-font-size-xs);
+  font-weight: var(--app-font-weight-medium);
+  white-space: nowrap;
+}
+
+.app-metric-rail {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.app-metric-button {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--app-color-divider);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  margin: 0;
+}
+
+.app-metric-button:last-child {
+  border-right: 0;
+}
+
+.app-metric-button:hover,
+.app-metric-button[aria-pressed='true'] {
+  background: var(--app-color-accent-soft);
+}
+
+.app-attention-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--app-space-3);
+  padding: var(--app-space-3) var(--app-space-4);
+  border-radius: 12px;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  background: var(--app-color-attention-bg);
+  color: var(--app-color-attention);
+}
+
+.app-attention-banner[data-tone='review'] {
+  border-color: rgba(217, 119, 6, 0.22);
+  background: var(--app-color-review-bg);
+  color: var(--app-color-review);
+}
+
+.app-disclosure-trigger {
+  width: 100%;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  margin: 0;
+  padding: var(--app-space-3) 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--app-space-3);
+  text-align: left;
+}
+
+.app-disclosure-body {
+  border-top: 1px solid var(--app-color-divider);
 }

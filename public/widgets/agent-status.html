@@ -4,1806 +4,1348 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Agent Status - OrgX</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='15' fill='none' stroke='%23BFFF00' stroke-width='6'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%23BFFF00'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="shared/widget-foundation.css" />
   <style>
-      :root, :root[data-theme="light"] {
-        --ox-bg: #f8fafc;
-        --ox-panel: #ffffff;
-        --ox-border: rgba(0, 0, 0, 0.08);
-        --ox-border-strong: rgba(0, 0, 0, 0.15);
-        --ox-text: #0f172a;
-        --ox-text-muted: #64748b;
-        --ox-well-bg: #f1f5f9;
-        --ox-well-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
-      }
-      
-      @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) {
-          --ox-bg: #02040a;
-          --ox-panel: rgba(10, 15, 22, 0.95);
-          --ox-border: rgba(255, 255, 255, 0.08);
-          --ox-border-strong: rgba(255, 255, 255, 0.15);
-          --ox-text: #f8fafc;
-          --ox-text-muted: rgba(255, 255, 255, 0.5);
-          --ox-well-bg: rgba(0,0,0,0.3);
-          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
-        }
-      }
-      
-      :root[data-theme="dark"] {
-          --ox-bg: #02040a;
-          --ox-panel: rgba(10, 15, 22, 0.95);
-          --ox-border: rgba(255, 255, 255, 0.08);
-          --ox-border-strong: rgba(255, 255, 255, 0.15);
-          --ox-text: #f8fafc;
-          --ox-text-muted: rgba(255, 255, 255, 0.5);
-          --ox-well-bg: rgba(0,0,0,0.3);
-          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
-      }
-      
-      :root {
-        --ox-lime: #a3e635; /* Will be overwritten by specific widgets */
-        --ox-teal: #0d9488;
-        --ox-danger: #e11d48;
-        --ox-warning: #d97706;
-        --ox-iris: #4f46e5;
-        --ox-grid: rgba(0, 0, 0, 0.03);
-        --ox-shadow: 0 12px 32px -12px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.04);
-        --ox-font: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
-        --ox-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
-      }
-      
-      @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) {
-          --ox-lime: #D4ED31;
-          --ox-teal: #00C9A7;
-          --ox-danger: #F43F5E;
-          --ox-warning: #FBBF24;
-          --ox-iris: #6366f1;
-          --ox-grid: rgba(255, 255, 255, 0.02);
-          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
-        }
-      }
-      
-      :root[data-theme="dark"] {
-          --ox-lime: #D4ED31;
-          --ox-teal: #00C9A7;
-          --ox-danger: #F43F5E;
-          --ox-warning: #FBBF24;
-          --ox-iris: #6366f1;
-          --ox-grid: rgba(255, 255, 255, 0.02);
-          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
-      }
+    @import url('./shared/tokens.css');
 
-      /* Smooth UX Transitions */
-      .skeleton-wrapper { transition: opacity 0.3s ease; }
-      @keyframes fadeSlideUp {
-        from { opacity: 0; transform: translateY(16px) scale(0.98); filter: blur(4px); }
-        to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
-      }
-      .animate-in { opacity: 0; animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-      .delay-1 { animation-delay: 0.1s; }
-      .delay-2 { animation-delay: 0.2s; }
-      .delay-3 { animation-delay: 0.3s; }
-      
-      .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 24px; text-align: center; background: var(--ox-well-bg); border: 1px dashed var(--ox-border-strong); border-radius: 16px; margin: 16px 0; }
-      .empty-icon { width: 48px; height: 48px; border-radius: 50%; background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
-      .empty-icon svg { width: 24px; height: 24px; }
-      .empty-title { font-size: 1.1rem; font-weight: 600; color: var(--ox-text); margin-bottom: 8px; }
-      .empty-desc { font-size: 0.9rem; color: var(--ox-text-muted); line-height: 1.5; max-width: 280px; }
-
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-
-      body {
-        font-family: var(--ox-font);
-        background: var(--ox-bg);
-        color: var(--ox-text);
-        padding: 24px 16px;
-        -webkit-font-smoothing: antialiased;
-        min-height: 100vh;
-        overflow-x: hidden;
-      }
-
-      body::before {
-        content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        background: radial-gradient(circle at 50% 0%, rgba(var(--ox-primary-rgb), 0.08), transparent 60%),
-                    linear-gradient(var(--ox-grid) 1px, transparent 1px),
-                    linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px);
-        background-size: 100% 100%, 20px 20px, 20px 20px;
-        z-index: -1; pointer-events: none;
-      }
-
-      .container { max-width: 720px; margin: 0 auto; position: relative; }
-
-      .ox-card {
-        background: var(--ox-panel); border: 1px solid var(--ox-border); border-radius: 16px; box-shadow: var(--ox-shadow); position: relative; overflow: hidden; margin-bottom: 16px;
-      }
-      .ox-card-inner { padding: 24px; }
-      .ox-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(var(--ox-primary-rgb), 0.5), transparent); opacity: 0.8; }
-      .ox-well { background: var(--ox-well-bg); border: 1px solid var(--ox-border); border-radius: 10px; padding: 16px; box-shadow: var(--ox-well-shadow); }
-      .ox-eyebrow { font-family: var(--ox-mono); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ox-text-muted); font-weight: 600; }
-      .ox-title { font-size: 1.15rem; font-weight: 600; letter-spacing: -0.02em; color: var(--ox-text); line-height: 1.3; }
-      .ox-text { font-size: 0.9rem; line-height: 1.5; color: var(--ox-text); }
-      
-
-    :root { --ox-primary: #BFFF00; --ox-primary-rgb: 191, 255, 0; }
-    
-    .agent-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding-bottom:24px; border-bottom:1px solid var(--ox-border); }
-    
-    .avatar-ring {
-      position: relative; width: 56px; height: 56px; border-radius: 12px;
-      display: flex; align-items: center; justify-content: center;
-      overflow: hidden;
-      background: linear-gradient(180deg, rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.12), rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.04));
-      border: 1px solid rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.24);
-      font-family: var(--ox-mono); font-size: 1.5rem; font-weight: bold; color: rgb(var(--agent-accent-rgb, var(--ox-primary-rgb)));
-      box-shadow: 0 10px 24px -20px rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.55);
+    :root {
+      --agent-surface-max: 560px;
+      --agent-running: #10a37f;
+      --agent-blocked: var(--app-color-attention);
+      --agent-review: var(--app-color-review);
+      --agent-idle: var(--app-color-text-tertiary);
     }
-    .avatar-ring::before {
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      padding: var(--app-space-5) var(--app-space-3) var(--app-space-6);
+      background:
+        radial-gradient(circle at top right, rgba(16, 163, 127, 0.08), transparent 40%),
+        var(--app-color-bg);
+      color: var(--app-color-text);
+    }
+
+    .agent-board {
+      width: 100%;
+      max-width: var(--agent-surface-max);
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: var(--app-space-3);
+    }
+
+    .surface-label {
+      display: flex;
+      align-items: center;
+      gap: var(--app-space-3);
+      color: var(--app-color-text-tertiary);
+      font-size: var(--app-font-size-xs);
+      font-weight: var(--app-font-weight-medium);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .surface-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--app-color-divider);
+    }
+
+    .agent-card {
+      position: relative;
+      overflow: hidden;
+      transition:
+        transform var(--app-transition-fast),
+        border-color var(--app-transition-fast),
+        box-shadow var(--app-transition-fast);
+    }
+
+    .agent-card::before {
       content: '';
       position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      box-shadow: inset 0 0 0 1px rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.12);
-      pointer-events: none;
+      inset: 0 auto auto 0;
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(16, 163, 127, 0.4), transparent);
+      opacity: 0;
+      transition: opacity var(--app-transition-fast);
     }
 
-    .avatar-image {
+    .agent-card[data-priority='blocked']::before,
+    .agent-card[data-priority='review']::before,
+    .agent-card:hover::before {
+      opacity: 1;
+    }
+
+    .agent-card[data-priority='blocked'] {
+      border-color: rgba(220, 38, 38, 0.26);
+    }
+
+    .agent-card[data-priority='review'] {
+      border-color: rgba(217, 119, 6, 0.24);
+    }
+
+    .agent-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--app-space-3);
+      padding: var(--app-space-4) var(--app-space-4) var(--app-space-3);
+    }
+
+    .agent-identity {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: var(--app-space-3);
+    }
+
+    .agent-mark {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      overflow: hidden;
+      flex-shrink: 0;
+      border: 1px solid var(--app-color-border);
+      background: var(--app-color-surface-soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--app-color-text-secondary);
+      font-size: var(--app-font-size-xs);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    .agent-mark img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       display: block;
     }
 
-    .avatar-fallback {
-      position: absolute;
-      inset: 0;
+    .agent-mark-fallback {
       display: flex;
       align-items: center;
       justify-content: center;
-      color: rgb(var(--agent-accent-rgb, var(--ox-primary-rgb)));
-      background: linear-gradient(180deg, rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.16), rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.05));
-    }
-
-    .status-pill {
-      display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 6px;
-      background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary);
-      font-family: var(--ox-mono); font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em;
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.2);
-      flex-shrink: 0;
-    }
-    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; animation: pulse 2s infinite; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-
-    .summary-grid {
-      margin-bottom: 18px;
-    }
-
-    .summary-card {
-      position: relative;
-      overflow: hidden;
-    }
-
-    .summary-card::after {
-      content: '';
-      position: absolute;
-      inset: 0 auto auto 0;
       width: 100%;
-      height: 1px;
-      background: linear-gradient(90deg, rgba(var(--ox-primary-rgb), 0.28), transparent 72%);
-      opacity: 0.7;
-      pointer-events: none;
+      height: 100%;
     }
 
-    .summary-value {
-      margin-top: 2px;
-    }
-
-    .agent-list {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .agent-row-card {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      gap: 14px;
-      align-items: center;
-      padding: 14px 16px;
-      border-radius: 12px;
-      border: 1px solid var(--ox-border);
-      background: var(--ox-well-bg);
-      box-shadow: var(--ox-well-shadow);
-    }
-
-    .agent-row-main {
+    .agent-title-group {
       min-width: 0;
-    }
-
-    .agent-name {
-      font-size: 1rem;
-      font-weight: 600;
-      color: var(--ox-text);
-      line-height: 1.3;
-    }
-
-    .agent-role-line {
-      margin-top: 2px;
-      font-family: var(--ox-mono);
-      font-size: 0.68rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--ox-text-muted);
-      font-weight: 600;
-    }
-
-    .agent-task {
-      margin-top: 8px;
-      font-size: 0.86rem;
-      color: var(--ox-text-muted);
-      line-height: 1.45;
-    }
-
-    .agent-task strong {
-      color: var(--ox-text);
-    }
-
-    .agent-meta {
       display: flex;
       flex-direction: column;
-      align-items: flex-end;
-      gap: 8px;
+      gap: 2px;
     }
 
-    .agent-progress {
-      font-family: var(--ox-mono);
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--ox-text-muted);
-      font-weight: 600;
-    }
-
-    .status-running { color: var(--ox-lime); background: rgba(212, 237, 49, 0.12); border-color: rgba(212, 237, 49, 0.22); }
-    .status-queued { color: var(--ox-iris); background: rgba(99, 102, 241, 0.12); border-color: rgba(99, 102, 241, 0.22); }
-    .status-blocked { color: var(--ox-danger); background: rgba(244, 63, 94, 0.12); border-color: rgba(244, 63, 94, 0.22); }
-    .status-idle { color: var(--ox-text-muted); background: rgba(148, 163, 184, 0.12); border-color: rgba(148, 163, 184, 0.22); }
-
-    @media (max-width: 560px) {
-      .summary-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .agent-row-card {
-        grid-template-columns: auto minmax(0, 1fr);
-      }
-
-      .agent-meta {
-        grid-column: 1 / -1;
-        align-items: flex-start;
-        padding-left: 72px;
-      }
-    }
-
-    
-    
-    .timeline { position: relative; margin-left: 8px; padding-left: 24px; }
-    .timeline::before { content: ''; position: absolute; left: 4px; top: 8px; bottom: 0; width: 2px; background: var(--ox-border); }
-    
-    .t-item { position: relative; padding-bottom: 24px; }
-    .t-item:last-child { padding-bottom: 0; }
-    .t-dot {
-      position: absolute; left: -24.5px; top: 4px; width: 10px; height: 10px; border-radius: 50%;
-      background: var(--ox-primary); border: 2px solid var(--ox-primary); box-shadow: 0 0 8px rgba(var(--ox-primary-rgb), 0.4); z-index:10;
-    }
-
-
-    .t-time { font-family: var(--ox-mono); font-size: 0.6rem; color: var(--ox-text-muted); margin-bottom: 4px; font-weight: 600; letter-spacing: 0.05em; }
-    .t-content { font-size: 0.9rem; color: var(--ox-text); line-height: 1.5; }
-  
-    .widget-footer {
+    .agent-name-row {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
+      align-items: baseline;
+      gap: var(--app-space-2);
+      min-width: 0;
       flex-wrap: wrap;
-      margin-top: auto;
-      padding-top: 24px;
-      border-top: 1px solid var(--ox-border);
-    }
-    .deep-link {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      min-height: 48px;
-      max-width: 100%;
-      padding: 12px 16px;
-      border-radius: 14px;
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.28);
-      background: rgba(var(--ox-primary-rgb), 0.08);
-      font-size: 0.84rem;
-      font-weight: 700;
-      color: var(--ox-text);
-      text-decoration: none;
-      text-align: center;
-      line-height: 1.15;
-      overflow-wrap: anywhere;
-      transition:
-        transform 0.18s ease,
-        border-color 0.18s ease,
-        background 0.18s ease;
-    }
-    .deep-link:hover {
-      transform: translateY(-1px);
-      border-color: rgba(var(--ox-primary-rgb), 0.38);
-      background: rgba(var(--ox-primary-rgb), 0.12);
-    }
-    .deep-link svg { width: 16px; height: 16px; flex-shrink: 0; }
-
-    .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-
-    .summary-card {
-      padding: 14px 16px;
-      border-radius: 14px;
-      border: 1px solid var(--ox-border);
-      background: var(--ox-well-bg);
-      box-shadow: var(--ox-well-shadow);
-    }
-
-    .summary-card strong {
-      display: block;
-      margin-top: 6px;
-      font-family: var(--ox-mono);
-      font-size: 1.05rem;
-      color: var(--ox-text);
-    }
-
-    .agent-board {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 16px;
-    }
-
-    .agent-item {
-      background: var(--ox-panel);
-      border: 1px solid var(--ox-border);
-      border-radius: 16px;
-      box-shadow: var(--ox-shadow);
-      overflow: hidden;
-      position: relative;
-      display: flex;
-    }
-
-    .agent-item::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.45), transparent);
-      opacity: 0.85;
-    }
-
-    .agent-item-inner {
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      min-height: 100%;
-      width: 100%;
-    }
-
-    .agent-meta {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
-      gap: 14px;
-      align-items: start;
-      padding-bottom: 18px;
-      margin-bottom: 18px;
-      border-bottom: 1px solid var(--ox-border);
-    }
-
-    .agent-title {
-      display: flex;
-      align-items: start;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    .agent-title-copy {
-      min-width: 0;
     }
 
     .agent-name {
-      font-size: 1.1rem;
-      font-weight: 700;
+      font-size: var(--app-font-size-md);
+      font-weight: var(--app-font-weight-semibold);
       line-height: 1.2;
-      color: var(--ox-text);
-      overflow-wrap: anywhere;
+      color: var(--app-color-text);
+      min-width: 0;
     }
 
     .agent-role {
-      margin-top: 4px;
-      font-family: var(--ox-mono);
-      font-size: 0.68rem;
-      text-transform: uppercase;
+      color: var(--app-color-text-tertiary);
+      font-size: var(--app-font-size-xs);
+      font-weight: var(--app-font-weight-medium);
       letter-spacing: 0.08em;
-      color: var(--ox-text-muted);
-      font-weight: 600;
-      overflow-wrap: anywhere;
+      text-transform: uppercase;
     }
 
-    .agent-task-block {
+    .agent-subline {
+      color: var(--app-color-text-secondary);
+      font-size: var(--app-font-size-sm);
+      line-height: 1.35;
+      min-width: 0;
+    }
+
+    .agent-subline strong {
+      color: var(--app-color-text);
+      font-weight: var(--app-font-weight-medium);
+    }
+
+    .agent-chip {
+      flex-shrink: 0;
+    }
+
+    .chip-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: currentColor;
+      box-shadow: 0 0 10px currentColor;
+      flex-shrink: 0;
+    }
+
+    .agent-attention {
+      margin: 0 var(--app-space-3) var(--app-space-3);
+    }
+
+    .attention-copy {
+      min-width: 0;
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      flex: 1 1 auto;
+      gap: 2px;
     }
 
-    .task-lead {
-      font-size: 0.93rem;
+    .attention-title {
+      color: currentColor;
+      font-size: var(--app-font-size-xs);
+      font-weight: var(--app-font-weight-semibold);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .attention-body {
+      color: var(--app-color-text);
+      font-size: var(--app-font-size-sm);
+      line-height: 1.4;
+    }
+
+    .attention-action {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 32px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid currentColor;
+      background: transparent;
+      color: inherit;
+      font-size: var(--app-font-size-xs);
+      font-weight: var(--app-font-weight-semibold);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .focus-strip {
+      padding: 0 var(--app-space-4) var(--app-space-4);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .focus-task {
+      color: var(--app-color-text);
+      font-size: 0.95rem;
+      font-weight: var(--app-font-weight-medium);
       line-height: 1.45;
-      color: var(--ox-text);
-      font-weight: 600;
-      overflow-wrap: anywhere;
-    }
-
-    .task-subcopy {
-      font-size: 0.82rem;
-      line-height: 1.5;
-      color: var(--ox-text-muted);
-      overflow-wrap: anywhere;
     }
 
     .focus-meta {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-top: 6px;
-    }
-
-    .focus-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 8px;
-      border-radius: 999px;
-      border: 1px solid var(--ox-border);
-      background: rgba(255, 255, 255, 0.02);
-      font-family: var(--ox-mono);
-      font-size: 0.64rem;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--ox-text-muted);
-    }
-
-    .task-list {
-      display: flex;
       flex-wrap: wrap;
       gap: 8px;
+      color: var(--app-color-text-secondary);
+      font-size: var(--app-font-size-sm);
+      line-height: 1.35;
     }
 
-    .task-chip {
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--ox-border);
-      background: var(--ox-well-bg);
-      box-shadow: var(--ox-well-shadow);
-      font-size: 0.74rem;
-      line-height: 1.3;
-      color: var(--ox-text);
-      max-width: 100%;
-      overflow-wrap: anywhere;
-    }
-
-    .progress-row {
-      display: flex;
-      flex-direction: column;
+    .focus-meta span {
+      display: inline-flex;
+      align-items: center;
       gap: 8px;
     }
 
-    .progress-copy {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      font-family: var(--ox-mono);
-      font-size: 0.68rem;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--ox-text-muted);
-      font-weight: 600;
+    .focus-meta span + span::before {
+      content: '';
+      width: 3px;
+      height: 3px;
+      border-radius: 999px;
+      background: var(--app-color-text-tertiary);
+      margin-right: 8px;
     }
 
-    .progress-track {
-      height: 8px;
+    .metric-row {
+      border-top: 1px solid var(--app-color-divider);
+      border-bottom: 1px solid var(--app-color-divider);
+    }
+
+    .metric-button {
+      min-height: 72px;
+      padding: var(--app-space-3) var(--app-space-2);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .metric-button[data-tone='blocked'] .metric-value {
+      color: var(--agent-blocked);
+    }
+
+    .metric-button[data-tone='review'] .metric-value {
+      color: var(--agent-review);
+    }
+
+    .metric-value {
+      font-size: 1.05rem;
+      font-weight: var(--app-font-weight-semibold);
+      line-height: 1;
+      color: var(--app-color-text);
+    }
+
+    .metric-label {
+      font-size: var(--app-font-size-xs);
+      font-weight: var(--app-font-weight-medium);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--app-color-text-tertiary);
+    }
+
+    .agent-section {
+      display: none;
+      padding: 0 var(--app-space-4) var(--app-space-4);
+    }
+
+    .agent-section.is-open {
+      display: block;
+    }
+
+    .agent-section-trigger {
+      border-top: 1px solid var(--app-color-divider);
+    }
+
+    .disclosure-title {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--app-space-2);
+      min-width: 0;
+    }
+
+    .disclosure-count {
+      color: var(--app-color-text-tertiary);
+      font-size: var(--app-font-size-xs);
+      font-weight: var(--app-font-weight-medium);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .chevron {
+      width: 14px;
+      height: 14px;
+      color: var(--app-color-text-tertiary);
+      transition: transform var(--app-transition-fast);
+      flex-shrink: 0;
+    }
+
+    .agent-section.is-open .chevron {
+      transform: rotate(180deg);
+    }
+
+    .section-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .section-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: var(--app-space-3);
+      align-items: start;
+      padding: var(--app-space-3) 0;
+    }
+
+    .section-row + .section-row {
+      border-top: 1px solid var(--app-color-divider);
+    }
+
+    .section-copy {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .section-heading {
+      color: var(--app-color-text);
+      font-size: var(--app-font-size-sm);
+      font-weight: var(--app-font-weight-medium);
+      line-height: 1.4;
+    }
+
+    .section-detail {
+      color: var(--app-color-text-secondary);
+      font-size: var(--app-font-size-sm);
+      line-height: 1.45;
+    }
+
+    .section-inline-meta {
+      color: var(--app-color-text-tertiary);
+      font-size: var(--app-font-size-xs);
+      font-weight: var(--app-font-weight-medium);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .section-status {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 28px;
+      padding: 0 10px;
       border-radius: 999px;
+      background: var(--app-color-surface-soft);
+      color: var(--app-color-text-secondary);
+      border: 1px solid var(--app-color-border);
+      font-size: var(--app-font-size-xs);
+      font-weight: var(--app-font-weight-semibold);
+      white-space: nowrap;
+    }
+
+    .section-status[data-tone='running'],
+    .section-status[data-tone='done'],
+    .section-status[data-tone='approved'] {
+      color: var(--agent-running);
+      background: var(--app-color-accent-soft);
+      border-color: rgba(16, 163, 127, 0.2);
+    }
+
+    .section-status[data-tone='blocked'] {
+      color: var(--agent-blocked);
+      background: var(--app-color-attention-bg);
+      border-color: rgba(220, 38, 38, 0.2);
+    }
+
+    .section-status[data-tone='review'] {
+      color: var(--agent-review);
+      background: var(--app-color-review-bg);
+      border-color: rgba(217, 119, 6, 0.2);
+    }
+
+    .section-status[data-tone='queued'],
+    .section-status[data-tone='idle'] {
+      color: var(--app-color-text-secondary);
+    }
+
+    .progress-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--app-space-3);
+      padding-top: var(--app-space-3);
+    }
+
+    .progress-value {
+      color: var(--app-color-text);
+      font-size: 1.5rem;
+      font-weight: var(--app-font-weight-semibold);
+      line-height: 1;
+    }
+
+    .progress-context {
+      color: var(--app-color-text-tertiary);
+      font-size: var(--app-font-size-xs);
+      font-weight: var(--app-font-weight-medium);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      text-align: right;
+    }
+
+    .progress-bar {
+      margin-top: var(--app-space-3);
+      width: 100%;
+      height: 5px;
+      border-radius: 999px;
+      background: var(--app-color-surface-soft);
       overflow: hidden;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.06);
     }
 
     .progress-fill {
       height: 100%;
       border-radius: inherit;
-      background: linear-gradient(90deg, rgba(var(--ox-primary-rgb), 0.72), rgba(var(--ox-primary-rgb), 1));
-      box-shadow: 0 0 18px rgba(var(--ox-primary-rgb), 0.24);
+      background: linear-gradient(90deg, var(--agent-running), #34d399);
     }
 
-    .blockers {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      padding: 12px 14px;
-      border-radius: 14px;
-      border: 1px solid rgba(225, 29, 72, 0.2);
-      background: rgba(225, 29, 72, 0.06);
-    }
-
-    .blockers ul {
-      margin: 0;
-      padding-left: 16px;
-      color: var(--ox-text);
-      font-size: 0.82rem;
+    .progress-note {
+      margin-top: var(--app-space-3);
+      color: var(--app-color-text-secondary);
+      font-size: var(--app-font-size-sm);
       line-height: 1.45;
     }
 
-    .blockers li + li {
-      margin-top: 4px;
+    .empty-slot {
+      padding-top: var(--app-space-3);
+      color: var(--app-color-text-secondary);
+      font-size: var(--app-font-size-sm);
+      line-height: 1.5;
     }
 
-    .output-panel {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-top: 6px;
-      min-height: 132px;
-      padding: 14px;
-      border-radius: 14px;
-      border: 1px solid var(--ox-border);
-      background: rgba(255, 255, 255, 0.02);
-    }
-
-    .output-header {
+    .card-footer {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: var(--app-space-3);
+      padding: var(--app-space-3) var(--app-space-4) var(--app-space-4);
+      border-top: 1px solid var(--app-color-divider);
     }
 
-    .output-count {
-      font-family: var(--ox-mono);
-      font-size: 0.68rem;
-      text-transform: uppercase;
+    .sync-copy {
+      color: var(--app-color-text-tertiary);
+      font-size: var(--app-font-size-xs);
+      font-weight: var(--app-font-weight-medium);
       letter-spacing: 0.08em;
-      color: var(--ox-text-muted);
-      font-weight: 600;
+      text-transform: uppercase;
     }
 
-    .artifact-mini-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .artifact-mini {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 10px;
-      align-items: start;
-      padding: 10px 12px;
-      border-radius: 12px;
-      border: 1px solid var(--ox-border);
-      background: var(--ox-well-bg);
-      box-shadow: var(--ox-well-shadow);
-    }
-
-    .artifact-mini-title {
-      font-size: 0.84rem;
-      line-height: 1.4;
-      color: var(--ox-text);
-      font-weight: 600;
-    }
-
-    .artifact-mini-copy {
-      margin-top: 5px;
-      font-size: 0.76rem;
-      color: var(--ox-text-muted);
-      line-height: 1.45;
-    }
-
-    .artifact-mini-status {
+    .footer-link {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 5px 8px;
-      border-radius: 999px;
-      border: 1px solid var(--ox-border);
-      background: rgba(255, 255, 255, 0.02);
-      font-family: var(--ox-mono);
-      font-size: 0.62rem;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--ox-text-muted);
+      color: var(--app-color-text-secondary);
+      font-size: var(--app-font-size-sm);
+      font-weight: var(--app-font-weight-medium);
+      text-decoration: none;
     }
 
-    .artifact-mini-status.status-approved {
-      color: var(--ox-teal);
-      border-color: rgba(0, 201, 167, 0.18);
-      background: rgba(0, 201, 167, 0.08);
+    .footer-link svg {
+      width: 14px;
+      height: 14px;
     }
 
-    .artifact-mini-status.status-in_review,
-    .artifact-mini-status.status-draft {
-      color: var(--ox-warning);
-      border-color: rgba(251, 191, 36, 0.22);
-      background: rgba(251, 191, 36, 0.08);
-    }
-
-    .workload-panel {
+    .empty-state {
+      padding: var(--app-space-6);
+      text-align: center;
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      margin-top: 8px;
-      padding: 14px;
-      border-radius: 14px;
-      border: 1px solid var(--ox-border);
-      background:
-        linear-gradient(180deg, rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.05), transparent 35%),
-        rgba(255, 255, 255, 0.02);
-    }
-
-    .workload-head {
-      display: flex;
+      gap: var(--app-space-2);
       align-items: center;
-      justify-content: space-between;
-      gap: 12px;
     }
 
-    .workload-head-stats {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
+    .empty-state strong {
+      color: var(--app-color-text);
+      font-size: var(--app-font-size-md);
+      font-weight: var(--app-font-weight-semibold);
     }
 
-    .workload-head-stat {
-      display: inline-flex;
-      align-items: baseline;
-      gap: 4px;
-      font-family: var(--ox-mono);
-      font-size: 0.68rem;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--ox-text-muted);
-      white-space: nowrap;
+    .empty-state p {
+      color: var(--app-color-text-secondary);
+      font-size: var(--app-font-size-sm);
+      line-height: 1.5;
+      max-width: 28ch;
     }
 
-    .workload-head-stat strong {
-      font-size: 1rem;
-      color: var(--ox-text);
-      line-height: 1;
-      letter-spacing: -0.03em;
-    }
-
-    .workload-head-stat.is-alert {
-      color: var(--ox-warning);
-    }
-
-    .workload-head-stat.is-alert strong {
-      color: var(--ox-warning);
-    }
-
-    .workload-caption {
-      margin-top: 4px;
-      font-size: 0.74rem;
-      line-height: 1.4;
-      color: var(--ox-text-muted);
-    }
-
-    .workload-track {
-      display: flex;
-      height: 10px;
-      overflow: hidden;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-    }
-
-    .workload-segment {
-      height: 100%;
-      min-width: 0;
-    }
-
-    .workload-segment-todo {
-      background: rgba(148, 163, 184, 0.24);
-    }
-
-    .workload-segment-active {
-      background: linear-gradient(90deg, rgba(var(--ox-primary-rgb), 1), rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.96));
-      box-shadow: 0 0 20px rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.24);
-    }
-
-    .workload-segment-blocked {
-      background: linear-gradient(90deg, rgba(251, 191, 36, 0.88), rgba(245, 158, 11, 0.96));
-    }
-
-    .workload-segment-done {
-      background: rgba(0, 201, 167, 0.88);
-    }
-
-    .workload-legend {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      flex-wrap: wrap;
-    }
-
-    .workload-legend-item {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      min-width: 0;
-      font-size: 0.74rem;
-      line-height: 1.2;
-      color: var(--ox-text-muted);
-      white-space: nowrap;
-    }
-
-    .workload-legend-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 999px;
-      flex-shrink: 0;
-    }
-
-    .workload-legend-dot.todo {
-      background: rgba(148, 163, 184, 0.32);
-    }
-
-    .workload-legend-dot.active {
-      background: linear-gradient(90deg, rgba(var(--ox-primary-rgb), 1), rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.96));
-      box-shadow: 0 0 10px rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.24);
-    }
-
-    .workload-legend-dot.done {
-      background: rgba(0, 201, 167, 0.88);
-    }
-
-    .workload-legend-dot.blocked {
-      background: linear-gradient(90deg, rgba(251, 191, 36, 0.88), rgba(245, 158, 11, 0.96));
-    }
-
-    .workload-metrics {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
-    }
-
-    .workload-metric {
-      min-width: 0;
-      padding: 10px 11px;
-      border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.02);
+    .skeleton-wrapper {
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: var(--app-space-3);
     }
 
-    .workload-metric-label {
-      font-size: 0.64rem;
-      line-height: 1.25;
-      color: var(--ox-text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      font-family: var(--ox-mono);
-    }
-
-    .workload-metric-value {
+    .skeleton-card {
+      border-radius: var(--app-radius-card);
+      border: 1px solid var(--app-color-border);
+      background: var(--app-color-surface);
+      padding: var(--app-space-4);
       display: flex;
-      align-items: baseline;
-      gap: 7px;
-      min-width: 0;
-    }
-
-    .workload-metric-number {
-      font-size: 1.15rem;
-      font-weight: 700;
-      line-height: 1;
-      letter-spacing: -0.03em;
-      color: var(--ox-text);
-      flex-shrink: 0;
-    }
-
-    .workload-metric-copy {
-      font-size: 0.72rem;
-      line-height: 1.35;
-      color: var(--ox-text-muted);
-      min-width: 0;
-    }
-
-    .workload-metric.is-blocked .workload-metric-number,
-    .workload-metric.is-blocked .workload-metric-copy {
-      color: var(--ox-warning);
-    }
-
-    @media (max-width: 560px) {
-      body {
-        padding: 16px 12px;
-      }
-
-      .agent-board {
-        grid-template-columns: 1fr;
-      }
-
-      .agent-title {
-        flex-direction: column;
-      }
-
-      .widget-footer {
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      .deep-link {
-        width: 100%;
-      }
-
-      .workload-head {
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      .workload-head-stats {
-        justify-content: flex-start;
-      }
-
-      .workload-metrics {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-      }
-
-      .workload-metric {
-        padding-inline: 10px;
-      }
-    }
-
-    @media (max-width: 920px) {
-      .agent-board {
-        grid-template-columns: 1fr;
-      }
+      flex-direction: column;
+      gap: var(--app-space-3);
     }
 
     .skeleton-line {
-      background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%);
-      background-size: 200% 100%; animation: shimmer 2s infinite linear; border-radius: 4px;
+      border-radius: var(--app-radius-sm);
+      background:
+        linear-gradient(
+          90deg,
+          var(--app-color-surface-soft) 0%,
+          rgba(16, 163, 127, 0.12) 50%,
+          var(--app-color-surface-soft) 100%
+        );
+      background-size: 200% 100%;
+      animation: shimmer 1.8s linear infinite;
     }
-    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+    @keyframes shimmer {
+      from { background-position: 200% 0; }
+      to { background-position: -200% 0; }
+    }
+
+    @media (max-width: 420px) {
+      body {
+        padding: var(--app-space-4) var(--app-space-2) var(--app-space-5);
+      }
+
+      .agent-head {
+        align-items: flex-start;
+      }
+
+      .metric-button {
+        min-height: 66px;
+        padding-inline: 6px;
+      }
+
+      .metric-value {
+        font-size: 0.95rem;
+      }
+
+      .metric-label {
+        letter-spacing: 0.05em;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="container" id="content">
-    <!-- Skeleton shown during loading -->
-    <div class="skeleton-wrapper" style="display:flex; flex-direction:column; gap:20px; padding:24px;">
-      <div style="display:flex; align-items:center; gap:16px;">
-        <div class="skeleton-line" style="width:48px; height:48px; border-radius:50%;"></div>
-        <div style="flex:1;">
-          <div class="skeleton-line" style="width:40%; height:18px; margin-bottom:8px;"></div>
-          <div class="skeleton-line" style="width:60%; height:14px;"></div>
+  <main class="agent-board" id="content" aria-live="polite">
+    <div class="surface-label">Agent Status</div>
+    <div class="skeleton-wrapper">
+      <div class="skeleton-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
+            <div class="skeleton-line" style="width:32px;height:32px;border-radius:10px;"></div>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;">
+              <div class="skeleton-line" style="width:42%;height:16px;"></div>
+              <div class="skeleton-line" style="width:68%;height:12px;"></div>
+            </div>
+          </div>
+          <div class="skeleton-line" style="width:88px;height:28px;border-radius:999px;"></div>
         </div>
-        <div class="skeleton-line" style="width:80px; height:28px; border-radius:14px;"></div>
-      </div>
-      <div style="display:flex; align-items:center; gap:16px;">
-        <div class="skeleton-line" style="width:48px; height:48px; border-radius:50%;"></div>
-        <div style="flex:1;">
-          <div class="skeleton-line" style="width:35%; height:18px; margin-bottom:8px;"></div>
-          <div class="skeleton-line" style="width:55%; height:14px;"></div>
-        </div>
-        <div class="skeleton-line" style="width:80px; height:28px; border-radius:14px;"></div>
-      </div>
-      <div style="display:flex; align-items:center; gap:16px;">
-        <div class="skeleton-line" style="width:48px; height:48px; border-radius:50%;"></div>
-        <div style="flex:1;">
-          <div class="skeleton-line" style="width:45%; height:18px; margin-bottom:8px;"></div>
-          <div class="skeleton-line" style="width:50%; height:14px;"></div>
-        </div>
-        <div class="skeleton-line" style="width:80px; height:28px; border-radius:14px;"></div>
+        <div class="skeleton-line" style="width:100%;height:52px;border-radius:12px;"></div>
+        <div class="skeleton-line" style="width:100%;height:40px;border-radius:10px;"></div>
       </div>
     </div>
-  </div>
-  <script>
+  </main>
 
-    // Sync theme from URL to override prefers-color-scheme
-    (function() {
-      const params = new URLSearchParams(window.location.search);
-      const theme = params.get('theme');
+  <script>
+    (function syncThemeFromUrl() {
+      var theme = new URLSearchParams(window.location.search).get('theme');
       if (theme) document.documentElement.setAttribute('data-theme', theme);
     })();
 
-
-    var injectHtml = (html) => {
-      const content = document.getElementById('content');
-      const skeleton = content.querySelector('.skeleton-wrapper');
-      if (skeleton) {
-        skeleton.style.opacity = '0';
-        setTimeout(() => {
-          content.innerHTML = html;
-        }, 300);
-      } else {
-        content.innerHTML = html;
-      }
-    };
-
-    
-      function _detectProtocol(){if(typeof window.openai!=='undefined')return'chatgpt';if(window.parent&&window.parent!==window)return'mcp-apps';return'standalone';}
-      function _extractData(out){if(out==null)return null;if(typeof out==='object'&&out.structuredContent)return out.structuredContent;if(typeof out==='object'&&Array.isArray(out.content)){for(var i=0;i<out.content.length;i++){var item=out.content[i];if(item&&item.type==='text'&&item.text){try{return JSON.parse(item.text);}catch(e){continue;}}}}if(typeof out==='string'){try{return JSON.parse(out);}catch(e){return{text:out};}}return out;}
-      var _lastW=0,_lastH=0;
-      function _sendSize(){var w=Math.ceil(document.documentElement.getBoundingClientRect().width+(window.innerWidth-document.documentElement.clientWidth));var h=Math.ceil(document.documentElement.getBoundingClientRect().height);if(w===_lastW&&h===_lastH)return;_lastW=w;_lastH=h;try{window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/size-changed',params:{width:w,height:h}},'*');}catch(e){}}
-      function _observeSize(){_sendSize();if(typeof ResizeObserver!=='undefined'){var _raf=0;var ro=new ResizeObserver(function(){if(_raf)cancelAnimationFrame(_raf);_raf=requestAnimationFrame(_sendSize);});ro.observe(document.documentElement);ro.observe(document.body);}}
-      var _mcpPending = {};
-      var _mcpNextId = 100;
-      function initWidget(opts){var render=opts.render,getData=opts.getData||_extractData;var protocol=_detectProtocol();if(protocol==='chatgpt'){var d=getData(window.openai&&window.openai.toolOutput);render(d);window.addEventListener('openai:set_globals',function(e){var g=e.detail&&e.detail.globals;if(g&&g.toolOutput){render(getData(g.toolOutput));}},{passive:true});}else if(protocol==='mcp-apps'){render(null);var initId=1;window.parent.postMessage({jsonrpc:'2.0',id:initId,method:'ui/initialize',params:{appInfo:{name:'Widget',version:'1.0'},appCapabilities:{tools:{listChanged:false}},protocolVersion:'2026-01-26'}},'*');window.parent.postMessage({jsonrpc:'2.0',method:'notifications/initialized'},'*');window.addEventListener('message',function(event){var msg=event.data;if(!msg||typeof msg!=='object')return;if(msg.id===initId&&msg.result){window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized'},'*');_observeSize();return;}if(msg.id!=null&&_mcpPending[msg.id]){var p=_mcpPending[msg.id];delete _mcpPending[msg.id];if(msg.error)p.reject(new Error(msg.error.message||'Tool call failed'));else p.resolve(msg.result);return;}if((msg.method==='ui/notifications/tool-result'||msg.method==='notifications/message')&&msg.params){var data=getData(msg.params);if(data)render(data);}});}else{render(null);}}
-      function callTool(name, args){var protocol=_detectProtocol();if(protocol==='chatgpt')return window.openai&&window.openai.callTool?window.openai.callTool(name,args):Promise.resolve(null);if(protocol==='mcp-apps'){return new Promise(function(resolve,reject){var id=_mcpNextId++;_mcpPending[id]={resolve:resolve,reject:reject};window.parent.postMessage({jsonrpc:'2.0',id:id,method:'tools/call',params:{name:name,arguments:args}},'*');setTimeout(function(){if(_mcpPending[id]){delete _mcpPending[id];reject(new Error('Tool call '+name+' timed out'));}},30000);});}return Promise.resolve(null);}
-      function openWidgetLink(url,event){if(!url)return false;var protocol=_detectProtocol();if(protocol==='mcp-apps'){if(event&&typeof event.preventDefault==='function')event.preventDefault();window.parent.postMessage({jsonrpc:'2.0',id:_mcpNextId++,method:'ui/open-link',params:{url:url}},'*');return false;}return true;}
-      var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true">'+c+'</svg>';};
-      var icons = {
-        agent: function(s){return _svg('<rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><line x1="8" y1="16" x2="8" y2="16"></line><line x1="16" y1="16" x2="16" y2="16"></line>',s);},
-        search: function(s){return _svg('<circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>',s);},
-        file: function(s){return _svg('<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline>',s);},
-        external: function(s){return _svg('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>',s);},
-        sun: function(s){return _svg('<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>',s);},
-        task: function(s){return _svg('<path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>',s);},
-        blocked: function(s){return _svg('<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>',s);},
-        stream: function(s){return _svg('<path d="M5 7h14"></path><path d="M5 12h8"></path><path d="M5 17h14"></path><circle cx="17" cy="12" r="3"></circle>',s);}
-      };
-      var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
-
-    var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
-    var data = isDemo ? {
-      agents: [
-        {
-          agent_name: 'Pace',
-          role: 'Product',
-          status: 'running',
-          progress: 65,
-          initiative_id: 'init-demo-1',
-          tasks: [
-            { id: 'task-1', title: 'Create velocity calculation: points completed / points planned', status: 'in_progress' },
-            { id: 'task-2', title: 'Audit activation loop for conversion drop-off', status: 'blocked' },
-            { id: 'task-3', title: 'Package founder outreach test', status: 'done' }
-          ],
-          blockers: ['Waiting on pricing approval'],
-          workload: {
-            tasks_in_progress: 1,
-            blocked_count: 1,
-            stream_count: 2
-          },
-          artifacts: [
-            { title: 'Velocity model draft', artifact_type: 'prod.analysis', status: 'approved', summary: 'Initial planning model reviewed and accepted.' },
-            { title: 'Activation loop audit', artifact_type: 'prod.report', status: 'in_review', summary: 'Drop-off analysis ready for review.' }
-          ],
-          artifact_count: 2
-        }
-      ],
-      message: 'Live orchestration state across specialist agents.'
-    } : null;
-    var isLoading = !isDemo;
-
-    var isLoadingOverride = new URLSearchParams(window.location.search).get('loading') === 'true';
-    if (isLoadingOverride) {
-      isLoading = true;
-      isDemo = false;
-      // Overwrite initWidget to do nothing so it hangs on loading
-      initWidget = () => { render(); };
+    function injectHtml(html) {
+      var content = document.getElementById('content');
+      content.innerHTML = html;
+      requestAnimationFrame(_sendSize);
     }
-    var bootStartedAt = Date.now();
-    var MIN_LOADING_MS = 220;
-    var loadingSettled = false;
-    var applyBootPayload = function(assign) {
-      var commit = function() {
-        if (typeof assign === 'function') assign();
-        isLoading = false;
-        render();
-      };
-      if (loadingSettled) {
-        commit();
+
+    function _detectProtocol() {
+      if (typeof window.openai !== 'undefined') return 'chatgpt';
+      if (window.parent && window.parent !== window) return 'mcp-apps';
+      return 'standalone';
+    }
+
+    function _extractData(out) {
+      if (out == null) return null;
+      if (typeof out === 'object' && out.structuredContent) return out.structuredContent;
+      if (typeof out === 'object' && Array.isArray(out.content)) {
+        for (var i = 0; i < out.content.length; i += 1) {
+          var item = out.content[i];
+          if (item && item.type === 'text' && item.text) {
+            try {
+              return JSON.parse(item.text);
+            } catch (error) {
+              continue;
+            }
+          }
+        }
+      }
+      if (typeof out === 'string') {
+        try {
+          return JSON.parse(out);
+        } catch (error) {
+          return { text: out };
+        }
+      }
+      return out;
+    }
+
+    var _lastW = 0;
+    var _lastH = 0;
+    function _sendSize() {
+      var width = Math.ceil(
+        document.documentElement.getBoundingClientRect().width +
+          (window.innerWidth - document.documentElement.clientWidth)
+      );
+      var height = Math.ceil(document.documentElement.getBoundingClientRect().height);
+      if (width === _lastW && height === _lastH) return;
+      _lastW = width;
+      _lastH = height;
+      try {
+        window.parent.postMessage(
+          {
+            jsonrpc: '2.0',
+            method: 'ui/notifications/size-changed',
+            params: { width: width, height: height },
+          },
+          '*'
+        );
+      } catch (error) {}
+    }
+
+    function _observeSize() {
+      _sendSize();
+      if (typeof ResizeObserver !== 'undefined') {
+        var frame = 0;
+        var observer = new ResizeObserver(function () {
+          if (frame) cancelAnimationFrame(frame);
+          frame = requestAnimationFrame(_sendSize);
+        });
+        observer.observe(document.documentElement);
+        observer.observe(document.body);
+      }
+    }
+
+    var _mcpPending = {};
+    var _mcpNextId = 100;
+
+    function initWidget(opts) {
+      var render = opts.render;
+      var getData = opts.getData || _extractData;
+      var protocol = _detectProtocol();
+
+      if (protocol === 'chatgpt') {
+        render(getData(window.openai && window.openai.toolOutput));
+        window.addEventListener(
+          'openai:set_globals',
+          function (event) {
+            var globals = event.detail && event.detail.globals;
+            if (globals && globals.toolOutput) render(getData(globals.toolOutput));
+          },
+          { passive: true }
+        );
         return;
       }
-      loadingSettled = true;
-      var delay = Math.max(0, MIN_LOADING_MS - (Date.now() - bootStartedAt));
-      window.setTimeout(commit, delay);
-    };
 
-
-    
-      var REMOTE_WIDGET_ASSET_BASE = 'https://mcp.useorgx.com/widgets/shared/';
-      function resolveWidgetAsset(path){
-        return REMOTE_WIDGET_ASSET_BASE + path;
-      }
-      var ORGX_BASE_URL = 'https://useorgx.com';
-      var buildAgentUrl = function(agentId) {
-        return agentId
-          ? ORGX_BASE_URL + '/settings/agents?agent=' + encodeURIComponent(agentId)
-          : ORGX_BASE_URL + '/settings/agents';
-      };
-      var AGENT_DIRECTORY = {
-        pace: { name: 'Pace', role: 'Product', avatarPath: 'product_orchestrator.png', accentRgb: '22, 163, 74' },
-        product: { name: 'Pace', role: 'Product', avatarPath: 'product_orchestrator.png', accentRgb: '22, 163, 74' },
-        eli: { name: 'Eli', role: 'Engineering', avatarPath: 'engineering_autopilot.png', accentRgb: '6, 182, 212' },
-        engineering: { name: 'Eli', role: 'Engineering', avatarPath: 'engineering_autopilot.png', accentRgb: '6, 182, 212' },
-        mark: { name: 'Mark', role: 'Marketing', avatarPath: 'launch_captain.png', accentRgb: '249, 115, 22' },
-        marketing: { name: 'Mark', role: 'Marketing', avatarPath: 'launch_captain.png', accentRgb: '249, 115, 22' },
-        sage: { name: 'Sage', role: 'Sales', avatarPath: 'pipeline_intelligence.png', accentRgb: '168, 85, 247' },
-        sales: { name: 'Sage', role: 'Sales', avatarPath: 'pipeline_intelligence.png', accentRgb: '168, 85, 247' },
-        orion: { name: 'Orion', role: 'Operations', avatarPath: 'control_tower.png', accentRgb: '245, 158, 11' },
-        operations: { name: 'Orion', role: 'Operations', avatarPath: 'control_tower.png', accentRgb: '245, 158, 11' },
-        dana: { name: 'Dana', role: 'Design', avatarPath: 'design_codex.png', accentRgb: '236, 72, 153' },
-        design: { name: 'Dana', role: 'Design', avatarPath: 'design_codex.png', accentRgb: '236, 72, 153' },
-        xandy: { name: 'Xandy', role: 'Orchestrator', avatarPath: 'xandy_orchestrator.png', accentRgb: '20, 184, 166' },
-        orchestrator: { name: 'Xandy', role: 'Orchestrator', avatarPath: 'xandy_orchestrator.png', accentRgb: '20, 184, 166' }
-      };
-
-      var firstString = function(values) {
-        for (var i = 0; i < values.length; i += 1) {
-          var value = values[i];
-          if (typeof value === 'string' && value.trim()) return value.trim();
-        }
-        return '';
-      };
-
-      var humanize = function(value) {
-        var safe = firstString([value]);
-        if (!safe) return '';
-        return safe
-          .replace(/[_-]+/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim()
-          .replace(/\b\w/g, function(match) { return match.toUpperCase(); });
-      };
-
-      var firstArray = function(values) {
-        for (var i = 0; i < values.length; i += 1) {
-          if (Array.isArray(values[i])) return values[i];
-        }
-        return [];
-      };
-
-      var firstNumber = function(values) {
-        for (var i = 0; i < values.length; i += 1) {
-          var value = values[i];
-          if (typeof value === 'number' && isFinite(value)) return value;
-        }
-        return null;
-      };
-
-      var normalizeAgentRecord = function(input) {
-        if (!input || typeof input !== 'object') return null;
-        var nestedAgent = input.agent && typeof input.agent === 'object' ? input.agent : {};
-        var source = Object.assign({}, nestedAgent, input);
-        return {
-          agent_id: firstString([
-            source.agent_id,
-            source.agentId,
-            source.id
-          ]) || null,
-          agent_name: firstString([
-            source.agent_name,
-            source.agentName,
-            source.name,
-            source.title,
-            source.label,
-            source.agent_id,
-            source.agentId
-          ]),
-          role: firstString([
-            source.role,
-            source.persona
-          ]),
-          agent_type: firstString([
-            source.agent_type,
-            source.agentType,
-            source.type
-          ]),
-          domain: firstString([
-            source.domain,
-            source.agent_domain,
-            source.agentDomain,
-            source.specialization
-          ]),
-          status: firstString([
-            source.status,
-            source.state
-          ]) || 'idle',
-          current_task: firstString([
-            source.current_task,
-            source.currentTask,
-            source.active_task,
-            source.activeTask,
-            source.task_summary,
-            source.taskSummary,
-            source.task,
-            source.message
-          ]) || null,
-          current_tasks: firstArray([
-            source.current_tasks,
-            source.currentTasks
-          ]),
-          active_tasks: firstArray([
-            source.active_tasks,
-            source.activeTasks
-          ]),
-          tasks: firstArray([
-            source.tasks,
-            source.items
-          ]),
-          blockers: firstArray([
-            source.blockers,
-            source.blocking_reasons,
-            source.blockingReasons
-          ]),
-          progress: firstNumber([
-            source.progress,
-            source.progress_pct,
-            source.progressPct
-          ]),
-          started_at: firstString([
-            source.started_at,
-            source.startedAt
-          ]) || null,
-          initiative_id: firstString([
-            source.initiative_id,
-            source.initiativeId
-          ]) || null,
-          execution_target: firstString([
-            source.execution_target,
-            source.executionTarget
-          ]) || null,
-          run_id: firstString([
-            source.run_id,
-            source.runId
-          ]) || null,
-          artifacts: firstArray([
-            source.artifacts,
-            source.session_output,
-            source.sessionOutput
-          ]),
-          artifact_count: firstNumber([
-            source.artifact_count,
-            source.artifactCount
-          ]),
-          workload: source.workload && typeof source.workload === 'object' ? source.workload : {}
-        };
-      };
-
-      var resolveAgentProfile = function(agent) {
-        var directName = firstString([
-          agent.agent_name,
-          agent.name,
-          agent.title
-        ]);
-        var directRole = firstString([
-          agent.role,
-          agent.persona,
-          agent.domain,
-          agent.agent_domain
-        ]);
-        var agentType = firstString([
-          agent.agent_type,
-          agent.type,
-          agent.domain,
-          agent.agent_domain
-        ]).toLowerCase();
-        var nameKey = directName.toLowerCase();
-        var roleKey = directRole.toLowerCase();
-        var profile =
-          AGENT_DIRECTORY[nameKey] ||
-          AGENT_DIRECTORY[agentType] ||
-          AGENT_DIRECTORY[roleKey] ||
-          null;
-        return {
-          name: directName || (profile && profile.name) || 'OrgX Agent',
-          role: directRole || (profile && profile.role) || humanize(agentType) || 'OrgX agent',
-          avatarPath: (profile && profile.avatarPath) || null,
-          accentRgb: (profile && profile.accentRgb) || null
-        };
-      };
-
-      var normalizeStatusKey = function(value) {
-        var normalized = firstString([value]).toLowerCase().replace(/[^a-z0-9]+/g, '_');
-        if (!normalized) return 'idle';
-        if (['running', 'active', 'executing', 'in_progress', 'working'].indexOf(normalized) !== -1) return 'running';
-        if (['blocked', 'paused', 'waiting', 'at_risk'].indexOf(normalized) !== -1) return 'blocked';
-        if (['queued', 'pending', 'not_started', 'todo', 'draft'].indexOf(normalized) !== -1) return 'queued';
-        return normalized;
-      };
-
-      var collectionKey = function(item) {
-        if (typeof item === 'string') return item.trim();
-        if (!item || typeof item !== 'object') return '';
-        return firstString([
-          item.id,
-          item.task_id,
-          item.taskId,
-          item.entity_id,
-          item.entityId,
-          item.title,
-          item.summary,
-          item.name,
-          item.description
-        ]) || JSON.stringify(item);
-      };
-
-      var mergeUniqueItems = function(left, right) {
-        var seen = {};
-        return ([]).concat(Array.isArray(left) ? left : [], Array.isArray(right) ? right : []).filter(function(item) {
-          var key = collectionKey(item);
-          if (!key || seen[key]) return false;
-          seen[key] = true;
-          return true;
-        });
-      };
-
-      var mergeAgentAliases = function(agents) {
-        var statusWeight = { idle: 1, queued: 2, blocked: 3, running: 4 };
-        var merged = new Map();
-
-        agents.forEach(function(agent) {
-          var profile = resolveAgentProfile(agent || {});
-          var key = [profile.name.toLowerCase(), profile.role.toLowerCase()].join('|');
-          var normalizedStatus = normalizeStatusKey(agent && agent.status);
-          var existing = merged.get(key);
-          if (!existing) {
-            merged.set(key, Object.assign({}, agent, {
-              agent_name: firstString([agent.agent_name, profile.name]) || profile.name,
-              role: firstString([agent.role, profile.role]) || profile.role,
-              status: normalizedStatus,
-              blockers: mergeUniqueItems(agent.blockers, []),
-              current_tasks: mergeUniqueItems(agent.current_tasks, []),
-              active_tasks: mergeUniqueItems(agent.active_tasks, []),
-              tasks: mergeUniqueItems(agent.tasks, []),
-              artifacts: mergeUniqueItems(agent.artifacts, [])
-            }));
+      if (protocol === 'mcp-apps') {
+        render(null);
+        var initId = 1;
+        window.parent.postMessage(
+          {
+            jsonrpc: '2.0',
+            id: initId,
+            method: 'ui/initialize',
+            params: {
+              appInfo: { name: 'Agent Status Widget', version: '1.0' },
+              appCapabilities: { tools: { listChanged: false } },
+              protocolVersion: '2026-01-26',
+            },
+          },
+          '*'
+        );
+        window.parent.postMessage({ jsonrpc: '2.0', method: 'notifications/initialized' }, '*');
+        window.addEventListener('message', function (event) {
+          var msg = event.data;
+          if (!msg || typeof msg !== 'object') return;
+          if (msg.id === initId && msg.result) {
+            window.parent.postMessage(
+              { jsonrpc: '2.0', method: 'ui/notifications/initialized' },
+              '*'
+            );
+            _observeSize();
             return;
           }
-
-          var keepIncomingStatus = (statusWeight[normalizedStatus] || 0) > (statusWeight[normalizeStatusKey(existing.status)] || 0);
-          merged.set(key, Object.assign({}, existing, {
-            agent_id: firstString([existing.agent_id, agent.agent_id]),
-            agent_name: firstString([existing.agent_name, agent.agent_name, profile.name]) || profile.name,
-            role: firstString([existing.role, agent.role, profile.role]) || profile.role,
-            agent_type: firstString([existing.agent_type, agent.agent_type]),
-            domain: firstString([existing.domain, agent.domain]),
-            initiative_id: firstString([existing.initiative_id, agent.initiative_id]),
-            execution_target: firstString([existing.execution_target, agent.execution_target]),
-            run_id: firstString([existing.run_id, agent.run_id]),
-            status: keepIncomingStatus ? normalizedStatus : normalizeStatusKey(existing.status),
-            current_task: keepIncomingStatus
-              ? (firstString([agent.current_task, existing.current_task]) || null)
-              : (firstString([existing.current_task, agent.current_task]) || null),
-            progress: typeof existing.progress === 'number' && isFinite(existing.progress)
-              ? (typeof agent.progress === 'number' && isFinite(agent.progress)
-                ? Math.max(existing.progress, agent.progress)
-                : existing.progress)
-              : agent.progress,
-            blockers: mergeUniqueItems(existing.blockers, agent.blockers),
-            current_tasks: mergeUniqueItems(existing.current_tasks, agent.current_tasks),
-            active_tasks: mergeUniqueItems(existing.active_tasks, agent.active_tasks),
-            tasks: mergeUniqueItems(existing.tasks, agent.tasks),
-            artifacts: mergeUniqueItems(existing.artifacts, agent.artifacts),
-            artifact_count: Math.max(
-              typeof existing.artifact_count === 'number' && isFinite(existing.artifact_count) ? existing.artifact_count : 0,
-              typeof agent.artifact_count === 'number' && isFinite(agent.artifact_count) ? agent.artifact_count : 0
-            ),
-            workload: Object.assign({}, existing.workload || {}, agent.workload || {})
-          }));
-        });
-
-        return Array.from(merged.values());
-      };
-
-      var getAvatarUrl = function(agent) {
-        var profile = resolveAgentProfile(agent || {});
-        return profile.avatarPath ? resolveWidgetAsset(profile.avatarPath) : null;
-      };
-
-      var renderAvatar = function(agent) {
-        var profile = resolveAgentProfile(agent || {});
-        var fallback = escapeHtml(profile.name ? profile.name[0].toUpperCase() : '?');
-        if (profile.avatarPath) {
-          var avatarSrc = resolveWidgetAsset(profile.avatarPath);
-          return '<span class="avatar-fallback" style="display:none;">' + fallback + '</span><img class="avatar-image" src="' + avatarSrc + '" alt="' + escapeHtml(profile.name) + '" loading="eager" decoding="sync" draggable="false" onerror="this.style.display=\'none\'; if (this.previousElementSibling) this.previousElementSibling.style.display=\'flex\';" />';
-        }
-        return '<span class="avatar-fallback">' + fallback + '</span>';
-      };
-
-    var extractTasks = function(agent) {
-      var raw = [];
-      var candidateArrays = [agent.current_tasks, agent.active_tasks, agent.tasks];
-      candidateArrays.forEach(function(candidate) {
-        if (!Array.isArray(candidate)) return;
-        candidate.forEach(function(item) {
-          if (typeof item === 'string' && item.trim()) raw.push(item.trim());
-          else if (item && typeof item === 'object') {
-            var text = firstString([item.title, item.summary, item.name, item.description]);
-            if (text) raw.push(text);
+          if (msg.id != null && _mcpPending[msg.id]) {
+            var pending = _mcpPending[msg.id];
+            delete _mcpPending[msg.id];
+            if (msg.error) pending.reject(new Error(msg.error.message || 'Tool call failed'));
+            else pending.resolve(msg.result);
+            return;
+          }
+          if (
+            (msg.method === 'ui/notifications/tool-result' || msg.method === 'notifications/message') &&
+            msg.params
+          ) {
+            var next = getData(msg.params);
+            if (next) render(next);
           }
         });
-      });
-      var primary = firstString([
-        agent.current_task,
-        agent.active_task,
-        agent.task_summary,
-        agent.task,
-        agent.message
-      ]);
-      if (primary) raw.unshift(primary);
-      return raw.filter(function(task, idx) { return task && raw.indexOf(task) === idx; });
-    };
+        return;
+      }
 
-    var normalizeTaskStatus = function(value) {
-      var slug = firstString([value]).toLowerCase().replace(/[^a-z0-9]+/g, '_');
-      if (!slug) return '';
-      if (['in_progress', 'running', 'active', 'executing', 'working'].indexOf(slug) !== -1) return 'in_progress';
-      if (['blocked', 'paused', 'waiting', 'at_risk'].indexOf(slug) !== -1) return 'blocked';
-      if (['done', 'complete', 'completed', 'approved', 'shipped'].indexOf(slug) !== -1) return 'done';
-      if (['todo', 'not_started', 'queued', 'pending', 'draft', 'backlog'].indexOf(slug) !== -1) return 'todo';
+      render(null);
+    }
+
+    function escapeHtml(value) {
+      if (value == null) return '';
+      var div = document.createElement('div');
+      div.textContent = String(value);
+      return div.innerHTML;
+    }
+
+    function firstString(values) {
+      for (var i = 0; i < values.length; i += 1) {
+        var value = values[i];
+        if (typeof value === 'string' && value.trim()) return value.trim();
+      }
       return '';
-    };
+    }
 
-    var extractTaskRecords = function(agent) {
-      var records = [];
-      var arrays = [agent.current_tasks, agent.active_tasks, agent.tasks];
-      arrays.forEach(function(candidate) {
-        if (!Array.isArray(candidate)) return;
-        candidate.forEach(function(item) {
-          if (item && typeof item === 'object') {
-            var title = firstString([item.title, item.summary, item.name, item.description]);
-            if (!title) return;
-            records.push({
-              id: firstString([item.id, item.task_id, item.taskId, item.entity_id, item.entityId]) || title,
-              title: title,
-              status: normalizeTaskStatus(firstString([item.status, item.state])),
-            });
-            return;
-          }
-          if (typeof item === 'string' && item.trim()) {
-            records.push({ id: item.trim(), title: item.trim(), status: '' });
-          }
-        });
-      });
-      var primary = firstString([
-        agent.current_task,
-        agent.active_task,
-        agent.task_summary,
-        agent.task,
-        agent.message
-      ]);
-      if (primary) {
-        records.unshift({
-          id: primary,
-          title: primary,
-          status: normalizeTaskStatus(agent.status)
-        });
+    function asNumber(value) {
+      if (typeof value === 'number' && !Number.isNaN(value)) return value;
+      if (typeof value === 'string' && value.trim() !== '' && !Number.isNaN(Number(value))) {
+        return Number(value);
       }
+      return null;
+    }
+
+    function asArray(value) {
+      return Array.isArray(value) ? value : [];
+    }
+
+    function titleCase(value) {
+      return String(value || '')
+        .replace(/[-_]+/g, ' ')
+        .replace(/\b\w/g, function (char) { return char.toUpperCase(); })
+        .trim();
+    }
+
+    function normalizeStatus(value) {
+      var normalized = String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '_');
+      if (!normalized) return 'idle';
+      if (['running', 'active', 'executing', 'in_progress', 'working'].indexOf(normalized) !== -1) return 'running';
+      if (['blocked', 'paused', 'waiting', 'at_risk'].indexOf(normalized) !== -1) return 'blocked';
+      if (['needs_review', 'review', 'in_review'].indexOf(normalized) !== -1) return 'review';
+      if (['queued', 'pending', 'not_started', 'todo', 'draft', 'backlog'].indexOf(normalized) !== -1) return 'queued';
+      if (['done', 'complete', 'completed', 'approved', 'shipped'].indexOf(normalized) !== -1) return 'done';
+      return normalized;
+    }
+
+    function getStatusTone(status) {
+      if (status === 'blocked') return 'blocked';
+      if (status === 'review') return 'review';
+      if (status === 'queued' || status === 'idle') return 'idle';
+      return 'running';
+    }
+
+    function getStatusLabel(status) {
+      if (status === 'blocked') return 'Needs you';
+      if (status === 'review') return 'Needs review';
+      if (status === 'approved') return 'Approved';
+      if (status === 'done') return 'Done';
+      if (status === 'queued') return 'Queued';
+      if (status === 'idle') return 'Idle';
+      return 'Running';
+    }
+
+    function collectionKey(item) {
+      if (typeof item === 'string') return item.trim();
+      if (!item || typeof item !== 'object') return '';
+      return firstString([
+        item.id,
+        item.task_id,
+        item.taskId,
+        item.entity_id,
+        item.entityId,
+        item.title,
+        item.summary,
+        item.name,
+        item.description
+      ]) || JSON.stringify(item);
+    }
+
+    function mergeUniqueItems(left, right) {
       var seen = {};
-      return records.filter(function(record) {
-        var key = record.id || record.title;
+      return ([]).concat(asArray(left), asArray(right)).filter(function (item) {
+        var key = collectionKey(item);
         if (!key || seen[key]) return false;
         seen[key] = true;
         return true;
       });
+    }
+
+    var REMOTE_WIDGET_ASSET_BASE = 'https://mcp.useorgx.com/widgets/shared/';
+    function resolveWidgetAsset(path){
+      return REMOTE_WIDGET_ASSET_BASE + path;
+    }
+
+    var ORGX_BASE_URL = 'https://useorgx.com';
+    var AGENT_DIRECTORY = {
+      pace: { name: 'Pace', role: 'Product', avatarPath: 'product_orchestrator.png' },
+      product: { name: 'Pace', role: 'Product', avatarPath: 'product_orchestrator.png' },
+      eli: { name: 'Eli', role: 'Engineering', avatarPath: 'engineering_autopilot.png' },
+      engineering: { name: 'Eli', role: 'Engineering', avatarPath: 'engineering_autopilot.png' },
+      mark: { name: 'Mark', role: 'Marketing', avatarPath: 'launch_captain.png' },
+      marketing: { name: 'Mark', role: 'Marketing', avatarPath: 'launch_captain.png' },
+      sage: { name: 'Sage', role: 'Sales', avatarPath: 'pipeline_intelligence.png' },
+      sales: { name: 'Sage', role: 'Sales', avatarPath: 'pipeline_intelligence.png' },
+      orion: { name: 'Orion', role: 'Operations', avatarPath: 'control_tower.png' },
+      operations: { name: 'Orion', role: 'Operations', avatarPath: 'control_tower.png' },
+      dana: { name: 'Dana', role: 'Design', avatarPath: 'design_codex.png' },
+      design: { name: 'Dana', role: 'Design', avatarPath: 'design_codex.png' },
+      xandy: { name: 'Xandy', role: 'Orchestrator', avatarPath: 'xandy_orchestrator.png' },
+      orchestrator: { name: 'Xandy', role: 'Orchestrator', avatarPath: 'xandy_orchestrator.png' }
     };
 
-    var summarizeWorkload = function(agent, fallback) {
-      var workload = fallback && typeof fallback === 'object' ? fallback : {};
-      var taskRecords = extractTaskRecords(agent || {});
-      var derived = { todo: 0, in_progress: 0, blocked: 0, done: 0 };
-      taskRecords.forEach(function(task) {
-        var status = normalizeTaskStatus(task.status);
-        if (status && derived[status] !== undefined) derived[status] += 1;
-      });
+    function resolveAgentProfile(agent) {
+      var directName = firstString([agent.agent_name, agent.name, agent.title]);
+      var directRole = firstString([agent.role, agent.persona, agent.domain, agent.agent_domain]);
+      var agentType = firstString([agent.agent_type, agent.type, agent.domain, agent.agent_domain]).toLowerCase();
+      var nameKey = directName.toLowerCase();
+      var roleKey = directRole.toLowerCase();
+      var profile = AGENT_DIRECTORY[nameKey] || AGENT_DIRECTORY[agentType] || AGENT_DIRECTORY[roleKey] || null;
+      return {
+        name: directName || (profile && profile.name) || 'OrgX Agent',
+        role: directRole || (profile && profile.role) || titleCase(agentType) || 'Agent',
+        avatarPath: (profile && profile.avatarPath) || null
+      };
+    }
 
-      var activeCount = derived.in_progress > 0
-        ? derived.in_progress
-        : (typeof workload.tasks_in_progress === 'number' && isFinite(workload.tasks_in_progress) ? workload.tasks_in_progress : taskRecords.length);
-      var blockedCount = derived.blocked > 0
-        ? derived.blocked
-        : (typeof workload.blocked_count === 'number' && isFinite(workload.blocked_count) ? workload.blocked_count : (Array.isArray(agent.blockers) ? agent.blockers.length : 0));
-      var doneCount = derived.done;
-      var todoCount = derived.todo;
-      var taskTotal = taskRecords.length > 0
-        ? taskRecords.length
-        : Math.max(activeCount + blockedCount + doneCount + todoCount, 0);
-
-      if (taskTotal < activeCount + blockedCount + doneCount) {
-        taskTotal = activeCount + blockedCount + doneCount;
+    function renderAvatar(agent) {
+      var profile = resolveAgentProfile(agent);
+      var fallback = escapeHtml(profile.name.charAt(0).toUpperCase() || '?');
+      if (!profile.avatarPath) {
+        return '<span class="agent-mark-fallback">' + fallback + '</span>';
       }
+      return (
+        '<img src="' +
+        escapeHtml(resolveWidgetAsset(profile.avatarPath)) +
+        '" alt="" loading="eager" decoding="sync" onerror="this.remove(); this.parentNode.innerHTML = \'<span class=&quot;agent-mark-fallback&quot;>' +
+        fallback +
+        '</span>\';" />'
+      );
+    }
 
-      if (taskTotal === 0 && activeCount > 0) {
-        taskTotal = activeCount + blockedCount;
+    function buildAgentUrl(agentId) {
+      return agentId
+        ? ORGX_BASE_URL + '/settings/agents?agent=' + encodeURIComponent(agentId)
+        : ORGX_BASE_URL + '/settings/agents';
+    }
+
+    function normalizeTask(task, index) {
+      if (!task) return null;
+      if (typeof task === 'string') {
+        return { id: 'task-' + index, title: task, detail: '', status: 'queued' };
       }
+      if (typeof task !== 'object') return null;
+      return {
+        id: firstString([task.id, task.task_id, task.taskId, task.entity_id, task.entityId]) || 'task-' + index,
+        title: firstString([task.title, task.summary, task.name, task.description]) || 'Task ' + (index + 1),
+        detail: firstString([task.detail, task.description]),
+        status: normalizeStatus(firstString([task.status, task.state, task.phase]))
+      };
+    }
 
-      var streamCount = typeof workload.stream_count === 'number' && isFinite(workload.stream_count)
-        ? workload.stream_count
-        : 0;
+    function normalizeArtifact(artifact, index) {
+      if (!artifact || typeof artifact !== 'object') return null;
+      return {
+        id: firstString([artifact.id, artifact.ref]) || 'artifact-' + index,
+        title: firstString([artifact.title, artifact.name, artifact.summary]) || 'Artifact ' + (index + 1),
+        type: firstString([artifact.type, artifact.kind, artifact.artifact_type]) || 'artifact',
+        status: normalizeStatus(firstString([artifact.status, artifact.review_status, artifact.state])) || 'approved',
+        detail: firstString([artifact.detail, artifact.description, artifact.summary]),
+        url: firstString([artifact.url, artifact.review_url]) || null
+      };
+    }
+
+    function normalizeStream(stream, index) {
+      if (!stream || typeof stream !== 'object') return null;
+      return {
+        id: firstString([stream.id, stream.ref]) || 'stream-' + index,
+        name: firstString([stream.name, stream.title]) || 'Stream ' + (index + 1),
+        progress: Math.max(0, Math.min(100, asNumber(stream.progress || stream.progress_pct || stream.percent) || 0))
+      };
+    }
+
+    function normalizeAgent(raw, index) {
+      if (!raw || typeof raw !== 'object') return null;
+      var tasks = mergeUniqueItems(
+        asArray(raw.current_tasks),
+        mergeUniqueItems(asArray(raw.active_tasks), asArray(raw.tasks))
+      ).map(normalizeTask).filter(Boolean);
+      var artifacts = mergeUniqueItems(asArray(raw.artifacts), asArray(raw.outputs || raw.session_output))
+        .map(normalizeArtifact)
+        .filter(Boolean);
+      var blockers = asArray(raw.blockers).filter(Boolean);
+      var streams = mergeUniqueItems(asArray(raw.streams), asArray(raw.workstreams))
+        .map(normalizeStream)
+        .filter(Boolean);
+      var currentTask = firstString([
+        raw.current_task,
+        raw.current_focus,
+        raw.currentTask,
+        tasks[0] && tasks[0].title
+      ]);
+      var status = normalizeStatus(raw.status);
+      if (blockers.length > 0) status = 'blocked';
+      else if (artifacts.some(function (artifact) { return artifact.status === 'review'; })) status = 'review';
+
+      var progress = asNumber(raw.progress || raw.progress_pct || raw.percent_complete);
+      if (progress == null && tasks.length > 0) {
+        var doneTasks = tasks.filter(function (task) { return task.status === 'done'; }).length;
+        progress = Math.round((doneTasks / tasks.length) * 100);
+      }
 
       return {
-        total: taskTotal,
-        active: activeCount,
-        blocked: blockedCount,
-        done: doneCount,
-        todo: Math.max(0, taskTotal - activeCount - blockedCount - doneCount, todoCount),
-        streams: streamCount
+        id: firstString([raw.agent_id, raw.id, raw.agent_name]) || 'agent-' + index,
+        name: resolveAgentProfile(raw).name,
+        role: firstString([raw.role, resolveAgentProfile(raw).role]) || 'Agent',
+        status: status,
+        tone: getStatusTone(status),
+        statusLabel: getStatusLabel(status),
+        currentTask: currentTask || (status === 'idle' ? 'No active task right now' : 'Tracking background execution'),
+        currentMeta: firstString([raw.eta, raw.time_remaining]) || '',
+        progress: progress,
+        blockers: blockers,
+        tasks: tasks,
+        artifacts: artifacts,
+        streams: streams,
+        taskCount: tasks.length || (currentTask ? 1 : 0),
+        blockedCount: blockers.length || tasks.filter(function (task) { return task.status === 'blocked'; }).length,
+        reviewCount: artifacts.filter(function (artifact) { return artifact.status === 'review'; }).length,
+        openUrl: firstString([raw.url, raw.agent_url]) || buildAgentUrl(firstString([raw.agent_id, raw.id])),
       };
-    };
+    }
 
-    var formatTime = d => { const dt = new Date(d); return `[${dt.getHours().toString().padStart(2,'0')}:${dt.getMinutes().toString().padStart(2,'0')}:${dt.getSeconds().toString().padStart(2,'0')}]`; };
-    var titleCase = value => String(value || '').replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    var inferRole = agent => {
-      const source = [agent.role, agent.agent_name, agent.agent_id].filter(Boolean).join(' ').toLowerCase();
-      if (source.includes('product')) return 'Product';
-      if (source.includes('engineer')) return 'Engineering';
-      if (source.includes('market')) return 'Marketing';
-      if (source.includes('sale')) return 'Sales';
-      if (source.includes('design')) return 'Design';
-      if (source.includes('oper')) return 'Operations';
-      if (source.includes('orchestr')) return 'Orchestrator';
-      if (source.includes('chatgpt')) return 'App';
-      return 'Agent';
-    };
-    var isVisibleAgent = agent => {
-      const source = [agent.agent_id, agent.agent_name].filter(Boolean).join(' ').toLowerCase();
-      return !source.includes('chatgpt-app') && !source.includes('orgx chatgpt app');
-    };
-    var normalizeAgentPayload = payload => {
-      if (!payload) return null;
-      if (Array.isArray(payload.agents)) {
-        var agents = mergeAgentAliases(payload.agents
-          .map(normalizeAgentRecord)
-          .filter(Boolean)
-          .filter(isVisibleAgent));
-        var summary = payload.summary || {};
-        var running = agents.filter(agent => agent.status === 'running').length;
-        var queued = agents.filter(agent => agent.status === 'queued').length;
-        var blocked = agents.filter(agent => agent.status === 'blocked').length;
-        var idle = agents.filter(agent => agent.status === 'idle').length;
-        return {
-          mode: 'fleet',
-          agents: agents,
-          summary: {
-            total: agents.length,
-            running: running,
-            queued: queued,
-            blocked: blocked,
-            idle: idle
-          },
-          message: payload.message || (running === 0 ? 'No agents currently running.' : 'Live orchestration state across specialist agents.'),
-          next_steps: Array.isArray(payload.next_steps) ? payload.next_steps : []
+    function mergeAgentAliases(agents) {
+      var statusWeight = { idle: 1, queued: 2, running: 3, review: 4, blocked: 5 };
+      var merged = {};
+      agents.forEach(function (agent) {
+        var key = (agent.name + '|' + agent.role).toLowerCase();
+        var existing = merged[key];
+        if (!existing) {
+          merged[key] = agent;
+          return;
+        }
+        var keepIncoming = (statusWeight[agent.status] || 0) > (statusWeight[existing.status] || 0);
+        merged[key] = {
+          id: existing.id || agent.id,
+          name: existing.name || agent.name,
+          role: existing.role || agent.role,
+          status: keepIncoming ? agent.status : existing.status,
+          tone: keepIncoming ? agent.tone : existing.tone,
+          statusLabel: keepIncoming ? agent.statusLabel : existing.statusLabel,
+          currentTask: keepIncoming ? (agent.currentTask || existing.currentTask) : (existing.currentTask || agent.currentTask),
+          currentMeta: existing.currentMeta || agent.currentMeta,
+          progress: Math.max(existing.progress || 0, agent.progress || 0),
+          blockers: mergeUniqueItems(existing.blockers, agent.blockers),
+          tasks: mergeUniqueItems(existing.tasks, agent.tasks),
+          artifacts: mergeUniqueItems(existing.artifacts, agent.artifacts),
+          streams: mergeUniqueItems(existing.streams, agent.streams),
+          taskCount: Math.max(existing.taskCount || 0, agent.taskCount || 0),
+          blockedCount: Math.max(existing.blockedCount || 0, agent.blockedCount || 0),
+          reviewCount: Math.max(existing.reviewCount || 0, agent.reviewCount || 0),
+          openUrl: existing.openUrl || agent.openUrl
         };
+      });
+      return Object.keys(merged).map(function (key) { return merged[key]; });
+    }
+
+    function normalizePayload(payload) {
+      if (!payload) return { agents: [] };
+      var agents = Array.isArray(payload.agents) ? payload.agents : [payload];
+      return { agents: mergeAgentAliases(agents.map(normalizeAgent).filter(Boolean)) };
+    }
+
+    function getPriority(agent) {
+      if (agent.status === 'blocked') return 0;
+      if (agent.status === 'review') return 1;
+      if (agent.status === 'running') return 2;
+      if (agent.status === 'queued') return 3;
+      return 4;
+    }
+
+    function statusToneForRow(status) {
+      if (status === 'blocked') return 'blocked';
+      if (status === 'review') return 'review';
+      if (status === 'done' || status === 'approved' || status === 'running') return 'running';
+      if (status === 'queued') return 'queued';
+      return 'idle';
+    }
+
+    function summarizeOverview(agent) {
+      var parts = [];
+      if (agent.blockedCount) parts.push(agent.blockedCount + ' blocked');
+      if (agent.reviewCount) parts.push(agent.reviewCount + ' review');
+      if (agent.taskCount) parts.push(agent.taskCount + ' tasks in flight');
+      if (!parts.length) parts.push('No agents need you right now');
+      return parts.join(' · ');
+    }
+
+    var widgetState = {};
+
+    function setCardSection(cardId, section) {
+      if (section === 'overview') {
+        widgetState[cardId] = 'overview';
+        render();
+        return;
       }
-      if (payload.agent_name || payload.agent_id || payload.agent || payload.agentType || payload.agent_type) {
-        var singleAgent = normalizeAgentRecord(payload);
-        return {
-          mode: 'single',
-          agents: [singleAgent],
-          activity: Array.isArray(payload.activity) ? payload.activity : []
-        };
+      widgetState[cardId] = widgetState[cardId] === section ? 'overview' : section;
+      render();
+    }
+
+    function renderAttention(agent) {
+      if (agent.status !== 'blocked' && agent.status !== 'review') return '';
+      var tone = agent.status === 'blocked' ? 'blocked' : 'review';
+      var title = agent.status === 'blocked' ? 'Blocked' : 'Needs review';
+      var body = agent.status === 'blocked'
+        ? String(agent.blockers[0] || 'A founder-level decision is blocking progress.')
+        : String((agent.artifacts.find(function (artifact) { return artifact.status === 'review'; }) || {}).title || 'An artifact is ready for review.');
+      var action = agent.status === 'blocked' ? 'Resolve blocker' : 'Review now';
+      return (
+        '<div class="agent-attention app-attention-banner" data-tone="' + tone + '">' +
+          '<div class="attention-copy">' +
+            '<div class="attention-title">' + title + '</div>' +
+            '<div class="attention-body">' + escapeHtml(body) + '</div>' +
+          '</div>' +
+          '<a class="attention-action" href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer">' + action + '</a>' +
+        '</div>'
+      );
+    }
+
+    function renderOverviewSection(agent, isOpen) {
+      if (!isOpen) return '';
+      return (
+        '<section class="agent-section is-open" data-section="overview">' +
+          '<div class="section-list app-disclosure-body">' +
+            '<div class="section-row">' +
+              '<div class="section-copy">' +
+                '<div class="section-heading">At a glance</div>' +
+                '<div class="section-detail">' + escapeHtml(summarizeOverview(agent)) + '</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+        '</section>'
+      );
+    }
+
+    function renderRows(rows, emptyCopy) {
+      if (!rows.length) {
+        return '<div class="empty-slot">' + escapeHtml(emptyCopy) + '</div>';
       }
-      return null;
-    };
+      return (
+        '<div class="section-list app-disclosure-body">' +
+          rows.join('') +
+        '</div>'
+      );
+    }
 
-    var renderLegacyAgent = function(agent) {
-      const profile = resolveAgentProfile(agent || {});
-      var accentRgb = profile.accentRgb || '191, 255, 0';
-      const timelineHtml = (agent.activity || []).map(a => `
-        <div class="t-item">
-          <div class="t-dot"></div>
-          <div class="t-time">${formatTime(a.timestamp)}</div>
-          <div class="t-content">${escapeHtml(a.message)}</div>
-        </div>
-      `).join('');
+    function renderTasksSection(agent, isOpen) {
+      var rows = agent.tasks.map(function (task) {
+        return (
+          '<div class="section-row">' +
+            '<div class="section-copy">' +
+              '<div class="section-heading">' + escapeHtml(task.title) + '</div>' +
+              (task.detail ? '<div class="section-detail">' + escapeHtml(task.detail) + '</div>' : '') +
+            '</div>' +
+            '<div class="section-status" data-tone="' + statusToneForRow(task.status) + '">' + escapeHtml(getStatusLabel(task.status)) + '</div>' +
+          '</div>'
+        );
+      });
+      return (
+        '<section class="agent-section' + (isOpen ? ' is-open' : '') + '" data-section="tasks">' +
+          '<div class="agent-section-trigger">' +
+            '<button class="app-disclosure-trigger focusable" data-action="toggle-section" data-section="tasks" data-agent="' + escapeHtml(agent.id) + '">' +
+              '<span class="disclosure-title"><span>Tasks</span><span class="disclosure-count">' + agent.taskCount + '</span></span>' +
+              '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
+            '</button>' +
+          '</div>' +
+          (isOpen ? renderRows(rows, 'No task detail to expand right now.') : '') +
+        '</section>'
+      );
+    }
 
-      return `
-        <div class="ox-card animate-in" style="--agent-accent-rgb:${accentRgb};">
-          <div class="ox-card-inner">
-            <div class="agent-header">
-              <div class="avatar-ring">${renderAvatar(agent)}</div>
-              <div style="flex:1;">
-                <div class="ox-eyebrow" style="margin-bottom:4px;">${escapeHtml(profile.role)}</div>
-                <h2 class="ox-title" style="font-size:1.3rem; margin-bottom:8px;">${escapeHtml(profile.name)}</h2>
-                <div class="status-pill">
-                  <div class="status-dot"></div> ${escapeHtml(humanize(agent.status) || 'Idle')}
-                </div>
-              </div>
-            </div>
-            <div class="timeline">${timelineHtml}</div>
-            <div class="widget-footer">
-              <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
-              <a href="${buildAgentUrl(agent.agent_id)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(buildAgentUrl(agent.agent_id))}, event)' class="deep-link">
-                Open Agent View
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-              </a>
-            </div>
-          </div>
-        </div>
-      `;
-    };
+    function renderArtifactsSection(agent, isOpen) {
+      var rows = agent.artifacts.map(function (artifact) {
+        var status = artifact.status === 'review' ? 'Review' : getStatusLabel(artifact.status);
+        return (
+          '<div class="section-row">' +
+            '<div class="section-copy">' +
+              '<div class="section-heading">' + escapeHtml(artifact.title) + '</div>' +
+              '<div class="section-inline-meta">' + escapeHtml(titleCase(artifact.type)) + '</div>' +
+              (artifact.detail ? '<div class="section-detail">' + escapeHtml(artifact.detail) + '</div>' : '') +
+            '</div>' +
+            '<a class="section-status" data-tone="' + statusToneForRow(artifact.status) + '" href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer">' + escapeHtml(status) + '</a>' +
+          '</div>'
+        );
+      });
+      return (
+        '<section class="agent-section' + (isOpen ? ' is-open' : '') + '" data-section="artifacts">' +
+          '<div class="agent-section-trigger">' +
+            '<button class="app-disclosure-trigger focusable" data-action="toggle-section" data-section="artifacts" data-agent="' + escapeHtml(agent.id) + '">' +
+              '<span class="disclosure-title"><span>Artifacts</span><span class="disclosure-count">' + agent.artifacts.length + '</span></span>' +
+              '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
+            '</button>' +
+          '</div>' +
+          (isOpen ? renderRows(rows, 'No artifacts are waiting on a founder decision.') : '') +
+        '</section>'
+      );
+    }
 
-    var render = () => {
-      if(isLoading) return;
-      var payload = normalizeAgentPayload(data);
-      if(!payload) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.agent(24)}</div><div class="empty-title">Agent on standby</div><div class="empty-desc">No agent telemetry is available yet.</div></div>`); return; }
+    function renderProgressSection(agent, isOpen) {
+      return (
+        '<section class="agent-section' + (isOpen ? ' is-open' : '') + '" data-section="progress">' +
+          '<div class="agent-section-trigger">' +
+            '<button class="app-disclosure-trigger focusable" data-action="toggle-section" data-section="progress" data-agent="' + escapeHtml(agent.id) + '">' +
+              '<span class="disclosure-title"><span>Progress</span><span class="disclosure-count">' + escapeHtml(String(agent.progress == null ? 'n/a' : agent.progress + '%')) + '</span></span>' +
+              '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
+            '</button>' +
+          '</div>' +
+          (isOpen
+            ? '<div class="app-disclosure-body">' +
+                '<div class="progress-header">' +
+                  '<div class="progress-value">' + escapeHtml(String(agent.progress == null ? 'n/a' : agent.progress + '%')) + '</div>' +
+                  '<div class="progress-context">' + escapeHtml(agent.currentMeta || 'Background execution') + '</div>' +
+                '</div>' +
+                '<div class="progress-bar"><div class="progress-fill" style="width:' + Math.max(0, Math.min(100, agent.progress || 0)) + '%;"></div></div>' +
+                (agent.streams.length
+                  ? '<div class="progress-note">' + escapeHtml(agent.streams.map(function (stream) { return stream.name + ' ' + stream.progress + '%'; }).join(' · ')) + '</div>'
+                  : '<div class="progress-note">Parallel work is running in the background; expand tasks or artifacts when you need to act.</div>') +
+              '</div>'
+            : '') +
+        '</section>'
+      );
+    }
 
-      if (payload.mode === 'single') {
-        injectHtml(renderLegacyAgent(Object.assign({}, payload.agents[0], { activity: payload.activity || [] })));
+    function renderCard(agent) {
+      var openSection = widgetState[agent.id] || 'overview';
+      var chipTone = agent.tone === 'running' ? '' : ' data-tone="' + agent.tone + '"';
+      var reviewMetricTone = agent.reviewCount > 0 ? 'review' : '';
+      var blockedMetricTone = agent.blockedCount > 0 ? 'blocked' : '';
+      return (
+        '<article class="agent-card app-flat-card" data-priority="' + escapeHtml(agent.status) + '">' +
+          '<div class="agent-head">' +
+            '<div class="agent-identity">' +
+              '<div class="agent-mark">' + renderAvatar(agent) + '</div>' +
+              '<div class="agent-title-group">' +
+                '<div class="agent-name-row">' +
+                  '<div class="agent-name">' + escapeHtml(agent.name) + '</div>' +
+                  '<div class="agent-role">' + escapeHtml(agent.role) + '</div>' +
+                '</div>' +
+                '<div class="agent-subline"><strong>' + escapeHtml(agent.currentTask) + '</strong></div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="agent-chip app-status-chip"' + chipTone + '><span class="chip-dot"></span>' + escapeHtml(agent.statusLabel) + '</div>' +
+          '</div>' +
+          renderAttention(agent) +
+          '<div class="focus-strip">' +
+            '<div class="app-kicker">Current Focus</div>' +
+            '<div class="focus-task">' + escapeHtml(agent.currentTask) + '</div>' +
+            '<div class="focus-meta">' +
+              '<span>' + escapeHtml(agent.currentMeta || 'Tracking background execution') + '</span>' +
+              '<span>' + escapeHtml(summarizeOverview(agent)) + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="metric-row app-metric-rail">' +
+            '<button class="metric-button app-metric-button focusable" data-action="toggle-section" data-section="overview" data-agent="' + escapeHtml(agent.id) + '" aria-pressed="' + String(openSection === 'overview') + '">' +
+              '<div class="metric-value">' + escapeHtml(String(agent.taskCount)) + '</div>' +
+              '<div class="metric-label">Tasks</div>' +
+            '</button>' +
+            '<button class="metric-button app-metric-button focusable" data-action="toggle-section" data-section="tasks" data-agent="' + escapeHtml(agent.id) + '" data-tone="' + blockedMetricTone + '" aria-pressed="' + String(openSection === 'tasks') + '">' +
+              '<div class="metric-value">' + escapeHtml(String(agent.blockedCount)) + '</div>' +
+              '<div class="metric-label">Blocked</div>' +
+            '</button>' +
+            '<button class="metric-button app-metric-button focusable" data-action="toggle-section" data-section="artifacts" data-agent="' + escapeHtml(agent.id) + '" data-tone="' + reviewMetricTone + '" aria-pressed="' + String(openSection === 'artifacts') + '">' +
+              '<div class="metric-value">' + escapeHtml(String(agent.artifacts.length)) + '</div>' +
+              '<div class="metric-label">Artifacts</div>' +
+            '</button>' +
+            '<button class="metric-button app-metric-button focusable" data-action="toggle-section" data-section="progress" data-agent="' + escapeHtml(agent.id) + '" aria-pressed="' + String(openSection === 'progress') + '">' +
+              '<div class="metric-value">' + escapeHtml(String(agent.progress == null ? 'n/a' : agent.progress + '%')) + '</div>' +
+              '<div class="metric-label">Progress</div>' +
+            '</button>' +
+          '</div>' +
+          renderOverviewSection(agent, openSection === 'overview') +
+          renderTasksSection(agent, openSection === 'tasks') +
+          renderArtifactsSection(agent, openSection === 'artifacts') +
+          renderProgressSection(agent, openSection === 'progress') +
+          '<div class="card-footer">' +
+            '<div class="sync-copy">Synced just now</div>' +
+            '<a class="footer-link" href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer">Open live view<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"></path><path d="M8 7h9v9"></path></svg></a>' +
+          '</div>' +
+        '</article>'
+      );
+    }
+
+    function renderBoard(payload) {
+      var normalized = normalizePayload(payload);
+      var agents = normalized.agents.sort(function (left, right) {
+        return getPriority(left) - getPriority(right) || left.name.localeCompare(right.name);
+      });
+
+      if (!agents.length) {
+        injectHtml(
+          '<div class="surface-label">Agent Status</div>' +
+          '<div class="empty-state app-flat-card">' +
+            '<strong>No agents need you right now</strong>' +
+            '<p>Everything is moving in the background. Expand a metric only when you need to act, then return to the quiet state.</p>' +
+          '</div>'
+        );
         return;
       }
 
-      if (payload.agents.length === 0) {
-        injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.agent(24)}</div><div class="empty-title">No agents in motion</div><div class="empty-desc">Launch work or include idle agents to see the multi-agent board.</div></div>`);
-        return;
+      injectHtml(
+        '<div class="surface-label">Agent Status</div>' +
+        agents.map(renderCard).join('')
+      );
+    }
+
+    document.addEventListener('click', function (event) {
+      var trigger = event.target && event.target.closest('[data-action="toggle-section"]');
+      if (!trigger) return;
+      setCardSection(trigger.getAttribute('data-agent'), trigger.getAttribute('data-section'));
+    });
+
+    var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
+    var demoPayload = isDemo
+      ? {
+          agents: [
+            {
+              agent_name: 'Pace',
+              role: 'Product',
+              status: 'blocked',
+              current_task: 'Decide whether to ship self-serve usage pricing before founder onboarding opens',
+              progress: 68,
+              eta: '~2 days remaining',
+              blockers: ['Waiting on pricing approval from founders before the activation test can launch.'],
+              tasks: [
+                { id: 'pace-1', title: 'Finalize velocity model for launch readiness scoring', status: 'done' },
+                { id: 'pace-2', title: 'Audit founder activation loop for drop-off at pricing step', status: 'in_progress' },
+                { id: 'pace-3', title: 'Package self-serve pricing recommendation for approval', status: 'blocked' }
+              ],
+              artifacts: [
+                { id: 'pace-a', title: 'Velocity model draft', artifact_type: 'prod.analysis', status: 'approved', summary: 'Baseline launch scoring model accepted by the team.' },
+                { id: 'pace-b', title: 'Activation loop audit', artifact_type: 'prod.report', status: 'in_review', summary: 'Recommendations ready for founder review.' }
+              ],
+              streams: [
+                { id: 'pace-s1', name: 'Launch readiness', progress: 78 },
+                { id: 'pace-s2', name: 'Founder onboarding', progress: 54 }
+              ]
+            },
+            {
+              agent_name: 'Eli',
+              role: 'Engineering',
+              status: 'running',
+              current_task: 'Implement billing event pipeline and reconcile launch telemetry fields',
+              progress: 74,
+              eta: '~1 day remaining',
+              tasks: [
+                { id: 'eli-1', title: 'Backfill usage event normalization for Stripe and product analytics', status: 'in_progress' },
+                { id: 'eli-2', title: 'Patch MCP launch event audit trail for founder review', status: 'done' }
+              ],
+              artifacts: [
+                { id: 'eli-a', title: 'Billing event mapping', artifact_type: 'eng.spec', status: 'in_review', summary: 'Review needed before the instrumentation ships.' }
+              ],
+              streams: [
+                { id: 'eli-s1', name: 'Billing instrumentation', progress: 82 },
+                { id: 'eli-s2', name: 'Telemetry QA', progress: 61 }
+              ]
+            }
+          ]
+        }
+      : null;
+
+    initWidget({
+      render: function (payload) {
+        renderBoard(payload || demoPayload);
       }
-
-      var summary = payload.summary || {};
-      var counts = ['running', 'blocked', 'queued', 'idle'].map(function(statusKey) {
-        var count = typeof summary[statusKey] === 'number'
-          ? summary[statusKey]
-          : payload.agents.filter(function(agent) {
-              return firstString([agent.status]).toLowerCase() === statusKey;
-            }).length;
-        return { key: statusKey, label: humanize(statusKey), count: count };
-      }).filter(function(item) { return item.count > 0; });
-
-      var runningCountItem = counts.find(function(item) { return item.key === 'running'; });
-      var blockedCountItem = counts.find(function(item) { return item.key === 'blocked'; });
-      var runningCount = runningCountItem ? runningCountItem.count : 0;
-      var blockedCount = blockedCountItem ? blockedCountItem.count : 0;
-      var subtitleCopy = runningCount > 0
-        ? runningCount + ' agents are actively executing'
-        : 'No agents are actively executing';
-      if (blockedCount > 0) {
-        subtitleCopy += ' while ' + blockedCount + ' need unblock help.';
-      } else {
-        subtitleCopy += ' and the board is clear of active blockers.';
-      }
-
-      var summaryHtml = counts.map(function(item) {
-        return `
-          <div class="summary-card widget-stat-card">
-            <span class="summary-value widget-stat-value">${item.count}</span>
-            <span class="widget-stat-label">${escapeHtml(item.label)}</span>
-            <span class="widget-stat-copy">${item.key === 'running'
-              ? 'Currently in motion'
-              : item.key === 'blocked'
-              ? 'Need dependency relief'
-              : item.key === 'queued'
-              ? 'Waiting to start'
-              : 'Visible but not active'}</span>
-          </div>
-        `;
-      }).join('');
-
-      var cardsHtml = payload.agents.map(function(agent, index) {
-        var profile = resolveAgentProfile(agent || {});
-        var accentRgb = profile.accentRgb || '191, 255, 0';
-        var tasks = extractTasks(agent || {});
-        var isIdle = firstString([agent.status]).toLowerCase() === 'idle';
-        var primaryTask = tasks[0] || (isIdle ? 'Awaiting next assignment' : 'No active task');
-        var extraTasks = tasks.slice(1, 4);
-        var hiddenTaskCount = Math.max(0, tasks.length - 1 - extraTasks.length);
-        var taskCount = tasks.length;
-        var statusLabel = humanize(agent.status) || (tasks.length > 0 ? 'Active' : 'Idle');
-        var progress = typeof agent.progress === 'number' && isFinite(agent.progress)
-          ? Math.max(0, Math.min(100, agent.progress))
-          : null;
-        var blockers = Array.isArray(agent.blockers)
-          ? agent.blockers.filter(function(item) { return typeof item === 'string' && item.trim(); })
-          : [];
-        var artifacts = Array.isArray(agent.artifacts) ? agent.artifacts : [];
-        var artifactCount = typeof agent.artifact_count === 'number' && isFinite(agent.artifact_count)
-          ? agent.artifact_count
-          : artifacts.length;
-        var workload = agent.workload && typeof agent.workload === 'object' ? agent.workload : {};
-        var workloadSummary = summarizeWorkload(agent, workload);
-        var tasksInProgress = workloadSummary.active;
-        var blockedCount = workloadSummary.blocked;
-        var streamCount = workloadSummary.streams;
-        var totalTasks = workloadSummary.total;
-        var todoCount = workloadSummary.todo;
-        var doneCount = workloadSummary.done;
-        var distributionDenominator = Math.max(totalTasks, tasksInProgress + blockedCount + doneCount + todoCount, 0);
-        var activeShare = distributionDenominator > 0 ? Math.max(0, Math.min(100, (tasksInProgress / distributionDenominator) * 100)) : 0;
-        var blockedShare = distributionDenominator > 0 ? Math.max(0, Math.min(100, (blockedCount / distributionDenominator) * 100)) : 0;
-        var doneShare = distributionDenominator > 0 ? Math.max(0, Math.min(100, (doneCount / distributionDenominator) * 100)) : 0;
-        var todoShare = distributionDenominator > 0 ? Math.max(0, 100 - activeShare - blockedShare - doneShare) : 0;
-        var laneCount = Math.max(streamCount, totalTasks > 0 ? 1 : 0);
-        var workloadCaption = totalTasks > 0
-          ? totalTasks + ' task' + (totalTasks === 1 ? '' : 's') + ' across ' + laneCount + ' ' + (laneCount === 1 ? 'lane' : 'lanes') + (blockedCount > 0 ? ' · ' + blockedCount + ' blocked' : '')
-          : 'No routed work in view';
-        var href = agent.initiative_id
-          ? ORGX_BASE_URL + '/live/' + encodeURIComponent(agent.initiative_id)
-          : buildAgentUrl(agent.agent_id);
-        var artifactMiniHtml = artifacts.slice(0, 3).map(function(artifact) {
-          var title = escapeHtml(artifact.title || artifact.name || 'Untitled artifact');
-          var type = escapeHtml(String(artifact.artifact_type || artifact.type || 'artifact').replace(/_/g, '.'));
-          var status = escapeHtml(String(artifact.status || 'draft').replace(/_/g, ' '));
-          var statusClass = 'status-' + String(artifact.status || 'draft').replace(/[^a-zA-Z0-9_-]/g, '_');
-          var summary = escapeHtml(artifact.summary || artifact.description || '');
-          return `
-            <div class="artifact-mini">
-              <div>
-                <div class="artifact-mini-title">${title}</div>
-                <div class="artifact-mini-copy">${type}${summary ? ' · ' + summary : ''}</div>
-              </div>
-              <div class="artifact-mini-status ${statusClass}">${status}</div>
-            </div>
-          `;
-        }).join('');
-
-        return `
-          <div class="agent-item animate-in" style="animation-delay:${(index % 6) * 0.06}s; --agent-accent-rgb:${accentRgb};">
-            <div class="agent-item-inner">
-              <div class="agent-meta">
-                <div class="avatar-ring">${renderAvatar(agent)}</div>
-                <div class="agent-title">
-                  <div class="agent-title-copy">
-                    <div class="agent-name">${escapeHtml(profile.name)}</div>
-                    <div class="agent-role">${escapeHtml(profile.role)}</div>
-                  </div>
-                  <div class="status-pill">
-                    <div class="status-dot"></div>
-                    ${escapeHtml(statusLabel)}
-                  </div>
-                </div>
-              </div>
-
-              <div class="agent-task-block">
-                <div>
-                  <div class="ox-eyebrow" style="margin-bottom:6px;">Current focus</div>
-                  <div class="task-lead">${escapeHtml(primaryTask)}</div>
-                  <div class="focus-meta">
-                    <div class="task-subcopy">${
-                    taskCount > 1
-                      ? `${taskCount} tasks in view`
-                      : tasks.length === 1
-                      ? 'Single-task focus'
-                      : isIdle
-                      ? 'Standing by for routed work'
-                      : 'No routed tasks yet'
-                    }</div>
-                    ${taskCount > 1 ? `<span class="focus-pill">1 / ${taskCount}</span>` : ''}
-                  </div>
-                </div>
-
-                ${extraTasks.length > 0 ? `
-                  <div class="task-list">
-                    ${extraTasks.map(function(task) { return `<span class="task-chip">${escapeHtml(task)}</span>`; }).join('')}
-                    ${hiddenTaskCount > 0 ? `<span class="task-chip">+${hiddenTaskCount} more</span>` : ''}
-                  </div>
-                ` : ''}
-
-                ${progress !== null ? `
-                  <div class="progress-row">
-                    <div class="progress-copy">
-                      <span>Progress</span>
-                      <span>${progress}%</span>
-                    </div>
-                    <div class="progress-track"><div class="progress-fill" style="width:${progress}%"></div></div>
-                  </div>
-                ` : ''}
-
-                ${blockers.length > 0 ? `
-                  <div class="blockers">
-                    <div class="ox-eyebrow" style="color:var(--ox-danger);">Blocked on</div>
-                    <ul>
-                      ${blockers.map(function(item) { return `<li>${escapeHtml(item)}</li>`; }).join('')}
-                    </ul>
-                  </div>
-                ` : ''}
-
-                <div class="output-panel">
-                  <div class="output-header">
-                    <div class="ox-eyebrow">Session output</div>
-                    <div class="output-count">${artifactCount} artifact${artifactCount === 1 ? '' : 's'}</div>
-                  </div>
-                  ${artifactMiniHtml ? `<div class="artifact-mini-list">${artifactMiniHtml}</div>` : `<div class="task-subcopy">No artifacts surfaced yet for this agent in the current initiative context.</div>`}
-                </div>
-
-                <div class="workload-panel">
-                  <div class="workload-head">
-                    <div>
-                      <div class="ox-eyebrow">Task snapshot</div>
-                      <div class="workload-caption">${escapeHtml(workloadCaption)}</div>
-                    </div>
-                    <div class="workload-head-stats">
-                      <span class="workload-head-stat"><strong>${totalTasks}</strong> total</span>
-                      <span class="workload-head-stat${blockedCount > 0 ? ' is-alert' : ''}"><strong>${blockedCount}</strong> blocked</span>
-                    </div>
-                  </div>
-                  ${totalTasks > 0 ? `
-                    <div class="workload-track" aria-hidden="true">
-                      ${todoShare > 0 ? `<span class="workload-segment workload-segment-todo" style="width:${todoShare}%"></span>` : ''}
-                      ${activeShare > 0 ? `<span class="workload-segment workload-segment-active" style="width:${activeShare}%"></span>` : ''}
-                      ${doneShare > 0 ? `<span class="workload-segment workload-segment-done" style="width:${doneShare}%"></span>` : ''}
-                      ${blockedShare > 0 ? `<span class="workload-segment workload-segment-blocked" style="width:${blockedShare}%"></span>` : ''}
-                    </div>
-                    <div class="workload-legend" aria-hidden="true">
-                      <span class="workload-legend-item"><span class="workload-legend-dot todo"></span>To do (${Math.round(todoShare)}%)</span>
-                      <span class="workload-legend-item"><span class="workload-legend-dot active"></span>In progress (${Math.round(activeShare)}%)</span>
-                      <span class="workload-legend-item"><span class="workload-legend-dot done"></span>Done (${Math.round(doneShare)}%)</span>
-                      ${blockedShare > 0 ? `<span class="workload-legend-item"><span class="workload-legend-dot blocked"></span>Blocked (${Math.round(blockedShare)}%)</span>` : ''}
-                    </div>
-                  ` : ''}
-                  <div class="workload-metrics">
-                    <div class="workload-metric">
-                      <div class="workload-metric-label">Active</div>
-                      <div class="workload-metric-value">
-                        <div class="workload-metric-number">${tasksInProgress}</div>
-                        <div class="workload-metric-copy">${tasksInProgress > 0 ? 'Moving' : 'Idle'}</div>
-                      </div>
-                    </div>
-                    <div class="workload-metric is-blocked">
-                      <div class="workload-metric-label">Blocked</div>
-                      <div class="workload-metric-value">
-                        <div class="workload-metric-number">${blockedCount}</div>
-                        <div class="workload-metric-copy">${blockedCount > 0 ? 'Open' : 'Clear'}</div>
-                      </div>
-                    </div>
-                    <div class="workload-metric">
-                      <div class="workload-metric-label">Lanes</div>
-                      <div class="workload-metric-value">
-                        <div class="workload-metric-number">${streamCount}</div>
-                        <div class="workload-metric-copy">${streamCount > 1 ? 'Parallel' : streamCount === 1 ? 'Single' : 'None'}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="widget-footer">
-                <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
-                <a href="${href}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(href || ''))}, event)' class="deep-link">
-                  Open live view
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                </a>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      injectHtml(`
-        <div class="widget-shell-card animate-in">
-          <div class="ox-card">
-            <div class="ox-card-inner">
-              <div class="widget-hero">
-                <div class="widget-hero-copy">
-                  <div class="widget-kicker">Live Agent Board</div>
-                  <div class="widget-title-lg">Multi-agent execution</div>
-                  <div class="widget-subtitle">${escapeHtml(subtitleCopy)}</div>
-                </div>
-                <div class="widget-icon-frame">${icons.agent(20)}</div>
-              </div>
-              <div class="summary-grid widget-stat-grid">${summaryHtml}</div>
-            </div>
-          </div>
-        </div>
-        <div class="agent-board">${cardsHtml}</div>
-      `);
-    };
-
-    if(isDemo) applyBootPayload();
-    else initWidget({ render: d => { applyBootPayload(function(){ if(d) data = d; }); } });
+    });
   </script>
 </body>
 </html>

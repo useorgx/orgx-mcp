@@ -58,6 +58,26 @@ function errorRedirect(
   return Response.redirect(errorUrl.toString(), 302);
 }
 
+async function serveLandingPage(
+  request: Request,
+  env: Pick<AuthHandlerEnv, 'ASSETS' | 'MCP_SERVER_URL'>
+): Promise<Response> {
+  const serverUrl = env.MCP_SERVER_URL ?? 'https://mcp.useorgx.com';
+
+  if (env.ASSETS?.fetch) {
+    const assetRequest = new Request(new URL('/index.html', serverUrl).toString(), {
+      method: request.method === 'HEAD' ? 'HEAD' : 'GET',
+      headers: request.headers,
+    });
+    const assetResponse = await env.ASSETS.fetch(assetRequest);
+    if (assetResponse.ok) {
+      return withCors(assetResponse);
+    }
+  }
+
+  return Response.redirect(new URL('/index.html', serverUrl).toString(), 302);
+}
+
 function buildDerivedServerCard(manifest: typeof serverManifest) {
   return {
     serverInfo: {
@@ -363,8 +383,8 @@ export const authHandler = {
         return withSseKeepAlive(resp);
       }
 
-      // GET / from browsers → landing page
-      if (request.method === 'GET') {
+      // GET/HEAD / for humans and crawlers → landing page
+      if (request.method === 'GET' || request.method === 'HEAD') {
         const secFetchMode = request.headers.get('sec-fetch-mode') ?? '';
         const secFetchDest = request.headers.get('sec-fetch-dest') ?? '';
         const upgradeInsecureRequests =
@@ -373,12 +393,11 @@ export const authHandler = {
           secFetchMode === 'navigate' &&
           secFetchDest === 'document' &&
           upgradeInsecureRequests === '1';
+        const wantsHtml =
+          accept.includes('text/html') || (accept.includes('*/*') && !accept.includes('application/json'));
 
-        if (isDocumentNavigation) {
-          return Response.redirect(
-            new URL('/index.html', url.origin).toString(),
-            302
-          );
+        if (isDocumentNavigation || wantsHtml) {
+          return serveLandingPage(request, env);
         }
 
         const resourceMetadataUrl = `${serverUrl}/.well-known/oauth-protected-resource`;
