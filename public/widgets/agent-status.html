@@ -368,7 +368,7 @@
 
     .agent-board {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
       gap: 16px;
     }
 
@@ -652,8 +652,8 @@
     .workload-panel {
       display: flex;
       flex-direction: column;
-      gap: 14px;
-      margin-top: 6px;
+      gap: 12px;
+      margin-top: 8px;
       padding: 14px;
       border-radius: 14px;
       border: 1px solid var(--ox-border);
@@ -702,6 +702,13 @@
 
     .workload-head-stat.is-alert strong {
       color: var(--ox-warning);
+    }
+
+    .workload-caption {
+      margin-top: 4px;
+      font-size: 0.74rem;
+      line-height: 1.4;
+      color: var(--ox-text-muted);
     }
 
     .workload-track {
@@ -777,76 +784,58 @@
       background: linear-gradient(90deg, rgba(251, 191, 36, 0.88), rgba(245, 158, 11, 0.96));
     }
 
-    .workload-stats {
+    .workload-metrics {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
+      gap: 8px;
     }
 
-    .workload-stat {
+    .workload-metric {
       min-width: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 10px;
-      padding: 12px;
+      padding: 10px 11px;
       border-radius: 12px;
       border: 1px solid rgba(255, 255, 255, 0.08);
       background: rgba(255, 255, 255, 0.02);
-    }
-
-    .workload-stat-icon {
-      width: 28px;
-      height: 28px;
-      border-radius: 999px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      border: 1px solid rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.18);
-      background: rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.12);
-      color: rgb(var(--agent-accent-rgb, var(--ox-primary-rgb)));
-    }
-
-    .workload-stat.is-blocked .workload-stat-icon {
-      border-color: rgba(251, 191, 36, 0.22);
-      background: rgba(251, 191, 36, 0.1);
-      color: var(--ox-warning);
-    }
-
-    .workload-stat.is-streams .workload-stat-icon {
-      border-color: rgba(148, 163, 184, 0.22);
-      background: rgba(148, 163, 184, 0.08);
-      color: var(--ox-text-muted);
-    }
-
-    .workload-stat-copy {
-      min-width: 0;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 5px;
     }
 
-    .workload-stat-value {
-      font-size: 1rem;
-      font-weight: 600;
-      line-height: 1.2;
-      color: var(--ox-text);
-    }
-
-    .workload-stat-label {
-      font-size: 0.68rem;
-      line-height: 1.4;
+    .workload-metric-label {
+      font-size: 0.64rem;
+      line-height: 1.25;
       color: var(--ox-text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.07em;
       font-family: var(--ox-mono);
     }
 
-    .workload-stat-note {
-      font-size: 0.74rem;
+    .workload-metric-value {
+      display: flex;
+      align-items: baseline;
+      gap: 7px;
+      min-width: 0;
+    }
+
+    .workload-metric-number {
+      font-size: 1.15rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      color: var(--ox-text);
+      flex-shrink: 0;
+    }
+
+    .workload-metric-copy {
+      font-size: 0.72rem;
       line-height: 1.35;
       color: var(--ox-text-muted);
+      min-width: 0;
+    }
+
+    .workload-metric.is-blocked .workload-metric-number,
+    .workload-metric.is-blocked .workload-metric-copy {
+      color: var(--ox-warning);
     }
 
     @media (max-width: 560px) {
@@ -880,17 +869,18 @@
         justify-content: flex-start;
       }
 
-      .workload-stats {
+      .workload-metrics {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .workload-metric {
+        padding-inline: 10px;
+      }
+    }
+
+    @media (max-width: 920px) {
+      .agent-board {
         grid-template-columns: 1fr;
-      }
-
-      .workload-stat {
-        flex-direction: row;
-        align-items: center;
-      }
-
-      .workload-stat-copy {
-        gap: 2px;
       }
     }
 
@@ -1228,6 +1218,99 @@
         };
       };
 
+      var normalizeStatusKey = function(value) {
+        var normalized = firstString([value]).toLowerCase().replace(/[^a-z0-9]+/g, '_');
+        if (!normalized) return 'idle';
+        if (['running', 'active', 'executing', 'in_progress', 'working'].indexOf(normalized) !== -1) return 'running';
+        if (['blocked', 'paused', 'waiting', 'at_risk'].indexOf(normalized) !== -1) return 'blocked';
+        if (['queued', 'pending', 'not_started', 'todo', 'draft'].indexOf(normalized) !== -1) return 'queued';
+        return normalized;
+      };
+
+      var collectionKey = function(item) {
+        if (typeof item === 'string') return item.trim();
+        if (!item || typeof item !== 'object') return '';
+        return firstString([
+          item.id,
+          item.task_id,
+          item.taskId,
+          item.entity_id,
+          item.entityId,
+          item.title,
+          item.summary,
+          item.name,
+          item.description
+        ]) || JSON.stringify(item);
+      };
+
+      var mergeUniqueItems = function(left, right) {
+        var seen = {};
+        return ([]).concat(Array.isArray(left) ? left : [], Array.isArray(right) ? right : []).filter(function(item) {
+          var key = collectionKey(item);
+          if (!key || seen[key]) return false;
+          seen[key] = true;
+          return true;
+        });
+      };
+
+      var mergeAgentAliases = function(agents) {
+        var statusWeight = { idle: 1, queued: 2, blocked: 3, running: 4 };
+        var merged = new Map();
+
+        agents.forEach(function(agent) {
+          var profile = resolveAgentProfile(agent || {});
+          var key = [profile.name.toLowerCase(), profile.role.toLowerCase()].join('|');
+          var normalizedStatus = normalizeStatusKey(agent && agent.status);
+          var existing = merged.get(key);
+          if (!existing) {
+            merged.set(key, Object.assign({}, agent, {
+              agent_name: firstString([agent.agent_name, profile.name]) || profile.name,
+              role: firstString([agent.role, profile.role]) || profile.role,
+              status: normalizedStatus,
+              blockers: mergeUniqueItems(agent.blockers, []),
+              current_tasks: mergeUniqueItems(agent.current_tasks, []),
+              active_tasks: mergeUniqueItems(agent.active_tasks, []),
+              tasks: mergeUniqueItems(agent.tasks, []),
+              artifacts: mergeUniqueItems(agent.artifacts, [])
+            }));
+            return;
+          }
+
+          var keepIncomingStatus = (statusWeight[normalizedStatus] || 0) > (statusWeight[normalizeStatusKey(existing.status)] || 0);
+          merged.set(key, Object.assign({}, existing, {
+            agent_id: firstString([existing.agent_id, agent.agent_id]),
+            agent_name: firstString([existing.agent_name, agent.agent_name, profile.name]) || profile.name,
+            role: firstString([existing.role, agent.role, profile.role]) || profile.role,
+            agent_type: firstString([existing.agent_type, agent.agent_type]),
+            domain: firstString([existing.domain, agent.domain]),
+            initiative_id: firstString([existing.initiative_id, agent.initiative_id]),
+            execution_target: firstString([existing.execution_target, agent.execution_target]),
+            run_id: firstString([existing.run_id, agent.run_id]),
+            status: keepIncomingStatus ? normalizedStatus : normalizeStatusKey(existing.status),
+            current_task: keepIncomingStatus
+              ? (firstString([agent.current_task, existing.current_task]) || null)
+              : (firstString([existing.current_task, agent.current_task]) || null),
+            progress: typeof existing.progress === 'number' && isFinite(existing.progress)
+              ? (typeof agent.progress === 'number' && isFinite(agent.progress)
+                ? Math.max(existing.progress, agent.progress)
+                : existing.progress)
+              : agent.progress,
+            blockers: mergeUniqueItems(existing.blockers, agent.blockers),
+            current_tasks: mergeUniqueItems(existing.current_tasks, agent.current_tasks),
+            active_tasks: mergeUniqueItems(existing.active_tasks, agent.active_tasks),
+            tasks: mergeUniqueItems(existing.tasks, agent.tasks),
+            artifacts: mergeUniqueItems(existing.artifacts, agent.artifacts),
+            artifact_count: Math.max(
+              typeof existing.artifact_count === 'number' && isFinite(existing.artifact_count) ? existing.artifact_count : 0,
+              typeof agent.artifact_count === 'number' && isFinite(agent.artifact_count) ? agent.artifact_count : 0
+            ),
+            workload: Object.assign({}, existing.workload || {}, agent.workload || {})
+          }));
+        });
+
+        return Array.from(merged.values());
+      };
+
       var getAvatarUrl = function(agent) {
         var profile = resolveAgentProfile(agent || {});
         return profile.avatarPath ? resolveWidgetAsset(profile.avatarPath) : null;
@@ -1385,10 +1468,10 @@
     var normalizeAgentPayload = payload => {
       if (!payload) return null;
       if (Array.isArray(payload.agents)) {
-        var agents = payload.agents
+        var agents = mergeAgentAliases(payload.agents
           .map(normalizeAgentRecord)
           .filter(Boolean)
-          .filter(isVisibleAgent);
+          .filter(isVisibleAgent));
         var summary = payload.summary || {};
         var running = agents.filter(agent => agent.status === 'running').length;
         var queued = agents.filter(agent => agent.status === 'queued').length;
@@ -1538,11 +1621,15 @@
         var totalTasks = workloadSummary.total;
         var todoCount = workloadSummary.todo;
         var doneCount = workloadSummary.done;
-        var distributionDenominator = Math.max(totalTasks, tasksInProgress + blockedCount + doneCount + todoCount, 1);
-        var activeShare = Math.max(0, Math.min(100, (tasksInProgress / distributionDenominator) * 100));
-        var blockedShare = Math.max(0, Math.min(100, (blockedCount / distributionDenominator) * 100));
-        var doneShare = Math.max(0, Math.min(100, (doneCount / distributionDenominator) * 100));
-        var todoShare = Math.max(0, 100 - activeShare - blockedShare - doneShare);
+        var distributionDenominator = Math.max(totalTasks, tasksInProgress + blockedCount + doneCount + todoCount, 0);
+        var activeShare = distributionDenominator > 0 ? Math.max(0, Math.min(100, (tasksInProgress / distributionDenominator) * 100)) : 0;
+        var blockedShare = distributionDenominator > 0 ? Math.max(0, Math.min(100, (blockedCount / distributionDenominator) * 100)) : 0;
+        var doneShare = distributionDenominator > 0 ? Math.max(0, Math.min(100, (doneCount / distributionDenominator) * 100)) : 0;
+        var todoShare = distributionDenominator > 0 ? Math.max(0, 100 - activeShare - blockedShare - doneShare) : 0;
+        var laneCount = Math.max(streamCount, totalTasks > 0 ? 1 : 0);
+        var workloadCaption = totalTasks > 0
+          ? totalTasks + ' task' + (totalTasks === 1 ? '' : 's') + ' across ' + laneCount + ' ' + (laneCount === 1 ? 'lane' : 'lanes') + (blockedCount > 0 ? ' · ' + blockedCount + ' blocked' : '')
+          : 'No routed work in view';
         var href = agent.initiative_id
           ? ORGX_BASE_URL + '/live/' + encodeURIComponent(agent.initiative_id)
           : buildAgentUrl(agent.agent_id);
@@ -1634,47 +1721,49 @@
 
                 <div class="workload-panel">
                   <div class="workload-head">
-                    <div class="ox-eyebrow">Task distribution</div>
+                    <div>
+                      <div class="ox-eyebrow">Task snapshot</div>
+                      <div class="workload-caption">${escapeHtml(workloadCaption)}</div>
+                    </div>
                     <div class="workload-head-stats">
                       <span class="workload-head-stat"><strong>${totalTasks}</strong> total</span>
                       <span class="workload-head-stat${blockedCount > 0 ? ' is-alert' : ''}"><strong>${blockedCount}</strong> blocked</span>
                     </div>
                   </div>
-                  <div class="workload-track" aria-hidden="true">
-                    ${todoShare > 0 ? `<span class="workload-segment workload-segment-todo" style="width:${todoShare}%"></span>` : ''}
-                    ${activeShare > 0 ? `<span class="workload-segment workload-segment-active" style="width:${activeShare}%"></span>` : ''}
-                    ${doneShare > 0 ? `<span class="workload-segment workload-segment-done" style="width:${doneShare}%"></span>` : ''}
-                    ${blockedShare > 0 ? `<span class="workload-segment workload-segment-blocked" style="width:${blockedShare}%"></span>` : ''}
-                  </div>
-                  <div class="workload-legend" aria-hidden="true">
-                    <span class="workload-legend-item"><span class="workload-legend-dot todo"></span>To do (${Math.round(todoShare)}%)</span>
-                    <span class="workload-legend-item"><span class="workload-legend-dot active"></span>In progress (${Math.round(activeShare)}%)</span>
-                    <span class="workload-legend-item"><span class="workload-legend-dot done"></span>Done (${Math.round(doneShare)}%)</span>
-                    ${blockedShare > 0 ? `<span class="workload-legend-item"><span class="workload-legend-dot blocked"></span>Blocked (${Math.round(blockedShare)}%)</span>` : ''}
-                  </div>
-                  <div class="workload-stats">
-                    <div class="workload-stat">
-                      <div class="workload-stat-icon">${icons.task(14)}</div>
-                      <div class="workload-stat-copy">
-                        <div class="workload-stat-label">Active tasks</div>
-                        <div class="workload-stat-value">${tasksInProgress}</div>
-                        <div class="workload-stat-note">${tasksInProgress > 0 ? 'Currently routed to this agent' : 'No active task in motion'}</div>
+                  ${totalTasks > 0 ? `
+                    <div class="workload-track" aria-hidden="true">
+                      ${todoShare > 0 ? `<span class="workload-segment workload-segment-todo" style="width:${todoShare}%"></span>` : ''}
+                      ${activeShare > 0 ? `<span class="workload-segment workload-segment-active" style="width:${activeShare}%"></span>` : ''}
+                      ${doneShare > 0 ? `<span class="workload-segment workload-segment-done" style="width:${doneShare}%"></span>` : ''}
+                      ${blockedShare > 0 ? `<span class="workload-segment workload-segment-blocked" style="width:${blockedShare}%"></span>` : ''}
+                    </div>
+                    <div class="workload-legend" aria-hidden="true">
+                      <span class="workload-legend-item"><span class="workload-legend-dot todo"></span>To do (${Math.round(todoShare)}%)</span>
+                      <span class="workload-legend-item"><span class="workload-legend-dot active"></span>In progress (${Math.round(activeShare)}%)</span>
+                      <span class="workload-legend-item"><span class="workload-legend-dot done"></span>Done (${Math.round(doneShare)}%)</span>
+                      ${blockedShare > 0 ? `<span class="workload-legend-item"><span class="workload-legend-dot blocked"></span>Blocked (${Math.round(blockedShare)}%)</span>` : ''}
+                    </div>
+                  ` : ''}
+                  <div class="workload-metrics">
+                    <div class="workload-metric">
+                      <div class="workload-metric-label">Active</div>
+                      <div class="workload-metric-value">
+                        <div class="workload-metric-number">${tasksInProgress}</div>
+                        <div class="workload-metric-copy">${tasksInProgress > 0 ? 'Moving' : 'Idle'}</div>
                       </div>
                     </div>
-                    <div class="workload-stat is-blocked">
-                      <div class="workload-stat-icon">${icons.blocked(14)}</div>
-                      <div class="workload-stat-copy">
-                        <div class="workload-stat-label">Blocked</div>
-                        <div class="workload-stat-value">${blockedCount}</div>
-                        <div class="workload-stat-note">${blockedCount > 0 ? 'Needs decision or dependency relief' : 'No active blockers right now'}</div>
+                    <div class="workload-metric is-blocked">
+                      <div class="workload-metric-label">Blocked</div>
+                      <div class="workload-metric-value">
+                        <div class="workload-metric-number">${blockedCount}</div>
+                        <div class="workload-metric-copy">${blockedCount > 0 ? 'Open' : 'Clear'}</div>
                       </div>
                     </div>
-                    <div class="workload-stat is-streams">
-                      <div class="workload-stat-icon">${icons.stream(14)}</div>
-                      <div class="workload-stat-copy">
-                        <div class="workload-stat-label">Streams</div>
-                        <div class="workload-stat-value">${streamCount}</div>
-                        <div class="workload-stat-note">${streamCount > 0 ? 'Initiative lanes currently touching this agent' : 'No parallel stream context attached'}</div>
+                    <div class="workload-metric">
+                      <div class="workload-metric-label">Lanes</div>
+                      <div class="workload-metric-value">
+                        <div class="workload-metric-number">${streamCount}</div>
+                        <div class="workload-metric-copy">${streamCount > 1 ? 'Parallel' : streamCount === 1 ? 'Single' : 'None'}</div>
                       </div>
                     </div>
                   </div>

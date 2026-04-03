@@ -15,9 +15,12 @@ const requiredDocs = [
   'docs/security-data-handling.md',
   'docs/support.md',
   'docs/anthropic-directory.md',
+  'docs/anthropic-reviewer-runbook.md',
+  'docs/anthropic-release-manager-checklist.md',
 ];
 
 const requiredReadmeSections = [
+  '## Reviewer Operations',
   '## Examples',
   '## Privacy Policy',
   '## Support',
@@ -87,6 +90,10 @@ async function main() {
   console.log('- http://localhost:6274/oauth/callback/debug');
   console.log('- https://claude.ai/api/mcp/auth_callback');
   console.log('- https://claude.com/api/mcp/auth_callback');
+  console.log('Remember to verify the dedicated review workspace via the authenticated OrgX routes:');
+  console.log('- GET https://useorgx.com/api/review/anthropic/status');
+  console.log('- POST https://useorgx.com/api/review/anthropic/bootstrap');
+  console.log('- POST https://useorgx.com/api/review/anthropic/reset');
 }
 
 main().catch((error) => {

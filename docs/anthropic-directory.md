@@ -27,6 +27,11 @@ Before submission, prepare all of the following:
    - `https://claude.com/api/mcp/auth_callback`
 5. If a firewall or IP allowlist is enabled, Claude IP ranges allowlisted per Anthropic guidance.
 6. Support, privacy, and security docs linked from the README.
+7. Authenticated OrgX review routes available for the reviewer account:
+   - `GET https://useorgx.com/api/review/anthropic/status`
+   - `POST https://useorgx.com/api/review/anthropic/bootstrap`
+   - `POST https://useorgx.com/api/review/anthropic/reset`
+8. Reviewer runbook and release-manager checklist included in this repository.
 
 ## Pre-submission checks
 
@@ -59,6 +64,8 @@ Reviewers should be able to perform all of these on the provided account:
 
 - Keep the reviewer account active throughout review and post-admission spot checks.
 - Keep sample data seeded so the read-only tools and widgets are meaningful.
+- Use the OrgX review routes to confirm the dedicated reviewer workspace is baseline-ready before any Claude smoke test.
+- Use `bootstrap` when the workspace is missing or partially seeded; use `reset` when the reviewer changed data and you need to restore the clean baseline.
 - Re-run the preflight script after auth, manifest, or tool-surface changes.
 - Re-verify write tool annotations if new tools are added to the public directory surface.
 
@@ -67,4 +74,6 @@ Reviewers should be able to perform all of these on the provided account:
 - Privacy Policy: <https://github.com/useorgx/orgx-mcp/blob/main/docs/privacy-policy.md>
 - Security & Data Handling: <https://github.com/useorgx/orgx-mcp/blob/main/docs/security-data-handling.md>
 - Support: <https://github.com/useorgx/orgx-mcp/blob/main/docs/support.md>
+- Reviewer Runbook: <https://github.com/useorgx/orgx-mcp/blob/main/docs/anthropic-reviewer-runbook.md>
+- Release Manager Checklist: <https://github.com/useorgx/orgx-mcp/blob/main/docs/anthropic-release-manager-checklist.md>
 - Repository: <https://github.com/useorgx/orgx-mcp>
