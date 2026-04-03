@@ -69,7 +69,7 @@
 
 
     :root {
-      --agent-surface-max: 560px;
+      --agent-surface-max: 720px;
       --agent-running: #10a37f;
       --agent-blocked: var(--ox-danger);
       --agent-review: var(--ox-warning);
@@ -98,7 +98,7 @@
         background: radial-gradient(circle at 50% -18%, rgba(0, 201, 167, 0.08), transparent 56%),
                     linear-gradient(var(--ox-grid) 1px, transparent 1px),
                     linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px);
-        background-size: 100% 100%, 22px 22px, 22px 22px;
+        background-size: 100% 100%, 20px 20px, 20px 20px;
         pointer-events: none;
         z-index: -1;
     }
@@ -1024,9 +1024,9 @@
 
 
     .agent-avatar {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
       background: rgba(var(--ox-card-color-rgb), 0.15);
       color: var(--ox-card-color);
       display: flex;
@@ -1047,12 +1047,20 @@
       border-radius: inherit;
     }
 
+
+    .skeleton-wrapper { transition: opacity 0.3s ease; }
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(16px) scale(0.98); filter: blur(4px); }
+      to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+    }
+    .animate-in { opacity: 0; animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
 </style>
 </head>
 <body>
   <main class="agent-board" id="content" aria-live="polite">
     <div class="surface-label">Agent Status</div>
-    <div class="skeleton-wrapper">
+    <div class="skeleton-wrapper" style="opacity: 1;">
       <div class="skeleton-card">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
           <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
@@ -1537,19 +1545,29 @@
     function renderAttention(agent) {
       if (agent.status !== 'blocked' && agent.status !== 'review') return '';
       var tone = agent.status === 'blocked' ? 'blocked' : 'review';
-      var title = agent.status === 'blocked' ? 'Blocked' : 'Needs review';
-      var body = agent.status === 'blocked'
-        ? String(agent.blockers[0] || 'A founder-level decision is blocking progress.')
-        : String((agent.artifacts.find(function (artifact) { return artifact.status === 'review'; }) || {}).title || 'An artifact is ready for review.');
-      var action = agent.status === 'blocked' ? 'Resolve blocker' : 'Review now';
       
-      var btnClass = tone === 'blocked' ? 'ox-btn ox-btn-primary is-card-tone' : 'ox-btn ox-btn-primary is-card-tone';
+      var isBlocked = agent.status === 'blocked';
+      var body = isBlocked
+        ? 'Blocked: ' + String(agent.blockers[0] || 'A founder-level decision is blocking progress.')
+        : 'Review: ' + String((agent.artifacts.find(function (artifact) { return artifact.status === 'review'; }) || {}).title || 'An artifact is ready for review.');
+      
+      var action = isBlocked ? 'Resolve' : 'Review';
+      
+      var icon = isBlocked 
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>';
+        
+      var bgTone = isBlocked ? 'rgba(244, 63, 94, 0.1)' : 'rgba(251, 191, 36, 0.1)';
+      var borderTone = isBlocked ? 'rgba(244, 63, 94, 0.14)' : 'rgba(251, 191, 36, 0.14)';
+      var textTone = isBlocked ? 'var(--ox-danger)' : 'var(--ox-warning)';
       
       return (
-        '<div style="margin-bottom: 16px; padding: 16px; border-radius: 12px; border: 1px solid var(--ox-border); background: var(--ox-well-bg); box-shadow: var(--ox-well-shadow);">' +
-          '<div class="ox-eyebrow" style="color: ' + (tone === 'blocked' ? 'var(--ox-danger)' : 'var(--ox-warning)') + '; margin-bottom: 8px;">' + title + '</div>' +
-          '<div class="ox-text" style="color: var(--ox-text); margin-bottom: 16px;">' + escapeHtml(body) + '</div>' +
-          '<a class="' + btnClass + '" href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer" style="display: flex; align-items: center; justify-content: center; text-decoration: none;">' + action + '</a>' +
+        '<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 16px; padding: 10px 14px; border-radius: 10px; background: ' + bgTone + '; border: 1px solid ' + borderTone + ';">' +
+          '<div style="display: flex; align-items: center; gap: 10px; min-width: 0;">' +
+            '<div style="width: 18px; height: 18px; flex-shrink: 0; color: ' + textTone + '; opacity: 0.85; display: flex; align-items: center; justify-content: center;">' + icon + '</div>' +
+            '<span style="font-size: 0.75rem; color: var(--ox-text); line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + escapeHtml(body) + '</span>' +
+          '</div>' +
+          '<a href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer" style="font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: ' + textTone + '; white-space: nowrap; padding: 4px 10px; border-radius: 6px; border: 1px solid ' + borderTone + '; background: transparent; text-decoration: none; transition: background 0.15s ease;">' + action + '</a>' +
         '</div>'
       );
     }
@@ -1675,7 +1693,7 @@
                   '</div>' +
                 '</div>' +
               '</div>' +
-              '<div class="ox-badge"' + chipTone + ' style="flex-shrink: 0;"><span class="chip-dot" style="width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor;"></span>' + escapeHtml(agent.statusLabel) + '</div>' +
+              ''<a class="ox-badge"' + chipTone + ' href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer" style="flex-shrink: 0; text-decoration: none;"><span class="chip-dot" style="width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor;"></span>' + escapeHtml(agent.statusLabel) + '</a>' +
             '</div>' +
             
             renderAttention(agent) +
@@ -1740,10 +1758,12 @@
         return;
       }
 
-      injectHtml(
-        '<div class="surface-label">Agent Status</div>' +
-        agents.map(renderCard).join('')
-      );
+      var html = '<div class="surface-label">Agent Status</div>';
+      agents.forEach(function(a, i) {
+        var animStr = hasLoadedOnce ? '' : ' animate-in" style="animation-delay: ' + (i * 0.05) + 's"';
+        html += renderCard(a).replace('<article class="agent-card"', '<article class="agent-card' + animStr + '"');
+      });
+      injectHtml(html);
     }
 
     document.addEventListener('click', function (event) {
