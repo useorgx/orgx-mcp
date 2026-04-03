@@ -8,6 +8,15 @@
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
   <script src="shared/interaction-kit.js"></script>
+  <script>
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const theme = params.get('theme');
+      const embed = params.get('embed');
+      if (theme) document.documentElement.setAttribute('data-theme', theme);
+      if (embed) document.documentElement.setAttribute('data-embed', embed);
+    })();
+  </script>
   <style>
       :root, :root[data-theme="light"] {
         --ox-bg: #f8fafc;
@@ -117,6 +126,28 @@
       }
 
       .container { max-width: 540px; margin: 0 auto; position: relative; }
+
+      :root[data-embed="og-decision"] body {
+        min-height: auto;
+        padding: 18px 14px;
+      }
+
+      :root[data-embed="og-decision"] .container {
+        max-width: 560px;
+      }
+
+      :root[data-embed="og-decision"] .ox-card-inner {
+        padding: 20px;
+      }
+
+      :root[data-embed="og-decision"] .widget-shell-card {
+        display: none;
+      }
+
+      :root[data-embed="og-decision"] .ox-title {
+        font-size: 1.02rem;
+        line-height: 1.18;
+      }
 
       /* 100x Structural Components */
       .ox-card {
@@ -419,6 +450,43 @@
       border-radius: 16px;
       overflow: hidden;
       text-align: left;
+    }
+
+    :root[data-embed="og-decision"] .actions-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    :root[data-embed="og-decision"] .decision-action-btn {
+      min-height: 66px;
+      border-radius: 14px;
+    }
+
+    :root[data-embed="og-decision"] .decision-action-copy {
+      gap: 10px;
+      padding: 12px;
+    }
+
+    :root[data-embed="og-decision"] .decision-action-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 9px;
+    }
+
+    :root[data-embed="og-decision"] .decision-action-title {
+      font-size: 0.8rem;
+      line-height: 1.05;
+    }
+
+    :root[data-embed="og-decision"] .decision-action-detail {
+      font-size: 0.62rem;
+      line-height: 1.12;
+    }
+
+    :root[data-embed="og-decision"] .decision-open-link {
+      padding: 5px 9px;
+      font-size: 0.62rem;
     }
 
     .decision-action-btn.ox-btn-ghost {
@@ -937,14 +1005,9 @@
     </div>
   </div>
   <script>
-
-    // Sync theme from URL to override prefers-color-scheme
-    (function() {
-      const params = new URLSearchParams(window.location.search);
-      const theme = params.get('theme');
-      if (theme) document.documentElement.setAttribute('data-theme', theme);
-    })();
-
+    var queryParams = new URLSearchParams(window.location.search);
+    var embedMode = document.documentElement.getAttribute('data-embed') || queryParams.get('embed') || '';
+    var isOgDecisionEmbed = embedMode === 'og-decision';
 
     var injectHtml = (html) => {
       const content = document.getElementById('content');
@@ -1030,17 +1093,64 @@
       };
       var ORGX_BASE_URL = 'https://useorgx.com';
 
-    var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
+    var isDemo = queryParams.get('demo') === 'true';
     var data = isDemo ? {
-      summary: { critical: 1, high: 1 },
+      summary: { critical: 1, high: 2 },
       decisions: [
-        { id: 'd1', urgency: 'critical', agent_name: 'Pace', type: 'Approval', summary: 'Approve JWT token expiry reduction to 15m to patch CVE-2026-1402.', created_at: new Date().toISOString(), expected_cost_usd: 0, required_trust_level: 'act_with_approval' },
-        { id: 'd2', urgency: 'high', agent_name: 'Eli', type: 'Decision', summary: 'Select database indexing strategy for search. Options: B-Tree vs Hash.', created_at: new Date(Date.now() - 3600000).toISOString() }
+        {
+          id: 'd1',
+          urgency: 'critical',
+          agent_name: 'Pace - Product',
+          type: 'Launch approval',
+          summary: 'Approve the founder continuity launch story so the hero, OG preview, and CTA all ship with one narrative.',
+          created_at: new Date().toISOString(),
+          expected_cost_usd: 0,
+          required_trust_level: 'act_with_approval',
+          context: 'Search, scaffolded work, and the decision queue are all demo-ready. The remaining operator call is whether the founder story leads with continuity instead of generic orchestration.',
+          recommendation: 'Approve the continuity-led narrative and keep decisions in the foreground so the founder sees exactly what still needs judgment.',
+          impact: 'Launch copy, social preview, and founder post stay misaligned if this waits for another async pass.',
+          tradeoffs: [
+            {
+              option: 'Continuity-led story',
+              detail: 'Connects search, scaffold, and approvals into one clear founder workflow.'
+            },
+            {
+              option: 'Generic orchestration story',
+              detail: 'Feels broader, but weakens the proof of why OrgX MCP matters day one.'
+            }
+          ]
+        },
+        {
+          id: 'd2',
+          urgency: 'high',
+          agent_name: 'Eli - Engineering',
+          type: 'Search threshold',
+          summary: 'Lock the launch search relevance threshold at 0.82 so the founder continuity query reliably surfaces the linked initiative and approval.',
+          created_at: new Date(Date.now() - 38 * 60 * 1000).toISOString(),
+          expected_cost_usd: 0,
+          required_trust_level: 'approve_or_adjust',
+          context: 'The search widget is pulling the right memory set in staging, but the score cutoff still decides whether the launch decision appears in the first fold.',
+          recommendation: 'Keep 0.82 for launch and revisit after real operator traffic gives us edge-case recall data.',
+          impact: 'Too low adds noisy memory; too high hides the decision that makes the founder workflow credible.'
+        },
+        {
+          id: 'd3',
+          urgency: 'high',
+          agent_name: 'Mark - Marketing',
+          type: 'CTA lock',
+          summary: 'Approve the founder CTA: “Connect your AI tools to one continuity layer” for launch page, OG copy, and the day-seven post.',
+          created_at: new Date(Date.now() - 96 * 60 * 1000).toISOString(),
+          expected_cost_usd: 0,
+          required_trust_level: 'act_with_approval',
+          context: 'Marketing has three variants drafted. This is the last manual choice before the launch pack can be published across site and social.',
+          recommendation: 'Use the continuity-layer CTA so the launch promise stays concrete and defensible across channels.',
+          impact: 'Founder content risks sounding like another generic AI wrapper if the CTA drifts from the product proof.'
+        }
       ]
     } : null;
     var isLoading = !isDemo;
 
-    var isLoadingOverride = new URLSearchParams(window.location.search).get('loading') === 'true';
+    var isLoadingOverride = queryParams.get('loading') === 'true';
     if (isLoadingOverride) {
       isLoading = true;
       isDemo = false;
@@ -1071,7 +1181,7 @@
     var pendingDecisionId = null;
     var lastResolution = null;
     var currentPage = 1;
-    var itemsPerPage = 3;
+    var itemsPerPage = isOgDecisionEmbed ? 1 : 3;
     var pageDirection = 'forward';
 
     var notify = (tone, title, message, duration) => {
@@ -1395,6 +1505,14 @@
         const rejectValue = rejectDrafts[d.id] || '';
         const rejectEnabled = rejectValue.trim().length > 0;
         const rejectActionLabel = isRejecting ? 'Hide note' : 'Reject';
+        const approveTitle = isOgDecisionEmbed ? 'Approve' : 'Approve decision';
+        const approveDetail = isOgDecisionEmbed ? 'Continue path.' : 'Continue this path.';
+        const rejectTitle = isOgDecisionEmbed
+          ? (rejectActionLabel === 'Hide note' ? 'Hide note' : 'Request revision')
+          : (rejectActionLabel === 'Hide note' ? 'Hide feedback panel' : 'Request revision');
+        const rejectDetail = isOgDecisionEmbed
+          ? (isRejecting ? 'Back to actions.' : 'Send guidance.')
+          : (isRejecting ? 'Return to actions.' : 'Send revision guidance.');
         const decisionUrl = buildDecisionSurfaceUrl(d);
         const owner = getDecisionOwner(d);
         return `
@@ -1425,9 +1543,9 @@
                 </div>
               </div>
 
-              <div class="ox-text" style="margin-bottom: 4px;">${escapeHtml(d.urgency === 'critical' ? 'Needs a fast operator call to keep critical-path work moving.' : d.urgency === 'high' ? 'High-signal operator decision with downstream execution impact.' : 'Review and confirm the preferred execution path.')}</div>
+              ${isOgDecisionEmbed ? '' : `<div class="ox-text" style="margin-bottom: 4px;">${escapeHtml(d.urgency === 'critical' ? 'Needs a fast operator call to keep critical-path work moving.' : d.urgency === 'high' ? 'High-signal operator decision with downstream execution impact.' : 'Review and confirm the preferred execution path.')}</div>`}
               
-              ${d.context || d.recommendation || d.impact ? `
+              ${!isOgDecisionEmbed && (d.context || d.recommendation || d.impact) ? `
               <div style="margin: 20px 0; display: flex; flex-direction: column; gap: 16px; border-left: 2px solid rgba(var(--ox-card-color-rgb), 0.4); padding-left: 14px;">
                 ${d.context ? `<div><div class="ox-eyebrow" style="margin-bottom:4px;">Why it matters</div><div class="ox-text" style="color:var(--ox-text);">${escapeHtml(d.context)}</div></div>` : ''}
                 ${d.recommendation ? `<div><div class="ox-eyebrow" style="margin-bottom:4px; color:var(--ox-teal);">Recommendation</div><div class="ox-text" style="color:var(--ox-text); font-weight:500;">${escapeHtml(d.recommendation)}</div></div>` : ''}
@@ -1435,7 +1553,7 @@
               </div>
               ` : ''}
 
-              ${d.tradeoffs && d.tradeoffs.length > 0 ? `
+              ${!isOgDecisionEmbed && d.tradeoffs && d.tradeoffs.length > 0 ? `
               <div style="margin-bottom: 20px;">
                 <div class="ox-eyebrow" style="margin-bottom: 8px;">Tradeoffs</div>
                 <div style="display:flex; flex-direction:column; gap:8px;">
@@ -1449,12 +1567,12 @@
               </div>
               ` : ''}
 
-              <div class="params-well">
+              ${isOgDecisionEmbed ? '' : `<div class="params-well">
                 <div class="param-chip">Type <strong>${escapeHtml(d.type)}</strong></div>
                 <div class="param-chip">Age <strong>${timeAgo(d.created_at)}</strong></div>
                 ${d.expected_cost_usd !== undefined ? `<div class="param-chip">Cost <strong>${formatUsd(d.expected_cost_usd)}</strong></div>` : ''}
                 ${d.required_trust_level ? `<div class="param-chip">Rule <strong>${escapeHtml(d.required_trust_level)}</strong></div>` : ''}
-              </div>
+              </div>`}
 
               <div class="actions-grid">
                 <button
@@ -1467,8 +1585,8 @@
                   <span class="decision-action-copy">
                     <span class="decision-action-icon">${icons.check(18)}</span>
                     <span class="decision-action-text">
-                      <span class="decision-action-title">Approve decision</span>
-                      <span class="decision-action-detail">Continue this path.</span>
+                      <span class="decision-action-title">${approveTitle}</span>
+                      <span class="decision-action-detail">${approveDetail}</span>
                     </span>
                   </span>
                 </button>
@@ -1481,8 +1599,8 @@
                   <span class="decision-action-copy">
                     <span class="decision-action-icon">${isRejecting ? icons.check(18) : icons.error(18)}</span>
                     <span class="decision-action-text">
-                      <span class="decision-action-title">${rejectActionLabel === 'Hide note' ? 'Hide feedback panel' : 'Request revision'}</span>
-                      <span class="decision-action-detail">${isRejecting ? 'Return to actions.' : 'Send revision guidance.'}</span>
+                      <span class="decision-action-title">${rejectTitle}</span>
+                      <span class="decision-action-detail">${rejectDetail}</span>
                     </span>
                   </span>
                 </button>
