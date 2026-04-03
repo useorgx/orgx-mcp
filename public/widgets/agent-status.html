@@ -1084,10 +1084,22 @@
       if (theme) document.documentElement.setAttribute('data-theme', theme);
     })();
 
+    var hasLoadedOnce = false;
     function injectHtml(html) {
       var content = document.getElementById('content');
-      content.innerHTML = html;
-      requestAnimationFrame(_sendSize);
+      var skeleton = content.querySelector('.skeleton-wrapper');
+      if (skeleton && !hasLoadedOnce) {
+        skeleton.style.opacity = '0';
+        setTimeout(function() {
+          content.innerHTML = html;
+          hasLoadedOnce = true;
+          requestAnimationFrame(_sendSize);
+        }, 300);
+      } else {
+        content.innerHTML = html;
+        hasLoadedOnce = true;
+        requestAnimationFrame(_sendSize);
+      }
     }
 
     function _detectProtocol() {
@@ -1693,7 +1705,7 @@
                   '</div>' +
                 '</div>' +
               '</div>' +
-              ''<a class="ox-badge"' + chipTone + ' href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer" style="flex-shrink: 0; text-decoration: none;"><span class="chip-dot" style="width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor;"></span>' + escapeHtml(agent.statusLabel) + '</a>' +
+              '<a class="ox-badge"' + chipTone + ' href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer" style="flex-shrink: 0; text-decoration: none;"><span class="chip-dot" style="width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor;"></span>' + escapeHtml(agent.statusLabel) + '</a>' +
             '</div>' +
             
             renderAttention(agent) +
