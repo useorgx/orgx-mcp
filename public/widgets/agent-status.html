@@ -158,37 +158,6 @@
       gap: 12px;
     }
 
-    .agent-mark {
-      width: 32px;
-      height: 32px;
-      border-radius: 10px;
-      overflow: hidden;
-      flex-shrink: 0;
-      border: 1px solid var(--ox-border);
-      background: var(--ox-well-bg);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--ox-text-muted);
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-
-    .agent-mark img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    .agent-mark-fallback {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      height: 100%;
-    }
-
     .agent-title-group {
       min-width: 0;
       display: flex;
@@ -1053,6 +1022,31 @@
       box-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset, 0 18px 34px -24px rgba(var(--ox-card-color-rgb), 0.82);
     }
 
+
+    .agent-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(var(--ox-card-color-rgb), 0.15);
+      color: var(--ox-card-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--ox-mono);
+      font-size: 0.9rem;
+      overflow: hidden;
+      flex-shrink: 0;
+      border: 1px solid rgba(var(--ox-card-color-rgb), 0.25);
+    }
+    
+    .agent-avatar img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: inherit;
+    }
+
 </style>
 </head>
 <body>
@@ -1315,6 +1309,13 @@
 
     var REMOTE_WIDGET_ASSET_BASE = 'https://mcp.useorgx.com/widgets/shared/';
     function resolveWidgetAsset(path){
+      if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.protocol === "file:") {
+        try {
+          return new URL("shared/" + path, window.location.href).toString();
+        } catch (e) {
+          return "shared/" + path;
+        }
+      }
       return REMOTE_WIDGET_ASSET_BASE + path;
     }
 
@@ -1349,21 +1350,22 @@
         avatarPath: (profile && profile.avatarPath) || null
       };
     }
-
     function renderAvatar(agent) {
       var profile = resolveAgentProfile(agent);
       var fallback = escapeHtml(profile.name.charAt(0).toUpperCase() || '?');
-      if (!profile.avatarPath) {
-        return '<span class="agent-mark-fallback">' + fallback + '</span>';
+      
+      if (profile.avatarPath) {
+        var localUrl = 'shared/' + profile.avatarPath;
+        var remoteUrl = REMOTE_WIDGET_ASSET_BASE + profile.avatarPath;
+        
+        return '<span style="display:none;align-items:center;justify-content:center;width:100%;height:100%;font-family:var(--ox-mono);font-size:0.9rem;font-weight:600;">' + fallback + '</span>' +
+               '<img src="' + escapeHtml(localUrl) + '" alt="' + escapeHtml(profile.name) + '" loading="eager" decoding="sync" draggable="false" ' +
+               'onerror="if(!this.dataset.retried){this.dataset.retried=\'1\';this.src=\'' + escapeHtml(remoteUrl) + '\';return;}this.style.display=\'none\'; if (this.previousElementSibling) this.previousElementSibling.style.display=\'flex\';" />';
       }
-      return (
-        '<img src="' +
-        escapeHtml(resolveWidgetAsset(profile.avatarPath)) +
-        '" alt="" loading="eager" decoding="sync" onerror="this.remove(); this.parentNode.innerHTML = \'<span class=&quot;agent-mark-fallback&quot;>' +
-        fallback +
-        '</span>\';" />'
-      );
+      return '<span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-family:var(--ox-mono);font-size:0.9rem;font-weight:600;">' + fallback + '</span>';
     }
+
+
 
     function buildAgentUrl(agentId) {
       return agentId
@@ -1663,7 +1665,7 @@
           '<div class="ox-card-inner" style="padding-bottom: 16px;">' +
             '<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px;">' +
               '<div style="display: flex; align-items: center; gap: 12px; min-width: 0;">' +
-                '<div style="width: 32px; height: 32px; border-radius: 8px; overflow: hidden; background: var(--ox-well-bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid var(--ox-border);">' +
+                '<div class="agent-avatar">' +
                   renderAvatar(agent) +
                 '</div>' +
                 '<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">' +
