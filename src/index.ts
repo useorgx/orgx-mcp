@@ -86,6 +86,7 @@ import {
   buildMorningBriefValueDashboard,
   formatMorningBriefSummary,
 } from './morningBriefValue';
+import { buildInitiativeListWidgetPayload } from './initiativeWidgetPayload';
 import { normalizeAgentDispatchPayload } from './agentDispatchPayload';
 import { normalizeAgentStatusPayload } from './agentStatusPayload';
 import {
@@ -141,6 +142,7 @@ import {
 import { checkEdgeRateLimit } from './edgeRateLimit';
 import { DEFAULT_SKILL_CATALOG } from './skillCatalog';
 import { buildEntityActionAttachPayload } from './entityActionAttach';
+import { buildSmitheryConfigSchema } from './smitheryConfig';
 import {
   applyHydrationAccessTier,
   resolveHydrationAccessContext,
@@ -170,6 +172,10 @@ import {
 
 // Re-export OAuthState Durable Object
 export { OAuthState };
+
+// Export configSchema directly from the entry file so Smithery's source scanner
+// can detect session configuration without following a re-export.
+export const configSchema = buildSmitheryConfigSchema();
 
 /**
  * Compute MCP server version from tool catalog.
@@ -240,6 +246,8 @@ interface OrgXMcpProps extends Record<string, unknown> {
   scope?: string;
   email?: string;
   profile?: string;
+  workspace_id?: string;
+  initiative_id?: string;
 }
 
 type WidgetDebugEventPhase =
@@ -706,8 +714,38 @@ export class OrgXMcp extends McpAgent<
       hasProps: !!this.props,
       propsUserId: this.props?.userId ?? null,
       propsScope: this.props?.scope ?? null,
+      propsWorkspaceId: this.props?.workspace_id ?? null,
+      propsInitiativeId: this.props?.initiative_id ?? null,
       sessionUserId: this.sessionAuth.userId ?? null,
     });
+
+    const propsWorkspaceId =
+      typeof this.props?.workspace_id === 'string'
+        ? this.props.workspace_id
+        : undefined;
+    const propsInitiativeId =
+      typeof this.props?.initiative_id === 'string'
+        ? this.props.initiative_id
+        : undefined;
+
+    if (propsWorkspaceId && propsWorkspaceId !== this.sessionContext.workspaceId) {
+      this.sessionContext = {
+        ...this.sessionContext,
+        workspaceId: propsWorkspaceId,
+      };
+      await this.saveSessionContext();
+    }
+
+    if (
+      propsInitiativeId &&
+      propsInitiativeId !== this.sessionContext.initiativeId
+    ) {
+      this.sessionContext = {
+        ...this.sessionContext,
+        initiativeId: propsInitiativeId,
+      };
+      await this.saveSessionContext();
+    }
 
     // Then, update from props if user authenticated with a new token
     if (this.props?.userId) {
@@ -3246,13 +3284,15 @@ export class OrgXMcp extends McpAgent<
         'account_status',
       {
         title: 'Get current account tier and usage',
+        description:
+          'Get the current OrgX account tier, billing status, and usage snapshot for the authenticated user.',
         annotations: {
           readOnlyHint: true,
           destructiveHint: false,
           openWorldHint: false,
         },
         inputSchema: {
-            user_id: z.string().optional(),
+            user_id: z.string().optional().describe('Optional user id override.'),
           },
           _meta: { 'openai/visibility': 'private' },
         },
@@ -3294,18 +3334,24 @@ export class OrgXMcp extends McpAgent<
         'account_upgrade',
       {
         title: 'Upgrade account tier',
+        description:
+          'Create the next-step upgrade flow for the authenticated OrgX account. Enterprise requests return contact guidance instead of self-serve checkout.',
         annotations: {
           readOnlyHint: false,
           destructiveHint: true,
           openWorldHint: false,
         },
         inputSchema: {
-            target_plan: z.enum(['pro', 'enterprise']).default('pro'),
+            target_plan: z
+              .enum(['pro', 'enterprise'])
+              .default('pro')
+              .describe('Target plan to upgrade to.'),
             billing_cycle: z
               .enum(['monthly', 'annual'])
               .optional()
-              .default('monthly'),
-            user_id: z.string().optional(),
+              .default('monthly')
+              .describe('Billing cadence for self-serve checkout plans.'),
+            user_id: z.string().optional().describe('Optional user id override.'),
           },
           _meta: { 'openai/visibility': 'private' },
         },
@@ -3375,13 +3421,15 @@ export class OrgXMcp extends McpAgent<
         'account_usage_report',
       {
         title: 'Get detailed account usage report',
+        description:
+          'Get a detailed usage and billing report for the authenticated OrgX account, including quotas, period boundaries, and overage signals.',
         annotations: {
           readOnlyHint: true,
           destructiveHint: false,
           openWorldHint: false,
         },
         inputSchema: {
-            user_id: z.string().optional(),
+            user_id: z.string().optional().describe('Optional user id override.'),
           },
           _meta: { 'openai/visibility': 'private' },
         },
@@ -3918,6 +3966,30 @@ export class OrgXMcp extends McpAgent<
             ? { ...payload, client_activation: activationExperience }
             : payload;
 
+          const initiativeWidgetPayload =
+            buildInitiativeListWidgetPayload(finalPayload);
+          if (initiativeWidgetPayload) {
+            return {
+              _meta: SCAFFOLD_INITIATIVE_WIDGET_META,
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(initiativeWidgetPayload),
+                },
+                {
+                  type: 'text',
+                  text:
+                    formatForLLM('list_entities', initiativeWidgetPayload, {
+                      entityType: args.type,
+                    }) +
+                    formatClientSkillOnboarding(skillOnboarding) +
+                    activationText,
+                },
+              ],
+              structuredContent: initiativeWidgetPayload,
+            };
+          }
+
           return {
             content: [
               {
@@ -4324,6 +4396,11 @@ export class OrgXMcp extends McpAgent<
         title: 'Verify entity completion readiness',
         description:
           'Run pre-completion verification to confirm all child work is done. For tasks, this also checks proof-chain hard blocks that would stop entity_action action=complete. USE WHEN: before completing an entity with entity_action action=complete. NEXT: If verified, proceed with entity_action action=complete. If not, show blockers to user. Read-only.',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          openWorldHint: false,
+        },
         inputSchema: {
           type: z
             .enum(VERIFIABLE_COMPLETION_ENTITY_TYPES)
@@ -4874,6 +4951,11 @@ export class OrgXMcp extends McpAgent<
         title: 'Comment on an entity',
         description:
           'Leave a threaded comment on an entity. USE WHEN: agent or user wants to annotate an entity with observations, concerns, or progress notes. NEXT: Use list_entity_comments to read the thread. DO NOT USE: for status changes — use entity_action instead.',
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: false,
+          openWorldHint: false,
+        },
         inputSchema: {
           entity_type: z.enum([
             'initiative',
@@ -4881,10 +4963,21 @@ export class OrgXMcp extends McpAgent<
             'milestone',
             'task',
             'decision',
-          ]),
-          entity_id: z.string().min(1),
-          body: z.string().min(1).max(4000),
-          parent_comment_id: z.string().uuid().optional(),
+          ]).describe('Entity type to comment on.'),
+          entity_id: z
+            .string()
+            .min(1)
+            .describe('Entity ID to attach the comment to.'),
+          body: z
+            .string()
+            .min(1)
+            .max(4000)
+            .describe('Comment body in plain text or markdown.'),
+          parent_comment_id: z
+            .string()
+            .uuid()
+            .optional()
+            .describe('Optional parent comment ID when replying in-thread.'),
           comment_type: z
             .enum([
               'observation',
@@ -4901,11 +4994,29 @@ export class OrgXMcp extends McpAgent<
           severity: z
             .enum(['info', 'low', 'medium', 'high', 'critical'])
             .optional(),
-          tags: z.array(z.string()).max(20).optional(),
-          author_type: z.enum(['human', 'agent', 'system']).optional(),
-          author_id: z.string().max(200).optional(),
-          author_name: z.string().max(200).optional(),
-          metadata: z.record(z.unknown()).optional(),
+          tags: z
+            .array(z.string())
+            .max(20)
+            .optional()
+            .describe('Optional tags for categorization and later filtering.'),
+          author_type: z
+            .enum(['human', 'agent', 'system'])
+            .optional()
+            .describe('Author type to attribute the comment to.'),
+          author_id: z
+            .string()
+            .max(200)
+            .optional()
+            .describe('Optional author ID override.'),
+          author_name: z
+            .string()
+            .max(200)
+            .optional()
+            .describe('Optional human-readable author name.'),
+          metadata: z
+            .record(z.unknown())
+            .optional()
+            .describe('Optional structured metadata attached to the comment.'),
           user_id: z.string().optional().describe('Optional user id override'),
         },
         _meta: { securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth },
@@ -4975,6 +5086,11 @@ export class OrgXMcp extends McpAgent<
         title: 'List entity comments',
         description:
           'List comments for an entity. USE WHEN: reviewing discussion thread on an entity. NEXT: Use comment_on_entity to add a reply. Read-only.',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          openWorldHint: false,
+        },
         inputSchema: {
           entity_type: z.enum([
             'initiative',
@@ -4982,10 +5098,21 @@ export class OrgXMcp extends McpAgent<
             'milestone',
             'task',
             'decision',
-          ]),
-          entity_id: z.string().min(1),
-          limit: z.number().min(1).max(100).optional(),
-          cursor: z.string().optional(),
+          ]).describe('Entity type to read comments for.'),
+          entity_id: z
+            .string()
+            .min(1)
+            .describe('Entity ID whose comment thread should be returned.'),
+          limit: z
+            .number()
+            .min(1)
+            .max(100)
+            .optional()
+            .describe('Maximum number of comments to return.'),
+          cursor: z
+            .string()
+            .optional()
+            .describe('Pagination cursor from a previous response.'),
           user_id: z.string().optional().describe('Optional user id override'),
         },
         _meta: { 'openai/visibility': 'public', 'openai/readOnlyHint': true, securitySchemes: SECURITY_SCHEMES.readOptionalAuth },
@@ -6499,6 +6626,11 @@ export class OrgXMcp extends McpAgent<
         title: 'Batch entity actions',
         description:
           "Execute actions on multiple entities in one call (pause, launch, complete, resume, etc.). USE WHEN: bulk state changes like pausing multiple initiatives or completing multiple tasks. ACCEPTS: short ID prefixes (8+ chars) — no need to look up full UUIDs. Supports the same launch/pause aliases as entity_action. NEXT: Verify all actions succeeded. DO NOT USE: for deletes — use batch_delete_entities instead.",
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: true,
+          openWorldHint: false,
+        },
         inputSchema: {
           actions: z
             .array(
@@ -6514,7 +6646,8 @@ export class OrgXMcp extends McpAgent<
               })
             )
             .min(1)
-            .max(100),
+            .max(100)
+            .describe('List of lifecycle actions to execute in bulk.'),
           concurrency: z
             .number()
             .min(1)
@@ -7021,8 +7154,16 @@ export class OrgXMcp extends McpAgent<
           openWorldHint: false,
         },
         inputSchema: {
-          scope: z.enum(['personal', 'session']).default('personal'),
-          timeframe: z.enum(['today', 'week', 'month', 'all_time']).optional(),
+          scope: z
+            .enum(['personal', 'session'])
+            .default('personal')
+            .describe(
+              'Whether to return personal stats or current-session diagnostics.'
+            ),
+          timeframe: z
+            .enum(['today', 'week', 'month', 'all_time'])
+            .optional()
+            .describe('Time window for the requested statistics.'),
         },
         _meta: { securitySchemes: SECURITY_SCHEMES.readOptionalAuth },
       },
@@ -7340,11 +7481,22 @@ export class OrgXMcp extends McpAgent<
             'outcomeAttribution',
             'ROI summary from the economic ledger. Returns cost/value/ROI by agent, capability, and time period.'
           ),
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          openWorldHint: false,
+        },
         inputSchema: {
           workspace_id: z.string().describe('Workspace ID'),
-          period: z.enum(['7d', '30d', '90d']).default('30d'),
-          agent_type: z.string().optional(),
-          capability_key: z.string().optional(),
+          period: z
+            .enum(['7d', '30d', '90d'])
+            .default('30d')
+            .describe('Time period for ROI calculation.'),
+          agent_type: z.string().optional().describe('Optional agent type filter.'),
+          capability_key: z
+            .string()
+            .optional()
+            .describe('Optional capability key filter.'),
         },
         _meta: { 'openai/readOnlyHint': true },
       },
@@ -7376,14 +7528,36 @@ export class OrgXMcp extends McpAgent<
         title: 'Record Outcome',
         description:
           'Record a business outcome. Triggers attribution inference to connect outcomes to receipts.',
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: true,
+          openWorldHint: true,
+        },
         inputSchema: {
-          workspace_id: z.string(),
-          outcome_type_key: z.string(),
-          outcome_value: z.number().optional(),
-          source: z.enum(['manual', 'agent_self_report', 'crm_webhook', 'linear_sync']).default('manual'),
-          source_id: z.string().optional(),
-          occurred_at: z.string().optional(),
-          metadata: z.record(z.unknown()).optional(),
+          workspace_id: z.string().describe('Workspace ID.'),
+          outcome_type_key: z
+            .string()
+            .describe('Outcome type key, such as deal_closed or meeting_booked.'),
+          outcome_value: z
+            .number()
+            .optional()
+            .describe('Optional numeric value in the outcome’s native unit.'),
+          source: z
+            .enum(['manual', 'agent_self_report', 'crm_webhook', 'linear_sync'])
+            .default('manual')
+            .describe('System that observed or reported the outcome.'),
+          source_id: z
+            .string()
+            .optional()
+            .describe('Optional external source ID for deduplication.'),
+          occurred_at: z
+            .string()
+            .optional()
+            .describe('Optional ISO timestamp for when the outcome occurred.'),
+          metadata: z
+            .record(z.unknown())
+            .optional()
+            .describe('Optional structured context attached to the outcome record.'),
         },
       },
       async (args) =>
@@ -7420,9 +7594,14 @@ export class OrgXMcp extends McpAgent<
         title: 'Get My Trust Context',
         description:
           'Agent-facing: trust level per capability, promotion requirements, receipt evidence. Returns full trust context for self-awareness.',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          openWorldHint: false,
+        },
         inputSchema: {
-          workspace_id: z.string(),
-          agent_type: z.string(),
+          workspace_id: z.string().describe('Workspace ID.'),
+          agent_type: z.string().describe('Agent type to fetch trust data for.'),
         },
         _meta: { 'openai/readOnlyHint': true },
       },
@@ -7459,11 +7638,28 @@ export class OrgXMcp extends McpAgent<
         title: 'Start Autonomous Session',
         description:
           'Start an autonomous execution session with budget guardrails. Creates a session that produces receipts while executing eligible work.',
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: true,
+          openWorldHint: true,
+        },
         inputSchema: {
-          workspace_id: z.string(),
-          session_type: z.enum(['overnight', 'weekend', 'scheduled', 'manual']).default('manual'),
-          max_cost_usd: z.number().positive().default(5.0),
-          max_receipts: z.number().int().positive().default(50),
+          workspace_id: z.string().describe('Workspace ID.'),
+          session_type: z
+            .enum(['overnight', 'weekend', 'scheduled', 'manual'])
+            .default('manual')
+            .describe('Autonomy session mode to start.'),
+          max_cost_usd: z
+            .number()
+            .positive()
+            .default(5.0)
+            .describe('Maximum budget in USD before the session stops.'),
+          max_receipts: z
+            .number()
+            .int()
+            .positive()
+            .default(50)
+            .describe('Maximum number of receipts the session may produce.'),
         },
         _meta: {
           'mcp/securitySchemes': startAutonomousSessionSecuritySchemes,
@@ -7647,11 +7843,25 @@ export class OrgXMcp extends McpAgent<
         title: 'Get Relevant Learnings',
         description:
           'Agent-facing: organizational learnings relevant to a capability or task context. One agent\'s discovery benefits all agents.',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          openWorldHint: false,
+        },
         inputSchema: {
-          workspace_id: z.string(),
-          capability_key: z.string().optional(),
-          keywords: z.array(z.string()).optional(),
-          limit: z.number().int().min(1).max(20).default(5),
+          workspace_id: z.string().describe('Workspace ID.'),
+          capability_key: z.string().optional().describe('Optional capability key filter.'),
+          keywords: z
+            .array(z.string())
+            .optional()
+            .describe('Optional keywords for semantic matching.'),
+          limit: z
+            .number()
+            .int()
+            .min(1)
+            .max(20)
+            .default(5)
+            .describe('Maximum number of learnings to return.'),
         },
         _meta: { 'openai/readOnlyHint': true },
       },
@@ -7682,13 +7892,34 @@ export class OrgXMcp extends McpAgent<
         title: 'Submit Learning',
         description:
           'Agent-facing: submit a discovery as an org learning. Enters org_learnings after confidence validation.',
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: false,
+          openWorldHint: true,
+        },
         inputSchema: {
-          workspace_id: z.string(),
-          learning_type: z.enum(['failure_pattern', 'success_pattern', 'cost_optimization', 'quality_heuristic']),
-          summary: z.string(),
-          capability_key: z.string().optional(),
-          evidence_receipt_ids: z.array(z.string()).optional(),
-          keywords: z.array(z.string()).optional(),
+          workspace_id: z.string().describe('Workspace ID.'),
+          learning_type: z
+            .enum([
+              'failure_pattern',
+              'success_pattern',
+              'cost_optimization',
+              'quality_heuristic',
+            ])
+            .describe('Type of learning being submitted.'),
+          summary: z.string().describe('Human-readable learning summary.'),
+          capability_key: z
+            .string()
+            .optional()
+            .describe('Optional capability key the learning applies to.'),
+          evidence_receipt_ids: z
+            .array(z.string())
+            .optional()
+            .describe('Optional receipt IDs that support the learning.'),
+          keywords: z
+            .array(z.string())
+            .optional()
+            .describe('Optional semantic keywords for future matching.'),
         },
       },
       async (args) =>

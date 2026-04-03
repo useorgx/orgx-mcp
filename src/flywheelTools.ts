@@ -37,6 +37,7 @@ export const FLYWHEEL_TOOL_DEFINITIONS = [
       agent_type: z.string().optional().describe('Filter by specific agent type'),
       capability_key: z.string().optional().describe('Filter by capability key'),
     }),
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: [
       { type: 'oauth2' as const, scopes: ['initiatives:read'] },
     ],
@@ -53,11 +54,13 @@ export const FLYWHEEL_TOOL_DEFINITIONS = [
       outcome_value: z.number().optional().describe('Value in the outcome type unit (e.g., USD amount)'),
       source: z
         .enum(['manual', 'agent_self_report', 'crm_webhook', 'linear_sync'])
-        .default('manual'),
+        .default('manual')
+        .describe('Source that observed or reported the outcome'),
       source_id: z.string().optional().describe('External source ID for deduplication'),
       occurred_at: z.string().optional().describe('ISO datetime when the outcome occurred'),
       metadata: z.record(z.unknown()).optional().describe('Additional context'),
     }),
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     securitySchemes: [
       { type: 'oauth2' as const, scopes: ['initiatives:write'] },
     ],
@@ -73,6 +76,7 @@ export const FLYWHEEL_TOOL_DEFINITIONS = [
       workspace_id: z.string().describe('Workspace ID'),
       agent_type: z.string().describe('Agent type to query trust for'),
     }),
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: [
       { type: 'oauth2' as const, scopes: ['agents:read'] },
     ],
@@ -89,7 +93,8 @@ export const FLYWHEEL_TOOL_DEFINITIONS = [
       workspace_id: z.string().describe('Workspace ID'),
       session_type: z
         .enum(['overnight', 'weekend', 'scheduled', 'manual'])
-        .default('manual'),
+        .default('manual')
+        .describe('Autonomy session mode to start'),
       max_cost_usd: z
         .number()
         .positive()
@@ -106,6 +111,7 @@ export const FLYWHEEL_TOOL_DEFINITIONS = [
         .default(['autonomous', 'act_with_approval'])
         .describe('Only execute capabilities at these trust levels'),
     }),
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     securitySchemes: [
       { type: 'oauth2' as const, scopes: ['agents:write'] },
     ],
@@ -121,6 +127,7 @@ export const FLYWHEEL_TOOL_DEFINITIONS = [
       workspace_id: z.string().describe('Workspace ID'),
       session_id: z.string().optional().describe('Specific session ID (defaults to most recent)'),
     }),
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: [
       { type: 'oauth2' as const, scopes: ['initiatives:read'] },
     ],
@@ -137,8 +144,15 @@ export const FLYWHEEL_TOOL_DEFINITIONS = [
       workspace_id: z.string().describe('Workspace ID'),
       capability_key: z.string().optional().describe('Capability key to filter learnings'),
       keywords: z.array(z.string()).optional().describe('Keywords for semantic matching'),
-      limit: z.number().int().min(1).max(20).default(5),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(20)
+        .default(5)
+        .describe('Maximum number of learnings to return'),
     }),
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: [
       { type: 'oauth2' as const, scopes: ['memory:read'] },
     ],
@@ -162,6 +176,7 @@ export const FLYWHEEL_TOOL_DEFINITIONS = [
         .describe('Receipt IDs that support this learning'),
       keywords: z.array(z.string()).optional().describe('Semantic keywords for matching'),
     }),
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     securitySchemes: [
       { type: 'oauth2' as const, scopes: ['memory:read'] },
     ],
