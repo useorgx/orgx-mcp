@@ -100,11 +100,492 @@
       .delay-2 { animation-delay: 0.2s; }
       .delay-3 { animation-delay: 0.3s; }
       
-      .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 24px; text-align: center; background: var(--ox-well-bg); border: 1px dashed var(--ox-border-strong); border-radius: 16px; margin: 16px 0; }
-      .empty-icon { width: 48px; height: 48px; border-radius: 50%; background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
-      .empty-icon svg { width: 24px; height: 24px; }
-      .empty-title { font-size: 1.1rem; font-weight: 600; color: var(--ox-text); margin-bottom: 8px; }
-      .empty-desc { font-size: 0.9rem; color: var(--ox-text-muted); line-height: 1.5; max-width: 280px; }
+      .scaffold-state {
+        --scaffold-tilt-x: 0deg;
+        --scaffold-tilt-y: 0deg;
+        --scaffold-spot-x: 50%;
+        --scaffold-spot-y: 18%;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        padding: 22px;
+        margin: 16px 0;
+        border-radius: 22px;
+        border: 1px solid rgba(var(--ox-primary-rgb), 0.14);
+        background:
+          linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.08), rgba(var(--ox-primary-rgb), 0.02) 36%, transparent 100%),
+          var(--ox-panel);
+        box-shadow:
+          0 26px 50px -30px rgba(0, 0, 0, 0.65),
+          inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        overflow: hidden;
+        isolation: isolate;
+      }
+
+      .scaffold-state::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(circle at var(--scaffold-spot-x) var(--scaffold-spot-y), rgba(var(--ox-primary-rgb), 0.22), transparent 34%),
+          linear-gradient(135deg, rgba(var(--ox-primary-rgb), 0.08), transparent 45%);
+        opacity: 0.95;
+        z-index: -2;
+        transition: background-position 180ms ease;
+      }
+
+      .scaffold-state::after {
+        content: "";
+        position: absolute;
+        inset: 1px;
+        border-radius: 21px;
+        border: 1px solid rgba(255, 255, 255, 0.035);
+        pointer-events: none;
+        z-index: -1;
+      }
+
+      .scaffold-state__chrome {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .scaffold-state__eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--ox-mono);
+        font-size: 0.64rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--ox-text-muted);
+      }
+
+      .scaffold-state__eyebrow::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, var(--ox-primary), rgba(var(--ox-primary-rgb), 0.18));
+        box-shadow: 0 0 16px rgba(var(--ox-primary-rgb), 0.38);
+      }
+
+      .scaffold-state__status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 32px;
+        padding: 0 12px;
+        border-radius: 999px;
+        font-family: var(--ox-mono);
+        font-size: 0.67rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ox-primary);
+        background: rgba(var(--ox-primary-rgb), 0.1);
+        border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      }
+
+      .scaffold-state--awaiting .scaffold-state__status {
+        color: var(--ox-warning);
+        background: rgba(217, 119, 6, 0.12);
+        border-color: rgba(217, 119, 6, 0.2);
+      }
+
+      .scaffold-state__status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: currentColor;
+        box-shadow: 0 0 12px currentColor;
+        animation: scaffoldPulse 1.8s ease-in-out infinite;
+      }
+
+      @keyframes scaffoldPulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(0.66); opacity: 0.45; }
+      }
+
+      .scaffold-stage {
+        position: relative;
+        min-height: 252px;
+        padding: 18px;
+        border-radius: 20px;
+        overflow: hidden;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 100%),
+          var(--ox-well-bg);
+        border: 1px solid rgba(var(--ox-primary-rgb), 0.12);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.035),
+          inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+      }
+
+      .scaffold-stage::before,
+      .scaffold-stage::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      .scaffold-stage::before {
+        background:
+          linear-gradient(var(--ox-grid) 1px, transparent 1px),
+          linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px);
+        background-size: 26px 26px;
+        opacity: 0.58;
+        mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.85), transparent 100%);
+      }
+
+      .scaffold-stage::after {
+        background: radial-gradient(circle at var(--scaffold-spot-x) var(--scaffold-spot-y), rgba(255, 255, 255, 0.12), transparent 28%);
+        transition: background-position 160ms ease;
+      }
+
+      .scaffold-stage__ambient {
+        position: absolute;
+        border-radius: 999px;
+        filter: blur(1px);
+        opacity: 0.55;
+        pointer-events: none;
+      }
+
+      .scaffold-stage__ambient--one {
+        top: 26px;
+        left: 24px;
+        width: 84px;
+        height: 84px;
+        background: radial-gradient(circle, rgba(var(--ox-primary-rgb), 0.26), transparent 72%);
+        animation: ambientFloat 7.6s ease-in-out infinite;
+      }
+
+      .scaffold-stage__ambient--two {
+        right: 42px;
+        bottom: 38px;
+        width: 128px;
+        height: 128px;
+        background: radial-gradient(circle, rgba(13, 148, 136, 0.16), transparent 70%);
+        animation: ambientFloat 9.4s ease-in-out infinite reverse;
+      }
+
+      .scaffold-stage__ambient--three {
+        top: 78px;
+        right: 104px;
+        width: 12px;
+        height: 12px;
+        background: rgba(var(--ox-primary-rgb), 0.82);
+        box-shadow: 0 0 0 6px rgba(var(--ox-primary-rgb), 0.08), 0 0 22px rgba(var(--ox-primary-rgb), 0.28);
+        animation: scaffoldSparkle 2.8s ease-in-out infinite;
+      }
+
+      @keyframes ambientFloat {
+        0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+        50% { transform: translate3d(0, -12px, 0) scale(1.06); }
+      }
+
+      @keyframes scaffoldSparkle {
+        0%, 100% { transform: scale(0.92); opacity: 0.38; }
+        50% { transform: scale(1.08); opacity: 1; }
+      }
+
+      .scaffold-stage__core {
+        position: relative;
+        z-index: 1;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 18px;
+        transform:
+          perspective(1000px)
+          rotateX(var(--scaffold-tilt-y))
+          rotateY(var(--scaffold-tilt-x))
+          translateZ(0);
+        transform-style: preserve-3d;
+        transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+        will-change: transform;
+      }
+
+      .scaffold-node {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 34px;
+        padding: 0 12px;
+        border-radius: 14px;
+        border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
+        background: rgba(2, 6, 23, 0.72);
+        color: var(--ox-text);
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        box-shadow:
+          0 16px 30px -22px rgba(0, 0, 0, 0.72),
+          inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        backdrop-filter: blur(10px);
+        overflow: hidden;
+      }
+
+      @media (prefers-color-scheme: light) {
+        .scaffold-node {
+          background: rgba(255, 255, 255, 0.94);
+          box-shadow:
+            0 16px 30px -24px rgba(15, 23, 42, 0.4),
+            inset 0 1px 0 rgba(255, 255, 255, 0.75);
+        }
+      }
+
+      .scaffold-node::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: currentColor;
+        opacity: 0.82;
+      }
+
+      .scaffold-node::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+        transform: translateX(-120%);
+        animation: scaffoldSweep 3.8s ease-in-out infinite;
+      }
+
+      @keyframes scaffoldSweep {
+        0%, 68%, 100% { transform: translateX(-120%); }
+        84% { transform: translateX(120%); }
+      }
+
+      .scaffold-node--initiative {
+        min-width: 170px;
+        color: var(--ox-primary);
+        animation: nodeDrift 5.8s ease-in-out infinite;
+      }
+
+      .scaffold-stage__trunk {
+        width: 2px;
+        height: 28px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.82), rgba(var(--ox-primary-rgb), 0.08));
+        box-shadow: 0 0 18px rgba(var(--ox-primary-rgb), 0.22);
+      }
+
+      .scaffold-stage__columns {
+        position: relative;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+        width: 100%;
+      }
+
+      .scaffold-stage__columns::before {
+        content: "";
+        position: absolute;
+        left: 17%;
+        right: 17%;
+        top: -12px;
+        height: 2px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, rgba(var(--ox-primary-rgb), 0.08), rgba(var(--ox-primary-rgb), 0.58), rgba(var(--ox-primary-rgb), 0.08));
+        box-shadow: 0 0 18px rgba(var(--ox-primary-rgb), 0.14);
+      }
+
+      .scaffold-branch {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        padding-top: 10px;
+        animation: nodeDrift 6.4s ease-in-out infinite;
+      }
+
+      .scaffold-branch--two { animation-delay: -1.4s; }
+      .scaffold-branch--three { animation-delay: -2.8s; }
+
+      @keyframes nodeDrift {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-6px); }
+      }
+
+      .scaffold-branch::before {
+        content: "";
+        position: absolute;
+        top: -10px;
+        width: 2px;
+        height: 14px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.46), rgba(var(--ox-primary-rgb), 0.08));
+      }
+
+      .scaffold-node--workstream {
+        min-width: 112px;
+        color: var(--ox-teal);
+      }
+
+      .scaffold-node-stack {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+      }
+
+      .scaffold-node--milestone {
+        min-width: 104px;
+        color: var(--ox-warning);
+      }
+
+      .scaffold-node--task {
+        min-width: 82px;
+        min-height: 28px;
+        padding-inline: 10px;
+        border-radius: 999px;
+        font-size: 0.64rem;
+        font-weight: 700;
+        color: var(--ox-lime);
+      }
+
+      .scaffold-node--task::after {
+        animation-duration: 4.6s;
+      }
+
+      .scaffold-node-stack .scaffold-node--task:nth-child(3) {
+        animation-delay: -1.1s;
+      }
+
+      .scaffold-state__copy {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+      }
+
+      .scaffold-state__title {
+        font-size: 1.22rem;
+        font-weight: 650;
+        letter-spacing: -0.03em;
+        color: var(--ox-text);
+      }
+
+      .scaffold-state__desc {
+        max-width: 420px;
+        margin: 0 auto;
+        font-size: 0.93rem;
+        line-height: 1.55;
+        color: var(--ox-text-muted);
+      }
+
+      .scaffold-state__ticker {
+        position: relative;
+        height: 1.35rem;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--ox-mono);
+        font-size: 0.69rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ox-text);
+        opacity: 0.54;
+        text-shadow: 0 0 12px rgba(0, 0, 0, 0.18);
+      }
+
+      .scaffold-state__ticker::before,
+      .scaffold-state__ticker::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        width: 64px;
+        height: 1px;
+        transform: translateY(-50%);
+        background: linear-gradient(90deg, transparent, rgba(var(--ox-primary-rgb), 0.32), transparent);
+        opacity: 0.9;
+      }
+
+      .scaffold-state__ticker::before {
+        left: calc(50% - 152px);
+      }
+
+      .scaffold-state__ticker::after {
+        right: calc(50% - 152px);
+      }
+
+      .scaffold-state__ticker-item {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transform: translateY(110%);
+        animation: scaffoldTicker 7.2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+      }
+
+      .scaffold-state__ticker-item:nth-child(2) { animation-delay: 2.4s; }
+      .scaffold-state__ticker-item:nth-child(3) { animation-delay: 4.8s; }
+
+      @keyframes scaffoldTicker {
+        0%, 34% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        41%, 100% {
+          opacity: 0;
+          transform: translateY(-110%);
+        }
+      }
+
+      .scaffold-state__meta {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .scaffold-state__meta-pill {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 40px;
+        padding: 0 12px;
+        border-radius: 14px;
+        background: rgba(var(--ox-primary-rgb), 0.08);
+        border: 1px solid rgba(var(--ox-primary-rgb), 0.12);
+        color: var(--ox-text);
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-align: center;
+        line-height: 1.25;
+      }
+
+      .scaffold-state__meta-pill::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        flex: none;
+        border-radius: 999px;
+        background: currentColor;
+        opacity: 0.72;
+      }
+
+      .scaffold-state--awaiting .scaffold-state__meta-pill {
+        background: rgba(217, 119, 6, 0.08);
+        border-color: rgba(217, 119, 6, 0.14);
+      }
 
       * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: var(--ox-font); background: var(--ox-bg); color: var(--ox-text); padding: 24px 16px; -webkit-font-smoothing: antialiased; min-height: 100vh; }
@@ -702,40 +1183,220 @@
       }
     }
 
-    .skeleton-line {
-      background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb), 0.1) 50%, var(--ox-border) 75%);
-      background-size: 200% 100%;
-      animation: shimmer 2s infinite linear;
-      border-radius: 4px;
+    @media (max-width: 560px) {
+      .scaffold-state {
+        padding: 20px;
+        border-radius: 20px;
+      }
+
+      .scaffold-stage {
+        min-height: 228px;
+      }
+
+      .scaffold-stage__columns {
+        gap: 12px;
+      }
+
+      .scaffold-node--workstream {
+        min-width: 0;
+        width: 100%;
+      }
+
+      .scaffold-node--milestone {
+        min-width: 0;
+        width: 88%;
+      }
+
+      .scaffold-node--task {
+        min-width: 0;
+        width: 70%;
+      }
+
+      .scaffold-state__meta {
+        grid-template-columns: 1fr;
+      }
+
+      .scaffold-state__meta-pill {
+        justify-content: flex-start;
+        text-align: left;
+      }
     }
-    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+    @media (max-width: 420px) {
+      .scaffold-state {
+        padding: 18px;
+      }
+
+      .scaffold-stage {
+        min-height: 214px;
+        padding: 16px 14px;
+      }
+
+      .scaffold-stage__columns {
+        gap: 10px;
+      }
+
+      .scaffold-node {
+        min-height: 32px;
+        padding-inline: 10px;
+        font-size: 0.67rem;
+      }
+
+      .scaffold-node--initiative {
+        min-width: 0;
+        width: min(100%, 158px);
+      }
+
+      .scaffold-node--task {
+        font-size: 0.6rem;
+      }
+
+      .scaffold-state__title {
+        font-size: 1.08rem;
+      }
+
+      .scaffold-state__desc {
+        font-size: 0.86rem;
+      }
+
+      .scaffold-state__ticker {
+        font-size: 0.63rem;
+      }
+
+      .scaffold-state__ticker::before,
+      .scaffold-state__ticker::after {
+        width: 32px;
+      }
+
+      .scaffold-state__ticker::before {
+        left: calc(50% - 110px);
+      }
+
+      .scaffold-state__ticker::after {
+        right: calc(50% - 110px);
+      }
+    }
   </style>
 </head>
 <body>
   <div class="container" id="content">
     <!-- Skeleton shown during loading -->
-    <div class="skeleton-wrapper" style="display:flex; flex-direction:column; gap:16px; padding:24px;">
-      <div class="skeleton-line" style="width:50%; height:20px; margin-bottom:8px;"></div>
-      <div class="skeleton-line" style="width:90%; height:14px; margin-bottom:4px;"></div>
-      <div class="skeleton-line" style="width:85%; height:14px;"></div>
-      <div style="margin-top:12px; display:flex; flex-direction:column; gap:10px;">
-        <div style="display:flex; align-items:center; gap:12px; background:var(--ox-well-bg); border-radius:8px; padding:12px;">
-          <div class="skeleton-line" style="width:20px; height:20px; border-radius:4px;"></div>
-          <div class="skeleton-line" style="flex:1; height:14px;"></div>
+    <div class="skeleton-wrapper">
+      <section class="scaffold-state scaffold-state--loading animate-in" data-scaffold-state>
+        <div class="scaffold-state__chrome">
+          <div class="scaffold-state__eyebrow">Scaffold Composer</div>
+          <div class="scaffold-state__status">
+            <span class="scaffold-state__status-dot"></span>
+            <span>Assembling hierarchy</span>
+          </div>
         </div>
-        <div style="display:flex; align-items:center; gap:12px; background:var(--ox-well-bg); border-radius:8px; padding:12px;">
-          <div class="skeleton-line" style="width:20px; height:20px; border-radius:4px;"></div>
-          <div class="skeleton-line" style="flex:1; height:14px;"></div>
+        <div class="scaffold-stage" data-scaffold-stage>
+          <div class="scaffold-stage__ambient scaffold-stage__ambient--one"></div>
+          <div class="scaffold-stage__ambient scaffold-stage__ambient--two"></div>
+          <div class="scaffold-stage__ambient scaffold-stage__ambient--three"></div>
+          <div class="scaffold-stage__core">
+            <div class="scaffold-node scaffold-node--initiative">Initiative</div>
+            <div class="scaffold-stage__trunk"></div>
+            <div class="scaffold-stage__columns">
+              <div class="scaffold-branch scaffold-branch--one">
+                <div class="scaffold-node scaffold-node--workstream">Intent</div>
+                <div class="scaffold-node-stack">
+                  <div class="scaffold-node scaffold-node--milestone">Milestone</div>
+                  <div class="scaffold-node scaffold-node--task">Task</div>
+                  <div class="scaffold-node scaffold-node--task">Task</div>
+                </div>
+              </div>
+              <div class="scaffold-branch scaffold-branch--two">
+                <div class="scaffold-node scaffold-node--workstream">Shape</div>
+                <div class="scaffold-node-stack">
+                  <div class="scaffold-node scaffold-node--milestone">Milestone</div>
+                  <div class="scaffold-node scaffold-node--task">Task</div>
+                  <div class="scaffold-node scaffold-node--task">Task</div>
+                </div>
+              </div>
+              <div class="scaffold-branch scaffold-branch--three">
+                <div class="scaffold-node scaffold-node--workstream">Ship</div>
+                <div class="scaffold-node-stack">
+                  <div class="scaffold-node scaffold-node--milestone">Milestone</div>
+                  <div class="scaffold-node scaffold-node--task">Task</div>
+                  <div class="scaffold-node scaffold-node--task">Task</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div style="display:flex; align-items:center; gap:12px; background:var(--ox-well-bg); border-radius:8px; padding:12px;">
-          <div class="skeleton-line" style="width:20px; height:20px; border-radius:4px;"></div>
-          <div class="skeleton-line" style="flex:1; height:14px;"></div>
+        <div class="scaffold-state__copy">
+          <div class="scaffold-state__title">Composing the hierarchy</div>
+          <div class="scaffold-state__desc">Workstreams, milestones, and task lanes are being packed into place. Move the cursor across the stage to nudge the assembly.</div>
         </div>
-      </div>
+        <div class="scaffold-state__ticker" aria-hidden="true">
+          <span class="scaffold-state__ticker-item">Routing workstreams</span>
+          <span class="scaffold-state__ticker-item">Sequencing milestones</span>
+          <span class="scaffold-state__ticker-item">Snapping tasks into place</span>
+        </div>
+        <div class="scaffold-state__meta">
+          <div class="scaffold-state__meta-pill">Agent lanes are reserving space</div>
+          <div class="scaffold-state__meta-pill">Connectors draw in smoothly</div>
+          <div class="scaffold-state__meta-pill">Ready to bloom into the live tree</div>
+        </div>
+      </section>
     </div>
   </div>
   <script>
     var queryParams = new URLSearchParams(window.location.search);
+
+    function hydrateScaffoldStates(scope) {
+      var root = scope && scope.querySelectorAll ? scope : document;
+      var states = root.querySelectorAll('[data-scaffold-state]');
+      states.forEach(function(state) {
+        if (!state || state.dataset.hydrated === 'true') return;
+        state.dataset.hydrated = 'true';
+        var stage = state.querySelector('[data-scaffold-stage]');
+        if (!stage) return;
+
+        var frame = null;
+        var tiltX = 0;
+        var tiltY = 0;
+        var spotX = 50;
+        var spotY = 18;
+
+        var applyMotion = function() {
+          frame = null;
+          state.style.setProperty('--scaffold-tilt-x', tiltX.toFixed(2) + 'deg');
+          state.style.setProperty('--scaffold-tilt-y', tiltY.toFixed(2) + 'deg');
+          state.style.setProperty('--scaffold-spot-x', spotX.toFixed(2) + '%');
+          state.style.setProperty('--scaffold-spot-y', spotY.toFixed(2) + '%');
+        };
+
+        var scheduleMotion = function() {
+          if (frame !== null) return;
+          frame = window.requestAnimationFrame(applyMotion);
+        };
+
+        var resetMotion = function() {
+          tiltX = 0;
+          tiltY = 0;
+          spotX = 50;
+          spotY = 18;
+          scheduleMotion();
+        };
+
+        stage.addEventListener('pointermove', function(event) {
+          var rect = stage.getBoundingClientRect();
+          if (!rect.width || !rect.height) return;
+          var relX = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+          var relY = Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height));
+          tiltX = (relX - 0.5) * 7;
+          tiltY = (0.5 - relY) * 6;
+          spotX = relX * 100;
+          spotY = relY * 100;
+          scheduleMotion();
+        }, { passive: true });
+
+        stage.addEventListener('pointerleave', resetMotion, { passive: true });
+        resetMotion();
+      });
+    }
 
     var injectHtml = (html) => {
       const content = document.getElementById('content');
@@ -744,9 +1405,11 @@
         skeleton.style.opacity = '0';
         setTimeout(() => {
           content.innerHTML = html;
+          hydrateScaffoldStates(content);
         }, 300);
       } else {
         content.innerHTML = html;
+        hydrateScaffoldStates(content);
       }
     };
 
@@ -782,6 +1445,69 @@
       ,nodes: function(s){return _svg('<circle cx="6" cy="12" r="2" fill="currentColor" stroke="none"></circle><circle cx="18" cy="7" r="2" fill="currentColor" stroke="none"></circle><circle cx="18" cy="17" r="2" fill="currentColor" stroke="none"></circle><path d="M8 12h6"></path><path d="M16.2 8.3 12.8 11"></path><path d="M16.2 15.7 12.8 13"></path>',s);}
     };
     var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
+    var renderScaffoldState = (mode) => {
+      var awaiting = mode === 'awaiting';
+      var title = awaiting ? 'Awaiting scaffold' : 'Composing the hierarchy';
+      var desc = awaiting
+        ? 'The structural hierarchy has not been generated yet. When the first pass lands, this panel blossoms into the full work breakdown.'
+        : 'Workstreams, milestones, and task lanes are being packed into place. Move the cursor across the stage to nudge the assembly.';
+      var statusLabel = awaiting ? 'Listening for output' : 'Assembling hierarchy';
+      var tickerItems = awaiting
+        ? ['Watching for scaffold output', 'Tree will unfurl here', 'Ready for the first pass']
+        : ['Routing workstreams', 'Sequencing milestones', 'Snapping tasks into place'];
+      var metaItems = awaiting
+        ? ['A clean launchpad for the first workstream', 'Connector paths are primed and waiting', 'The live tree will drop in without a jump cut']
+        : ['Agent lanes are reserving space', 'Connectors draw in smoothly', 'Ready to bloom into the live tree'];
+      var branchLabels = awaiting
+        ? ['Signal', 'Shape', 'Land']
+        : ['Intent', 'Shape', 'Ship'];
+      return `<section class="scaffold-state scaffold-state--${awaiting ? 'awaiting' : 'loading'} animate-in" data-scaffold-state>
+        <div class="scaffold-state__chrome">
+          <div class="scaffold-state__eyebrow">${awaiting ? 'Scaffold Launchpad' : 'Scaffold Composer'}</div>
+          <div class="scaffold-state__status">
+            <span class="scaffold-state__status-dot"></span>
+            <span>${statusLabel}</span>
+          </div>
+        </div>
+        <div class="scaffold-stage" data-scaffold-stage>
+          <div class="scaffold-stage__ambient scaffold-stage__ambient--one"></div>
+          <div class="scaffold-stage__ambient scaffold-stage__ambient--two"></div>
+          <div class="scaffold-stage__ambient scaffold-stage__ambient--three"></div>
+          <div class="scaffold-stage__core">
+            <div class="scaffold-node scaffold-node--initiative">Initiative</div>
+            <div class="scaffold-stage__trunk"></div>
+            <div class="scaffold-stage__columns">
+              ${branchLabels.map(function(label, index) {
+                var branchClass = index === 0 ? 'one' : index === 1 ? 'two' : 'three';
+                return `<div class="scaffold-branch scaffold-branch--${branchClass}">
+                  <div class="scaffold-node scaffold-node--workstream">${label}</div>
+                  <div class="scaffold-node-stack">
+                    <div class="scaffold-node scaffold-node--milestone">Milestone</div>
+                    <div class="scaffold-node scaffold-node--task">Task</div>
+                    <div class="scaffold-node scaffold-node--task">Task</div>
+                  </div>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+        <div class="scaffold-state__copy">
+          <div class="scaffold-state__title">${title}</div>
+          <div class="scaffold-state__desc">${desc}</div>
+        </div>
+        <div class="scaffold-state__ticker" aria-hidden="true">
+          ${tickerItems.map(function(item) {
+            return `<span class="scaffold-state__ticker-item">${item}</span>`;
+          }).join('')}
+        </div>
+        <div class="scaffold-state__meta">
+          ${metaItems.map(function(item) {
+            return `<div class="scaffold-state__meta-pill">${item}</div>`;
+          }).join('')}
+        </div>
+      </section>`;
+    };
+    hydrateScaffoldStates(document.getElementById('content'));
     var readLabel = (item, fallback) => {
       if (!item || typeof item !== 'object') return fallback || '';
       if (typeof item.title === 'string' && item.title.trim()) return item.title.trim();
@@ -1447,7 +2173,7 @@
     var render = () => {
       if(isLoading) return;
       var scaffold = normalizeScaffoldData(data);
-      if(!scaffold || !scaffold.initiative) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.layout(24)}</div><div class="empty-title">Awaiting scaffold</div><div class="empty-desc">The structural hierarchy has not been generated yet.</div></div>`); return; }
+      if(!scaffold || !scaffold.initiative) { injectHtml(renderScaffoldState('awaiting')); return; }
 
       const sections = scaffold.sections || [];
       const renderTask = (task) => {
