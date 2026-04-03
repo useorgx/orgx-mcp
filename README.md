@@ -19,6 +19,8 @@ OrgX MCP connects Claude and other MCP-capable clients to OrgX so users can:
 - Support: [docs/support.md](./docs/support.md) and <https://github.com/useorgx/orgx-mcp/issues>
 - Security & Data Handling: [docs/security-data-handling.md](./docs/security-data-handling.md) and <https://github.com/useorgx/orgx-mcp/blob/main/docs/security-data-handling.md>
 - Anthropic Directory Review Guide: [docs/anthropic-directory.md](./docs/anthropic-directory.md) and <https://github.com/useorgx/orgx-mcp/blob/main/docs/anthropic-directory.md>
+- Reviewer Runbook: [docs/anthropic-reviewer-runbook.md](./docs/anthropic-reviewer-runbook.md)
+- Release Manager Checklist: [docs/anthropic-release-manager-checklist.md](./docs/anthropic-release-manager-checklist.md)
 
 ## Source Of Truth
 
@@ -150,6 +152,18 @@ Required callback URLs:
 - `http://localhost:6274/oauth/callback/debug`
 - `https://claude.ai/api/mcp/auth_callback`
 - `https://claude.com/api/mcp/auth_callback`
+
+## Reviewer Operations
+
+The reviewer environment is prepared inside the OrgX web app, not inside the MCP worker.
+
+Authenticated OrgX routes for the dedicated reviewer account:
+
+- `GET https://useorgx.com/api/review/anthropic/status`
+- `POST https://useorgx.com/api/review/anthropic/bootstrap`
+- `POST https://useorgx.com/api/review/anthropic/reset`
+
+These routes operate only on the currently authenticated user's dedicated `Anthropic Review Workspace`. Use the reviewer runbook for the exact bootstrap/reset flow and the prompt matrix Anthropic should exercise.
 
 ## Local workflow checklist
 
@@ -556,12 +570,19 @@ See [docs/security-data-handling.md](./docs/security-data-handling.md) for the o
 ## Anthropic Directory Review
 
 Submission and reviewer checklist: [docs/anthropic-directory.md](./docs/anthropic-directory.md)
+Reviewer runbook: [docs/anthropic-reviewer-runbook.md](./docs/anthropic-reviewer-runbook.md)
+Release manager checklist: [docs/anthropic-release-manager-checklist.md](./docs/anthropic-release-manager-checklist.md)
 
 Pre-submit repo check:
 
 ```bash
 pnpm directory:preflight
 ```
+
+Operational reviewer check:
+
+- confirm the reviewer workspace is baseline-ready via `https://useorgx.com/api/review/anthropic/status`
+- if needed, bootstrap or reset the dedicated reviewer workspace before handing credentials to Anthropic
 
 ## Limitations
 

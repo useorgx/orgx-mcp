@@ -32,12 +32,15 @@ describe('Anthropic directory readiness', () => {
       'docs/security-data-handling.md',
       'docs/support.md',
       'docs/anthropic-directory.md',
+      'docs/anthropic-reviewer-runbook.md',
+      'docs/anthropic-release-manager-checklist.md',
     ];
 
     const requiredReadmeSections = [
       '## What OrgX MCP Does',
       '## Directory Quick Links',
       '## Authentication For Reviewers',
+      '## Reviewer Operations',
       '## Examples',
       '## Privacy Policy',
       '## Support',
