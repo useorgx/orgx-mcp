@@ -20,6 +20,7 @@
       --ox-well-bg: #f1f5f9;
       --ox-well-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
       --ox-primary: #00c9a7;
+      --ox-primary-rgb: 0, 201, 167;
       --ox-grid: rgba(0, 0, 0, 0.03);
     }
     
@@ -35,6 +36,7 @@
         --ox-well-bg: rgba(0,0,0,0.3);
         --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
         --ox-primary: #00c9a7;
+      --ox-primary-rgb: 0, 201, 167;
         --ox-grid: rgba(255, 255, 255, 0.02);
       }
     }
@@ -50,6 +52,7 @@
         --ox-well-bg: rgba(0,0,0,0.3);
         --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
         --ox-primary: #00c9a7;
+      --ox-primary-rgb: 0, 201, 167;
         --ox-grid: rgba(255, 255, 255, 0.02);
     }
     
@@ -124,44 +127,17 @@
       height: 1px;
       background: var(--ox-border);
     }
-
     .agent-card {
-      background: var(--ox-panel);
-      border: 1px solid var(--ox-border);
-      border-radius: 16px;
-      box-shadow: 0 12px 32px -12px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.04);
-
-      position: relative;
-      overflow: hidden;
-      transition:
-        transform 160ms ease,
-        border-color 160ms ease,
-        box-shadow 160ms ease;
+      transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
     }
 
-    .agent-card::before {
-      content: '';
-      position: absolute;
-      inset: 0 auto auto 0;
-      width: 100%;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(16, 163, 127, 0.4), transparent);
-      opacity: 0;
-      transition: opacity 160ms ease;
-    }
-
-    .agent-card[data-priority='blocked']::before,
-    .agent-card[data-priority='review']::before,
-    .agent-card:hover::before {
-      opacity: 1;
-    }
-
-    .agent-card[data-priority='blocked'] {
-      border-color: rgba(220, 38, 38, 0.26);
-    }
-
-    .agent-card[data-priority='review'] {
-      border-color: rgba(217, 119, 6, 0.24);
+    .agent-card[data-priority='running'] { --ox-card-color-rgb: 0, 201, 167; }
+    .agent-card[data-priority=\'blocked\'] { --ox-card-color-rgb: 244, 63, 94; }
+    .agent-card[data-priority=\'review\'] { --ox-card-color-rgb: 251, 191, 36; }
+    .agent-card[data-priority='idle'], .agent-card[data-priority='queued'] { --ox-card-color-rgb: 100, 116, 139; }
+    
+    .agent-card.ox-card::after {
+      background: linear-gradient(90deg, transparent, rgba(var(--ox-card-color-rgb), 0.6), transparent);
     }
 
     .agent-head {
@@ -408,11 +384,16 @@
 
     .agent-section {
       display: none;
-      padding: 0 16px 16px;
+      padding-bottom: 16px;
     }
 
+@keyframes sectionFadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
     .agent-section.is-open {
       display: block;
+      animation: sectionFadeIn 240ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
     .agent-section-trigger {
@@ -696,136 +677,119 @@
       }
     }
   
-.app-metric-rail {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
 
-.app-metric-button {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  border-right: 1px solid var(--ox-border);
-  color: inherit;
-  cursor: pointer;
-  font: inherit;
-  margin: 0;
-}
+    .ox-metric-rail {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      border-top: 1px solid var(--ox-border);
+      border-bottom: 1px solid var(--ox-border);
+    }
+    
+    .ox-metric-button {
+      appearance: none;
+      background: transparent;
+      border: 0;
+      border-right: 1px solid var(--ox-border);
+      color: inherit;
+      cursor: pointer;
+      font: inherit;
+      margin: 0;
+      min-height: 72px;
+      padding: 12px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: background 160ms ease;
+    }
+    
+    .ox-metric-button:last-child {
+      border-right: 0;
+    }
+    
+    .ox-metric-button:hover,
+    .ox-metric-button[aria-pressed='true'] {
+      background: rgba(var(--ox-primary-rgb), 0.06);
+    }
+    
+    .ox-metric-button[data-tone='blocked'] .metric-value {
+      color: var(--ox-danger);
+    }
+    .ox-metric-button[data-tone='review'] .metric-value {
+      color: var(--ox-warning);
+    }
 
-.app-metric-button:last-child {
-  border-right: 0;
-}
+    .ox-attention-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px;
+      margin: 0 16px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(244, 63, 94, 0.22);
+      background: linear-gradient(135deg, rgba(244, 63, 94, 0.12), rgba(244, 63, 94, 0.03)), rgba(255,255,255,0.01);
+      color: var(--ox-text);
+    }
 
-.app-metric-button:hover,
-.app-metric-button[aria-pressed='true'] {
-  background: rgba(0, 201, 167, 0.1);
-}
+    .ox-attention-banner[data-tone='review'] {
+      border-color: rgba(251, 191, 36, 0.22);
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(251, 191, 36, 0.03)), rgba(255,255,255,0.01);
+    }
+    
+    .attention-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+    
+    .attention-title {
+      font-family: var(--ox-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    .ox-attention-banner[data-tone='blocked'] .attention-title { color: var(--ox-danger); }
+    .ox-attention-banner[data-tone='review'] .attention-title { color: var(--ox-warning); }
 
-.app-attention-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px var(--app-space-4);
-  border-radius: 12px;
-  border: 1px solid rgba(220, 38, 38, 0.2);
-  background: var(--ox-danger-bg);
-  color: var(--ox-danger);
-}
+    .attention-body {
+      font-size: 0.9rem;
+      line-height: 1.4;
+      color: var(--ox-text-muted);
+    }
 
-.app-attention-banner[data-tone='review'] {
-  border-color: rgba(217, 119, 6, 0.22);
-  background: var(--ox-warning-bg);
-  color: var(--ox-warning);
-}
-
-.app-disclosure-trigger {
-  width: 100%;
-  appearance: none;
-  background: transparent;
-  border: 0;
-  color: inherit;
-  cursor: pointer;
-  font: inherit;
-  margin: 0;
-  padding: 12px 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  text-align: left;
-}
-
-.app-disclosure-body {
-  border-top: 1px solid var(--ox-border);
-}
-
-
-.app-metric-rail {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.app-metric-button {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  border-right: 1px solid var(var(--ox-border));
-  color: inherit;
-  cursor: pointer;
-  font: inherit;
-  margin: 0;
-}
-
-.app-metric-button:last-child {
-  border-right: 0;
-}
-
-.app-metric-button:hover,
-.app-metric-button[aria-pressed='true'] {
-  background: rgba(0, 201, 167, 0.1);
-}
-
-.app-attention-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: 12px;
-  border: 1px solid rgba(220, 38, 38, 0.2);
-  background: rgba(220, 38, 38, 0.12);
-  color: var(var(--ox-danger));
-}
-
-.app-attention-banner[data-tone='review'] {
-  border-color: rgba(217, 119, 6, 0.22);
-  background: rgba(217, 119, 6, 0.12);
-  color: var(var(--ox-warning));
-}
-
-.app-disclosure-trigger {
-  width: 100%;
-  appearance: none;
-  background: transparent;
-  border: 0;
-  color: inherit;
-  cursor: pointer;
-  font: inherit;
-  margin: 0;
-  padding: 12px 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  text-align: left;
-}
-
-.app-disclosure-body {
-  border-top: 1px solid var(var(--ox-border));
-}
-
-  </style>
+    .ox-disclosure-trigger {
+      width: 100%;
+      appearance: none;
+      background: transparent;
+      border: 0;
+      color: inherit;
+      cursor: pointer;
+      font: inherit;
+      margin: 0;
+      padding: 12px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      text-align: left;
+    }
+    
+    .ox-disclosure-body {
+      border-top: 1px solid var(--ox-border);
+    }
+    
+    @media (max-width: 420px) {
+      .ox-metric-button {
+        min-height: 66px;
+        padding-inline: 6px;
+      }
+    }
+</style>
 </head>
 <body>
   <main class="agent-board" id="content" aria-live="polite">
@@ -1304,7 +1268,6 @@
       widgetState[cardId] = widgetState[cardId] === section ? 'overview' : section;
       render();
     }
-
     function renderAttention(agent) {
       if (agent.status !== 'blocked' && agent.status !== 'review') return '';
       var tone = agent.status === 'blocked' ? 'blocked' : 'review';
@@ -1313,13 +1276,14 @@
         ? String(agent.blockers[0] || 'A founder-level decision is blocking progress.')
         : String((agent.artifacts.find(function (artifact) { return artifact.status === 'review'; }) || {}).title || 'An artifact is ready for review.');
       var action = agent.status === 'blocked' ? 'Resolve blocker' : 'Review now';
+      
+      var btnClass = tone === 'blocked' ? 'ox-btn ox-btn-primary is-card-tone' : 'ox-btn ox-btn-primary is-card-tone';
+      
       return (
-        '<div class="agent-attention ox-well" data-tone="' + tone + '">' +
-          '<div class="attention-copy">' +
-            '<div class="attention-title">' + title + '</div>' +
-            '<div class="attention-body">' + escapeHtml(body) + '</div>' +
-          '</div>' +
-          '<a class="attention-action" href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer">' + action + '</a>' +
+        '<div style="margin-bottom: 16px; padding: 16px; border-radius: 12px; border: 1px solid var(--ox-border); background: var(--ox-well-bg); box-shadow: var(--ox-well-shadow);">' +
+          '<div class="ox-eyebrow" style="color: ' + (tone === 'blocked' ? 'var(--ox-danger)' : 'var(--ox-warning)') + '; margin-bottom: 8px;">' + title + '</div>' +
+          '<div class="ox-text" style="color: var(--ox-text); margin-bottom: 16px;">' + escapeHtml(body) + '</div>' +
+          '<a class="' + btnClass + '" href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer" style="display: flex; align-items: center; justify-content: center; text-decoration: none;">' + action + '</a>' +
         '</div>'
       );
     }
@@ -1328,7 +1292,7 @@
       if (!isOpen) return '';
       return (
         '<section class="agent-section is-open" data-section="overview">' +
-          '<div class="section-list app-disclosure-body">' +
+          '<div class="section-list ox-disclosure-body">' +
             '<div class="section-row">' +
               '<div class="section-copy">' +
                 '<div class="section-heading">At a glance</div>' +
@@ -1345,7 +1309,7 @@
         return '<div class="empty-slot">' + escapeHtml(emptyCopy) + '</div>';
       }
       return (
-        '<div class="section-list app-disclosure-body">' +
+        '<div class="section-list ox-disclosure-body">' +
           rows.join('') +
         '</div>'
       );
@@ -1366,7 +1330,7 @@
       return (
         '<section class="agent-section' + (isOpen ? ' is-open' : '') + '" data-section="tasks">' +
           '<div class="agent-section-trigger">' +
-            '<button class="app-disclosure-trigger focusable" data-action="toggle-section" data-section="tasks" data-agent="' + escapeHtml(agent.id) + '">' +
+            '<button class="ox-disclosure-trigger focusable" data-action="toggle-section" data-section="tasks" data-agent="' + escapeHtml(agent.id) + '">' +
               '<span class="disclosure-title"><span>Tasks</span><span class="disclosure-count">' + agent.taskCount + '</span></span>' +
               '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
             '</button>' +
@@ -1393,7 +1357,7 @@
       return (
         '<section class="agent-section' + (isOpen ? ' is-open' : '') + '" data-section="artifacts">' +
           '<div class="agent-section-trigger">' +
-            '<button class="app-disclosure-trigger focusable" data-action="toggle-section" data-section="artifacts" data-agent="' + escapeHtml(agent.id) + '">' +
+            '<button class="ox-disclosure-trigger focusable" data-action="toggle-section" data-section="artifacts" data-agent="' + escapeHtml(agent.id) + '">' +
               '<span class="disclosure-title"><span>Artifacts</span><span class="disclosure-count">' + agent.artifacts.length + '</span></span>' +
               '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
             '</button>' +
@@ -1407,13 +1371,13 @@
       return (
         '<section class="agent-section' + (isOpen ? ' is-open' : '') + '" data-section="progress">' +
           '<div class="agent-section-trigger">' +
-            '<button class="app-disclosure-trigger focusable" data-action="toggle-section" data-section="progress" data-agent="' + escapeHtml(agent.id) + '">' +
+            '<button class="ox-disclosure-trigger focusable" data-action="toggle-section" data-section="progress" data-agent="' + escapeHtml(agent.id) + '">' +
               '<span class="disclosure-title"><span>Progress</span><span class="disclosure-count">' + escapeHtml(String(agent.progress == null ? 'n/a' : agent.progress + '%')) + '</span></span>' +
               '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
             '</button>' +
           '</div>' +
           (isOpen
-            ? '<div class="app-disclosure-body">' +
+            ? '<div class="ox-disclosure-body">' +
                 '<div class="progress-header">' +
                   '<div class="progress-value">' + escapeHtml(String(agent.progress == null ? 'n/a' : agent.progress + '%')) + '</div>' +
                   '<div class="progress-context">' + escapeHtml(agent.currentMeta || 'Background execution') + '</div>' +
@@ -1428,60 +1392,73 @@
       );
     }
 
+
     function renderCard(agent) {
       var openSection = widgetState[agent.id] || 'overview';
       var chipTone = agent.tone === 'running' ? '' : ' data-tone="' + agent.tone + '"';
       var reviewMetricTone = agent.reviewCount > 0 ? 'review' : '';
       var blockedMetricTone = agent.blockedCount > 0 ? 'blocked' : '';
+      
       return (
         '<article class="agent-card ox-card" data-priority="' + escapeHtml(agent.status) + '">' +
-          '<div class="agent-head">' +
-            '<div class="agent-identity">' +
-              '<div class="agent-mark">' + renderAvatar(agent) + '</div>' +
-              '<div class="agent-title-group">' +
-                '<div class="agent-name-row">' +
-                  '<div class="agent-name">' + escapeHtml(agent.name) + '</div>' +
-                  '<div class="agent-role">' + escapeHtml(agent.role) + '</div>' +
+          '<div class="ox-card-inner" style="padding-bottom: 16px;">' +
+            '<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px;">' +
+              '<div style="display: flex; align-items: center; gap: 12px; min-width: 0;">' +
+                '<div style="width: 32px; height: 32px; border-radius: 8px; overflow: hidden; background: var(--ox-well-bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid var(--ox-border);">' +
+                  renderAvatar(agent) +
                 '</div>' +
-                '<div class="agent-subline"><strong>' + escapeHtml(agent.currentTask) + '</strong></div>' +
+                '<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">' +
+                  '<div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">' +
+                    '<div class="ox-title" style="margin-bottom:0; font-size: 1.1rem;">' + escapeHtml(agent.name) + '</div>' +
+                    '<div class="ox-eyebrow">' + escapeHtml(agent.role) + '</div>' +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+              '<div class="ox-badge"' + chipTone + ' style="flex-shrink: 0;"><span class="chip-dot" style="width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor;"></span>' + escapeHtml(agent.statusLabel) + '</div>' +
+            '</div>' +
+            
+            renderAttention(agent) +
+            
+            '<div style="display: flex; flex-direction: column; gap: 6px;">' +
+              '<div class="ox-eyebrow">Current Focus</div>' +
+              '<div class="ox-text" style="color: var(--ox-text); font-weight: 500;">' + escapeHtml(agent.currentTask) + '</div>' +
+              '<div class="ox-text" style="font-size: 0.85rem;">' + 
+                '<span>' + escapeHtml(agent.currentMeta || 'Tracking background execution') + '</span>' +
+                '<span style="margin: 0 6px; color: var(--ox-text-dim);">·</span>' +
+                '<span>' + escapeHtml(summarizeOverview(agent)) + '</span>' +
               '</div>' +
             '</div>' +
-            '<div class="agent-chip ox-badge"' + chipTone + '><span class="chip-dot"></span>' + escapeHtml(agent.statusLabel) + '</div>' +
           '</div>' +
-          renderAttention(agent) +
-          '<div class="focus-strip">' +
-            '<div class="app-kicker">Current Focus</div>' +
-            '<div class="focus-task">' + escapeHtml(agent.currentTask) + '</div>' +
-            '<div class="focus-meta">' +
-              '<span>' + escapeHtml(agent.currentMeta || 'Tracking background execution') + '</span>' +
-              '<span>' + escapeHtml(summarizeOverview(agent)) + '</span>' +
-            '</div>' +
-          '</div>' +
-          '<div class="metric-row app-metric-rail">' +
-            '<button class="metric-button app-metric-button focusable" data-action="toggle-section" data-section="overview" data-agent="' + escapeHtml(agent.id) + '" aria-pressed="' + String(openSection === 'overview') + '">' +
-              '<div class="metric-value">' + escapeHtml(String(agent.taskCount)) + '</div>' +
-              '<div class="metric-label">Tasks</div>' +
+          
+          '<div class="ox-metric-rail">' +
+            '<button class="ox-metric-button focusable" data-action="toggle-section" data-section="overview" data-agent="' + escapeHtml(agent.id) + '" aria-pressed="' + String(openSection === 'overview') + '">' +
+              '<div class="metric-value" style="font-size: 1.15rem; font-weight: 600; font-family: var(--ox-mono);">' + escapeHtml(String(agent.taskCount)) + '</div>' +
+              '<div class="ox-eyebrow" style="margin-top: 4px;">Tasks</div>' +
             '</button>' +
-            '<button class="metric-button app-metric-button focusable" data-action="toggle-section" data-section="tasks" data-agent="' + escapeHtml(agent.id) + '" data-tone="' + blockedMetricTone + '" aria-pressed="' + String(openSection === 'tasks') + '">' +
-              '<div class="metric-value">' + escapeHtml(String(agent.blockedCount)) + '</div>' +
-              '<div class="metric-label">Blocked</div>' +
+            '<button class="ox-metric-button focusable" data-action="toggle-section" data-section="tasks" data-agent="' + escapeHtml(agent.id) + '" data-tone="' + blockedMetricTone + '" aria-pressed="' + String(openSection === 'tasks') + '">' +
+              '<div class="metric-value" style="font-size: 1.15rem; font-weight: 600; font-family: var(--ox-mono);">' + escapeHtml(String(agent.blockedCount)) + '</div>' +
+              '<div class="ox-eyebrow" style="margin-top: 4px;">Blocked</div>' +
             '</button>' +
-            '<button class="metric-button app-metric-button focusable" data-action="toggle-section" data-section="artifacts" data-agent="' + escapeHtml(agent.id) + '" data-tone="' + reviewMetricTone + '" aria-pressed="' + String(openSection === 'artifacts') + '">' +
-              '<div class="metric-value">' + escapeHtml(String(agent.artifacts.length)) + '</div>' +
-              '<div class="metric-label">Artifacts</div>' +
+            '<button class="ox-metric-button focusable" data-action="toggle-section" data-section="artifacts" data-agent="' + escapeHtml(agent.id) + '" data-tone="' + reviewMetricTone + '" aria-pressed="' + String(openSection === 'artifacts') + '">' +
+              '<div class="metric-value" style="font-size: 1.15rem; font-weight: 600; font-family: var(--ox-mono);">' + escapeHtml(String(agent.artifacts.length)) + '</div>' +
+              '<div class="ox-eyebrow" style="margin-top: 4px;">Artifacts</div>' +
             '</button>' +
-            '<button class="metric-button app-metric-button focusable" data-action="toggle-section" data-section="progress" data-agent="' + escapeHtml(agent.id) + '" aria-pressed="' + String(openSection === 'progress') + '">' +
-              '<div class="metric-value">' + escapeHtml(String(agent.progress == null ? 'n/a' : agent.progress + '%')) + '</div>' +
-              '<div class="metric-label">Progress</div>' +
+            '<button class="ox-metric-button focusable" data-action="toggle-section" data-section="progress" data-agent="' + escapeHtml(agent.id) + '" aria-pressed="' + String(openSection === 'progress') + '">' +
+              '<div class="metric-value" style="font-size: 1.15rem; font-weight: 600; font-family: var(--ox-mono);">' + escapeHtml(String(agent.progress == null ? 'n/a' : agent.progress + '%')) + '</div>' +
+              '<div class="ox-eyebrow" style="margin-top: 4px;">Progress</div>' +
             '</button>' +
           '</div>' +
-          renderOverviewSection(agent, openSection === 'overview') +
-          renderTasksSection(agent, openSection === 'tasks') +
-          renderArtifactsSection(agent, openSection === 'artifacts') +
-          renderProgressSection(agent, openSection === 'progress') +
-          '<div class="card-footer">' +
-            '<div class="sync-copy">Synced just now</div>' +
-            '<a class="footer-link" href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer">Open live view<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"></path><path d="M8 7h9v9"></path></svg></a>' +
+          
+          '<div style="padding: 0 24px;">' +
+            renderOverviewSection(agent, openSection === 'overview') +
+            renderTasksSection(agent, openSection === 'tasks') +
+            renderArtifactsSection(agent, openSection === 'artifacts') +
+            renderProgressSection(agent, openSection === 'progress') +
+          '</div>' +
+          
+          '<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 24px; border-top: 1px solid var(--ox-border);">' +
+            '<div class="ox-eyebrow">Synced just now</div>' +
+            '<a class="ox-text" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 500; text-decoration: none;" href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer">Open live view<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"></path><path d="M8 7h9v9"></path></svg></a>' +
           '</div>' +
         '</article>'
       );
