@@ -123,35 +123,6 @@
         margin: 0 auto;
       }
 
-      .ox-card {
-        background: var(--ox-panel);
-        border: 1px solid var(--ox-border);
-        border-radius: 18px;
-        box-shadow: var(--ox-shadow);
-        position: relative;
-        overflow: hidden;
-      }
-
-      .ox-card::after {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 1px;
-        background: linear-gradient(
-          90deg,
-          transparent,
-          rgba(var(--ox-primary-rgb), 0.52),
-          transparent
-        );
-        opacity: 0.85;
-      }
-
-      .ox-card-inner {
-        padding: 24px;
-      }
-
       .widget-shell-card {
         margin-bottom: 18px;
       }
@@ -1005,10 +976,6 @@
           padding: 12px;
         }
 
-        .ox-card-inner {
-          padding: 20px;
-        }
-
         .pulse-hero {
           grid-template-columns: auto minmax(0, 1fr);
           gap: 14px;
@@ -1082,14 +1049,22 @@
           width: 100%;
         }
       }
-    </style>
+    
+      @keyframes panelSlideDown {
+        from { opacity: 0; transform: translateY(-8px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .pulse-panel.is-active {
+        animation: panelSlideDown 240ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+
+</style>
   </head>
   <body>
     <div class="container" role="region" aria-label="Initiative Status">
       <div id="content" aria-live="polite">
-        <div class="widget-shell-card">
-          <div class="ox-card">
-            <div class="ox-card-inner pulse-skeleton" role="status" aria-label="Loading initiative pulse">
+        <div class="ox-card">
+          <div class="ox-card-inner pulse-skeleton" role="status" aria-label="Loading initiative pulse">
               <span class="skeleton-line" style="width: 88px; height: 10px"></span>
               <span class="skeleton-line" style="width: 72%; height: 28px"></span>
               <span class="skeleton-line" style="width: 58%; height: 14px"></span>
@@ -1103,7 +1078,6 @@
               <span class="skeleton-line" style="width: 100%; height: 8px; border-radius: 999px"></span>
             </div>
           </div>
-        </div>
       </div>
     </div>
 
@@ -1302,6 +1276,7 @@ external: function (size) {
         initiative: function (size) {
           return _svg('<circle cx="12" cy="12" r="9" fill="currentColor" fill-opacity="0.1"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"></circle>', size);
         },
+        task: function(s){return _svg('<rect x="4" y="4" width="16" height="16" rx="4" fill="currentColor" fill-opacity="0.12"></rect><path d="M9 12.2 11 14.2 15.2 10"></path>',s);},
         workstream: function (size) {
           return _svg('<rect x="2" y="2" width="20" height="20" rx="6" fill="currentColor" fill-opacity="0.1" stroke="none"></rect><path d="M6 6c3 0 5 6 8 6"></path><path d="M6 18c3 0 5-6 8-6"></path><path d="M6 12h12"></path><path d="m14 8 4 4-4 4"></path><circle cx="6" cy="6" r="1.5" fill="currentColor" stroke="none"></circle><circle cx="6" cy="12" r="1.5" fill="currentColor" stroke="none"></circle><circle cx="6" cy="18" r="1.5" fill="currentColor" stroke="none"></circle>', size);
         },
@@ -2216,7 +2191,7 @@ external: function (size) {
                       urlAttr +
                       ', event)" class="pulse-list-row">' +
                         '<span class="pulse-list-leading">' +
-                        icons.check(15) +
+                        icons.task(15) +
                         "</span>" +
                         '<span class="pulse-list-copy">' +
                           '<span class="pulse-list-title">' +
@@ -2360,7 +2335,7 @@ external: function (size) {
         }
 
         return (
-          '<div class="pulse-panel">' +
+          '<div class="pulse-panel is-active">' +
           '<div class="pulse-panel-header">' +
           '<span class="pulse-panel-icon">' +
           icon +
@@ -2382,7 +2357,7 @@ external: function (size) {
       var render = function () {
         if (isLoading) {
           injectHtml(
-            '<div class="widget-shell-card"><div class="ox-card"><div class="ox-card-inner pulse-skeleton">' +
+            '<div class="ox-card"><div class="ox-card-inner pulse-skeleton">' +
               '<span class="skeleton-line" style="width: 88px; height: 10px"></span>' +
               '<span class="skeleton-line" style="width: 72%; height: 28px"></span>' +
               '<span class="skeleton-line" style="width: 58%; height: 14px"></span>' +
@@ -2394,7 +2369,7 @@ external: function (size) {
                 '<span class="skeleton-line" style="height: 72px; border-radius: 14px"></span>' +
               '</div>' +
               '<span class="skeleton-line" style="width: 100%; height: 8px; border-radius: 999px"></span>' +
-            "</div></div></div>"
+            "</div></div>"
           );
           return;
         }
@@ -2596,9 +2571,8 @@ external: function (size) {
           "now";
 
         injectHtml(
-          '<div class="widget-shell-card" style="margin-bottom: 18px; animation: ' + ((document.getElementById("content") && document.getElementById("content").innerHTML.indexOf("widget-shell-card") > -1) ? 'none' : 'fadeSlideUp 420ms cubic-bezier(0.16, 1, 0.3, 1) forwards') + ';">' +
-            '<div class="ox-card">' +
-              '<div class="ox-card-inner">' +
+          '<div class="ox-card" style="margin-bottom: 18px; animation: ' + ((document.getElementById("content") && document.getElementById("content").innerHTML.indexOf("ox-card") > -1) ? 'none' : 'fadeSlideUp 420ms cubic-bezier(0.16, 1, 0.3, 1) forwards') + ';">' +
+            '<div class="ox-card-inner">' +
                 '<div class="pulse-shell">' +
                   '<div class="pulse-hero">' +
                     renderHealthRing(pulse.health_score) +
@@ -2673,8 +2647,7 @@ external: function (size) {
                   "</div>" +
                 "</div>" +
               "</div>" +
-            "</div>" +
-          "</div>"
+            "</div>"
         );
       };
 
