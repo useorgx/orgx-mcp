@@ -6,6 +6,15 @@
   <title>Search Results - OrgX</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='28' cy='28' r='14' fill='none' stroke='%2300C9A7' stroke-width='6'/%3E%3Cpath d='M39 39l12 12' stroke='%2300C9A7' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
+  <script>
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const theme = params.get('theme');
+      const embed = params.get('embed');
+      if (theme) document.documentElement.setAttribute('data-theme', theme);
+      if (embed) document.documentElement.setAttribute('data-embed', embed);
+    })();
+  </script>
   <style>
       :root, :root[data-theme="light"] {
         --ox-bg: #f8fafc;
@@ -114,6 +123,24 @@
       }
 
       .container { max-width: 540px; margin: 0 auto; position: relative; }
+
+      :root[data-embed="og-wide-search"] body {
+        min-height: auto;
+        min-width: 700px;
+        padding: 20px 18px;
+      }
+
+      :root[data-embed="og-wide-search"] .container {
+        max-width: 700px;
+      }
+
+      :root[data-embed="og-wide-search"] .ox-card-inner {
+        padding: 22px;
+      }
+
+      :root[data-embed="og-wide-search"] .result-card {
+        padding: 16px;
+      }
 
       .ox-card {
         background: var(--ox-panel); border: 1px solid var(--ox-border); border-radius: 16px; box-shadow: var(--ox-shadow); position: relative; overflow: hidden; margin-bottom: 16px;
@@ -440,13 +467,7 @@
     </div>
   </div>
   <script>
-
-    // Sync theme from URL to override prefers-color-scheme
-    (function() {
-      const params = new URLSearchParams(window.location.search);
-      const theme = params.get('theme');
-      if (theme) document.documentElement.setAttribute('data-theme', theme);
-    })();
+    var queryParams = new URLSearchParams(window.location.search);
 
 
     var injectHtml = (html) => {
@@ -488,9 +509,14 @@
       var renderSnippet = (snippet) => {
         var text = typeof snippet === 'string' ? snippet : '';
         if (!text) return '';
-        return escapeHtml(text)
-          .replace(/&lt;span class=&quot;highlight&quot;&gt;/g, '<span class="highlight">')
-          .replace(/&lt;\/span&gt;/g, '</span>');
+        var highlightOpenToken = '__ORGX_HIGHLIGHT_OPEN__';
+        var highlightCloseToken = '__ORGX_HIGHLIGHT_CLOSE__';
+        var prepared = text
+          .replace(/<span class=["']highlight["']>/g, highlightOpenToken)
+          .replace(/<\/span>/g, highlightCloseToken);
+        return escapeHtml(prepared)
+          .replace(new RegExp(highlightOpenToken, 'g'), '<span class="highlight">')
+          .replace(new RegExp(highlightCloseToken, 'g'), '</span>');
       };
       var serializeJsString = (value) => JSON.stringify(String(value || ''));
       var titleCase = value => String(value || '').replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -697,24 +723,57 @@
         return '';
       };
 
-    var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
+    var isDemo = queryParams.get('demo') === 'true';
     var data = isDemo ? {
-      
-      query: "Q4 launch blockers",
+      query: "founder continuity launch",
       results: [
-        { title: 'Q4 Product Launch', type: 'initiative', snippet: 'The <span class="highlight">Q4 launch</span> is currently blocked by 2 pending approvals in Marketing.', score: 0.98, url: '#', date: 'Just now' },
-        { title: 'Marketing Sync', type: 'document', snippet: 'Discussed the <span class="highlight">blockers</span> for the upcoming launch sequence.', score: 0.85, url: '#', date: '2 days ago' },
-        { title: 'Approve Email Sequence', type: 'decision', snippet: 'Approval needed to unblock the <span class="highlight">Q4 launch</span> comms.', score: 0.72, url: '#', date: '4 hours ago' },
-        { title: 'API Gateway Scaling', type: 'task', snippet: 'Increase the rate limit for the new <span class="highlight">Q4 launch</span> traffic.', score: 0.61, url: '#', date: '1 day ago' },
-        { title: 'Billing integration specs', type: 'document', snippet: 'New Stripe logic required for the <span class="highlight">Q4 launch</span>.', score: 0.55, url: '#', date: '1 week ago' }
+        {
+          title: 'Founder Continuity Launch',
+          type: 'initiative',
+          snippet: 'Cross-domain launch that ties <span class="highlight">founder continuity</span> to live search, scaffolded execution, and approvals in one operator loop.',
+          score: 0.98,
+          url: '#',
+          date: 'Just now'
+        },
+        {
+          title: 'Approve founder continuity launch story',
+          type: 'decision',
+          snippet: '<span class="highlight">Pace - Product</span> is waiting on founder approval to lock the hero narrative, proof order, and CTA before launch.',
+          score: 0.93,
+          url: '#',
+          date: '6 minutes ago'
+        },
+        {
+          title: 'Capture scaffold, search, and decisions stack',
+          type: 'task',
+          snippet: 'Marketing and engineering need the final <span class="highlight">continuity launch</span> proof image once the widgets are visually aligned.',
+          score: 0.88,
+          url: '#',
+          date: '18 minutes ago'
+        },
+        {
+          title: 'Founder continuity evidence pack',
+          type: 'document',
+          snippet: 'Reusable launch proof showing the same initiative, search query, and decision chain across ChatGPT, Claude, and Cursor surfaces.',
+          score: 0.84,
+          url: '#',
+          date: '32 minutes ago'
+        },
+        {
+          title: 'Search relevance threshold locked at 0.82',
+          type: 'document',
+          snippet: 'Engineering note explaining why the <span class="highlight">founder continuity</span> query should keep the linked decision and initiative above the fold.',
+          score: 0.78,
+          url: '#',
+          date: '1 hour ago'
+        }
       ]
-
     } : null;
     var isLoading = !isDemo;
     var currentPage = 1;
     var itemsPerPage = 3;
 
-    var isLoadingOverride = new URLSearchParams(window.location.search).get('loading') === 'true';
+    var isLoadingOverride = queryParams.get('loading') === 'true';
     if (isLoadingOverride) {
       isLoading = true;
       isDemo = false;

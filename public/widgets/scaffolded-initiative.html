@@ -7,6 +7,15 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='18' fill='none' stroke='%236366f1' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='9' fill='none' stroke='%236366f1' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='3' fill='%236366f1'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <script src="shared/interaction-kit.js"></script>
+  <script>
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const theme = params.get('theme');
+      const embed = params.get('embed');
+      if (theme) document.documentElement.setAttribute('data-theme', theme);
+      if (embed) document.documentElement.setAttribute('data-embed', embed);
+    })();
+  </script>
   <style>
       :root, :root[data-theme="light"] {
         --ox-bg: #f8fafc;
@@ -101,6 +110,24 @@
     body { font-family: var(--ox-font); background: var(--ox-bg); color: var(--ox-text); padding: 24px 16px; -webkit-font-smoothing: antialiased; min-height: 100vh; }
     body::before { content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at 50% 0%, rgba(var(--ox-primary-rgb), 0.08), transparent 60%), linear-gradient(var(--ox-grid) 1px, transparent 1px), linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px); background-size: 100% 100%, 20px 20px, 20px 20px; z-index: -1; pointer-events: none; }
     .container { max-width: 540px; margin: 0 auto; position: relative; }
+
+    :root[data-embed="og-wide-scaffold"] body {
+      min-height: auto;
+      min-width: 640px;
+      padding: 20px 18px;
+    }
+
+    :root[data-embed="og-wide-scaffold"] .container {
+      max-width: 640px;
+    }
+
+    :root[data-embed="og-wide-scaffold"] .ox-card-inner {
+      padding: 22px;
+    }
+
+    :root[data-embed="og-wide-scaffold"] .ws-title {
+      font-size: 0.95rem;
+    }
     
     .ox-card { background: var(--ox-panel); border: 1px solid var(--ox-border); border-radius: 16px; box-shadow: var(--ox-shadow); position: relative; overflow: hidden; margin-bottom: 16px; }
     .ox-card-inner { padding: 24px; }
@@ -113,6 +140,8 @@
 
     /* Hierarchy Specifics */
     .h-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--ox-border); }
+    .h-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+    .h-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .h-icon { width: 48px; height: 48px; border-radius: 12px; background: rgba(var(--ox-primary-rgb), 0.1); border: 1px solid rgba(var(--ox-primary-rgb), 0.2); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
     
     .node-list {
@@ -587,7 +616,7 @@
     }
 
     
-    .badge-id { font-family: var(--ox-mono); font-size: 0.53rem; padding: 2px 6px; border-radius: 999px; border: 1px solid var(--ox-border); color: var(--ox-text-muted); letter-spacing: 0.05em; line-height: 1; }
+    .badge-id { font-family: var(--ox-mono); font-size: 0.53rem; padding: 2px 6px; border-radius: 999px; border: 1px solid var(--ox-border); color: var(--ox-text-muted); letter-spacing: 0.05em; line-height: 1; white-space: nowrap; }
     .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary); font-family: var(--ox-mono); font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; border: 1px solid rgba(var(--ox-primary-rgb), 0.2); }
     .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; animation: pulse 2s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
@@ -706,14 +735,7 @@
     </div>
   </div>
   <script>
-
-    // Sync theme from URL to override prefers-color-scheme
-    (function() {
-      const params = new URLSearchParams(window.location.search);
-      const theme = params.get('theme');
-      if (theme) document.documentElement.setAttribute('data-theme', theme);
-    })();
-
+    var queryParams = new URLSearchParams(window.location.search);
 
     var injectHtml = (html) => {
       const content = document.getElementById('content');
@@ -776,6 +798,7 @@
           type: 'workstream',
           title: readLabel(workstream, 'Untitled workstream'),
           id: workstream && typeof workstream.ref === 'string' ? workstream.ref : workstream && typeof workstream.id === 'string' ? workstream.id : '',
+          ref: workstream && typeof workstream.ref === 'string' ? workstream.ref : '',
         });
         var milestones = workstream && Array.isArray(workstream.milestones) ? workstream.milestones : [];
         milestones.forEach((milestone, milestoneIndex) => {
@@ -786,6 +809,7 @@
             type: 'milestone',
             title: readLabel(milestone, 'Untitled milestone'),
             id: milestone && typeof milestone.ref === 'string' ? milestone.ref : milestone && typeof milestone.id === 'string' ? milestone.id : '',
+            ref: milestone && typeof milestone.ref === 'string' ? milestone.ref : '',
             connector: {
               outerTop: true,
               outerBottom: milestoneHasFollowingSibling,
@@ -799,6 +823,7 @@
               type: 'task',
               title: readLabel(task, 'Untitled task'),
               id: task && typeof task.ref === 'string' ? task.ref : task && typeof task.id === 'string' ? task.id : '',
+              ref: task && typeof task.ref === 'string' ? task.ref : '',
               connector: {
                 outerTop: milestoneHasFollowingSibling,
                 outerBottom: milestoneHasFollowingSibling,
@@ -846,6 +871,21 @@
         .filter(Boolean)
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(' ');
+    };
+    var isFriendlyDisplayId = (value, prefix) => {
+      if (typeof value !== 'string' || !value.trim()) return false;
+      return new RegExp('^' + prefix + '-\\d+(?:-\\d+)*$', 'i').test(value.trim());
+    };
+    var makeDisplayId = (prefix, rawId, count) => {
+      if (isFriendlyDisplayId(rawId, prefix)) return rawId.trim().toUpperCase();
+      return prefix + '-' + count;
+    };
+    var renderIdBadge = (displayId, rawId) => {
+      if (!displayId) return '';
+      var title = rawId && rawId !== displayId
+        ? ' title="' + escapeHtml('Internal ID: ' + rawId) + '"'
+        : '';
+      return '<span class="badge-id"' + title + '>' + escapeHtml(displayId) + '</span>';
     };
     var WIDGET_ASSET_BASE = 'https://mcp.useorgx.com/widgets/shared/';
     var getAvatarUrl = (name, domain) => {
@@ -1129,48 +1169,95 @@
       if (!raw || typeof raw !== 'object') return null;
       var initiative = raw.initiative || (raw.hierarchy && raw.hierarchy.initiative) || null;
       if (!initiative || typeof initiative !== 'object') return null;
+      var sections = groupHierarchy(enrichHierarchy(raw.hierarchy, raw) || []);
+      var counters = { workstream: 0, milestone: 0, task: 0 };
+      var displaySections = sections.map((section) => {
+        var sectionRef = typeof section.ref === 'string' && section.ref.trim() ? section.ref.trim() : '';
+        var nextSection = Object.assign({}, section, {
+          raw_id: section.id || sectionRef || '',
+          display_id: sectionRef || makeDisplayId('ws', section.id, counters.workstream + 1),
+          milestones: []
+        });
+        counters.workstream += 1;
+        nextSection.milestones = (section.milestones || []).map((milestone) => {
+          var milestoneRef = typeof milestone.ref === 'string' && milestone.ref.trim() ? milestone.ref.trim() : '';
+          var nextMilestone = Object.assign({}, milestone, {
+            raw_id: milestone.id || milestoneRef || '',
+            display_id: milestoneRef || makeDisplayId('ms', milestone.id, counters.milestone + 1),
+            tasks: []
+          });
+          counters.milestone += 1;
+          nextMilestone.tasks = (milestone.tasks || []).map((task) => {
+            var taskRef = typeof task.ref === 'string' && task.ref.trim() ? task.ref.trim() : '';
+            var nextTask = Object.assign({}, task, {
+              raw_id: task.id || taskRef || '',
+              display_id: taskRef || makeDisplayId('task', task.id, counters.task + 1)
+            });
+            counters.task += 1;
+            return nextTask;
+          });
+          return nextMilestone;
+        });
+        return nextSection;
+      });
       return {
         initiative: {
           id: typeof initiative.id === 'string' ? initiative.id : typeof initiative.ref === 'string' ? initiative.ref : '',
+          raw_id: typeof initiative.id === 'string' ? initiative.id : typeof initiative.ref === 'string' ? initiative.ref : '',
+          display_id: makeDisplayId('INI', typeof initiative.id === 'string' ? initiative.id : typeof initiative.ref === 'string' ? initiative.ref : '', 1),
           title: readLabel(initiative, 'Untitled initiative'),
           status: typeof initiative.status === 'string' && initiative.status.trim() ? initiative.status.trim() : 'scaffolded',
         },
-        hierarchy: enrichHierarchy(raw.hierarchy, raw),
+        sections: displaySections,
       };
     };
 
-    var queryParams = new URLSearchParams(window.location.search);
     var isDemo = queryParams.get('demo') === 'true';
     var demoScenario = queryParams.get('scenario') || 'default';
     var demoScenarios = {
       default: {
-      initiative: { id: "INI-402", title: "AI Query Discovery Engine", status: "Active" },
+      initiative: { id: "INI-402", title: "Founder Continuity Launch", status: "Active" },
       hierarchy: {
-        initiative: { id: "INI-402", title: "AI Query Discovery Engine", status: "Active" },
+        initiative: { id: "INI-402", title: "Founder Continuity Launch", status: "Active" },
         workstreams: [
           {
             id: "WS-1",
-            title: "Infrastructure Scaffolding",
+            title: "Product Narrative Lock",
             milestones: [
               {
                 id: "MS-1",
-                title: "Data Pipeline Validated",
+                title: "Founder story approved",
                 tasks: [
-                  { id: "TSK-1", title: "Configure ingest scripts" },
-                  { id: "TSK-2", title: "Run dry-run tests" }
+                  { id: "TSK-1", title: "Finalize continuity headline" },
+                  { id: "TSK-2", title: "Align founder CTA with launch page" }
                 ]
               }
             ]
           },
           {
             id: "WS-2",
-            title: "Search UX Implementation",
+            title: "Search + Memory Proof",
             milestones: [
               {
                 id: "MS-2",
-                title: "Search Input Animated",
+                title: "Founder continuity query validated",
                 tasks: [
-                  { id: "TSK-3", title: "Implement Lenis scrolling" }
+                  { id: "TSK-3", title: "Tune launch relevance threshold" },
+                  { id: "TSK-4", title: "Verify linked decision stays first-fold" }
+                ]
+              }
+            ]
+          },
+          {
+            id: "WS-3",
+            title: "Launch Assets Ship",
+            milestones: [
+              {
+                id: "MS-3",
+                title: "Layered widget visual approved",
+                tasks: [
+                  { id: "TSK-5", title: "Capture scaffold, search, and decisions stack" },
+                  { id: "TSK-6", title: "Publish founder launch preview" }
                 ]
               }
             ]
@@ -1179,14 +1266,16 @@
       },
       agent_assignment: {
         assignments: [
-          { workstream_id: "WS-1", domain: "engineering", agent_id: "engineering-agent", agent_name: "Eli" },
-          { workstream_id: "WS-2", domain: "design", agent_id: "design-agent", agent_name: "Dana" }
+          { workstream_id: "WS-1", domain: "product", agent_id: "product-agent", agent_name: "Pace" },
+          { workstream_id: "WS-2", domain: "engineering", agent_id: "engineering-agent", agent_name: "Eli" },
+          { workstream_id: "WS-3", domain: "marketing", agent_id: "marketing-agent", agent_name: "Mark" }
         ]
       },
       streams: {
         items: [
-          { workstream_id: "WS-1", status: "active", agent_domain: "engineering", progress_pct: 42 },
-          { workstream_id: "WS-2", status: "ready", agent_domain: "design", progress_pct: 12 }
+          { workstream_id: "WS-1", status: "active", agent_domain: "product", progress_pct: 74 },
+          { workstream_id: "WS-2", status: "active", agent_domain: "engineering", progress_pct: 58 },
+          { workstream_id: "WS-3", status: "ready", agent_domain: "marketing", progress_pct: 34 }
         ]
       }
       },
@@ -1360,12 +1449,12 @@
       var scaffold = normalizeScaffoldData(data);
       if(!scaffold || !scaffold.initiative) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.layout(24)}</div><div class="empty-title">Awaiting scaffold</div><div class="empty-desc">The structural hierarchy has not been generated yet.</div></div>`); return; }
 
-      const sections = groupHierarchy(scaffold.hierarchy || []);
+      const sections = scaffold.sections || [];
       const renderTask = (task) => {
         return `<div class="node-item tk" data-tk-row>
           <span class="node-icon" style="display:flex; align-items:center;">${icons.task(14)}</span>
           <span class="tree-label">${escapeHtml(readLabel(task, 'Untitled'))}</span>
-          ${task.id ? `<span class="badge-id">${escapeHtml(task.id)}</span>` : ''}
+          ${renderIdBadge(task.display_id, task.raw_id)}
         </div>`;
       };
       const renderMilestone = (milestone) => {
@@ -1373,7 +1462,7 @@
           <div class="node-item ms" data-ms-row>
             <span class="node-icon" style="display:flex; align-items:center;">${icons.milestone(14)}</span>
             <span class="tree-label">${escapeHtml(readLabel(milestone, 'Untitled'))}</span>
-            ${milestone.id ? `<span class="badge-id">${escapeHtml(milestone.id)}</span>` : ''}
+            ${renderIdBadge(milestone.display_id, milestone.raw_id)}
           </div>
           ${milestone.tasks && milestone.tasks.length ? `<div class="ms-tasks">${milestone.tasks.map(renderTask).join('')}</div>` : ''}
         </div>`;
@@ -1391,7 +1480,7 @@
                 <div class="ws-title-wrap">
                   <div class="ws-title-row">
                     <span class="ws-title">${escapeHtml(readLabel(section, 'Untitled'))}</span>
-                    ${section.id ? `<span class="badge-id">${escapeHtml(section.id)}</span>` : ''}
+                    ${renderIdBadge(section.display_id, section.raw_id)}
                   </div>
                 </div>
               </div>
@@ -1418,9 +1507,12 @@
           <div class="ox-card-inner">
             <div class="h-header">
               <div class="h-icon">${icons.initiative(24)}</div>
-              <div style="flex:1;">
+              <div class="h-copy">
                 <div class="ox-eyebrow" style="margin-bottom:4px;">Initiative Scaffolded</div>
-                <h2 class="ox-title" style="font-size:1.3rem; margin-bottom:8px;">${escapeHtml(scaffold.initiative.title)}</h2>
+                <div class="h-title-row">
+                  <h2 class="ox-title" style="font-size:1.3rem;">${escapeHtml(scaffold.initiative.title)}</h2>
+                  ${renderIdBadge(scaffold.initiative.display_id, scaffold.initiative.raw_id)}
+                </div>
                 <div class="status-pill">
                   <div class="status-dot"></div> ${escapeHtml(scaffold.initiative.status)}
                 </div>
