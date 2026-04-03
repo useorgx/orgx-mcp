@@ -1,390 +1,750 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Initiative Pulse - OrgX</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='15' fill='none' stroke='%2300C9A7' stroke-width='6'/%3E%3Cpath d='M20 34l7-7 6 6 12-12' stroke='%2300C9A7' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Initiative Pulse - OrgX</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='15' fill='none' stroke='%2300C9A7' stroke-width='6'/%3E%3Cpath d='M20 34l7-7 6 6 12-12' stroke='%2300C9A7' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"
+    />
     <link rel="stylesheet" href="shared/widget-foundation.css" />
     <style>
-      :root, :root[data-theme="light"] {
+      :root,
+      :root[data-theme="light"] {
         --ox-bg: #f8fafc;
         --ox-panel: #ffffff;
-        --ox-border: rgba(0, 0, 0, 0.08);
-        --ox-border-strong: rgba(0, 0, 0, 0.15);
+        --ox-border: rgba(15, 23, 42, 0.09);
+        --ox-border-strong: rgba(15, 23, 42, 0.15);
         --ox-text: #0f172a;
         --ox-text-muted: #64748b;
-        --ox-well-bg: #f1f5f9;
-        --ox-well-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        --ox-text-dim: #94a3b8;
+        --ox-well-bg: #f3f6f9;
+        --ox-well-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+        --ox-grid-color: rgba(15, 23, 42, 0.04);
+        --ox-shadow: 0 20px 44px -22px rgba(15, 23, 42, 0.18),
+          0 6px 14px rgba(15, 23, 42, 0.05);
       }
-      
+
       @media (prefers-color-scheme: dark) {
         :root:not([data-theme="light"]) {
           --ox-bg: #02040a;
-          --ox-panel: rgba(10, 15, 22, 0.95);
+          --ox-panel: rgba(10, 15, 22, 0.96);
           --ox-border: rgba(255, 255, 255, 0.08);
-          --ox-border-strong: rgba(255, 255, 255, 0.15);
+          --ox-border-strong: rgba(255, 255, 255, 0.16);
           --ox-text: #f8fafc;
-          --ox-text-muted: rgba(255, 255, 255, 0.5);
-          --ox-well-bg: rgba(0,0,0,0.3);
-          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
+          --ox-text-muted: rgba(255, 255, 255, 0.56);
+          --ox-text-dim: rgba(255, 255, 255, 0.32);
+          --ox-well-bg: rgba(255, 255, 255, 0.02);
+          --ox-well-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+          --ox-grid-color: rgba(255, 255, 255, 0.025);
+          --ox-shadow: 0 24px 50px -18px rgba(0, 0, 0, 0.62),
+            inset 0 1px 0 rgba(255, 255, 255, 0.05);
         }
       }
-      
+
       :root[data-theme="dark"] {
-          --ox-bg: #02040a;
-          --ox-panel: rgba(10, 15, 22, 0.95);
-          --ox-border: rgba(255, 255, 255, 0.08);
-          --ox-border-strong: rgba(255, 255, 255, 0.15);
-          --ox-text: #f8fafc;
-          --ox-text-muted: rgba(255, 255, 255, 0.5);
-          --ox-well-bg: rgba(0,0,0,0.3);
-          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
+        --ox-bg: #02040a;
+        --ox-panel: rgba(10, 15, 22, 0.96);
+        --ox-border: rgba(255, 255, 255, 0.08);
+        --ox-border-strong: rgba(255, 255, 255, 0.16);
+        --ox-text: #f8fafc;
+        --ox-text-muted: rgba(255, 255, 255, 0.56);
+        --ox-text-dim: rgba(255, 255, 255, 0.32);
+        --ox-well-bg: rgba(255, 255, 255, 0.02);
+        --ox-well-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+        --ox-grid-color: rgba(255, 255, 255, 0.025);
+        --ox-shadow: 0 24px 50px -18px rgba(0, 0, 0, 0.62),
+          inset 0 1px 0 rgba(255, 255, 255, 0.05);
       }
-      
+
       :root {
-        --ox-lime: #a3e635; /* Will be overwritten by specific widgets */
-        --ox-teal: #0d9488;
-        --ox-danger: #e11d48;
-        --ox-warning: #d97706;
-        --ox-iris: #4f46e5;
-        --ox-primary: #00C9A7;
+        --ox-primary: #00c9a7;
         --ox-primary-rgb: 0, 201, 167;
-        --ox-grid: rgba(0, 0, 0, 0.03);
-        --ox-grid-color: rgba(0, 0, 0, 0.03);
-        --ox-shadow: 0 12px 32px -12px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.04);
-        --ox-font: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
-        --ox-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
-      }
-      
-      @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) {
-          --ox-lime: #D4ED31;
-          --ox-teal: #00C9A7;
-          --ox-danger: #F43F5E;
-          --ox-warning: #FBBF24;
-          --ox-iris: #6366f1;
-          --ox-grid: rgba(255, 255, 255, 0.02);
-          --ox-grid-color: rgba(255, 255, 255, 0.02);
-          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
-        }
-      }
-      
-      :root[data-theme="dark"] {
-          --ox-lime: #D4ED31;
-          --ox-teal: #00C9A7;
-          --ox-danger: #F43F5E;
-          --ox-warning: #FBBF24;
-          --ox-iris: #6366f1;
-          --ox-grid: rgba(255, 255, 255, 0.02);
-          --ox-grid-color: rgba(255, 255, 255, 0.02);
-          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+        --ox-lime: #d4ed31;
+        --ox-warning: #fbbf24;
+        --ox-danger: #f43f5e;
+        --ox-font: -apple-system, BlinkMacSystemFont, "Inter", system-ui,
+          sans-serif;
+        --ox-mono: "JetBrains Mono", "SF Mono", ui-monospace, SFMono-Regular,
+          monospace;
       }
 
-      /* Smooth UX Transitions */
-      .skeleton-wrapper { transition: opacity 0.3s ease; }
-      @keyframes fadeSlideUp {
-        from { opacity: 0; transform: translateY(16px) scale(0.98); filter: blur(4px); }
-        to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
       }
-      .animate-in { opacity: 0; animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-      .delay-1 { animation-delay: 0.1s; }
-      .delay-2 { animation-delay: 0.2s; }
-      .delay-3 { animation-delay: 0.3s; }
-      
-      .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 24px; text-align: center; background: var(--ox-well-bg); border: 1px dashed var(--ox-border-strong); border-radius: 16px; margin: 16px 0; }
-      .empty-icon { width: 48px; height: 48px; border-radius: 50%; background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
-      .empty-icon svg { width: 24px; height: 24px; }
-      .empty-title { font-size: 1.1rem; font-weight: 600; color: var(--ox-text); margin-bottom: 8px; }
-      .empty-desc { font-size: 0.9rem; color: var(--ox-text-muted); line-height: 1.5; max-width: 280px; }
-      .error-state { border-style: solid; border-color: rgba(225,29,72,0.2); background: rgba(225,29,72,0.04); }
-      .error-state .empty-icon { color: var(--ox-danger); background: rgba(225,29,72,0.08); box-shadow: none; }
-      .error-state .empty-desc { max-width: 360px; }
-
-      * { box-sizing: border-box; margin: 0; padding: 0; }
 
       body {
         font-family: var(--ox-font);
         background: var(--ox-bg);
         color: var(--ox-text);
         padding: 16px;
+        min-height: 100vh;
         -webkit-font-smoothing: antialiased;
         overflow-x: hidden;
       }
 
-      /* Cinematic Background Grid & Glows */
       body::before {
-        content: '';
+        content: "";
         position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: radial-gradient(circle at 50% -20%, rgba(var(--ox-primary-rgb), 0.08), transparent 60%),
-                    linear-gradient(var(--ox-grid-color) 1px, transparent 1px),
-                    linear-gradient(90deg, var(--ox-grid-color) 1px, transparent 1px);
-        background-size: 100% 100%, 20px 20px, 20px 20px;
+        inset: 0;
+        background: radial-gradient(
+            circle at 50% -18%,
+            rgba(var(--ox-primary-rgb), 0.1),
+            transparent 56%
+          ),
+          linear-gradient(var(--ox-grid-color) 1px, transparent 1px),
+          linear-gradient(90deg, var(--ox-grid-color) 1px, transparent 1px);
+        background-size: 100% 100%, 22px 22px, 22px 22px;
+        pointer-events: none;
         z-index: -1;
+      }
+
+      .container {
+        max-width: 520px;
+        margin: 0 auto;
+      }
+
+      .ox-card {
+        background: var(--ox-panel);
+        border: 1px solid var(--ox-border);
+        border-radius: 18px;
+        box-shadow: var(--ox-shadow);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .ox-card::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(var(--ox-primary-rgb), 0.52),
+          transparent
+        );
+        opacity: 0.85;
+      }
+
+      .ox-card-inner {
+        padding: 24px;
+      }
+
+      .widget-shell-card {
+        margin-bottom: 18px;
+      }
+
+      .widget-shell-card .deep-link {
+        min-height: 46px;
+      }
+
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 26px;
+        padding: 0 10px;
+        border-radius: 999px;
+        font-family: var(--ox-mono);
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        border: 1px solid currentColor;
+        white-space: nowrap;
+      }
+
+      .status-badge.status-active,
+      .status-badge.status-in_progress,
+      .status-badge.status-running {
+        color: var(--ox-primary);
+        background: rgba(var(--ox-primary-rgb), 0.11);
+        border-color: rgba(var(--ox-primary-rgb), 0.24);
+      }
+
+      .status-badge.status-completed,
+      .status-badge.status-approved {
+        color: var(--ox-lime);
+        background: rgba(212, 237, 49, 0.1);
+        border-color: rgba(212, 237, 49, 0.18);
+      }
+
+      .status-badge.status-blocked,
+      .status-badge.status-failed,
+      .status-badge.status-at_risk {
+        color: var(--ox-danger);
+        background: rgba(244, 63, 94, 0.1);
+        border-color: rgba(244, 63, 94, 0.2);
+      }
+
+      .status-badge.status-ready,
+      .status-badge.status-pending,
+      .status-badge.status-in_review,
+      .status-badge.status-ramping_up {
+        color: var(--ox-warning);
+        background: rgba(251, 191, 36, 0.1);
+        border-color: rgba(251, 191, 36, 0.22);
+      }
+
+      .status-badge.status-paused,
+      .status-badge.status-draft,
+      .status-badge.status-idle {
+        color: var(--ox-text-muted);
+        background: rgba(148, 163, 184, 0.12);
+        border-color: rgba(148, 163, 184, 0.18);
+      }
+
+      .pulse-shell {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+
+      .pulse-hero {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 22px;
+        align-items: center;
+      }
+
+      .pulse-health {
+        position: relative;
+        width: 116px;
+        height: 116px;
+        flex: none;
+      }
+
+      .pulse-health::before {
+        content: "";
+        position: absolute;
+        inset: 12px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          rgba(var(--ox-primary-rgb), 0.16),
+          transparent 70%
+        );
+        opacity: 0.85;
         pointer-events: none;
       }
 
-      .container { max-width: 520px; margin: 0 auto; position: relative; }
-
-      .ox-card { background: var(--ox-panel); border: 1px solid var(--ox-border); border-radius: 16px; box-shadow: var(--ox-shadow); position: relative; overflow: hidden; margin-bottom: 16px; }
-      .ox-card-inner { padding: 24px; }
-      .ox-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(var(--ox-primary-rgb), 0.5), transparent); opacity: 0.8; }
-      .widget-footer {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
-        margin-top: 24px;
-        padding-top: 16px;
-        border-top: 1px solid var(--ox-border);
+      .pulse-health svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+        transform: rotate(-90deg);
+        filter: drop-shadow(0 0 24px rgba(var(--ox-primary-rgb), 0.18));
       }
-      .deep-link {
-        display: inline-flex;
+
+      .pulse-health__track {
+        fill: none;
+        stroke: rgba(148, 163, 184, 0.2);
+        stroke-width: 5;
+      }
+
+      .pulse-health__bar {
+        fill: none;
+        stroke: var(--ox-primary);
+        stroke-width: 5;
+        stroke-linecap: round;
+        transition: stroke-dashoffset 360ms ease, stroke 180ms ease;
+      }
+
+      .pulse-health.tone-warning .pulse-health__bar {
+        stroke: var(--ox-warning);
+      }
+
+      .pulse-health.tone-danger .pulse-health__bar {
+        stroke: var(--ox-danger);
+      }
+
+      .pulse-health__value {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 8px;
-        min-height: 48px;
-        max-width: 100%;
-        padding: 12px 16px;
-        border-radius: 14px;
-        border: 1px solid rgba(var(--ox-primary-rgb), 0.28);
-        background: rgba(var(--ox-primary-rgb), 0.08);
-        font-size: 0.84rem;
+        pointer-events: none;
+      }
+
+      .pulse-health__number {
+        font-size: 2rem;
+        line-height: 0.95;
+        letter-spacing: -0.06em;
         font-weight: 700;
         color: var(--ox-text);
-        text-decoration: none;
-        text-align: center;
-        line-height: 1.15;
-        transition:
-          transform 0.18s ease,
-          border-color 0.18s ease,
-          background 0.18s ease;
       }
-      .deep-link:hover {
-        transform: translateY(-1px);
-        border-color: rgba(var(--ox-primary-rgb), 0.38);
-        background: rgba(var(--ox-primary-rgb), 0.12);
+
+      .pulse-health__label {
+        margin-top: 6px;
+        font-family: var(--ox-mono);
+        font-size: 0.56rem;
+        line-height: 1;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--ox-text-muted);
+        font-weight: 700;
       }
-      .deep-link svg { width: 16px; height: 16px; flex-shrink: 0; }
 
+      .pulse-copy {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
 
-      
-
-      
-
-      .pulse-header, .header {
+      .pulse-headline {
         display: flex;
         align-items: flex-start;
         justify-content: space-between;
-        margin-bottom: 20px;
-      }
-      
-      .header-padded {
-         padding-bottom: 16px;
-         border-bottom: 1px solid var(--ox-border);
+        gap: 12px;
       }
 
-      .pulse-name, .title {
-        font-size: 1.25rem;
-        font-weight: 600;
-        letter-spacing: -0.02em;
-        color: var(--ox-text);
-        line-height: 1.2;
-      }
-
-      .status-badge, .badge {
-        padding: 4px 10px;
-        border-radius: 4px;
+      .pulse-kicker {
         font-family: var(--ox-mono);
-        font-size: 0.65rem;
+        font-size: 0.64rem;
+        line-height: 1;
         text-transform: uppercase;
-        letter-spacing: 0.1em;
-        border: 1px solid var(--ox-border);
-        font-weight: 600;
-      }
-
-      .status-active { background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary); border-color: rgba(var(--ox-primary-rgb), 0.2); }
-      .status-completed { background: rgba(0,201,167,0.1); color: var(--ox-teal); border-color: rgba(0,201,167,0.2); }
-      .status-blocked { background: rgba(225,29,72,0.1); color: var(--ox-danger); border-color: rgba(225,29,72,0.2); }
-
-      @media (prefers-color-scheme: dark) {
-         .status-blocked { background: rgba(244,63,94,0.1); border-color: rgba(244,63,94,0.2); }
-      }
-
-      .detail-label {
-        font-family: var(--ox-mono);
-        font-size: 0.65rem;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
+        letter-spacing: 0.14em;
         color: var(--ox-text-muted);
-        font-weight: 600;
+        font-weight: 700;
       }
 
-      
-
-      
-
-      @media (prefers-color-scheme: dark) {
-         
+      .pulse-title-wrap {
+        min-width: 0;
       }
 
-      .roi-item::before {
-        content: '';
-        position: absolute;
-        top: 0; right: 0; width: 50%; height: 100%;
-        background: radial-gradient(circle at top right, rgba(var(--ox-primary-rgb),0.05), transparent);
-        pointer-events: none;
+      .pulse-title {
+        margin-top: 10px;
+        font-size: clamp(1.4rem, 3.2vw, 1.92rem);
+        line-height: 1.02;
+        letter-spacing: -0.05em;
+        font-weight: 700;
+        color: var(--ox-text);
       }
-
-      
-
-      
-
-      .roi-value.positive { color: var(--ox-teal); }
-      .roi-value.negative { color: var(--ox-danger); }
 
       .pulse-message {
-        margin-top: 18px;
-        padding: 14px 16px;
-        border-radius: 12px;
-        border: 1px solid rgba(var(--ox-primary-rgb), 0.14);
-        background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.08), rgba(var(--ox-primary-rgb), 0.03));
-        color: var(--ox-text);
-        line-height: 1.55;
-      }
-
-      .insight-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
-        margin-top: 20px;
-      }
-
-      .insight-card {
-        min-width: 0;
-        padding: 14px;
-        border-radius: 12px;
-        border: 1px solid var(--ox-border);
-        background: rgba(255, 255, 255, 0.02);
-      }
-
-      .insight-list {
-        list-style: none;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        margin-top: 10px;
-      }
-
-      .insight-list li {
-        position: relative;
-        padding-left: 12px;
-        color: var(--ox-text);
-        line-height: 1.45;
-      }
-
-      .insight-list li::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 0.6em;
-        width: 4px;
-        height: 4px;
-        border-radius: 999px;
-        background: var(--ox-primary);
-        opacity: 0.8;
-      }
-
-      .insight-empty {
-        margin-top: 10px;
-        font-size: 0.84rem;
+        font-size: 0.86rem;
+        line-height: 1.5;
         color: var(--ox-text-muted);
-        line-height: 1.45;
       }
 
-      .pulse-cta-row {
+      .pulse-economics {
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
-        justify-content: flex-end;
-        gap: 10px;
-        flex-wrap: nowrap;
-        margin-left: auto;
-        min-width: 0;
+        gap: 8px;
+        font-size: 0.92rem;
+        line-height: 1.3;
+        color: var(--ox-text-muted);
       }
 
-      .cta-button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        min-height: 48px;
-        min-width: 196px;
-        max-width: 100%;
-        padding: 0 18px;
-        border-radius: 12px;
-        border: 1px solid rgba(var(--ox-primary-rgb), 0.22);
-        background: rgba(var(--ox-primary-rgb), 0.12);
+      .pulse-economics strong {
         color: var(--ox-text);
-        text-decoration: none;
-        font-size: 0.84rem;
         font-weight: 700;
+        letter-spacing: -0.03em;
+      }
+
+      .pulse-economics .is-emphasis strong {
+        color: var(--ox-primary);
+      }
+
+      .pulse-dot-divider {
+        color: var(--ox-text-dim);
+      }
+
+      .pulse-meta-line {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--ox-mono);
+        font-size: 0.62rem;
         line-height: 1;
-        white-space: nowrap;
-        flex-shrink: 0;
-        transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--ox-text-muted);
+        font-weight: 700;
       }
 
-      .cta-button__label {
-        display: inline-flex;
-        align-items: center;
-        white-space: nowrap;
+      .pulse-meta-line .pulse-meta-divider {
+        color: var(--ox-text-dim);
       }
 
-      .cta-button svg {
-        width: 18px;
-        height: 18px;
-        flex-shrink: 0;
-      }
-
-      .cta-button:hover {
-        transform: translateY(-1px);
-        border-color: rgba(var(--ox-primary-rgb), 0.35);
-        background: rgba(var(--ox-primary-rgb), 0.16);
-      }
-
-      .milestone-list {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        margin-top: 24px;
-      }
-
-      .artifact-panel {
-        margin-top: 24px;
-        padding: 16px;
-        border-radius: 14px;
-        border: 1px solid var(--ox-border);
-        background: rgba(255, 255, 255, 0.02);
-      }
-
-      .artifact-panel-header {
+      .pulse-attention {
         display: flex;
         align-items: center;
-        justify-content: space-between;
         gap: 12px;
-        margin-bottom: 14px;
+        width: 100%;
+        padding: 13px 14px;
+        border-radius: 14px;
+        border: 1px solid rgba(244, 63, 94, 0.22);
+        background: linear-gradient(
+            135deg,
+            rgba(244, 63, 94, 0.12),
+            rgba(244, 63, 94, 0.03)
+          ),
+          rgba(255, 255, 255, 0.01);
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+        transition: border-color 160ms ease, transform 160ms ease,
+          background 160ms ease;
       }
-      .artifact-panel-title {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        min-width: 0;
+
+      .pulse-attention:hover {
+        transform: translateY(-1px);
+        border-color: rgba(244, 63, 94, 0.34);
       }
-      .artifact-panel-icon {
+
+      .pulse-attention__icon {
         width: 30px;
         height: 30px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        color: var(--ox-danger);
+        background: rgba(244, 63, 94, 0.12);
+      }
+
+      .pulse-attention__body {
+        min-width: 0;
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .pulse-attention__eyebrow {
+        font-family: var(--ox-mono);
+        font-size: 0.58rem;
+        line-height: 1;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(244, 63, 94, 0.88);
+        font-weight: 700;
+      }
+
+      .pulse-attention__headline {
+        font-size: 0.9rem;
+        line-height: 1.35;
+        color: var(--ox-text);
+        font-weight: 600;
+      }
+
+      .pulse-attention__chevron {
+        color: var(--ox-text-dim);
+        transition: transform 180ms ease;
+      }
+
+      .pulse-attention.is-open .pulse-attention__chevron {
+        transform: rotate(180deg);
+      }
+
+      .pulse-rail {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .pulse-rail-button {
+        position: relative;
+        border: none;
+        border-radius: 12px;
+        background: transparent;
+        color: inherit;
+        padding: 8px 4px 12px;
+        min-height: 64px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        cursor: pointer;
+        transition: background 160ms ease, transform 160ms ease;
+      }
+
+      .pulse-rail-button::after {
+        content: "";
+        position: absolute;
+        left: 10px;
+        right: 10px;
+        bottom: 0;
+        height: 3px;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.18);
+        transform: scaleX(0.62);
+        transform-origin: center;
+        transition: background 160ms ease, transform 160ms ease,
+          opacity 160ms ease;
+        opacity: 0.95;
+      }
+
+      .pulse-rail-button:hover {
+        transform: translateY(-1px);
+        background: rgba(var(--ox-primary-rgb), 0.03);
+      }
+
+      .pulse-rail-button:hover::after {
+        transform: scaleX(1);
+      }
+
+      .pulse-rail-button.is-active {
+        background: rgba(var(--ox-primary-rgb), 0.05);
+      }
+
+      .pulse-rail-button.is-active::after {
+        background: rgba(var(--ox-primary-rgb), 0.94);
+        transform: scaleX(1);
+      }
+
+      .pulse-rail-button.is-alert.is-active {
+        background: rgba(244, 63, 94, 0.05);
+      }
+
+      .pulse-rail-button.is-alert::after {
+        background: rgba(244, 63, 94, 0.5);
+      }
+
+      .pulse-rail-button.is-alert.is-active::after {
+        background: var(--ox-danger);
+      }
+
+      .pulse-rail-icon {
+        color: var(--ox-text-muted);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .pulse-rail-button.is-active .pulse-rail-icon {
+        color: var(--ox-primary);
+      }
+
+      .pulse-rail-button.is-alert .pulse-rail-icon,
+      .pulse-rail-button.is-alert .pulse-rail-value {
+        color: var(--ox-danger);
+      }
+
+      .pulse-rail-value {
+        font-size: 1.14rem;
+        line-height: 1;
+        font-weight: 700;
+        letter-spacing: -0.05em;
+        color: var(--ox-text);
+      }
+
+      .pulse-rail-label {
+        font-family: var(--ox-mono);
+        font-size: 0.58rem;
+        line-height: 1;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--ox-text-muted);
+        font-weight: 700;
+        text-align: center;
+      }
+
+      .pulse-signal-strip {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .pulse-signal {
+        flex: 1 1 0;
+        height: 7px;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.14);
+        overflow: hidden;
+        cursor: pointer;
+        border: none;
+      }
+
+      .pulse-signal__fill {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--ox-primary);
+        transition: width 220ms ease, background 180ms ease;
+      }
+
+      .pulse-signal__fill.tone-warning {
+        background: var(--ox-warning);
+      }
+
+      .pulse-signal__fill.tone-danger {
+        background: var(--ox-danger);
+      }
+
+      .pulse-panel {
+        border-top: 1px solid var(--ox-border);
+        padding-top: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .pulse-panel-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .pulse-panel-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--ox-primary);
+        background: rgba(var(--ox-primary-rgb), 0.08);
+        border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
+      }
+
+      .pulse-panel-title {
+        font-family: var(--ox-mono);
+        font-size: 0.62rem;
+        line-height: 1;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--ox-text-muted);
+        font-weight: 700;
+      }
+
+      .pulse-list {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .pulse-list-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--ox-border);
+        text-decoration: none;
+        color: inherit;
+        transition: color 160ms ease;
+      }
+
+      .pulse-list-row:last-child {
+        border-bottom: none;
+      }
+
+      .pulse-list-row:hover .pulse-list-title {
+        color: var(--ox-primary);
+      }
+
+      .pulse-list-leading {
+        flex: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--ox-text-muted);
+      }
+
+      .pulse-list-copy {
+        min-width: 0;
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .pulse-list-title {
+        font-size: 0.92rem;
+        line-height: 1.32;
+        font-weight: 600;
+        color: var(--ox-text);
+        transition: color 160ms ease;
+      }
+
+      .pulse-list-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 7px;
+        font-family: var(--ox-mono);
+        font-size: 0.56rem;
+        line-height: 1;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ox-text-muted);
+        font-weight: 700;
+      }
+
+      .pulse-list-meta .pulse-meta-separator {
+        color: var(--ox-text-dim);
+      }
+
+      .pulse-list-trailing {
+        flex: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .pulse-mini-ring {
+        position: relative;
+        width: 34px;
+        height: 34px;
+        flex: none;
+      }
+
+      .pulse-mini-ring svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+        transform: rotate(-90deg);
+      }
+
+      .pulse-mini-ring__track {
+        fill: none;
+        stroke: rgba(148, 163, 184, 0.2);
+        stroke-width: 2.5;
+      }
+
+      .pulse-mini-ring__bar {
+        fill: none;
+        stroke: var(--ox-primary);
+        stroke-width: 2.5;
+        stroke-linecap: round;
+      }
+
+      .pulse-mini-ring.tone-warning .pulse-mini-ring__bar {
+        stroke: var(--ox-warning);
+      }
+
+      .pulse-mini-ring.tone-danger .pulse-mini-ring__bar {
+        stroke: var(--ox-danger);
+      }
+
+      .pulse-mini-ring__value {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--ox-mono);
+        font-size: 0.5rem;
+        font-weight: 700;
+        color: var(--ox-text);
+      }
+
+      .pulse-avatar {
+        width: 28px;
+        height: 28px;
         border-radius: 10px;
         display: inline-flex;
         align-items: center;
@@ -392,908 +752,1932 @@
         background: rgba(var(--ox-primary-rgb), 0.1);
         border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
         color: var(--ox-primary);
-        flex-shrink: 0;
-      }
-      .artifact-panel-icon svg { width: 16px; height: 16px; }
-
-      .artifact-count {
-        font-family: var(--ox-mono);
-        font-size: 0.68rem;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--ox-text-muted);
-      }
-
-      .artifact-list {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-
-      .artifact-row {
-        padding: 14px;
-        border-radius: 12px;
-        border: 1px solid var(--ox-border);
-        background: var(--ox-well-bg);
-        box-shadow: var(--ox-well-shadow);
-      }
-      .artifact-row-main {
-        display: flex;
-        gap: 12px;
-        min-width: 0;
-      }
-      .artifact-row-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(var(--ox-primary-rgb), 0.08);
-        border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
-        color: var(--ox-primary);
-        flex-shrink: 0;
-      }
-      .artifact-row-icon svg { width: 16px; height: 16px; }
-      .artifact-row-body { min-width: 0; flex: 1; }
-
-      .artifact-row-header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 12px;
-      }
-
-      .artifact-title {
-        font-size: 0.92rem;
-        font-weight: 600;
-        line-height: 1.35;
-        color: var(--ox-text);
-      }
-
-      .artifact-meta {
-        margin-top: 6px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-
-      .artifact-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 5px 8px;
-        border-radius: 999px;
-        border: 1px solid var(--ox-border);
-        background: rgba(255, 255, 255, 0.02);
         font-family: var(--ox-mono);
         font-size: 0.64rem;
-        letter-spacing: 0.06em;
+        font-weight: 700;
+        flex: none;
+      }
+
+      .pulse-status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        min-height: 24px;
+        padding: 0 9px;
+        border-radius: 999px;
+        font-family: var(--ox-mono);
+        font-size: 0.55rem;
+        line-height: 1;
+        letter-spacing: 0.09em;
         text-transform: uppercase;
-        color: var(--ox-text-muted);
+        font-weight: 700;
+        border: 1px solid currentColor;
+        white-space: nowrap;
       }
 
-      .artifact-pill.status-approved {
-        color: var(--ox-teal);
-        border-color: rgba(0, 201, 167, 0.18);
-        background: rgba(0, 201, 167, 0.08);
+      .pulse-status-pill.tone-good {
+        color: var(--ox-primary);
+        background: rgba(var(--ox-primary-rgb), 0.08);
+        border-color: rgba(var(--ox-primary-rgb), 0.18);
       }
 
-      .artifact-pill.status-in_review,
-      .artifact-pill.status-draft {
+      .pulse-status-pill.tone-warning {
         color: var(--ox-warning);
-        border-color: rgba(251, 191, 36, 0.22);
+        background: rgba(251, 191, 36, 0.08);
+        border-color: rgba(251, 191, 36, 0.18);
+      }
+
+      .pulse-status-pill.tone-danger {
+        color: var(--ox-danger);
+        background: rgba(244, 63, 94, 0.08);
+        border-color: rgba(244, 63, 94, 0.2);
+      }
+
+      .pulse-status-pill.tone-muted {
+        color: var(--ox-text-muted);
+        background: rgba(148, 163, 184, 0.1);
+        border-color: rgba(148, 163, 184, 0.18);
+      }
+
+      .pulse-artifact-row .pulse-list-leading {
+        width: 30px;
+        height: 30px;
+        border-radius: 10px;
+        background: rgba(var(--ox-primary-rgb), 0.08);
+        border: 1px solid rgba(var(--ox-primary-rgb), 0.14);
+        color: var(--ox-primary);
+      }
+
+      .pulse-artifact-row.is-review .pulse-list-leading {
+        color: var(--ox-warning);
+        border-color: rgba(251, 191, 36, 0.18);
         background: rgba(251, 191, 36, 0.08);
       }
 
-      .artifact-copy {
-        margin-top: 10px;
-        font-size: 0.82rem;
-        line-height: 1.5;
-        color: var(--ox-text-muted);
-      }
-
-      .artifact-panel-footer {
-        margin-top: 14px;
-        display: flex;
-        justify-content: flex-end;
-      }
-      .detail-header {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-      }
-      .detail-icon {
-        width: 24px;
-        height: 24px;
-        border-radius: 8px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(var(--ox-primary-rgb), 0.08);
-        border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
-        color: var(--ox-primary);
-        flex-shrink: 0;
-      }
-      .detail-icon svg { width: 13px; height: 13px; }
-      .milestone-section-title {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-top: 24px;
-        margin-bottom: 12px;
-      }
-
-      .artifact-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: var(--ox-text);
-        text-decoration: none;
-      }
-      .artifact-row-actions {
-        margin-top: 12px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-      .artifact-chip-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 12px;
-        border-radius: 999px;
-        border: 1px solid var(--ox-border);
-        background: rgba(255, 255, 255, 0.02);
-        color: var(--ox-text);
-        text-decoration: none;
-        font-family: var(--ox-mono);
-        font-size: 0.66rem;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-      }
-      .artifact-chip-link:hover {
-        border-color: rgba(var(--ox-primary-rgb), 0.22);
-        background: rgba(var(--ox-primary-rgb), 0.08);
-      }
-
-      .milestone-row {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 12px;
-        align-items: center;
-        padding: 12px 14px;
-        border-radius: 10px;
-        border: 1px solid var(--ox-border);
-        background: rgba(128,128,128,0.03);
-      }
-
-      .milestone-title {
-        font-size: 0.92rem;
-        color: var(--ox-text);
-        font-weight: 600;
-        line-height: 1.35;
-      }
-
-      .milestone-meta {
-        margin-top: 4px;
-        font-family: var(--ox-mono);
-        font-size: 0.62rem;
-        color: var(--ox-text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-      }
-
-      @media (prefers-color-scheme: dark) {
-         .roi-value.positive { color: var(--ox-lime); text-shadow: 0 0 10px rgba(191,255,0,0.3); }
-      }
-
-      .health-indicator {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        font-family: var(--ox-mono);
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        font-weight: 600;
-      }
-
-      .health-dot {
-        width: 8px; height: 8px;
-        border-radius: 50%;
-        box-shadow: 0 0 8px currentColor;
-      }
-      
-      .health-on-track { color: var(--ox-teal); }
-      .health-attention { color: var(--ox-warning); }
-      .health-at-risk { color: var(--ox-danger); }
-
-      @media (prefers-color-scheme: dark) {
-          .health-on-track { color: var(--ox-lime); }
-      }
-
-      .blockers-alert {
-        margin-top: 24px;
-        padding: 16px;
-        background: rgba(225,29,72,0.05);
-        border: 1px solid rgba(225,29,72,0.2);
-        border-radius: 8px;
-        position: relative;
-      }
-
-      @media (prefers-color-scheme: dark) {
-         .blockers-alert { background: rgba(244,63,94,0.05); border-color: rgba(244,63,94,0.2); }
-      }
-
-      .blockers-alert::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; bottom: 0; width: 3px;
-        background: var(--ox-danger);
-        box-shadow: 0 0 8px var(--ox-danger);
-      }
-
-      .blockers-title {
-        font-family: var(--ox-mono);
-        font-size: 0.65rem;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
+      .pulse-action-row.is-danger .pulse-list-leading {
         color: var(--ox-danger);
-        margin-bottom: 8px;
+      }
+
+      .pulse-subsection {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .pulse-subsection-label {
+        font-family: var(--ox-mono);
+        font-size: 0.56rem;
+        line-height: 1;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--ox-text-dim);
         font-weight: 700;
       }
 
-      .blockers-list {
-        list-style: none;
-        font-size: 0.875rem;
-        color: var(--ox-text);
-        line-height: 1.6;
-      }
-      .blockers-list li { margin-bottom: 4px; padding-left: 14px; position: relative; font-weight: 500; }
-      .blockers-list li::before {
-        content: '›';
-        position: absolute; left: 0; color: var(--ox-danger); opacity: 0.8; font-weight: bold;
+      .pulse-milestone-meter {
+        width: 92px;
+        height: 5px;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.18);
+        overflow: hidden;
       }
 
-      @media (max-width: 560px) {
-        .pulse-header,
-        .widget-footer {
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 12px;
-        }
-
-        .roi-strip,
-        .insight-grid {
-          grid-template-columns: 1fr;
-          flex-direction: column;
-        }
-
-        .pulse-cta-row {
-          flex-direction: column;
-          width: 100%;
-          margin-left: 0;
-          align-items: stretch;
-        }
-
-        .cta-button,
-        .deep-link {
-          width: 100%;
-          min-width: 0;
-        }
+      .pulse-milestone-meter > span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--ox-primary);
       }
 
-      /* Shared Widget Specifics */
-      .icon-container {
-        width: 40px; height: 40px;
-        border-radius: 10px;
-        background: rgba(var(--ox-primary-rgb), 0.1);
-        border: 1px solid rgba(var(--ox-primary-rgb), 0.2);
-        color: var(--ox-primary);
-        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-      }
-      @media (prefers-color-scheme: dark) {
-         .icon-container { box-shadow: 0 0 15px rgba(var(--ox-primary-rgb), 0.2); }
-      }
-      .icon-container svg { width: 20px; height: 20px; }
-
-      .agent-avatar {
-        width: 48px; height: 48px;
-        border-radius: 12px;
-        background: rgba(128,128,128,0.05);
-        border: 1px solid var(--ox-border);
-        display: flex; align-items: center; justify-content: center;
-        font-family: var(--ox-mono); font-weight: bold; font-size: 1.1rem;
-        color: var(--ox-primary);
-      }
-      @media (prefers-color-scheme: dark) {
-         .agent-avatar { box-shadow: 0 0 20px rgba(var(--ox-primary-rgb),0.1); text-shadow: 0 0 10px rgba(var(--ox-primary-rgb),0.5); }
+      .pulse-empty {
+        font-size: 0.84rem;
+        line-height: 1.55;
+        color: var(--ox-text-muted);
       }
 
-      .agent-info { flex: 1; min-width: 0; }
-      .agent-role, .eyebrow {
-        font-family: var(--ox-mono); font-size: 0.65rem; text-transform: uppercase;
-        letter-spacing: 0.1em; color: var(--ox-primary); margin-bottom: 4px; font-weight: 600;
-      }
-      
-      .status-indicator {
-        display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px;
-        border-radius: 6px; background: rgba(var(--ox-primary-rgb),0.1); border: 1px solid rgba(var(--ox-primary-rgb),0.2);
-        color: var(--ox-primary); font-family: var(--ox-mono); font-size: 0.7rem; text-transform: uppercase;
-        letter-spacing: 0.1em; font-weight: 600;
-      }
-
-      .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulse 2s infinite; }
-      @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.8); } }
-      @media (prefers-color-scheme: dark) { .status-dot { box-shadow: 0 0 8px currentColor; } }
-
-      .activity-item { display: flex; gap: 16px; position: relative; padding-bottom: 24px; }
-      .activity-item:last-child { padding-bottom: 0; }
-      .activity-item::before { content: ''; position: absolute; left: 5px; top: 12px; bottom: 0; width: 1px; background: var(--ox-border); }
-      .activity-item:last-child::before { display: none; }
-      .activity-dot {
-        width: 11px; height: 11px; border-radius: 50%; background: var(--ox-bg);
-        border: 2px solid var(--ox-primary); position: relative; z-index: 1; margin-top: 4px;
-      }
-      @media (prefers-color-scheme: dark) { .activity-dot { box-shadow: 0 0 10px rgba(var(--ox-primary-rgb),0.4); } }
-      .activity-time { font-family: var(--ox-mono); font-size: 0.6rem; color: var(--ox-text-muted); margin-bottom: 4px; font-weight: 600; }
-      .activity-text { font-size: 0.9rem; color: var(--ox-text); line-height: 1.5; font-weight: 500; }
-
-      .priority-item, .decision-item {
-        display: flex; flex-direction: column; gap: 12px; padding: 16px; background: rgba(128,128,128,0.03);
-        border: 1px solid var(--ox-border); border-radius: 12px; margin-bottom: 12px; position: relative; overflow: hidden;
-      }
-      @media (prefers-color-scheme: dark) { .priority-item, .decision-item { background: rgba(255,255,255,0.02); } }
-      
-      .priority-item::before, .decision-item::before {
-        content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--ox-primary);
-      }
-      @media (prefers-color-scheme: dark) { .priority-item::before, .decision-item::before { box-shadow: 0 0 10px var(--ox-primary); } }
-
-      .priority-domain, .decision-meta {
-        font-family: var(--ox-mono); font-size: 0.6rem; text-transform: uppercase;
-        letter-spacing: 0.1em; color: var(--ox-primary); margin-bottom: 6px; font-weight: 700;
-        display: flex; justify-content: space-between;
-      }
-      .priority-title, .decision-title { font-size: 0.95rem; color: var(--ox-text); font-weight: 600; margin-bottom: 6px; line-height: 1.4; }
-      .priority-reason, .decision-context { font-size: 0.85rem; color: var(--ox-text-muted); line-height: 1.5; }
-      
-      .decision-actions { display: flex; gap: 8px; margin-top: 16px; }
-      .btn { flex: 1; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; text-align: center; cursor: pointer; font-family: var(--ox-font); transition: all 0.2s; border: none; }
-      
-      .btn-primary { background: var(--ox-primary); color: #fff; }
-      .btn-secondary { background: rgba(128,128,128,0.1); color: var(--ox-text); border: 1px solid var(--ox-border); }
-      @media (prefers-color-scheme: dark) {
-        .btn-primary { color: #000; box-shadow: 0 0 15px rgba(var(--ox-primary-rgb),0.2); }
-        .btn-primary:hover { box-shadow: 0 0 20px rgba(var(--ox-primary-rgb),0.4); }
-        .btn-secondary { background: rgba(255,255,255,0.05); color: #fff; }
-      }
-
-      
-      /* Smooth UX Transitions */
-      .skeleton-wrapper { transition: opacity 0.3s ease; }
-      @keyframes fadeSlideUp {
-        from { opacity: 0; transform: translateY(16px) scale(0.98); filter: blur(4px); }
-        to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
-      }
-      .animate-in { opacity: 0; animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-      .delay-1 { animation-delay: 0.1s; }
-      .delay-2 { animation-delay: 0.2s; }
-      .delay-3 { animation-delay: 0.3s; }
-      
-      .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 24px; text-align: center; background: var(--ox-well-bg); border: 1px dashed var(--ox-border-strong); border-radius: 16px; margin: 16px 0; }
-      .empty-icon { width: 48px; height: 48px; border-radius: 50%; background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
-      .empty-icon svg { width: 24px; height: 24px; }
-      .empty-title { font-size: 1.1rem; font-weight: 600; color: var(--ox-text); margin-bottom: 8px; }
-      .empty-desc { font-size: 0.9rem; color: var(--ox-text-muted); line-height: 1.5; max-width: 280px; }
-    @media (max-width: 560px) {
       .widget-footer {
-        flex-direction: column;
-        align-items: stretch;
+        margin-top: 6px;
+      }
+
+      .pulse-sync {
+        font-family: var(--ox-mono);
+        font-size: 0.56rem;
+        line-height: 1;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--ox-text-dim);
+        font-weight: 700;
       }
 
       .deep-link {
-        width: 100%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        max-width: 100%;
+        padding: 12px 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(var(--ox-primary-rgb), 0.26);
+        background: rgba(var(--ox-primary-rgb), 0.08);
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: var(--ox-text);
+        text-decoration: none;
+        line-height: 1.1;
+        transition: transform 180ms ease, border-color 180ms ease,
+          background 180ms ease;
       }
-    }
-      /* Skeleton Animations */
-      @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+      .deep-link:hover {
+        transform: translateY(-1px);
+        border-color: rgba(var(--ox-primary-rgb), 0.36);
+        background: rgba(var(--ox-primary-rgb), 0.12);
+      }
+
+      .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 56px 26px;
+        text-align: center;
+        border-radius: 18px;
+        border: 1px dashed var(--ox-border-strong);
+        background: var(--ox-well-bg);
+      }
+
+      .empty-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--ox-primary);
+        background: rgba(var(--ox-primary-rgb), 0.1);
+        border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
+      }
+
+      .empty-title {
+        font-size: 1.02rem;
+        line-height: 1.2;
+        font-weight: 600;
+        color: var(--ox-text);
+      }
+
+      .empty-desc {
+        max-width: 34ch;
+        font-size: 0.86rem;
+        line-height: 1.55;
+        color: var(--ox-text-muted);
+      }
+
+      .error-state {
+        border-color: rgba(244, 63, 94, 0.24);
+        background: rgba(244, 63, 94, 0.04);
+      }
+
+      .error-state .empty-icon {
+        color: var(--ox-danger);
+        background: rgba(244, 63, 94, 0.1);
+        border-color: rgba(244, 63, 94, 0.16);
+      }
+
+      .skeleton-wrapper {
+        transition: opacity 0.28s ease;
+      }
+
+      @keyframes fadeSlideUp {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .animate-in {
+        opacity: 0;
+        animation: fadeSlideUp 420ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+
+      .pulse-skeleton {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+
       .skeleton-line {
-        background: linear-gradient(90deg, rgba(128,128,128,0.1) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, rgba(128,128,128,0.1) 75%);
-        background-size: 200% 100%;
-        animation: shimmer 2s infinite linear;
-        border-radius: 4px;
+        display: block;
+        border-radius: 999px;
+        background: linear-gradient(
+          90deg,
+          rgba(148, 163, 184, 0.12),
+          rgba(148, 163, 184, 0.2),
+          rgba(148, 163, 184, 0.12)
+        );
+        background-size: 240% 100%;
+        animation: shimmer 1.2s linear infinite;
       }
-      @media (prefers-color-scheme: dark) {
-         .skeleton-line { background: linear-gradient(90deg, rgba(255,255,255,0.02) 25%, rgba(var(--ox-primary-rgb),0.05) 50%, rgba(255,255,255,0.02) 75%); background-size: 200% 100%; }
+
+      @keyframes shimmer {
+        from {
+          background-position: 200% 0;
+        }
+        to {
+          background-position: -200% 0;
+        }
       }
 
-      
-  
-  /* Smooth UX Transitions */
-  .skeleton-wrapper { transition: opacity 0.3s ease; }
-  @keyframes fadeSlideUp {
-    from { opacity: 0; transform: translateY(16px) scale(0.98); filter: blur(4px); }
-    to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
-  }
-  .animate-in { opacity: 0; animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-  .delay-1 { animation-delay: 0.1s; }
-  .delay-2 { animation-delay: 0.2s; }
-  .delay-3 { animation-delay: 0.3s; }
-  
-  .ox-card {
-    background: var(--ox-panel); border: 1px solid var(--ox-border); border-radius: 16px; box-shadow: var(--ox-shadow); position: relative; overflow: hidden; margin-bottom: 16px;
-  }
-  .ox-card-inner { padding: 24px; }
-  
-  /* Upgraded ROI Strip to match Executive Design */
-  .roi-strip {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-    margin-bottom: 24px;
-  }
+      @media (max-width: 560px) {
+        body {
+          padding: 12px;
+        }
 
-  .roi-item {
-    position: relative;
-    overflow: hidden;
-    background: var(--ox-well-bg);
-    border: 1px solid var(--ox-border);
-    border-radius: 12px;
-    padding: 16px;
-    box-shadow: var(--ox-well-shadow);
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
-  
-  .roi-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    border-color: rgba(var(--ox-primary-rgb), 0.3);
-  }
+        .ox-card-inner {
+          padding: 20px;
+        }
 
-  .roi-label {
-    font-family: var(--ox-mono);
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--ox-text-muted);
-    font-weight: 600;
-  }
-  
-  .roi-value {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--ox-text);
-    letter-spacing: -0.02em;
-  }
+        .pulse-hero {
+          grid-template-columns: auto minmax(0, 1fr);
+          gap: 14px;
+          align-items: start;
+        }
 
-</style>
+        .pulse-health {
+          width: 88px;
+          height: 88px;
+          margin-top: 2px;
+        }
+
+        .pulse-health__number {
+          font-size: 1.72rem;
+        }
+
+        .pulse-health__label {
+          margin-top: 5px;
+          font-size: 0.5rem;
+        }
+
+        .pulse-headline {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 8px;
+        }
+
+        .pulse-title {
+          font-size: 1.55rem;
+        }
+
+        .pulse-copy {
+          gap: 9px;
+        }
+
+        .pulse-economics {
+          gap: 6px;
+          font-size: 0.88rem;
+        }
+
+        .pulse-rail {
+          gap: 6px;
+        }
+
+        .pulse-rail-button {
+          min-height: 58px;
+          padding: 7px 2px 11px;
+          gap: 4px;
+        }
+
+        .pulse-rail-value {
+          font-size: 1rem;
+        }
+
+        .pulse-rail-label {
+          font-size: 0.54rem;
+          letter-spacing: 0.08em;
+        }
+
+        .pulse-attention {
+          align-items: flex-start;
+          padding: 12px;
+        }
+
+        .widget-footer {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .widget-footer .deep-link {
+          width: 100%;
+        }
+      }
+    </style>
   </head>
   <body>
     <div class="container" role="region" aria-label="Initiative Status">
       <div id="content" aria-live="polite">
-        <!-- Render a skeleton immediately to avoid a "Loading..." flash before JS boots -->
-        <div
-          class="skeleton-wrapper skeleton-card"
-          role="status"
-          aria-label="Loading initiative"
-        >
-          <div
-            style="
-              display: flex;
-              justify-content: space-between;
-              margin-bottom: 12px;
-            "
-          >
-            <div class="skeleton-line skeleton-title"></div>
-            <div class="skeleton-line skeleton-badge"></div>
+        <div class="widget-shell-card">
+          <div class="ox-card">
+            <div class="ox-card-inner pulse-skeleton" role="status" aria-label="Loading initiative pulse">
+              <span class="skeleton-line" style="width: 88px; height: 10px"></span>
+              <span class="skeleton-line" style="width: 72%; height: 28px"></span>
+              <span class="skeleton-line" style="width: 58%; height: 14px"></span>
+              <span class="skeleton-line" style="width: 100%; height: 58px; border-radius: 18px"></span>
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px">
+                <span class="skeleton-line" style="height: 72px; border-radius: 14px"></span>
+                <span class="skeleton-line" style="height: 72px; border-radius: 14px"></span>
+                <span class="skeleton-line" style="height: 72px; border-radius: 14px"></span>
+                <span class="skeleton-line" style="height: 72px; border-radius: 14px"></span>
+              </div>
+              <span class="skeleton-line" style="width: 100%; height: 8px; border-radius: 999px"></span>
+            </div>
           </div>
-          <div style="display: flex; gap: 8px; margin-bottom: 12px">
-            <div class="skeleton-line skeleton-text" style="width: 80px"></div>
-            <div class="skeleton-line skeleton-text" style="width: 70px"></div>
-            <div class="skeleton-line skeleton-text" style="width: 60px"></div>
-          </div>
-          <div class="skeleton-line skeleton-health"></div>
         </div>
       </div>
     </div>
 
     <script>
-    // Sync theme from URL to override prefers-color-scheme
-    (function() {
-      const params = new URLSearchParams(window.location.search);
-      const theme = params.get('theme');
-      if (theme) document.documentElement.setAttribute('data-theme', theme);
-    })();
+      (function () {
+        const params = new URLSearchParams(window.location.search);
+        const theme = params.get("theme");
+        if (theme) document.documentElement.setAttribute("data-theme", theme);
+      })();
 
-    var injectHtml = (html) => {
-      const content = document.getElementById('content');
-      if (!content) return;
-      const skeleton = content.querySelector('.skeleton-wrapper');
-      if (skeleton) {
-        skeleton.style.opacity = '0';
-        setTimeout(() => { content.innerHTML = html; }, 300);
-      } else {
-        content.innerHTML = html;
+      var injectHtml = function (html) {
+        var content = document.getElementById("content");
+        if (!content) return;
+        var skeleton = content.querySelector(".skeleton-wrapper, .pulse-skeleton");
+        if (skeleton) {
+          skeleton.style.opacity = "0";
+          setTimeout(function () {
+            content.innerHTML = html;
+          }, 220);
+        } else {
+          content.innerHTML = html;
+        }
+      };
+
+      function _detectProtocol() {
+        if (typeof window.openai !== "undefined") return "chatgpt";
+        if (window.parent && window.parent !== window) return "mcp-apps";
+        return "standalone";
       }
-    };
 
-    function _detectProtocol(){if(typeof window.openai!=='undefined')return'chatgpt';if(window.parent&&window.parent!==window)return'mcp-apps';return'standalone';}
-    function _extractData(out){if(out==null)return null;if(typeof out==='object'&&out.structuredContent)return out.structuredContent;if(typeof out==='object'&&Array.isArray(out.content)){for(var i=0;i<out.content.length;i++){var item=out.content[i];if(item&&item.type==='text'&&item.text){try{return JSON.parse(item.text);}catch(e){continue;}}}}if(typeof out==='string'){try{return JSON.parse(out);}catch(e){return{text:out};}}return out;}
-    var _lastW=0,_lastH=0;
-    function _sendSize(){var w=Math.ceil(document.documentElement.getBoundingClientRect().width+(window.innerWidth-document.documentElement.clientWidth));var h=Math.ceil(document.documentElement.getBoundingClientRect().height);if(w===_lastW&&h===_lastH)return;_lastW=w;_lastH=h;try{window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/size-changed',params:{width:w,height:h}},'*');}catch(e){}}
-    function _observeSize(){_sendSize();if(typeof ResizeObserver!=='undefined'){var _raf=0;var ro=new ResizeObserver(function(){if(_raf)cancelAnimationFrame(_raf);_raf=requestAnimationFrame(_sendSize);});ro.observe(document.documentElement);ro.observe(document.body);}}
-    function initWidget(opts){var render=opts.render,getData=opts.getData||_extractData;var protocol=_detectProtocol();if(protocol==='chatgpt'){var d=getData(window.openai&&window.openai.toolOutput);render(d);window.addEventListener('openai:set_globals',function(e){var g=e.detail&&e.detail.globals;if(g&&g.toolOutput){render(getData(g.toolOutput));}},{passive:true});}else if(protocol==='mcp-apps'){render(null);var initId=1;window.parent.postMessage({jsonrpc:'2.0',id:initId,method:'ui/initialize',params:{appInfo:{name:'Widget',version:'1.0'},appCapabilities:{tools:{listChanged:false}},protocolVersion:'2026-01-26'}},'*');window.parent.postMessage({jsonrpc:'2.0',method:'notifications/initialized'},'*');window.addEventListener('message',function(event){var msg=event.data;if(!msg||typeof msg!=='object')return;if(msg.id===initId&&msg.result){window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized'},'*');_observeSize();return;}if((msg.method==='ui/notifications/tool-result'||msg.method==='notifications/message')&&msg.params){var data=getData(msg.params);if(data)render(data);}});}else{render(null);}}
-    function openWidgetLink(url,event){if(!url)return false;var protocol=_detectProtocol();if(protocol==='mcp-apps'){if(event&&typeof event.preventDefault==='function')event.preventDefault();window.parent.postMessage({jsonrpc:'2.0',id:100 + Math.floor(Math.random()*10000),method:'ui/open-link',params:{url:url}},'*');return false;}return true;}
-    
-    var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+c+'</svg>';};
-    var icons = {
-      external: function(s){return _svg('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>',s);},
-      check: function(s){return _svg('<polyline points="20 6 9 17 4 12"></polyline>',s);},
-      error: function(s){return _svg('<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>',s);},
-      layers: function(s){return _svg('<polygon points="12 2 22 8 12 14 2 8 12 2"></polygon><polyline points="2 12 12 18 22 12"></polyline><polyline points="2 16 12 22 22 16"></polyline>',s);},
-      file: function(s){return _svg('<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline>',s);},
-      clipboard: function(s){return _svg('<rect x="9" y="2" width="6" height="4" rx="1"></rect><path d="M9 4H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2"></path><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="16" x2="13" y2="16"></line>',s);},
-    };
-    var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
+      function _extractData(out) {
+        if (out == null) return null;
+        if (typeof out === "object" && out.structuredContent) return out.structuredContent;
+        if (typeof out === "object" && Array.isArray(out.content)) {
+          for (var i = 0; i < out.content.length; i += 1) {
+            var item = out.content[i];
+            if (item && item.type === "text" && item.text) {
+              try {
+                return JSON.parse(item.text);
+              } catch (error) {
+                continue;
+              }
+            }
+          }
+        }
+        if (typeof out === "string") {
+          try {
+            return JSON.parse(out);
+          } catch (error) {
+            return { text: out };
+          }
+        }
+        return out;
+      }
 
-    var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
-    var isLoadingOverride = new URLSearchParams(window.location.search).get('loading') === 'true';
-    
-    var pulse = isDemo ? {
-        id: "INI-402",
-        name: "Q4 Product Launch",
-        status: "active",
-        progress_pct: 64,
-        pending_decisions: 3,
-        active_workstreams: 4,
-        eta_seconds: 145,
-        current_cost: 0.84,
-        roi_summary: { total_cost: 412.25, total_value: 2190.40, period: "30d" },
-        health_score: 78,
-        blockers: ["Needs your input: which audience to target for the email campaign?"],
-        recent_events: [
-          { agent: "Mark", text: "is drafting campaign copy...", time: "Just now" },
-          { agent: "Eli", text: "verified DNS records.", time: "2m ago" }
-        ],
-        recent_artifacts: [
-          { id: 'artifact-1', name: 'server.json manifest', status: 'approved', artifact_type: 'eng.config', created_at: new Date(Date.now() - 1000 * 60 * 120).toISOString(), created_by_name: 'Eli', summary: 'App Store manifest drafted for registry submission and compliance review.', primary_url: 'https://useorgx.com/artifacts/artifact-1', primary_label: 'Open artifact', live_url: 'https://useorgx.com/live/INI-402' },
-          { id: 'artifact-2', name: 'DNS verification report', status: 'approved', artifact_type: 'eng.report', created_at: new Date(Date.now() - 1000 * 60 * 105).toISOString(), created_by_name: 'Eli', summary: 'TXT record resolved and verified against the domain challenge.', primary_url: 'https://useorgx.com/artifacts/artifact-2', primary_label: 'Open artifact', live_url: 'https://useorgx.com/live/INI-402' },
-          { id: 'artifact-3', name: 'Connector description', status: 'in_review', artifact_type: 'mktg.copy', created_at: new Date(Date.now() - 1000 * 60 * 75).toISOString(), created_by_name: 'Mark', summary: 'Store listing copy drafted for founder review.', primary_url: 'https://useorgx.com/artifacts/artifact-3', primary_label: 'Review in OrgX', live_url: 'https://useorgx.com/live/INI-402' }
-        ],
-        artifact_summary: { total: 3, approved: 2, in_review: 1 }
-    } : null;
-    
-    var isLoading = !isDemo;
-    if (isLoadingOverride) { isLoading = true; isDemo = false; initWidget = () => { render(); }; }
-    var bootStartedAt = Date.now();
-    var MIN_LOADING_MS = 220;
-    var loadingSettled = false;
-    var applyBootPayload = function(assign) {
-      var commit = function() {
-        if (typeof assign === 'function') assign();
-        isLoading = false;
+      var _lastWidth = 0;
+      var _lastHeight = 0;
+
+      function _sendSize() {
+        var width = Math.ceil(
+          document.documentElement.getBoundingClientRect().width +
+            (window.innerWidth - document.documentElement.clientWidth)
+        );
+        var height = Math.ceil(document.documentElement.getBoundingClientRect().height);
+        if (width === _lastWidth && height === _lastHeight) return;
+        _lastWidth = width;
+        _lastHeight = height;
+        try {
+          window.parent.postMessage(
+            {
+              jsonrpc: "2.0",
+              method: "ui/notifications/size-changed",
+              params: { width: width, height: height },
+            },
+            "*"
+          );
+        } catch (error) {}
+      }
+
+      function _observeSize() {
+        _sendSize();
+        if (typeof ResizeObserver !== "undefined") {
+          var raf = 0;
+          var observer = new ResizeObserver(function () {
+            if (raf) cancelAnimationFrame(raf);
+            raf = requestAnimationFrame(_sendSize);
+          });
+          observer.observe(document.documentElement);
+          observer.observe(document.body);
+        }
+      }
+
+      function initWidget(opts) {
+        var render = opts.render;
+        var getData = opts.getData || _extractData;
+        var protocol = _detectProtocol();
+        if (protocol === "chatgpt") {
+          var initial = getData(window.openai && window.openai.toolOutput);
+          render(initial);
+          window.addEventListener(
+            "openai:set_globals",
+            function (event) {
+              var globals = event.detail && event.detail.globals;
+              if (globals && globals.toolOutput) render(getData(globals.toolOutput));
+            },
+            { passive: true }
+          );
+          return;
+        }
+
+        if (protocol === "mcp-apps") {
+          render(null);
+          var initId = 1;
+          window.parent.postMessage(
+            {
+              jsonrpc: "2.0",
+              id: initId,
+              method: "ui/initialize",
+              params: {
+                appInfo: { name: "Widget", version: "1.0" },
+                appCapabilities: { tools: { listChanged: false } },
+                protocolVersion: "2026-01-26",
+              },
+            },
+            "*"
+          );
+          window.parent.postMessage(
+            { jsonrpc: "2.0", method: "notifications/initialized" },
+            "*"
+          );
+          window.addEventListener("message", function (event) {
+            var msg = event.data;
+            if (!msg || typeof msg !== "object") return;
+            if (msg.id === initId && msg.result) {
+              window.parent.postMessage(
+                { jsonrpc: "2.0", method: "ui/notifications/initialized" },
+                "*"
+              );
+              _observeSize();
+              return;
+            }
+            if (
+              (msg.method === "ui/notifications/tool-result" ||
+                msg.method === "notifications/message") &&
+              msg.params
+            ) {
+              var payload = getData(msg.params);
+              if (payload) render(payload);
+            }
+          });
+          return;
+        }
+
+        render(null);
+      }
+
+      function openWidgetLink(url, event) {
+        if (!url) return false;
+        var protocol = _detectProtocol();
+        if (protocol === "mcp-apps") {
+          if (event && typeof event.preventDefault === "function") event.preventDefault();
+          window.parent.postMessage(
+            {
+              jsonrpc: "2.0",
+              id: 100 + Math.floor(Math.random() * 10000),
+              method: "ui/open-link",
+              params: { url: url },
+            },
+            "*"
+          );
+          return false;
+        }
+        return true;
+      }
+
+      var _svg = function (content, size) {
+        var resolvedSize = typeof size === "number" ? size + "px" : size || "1em";
+        return (
+          '<svg width="' +
+          resolvedSize +
+          '" height="' +
+          resolvedSize +
+          '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+          content +
+          "</svg>"
+        );
+      };
+
+      var icons = {
+        external: function (size) {
+          return _svg(
+            '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>',
+            size
+          );
+        },
+        layers: function (size) {
+          return _svg(
+            '<polygon points="12 2 22 8 12 14 2 8 12 2"></polygon><polyline points="2 12 12 18 22 12"></polyline><polyline points="2 16 12 22 22 16"></polyline>',
+            size
+          );
+        },
+        warning: function (size) {
+          return _svg(
+            '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>',
+            size
+          );
+        },
+        check: function (size) {
+          return _svg('<polyline points="20 6 9 17 4 12"></polyline>', size);
+        },
+        document: function (size) {
+          return _svg(
+            '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline>',
+            size
+          );
+        },
+        clipboard: function (size) {
+          return _svg(
+            '<rect x="9" y="2" width="6" height="4" rx="1"></rect><path d="M9 4H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2"></path><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="16" x2="13" y2="16"></line>',
+            size
+          );
+        },
+        flag: function (size) {
+          return _svg('<path d="M5 3v18"></path><path d="m5 4 12 1-2 4 2 4-12-1z"></path>', size);
+        },
+        clock: function (size) {
+          return _svg(
+            '<circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 14"></polyline>',
+            size
+          );
+        },
+        play: function (size) {
+          return _svg(
+            '<circle cx="12" cy="12" r="9"></circle><polygon points="10 9 16 12 10 15 10 9"></polygon>',
+            size
+          );
+        },
+        pause: function (size) {
+          return _svg(
+            '<circle cx="12" cy="12" r="9"></circle><line x1="10" y1="9" x2="10" y2="15"></line><line x1="14" y1="9" x2="14" y2="15"></line>',
+            size
+          );
+        },
+        pulse: function (size) {
+          return _svg('<polyline points="2 12 6 12 9 5 15 19 18 12 22 12"></polyline>', size);
+        },
+        chevronDown: function (size) {
+          return _svg('<polyline points="6 9 12 15 18 9"></polyline>', size);
+        },
+      };
+
+      var escapeHtml = function (value) {
+        if (value === null || value === undefined) return "";
+        var div = document.createElement("div");
+        div.textContent = String(value);
+        return div.innerHTML;
+      };
+
+      var params = new URLSearchParams(window.location.search);
+      var isDemo = params.get("demo") === "true";
+      var isLoadingOverride = params.get("loading") === "true";
+
+      var uiState = { panel: null };
+
+      var pulse = isDemo
+        ? {
+            id: "INI-402",
+            name: "Q4 Product Launch",
+            status: "active",
+            health_score: 78,
+            message:
+              "One glance tells you if the launch is drifting, what needs your input, and which streams are carrying the load.",
+            progress_pct: 64,
+            pending_decisions: 3,
+            active_workstreams: 4,
+            total_workstreams: 4,
+            blocked_workstreams: 1,
+            roi_summary: { total_cost: 412.25, total_value: 2190.4, period: "30d" },
+            current_cost: 412.25,
+            eta_seconds: 145,
+            live_url: "https://useorgx.com/live/INI-402",
+            next_steps: [
+              "Needs your input: which audience to target for the email campaign?",
+              "Approve connector description copy before the launch preview ships.",
+            ],
+            blockers: ["Waiting on pricing approval for the founder CTA."],
+            updated_at: new Date(Date.now() - 1000 * 60 * 2).toISOString(),
+            workstreams: [
+              {
+                id: "WS-1",
+                title: "Product Narrative Lock",
+                progress_pct: 74,
+                status: "active",
+                agent_name: "Pace",
+                agent_domain: "product",
+                summary: "Headline and CTA continuity are nearly locked.",
+              },
+              {
+                id: "WS-2",
+                title: "Search + Memory Proof",
+                progress_pct: 58,
+                status: "blocked",
+                agent_name: "Nova",
+                agent_domain: "engineering",
+                blocker_count: 1,
+                summary: "Pricing approval is holding the proof chain open.",
+              },
+              {
+                id: "WS-3",
+                title: "Launch Assets Ship",
+                progress_pct: 34,
+                status: "ready",
+                agent_name: "Dana",
+                agent_domain: "marketing",
+                summary: "Waiting for final copy and screenshot capture.",
+              },
+              {
+                id: "WS-4",
+                title: "Registry Submission",
+                progress_pct: 91,
+                status: "active",
+                agent_name: "Eli",
+                agent_domain: "engineering",
+                summary: "Manifest and DNS proofs are in place.",
+              },
+            ],
+            milestones: [
+              {
+                id: "MS-1",
+                title: "Narrative approved",
+                progress: 82,
+                status: "active",
+              },
+              {
+                id: "MS-2",
+                title: "Proof chain validated",
+                progress: 64,
+                status: "active",
+              },
+              {
+                id: "MS-3",
+                title: "Launch preview published",
+                progress: 38,
+                status: "ready",
+              },
+            ],
+            recent_artifacts: [
+              {
+                id: "artifact-1",
+                name: "server.json manifest",
+                status: "approved",
+                artifact_type: "eng.config",
+                created_at: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
+                created_by_name: "Eli",
+                primary_url: "https://useorgx.com/artifacts/artifact-1",
+                primary_label: "Open artifact",
+                live_url: "https://useorgx.com/live/INI-402",
+              },
+              {
+                id: "artifact-2",
+                name: "DNS verification report",
+                status: "approved",
+                artifact_type: "eng.report",
+                created_at: new Date(Date.now() - 1000 * 60 * 105).toISOString(),
+                created_by_name: "Eli",
+                primary_url: "https://useorgx.com/artifacts/artifact-2",
+                primary_label: "Open artifact",
+                live_url: "https://useorgx.com/live/INI-402",
+              },
+              {
+                id: "artifact-3",
+                name: "Connector description",
+                status: "in_review",
+                artifact_type: "mktg.copy",
+                created_at: new Date(Date.now() - 1000 * 60 * 74).toISOString(),
+                created_by_name: "Mark",
+                primary_url: "https://useorgx.com/artifacts/artifact-3",
+                primary_label: "Review in OrgX",
+                live_url: "https://useorgx.com/live/INI-402",
+              },
+            ],
+            artifact_summary: { total: 3, approved: 2, in_review: 1 },
+          }
+        : null;
+
+      var isLoading = !isDemo;
+      if (isLoadingOverride) {
+        isLoading = true;
+        isDemo = false;
+        initWidget = function () {
+          render();
+        };
+      }
+
+      var bootStartedAt = Date.now();
+      var MIN_LOADING_MS = 220;
+      var loadingSettled = false;
+
+      var applyBootPayload = function (assign) {
+        var commit = function () {
+          if (typeof assign === "function") assign();
+          isLoading = false;
+          render();
+        };
+        if (loadingSettled) {
+          commit();
+          return;
+        }
+        loadingSettled = true;
+        var delay = Math.max(0, MIN_LOADING_MS - (Date.now() - bootStartedAt));
+        window.setTimeout(commit, delay);
+      };
+
+      var asObject = function (value) {
+        return value && typeof value === "object" && !Array.isArray(value) ? value : null;
+      };
+
+      var readString = function (record, keys) {
+        if (!record) return null;
+        for (var i = 0; i < keys.length; i += 1) {
+          var value = record[keys[i]];
+          if (typeof value === "string" && value.trim()) return value.trim();
+        }
+        return null;
+      };
+
+      var toStatusKey = function (value) {
+        return typeof value === "string" ? value.trim().toLowerCase().replace(/\s+/g, "_") : "";
+      };
+
+      var titleCase = function (value) {
+        return String(value || "")
+          .replace(/[_-]+/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+          .replace(/\b\w/g, function (char) {
+            return char.toUpperCase();
+          });
+      };
+
+      var formatUsd = function (value) {
+        var num = Number(value);
+        if (!Number.isFinite(num)) return null;
+        return "$" + num.toFixed(2);
+      };
+
+      var formatUsdRounded = function (value) {
+        var num = Number(value);
+        if (!Number.isFinite(num)) return null;
+        return (
+          "$" +
+          Math.round(num).toLocaleString(undefined, {
+            maximumFractionDigits: 0,
+          })
+        );
+      };
+
+      var formatRoi = function (value) {
+        if (value === null || value === undefined || !Number.isFinite(value)) return null;
+        var percent = Math.round(value * 100);
+        return (percent > 0 ? "+" : "") + percent + "%";
+      };
+
+      var formatRelative = function (value) {
+        if (!value) return null;
+        var date = new Date(value);
+        if (Number.isNaN(date.getTime())) return null;
+        var delta = Date.now() - date.getTime();
+        var minutes = Math.max(1, Math.round(delta / 60000));
+        if (minutes < 60) return minutes + "m ago";
+        var hours = Math.round(minutes / 60);
+        if (hours < 24) return hours + "h ago";
+        var days = Math.round(hours / 24);
+        return days + "d ago";
+      };
+
+      var formatEta = function (seconds) {
+        var num = Number(seconds);
+        if (!Number.isFinite(num) || num <= 0) return null;
+        var minutes = Math.floor(num / 60);
+        return minutes > 0 ? "~" + minutes + " min" : "< 1 min";
+      };
+
+      var artifactUrl = function (artifact, fallbackUrl) {
+        if (artifact && typeof artifact.primary_url === "string" && artifact.primary_url) {
+          return artifact.primary_url;
+        }
+        if (artifact && typeof artifact.live_url === "string" && artifact.live_url) {
+          return artifact.live_url;
+        }
+        return fallbackUrl;
+      };
+
+      var artifactLabel = function (artifact) {
+        return (artifact && typeof artifact.primary_label === "string" && artifact.primary_label) || "Open artifact";
+      };
+
+      var avatarInitial = function (name, domain) {
+        var source = typeof name === "string" && name.trim() ? name.trim() : titleCase(domain || "OrgX");
+        return escapeHtml(source.charAt(0).toUpperCase() || "?");
+      };
+
+      var toneForStatus = function (status, fallbackProgress, blockerCount) {
+        var key = toStatusKey(status);
+        if (
+          blockerCount > 0 ||
+          key === "blocked" ||
+          key === "failed" ||
+          key === "at_risk"
+        ) {
+          return "danger";
+        }
+        if (
+          key === "ready" ||
+          key === "pending" ||
+          key === "in_review" ||
+          key === "draft" ||
+          key === "ramping_up"
+        ) {
+          return "warning";
+        }
+        if (key === "active" || key === "running" || key === "in_progress") {
+          return "good";
+        }
+        if (key === "completed" || key === "approved") {
+          return "good";
+        }
+        var progress = Number(fallbackProgress);
+        if (Number.isFinite(progress) && progress < 40) return "warning";
+        return "muted";
+      };
+
+      var iconForStatus = function (status, tone) {
+        var key = toStatusKey(status);
+        if (key === "completed" || key === "approved") return icons.check(11);
+        if (key === "paused") return icons.pause(11);
+        if (tone === "danger") return icons.warning(11);
+        if (key === "active" || key === "running" || key === "in_progress") {
+          return icons.play(11);
+        }
+        return icons.pulse(11);
+      };
+
+      var renderStatusPill = function (status, tone) {
+        var label = titleCase(status || (tone === "danger" ? "needs attention" : "active"));
+        return (
+          '<span class="pulse-status-pill tone-' +
+          escapeHtml(tone) +
+          '">' +
+          iconForStatus(status, tone) +
+          escapeHtml(label) +
+          "</span>"
+        );
+      };
+
+      var renderHealthRing = function (score) {
+        var safeScore = Math.max(0, Math.min(100, Math.round(Number(score) || 0)));
+        var tone = safeScore >= 85 ? "good" : safeScore >= 70 ? "warning" : "danger";
+        var radius = 50;
+        var circumference = 2 * Math.PI * radius;
+        var offset = circumference - (safeScore / 100) * circumference;
+        return (
+          '<div class="pulse-health tone-' +
+          tone +
+          '" aria-label="Health score ' +
+          escapeHtml(String(safeScore)) +
+          ' percent">' +
+          '<svg viewBox="0 0 120 120">' +
+          '<circle class="pulse-health__track" cx="60" cy="60" r="' +
+          radius +
+          '"></circle>' +
+          '<circle class="pulse-health__bar" cx="60" cy="60" r="' +
+          radius +
+          '" style="stroke-dasharray:' +
+          circumference.toFixed(2) +
+          ";stroke-dashoffset:" +
+          offset.toFixed(2) +
+          '"></circle>' +
+          "</svg>" +
+          '<div class="pulse-health__value">' +
+          '<span class="pulse-health__number">' +
+          escapeHtml(String(safeScore)) +
+          "</span>" +
+          '<span class="pulse-health__label">Health</span>' +
+          "</div>" +
+          "</div>"
+        );
+      };
+
+      var renderMiniRing = function (progress, tone) {
+        var safeProgress = Math.max(0, Math.min(100, Math.round(Number(progress) || 0)));
+        var radius = 15;
+        var circumference = 2 * Math.PI * radius;
+        var offset = circumference - (safeProgress / 100) * circumference;
+        return (
+          '<span class="pulse-mini-ring tone-' +
+          escapeHtml(tone) +
+          '">' +
+          '<svg viewBox="0 0 34 34">' +
+          '<circle class="pulse-mini-ring__track" cx="17" cy="17" r="' +
+          radius +
+          '"></circle>' +
+          '<circle class="pulse-mini-ring__bar" cx="17" cy="17" r="' +
+          radius +
+          '" style="stroke-dasharray:' +
+          circumference.toFixed(2) +
+          ";stroke-dashoffset:" +
+          offset.toFixed(2) +
+          '"></circle>' +
+          "</svg>" +
+          '<span class="pulse-mini-ring__value">' +
+          escapeHtml(String(safeProgress)) +
+          "%</span>" +
+          "</span>"
+        );
+      };
+
+      var normalizeWorkstreams = function (payload) {
+        var raw = Array.isArray(payload && payload.workstreams)
+          ? payload.workstreams
+          : Array.isArray(payload && payload.streams)
+          ? payload.streams
+          : [];
+        return raw
+          .map(function (item, index) {
+            var stream = asObject(item) || {};
+            var blockers = Array.isArray(stream.blockers) ? stream.blockers : [];
+            return {
+              id:
+                readString(stream, ["id", "workstream_id", "workstreamId", "ref"]) ||
+                "stream-" + index,
+              title:
+                readString(stream, ["title", "name", "label"]) || "Untitled stream",
+              progress_pct:
+                typeof stream.progress_pct === "number"
+                  ? stream.progress_pct
+                  : typeof stream.progress === "number"
+                  ? stream.progress
+                  : 0,
+              status:
+                readString(stream, ["status", "state"]) ||
+                (blockers.length ? "blocked" : "active"),
+              agent_name: readString(stream, ["agent_name", "agentName", "owner_name", "ownerName"]),
+              agent_domain: readString(stream, ["agent_domain", "agentDomain", "domain"]),
+              blocker_count:
+                typeof stream.blocked_count === "number"
+                  ? stream.blocked_count
+                  : blockers.length,
+              summary: readString(stream, ["summary", "reason", "description"]),
+            };
+          })
+          .filter(function (stream) {
+            return typeof stream.title === "string" && stream.title.trim().length > 0;
+          });
+      };
+
+      var normalizeMilestones = function (payload) {
+        var raw = Array.isArray(payload && payload.milestones) ? payload.milestones : [];
+        return raw
+          .map(function (item, index) {
+            var milestone = asObject(item) || {};
+            return {
+              id: readString(milestone, ["id", "ref"]) || "milestone-" + index,
+              title:
+                readString(milestone, ["title", "name", "label"]) ||
+                "Untitled milestone",
+              progress:
+                typeof milestone.progress === "number"
+                  ? milestone.progress
+                  : typeof milestone.progress_pct === "number"
+                  ? milestone.progress_pct
+                  : 0,
+              status: readString(milestone, ["status", "state"]) || "planned",
+            };
+          })
+          .filter(function (milestone) {
+            return milestone.title;
+          });
+      };
+
+      var normalizeArtifacts = function (payload) {
+        var raw = Array.isArray(payload && payload.recent_artifacts)
+          ? payload.recent_artifacts
+          : [];
+        return raw
+          .map(function (item, index) {
+            var artifact = asObject(item) || {};
+            return {
+              id: readString(artifact, ["id", "artifact_id", "artifactId"]) || "artifact-" + index,
+              title:
+                readString(artifact, ["title", "name", "label"]) ||
+                "Untitled artifact",
+              status: readString(artifact, ["status", "state"]) || "draft",
+              artifact_type: readString(artifact, ["artifact_type", "artifactType", "type"]),
+              created_at:
+                readString(artifact, ["created_at", "createdAt", "updated_at", "updatedAt"]) || null,
+              created_by_name: readString(artifact, ["created_by_name", "createdByName", "created_by"]),
+              primary_url: artifactUrl(artifact, null),
+              primary_label: artifactLabel(artifact),
+              live_url: readString(artifact, ["live_url", "liveUrl"]),
+            };
+          })
+          .filter(function (artifact) {
+            return artifact.title;
+          });
+      };
+
+      var normalizePulse = function (payload) {
+        if (!payload) return null;
+        var record = asObject(payload) || {};
+        var workstreamSummary =
+          asObject(record.workstream_summary) || asObject(record.workstreamSummary) || {};
+        var artifacts = normalizeArtifacts(record);
+        var milestones = normalizeMilestones(record);
+        return {
+          id: readString(record, ["id", "initiative_id", "initiativeId"]),
+          name: readString(record, ["name", "title"]) || "Initiative",
+          status: readString(record, ["status", "state"]) || "active",
+          message: readString(record, ["message", "summary"]),
+          progress_pct: typeof record.progress_pct === "number" ? record.progress_pct : 0,
+          pending_decisions:
+            typeof record.pending_decisions === "number" ? record.pending_decisions : 0,
+          active_workstreams:
+            typeof record.active_workstreams === "number"
+              ? record.active_workstreams
+              : typeof workstreamSummary.active === "number"
+              ? workstreamSummary.active
+              : 0,
+          total_workstreams:
+            typeof record.total_workstreams === "number"
+              ? record.total_workstreams
+              : typeof workstreamSummary.total === "number"
+              ? workstreamSummary.total
+              : 0,
+          blocked_workstreams:
+            typeof record.blocked_workstreams === "number"
+              ? record.blocked_workstreams
+              : typeof workstreamSummary.blocked === "number"
+              ? workstreamSummary.blocked
+              : 0,
+          health_score:
+            typeof record.health_score === "number" ? record.health_score : 100,
+          blockers: Array.isArray(record.blockers) ? record.blockers : [],
+          next_steps: Array.isArray(record.next_steps) ? record.next_steps : [],
+          roi_summary: asObject(record.roi_summary),
+          current_cost:
+            typeof record.current_cost === "number" ? record.current_cost : null,
+          eta_seconds:
+            typeof record.eta_seconds === "number" ? record.eta_seconds : null,
+          live_url: readString(record, ["live_url", "liveUrl"]),
+          updated_at:
+            readString(record, ["updated_at", "updatedAt", "refreshed_at", "refreshedAt"]) ||
+            null,
+          workstreams: normalizeWorkstreams(record),
+          milestones: milestones,
+          recent_artifacts: artifacts,
+          artifact_summary: asObject(record.artifact_summary),
+        };
+      };
+
+      var buildAttentionItems = function (pulseData, dashboardUrl) {
+        var items = [];
+        (pulseData.blockers || []).forEach(function (text, index) {
+          items.push({
+            id: "blocker-" + index,
+            kind: "blocker",
+            label: text,
+            meta: "Blocked work",
+            url: dashboardUrl,
+          });
+        });
+
+        (pulseData.next_steps || []).forEach(function (text, index) {
+          items.push({
+            id: "step-" + index,
+            kind: "decision",
+            label: text,
+            meta: "Next step",
+            url: dashboardUrl,
+          });
+        });
+
+        var reviewArtifacts = (pulseData.recent_artifacts || []).filter(function (artifact) {
+          return ["in_review", "draft", "changes_requested"].indexOf(toStatusKey(artifact.status)) >= 0;
+        });
+
+        reviewArtifacts.forEach(function (artifact, index) {
+          items.push({
+            id: "artifact-review-" + index,
+            kind: "review",
+            label: artifact.title + " is waiting for review.",
+            meta: "Artifact review",
+            url: artifact.primary_url || artifact.live_url || dashboardUrl,
+          });
+        });
+
+        if (items.length === 0 && pulseData.pending_decisions > 0) {
+          items.push({
+            id: "decision-summary",
+            kind: "decision",
+            label:
+              pulseData.pending_decisions +
+              " decision" +
+              (pulseData.pending_decisions === 1 ? " is" : "s are") +
+              " waiting in live view.",
+            meta: "Pending decision",
+            url: dashboardUrl,
+          });
+        }
+
+        return items.slice(0, 5);
+      };
+
+      var buildAttentionBanner = function (pulseData, items) {
+        if (!items.length) return null;
+        var reviewCount = (pulseData.recent_artifacts || []).filter(function (artifact) {
+          return ["in_review", "draft", "changes_requested"].indexOf(toStatusKey(artifact.status)) >= 0;
+        }).length;
+        if ((pulseData.blockers || []).length) {
+          return {
+            eyebrow:
+              (pulseData.blockers || []).length +
+              " blocker" +
+              ((pulseData.blockers || []).length === 1 ? "" : "s") +
+              " slowing momentum",
+            headline: items[0].label,
+          };
+        }
+        if (pulseData.pending_decisions > 0) {
+          return {
+            eyebrow:
+              pulseData.pending_decisions +
+              " decision" +
+              (pulseData.pending_decisions === 1 ? "" : "s") +
+              " waiting on you",
+            headline: items[0].label,
+          };
+        }
+        return {
+          eyebrow:
+            reviewCount +
+            " output item" +
+            (reviewCount === 1 ? "" : "s") +
+            " waiting for review",
+          headline: items[0].label,
+        };
+      };
+
+      var renderSignalStrip = function (pulseData) {
+        var source = pulseData.workstreams.length
+          ? pulseData.workstreams
+          : pulseData.milestones;
+        if (!source.length) return "";
+        return (
+          '<div class="pulse-signal-strip">' +
+          source
+            .slice(0, 4)
+            .map(function (item) {
+              var progress =
+                typeof item.progress_pct === "number" ? item.progress_pct : item.progress;
+              var tone = toneForStatus(item.status, progress, item.blocker_count || 0);
+              return (
+                '<button class="pulse-signal" type="button" title="' +
+                escapeHtml(item.title + ": " + Math.round(progress || 0) + "%") +
+                '" onclick="togglePulsePanel(\'streams\')">' +
+                '<span class="pulse-signal__fill tone-' +
+                escapeHtml(tone) +
+                '" style="width:' +
+                Math.max(8, Math.min(100, Math.round(Number(progress) || 0))) +
+                '%"></span>' +
+                "</button>"
+              );
+            })
+            .join("") +
+          "</div>"
+        );
+      };
+
+      var renderMetrics = function (sections, activePanel) {
+        if (!sections.length) return "";
+        return (
+          '<div class="pulse-rail">' +
+          sections
+            .map(function (section) {
+              return (
+                '<button type="button" class="pulse-rail-button' +
+                (activePanel === section.key ? " is-active" : "") +
+                (section.alert ? " is-alert" : "") +
+                '" onclick="togglePulsePanel(\'' +
+                escapeHtml(section.key) +
+                '\')" aria-expanded="' +
+                escapeHtml(String(activePanel === section.key)) +
+                '">' +
+                '<span class="pulse-rail-icon">' +
+                section.icon +
+                "</span>" +
+                '<span class="pulse-rail-value">' +
+                escapeHtml(String(section.value)) +
+                "</span>" +
+                '<span class="pulse-rail-label">' +
+                escapeHtml(section.label) +
+                "</span>" +
+                "</button>"
+              );
+            })
+            .join("") +
+          "</div>"
+        );
+      };
+
+      var renderActionsPanel = function (items) {
+        if (!items.length) return '<div class="pulse-empty">No decisions, blockers, or reviews are waiting on you right now.</div>';
+        return (
+          '<div class="pulse-list">' +
+          items
+            .map(function (item) {
+              var icon = item.kind === "review" ? icons.document(15) : icons.warning(15);
+              var url = item.url || "";
+              var urlAttr = JSON.stringify(String(url));
+              return (
+                '<a href="' +
+                escapeHtml(url) +
+                '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(' +
+                urlAttr +
+                ', event)" class="pulse-list-row pulse-action-row' +
+                (item.kind === "blocker" ? " is-danger" : "") +
+                '">' +
+                '<span class="pulse-list-leading">' +
+                icon +
+                "</span>" +
+                '<span class="pulse-list-copy">' +
+                '<span class="pulse-list-title">' +
+                escapeHtml(item.label) +
+                "</span>" +
+                '<span class="pulse-list-meta">' +
+                escapeHtml(item.meta) +
+                "</span>" +
+                "</span>" +
+                '<span class="pulse-list-trailing">' +
+                icons.external(14) +
+                "</span>" +
+                "</a>"
+              );
+            })
+            .join("") +
+          "</div>"
+        );
+      };
+
+      var renderWorkstreamFallback = function (pulseData, dashboardUrl) {
+        var rows = [];
+        if (pulseData.total_workstreams || pulseData.active_workstreams) {
+          rows.push({
+            title:
+              (pulseData.active_workstreams || pulseData.total_workstreams || 0) +
+              " streams are currently in motion.",
+            meta:
+              (pulseData.total_workstreams || pulseData.active_workstreams || 0) +
+              " total streams",
+            tone: "good",
+          });
+        }
+        if (pulseData.blocked_workstreams) {
+          rows.push({
+            title:
+              pulseData.blocked_workstreams +
+              " stream" +
+              (pulseData.blocked_workstreams === 1 ? " is" : "s are") +
+              " blocked.",
+            meta: "Needs intervention",
+            tone: "danger",
+          });
+        }
+        if (pulseData.pending_decisions) {
+          rows.push({
+            title:
+              pulseData.pending_decisions +
+              " decision" +
+              (pulseData.pending_decisions === 1 ? " is" : "s are") +
+              " waiting.",
+            meta: "Pending decisions",
+            tone: "warning",
+          });
+        }
+        if (!rows.length) {
+          return '<div class="pulse-empty">Stream detail will appear here when the pulse payload includes live stream rows.</div>';
+        }
+        var urlAttr = JSON.stringify(String(dashboardUrl || ""));
+        return (
+          '<div class="pulse-list">' +
+          rows
+            .map(function (row) {
+              return (
+                '<a href="' +
+                escapeHtml(dashboardUrl || "") +
+                '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(' +
+                urlAttr +
+                ', event)" class="pulse-list-row">' +
+                '<span class="pulse-list-leading">' +
+                renderMiniRing(
+                  row.tone === "danger"
+                    ? 28
+                    : row.tone === "warning"
+                    ? 54
+                    : 78,
+                  row.tone
+                ) +
+                "</span>" +
+                '<span class="pulse-list-copy">' +
+                '<span class="pulse-list-title">' +
+                escapeHtml(row.title) +
+                "</span>" +
+                '<span class="pulse-list-meta">' +
+                escapeHtml(row.meta) +
+                "</span>" +
+                "</span>" +
+                '<span class="pulse-list-trailing">' +
+                renderStatusPill(row.tone === "danger" ? "blocked" : row.tone === "warning" ? "pending" : "active", row.tone) +
+                "</span>" +
+                "</a>"
+              );
+            })
+            .join("") +
+          "</div>"
+        );
+      };
+
+      var renderStreamsPanel = function (pulseData, dashboardUrl) {
+        if (!pulseData.workstreams.length) return renderWorkstreamFallback(pulseData, dashboardUrl);
+        var urlAttr = JSON.stringify(String(dashboardUrl || ""));
+        return (
+          '<div class="pulse-list">' +
+          pulseData.workstreams
+            .slice(0, 4)
+            .map(function (stream) {
+              var tone = toneForStatus(stream.status, stream.progress_pct, stream.blocker_count);
+              var metaParts = [];
+              if (stream.agent_name) metaParts.push(stream.agent_name);
+              if (stream.agent_domain) metaParts.push(titleCase(stream.agent_domain));
+              if (stream.summary) metaParts.push(stream.summary);
+              if (stream.blocker_count) {
+                metaParts.push(
+                  stream.blocker_count +
+                    " blocker" +
+                    (stream.blocker_count === 1 ? "" : "s")
+                );
+              }
+              return (
+                '<a href="' +
+                escapeHtml(dashboardUrl || "") +
+                '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(' +
+                urlAttr +
+                ', event)" class="pulse-list-row">' +
+                '<span class="pulse-list-leading">' +
+                renderMiniRing(stream.progress_pct, tone) +
+                "</span>" +
+                (stream.agent_name || stream.agent_domain
+                  ? '<span class="pulse-avatar">' +
+                    avatarInitial(stream.agent_name, stream.agent_domain) +
+                    "</span>"
+                  : "") +
+                '<span class="pulse-list-copy">' +
+                '<span class="pulse-list-title">' +
+                escapeHtml(stream.title) +
+                "</span>" +
+                '<span class="pulse-list-meta">' +
+                metaParts
+                  .map(function (part, index) {
+                    return (
+                      (index ? '<span class="pulse-meta-separator">·</span>' : "") +
+                      escapeHtml(part)
+                    );
+                  })
+                  .join("") +
+                "</span>" +
+                "</span>" +
+                '<span class="pulse-list-trailing">' +
+                renderStatusPill(stream.status, tone) +
+                "</span>" +
+                "</a>"
+              );
+            })
+            .join("") +
+          "</div>"
+        );
+      };
+
+      var renderFocusPanel = function (pulseData, dashboardUrl) {
+        var parts = [];
+        var urlAttr = JSON.stringify(String(dashboardUrl || ""));
+
+        if ((pulseData.next_steps || []).length) {
+          parts.push(
+            '<div class="pulse-subsection">' +
+              '<div class="pulse-subsection-label">Next moves</div>' +
+              '<div class="pulse-list">' +
+                pulseData.next_steps
+                  .slice(0, 4)
+                  .map(function (step) {
+                    return (
+                      '<a href="' +
+                      escapeHtml(dashboardUrl || "") +
+                      '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(' +
+                      urlAttr +
+                      ', event)" class="pulse-list-row">' +
+                        '<span class="pulse-list-leading">' +
+                        icons.check(15) +
+                        "</span>" +
+                        '<span class="pulse-list-copy">' +
+                          '<span class="pulse-list-title">' +
+                          escapeHtml(step) +
+                          "</span>" +
+                          '<span class="pulse-list-meta">Use the live view to resolve or delegate</span>' +
+                        "</span>" +
+                        '<span class="pulse-list-trailing">' +
+                        icons.external(14) +
+                        "</span>" +
+                      "</a>"
+                    );
+                  })
+                  .join("") +
+              "</div>" +
+            "</div>"
+          );
+        }
+
+        if ((pulseData.milestones || []).length) {
+          parts.push(
+            '<div class="pulse-subsection">' +
+              '<div class="pulse-subsection-label">Milestones</div>' +
+              '<div class="pulse-list">' +
+                pulseData.milestones
+                  .slice(0, 4)
+                  .map(function (milestone) {
+                    var tone = toneForStatus(milestone.status, milestone.progress, 0);
+                    return (
+                      '<a href="' +
+                      escapeHtml(dashboardUrl || "") +
+                      '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(' +
+                      urlAttr +
+                      ', event)" class="pulse-list-row">' +
+                        '<span class="pulse-list-leading">' +
+                        icons.flag(15) +
+                        "</span>" +
+                        '<span class="pulse-list-copy">' +
+                          '<span class="pulse-list-title">' +
+                          escapeHtml(milestone.title) +
+                          "</span>" +
+                          '<span class="pulse-list-meta">' +
+                            escapeHtml(titleCase(milestone.status || "planned")) +
+                          "</span>" +
+                        "</span>" +
+                        '<span class="pulse-list-trailing">' +
+                          '<span class="pulse-milestone-meter"><span style="width:' +
+                          Math.max(4, Math.min(100, Math.round(Number(milestone.progress) || 0))) +
+                          '%; background:' +
+                          (tone === "danger"
+                            ? "var(--ox-danger)"
+                            : tone === "warning"
+                            ? "var(--ox-warning)"
+                            : "var(--ox-primary)") +
+                          '"></span></span>' +
+                          '<span class="pulse-list-meta">' +
+                          escapeHtml(String(Math.round(Number(milestone.progress) || 0))) +
+                          "%</span>" +
+                        "</span>" +
+                      "</a>"
+                    );
+                  })
+                  .join("") +
+              "</div>" +
+            "</div>"
+          );
+        }
+
+        if (!parts.length) {
+          return '<div class="pulse-empty">No prescribed next steps are visible in this pulse yet.</div>';
+        }
+
+        return parts.join("");
+      };
+
+      var renderArtifactsPanel = function (pulseData, dashboardUrl) {
+        if (!pulseData.recent_artifacts.length) {
+          return '<div class="pulse-empty">No recent output was attached to this initiative pulse.</div>';
+        }
+
+        return (
+          '<div class="pulse-list">' +
+          pulseData.recent_artifacts
+            .slice(0, 4)
+            .map(function (artifact) {
+              var key = toStatusKey(artifact.status);
+              var tone = toneForStatus(artifact.status, 0, 0);
+              var age = formatRelative(artifact.created_at);
+              var url = artifact.primary_url || artifact.live_url || dashboardUrl || "";
+              var urlAttr = JSON.stringify(String(url));
+              return (
+                '<a href="' +
+                escapeHtml(url) +
+                '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(' +
+                urlAttr +
+                ', event)" class="pulse-list-row pulse-artifact-row' +
+                (key === "in_review" || key === "draft" ? " is-review" : "") +
+                '">' +
+                '<span class="pulse-list-leading">' +
+                icons.document(15) +
+                "</span>" +
+                '<span class="pulse-list-copy">' +
+                '<span class="pulse-list-title">' +
+                escapeHtml(artifact.title) +
+                "</span>" +
+                '<span class="pulse-list-meta">' +
+                escapeHtml(titleCase(artifact.status)) +
+                (age
+                  ? '<span class="pulse-meta-separator">·</span>' + escapeHtml(age)
+                  : "") +
+                "</span>" +
+                "</span>" +
+                '<span class="pulse-list-trailing">' +
+                renderStatusPill(artifact.status, tone) +
+                "</span>" +
+                "</a>"
+              );
+            })
+            .join("") +
+          "</div>"
+        );
+      };
+
+      var renderPanel = function (panel, pulseData, dashboardUrl, attentionItems) {
+        var icon = icons.layers(15);
+        var title = "Streams";
+        var body = renderStreamsPanel(pulseData, dashboardUrl);
+
+        if (panel === "actions") {
+          icon = icons.warning(15);
+          title = "Needs you";
+          body = renderActionsPanel(attentionItems);
+        } else if (panel === "focus") {
+          icon = icons.flag(15);
+          title = "Focus";
+          body = renderFocusPanel(pulseData, dashboardUrl);
+        } else if (panel === "artifacts") {
+          icon = icons.document(15);
+          title = "Output";
+          body = renderArtifactsPanel(pulseData, dashboardUrl);
+        }
+
+        return (
+          '<div class="pulse-panel animate-in">' +
+          '<div class="pulse-panel-header">' +
+          '<span class="pulse-panel-icon">' +
+          icon +
+          "</span>" +
+          '<span class="pulse-panel-title">' +
+          escapeHtml(title) +
+          "</span>" +
+          "</div>" +
+          body +
+          "</div>"
+        );
+      };
+
+      window.togglePulsePanel = function (panel) {
+        uiState.panel = uiState.panel === panel ? null : panel;
         render();
       };
-      if (loadingSettled) {
-        commit();
-        return;
-      }
-      loadingSettled = true;
-      var delay = Math.max(0, MIN_LOADING_MS - (Date.now() - bootStartedAt));
-      window.setTimeout(commit, delay);
-    };
 
-    var formatUsd = (value) => { const num = Number(value); if (!Number.isFinite(num)) return null; return '$' + num.toFixed(2); };
-    var formatRoi = (value) => { if (value === null) return 'N/A'; const pct = Math.round(value * 100); return (pct > 0 ? '+' : '') + pct + '%'; };
-    var formatRelative = function(value) {
-      var date = value ? new Date(value) : null;
-      if (!date || isNaN(date.getTime())) return null;
-      var delta = Date.now() - date.getTime();
-      var minutes = Math.max(1, Math.round(delta / 60000));
-      if (minutes < 60) return minutes + 'm ago';
-      var hours = Math.round(minutes / 60);
-      if (hours < 24) return hours + 'h ago';
-      var days = Math.round(hours / 24);
-      return days + 'd ago';
-    };
-    var artifactUrl = function(artifact, fallbackUrl) {
-      if (artifact && typeof artifact.primary_url === 'string' && artifact.primary_url) return artifact.primary_url;
-      if (artifact && typeof artifact.live_url === 'string' && artifact.live_url) return artifact.live_url;
-      return fallbackUrl;
-    };
-    var artifactLabel = function(artifact) {
-      return escapeHtml((artifact && typeof artifact.primary_label === 'string' && artifact.primary_label) || 'Open artifact');
-    };
-    var artifactIcon = function(artifactType) {
-      var type = String(artifactType || '').toLowerCase();
-      if (type.indexOf('report') >= 0 || type.indexOf('plan') >= 0) return icons.clipboard(16);
-      if (type.indexOf('copy') >= 0 || type.indexOf('content') >= 0) return icons.file(16);
-      return icons.layers(16);
-    };
-    var normalizePulse = payload => {
-      if (!payload) return null;
-      var workstreamSummary = payload.workstream_summary && typeof payload.workstream_summary === 'object' ? payload.workstream_summary : {};
-      return {
-        id: payload.id || payload.initiative_id || null,
-        name: payload.name || payload.title || 'Initiative',
-        status: payload.status || 'active',
-        progress_pct: typeof payload.progress_pct === 'number' ? payload.progress_pct : 0,
-        pending_decisions: typeof payload.pending_decisions === 'number' ? payload.pending_decisions : 0,
-        active_workstreams: typeof payload.active_workstreams === 'number' ? payload.active_workstreams : typeof workstreamSummary.active === 'number' ? workstreamSummary.active : 0,
-        total_workstreams: typeof payload.total_workstreams === 'number' ? payload.total_workstreams : typeof workstreamSummary.total === 'number' ? workstreamSummary.total : 0,
-        blocked_workstreams: typeof payload.blocked_workstreams === 'number' ? payload.blocked_workstreams : typeof workstreamSummary.blocked === 'number' ? workstreamSummary.blocked : 0,
-        health_score: typeof payload.health_score === 'number' ? payload.health_score : 100,
-        blockers: Array.isArray(payload.blockers) ? payload.blockers : [],
-        milestones: Array.isArray(payload.milestones) ? payload.milestones : [],
-        roi_summary: payload.roi_summary || null,
-        message: payload.message || null,
-        live_url: typeof payload.live_url === 'string' ? payload.live_url : null,
-        next_steps: Array.isArray(payload.next_steps) ? payload.next_steps : [],
-        recent_artifacts: Array.isArray(payload.recent_artifacts) ? payload.recent_artifacts : [],
-        artifact_summary: payload.artifact_summary && typeof payload.artifact_summary === 'object' ? payload.artifact_summary : null
+      var render = function () {
+        if (isLoading) {
+          injectHtml(
+            '<div class="widget-shell-card"><div class="ox-card"><div class="ox-card-inner pulse-skeleton">' +
+              '<span class="skeleton-line" style="width: 88px; height: 10px"></span>' +
+              '<span class="skeleton-line" style="width: 72%; height: 28px"></span>' +
+              '<span class="skeleton-line" style="width: 58%; height: 14px"></span>' +
+              '<span class="skeleton-line" style="width: 100%; height: 58px; border-radius: 18px"></span>' +
+              '<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px">' +
+                '<span class="skeleton-line" style="height: 72px; border-radius: 14px"></span>' +
+                '<span class="skeleton-line" style="height: 72px; border-radius: 14px"></span>' +
+                '<span class="skeleton-line" style="height: 72px; border-radius: 14px"></span>' +
+                '<span class="skeleton-line" style="height: 72px; border-radius: 14px"></span>' +
+              '</div>' +
+              '<span class="skeleton-line" style="width: 100%; height: 8px; border-radius: 999px"></span>' +
+            "</div></div></div>"
+          );
+          return;
+        }
+
+        if (pulse && pulse.error) {
+          var errorTitle = /multiple initiatives match/i.test(pulse.error)
+            ? "Multiple initiatives matched"
+            : /not found/i.test(pulse.error)
+            ? "Initiative not found"
+            : "Initiative pulse unavailable";
+          var errorDesc = /multiple initiatives match/i.test(pulse.error)
+            ? pulse.error + " Retry with the specific initiative UUID to load a stable pulse view."
+            : pulse.error;
+          injectHtml(
+            '<div class="empty-state error-state animate-in">' +
+              '<div class="empty-icon">' +
+              icons.warning(24) +
+              "</div>" +
+              '<div class="empty-title">' +
+              escapeHtml(errorTitle) +
+              "</div>" +
+              '<div class="empty-desc">' +
+              escapeHtml(errorDesc) +
+              "</div>" +
+            "</div>"
+          );
+          return;
+        }
+
+        if (!pulse) {
+          injectHtml(
+            '<div class="empty-state animate-in">' +
+              '<div class="empty-icon">' +
+              icons.pulse(24) +
+              "</div>" +
+              '<div class="empty-title">Awaiting telemetry</div>' +
+              '<div class="empty-desc">No recent pulse data was found for this initiative.</div>' +
+            "</div>"
+          );
+          return;
+        }
+
+        var normalized = normalizePulse(pulse);
+        if (!normalized) {
+          injectHtml(
+            '<div class="empty-state animate-in">' +
+              '<div class="empty-icon">' +
+              icons.pulse(24) +
+              "</div>" +
+              '<div class="empty-title">Awaiting telemetry</div>' +
+              '<div class="empty-desc">No recent pulse data was found for this initiative.</div>' +
+            "</div>"
+          );
+          return;
+        }
+
+        pulse = normalized;
+
+        var dashboardUrl =
+          pulse.live_url ||
+          (pulse.id
+            ? "https://useorgx.com/live/" + encodeURIComponent(pulse.id)
+            : "https://useorgx.com/live?view=mission-control");
+        var dashboardUrlAttr = JSON.stringify(String(dashboardUrl));
+
+        var reviewCount = (pulse.recent_artifacts || []).filter(function (artifact) {
+          return ["in_review", "draft", "changes_requested"].indexOf(toStatusKey(artifact.status)) >= 0;
+        }).length;
+
+        var attentionItems = buildAttentionItems(pulse, dashboardUrl);
+        var attentionBanner = buildAttentionBanner(pulse, attentionItems);
+        var economics = "";
+
+        if (pulse.roi_summary) {
+          var roiValue =
+            pulse.roi_summary.total_cost > 0
+              ? (pulse.roi_summary.total_value - pulse.roi_summary.total_cost) /
+                pulse.roi_summary.total_cost
+              : pulse.roi_summary.total_value > 0
+              ? 1
+              : null;
+          economics =
+            '<div class="pulse-economics">' +
+            '<span><strong>' +
+            escapeHtml(formatUsdRounded(pulse.roi_summary.total_cost) || "N/A") +
+            "</strong> cost</span>" +
+            '<span class="pulse-dot-divider">·</span>' +
+            '<span class="is-emphasis"><strong>' +
+            escapeHtml(formatUsdRounded(pulse.roi_summary.total_value) || "N/A") +
+            "</strong> value</span>" +
+            '<span class="pulse-dot-divider">·</span>' +
+            '<span class="is-emphasis"><strong>' +
+            escapeHtml(formatRoi(roiValue) || "N/A") +
+            "</strong> ROI</span>" +
+            "</div>";
+        } else {
+          var fallbackParts = [];
+          if (formatEta(pulse.eta_seconds)) {
+            fallbackParts.push(
+              "<span><strong>" + escapeHtml(formatEta(pulse.eta_seconds)) + "</strong> ETA</span>"
+            );
+          }
+          if (formatUsdRounded(pulse.current_cost)) {
+            fallbackParts.push(
+              "<span><strong>" +
+                escapeHtml(formatUsdRounded(pulse.current_cost)) +
+                "</strong> cost so far</span>"
+            );
+          }
+          if (fallbackParts.length) {
+            economics =
+              '<div class="pulse-economics">' +
+              fallbackParts.join('<span class="pulse-dot-divider">·</span>') +
+              "</div>";
+          }
+        }
+
+        var metaTokens = [];
+        var streamCount = pulse.total_workstreams || pulse.active_workstreams || pulse.workstreams.length;
+        if (streamCount) {
+          metaTokens.push(
+            escapeHtml(String(streamCount)) +
+              " streams"
+          );
+        }
+        if (pulse.blocked_workstreams || (pulse.blockers || []).length) {
+          metaTokens.push(
+            escapeHtml(
+              String(pulse.blocked_workstreams || (pulse.blockers || []).length) + " blocked"
+            )
+          );
+        }
+        if (pulse.pending_decisions) {
+          metaTokens.push(
+            escapeHtml(String(pulse.pending_decisions) + " decisions pending")
+          );
+        }
+        if (pulse.recent_artifacts.length) {
+          metaTokens.push(
+            escapeHtml(
+              String(
+                (pulse.artifact_summary && pulse.artifact_summary.total) ||
+                  pulse.recent_artifacts.length
+              ) + " output items"
+            )
+          );
+        }
+
+        var sections = [];
+        if (streamCount || pulse.workstreams.length || pulse.milestones.length) {
+          sections.push({
+            key: "streams",
+            icon: icons.layers(15),
+            value: streamCount || pulse.workstreams.length || pulse.milestones.length,
+            label: "Streams",
+            alert: Boolean(pulse.blocked_workstreams),
+          });
+        }
+        if (attentionItems.length) {
+          sections.push({
+            key: "actions",
+            icon: icons.warning(15),
+            value: attentionItems.length,
+            label: "Needs you",
+            alert: true,
+          });
+        }
+        if ((pulse.next_steps || []).length || pulse.milestones.length) {
+          sections.push({
+            key: "focus",
+            icon: icons.flag(15),
+            value: (pulse.next_steps || []).length || pulse.milestones.length,
+            label: (pulse.next_steps || []).length ? "Next" : "Milestones",
+            alert: false,
+          });
+        }
+        if (pulse.recent_artifacts.length) {
+          sections.push({
+            key: "artifacts",
+            icon: icons.document(15),
+            value:
+              (pulse.artifact_summary && pulse.artifact_summary.total) ||
+              pulse.recent_artifacts.length,
+            label: "Output",
+            alert: reviewCount > 0,
+          });
+        }
+
+        var availableKeys = sections.map(function (section) {
+          return section.key;
+        });
+        if (availableKeys.indexOf(uiState.panel) === -1) uiState.panel = null;
+
+        var syncLabel =
+          formatRelative(pulse.updated_at) ||
+          formatRelative(
+            pulse.recent_artifacts.length ? pulse.recent_artifacts[0].created_at : null
+          ) ||
+          "now";
+
+        injectHtml(
+          '<div class="widget-shell-card animate-in">' +
+            '<div class="ox-card">' +
+              '<div class="ox-card-inner">' +
+                '<div class="pulse-shell">' +
+                  '<div class="pulse-hero">' +
+                    renderHealthRing(pulse.health_score) +
+                    '<div class="pulse-copy">' +
+                      '<div class="pulse-headline">' +
+                        '<div class="pulse-title-wrap">' +
+                          '<div class="pulse-kicker">Initiative pulse</div>' +
+                          '<div class="pulse-title">' +
+                            escapeHtml(pulse.name) +
+                          "</div>" +
+                        "</div>" +
+                        '<span class="status-badge status-' +
+                          escapeHtml(toStatusKey(pulse.status) || "active") +
+                          '">' +
+                          icons.pulse(12) +
+                          escapeHtml(titleCase(pulse.status || "active")) +
+                        "</span>" +
+                      "</div>" +
+                      (pulse.message
+                        ? '<div class="pulse-message">' + escapeHtml(pulse.message) + "</div>"
+                        : "") +
+                      economics +
+                      (metaTokens.length
+                        ? '<div class="pulse-meta-line">' +
+                          metaTokens
+                            .map(function (token, index) {
+                              return (
+                                (index
+                                  ? '<span class="pulse-meta-divider">·</span>'
+                                  : "") + token
+                              );
+                            })
+                            .join("") +
+                          "</div>"
+                        : "") +
+                    "</div>" +
+                  "</div>" +
+                  (attentionBanner
+                    ? '<button type="button" class="pulse-attention' +
+                      (uiState.panel === "actions" ? " is-open" : "") +
+                      '" onclick="togglePulsePanel(\'actions\')">' +
+                        '<span class="pulse-attention__icon">' +
+                          icons.warning(16) +
+                        "</span>" +
+                        '<span class="pulse-attention__body">' +
+                          '<span class="pulse-attention__eyebrow">' +
+                            escapeHtml(attentionBanner.eyebrow) +
+                          "</span>" +
+                          '<span class="pulse-attention__headline">' +
+                            escapeHtml(attentionBanner.headline) +
+                          "</span>" +
+                        "</span>" +
+                        '<span class="pulse-attention__chevron">' +
+                          icons.chevronDown(15) +
+                        "</span>" +
+                      "</button>"
+                    : "") +
+                  renderMetrics(sections, uiState.panel) +
+                  renderSignalStrip(pulse) +
+                  (uiState.panel
+                    ? renderPanel(uiState.panel, pulse, dashboardUrl, attentionItems)
+                    : "") +
+                  '<div class="widget-footer">' +
+                    '<span class="pulse-sync">Synced ' +
+                      escapeHtml(syncLabel) +
+                    "</span>" +
+                    '<a href="' +
+                      escapeHtml(dashboardUrl) +
+                      '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(' +
+                      dashboardUrlAttr +
+                      ', event)" class="deep-link">' +
+                      escapeHtml(attentionItems.length ? "Resolve in live view" : "Open live view") +
+                      icons.external(14) +
+                    "</a>" +
+                  "</div>" +
+                "</div>" +
+              "</div>" +
+            "</div>" +
+          "</div>"
+        );
       };
-    };
 
-    var render = () => {
-      if (isLoading) {
-        injectHtml(`<div class="skeleton-wrapper"><div class="ox-card"><div class="ox-card-inner"><div style="display:flex; justify-content:space-between; margin-bottom:24px;"><div class="skeleton-line" style="width:150px; height:24px;"></div><div class="skeleton-line" style="width:80px; height:24px; border-radius:4px;"></div></div><div style="display:flex; gap:16px; margin-bottom:24px;"><div class="skeleton-line" style="width:60px; height:40px;"></div><div class="skeleton-line" style="width:60px; height:40px;"></div></div><div class="skeleton-line" style="width:100%; height:60px;"></div></div></div></div>`);
-        return;
+      if (isDemo) {
+        applyBootPayload();
+      } else {
+        initWidget({
+          render: function (data) {
+            applyBootPayload(function () {
+              if (data) pulse = data;
+            });
+          },
+        });
       }
-      if (pulse && pulse.error) {
-        var errorTitle = /multiple initiatives match/i.test(pulse.error)
-          ? 'Multiple initiatives matched'
-          : /not found/i.test(pulse.error)
-          ? 'Initiative not found'
-          : 'Initiative pulse unavailable';
-        var errorDesc = /multiple initiatives match/i.test(pulse.error)
-          ? pulse.error + ' Retry with the specific initiative UUID to load a stable pulse view.'
-          : pulse.error;
-        injectHtml(`<div class="empty-state error-state animate-in"><div class="empty-icon">${icons.error(24)}</div><div class="empty-title">${escapeHtml(errorTitle)}</div><div class="empty-desc">${escapeHtml(errorDesc)}</div></div>`);
-        return;
-      }
-      if (!pulse) {
-        injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.external(24)}</div><div class="empty-title">Awaiting telemetry</div><div class="empty-desc">No recent pulse data was found for this initiative.</div></div>`);
-        return;
-      }
-
-      pulse = normalizePulse(pulse);
-      if (!pulse) {
-        injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.external(24)}</div><div class="empty-title">Awaiting telemetry</div><div class="empty-desc">No recent pulse data was found for this initiative.</div></div>`);
-        return;
-      }
-
-      const safeName = escapeHtml(pulse.name || pulse.title || 'Initiative');
-      const safeStatus = escapeHtml(String(pulse.status || 'active').replace(/_/g, ' ')).toUpperCase();
-      const progressPct = typeof pulse.progress_pct === 'number' ? pulse.progress_pct : 0;
-      const pendingDecisions = typeof pulse.pending_decisions === 'number' ? pulse.pending_decisions : 0;
-      const activeWorkstreams = typeof pulse.active_workstreams === 'number' ? pulse.active_workstreams : 0;
-      const totalWorkstreams = typeof pulse.total_workstreams === 'number' ? pulse.total_workstreams : 0;
-      const healthScore = typeof pulse.health_score === 'number' ? pulse.health_score : 100;
-      const normalizedStatus = escapeHtml(String(pulse.status || 'active')).toLowerCase();
-      const lifecycleStage = String(pulse.lifecycle_stage || '').toLowerCase();
-      const roiSummary = pulse.roi_summary || null;
-      const safeMessage = pulse.message ? escapeHtml(pulse.message) : '';
-      let roiValue = null;
-      
-      if (roiSummary && roiSummary.total_cost > 0) {
-        roiValue = (roiSummary.total_value - roiSummary.total_cost) / roiSummary.total_cost;
-      } else if (roiSummary && roiSummary.total_value > 0) {
-        roiValue = 1;
-      }
-
-      const getHealthClass = (score) => {
-        if (lifecycleStage === 'ramping_up' || normalizedStatus === 'ramping_up') return 'health-attention';
-        if (score >= 90) return 'health-on-track';
-        if (score >= 70) return 'health-attention';
-        return 'health-at-risk';
-      };
-      const getHealthLabel = (score) => {
-        if (lifecycleStage === 'ramping_up' || normalizedStatus === 'ramping_up') return 'Ramping Up';
-        if (score >= 90) return 'On Track';
-        if (score >= 70) return 'Needs Attention';
-        return 'At Risk';
-      };
-
-      const formatEta = (seconds) => {
-        if (!seconds) return 'N/A';
-        const mins = Math.floor(seconds / 60);
-        return mins > 0 ? `~${mins} min` : '< 1 min';
-      };
-
-      const blockersHtml = (pulse.blockers || []).length > 0 ? `
-        <div class="blockers-alert">
-          <div class="blockers-title">⚠ Action Required</div>
-          <ul class="blockers-list">
-            ${pulse.blockers.map(b => '<li>' + escapeHtml(b) + '</li>').join('')}
-          </ul>
-          <div style="margin-top:12px;"><a href="${dashboardUrl}" onclick='return openWidgetLink(${JSON.stringify(String(dashboardUrl || ''))}, event)' class="btn btn-primary" style="display:inline-block; text-decoration:none; padding: 6px 12px; font-size: 0.75rem;">Resolve in live view</a></div>
-        </div>
-      ` : '';
-
-      const liveHeartbeatHtml = `
-        <div class="roi-strip" style="grid-template-columns: repeat(2, 1fr);">
-          <div class="roi-item">
-            <div class="roi-label">Estimated Completion</div>
-            <div class="roi-value" style="color: var(--ox-text); font-size: 1rem;">${formatEta(pulse.eta_seconds)}</div>
-          </div>
-          <div class="roi-item">
-            <div class="roi-label">Cost So Far</div>
-            <div class="roi-value" style="color: var(--ox-text); font-size: 1rem;">${formatUsd(pulse.current_cost || 0)}</div>
-          </div>
-        </div>
-      `;
-
-      const recentEventsHtml = (pulse.recent_events || []).length > 0 ? `
-        <div class="insight-card" style="margin-bottom: 20px;">
-          <div class="detail-header" style="margin-bottom: 12px;"><span class="detail-icon">${icons.layers(13)}</span><div class="detail-label">Live Activity</div></div>
-          <div style="display: flex; flex-direction: column; gap: 12px;">
-            ${pulse.recent_events.map(ev => `
-              <div style="display: flex; gap: 8px; align-items: flex-start; font-size: 0.85rem;">
-                <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--ox-primary); margin-top: 6px; box-shadow: 0 0 8px rgba(var(--ox-primary-rgb), 0.5);"></div>
-                <div>
-                  <span style="font-weight: 600; color: var(--ox-text);">${escapeHtml(ev.agent)}</span> <span style="color: var(--ox-text-muted);">${escapeHtml(ev.text)}</span>
-                  <div style="font-size: 0.7rem; color: var(--ox-text-muted); margin-top: 2px;">${escapeHtml(ev.time)}</div>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      ` : '';
-      const nextStepsHtml = (pulse.next_steps || []).length ? `
-        <ul class="insight-list">
-          ${(pulse.next_steps || []).slice(0, 3).map(step => `<li>${escapeHtml(step)}</li>`).join('')}
-        </ul>
-      ` : `<div class="insight-empty">No prescribed next steps yet. Use the live view to inspect workstreams and unblock the sprint.</div>`;
-      const blockerPanelHtml = (pulse.blockers || []).length ? blockersHtml : `
-        <div class="insight-card">
-          <div class="detail-header"><span class="detail-icon">${icons.error(13)}</span><div class="detail-label">Blockers</div></div>
-          <div class="insight-empty">No blockers reported in the current pulse.</div>
-        </div>
-      `;
-      const milestonesHtml = (pulse.milestones || []).length ? `
-        <div class="milestone-section-title"><span class="detail-icon">${icons.layers(13)}</span><div class="detail-label">Milestone progress</div></div>
-        <div class="milestone-list">
-          ${(pulse.milestones || []).slice(0, 4).map(milestone => `
-            <div class="milestone-row">
-              <div>
-                <div class="milestone-title">${escapeHtml(milestone.name || milestone.title || 'Untitled milestone')}</div>
-                <div class="milestone-meta">${escapeHtml((milestone.status || 'planned').replace(/_/g, ' '))}</div>
-              </div>
-              <div class="status-indicator">
-                <span class="status-dot"></span>
-                ${escapeHtml(String(typeof milestone.progress === 'number' ? milestone.progress : 0))}%
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      ` : '';
-      var dashboardUrl = pulse.live_url || (pulse.id ? `https://useorgx.com/live/${encodeURIComponent(pulse.id)}` : 'https://useorgx.com/live?view=mission-control');
-      const recentArtifactsHtml = (pulse.recent_artifacts || []).length ? `
-        <div class="artifact-panel">
-          <div class="artifact-panel-header">
-            <div class="artifact-panel-title"><span class="artifact-panel-icon">${icons.layers(16)}</span><div class="detail-label">Recent artifacts</div></div>
-            <div class="artifact-count">${escapeHtml(String((pulse.artifact_summary && pulse.artifact_summary.total) || pulse.recent_artifacts.length))} total</div>
-          </div>
-          <div class="artifact-list">
-            ${(pulse.recent_artifacts || []).slice(0, 3).map(function(artifact) {
-              var title = escapeHtml(artifact.title || artifact.name || 'Untitled artifact');
-              var type = escapeHtml(String(artifact.artifact_type || artifact.type || 'artifact').replace(/_/g, '.'));
-              var status = escapeHtml(String(artifact.status || 'draft').replace(/_/g, ' '));
-              var statusClass = 'status-' + String(artifact.status || 'draft').replace(/[^a-zA-Z0-9_-]/g, '_');
-              var author = escapeHtml(artifact.created_by_name || artifact.created_by || 'OrgX agent');
-              var age = formatRelative(artifact.created_at || artifact.updated_at);
-              var summary = escapeHtml(artifact.summary || artifact.description || '');
-              var primaryUrl = artifactUrl(artifact, dashboardUrl);
-              var primaryLabel = artifactLabel(artifact);
-              return `
-                <div class="artifact-row">
-                  <div class="artifact-row-main">
-                    <div class="artifact-row-icon">${artifactIcon(artifact.artifact_type)}</div>
-                    <div class="artifact-row-body">
-                      <div class="artifact-row-header">
-                        <div class="artifact-title">${title}</div>
-                        <span class="artifact-pill ${statusClass}">${status}</span>
-                      </div>
-                      <div class="artifact-meta">
-                        <span class="artifact-pill">${type}</span>
-                        <span class="artifact-pill">${author}</span>
-                        ${age ? `<span class="artifact-pill">${escapeHtml(age)}</span>` : ''}
-                      </div>
-                      ${summary ? `<div class="artifact-copy">${summary}</div>` : ''}
-                      <div class="artifact-row-actions">
-                        <a href="${primaryUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(primaryUrl))}, event)' class="artifact-chip-link">${icons.external(14)} ${primaryLabel}</a>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              `;
-            }).join('')}
-          </div>
-          <div class="artifact-panel-footer">
-            <a href="${dashboardUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(dashboardUrl || ''))}, event)' class="artifact-link">
-              Review artifacts in live view
-              ${icons.external(14)}
-            </a>
-          </div>
-        </div>
-      ` : '';
-
-      injectHtml(`
-        <div class="widget-shell-card animate-in">
-          <div class="ox-card">
-            <div class="ox-card-inner">
-              <div class="widget-hero">
-                <div class="widget-hero-copy">
-                  <div class="widget-kicker">Initiative Pulse</div>
-                  <div class="widget-title-lg">${safeName}</div>
-                  <div class="widget-subtitle">${safeMessage || 'Health, momentum, blockers, and recent output for the current initiative.'}</div>
-                </div>
-                <div class="widget-stack" style="align-items:flex-end; gap:10px;">
-                  <div class="widget-icon-frame">${icons.layers(20)}</div>
-                  <span class="status-badge status-${normalizedStatus}">${safeStatus}</span>
-                </div>
-              </div>
-
-            ${roiSummary ? `
-              <div class="roi-strip">
-                <div class="roi-item"><div class="roi-label">Cost</div><div class="roi-value">${formatUsd(roiSummary.total_cost)}</div></div>
-                <div class="roi-item"><div class="roi-label">Value</div><div class="roi-value positive">${formatUsd(roiSummary.total_value)}</div></div>
-                <div class="roi-item"><div class="roi-label">ROI (${escapeHtml(roiSummary.period || '30d')})</div><div class="roi-value ${roiValue !== null && roiValue >= 0 ? 'positive' : 'negative'}">${formatRoi(roiValue)}</div></div>
-              </div>
-            ` : ''}
-
-            ${liveHeartbeatHtml}
-
-            <div class="health-indicator ${getHealthClass(healthScore)}" style="margin-bottom: 20px; display: flex;">
-              <span class="health-dot"></span>
-              <span>${getHealthLabel(healthScore)} (${healthScore})</span>
-            </div>
-            
-            ${recentEventsHtml}
-
-            <div class="insight-grid">
-              <div class="insight-card">
-                <div class="detail-header"><span class="detail-icon">${icons.clipboard(13)}</span><div class="detail-label">Immediate next steps</div></div>
-                ${nextStepsHtml}
-              </div>
-              <div class="insight-card">
-                <div class="detail-header"><span class="detail-icon">${icons.layers(13)}</span><div class="detail-label">Workstream state</div></div>
-                <ul class="insight-list">
-                  <li>${activeWorkstreams} active workstream${activeWorkstreams === 1 ? '' : 's'}</li>
-                  <li>${pulse.blocked_workstreams || 0} blocked workstream${(pulse.blocked_workstreams || 0) === 1 ? '' : 's'}</li>
-                  <li>${pendingDecisions} pending decision${pendingDecisions === 1 ? '' : 's'}</li>
-                </ul>
-              </div>
-            </div>
-
-            ${recentArtifactsHtml}
-            ${milestonesHtml}
-            ${blockerPanelHtml}
-
-              <div class="widget-footer">
-                <span class="widget-footer-meta">Synced</span>
-                <div class="pulse-cta-row">
-                  <a href="${dashboardUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(dashboardUrl || ''))}, event)' class="cta-button">
-                    <span class="cta-button__label">${pulse.live_url ? 'Open Live View' : 'Open Dashboard'}</span>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      `);
-    };
-
-    if(isDemo) applyBootPayload();
-    else initWidget({ render: d => { applyBootPayload(function(){ if(d) pulse = d; }); } });
-  </script>
+    </script>
   </body>
 </html>
