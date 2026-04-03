@@ -4,71 +4,84 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Initiative Pulse - OrgX</title>
+  <link rel="stylesheet" href="shared/interaction-kit.css" />
+  <link rel="stylesheet" href="shared/widget-foundation.css" />
+  <script src="shared/interaction-kit.js"></script>
     <link
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='15' fill='none' stroke='%2300C9A7' stroke-width='6'/%3E%3Cpath d='M20 34l7-7 6 6 12-12' stroke='%2300C9A7' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"
     />
     <link rel="stylesheet" href="shared/widget-foundation.css" />
     <style>
-      :root,
-      :root[data-theme="light"] {
+      :root, :root[data-theme="light"] {
         --ox-bg: #f8fafc;
         --ox-panel: #ffffff;
-        --ox-border: rgba(15, 23, 42, 0.09);
-        --ox-border-strong: rgba(15, 23, 42, 0.15);
+        --ox-border: rgba(0, 0, 0, 0.08);
+        --ox-border-strong: rgba(0, 0, 0, 0.15);
         --ox-text: #0f172a;
         --ox-text-muted: #64748b;
-        --ox-text-dim: #94a3b8;
-        --ox-well-bg: #f3f6f9;
-        --ox-well-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
-        --ox-grid-color: rgba(15, 23, 42, 0.04);
-        --ox-shadow: 0 20px 44px -22px rgba(15, 23, 42, 0.18),
-          0 6px 14px rgba(15, 23, 42, 0.05);
+        --ox-well-bg: #f1f5f9;
+        --ox-well-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
       }
-
+      
       @media (prefers-color-scheme: dark) {
         :root:not([data-theme="light"]) {
           --ox-bg: #02040a;
-          --ox-panel: rgba(10, 15, 22, 0.96);
+          --ox-panel: rgba(10, 15, 22, 0.95);
           --ox-border: rgba(255, 255, 255, 0.08);
-          --ox-border-strong: rgba(255, 255, 255, 0.16);
+          --ox-border-strong: rgba(255, 255, 255, 0.15);
           --ox-text: #f8fafc;
-          --ox-text-muted: rgba(255, 255, 255, 0.56);
-          --ox-text-dim: rgba(255, 255, 255, 0.32);
-          --ox-well-bg: rgba(255, 255, 255, 0.02);
-          --ox-well-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-          --ox-grid-color: rgba(255, 255, 255, 0.025);
-          --ox-shadow: 0 24px 50px -18px rgba(0, 0, 0, 0.62),
-            inset 0 1px 0 rgba(255, 255, 255, 0.05);
+          --ox-text-muted: rgba(255, 255, 255, 0.5);
+          --ox-well-bg: rgba(0,0,0,0.3);
+          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
         }
       }
-
+      
       :root[data-theme="dark"] {
-        --ox-bg: #02040a;
-        --ox-panel: rgba(10, 15, 22, 0.96);
-        --ox-border: rgba(255, 255, 255, 0.08);
-        --ox-border-strong: rgba(255, 255, 255, 0.16);
-        --ox-text: #f8fafc;
-        --ox-text-muted: rgba(255, 255, 255, 0.56);
-        --ox-text-dim: rgba(255, 255, 255, 0.32);
-        --ox-well-bg: rgba(255, 255, 255, 0.02);
-        --ox-well-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-        --ox-grid-color: rgba(255, 255, 255, 0.025);
-        --ox-shadow: 0 24px 50px -18px rgba(0, 0, 0, 0.62),
-          inset 0 1px 0 rgba(255, 255, 255, 0.05);
+          --ox-bg: #02040a;
+          --ox-panel: rgba(10, 15, 22, 0.95);
+          --ox-border: rgba(255, 255, 255, 0.08);
+          --ox-border-strong: rgba(255, 255, 255, 0.15);
+          --ox-text: #f8fafc;
+          --ox-text-muted: rgba(255, 255, 255, 0.5);
+          --ox-well-bg: rgba(0,0,0,0.3);
+          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
+      }
+      
+      :root {
+        --ox-lime: #a3e635; /* Will be overwritten by specific widgets */
+        --ox-teal: #0d9488;
+        --ox-danger: #e11d48;
+        --ox-warning: #d97706;
+        --ox-iris: #4f46e5;
+        --ox-grid: rgba(0, 0, 0, 0.03);
+        --ox-shadow: 0 12px 32px -12px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.04);
+        --ox-font: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
+        --ox-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+      }
+      
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --ox-lime: #D4ED31;
+          --ox-teal: #00C9A7;
+          --ox-danger: #F43F5E;
+          --ox-warning: #FBBF24;
+          --ox-iris: #6366f1;
+          --ox-grid: rgba(255, 255, 255, 0.02);
+          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+      }
+      
+      :root[data-theme="dark"] {
+          --ox-lime: #D4ED31;
+          --ox-teal: #00C9A7;
+          --ox-danger: #F43F5E;
+          --ox-warning: #FBBF24;
+          --ox-iris: #6366f1;
+          --ox-grid: rgba(255, 255, 255, 0.02);
+          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
       }
 
-      :root {
-        --ox-primary: #00c9a7;
-        --ox-primary-rgb: 0, 201, 167;
-        --ox-lime: #d4ed31;
-        --ox-warning: #fbbf24;
-        --ox-danger: #f43f5e;
-        --ox-font: -apple-system, BlinkMacSystemFont, "Inter", system-ui,
-          sans-serif;
-        --ox-mono: "JetBrains Mono", "SF Mono", ui-monospace, SFMono-Regular,
-          monospace;
-      }
 
       * {
         box-sizing: border-box;
@@ -968,20 +981,11 @@
         display: flex;
         flex-direction: column;
         gap: 18px;
+      }      .skeleton-line {
+        background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%);
+        background-size: 200% 100%; animation: shimmer 2s infinite linear; border-radius: 4px;
       }
-
-      .skeleton-line {
-        display: block;
-        border-radius: 999px;
-        background: linear-gradient(
-          90deg,
-          rgba(148, 163, 184, 0.12),
-          rgba(148, 163, 184, 0.2),
-          rgba(148, 163, 184, 0.12)
-        );
-        background-size: 240% 100%;
-        animation: shimmer 1.2s linear infinite;
-      }
+      @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 
       @keyframes shimmer {
         from {
