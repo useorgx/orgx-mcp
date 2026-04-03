@@ -140,7 +140,7 @@ describe('authHandler widget compatibility routes', () => {
     );
   });
 
-  it('returns an OAuth challenge for text/html callers that are not real navigations', async () => {
+  it('keeps text/html callers on the landing page even without browser navigation headers', async () => {
     const response = await authHandler.fetch(
       new Request('https://mcp.useorgx.com/', {
         headers: { accept: 'text/html' },
@@ -152,9 +152,9 @@ describe('authHandler widget compatibility routes', () => {
       {} as ExecutionContext
     );
 
-    expect(response.status).toBe(401);
-    expect(response.headers.get('www-authenticate')).toContain(
-      'resource_metadata="https://mcp.useorgx.com/.well-known/oauth-protected-resource"'
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe(
+      'https://mcp.useorgx.com/index.html'
     );
   });
 });

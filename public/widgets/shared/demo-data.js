@@ -75,29 +75,130 @@ export const demoAgentStatus = {
   agents: [
     {
       agent_name: 'Pace',
-      status: 'running',
-      current_task: 'Drafting API specification for v2 endpoints',
-      progress: 65,
-    },
-    {
-      agent_name: 'Scout',
-      status: 'running',
-      current_task: 'Analyzing competitor pricing strategies',
-      progress: 32,
-    },
-    {
-      agent_name: 'Compass',
       status: 'blocked',
-      current_task: 'Waiting for design review approval',
-      blockers: ['Needs approval from Design Lead', 'Missing brand assets'],
+      role: 'Product',
+      current_task:
+        'Decide whether to ship self-serve usage pricing before founder onboarding opens',
+      progress: 68,
+      eta: '~2 days remaining',
+      blockers: [
+        'Waiting on pricing approval from founders before the activation test can launch.',
+      ],
+      tasks: [
+        {
+          id: 'pace-1',
+          title: 'Finalize velocity model for launch readiness scoring',
+          status: 'done',
+        },
+        {
+          id: 'pace-2',
+          title: 'Audit founder activation loop for drop-off at pricing step',
+          status: 'in_progress',
+        },
+        {
+          id: 'pace-3',
+          title: 'Package self-serve pricing recommendation for approval',
+          status: 'blocked',
+        },
+      ],
+      artifacts: [
+        {
+          id: 'pace-artifact-1',
+          title: 'Velocity model draft',
+          artifact_type: 'prod.analysis',
+          status: 'approved',
+          summary: 'Baseline launch scoring model accepted by the team.',
+        },
+        {
+          id: 'pace-artifact-2',
+          title: 'Activation loop audit',
+          artifact_type: 'prod.report',
+          status: 'in_review',
+          summary: 'Recommendations ready for founder review.',
+        },
+      ],
+      streams: [
+        { id: 'pace-stream-1', name: 'Launch readiness', progress: 78 },
+        { id: 'pace-stream-2', name: 'Founder onboarding', progress: 54 },
+      ],
     },
     {
-      agent_name: 'Beacon',
+      agent_name: 'Eli',
+      role: 'Engineering',
+      status: 'running',
+      current_task:
+        'Implement billing event pipeline and reconcile launch telemetry fields',
+      progress: 74,
+      eta: '~1 day remaining',
+      tasks: [
+        {
+          id: 'eli-1',
+          title: 'Backfill usage event normalization for Stripe and product analytics',
+          status: 'in_progress',
+        },
+        {
+          id: 'eli-2',
+          title: 'Patch MCP launch event audit trail for founder review',
+          status: 'done',
+        },
+      ],
+      artifacts: [
+        {
+          id: 'eli-artifact-1',
+          title: 'Billing event mapping',
+          artifact_type: 'eng.spec',
+          status: 'in_review',
+          summary: 'Review needed before the instrumentation ships.',
+        },
+      ],
+      streams: [
+        { id: 'eli-stream-1', name: 'Billing instrumentation', progress: 82 },
+        { id: 'eli-stream-2', name: 'Telemetry QA', progress: 61 },
+      ],
+    },
+    {
+      agent_name: 'Mark',
+      role: 'Marketing',
+      status: 'running',
+      current_task:
+        'Tighten the founder launch narrative across waitlist, docs, and product embeds',
+      progress: 57,
+      eta: '~3 days remaining',
+      tasks: [
+        {
+          id: 'mark-1',
+          title: 'Rewrite launch page story for founder + operator audiences',
+          status: 'in_progress',
+        },
+        {
+          id: 'mark-2',
+          title: 'Publish ecosystem proof points into the nurture sequence',
+          status: 'queued',
+        },
+      ],
+      artifacts: [
+        {
+          id: 'mark-artifact-1',
+          title: 'Launch narrative brief',
+          artifact_type: 'marketing.brief',
+          status: 'approved',
+          summary: 'Core positioning signed off and live.',
+        },
+      ],
+      streams: [
+        { id: 'mark-stream-1', name: 'Launch narrative', progress: 63 },
+        { id: 'mark-stream-2', name: 'Lifecycle content', progress: 41 },
+      ],
+    },
+    {
+      agent_name: 'Sage',
+      role: 'Sales',
       status: 'queued',
-      current_task: 'Generate weekly performance report',
+      current_task: 'Standing by to turn approval into founder conversations',
     },
     {
-      agent_name: 'Atlas',
+      agent_name: 'Orion',
+      role: 'Operations',
       status: 'idle',
       current_task: null,
     },
