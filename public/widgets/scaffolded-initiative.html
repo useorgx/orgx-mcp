@@ -91,6 +91,7 @@
 
       /* Smooth UX Transitions */
       .skeleton-wrapper { transition: opacity 0.3s ease; }
+      @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
       @keyframes fadeSlideUp {
         from { opacity: 0; transform: translateY(16px) scale(0.98); filter: blur(4px); }
         to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
@@ -99,29 +100,17 @@
       .delay-1 { animation-delay: 0.1s; }
       .delay-2 { animation-delay: 0.2s; }
       .delay-3 { animation-delay: 0.3s; }
-      
       .scaffold-state {
         --scaffold-tilt-x: 0deg;
         --scaffold-tilt-y: 0deg;
         --scaffold-spot-x: 50%;
         --scaffold-spot-y: 18%;
-        position: relative;
         display: flex;
         flex-direction: column;
         gap: 18px;
-        padding: 22px;
-        margin: 16px 0;
-        border-radius: 22px;
-        border: 1px solid rgba(var(--ox-primary-rgb), 0.14);
-        background:
-          linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.08), rgba(var(--ox-primary-rgb), 0.02) 36%, transparent 100%),
-          var(--ox-panel);
-        box-shadow:
-          0 26px 50px -30px rgba(0, 0, 0, 0.65),
-          inset 0 1px 0 rgba(255, 255, 255, 0.04);
-        overflow: hidden;
-        isolation: isolate;
+        position: relative;
       }
+
 
       .scaffold-state::before {
         content: "";
@@ -211,21 +200,17 @@
         0%, 100% { transform: scale(1); opacity: 1; }
         50% { transform: scale(0.66); opacity: 0.45; }
       }
-
       .scaffold-stage {
         position: relative;
         min-height: 252px;
         padding: 18px;
-        border-radius: 20px;
+        border-radius: 10px;
         overflow: hidden;
-        background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 100%),
-          var(--ox-well-bg);
-        border: 1px solid rgba(var(--ox-primary-rgb), 0.12);
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.035),
-          inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+        background: var(--ox-well-bg);
+        border: 1px solid var(--ox-border);
+        box-shadow: var(--ox-well-shadow);
       }
+
 
       .scaffold-stage::before,
       .scaffold-stage::after {
@@ -1280,15 +1265,29 @@
 </head>
 <body>
   <div class="container" id="content">
+
     <!-- Skeleton shown during loading -->
-    <div class="skeleton-wrapper">
-      <section class="scaffold-state scaffold-state--loading animate-in" data-scaffold-state>
-        <div class="scaffold-state__chrome">
-          <div class="scaffold-state__eyebrow">Scaffold Composer</div>
-          <div class="scaffold-state__status">
-            <span class="scaffold-state__status-dot"></span>
-            <span>Assembling hierarchy</span>
+    <div class="skeleton-wrapper" style="opacity: 1;">
+      <div class="ox-card">
+        <div class="ox-card-inner pulse-skeleton">
+          <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--ox-border);">
+            <div class="skeleton-line" style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%); background-size: 200% 100%; animation: shimmer 2s infinite linear;"></div>
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+              <div class="skeleton-line" style="width: 30%; height: 12px; background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%); background-size: 200% 100%; animation: shimmer 2s infinite linear; border-radius: 4px;"></div>
+              <div class="skeleton-line" style="width: 60%; height: 24px; background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%); background-size: 200% 100%; animation: shimmer 2s infinite linear; border-radius: 6px;"></div>
+            </div>
+            <div class="skeleton-line" style="width: 80px; height: 26px; border-radius: 999px; background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%); background-size: 200% 100%; animation: shimmer 2s infinite linear;"></div>
           </div>
+          
+          <div class="skeleton-line" style="width: 40%; height: 12px; margin-bottom: 16px; background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%); background-size: 200% 100%; animation: shimmer 2s infinite linear; border-radius: 4px;"></div>
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div class="skeleton-line" style="width: 100%; height: 64px; border-radius: 12px; background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%); background-size: 200% 100%; animation: shimmer 2s infinite linear;"></div>
+            <div class="skeleton-line" style="width: 100%; height: 64px; border-radius: 12px; background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%); background-size: 200% 100%; animation: shimmer 2s infinite linear;"></div>
+            <div class="skeleton-line" style="width: 100%; height: 64px; border-radius: 12px; background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%); background-size: 200% 100%; animation: shimmer 2s infinite linear;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
         </div>
         <div class="scaffold-stage" data-scaffold-stage>
           <div class="scaffold-stage__ambient scaffold-stage__ambient--one"></div>
@@ -1461,7 +1460,7 @@
       var branchLabels = awaiting
         ? ['Signal', 'Shape', 'Land']
         : ['Intent', 'Shape', 'Ship'];
-      return `<section class="scaffold-state scaffold-state--${awaiting ? 'awaiting' : 'loading'} animate-in" data-scaffold-state>
+      return `<div class="ox-card animate-in"><div class="ox-card-inner"><section class="scaffold-state scaffold-state--${awaiting ? \'awaiting\' : \'loading\'}" data-scaffold-state>
         <div class="scaffold-state__chrome">
           <div class="scaffold-state__eyebrow">${awaiting ? 'Scaffold Launchpad' : 'Scaffold Composer'}</div>
           <div class="scaffold-state__status">
@@ -1505,7 +1504,7 @@
             return `<div class="scaffold-state__meta-pill">${item}</div>`;
           }).join('')}
         </div>
-      </section>`;
+      </section></div></div>`;
     };
     hydrateScaffoldStates(document.getElementById('content'));
     var readLabel = (item, fallback) => {
