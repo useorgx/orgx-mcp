@@ -7,6 +7,9 @@
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
   <script src="shared/interaction-kit.js"></script>
+  <link rel="stylesheet" href="shared/interaction-kit.css" />
+  <link rel="stylesheet" href="shared/widget-foundation.css" />
+  <script src="shared/interaction-kit.js"></script>
     <link
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='15' fill='none' stroke='%2300C9A7' stroke-width='6'/%3E%3Cpath d='M20 34l7-7 6 6 12-12' stroke='%2300C9A7' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"
@@ -370,7 +373,7 @@
       }
 
       .pulse-dot-divider {
-        color: var(--ox-text-dim);
+        color: rgba(15, 23, 42, 0.35);
       }
 
       .pulse-meta-line {
@@ -388,7 +391,7 @@
       }
 
       .pulse-meta-line .pulse-meta-divider {
-        color: var(--ox-text-dim);
+        color: rgba(15, 23, 42, 0.35);
       }
 
       .pulse-attention {
@@ -455,7 +458,7 @@
       }
 
       .pulse-attention__chevron {
-        color: var(--ox-text-dim);
+        color: rgba(15, 23, 42, 0.35);
         transition: transform 180ms ease;
       }
 
@@ -698,7 +701,7 @@
       }
 
       .pulse-list-meta .pulse-meta-separator {
-        color: var(--ox-text-dim);
+        color: rgba(15, 23, 42, 0.35);
       }
 
       .pulse-list-trailing {
@@ -843,7 +846,7 @@
         line-height: 1;
         text-transform: uppercase;
         letter-spacing: 0.12em;
-        color: var(--ox-text-dim);
+        color: rgba(15, 23, 42, 0.35);
         font-weight: 700;
       }
 
@@ -878,7 +881,7 @@
         line-height: 1;
         letter-spacing: 0.1em;
         text-transform: uppercase;
-        color: var(--ox-text-dim);
+        color: rgba(15, 23, 42, 0.35);
         font-weight: 700;
       }
 
@@ -985,6 +988,7 @@
         background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%);
         background-size: 200% 100%; animation: shimmer 2s infinite linear; border-radius: 4px;
       }
+      @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
       @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 
       @keyframes shimmer {
@@ -1289,11 +1293,17 @@
       };
 
       var icons = {
-        external: function (size) {
+external: function (size) {
           return _svg(
             '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>',
             size
           );
+        },
+        initiative: function (size) {
+          return _svg('<circle cx="12" cy="12" r="9" fill="currentColor" fill-opacity="0.1"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"></circle>', size);
+        },
+        workstream: function (size) {
+          return _svg('<rect x="2" y="2" width="20" height="20" rx="6" fill="currentColor" fill-opacity="0.1" stroke="none"></rect><path d="M6 6c3 0 5 6 8 6"></path><path d="M6 18c3 0 5-6 8-6"></path><path d="M6 12h12"></path><path d="m14 8 4 4-4 4"></path><circle cx="6" cy="6" r="1.5" fill="currentColor" stroke="none"></circle><circle cx="6" cy="12" r="1.5" fill="currentColor" stroke="none"></circle><circle cx="6" cy="18" r="1.5" fill="currentColor" stroke="none"></circle>', size);
         },
         layers: function (size) {
           return _svg(
@@ -2055,10 +2065,10 @@
           rows.push({
             title:
               (pulseData.active_workstreams || pulseData.total_workstreams || 0) +
-              " streams are currently in motion.",
+              " workstreams are currently in motion.",
             meta:
               (pulseData.total_workstreams || pulseData.active_workstreams || 0) +
-              " total streams",
+              " total workstreams",
             tone: "good",
           });
         }
@@ -2331,8 +2341,8 @@
       };
 
       var renderPanel = function (panel, pulseData, dashboardUrl, attentionItems) {
-        var icon = icons.layers(15);
-        var title = "Streams";
+        var icon = icons.workstream(15);
+        var title = "Workstreams";
         var body = renderStreamsPanel(pulseData, dashboardUrl);
 
         if (panel === "actions") {
@@ -2350,7 +2360,7 @@
         }
 
         return (
-          '<div class="pulse-panel animate-in">' +
+          '<div class="pulse-panel">' +
           '<div class="pulse-panel-header">' +
           '<span class="pulse-panel-icon">' +
           icon +
@@ -2399,7 +2409,7 @@
             ? pulse.error + " Retry with the specific initiative UUID to load a stable pulse view."
             : pulse.error;
           injectHtml(
-            '<div class="empty-state error-state animate-in">' +
+            '<div class="empty-state error-state">' +
               '<div class="empty-icon">' +
               icons.warning(24) +
               "</div>" +
@@ -2416,7 +2426,7 @@
 
         if (!pulse) {
           injectHtml(
-            '<div class="empty-state animate-in">' +
+            '<div class="empty-state">' +
               '<div class="empty-icon">' +
               icons.pulse(24) +
               "</div>" +
@@ -2430,7 +2440,7 @@
         var normalized = normalizePulse(pulse);
         if (!normalized) {
           injectHtml(
-            '<div class="empty-state animate-in">' +
+            '<div class="empty-state">' +
               '<div class="empty-icon">' +
               icons.pulse(24) +
               "</div>" +
@@ -2507,7 +2517,7 @@
         if (streamCount) {
           metaTokens.push(
             escapeHtml(String(streamCount)) +
-              " streams"
+              " workstreams"
           );
         }
         if (pulse.blocked_workstreams || (pulse.blockers || []).length) {
@@ -2537,9 +2547,9 @@
         if (streamCount || pulse.workstreams.length || pulse.milestones.length) {
           sections.push({
             key: "streams",
-            icon: icons.layers(15),
+            icon: icons.workstream(15),
             value: streamCount || pulse.workstreams.length || pulse.milestones.length,
-            label: "Streams",
+            label: "Workstreams",
             alert: Boolean(pulse.blocked_workstreams),
           });
         }
@@ -2586,7 +2596,7 @@
           "now";
 
         injectHtml(
-          '<div class="widget-shell-card animate-in">' +
+          '<div class="widget-shell-card" style="margin-bottom: 18px; animation: ' + ((document.getElementById("content") && document.getElementById("content").innerHTML.indexOf("widget-shell-card") > -1) ? 'none' : 'fadeSlideUp 420ms cubic-bezier(0.16, 1, 0.3, 1) forwards') + ';">' +
             '<div class="ox-card">' +
               '<div class="ox-card-inner">' +
                 '<div class="pulse-shell">' +
@@ -2607,25 +2617,22 @@
                           escapeHtml(titleCase(pulse.status || "active")) +
                         "</span>" +
                       "</div>" +
-                      (pulse.message
-                        ? '<div class="pulse-message">' + escapeHtml(pulse.message) + "</div>"
-                        : "") +
-                      economics +
-                      (metaTokens.length
-                        ? '<div class="pulse-meta-line">' +
-                          metaTokens
-                            .map(function (token, index) {
-                              return (
-                                (index
-                                  ? '<span class="pulse-meta-divider">·</span>'
-                                  : "") + token
-                              );
-                            })
-                            .join("") +
-                          "</div>"
-                        : "") +
                     "</div>" +
                   "</div>" +
+                  economics +
+                  (metaTokens.length
+                    ? '<div class="pulse-meta-line">' +
+                      metaTokens
+                        .map(function (token, index) {
+                          return (
+                            (index
+                              ? '<span class="pulse-meta-divider">·</span>'
+                              : "") + token
+                          );
+                        })
+                        .join("") +
+                      "</div>"
+                    : "") +
                   (attentionBanner
                     ? '<button type="button" class="pulse-attention' +
                       (uiState.panel === "actions" ? " is-open" : "") +

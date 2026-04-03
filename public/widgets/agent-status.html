@@ -104,16 +104,16 @@
       margin: 0 auto;
       display: flex;
       flex-direction: column;
-      gap: var(12px);
+      gap: 12px;
     }
 
     .surface-label {
       display: flex;
       align-items: center;
-      gap: var(12px);
+      gap: 12px;
       color: var(--ox-text-dim);
-      font-size: var(0.75rem);
-      font-weight: var(500);
+      font-size: 0.75rem;
+      font-weight: 500;
       letter-spacing: 0.1em;
       text-transform: uppercase;
     }
@@ -134,9 +134,9 @@
       position: relative;
       overflow: hidden;
       transition:
-        transform var(160ms ease),
-        border-color var(160ms ease),
-        box-shadow var(160ms ease);
+        transform 160ms ease,
+        border-color 160ms ease,
+        box-shadow 160ms ease;
     }
 
     .agent-card::before {
@@ -147,7 +147,7 @@
       height: 1px;
       background: linear-gradient(90deg, transparent, rgba(16, 163, 127, 0.4), transparent);
       opacity: 0;
-      transition: opacity var(160ms ease);
+      transition: opacity 160ms ease;
     }
 
     .agent-card[data-priority='blocked']::before,
@@ -168,15 +168,15 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: var(12px);
-      padding: var(16px) var(16px) var(12px);
+      gap: 12px;
+      padding: 16px 16px 12px;
     }
 
     .agent-identity {
       min-width: 0;
       display: flex;
       align-items: center;
-      gap: var(12px);
+      gap: 12px;
     }
 
     .agent-mark {
@@ -191,8 +191,8 @@
       align-items: center;
       justify-content: center;
       color: var(--ox-text-muted);
-      font-size: var(0.75rem);
-      font-weight: var(600);
+      font-size: 0.75rem;
+      font-weight: 600;
     }
 
     .agent-mark img {
@@ -220,14 +220,14 @@
     .agent-name-row {
       display: flex;
       align-items: baseline;
-      gap: var(8px);
+      gap: 8px;
       min-width: 0;
       flex-wrap: wrap;
     }
 
     .agent-name {
-      font-size: var(1rem);
-      font-weight: var(600);
+      font-size: 1rem;
+      font-weight: 600;
       line-height: 1.2;
       color: var(--ox-text);
       min-width: 0;
@@ -235,27 +235,48 @@
 
     .agent-role {
       color: var(--ox-text-dim);
-      font-size: var(0.75rem);
-      font-weight: var(500);
+      font-size: 0.75rem;
+      font-weight: 500;
       letter-spacing: 0.08em;
       text-transform: uppercase;
     }
 
     .agent-subline {
       color: var(--ox-text-muted);
-      font-size: var(0.875rem);
+      font-size: 0.875rem;
       line-height: 1.35;
       min-width: 0;
     }
 
     .agent-subline strong {
       color: var(--ox-text);
-      font-weight: var(500);
+      font-weight: 500;
     }
 
+
+    [data-tone="running"], [data-tone="done"], [data-tone="approved"] {
+      --ox-color: var(--ox-primary);
+      --ox-color-rgb: 0, 201, 167;
+    }
+    [data-tone="blocked"] {
+      --ox-color: var(--ox-danger);
+      --ox-color-rgb: 244, 63, 94;
+    }
+    [data-tone="review"] {
+      --ox-color: var(--ox-warning);
+      --ox-color-rgb: 251, 191, 36;
+    }
+    [data-tone="queued"], [data-tone="idle"] {
+      --ox-color: var(--ox-text-muted);
+      --ox-color-rgb: 100, 116, 139;
+    }
+    
     .agent-chip {
+      --ox-color: var(--ox-primary);
+      --ox-color-rgb: 0, 201, 167;
       flex-shrink: 0;
     }
+
 
     .chip-dot {
       width: 6px;
@@ -267,7 +288,7 @@
     }
 
     .agent-attention {
-      margin: 0 var(12px) var(12px);
+      margin: 0 12px 12px;
     }
 
     .attention-copy {
@@ -279,15 +300,15 @@
 
     .attention-title {
       color: currentColor;
-      font-size: var(0.75rem);
-      font-weight: var(600);
+      font-size: 0.75rem;
+      font-weight: 600;
       letter-spacing: 0.08em;
       text-transform: uppercase;
     }
 
     .attention-body {
       color: var(--ox-text);
-      font-size: var(0.875rem);
+      font-size: 0.875rem;
       line-height: 1.4;
     }
 
@@ -302,14 +323,14 @@
       border: 1px solid currentColor;
       background: transparent;
       color: inherit;
-      font-size: var(0.75rem);
-      font-weight: var(600);
+      font-size: 0.75rem;
+      font-weight: 600;
       text-decoration: none;
       white-space: nowrap;
     }
 
     .focus-strip {
-      padding: 0 var(16px) var(16px);
+      padding: 0 16px 16px;
       display: flex;
       flex-direction: column;
       gap: 6px;
@@ -318,7 +339,7 @@
     .focus-task {
       color: var(--ox-text);
       font-size: 0.95rem;
-      font-weight: var(500);
+      font-weight: 500;
       line-height: 1.45;
     }
 
@@ -328,7 +349,7 @@
       flex-wrap: wrap;
       gap: 8px;
       color: var(--ox-text-muted);
-      font-size: var(0.875rem);
+      font-size: 0.875rem;
       line-height: 1.35;
     }
 
@@ -354,7 +375,7 @@
 
     .metric-button {
       min-height: 72px;
-      padding: var(12px) var(8px);
+      padding: 12px 8px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -372,14 +393,14 @@
 
     .metric-value {
       font-size: 1.05rem;
-      font-weight: var(600);
+      font-weight: 600;
       line-height: 1;
       color: var(--ox-text);
     }
 
     .metric-label {
-      font-size: var(0.75rem);
-      font-weight: var(500);
+      font-size: 0.75rem;
+      font-weight: 500;
       letter-spacing: 0.08em;
       text-transform: uppercase;
       color: var(--ox-text-dim);
@@ -387,7 +408,7 @@
 
     .agent-section {
       display: none;
-      padding: 0 var(16px) var(16px);
+      padding: 0 16px 16px;
     }
 
     .agent-section.is-open {
@@ -401,14 +422,14 @@
     .disclosure-title {
       display: inline-flex;
       align-items: center;
-      gap: var(8px);
+      gap: 8px;
       min-width: 0;
     }
 
     .disclosure-count {
       color: var(--ox-text-dim);
-      font-size: var(0.75rem);
-      font-weight: var(500);
+      font-size: 0.75rem;
+      font-weight: 500;
       letter-spacing: 0.08em;
       text-transform: uppercase;
     }
@@ -417,7 +438,7 @@
       width: 14px;
       height: 14px;
       color: var(--ox-text-dim);
-      transition: transform var(160ms ease);
+      transition: transform 160ms ease;
       flex-shrink: 0;
     }
 
@@ -433,9 +454,9 @@
     .section-row {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: var(12px);
+      gap: 12px;
       align-items: start;
-      padding: var(12px) 0;
+      padding: 12px 0;
     }
 
     .section-row + .section-row {
@@ -451,21 +472,21 @@
 
     .section-heading {
       color: var(--ox-text);
-      font-size: var(0.875rem);
-      font-weight: var(500);
+      font-size: 0.875rem;
+      font-weight: 500;
       line-height: 1.4;
     }
 
     .section-detail {
       color: var(--ox-text-muted);
-      font-size: var(0.875rem);
+      font-size: 0.875rem;
       line-height: 1.45;
     }
 
     .section-inline-meta {
       color: var(--ox-text-dim);
-      font-size: var(0.75rem);
-      font-weight: var(500);
+      font-size: 0.75rem;
+      font-weight: 500;
       letter-spacing: 0.04em;
       text-transform: uppercase;
     }
@@ -481,8 +502,8 @@
       background: var(--ox-well-bg);
       color: var(--ox-text-muted);
       border: 1px solid var(--ox-border);
-      font-size: var(0.75rem);
-      font-weight: var(600);
+      font-size: 0.75rem;
+      font-weight: 600;
       white-space: nowrap;
     }
 
@@ -515,28 +536,28 @@
       display: flex;
       align-items: baseline;
       justify-content: space-between;
-      gap: var(12px);
-      padding-top: var(12px);
+      gap: 12px;
+      padding-top: 12px;
     }
 
     .progress-value {
       color: var(--ox-text);
       font-size: 1.5rem;
-      font-weight: var(600);
+      font-weight: 600;
       line-height: 1;
     }
 
     .progress-context {
       color: var(--ox-text-dim);
-      font-size: var(0.75rem);
-      font-weight: var(500);
+      font-size: 0.75rem;
+      font-weight: 500;
       letter-spacing: 0.08em;
       text-transform: uppercase;
       text-align: right;
     }
 
     .progress-bar {
-      margin-top: var(12px);
+      margin-top: 12px;
       width: 100%;
       height: 5px;
       border-radius: 999px;
@@ -551,16 +572,16 @@
     }
 
     .progress-note {
-      margin-top: var(12px);
+      margin-top: 12px;
       color: var(--ox-text-muted);
-      font-size: var(0.875rem);
+      font-size: 0.875rem;
       line-height: 1.45;
     }
 
     .empty-slot {
-      padding-top: var(12px);
+      padding-top: 12px;
       color: var(--ox-text-muted);
-      font-size: var(0.875rem);
+      font-size: 0.875rem;
       line-height: 1.5;
     }
 
@@ -568,15 +589,15 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: var(12px);
-      padding: var(12px) var(16px) var(16px);
+      gap: 12px;
+      padding: 12px 16px 16px;
       border-top: 1px solid var(--ox-border);
     }
 
     .sync-copy {
       color: var(--ox-text-dim);
-      font-size: var(0.75rem);
-      font-weight: var(500);
+      font-size: 0.75rem;
+      font-weight: 500;
       letter-spacing: 0.08em;
       text-transform: uppercase;
     }
@@ -586,8 +607,8 @@
       align-items: center;
       gap: 6px;
       color: var(--ox-text-muted);
-      font-size: var(0.875rem);
-      font-weight: var(500);
+      font-size: 0.875rem;
+      font-weight: 500;
       text-decoration: none;
     }
 
@@ -597,23 +618,23 @@
     }
 
     .empty-state {
-      padding: var(32px);
+      padding: 32px;
       text-align: center;
       display: flex;
       flex-direction: column;
-      gap: var(8px);
+      gap: 8px;
       align-items: center;
     }
 
     .empty-state strong {
       color: var(--ox-text);
-      font-size: var(1rem);
-      font-weight: var(600);
+      font-size: 1rem;
+      font-weight: 600;
     }
 
     .empty-state p {
       color: var(--ox-text-muted);
-      font-size: var(0.875rem);
+      font-size: 0.875rem;
       line-height: 1.5;
       max-width: 28ch;
     }
@@ -621,21 +642,21 @@
     .skeleton-wrapper {
       display: flex;
       flex-direction: column;
-      gap: var(12px);
+      gap: 12px;
     }
 
     .skeleton-card {
-      border-radius: var(16px);
+      border-radius: 16px;
       border: 1px solid var(--ox-border);
       background: var(--ox-panel);
-      padding: var(16px);
+      padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: var(12px);
+      gap: 12px;
     }
 
     .skeleton-line {
-      border-radius: var(8px);
+      border-radius: 8px;
       background:
         linear-gradient(
           90deg,
@@ -654,7 +675,7 @@
 
     @media (max-width: 420px) {
       body {
-        padding: var(16px) var(8px) var(24px);
+        padding: 16px 8px 24px;
       }
 
       .agent-head {
@@ -697,15 +718,15 @@
 
 .app-metric-button:hover,
 .app-metric-button[aria-pressed='true'] {
-  background: var(rgba(0, 201, 167, 0.1));
+  background: rgba(0, 201, 167, 0.1);
 }
 
 .app-attention-banner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(12px);
-  padding: var(12px) var(--app-space-4);
+  gap: 12px;
+  padding: 12px var(--app-space-4);
   border-radius: 12px;
   border: 1px solid rgba(220, 38, 38, 0.2);
   background: var(--ox-danger-bg);
@@ -727,11 +748,11 @@
   cursor: pointer;
   font: inherit;
   margin: 0;
-  padding: var(12px) 0;
+  padding: 12px 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(12px);
+  gap: 12px;
   text-align: left;
 }
 
@@ -762,24 +783,24 @@
 
 .app-metric-button:hover,
 .app-metric-button[aria-pressed='true'] {
-  background: var(rgba(0, 201, 167, 0.1));
+  background: rgba(0, 201, 167, 0.1);
 }
 
 .app-attention-banner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(12px);
-  padding: var(12px) var(16px);
+  gap: 12px;
+  padding: 12px 16px;
   border-radius: 12px;
   border: 1px solid rgba(220, 38, 38, 0.2);
-  background: var(rgba(220, 38, 38, 0.12));
+  background: rgba(220, 38, 38, 0.12);
   color: var(var(--ox-danger));
 }
 
 .app-attention-banner[data-tone='review'] {
   border-color: rgba(217, 119, 6, 0.22);
-  background: var(rgba(217, 119, 6, 0.12));
+  background: rgba(217, 119, 6, 0.12);
   color: var(var(--ox-warning));
 }
 
@@ -792,11 +813,11 @@
   cursor: pointer;
   font: inherit;
   margin: 0;
-  padding: var(12px) 0;
+  padding: 12px 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(12px);
+  gap: 12px;
   text-align: left;
 }
 
