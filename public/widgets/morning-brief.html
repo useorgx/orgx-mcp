@@ -5,77 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Morning Brief - OrgX</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='12' fill='%23FBBF24'/%3E%3Cg stroke='%23FBBF24' stroke-width='4' stroke-linecap='round'%3E%3Cpath d='M32 6v10'/%3E%3Cpath d='M32 48v10'/%3E%3Cpath d='M6 32h10'/%3E%3Cpath d='M48 32h10'/%3E%3Cpath d='M13 13l7 7'/%3E%3Cpath d='M44 44l7 7'/%3E%3Cpath d='M13 51l7-7'/%3E%3Cpath d='M44 20l7-7'/%3E%3C/g%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
+  <script src="shared/interaction-kit.js"></script>
   <style>
-      :root, :root[data-theme="light"] {
-        --ox-bg: #f8fafc;
-        --ox-panel: #ffffff;
-        --ox-border: rgba(0, 0, 0, 0.08);
-        --ox-border-strong: rgba(0, 0, 0, 0.15);
-        --ox-text: #0f172a;
-        --ox-text-muted: #64748b;
-        --ox-well-bg: #f1f5f9;
-        --ox-well-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
-      }
-      
-      @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) {
-          --ox-bg: #02040a;
-          --ox-panel: rgba(10, 15, 22, 0.95);
-          --ox-border: rgba(255, 255, 255, 0.08);
-          --ox-border-strong: rgba(255, 255, 255, 0.15);
-          --ox-text: #f8fafc;
-          --ox-text-muted: rgba(255, 255, 255, 0.5);
-          --ox-well-bg: rgba(0,0,0,0.3);
-          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
-        }
-      }
-      
-      :root[data-theme="dark"] {
-          --ox-bg: #02040a;
-          --ox-panel: rgba(10, 15, 22, 0.95);
-          --ox-border: rgba(255, 255, 255, 0.08);
-          --ox-border-strong: rgba(255, 255, 255, 0.15);
-          --ox-text: #f8fafc;
-          --ox-text-muted: rgba(255, 255, 255, 0.5);
-          --ox-well-bg: rgba(0,0,0,0.3);
-          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
-      }
-      
       :root {
-        --ox-lime: #a3e635; /* Will be overwritten by specific widgets */
-        --ox-teal: #0d9488;
-        --ox-danger: #e11d48;
-        --ox-warning: #d97706;
-        --ox-iris: #4f46e5;
-        --ox-grid: rgba(0, 0, 0, 0.03);
-        --ox-shadow: 0 12px 32px -12px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.04);
-        --ox-font: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
-        --ox-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+        --ox-primary: #14b8a6;
+        --ox-primary-rgb: 20, 184, 166;
       }
-      
-      @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) {
-          --ox-lime: #D4ED31;
-          --ox-teal: #00C9A7;
-          --ox-danger: #F43F5E;
-          --ox-warning: #FBBF24;
-          --ox-iris: #6366f1;
-          --ox-grid: rgba(255, 255, 255, 0.02);
-          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
-        }
-      }
-      
-      :root[data-theme="dark"] {
-          --ox-lime: #D4ED31;
-          --ox-teal: #00C9A7;
-          --ox-danger: #F43F5E;
-          --ox-warning: #FBBF24;
-          --ox-iris: #6366f1;
-          --ox-grid: rgba(255, 255, 255, 0.02);
-          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
-      }
-
       /* Smooth UX Transitions */
       .skeleton-wrapper { transition: opacity 0.3s ease; }
       @keyframes fadeSlideUp {
@@ -87,23 +24,22 @@
       .delay-2 { animation-delay: 0.2s; }
       .delay-3 { animation-delay: 0.3s; }
       
-      .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 24px; text-align: center; background: var(--ox-well-bg); border: 1px dashed var(--ox-border-strong); border-radius: 16px; margin: 16px 0; }
+      .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 24px; text-align: center; border: 1px dashed var(--ox-border-strong); border-radius: 16px; margin: 16px 0; }
       .empty-icon { width: 48px; height: 48px; border-radius: 50%; background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
       .empty-icon svg { width: 24px; height: 24px; }
       .empty-title { font-size: 1.1rem; font-weight: 600; color: var(--ox-text); margin-bottom: 8px; }
       .empty-desc { font-size: 0.9rem; color: var(--ox-text-muted); line-height: 1.5; max-width: 280px; }
 
       * { box-sizing: border-box; margin: 0; padding: 0; }
-
       body {
         font-family: var(--ox-font);
         background: var(--ox-bg);
         color: var(--ox-text);
-        padding: 24px 16px;
-        -webkit-font-smoothing: antialiased;
+        padding: 24px;
         min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
       }
-
+      
       body::before {
         content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
         background: radial-gradient(circle at 50% 0%, rgba(var(--ox-primary-rgb), 0.08), transparent 60%),
@@ -112,15 +48,16 @@
         background-size: 100% 100%, 20px 20px, 20px 20px;
         z-index: -1; pointer-events: none;
       }
-
+      
       .container { max-width: 540px; margin: 0 auto; position: relative; }
+
 
       .ox-card {
         background: var(--ox-panel); border: 1px solid var(--ox-border); border-radius: 16px; box-shadow: var(--ox-shadow); position: relative; overflow: hidden; margin-bottom: 16px;
       }
       .ox-card-inner { padding: 24px; }
       .ox-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(var(--ox-primary-rgb), 0.5), transparent); opacity: 0.8; }
-      .ox-well { background: var(--ox-well-bg); border: 1px solid var(--ox-border); border-radius: 10px; padding: 16px; box-shadow: var(--ox-well-shadow); }
+      .ox-well { border: 1px solid var(--ox-border); border-radius: 10px; padding: 16px; box-shadow: var(--ox-well-shadow); }
       .ox-eyebrow { font-family: var(--ox-mono); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ox-text-muted); font-weight: 600; }
       .ox-title { font-size: 1.15rem; font-weight: 600; letter-spacing: -0.02em; color: var(--ox-text); line-height: 1.3; }
       .ox-text { font-size: 0.9rem; line-height: 1.5; color: var(--ox-text); }
@@ -131,107 +68,32 @@
     .brief-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
     
     .icon-box { width: 48px; height: 48px; border-radius: 12px; background: rgba(var(--ox-primary-rgb), 0.1); border: 1px solid rgba(var(--ox-primary-rgb), 0.2); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
-    
-    .metrics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 28px; }
-    .metric-card { padding: 14px 16px; border-radius: 12px; border: 1px solid var(--ox-border); background: var(--ox-well-bg); box-shadow: var(--ox-well-shadow); }
-    .metric-value { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.03em; color: var(--ox-text); margin-top: 6px; }
-    .metric-copy { font-size: 0.8rem; color: var(--ox-text-muted); line-height: 1.45; margin-top: 4px; }
+    .metrics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 32px; border-bottom: 1px solid var(--ox-border); padding-bottom: 24px; }
+    .metric-card { display: flex; flex-direction: column; gap: 4px; }
+    .metric-value { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.04em; color: var(--ox-text); line-height: 1; font-family: var(--ox-mono); }
+    .metric-copy { font-size: 0.85rem; color: var(--ox-text-muted); line-height: 1.4; }
 
-    .section-title { display:flex; align-items:center; gap:12px; margin-bottom: 12px; }
-    .section-title .rule { flex:1; height:1px; background:var(--ox-border); }
-    .section-title-copy { display:flex; align-items:center; gap:10px; min-width:0; }
-    .section-icon {
-      width: 28px;
-      height: 28px;
-      border-radius: 9px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(var(--ox-primary-rgb), 0.1);
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.2);
-      color: var(--ox-primary);
-      flex-shrink: 0;
-    }
-    .section-icon svg { width: 15px; height: 15px; }
-
-    .priority-list { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+    .section-title { display:flex; align-items:center; gap:12px; margin-bottom: 16px; }
+    .section-title .rule { display: none; }
     
-    .priority-item { position: relative; padding: 16px; padding-left: 20px; background: var(--ox-well-bg); border: 1px solid var(--ox-border); border-radius: 12px; box-shadow: var(--ox-well-shadow); }
-    .priority-item::before { content: ''; position: absolute; left: -1px; top: -1px; bottom: -1px; width: 4px; border-radius: 4px 0 0 4px; }
+    .priority-list { display: flex; flex-direction: column; gap: 0; margin-top: 12px; border-top: 1px solid var(--ox-border); }
+    .priority-item { position: relative; padding: 16px 0; border-bottom: 1px solid var(--ox-border); }
+    .priority-item:last-child { border-bottom: none; }
     
-    .priority-item[data-domain="product"]::before { background: var(--ox-lime); box-shadow: 0 0 10px var(--ox-lime); }
-    .priority-item[data-domain="engineering"]::before { background: var(--ox-teal); box-shadow: 0 0 10px var(--ox-teal); }
-    .priority-item[data-domain="marketing"]::before { background: var(--ox-warning); box-shadow: 0 0 10px var(--ox-warning); }
-    .priority-item[data-domain="design"]::before { background: var(--ox-iris); box-shadow: 0 0 10px var(--ox-iris); }
-    .priority-item[data-domain="sales"]::before { background: var(--ox-danger); box-shadow: 0 0 10px var(--ox-danger); }
+    .p-domain { display: flex; align-items: center; gap: 6px; font-family: var(--ox-mono); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ox-text-muted); margin-bottom: 8px; font-weight: 700; }
+    .p-title { font-weight: 600; font-size: 1rem; color: var(--ox-text); margin-bottom: 4px; line-height: 1.3; }
+    .p-reason { font-size: 0.9rem; color: var(--ox-text-muted); line-height: 1.5; }
     
-    .p-domain { font-family: var(--ox-mono); font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ox-text-muted); margin-bottom: 4px; font-weight: 600; }
-    .p-title { font-weight: 600; font-size: 0.95rem; color: var(--ox-text); margin-bottom: 4px; }
-    .p-reason { font-size: 0.85rem; color: var(--ox-text-muted); line-height: 1.4; }
-    .brief-note { padding: 14px 16px; border-radius: 12px; border: 1px solid rgba(var(--ox-primary-rgb), 0.18); background: rgba(var(--ox-primary-rgb), 0.08); color: var(--ox-text); line-height: 1.55; margin-bottom: 20px; }
-    .exception-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-    .exception-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(var(--ox-primary-rgb), 0.18); background: rgba(var(--ox-primary-rgb), 0.08); color: var(--ox-text); font-family: var(--ox-mono); font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; }
-    .signal-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
-    .signal-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      padding: 12px 14px;
-      border-radius: 12px;
-      border: 1px solid var(--ox-border);
-      background: var(--ox-well-bg);
-      box-shadow: var(--ox-well-shadow);
-    }
-    .signal-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: var(--ox-primary);
-      box-shadow: 0 0 12px rgba(var(--ox-primary-rgb), 0.4);
-      margin-top: 6px;
-      flex-shrink: 0;
-    }
-    .signal-copy { display: flex; flex-direction: column; gap: 4px; }
-    .signal-title { font-size: 0.84rem; font-weight: 600; color: var(--ox-text); }
-    .signal-desc { font-size: 0.8rem; line-height: 1.5; color: var(--ox-text-muted); }
+    .brief-note { padding: 16px; border-radius: 12px; background: rgba(var(--ox-primary-rgb), 0.06); color: var(--ox-text); line-height: 1.6; margin-bottom: 24px; font-size: 0.95rem; border-left: 3px solid var(--ox-primary); }
+    
+    .signal-list { display: flex; flex-direction: column; gap: 0; margin-top: 12px; border-top: 1px solid var(--ox-border); }
+    .signal-item { display: flex; align-items: flex-start; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--ox-border); }
+    .signal-item:last-child { border-bottom: none; }
+    
+    .artifact-output-grid { display: flex; flex-direction: column; gap: 0; margin-top: 12px; border-top: 1px solid var(--ox-border); }
+    .artifact-output-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 16px 0; border-bottom: 1px solid var(--ox-border); }
+    .artifact-output-item:last-child { border-bottom: none; }
 
-    .artifact-output-grid {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-top: 12px;
-    }
-
-    .artifact-output-item {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 10px;
-      align-items: start;
-      padding: 14px;
-      border-radius: 12px;
-      border: 1px solid var(--ox-border);
-      background: var(--ox-well-bg);
-      box-shadow: var(--ox-well-shadow);
-    }
-    .artifact-output-main { display:flex; gap:12px; min-width:0; }
-    .artifact-output-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(var(--ox-primary-rgb), 0.08);
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
-      color: var(--ox-primary);
-      flex-shrink: 0;
-    }
-    .artifact-output-icon svg { width: 16px; height: 16px; }
-    .artifact-output-icon--review {
-      color: var(--ox-warning);
-      background: rgba(251, 191, 36, 0.08);
-      border-color: rgba(251, 191, 36, 0.18);
-    }
     .artifact-output-body { min-width: 0; }
 
     .artifact-output-title {
@@ -622,7 +484,7 @@
         var accent = domain === 'product' ? 'lime' : domain === 'engineering' ? 'teal' : domain === 'marketing' ? 'warning' : domain === 'design' ? 'iris' : domain === 'sales' ? 'danger' : 'teal';
         return `
           <div class="priority-item animate-in" style="animation-delay: ${0.1 * i}s" data-domain="${escapeHtml(domain)}">
-            <div class="p-domain" style="color: var(--ox-${accent})">${escapeHtml(titleCase(p.domain || 'Execution'))}</div>
+            <div class="p-domain" style="color: var(--ox-${accent})"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor;"></span>${escapeHtml(titleCase(p.domain || 'Execution'))}</div>
             <div class="p-title">${escapeHtml(p.title || 'Priority item')}</div>
             <div class="p-reason">${escapeHtml(p.reason || 'No rationale provided.')}</div>
           </div>
@@ -630,7 +492,7 @@
       }).join('');
       const receiptsHtml = normalized.topReceipts.slice(0, 2).map((receipt) => `
         <div class="priority-item" data-domain="engineering">
-          <div class="p-domain" style="color: var(--ox-teal)">Receipt</div>
+          <div class="p-domain" style="color: var(--ox-teal)"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor;"></span>Receipt</div>
           <div class="p-title">${escapeHtml(receipt.intent || 'Execution receipt')}</div>
           <div class="p-reason">${escapeHtml(formatCurrency(receipt.attributed_value_usd) ? 'Attributed value: ' + formatCurrency(receipt.attributed_value_usd) : 'Captured in the most recent brief.')}</div>
         </div>
@@ -694,10 +556,9 @@
       `).join('');
 
       injectHtml(`
-        <div class="widget-shell-card animate-in">
-          <div class="ox-card">
+        <div class="ox-card animate-in">
             <div class="ox-card-inner">
-              <div class="widget-hero" style="background: linear-gradient(135deg, rgba(var(--ox-primary-rgb), 0.1), rgba(var(--ox-primary-rgb), 0.02)); border: 1px solid rgba(var(--ox-primary-rgb), 0.2); padding: 32px; border-radius: 20px; margin-bottom: 32px; box-shadow: 0 20px 40px -10px rgba(0,0,0,0.3);">
+              <div class="widget-hero" style="margin-bottom: 32px; padding-bottom: 24px;">
                 <div class="widget-hero-copy">
                   <div class="widget-kicker" style="color: var(--ox-primary); font-weight: 700;">Executive Summary</div>
                   <div class="widget-title-lg" style="font-size: 1.5rem; margin-top: 8px;">The team completed the mission and prepped the next one.</div>
@@ -718,7 +579,7 @@
                   <div class="widget-section-title">Top priorities</div>
                   <div class="widget-section-rule"></div>
                 </div>
-                <div class="priority-list">${prioritiesHtml || `<div class="ox-well"><div class="ox-text">No priority follow-ups were captured in this brief.</div></div>`}</div>
+                <div class="priority-list">${prioritiesHtml || `<div style="padding: 16px; color: var(--ox-text-muted);"><div class="ox-text">No priority follow-ups were captured in this brief.</div></div>`}</div>
               </div>
 
             ${receiptsHtml ? `
