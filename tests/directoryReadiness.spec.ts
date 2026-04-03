@@ -11,6 +11,7 @@ const serverJson = JSON.parse(
   websiteUrl?: string;
   title?: string;
   description?: string;
+  remotes?: Array<{ type?: string; url?: string }>;
   tools?: Array<{ name?: string; description?: string }>;
 };
 const packageJson = JSON.parse(
@@ -66,6 +67,10 @@ describe('Anthropic directory readiness', () => {
     expect(serverJson.websiteUrl).toBe('https://useorgx.com');
     expect(serverJson.title).toBe('OrgX MCP');
     expect(serverJson.description).toContain('Agent orchestration');
+    expect(serverJson.remotes).toEqual([
+      { type: 'streamable-http', url: 'https://mcp.useorgx.com/mcp' },
+      { type: 'sse', url: 'https://mcp.useorgx.com/sse' },
+    ]);
     expect(serverJson.tools?.find((tool) => tool.name === 'account_upgrade')?.description).toContain(
       'Does not charge automatically.'
     );
@@ -122,6 +127,7 @@ describe('Anthropic directory readiness', () => {
     expectSnippetAnnotations('account_usage_report', true, false);
     expectSnippetAnnotations('list_entities', true, false);
     expectSnippetAnnotations('entity_action', false, true);
+    expectSnippetAnnotations('verify_entity_completion', true, false);
     expectSnippetAnnotations('create_entity', false, true);
     expectSnippetAnnotations('batch_create_entities', false, true);
     expectSnippetAnnotations('scaffold_initiative', false, true);

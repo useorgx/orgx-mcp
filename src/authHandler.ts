@@ -58,6 +58,36 @@ function errorRedirect(
   return Response.redirect(errorUrl.toString(), 302);
 }
 
+function buildDerivedServerCard(manifest: typeof serverManifest) {
+  return {
+    serverInfo: {
+      name: manifest.title ?? manifest.name,
+      version: manifest.version,
+    },
+    authentication: manifest.auth
+      ? {
+          required: true,
+          schemes: [manifest.auth.type],
+        }
+      : undefined,
+    tools: (manifest.tools ?? []).map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      // server.json is the source of truth for the published catalog, but it
+      // does not carry full MCP JSON Schemas. Expose a permissive object shape
+      // here so directory scanners still get valid tool entries without a
+      // second hand-maintained metadata source.
+      inputSchema: {
+        type: 'object',
+        properties: {},
+        additionalProperties: true,
+      },
+    })),
+    resources: manifest.resources ?? [],
+    prompts: manifest.prompts ?? [],
+  };
+}
+
 /**
  * Auth handler — serves as the `defaultHandler` for OAuthProvider.
  * Receives all requests that are NOT matched by apiHandlers (i.e., not /mcp or /sse).
@@ -88,6 +118,19 @@ export const authHandler = {
     if (request.method === 'GET' && url.pathname === '/server.json') {
       return withCors(
         Response.json(serverManifest, {
+          headers: {
+            'Cache-Control': 'public, max-age=300',
+          },
+        })
+      );
+    }
+
+    if (
+      request.method === 'GET' &&
+      url.pathname === '/.well-known/mcp/server-card.json'
+    ) {
+      return withCors(
+        Response.json(buildDerivedServerCard(serverManifest), {
           headers: {
             'Cache-Control': 'public, max-age=300',
           },
@@ -320,11 +363,38 @@ export const authHandler = {
         return withSseKeepAlive(resp);
       }
 
-      // GET / from browser → landing page
+      // GET / from browsers → landing page
       if (request.method === 'GET') {
-        return Response.redirect(
-          new URL('/index.html', url.origin).toString(),
-          302
+        const secFetchMode = request.headers.get('sec-fetch-mode') ?? '';
+        const secFetchDest = request.headers.get('sec-fetch-dest') ?? '';
+        const upgradeInsecureRequests =
+          request.headers.get('upgrade-insecure-requests') ?? '';
+        const isDocumentNavigation =
+          secFetchMode === 'navigate' &&
+          secFetchDest === 'document' &&
+          upgradeInsecureRequests === '1';
+
+        if (isDocumentNavigation) {
+          return Response.redirect(
+            new URL('/index.html', url.origin).toString(),
+            302
+          );
+        }
+
+        const resourceMetadataUrl = `${serverUrl}/.well-known/oauth-protected-resource`;
+        return withCors(
+          Response.json(
+            {
+              error: 'invalid_token',
+              error_description: 'Missing or invalid access token',
+            },
+            {
+              status: 401,
+              headers: {
+                'WWW-Authenticate': `Bearer realm="OAuth", resource_metadata="${resourceMetadataUrl}", error="invalid_token", error_description="Missing or invalid access token"`,
+              },
+            }
+          )
         );
       }
     }
@@ -662,11 +732,37 @@ async function handleAuthorize(
   serverUrl: string,
   webUrl: string
 ): Promise<Response> {
+  const url = new URL(request.url);
+  const requestedClientId = url.searchParams.get('client_id');
+  const requestedRedirectUri = url.searchParams.get('redirect_uri');
+  const requestedResponseType = url.searchParams.get('response_type');
+  const requestedScope = url.searchParams.get('scope');
+  const requestedCodeChallengeMethod =
+    url.searchParams.get('code_challenge_method');
+
+  console.info('[auth] Received authorization request', {
+    clientId: requestedClientId,
+    redirectUri: requestedRedirectUri,
+    responseType: requestedResponseType,
+    scope: requestedScope,
+    codeChallengeMethod: requestedCodeChallengeMethod,
+    userAgent: request.headers.get('user-agent')?.substring(0, 120),
+    cfWorker: request.headers.get('cf-worker') ?? null,
+  });
+
   let oauthReqInfo: AuthRequest;
   try {
     oauthReqInfo = await env.OAUTH_PROVIDER.parseAuthRequest(request);
   } catch (error) {
-    console.error('[auth] Failed to parse auth request:', error);
+    console.error('[auth] Failed to parse auth request:', error, {
+      clientId: requestedClientId,
+      redirectUri: requestedRedirectUri,
+      responseType: requestedResponseType,
+      scope: requestedScope,
+      codeChallengeMethod: requestedCodeChallengeMethod,
+      userAgent: request.headers.get('user-agent')?.substring(0, 120),
+      cfWorker: request.headers.get('cf-worker') ?? null,
+    });
     return errorRedirect(
       'invalid_request',
       'The application made an invalid request. Please contact the app developer.',
