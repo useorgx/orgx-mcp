@@ -4,708 +4,1935 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Morning Brief - OrgX</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='12' fill='%23FBBF24'/%3E%3Cg stroke='%23FBBF24' stroke-width='4' stroke-linecap='round'%3E%3Cpath d='M32 6v10'/%3E%3Cpath d='M32 48v10'/%3E%3Cpath d='M6 32h10'/%3E%3Cpath d='M48 32h10'/%3E%3Cpath d='M13 13l7 7'/%3E%3Cpath d='M44 44l7 7'/%3E%3Cpath d='M13 51l7-7'/%3E%3Cpath d='M44 20l7-7'/%3E%3C/g%3E%3C/svg%3E" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='12' fill='%2300D4AA'/%3E%3Cg stroke='%2300D4AA' stroke-width='4' stroke-linecap='round'%3E%3Cpath d='M32 6v10'/%3E%3Cpath d='M32 48v10'/%3E%3Cpath d='M6 32h10'/%3E%3Cpath d='M48 32h10'/%3E%3Cpath d='M13 13l7 7'/%3E%3Cpath d='M44 44l7 7'/%3E%3Cpath d='M13 51l7-7'/%3E%3Cpath d='M44 20l7-7'/%3E%3C/g%3E%3C/svg%3E" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
   <script src="shared/interaction-kit.js"></script>
   <style>
+    @import url('./shared/tokens.css');
 
-      :root, :root[data-theme="light"] {
-        --ox-bg: #f8fafc;
-        --ox-panel: #ffffff;
-        --ox-border: rgba(0, 0, 0, 0.08);
-        --ox-border-strong: rgba(0, 0, 0, 0.15);
-        --ox-text: #0f172a;
-        --ox-text-muted: #64748b;
-        --ox-text-dim: #94a3b8;
-        --ox-well-bg: #f1f5f9;
-        --ox-well-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
-      }
-      
-      @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) {
-          --ox-bg: #02040a;
-          --ox-panel: rgba(10, 15, 22, 0.95);
-          --ox-border: rgba(255, 255, 255, 0.08);
-          --ox-border-strong: rgba(255, 255, 255, 0.15);
-          --ox-text: #f8fafc;
-          --ox-text-muted: rgba(255, 255, 255, 0.5);
-          --ox-text-dim: rgba(255, 255, 255, 0.32);
-          --ox-well-bg: rgba(0,0,0,0.3);
-          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
-        }
-      }
-      
-      :root[data-theme="dark"] {
-          --ox-bg: #02040a;
-          --ox-panel: rgba(10, 15, 22, 0.95);
-          --ox-border: rgba(255, 255, 255, 0.08);
-          --ox-border-strong: rgba(255, 255, 255, 0.15);
-          --ox-text: #f8fafc;
-          --ox-text-muted: rgba(255, 255, 255, 0.5);
-          --ox-text-dim: rgba(255, 255, 255, 0.32);
-          --ox-well-bg: rgba(0,0,0,0.3);
-          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
-      }
-      
-      :root {
-        --ox-primary: #14b8a6;
-        --ox-primary-rgb: 20, 184, 166;
-        --ox-lime: #a3e635;
-        --ox-teal: #0d9488;
-        --ox-danger: #e11d48;
-        --ox-warning: #d97706;
-        --ox-iris: #4f46e5;
-        --ox-grid: rgba(0, 0, 0, 0.03);
-        --ox-shadow: 0 12px 32px -12px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.04);
-        --ox-font: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
-        --ox-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
-      }
-      
-      @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) {
-          --ox-lime: #D4ED31;
-          --ox-teal: #00C9A7;
-          --ox-danger: #F43F5E;
-          --ox-warning: #FBBF24;
-          --ox-iris: #6366f1;
-          --ox-grid: rgba(255, 255, 255, 0.02);
-          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
-        }
-      }
-      
-      :root[data-theme="dark"] {
-          --ox-lime: #D4ED31;
-          --ox-teal: #00C9A7;
-          --ox-danger: #F43F5E;
-          --ox-warning: #FBBF24;
-          --ox-iris: #6366f1;
-          --ox-grid: rgba(255, 255, 255, 0.02);
-          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
-      }
+    :root,
+    :root[data-theme='light'] {
+      --ox-bg: #f8fafc;
+      --ox-panel: rgba(255, 255, 255, 0.96);
+      --ox-border: rgba(15, 23, 42, 0.08);
+      --ox-border-strong: rgba(15, 23, 42, 0.14);
+      --ox-text: #0f172a;
+      --ox-text-muted: #64748b;
+      --ox-text-dim: #94a3b8;
+      --ox-well-bg: rgba(241, 245, 249, 0.92);
+      --ox-well-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+      --ox-shadow: 0 24px 48px -28px rgba(15, 23, 42, 0.18),
+        0 12px 28px -24px rgba(15, 23, 42, 0.18);
+      --ox-grid: rgba(15, 23, 42, 0.035);
+    }
 
-      /* Smooth UX Transitions */
-      .skeleton-wrapper { transition: opacity 0.3s ease; }
-      @keyframes fadeSlideUp {
-        from { opacity: 0; transform: translateY(16px) scale(0.98); filter: blur(4px); }
-        to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme='light']) {
+        --ox-bg: #02040a;
+        --ox-panel: rgba(10, 15, 22, 0.95);
+        --ox-border: rgba(255, 255, 255, 0.07);
+        --ox-border-strong: rgba(255, 255, 255, 0.14);
+        --ox-text: #f1f5f9;
+        --ox-text-muted: rgba(255, 255, 255, 0.46);
+        --ox-text-dim: rgba(255, 255, 255, 0.24);
+        --ox-well-bg: rgba(17, 24, 39, 0.72);
+        --ox-well-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+        --ox-shadow: 0 20px 50px -14px rgba(0, 0, 0, 0.6),
+          inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        --ox-grid: rgba(255, 255, 255, 0.018);
       }
-      .animate-in { opacity: 0; animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-      .delay-1 { animation-delay: 0.1s; }
-      .delay-2 { animation-delay: 0.2s; }
-      .delay-3 { animation-delay: 0.3s; }
-      
-      .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 24px; text-align: center; border: 1px dashed var(--ox-border-strong); border-radius: 16px; margin: 16px 0; }
-      .empty-icon { width: 48px; height: 48px; border-radius: 50%; background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
-      .empty-icon svg { width: 24px; height: 24px; }
-      .empty-title { font-size: 1.1rem; font-weight: 600; color: var(--ox-text); margin-bottom: 8px; }
-      .empty-desc { font-size: 0.9rem; color: var(--ox-text-muted); line-height: 1.5; max-width: 280px; }
+    }
 
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-      body {
-        font-family: var(--ox-font);
-        background: var(--ox-bg);
-        color: var(--ox-text);
-        padding: 24px;
-        min-height: 100vh;
-        -webkit-font-smoothing: antialiased;
+    :root[data-theme='dark'] {
+      --ox-bg: #02040a;
+      --ox-panel: rgba(10, 15, 22, 0.95);
+      --ox-border: rgba(255, 255, 255, 0.07);
+      --ox-border-strong: rgba(255, 255, 255, 0.14);
+      --ox-text: #f1f5f9;
+      --ox-text-muted: rgba(255, 255, 255, 0.46);
+      --ox-text-dim: rgba(255, 255, 255, 0.24);
+      --ox-well-bg: rgba(17, 24, 39, 0.72);
+      --ox-well-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+      --ox-shadow: 0 20px 50px -14px rgba(0, 0, 0, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      --ox-grid: rgba(255, 255, 255, 0.018);
+    }
+
+    :root {
+      --ox-primary: #00d4aa;
+      --ox-primary-rgb: 0, 212, 170;
+      --ox-warning: #fbbf24;
+      --ox-warning-rgb: 251, 191, 36;
+      --ox-danger: #f43f5e;
+      --ox-danger-rgb: 244, 63, 94;
+      --ox-lime: #d4ed31;
+      --ox-font: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
+      --ox-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+      --brief-shell-max: 468px;
+      --brief-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--ox-font);
+      background: var(--ox-bg);
+      color: var(--ox-text);
+      padding: 28px 16px;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(
+          ellipse 72% 52% at 50% -8%,
+          rgba(var(--ox-primary-rgb), 0.085),
+          transparent 68%
+        ),
+        linear-gradient(var(--ox-grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px);
+      background-size: 100% 100%, 20px 20px, 20px 20px;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .container {
+      max-width: var(--brief-shell-max);
+      margin: 0 auto;
+    }
+
+    @keyframes brief-enter {
+      from {
+        opacity: 0;
+        transform: translateY(14px) scale(0.985);
+        filter: blur(3px);
       }
-      
-      body::before {
-        content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        background: radial-gradient(circle at 50% 0%, rgba(var(--ox-primary-rgb), 0.08), transparent 60%),
-                    linear-gradient(var(--ox-grid) 1px, transparent 1px),
-                    linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px);
-        background-size: 100% 100%, 20px 20px, 20px 20px;
-        z-index: -1; pointer-events: none;
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
       }
-      
-      .container { max-width: 540px; margin: 0 auto; position: relative; }
+    }
 
-
-      .ox-card {
-        background: var(--ox-panel); border: 1px solid var(--ox-border); border-radius: 16px; box-shadow: var(--ox-shadow); position: relative; overflow: hidden; margin-bottom: 16px;
+    @keyframes brief-breathe {
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1);
       }
-      .ox-card-inner { padding: 24px; }
-      .ox-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(var(--ox-primary-rgb), 0.5), transparent); opacity: 0.8; }
-      .ox-well { border: 1px solid var(--ox-border); border-radius: 10px; padding: 16px; box-shadow: var(--ox-well-shadow); }
-      .ox-eyebrow { font-family: var(--ox-mono); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ox-text-muted); font-weight: 600; }
-      .ox-title { font-size: 1.15rem; font-weight: 600; letter-spacing: -0.02em; color: var(--ox-text); line-height: 1.3; }
-      .ox-text { font-size: 0.9rem; line-height: 1.5; color: var(--ox-text); }
-      
+      50% {
+        opacity: 0.45;
+        transform: scale(0.82);
+      }
+    }
 
-    :root { --ox-primary-rgb: 0, 201, 167; }
-    
-    .brief-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
-    
-    .icon-box { width: 48px; height: 48px; border-radius: 12px; background: rgba(var(--ox-primary-rgb), 0.1); border: 1px solid rgba(var(--ox-primary-rgb), 0.2); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
-    .metrics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 32px; border-bottom: 1px solid var(--ox-border); padding-bottom: 24px; }
-    .metric-card { display: flex; flex-direction: column; gap: 4px; }
-    .metric-value { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.04em; color: var(--ox-text); line-height: 1; font-family: var(--ox-mono); }
-    .metric-copy { font-size: 0.85rem; color: var(--ox-text-muted); line-height: 1.4; }
+    .animate-in {
+      opacity: 0;
+      animation: brief-enter 0.72s var(--brief-ease) forwards;
+    }
 
-    .section-title { display:flex; align-items:center; gap:12px; margin-bottom: 16px; }
-    .section-title .rule { display: none; }
-    
-    .priority-list { display: flex; flex-direction: column; gap: 0; margin-top: 12px; border-top: 1px solid var(--ox-border); }
-    .priority-item { position: relative; padding: 16px 0; border-bottom: 1px solid var(--ox-border); }
-    .priority-item:last-child { border-bottom: none; }
-    
-    .p-domain { display: flex; align-items: center; gap: 6px; font-family: var(--ox-mono); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ox-text-muted); margin-bottom: 8px; font-weight: 700; }
-    .p-title { font-weight: 600; font-size: 1rem; color: var(--ox-text); margin-bottom: 4px; line-height: 1.3; }
-    .p-reason { font-size: 0.9rem; color: var(--ox-text-muted); line-height: 1.5; }
-    
-    .brief-note { padding: 16px; border-radius: 12px; background: rgba(var(--ox-primary-rgb), 0.06); color: var(--ox-text); line-height: 1.6; margin-bottom: 24px; font-size: 0.95rem; border-left: 3px solid var(--ox-primary); }
-    
-    .signal-list { display: flex; flex-direction: column; gap: 0; margin-top: 12px; border-top: 1px solid var(--ox-border); }
-    .signal-item { display: flex; align-items: flex-start; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--ox-border); }
-    .signal-item:last-child { border-bottom: none; }
-    
-    .artifact-output-grid { display: flex; flex-direction: column; gap: 0; margin-top: 12px; border-top: 1px solid var(--ox-border); }
-    .artifact-output-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 16px 0; border-bottom: 1px solid var(--ox-border); }
-    .artifact-output-item:last-child { border-bottom: none; }
+    .brief-shell {
+      margin-bottom: 0;
+    }
 
-    .artifact-output-body { min-width: 0; }
+    .brief-shell .ox-card {
+      margin-bottom: 0;
+      border-radius: 20px;
+      border: 1px solid var(--ox-border);
+      background: var(--ox-panel);
+      box-shadow: var(--ox-shadow);
+      overflow: hidden;
+      position: relative;
+    }
 
-    .artifact-output-title {
-      font-size: 0.9rem;
+    .brief-shell .ox-card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent 8%,
+        rgba(var(--ox-primary-rgb), 0.45) 50%,
+        transparent 92%
+      );
+    }
+
+    .brief-hero {
+      position: relative;
+      padding: 28px 28px 22px;
+      overflow: hidden;
+    }
+
+    .brief-hero::before {
+      content: '';
+      position: absolute;
+      top: -42px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 288px;
+      height: 184px;
+      background: radial-gradient(
+        ellipse,
+        rgba(var(--ox-primary-rgb), 0.09),
+        transparent 68%
+      );
+      pointer-events: none;
+    }
+
+    .hero-kicker {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--ox-mono);
+      font-size: 0.56rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--ox-primary);
+    }
+
+    .hero-kicker-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: currentColor;
+      box-shadow: 0 0 10px rgba(var(--ox-primary-rgb), 0.5);
+      animation: brief-breathe 2.8s ease-in-out infinite;
+    }
+
+    .hero-row {
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      gap: 18px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    .hero-value-block {
+      min-width: 0;
+    }
+
+    .hero-value-line {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+
+    .hero-value {
+      font-family: var(--ox-mono);
+      font-size: clamp(3.1rem, 9vw, 3.7rem);
+      font-weight: 700;
+      letter-spacing: -0.08em;
+      line-height: 0.88;
+      color: var(--ox-text);
+      position: relative;
+    }
+
+    .hero-value::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -5px;
+      height: 3px;
+      border-radius: 999px;
+      background: linear-gradient(
+        90deg,
+        var(--ox-primary),
+        rgba(var(--ox-primary-rgb), 0.16)
+      );
+      opacity: 0.72;
+    }
+
+    .hero-value-suffix {
+      font-size: 1.8rem;
       font-weight: 600;
-      line-height: 1.4;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      color: var(--ox-text-muted);
+    }
+
+    .hero-context {
+      font-size: 0.78rem;
+      line-height: 1.45;
+      color: var(--ox-text-muted);
+    }
+
+    .hero-context strong {
+      color: var(--ox-text);
+      font-weight: 600;
+    }
+
+    .hero-summary-text {
+      margin-top: 16px;
+      font-size: 0.76rem;
+      line-height: 1.55;
+      letter-spacing: 0.005em;
+      color: var(--ox-text-dim);
+      position: relative;
+    }
+
+    .hero-summary-text span {
+      color: var(--ox-text-muted);
+      font-weight: 500;
+    }
+
+    .hero-pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .hero-pill {
+      border-color: var(--ox-border);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--ox-text-muted);
+    }
+
+    .action-strip {
+      padding: 4px 16px 16px;
+    }
+
+    .action-card {
+      background: transparent;
+      border-radius: 14px;
+    }
+
+    .metric-rail {
+      border-top: 1px solid var(--ox-border);
+    }
+
+    .metric-rail .app-metric-button {
+      min-height: 78px;
+      padding: 14px 8px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      position: relative;
+    }
+
+    .metric-rail .app-metric-button::after {
+      content: '';
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 0;
+      height: 2.5px;
+      border-radius: 999px;
+      background: rgba(var(--ox-primary-rgb), 0.18);
+      transform: scaleX(0.5);
+      transform-origin: center;
+      opacity: 0.6;
+      transition:
+        transform 0.3s var(--brief-ease),
+        opacity 0.2s ease,
+        background 0.2s ease;
+    }
+
+    .metric-rail .app-metric-button:hover::after {
+      transform: scaleX(0.8);
+      opacity: 0.82;
+    }
+
+    .metric-rail .app-metric-button[aria-pressed='true']::after {
+      background: var(--ox-primary);
+      transform: scaleX(1);
+      opacity: 1;
+      box-shadow: 0 0 10px rgba(var(--ox-primary-rgb), 0.32);
+    }
+
+    .metric-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--ox-text-dim);
+      transition:
+        transform 0.2s var(--brief-ease),
+        color 0.2s ease;
+    }
+
+    .metric-rail .app-metric-button[aria-pressed='true'] .metric-icon {
+      color: var(--ox-primary);
+      transform: scale(1.05);
+    }
+
+    .metric-value {
+      font-family: var(--ox-mono);
+      font-size: 1.12rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      color: var(--ox-text);
+      transition: color 0.2s ease;
+    }
+
+    .metric-rail .app-metric-button[aria-pressed='true'] .metric-value {
+      color: var(--ox-primary);
+    }
+
+    .metric-label {
+      font-family: var(--ox-mono);
+      font-size: 0.48rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ox-text-dim);
+      transition: color 0.2s ease;
+    }
+
+    .metric-rail .app-metric-button[aria-pressed='true'] .metric-label {
+      color: var(--ox-text-muted);
+    }
+
+    .brief-section .app-accordion-trigger {
+      padding-left: 24px;
+      padding-right: 24px;
+      background: transparent;
+    }
+
+    .brief-section-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 7px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(var(--ox-primary-rgb), 0.07);
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.12);
+      color: var(--ox-primary);
+      flex-shrink: 0;
+      transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.2s ease;
+    }
+
+    .brief-section.is-open .brief-section-icon {
+      background: rgba(var(--ox-primary-rgb), 0.12);
+      border-color: rgba(var(--ox-primary-rgb), 0.2);
+      transform: scale(1.04);
+    }
+
+    .brief-section .app-accordion-trigger-badge {
+      font-family: var(--ox-mono);
+      letter-spacing: 0.02em;
+    }
+
+    .brief-section .app-accordion-body {
+      padding-left: 24px;
+      padding-right: 24px;
+    }
+
+    .priority-list,
+    .receipt-list,
+    .output-list,
+    .attention-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .priority-row {
+      display: flex;
+      align-items: stretch;
+      gap: 14px;
+      padding: 13px 0;
+    }
+
+    .priority-row + .priority-row {
+      border-top: 1px solid var(--ox-border);
+    }
+
+    .priority-bar {
+      width: 3px;
+      border-radius: 999px;
+      flex-shrink: 0;
+      opacity: 0.8;
+      background: var(--priority-color, var(--ox-primary));
+      box-shadow: 0 0 14px color-mix(in srgb, var(--priority-color, var(--ox-primary)) 28%, transparent);
+    }
+
+    .priority-body {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .priority-domain {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--ox-mono);
+      font-size: 0.52rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--priority-color, var(--ox-primary));
+      margin-bottom: 5px;
+    }
+
+    .priority-domain::before {
+      content: '';
+      width: 5px;
+      height: 5px;
+      border-radius: 999px;
+      background: currentColor;
+      opacity: 0.72;
+    }
+
+    .priority-title {
+      font-size: 0.82rem;
+      font-weight: 600;
+      line-height: 1.35;
+      letter-spacing: -0.01em;
       color: var(--ox-text);
     }
 
-    .artifact-output-copy {
-      margin-top: 5px;
+    .priority-note {
+      margin-top: 3px;
+      font-size: 0.68rem;
+      line-height: 1.45;
+      color: var(--ox-text-dim);
+    }
+
+    .receipt-row .app-list-row-title {
+      color: var(--ox-text-muted);
+      font-weight: 500;
+    }
+
+    .receipt-value {
+      font-family: var(--ox-mono);
       font-size: 0.8rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      color: var(--ox-primary);
+      text-shadow: 0 0 14px rgba(var(--ox-primary-rgb), 0.25);
+      white-space: nowrap;
+    }
+
+    .output-meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .output-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 20px;
+      padding: 0 6px;
+      border-radius: 4px;
+      border: 1px solid var(--ox-border);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--ox-text-dim);
+      font-family: var(--ox-mono);
+      font-size: 0.5rem;
+      font-weight: 600;
+      line-height: 1;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .output-status {
+      flex-shrink: 0;
+      min-height: 30px;
+      padding: 0 10px;
+      border-radius: 8px;
+      border: 1px solid var(--ox-border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--ox-text-muted);
+      font-family: var(--ox-mono);
+      font-size: 0.52rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .output-status[data-tone='approved'] {
+      color: var(--ox-primary);
+      background: rgba(var(--ox-primary-rgb), 0.08);
+      border-color: rgba(var(--ox-primary-rgb), 0.16);
+    }
+
+    .output-link {
+      flex-shrink: 0;
+      min-height: 30px;
+      padding: 0 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(var(--ox-warning-rgb), 0.18);
+      background: rgba(var(--ox-warning-rgb), 0.08);
+      color: var(--ox-warning);
+      font-family: var(--ox-mono);
+      font-size: 0.52rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition:
+        transform 0.18s var(--brief-ease),
+        background 0.18s ease,
+        border-color 0.18s ease;
+      white-space: nowrap;
+    }
+
+    .output-link:hover {
+      transform: translateY(-1px);
+      background: rgba(var(--ox-warning-rgb), 0.14);
+      border-color: rgba(var(--ox-warning-rgb), 0.28);
+    }
+
+    .attention-row {
+      align-items: start;
+    }
+
+    .attention-main {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .attention-dot {
+      width: 9px;
+      height: 9px;
+      margin-top: 5px;
+      border-radius: 999px;
+      background: currentColor;
+      color: var(--ox-danger);
+      box-shadow: 0 0 18px rgba(var(--ox-danger-rgb), 0.28);
+      flex-shrink: 0;
+    }
+
+    .attention-row[data-tone='review'] .attention-dot,
+    .attention-row[data-tone='warning'] .attention-dot {
+      color: var(--ox-warning);
+      box-shadow: 0 0 18px rgba(var(--ox-warning-rgb), 0.28);
+    }
+
+    .attention-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 0 8px;
+      border-radius: 999px;
+      border: 1px solid var(--ox-border);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--ox-text-muted);
+      font-family: var(--ox-mono);
+      font-size: 0.5rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .narrative-note {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
+      background: rgba(var(--ox-primary-rgb), 0.06);
+      color: var(--ox-text-muted);
+      font-size: 0.72rem;
+      line-height: 1.5;
+    }
+
+    .brief-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 24px;
+      border-top: 1px solid var(--ox-border);
+    }
+
+    .footer-time {
+      font-family: var(--ox-mono);
+      font-size: 0.5rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ox-text-dim);
+    }
+
+    .footer-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--ox-text-muted);
+      text-decoration: none;
+      font-size: 0.6rem;
+      font-weight: 600;
+      line-height: 1;
+      transition:
+        color 0.18s ease,
+        gap 0.18s ease;
+    }
+
+    .footer-link:hover {
+      color: var(--ox-primary);
+      gap: 7px;
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 72px 24px;
+      text-align: center;
+      border: 1px dashed var(--ox-border-strong);
+      border-radius: 18px;
+      background: rgba(var(--ox-primary-rgb), 0.03);
+    }
+
+    .empty-icon {
+      width: 52px;
+      height: 52px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 16px;
+      background: rgba(var(--ox-primary-rgb), 0.1);
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
+      color: var(--ox-primary);
+      box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.22);
+      margin-bottom: 16px;
+    }
+
+    .empty-title {
+      font-size: 1rem;
+      font-weight: 600;
+      line-height: 1.3;
+      color: var(--ox-text);
+    }
+
+    .empty-desc {
+      margin-top: 8px;
+      max-width: 280px;
+      font-size: 0.86rem;
       line-height: 1.5;
       color: var(--ox-text-muted);
     }
 
-    .artifact-output-meta {
-      margin-top: 8px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .artifact-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 5px 8px;
-      border-radius: 999px;
+    .skeleton-shell {
+      background: var(--ox-panel);
       border: 1px solid var(--ox-border);
-      background: rgba(255, 255, 255, 0.02);
-      font-family: var(--ox-mono);
-      font-size: 0.64rem;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--ox-text-muted);
+      border-radius: 20px;
+      box-shadow: var(--ox-shadow);
+      overflow: hidden;
     }
 
-    .artifact-badge.status-approved {
-      color: var(--ox-teal);
-      border-color: rgba(0, 201, 167, 0.18);
-      background: rgba(0, 201, 167, 0.08);
-    }
-
-    .artifact-badge.status-in_review,
-    .artifact-badge.status-draft {
-      color: var(--ox-warning);
-      border-color: rgba(251, 191, 36, 0.22);
-      background: rgba(251, 191, 36, 0.08);
-    }
-
-    .review-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      align-self: center;
-      padding: 8px 12px;
-      border-radius: 999px;
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
-      background: rgba(var(--ox-primary-rgb), 0.08);
-      color: var(--ox-text);
-      font-family: var(--ox-mono);
-      font-size: 0.66rem;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      text-decoration: none;
-    }
-    .artifact-actions {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-    }
-    .artifact-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      border-radius: 999px;
-      border: 1px solid var(--ox-border);
-      background: rgba(255, 255, 255, 0.02);
-      color: var(--ox-text);
-      font-family: var(--ox-mono);
-      font-size: 0.66rem;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      text-decoration: none;
-      white-space: nowrap;
-    }
-    .artifact-link:hover {
-      border-color: rgba(var(--ox-primary-rgb), 0.22);
-      background: rgba(var(--ox-primary-rgb), 0.08);
-    }
-
-    @media (max-width: 560px) {
-      .metrics-grid {
-        grid-template-columns: 1fr;
-      }
+    .skeleton-hero,
+    .skeleton-actions,
+    .skeleton-rail,
+    .skeleton-section {
+      position: relative;
+      overflow: hidden;
     }
 
     .skeleton-line {
-      background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%);
-      background-size: 200% 100%; animation: shimmer 2s infinite linear; border-radius: 4px;
+      border-radius: 999px;
+      background: linear-gradient(
+        90deg,
+        rgba(var(--ox-primary-rgb), 0.08) 0%,
+        rgba(var(--ox-primary-rgb), 0.18) 50%,
+        rgba(var(--ox-primary-rgb), 0.08) 100%
+      );
+      background-size: 200% 100%;
+      animation: skeleton-shimmer 1.8s linear infinite;
     }
-    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+    @keyframes skeleton-shimmer {
+      0% {
+        background-position: -200% 0;
+      }
+      100% {
+        background-position: 200% 0;
+      }
+    }
+
+    .skeleton-hero {
+      padding: 28px 28px 22px;
+    }
+
+    .skeleton-actions {
+      padding: 4px 16px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .skeleton-action-card {
+      border-radius: 14px;
+      border: 1px solid var(--ox-border);
+      padding: 13px 14px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .skeleton-rail {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      border-top: 1px solid var(--ox-border);
+    }
+
+    .skeleton-rail-cell {
+      min-height: 78px;
+      padding: 16px 12px;
+      border-right: 1px solid var(--ox-border);
+    }
+
+    .skeleton-rail-cell:last-child {
+      border-right: 0;
+    }
+
+    .skeleton-section {
+      border-top: 1px solid var(--ox-border);
+      padding: 16px 24px 18px;
+    }
+
+    .skeleton-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 0;
+    }
+
+    .skeleton-row + .skeleton-row {
+      border-top: 1px solid var(--ox-border);
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 18px 10px;
+      }
+
+      .brief-hero {
+        padding: 24px 20px 18px;
+      }
+
+      .hero-row {
+        gap: 12px;
+      }
+
+      .hero-value {
+        font-size: 2.85rem;
+      }
+
+      .action-strip {
+        padding-left: 12px;
+        padding-right: 12px;
+      }
+
+      .brief-section .app-accordion-trigger,
+      .brief-section .app-accordion-body,
+      .brief-footer {
+        padding-left: 18px;
+        padding-right: 18px;
+      }
+
+      .metric-rail {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .metric-rail .app-metric-button:nth-child(odd) {
+        border-right: 1px solid var(--ox-border);
+      }
+
+      .metric-rail .app-metric-button:nth-child(-n + 2) {
+        border-bottom: 1px solid var(--ox-border);
+      }
+
+      .hero-pill-row {
+        gap: 6px;
+      }
+
+      .hero-pill {
+        font-size: 0.6rem;
+      }
+
+      .brief-footer {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="container" id="content">
-    <!-- Skeleton shown during loading -->
-    <div class="skeleton-wrapper" style="display:flex; flex-direction:column; gap:20px; padding:24px;">
-      <div>
-        <div class="skeleton-line" style="width:140px; height:12px; margin-bottom:16px;"></div>
-        <div class="skeleton-line" style="width:80%; height:24px; margin-bottom:8px;"></div>
-        <div class="skeleton-line" style="width:100%; height:14px; margin-bottom:4px;"></div>
-        <div class="skeleton-line" style="width:90%; height:14px;"></div>
-      </div>
-      <div style="border-top:1px solid var(--ox-border); padding-top:20px;">
-        <div class="skeleton-line" style="width:100px; height:10px; margin-bottom:12px;"></div>
-        <div style="display:flex; flex-direction:column; gap:12px;">
-          <div style="background:var(--ox-well-bg); border-radius:10px; padding:14px;">
-            <div class="skeleton-line" style="width:60px; height:10px; margin-bottom:6px;"></div>
-            <div class="skeleton-line" style="width:70%; height:14px; margin-bottom:4px;"></div>
-            <div class="skeleton-line" style="width:90%; height:12px;"></div>
-          </div>
-          <div style="background:var(--ox-well-bg); border-radius:10px; padding:14px;">
-            <div class="skeleton-line" style="width:80px; height:10px; margin-bottom:6px;"></div>
-            <div class="skeleton-line" style="width:65%; height:14px; margin-bottom:4px;"></div>
-            <div class="skeleton-line" style="width:85%; height:12px;"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <script>
+  <div class="container" id="content"></div>
+  <script type="module">
+    import { icons } from './shared/icons.js';
+    import { detectProtocol, escapeHtml, initWidget } from './shared/utils.js';
 
-    // Sync theme from URL to override prefers-color-scheme
-    (function() {
-      const params = new URLSearchParams(window.location.search);
-      const theme = params.get('theme');
-      if (theme) document.documentElement.setAttribute('data-theme', theme);
-    })();
+    const params = new URLSearchParams(window.location.search);
+    const requestedTheme = params.get('theme');
+    if (requestedTheme) {
+      document.documentElement.setAttribute('data-theme', requestedTheme);
+    }
 
+    const isDemo = params.get('demo') === 'true';
+    const isLoadingOverride = params.get('loading') === 'true';
+    const bootStartedAt = Date.now();
+    const MIN_LOADING_MS = 220;
+    const FALLBACK_REVIEW_URL = 'https://useorgx.com/live?view=mission-control';
 
-    var injectHtml = (html) => {
-      const content = document.getElementById('content');
-      const skeleton = content.querySelector('.skeleton-wrapper');
-      if (skeleton) {
-        skeleton.style.opacity = '0';
-        setTimeout(() => {
-          content.innerHTML = html;
-        }, 300);
-      } else {
-        content.innerHTML = html;
-      }
+    const state = {
+      brief: null,
+      isLoading: !isDemo,
+      activeSection: 'priorities',
     };
 
-    
-      function _detectProtocol(){if(typeof window.openai!=='undefined')return'chatgpt';if(window.parent&&window.parent!==window)return'mcp-apps';return'standalone';}
-      function _extractData(out){if(out==null)return null;if(typeof out==='object'&&out.structuredContent)return out.structuredContent;if(typeof out==='object'&&Array.isArray(out.content)){for(var i=0;i<out.content.length;i++){var item=out.content[i];if(item&&item.type==='text'&&item.text){try{return JSON.parse(item.text);}catch(e){continue;}}}}if(typeof out==='string'){try{return JSON.parse(out);}catch(e){return{text:out};}}return out;}
-      var _lastW=0,_lastH=0;
-      function _sendSize(){var w=Math.ceil(document.documentElement.getBoundingClientRect().width+(window.innerWidth-document.documentElement.clientWidth));var h=Math.ceil(document.documentElement.getBoundingClientRect().height);if(w===_lastW&&h===_lastH)return;_lastW=w;_lastH=h;try{window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/size-changed',params:{width:w,height:h}},'*');}catch(e){}}
-      function _observeSize(){_sendSize();if(typeof ResizeObserver!=='undefined'){var _raf=0;var ro=new ResizeObserver(function(){if(_raf)cancelAnimationFrame(_raf);_raf=requestAnimationFrame(_sendSize);});ro.observe(document.documentElement);ro.observe(document.body);}}
-      var _mcpPending = {};
-      var _mcpNextId = 100;
-      function initWidget(opts){var render=opts.render,getData=opts.getData||_extractData;var protocol=_detectProtocol();if(protocol==='chatgpt'){var d=getData(window.openai&&window.openai.toolOutput);render(d);window.addEventListener('openai:set_globals',function(e){var g=e.detail&&e.detail.globals;if(g&&g.toolOutput){render(getData(g.toolOutput));}},{passive:true});}else if(protocol==='mcp-apps'){render(null);var initId=1;window.parent.postMessage({jsonrpc:'2.0',id:initId,method:'ui/initialize',params:{appInfo:{name:'Widget',version:'1.0'},appCapabilities:{tools:{listChanged:false}},protocolVersion:'2026-01-26'}},'*');window.parent.postMessage({jsonrpc:'2.0',method:'notifications/initialized'},'*');window.addEventListener('message',function(event){var msg=event.data;if(!msg||typeof msg!=='object')return;if(msg.id===initId&&msg.result){window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized'},'*');_observeSize();return;}if(msg.id!=null&&_mcpPending[msg.id]){var p=_mcpPending[msg.id];delete _mcpPending[msg.id];if(msg.error)p.reject(new Error(msg.error.message||'Tool call failed'));else p.resolve(msg.result);return;}if((msg.method==='ui/notifications/tool-result'||msg.method==='notifications/message')&&msg.params){var data=getData(msg.params);if(data)render(data);}});}else{render(null);}}
-      function callTool(name, args){var protocol=_detectProtocol();if(protocol==='chatgpt')return window.openai&&window.openai.callTool?window.openai.callTool(name,args):Promise.resolve(null);if(protocol==='mcp-apps'){return new Promise(function(resolve,reject){var id=_mcpNextId++;_mcpPending[id]={resolve:resolve,reject:reject};window.parent.postMessage({jsonrpc:'2.0',id:id,method:'tools/call',params:{name:name,arguments:args}},'*');setTimeout(function(){if(_mcpPending[id]){delete _mcpPending[id];reject(new Error('Tool call '+name+' timed out'));}},30000);});}return Promise.resolve(null);}
-      function openWidgetLink(url,event){if(!url)return false;var protocol=_detectProtocol();if(protocol==='mcp-apps'){if(event&&typeof event.preventDefault==='function')event.preventDefault();window.parent.postMessage({jsonrpc:'2.0',id:_mcpNextId++,method:'ui/open-link',params:{url:url}},'*');return false;}return true;}
-      var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true">'+c+'</svg>';};
-      var icons = {
-        agent: function(s){return _svg('<rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><line x1="8" y1="16" x2="8" y2="16"></line><line x1="16" y1="16" x2="16" y2="16"></line>',s);},
-        search: function(s){return _svg('<circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>',s);},
-        file: function(s){return _svg('<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline>',s);},
-        external: function(s){return _svg('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>',s);},
-        sun: function(s){return _svg('<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>',s);},
-        layers: function(s){return _svg('<polygon points="12 2 22 8 12 14 2 8 12 2"></polygon><polyline points="2 12 12 18 22 12"></polyline><polyline points="2 16 12 22 22 16"></polyline>',s);},
-        eye: function(s){return _svg('<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>',s);},
-        alert: function(s){return _svg('<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>',s);},
-        clipboard: function(s){return _svg('<rect x="9" y="2" width="6" height="4" rx="1"></rect><path d="M9 4H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2"></path><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="16" x2="13" y2="16"></line>',s);}
-      };
-      var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
+    const content = document.getElementById('content');
+    content.addEventListener('click', handleActionClick);
 
-    var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
-    var brief = isDemo ? {
+    const demoBrief = {
       generated_at: new Date().toISOString(),
-      session_summary: { session_type: 'overnight', receipts_produced: 6, completed: 4, failed: 1 },
-      value_dashboard: { value_delivered_usd: 1840, roi_display: '610%', decisions_resolved: 3, completed_this_week: 5 },
-      summary: 'You have 2 pending approvals blocking the Q4 launch. Engineering is on track, but Marketing still needs your sign-off on the email sequence.',
+      session_summary: {
+        session_type: 'overnight',
+        receipts_produced: 6,
+        completed: 4,
+        failed: 1,
+      },
+      value_dashboard: {
+        value_delivered_usd: 1840,
+        roi_display: '610%',
+        decisions_resolved: 3,
+        completed_this_week: 5,
+        initiatives_completed: 2,
+        estimated_time_saved_hours: 15.3,
+      },
+      workspace_pulse: {
+        stats: {
+          activeInitiatives: 5,
+          pendingDecisions: 2,
+          blockedWorkstreams: 1,
+        },
+      },
+      summary:
+        'Two approvals are still blocking the Q4 launch. Engineering is clear to move, while marketing copy and the inspector test plan both need an operator call today.',
       top_priorities: [
-        { domain: 'Engineering', title: 'Review Database Strategy', reason: 'Blocks sprint 3 deliverables.' },
-        { domain: 'Marketing', title: 'Approve Email Sequence', reason: 'Launch is in 4 days. Needs scheduling today.' },
-        { domain: 'Product', title: 'Scope V2 Features', reason: 'Draft PRD generated overnight by Pace.' }
+        {
+          domain: 'Engineering',
+          title: 'Review database strategy',
+          reason: 'Blocks sprint 3 deliverables and the environment promotion sequence.',
+        },
+        {
+          domain: 'Marketing',
+          title: 'Approve email sequence',
+          reason: 'Launch is in 4 days and scheduling must happen today.',
+        },
+        {
+          domain: 'Product',
+          title: 'Scope v2 follow-ups',
+          reason: 'The draft PRD is ready and can unblock the next planning sprint.',
+        },
       ],
       top_receipts: [
-        { intent: 'Closed launch QA loop', attributed_value_usd: 420 },
-        { intent: 'Resolved routing regression', attributed_value_usd: 310 }
+        {
+          intent: 'Closed launch QA loop',
+          attributed_value_usd: 420,
+        },
+        {
+          intent: 'Resolved routing regression',
+          attributed_value_usd: 310,
+        },
       ],
       artifacts_produced: [
-        { id: 'artifact-1', name: 'server.json manifest', status: 'approved', artifact_type: 'eng.config', created_by_name: 'Eli', summary: 'Manifest drafted and validated for registry submission.', primary_url: 'https://useorgx.com/artifacts/artifact-1', primary_label: 'Open artifact', live_url: 'https://useorgx.com/live/INI-402' },
-        { id: 'artifact-2', name: 'MCP Inspector test plan', status: 'in_review', artifact_type: 'eng.report', created_by_name: 'Eli', summary: 'Manual + automated checks packaged for review.', primary_url: 'https://useorgx.com/artifacts/artifact-2', primary_label: 'Open artifact', live_url: 'https://useorgx.com/live/INI-402' },
-        { id: 'artifact-3', name: 'Connector description', status: 'in_review', artifact_type: 'mktg.copy', created_by_name: 'Mark', summary: 'Marketplace copy drafted for founder approval.', primary_url: 'https://useorgx.com/artifacts/artifact-3', primary_label: 'Open artifact', live_url: 'https://useorgx.com/live/INI-402' }
+        {
+          id: 'artifact-1',
+          name: 'server.json manifest',
+          status: 'approved',
+          artifact_type: 'eng.config',
+          created_by_name: 'Eli',
+          summary: 'Manifest drafted and validated for registry submission.',
+          primary_url: 'https://useorgx.com/artifacts/artifact-1',
+          primary_label: 'Open artifact',
+        },
+        {
+          id: 'artifact-2',
+          name: 'MCP Inspector test plan',
+          status: 'in_review',
+          artifact_type: 'eng.report',
+          created_by_name: 'Eli',
+          summary: 'Manual and automated checks packaged for review.',
+          primary_url: 'https://useorgx.com/artifacts/artifact-2',
+          primary_label: 'Review in OrgX',
+        },
+        {
+          id: 'artifact-3',
+          name: 'Connector description',
+          status: 'in_review',
+          artifact_type: 'mktg.copy',
+          created_by_name: 'Mark',
+          summary: 'Marketplace copy drafted for founder approval.',
+          primary_url: 'https://useorgx.com/artifacts/artifact-3',
+          primary_label: 'Review in OrgX',
+        },
       ],
       review_items: [
-        { id: 'artifact-2', name: 'MCP Inspector test plan', status: 'in_review', artifact_type: 'eng.report', created_by_name: 'Eli', primary_url: 'https://useorgx.com/artifacts/artifact-2', primary_label: 'Review in OrgX', live_url: 'https://useorgx.com/live/INI-402' },
-        { id: 'artifact-3', name: 'Connector description', status: 'in_review', artifact_type: 'mktg.copy', created_by_name: 'Mark', primary_url: 'https://useorgx.com/artifacts/artifact-3', primary_label: 'Review in OrgX', live_url: 'https://useorgx.com/live/INI-402' }
+        {
+          id: 'artifact-2',
+          name: 'MCP Inspector test plan',
+          status: 'in_review',
+          artifact_type: 'eng.report',
+          created_by_name: 'Eli',
+          primary_url: 'https://useorgx.com/artifacts/artifact-2',
+          primary_label: 'Review in OrgX',
+        },
+        {
+          id: 'artifact-3',
+          name: 'Connector description',
+          status: 'in_review',
+          artifact_type: 'mktg.copy',
+          created_by_name: 'Mark',
+          primary_url: 'https://useorgx.com/artifacts/artifact-3',
+          primary_label: 'Review in OrgX',
+        },
       ],
       exceptions: [{ exception_type: 'budget_guardrail' }],
-      brief_markdown: '# Morning Brief'
-    } : null;
-    var isLoading = !isDemo;
+      brief_markdown: '# Morning Brief',
+    };
 
-    var isLoadingOverride = new URLSearchParams(window.location.search).get('loading') === 'true';
-    if (isLoadingOverride) {
-      isLoading = true;
-      isDemo = false;
-      // Overwrite initWidget to do nothing so it hangs on loading
-      initWidget = () => { render(); };
+    function asArray(value) {
+      return Array.isArray(value) ? value : [];
     }
-    var bootStartedAt = Date.now();
-    var MIN_LOADING_MS = 220;
-    var loadingSettled = false;
-    var applyBootPayload = function(assign) {
-      var commit = function() {
-        if (typeof assign === 'function') assign();
-        isLoading = false;
-        render();
+
+    function asObject(value) {
+      return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    }
+
+    function asNumber(value) {
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+      if (typeof value === 'string') {
+        const parsed = Number(value);
+        if (Number.isFinite(parsed)) return parsed;
+      }
+      return null;
+    }
+
+    function titleCase(value) {
+      return String(value || '')
+        .replace(/[_-]+/g, ' ')
+        .replace(/\b\w/g, (char) => char.toUpperCase())
+        .trim();
+    }
+
+    function pluralize(count, singular, plural = `${singular}s`) {
+      return `${count} ${count === 1 ? singular : plural}`;
+    }
+
+    function formatCurrency(value) {
+      const number = asNumber(value);
+      if (number === null) return null;
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        maximumFractionDigits: number >= 100 ? 0 : 2,
+      }).format(number);
+    }
+
+    function formatCompactCurrency(value) {
+      const number = asNumber(value);
+      if (number === null) return '0';
+      if (Math.abs(number) < 1000) return formatCurrency(number) || '0';
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        notation: 'compact',
+        maximumFractionDigits: 1,
+      }).format(number);
+    }
+
+    function formatDayLabel(value) {
+      const date = value ? new Date(value) : new Date();
+      if (Number.isNaN(date.getTime())) return 'Morning Brief';
+      return date.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      });
+    }
+
+    function formatTimeLabel(value) {
+      const date = value ? new Date(value) : new Date();
+      if (Number.isNaN(date.getTime())) return 'Generated recently';
+      return `Generated ${date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+      })}`;
+    }
+
+    function extractMetricDisplay(rawValue) {
+      const raw = String(rawValue || '').trim();
+      if (!raw) return { valueText: 'N/A', suffix: '', numeric: null };
+      const match = raw.match(/^(-?[\d,.]+)/);
+      if (!match) return { valueText: raw, suffix: '', numeric: null };
+      const numeric = Number(match[1].replace(/,/g, ''));
+      return {
+        valueText: match[1],
+        suffix: raw.slice(match[1].length).trim(),
+        numeric: Number.isFinite(numeric) ? numeric : null,
       };
-      if (loadingSettled) {
-        commit();
-        return;
+    }
+
+    function compactList(items, maxItems = 2) {
+      const filtered = asArray(items)
+        .map((item) => String(item || '').trim())
+        .filter(Boolean);
+      if (!filtered.length) return '';
+      const visible = filtered.slice(0, maxItems);
+      const remainder = filtered.length - visible.length;
+      if (remainder > 0) {
+        visible.push(`+${remainder} more`);
       }
-      loadingSettled = true;
-      var delay = Math.max(0, MIN_LOADING_MS - (Date.now() - bootStartedAt));
-      window.setTimeout(commit, delay);
-    };
-    var formatCurrency = (value) => {
-      var num = Number(value);
-      if (!Number.isFinite(num)) return null;
-      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: num >= 100 ? 0 : 2 }).format(num);
-    };
-    var formatDate = (value) => {
-      var date = value ? new Date(value) : new Date();
-      if (isNaN(date.getTime())) date = new Date();
-      return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-    };
-    var normalizeBrief = (payload) => {
-      if (!payload) return null;
-      var sessionSummary = payload.session_summary && typeof payload.session_summary === 'object' ? payload.session_summary : {};
-      var valueDashboard = payload.value_dashboard && typeof payload.value_dashboard === 'object' ? payload.value_dashboard : {};
-      var workspacePulse = payload.workspace_pulse && typeof payload.workspace_pulse === 'object' ? payload.workspace_pulse : {};
-      var workspaceStats = workspacePulse.stats && typeof workspacePulse.stats === 'object' ? workspacePulse.stats : {};
-      var topReceipts = Array.isArray(payload.top_receipts) ? payload.top_receipts : [];
-      var artifactsProduced = Array.isArray(payload.artifacts_produced) ? payload.artifacts_produced : [];
-      var reviewItems = Array.isArray(payload.review_items) ? payload.review_items : [];
-      var exceptions = Array.isArray(payload.exceptions) ? payload.exceptions : [];
-      var nextActions = Array.isArray(payload.next_actions)
-        ? payload.next_actions
-        : Array.isArray(payload.recommended_actions)
-        ? payload.recommended_actions
-        : [];
-      var pendingDecisions = Number(
-        payload.pending_decisions ??
-        workspaceStats.pendingDecisions ??
-        workspaceStats.pending_decisions
+      return visible.join(' / ');
+    }
+
+    function artifactUrl(artifact) {
+      const row = asObject(artifact);
+      if (typeof row.primary_url === 'string' && row.primary_url) return row.primary_url;
+      if (typeof row.live_url === 'string' && row.live_url) return row.live_url;
+      return null;
+    }
+
+    function artifactLabel(artifact, fallback) {
+      const row = asObject(artifact);
+      return typeof row.primary_label === 'string' && row.primary_label
+        ? row.primary_label
+        : fallback;
+    }
+
+    function isReviewable(artifact, reviewIds) {
+      const row = asObject(artifact);
+      const status = String(row.status || '').toLowerCase();
+      return (
+        reviewIds.has(String(row.id || '')) ||
+        status === 'draft' ||
+        status === 'in_review' ||
+        status === 'review'
       );
-      var activeInitiatives = Number(
-        workspaceStats.activeInitiatives ??
-        workspaceStats.active_initiatives
-      );
-      var blockedWork = Number(
-        payload.blocked_workstreams ??
-        payload.blocked_items ??
-        workspaceStats.blockedWorkstreams ??
-        workspaceStats.blocked_workstreams
-      );
-      var summary = typeof payload.summary === 'string' && payload.summary.trim()
-        ? payload.summary.trim()
-        : typeof payload.message === 'string' && payload.message.trim()
-        ? payload.message.trim()
-        : null;
-      if (!summary) {
-        var sessionType = typeof sessionSummary.session_type === 'string' ? sessionSummary.session_type : 'recent';
-        var receiptsProduced = Number(sessionSummary.receipts_produced);
-        var completed = Number(sessionSummary.completed);
-        var failed = Number(sessionSummary.failed);
-        var clauses = [];
-        if (Number.isFinite(receiptsProduced)) clauses.push(receiptsProduced + ' receipt' + (receiptsProduced === 1 ? '' : 's') + ' produced');
-        if (Number.isFinite(completed)) clauses.push(completed + ' completed');
-        if (Number.isFinite(failed) && failed > 0) clauses.push(failed + ' flagged');
-        if (!clauses.length) clauses.push('continuity signals updated');
-        summary = titleCase(sessionType) + ' session: ' + clauses.join(', ') + '.';
+    }
+
+    function buildHeroMetric(roiDisplay, valueDelivered) {
+      const roiParts = extractMetricDisplay(roiDisplay);
+      if (roiParts.numeric !== null) {
+        return {
+          label: 'ROI this cycle',
+          valueText: roiParts.valueText,
+          suffix: roiParts.suffix || '%',
+          numeric: roiParts.numeric,
+        };
       }
-      var priorities = Array.isArray(payload.top_priorities) ? payload.top_priorities.slice() : [];
+
+      const valueDisplay = formatCurrency(valueDelivered);
+      if (valueDisplay) {
+        return {
+          label: 'Value delivered',
+          valueText: valueDisplay,
+          suffix: '',
+          numeric: null,
+        };
+      }
+
+      return {
+        label: 'Signals captured',
+        valueText: '0',
+        suffix: '',
+        numeric: 0,
+      };
+    }
+
+    function openWidgetLink(url, event) {
+      if (!url) return false;
+      const protocol = detectProtocol();
+      if ((protocol === 'mcp-apps' || protocol === 'mcp-apps-sdk') && event) {
+        event.preventDefault();
+        window.parent.postMessage(
+          {
+            jsonrpc: '2.0',
+            id: Date.now(),
+            method: 'ui/open-link',
+            params: { url },
+          },
+          '*'
+        );
+        return false;
+      }
+      return true;
+    }
+
+    function normalizeBrief(payload) {
+      if (!payload || typeof payload !== 'object') return null;
+
+      const sessionSummary = asObject(payload.session_summary);
+      const valueDashboard = asObject(payload.value_dashboard);
+      const workspacePulse = asObject(payload.workspace_pulse);
+      const workspaceStats = asObject(workspacePulse.stats);
+      const topReceipts = asArray(payload.top_receipts);
+      const artifactsProduced = asArray(payload.artifacts_produced);
+      const reviewItems = asArray(payload.review_items);
+      const exceptions = asArray(payload.exceptions);
+      const nextActions = asArray(payload.next_actions).length
+        ? asArray(payload.next_actions)
+        : asArray(payload.recommended_actions);
+
+      let priorities = asArray(payload.top_priorities);
       if (!priorities.length && nextActions.length) {
         priorities = nextActions.slice(0, 3).map((action) => ({
           domain: action.domain || action.type || 'Execution',
           title: action.title || action.label || 'Recommended follow-up',
-          reason: action.reason || action.summary || action.message || 'OrgX flagged this as the next best move.'
+          reason:
+            action.reason ||
+            action.summary ||
+            action.message ||
+            'OrgX marked this as the next best move.',
         }));
       }
-      if (!priorities.length) {
+      if (!priorities.length && topReceipts.length) {
         priorities = topReceipts.slice(0, 3).map((receipt) => ({
           domain: 'Execution',
-          title: typeof receipt.intent === 'string' && receipt.intent.trim() ? receipt.intent.trim() : 'Recent execution receipt',
-          reason: formatCurrency(receipt.attributed_value_usd) ? 'Attributed value: ' + formatCurrency(receipt.attributed_value_usd) : 'Captured as part of the latest brief.'
+          title: receipt.intent || 'Recent execution receipt',
+          reason:
+            formatCurrency(receipt.attributed_value_usd)
+              ? `Attributed value: ${formatCurrency(receipt.attributed_value_usd)}`
+              : 'Captured as part of the latest brief.',
         }));
       }
-      var metrics = [
-        { label: 'Value delivered', value: formatCurrency(valueDashboard.value_delivered_usd) || 'N/A', copy: 'Attributed delivery from the recent autonomous window.' },
-        { label: 'ROI', value: typeof valueDashboard.roi_display === 'string' && valueDashboard.roi_display ? valueDashboard.roi_display : 'N/A', copy: 'Economic proof from the 30-day ledger.' },
-        Number.isFinite(pendingDecisions)
-          ? { label: 'Pending decisions', value: String(Math.max(0, pendingDecisions)), copy: 'Operator approvals still waiting in the current workspace.' }
-          : { label: 'Decisions resolved', value: Number.isFinite(Number(valueDashboard.decisions_resolved)) ? String(valueDashboard.decisions_resolved) : '0', copy: 'Approvals and corrections closed across the recent cycle.' },
-        Number.isFinite(activeInitiatives) && activeInitiatives > 0
-          ? { label: 'Active initiatives', value: String(activeInitiatives), copy: 'Initiatives still in flight across the workspace.' }
-          : { label: 'Completed this week', value: Number.isFinite(Number(valueDashboard.completed_this_week)) ? String(valueDashboard.completed_this_week) : '0', copy: 'Workstreams or initiatives closed in the current week.' }
-      ];
-      var attentionSignals = [];
-      if (Number.isFinite(pendingDecisions) && pendingDecisions > 0) {
+
+      const pendingDecisions = asNumber(
+        payload.pending_decisions ??
+          workspaceStats.pendingDecisions ??
+          workspaceStats.pending_decisions
+      ) || 0;
+      const blockedWork = asNumber(
+        payload.blocked_workstreams ??
+          payload.blocked_items ??
+          workspaceStats.blockedWorkstreams ??
+          workspaceStats.blocked_workstreams
+      ) || 0;
+      const activeInitiatives = asNumber(
+        workspaceStats.activeInitiatives ?? workspaceStats.active_initiatives
+      ) || 0;
+      const completedThisWeek = asNumber(valueDashboard.completed_this_week) || 0;
+      const initiativesCompleted = asNumber(valueDashboard.initiatives_completed) || 0;
+      const decisionsResolved = asNumber(valueDashboard.decisions_resolved) || 0;
+      const valueDelivered = asNumber(valueDashboard.value_delivered_usd);
+      const timeSaved = asNumber(valueDashboard.estimated_time_saved_hours);
+      const roiDisplay =
+        typeof valueDashboard.roi_display === 'string' && valueDashboard.roi_display
+          ? valueDashboard.roi_display
+          : 'N/A';
+
+      const reviewIds = new Set(
+        reviewItems.map((item) => String(asObject(item).id || '')).filter(Boolean)
+      );
+      const outputRows = artifactsProduced.length ? artifactsProduced : reviewItems;
+      const reviewableOutputs = outputRows.filter((artifact) =>
+        isReviewable(artifact, reviewIds)
+      );
+
+      const summary =
+        typeof payload.summary === 'string' && payload.summary.trim()
+          ? payload.summary.trim()
+          : typeof payload.message === 'string' && payload.message.trim()
+            ? payload.message.trim()
+            : `${titleCase(sessionSummary.session_type || 'recent')} session: ${pluralize(
+                asNumber(sessionSummary.receipts_produced) || 0,
+                'receipt'
+              )} produced, ${pluralize(
+                asNumber(sessionSummary.completed) || 0,
+                'completion'
+              )}, ${pluralize(asNumber(sessionSummary.failed) || 0, 'failure')}.`;
+
+      const attentionSignals = [];
+      if (pendingDecisions > 0) {
         attentionSignals.push({
-          title: pendingDecisions + ' pending decision' + (pendingDecisions === 1 ? '' : 's'),
-          description: 'Approvals are still waiting for an operator call before downstream execution can continue.'
+          tone: 'warning',
+          title: `${pluralize(pendingDecisions, 'pending decision')}`,
+          description:
+            'Operator approval is still required before downstream work can continue.',
+          meta: 'Decision queue',
         });
       }
-      if (Number.isFinite(blockedWork) && blockedWork > 0) {
+      if (blockedWork > 0) {
         attentionSignals.push({
-          title: blockedWork + ' blocked workstream' + (blockedWork === 1 ? '' : 's'),
-          description: 'Blocked execution surfaced in the workspace pulse and should be reviewed with the owning agent.'
+          tone: 'attention',
+          title: `${pluralize(blockedWork, 'blocked workstream')}`,
+          description:
+            'Execution is blocked in the latest workspace pulse and should be cleared today.',
+          meta: 'Workspace pulse',
         });
       }
       if (exceptions.length > 0) {
         attentionSignals.push({
-          title: exceptions.length + ' exception' + (exceptions.length === 1 ? '' : 's') + ' need review',
-          description: 'Guardrail, budget, or routing exceptions were captured in the latest autonomous session.'
+          tone: 'attention',
+          title: `${pluralize(exceptions.length, 'exception')} flagged`,
+          description:
+            compactList(
+              exceptions.map((item) => titleCase(item.exception_type || item.type || 'Review')),
+              3
+            ) || 'Guardrails or budget exceptions were recorded in the latest autonomous session.',
+          meta: 'Guardrails',
         });
       }
+
+      const reviewActionUrl =
+        artifactUrl(reviewItems[0]) || artifactUrl(reviewableOutputs[0]) || null;
+      const outputActionUrl =
+        artifactUrl(outputRows[0]) || reviewActionUrl || FALLBACK_REVIEW_URL;
+      const footerUrl = reviewActionUrl || outputActionUrl;
+
+      const actions = [];
       if (reviewItems.length > 0) {
-        attentionSignals.unshift({
-          title: reviewItems.length + ' artifact' + (reviewItems.length === 1 ? '' : 's') + ' need review',
-          description: 'Agent output is waiting on a founder or operator call before the next task can continue.'
+        actions.push({
+          tone: 'review',
+          icon: icons.eye(15),
+          title: `${pluralize(reviewItems.length, 'artifact')} need review`,
+          detail:
+            compactList(
+              reviewItems.map((item) => item.name || item.title || 'Review item'),
+              2
+            ) || 'Agent output is waiting for an operator call.',
+          cta: 'Review',
+          url: reviewActionUrl,
+          section: 'output',
         });
       }
+
+      if (pendingDecisions > 0 || blockedWork > 0 || exceptions.length > 0) {
+        actions.push({
+          tone: 'attention',
+          icon: icons.warning(15),
+          title:
+            pendingDecisions > 0
+              ? `${pluralize(pendingDecisions, 'decision')} need a call`
+              : blockedWork > 0
+                ? `${pluralize(blockedWork, 'blocked workstream')} need clearance`
+                : `${pluralize(exceptions.length, 'exception')} need attention`,
+          detail:
+            blockedWork > 0
+              ? `${pluralize(blockedWork, 'blocked workstream')} surfaced in the workspace pulse.`
+              : exceptions.length > 0
+                ? `${pluralize(exceptions.length, 'guardrail exception')} surfaced in the latest session.`
+                : 'Review the flagged items before the next autonomous run starts.',
+          cta: 'Resolve',
+          url: null,
+          section: 'attention',
+        });
+      }
+
       return {
-        date: formatDate(payload.generated_at || payload.created_at || (payload.workspace_pulse && payload.workspace_pulse.generatedAt)),
-        summary: summary,
-        metrics: metrics,
-        priorities: priorities,
-        exceptions: exceptions,
-        topReceipts: topReceipts,
-        artifactsProduced: artifactsProduced,
-        reviewItems: reviewItems,
-        attentionSignals: attentionSignals,
-        narrativeAvailable: typeof payload.brief_markdown === 'string' && payload.brief_markdown.trim().length > 0
+        dateLabel: formatDayLabel(payload.generated_at || payload.created_at || workspacePulse.generatedAt),
+        timeLabel: formatTimeLabel(payload.generated_at || payload.created_at || workspacePulse.generatedAt),
+        summary,
+        heroMetric: buildHeroMetric(roiDisplay, valueDelivered),
+        heroSupportLine: valueDelivered
+          ? `${formatCurrency(valueDelivered)} value delivered`
+          : 'Value signals updated',
+        heroSupportMeta: timeSaved
+          ? `${timeSaved.toFixed(timeSaved >= 10 ? 0 : 1)} hours saved modeled`
+          : decisionsResolved > 0
+            ? `${pluralize(decisionsResolved, 'decision')} resolved in 30d`
+            : '30d economic proof ready',
+        heroPills: [
+          `${pluralize(outputRows.length, 'output')} delivered`,
+          `${pluralize(decisionsResolved || pendingDecisions, 'decision')} made`,
+          activeInitiatives > 0
+            ? `${pluralize(activeInitiatives, 'active initiative')}`
+            : completedThisWeek > 0
+              ? `${pluralize(completedThisWeek, 'completion')} this week`
+              : `${pluralize(initiativesCompleted, 'initiative')} closed`,
+        ].filter(Boolean),
+        actions,
+        priorities,
+        outputRows,
+        topReceipts,
+        attentionSignals,
+        reviewItems,
+        exceptions,
+        narrativeAvailable:
+          typeof payload.brief_markdown === 'string' && payload.brief_markdown.trim().length > 0,
+        footerUrl,
+        footerLabel: reviewActionUrl ? 'Open review queue' : 'Open latest output',
+        counts: {
+          priorities: priorities.length,
+          output: outputRows.length,
+          receipts: topReceipts.length,
+          attention: attentionSignals.length,
+        },
+        metricDisplays: {
+          priorities: String(priorities.length || 0),
+          output: String(outputRows.length || 0),
+          receipts: topReceipts.length
+            ? formatCompactCurrency(
+                topReceipts.reduce((total, receipt) => {
+                  return total + (asNumber(receipt.attributed_value_usd) || 0);
+                }, 0)
+              )
+            : '0',
+          attention: String(attentionSignals.length || 0),
+        },
       };
-    };
-    var titleCase = value => String(value || '').replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    var artifactLink = function(artifact, fallbackUrl) {
-      if (artifact && typeof artifact.primary_url === 'string' && artifact.primary_url) return artifact.primary_url;
-      if (artifact && typeof artifact.live_url === 'string' && artifact.live_url) return artifact.live_url;
-      return fallbackUrl;
-    };
-    var artifactLinkLabel = function(artifact, fallbackLabel) {
-      return escapeHtml((artifact && typeof artifact.primary_label === 'string' && artifact.primary_label) || fallbackLabel);
-    };
-    var artifactIcon = function(artifactType, reviewMode) {
-      if (reviewMode) return icons.eye(16);
-      var type = String(artifactType || '').toLowerCase();
-      if (type.indexOf('report') >= 0 || type.indexOf('plan') >= 0) return icons.clipboard(16);
-      if (type.indexOf('copy') >= 0 || type.indexOf('content') >= 0) return icons.file(16);
-      return icons.layers(16);
-    };
+    }
 
-    var render = () => {
-      if(isLoading) return;
-      var normalized = normalizeBrief(brief);
-      if(!normalized) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.sun(24)}</div><div class="empty-title">No brief available</div><div class="empty-desc">Your morning briefing has not been generated yet.</div></div>`); return; }
+    function sectionAvailability(brief) {
+      return {
+        priorities: brief.priorities.length > 0,
+        output: brief.outputRows.length > 0,
+        receipts: brief.topReceipts.length > 0,
+        attention: brief.attentionSignals.length > 0 || brief.narrativeAvailable,
+      };
+    }
 
-      const metricsHtml = normalized.metrics.map((metric) => `
-        <div class="metric-card">
-          <div class="ox-eyebrow">${escapeHtml(metric.label)}</div>
-          <div class="metric-value">${escapeHtml(metric.value)}</div>
-          <div class="metric-copy">${escapeHtml(metric.copy)}</div>
-        </div>
-      `).join('');
-      const prioritiesHtml = normalized.priorities.map((p, i) => {
-        var domain = String(p.domain || 'execution').toLowerCase();
-        var accent = domain === 'product' ? 'lime' : domain === 'engineering' ? 'teal' : domain === 'marketing' ? 'warning' : domain === 'design' ? 'iris' : domain === 'sales' ? 'danger' : 'teal';
-        return `
-          <div class="priority-item animate-in" style="animation-delay: ${0.1 * i}s" data-domain="${escapeHtml(domain)}">
-            <div class="p-domain" style="color: var(--ox-${accent})"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor;"></span>${escapeHtml(titleCase(p.domain || 'Execution'))}</div>
-            <div class="p-title">${escapeHtml(p.title || 'Priority item')}</div>
-            <div class="p-reason">${escapeHtml(p.reason || 'No rationale provided.')}</div>
+    function ensureActiveSection(brief) {
+      const availability = sectionAvailability(brief);
+      if (state.activeSection && availability[state.activeSection]) return;
+      state.activeSection =
+        ['priorities', 'output', 'receipts', 'attention'].find(
+          (section) => availability[section]
+        ) || null;
+    }
+
+    function renderSkeleton() {
+      content.innerHTML = `
+        <div class="skeleton-shell animate-in">
+          <div class="skeleton-hero">
+            <div class="skeleton-line" style="width: 132px; height: 10px;"></div>
+            <div style="display: flex; align-items: flex-end; gap: 18px; margin-top: 22px; flex-wrap: wrap;">
+              <div class="skeleton-line" style="width: 164px; height: 58px;"></div>
+              <div style="display: flex; flex-direction: column; gap: 8px; min-width: 120px;">
+                <div class="skeleton-line" style="width: 128px; height: 14px;"></div>
+                <div class="skeleton-line" style="width: 144px; height: 12px;"></div>
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 18px;">
+              <div class="skeleton-line" style="width: 100%; height: 12px;"></div>
+              <div class="skeleton-line" style="width: 86%; height: 12px;"></div>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px;">
+              <div class="skeleton-line" style="width: 112px; height: 28px;"></div>
+              <div class="skeleton-line" style="width: 104px; height: 28px;"></div>
+              <div class="skeleton-line" style="width: 122px; height: 28px;"></div>
+            </div>
           </div>
-        `;
-      }).join('');
-      const receiptsHtml = normalized.topReceipts.slice(0, 2).map((receipt) => `
-        <div class="priority-item" data-domain="engineering">
-          <div class="p-domain" style="color: var(--ox-teal)"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor;"></span>Receipt</div>
-          <div class="p-title">${escapeHtml(receipt.intent || 'Execution receipt')}</div>
-          <div class="p-reason">${escapeHtml(formatCurrency(receipt.attributed_value_usd) ? 'Attributed value: ' + formatCurrency(receipt.attributed_value_usd) : 'Captured in the most recent brief.')}</div>
+          <div class="skeleton-actions">
+            <div class="skeleton-action-card">
+              <div class="skeleton-line" style="width: 65%; height: 12px; margin-bottom: 8px;"></div>
+              <div class="skeleton-line" style="width: 90%; height: 10px;"></div>
+            </div>
+            <div class="skeleton-action-card">
+              <div class="skeleton-line" style="width: 58%; height: 12px; margin-bottom: 8px;"></div>
+              <div class="skeleton-line" style="width: 84%; height: 10px;"></div>
+            </div>
+          </div>
+          <div class="skeleton-rail">
+            ${Array.from({ length: 4 })
+              .map(
+                () => `
+                  <div class="skeleton-rail-cell">
+                    <div class="skeleton-line" style="width: 18px; height: 18px; margin: 0 auto 10px;"></div>
+                    <div class="skeleton-line" style="width: 56px; height: 18px; margin: 0 auto 8px;"></div>
+                    <div class="skeleton-line" style="width: 44px; height: 8px; margin: 0 auto;"></div>
+                  </div>
+                `
+              )
+              .join('')}
+          </div>
+          <div class="skeleton-section">
+            <div class="skeleton-line" style="width: 168px; height: 12px; margin-bottom: 14px;"></div>
+            <div class="skeleton-row">
+              <div class="skeleton-line" style="width: 3px; height: 44px; flex-shrink: 0;"></div>
+              <div style="display: flex; flex-direction: column; gap: 8px; flex: 1;">
+                <div class="skeleton-line" style="width: 76px; height: 10px;"></div>
+                <div class="skeleton-line" style="width: 74%; height: 14px;"></div>
+                <div class="skeleton-line" style="width: 92%; height: 11px;"></div>
+              </div>
+            </div>
+            <div class="skeleton-row">
+              <div class="skeleton-line" style="width: 3px; height: 44px; flex-shrink: 0;"></div>
+              <div style="display: flex; flex-direction: column; gap: 8px; flex: 1;">
+                <div class="skeleton-line" style="width: 70px; height: 10px;"></div>
+                <div class="skeleton-line" style="width: 66%; height: 14px;"></div>
+                <div class="skeleton-line" style="width: 88%; height: 11px;"></div>
+              </div>
+            </div>
+          </div>
         </div>
-      `).join('');
-      const artifactOutputHtml = normalized.artifactsProduced.slice(0, 4).map((artifact) => {
-        var title = escapeHtml(artifact.title || artifact.name || 'Untitled artifact');
-        var type = escapeHtml(String(artifact.artifact_type || artifact.type || 'artifact').replace(/_/g, '.'));
-        var status = escapeHtml(String(artifact.status || 'draft').replace(/_/g, ' '));
-        var statusClass = 'status-' + String(artifact.status || 'draft').replace(/[^a-zA-Z0-9_-]/g, '_');
-        var author = escapeHtml(artifact.created_by_name || artifact.created_by || 'OrgX agent');
-        var summary = escapeHtml(artifact.summary || artifact.description || '');
-        var primaryUrl = artifactLink(artifact, 'https://useorgx.com/live?view=mission-control');
-        var primaryLabel = artifactLinkLabel(artifact, 'Open artifact');
-        return `
-          <div class="artifact-output-item">
-            <div class="artifact-output-main">
-              <div class="artifact-output-icon">${artifactIcon(artifact.artifact_type, false)}</div>
-              <div class="artifact-output-body">
-                <div class="artifact-output-title">${title}</div>
-                <div class="artifact-output-copy">${summary || 'Captured as proof-of-work from the latest execution window.'}</div>
-                <div class="artifact-output-meta">
-                  <span class="artifact-badge">${type}</span>
-                  <span class="artifact-badge">${author}</span>
+      `;
+    }
+
+    function renderEmptyState() {
+      content.innerHTML = `
+        <div class="empty-state animate-in">
+          <div class="empty-icon">${icons.status(24)}</div>
+          <div class="empty-title">No brief available</div>
+          <div class="empty-desc">Your morning briefing has not been generated yet. Run the brief again after the next autonomous session lands.</div>
+        </div>
+      `;
+    }
+
+    function renderPriorityRows(brief) {
+      if (!brief.priorities.length) {
+        return '<div class="app-list-row-detail">No priority follow-ups were captured in this brief.</div>';
+      }
+
+      return brief.priorities
+        .map((priority) => {
+          const domain = String(priority.domain || 'Execution').toLowerCase();
+          const colors = {
+            engineering: '#06b6d4',
+            marketing: '#f97316',
+            product: '#16a34a',
+            design: '#8b5cf6',
+            sales: '#ef4444',
+            execution: 'var(--ox-primary)',
+          };
+          const priorityColor = colors[domain] || 'var(--ox-primary)';
+          return `
+            <div class="priority-row">
+              <div class="priority-bar" style="--priority-color:${priorityColor};"></div>
+              <div class="priority-body">
+                <div class="priority-domain" style="--priority-color:${priorityColor};">${escapeHtml(
+                  titleCase(priority.domain || 'Execution')
+                )}</div>
+                <div class="priority-title">${escapeHtml(
+                  priority.title || 'Priority item'
+                )}</div>
+                <div class="priority-note">${escapeHtml(
+                  priority.reason || 'No rationale provided.'
+                )}</div>
+              </div>
+            </div>
+          `;
+        })
+        .join('');
+    }
+
+    function renderOutputRows(brief) {
+      if (!brief.outputRows.length) {
+        return '<div class="app-list-row-detail">No overnight output was attached to this brief.</div>';
+      }
+
+      const reviewIds = new Set(
+        brief.reviewItems.map((item) => String(asObject(item).id || '')).filter(Boolean)
+      );
+
+      return brief.outputRows
+        .map((artifact) => {
+          const row = asObject(artifact);
+          const status = titleCase(String(row.status || 'draft'));
+          const url = artifactUrl(row);
+          const reviewable = isReviewable(row, reviewIds);
+          const type = titleCase(String(row.artifact_type || row.type || 'artifact')).replace(
+            /\s+/g,
+            '.'
+          );
+          const summary =
+            row.summary ||
+            row.description ||
+            (reviewable
+              ? 'Ready for an operator review before execution continues.'
+              : 'Captured as proof from the latest autonomous run.');
+          const actionLabel = artifactLabel(row, reviewable ? 'Review' : 'Open');
+
+          return `
+            <div class="app-list-row">
+              <div class="app-list-row-body">
+                <div class="app-list-row-title">${escapeHtml(
+                  row.title || row.name || 'Untitled artifact'
+                )}</div>
+                <div class="app-list-row-detail">${escapeHtml(summary)}</div>
+                <div class="output-meta">
+                  <span class="output-chip">${escapeHtml(type)}</span>
+                  <span class="output-chip">${escapeHtml(
+                    row.created_by_name || row.created_by || 'OrgX agent'
+                  )}</span>
                 </div>
               </div>
+              ${
+                reviewable && url
+                  ? `<button type="button" class="output-link focusable" data-action="open-link" data-url="${escapeHtml(url)}">${escapeHtml(
+                      actionLabel
+                    )}</button>`
+                  : `<span class="output-status" data-tone="${
+                      reviewable ? 'review' : 'approved'
+                    }">${escapeHtml(reviewable ? 'Review' : status)}</span>`
+              }
             </div>
-            <div class="artifact-actions">
-              <div class="artifact-badge ${statusClass}">${status}</div>
-              <a href="${primaryUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(primaryUrl))}, event)' class="artifact-link">${icons.external(14)} ${primaryLabel}</a>
-            </div>
-          </div>
-        `;
-      }).join('');
-      const reviewItemsHtml = normalized.reviewItems.slice(0, 3).map((artifact) => {
-        var title = escapeHtml(artifact.title || artifact.name || 'Review item');
-        var type = escapeHtml(String(artifact.artifact_type || artifact.type || 'artifact').replace(/_/g, '.'));
-        var reviewUrl = artifactLink(artifact, 'https://useorgx.com/live?view=mission-control');
-        var reviewLabel = 'Review in OrgX';
-        return `
-          <div class="artifact-output-item">
-            <div class="artifact-output-main">
-              <div class="artifact-output-icon artifact-output-icon--review">${artifactIcon(artifact.artifact_type, true)}</div>
-              <div class="artifact-output-body">
-                <div class="artifact-output-title">${title}</div>
-                <div class="artifact-output-copy">${type} ready for an operator call before execution continues.</div>
-              </div>
-            </div>
-            <a href="${reviewUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(reviewUrl))}, event)' class="review-link">${icons.eye(14)} ${reviewLabel}</a>
-          </div>
-        `;
-      }).join('');
-      const exceptionsHtml = normalized.exceptions.slice(0, 4).map((item) => `<span class="exception-pill">${escapeHtml(titleCase(item.exception_type || item.type || 'Review'))}</span>`).join('');
-      const attentionHtml = (normalized.attentionSignals || []).map((item) => `
-        <div class="signal-item">
-          <div class="signal-dot"></div>
-          <div class="signal-copy">
-            <div class="signal-title">${escapeHtml(item.title)}</div>
-            <div class="signal-desc">${escapeHtml(item.description)}</div>
-          </div>
-        </div>
-      `).join('');
+          `;
+        })
+        .join('');
+    }
 
-      injectHtml(`
-        <div class="ox-card animate-in">
-            <div class="ox-card-inner">
-              <div class="widget-hero" style="margin-bottom: 32px; padding-bottom: 24px;">
-                <div class="widget-hero-copy">
-                  <div class="widget-kicker" style="color: var(--ox-primary); font-weight: 700;">Executive Summary</div>
-                  <div class="widget-title-lg" style="font-size: 1.5rem; margin-top: 8px;">The team completed the mission and prepped the next one.</div>
-                  <div class="widget-subtitle" style="font-size: 1.05rem; margin-top: 12px; color: var(--ox-text-muted);">
-                    <strong style="color: var(--ox-text);">${normalized.artifactsProduced.length || 6} outputs delivered.</strong> 
-                    <strong style="color: var(--ox-text);">${normalized.metrics.find(m => m.label === 'Decisions resolved')?.value || 3} decisions made.</strong> 
-                    <strong style="color: var(--ox-text);">${formatCurrency(normalized.metrics.find(m => m.label === 'Value delivered')?.value) || '$4,200'} in estimated time saved.</strong> 
-                    Ready for the next one?
+    function renderReceiptRows(brief) {
+      if (!brief.topReceipts.length) {
+        return '<div class="app-list-row-detail">No attributed receipts were included in this cycle.</div>';
+      }
+
+      return brief.topReceipts
+        .map((receipt) => {
+          const value = formatCurrency(receipt.attributed_value_usd) || 'Captured';
+          return `
+            <div class="app-list-row receipt-row">
+              <div class="app-list-row-body">
+                <div class="app-list-row-title">${escapeHtml(
+                  receipt.intent || 'Execution receipt'
+                )}</div>
+              </div>
+              <div class="receipt-value">${escapeHtml(value)}</div>
+            </div>
+          `;
+        })
+        .join('');
+    }
+
+    function renderAttentionRows(brief) {
+      const rows = brief.attentionSignals
+        .map((item) => {
+          const tone = item.tone === 'warning' ? 'review' : 'attention';
+          return `
+            <div class="app-list-row attention-row" data-tone="${tone}">
+              <div class="attention-main">
+                <div class="attention-dot"></div>
+                <div class="app-list-row-body">
+                  <div class="app-list-row-title">${escapeHtml(item.title)}</div>
+                  <div class="app-list-row-detail">${escapeHtml(item.description)}</div>
+                </div>
+              </div>
+              <div class="attention-chip">${escapeHtml(item.meta || 'Attention')}</div>
+            </div>
+          `;
+        })
+        .join('');
+
+      const narrative = brief.narrativeAvailable
+        ? `<div class="narrative-note">A narrative brief is available in the payload for downstream clients that want the full written summary.</div>`
+        : '';
+
+      if (!rows && !narrative) {
+        return '<div class="app-list-row-detail">No escalations or review blockers are active right now.</div>';
+      }
+
+      return rows + narrative;
+    }
+
+    function renderBrief(brief) {
+      ensureActiveSection(brief);
+
+      const heroMetric = brief.heroMetric;
+      const outputAction = brief.actions[0];
+      const attentionAction = brief.actions[1];
+
+      content.innerHTML = `
+        <div class="brief-shell widget-shell-card animate-in">
+          <div class="ox-card app-flat-card">
+            <div class="brief-hero">
+              <div class="hero-kicker">
+                <span class="hero-kicker-dot"></span>
+                Morning Brief / ${escapeHtml(brief.dateLabel)}
+              </div>
+              <div class="hero-row">
+                <div class="hero-value-block">
+                  <div class="hero-value-line">
+                    <div class="hero-value" id="hero-value">${escapeHtml(heroMetric.valueText)}</div>
+                    ${
+                      heroMetric.suffix
+                        ? `<div class="hero-value-suffix">${escapeHtml(heroMetric.suffix)}</div>`
+                        : ''
+                    }
                   </div>
                 </div>
-              </div>
-
-              <div class="metrics-grid">${metricsHtml}</div>
-
-              <div class="widget-section-block">
-                <div class="widget-section-header">
-                  <span class="widget-section-icon">${icons.layers(15)}</span>
-                  <div class="widget-section-title">Top priorities</div>
-                  <div class="widget-section-rule"></div>
+                <div class="hero-context">
+                  ${escapeHtml(heroMetric.label)}<br />
+                  <strong>${escapeHtml(brief.heroSupportLine)}</strong><br />
+                  ${escapeHtml(brief.heroSupportMeta)}
                 </div>
-                <div class="priority-list">${prioritiesHtml || `<div style="padding: 16px; color: var(--ox-text-muted);"><div class="ox-text">No priority follow-ups were captured in this brief.</div></div>`}</div>
               </div>
+              <div class="hero-summary-text">${escapeHtml(brief.summary)}</div>
+              <div class="hero-pill-row">
+                ${brief.heroPills
+                  .map((pill) => `<span class="widget-note-pill hero-pill">${escapeHtml(pill)}</span>`)
+                  .join('')}
+              </div>
+            </div>
 
-            ${receiptsHtml ? `
-              <div class="widget-section-block">
-                <div class="widget-section-header">
-                  <span class="widget-section-icon">${icons.clipboard(15)}</span>
-                  <div class="widget-section-title">Top receipts</div>
-                  <div class="widget-section-rule"></div>
-                </div>
-                <div class="priority-list">${receiptsHtml}</div>
-              </div>
-            ` : ''}
+            ${
+              brief.actions.length
+                ? `
+                  <div class="action-strip app-action-stack">
+                    ${brief.actions
+                      .map((action) => {
+                        const href = action.url || `#section-${action.section}`;
+                        const dataAction = action.url ? 'open-link' : 'open-section';
+                        const extraAttrs = action.url
+                          ? `data-url="${escapeHtml(action.url)}"`
+                          : `data-section="${escapeHtml(action.section)}"`;
+                        return `
+                          <a href="${escapeHtml(href)}" class="action-card app-action-card focusable" data-tone="${escapeHtml(
+                            action.tone
+                          )}" data-action="${dataAction}" ${extraAttrs}>
+                            <div class="app-action-card-icon">${action.icon}</div>
+                            <div class="app-action-card-body">
+                              <div class="app-action-card-title">${escapeHtml(action.title)}</div>
+                              <div class="app-action-card-detail">${escapeHtml(action.detail)}</div>
+                            </div>
+                            <span class="app-action-card-cta">${escapeHtml(action.cta)} ${icons.chevronRight(12)}</span>
+                          </a>
+                        `;
+                      })
+                      .join('')}
+                  </div>
+                `
+                : ''
+            }
 
-            ${artifactOutputHtml ? `
-              <div class="widget-section-block">
-                <div class="widget-section-header">
-                  <span class="widget-section-icon">${icons.file(15)}</span>
-                  <div class="widget-section-title">Overnight output</div>
-                  <div class="widget-section-rule"></div>
-                </div>
-                <div class="artifact-output-grid">${artifactOutputHtml}</div>
-              </div>
-            ` : ''}
+            <div class="metric-rail app-metric-rail">
+              <button type="button" class="app-metric-button focusable" data-action="open-section" data-section="priorities" aria-pressed="${
+                state.activeSection === 'priorities'
+              }">
+                <span class="metric-icon">${icons.flag(15)}</span>
+                <span class="metric-value">${escapeHtml(brief.metricDisplays.priorities)}</span>
+                <span class="metric-label">Priorities</span>
+              </button>
+              <button type="button" class="app-metric-button focusable" data-action="open-section" data-section="output" aria-pressed="${
+                state.activeSection === 'output'
+              }">
+                <span class="metric-icon">${icons.document(15)}</span>
+                <span class="metric-value">${escapeHtml(brief.metricDisplays.output)}</span>
+                <span class="metric-label">Output</span>
+              </button>
+              <button type="button" class="app-metric-button focusable" data-action="open-section" data-section="receipts" aria-pressed="${
+                state.activeSection === 'receipts'
+              }">
+                <span class="metric-icon">${icons.chart(15)}</span>
+                <span class="metric-value">${escapeHtml(brief.metricDisplays.receipts)}</span>
+                <span class="metric-label">Receipts</span>
+              </button>
+              <button type="button" class="app-metric-button focusable" data-action="open-section" data-section="attention" aria-pressed="${
+                state.activeSection === 'attention'
+              }">
+                <span class="metric-icon">${icons.warning(15)}</span>
+                <span class="metric-value">${escapeHtml(brief.metricDisplays.attention)}</span>
+                <span class="metric-label">Attention</span>
+              </button>
+            </div>
 
-            ${reviewItemsHtml ? `
-              <div class="widget-section-block">
-                <div class="widget-section-header">
-                  <span class="widget-section-icon">${icons.eye(15)}</span>
-                  <div class="widget-section-title">Needs your review</div>
-                  <div class="widget-section-rule"></div>
-                </div>
-                <div class="artifact-output-grid">${reviewItemsHtml}</div>
+            <section class="brief-section app-accordion-section ${
+              state.activeSection === 'priorities' ? 'is-open' : ''
+            }" id="section-priorities">
+              <button type="button" class="app-accordion-trigger focusable" data-action="toggle-section" data-section="priorities">
+                <span class="app-accordion-trigger-left">
+                  <span class="brief-section-icon">${icons.flag(12)}</span>
+                  <span class="app-accordion-trigger-title">Top Priorities</span>
+                  <span class="app-accordion-trigger-badge">${escapeHtml(
+                    String(brief.counts.priorities)
+                  )}</span>
+                </span>
+                <span class="app-accordion-chevron">${icons.chevronDown(14)}</span>
+              </button>
+              <div class="app-accordion-body">
+                <div class="priority-list">${renderPriorityRows(brief)}</div>
               </div>
-            ` : ''}
+            </section>
 
-            ${attentionHtml || exceptionsHtml || normalized.narrativeAvailable ? `
-              <div class="widget-section-block">
-                <div class="widget-section-header">
-                  <span class="widget-section-icon">${icons.alert(15)}</span>
-                  <div class="widget-section-title">Needs attention</div>
-                  <div class="widget-section-rule"></div>
-                </div>
-                ${attentionHtml ? `<div class="signal-list">${attentionHtml}</div>` : ''}
-                ${exceptionsHtml ? `<div class="exception-list">${exceptionsHtml}</div>` : ''}
-                ${normalized.narrativeAvailable ? `<div class="brief-note" style="margin-top: 12px; margin-bottom: 0;">A narrative brief is available in the payload for downstream clients that want the full written summary.</div>` : ''}
+            <section class="brief-section app-accordion-section ${
+              state.activeSection === 'output' ? 'is-open' : ''
+            }" id="section-output">
+              <button type="button" class="app-accordion-trigger focusable" data-action="toggle-section" data-section="output">
+                <span class="app-accordion-trigger-left">
+                  <span class="brief-section-icon">${icons.document(12)}</span>
+                  <span class="app-accordion-trigger-title">Overnight Output</span>
+                  <span class="app-accordion-trigger-badge">${escapeHtml(
+                    String(brief.counts.output)
+                  )}</span>
+                </span>
+                <span class="app-accordion-chevron">${icons.chevronDown(14)}</span>
+              </button>
+              <div class="app-accordion-body">
+                <div class="output-list app-list-stack">${renderOutputRows(brief)}</div>
               </div>
-            ` : ''}
+            </section>
+
+            <section class="brief-section app-accordion-section ${
+              state.activeSection === 'receipts' ? 'is-open' : ''
+            }" id="section-receipts">
+              <button type="button" class="app-accordion-trigger focusable" data-action="toggle-section" data-section="receipts">
+                <span class="app-accordion-trigger-left">
+                  <span class="brief-section-icon">${icons.chart(12)}</span>
+                  <span class="app-accordion-trigger-title">Value Receipts</span>
+                  <span class="app-accordion-trigger-badge">${escapeHtml(
+                    brief.metricDisplays.receipts
+                  )}</span>
+                </span>
+                <span class="app-accordion-chevron">${icons.chevronDown(14)}</span>
+              </button>
+              <div class="app-accordion-body">
+                <div class="receipt-list app-list-stack">${renderReceiptRows(brief)}</div>
+              </div>
+            </section>
+
+            <section class="brief-section app-accordion-section ${
+              state.activeSection === 'attention' ? 'is-open' : ''
+            }" id="section-attention">
+              <button type="button" class="app-accordion-trigger focusable" data-action="toggle-section" data-section="attention">
+                <span class="app-accordion-trigger-left">
+                  <span class="brief-section-icon">${icons.warning(12)}</span>
+                  <span class="app-accordion-trigger-title">Needs Attention</span>
+                  <span class="app-accordion-trigger-badge">${escapeHtml(
+                    String(brief.counts.attention)
+                  )}</span>
+                </span>
+                <span class="app-accordion-chevron">${icons.chevronDown(14)}</span>
+              </button>
+              <div class="app-accordion-body">
+                <div class="attention-list app-list-stack">${renderAttentionRows(brief)}</div>
+              </div>
+            </section>
+
+            <div class="brief-footer">
+              <span class="footer-time">${escapeHtml(brief.timeLabel)}</span>
+              ${
+                brief.footerUrl
+                  ? `<a href="${escapeHtml(
+                      brief.footerUrl
+                    )}" class="footer-link focusable" data-action="open-link" data-url="${escapeHtml(
+                      brief.footerUrl
+                    )}">${escapeHtml(brief.footerLabel)} ${icons.link(11)}</a>`
+                  : ''
+              }
             </div>
           </div>
         </div>
-      `);
-    };
+      `;
 
-    if(isDemo) applyBootPayload();
-    else initWidget({ render: d => { applyBootPayload(function(){ if(d) brief = d; }); } });
+      animateHeroValue(heroMetric);
+    }
+
+    function animateHeroValue(metric) {
+      const el = document.getElementById('hero-value');
+      if (!el || metric.numeric === null || !Number.isFinite(metric.numeric)) return;
+
+      const target = metric.numeric;
+      const suffix = metric.suffix || '';
+      const duration = 1200;
+      let start = null;
+
+      function step(timestamp) {
+        if (!start) start = timestamp;
+        const progress = Math.min((timestamp - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = Math.round(eased * target);
+        el.textContent = current.toLocaleString('en-US');
+        if (progress < 1) {
+          window.requestAnimationFrame(step);
+        }
+      }
+
+      el.textContent = '0';
+      window.setTimeout(() => {
+        window.requestAnimationFrame(step);
+      }, 180);
+
+      const suffixEl = document.querySelector('.hero-value-suffix');
+      if (suffixEl) suffixEl.textContent = suffix;
+    }
+
+    function render() {
+      if (state.isLoading) {
+        renderSkeleton();
+        return;
+      }
+
+      const brief = normalizeBrief(state.brief);
+      if (!brief) {
+        renderEmptyState();
+        return;
+      }
+
+      renderBrief(brief);
+    }
+
+    function handleActionClick(event) {
+      const trigger = event.target.closest('[data-action]');
+      if (!trigger) return;
+
+      const action = trigger.dataset.action;
+      if (action === 'open-section') {
+        event.preventDefault();
+        state.activeSection = trigger.dataset.section || state.activeSection;
+        render();
+        return;
+      }
+
+      if (action === 'toggle-section') {
+        event.preventDefault();
+        const section = trigger.dataset.section;
+        state.activeSection = state.activeSection === section ? null : section;
+        render();
+        return;
+      }
+
+      if (action === 'open-link') {
+        openWidgetLink(trigger.dataset.url, event);
+      }
+    }
+
+    function settleBrief(payload) {
+      const commit = () => {
+        state.brief = payload || state.brief;
+        state.isLoading = false;
+        render();
+      };
+
+      const delay = Math.max(0, MIN_LOADING_MS - (Date.now() - bootStartedAt));
+      window.setTimeout(commit, delay);
+    }
+
+    render();
+
+    if (isDemo) {
+      state.brief = demoBrief;
+      state.isLoading = false;
+      render();
+    } else if (!isLoadingOverride) {
+      const protocol = detectProtocol();
+      initWidget({
+        render: (payload) => {
+          if (payload) {
+            settleBrief(payload);
+            return;
+          }
+          if (protocol === 'standalone') {
+            settleBrief(null);
+          }
+        },
+      });
+    }
   </script>
 </body>
 </html>
