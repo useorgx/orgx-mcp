@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="shared/widget-foundation.css" />
   <script src="shared/interaction-kit.js"></script>
   <style>
+    @import url('./shared/tokens.css');
     
     :root, :root[data-theme="light"] {
       --ox-bg: #f8fafc;
@@ -131,7 +132,17 @@
       background: var(--ox-border);
     }
     .agent-card {
-      transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+      --ox-card-color-rgb: var(--agent-accent-rgb, var(--ox-primary-rgb));
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 16px;
+      background: var(--ox-panel);
+      border-color: var(--ox-border);
+      box-shadow: var(--ox-shadow);
+      transition:
+        transform var(--widget-motion-fast) var(--widget-motion-curve),
+        border-color var(--widget-motion-fast) var(--widget-motion-curve),
+        box-shadow var(--widget-motion-fast) var(--widget-motion-curve);
     }
 
     .agent-card[data-priority='running'] { --ox-card-color-rgb: 0, 201, 167; }
@@ -139,7 +150,7 @@
     .agent-card[data-priority='review'] { --ox-card-color-rgb: 251, 191, 36; }
     .agent-card[data-priority='idle'], .agent-card[data-priority='queued'] { --ox-card-color-rgb: 100, 116, 139; }
     
-    .agent-card.ox-card::after {
+    .agent-card.app-flat-card::after {
       background: linear-gradient(90deg, transparent, rgba(var(--ox-card-color-rgb), 0.6), transparent);
     }
 
@@ -182,7 +193,7 @@
     }
 
     .agent-role {
-      color: var(--ox-text-dim);
+      color: rgba(var(--agent-accent-rgb, var(--ox-card-color-rgb)), 0.9);
       font-size: 0.75rem;
       font-weight: 500;
       letter-spacing: 0.08em;
@@ -227,6 +238,7 @@
 
     .agent-attention {
       margin: 0 12px 12px;
+      box-shadow: inset 3px 0 0 rgba(var(--agent-accent-rgb, var(--ox-card-color-rgb)), 0.58);
     }
 
     .attention-copy {
@@ -348,6 +360,8 @@
       display: none;
       padding-bottom: 16px;
     }
+    @keyframes sectionFadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
       to { opacity: 1; transform: translateY(0); }
     }
     .agent-section.is-open {
@@ -669,9 +683,9 @@
       background: var(--ox-border);
     }
     
-    .ox-metric-button:hover,
-    .ox-metric-button[aria-pressed='true'] {
-      background: rgba(var(--ox-primary-rgb), 0.06);
+    .agent-card .ox-metric-button:hover,
+    .agent-card .ox-metric-button[aria-pressed='true'] {
+      background: rgba(var(--agent-accent-rgb, var(--ox-card-color-rgb)), 0.08);
     }
     
     .ox-metric-button[data-tone='blocked'] .metric-value {
@@ -703,8 +717,8 @@
       text-align: left;
     }
 
-    .ox-disclosure-trigger:hover {
-      background: rgba(var(--ox-primary-rgb), 0.06);
+    .agent-card .ox-disclosure-trigger:hover {
+      background: rgba(var(--agent-accent-rgb, var(--ox-card-color-rgb)), 0.08);
     }
 
     .section-badge {
@@ -1022,13 +1036,62 @@
       box-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset, 0 18px 34px -24px rgba(var(--ox-card-color-rgb), 0.82);
     }
 
+    .agent-section {
+      display: grid;
+      grid-template-rows: auto 0fr;
+      transition:
+        grid-template-rows var(--widget-motion-base) var(--widget-motion-curve),
+        border-color var(--widget-motion-fast) var(--widget-motion-curve);
+    }
+
+    .agent-section.is-open {
+      grid-template-rows: auto 1fr;
+    }
+
+    .ox-disclosure-trigger {
+      transition:
+        background var(--widget-motion-fast) var(--widget-motion-curve),
+        color var(--widget-motion-fast) var(--widget-motion-curve);
+    }
+
+    .ox-disclosure-body {
+      max-height: none;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(-6px);
+      padding: 0 24px;
+      transition:
+        opacity var(--widget-motion-fast) var(--widget-motion-curve),
+        transform var(--widget-motion-base) var(--widget-motion-curve),
+        padding var(--widget-motion-fast) var(--widget-motion-curve);
+    }
+
+    .agent-section.is-open .ox-disclosure-body {
+      opacity: 1;
+      transform: translateY(0);
+      padding: 0 24px 16px;
+    }
+
+    @media (max-width: 420px) {
+      .ox-disclosure-trigger {
+        padding: 14px 18px;
+      }
+
+      .ox-disclosure-body {
+        padding-inline: 18px;
+      }
+
+      .agent-section.is-open .ox-disclosure-body {
+        padding: 0 18px 16px;
+      }
+    }
 
     .agent-avatar {
       width: 24px;
       height: 24px;
       border-radius: 6px;
-      background: rgba(var(--ox-card-color-rgb), 0.15);
-      color: var(--ox-card-color);
+      background: rgba(var(--agent-accent-rgb, var(--ox-card-color-rgb)), 0.15);
+      color: rgb(var(--agent-accent-rgb, var(--ox-card-color-rgb)));
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1036,7 +1099,8 @@
       font-size: 0.9rem;
       overflow: hidden;
       flex-shrink: 0;
-      border: 1px solid rgba(var(--ox-card-color-rgb), 0.25);
+      border: 1px solid rgba(var(--agent-accent-rgb, var(--ox-card-color-rgb)), 0.25);
+      box-shadow: 0 8px 18px -14px rgba(var(--agent-accent-rgb, var(--ox-card-color-rgb)), 0.58);
     }
     
     .agent-avatar img {
@@ -1329,32 +1393,25 @@
 
     var REMOTE_WIDGET_ASSET_BASE = 'https://mcp.useorgx.com/widgets/shared/';
     function resolveWidgetAsset(path){
-      if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.protocol === "file:") {
-        try {
-          return new URL("shared/" + path, window.location.href).toString();
-        } catch (e) {
-          return "shared/" + path;
-        }
-      }
       return REMOTE_WIDGET_ASSET_BASE + path;
     }
 
     var ORGX_BASE_URL = 'https://useorgx.com';
     var AGENT_DIRECTORY = {
-      pace: { name: 'Pace', role: 'Product', avatarPath: 'product_orchestrator.png' },
-      product: { name: 'Pace', role: 'Product', avatarPath: 'product_orchestrator.png' },
-      eli: { name: 'Eli', role: 'Engineering', avatarPath: 'engineering_autopilot.png' },
-      engineering: { name: 'Eli', role: 'Engineering', avatarPath: 'engineering_autopilot.png' },
-      mark: { name: 'Mark', role: 'Marketing', avatarPath: 'launch_captain.png' },
-      marketing: { name: 'Mark', role: 'Marketing', avatarPath: 'launch_captain.png' },
-      sage: { name: 'Sage', role: 'Sales', avatarPath: 'pipeline_intelligence.png' },
-      sales: { name: 'Sage', role: 'Sales', avatarPath: 'pipeline_intelligence.png' },
-      orion: { name: 'Orion', role: 'Operations', avatarPath: 'control_tower.png' },
-      operations: { name: 'Orion', role: 'Operations', avatarPath: 'control_tower.png' },
-      dana: { name: 'Dana', role: 'Design', avatarPath: 'design_codex.png' },
-      design: { name: 'Dana', role: 'Design', avatarPath: 'design_codex.png' },
-      xandy: { name: 'Xandy', role: 'Orchestrator', avatarPath: 'xandy_orchestrator.png' },
-      orchestrator: { name: 'Xandy', role: 'Orchestrator', avatarPath: 'xandy_orchestrator.png' }
+      pace: { name: 'Pace', role: 'Product', avatarPath: 'product_orchestrator.png', accentRgb: '22, 163, 74' },
+      product: { name: 'Pace', role: 'Product', avatarPath: 'product_orchestrator.png', accentRgb: '22, 163, 74' },
+      eli: { name: 'Eli', role: 'Engineering', avatarPath: 'engineering_autopilot.png', accentRgb: '6, 182, 212' },
+      engineering: { name: 'Eli', role: 'Engineering', avatarPath: 'engineering_autopilot.png', accentRgb: '6, 182, 212' },
+      mark: { name: 'Mark', role: 'Marketing', avatarPath: 'launch_captain.png', accentRgb: '249, 115, 22' },
+      marketing: { name: 'Mark', role: 'Marketing', avatarPath: 'launch_captain.png', accentRgb: '249, 115, 22' },
+      sage: { name: 'Sage', role: 'Sales', avatarPath: 'pipeline_intelligence.png', accentRgb: '168, 85, 247' },
+      sales: { name: 'Sage', role: 'Sales', avatarPath: 'pipeline_intelligence.png', accentRgb: '168, 85, 247' },
+      orion: { name: 'Orion', role: 'Operations', avatarPath: 'control_tower.png', accentRgb: '245, 158, 11' },
+      operations: { name: 'Orion', role: 'Operations', avatarPath: 'control_tower.png', accentRgb: '245, 158, 11' },
+      dana: { name: 'Dana', role: 'Design', avatarPath: 'design_codex.png', accentRgb: '236, 72, 153' },
+      design: { name: 'Dana', role: 'Design', avatarPath: 'design_codex.png', accentRgb: '236, 72, 153' },
+      xandy: { name: 'Xandy', role: 'Orchestrator', avatarPath: 'xandy_orchestrator.png', accentRgb: '20, 184, 166' },
+      orchestrator: { name: 'Xandy', role: 'Orchestrator', avatarPath: 'xandy_orchestrator.png', accentRgb: '20, 184, 166' }
     };
 
     function resolveAgentProfile(agent) {
@@ -1367,7 +1424,8 @@
       return {
         name: directName || (profile && profile.name) || 'OrgX Agent',
         role: directRole || (profile && profile.role) || titleCase(agentType) || 'Agent',
-        avatarPath: (profile && profile.avatarPath) || null
+        avatarPath: (profile && profile.avatarPath) || null,
+        accentRgb: (profile && profile.accentRgb) || '20, 184, 166'
       };
     }
     function renderAvatar(agent) {
@@ -1375,12 +1433,11 @@
       var fallback = escapeHtml(profile.name.charAt(0).toUpperCase() || '?');
       
       if (profile.avatarPath) {
-        var localUrl = 'shared/' + profile.avatarPath;
-        var remoteUrl = REMOTE_WIDGET_ASSET_BASE + profile.avatarPath;
+        var remoteUrl = resolveWidgetAsset(profile.avatarPath);
         
         return '<span style="display:none;align-items:center;justify-content:center;width:100%;height:100%;font-family:var(--ox-mono);font-size:0.9rem;font-weight:600;">' + fallback + '</span>' +
-               '<img src="' + escapeHtml(localUrl) + '" alt="' + escapeHtml(profile.name) + '" loading="eager" decoding="sync" draggable="false" ' +
-               'onerror="if(!this.dataset.retried){this.dataset.retried=\'1\';this.src=\'' + escapeHtml(remoteUrl) + '\';return;}this.style.display=\'none\'; if (this.previousElementSibling) this.previousElementSibling.style.display=\'flex\';" />';
+               '<img src="' + escapeHtml(remoteUrl) + '" alt="' + escapeHtml(profile.name) + '" loading="eager" decoding="sync" draggable="false" ' +
+               'onerror="this.style.display=\'none\'; if (this.previousElementSibling) this.previousElementSibling.style.display=\'flex\';" />';
       }
       return '<span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-family:var(--ox-mono);font-size:0.9rem;font-weight:600;">' + fallback + '</span>';
     }
@@ -1430,6 +1487,7 @@
 
     function normalizeAgent(raw, index) {
       if (!raw || typeof raw !== 'object') return null;
+      var profile = resolveAgentProfile(raw);
       var tasks = mergeUniqueItems(
         asArray(raw.current_tasks),
         mergeUniqueItems(asArray(raw.active_tasks), asArray(raw.tasks))
@@ -1459,8 +1517,9 @@
 
       return {
         id: firstString([raw.agent_id, raw.id, raw.agent_name]) || 'agent-' + index,
-        name: resolveAgentProfile(raw).name,
-        role: firstString([raw.role, resolveAgentProfile(raw).role]) || 'Agent',
+        name: profile.name,
+        role: firstString([raw.role, profile.role]) || 'Agent',
+        accentRgb: profile.accentRgb,
         status: status,
         tone: getStatusTone(status),
         statusLabel: getStatusLabel(status),
@@ -1497,12 +1556,13 @@
           tone: keepIncoming ? agent.tone : existing.tone,
           statusLabel: keepIncoming ? agent.statusLabel : existing.statusLabel,
           currentTask: keepIncoming ? (agent.currentTask || existing.currentTask) : (existing.currentTask || agent.currentTask),
-          currentMeta: existing.currentMeta || agent.currentMeta,
-          progress: Math.max(existing.progress || 0, agent.progress || 0),
-          blockers: mergeUniqueItems(existing.blockers, agent.blockers),
-          tasks: mergeUniqueItems(existing.tasks, agent.tasks),
-          artifacts: mergeUniqueItems(existing.artifacts, agent.artifacts),
-          streams: mergeUniqueItems(existing.streams, agent.streams),
+        currentMeta: existing.currentMeta || agent.currentMeta,
+        accentRgb: existing.accentRgb || agent.accentRgb,
+        progress: Math.max(existing.progress || 0, agent.progress || 0),
+        blockers: mergeUniqueItems(existing.blockers, agent.blockers),
+        tasks: mergeUniqueItems(existing.tasks, agent.tasks),
+        artifacts: mergeUniqueItems(existing.artifacts, agent.artifacts),
+        streams: mergeUniqueItems(existing.streams, agent.streams),
           taskCount: Math.max(existing.taskCount || 0, agent.taskCount || 0),
           blockedCount: Math.max(existing.blockedCount || 0, agent.blockedCount || 0),
           reviewCount: Math.max(existing.reviewCount || 0, agent.reviewCount || 0),
@@ -1544,15 +1604,17 @@
     }
 
     var widgetState = {};
+    var currentAgents = [];
+    var currentAgentsById = {};
 
     function setCardSection(cardId, section) {
       if (section === 'overview') {
         widgetState[cardId] = 'overview';
-        render();
+        syncAgentCard(cardId);
         return;
       }
-      widgetState[cardId] = widgetState[cardId] === section ? 'tasks' : section;
-      render();
+      widgetState[cardId] = widgetState[cardId] === section ? null : section;
+      syncAgentCard(cardId);
     }
     function renderAttention(agent) {
       if (agent.status !== 'blocked' && agent.status !== 'review') return '';
@@ -1574,12 +1636,15 @@
       var textTone = isBlocked ? 'var(--ox-danger)' : 'var(--ox-warning)';
       
       return (
-        '<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 16px; padding: 10px 14px; border-radius: 10px; background: ' + bgTone + '; border: 1px solid ' + borderTone + ';">' +
+        '<div class="agent-attention app-attention-banner" data-tone="' + tone + '" style="background: ' + bgTone + '; border-color: ' + borderTone + '; color: ' + textTone + ';">' +
           '<div style="display: flex; align-items: center; gap: 10px; min-width: 0;">' +
-            '<div style="width: 18px; height: 18px; flex-shrink: 0; color: ' + textTone + '; opacity: 0.85; display: flex; align-items: center; justify-content: center;">' + icon + '</div>' +
-            '<span style="font-size: 0.75rem; color: var(--ox-text); line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + escapeHtml(body) + '</span>' +
+            '<div style="width: 18px; height: 18px; flex-shrink: 0; color: currentColor; opacity: 0.85; display: flex; align-items: center; justify-content: center;">' + icon + '</div>' +
+            '<div class="attention-copy">' +
+              '<span class="attention-title">' + (isBlocked ? 'Blocked' : 'Needs review') + '</span>' +
+              '<span class="attention-body">' + escapeHtml(body) + '</span>' +
+            '</div>' +
           '</div>' +
-          '<a href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer" style="font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: ' + textTone + '; white-space: nowrap; padding: 4px 10px; border-radius: 6px; border: 1px solid ' + borderTone + '; background: transparent; text-decoration: none; transition: background 0.15s ease;">' + action + '</a>' +
+          '<a class="attention-action" href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer" style="border-color: ' + borderTone + ';">' + action + '</a>' +
         '</div>'
       );
     }
@@ -1599,12 +1664,54 @@
       var badge = blockedCount > 0 ? '<span class="section-badge blocked">' + blockedCount + ' Blocked</span>' : '';
       return (
         '<div class="agent-section' + (isOpen ? ' is-open' : '') + '" data-section="tasks">' +
-          '<button class="ox-disclosure-trigger focusable" data-action="toggle-section" data-section="tasks" data-agent="' + escapeHtml(agent.id) + '">' +
+          '<button class="app-disclosure-trigger focusable" data-action="toggle-section" data-section="tasks" data-agent="' + escapeHtml(agent.id) + '" aria-expanded="' + String(isOpen) + '">' +
             '<span class="disclosure-title">Tasks' + badge + '</span>' +
             '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
           '</button>' +
-          '<div class="ox-disclosure-body">' +
+          '<div class="app-disclosure-body ox-disclosure-body">' +
             (rows.length ? rows.join('') : '<div style="padding: 12px 0; color: var(--ox-text-muted); font-size: 0.85rem;">No tasks.</div>') +
+          '</div>' +
+        '</div>'
+      );
+    }
+
+    function renderBlockedSection(agent, isOpen) {
+      var blockerRows = agent.blockers.map(function (blocker, index) {
+        return (
+          '<div class="section-row">' +
+            '<div class="section-copy">' +
+              '<div class="section-heading">' + escapeHtml(String(blocker)) + '</div>' +
+              '<div class="ox-eyebrow" style="margin-top: 4px; color: var(--ox-text-dim);">Blocker ' + escapeHtml(String(index + 1)) + '</div>' +
+            '</div>' +
+            '<div class="section-status" data-tone="blocked">Blocked</div>' +
+          '</div>'
+        );
+      });
+
+      if (!blockerRows.length) {
+        blockerRows = agent.tasks
+          .filter(function (task) { return task.status === 'blocked'; })
+          .map(function (task) {
+            return (
+              '<div class="section-row">' +
+                '<div class="section-copy">' +
+                  '<div class="section-heading">' + escapeHtml(task.title) + '</div>' +
+                  '<div class="ox-eyebrow" style="margin-top: 4px; color: var(--ox-text-dim);">Blocked task</div>' +
+                '</div>' +
+                '<div class="section-status" data-tone="blocked">Blocked</div>' +
+              '</div>'
+            );
+          });
+      }
+
+      return (
+        '<div class="agent-section' + (isOpen ? ' is-open' : '') + '" data-section="blocked">' +
+          '<button class="app-disclosure-trigger focusable" data-action="toggle-section" data-section="blocked" data-agent="' + escapeHtml(agent.id) + '" aria-expanded="' + String(isOpen) + '">' +
+            '<span class="disclosure-title">Blocked<span class="section-badge blocked">' + escapeHtml(String(agent.blockedCount)) + ' Active</span></span>' +
+            '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
+          '</button>' +
+          '<div class="app-disclosure-body ox-disclosure-body">' +
+            (blockerRows.length ? blockerRows.join('') : '<div style="padding: 12px 0; color: var(--ox-text-muted); font-size: 0.85rem;">No blockers.</div>') +
           '</div>' +
         '</div>'
       );
@@ -1635,11 +1742,11 @@
       var badge = reviewCount > 0 ? '<span class="section-badge needs-review">' + reviewCount + ' Review</span>' : '';
       return (
         '<div class="agent-section' + (isOpen ? ' is-open' : '') + '" data-section="artifacts">' +
-          '<button class="ox-disclosure-trigger focusable" data-action="toggle-section" data-section="artifacts" data-agent="' + escapeHtml(agent.id) + '">' +
+          '<button class="app-disclosure-trigger focusable" data-action="toggle-section" data-section="artifacts" data-agent="' + escapeHtml(agent.id) + '" aria-expanded="' + String(isOpen) + '">' +
             '<span class="disclosure-title">Artifacts' + badge + '</span>' +
             '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
           '</button>' +
-          '<div class="ox-disclosure-body">' +
+          '<div class="app-disclosure-body ox-disclosure-body">' +
             (rows.length ? rows.join('') : '<div style="padding: 12px 0; color: var(--ox-text-muted); font-size: 0.85rem;">No artifacts.</div>') +
           '</div>' +
         '</div>'
@@ -1655,16 +1762,16 @@
             '<span class="ox-eyebrow" style="color: var(--ox-text-dim);">' + escapeHtml(agent.eta || '~2 days remaining') + '</span>' +
           '</div>' +
           '<div style="height: 4px; border-radius: 4px; background: rgba(255,255,255,0.06); overflow: hidden; margin-bottom: 16px;">' +
-            '<div style="height: 100%; width: ' + agent.progress + '%; background: var(--ox-primary); border-radius: 4px; position: relative;">' +
-              '<div style="position: absolute; right: 0; top: -2px; bottom: -2px; width: 8px; background: var(--ox-primary); border-radius: 4px; box-shadow: 0 0 10px rgba(var(--ox-primary-rgb), 0.5);"></div>' +
+            '<div style="height: 100%; width: ' + agent.progress + '%; background: rgb(var(--agent-accent-rgb, var(--ox-card-color-rgb))); border-radius: 4px; position: relative;">' +
+              '<div style="position: absolute; right: 0; top: -2px; bottom: -2px; width: 8px; background: rgb(var(--agent-accent-rgb, var(--ox-card-color-rgb))); border-radius: 4px; box-shadow: 0 0 10px rgba(var(--agent-accent-rgb, var(--ox-card-color-rgb)), 0.5);"></div>' +
             '</div>' +
           '</div>' +
           '<div style="display: flex; flex-direction: column; gap: 8px;">' +
             (agent.streams || []).map(function(s) {
               return '<div style="display: flex; align-items: center; gap: 10px; font-size: 0.75rem;">' +
-                '<div style="width: 6px; height: 6px; border-radius: 50%; background: var(--ox-primary); flex-shrink: 0;"></div>' +
+                '<div style="width: 6px; height: 6px; border-radius: 50%; background: rgb(var(--agent-accent-rgb, var(--ox-card-color-rgb))); flex-shrink: 0;"></div>' +
                 '<span style="color: var(--ox-text-muted); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + escapeHtml(s.name) + '</span>' +
-                '<span style="color: var(--ox-text-dim); flex-shrink: 0;">' + s.progress_pct + '%</span>' +
+                '<span style="color: var(--ox-text-dim); flex-shrink: 0;">' + escapeHtml(String(s.progress)) + '%</span>' +
               '</div>';
             }).join('') +
           '</div>' +
@@ -1673,25 +1780,68 @@
       
       return (
         '<div class="agent-section' + (isOpen ? ' is-open' : '') + '" data-section="progress">' +
-          '<button class="ox-disclosure-trigger focusable" data-action="toggle-section" data-section="progress" data-agent="' + escapeHtml(agent.id) + '">' +
+          '<button class="app-disclosure-trigger focusable" data-action="toggle-section" data-section="progress" data-agent="' + escapeHtml(agent.id) + '" aria-expanded="' + String(isOpen) + '">' +
             '<span class="disclosure-title">Progress</span>' +
             '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
           '</button>' +
-          '<div class="ox-disclosure-body">' +
+          '<div class="app-disclosure-body ox-disclosure-body">' +
             progressHtml +
           '</div>' +
         '</div>'
       );
     }
 
+    function renderAgentSections(agent, openSection) {
+      return (
+        renderTasksSection(agent, openSection === 'tasks') +
+        renderBlockedSection(agent, openSection === 'blocked') +
+        renderArtifactsSection(agent, openSection === 'artifacts') +
+        renderProgressSection(agent, openSection === 'progress')
+      );
+    }
+
+    function syncAgentCard(cardId) {
+      var card = document.querySelector('[data-agent-card="' + cardId + '"]');
+      var agent = currentAgentsById[cardId];
+      if (!card || !agent) {
+        renderBoard({ agents: currentAgents });
+        return;
+      }
+
+      var openSection = Object.prototype.hasOwnProperty.call(widgetState, cardId)
+        ? widgetState[cardId]
+        : 'tasks';
+      Array.prototype.forEach.call(
+        card.querySelectorAll('[data-action="toggle-section"]'),
+        function (button) {
+          var section = button.getAttribute('data-section');
+          if (button.classList.contains('ox-metric-button')) {
+            button.setAttribute('aria-pressed', String(openSection === section));
+            return;
+          }
+          button.setAttribute('aria-expanded', String(openSection === section));
+        }
+      );
+
+      Array.prototype.forEach.call(
+        card.querySelectorAll('.agent-section[data-section]'),
+        function (sectionEl) {
+          sectionEl.classList.toggle(
+            'is-open',
+            openSection === sectionEl.getAttribute('data-section')
+          );
+        }
+      );
+    }
+
     function renderCard(agent) {
-      var openSection = widgetState[agent.id] || 'tasks';
+      var openSection = Object.prototype.hasOwnProperty.call(widgetState, agent.id)
+        ? widgetState[agent.id]
+        : 'tasks';
       var chipTone = agent.tone === 'running' ? '' : ' data-tone="' + agent.tone + '"';
-      var reviewMetricTone = agent.reviewCount > 0 ? 'review' : '';
-      var blockedMetricTone = agent.blockedCount > 0 ? 'blocked' : '';
       
       return (
-        '<article class="agent-card ox-card" data-priority="' + escapeHtml(agent.status) + '">' +
+        '<article class="agent-card app-flat-card" data-agent-card="' + escapeHtml(agent.id) + '" data-priority="' + escapeHtml(agent.status) + '" style="--agent-accent-rgb:' + escapeHtml(agent.accentRgb || '20, 184, 166') + ';">' +
           '<div class="ox-card-inner" style="padding-bottom: 16px;">' +
             '<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px;">' +
               '<div style="display: flex; align-items: center; gap: 12px; min-width: 0;">' +
@@ -1720,12 +1870,12 @@
               '</div>' +
             '</div>' +
           '</div>' +
-          '<div class="ox-metric-rail">' +
+          '<div class="metric-row app-metric-rail">' +
             '<button class="ox-metric-button focusable" data-action="toggle-section" data-section="tasks" data-agent="' + escapeHtml(agent.id) + '" aria-pressed="' + String(openSection === 'tasks') + '">' +
               '<div class="metric-value" style="font-size: 1.15rem; font-weight: 600; font-family: var(--ox-mono);">' + escapeHtml(String(agent.taskCount)) + '</div>' +
               '<div class="ox-eyebrow" style="margin-top: 4px;">Tasks</div>' +
             '</button>' +
-            '<button class="ox-metric-button focusable" data-action="toggle-section" data-section="tasks" data-agent="' + escapeHtml(agent.id) + '" data-tone="blocked" aria-pressed="' + String(openSection === 'tasks') + '">' +
+            '<button class="ox-metric-button focusable" data-action="toggle-section" data-section="blocked" data-agent="' + escapeHtml(agent.id) + '" data-tone="blocked" aria-pressed="' + String(openSection === 'blocked') + '">' +
               '<div class="metric-value" style="font-size: 1.15rem; font-weight: 600; font-family: var(--ox-mono);">' + escapeHtml(String(agent.blockedCount)) + '</div>' +
               '<div class="ox-eyebrow" style="margin-top: 4px;">Blocked</div>' +
             '</button>' +
@@ -1739,10 +1889,8 @@
             '</button>' +
           '</div>' +
 
-          '<div style="padding: 0 24px;">' +
-            renderTasksSection(agent, openSection === 'tasks') +
-            renderArtifactsSection(agent, openSection === 'artifacts') +
-            renderProgressSection(agent, openSection === 'progress') +
+          '<div style="padding: 0 24px;" data-agent-sections>' +
+            renderAgentSections(agent, openSection) +
           '</div>' +
           
           '<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 24px; border-top: 1px solid var(--ox-border);">' +
@@ -1757,6 +1905,11 @@
       var normalized = normalizePayload(payload);
       var agents = normalized.agents.sort(function (left, right) {
         return getPriority(left) - getPriority(right) || left.name.localeCompare(right.name);
+      });
+      currentAgents = agents.slice();
+      currentAgentsById = {};
+      agents.forEach(function (agent) {
+        currentAgentsById[agent.id] = agent;
       });
 
       if (!agents.length) {

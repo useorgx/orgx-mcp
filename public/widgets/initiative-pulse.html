@@ -107,8 +107,8 @@
             rgba(var(--ox-primary-rgb), 0.1),
             transparent 56%
           ),
-          linear-gradient(var(--ox-grid-color) 1px, transparent 1px),
-          linear-gradient(90deg, var(--ox-grid-color) 1px, transparent 1px);
+          linear-gradient(var(--ox-grid) 1px, transparent 1px),
+          linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px);
         background-size: 100% 100%, 20px 20px, 20px 20px;
         pointer-events: none;
         z-index: -1;
@@ -186,7 +186,7 @@
       .pulse-shell {
         display: flex;
         flex-direction: column;
-        gap: 18px;
+        gap: 20px;
       }
 
       .pulse-hero {
@@ -378,8 +378,12 @@
         color: inherit;
         text-align: left;
         cursor: pointer;
-        transition: border-color 160ms ease, transform 160ms ease,
-          background 160ms ease;
+        box-shadow: inset 3px 0 0 rgba(244, 63, 94, 0.6);
+        transition:
+          border-color var(--widget-motion-fast) var(--widget-motion-curve),
+          transform var(--widget-motion-fast) var(--widget-motion-curve),
+          background var(--widget-motion-fast) var(--widget-motion-curve),
+          box-shadow var(--widget-motion-fast) var(--widget-motion-curve);
       }
 
       .pulse-attention:hover {
@@ -426,7 +430,7 @@
 
       .pulse-attention__chevron {
         color: rgba(15, 23, 42, 0.35);
-        transition: transform 180ms ease;
+        transition: transform var(--widget-motion-fast) var(--widget-motion-curve);
       }
 
       .pulse-attention.is-open .pulse-attention__chevron {
@@ -436,7 +440,14 @@
       .pulse-rail {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 10px;
+        gap: 0;
+        border: 1px solid var(--ox-border);
+        border-radius: 16px;
+        background:
+          linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.035), transparent 100%),
+          rgba(255, 255, 255, 0.02);
+        overflow: hidden;
+        box-shadow: var(--ox-well-shadow);
       }
 
       .pulse-rail-button {
@@ -445,22 +456,35 @@
         border-radius: 12px;
         background: transparent;
         color: inherit;
-        padding: 8px 4px 12px;
-        min-height: 64px;
+        padding: 10px 6px 12px;
+        min-height: 70px;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         gap: 6px;
         cursor: pointer;
-        transition: background 160ms ease, transform 160ms ease;
+        transition:
+          background var(--widget-motion-fast) var(--widget-motion-curve),
+          transform var(--widget-motion-fast) var(--widget-motion-curve),
+          color var(--widget-motion-fast) var(--widget-motion-curve);
+      }
+
+      .pulse-rail-button + .pulse-rail-button::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 18%;
+        bottom: 18%;
+        width: 1px;
+        background: var(--ox-border);
       }
 
       .pulse-rail-button::after {
         content: "";
         position: absolute;
-        left: 10px;
-        right: 10px;
+        left: 14px;
+        right: 14px;
         bottom: 0;
         height: 3px;
         border-radius: 999px;
@@ -474,7 +498,7 @@
 
       .pulse-rail-button:hover {
         transform: translateY(-1px);
-        background: rgba(var(--ox-primary-rgb), 0.03);
+        background: rgba(var(--ox-primary-rgb), 0.05);
       }
 
       .pulse-rail-button:hover::after {
@@ -575,6 +599,17 @@
         display: flex;
         flex-direction: column;
         gap: 14px;
+        transform-origin: top center;
+        will-change: transform, opacity;
+        animation: panelSlideDown var(--widget-motion-base) var(--widget-motion-curve) both;
+      }
+
+      .pulse-panel-host {
+        display: grid;
+      }
+
+      .pulse-panel-host:empty {
+        display: none;
       }
 
       .pulse-panel-header {
@@ -618,7 +653,9 @@
         border-bottom: 1px solid var(--ox-border);
         text-decoration: none;
         color: inherit;
-        transition: color 160ms ease;
+        transition:
+          color var(--widget-motion-fast) var(--widget-motion-curve),
+          transform var(--widget-motion-fast) var(--widget-motion-curve);
       }
 
       .pulse-list-row:last-child {
@@ -627,6 +664,30 @@
 
       .pulse-list-row:hover .pulse-list-title {
         color: var(--ox-primary);
+      }
+
+      .pulse-list-row:hover {
+        transform: translateX(2px);
+      }
+
+      .pulse-panel.is-active .pulse-list-row {
+        animation: pulseListRowIn 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+
+      .pulse-panel.is-active .pulse-list-row:nth-child(2) {
+        animation-delay: 28ms;
+      }
+
+      .pulse-panel.is-active .pulse-list-row:nth-child(3) {
+        animation-delay: 56ms;
+      }
+
+      .pulse-panel.is-active .pulse-list-row:nth-child(4) {
+        animation-delay: 84ms;
+      }
+
+      .pulse-panel.is-active .pulse-list-row:nth-child(5) {
+        animation-delay: 112ms;
       }
 
       .pulse-list-leading {
@@ -732,13 +793,14 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: rgba(var(--ox-primary-rgb), 0.1);
-        border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
-        color: var(--ox-primary);
+        background: rgba(var(--pulse-domain-rgb, var(--ox-primary-rgb)), 0.12);
+        border: 1px solid rgba(var(--pulse-domain-rgb, var(--ox-primary-rgb)), 0.22);
+        color: rgb(var(--pulse-domain-rgb, var(--ox-primary-rgb)));
         font-family: var(--ox-mono);
         font-size: 0.64rem;
         font-weight: 700;
         flex: none;
+        box-shadow: 0 8px 18px -14px rgba(var(--pulse-domain-rgb, var(--ox-primary-rgb)), 0.52);
       }
 
       .pulse-status-pill {
@@ -1013,13 +1075,15 @@
         }
 
         .pulse-rail {
-          gap: 6px;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0;
         }
 
         .pulse-rail-button {
-          min-height: 58px;
-          padding: 7px 2px 11px;
+          min-height: 64px;
+          padding: 10px 6px 12px;
           gap: 4px;
+          border-top: 1px solid var(--ox-border);
         }
 
         .pulse-rail-value {
@@ -1036,6 +1100,18 @@
           padding: 12px;
         }
 
+        .pulse-rail-button:nth-child(-n + 2) {
+          border-top: none;
+        }
+
+        .pulse-rail-button:nth-child(odd) {
+          border-right: 1px solid var(--ox-border);
+        }
+
+        .pulse-rail-button + .pulse-rail-button::before {
+          display: none;
+        }
+
         .widget-footer {
           flex-direction: column;
           align-items: stretch;
@@ -1044,12 +1120,22 @@
         .widget-footer .deep-link {
           width: 100%;
         }
+
+        .pulse-list-row {
+          align-items: flex-start;
+        }
       }
     
       @keyframes panelSlideDown {
         from { opacity: 0; transform: translateY(-8px); }
         to { opacity: 1; transform: translateY(0); }
       }
+
+      @keyframes pulseListRowIn {
+        from { opacity: 0.58; transform: translateY(6px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
       .pulse-panel.is-active {
         animation: panelSlideDown 240ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
       }
@@ -1344,6 +1430,19 @@ external: function (size) {
       var isLoadingOverride = params.get("loading") === "true";
 
       var uiState = { panel: null };
+      var currentPulseData = null;
+      var currentDashboardUrl = "";
+      var currentAttentionItems = [];
+      var currentSections = [];
+      var DOMAIN_ACCENTS = {
+        product: "22, 163, 74",
+        engineering: "6, 182, 212",
+        marketing: "249, 115, 22",
+        sales: "168, 85, 247",
+        operations: "245, 158, 11",
+        design: "236, 72, 153",
+        orchestrator: "20, 184, 166"
+      };
 
       var pulse = isDemo
         ? {
@@ -1581,6 +1680,25 @@ external: function (size) {
       var avatarInitial = function (name, domain) {
         var source = typeof name === "string" && name.trim() ? name.trim() : titleCase(domain || "OrgX");
         return escapeHtml(source.charAt(0).toUpperCase() || "?");
+      };
+
+      var getDomainKey = function (domain) {
+        var key = toStatusKey(domain);
+        return DOMAIN_ACCENTS[key] ? key : "orchestrator";
+      };
+
+      var getDomainRgb = function (domain) {
+        return DOMAIN_ACCENTS[getDomainKey(domain)];
+      };
+
+      var renderPulseAvatar = function (name, domain) {
+        return (
+          '<span class="pulse-avatar" style="--pulse-domain-rgb:' +
+          escapeHtml(getDomainRgb(domain)) +
+          ';">' +
+          avatarInitial(name, domain) +
+          "</span>"
+        );
       };
 
       var toneForStatus = function (status, fallbackProgress, blockerCount) {
@@ -1971,7 +2089,11 @@ external: function (size) {
                 (section.alert ? " is-alert" : "") +
                 '" onclick="togglePulsePanel(\'' +
                 escapeHtml(section.key) +
-                '\')" aria-expanded="' +
+                '\')" data-panel-key="' +
+                escapeHtml(section.key) +
+                '" aria-controls="pulse-panel-host" aria-expanded="' +
+                escapeHtml(String(activePanel === section.key)) +
+                '" aria-pressed="' +
                 escapeHtml(String(activePanel === section.key)) +
                 '">' +
                 '<span class="pulse-rail-icon">' +
@@ -2138,9 +2260,7 @@ external: function (size) {
                 renderMiniRing(stream.progress_pct, tone) +
                 "</span>" +
                 (stream.agent_name || stream.agent_domain
-                  ? '<span class="pulse-avatar">' +
-                    avatarInitial(stream.agent_name, stream.agent_domain) +
-                    "</span>"
+                  ? renderPulseAvatar(stream.agent_name, stream.agent_domain)
                   : "") +
                 '<span class="pulse-list-copy">' +
                 '<span class="pulse-list-title">' +
@@ -2345,9 +2465,46 @@ external: function (size) {
         );
       };
 
+      var syncPulsePanel = function () {
+        var shell = document.querySelector(".pulse-shell");
+        if (!shell || !currentSections.length) return;
+
+        var activePanel = uiState.panel;
+        var availableKeys = currentSections.map(function (section) {
+          return section.key;
+        });
+        if (availableKeys.indexOf(activePanel) === -1) {
+          activePanel = null;
+          uiState.panel = null;
+        }
+
+        Array.prototype.forEach.call(
+          shell.querySelectorAll(".pulse-rail-button[data-panel-key]"),
+          function (button) {
+            var panelKey = button.getAttribute("data-panel-key");
+            var isActive = activePanel === panelKey;
+            button.classList.toggle("is-active", isActive);
+            button.setAttribute("aria-pressed", String(isActive));
+            button.setAttribute("aria-expanded", String(isActive));
+          }
+        );
+
+        var attentionBanner = shell.querySelector(".pulse-attention");
+        if (attentionBanner) {
+          attentionBanner.classList.toggle("is-open", activePanel === "actions");
+          attentionBanner.setAttribute("aria-expanded", String(activePanel === "actions"));
+        }
+
+        var panelHost = shell.querySelector("#pulse-panel-host");
+        if (!panelHost) return;
+        panelHost.innerHTML = activePanel
+          ? renderPanel(activePanel, currentPulseData, currentDashboardUrl, currentAttentionItems)
+          : "";
+      };
+
       window.togglePulsePanel = function (panel) {
         uiState.panel = uiState.panel === panel ? null : panel;
-        render();
+        syncPulsePanel();
       };
 
       var render = function () {
@@ -2558,6 +2715,10 @@ external: function (size) {
           return section.key;
         });
         if (availableKeys.indexOf(uiState.panel) === -1) uiState.panel = null;
+        currentPulseData = pulse;
+        currentDashboardUrl = dashboardUrl;
+        currentAttentionItems = attentionItems;
+        currentSections = sections.slice();
 
         var syncLabel =
           formatRelative(pulse.updated_at) ||
@@ -2567,7 +2728,7 @@ external: function (size) {
           "now";
 
         injectHtml(
-          '<div class="ox-card" style="margin-bottom: 18px; animation: ' + ((document.getElementById("content") && document.getElementById("content").innerHTML.indexOf("ox-card") > -1) ? 'none' : 'fadeSlideUp 420ms cubic-bezier(0.16, 1, 0.3, 1) forwards') + ';">' +
+          '<div class="ox-card animate-in" style="margin-bottom: 18px;">' +
             '<div class="ox-card-inner">' +
                 '<div class="pulse-shell">' +
                   '<div class="pulse-hero">' +
@@ -2606,7 +2767,7 @@ external: function (size) {
                   (attentionBanner
                     ? '<button type="button" class="pulse-attention' +
                       (uiState.panel === "actions" ? " is-open" : "") +
-                      '" onclick="togglePulsePanel(\'actions\')">' +
+                      '" onclick="togglePulsePanel(\'actions\')" aria-controls="pulse-panel-host" aria-expanded="' + String(uiState.panel === "actions") + '">' +
                         '<span class="pulse-attention__icon">' +
                           icons.warning(16) +
                         "</span>" +
@@ -2625,9 +2786,11 @@ external: function (size) {
                     : "") +
                   renderMetrics(sections, uiState.panel) +
                   renderSignalStrip(pulse) +
-                  (uiState.panel
-                    ? renderPanel(uiState.panel, pulse, dashboardUrl, attentionItems)
-                    : "") +
+                  '<div class="pulse-panel-host" id="pulse-panel-host">' +
+                    (uiState.panel
+                      ? renderPanel(uiState.panel, pulse, dashboardUrl, attentionItems)
+                      : "") +
+                  "</div>" +
                   '<div class="widget-footer">' +
                     '<span class="pulse-sync">Synced ' +
                       escapeHtml(syncLabel) +

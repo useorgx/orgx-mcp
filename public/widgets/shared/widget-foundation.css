@@ -3,6 +3,17 @@
   --widget-shell-radius: 18px;
   --widget-panel-radius: 14px;
   --widget-shell-padding: 24px;
+  --widget-motion-fast: 160ms;
+  --widget-motion-base: 240ms;
+  --widget-motion-slow: 360ms;
+  --widget-motion-curve: cubic-bezier(0.16, 1, 0.3, 1);
+  --widget-domain-product-rgb: 22, 163, 74;
+  --widget-domain-engineering-rgb: 6, 182, 212;
+  --widget-domain-marketing-rgb: 249, 115, 22;
+  --widget-domain-sales-rgb: 168, 85, 247;
+  --widget-domain-operations-rgb: 245, 158, 11;
+  --widget-domain-design-rgb: 236, 72, 153;
+  --widget-domain-orchestrator-rgb: 20, 184, 166;
 }
 
 .widget-shell-card {
@@ -222,6 +233,29 @@
 
 .widget-shell-card .deep-link {
   min-height: 46px;
+}
+
+.widget-domain-avatar {
+  --widget-domain-rgb: var(--ox-primary-rgb);
+  background: rgba(var(--widget-domain-rgb), 0.12);
+  border: 1px solid rgba(var(--widget-domain-rgb), 0.22);
+  color: rgb(var(--widget-domain-rgb));
+  box-shadow: 0 12px 24px -18px rgba(var(--widget-domain-rgb), 0.52);
+}
+
+.widget-domain-dot {
+  --widget-domain-rgb: var(--ox-primary-rgb);
+  color: rgb(var(--widget-domain-rgb));
+}
+
+.widget-domain-dot::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  display: inline-block;
+  background: currentColor;
+  box-shadow: 0 0 12px rgba(var(--widget-domain-rgb), 0.45);
 }
 
 @media (max-width: 560px) {
