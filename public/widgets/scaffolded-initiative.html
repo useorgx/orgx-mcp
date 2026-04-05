@@ -6,6 +6,7 @@
   <title>Initiative Scaffolded - OrgX</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='18' fill='none' stroke='%236366f1' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='9' fill='none' stroke='%236366f1' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='3' fill='%236366f1'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
+  <link rel="stylesheet" href="shared/widget-foundation.css" />
   <script src="shared/interaction-kit.js"></script>
   <script>
     (function() {
@@ -90,8 +91,6 @@
       }
 
       /* Smooth UX Transitions */
-      .skeleton-wrapper { transition: opacity 0.3s ease; }
-      @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
       @keyframes fadeSlideUp {
         from { opacity: 0; transform: translateY(16px) scale(0.98); filter: blur(4px); }
         to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
@@ -101,13 +100,9 @@
       .delay-2 { animation-delay: 0.2s; }
       .delay-3 { animation-delay: 0.3s; }
       .scaffold-state {
-        --scaffold-tilt-x: 0deg;
-        --scaffold-tilt-y: 0deg;
-        --scaffold-spot-x: 50%;
-        --scaffold-spot-y: 18%;
         display: flex;
         flex-direction: column;
-        gap: 18px;
+        gap: 16px;
         position: relative;
       }
 
@@ -117,11 +112,10 @@
         position: absolute;
         inset: 0;
         background:
-          radial-gradient(circle at var(--scaffold-spot-x) var(--scaffold-spot-y), rgba(var(--ox-primary-rgb), 0.22), transparent 34%),
-          linear-gradient(135deg, rgba(var(--ox-primary-rgb), 0.08), transparent 45%);
-        opacity: 0.95;
+          radial-gradient(circle at 50% 0%, rgba(var(--ox-primary-rgb), 0.14), transparent 46%),
+          linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.06), transparent 42%);
+        opacity: 0.88;
         z-index: -2;
-        transition: background-position 180ms ease;
       }
 
       .scaffold-state::after {
@@ -202,11 +196,13 @@
       }
       .scaffold-stage {
         position: relative;
-        min-height: 252px;
-        padding: 18px;
-        border-radius: 10px;
+        min-height: 204px;
+        padding: 18px 18px 16px;
+        border-radius: 18px;
         overflow: hidden;
-        background: var(--ox-well-bg);
+        background:
+          linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.03), transparent 42%),
+          var(--ox-well-bg);
         border: 1px solid var(--ox-border);
         box-shadow: var(--ox-well-shadow);
       }
@@ -225,21 +221,16 @@
           linear-gradient(var(--ox-grid) 1px, transparent 1px),
           linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px);
         background-size: 20px 20px;
-        opacity: 0.58;
+        opacity: 0.42;
         mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.85), transparent 100%);
       }
 
       .scaffold-stage::after {
-        background: radial-gradient(circle at var(--scaffold-spot-x) var(--scaffold-spot-y), rgba(255, 255, 255, 0.12), transparent 28%);
-        transition: background-position 160ms ease;
+        background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.05), transparent 34%);
       }
 
       .scaffold-stage__ambient {
-        position: absolute;
-        border-radius: 999px;
-        filter: blur(1px);
-        opacity: 0.55;
-        pointer-events: none;
+        display: none;
       }
 
       .scaffold-stage__ambient--one {
@@ -287,15 +278,7 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 18px;
-        transform:
-          perspective(1000px)
-          rotateX(var(--scaffold-tilt-y))
-          rotateY(var(--scaffold-tilt-x))
-          translateZ(0);
-        transform-style: preserve-3d;
-        transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
-        will-change: transform;
+        gap: 14px;
       }
 
       .scaffold-node {
@@ -310,11 +293,12 @@
         border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
         background: rgba(2, 6, 23, 0.72);
         color: var(--ox-text);
-        font-size: 0.72rem;
+        font-size: 0.68rem;
         font-weight: 600;
-        letter-spacing: 0.02em;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
         box-shadow:
-          0 16px 30px -22px rgba(0, 0, 0, 0.72),
+          0 12px 24px -20px rgba(0, 0, 0, 0.72),
           inset 0 1px 0 rgba(255, 255, 255, 0.06);
         backdrop-filter: blur(10px);
         overflow: hidden;
@@ -339,12 +323,7 @@
       }
 
       .scaffold-node::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
-        transform: translateX(-120%);
-        animation: scaffoldSweep 3.8s ease-in-out infinite;
+        display: none;
       }
 
       @keyframes scaffoldSweep {
@@ -355,15 +334,14 @@
       .scaffold-node--initiative {
         min-width: 170px;
         color: var(--ox-primary);
-        animation: nodeDrift 5.8s ease-in-out infinite;
       }
 
       .scaffold-stage__trunk {
         width: 2px;
-        height: 28px;
+        height: 24px;
         border-radius: 999px;
-        background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.82), rgba(var(--ox-primary-rgb), 0.08));
-        box-shadow: 0 0 18px rgba(var(--ox-primary-rgb), 0.22);
+        background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.68), rgba(var(--ox-primary-rgb), 0.08));
+        box-shadow: 0 0 12px rgba(var(--ox-primary-rgb), 0.14);
       }
 
       .scaffold-stage__columns {
@@ -377,13 +355,13 @@
       .scaffold-stage__columns::before {
         content: "";
         position: absolute;
-        left: 17%;
-        right: 17%;
-        top: -12px;
+        left: 19%;
+        right: 19%;
+        top: -10px;
         height: 2px;
         border-radius: 999px;
-        background: linear-gradient(90deg, rgba(var(--ox-primary-rgb), 0.08), rgba(var(--ox-primary-rgb), 0.58), rgba(var(--ox-primary-rgb), 0.08));
-        box-shadow: 0 0 18px rgba(var(--ox-primary-rgb), 0.14);
+        background: linear-gradient(90deg, rgba(var(--ox-primary-rgb), 0.06), rgba(var(--ox-primary-rgb), 0.44), rgba(var(--ox-primary-rgb), 0.06));
+        box-shadow: 0 0 12px rgba(var(--ox-primary-rgb), 0.08);
       }
 
       .scaffold-branch {
@@ -393,15 +371,6 @@
         align-items: center;
         gap: 10px;
         padding-top: 10px;
-        animation: nodeDrift 6.4s ease-in-out infinite;
-      }
-
-      .scaffold-branch--two { animation-delay: -1.4s; }
-      .scaffold-branch--three { animation-delay: -2.8s; }
-
-      @keyframes nodeDrift {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-6px); }
       }
 
       .scaffold-branch::before {
@@ -458,16 +427,16 @@
       }
 
       .scaffold-state__title {
-        font-size: 1.22rem;
+        font-size: 1.16rem;
         font-weight: 650;
         letter-spacing: -0.03em;
         color: var(--ox-text);
       }
 
       .scaffold-state__desc {
-        max-width: 420px;
+        max-width: 400px;
         margin: 0 auto;
-        font-size: 0.93rem;
+        font-size: 0.9rem;
         line-height: 1.55;
         color: var(--ox-text-muted);
       }
@@ -644,20 +613,33 @@
     
     
     .node-item.ws { background: rgba(255,255,255,0.02); font-weight: 600; color: var(--ox-text); }
-    .node-item.ws .node-icon { color: var(--ox-teal); }
+    .node-item.ws .node-icon { color: rgb(var(--ws-rgb, var(--ox-primary-rgb))); }
     @media (prefers-color-scheme: light) { .node-item.ws { background: rgba(0,0,0,0.03); } }
 
     .node-item.ws {
+      --ws-rgb: var(--ox-primary-rgb);
       display: grid;
       grid-template-columns: auto auto minmax(0, 1fr) auto;
       align-items: center;
       gap: 12px;
       max-height: none;
       padding: 10px 14px 10px 10px;
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.08);
+      border: 1px solid rgba(var(--ws-rgb), 0.14);
       background:
-        linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.055), rgba(255,255,255,0.015)),
+        linear-gradient(180deg, rgba(var(--ws-rgb), 0.075), rgba(255,255,255,0.015)),
         rgba(255,255,255,0.02);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.05),
+        0 14px 28px -26px rgba(var(--ws-rgb), 0.48);
+    }
+
+    .node-item.ws::before {
+      content: "";
+      width: 3px;
+      align-self: stretch;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(var(--ws-rgb), 0.94), rgba(var(--ws-rgb), 0.28));
+      box-shadow: 0 0 14px rgba(var(--ws-rgb), 0.18);
     }
 
     .ws-shell {
@@ -734,14 +716,14 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(var(--ox-primary-rgb), 0.12);
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
-      color: var(--ox-primary);
+      background: rgba(var(--agent-domain-rgb, var(--ox-primary-rgb)), 0.12);
+      border: 1px solid rgba(var(--agent-domain-rgb, var(--ox-primary-rgb)), 0.22);
+      color: rgb(var(--agent-domain-rgb, var(--ox-primary-rgb)));
       font-family: var(--ox-mono);
       font-size: 0.76rem;
       font-weight: 700;
       box-shadow:
-        0 10px 18px -12px rgba(var(--ox-primary-rgb), 0.45),
+        0 10px 18px -12px rgba(var(--agent-domain-rgb, var(--ox-primary-rgb)), 0.38),
         inset 0 1px 0 rgba(255,255,255,0.05);
     }
 
@@ -763,7 +745,7 @@
       justify-content: center;
       background: var(--ox-panel);
       border: 1px solid var(--ox-border);
-      color: var(--ox-primary);
+      color: rgb(var(--agent-domain-rgb, var(--ox-primary-rgb)));
       box-shadow: 0 6px 14px -10px rgba(0,0,0,0.55);
     }
 
@@ -771,14 +753,6 @@
       width: 9px;
       height: 9px;
     }
-
-    .domain-badge.engineering { color: #38bdf8; }
-    .domain-badge.design { color: #f472b6; }
-    .domain-badge.product { color: #22c55e; }
-    .domain-badge.marketing { color: #f97316; }
-    .domain-badge.sales { color: #fb7185; }
-    .domain-badge.operations { color: #facc15; }
-    .domain-badge.orchestrator { color: #a78bfa; }
 
     .progress-ring {
       position: relative;
@@ -1093,12 +1067,27 @@
       height: 30px;
       margin-right: 0;
       color: var(--ox-text-muted);
+      transition:
+        color var(--widget-motion-fast) var(--widget-motion-curve),
+        border-color var(--widget-motion-fast) var(--widget-motion-curve),
+        background var(--widget-motion-fast) var(--widget-motion-curve);
     }
 
     .node-toggle[aria-expanded="true"] {
-      color: var(--ox-primary);
-      background: rgba(var(--ox-primary-rgb), 0.08);
-      border-color: rgba(var(--ox-primary-rgb), 0.18);
+      color: rgb(var(--ws-rgb, var(--ox-primary-rgb)));
+      background: rgba(var(--ws-rgb, var(--ox-primary-rgb)), 0.08);
+      border-color: rgba(var(--ws-rgb, var(--ox-primary-rgb)), 0.18);
+    }
+
+    .node-toggle__glyph {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform var(--widget-motion-base) var(--widget-motion-curve);
+    }
+
+    .node-toggle[aria-expanded="false"] .node-toggle__glyph {
+      transform: rotate(-90deg);
     }
 
     .widget-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--ox-border); gap: 12px; }
@@ -1169,6 +1158,35 @@
     }
 
     @media (max-width: 560px) {
+      .node-item.ws {
+        grid-template-columns: auto auto minmax(0, 1fr);
+        align-items: start;
+        row-gap: 10px;
+      }
+
+      .ws-shell {
+        gap: 2px;
+      }
+
+      .ws-rail {
+        grid-column: 2 / -1;
+        justify-content: flex-start;
+        align-self: start;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding-left: 0;
+      }
+
+      .progress-ring {
+        width: 32px;
+        height: 32px;
+      }
+
+      .status-badge {
+        min-height: 26px;
+        padding-inline: 9px;
+      }
+
       .scaffold-state {
         padding: 20px;
         border-radius: 20px;
@@ -1208,6 +1226,15 @@
     }
 
     @media (max-width: 420px) {
+      .node-item.ws {
+        padding-right: 12px;
+      }
+
+      .ws-title {
+        font-size: 0.88rem;
+        line-height: 1.22;
+      }
+
       .scaffold-state {
         padding: 18px;
       }
@@ -1264,152 +1291,13 @@
   </style>
 </head>
 <body>
-  <div class="container" id="content">
-
-    <!-- Skeleton shown during loading -->
-    <div class="skeleton-wrapper" style="opacity: 1;">
-      <div class="ox-card">
-        <div class="ox-card-inner pulse-skeleton">
-          <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--ox-border);">
-            <div class="skeleton-line" style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%); background-size: 200% 100%; animation: shimmer 2s infinite linear;"></div>
-            <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
-              <div class="skeleton-line" style="width: 30%; height: 12px; background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%); background-size: 200% 100%; animation: shimmer 2s infinite linear; border-radius: 4px;"></div>
-              <div class="skeleton-line" style="width: 60%; height: 24px; background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%); background-size: 200% 100%; animation: shimmer 2s infinite linear; border-radius: 6px;"></div>
-            </div>
-            <div class="skeleton-line" style="width: 80px; height: 26px; border-radius: 999px; background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%); background-size: 200% 100%; animation: shimmer 2s infinite linear;"></div>
-          </div>
-          
-          <div class="skeleton-line" style="width: 40%; height: 12px; margin-bottom: 16px; background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%); background-size: 200% 100%; animation: shimmer 2s infinite linear; border-radius: 4px;"></div>
-          <div style="display: flex; flex-direction: column; gap: 12px;">
-            <div class="skeleton-line" style="width: 100%; height: 64px; border-radius: 12px; background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%); background-size: 200% 100%; animation: shimmer 2s infinite linear;"></div>
-            <div class="skeleton-line" style="width: 100%; height: 64px; border-radius: 12px; background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%); background-size: 200% 100%; animation: shimmer 2s infinite linear;"></div>
-            <div class="skeleton-line" style="width: 100%; height: 64px; border-radius: 12px; background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%); background-size: 200% 100%; animation: shimmer 2s infinite linear;"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-        </div>
-        <div class="scaffold-stage" data-scaffold-stage>
-          <div class="scaffold-stage__ambient scaffold-stage__ambient--one"></div>
-          <div class="scaffold-stage__ambient scaffold-stage__ambient--two"></div>
-          <div class="scaffold-stage__ambient scaffold-stage__ambient--three"></div>
-          <div class="scaffold-stage__core">
-            <div class="scaffold-node scaffold-node--initiative">Initiative</div>
-            <div class="scaffold-stage__trunk"></div>
-            <div class="scaffold-stage__columns">
-              <div class="scaffold-branch scaffold-branch--one">
-                <div class="scaffold-node scaffold-node--workstream">Intent</div>
-                <div class="scaffold-node-stack">
-                  <div class="scaffold-node scaffold-node--milestone">Milestone</div>
-                  <div class="scaffold-node scaffold-node--task">Task</div>
-                  <div class="scaffold-node scaffold-node--task">Task</div>
-                </div>
-              </div>
-              <div class="scaffold-branch scaffold-branch--two">
-                <div class="scaffold-node scaffold-node--workstream">Shape</div>
-                <div class="scaffold-node-stack">
-                  <div class="scaffold-node scaffold-node--milestone">Milestone</div>
-                  <div class="scaffold-node scaffold-node--task">Task</div>
-                  <div class="scaffold-node scaffold-node--task">Task</div>
-                </div>
-              </div>
-              <div class="scaffold-branch scaffold-branch--three">
-                <div class="scaffold-node scaffold-node--workstream">Ship</div>
-                <div class="scaffold-node-stack">
-                  <div class="scaffold-node scaffold-node--milestone">Milestone</div>
-                  <div class="scaffold-node scaffold-node--task">Task</div>
-                  <div class="scaffold-node scaffold-node--task">Task</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="scaffold-state__copy">
-          <div class="scaffold-state__title">Composing the hierarchy</div>
-          <div class="scaffold-state__desc">Workstreams, milestones, and task lanes are being packed into place. Move the cursor across the stage to nudge the assembly.</div>
-        </div>
-        <div class="scaffold-state__ticker" aria-hidden="true">
-          <span class="scaffold-state__ticker-item">Routing workstreams</span>
-          <span class="scaffold-state__ticker-item">Sequencing milestones</span>
-          <span class="scaffold-state__ticker-item">Snapping tasks into place</span>
-        </div>
-        <div class="scaffold-state__meta">
-          <div class="scaffold-state__meta-pill">Agent lanes are reserving space</div>
-          <div class="scaffold-state__meta-pill">Connectors draw in smoothly</div>
-          <div class="scaffold-state__meta-pill">Ready to bloom into the live tree</div>
-        </div>
-      </section>
-    </div>
-  </div>
+  <div class="container" id="content"></div>
   <script>
     var queryParams = new URLSearchParams(window.location.search);
 
-    function hydrateScaffoldStates(scope) {
-      var root = scope && scope.querySelectorAll ? scope : document;
-      var states = root.querySelectorAll('[data-scaffold-state]');
-      states.forEach(function(state) {
-        if (!state || state.dataset.hydrated === 'true') return;
-        state.dataset.hydrated = 'true';
-        var stage = state.querySelector('[data-scaffold-stage]');
-        if (!stage) return;
-
-        var frame = null;
-        var tiltX = 0;
-        var tiltY = 0;
-        var spotX = 50;
-        var spotY = 18;
-
-        var applyMotion = function() {
-          frame = null;
-          state.style.setProperty('--scaffold-tilt-x', tiltX.toFixed(2) + 'deg');
-          state.style.setProperty('--scaffold-tilt-y', tiltY.toFixed(2) + 'deg');
-          state.style.setProperty('--scaffold-spot-x', spotX.toFixed(2) + '%');
-          state.style.setProperty('--scaffold-spot-y', spotY.toFixed(2) + '%');
-        };
-
-        var scheduleMotion = function() {
-          if (frame !== null) return;
-          frame = window.requestAnimationFrame(applyMotion);
-        };
-
-        var resetMotion = function() {
-          tiltX = 0;
-          tiltY = 0;
-          spotX = 50;
-          spotY = 18;
-          scheduleMotion();
-        };
-
-        stage.addEventListener('pointermove', function(event) {
-          var rect = stage.getBoundingClientRect();
-          if (!rect.width || !rect.height) return;
-          var relX = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
-          var relY = Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height));
-          tiltX = (relX - 0.5) * 7;
-          tiltY = (0.5 - relY) * 6;
-          spotX = relX * 100;
-          spotY = relY * 100;
-          scheduleMotion();
-        }, { passive: true });
-
-        stage.addEventListener('pointerleave', resetMotion, { passive: true });
-        resetMotion();
-      });
-    }
-
     var injectHtml = (html) => {
       const content = document.getElementById('content');
-      const skeleton = content.querySelector('.skeleton-wrapper');
-      if (skeleton) {
-        skeleton.style.opacity = '0';
-        setTimeout(() => {
-          content.innerHTML = html;
-          hydrateScaffoldStates(content);
-        }, 300);
-      } else {
-        content.innerHTML = html;
-        hydrateScaffoldStates(content);
-      }
+      content.innerHTML = html;
     };
 
     function _detectProtocol(){if(typeof window.openai!=='undefined')return'chatgpt';if(window.parent&&window.parent!==window)return'mcp-apps';return'standalone';}
@@ -1443,24 +1331,39 @@
       ,gear: function(s){return _svg('<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V20a2 2 0 0 1-4 0v-.2a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H4a2 2 0 0 1 0-4h.2a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2 1 1 0 0 0 .6-.9V4a2 2 0 0 1 4 0v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1 1 1 0 0 0 .9.6H20a2 2 0 0 1 0 4h-.2a1 1 0 0 0-.4.1"></path>',s);}
       ,nodes: function(s){return _svg('<circle cx="6" cy="12" r="2" fill="currentColor" stroke="none"></circle><circle cx="18" cy="7" r="2" fill="currentColor" stroke="none"></circle><circle cx="18" cy="17" r="2" fill="currentColor" stroke="none"></circle><path d="M8 12h6"></path><path d="M16.2 8.3 12.8 11"></path><path d="M16.2 15.7 12.8 13"></path>',s);}
     };
+    var DOMAIN_ACCENTS = {
+      product: '22, 163, 74',
+      engineering: '6, 182, 212',
+      marketing: '249, 115, 22',
+      sales: '168, 85, 247',
+      operations: '245, 158, 11',
+      design: '236, 72, 153',
+      orchestrator: '20, 184, 166'
+    };
+    var getDomainRgb = (domain) => {
+      var key = typeof domain === 'string' ? domain.trim().toLowerCase() : '';
+      return DOMAIN_ACCENTS[key] || DOMAIN_ACCENTS.orchestrator;
+    };
     var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
     var renderScaffoldState = (mode) => {
       var awaiting = mode === 'awaiting';
       var title = awaiting ? 'Awaiting scaffold' : 'Composing the hierarchy';
       var desc = awaiting
-        ? 'The structural hierarchy has not been generated yet. When the first pass lands, this panel blossoms into the full work breakdown.'
-        : 'Workstreams, milestones, and task lanes are being packed into place. Move the cursor across the stage to nudge the assembly.';
+        ? 'The hierarchy will appear here once the first scaffold pass completes.'
+        : 'Workstreams, milestones, and task lanes are settling into place.';
       var statusLabel = awaiting ? 'Listening for output' : 'Assembling hierarchy';
-      var tickerItems = awaiting
-        ? ['Watching for scaffold output', 'Tree will unfurl here', 'Ready for the first pass']
-        : ['Routing workstreams', 'Sequencing milestones', 'Snapping tasks into place'];
-      var metaItems = awaiting
-        ? ['A clean launchpad for the first workstream', 'Connector paths are primed and waiting', 'The live tree will drop in without a jump cut']
-        : ['Agent lanes are reserving space', 'Connectors draw in smoothly', 'Ready to bloom into the live tree'];
       var branchLabels = awaiting
-        ? ['Signal', 'Shape', 'Land']
-        : ['Intent', 'Shape', 'Ship'];
-      return `<div class="ox-card animate-in"><div class="ox-card-inner"><section class="scaffold-state scaffold-state--${awaiting ? \'awaiting\' : \'loading\'}" data-scaffold-state>
+        ? [
+            { label: 'Signal', rgb: DOMAIN_ACCENTS.product },
+            { label: 'Shape', rgb: DOMAIN_ACCENTS.design },
+            { label: 'Land', rgb: DOMAIN_ACCENTS.operations }
+          ]
+        : [
+            { label: 'Intent', rgb: DOMAIN_ACCENTS.product },
+            { label: 'Build', rgb: DOMAIN_ACCENTS.engineering },
+            { label: 'Ship', rgb: DOMAIN_ACCENTS.marketing }
+          ];
+      return `<div class="ox-card animate-in"><div class="ox-card-inner"><section class="scaffold-state scaffold-state--${awaiting ? 'awaiting' : 'loading'}" data-scaffold-state>
         <div class="scaffold-state__chrome">
           <div class="scaffold-state__eyebrow">${awaiting ? 'Scaffold Launchpad' : 'Scaffold Composer'}</div>
           <div class="scaffold-state__status">
@@ -1469,17 +1372,14 @@
           </div>
         </div>
         <div class="scaffold-stage" data-scaffold-stage>
-          <div class="scaffold-stage__ambient scaffold-stage__ambient--one"></div>
-          <div class="scaffold-stage__ambient scaffold-stage__ambient--two"></div>
-          <div class="scaffold-stage__ambient scaffold-stage__ambient--three"></div>
           <div class="scaffold-stage__core">
             <div class="scaffold-node scaffold-node--initiative">Initiative</div>
             <div class="scaffold-stage__trunk"></div>
             <div class="scaffold-stage__columns">
-              ${branchLabels.map(function(label, index) {
+              ${branchLabels.map(function(branch, index) {
                 var branchClass = index === 0 ? 'one' : index === 1 ? 'two' : 'three';
                 return `<div class="scaffold-branch scaffold-branch--${branchClass}">
-                  <div class="scaffold-node scaffold-node--workstream">${label}</div>
+                  <div class="scaffold-node scaffold-node--workstream" style="color: rgb(${branch.rgb}); border-color: rgba(${branch.rgb}, 0.2);">${branch.label}</div>
                   <div class="scaffold-node-stack">
                     <div class="scaffold-node scaffold-node--milestone">Milestone</div>
                     <div class="scaffold-node scaffold-node--task">Task</div>
@@ -1494,19 +1394,8 @@
           <div class="scaffold-state__title">${title}</div>
           <div class="scaffold-state__desc">${desc}</div>
         </div>
-        <div class="scaffold-state__ticker" aria-hidden="true">
-          ${tickerItems.map(function(item) {
-            return `<span class="scaffold-state__ticker-item">${item}</span>`;
-          }).join('')}
-        </div>
-        <div class="scaffold-state__meta">
-          ${metaItems.map(function(item) {
-            return `<div class="scaffold-state__meta-pill">${item}</div>`;
-          }).join('')}
-        </div>
       </section></div></div>`;
     };
-    hydrateScaffoldStates(document.getElementById('content'));
     var readLabel = (item, fallback) => {
       if (!item || typeof item !== 'object') return fallback || '';
       if (typeof item.title === 'string' && item.title.trim()) return item.title.trim();
@@ -1636,8 +1525,12 @@
       if (['engineering', 'design', 'product', 'marketing', 'sales', 'operations', 'orchestrator'].includes(key)) return key;
       return 'orchestrator';
     };
+    var getDomainRgb = (domain) => {
+      return DOMAIN_ACCENTS[getDomainTone(domain)] || DOMAIN_ACCENTS.orchestrator;
+    };
     var renderDomainIcon = (domain) => {
       var key = getDomainTone(domain);
+      var rgb = getDomainRgb(domain);
       var icon = icons.nodes(9);
       if (key === 'engineering') icon = icons.code(9);
       else if (key === 'design') icon = icons.spark(9);
@@ -1645,12 +1538,12 @@
       else if (key === 'marketing') icon = icons.megaphone(9);
       else if (key === 'sales') icon = icons.trend(9);
       else if (key === 'operations') icon = icons.gear(9);
-      return '<span class="domain-badge ' + escapeHtml(key) + '" aria-hidden="true">' + icon + '</span>';
+      return '<span class="domain-badge" style="--agent-domain-rgb:' + escapeHtml(rgb) + ';" aria-hidden="true">' + icon + '</span>';
     };
     var renderAgentPresence = (execution) => {
       var name = execution && execution.agent_name ? execution.agent_name : 'Unassigned';
       var domain = execution && execution.domain ? execution.domain : 'orchestrator';
-      return '<span class="agent-presence" title="' + escapeHtml(name + ' · ' + titleCase(domain)) + '">' +
+      return '<span class="agent-presence" style="--agent-domain-rgb:' + escapeHtml(getDomainRgb(domain)) + ';" title="' + escapeHtml(name + ' · ' + titleCase(domain)) + '">' +
         '<span class="agent-avatar">' + renderAvatar(name, domain) + '</span>' +
         renderDomainIcon(domain) +
         '</span>';
@@ -2162,15 +2055,19 @@
        const nextExpanded = !isExpanded;
        btn.setAttribute('data-expanded', String(nextExpanded));
        btn.setAttribute('aria-expanded', String(nextExpanded));
-       btn.innerHTML = nextExpanded ? icons.chevronDown(12) : icons.chevronRight(12);
+       children.setAttribute('aria-hidden', String(!nextExpanded));
        children.classList.toggle('is-collapsed', !nextExpanded);
+       block.classList.toggle('is-collapsed', !nextExpanded);
        if (nextExpanded) animateHierarchyRows(children);
        queueTreeLayout(nextExpanded);
        window.setTimeout(() => queueTreeLayout(false), 620);
     };
 
     var render = () => {
-      if(isLoading) return;
+      if (isLoading) {
+        injectHtml(renderScaffoldState('loading'));
+        return;
+      }
       var scaffold = normalizeScaffoldData(data);
       if(!scaffold || !scaffold.initiative) { injectHtml(renderScaffoldState('awaiting')); return; }
 
@@ -2196,9 +2093,10 @@
           var execution = section.execution || {};
           var status = execution.status || classifyStatus('not_started');
           var progress = typeof execution.progress_pct === 'number' ? execution.progress_pct : 0;
+          var domainRgb = getDomainRgb(execution.agent_domain);
           return `<div class="ws-block" data-ws-block>
-          <div class="node-item ws">
-            <button type="button" class="node-toggle ox-icon-btn ox-icon-btn--sm" onclick="toggleNode(this)" data-expanded="true" aria-expanded="true" aria-label="Collapse workstream">${icons.chevronDown(12)}</button>
+          <div class="node-item ws" style="--ws-rgb: ${domainRgb};">
+            <button type="button" class="node-toggle ox-icon-btn ox-icon-btn--sm" onclick="toggleNode(this)" data-expanded="true" aria-expanded="true" aria-label="Collapse workstream"><span class="node-toggle__glyph">${icons.chevronDown(12)}</span></button>
             <span class="node-icon" style="display:flex; align-items:center;">${icons.workstream(14)}</span>
             <div class="ws-shell">
               <div class="ws-header">
@@ -2216,7 +2114,7 @@
               <span class="status-badge ${escapeHtml(status.tone)}" aria-label="${escapeHtml(status.label)}">${status.icon}<span>${escapeHtml(status.shortLabel || status.label)}</span></span>
             </div>
           </div>
-          <div class="ws-children" data-ws-children>
+          <div class="ws-children" data-ws-children aria-hidden="false">
             <div class="ws-children-inner" data-ws-children-inner>
               <div class="tree-overlay" data-tree-overlay aria-hidden="true"></div>
               ${(section.milestones || []).map(renderMilestone).join('')}
