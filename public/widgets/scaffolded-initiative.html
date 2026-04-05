@@ -617,8 +617,9 @@
 
     .node-item.ws {
       --ws-rgb: var(--ox-primary-rgb);
+      position: relative;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-columns: minmax(0, 1fr);
       align-items: center;
       gap: 14px;
       max-height: none;
@@ -651,11 +652,13 @@
     }
 
     .ws-shell {
+      grid-column: 1 / -1;
       min-width: 0;
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
       align-items: center;
       gap: 16px;
+      padding-right: 46px;
     }
 
     .ws-copy {
@@ -723,6 +726,17 @@
 
     .node-item.ws .badge-id {
       align-self: flex-start;
+    }
+
+    .node-item.ws > .node-toggle {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 2;
+    }
+
+    .node-item.ws > .ws-children {
+      grid-column: 1 / -1;
     }
 
     .agent-presence {
@@ -1212,16 +1226,19 @@
 
       .ws-shell {
         grid-template-columns: minmax(0, 1fr);
-        gap: 12px;
+        gap: 14px;
+        padding-right: 40px;
       }
 
       .ws-topline {
         gap: 10px;
+        align-items: start;
       }
 
       .ws-execution {
         justify-content: flex-start;
-        padding-left: 0;
+        padding-left: 30px;
+        gap: 8px;
       }
 
       .progress-ring {
@@ -1277,6 +1294,10 @@
         padding-right: 12px;
       }
 
+      .ws-shell {
+        padding-right: 38px;
+      }
+
       .ws-topline {
         grid-template-columns: auto minmax(0, 1fr) auto;
         gap: 9px;
@@ -1288,13 +1309,17 @@
       }
 
       .agent-presence {
-        width: 32px;
-        height: 32px;
+        width: 30px;
+        height: 30px;
       }
 
       .agent-presence__tooltip {
         right: -4px;
         max-width: 160px;
+      }
+
+      .ws-execution {
+        padding-left: 29px;
       }
 
       .scaffold-state {
