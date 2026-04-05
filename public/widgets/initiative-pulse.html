@@ -48,6 +48,8 @@
       }
       
       :root {
+        --ox-primary: #00c9a7;
+        --ox-primary-rgb: 0, 201, 167;
         --ox-lime: #a3e635; /* Will be overwritten by specific widgets */
         --ox-teal: #0d9488;
         --ox-danger: #e11d48;
@@ -183,11 +185,47 @@
         border-color: rgba(148, 163, 184, 0.18);
       }
 
+      .pulse-shell-card .ox-card {
+        overflow: hidden;
+        border-color: rgba(var(--ox-primary-rgb), 0.2);
+        box-shadow:
+          var(--ox-shadow),
+          0 0 0 1px rgba(var(--ox-primary-rgb), 0.08),
+          0 0 24px rgba(var(--ox-primary-rgb), 0.06);
+      }
+
+      .pulse-shell-card .ox-card::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent 6%, rgba(var(--ox-primary-rgb), 0.55) 50%, transparent 94%);
+        opacity: 0.95;
+      }
+
       .pulse-shell {
+        position: relative;
         display: flex;
         flex-direction: column;
-        gap: 20px;
+        gap: 18px;
+        isolation: isolate;
       }
+
+      .pulse-shell::before {
+        content: "";
+        position: absolute;
+        inset: -24px -24px auto;
+        height: 220px;
+        background:
+          radial-gradient(circle at 22% 0%, rgba(var(--ox-primary-rgb), 0.18), transparent 42%),
+          radial-gradient(circle at 92% 18%, rgba(var(--ox-primary-rgb), 0.08), transparent 30%);
+        opacity: 0.9;
+        pointer-events: none;
+        z-index: -2;
+      }
+
 
       .pulse-hero {
         display: grid;
@@ -280,7 +318,7 @@
         min-width: 0;
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 12px;
       }
 
       .pulse-headline {
@@ -288,6 +326,27 @@
         align-items: flex-start;
         justify-content: space-between;
         gap: 12px;
+      }
+
+      .pulse-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        min-height: 18px;
+      }
+
+      .pulse-brand-mark {
+        width: 20px;
+        height: 20px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(var(--ox-primary-rgb), 0.1);
+        border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
+        color: var(--ox-primary);
+        box-shadow: 0 12px 24px -18px rgba(var(--ox-primary-rgb), 0.68);
+        flex: none;
       }
 
       .pulse-kicker {
@@ -305,9 +364,9 @@
       }
 
       .pulse-title {
-        margin-top: 10px;
+        margin-top: 8px;
         font-size: clamp(1.4rem, 3.2vw, 1.92rem);
-        line-height: 1.02;
+        line-height: 1;
         letter-spacing: -0.05em;
         font-weight: 700;
         color: var(--ox-text);
@@ -327,6 +386,7 @@
         font-size: 0.92rem;
         line-height: 1.3;
         color: var(--ox-text-muted);
+        padding-top: 2px;
       }
 
       .pulse-economics strong {
@@ -350,7 +410,7 @@
         gap: 8px;
         font-family: var(--ox-mono);
         font-size: 0.62rem;
-        line-height: 1;
+        line-height: 1.15;
         letter-spacing: 0.1em;
         text-transform: uppercase;
         color: var(--ox-text-muted);
@@ -441,13 +501,14 @@
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 0;
-        border: 1px solid var(--ox-border);
+        border: none;
         border-radius: 16px;
         background:
-          linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.035), transparent 100%),
-          rgba(255, 255, 255, 0.02);
+          linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.032), transparent 100%),
+          rgba(255, 255, 255, 0.018);
         overflow: hidden;
-        box-shadow: var(--ox-well-shadow);
+        box-shadow: none;
+        padding: 0;
       }
 
       .pulse-rail-button {
@@ -456,8 +517,8 @@
         border-radius: 12px;
         background: transparent;
         color: inherit;
-        padding: 10px 6px 12px;
-        min-height: 70px;
+        padding: 11px 8px 13px;
+        min-height: 74px;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -467,7 +528,8 @@
         transition:
           background var(--widget-motion-fast) var(--widget-motion-curve),
           transform var(--widget-motion-fast) var(--widget-motion-curve),
-          color var(--widget-motion-fast) var(--widget-motion-curve);
+          color var(--widget-motion-fast) var(--widget-motion-curve),
+          box-shadow var(--widget-motion-fast) var(--widget-motion-curve);
       }
 
       .pulse-rail-button + .pulse-rail-button::before {
@@ -498,7 +560,8 @@
 
       .pulse-rail-button:hover {
         transform: translateY(-1px);
-        background: rgba(var(--ox-primary-rgb), 0.05);
+        background: rgba(var(--ox-primary-rgb), 0.06);
+        box-shadow: inset 0 0 0 1px rgba(var(--ox-primary-rgb), 0.12);
       }
 
       .pulse-rail-button:hover::after {
@@ -506,7 +569,8 @@
       }
 
       .pulse-rail-button.is-active {
-        background: rgba(var(--ox-primary-rgb), 0.05);
+        background: rgba(var(--ox-primary-rgb), 0.08);
+        box-shadow: inset 0 0 0 1px rgba(var(--ox-primary-rgb), 0.14);
       }
 
       .pulse-rail-button.is-active::after {
@@ -594,18 +658,21 @@
       }
 
       .pulse-panel {
-        border-top: 1px solid var(--ox-border);
-        padding-top: 16px;
+        padding-top: 18px;
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 16px;
         transform-origin: top center;
         will-change: transform, opacity;
-        animation: panelSlideDown var(--widget-motion-base) var(--widget-motion-curve) both;
+        animation: panelSlideDown var(--widget-motion-slow) var(--widget-motion-curve) both;
       }
 
       .pulse-panel-host {
         display: grid;
+        overflow: hidden;
+        transition:
+          height var(--widget-motion-slow) var(--widget-motion-curve),
+          opacity var(--widget-motion-base) var(--widget-motion-curve);
       }
 
       .pulse-panel-host:empty {
@@ -643,23 +710,25 @@
       .pulse-list {
         display: flex;
         flex-direction: column;
+        gap: 8px;
       }
 
       .pulse-list-row {
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 12px 0;
-        border-bottom: 1px solid var(--ox-border);
+        padding: 13px 12px;
+        border: 1px solid transparent;
+        border-radius: 16px;
         text-decoration: none;
         color: inherit;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.012), rgba(255, 255, 255, 0.008));
         transition:
           color var(--widget-motion-fast) var(--widget-motion-curve),
-          transform var(--widget-motion-fast) var(--widget-motion-curve);
-      }
-
-      .pulse-list-row:last-child {
-        border-bottom: none;
+          transform var(--widget-motion-fast) var(--widget-motion-curve),
+          border-color var(--widget-motion-fast) var(--widget-motion-curve),
+          background var(--widget-motion-fast) var(--widget-motion-curve),
+          box-shadow var(--widget-motion-fast) var(--widget-motion-curve);
       }
 
       .pulse-list-row:hover .pulse-list-title {
@@ -667,27 +736,30 @@
       }
 
       .pulse-list-row:hover {
-        transform: translateX(2px);
+        transform: translateY(-1px);
+        border-color: rgba(var(--ox-primary-rgb), 0.14);
+        background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.08), rgba(var(--ox-primary-rgb), 0.028));
+        box-shadow: 0 14px 28px -24px rgba(var(--ox-primary-rgb), 0.44);
       }
 
       .pulse-panel.is-active .pulse-list-row {
-        animation: pulseListRowIn 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation: pulseListRowIn 340ms cubic-bezier(0.16, 1, 0.3, 1) both;
       }
 
       .pulse-panel.is-active .pulse-list-row:nth-child(2) {
-        animation-delay: 28ms;
+        animation-delay: 46ms;
       }
 
       .pulse-panel.is-active .pulse-list-row:nth-child(3) {
-        animation-delay: 56ms;
+        animation-delay: 92ms;
       }
 
       .pulse-panel.is-active .pulse-list-row:nth-child(4) {
-        animation-delay: 84ms;
+        animation-delay: 138ms;
       }
 
       .pulse-panel.is-active .pulse-list-row:nth-child(5) {
-        animation-delay: 112ms;
+        animation-delay: 184ms;
       }
 
       .pulse-list-leading {
@@ -787,9 +859,9 @@
       }
 
       .pulse-avatar {
-        width: 28px;
-        height: 28px;
-        border-radius: 10px;
+        width: 34px;
+        height: 34px;
+        border-radius: 12px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -800,7 +872,15 @@
         font-size: 0.64rem;
         font-weight: 700;
         flex: none;
-        box-shadow: 0 8px 18px -14px rgba(var(--pulse-domain-rgb, var(--ox-primary-rgb)), 0.52);
+        overflow: hidden;
+        box-shadow: 0 12px 24px -18px rgba(var(--pulse-domain-rgb, var(--ox-primary-rgb)), 0.52);
+      }
+
+      .pulse-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
       }
 
       .pulse-status-pill {
@@ -1034,6 +1114,10 @@
           padding: 12px;
         }
 
+        .pulse-shell {
+          gap: 16px;
+        }
+
         .pulse-hero {
           grid-template-columns: auto minmax(0, 1fr);
           gap: 14px;
@@ -1066,7 +1150,7 @@
         }
 
         .pulse-copy {
-          gap: 9px;
+          gap: 10px;
         }
 
         .pulse-economics {
@@ -1123,21 +1207,22 @@
 
         .pulse-list-row {
           align-items: flex-start;
+          padding: 12px 11px;
         }
       }
     
       @keyframes panelSlideDown {
-        from { opacity: 0; transform: translateY(-8px); }
+        from { opacity: 0; transform: translateY(-10px) scale(0.985); }
         to { opacity: 1; transform: translateY(0); }
       }
 
       @keyframes pulseListRowIn {
-        from { opacity: 0.58; transform: translateY(6px); }
+        from { opacity: 0.4; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
       }
 
       .pulse-panel.is-active {
-        animation: panelSlideDown 240ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        animation: panelSlideDown 320ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
       }
 
 </style>
@@ -1434,6 +1519,8 @@ external: function (size) {
       var currentDashboardUrl = "";
       var currentAttentionItems = [];
       var currentSections = [];
+      var panelTransitionToken = 0;
+      var panelHydrated = false;
       var DOMAIN_ACCENTS = {
         product: "22, 163, 74",
         engineering: "6, 182, 212",
@@ -1677,6 +1764,8 @@ external: function (size) {
         return (artifact && typeof artifact.primary_label === "string" && artifact.primary_label) || "Open artifact";
       };
 
+      var WIDGET_ASSET_BASE = "https://mcp.useorgx.com/widgets/shared/";
+
       var avatarInitial = function (name, domain) {
         var source = typeof name === "string" && name.trim() ? name.trim() : titleCase(domain || "OrgX");
         return escapeHtml(source.charAt(0).toUpperCase() || "?");
@@ -1691,12 +1780,43 @@ external: function (size) {
         return DOMAIN_ACCENTS[getDomainKey(domain)];
       };
 
+      var getAvatarUrl = function (name, domain) {
+        var normalizedName = toStatusKey(name);
+        var normalizedDomain = getDomainKey(domain);
+        if (normalizedName.indexOf("pace") >= 0 || normalizedName.indexOf("product") >= 0 || normalizedDomain === "product") {
+          return WIDGET_ASSET_BASE + "product_orchestrator.png";
+        }
+        if (normalizedName.indexOf("eli") >= 0 || normalizedName.indexOf("engineer") >= 0 || normalizedDomain === "engineering") {
+          return WIDGET_ASSET_BASE + "engineering_autopilot.png";
+        }
+        if (normalizedName.indexOf("mark") >= 0 || normalizedName.indexOf("market") >= 0 || normalizedDomain === "marketing") {
+          return WIDGET_ASSET_BASE + "launch_captain.png";
+        }
+        if (normalizedName.indexOf("sage") >= 0 || normalizedName.indexOf("sale") >= 0 || normalizedDomain === "sales") {
+          return WIDGET_ASSET_BASE + "pipeline_intelligence.png";
+        }
+        if (normalizedName.indexOf("orion") >= 0 || normalizedName === "ops" || normalizedDomain === "operations") {
+          return WIDGET_ASSET_BASE + "control_tower.png";
+        }
+        if (normalizedName.indexOf("dana") >= 0 || normalizedName.indexOf("design") >= 0 || normalizedDomain === "design") {
+          return WIDGET_ASSET_BASE + "design_codex.png";
+        }
+        return WIDGET_ASSET_BASE + "xandy_orchestrator.png";
+      };
+
       var renderPulseAvatar = function (name, domain) {
+        var avatarUrl = getAvatarUrl(name, domain);
         return (
           '<span class="pulse-avatar" style="--pulse-domain-rgb:' +
           escapeHtml(getDomainRgb(domain)) +
           ';">' +
+          '<img src="' +
+          escapeHtml(avatarUrl) +
+          '" alt="' +
+          escapeHtml(name || titleCase(domain || "Agent")) +
+          '" loading="lazy" onerror="this.remove(); this.parentNode.textContent=\'' +
           avatarInitial(name, domain) +
+          '\';">' +
           "</span>"
         );
       };
@@ -2465,6 +2585,49 @@ external: function (size) {
         );
       };
 
+      var animatePanelHost = function (panelHost, html) {
+        if (!panelHost) return;
+        panelTransitionToken += 1;
+        var token = panelTransitionToken;
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          panelHost.innerHTML = html;
+          panelHost.style.height = "";
+          panelHost.style.opacity = "";
+          return;
+        }
+
+        var startHeight = panelHost.offsetHeight;
+        panelHost.style.overflow = "hidden";
+        panelHost.style.opacity = html ? "1" : "0.96";
+        panelHost.style.height = startHeight + "px";
+        panelHost.innerHTML = html;
+        var endHeight = panelHost.scrollHeight;
+
+        requestAnimationFrame(function () {
+          if (token !== panelTransitionToken) return;
+          panelHost.style.height = endHeight + "px";
+          panelHost.style.opacity = html ? "1" : "0";
+        });
+
+        var finalize = function (event) {
+          if (token !== panelTransitionToken) return;
+          if (event && event.propertyName !== "height") return;
+          panelHost.style.height = "";
+          panelHost.style.opacity = "";
+          panelHost.style.overflow = "";
+          panelHost.removeEventListener("transitionend", finalize);
+        };
+
+        if (startHeight === endHeight) {
+          window.setTimeout(function () {
+            finalize({ propertyName: "height" });
+          }, 280);
+          return;
+        }
+
+        panelHost.addEventListener("transitionend", finalize);
+      };
+
       var syncPulsePanel = function () {
         var shell = document.querySelector(".pulse-shell");
         if (!shell || !currentSections.length) return;
@@ -2473,6 +2636,11 @@ external: function (size) {
         var availableKeys = currentSections.map(function (section) {
           return section.key;
         });
+        if (!panelHydrated && !activePanel && availableKeys.length) {
+          activePanel = availableKeys[0];
+          uiState.panel = activePanel;
+          panelHydrated = true;
+        }
         if (availableKeys.indexOf(activePanel) === -1) {
           activePanel = null;
           uiState.panel = null;
@@ -2497,12 +2665,16 @@ external: function (size) {
 
         var panelHost = shell.querySelector("#pulse-panel-host");
         if (!panelHost) return;
-        panelHost.innerHTML = activePanel
-          ? renderPanel(activePanel, currentPulseData, currentDashboardUrl, currentAttentionItems)
-          : "";
+        animatePanelHost(
+          panelHost,
+          activePanel
+            ? renderPanel(activePanel, currentPulseData, currentDashboardUrl, currentAttentionItems)
+            : ""
+        );
       };
 
       window.togglePulsePanel = function (panel) {
+        panelHydrated = true;
         uiState.panel = uiState.panel === panel ? null : panel;
         syncPulsePanel();
       };
@@ -2714,6 +2886,10 @@ external: function (size) {
         var availableKeys = sections.map(function (section) {
           return section.key;
         });
+        if (!panelHydrated && !uiState.panel && availableKeys.length) {
+          uiState.panel = availableKeys[0];
+          panelHydrated = true;
+        }
         if (availableKeys.indexOf(uiState.panel) === -1) uiState.panel = null;
         currentPulseData = pulse;
         currentDashboardUrl = dashboardUrl;
@@ -2728,7 +2904,8 @@ external: function (size) {
           "now";
 
         injectHtml(
-          '<div class="ox-card animate-in" style="margin-bottom: 18px;">' +
+          '<div class="widget-shell-card pulse-shell-card animate-in">' +
+            '<div class="ox-card">' +
             '<div class="ox-card-inner">' +
                 '<div class="pulse-shell">' +
                   '<div class="pulse-hero">' +
@@ -2736,7 +2913,12 @@ external: function (size) {
                     '<div class="pulse-copy">' +
                       '<div class="pulse-headline">' +
                         '<div class="pulse-title-wrap">' +
-                          '<div class="pulse-kicker">Initiative pulse</div>' +
+                          '<div class="pulse-brand">' +
+                            '<span class="pulse-brand-mark">' +
+                              icons.initiative(11) +
+                            '</span>' +
+                            '<span class="pulse-kicker">Initiative pulse</span>' +
+                          '</div>' +
                           '<div class="pulse-title">' +
                             escapeHtml(pulse.name) +
                           "</div>" +
@@ -2803,9 +2985,10 @@ external: function (size) {
                       escapeHtml(attentionItems.length ? "Resolve in live view" : "Open live view") +
                       icons.external(14) +
                     "</a>" +
-                  "</div>" +
                 "</div>" +
               "</div>" +
+            "</div>" +
+            "</div>" +
             "</div>"
         );
       };
