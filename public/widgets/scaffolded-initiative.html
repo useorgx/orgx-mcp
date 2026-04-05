@@ -588,10 +588,10 @@
       --tree-elbow-run-outer: 24px;
       --tree-elbow-run-inner: 24px;
       --tree-stroke: 1.5px;
-      --tree-gap: 10px;
+      --tree-gap: 12px;
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 22px;
     }
 
     .ws-block {
@@ -1007,7 +1007,8 @@
       position: relative;
       min-height: 0;
       overflow: hidden;
-      padding-top: 12px;
+      padding-top: 14px;
+      padding-bottom: 6px;
       display: flex;
       flex-direction: column;
       gap: var(--tree-gap);
@@ -1210,6 +1211,11 @@
     .deep-link svg { width: 14px; height: 14px; }
 
     @media (max-width: 560px) {
+      .node-list {
+        --tree-gap: 11px;
+        gap: 18px;
+      }
+
       .widget-footer {
         flex-direction: column;
         align-items: stretch;
@@ -1222,6 +1228,11 @@
       .node-item.ws {
         gap: 12px;
         padding: 14px 12px;
+      }
+
+      .ws-children-inner {
+        padding-top: 12px;
+        padding-bottom: 4px;
       }
 
       .ws-shell {
