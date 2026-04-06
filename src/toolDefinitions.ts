@@ -23,21 +23,49 @@ import {
   compatibilityAliasDescription,
   preferredToolCallout,
 } from './preferredToolGuidance';
-import { toSkybridgeResourceUri } from './widgetConfig';
+import { WIDGET_BUILD_VERSION } from './generated/widgetBuildInfo';
+import {
+  toSkybridgeResourceUri,
+  withWidgetResourceVersion,
+} from './widgetConfig';
 
 // =============================================================================
 // WIDGET URIs
 // =============================================================================
 
 export const WIDGET_URIS = {
-  decisions: 'ui://widget/decisions.html',
-  agentStatus: 'ui://widget/agent-status.html',
-  searchResults: 'ui://widget/search-results.html',
-  scaffoldedInitiative: 'ui://widget/scaffolded-initiative.html',
-  initiativePulse: 'ui://widget/initiative-pulse.html',
-  taskSpawned: 'ui://widget/task-spawned.html',
-  decisionHistory: 'ui://widget/search-results.html', // Reuse search results widget
-  morningBrief: 'ui://widget/morning-brief.html', // Intelligence Flywheel: curated receipts + exceptions + ROI delta
+  decisions: withWidgetResourceVersion(
+    'ui://widget/decisions.html',
+    WIDGET_BUILD_VERSION
+  ),
+  agentStatus: withWidgetResourceVersion(
+    'ui://widget/agent-status.html',
+    WIDGET_BUILD_VERSION
+  ),
+  searchResults: withWidgetResourceVersion(
+    'ui://widget/search-results.html',
+    WIDGET_BUILD_VERSION
+  ),
+  scaffoldedInitiative: withWidgetResourceVersion(
+    'ui://widget/scaffolded-initiative.html',
+    WIDGET_BUILD_VERSION
+  ),
+  initiativePulse: withWidgetResourceVersion(
+    'ui://widget/initiative-pulse.html',
+    WIDGET_BUILD_VERSION
+  ),
+  taskSpawned: withWidgetResourceVersion(
+    'ui://widget/task-spawned.html',
+    WIDGET_BUILD_VERSION
+  ),
+  decisionHistory: withWidgetResourceVersion(
+    'ui://widget/search-results.html',
+    WIDGET_BUILD_VERSION
+  ), // Reuse search results widget
+  morningBrief: withWidgetResourceVersion(
+    'ui://widget/morning-brief.html',
+    WIDGET_BUILD_VERSION
+  ), // Intelligence Flywheel: curated receipts + exceptions + ROI delta
 } as const;
 
 export const OUTPUT_TEMPLATE_URIS = {
