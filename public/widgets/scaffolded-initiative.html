@@ -591,13 +591,20 @@
       --tree-gap: 12px;
       display: flex;
       flex-direction: column;
-      gap: 22px;
+      gap: 28px;
     }
 
     .ws-block {
       display: flex;
       flex-direction: column;
       gap: 0;
+      position: relative;
+      z-index: 0;
+    }
+
+    .ws-block:hover,
+    .ws-block:focus-within {
+      z-index: 16;
     }
     .node-item {
       display: flex;
@@ -623,6 +630,7 @@
       align-items: center;
       gap: 14px;
       max-height: none;
+      overflow: visible;
       padding: 16px;
       border-radius: 14px;
       border: 1px solid rgba(var(--ws-rgb), 0.14);
@@ -658,7 +666,6 @@
       grid-template-columns: minmax(0, 1fr) auto;
       align-items: center;
       gap: 16px;
-      padding-right: 46px;
     }
 
     .ws-copy {
@@ -719,20 +726,13 @@
       display: inline-flex;
       align-items: center;
       justify-content: flex-end;
-      gap: 10px;
-      padding-left: 10px;
-      flex-wrap: wrap;
+      gap: 12px;
+      padding-left: 12px;
+      flex-wrap: nowrap;
     }
 
     .node-item.ws .badge-id {
       align-self: flex-start;
-    }
-
-    .node-item.ws > .node-toggle {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      z-index: 2;
     }
 
     .node-item.ws > .ws-children {
@@ -750,6 +750,7 @@
       border-radius: 12px;
       outline: none;
       cursor: default;
+      z-index: 4;
     }
 
     .agent-presence:focus-visible {
@@ -804,8 +805,8 @@
 
     .agent-presence__tooltip {
       position: absolute;
-      top: calc(100% + 10px);
-      right: -2px;
+      right: -6px;
+      bottom: calc(100% + 12px);
       min-width: max-content;
       max-width: 180px;
       padding: 9px 11px 10px;
@@ -820,24 +821,24 @@
         0 18px 36px -26px rgba(0,0,0,0.8),
         0 12px 24px -18px rgba(var(--agent-domain-rgb, var(--ox-primary-rgb)), 0.35);
       opacity: 0;
-      transform: translateY(-4px) scale(0.985);
-      transform-origin: top right;
+      transform: translateY(4px) scale(0.985);
+      transform-origin: bottom right;
       pointer-events: none;
       transition:
         opacity var(--widget-motion-fast) var(--widget-motion-curve),
         transform var(--widget-motion-fast) var(--widget-motion-curve);
-      z-index: 6;
+      z-index: 40;
     }
 
     .agent-presence__tooltip::before {
       content: "";
       position: absolute;
-      top: -6px;
+      bottom: -6px;
       right: 14px;
       width: 12px;
       height: 12px;
-      border-top: 1px solid rgba(var(--agent-domain-rgb, var(--ox-primary-rgb)), 0.18);
-      border-left: 1px solid rgba(var(--agent-domain-rgb, var(--ox-primary-rgb)), 0.18);
+      border-right: 1px solid rgba(var(--agent-domain-rgb, var(--ox-primary-rgb)), 0.18);
+      border-bottom: 1px solid rgba(var(--agent-domain-rgb, var(--ox-primary-rgb)), 0.18);
       background: rgba(7, 10, 18, 0.96);
       transform: rotate(45deg);
     }
@@ -997,6 +998,8 @@
       display: grid;
       grid-template-rows: 1fr;
       transition: grid-template-rows 240ms cubic-bezier(0.16, 1, 0.3, 1);
+      min-height: 0;
+      overflow: hidden;
     }
 
     .ws-children.is-collapsed {
@@ -1012,13 +1015,27 @@
       display: flex;
       flex-direction: column;
       gap: var(--tree-gap);
-      transition: opacity 220ms ease, transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+      transition:
+        opacity 220ms ease,
+        transform 320ms cubic-bezier(0.16, 1, 0.3, 1),
+        padding-top 240ms cubic-bezier(0.16, 1, 0.3, 1),
+        padding-bottom 240ms cubic-bezier(0.16, 1, 0.3, 1),
+        gap 240ms cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .ws-children.is-collapsed .ws-children-inner {
       opacity: 0;
       transform: translateY(-8px);
+      padding-top: 0;
+      padding-bottom: 0;
+      gap: 0;
       pointer-events: none;
+    }
+
+    .ws-block.is-collapsed .node-item.ws {
+      row-gap: 0;
+      padding-top: 12px;
+      padding-bottom: 12px;
     }
 
     .ms-block,
@@ -1213,7 +1230,7 @@
     @media (max-width: 560px) {
       .node-list {
         --tree-gap: 11px;
-        gap: 18px;
+        gap: 20px;
       }
 
       .widget-footer {
@@ -1238,7 +1255,6 @@
       .ws-shell {
         grid-template-columns: minmax(0, 1fr);
         gap: 14px;
-        padding-right: 40px;
       }
 
       .ws-topline {
@@ -1250,6 +1266,7 @@
         justify-content: flex-start;
         padding-left: 30px;
         gap: 8px;
+        flex-wrap: wrap;
       }
 
       .progress-ring {
@@ -1305,10 +1322,6 @@
         padding-right: 12px;
       }
 
-      .ws-shell {
-        padding-right: 38px;
-      }
-
       .ws-topline {
         grid-template-columns: auto minmax(0, 1fr) auto;
         gap: 9px;
@@ -1327,6 +1340,7 @@
       .agent-presence__tooltip {
         right: -4px;
         max-width: 160px;
+        bottom: calc(100% + 10px);
       }
 
       .ws-execution {
@@ -2153,13 +2167,27 @@
        const block = btn.closest('[data-ws-block]');
        const children = block ? block.querySelector('[data-ws-children]') : null;
        if (!children) return;
+       if (children.__collapseTimer) {
+         window.clearTimeout(children.__collapseTimer);
+         children.__collapseTimer = null;
+       }
        const isExpanded = btn.getAttribute('data-expanded') === 'true';
        const nextExpanded = !isExpanded;
        btn.setAttribute('data-expanded', String(nextExpanded));
        btn.setAttribute('aria-expanded', String(nextExpanded));
        children.setAttribute('aria-hidden', String(!nextExpanded));
-       children.classList.toggle('is-collapsed', !nextExpanded);
        block.classList.toggle('is-collapsed', !nextExpanded);
+       if (nextExpanded) {
+         children.hidden = false;
+         window.requestAnimationFrame(() => {
+           children.classList.remove('is-collapsed');
+         });
+       } else {
+         children.classList.add('is-collapsed');
+         children.__collapseTimer = window.setTimeout(() => {
+           if (children.classList.contains('is-collapsed')) children.hidden = true;
+         }, 260);
+       }
        if (nextExpanded) animateHierarchyRows(children);
        queueTreeLayout(nextExpanded);
        window.setTimeout(() => queueTreeLayout(false), 620);
@@ -2213,9 +2241,9 @@
             <div class="ws-execution">
               ${renderProgressRing(progress, domainRgb)}
               <span class="status-badge ${escapeHtml(status.tone)}" aria-label="${escapeHtml(status.label)}">${status.icon}<span>${escapeHtml(status.shortLabel || status.label)}</span></span>
+              <button type="button" class="node-toggle ox-icon-btn ox-icon-btn--sm" onclick="toggleNode(this)" data-expanded="true" aria-expanded="true" aria-label="Collapse workstream"><span class="node-toggle__glyph">${icons.chevronDown(12)}</span></button>
             </div>
           </div>
-          <button type="button" class="node-toggle ox-icon-btn ox-icon-btn--sm" onclick="toggleNode(this)" data-expanded="true" aria-expanded="true" aria-label="Collapse workstream"><span class="node-toggle__glyph">${icons.chevronDown(12)}</span></button>
           <div class="ws-children" data-ws-children aria-hidden="false">
             <div class="ws-children-inner" data-ws-children-inner>
               <div class="tree-overlay" data-tree-overlay aria-hidden="true"></div>
