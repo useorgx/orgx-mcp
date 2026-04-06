@@ -63,8 +63,21 @@ export function resolveWidgetDomain(env: WidgetEnv): string {
   return url?.host ?? DEFAULT_WIDGET_DOMAIN;
 }
 
+export function withWidgetResourceVersion(uri: string, version: string): string {
+  if (!version) return uri;
+  const separator = uri.includes('?') ? '&' : '?';
+  return `${uri}${separator}v=${encodeURIComponent(version)}`;
+}
+
 export function toSkybridgeResourceUri(uri: string): string {
-  return uri.replace(/\.html$/, '.skybridge.html');
+  return uri.replace(/\.html(\?.*)?$/, '.skybridge.html$1');
+}
+
+export function parseWidgetResourceUri(uri: string) {
+  const widgetTarget = uri.replace(/^ui:\/\/widget\//, '');
+  const [widgetFile, ...queryParts] = widgetTarget.split('?');
+  const query = queryParts.length > 0 ? `?${queryParts.join('?')}` : '';
+  return { widgetFile, query };
 }
 
 function addOrigin(origins: Set<string>, value?: string | null) {

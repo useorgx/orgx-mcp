@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { authHandler } from '../src/authHandler';
+import { OUTPUT_TEMPLATE_URIS, WIDGET_URIS } from '../src/toolDefinitions';
 
 describe('authHandler widget compatibility routes', () => {
   it('serves a derived Smithery server card from the worker origin', async () => {
@@ -19,6 +20,7 @@ describe('authHandler widget compatibility routes', () => {
       serverInfo?: { name?: string; version?: string };
       authentication?: { required?: boolean; schemes?: string[] };
       tools?: Array<{ name?: string; inputSchema?: { type?: string } }>;
+      resources?: Array<{ uri?: string }>;
     };
     expect(body.serverInfo?.name).toBe('OrgX MCP');
     expect(body.serverInfo?.version).toBeTruthy();
@@ -28,6 +30,14 @@ describe('authHandler widget compatibility routes', () => {
     });
     expect(body.tools?.length).toBeGreaterThan(0);
     expect(body.tools?.[0]?.inputSchema?.type).toBe('object');
+    const scaffoldResource = body.resources?.find(
+      (resource) => resource.uri === WIDGET_URIS.scaffoldedInitiative
+    );
+    const scaffoldSkybridgeResource = body.resources?.find(
+      (resource) => resource.uri === OUTPUT_TEMPLATE_URIS.scaffoldedInitiative
+    );
+    expect(scaffoldResource).toBeTruthy();
+    expect(scaffoldSkybridgeResource).toBeTruthy();
   });
 
   it('serves the live server.json manifest from the worker origin', async () => {
@@ -45,9 +55,20 @@ describe('authHandler widget compatibility routes', () => {
     const body = (await response.json()) as {
       name?: string;
       websiteUrl?: string;
+      resources?: Array<{ uri?: string }>;
     };
     expect(body.name).toBe('com.useorgx/orgx-mcp');
     expect(body.websiteUrl).toBe('https://useorgx.com');
+    expect(
+      body.resources?.some(
+        (resource) => resource.uri === WIDGET_URIS.scaffoldedInitiative
+      )
+    ).toBe(true);
+    expect(
+      body.resources?.some(
+        (resource) => resource.uri === 'ui://widget/scaffolded-initiative.html'
+      )
+    ).toBe(false);
   });
 
   it('proxies /api/chatgpt/widgets requests through the assets binding', async () => {

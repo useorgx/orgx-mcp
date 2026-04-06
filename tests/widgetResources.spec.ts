@@ -6,14 +6,15 @@ import {
   WIDGET_RESOURCES,
   WIDGET_URIS,
 } from '../src/toolDefinitions';
+import { WIDGET_BUILD_VERSION } from '../src/generated/widgetBuildInfo';
 
 describe('widget resources', () => {
   it('registers scaffolded initiative widget URIs', () => {
     expect(WIDGET_URIS.scaffoldedInitiative).toBe(
-      'ui://widget/scaffolded-initiative.html'
+      `ui://widget/scaffolded-initiative.html?v=${WIDGET_BUILD_VERSION}`
     );
     expect(OUTPUT_TEMPLATE_URIS.scaffoldedInitiative).toBe(
-      'ui://widget/scaffolded-initiative.skybridge.html'
+      `ui://widget/scaffolded-initiative.skybridge.html?v=${WIDGET_BUILD_VERSION}`
     );
   });
 

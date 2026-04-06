@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildMcpAppsMeta,
+  parseWidgetResourceUri,
   rewriteWidgetHtmlAssetUrls,
   sanitizeMcpAppsHtml,
+  toSkybridgeResourceUri,
+  withWidgetResourceVersion,
 } from '../src/widgetConfig';
 
 describe('widgetConfig', () => {
@@ -92,6 +95,29 @@ describe('widgetConfig', () => {
     expect(meta.ui.csp.resourceDomains).toContain('https://mcp.useorgx.com');
     expect(meta.ui.csp.baseUriDomains).toContain('https://mcp.useorgx.com');
     expect(meta.ui.csp.baseUriDomains).toContain('https://www.useorgx.com');
+  });
+
+  it('preserves cache-busting query strings when converting to skybridge URIs', () => {
+    expect(
+      toSkybridgeResourceUri(
+        'ui://widget/scaffolded-initiative.html?v=abc123'
+      )
+    ).toBe('ui://widget/scaffolded-initiative.skybridge.html?v=abc123');
+  });
+
+  it('adds and parses widget resource versions', () => {
+    const versioned = withWidgetResourceVersion(
+      'ui://widget/scaffolded-initiative.html',
+      'build123'
+    );
+
+    expect(versioned).toBe(
+      'ui://widget/scaffolded-initiative.html?v=build123'
+    );
+    expect(parseWidgetResourceUri(versioned)).toEqual({
+      widgetFile: 'scaffolded-initiative.html',
+      query: '?v=build123',
+    });
   });
 
   it('sanitizes MCP Apps HTML by removing icon links and inlining shared assets', () => {
