@@ -100,21 +100,31 @@
       .delay-2 { animation-delay: 0.2s; }
       .delay-3 { animation-delay: 0.3s; }
       .scaffold-state {
+        --scaffold-ease: cubic-bezier(0.16, 1, 0.3, 1);
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 14px;
         position: relative;
+        padding: 20px;
+        border-radius: 22px;
+        overflow: hidden;
+        background:
+          linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.05), transparent 48%),
+          rgba(4, 9, 16, 0.94);
+        border: 1px solid rgba(var(--ox-primary-rgb), 0.11);
+        box-shadow:
+          0 30px 56px -24px rgba(0, 0, 0, 0.58),
+          inset 0 1px 0 rgba(255, 255, 255, 0.04);
       }
-
 
       .scaffold-state::before {
         content: "";
         position: absolute;
         inset: 0;
         background:
-          radial-gradient(circle at 50% 0%, rgba(var(--ox-primary-rgb), 0.14), transparent 46%),
-          linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.06), transparent 42%);
-        opacity: 0.88;
+          radial-gradient(circle at 50% 0%, rgba(var(--ox-primary-rgb), 0.16), transparent 52%),
+          linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.08), transparent 40%);
+        opacity: 0.9;
         z-index: -2;
       }
 
@@ -141,35 +151,36 @@
         align-items: center;
         gap: 8px;
         font-family: var(--ox-mono);
-        font-size: 0.64rem;
+        font-size: 0.58rem;
         font-weight: 700;
-        letter-spacing: 0.14em;
+        letter-spacing: 0.16em;
         text-transform: uppercase;
         color: var(--ox-text-muted);
       }
 
       .scaffold-state__eyebrow::before {
         content: "";
-        width: 8px;
-        height: 8px;
+        width: 7px;
+        height: 7px;
         border-radius: 999px;
-        background: linear-gradient(135deg, var(--ox-primary), rgba(var(--ox-primary-rgb), 0.18));
-        box-shadow: 0 0 16px rgba(var(--ox-primary-rgb), 0.38);
+        background: linear-gradient(135deg, rgb(var(--ox-primary-rgb)), rgba(var(--ox-primary-rgb), 0.18));
+        box-shadow: 0 0 16px rgba(var(--ox-primary-rgb), 0.42);
+        animation: scaffoldPulse 2.4s ease-in-out infinite;
       }
 
       .scaffold-state__status {
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        min-height: 32px;
+        min-height: 30px;
         padding: 0 12px;
         border-radius: 999px;
         font-family: var(--ox-mono);
-        font-size: 0.67rem;
+        font-size: 0.6rem;
         font-weight: 700;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: var(--ox-primary);
+        color: rgb(var(--ox-primary-rgb));
         background: rgba(var(--ox-primary-rgb), 0.1);
         border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
@@ -182,367 +193,471 @@
       }
 
       .scaffold-state__status-dot {
-        width: 7px;
-        height: 7px;
+        width: 6px;
+        height: 6px;
         border-radius: 999px;
         background: currentColor;
-        box-shadow: 0 0 12px currentColor;
-        animation: scaffoldPulse 1.8s ease-in-out infinite;
+        box-shadow: 0 0 10px currentColor;
+        animation: scaffoldPulse 1.6s ease-in-out infinite;
       }
 
       @keyframes scaffoldPulse {
         0%, 100% { transform: scale(1); opacity: 1; }
-        50% { transform: scale(0.66); opacity: 0.45; }
+        50% { transform: scale(0.65); opacity: 0.42; }
       }
-      .scaffold-stage {
+
+      .scaffold-state__stage {
         position: relative;
-        min-height: 204px;
-        padding: 18px 18px 16px;
+        min-height: 214px;
         border-radius: 18px;
         overflow: hidden;
-        background:
-          linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.03), transparent 42%),
-          var(--ox-well-bg);
-        border: 1px solid var(--ox-border);
-        box-shadow: var(--ox-well-shadow);
+        background: rgba(0, 0, 0, 0.24);
+        border: 1px solid rgba(var(--ox-primary-rgb), 0.08);
       }
 
-
-      .scaffold-stage::before,
-      .scaffold-stage::after {
+      .scaffold-state__stage::before {
         content: "";
         position: absolute;
         inset: 0;
-        pointer-events: none;
-      }
-
-      .scaffold-stage::before {
         background:
           linear-gradient(var(--ox-grid) 1px, transparent 1px),
           linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px);
-        background-size: 20px 20px;
-        opacity: 0.42;
-        mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.85), transparent 100%);
+        background-size: 22px 22px;
+        opacity: 0.52;
+        mask-image: radial-gradient(ellipse 78% 74% at 50% 48%, black 28%, transparent 100%);
       }
 
-      .scaffold-stage::after {
-        background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.05), transparent 34%);
-      }
-
-      .scaffold-stage__ambient {
-        display: none;
-      }
-
-      .scaffold-stage__ambient--one {
-        top: 26px;
-        left: 24px;
-        width: 84px;
-        height: 84px;
-        background: radial-gradient(circle, rgba(var(--ox-primary-rgb), 0.26), transparent 72%);
-        animation: ambientFloat 7.6s ease-in-out infinite;
-      }
-
-      .scaffold-stage__ambient--two {
-        right: 42px;
-        bottom: 38px;
-        width: 128px;
-        height: 128px;
-        background: radial-gradient(circle, rgba(13, 148, 136, 0.16), transparent 70%);
-        animation: ambientFloat 9.4s ease-in-out infinite reverse;
-      }
-
-      .scaffold-stage__ambient--three {
-        top: 78px;
-        right: 104px;
-        width: 12px;
-        height: 12px;
-        background: rgba(var(--ox-primary-rgb), 0.82);
-        box-shadow: 0 0 0 6px rgba(var(--ox-primary-rgb), 0.08), 0 0 22px rgba(var(--ox-primary-rgb), 0.28);
-        animation: scaffoldSparkle 2.8s ease-in-out infinite;
-      }
-
-      @keyframes ambientFloat {
-        0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-        50% { transform: translate3d(0, -12px, 0) scale(1.06); }
-      }
-
-      @keyframes scaffoldSparkle {
-        0%, 100% { transform: scale(0.92); opacity: 0.38; }
-        50% { transform: scale(1.08); opacity: 1; }
-      }
-
-      .scaffold-stage__core {
-        position: relative;
-        z-index: 1;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 14px;
-      }
-
-      .scaffold-node {
-        position: relative;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        min-height: 34px;
-        padding: 0 12px;
-        border-radius: 14px;
-        border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
-        background: rgba(2, 6, 23, 0.72);
-        color: var(--ox-text);
-        font-size: 0.68rem;
-        font-weight: 600;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        box-shadow:
-          0 12px 24px -20px rgba(0, 0, 0, 0.72),
-          inset 0 1px 0 rgba(255, 255, 255, 0.06);
-        backdrop-filter: blur(10px);
-        overflow: hidden;
-      }
-
-      @media (prefers-color-scheme: light) {
-        .scaffold-node {
-          background: rgba(255, 255, 255, 0.94);
-          box-shadow:
-            0 16px 30px -24px rgba(15, 23, 42, 0.4),
-            inset 0 1px 0 rgba(255, 255, 255, 0.75);
-        }
-      }
-
-      .scaffold-node::before {
+      .scaffold-state__stage::after {
         content: "";
-        width: 7px;
-        height: 7px;
-        border-radius: 999px;
-        background: currentColor;
-        opacity: 0.82;
-      }
-
-      .scaffold-node::after {
-        display: none;
-      }
-
-      @keyframes scaffoldSweep {
-        0%, 68%, 100% { transform: translateX(-120%); }
-        84% { transform: translateX(120%); }
-      }
-
-      .scaffold-node--initiative {
-        min-width: 170px;
-        color: var(--ox-primary);
-      }
-
-      .scaffold-stage__trunk {
-        width: 2px;
-        height: 24px;
-        border-radius: 999px;
-        background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.68), rgba(var(--ox-primary-rgb), 0.08));
-        box-shadow: 0 0 12px rgba(var(--ox-primary-rgb), 0.14);
-      }
-
-      .scaffold-stage__columns {
-        position: relative;
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 16px;
-        width: 100%;
-      }
-
-      .scaffold-stage__columns::before {
-        content: "";
-        position: absolute;
-        left: 19%;
-        right: 19%;
-        top: -10px;
-        height: 2px;
-        border-radius: 999px;
-        background: linear-gradient(90deg, rgba(var(--ox-primary-rgb), 0.06), rgba(var(--ox-primary-rgb), 0.44), rgba(var(--ox-primary-rgb), 0.06));
-        box-shadow: 0 0 12px rgba(var(--ox-primary-rgb), 0.08);
-      }
-
-      .scaffold-branch {
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
-        padding-top: 10px;
-      }
-
-      .scaffold-branch::before {
-        content: "";
-        position: absolute;
-        top: -10px;
-        width: 2px;
-        height: 14px;
-        border-radius: 999px;
-        background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.46), rgba(var(--ox-primary-rgb), 0.08));
-      }
-
-      .scaffold-node--workstream {
-        min-width: 112px;
-        color: var(--ox-teal);
-      }
-
-      .scaffold-node-stack {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-        width: 100%;
-      }
-
-      .scaffold-node--milestone {
-        min-width: 104px;
-        color: var(--ox-warning);
-      }
-
-      .scaffold-node--task {
-        min-width: 82px;
-        min-height: 28px;
-        padding-inline: 10px;
-        border-radius: 999px;
-        font-size: 0.64rem;
-        font-weight: 700;
-        color: var(--ox-lime);
-      }
-
-      .scaffold-node--task::after {
-        animation-duration: 4.6s;
-      }
-
-      .scaffold-node-stack .scaffold-node--task:nth-child(3) {
-        animation-delay: -1.1s;
-      }
-
-      .scaffold-state__copy {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        text-align: center;
-      }
-
-      .scaffold-state__title {
-        font-size: 1.16rem;
-        font-weight: 650;
-        letter-spacing: -0.03em;
-        color: var(--ox-text);
-      }
-
-      .scaffold-state__desc {
-        max-width: 400px;
-        margin: 0 auto;
-        font-size: 0.9rem;
-        line-height: 1.55;
-        color: var(--ox-text-muted);
-      }
-
-      .scaffold-state__ticker {
-        position: relative;
-        height: 1.35rem;
-        overflow: hidden;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: var(--ox-mono);
-        font-size: 0.69rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--ox-text);
-        opacity: 0.54;
-        text-shadow: 0 0 12px rgba(0, 0, 0, 0.18);
-      }
-
-      .scaffold-state__ticker::before,
-      .scaffold-state__ticker::after {
-        content: "";
-        position: absolute;
-        top: 50%;
-        width: 64px;
-        height: 1px;
-        transform: translateY(-50%);
-        background: linear-gradient(90deg, transparent, rgba(var(--ox-primary-rgb), 0.32), transparent);
-        opacity: 0.9;
-      }
-
-      .scaffold-state__ticker::before {
-        left: calc(50% - 152px);
-      }
-
-      .scaffold-state__ticker::after {
-        right: calc(50% - 152px);
-      }
-
-      .scaffold-state__ticker-item {
         position: absolute;
         inset: 0;
+        background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.05), transparent 34%);
+        pointer-events: none;
+      }
+
+      .scaffold-state__glow {
+        position: absolute;
+        border-radius: 999px;
+        pointer-events: none;
+        filter: blur(12px);
+        opacity: 0.88;
+      }
+
+      .scaffold-state__glow--one {
+        top: 20px;
+        left: 18px;
+        width: 108px;
+        height: 108px;
+        background: radial-gradient(circle, rgba(var(--ox-primary-rgb), 0.18), transparent 72%);
+        animation: scaffoldFloat 8.2s ease-in-out infinite;
+      }
+
+      .scaffold-state__glow--two {
+        right: 30px;
+        bottom: 26px;
+        width: 134px;
+        height: 134px;
+        background: radial-gradient(circle, rgba(20, 184, 166, 0.12), transparent 74%);
+        animation: scaffoldFloat 9.6s ease-in-out infinite reverse;
+      }
+
+      @keyframes scaffoldFloat {
+        0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+        50% { transform: translate3d(0, -12px, 0) scale(1.04); }
+      }
+
+      .scaffold-state__scene {
+        position: absolute;
+        inset: 16px;
         display: flex;
         align-items: center;
         justify-content: center;
         opacity: 0;
-        transform: translateY(110%);
-        animation: scaffoldTicker 7.2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+        transform: translate3d(0, 10px, 0) scale(0.975);
+        filter: blur(3px);
+        transition:
+          opacity 0.55s var(--scaffold-ease),
+          transform 0.55s var(--scaffold-ease),
+          filter 0.55s var(--scaffold-ease);
+        pointer-events: none;
       }
 
-      .scaffold-state__ticker-item:nth-child(2) { animation-delay: 2.4s; }
-      .scaffold-state__ticker-item:nth-child(3) { animation-delay: 4.8s; }
-
-      @keyframes scaffoldTicker {
-        0%, 34% {
-          opacity: 1;
-          transform: translateY(0);
-        }
-        41%, 100% {
-          opacity: 0;
-          transform: translateY(-110%);
-        }
+      .scaffold-state__scene.active {
+        opacity: 1;
+        transform: translate3d(0, 0, 0) scale(1);
+        filter: blur(0);
+        pointer-events: auto;
       }
 
-      .scaffold-state__meta {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 10px;
-      }
-
-      .scaffold-state__meta-pill {
+      .scaffold-state__icon-tile {
+        --scene-rgb: var(--ox-primary-rgb);
+        position: relative;
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
-        min-height: 40px;
-        padding: 0 12px;
-        border-radius: 14px;
-        background: rgba(var(--ox-primary-rgb), 0.08);
-        border: 1px solid rgba(var(--ox-primary-rgb), 0.12);
-        color: var(--ox-text);
-        font-size: 0.7rem;
-        font-weight: 600;
-        text-align: center;
-        line-height: 1.25;
+        color: rgb(var(--scene-rgb));
+        background: rgba(var(--scene-rgb), 0.12);
+        border: 1px solid rgba(var(--scene-rgb), 0.18);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.05),
+          0 18px 28px -24px rgba(var(--scene-rgb), 0.6);
       }
 
-      .scaffold-state__meta-pill::before {
+      .scaffold-state__icon-tile::after {
         content: "";
+        position: absolute;
+        inset: -10px;
+        border-radius: 24px;
+        background: radial-gradient(circle, rgba(var(--scene-rgb), 0.14), transparent 72%);
+        opacity: 0;
+        transition: opacity 0.45s ease;
+      }
+
+      .scaffold-state__scene.active .scaffold-state__icon-tile::after {
+        opacity: 1;
+      }
+
+      .scaffold-state__icon-tile svg {
+        position: relative;
+        z-index: 1;
+      }
+
+      .scaffold-state__chip-group {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px;
+        max-width: 320px;
+      }
+
+      .scaffold-state__chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 38px;
+        padding: 0 14px;
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(var(--chip-rgb), 0.16);
+        color: rgb(var(--chip-rgb));
+        font-size: 0.68rem;
+        font-weight: 650;
+        letter-spacing: 0.04em;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      .scaffold-state__scene.active .scaffold-state__chip {
+        animation: scaffoldLiftIn 0.48s var(--scaffold-ease) forwards;
+        animation-delay: var(--chip-delay, 0ms);
+      }
+
+      @keyframes scaffoldLiftIn {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .scaffold-state__chip svg {
+        flex: none;
+      }
+
+      .scaffold-state__lane-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        width: min(280px, 100%);
+      }
+
+      .scaffold-state__lane {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .scaffold-state__lane-marker {
+        width: 12px;
+        height: 12px;
+        border-radius: 4px;
+        transform: rotate(45deg);
+        background: rgb(var(--lane-rgb));
+        box-shadow: 0 0 14px rgba(var(--lane-rgb), 0.2);
+        opacity: 0;
+      }
+
+      .scaffold-state__scene.active .scaffold-state__lane-marker {
+        animation: scaffoldMarkerIn 0.34s var(--scaffold-ease) forwards;
+        animation-delay: var(--lane-delay, 0ms);
+      }
+
+      @keyframes scaffoldMarkerIn {
+        to { opacity: 1; transform: rotate(45deg) scale(1); }
+      }
+
+      .scaffold-state__lane-track {
+        position: relative;
+        height: 7px;
+        border-radius: 999px;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      .scaffold-state__lane-fill {
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 0;
+        border-radius: inherit;
+        background: linear-gradient(90deg, rgba(var(--lane-rgb), 0.88), rgba(var(--lane-rgb), 0.52));
+        box-shadow: 0 0 18px rgba(var(--lane-rgb), 0.18);
+      }
+
+      .scaffold-state__scene.active .scaffold-state__lane-fill {
+        animation: scaffoldLaneFill 1.6s var(--scaffold-ease) forwards;
+        animation-delay: calc(var(--lane-delay, 0ms) + 100ms);
+      }
+
+      @keyframes scaffoldLaneFill {
+        to { width: var(--lane-fill, 50%); }
+      }
+
+      .scaffold-state__lane-label {
+        font-family: var(--ox-mono);
+        font-size: 0.54rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.34);
+      }
+
+      .scaffold-state__task-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .scaffold-state__task-cell {
+        width: 38px;
+        height: 38px;
+        border-radius: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(var(--cell-rgb), 0.14);
+        color: rgb(var(--cell-rgb));
+        opacity: 0;
+        transform: scale(0.82);
+      }
+
+      .scaffold-state__scene.active .scaffold-state__task-cell {
+        animation: scaffoldCellIn 0.36s var(--scaffold-ease) forwards;
+        animation-delay: var(--cell-delay, 0ms);
+      }
+
+      @keyframes scaffoldCellIn {
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      .scaffold-state__task-cell--pending svg {
+        opacity: 0.54;
+      }
+
+      .scaffold-state__agent-row {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+        max-width: 320px;
+      }
+
+      .scaffold-state__agent {
+        width: 64px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      .scaffold-state__scene.active .scaffold-state__agent {
+        animation: scaffoldLiftIn 0.42s var(--scaffold-ease) forwards;
+        animation-delay: var(--agent-delay, 0ms);
+      }
+
+      .scaffold-state__agent-shell {
+        position: relative;
+        width: 42px;
+        height: 42px;
+      }
+
+      .scaffold-state__agent-avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 13px;
+        overflow: hidden;
+        border: 1px solid rgba(var(--agent-rgb), 0.18);
+        background: rgba(var(--agent-rgb), 0.1);
+        color: rgb(var(--agent-rgb));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--ox-mono);
+        font-size: 0.74rem;
+        font-weight: 700;
+        box-shadow:
+          0 12px 24px -22px rgba(var(--agent-rgb), 0.78),
+          inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      }
+
+      .scaffold-state__agent-avatar img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .scaffold-state__agent-shell .domain-badge {
+        position: absolute;
+        right: -3px;
+        bottom: -2px;
+      }
+
+      .scaffold-state__agent-label {
+        font-size: 0.54rem;
+        font-weight: 600;
+        line-height: 1.2;
+        text-align: center;
+        color: rgba(255, 255, 255, 0.42);
+      }
+
+      .scaffold-state__tip-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        width: min(280px, 100%);
+      }
+
+      .scaffold-state__tip {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 13px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.025);
+        border: 1px solid rgba(var(--tip-rgb), 0.1);
+        opacity: 0;
+        transform: translateX(-8px);
+      }
+
+      .scaffold-state__scene.active .scaffold-state__tip {
+        animation: scaffoldTipIn 0.42s var(--scaffold-ease) forwards;
+        animation-delay: var(--tip-delay, 0ms);
+      }
+
+      @keyframes scaffoldTipIn {
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+
+      .scaffold-state__tip-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 9px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(var(--tip-rgb), 0.1);
+        color: rgb(var(--tip-rgb));
+      }
+
+      .scaffold-state__tip-copy {
+        font-size: 0.66rem;
+        line-height: 1.45;
+        color: rgba(255, 255, 255, 0.42);
+      }
+
+      .scaffold-state__tip-copy strong {
+        color: var(--ox-text);
+        font-weight: 650;
+      }
+
+      .scaffold-state__caption {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-height: 76px;
+        text-align: center;
+      }
+
+      .scaffold-state__caption-title {
+        font-size: 0.98rem;
+        font-weight: 700;
+        letter-spacing: -0.025em;
+        color: var(--ox-text);
+        transition: opacity 0.24s ease, transform 0.24s ease;
+      }
+
+      .scaffold-state__caption-desc {
+        max-width: 320px;
+        margin: 0 auto;
+        font-size: 0.7rem;
+        line-height: 1.5;
+        color: rgba(255, 255, 255, 0.4);
+        transition: opacity 0.24s ease, transform 0.24s ease;
+      }
+
+      .scaffold-state__caption-title.is-fading,
+      .scaffold-state__caption-desc.is-fading {
+        opacity: 0;
+        transform: translateY(4px);
+      }
+
+      .scaffold-state__dots {
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+      }
+
+      .scaffold-state__dot {
         width: 6px;
         height: 6px;
-        flex: none;
         border-radius: 999px;
-        background: currentColor;
-        opacity: 0.72;
+        border: 0;
+        padding: 0;
+        cursor: pointer;
+        background: rgba(255, 255, 255, 0.1);
+        transition:
+          width 0.32s var(--scaffold-ease),
+          background-color 0.32s var(--scaffold-ease),
+          box-shadow 0.32s var(--scaffold-ease);
       }
 
-      .scaffold-state--awaiting .scaffold-state__meta-pill {
-        background: rgba(217, 119, 6, 0.08);
-        border-color: rgba(217, 119, 6, 0.14);
+      .scaffold-state__dot.active {
+        width: 20px;
+        border-radius: 4px;
+        background: rgb(var(--ox-primary-rgb));
+        box-shadow: 0 0 12px rgba(var(--ox-primary-rgb), 0.38);
+      }
+
+      .scaffold-state__dot.done {
+        background: rgba(var(--ox-primary-rgb), 0.36);
       }
 
       * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: var(--ox-font); background: var(--ox-bg); color: var(--ox-text); padding: 24px 16px; -webkit-font-smoothing: antialiased; min-height: 100vh; }
+    body { font-family: var(--ox-font); background: var(--ox-bg); color: var(--ox-text); padding: 24px 16px; -webkit-font-smoothing: antialiased; min-height: auto; }
     body::before { content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at 50% 0%, rgba(var(--ox-primary-rgb), 0.08), transparent 60%), linear-gradient(var(--ox-grid) 1px, transparent 1px), linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px); background-size: 100% 100%, 20px 20px, 20px 20px; z-index: -1; pointer-events: none; }
     .container { max-width: 540px; margin: 0 auto; position: relative; }
 
@@ -579,6 +694,58 @@
     .h-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .h-icon { width: 48px; height: 48px; border-radius: 12px; background: rgba(var(--ox-primary-rgb), 0.1); border: 1px solid rgba(var(--ox-primary-rgb), 0.2); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
     
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .section-kicker { margin: 0; }
+
+    .section-toggle-all {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 32px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
+      background: rgba(var(--ox-primary-rgb), 0.08);
+      color: var(--ox-text);
+      font-family: var(--ox-mono);
+      font-size: 0.61rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition:
+        border-color var(--widget-motion-fast) var(--widget-motion-curve),
+        background var(--widget-motion-fast) var(--widget-motion-curve),
+        color var(--widget-motion-fast) var(--widget-motion-curve),
+        transform var(--widget-motion-fast) var(--widget-motion-curve);
+    }
+
+    .section-toggle-all:hover,
+    .section-toggle-all:focus-visible {
+      border-color: rgba(var(--ox-primary-rgb), 0.24);
+      background: rgba(var(--ox-primary-rgb), 0.12);
+      color: var(--ox-primary);
+      transform: translateY(-1px);
+    }
+
+    .section-toggle-all__glyph {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform var(--widget-motion-base) var(--widget-motion-curve);
+    }
+
+    .section-toggle-all[data-expanded="false"] .section-toggle-all__glyph {
+      transform: rotate(-90deg);
+    }
+
     .node-list {
       --ms-indent: 38px;
       --tk-indent: 60px;
@@ -597,7 +764,8 @@
     .ws-block {
       display: flex;
       flex-direction: column;
-      gap: 0;
+      gap: 10px;
+      padding-block: 2px;
       position: relative;
       z-index: 0;
     }
@@ -1214,7 +1382,6 @@
     }
 
     .widget-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--ox-border); gap: 12px; }
-    .section-kicker { margin: 0 0 10px; }
     .deep-link {
       display: inline-flex;
       align-items: center;
@@ -1228,6 +1395,16 @@
     .deep-link svg { width: 14px; height: 14px; }
 
     @media (max-width: 560px) {
+      .section-head {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .section-toggle-all {
+        width: 100%;
+        justify-content: center;
+      }
+
       .node-list {
         --tree-gap: 11px;
         gap: 20px;
@@ -1282,38 +1459,69 @@
       .scaffold-state {
         padding: 20px;
         border-radius: 20px;
+        gap: 18px;
       }
 
-      .scaffold-stage {
-        min-height: 228px;
+      .scaffold-state__stage {
+        min-height: 230px;
       }
 
-      .scaffold-stage__columns {
-        gap: 12px;
+      .scaffold-state__scene {
+        inset: 14px;
       }
 
-      .scaffold-node--workstream {
+      .scaffold-state__icon-tile {
+        width: 54px;
+        height: 54px;
+      }
+
+      .scaffold-state__chip-group {
+        gap: 10px;
+      }
+
+      .scaffold-state__chip {
         min-width: 0;
+        padding: 8px 12px;
+        font-size: 0.61rem;
+      }
+
+      .scaffold-state__lane-stack {
+        width: min(236px, 100%);
+        gap: 10px;
+      }
+
+      .scaffold-state__lane {
+        gap: 10px;
+      }
+
+      .scaffold-state__lane-track {
+        width: 146px;
+      }
+
+      .scaffold-state__task-grid {
+        gap: 7px;
+      }
+
+      .scaffold-state__task-cell {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+      }
+
+      .scaffold-state__agent-row {
+        gap: 9px;
+      }
+
+      .scaffold-state__agent {
+        width: 58px;
+      }
+
+      .scaffold-state__tip-list {
         width: 100%;
       }
 
-      .scaffold-node--milestone {
-        min-width: 0;
-        width: 88%;
-      }
-
-      .scaffold-node--task {
-        min-width: 0;
-        width: 70%;
-      }
-
-      .scaffold-state__meta {
-        grid-template-columns: 1fr;
-      }
-
-      .scaffold-state__meta-pill {
-        justify-content: flex-start;
-        text-align: left;
+      .scaffold-state__caption {
+        min-height: 72px;
       }
     }
 
@@ -1349,55 +1557,103 @@
 
       .scaffold-state {
         padding: 18px;
+        gap: 16px;
       }
 
-      .scaffold-stage {
-        min-height: 214px;
-        padding: 16px 14px;
+      .scaffold-state__stage {
+        min-height: 212px;
       }
 
-      .scaffold-stage__columns {
-        gap: 10px;
+      .scaffold-state__scene {
+        inset: 12px;
       }
 
-      .scaffold-node {
-        min-height: 32px;
-        padding-inline: 10px;
-        font-size: 0.67rem;
+      .scaffold-state__icon-tile {
+        width: 50px;
+        height: 50px;
+        border-radius: 16px;
       }
 
-      .scaffold-node--initiative {
-        min-width: 0;
-        width: min(100%, 158px);
+      .scaffold-state__chip-group {
+        gap: 8px;
       }
 
-      .scaffold-node--task {
-        font-size: 0.6rem;
+      .scaffold-state__chip {
+        padding: 8px 11px;
+        font-size: 0.58rem;
+        gap: 7px;
       }
 
-      .scaffold-state__title {
-        font-size: 1.08rem;
+      .scaffold-state__lane {
+        gap: 8px;
       }
 
-      .scaffold-state__desc {
-        font-size: 0.86rem;
+      .scaffold-state__lane-marker {
+        width: 20px;
+        height: 20px;
       }
 
-      .scaffold-state__ticker {
+      .scaffold-state__lane-track {
+        width: 132px;
+      }
+
+      .scaffold-state__lane-label {
+        font-size: 0.5rem;
+      }
+
+      .scaffold-state__task-grid {
+        gap: 6px;
+      }
+
+      .scaffold-state__task-cell {
+        width: 31px;
+        height: 31px;
+        border-radius: 9px;
+      }
+
+      .scaffold-state__agent-row {
+        gap: 8px;
+        max-width: 280px;
+      }
+
+      .scaffold-state__agent {
+        width: 54px;
+      }
+
+      .scaffold-state__agent-shell,
+      .scaffold-state__agent-avatar {
+        width: 38px;
+        height: 38px;
+      }
+
+      .scaffold-state__agent-label {
+        font-size: 0.51rem;
+      }
+
+      .scaffold-state__tip {
+        padding: 9px 11px;
+        gap: 9px;
+      }
+
+      .scaffold-state__tip-icon {
+        width: 28px;
+        height: 28px;
+      }
+
+      .scaffold-state__tip-copy {
         font-size: 0.63rem;
       }
 
-      .scaffold-state__ticker::before,
-      .scaffold-state__ticker::after {
-        width: 32px;
+      .scaffold-state__caption {
+        min-height: 68px;
       }
 
-      .scaffold-state__ticker::before {
-        left: calc(50% - 110px);
+      .scaffold-state__caption-title {
+        font-size: 0.92rem;
       }
 
-      .scaffold-state__ticker::after {
-        right: calc(50% - 110px);
+      .scaffold-state__caption-desc {
+        font-size: 0.67rem;
       }
     }
   </style>
@@ -1414,9 +1670,16 @@
 
     function _detectProtocol(){if(typeof window.openai!=='undefined')return'chatgpt';if(window.parent&&window.parent!==window)return'mcp-apps';return'standalone';}
     function _extractData(out){if(out==null)return null;if(typeof out==='object'&&out.structuredContent)return out.structuredContent;if(typeof out==='object'&&Array.isArray(out.content)){for(var i=0;i<out.content.length;i++){var item=out.content[i];if(item&&item.type==='text'&&item.text){try{return JSON.parse(item.text);}catch(e){continue;}}}}if(typeof out==='string'){try{return JSON.parse(out);}catch(e){return{text:out};}}return out;}
-    function _sendSize(){var w=Math.ceil(document.documentElement.getBoundingClientRect().width+(window.innerWidth-document.documentElement.clientWidth));var h=Math.ceil(document.documentElement.getBoundingClientRect().height);try{window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/size-changed',params:{width:w,height:h}},'*');}catch(e){}}
-    function _observeSize(){_sendSize();if(typeof ResizeObserver!=='undefined'){var ro=new ResizeObserver(() => requestAnimationFrame(_sendSize));ro.observe(document.documentElement);ro.observe(document.body);}}
-    function initWidget(opts){var render=opts.render,getData=opts.getData||_extractData;var protocol=_detectProtocol();if(protocol==='chatgpt'){var d=getData(window.openai&&window.openai.toolOutput);render(d);window.addEventListener('openai:set_globals',function(e){var g=e.detail&&e.detail.globals;if(g&&g.toolOutput){render(getData(g.toolOutput));}},{passive:true});}else if(protocol==='mcp-apps'){render(null);var initId=1;window.parent.postMessage({jsonrpc:'2.0',id:initId,method:'ui/initialize',params:{appInfo:{name:'Widget',version:'1.0'},appCapabilities:{tools:{listChanged:false}},protocolVersion:'2026-01-26'}},'*');window.parent.postMessage({jsonrpc:'2.0',method:'notifications/initialized'},'*');window.addEventListener('message',function(event){var msg=event.data;if(!msg||typeof msg!=='object')return;if(msg.id===initId&&msg.result){window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized'},'*');_observeSize();return;}if((msg.method==='ui/notifications/tool-result'||msg.method==='notifications/message')&&msg.params){var data=getData(msg.params);if(data)render(data);}});}else{render(null);}}
+    function _measureContentSize(){var docEl=document.documentElement;var body=document.body;var docRect=docEl.getBoundingClientRect();var bodyRect=body?body.getBoundingClientRect():{width:0,height:0};var scrollbarWidth=Math.max(0,window.innerWidth-docEl.clientWidth);var width=Math.max(Math.ceil(docRect.width+scrollbarWidth),Math.ceil(bodyRect.width),body?body.scrollWidth:0,body?body.offsetWidth:0,body?body.clientWidth:0);var height=Math.max(Math.ceil(docRect.height),Math.ceil(bodyRect.height),body?body.scrollHeight:0,body?body.offsetHeight:0,body?body.clientHeight:0);return{width:width,height:height};}
+    function _sendSize(){var size=_measureContentSize();try{window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/size-changed',params:{width:size.width,height:size.height}},'*');}catch(e){}}
+    var _sizeObserver=null;
+    var _sizeSyncTimers=[];
+    var _sizeTransitionRaf=0;
+    var _sizeTransitionUntil=0;
+    function _scheduleSizeSync(extraDelays){if(_detectProtocol()==='standalone')return;var delays=[0,160,320,720];if(Array.isArray(extraDelays)){delays=delays.concat(extraDelays);}var seen={};_sizeSyncTimers.forEach(function(timer){window.clearTimeout(timer);});_sizeSyncTimers=[];delays.forEach(function(delay){var safeDelay=Math.max(0,Number(delay)||0);if(seen[safeDelay])return;seen[safeDelay]=true;_sizeSyncTimers.push(window.setTimeout(function(){window.requestAnimationFrame(_sendSize);},safeDelay));});}
+    function _syncSizeDuringTransition(duration){if(_detectProtocol()==='standalone')return;var span=Math.max(280,Number(duration)||0);var now=(window.performance&&typeof window.performance.now==='function')?window.performance.now():Date.now();_sizeTransitionUntil=Math.max(_sizeTransitionUntil,now+span);if(_sizeTransitionRaf)return;var tick=function(ts){_sendSize();if(ts<_sizeTransitionUntil){_sizeTransitionRaf=window.requestAnimationFrame(tick);return;}_sizeTransitionRaf=0;_sizeTransitionUntil=0;_sendSize();};_sizeTransitionRaf=window.requestAnimationFrame(tick);}
+    function _observeSize(){if(_sizeObserver||typeof ResizeObserver==='undefined')return;_sizeObserver=new ResizeObserver(function(){window.requestAnimationFrame(_sendSize);});_sizeObserver.observe(document.documentElement);_sizeObserver.observe(document.body);_scheduleSizeSync([24]);}
+    function initWidget(opts){var render=opts.render,getData=opts.getData||_extractData;var protocol=_detectProtocol();document.documentElement.setAttribute('data-protocol',protocol);_observeSize();if(protocol==='chatgpt'){var d=getData(window.openai&&window.openai.toolOutput);render(d);_scheduleSizeSync([240,760]);window.addEventListener('openai:set_globals',function(e){var g=e.detail&&e.detail.globals;if(g&&g.toolOutput){render(getData(g.toolOutput));_scheduleSizeSync([240,760]);}},{passive:true});}else if(protocol==='mcp-apps'){render(null);_scheduleSizeSync([240]);var initId=1;window.parent.postMessage({jsonrpc:'2.0',id:initId,method:'ui/initialize',params:{appInfo:{name:'Widget',version:'1.0'},appCapabilities:{tools:{listChanged:false}},protocolVersion:'2026-01-26'}},'*');window.parent.postMessage({jsonrpc:'2.0',method:'notifications/initialized'},'*');window.addEventListener('message',function(event){var msg=event.data;if(!msg||typeof msg!=='object')return;if(msg.id===initId&&msg.result){window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized'},'*');_scheduleSizeSync([240,760]);return;}if((msg.method==='ui/notifications/tool-result'||msg.method==='notifications/message')&&msg.params){var data=getData(msg.params);if(data)render(data);_scheduleSizeSync([240,760]);}});}else{render(null);}}
     var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+c+'</svg>';};
     var icons = {
 
@@ -1459,52 +1722,118 @@
     var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
     var renderScaffoldState = (mode) => {
       var awaiting = mode === 'awaiting';
-      var title = awaiting ? 'Awaiting scaffold' : 'Composing the hierarchy';
-      var desc = awaiting
-        ? 'The hierarchy will appear here once the first scaffold pass completes.'
-        : 'Workstreams, milestones, and task lanes are settling into place.';
-      var statusLabel = awaiting ? 'Listening for output' : 'Assembling hierarchy';
-      var branchLabels = awaiting
-        ? [
-            { label: 'Signal', rgb: DOMAIN_ACCENTS.product },
-            { label: 'Shape', rgb: DOMAIN_ACCENTS.design },
-            { label: 'Land', rgb: DOMAIN_ACCENTS.operations }
-          ]
-        : [
-            { label: 'Intent', rgb: DOMAIN_ACCENTS.product },
-            { label: 'Build', rgb: DOMAIN_ACCENTS.engineering },
-            { label: 'Ship', rgb: DOMAIN_ACCENTS.marketing }
-          ];
-      return `<div class="ox-card animate-in"><div class="ox-card-inner"><section class="scaffold-state scaffold-state--${awaiting ? 'awaiting' : 'loading'}" data-scaffold-state>
+      var statusLabel = awaiting ? 'Listening' : 'Composing';
+      var workstreamChips = [
+        { label: 'Narrative lock', rgb: DOMAIN_ACCENTS.product },
+        { label: 'Search proof', rgb: DOMAIN_ACCENTS.engineering },
+        { label: 'Launch assets', rgb: DOMAIN_ACCENTS.marketing }
+      ];
+      var milestoneLanes = [
+        { label: 'Story approved', fill: '76%', rgb: DOMAIN_ACCENTS.product, delay: 80 },
+        { label: 'Query validated', fill: '58%', rgb: DOMAIN_ACCENTS.engineering, delay: 220 },
+        { label: 'Preview ship', fill: '38%', rgb: DOMAIN_ACCENTS.marketing, delay: 360 }
+      ];
+      var taskCells = [
+        { rgb: DOMAIN_ACCENTS.product, done: true },
+        { rgb: DOMAIN_ACCENTS.engineering, done: false },
+        { rgb: DOMAIN_ACCENTS.marketing, done: false },
+        { rgb: DOMAIN_ACCENTS.product, done: true },
+        { rgb: DOMAIN_ACCENTS.design, done: false },
+        { rgb: DOMAIN_ACCENTS.engineering, done: true },
+        { rgb: DOMAIN_ACCENTS.marketing, done: false },
+        { rgb: DOMAIN_ACCENTS.operations, done: false },
+        { rgb: DOMAIN_ACCENTS.design, done: true },
+        { rgb: DOMAIN_ACCENTS.product, done: false },
+        { rgb: DOMAIN_ACCENTS.engineering, done: false },
+        { rgb: DOMAIN_ACCENTS.marketing, done: true }
+      ];
+      var agents = [
+        { name: 'Pace', domain: 'product', label: 'Product' },
+        { name: 'Eli', domain: 'engineering', label: 'Engineering' },
+        { name: 'Dana', domain: 'design', label: 'Design' },
+        { name: 'Mark', domain: 'marketing', label: 'Marketing' }
+      ];
+      var tips = [
+        { rgb: DOMAIN_ACCENTS.orchestrator, icon: icons.nodes(14), strong: 'Orchestrate from any client', copy: 'Claude, ChatGPT, or Cursor can kick off the same initiative scaffold.' },
+        { rgb: DOMAIN_ACCENTS.engineering, icon: icons.code(14), strong: 'Agent tasks stay precise', copy: 'Each workstream decomposes into milestone checkpoints and session-sized tasks.' },
+        { rgb: DOMAIN_ACCENTS.marketing, icon: icons.checkCircle(14), strong: 'Approval stays in the loop', copy: 'Agents pause for decisions and keep the latest status visible as the hierarchy settles.' }
+      ];
+      return `<div class="ox-card animate-in"><div class="ox-card-inner"><section class="scaffold-state scaffold-state--${awaiting ? 'awaiting' : 'loading'}" data-scaffold-state data-scaffold-interval="4200" data-current-scene="0">
         <div class="scaffold-state__chrome">
-          <div class="scaffold-state__eyebrow">${awaiting ? 'Scaffold Launchpad' : 'Scaffold Composer'}</div>
+          <div class="scaffold-state__eyebrow">${awaiting ? 'Scaffold Launchpad' : 'Initiative Composer'}</div>
           <div class="scaffold-state__status">
             <span class="scaffold-state__status-dot"></span>
             <span>${statusLabel}</span>
           </div>
         </div>
-        <div class="scaffold-stage" data-scaffold-stage>
-          <div class="scaffold-stage__core">
-            <div class="scaffold-node scaffold-node--initiative">Initiative</div>
-            <div class="scaffold-stage__trunk"></div>
-            <div class="scaffold-stage__columns">
-              ${branchLabels.map(function(branch, index) {
-                var branchClass = index === 0 ? 'one' : index === 1 ? 'two' : 'three';
-                return `<div class="scaffold-branch scaffold-branch--${branchClass}">
-                  <div class="scaffold-node scaffold-node--workstream" style="color: rgb(${branch.rgb}); border-color: rgba(${branch.rgb}, 0.2);">${branch.label}</div>
-                  <div class="scaffold-node-stack">
-                    <div class="scaffold-node scaffold-node--milestone">Milestone</div>
-                    <div class="scaffold-node scaffold-node--task">Task</div>
-                    <div class="scaffold-node scaffold-node--task">Task</div>
+        <div class="scaffold-state__stage">
+          <div class="scaffold-state__glow scaffold-state__glow--one" aria-hidden="true"></div>
+          <div class="scaffold-state__glow scaffold-state__glow--two" aria-hidden="true"></div>
+          <div class="scaffold-state__scene active" data-scaffold-scene data-caption-title="${escapeHtml(awaiting ? 'Scaffold standing by' : 'Initiative signal locked')}" data-caption-desc="${escapeHtml(awaiting ? 'The launchpad is listening for the first scaffold payload so it can expand the initiative in place.' : 'OrgX is translating the initiative brief into a clean execution spine before the hierarchy drops in.')}">
+            <div class="scaffold-state__icon-tile" style="--scene-rgb:${DOMAIN_ACCENTS.orchestrator};">${icons.initiative(24)}</div>
+          </div>
+          <div class="scaffold-state__scene" data-scaffold-scene data-caption-title="Workstreams split into lanes" data-caption-desc="Parallel streams form first so the milestone and task structure can inherit clean ownership and pacing.">
+            <div class="scaffold-state__chip-group">
+              ${workstreamChips.map(function(chip, index) {
+                return `<div class="scaffold-state__chip" style="--chip-rgb:${chip.rgb}; --chip-delay:${index * 120}ms;">${icons.workstream(12)}<span>${escapeHtml(chip.label)}</span></div>`;
+              }).join('')}
+            </div>
+          </div>
+          <div class="scaffold-state__scene" data-scaffold-scene data-caption-title="Milestones pin the checkpoints" data-caption-desc="Each stream gets a milestone spine so handoffs, approvals, and readiness thresholds have a visible cadence.">
+            <div class="scaffold-state__lane-stack">
+              ${milestoneLanes.map(function(lane) {
+                return `<div class="scaffold-state__lane">
+                  <span class="scaffold-state__lane-marker" style="--lane-rgb:${lane.rgb}; --lane-delay:${lane.delay}ms;"></span>
+                  <span class="scaffold-state__lane-track">
+                    <span class="scaffold-state__lane-fill" style="--lane-rgb:${lane.rgb}; --lane-delay:${lane.delay}ms; --lane-fill:${lane.fill};"></span>
+                  </span>
+                  <span class="scaffold-state__lane-label">${escapeHtml(lane.label)}</span>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>
+          <div class="scaffold-state__scene" data-scaffold-scene data-caption-title="Tasks resolve into agent-sized slices" data-caption-desc="The final pass breaks each milestone into tightly scoped tasks so the handoff into execution feels instant instead of noisy.">
+            <div class="scaffold-state__task-grid">
+              ${taskCells.map(function(cell, index) {
+                return `<div class="scaffold-state__task-cell${cell.done ? '' : ' scaffold-state__task-cell--pending'}" style="--cell-rgb:${cell.rgb}; --cell-delay:${index * 55}ms;">${cell.done ? icons.checkCircle(12) : icons.task(12)}</div>`;
+              }).join('')}
+            </div>
+          </div>
+          <div class="scaffold-state__scene" data-scaffold-scene data-caption-title="Specialist agents line up behind each stream" data-caption-desc="Real OrgX domain agents attach to the scaffold so the widget immediately reflects who owns each lane.">
+            <div class="scaffold-state__agent-row">
+              ${agents.map(function(agent, index) {
+                var rgb = getDomainRgb(agent.domain);
+                return `<div class="scaffold-state__agent" style="--agent-delay:${index * 110}ms;">
+                  <div class="scaffold-state__agent-shell">
+                    <span class="scaffold-state__agent-avatar" style="--agent-rgb:${rgb};">${renderAvatar(agent.name, agent.domain)}</span>
+                    ${renderDomainIcon(agent.domain)}
                   </div>
+                  <span class="scaffold-state__agent-label">${escapeHtml(agent.label)}</span>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>
+          <div class="scaffold-state__scene" data-scaffold-scene data-caption-title="${escapeHtml(awaiting ? 'Ready the first render' : 'Control stays visible while it animates')}" data-caption-desc="${escapeHtml(awaiting ? 'As soon as the initiative arrives, the widget expands in place and keeps the live hierarchy grounded to the same frame.' : 'The hierarchy can expand, collapse, and pause for approvals without losing layout discipline or live context.')}">
+            <div class="scaffold-state__tip-list">
+              ${tips.map(function(tip, index) {
+                return `<div class="scaffold-state__tip" style="--tip-rgb:${tip.rgb}; --tip-delay:${index * 140}ms;">
+                  <span class="scaffold-state__tip-icon">${tip.icon}</span>
+                  <span class="scaffold-state__tip-copy"><strong>${escapeHtml(tip.strong)}</strong> ${escapeHtml(tip.copy)}</span>
                 </div>`;
               }).join('')}
             </div>
           </div>
         </div>
-        <div class="scaffold-state__copy">
-          <div class="scaffold-state__title">${title}</div>
-          <div class="scaffold-state__desc">${desc}</div>
+        <div class="scaffold-state__caption">
+          <div class="scaffold-state__caption-title" data-scaffold-caption-title>${awaiting ? 'Scaffold standing by' : 'Initiative signal locked'}</div>
+          <div class="scaffold-state__caption-desc" data-scaffold-caption-desc>${awaiting ? 'The launchpad is listening for the first scaffold payload so it can expand the initiative in place.' : 'OrgX is translating the initiative brief into a clean execution spine before the hierarchy drops in.'}</div>
+        </div>
+        <div class="scaffold-state__dots">
+          ${new Array(6).fill(null).map(function(_, index) {
+            var stateClass = index === 0 ? ' active' : '';
+            var label = ['Initiative', 'Workstreams', 'Milestones', 'Tasks', 'Agents', 'Control'][index] || ('Scene ' + (index + 1));
+            return `<button type="button" class="scaffold-state__dot${stateClass}" data-scaffold-dot data-scaffold-index="${index}" aria-label="Show ${escapeHtml(label)} scene" aria-pressed="${index === 0 ? 'true' : 'false'}"></button>`;
+          }).join('')}
         </div>
       </section></div></div>`;
     };
@@ -2161,9 +2490,107 @@
       window.setTimeout(commit, delay);
     };
 
+    var scaffoldStateCycleTimer = 0;
+    var scaffoldStateCaptionTimer = 0;
+    var scaffoldStateCurrentIndex = 0;
+
+    var stopScaffoldStateAnimation = () => {
+      if (scaffoldStateCycleTimer) {
+        window.clearInterval(scaffoldStateCycleTimer);
+        scaffoldStateCycleTimer = 0;
+      }
+      if (scaffoldStateCaptionTimer) {
+        window.clearTimeout(scaffoldStateCaptionTimer);
+        scaffoldStateCaptionTimer = 0;
+      }
+    };
+
+    var setScaffoldStateFrame = (root, nextIndex, options) => {
+      if (!root) return;
+      var scenes = Array.from(root.querySelectorAll('[data-scaffold-scene]'));
+      if (!scenes.length) return;
+      var safeIndex = Number(nextIndex);
+      if (!Number.isFinite(safeIndex)) safeIndex = 0;
+      safeIndex = ((safeIndex % scenes.length) + scenes.length) % scenes.length;
+      var immediate = !!(options && options.immediate);
+      var titleEl = root.querySelector('[data-scaffold-caption-title]');
+      var descEl = root.querySelector('[data-scaffold-caption-desc]');
+      var dots = Array.from(root.querySelectorAll('[data-scaffold-dot]'));
+      var activeScene = scenes[safeIndex];
+      var applyFrame = function() {
+        scenes.forEach(function(scene, index) {
+          scene.classList.toggle('active', index === safeIndex);
+        });
+        if (titleEl) {
+          titleEl.textContent = activeScene.getAttribute('data-caption-title') || '';
+          titleEl.classList.remove('is-fading');
+        }
+        if (descEl) {
+          descEl.textContent = activeScene.getAttribute('data-caption-desc') || '';
+          descEl.classList.remove('is-fading');
+        }
+        dots.forEach(function(dot, index) {
+          dot.classList.toggle('active', index === safeIndex);
+          dot.classList.toggle('done', index < safeIndex);
+          dot.setAttribute('aria-pressed', String(index === safeIndex));
+        });
+        scaffoldStateCurrentIndex = safeIndex;
+        root.dataset.currentScene = String(safeIndex);
+        _scheduleSizeSync([0, 90, 220, 420]);
+        _syncSizeDuringTransition(460);
+      };
+      if (immediate || !titleEl || !descEl) {
+        applyFrame();
+        return;
+      }
+      titleEl.classList.add('is-fading');
+      descEl.classList.add('is-fading');
+      if (scaffoldStateCaptionTimer) window.clearTimeout(scaffoldStateCaptionTimer);
+      scaffoldStateCaptionTimer = window.setTimeout(applyFrame, 170);
+    };
+
+    var initScaffoldStateAnimation = () => {
+      stopScaffoldStateAnimation();
+      var root = document.querySelector('[data-scaffold-state]');
+      if (!root) return;
+      var scenes = Array.from(root.querySelectorAll('[data-scaffold-scene]'));
+      if (!scenes.length) return;
+      var interval = Math.max(3000, Number(root.getAttribute('data-scaffold-interval')) || 4200);
+      var restartTimer = function() {
+        if (scaffoldStateCycleTimer) window.clearInterval(scaffoldStateCycleTimer);
+        scaffoldStateCycleTimer = window.setInterval(function() {
+          setScaffoldStateFrame(root, scaffoldStateCurrentIndex + 1);
+        }, interval);
+      };
+      Array.from(root.querySelectorAll('[data-scaffold-dot]')).forEach(function(dot) {
+        dot.addEventListener('click', function() {
+          var targetIndex = Number(dot.getAttribute('data-scaffold-index'));
+          if (!Number.isFinite(targetIndex)) return;
+          setScaffoldStateFrame(root, targetIndex);
+          restartTimer();
+        });
+      });
+      setScaffoldStateFrame(root, Number(root.dataset.currentScene) || 0, { immediate: true });
+      restartTimer();
+      _scheduleSizeSync([24, 180, 420, 760]);
+      _syncSizeDuringTransition(520);
+    };
+
 
     
-    window.toggleNode = (btn) => {
+    var syncToggleAllControl = () => {
+      var control = document.querySelector('[data-toggle-all]');
+      if (!control) return;
+      var toggles = Array.from(document.querySelectorAll('.node-toggle'));
+      var allExpanded = toggles.length > 0 && toggles.every((toggle) => toggle.getAttribute('data-expanded') === 'true');
+      control.setAttribute('data-expanded', String(allExpanded));
+      control.setAttribute('aria-label', allExpanded ? 'Collapse all workstreams' : 'Expand all workstreams');
+      var label = control.querySelector('[data-toggle-all-label]');
+      if (label) label.textContent = allExpanded ? 'Collapse all' : 'Expand all';
+    };
+
+    var setWorkstreamExpanded = (btn, nextExpanded, options) => {
+       const opts = options || {};
        const block = btn.closest('[data-ws-block]');
        const children = block ? block.querySelector('[data-ws-children]') : null;
        if (!children) return;
@@ -2171,8 +2598,6 @@
          window.clearTimeout(children.__collapseTimer);
          children.__collapseTimer = null;
        }
-       const isExpanded = btn.getAttribute('data-expanded') === 'true';
-       const nextExpanded = !isExpanded;
        btn.setAttribute('data-expanded', String(nextExpanded));
        btn.setAttribute('aria-expanded', String(nextExpanded));
        children.setAttribute('aria-hidden', String(!nextExpanded));
@@ -2189,17 +2614,45 @@
          }, 260);
        }
        if (nextExpanded) animateHierarchyRows(children);
-       queueTreeLayout(nextExpanded);
+       if (!opts.skipLayoutSync) {
+         queueTreeLayout(nextExpanded);
+         window.setTimeout(() => queueTreeLayout(false), 620);
+         _scheduleSizeSync([24, 160, 320, 640, 860]);
+         _syncSizeDuringTransition(420);
+       }
+       if (!opts.skipToggleSync) syncToggleAllControl();
+    };
+
+    window.toggleNode = (btn) => {
+       const isExpanded = btn.getAttribute('data-expanded') === 'true';
+       setWorkstreamExpanded(btn, !isExpanded);
+    };
+
+    window.toggleAllWorkstreams = (btn) => {
+       const toggles = Array.from(document.querySelectorAll('.node-toggle'));
+       if (!toggles.length) return;
+       const shouldExpand = toggles.some((toggle) => toggle.getAttribute('data-expanded') !== 'true');
+       toggles.forEach((toggle) => setWorkstreamExpanded(toggle, shouldExpand, { skipLayoutSync: true, skipToggleSync: true }));
+       syncToggleAllControl();
+       queueTreeLayout(shouldExpand);
        window.setTimeout(() => queueTreeLayout(false), 620);
+       _scheduleSizeSync([24, 120, 240, 520, 860]);
+       _syncSizeDuringTransition(480);
     };
 
     var render = () => {
+      stopScaffoldStateAnimation();
       if (isLoading) {
         injectHtml(renderScaffoldState('loading'));
+        initScaffoldStateAnimation();
         return;
       }
       var scaffold = normalizeScaffoldData(data);
-      if(!scaffold || !scaffold.initiative) { injectHtml(renderScaffoldState('awaiting')); return; }
+      if(!scaffold || !scaffold.initiative) {
+        injectHtml(renderScaffoldState('awaiting'));
+        initScaffoldStateAnimation();
+        return;
+      }
 
       const sections = scaffold.sections || [];
       const renderTask = (task) => {
@@ -2250,7 +2703,8 @@
               ${(section.milestones || []).map(renderMilestone).join('')}
             </div>
           </div>
-        </div>`;
+        </div>
+      </div>`;
       }).join('');
 
       const initiativeUrl = data.live_url || (data.initiative.id ? `https://useorgx.com/live/${encodeURIComponent(data.initiative.id)}` : 'https://useorgx.com/live?view=mission-control');
@@ -2272,7 +2726,13 @@
               </div>
             </div>
             
-            <div class="ox-eyebrow section-kicker">Work Breakdown Structure</div>
+            <div class="section-head">
+              <div class="ox-eyebrow section-kicker">Work Breakdown Structure</div>
+              <button type="button" class="section-toggle-all" data-toggle-all data-expanded="true" onclick="toggleAllWorkstreams(this)" aria-label="Collapse all workstreams">
+                <span data-toggle-all-label>Collapse all</span>
+                <span class="section-toggle-all__glyph">${icons.chevronDown(12)}</span>
+              </button>
+            </div>
             <div class="node-list">
               ${listHtml}
             </div>
@@ -2293,11 +2753,13 @@
         children.dataset.drawBaseDelay = String(baseDelay);
         animateHierarchyRows(children, baseDelay);
       });
+      syncToggleAllControl();
       queueTreeLayout(true);
       window.setTimeout(() => queueTreeLayout(false), 760 + Math.max(0, workstreamChildren.length - 1) * 210);
+      _scheduleSizeSync([24, 240, 760, 1020]);
     };
 
-    window.addEventListener('resize', queueTreeLayout);
+    window.addEventListener('resize', function(){ queueTreeLayout(false); _scheduleSizeSync([24, 180]); });
 
     if(isDemo) applyBootPayload();
     else initWidget({ render: d => { applyBootPayload(function(){ if(d) data = d; }); } });
