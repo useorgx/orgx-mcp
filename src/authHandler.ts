@@ -23,7 +23,11 @@ import {
   type ExecutionContextWithProps,
 } from './mcpTransport';
 import { authenticateRequest } from './requestAuth';
-import { OAUTH_SCOPES_SUPPORTED } from './toolDefinitions';
+import {
+  OAUTH_SCOPES_SUPPORTED,
+  OUTPUT_TEMPLATE_URIS,
+  WIDGET_URIS,
+} from './toolDefinitions';
 import serverManifest from '../server.json';
 
 // Re-export type for use in index.ts
@@ -79,18 +83,19 @@ async function serveLandingPage(
 }
 
 function buildDerivedServerCard(manifest: typeof serverManifest) {
+  const publishedManifest = buildPublishedManifest(manifest);
   return {
     serverInfo: {
-      name: manifest.title ?? manifest.name,
-      version: manifest.version,
+      name: publishedManifest.title ?? publishedManifest.name,
+      version: publishedManifest.version,
     },
-    authentication: manifest.auth
+    authentication: publishedManifest.auth
       ? {
           required: true,
-          schemes: [manifest.auth.type],
+          schemes: [publishedManifest.auth.type],
         }
       : undefined,
-    tools: (manifest.tools ?? []).map((tool) => ({
+    tools: (publishedManifest.tools ?? []).map((tool) => ({
       name: tool.name,
       description: tool.description,
       // server.json is the source of truth for the published catalog, but it
@@ -103,8 +108,62 @@ function buildDerivedServerCard(manifest: typeof serverManifest) {
         additionalProperties: true,
       },
     })),
-    resources: manifest.resources ?? [],
-    prompts: manifest.prompts ?? [],
+    resources: publishedManifest.resources ?? [],
+    prompts: publishedManifest.prompts ?? [],
+  };
+}
+
+const PUBLISHED_WIDGET_URI_OVERRIDES = new Map<string, string>([
+  ['ui://widget/decisions.html', WIDGET_URIS.decisions],
+  ['ui://widget/agent-status.html', WIDGET_URIS.agentStatus],
+  ['ui://widget/search-results.html', WIDGET_URIS.searchResults],
+  ['ui://widget/scaffolded-initiative.html', WIDGET_URIS.scaffoldedInitiative],
+  ['ui://widget/initiative-pulse.html', WIDGET_URIS.initiativePulse],
+  ['ui://widget/task-spawned.html', WIDGET_URIS.taskSpawned],
+  ['ui://widget/morning-brief.html', WIDGET_URIS.morningBrief],
+  ['ui://widget/decisions.skybridge.html', OUTPUT_TEMPLATE_URIS.decisions],
+  [
+    'ui://widget/agent-status.skybridge.html',
+    OUTPUT_TEMPLATE_URIS.agentStatus,
+  ],
+  [
+    'ui://widget/search-results.skybridge.html',
+    OUTPUT_TEMPLATE_URIS.searchResults,
+  ],
+  [
+    'ui://widget/scaffolded-initiative.skybridge.html',
+    OUTPUT_TEMPLATE_URIS.scaffoldedInitiative,
+  ],
+  [
+    'ui://widget/initiative-pulse.skybridge.html',
+    OUTPUT_TEMPLATE_URIS.initiativePulse,
+  ],
+  [
+    'ui://widget/task-spawned.skybridge.html',
+    OUTPUT_TEMPLATE_URIS.taskSpawned,
+  ],
+  [
+    'ui://widget/morning-brief.skybridge.html',
+    OUTPUT_TEMPLATE_URIS.morningBrief,
+  ],
+]);
+
+function buildPublishedManifest(manifest: typeof serverManifest) {
+  return {
+    ...manifest,
+    resources: (manifest.resources ?? []).map((resource) => {
+      if (!('uri' in resource) || typeof resource.uri !== 'string') {
+        return resource;
+      }
+
+      const versionedUri = PUBLISHED_WIDGET_URI_OVERRIDES.get(resource.uri);
+      if (!versionedUri) return resource;
+
+      return {
+        ...resource,
+        uri: versionedUri,
+      };
+    }),
   };
 }
 
@@ -137,7 +196,7 @@ export const authHandler = {
     // =========================================================================
     if (request.method === 'GET' && url.pathname === '/server.json') {
       return withCors(
-        Response.json(serverManifest, {
+        Response.json(buildPublishedManifest(serverManifest), {
           headers: {
             'Cache-Control': 'public, max-age=300',
           },

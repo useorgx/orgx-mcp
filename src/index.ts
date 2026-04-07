@@ -133,6 +133,7 @@ import { FLYWHEEL_TOOL_DEFINITIONS } from './flywheelTools';
 import {
   buildMcpAppsMeta,
   buildWidgetMeta,
+  parseWidgetResourceUri,
   rewriteWidgetHtmlAssetUrls,
   sanitizeMcpAppsHtml,
   resolveWidgetBaseUrl,
@@ -8170,9 +8171,9 @@ export class OrgXMcp extends McpAgent<
     responseUri = widgetUri
   ) {
     const widgetBaseUrl = resolveWidgetBaseUrl(this.env);
-    const widgetFile = widgetUri.replace('ui://widget/', '');
-    const widgetPath = `/${widgetFile}`;
-    const assetUrl = new URL(widgetFile, widgetBaseUrl).toString();
+    const { widgetFile, query } = parseWidgetResourceUri(widgetUri);
+    const widgetPath = `/${widgetFile}${query}`;
+    const assetUrl = new URL(`${widgetFile}${query}`, widgetBaseUrl).toString();
 
     let assetStatus: number | null = null;
     let apiStatus: number | null = null;
