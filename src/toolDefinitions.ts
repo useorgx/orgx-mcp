@@ -1054,7 +1054,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     id: 'orgx_emit_activity',
     title: 'Emit OrgX Activity',
     description:
-      'Emit append-only run telemetry for OrgX control-plane reporting. USE WHEN: agent is executing and needs to report progress. NEXT: Continue work; emit again at each phase change. DO NOT USE: for entity status changes — use entity_action instead.',
+      'Emit append-only run telemetry for OrgX control-plane reporting. USE WHEN: agent is executing and needs to report progress. NEXT: Continue work; emit again at each phase change. DO NOT USE: for entity status changes — use entity_action instead. Setting phase="completed" records telemetry only and does not mark tasks, workstreams, or initiatives complete.',
     inputSchema: {
       initiative_id: z.string().uuid().describe('Initiative UUID'),
       message: z.string().min(1).describe('Human-readable activity update'),
