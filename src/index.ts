@@ -139,6 +139,8 @@ import {
   resolveWidgetBaseUrl,
   SKYBRIDGE_MIME_TYPE,
   toSkybridgeResourceUri,
+  toVersionTolerantWidgetResourceUri,
+  toWidgetHtmlResourceUri,
 } from './widgetConfig';
 import { checkEdgeRateLimit } from './edgeRateLimit';
 import { DEFAULT_SKILL_CATALOG } from './skillCatalog';
@@ -8137,6 +8139,24 @@ export class OrgXMcp extends McpAgent<
           )
       );
 
+      const widgetTemplateUri = toVersionTolerantWidgetResourceUri(widget.uri);
+      this.server.registerResource(
+        `${widget.name}-legacy-version`,
+        new ResourceTemplate(widgetTemplateUri, { list: undefined }),
+        {
+          description: `${widget.title} (version-tolerant)`,
+          mimeType: RESOURCE_MIME_TYPE,
+          _meta: mcpAppsContentMeta,
+        },
+        async (uri) =>
+          this.buildWidgetResourceResponse(
+            uri.toString(),
+            widget.title,
+            RESOURCE_MIME_TYPE,
+            mcpAppsContentMeta
+          )
+      );
+
       const outputTemplateUri = toSkybridgeResourceUri(widget.uri);
       this.server.registerResource(
         `${widget.name}-skybridge`,
@@ -8153,6 +8173,26 @@ export class OrgXMcp extends McpAgent<
             SKYBRIDGE_MIME_TYPE,
             widgetMeta,
             outputTemplateUri
+          )
+      );
+
+      const outputTemplateResourceUri =
+        toVersionTolerantWidgetResourceUri(outputTemplateUri);
+      this.server.registerResource(
+        `${widget.name}-skybridge-legacy-version`,
+        new ResourceTemplate(outputTemplateResourceUri, { list: undefined }),
+        {
+          description: `${widget.title} (ChatGPT, version-tolerant)`,
+          mimeType: SKYBRIDGE_MIME_TYPE,
+          _meta: widgetMeta,
+        },
+        async (uri) =>
+          this.buildWidgetResourceResponse(
+            toWidgetHtmlResourceUri(uri.toString()),
+            widget.title,
+            SKYBRIDGE_MIME_TYPE,
+            widgetMeta,
+            uri.toString()
           )
       );
     }
