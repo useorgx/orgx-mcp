@@ -89,21 +89,21 @@ describe('buildScaffoldInitiativeBatch', () => {
 
     expect(workstream).toMatchObject({
       assigned_agent_ids: ['design-agent'],
-      assigned_agent_names: ['Design'],
+      assigned_agent_names: ['Dana'],
     });
     expect(workstream).not.toHaveProperty('primaryAgent');
     expect(workstream).not.toHaveProperty('ownerAgent');
 
     expect(milestone).toMatchObject({
       assigned_agent_ids: ['design-agent'],
-      assigned_agent_names: ['Design'],
+      assigned_agent_names: ['Dana'],
     });
     expect(milestone).not.toHaveProperty('primaryAgent');
     expect(milestone).not.toHaveProperty('ownerAgent');
 
     expect(task).toMatchObject({
       assigned_agent_ids: ['design-agent'],
-      assigned_agent_names: ['Design'],
+      assigned_agent_names: ['Dana'],
     });
     expect(task).not.toHaveProperty('primaryAgent');
     expect(task).not.toHaveProperty('ownerAgent');

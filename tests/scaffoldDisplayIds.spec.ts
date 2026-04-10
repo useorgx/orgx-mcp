@@ -37,15 +37,15 @@ describe('scaffolded initiative display IDs', () => {
     );
   });
 
-  it('preserves scaffold refs as display ids before falling back to internal ids', () => {
+  it('keeps UUID-style ids for joins while preserving refs for display badges', () => {
     expect(source).toContain(
-      "id: workstream && typeof workstream.ref === 'string' ? workstream.ref : workstream && typeof workstream.id === 'string' ? workstream.id : ''"
+      "id: workstream && typeof workstream.id === 'string' ? workstream.id : workstream && typeof workstream.ref === 'string' ? workstream.ref : ''"
     );
     expect(source).toContain(
-      "id: milestone && typeof milestone.ref === 'string' ? milestone.ref : milestone && typeof milestone.id === 'string' ? milestone.id : ''"
+      "id: milestone && typeof milestone.id === 'string' ? milestone.id : milestone && typeof milestone.ref === 'string' ? milestone.ref : ''"
     );
     expect(source).toContain(
-      "id: task && typeof task.ref === 'string' ? task.ref : task && typeof task.id === 'string' ? task.id : ''"
+      "id: task && typeof task.id === 'string' ? task.id : task && typeof task.ref === 'string' ? task.ref : ''"
     );
   });
 });
