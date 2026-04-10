@@ -218,6 +218,10 @@
     .r-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; border: 1px solid var(--ox-border); background: rgba(255, 255, 255, 0.03); }
     .r-body { display: flex; flex-direction: column; gap: 10px; }
     .r-reason {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      flex-wrap: wrap;
       font-size: 0.82rem;
       line-height: 1.55;
       color: var(--ox-text);
@@ -227,14 +231,19 @@
       border: 1px solid rgba(var(--ox-primary-rgb), 0.14);
     }
     .r-reason-label {
-      display: inline-block;
-      margin-right: 6px;
+      display: inline-flex;
+      align-items: center;
       font-family: var(--ox-mono);
       font-size: 0.62rem;
       text-transform: uppercase;
       letter-spacing: 0.08em;
       color: var(--ox-primary);
       font-weight: 700;
+      flex-shrink: 0;
+    }
+    .r-reason-copy {
+      min-width: 0;
+      color: var(--ox-text);
     }
     .r-flag {
       display: inline-flex;
@@ -544,6 +553,23 @@
         return num;
       };
       var ORGX_BASE_URL = 'https://useorgx.com';
+      var decodeEscapedText = (value) => {
+        if (typeof value !== 'string' || !value) return '';
+        return value
+          .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+          .replace(/\\n/g, '\n')
+          .replace(/\\r/g, '')
+          .replace(/\\t/g, ' ')
+          .replace(/\\"/g, '"')
+          .replace(/\\'/g, "'")
+          .replace(/\\\\/g, '\\');
+      };
+      var buildObjectiveUrl = (objectiveId, commandCenterId) => {
+        if (!objectiveId) return ORGX_BASE_URL + '/settings/goals';
+        var query = '?objective=' + encodeURIComponent(objectiveId);
+        if (commandCenterId) query += '&center=' + encodeURIComponent(commandCenterId);
+        return ORGX_BASE_URL + '/settings/goals' + query;
+      };
       var buildEntityUrl = (item) => {
         var explicitUrl =
           item && typeof item.url === 'string' && item.url.trim()
@@ -568,7 +594,8 @@
         var initiativeId = item && typeof item.initiative_id === 'string' ? item.initiative_id : '';
         if (!id) return ORGX_BASE_URL;
 
-        if (type === 'initiative') return ORGX_BASE_URL + '/live/' + encodeURIComponent(id);
+        if (type === 'initiative') return ORGX_BASE_URL + '/initiatives/' + encodeURIComponent(id);
+        if (type === 'objective') return buildObjectiveUrl(id, item && typeof item.command_center_id === 'string' ? item.command_center_id : '');
         if (type === 'decision') {
           return initiativeId
             ? ORGX_BASE_URL + '/initiatives/' + encodeURIComponent(initiativeId) + '?focus=decisions&decision=' + encodeURIComponent(id)
@@ -598,9 +625,9 @@
       var normalizeResult = (item) => {
         var score = coerceScore(item && (item.score ?? item.relevance_score ?? item.vector_score));
         return {
-          title: item && typeof item.title === 'string' ? item.title : 'Untitled',
-          type: item && typeof item.type === 'string' ? item.type : 'result',
-          snippet: item && typeof item.snippet === 'string' ? item.snippet : item && typeof item.summary === 'string' ? item.summary : item && typeof item.description === 'string' ? item.description : 'No excerpt available yet.',
+          title: item && typeof item.title === 'string' ? decodeEscapedText(item.title) : 'Untitled',
+          type: item && typeof item.type === 'string' ? decodeEscapedText(item.type) : 'result',
+          snippet: item && typeof item.snippet === 'string' ? decodeEscapedText(item.snippet) : item && typeof item.summary === 'string' ? decodeEscapedText(item.summary) : item && typeof item.description === 'string' ? decodeEscapedText(item.description) : 'No excerpt available yet.',
           score: score,
           url: buildEntityUrl(item || {}),
           date: formatRelativeDate(item && (item.date || item.created_at || item.updated_at)) || 'Recently updated'
@@ -609,21 +636,21 @@
       var normalizeDecisionHistoryItem = (item) => {
         return {
           title: item && typeof item.title === 'string' && item.title.trim()
-            ? item.title
+            ? decodeEscapedText(item.title)
             : item && typeof item.summary === 'string' && item.summary.trim()
-            ? item.summary
+            ? decodeEscapedText(item.summary)
             : 'Historical decision',
           summary: item && typeof item.summary === 'string' && item.summary.trim()
-            ? item.summary
+            ? decodeEscapedText(item.summary)
             : item && typeof item.reason === 'string' && item.reason.trim()
-            ? item.reason
+            ? decodeEscapedText(item.reason)
             : item && typeof item.rationale === 'string' && item.rationale.trim()
-            ? item.rationale
+            ? decodeEscapedText(item.rationale)
             : 'No decision summary was provided.',
           status: item && typeof item.status === 'string' && item.status.trim()
-            ? item.status
+            ? decodeEscapedText(item.status)
             : item && typeof item.outcome === 'string' && item.outcome.trim()
-            ? item.outcome
+            ? decodeEscapedText(item.outcome)
             : 'resolved',
           date: formatRelativeDate(item && (item.decided_at || item.created_at || item.updated_at)) || 'Previously',
           url: buildEntityUrl({
@@ -658,56 +685,60 @@
           ? item.type
           : 'recommendation';
         var summary = item && typeof item.summary === 'string' && item.summary.trim()
-          ? item.summary
+          ? decodeEscapedText(item.summary)
           : item && typeof item.message === 'string' && item.message.trim()
-          ? item.message
+          ? decodeEscapedText(item.message)
           : 'Review this recommendation in OrgX.';
         var reason = item && typeof item.reason === 'string' && item.reason.trim()
-          ? item.reason
+          ? decodeEscapedText(item.reason)
           : item && typeof item.rationale === 'string' && item.rationale.trim()
-          ? item.rationale
+          ? decodeEscapedText(item.rationale)
           : summary;
-        var url = buildEntityUrl({
-          type: entityType,
-          id:
-            typeof item.id === 'string'
-              ? item.id
-              : typeof metadata.workstreamId === 'string'
-              ? metadata.workstreamId
-              : typeof metadata.entityId === 'string'
-              ? metadata.entityId
-              : item && item.key,
-          initiative_id: typeof metadata.initiativeId === 'string' ? metadata.initiativeId : item && item.initiative_id,
-          url:
-            typeof item.url === 'string'
-              ? item.url
-              : typeof item.live_url === 'string'
-              ? item.live_url
-              : typeof item.action_url === 'string'
-              ? item.action_url
-              : typeof item.start_url === 'string'
-              ? item.start_url
-              : typeof metadata.live_url === 'string'
-              ? metadata.live_url
-              : typeof metadata.action_url === 'string'
-              ? metadata.action_url
-              : null
-        });
+        var objectiveId = typeof metadata.objectiveId === 'string' ? metadata.objectiveId : item && typeof item.objective_id === 'string' ? item.objective_id : '';
+        var commandCenterId = typeof metadata.commandCenterId === 'string' ? metadata.commandCenterId : item && typeof item.command_center_id === 'string' ? item.command_center_id : '';
+        var url = objectiveId
+          ? buildObjectiveUrl(objectiveId, commandCenterId)
+          : buildEntityUrl({
+              type: entityType,
+              id:
+                typeof item.id === 'string'
+                  ? item.id
+                  : typeof metadata.workstreamId === 'string'
+                  ? metadata.workstreamId
+                  : typeof metadata.entityId === 'string'
+                  ? metadata.entityId
+                  : item && item.key,
+              initiative_id: typeof metadata.initiativeId === 'string' ? metadata.initiativeId : item && item.initiative_id,
+              url:
+                typeof item.url === 'string'
+                  ? item.url
+                  : typeof item.live_url === 'string'
+                  ? item.live_url
+                  : typeof item.action_url === 'string'
+                  ? item.action_url
+                  : typeof item.start_url === 'string'
+                  ? item.start_url
+                  : typeof metadata.live_url === 'string'
+                  ? metadata.live_url
+                  : typeof metadata.action_url === 'string'
+                  ? metadata.action_url
+                  : null
+            });
         return {
           rank: index + 1,
           title: item && typeof item.label === 'string' && item.label.trim()
-            ? item.label
+            ? decodeEscapedText(item.label)
             : item && typeof item.title === 'string' && item.title.trim()
-            ? item.title
+            ? decodeEscapedText(item.title)
             : 'Next action',
-          type: entityType,
+          type: decodeEscapedText(entityType),
           summary: summary,
           reason: reason,
           score: score,
           ready: !!(item && item.ready),
-          source: item && typeof item.source === 'string' ? item.source : null,
+          source: item && typeof item.source === 'string' ? decodeEscapedText(item.source) : null,
           url: url,
-          nextTask: typeof metadata.nextTaskTitle === 'string' ? metadata.nextTaskTitle : null
+          nextTask: typeof metadata.nextTaskTitle === 'string' ? decodeEscapedText(metadata.nextTaskTitle) : null
         };
       };
       var buildScopeLabel = (payload) => {
@@ -889,7 +920,7 @@
             </div>
             <div class="r-body">
               <div class="r-snippet">${renderSnippet(r.summary)}</div>
-              <div class="r-reason"><span class="r-reason-label">Why now</span>${escapeHtml(r.reason)}</div>
+              <div class="r-reason"><span class="r-reason-label">Why now</span><span class="r-reason-copy">${escapeHtml(r.reason)}</span></div>
             </div>
             <div class="r-footer">
               <div class="r-meta">
