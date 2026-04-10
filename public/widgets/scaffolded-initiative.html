@@ -28,6 +28,22 @@
         --ox-text-muted: #64748b;
         --ox-well-bg: #f1f5f9;
         --ox-well-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        --scaffold-shell-surface: rgba(255, 255, 255, 0.94);
+        --scaffold-shell-shadow: 0 28px 48px -28px rgba(15, 23, 42, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.78);
+        --scaffold-shell-outline: rgba(15, 23, 42, 0.08);
+        --scaffold-shell-highlight: rgba(255, 255, 255, 0.7);
+        --scaffold-stage-surface: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(241, 245, 249, 0.96));
+        --scaffold-stage-sheen: radial-gradient(circle at 50% 0%, rgba(var(--ox-primary-rgb), 0.08), transparent 36%);
+        --scaffold-control-highlight: rgba(255, 255, 255, 0.62);
+        --scaffold-chip-surface: rgba(248, 250, 252, 0.92);
+        --scaffold-lane-track-surface: rgba(148, 163, 184, 0.18);
+        --scaffold-lane-label: rgba(51, 65, 85, 0.62);
+        --scaffold-cell-surface: rgba(255, 255, 255, 0.74);
+        --scaffold-agent-label: rgba(51, 65, 85, 0.72);
+        --scaffold-tip-surface: rgba(255, 255, 255, 0.76);
+        --scaffold-tip-copy: rgba(51, 65, 85, 0.76);
+        --scaffold-caption-copy: rgba(51, 65, 85, 0.76);
+        --scaffold-dot-surface: rgba(148, 163, 184, 0.34);
       }
       
       @media (prefers-color-scheme: dark) {
@@ -41,6 +57,22 @@
           --ox-text-muted: rgba(255, 255, 255, 0.5);
           --ox-well-bg: rgba(0,0,0,0.3);
           --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
+          --scaffold-shell-surface: rgba(4, 9, 16, 0.94);
+          --scaffold-shell-shadow: 0 30px 56px -24px rgba(0, 0, 0, 0.58), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+          --scaffold-shell-outline: rgba(255, 255, 255, 0.035);
+          --scaffold-shell-highlight: rgba(255, 255, 255, 0.05);
+          --scaffold-stage-surface: rgba(0, 0, 0, 0.24);
+          --scaffold-stage-sheen: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.05), transparent 34%);
+          --scaffold-control-highlight: rgba(255, 255, 255, 0.05);
+          --scaffold-chip-surface: rgba(0, 0, 0, 0.3);
+          --scaffold-lane-track-surface: rgba(255, 255, 255, 0.05);
+          --scaffold-lane-label: rgba(255, 255, 255, 0.34);
+          --scaffold-cell-surface: rgba(255, 255, 255, 0.03);
+          --scaffold-agent-label: rgba(255, 255, 255, 0.42);
+          --scaffold-tip-surface: rgba(255, 255, 255, 0.025);
+          --scaffold-tip-copy: rgba(255, 255, 255, 0.42);
+          --scaffold-caption-copy: rgba(255, 255, 255, 0.4);
+          --scaffold-dot-surface: rgba(255, 255, 255, 0.1);
         }
       }
       
@@ -54,6 +86,22 @@
           --ox-text-muted: rgba(255, 255, 255, 0.5);
           --ox-well-bg: rgba(0,0,0,0.3);
           --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
+          --scaffold-shell-surface: rgba(4, 9, 16, 0.94);
+          --scaffold-shell-shadow: 0 30px 56px -24px rgba(0, 0, 0, 0.58), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+          --scaffold-shell-outline: rgba(255, 255, 255, 0.035);
+          --scaffold-shell-highlight: rgba(255, 255, 255, 0.05);
+          --scaffold-stage-surface: rgba(0, 0, 0, 0.24);
+          --scaffold-stage-sheen: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.05), transparent 34%);
+          --scaffold-control-highlight: rgba(255, 255, 255, 0.05);
+          --scaffold-chip-surface: rgba(0, 0, 0, 0.3);
+          --scaffold-lane-track-surface: rgba(255, 255, 255, 0.05);
+          --scaffold-lane-label: rgba(255, 255, 255, 0.34);
+          --scaffold-cell-surface: rgba(255, 255, 255, 0.03);
+          --scaffold-agent-label: rgba(255, 255, 255, 0.42);
+          --scaffold-tip-surface: rgba(255, 255, 255, 0.025);
+          --scaffold-tip-copy: rgba(255, 255, 255, 0.42);
+          --scaffold-caption-copy: rgba(255, 255, 255, 0.4);
+          --scaffold-dot-surface: rgba(255, 255, 255, 0.1);
       }
       
       :root {
@@ -110,11 +158,9 @@
         overflow: hidden;
         background:
           linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.05), transparent 48%),
-          rgba(4, 9, 16, 0.94);
+          var(--scaffold-shell-surface);
         border: 1px solid rgba(var(--ox-primary-rgb), 0.11);
-        box-shadow:
-          0 30px 56px -24px rgba(0, 0, 0, 0.58),
-          inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        box-shadow: var(--scaffold-shell-shadow);
       }
 
       .scaffold-state::before {
@@ -133,7 +179,7 @@
         position: absolute;
         inset: 1px;
         border-radius: 21px;
-        border: 1px solid rgba(255, 255, 255, 0.035);
+        border: 1px solid var(--scaffold-shell-outline);
         pointer-events: none;
         z-index: -1;
       }
@@ -183,7 +229,7 @@
         color: rgb(var(--ox-primary-rgb));
         background: rgba(var(--ox-primary-rgb), 0.1);
         border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        box-shadow: inset 0 1px 0 var(--scaffold-control-highlight);
       }
 
       .scaffold-state--awaiting .scaffold-state__status {
@@ -211,7 +257,7 @@
         min-height: 214px;
         border-radius: 18px;
         overflow: hidden;
-        background: rgba(0, 0, 0, 0.24);
+        background: var(--scaffold-stage-surface);
         border: 1px solid rgba(var(--ox-primary-rgb), 0.08);
       }
 
@@ -231,7 +277,7 @@
         content: "";
         position: absolute;
         inset: 0;
-        background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.05), transparent 34%);
+        background: var(--scaffold-stage-sheen);
         pointer-events: none;
       }
 
@@ -302,7 +348,7 @@
         background: rgba(var(--scene-rgb), 0.12);
         border: 1px solid rgba(var(--scene-rgb), 0.18);
         box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.05),
+          inset 0 1px 0 var(--scaffold-control-highlight),
           0 18px 28px -24px rgba(var(--scene-rgb), 0.6);
       }
 
@@ -340,13 +386,13 @@
         min-height: 38px;
         padding: 0 14px;
         border-radius: 12px;
-        background: rgba(0, 0, 0, 0.3);
+        background: var(--scaffold-chip-surface);
         border: 1px solid rgba(var(--chip-rgb), 0.16);
         color: rgb(var(--chip-rgb));
         font-size: 0.68rem;
         font-weight: 650;
         letter-spacing: 0.04em;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        box-shadow: inset 0 1px 0 var(--scaffold-control-highlight);
         opacity: 0;
         transform: translateY(8px);
       }
@@ -405,7 +451,7 @@
         height: 7px;
         border-radius: 999px;
         overflow: hidden;
-        background: rgba(255, 255, 255, 0.05);
+        background: var(--scaffold-lane-track-surface);
       }
 
       .scaffold-state__lane-fill {
@@ -432,7 +478,7 @@
         font-weight: 700;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.34);
+        color: var(--scaffold-lane-label);
       }
 
       .scaffold-state__task-grid {
@@ -448,7 +494,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(255, 255, 255, 0.03);
+        background: var(--scaffold-cell-surface);
         border: 1px solid rgba(var(--cell-rgb), 0.14);
         color: rgb(var(--cell-rgb));
         opacity: 0;
@@ -516,7 +562,7 @@
         font-weight: 700;
         box-shadow:
           0 12px 24px -22px rgba(var(--agent-rgb), 0.78),
-          inset 0 1px 0 rgba(255, 255, 255, 0.08);
+          inset 0 1px 0 var(--scaffold-control-highlight);
       }
 
       .scaffold-state__agent-avatar img {
@@ -537,7 +583,7 @@
         font-weight: 600;
         line-height: 1.2;
         text-align: center;
-        color: rgba(255, 255, 255, 0.42);
+        color: var(--scaffold-agent-label);
       }
 
       .scaffold-state__tip-list {
@@ -554,7 +600,7 @@
         gap: 10px;
         padding: 10px 13px;
         border-radius: 12px;
-        background: rgba(255, 255, 255, 0.025);
+        background: var(--scaffold-tip-surface);
         border: 1px solid rgba(var(--tip-rgb), 0.1);
         opacity: 0;
         transform: translateX(-8px);
@@ -586,7 +632,7 @@
       .scaffold-state__tip-copy {
         font-size: 0.66rem;
         line-height: 1.45;
-        color: rgba(255, 255, 255, 0.42);
+        color: var(--scaffold-tip-copy);
       }
 
       .scaffold-state__tip-copy strong {
@@ -615,7 +661,7 @@
         margin: 0 auto;
         font-size: 0.7rem;
         line-height: 1.5;
-        color: rgba(255, 255, 255, 0.4);
+        color: var(--scaffold-caption-copy);
         transition: opacity 0.24s ease, transform 0.24s ease;
       }
 
@@ -638,7 +684,7 @@
         border: 0;
         padding: 0;
         cursor: pointer;
-        background: rgba(255, 255, 255, 0.1);
+        background: var(--scaffold-dot-surface);
         transition:
           width 0.32s var(--scaffold-ease),
           background-color 0.32s var(--scaffold-ease),
