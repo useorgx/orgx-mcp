@@ -1201,14 +1201,9 @@ export class OrgXMcp extends McpAgent<
     endpoint: string;
     body: Record<string, unknown>;
   } {
-    // Direct endpoints for performance-critical tools
-    // TODO: Add direct endpoints once they handle MCP context properly
-    // switch (toolId) {
-    //   case 'approve_decision':
-    //     return { endpoint: '/api/decisions/approve', body: { ... } }
-    // }
-
-    // Generic tool executor (protocol-agnostic)
+    // Generic tool executor (protocol-agnostic).
+    // approve_decision and all other tools route through /api/tools/execute,
+    // which handles MCP context, stream continuation, and agent resumption.
     // Use resolved userId (props > session auth)
     return {
       endpoint: '/api/tools/execute',
