@@ -59,7 +59,11 @@ describe('authHandler widget compatibility routes', () => {
     };
     expect(body.name).toBe('com.useorgx/orgx-mcp');
     expect(body.websiteUrl).toBe('https://useorgx.com');
-    expect(body.resources?.some((resource) => resource.uri === WIDGET_URIS.scaffoldedInitiative)).toBe(true);
+    expect(
+      body.resources?.some(
+        (resource) => resource.uri === WIDGET_URIS.scaffoldedInitiative
+      )
+    ).toBe(true);
     expect(
       body.resources?.some(
         (resource) => resource.uri === 'ui://widget/scaffolded-initiative.html'
