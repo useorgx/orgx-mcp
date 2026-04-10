@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import {
   buildMcpAppsMeta,
@@ -120,12 +121,38 @@ describe('widgetConfig', () => {
       toVersionTolerantWidgetResourceUri(
         'ui://widget/scaffolded-initiative.html?v=abc123'
       )
-    ).toBe('ui://widget/scaffolded-initiative.html{?v,version}');
+    ).toBe('ui://widget/scaffolded-initiative.html{?v}');
     expect(
       toVersionTolerantWidgetResourceUri(
         'ui://widget/scaffolded-initiative.skybridge.html?v=abc123'
       )
-    ).toBe('ui://widget/scaffolded-initiative.skybridge.html{?v,version}');
+    ).toBe('ui://widget/scaffolded-initiative.skybridge.html{?v}');
+  });
+
+  it('matches stale versioned widget URIs via the MCP SDK ResourceTemplate matcher', () => {
+    const widgetTemplate = new ResourceTemplate(
+      toVersionTolerantWidgetResourceUri(
+        'ui://widget/scaffolded-initiative.html?v=abc123'
+      ),
+      { list: undefined }
+    );
+    const skybridgeTemplate = new ResourceTemplate(
+      toVersionTolerantWidgetResourceUri(
+        'ui://widget/scaffolded-initiative.skybridge.html?v=abc123'
+      ),
+      { list: undefined }
+    );
+
+    expect(
+      widgetTemplate.uriTemplate.match(
+        'ui://widget/scaffolded-initiative.html?v=ca6f8c6cceb0'
+      )
+    ).toEqual({ v: 'ca6f8c6cceb0' });
+    expect(
+      skybridgeTemplate.uriTemplate.match(
+        'ui://widget/scaffolded-initiative.skybridge.html?v=ca6f8c6cceb0'
+      )
+    ).toEqual({ v: 'ca6f8c6cceb0' });
   });
 
   it('adds and parses widget resource versions', () => {
