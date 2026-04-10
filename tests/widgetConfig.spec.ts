@@ -6,6 +6,8 @@ import {
   rewriteWidgetHtmlAssetUrls,
   sanitizeMcpAppsHtml,
   toSkybridgeResourceUri,
+  toVersionTolerantWidgetResourceUri,
+  toWidgetHtmlResourceUri,
   withWidgetResourceVersion,
 } from '../src/widgetConfig';
 
@@ -103,6 +105,27 @@ describe('widgetConfig', () => {
         'ui://widget/scaffolded-initiative.html?v=abc123'
       )
     ).toBe('ui://widget/scaffolded-initiative.skybridge.html?v=abc123');
+  });
+
+  it('converts skybridge widget URIs back to the underlying widget html resource', () => {
+    expect(
+      toWidgetHtmlResourceUri(
+        'ui://widget/scaffolded-initiative.skybridge.html?v=abc123'
+      )
+    ).toBe('ui://widget/scaffolded-initiative.html?v=abc123');
+  });
+
+  it('builds version-tolerant widget URI templates without pinning a single hash', () => {
+    expect(
+      toVersionTolerantWidgetResourceUri(
+        'ui://widget/scaffolded-initiative.html?v=abc123'
+      )
+    ).toBe('ui://widget/scaffolded-initiative.html{?v,version}');
+    expect(
+      toVersionTolerantWidgetResourceUri(
+        'ui://widget/scaffolded-initiative.skybridge.html?v=abc123'
+      )
+    ).toBe('ui://widget/scaffolded-initiative.skybridge.html{?v,version}');
   });
 
   it('adds and parses widget resource versions', () => {

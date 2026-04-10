@@ -73,6 +73,15 @@ export function toSkybridgeResourceUri(uri: string): string {
   return uri.replace(/\.html(\?.*)?$/, '.skybridge.html$1');
 }
 
+export function toWidgetHtmlResourceUri(uri: string): string {
+  return uri.replace(/\.skybridge\.html(\?.*)?$/, '.html$1');
+}
+
+export function toVersionTolerantWidgetResourceUri(uri: string): string {
+  const [baseUri] = uri.split('?');
+  return `${baseUri}{?v,version}`;
+}
+
 export function parseWidgetResourceUri(uri: string) {
   const widgetTarget = uri.replace(/^ui:\/\/widget\//, '');
   const [widgetFile, ...queryParts] = widgetTarget.split('?');
