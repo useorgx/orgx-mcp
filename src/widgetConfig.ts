@@ -79,7 +79,7 @@ export function toWidgetHtmlResourceUri(uri: string): string {
 
 export function toVersionTolerantWidgetResourceUri(uri: string): string {
   const [baseUri] = uri.split('?');
-  return `${baseUri}{?v,version}`;
+  return `${baseUri}{?v}`;
 }
 
 export function parseWidgetResourceUri(uri: string) {
