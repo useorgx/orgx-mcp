@@ -64,6 +64,16 @@ const DOMAIN_DEFAULT_AGENT_ID: Record<string, string> = {
   orchestrator: 'orchestrator-agent',
 };
 
+const DOMAIN_DEFAULT_AGENT_NAME: Record<string, string> = {
+  product: 'Pace',
+  engineering: 'Eli',
+  marketing: 'Mark',
+  sales: 'Sage',
+  operations: 'Orion',
+  design: 'Dana',
+  orchestrator: 'Xandy',
+};
+
 function normalizeDomain(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const normalized = value.trim().toLowerCase();
@@ -132,6 +142,11 @@ function canonicalizeAgentId(value: string): string {
 }
 
 function titleCaseFromAgentId(agentId: string): string {
+  const canonicalId = canonicalizeAgentId(agentId);
+  const domain = normalizeDomain(canonicalId.replace(/-agent$/i, ''));
+  if (domain && DOMAIN_DEFAULT_AGENT_NAME[domain]) {
+    return DOMAIN_DEFAULT_AGENT_NAME[domain];
+  }
   return agentId
     .replace(/-agent$/i, '')
     .split('-')
