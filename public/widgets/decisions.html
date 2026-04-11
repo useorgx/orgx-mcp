@@ -837,6 +837,13 @@
       background: rgba(255, 255, 255, 0.03);
     }
 
+    .queue-header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
     .resolution-banner {
       display: flex;
       flex-wrap: wrap;
@@ -976,6 +983,12 @@
               <div class="widget-kicker">Operator Queue</div>
               <div class="widget-title-lg">Action required</div>
               <div id="queueSubtitle" class="queue-subtitle">Approve to unblock execution, or reject with clear guidance so the next attempt stays on-rail.</div>
+              <div class="queue-header-actions">
+                <a id="queueDecisionsLink" href="https://useorgx.com/decisions?status=pending" target="_blank" rel="noreferrer" onclick='return openWidgetLink(this.href, event)' class="resolution-link">
+                  <span aria-hidden="true">↗</span>
+                  <span>View all decisions in OrgX</span>
+                </a>
+              </div>
             </div>
             <div class="widget-icon-frame" aria-hidden="true">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1209,6 +1222,50 @@
       return '';
     };
 
+    var humanizeDecisionKey = (key) => String(key || '')
+      .replace(/[_-]+/g, ' ')
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+      .trim();
+
+    var pushUniqueText = (parts, value) => {
+      var text = typeof value === 'string' ? value.trim() : '';
+      if (!text || parts.includes(text)) return;
+      parts.push(text);
+    };
+
+    var formatDecisionField = (value, depth) => {
+      if (value === null || value === undefined) return '';
+      if (typeof value === 'string') return value.trim();
+      if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+      if (Array.isArray(value)) {
+        var listParts = [];
+        value.forEach((item) => pushUniqueText(listParts, formatDecisionField(item, (depth || 0) + 1)));
+        return listParts.join(' • ');
+      }
+      if (typeof value === 'object') {
+        if ((depth || 0) > 2) return '';
+        var objectParts = [];
+        var preferredKeys = ['summary', 'text', 'message', 'title', 'description', 'reason', 'note', 'content', 'detail', 'details', 'body', 'why', 'impact', 'recommendation'];
+        var hiddenKeys = ['id', 'uuid', 'created_at', 'createdAt', 'updated_at', 'updatedAt', 'decision_id', 'entity_id', 'initiative_id', 'workstream_id', 'milestone_id', 'task_id'];
+        var orderedKeys = preferredKeys.filter((key) => key in value);
+        Object.keys(value).forEach((key) => {
+          if (orderedKeys.includes(key) || hiddenKeys.includes(key)) return;
+          orderedKeys.push(key);
+        });
+        orderedKeys.forEach((key) => {
+          var formatted = formatDecisionField(value[key], (depth || 0) + 1);
+          if (!formatted) return;
+          if (preferredKeys.includes(key)) {
+            pushUniqueText(objectParts, formatted);
+            return;
+          }
+          pushUniqueText(objectParts, humanizeDecisionKey(key) + ': ' + formatted);
+        });
+        return objectParts.join(' • ');
+      }
+      return '';
+    };
+
     var resolveWidgetAsset = (path) => new URL('shared/' + path, window.location.href).toString();
 
     var normalizeDecision = (decision, index) => {
@@ -1233,6 +1290,9 @@
         decision.urgency_level,
         decision.priority
       ).toLowerCase() || 'medium';
+      const context = decision.context ?? decision.why_it_matters ?? decision.whyItMatters ?? decision.reasoning ?? null;
+      const recommendation = decision.recommendation ?? decision.recommended_action ?? decision.next_action ?? decision.action ?? null;
+      const impact = decision.impact ?? decision.impact_if_ignored ?? decision.risk_if_ignored ?? decision.consequence ?? null;
       const rawOwner = firstString(
         decision.agent_name,
         decision.owner_agent,
@@ -1251,6 +1311,9 @@
         type: firstString(decision.type, decision.entity_type) || 'Decision',
         summary,
         urgency,
+        context: formatDecisionField(context),
+        recommendation: formatDecisionField(recommendation),
+        impact: formatDecisionField(impact),
         created_at:
           firstString(decision.created_at, decision.createdAt, decision.updated_at) ||
           new Date().toISOString(),
@@ -1472,8 +1535,10 @@
       if(isLoading) return;
       data = normalizeDecisionQueue(data);
       var queueSubtitle = document.getElementById('queueSubtitle');
+      var queueDecisionsLink = document.getElementById('queueDecisionsLink');
       var decisionsUrl = buildDecisionsUrl();
       var agentStatusUrl = buildAgentStatusUrl();
+      if (queueDecisionsLink) queueDecisionsLink.href = decisionsUrl;
       if(!data || !data.decisions || data.decisions.length === 0) {
         var resolvedHtml = lastResolution
           ? `<div class="empty-title">${lastResolution.action === 'approved' ? 'Decision approved' : 'Decision sent back'}</div><div class="empty-desc">${escapeHtml(lastResolution.summary)} ${lastResolution.action === 'approved' ? 'is now unblocked and ' + lastResolution.agent_name + ' can keep moving.' : 'was returned to ' + lastResolution.agent_name + ' with your note so the next revision addresses the right constraint.'}</div><div class="resolution-actions"><a href="${decisionsUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(decisionsUrl)}, event)' class="resolution-link">${icons.link(14)} View all decisions in OrgX</a><a href="${agentStatusUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(agentStatusUrl)}, event)' class="resolution-link resolution-link--secondary">${icons.agent(14)} Open agent status</a></div>`

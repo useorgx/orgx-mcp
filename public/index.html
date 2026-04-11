@@ -61,6 +61,43 @@
       }
     </script>
 
+    <!-- Meta Pixel -->
+    <script>
+      window.ORGX_META_PIXEL_ID = '3332337890259808';
+      !(function (f, b, e, v, n, t, s) {
+        if (f.fbq) return;
+        n = f.fbq = function () {
+          n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+        };
+        if (!f._fbq) f._fbq = n;
+        n.push = n;
+        n.loaded = true;
+        n.version = '2.0';
+        n.queue = [];
+        t = b.createElement(e);
+        t.async = true;
+        t.src = v;
+        s = b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t, s);
+      })(
+        window,
+        document,
+        'script',
+        'https://connect.facebook.net/en_US/fbevents.js'
+      );
+      fbq('init', window.ORGX_META_PIXEL_ID);
+      fbq('track', 'PageView');
+    </script>
+    <noscript>
+      <img
+        height="1"
+        width="1"
+        style="display: none"
+        alt=""
+        src="https://www.facebook.com/tr?id=3332337890259808&ev=PageView&noscript=1"
+      />
+    </noscript>
+
     <link rel="icon" type="image/png" href="/orgx-logo.png" />
     <link rel="apple-touch-icon" href="/orgx-logo.png" />
 
@@ -399,6 +436,7 @@
 
             <div class="flex flex-col sm:flex-row gap-4 pt-4">
               <a
+                id="hero-connect-client-cta"
                 href="#connect"
                 class="group inline-flex items-center justify-center px-6 py-3 rounded-lg bg-white text-black text-sm font-medium hover:bg-white/90 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]"
               >
@@ -418,6 +456,7 @@
                 </svg>
               </a>
               <a
+                id="hero-see-tools-cta"
                 href="#capabilities"
                 class="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-white/10 text-white/60 text-sm font-medium hover:text-white hover:border-white/20 transition-all"
               >
@@ -989,7 +1028,11 @@
               <div class="space-y-1.5">
                 <code
                   class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
-                  >get_initiative_pulse()</code
+                  >get_initiative_pulse({ initiative_id })</code
+                >
+                <code
+                  class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
+                  >get_initiative_pulse({ initiative_name })</code
                 >
                 <code
                   class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
@@ -2149,7 +2192,34 @@ https://mcp.useorgx.com/.well-known/openapi.json
         }
       }
 
-      function switchTab(tab) {
+      function trackMetaStandard(eventName, params = {}) {
+        if (typeof fbq === 'function') {
+          fbq('track', eventName, params);
+        }
+      }
+
+      function trackMetaCustom(eventName, params = {}) {
+        if (typeof fbq === 'function') {
+          fbq('trackCustom', eventName, params);
+        }
+      }
+
+      function bindLandingPageTracking() {
+        const connectCta = document.getElementById('hero-connect-client-cta');
+        const toolsCta = document.getElementById('hero-see-tools-cta');
+
+        connectCta?.addEventListener('click', () => {
+          trackMetaStandard('Lead', { content_name: 'OrgX MCP connect client' });
+          trackMetaCustom('OrgXMcpHeroConnectClicked');
+        });
+
+        toolsCta?.addEventListener('click', () => {
+          trackMetaStandard('ViewContent', { content_name: 'OrgX MCP tools' });
+          trackMetaCustom('OrgXMcpToolsViewed');
+        });
+      }
+
+      function switchTab(tab, options = {}) {
         ['cursor', 'claude', 'chatgpt'].forEach((t) => {
           const btn = document.getElementById('btn-' + t);
           if (t === tab) {
@@ -2179,11 +2249,20 @@ https://mcp.useorgx.com/.well-known/openapi.json
         }
 
         renderSteps(tab);
+
+        if (options.track !== false) {
+          trackMetaCustom('OrgXMcpIntegrationTabViewed', { client: tab });
+        }
       }
 
       async function copyConfig() {
         const code = document.getElementById('code-display').textContent;
         await navigator.clipboard.writeText(code);
+        trackMetaCustom('OrgXMcpConfigCopied', {
+          client: document
+            .getElementById('config-filename')
+            ?.textContent?.trim() || 'unknown',
+        });
       }
 
       // --- Hero Client Logo Animation ---
@@ -2240,7 +2319,8 @@ https://mcp.useorgx.com/.well-known/openapi.json
       }
 
       // Initialize
-      switchTab('cursor');
+      switchTab('cursor', { track: false });
+      bindLandingPageTracking();
       updateHeroAnimation();
       renderAgents();
       startCycle();
