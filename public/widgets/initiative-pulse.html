@@ -1058,6 +1058,12 @@
         color: var(--ox-text-muted);
       }
 
+      .empty-actions {
+        margin-top: 4px;
+        display: flex;
+        justify-content: center;
+      }
+
       .error-state {
         border-color: rgba(244, 63, 94, 0.24);
         background: rgba(244, 63, 94, 0.04);
@@ -1418,6 +1424,42 @@
           return false;
         }
         return true;
+      }
+
+      function buildInitiativeRecoveryUrl(rawPulse) {
+        var initiativeId =
+          rawPulse &&
+          (rawPulse.id ||
+            rawPulse.initiative_id ||
+            (rawPulse.initiative && rawPulse.initiative.id));
+        if (initiativeId && String(initiativeId).trim()) {
+          return (
+            "https://useorgx.com/initiatives/" +
+            encodeURIComponent(String(initiativeId).trim())
+          );
+        }
+        return "https://useorgx.com/initiatives";
+      }
+
+      function buildRecoveryCta(rawPulse, label) {
+        var recoveryUrl = buildInitiativeRecoveryUrl(rawPulse);
+        var resolvedLabel =
+          label ||
+          (recoveryUrl.indexOf("/initiatives/") !== -1
+            ? "Open initiative in OrgX"
+            : "Browse initiatives in OrgX");
+        return (
+          '<div class="empty-actions">' +
+          '<a href="' +
+          escapeHtml(recoveryUrl) +
+          '" target="_blank" rel="noreferrer" onclick=\'return openWidgetLink(' +
+          JSON.stringify(recoveryUrl) +
+          ', event)\' class="deep-link">' +
+          icons.external(14) +
+          escapeHtml(resolvedLabel) +
+          "</a>" +
+          "</div>"
+        );
       }
 
       var _svg = function (content, size) {
@@ -2706,8 +2748,13 @@ external: function (size) {
             ? "Initiative not found"
             : "Initiative pulse unavailable";
           var errorDesc = /multiple initiatives match/i.test(pulse.error)
-            ? pulse.error + " Retry with the specific initiative UUID to load a stable pulse view."
+            ? pulse.error + " Retry with the specific initiative UUID via initiative_id to load a stable pulse view."
+            : /not found/i.test(pulse.error)
+            ? pulse.error + " If you know the initiative UUID, retry with initiative_id for a direct lookup."
             : pulse.error;
+          var errorCta = /multiple initiatives match/i.test(pulse.error)
+            ? buildRecoveryCta(null, "Browse initiatives in OrgX")
+            : buildRecoveryCta(pulse, /not found/i.test(pulse.error) ? "Browse initiatives in OrgX" : "Open initiative in OrgX");
           injectHtml(
             '<div class="empty-state error-state">' +
               '<div class="empty-icon">' +
@@ -2719,6 +2766,7 @@ external: function (size) {
               '<div class="empty-desc">' +
               escapeHtml(errorDesc) +
               "</div>" +
+              errorCta +
             "</div>"
           );
           return;
@@ -2732,6 +2780,7 @@ external: function (size) {
               "</div>" +
               '<div class="empty-title">Awaiting telemetry</div>' +
               '<div class="empty-desc">No recent pulse data was found for this initiative.</div>' +
+              buildRecoveryCta(null, "Browse initiatives in OrgX") +
             "</div>"
           );
           return;
@@ -2746,6 +2795,7 @@ external: function (size) {
               "</div>" +
               '<div class="empty-title">Awaiting telemetry</div>' +
               '<div class="empty-desc">No recent pulse data was found for this initiative.</div>' +
+              buildRecoveryCta(pulse) +
             "</div>"
           );
           return;
