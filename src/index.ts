@@ -39,9 +39,11 @@ import {
   resolveAnonymousDistinctId,
 } from './posthogTelemetry';
 import {
+  buildAgentCreditCheckoutResult,
   buildAccountStatusResult,
   buildAccountUsageReportResult,
   buildEnterpriseUpgradeResult,
+  getAgentCreditPacks,
   resolveCheckoutUrl,
 } from './accountTools';
 import {
@@ -3340,9 +3342,9 @@ export class OrgXMcp extends McpAgent<
       this.server.registerTool(
         'account_upgrade',
       {
-        title: 'Upgrade account tier',
+        title: 'Upgrade account tier or buy agent credits',
         description:
-          'Create the next-step upgrade flow for the authenticated OrgX account. Enterprise requests return contact guidance instead of self-serve checkout.',
+          'Create the next-step upgrade or agent credit top-up flow for the authenticated OrgX account. Enterprise requests return contact guidance instead of self-serve checkout.',
         annotations: {
           readOnlyHint: false,
           destructiveHint: true,
@@ -3358,6 +3360,10 @@ export class OrgXMcp extends McpAgent<
               .optional()
               .default('monthly')
               .describe('Billing cadence for self-serve checkout plans.'),
+            credit_pack: z
+              .enum(['credits_500', 'credits_2000'])
+              .optional()
+              .describe('Optional agent credit pack to buy instead of upgrading a plan.'),
             user_id: z.string().optional().describe('Optional user id override.'),
           },
           _meta: { 'openai/visibility': 'private' },
@@ -3370,11 +3376,56 @@ export class OrgXMcp extends McpAgent<
               securitySchemes: SECURITY_SCHEMES.authRequired,
               userId: resolvedUserId ?? undefined,
               serverUrl: this.env.MCP_SERVER_URL,
-              featureDescription: 'upgrade account',
+              featureDescription: 'upgrade account or buy agent credits',
             });
             if (authResponse) return authResponse;
 
             const userId = this.assertUserId(args.user_id);
+            if (args.credit_pack) {
+              const usageResponse = await callOrgxApiJson(
+                this.env,
+                '/api/billing/usage',
+                { method: 'GET' },
+                { userId }
+              );
+              const usage = (await usageResponse.json()) as Record<string, unknown>;
+              const pack = getAgentCreditPacks(usage).find(
+                (candidate) => candidate.id === args.credit_pack
+              );
+              if (!pack) {
+                return this.toolError('Unknown or unavailable agent credit pack');
+              }
+
+              const response = await callOrgxApiJson(
+                this.env,
+                '/api/stripe/credits/checkout',
+                {
+                  method: 'POST',
+                  body: JSON.stringify({
+                    pack_id: args.credit_pack,
+                    user_id: userId,
+                  }),
+                },
+                { userId }
+              );
+              const data = (await response.json()) as {
+                checkout_url?: string;
+                url?: string;
+              };
+              const checkoutUrl = resolveCheckoutUrl(data);
+              if (!checkoutUrl) {
+                return this.toolError('Failed to create agent credit checkout session');
+              }
+              const { text, payload } = buildAgentCreditCheckoutResult({
+                checkoutUrl,
+                pack,
+              });
+              return {
+                content: [{ type: 'text', text }],
+                structuredContent: payload,
+              };
+            }
+
             if (args.target_plan === 'enterprise') {
               const { text, payload } = buildEnterpriseUpgradeResult(
                 this.env.ORGX_WEB_URL

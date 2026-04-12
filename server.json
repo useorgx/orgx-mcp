@@ -152,7 +152,7 @@
     },
     {
       "name": "account_upgrade",
-      "description": "Start a plan upgrade flow and return a checkout or contact URL after explicit user confirmation. Does not charge automatically."
+      "description": "Start a plan upgrade or agent credit top-up flow and return a checkout or contact URL after explicit user confirmation. Does not charge automatically."
     },
     {
       "name": "account_usage_report",
