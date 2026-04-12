@@ -2,6 +2,14 @@
   "name": "orgx-mcp-worker",
   "version": "1.0.4",
   "private": true,
+  "homepage": "https://mcp.useorgx.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/useorgx/orgx-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/useorgx/orgx-mcp/issues"
+  },
   "type": "module",
   "scripts": {
     "build:sdk": "node scripts/build-mcp-sdk.js",
