@@ -30,6 +30,7 @@ import { formatInitiativeMarkdown, type OrgXInitiative } from './formatters';
 import { formatForLLM } from './responseSummarizer';
 import { resolveProfileToolSet } from './toolProfiles';
 import { withCorsAndHeaders, withSseKeepAlive } from './mcpTransport';
+import { withSecurityHeaders } from './securityHeaders';
 import { callOrgxApiJson, callOrgxApiRaw, OrgXApiError } from './orgxApi';
 import { batchCreateEntities as runBatchCreateEntities } from './batchCreate';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
@@ -8715,7 +8716,7 @@ const rateLimitedSseHandler = {
 // - Everything else → authHandler (Clerk flow, health, landing, codex, etc.)
 // =============================================================================
 
-export default new OAuthProvider({
+const oauthProvider = new OAuthProvider({
   apiHandlers: {
     '/mcp': rateLimitedHttpHandler,
     '/sse': rateLimitedSseHandler,
@@ -8728,3 +8729,14 @@ export default new OAuthProvider({
   refreshTokenTTL: 30 * 24 * 3600, // 30 days
   scopesSupported: [...OAUTH_SCOPES_SUPPORTED],
 });
+
+export default {
+  async fetch(
+    request: Request,
+    env: Env,
+    ctx: ExecutionContext
+  ): Promise<Response> {
+    const response = await oauthProvider.fetch(request, env, ctx);
+    return withSecurityHeaders(response);
+  },
+};
