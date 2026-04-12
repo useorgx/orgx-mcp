@@ -91,6 +91,11 @@ import {
   buildMorningBriefValueDashboard,
   formatMorningBriefSummary,
 } from './morningBriefValue';
+import {
+  buildOrgxFreeAudit,
+  formatOrgxFreeAuditSummary,
+  type OrgxFreeAuditPeriod,
+} from './freeAudit';
 import { buildInitiativeListWidgetPayload } from './initiativeWidgetPayload';
 import { normalizeAgentDispatchPayload } from './agentDispatchPayload';
 import { normalizeAgentStatusPayload } from './agentStatusPayload';
@@ -7673,6 +7678,93 @@ export class OrgXMcp extends McpAgent<
           };
         })
     );
+
+    // --- orgx_free_audit ---
+    if (shouldRegister('orgx_free_audit')) {
+      this.server.registerTool(
+        'orgx_free_audit',
+        {
+          title: 'OrgX Free Audit',
+          description:
+            'Run a free autonomy benchmark from trust, proof, ROI, and workspace signals. Returns Proof Score, Context Debt, Autonomy Maturity, ROI Visibility, and next recommendations without starting an autonomous session or consuming agent credits.',
+          annotations: {
+            readOnlyHint: true,
+            destructiveHint: false,
+            openWorldHint: false,
+          },
+          inputSchema: {
+            workspace_id: z.string().describe('Workspace ID to audit.'),
+            agent_type: z
+              .string()
+              .default('orchestrator')
+              .describe('Agent type to benchmark trust against.'),
+            period: z
+              .enum(['7d', '30d', '90d'])
+              .default('30d')
+              .describe('ROI attribution period used for ROI Visibility.'),
+            include_raw_signals: z
+              .boolean()
+              .default(false)
+              .describe(
+                'Include raw upstream signal payloads for debugging and verification.'
+              ),
+          },
+          _meta: { 'openai/readOnlyHint': true },
+        },
+        async (args) =>
+          this.withOrgx(async () => {
+            const wsId =
+              (args.workspace_id as string) ?? this.sessionContext?.workspaceId;
+            if (!wsId) return this.toolError('workspace_id required');
+            const resolvedUserId = this.resolveUserId();
+            const agentType =
+              typeof args.agent_type === 'string' && args.agent_type.trim()
+                ? args.agent_type.trim()
+                : 'orchestrator';
+            const period = ((args.period as OrgxFreeAuditPeriod | undefined) ??
+              '30d') as OrgxFreeAuditPeriod;
+            const encodedWorkspaceId = encodeURIComponent(wsId);
+            const encodedAgentType = encodeURIComponent(agentType);
+
+            const [trustContext, outcomeAttribution, workspacePulse] =
+              await Promise.all([
+                this.fetchOrgxJsonOrNull<Record<string, unknown>>(
+                  `/api/flywheel/trust?workspace_id=${encodedWorkspaceId}&agent_type=${encodedAgentType}`,
+                  resolvedUserId
+                ),
+                this.fetchOrgxJsonOrNull<Record<string, unknown>>(
+                  `/api/flywheel/attribution?workspace_id=${encodedWorkspaceId}&period=${period}`,
+                  resolvedUserId
+                ),
+                this.fetchOrgxJsonOrNull<Record<string, unknown>>(
+                  `/api/v1/workspaces/${encodedWorkspaceId}/dashboard/pulse`,
+                  resolvedUserId
+                ),
+              ]);
+
+            const result = buildOrgxFreeAudit({
+              workspaceId: wsId,
+              agentType,
+              period,
+              generatedAt: new Date().toISOString(),
+              trustContext,
+              outcomeAttribution,
+              workspacePulse,
+              includeRawSignals: args.include_raw_signals === true,
+            });
+
+            return {
+              content: [
+                {
+                  type: 'text' as const,
+                  text: formatOrgxFreeAuditSummary(result),
+                },
+              ],
+              structuredContent: result,
+            };
+          })
+      );
+    }
 
     // --- start_autonomous_session ---
     if (shouldRegister('start_autonomous_session')) {

@@ -1,7 +1,7 @@
 /**
  * Intelligence Flywheel MCP Tool Definitions
  *
- * 7 new tools + 4 enhanced tool extensions for the Intelligence Flywheel.
+ * 8 new tools + 4 enhanced tool extensions for the Intelligence Flywheel.
  * These tools serve two audiences: humans (ROI proof, trust visibility)
  * and agents (self-serve trust context, baselines, learnings).
  *
@@ -80,6 +80,32 @@ export const FLYWHEEL_TOOL_DEFINITIONS = [
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: [
       { type: 'oauth2' as const, scopes: ['agents:read'] },
+    ],
+    _meta: { 'openai/readOnlyHint': true },
+  },
+  {
+    id: 'orgx_free_audit',
+    title: 'OrgX Free Audit',
+    description:
+      'Run a free autonomy benchmark from trust, proof, ROI, and workspace signals. Returns Proof Score, Context Debt, Autonomy Maturity, ROI Visibility, and next recommendations without starting an autonomous session or consuming agent credits.',
+    inputSchema: z.object({
+      workspace_id: z.string().describe('Workspace ID to audit'),
+      agent_type: z
+        .string()
+        .default('orchestrator')
+        .describe('Agent type to benchmark trust against'),
+      period: z
+        .enum(['7d', '30d', '90d'])
+        .default('30d')
+        .describe('ROI attribution period used for ROI Visibility'),
+      include_raw_signals: z
+        .boolean()
+        .default(false)
+        .describe('Include raw upstream signal payloads for debugging and verification'),
+    }),
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    securitySchemes: [
+      { type: 'oauth2' as const, scopes: ['agents:read', 'initiatives:read'] },
     ],
     _meta: { 'openai/readOnlyHint': true },
   },
