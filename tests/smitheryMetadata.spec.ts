@@ -141,6 +141,11 @@ describe('Smithery metadata coverage', () => {
         'annotations: {',
         'Agent type to fetch trust data for.',
       ],
+      orgx_free_audit: [
+        'annotations: {',
+        'Agent type to benchmark trust against.',
+        'Include raw upstream signal payloads for debugging and verification.',
+      ],
       start_autonomous_session: [
         'annotations: {',
         'inputSchema: autonomousSessionInputShape',
