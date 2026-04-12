@@ -13,6 +13,7 @@ import {
   compatibilityAliasDescription,
   preferredToolCallout,
 } from './preferredToolGuidance';
+import { autonomousSessionInputShape } from './autonomousSessionBudget';
 
 // =============================================================================
 // NEW TOOLS
@@ -89,28 +90,7 @@ export const FLYWHEEL_TOOL_DEFINITIONS = [
     title: 'Start Autonomous Session',
     description:
       'Start an autonomous execution session with budget guardrails. Human: "Run overnight with $5 budget." Creates a session that produces receipts while executing eligible work items.',
-    inputSchema: z.object({
-      workspace_id: z.string().describe('Workspace ID'),
-      session_type: z
-        .enum(['overnight', 'weekend', 'scheduled', 'manual'])
-        .default('manual')
-        .describe('Autonomy session mode to start'),
-      max_cost_usd: z
-        .number()
-        .positive()
-        .default(5.0)
-        .describe('Maximum budget in USD (hard stop — zero tolerance)'),
-      max_receipts: z
-        .number()
-        .int()
-        .positive()
-        .default(50)
-        .describe('Maximum number of receipts to produce'),
-      allowed_trust_levels: z
-        .array(z.enum(['autonomous', 'act_with_approval', 'draft', 'read_only']))
-        .default(['autonomous', 'act_with_approval'])
-        .describe('Only execute capabilities at these trust levels'),
-    }),
+    inputSchema: z.object(autonomousSessionInputShape),
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     securitySchemes: [
       { type: 'oauth2' as const, scopes: ['agents:write'] },

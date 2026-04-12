@@ -143,8 +143,7 @@ describe('Smithery metadata coverage', () => {
       ],
       start_autonomous_session: [
         'annotations: {',
-        'Autonomy session mode to start.',
-        'Maximum number of receipts the session may produce.',
+        'inputSchema: autonomousSessionInputShape',
       ],
       get_relevant_learnings: [
         'annotations: {',
