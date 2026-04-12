@@ -8,11 +8,13 @@ const packageJson = JSON.parse(
 const serverJson = JSON.parse(
   readFileSync(resolve(root, 'server.json'), 'utf8')
 );
+const glamaJson = JSON.parse(readFileSync(resolve(root, 'glama.json'), 'utf8'));
 const readme = readFileSync(resolve(root, 'README.md'), 'utf8');
 
 const requiredDocs = [
   'docs/privacy-policy.md',
   'docs/security-data-handling.md',
+  'docs/github-presence.md',
   'docs/support.md',
   'docs/anthropic-directory.md',
   'docs/anthropic-reviewer-runbook.md',
@@ -29,6 +31,9 @@ const requiredReadmeSections = [
   '## Limitations',
 ];
 
+const staleOrgPattern =
+  /github\.com\/(?:OrgX-ai|orgx-ai)\/|https?:\/\/(?:[^/]+\.)?orgx\.ai/i;
+
 function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
@@ -44,6 +49,16 @@ async function checkJsonEndpoint(label, url) {
   });
   assert(response.ok, `${label} failed: ${url} -> ${response.status}`);
   return response;
+}
+
+function metadataBaseUrl(input) {
+  const parsed = new URL(input);
+  if (parsed.pathname === '/mcp' || parsed.pathname === '/sse') {
+    parsed.pathname = '/';
+  }
+  parsed.search = '';
+  parsed.hash = '';
+  return parsed.toString().replace(/\/$/, '');
 }
 
 async function main() {
@@ -64,13 +79,47 @@ async function main() {
     serverJson.websiteUrl === 'https://useorgx.com',
     `websiteUrl should point at the product site, found: ${serverJson.websiteUrl}`
   );
+  assert(
+    packageJson.homepage === 'https://mcp.useorgx.com',
+    `package homepage should point at the MCP endpoint, found: ${packageJson.homepage}`
+  );
+  assert(
+    packageJson.repository?.url === 'https://github.com/useorgx/orgx-mcp.git',
+    `package repository should point at useorgx/orgx-mcp, found: ${packageJson.repository?.url}`
+  );
+  assert(
+    packageJson.bugs?.url === 'https://github.com/useorgx/orgx-mcp/issues',
+    `package bugs URL should point at useorgx/orgx-mcp issues, found: ${packageJson.bugs?.url}`
+  );
+  assert(
+    serverJson.repository?.url === 'https://github.com/useorgx/orgx-mcp',
+    `server.json repository should point at useorgx/orgx-mcp, found: ${serverJson.repository?.url}`
+  );
+  assert(
+    Array.isArray(glamaJson.maintainers) &&
+      glamaJson.maintainers.includes('hopeatina'),
+    'glama.json should keep an explicit maintainer for external listing ownership'
+  );
 
-  const baseUrl =
+  const listingText = [
+    readme,
+    JSON.stringify(packageJson),
+    JSON.stringify(serverJson),
+    JSON.stringify(glamaJson),
+    readFileSync(resolve(root, 'docs/github-presence.md'), 'utf8'),
+    readFileSync(resolve(root, 'docs/anthropic-directory.md'), 'utf8'),
+  ].join('\n');
+  assert(
+    !staleOrgPattern.test(listingText),
+    'External listing sources must not link to legacy OrgX-ai/orgx-ai surfaces'
+  );
+
+  const configuredBaseUrl =
     process.env.MCP_BASE_URL ||
     serverJson?.remotes?.find?.((remote) => remote.type === 'streamable-http')
       ?.url ||
     'https://mcp.useorgx.com/';
-  const normalizedBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  const normalizedBase = metadataBaseUrl(configuredBaseUrl);
 
   await checkJsonEndpoint('server.json', `${normalizedBase}/server.json`);
   await checkJsonEndpoint(

@@ -18,6 +18,7 @@ OrgX MCP connects Claude and other MCP-capable clients to OrgX so users can:
 - Privacy Policy: [docs/privacy-policy.md](./docs/privacy-policy.md) and <https://github.com/useorgx/orgx-mcp/blob/main/docs/privacy-policy.md>
 - Support: [docs/support.md](./docs/support.md) and <https://github.com/useorgx/orgx-mcp/issues>
 - Security & Data Handling: [docs/security-data-handling.md](./docs/security-data-handling.md) and <https://github.com/useorgx/orgx-mcp/blob/main/docs/security-data-handling.md>
+- GitHub Presence: [docs/github-presence.md](./docs/github-presence.md) and <https://github.com/useorgx/orgx-mcp>
 - Anthropic Directory Review Guide: [docs/anthropic-directory.md](./docs/anthropic-directory.md) and <https://github.com/useorgx/orgx-mcp/blob/main/docs/anthropic-directory.md>
 - Reviewer Runbook: [docs/anthropic-reviewer-runbook.md](./docs/anthropic-reviewer-runbook.md)
 - Release Manager Checklist: [docs/anthropic-release-manager-checklist.md](./docs/anthropic-release-manager-checklist.md)
@@ -25,6 +26,11 @@ OrgX MCP connects Claude and other MCP-capable clients to OrgX so users can:
 ## Source Of Truth
 
 This repository is the canonical source for the OrgX MCP worker.
+
+The canonical public GitHub location is <https://github.com/useorgx/orgx-mcp>.
+External listings, package metadata, review docs, and launch collateral should use
+the `useorgx` organization and must not link to legacy `OrgX-ai` or `orgx-ai`
+GitHub surfaces.
 
 The copy inside `useorgx/orgx` at `orgx/workers/orgx-mcp` is a vendored mirror used for monorepo integration and verification. After worker changes land here, sync them into the monorepo with:
 
