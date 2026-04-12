@@ -149,6 +149,25 @@ function buildRateHeaders(params: {
   };
 }
 
+function resetAtSecondsFromOldest(oldestMs: number | null, nowMs: number): number {
+  const resetAtMs = oldestMs === null ? nowMs + WINDOW_MS : oldestMs + WINDOW_MS;
+  return Math.floor(resetAtMs / 1000);
+}
+
+function parseUpstashCount(value: unknown): number {
+  const count = Number(value ?? 0);
+  if (!Number.isFinite(count)) {
+    throw new Error('upstash-invalid-count');
+  }
+  return count;
+}
+
+function parseUpstashOldestMs(value: unknown): number | null {
+  if (!Array.isArray(value) || value.length < 2) return null;
+  const score = Number(value[1]);
+  return Number.isFinite(score) ? score : null;
+}
+
 async function runUpstashPipeline(
   env: RateLimitEnv,
   commands: Array<Array<string | number>>
@@ -189,26 +208,34 @@ async function checkWithUpstash(params: {
 }> {
   const { env, key, limit, nowMs } = params;
   const startMs = nowMs - WINDOW_MS;
-  const member = `${nowMs}-${Math.random().toString(36).slice(2, 10)}`;
-
-  const results = await runUpstashPipeline(env, [
+  const windowResults = await runUpstashPipeline(env, [
     ['ZREMRANGEBYSCORE', key, '-inf', startMs],
-    ['ZADD', key, nowMs, member],
     ['ZCARD', key],
+    ['ZRANGE', key, 0, 0, 'WITHSCORES'],
+  ]);
+
+  const count = parseUpstashCount(windowResults?.[1]?.result);
+  const oldestMs = parseUpstashOldestMs(windowResults?.[2]?.result);
+
+  if (count >= limit) {
+    return {
+      allowed: false,
+      remaining: 0,
+      resetAtSeconds: resetAtSecondsFromOldest(oldestMs, nowMs),
+    };
+  }
+
+  const member = `${nowMs}-${Math.random().toString(36).slice(2, 10)}`;
+  await runUpstashPipeline(env, [
+    ['ZADD', key, nowMs, member],
     ['PEXPIRE', key, WINDOW_MS],
   ]);
 
-  const count = Number(results?.[2]?.result ?? 0);
-  if (!Number.isFinite(count)) {
-    throw new Error('upstash-invalid-count');
-  }
-
-  const allowed = count <= limit;
-  const remaining = Math.max(0, limit - count);
+  const nextCount = count + 1;
   return {
-    allowed,
-    remaining,
-    resetAtSeconds: Math.floor((nowMs + WINDOW_MS) / 1000),
+    allowed: true,
+    remaining: Math.max(0, limit - nextCount),
+    resetAtSeconds: resetAtSecondsFromOldest(oldestMs ?? nowMs, nowMs),
   };
 }
 
@@ -225,15 +252,24 @@ function checkWithMemory(params: {
   const startMs = nowMs - WINDOW_MS;
   const bucket = memoryBuckets.get(key) ?? [];
   const next = bucket.filter((ts) => ts > startMs);
+  const oldestMs = next.length > 0 ? next[0] : null;
+
+  if (next.length >= limit) {
+    memoryBuckets.set(key, next);
+    return {
+      allowed: false,
+      remaining: 0,
+      resetAtSeconds: resetAtSecondsFromOldest(oldestMs, nowMs),
+    };
+  }
+
   next.push(nowMs);
   memoryBuckets.set(key, next);
   const count = next.length;
-  const allowed = count <= limit;
-  const remaining = Math.max(0, limit - count);
   return {
-    allowed,
-    remaining,
-    resetAtSeconds: Math.floor((nowMs + WINDOW_MS) / 1000),
+    allowed: true,
+    remaining: Math.max(0, limit - count),
+    resetAtSeconds: resetAtSecondsFromOldest(oldestMs ?? nowMs, nowMs),
   };
 }
 

@@ -64,4 +64,63 @@ describe('authHandler root landing page routing', () => {
       'https://mcp.useorgx.com/index.html'
     );
   });
+
+  it('keeps Cursor generated config writes scoped to the OrgX namespace', async () => {
+    const response = await authHandler.fetch(
+      new Request('https://mcp.useorgx.com/cursor/config'),
+      {
+        MCP_SERVER_URL: 'https://mcp.useorgx.com',
+        ORGX_WEB_URL: 'https://useorgx.com',
+      },
+      createCtx()
+    );
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      overlay?: {
+        manifest?: string;
+        lookupPaths?: string[];
+        writePolicy?: {
+          automaticWrites?: boolean;
+          allowedPaths?: string[];
+          deniedPaths?: string[];
+        };
+      };
+      localWritePolicy?: {
+        automaticWrites?: boolean;
+        allowedPaths?: string[];
+        deniedPaths?: string[];
+      };
+    };
+
+    expect(body.overlay?.manifest).toBe('.cursor/orgx/manifest.json');
+    expect(body.overlay?.lookupPaths).toEqual(['.cursor/orgx']);
+    expect(body.localWritePolicy?.automaticWrites).toBe(false);
+    expect(body.localWritePolicy?.allowedPaths).toEqual([
+      '.cursor/orgx/**',
+      '~/.cursor/mcp.json',
+    ]);
+    expect(body.localWritePolicy?.deniedPaths).toEqual([
+      '.cursor/commands/**',
+      '.cursor/rules/**',
+      '.claude/**',
+    ]);
+    expect(body.overlay?.lookupPaths).not.toContain('.cursor/commands');
+    expect(body.overlay?.lookupPaths).not.toContain('.cursor/rules');
+  });
+
+  it('does not advertise Claude local file writes in hosted config output', async () => {
+    const response = await authHandler.fetch(
+      new Request('https://mcp.useorgx.com/claude-code/config'),
+      {
+        MCP_SERVER_URL: 'https://mcp.useorgx.com',
+        ORGX_WEB_URL: 'https://useorgx.com',
+      },
+      createCtx()
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(JSON.stringify(body)).not.toContain('.claude');
+  });
 });
