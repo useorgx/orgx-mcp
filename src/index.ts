@@ -45,6 +45,10 @@ import {
   resolveCheckoutUrl,
 } from './accountTools';
 import {
+  autonomousSessionInputShape,
+  normalizeAutonomousSessionArgs,
+} from './autonomousSessionBudget';
+import {
   buildScaffoldHierarchy,
   buildScaffoldInitiativeBatch,
 } from './scaffoldInitiative';
@@ -7689,24 +7693,7 @@ export class OrgXMcp extends McpAgent<
           destructiveHint: true,
           openWorldHint: true,
         },
-        inputSchema: {
-          workspace_id: z.string().describe('Workspace ID.'),
-          session_type: z
-            .enum(['overnight', 'weekend', 'scheduled', 'manual'])
-            .default('manual')
-            .describe('Autonomy session mode to start.'),
-          max_cost_usd: z
-            .number()
-            .positive()
-            .default(5.0)
-            .describe('Maximum budget in USD before the session stops.'),
-          max_receipts: z
-            .number()
-            .int()
-            .positive()
-            .default(50)
-            .describe('Maximum number of receipts the session may produce.'),
-        },
+        inputSchema: autonomousSessionInputShape,
         _meta: {
           'mcp/securitySchemes': startAutonomousSessionSecuritySchemes,
         },
@@ -7732,17 +7719,24 @@ export class OrgXMcp extends McpAgent<
         return this.withOrgx(async () => {
           const wsId = (args.workspace_id as string) ?? this.sessionContext?.workspaceId;
           if (!wsId) return this.toolError('workspace_id required');
-          const { workspace_id: _workspaceId, ...restArgs } = args;
+          const payloadResult = normalizeAutonomousSessionArgs({
+            ...args,
+            workspace_id: wsId,
+          });
+          if (!payloadResult.ok) {
+            return this.toolError(payloadResult.error.message, {
+              code: payloadResult.error.code,
+              status: payloadResult.error.status,
+              details: { issues: payloadResult.error.details },
+            });
+          }
 
           const response = await callOrgxApiJson(
             this.env,
             '/api/flywheel/sessions',
             {
               method: 'POST',
-              body: JSON.stringify({
-                ...restArgs,
-                workspace_id: wsId,
-              }),
+              body: JSON.stringify(payloadResult.payload),
             },
             { userId: resolvedUserId ?? undefined }
           );
