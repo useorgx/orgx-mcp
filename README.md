@@ -99,6 +99,10 @@ The raw `/mcp` and `/sse` routes are still used internally, but they sit behind 
 
 For local MCP clients like Cursor and Claude, point `mcp-remote` at the root MCP URL.
 
+Hosted config discovery endpoints are metadata-only. Any local installer must prompt
+before writing files, keep generated Cursor assets under `.cursor/orgx/`, and avoid
+writing OrgX files under `.cursor/commands/`, `.cursor/rules/`, or `.claude/`.
+
 Add the worker to Cursor's MCP config (macOS/Linux `~/.cursor/mcp.json`):
 
 ```json

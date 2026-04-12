@@ -148,6 +148,14 @@ const PUBLISHED_WIDGET_URI_OVERRIDES = new Map<string, string>([
   ],
 ]);
 
+const LOCAL_CONFIG_WRITE_POLICY = {
+  automaticWrites: false,
+  allowedPaths: ['.cursor/orgx/**', '~/.cursor/mcp.json'],
+  deniedPaths: ['.cursor/commands/**', '.cursor/rules/**', '.claude/**'],
+  note:
+    'Hosted config endpoints only describe install metadata. Local installers must prompt before writing files and must keep generated Cursor assets under .cursor/orgx/.',
+} as const;
+
 function buildPublishedManifest(manifest: typeof serverManifest) {
   return {
     ...manifest,
@@ -746,7 +754,8 @@ tool_timeout_sec = 60
         },
         overlay: {
           manifest: '.cursor/orgx/manifest.json',
-          lookupPaths: ['.cursor/orgx', '.cursor/commands', '.cursor/rules'],
+          lookupPaths: ['.cursor/orgx'],
+          writePolicy: LOCAL_CONFIG_WRITE_POLICY,
         },
         bundle: {
           hooks: ['SessionStart', 'PostToolUse', 'Stop'],
@@ -771,6 +780,7 @@ tool_timeout_sec = 60
           mcpConfigPath: '~/.cursor/mcp.json',
           note: 'Prefer the hosted plugin bundle or Marketplace install; use raw MCP config only as fallback.',
         },
+        localWritePolicy: LOCAL_CONFIG_WRITE_POLICY,
       };
       return withCors(
         Response.json(cursorConfig, {

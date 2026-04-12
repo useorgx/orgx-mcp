@@ -1,9 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { checkEdgeRateLimit } from '../src/edgeRateLimit';
 import { buildRateLimitExceededPayload } from '../src/rateLimitResponse';
 
 describe('edge rate limiting', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
   it('returns rate-limit headers for allowed free-tier requests', async () => {
     const decision = await checkEdgeRateLimit(
       new Request('https://example.com/mcp', {
@@ -55,6 +60,75 @@ describe('edge rate limiting', () => {
 
     expect(decision.allowed).toBe(false);
     expect(decision.retryAfterSeconds).toBeGreaterThan(0);
+  });
+
+  it('does not charge rejected memory fallback requests or extend the reset window', async () => {
+    const baseMs = Date.parse('2026-04-12T12:00:00.000Z');
+    vi.useFakeTimers();
+    vi.setSystemTime(baseMs);
+
+    const env = {
+      ORGX_API_URL: 'https://example.com',
+      ORGX_SERVICE_KEY: 'oxk-test',
+    };
+    const request = () =>
+      new Request('https://example.com/mcp', {
+        headers: {
+          'cf-connecting-ip': '198.51.100.12',
+        },
+      });
+
+    for (let i = 0; i < 100; i += 1) {
+      const allowed = await checkEdgeRateLimit(request(), env);
+      expect(allowed.allowed).toBe(true);
+    }
+
+    vi.setSystemTime(baseMs + 30 * 60 * 1000);
+    const rejected = await checkEdgeRateLimit(request(), env);
+
+    expect(rejected.allowed).toBe(false);
+    expect(rejected.retryAfterSeconds).toBe(30 * 60);
+    expect(rejected.headers['X-RateLimit-Reset']).toBe(
+      String(Math.floor((baseMs + 60 * 60 * 1000) / 1000))
+    );
+  });
+
+  it('does not write over-limit Upstash requests into the rate bucket', async () => {
+    const baseMs = Date.parse('2026-04-12T12:00:00.000Z');
+    vi.useFakeTimers();
+    vi.setSystemTime(baseMs);
+
+    const fetchMock = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+      const commands = JSON.parse(String(init?.body));
+      expect(commands.some((command: string[]) => command[0] === 'ZADD')).toBe(
+        false
+      );
+      return Response.json([
+        { result: 0 },
+        { result: 100 },
+        { result: [`${baseMs}-first`, String(baseMs)] },
+      ]);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const decision = await checkEdgeRateLimit(
+      new Request('https://example.com/mcp', {
+        headers: {
+          'cf-connecting-ip': '198.51.100.13',
+        },
+      }),
+      {
+        ORGX_API_URL: 'https://example.com',
+        ORGX_SERVICE_KEY: 'oxk-test',
+        UPSTASH_REDIS_REST_URL: 'https://redis.example.com',
+        UPSTASH_REDIS_REST_TOKEN: 'redis-test',
+      }
+    );
+
+    expect(decision.allowed).toBe(false);
+    expect(decision.source).toBe('upstash');
+    expect(decision.retryAfterSeconds).toBe(60 * 60);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('adds an upgrade CTA to the 429 payload', () => {
