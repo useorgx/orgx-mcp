@@ -145,6 +145,10 @@ import {
 } from './widgetConfig';
 import { checkEdgeRateLimit } from './edgeRateLimit';
 import { DEFAULT_SKILL_CATALOG } from './skillCatalog';
+import {
+  SKILL_PROMPT_TEMPLATE_SAFETY_DESCRIPTION,
+  validateSkillPromptTemplate,
+} from './promptTemplatePolicy';
 import { buildEntityActionAttachPayload } from './entityActionAttach';
 import { buildSmitheryConfigSchema } from './smitheryConfig';
 import {
@@ -4557,9 +4561,7 @@ export class OrgXMcp extends McpAgent<
           prompt_template: z
             .string()
             .optional()
-            .describe(
-              'The instructions/template for this skill (required for skills)'
-            ),
+            .describe(SKILL_PROMPT_TEMPLATE_SAFETY_DESCRIPTION),
           trigger_keywords: z
             .array(z.string())
             .optional()
@@ -4690,6 +4692,28 @@ export class OrgXMcp extends McpAgent<
             explicitCommandCenterId ??
             this.sessionContext?.workspaceId ??
             null;
+          let validatedSkillPromptTemplate: string | undefined;
+          if (args.prompt_template !== undefined) {
+            if (args.type !== 'skill') {
+              return this.toolError(
+                'prompt_template can only be used with skill entities',
+                { code: 'invalid_skill_prompt_template', status: 400 }
+              );
+            }
+
+            try {
+              validatedSkillPromptTemplate = validateSkillPromptTemplate(
+                args.prompt_template
+              );
+            } catch (error) {
+              return this.toolError(
+                error instanceof Error
+                  ? error.message
+                  : 'Invalid skill prompt_template',
+                { code: 'invalid_skill_prompt_template', status: 400 }
+              );
+            }
+          }
           const workspaceScopedTypes: ReadonlySet<string> = new Set([
             'initiative',
             'workstream',
@@ -4806,8 +4830,8 @@ export class OrgXMcp extends McpAgent<
 
           // Skill-specific fields
           if (args.type === 'skill') {
-            if (args.prompt_template)
-              payload.prompt_template = args.prompt_template;
+            if (validatedSkillPromptTemplate !== undefined)
+              payload.prompt_template = validatedSkillPromptTemplate;
             if (args.trigger_keywords)
               payload.trigger_keywords = args.trigger_keywords;
             if (args.trigger_domains)
@@ -6837,7 +6861,7 @@ export class OrgXMcp extends McpAgent<
           prompt_template: z
             .string()
             .optional()
-            .describe('Updated template (for skills)'),
+            .describe(SKILL_PROMPT_TEMPLATE_SAFETY_DESCRIPTION),
           trigger_keywords: z
             .array(z.string())
             .optional()
@@ -6883,6 +6907,7 @@ export class OrgXMcp extends McpAgent<
             priority,
             agent_domain,
             auto_continue,
+            prompt_template,
             ...safeUpdates
           } = updates as Record<string, unknown>;
 
@@ -6891,6 +6916,28 @@ export class OrgXMcp extends McpAgent<
             id,
             ...safeUpdates,
           };
+
+          if (prompt_template !== undefined) {
+            if (type !== 'skill') {
+              return this.toolError(
+                'prompt_template can only be updated on skill entities',
+                { code: 'invalid_skill_prompt_template', status: 400 }
+              );
+            }
+
+            try {
+              payload.prompt_template = validateSkillPromptTemplate(
+                prompt_template as string
+              );
+            } catch (error) {
+              return this.toolError(
+                error instanceof Error
+                  ? error.message
+                  : 'Invalid skill prompt_template',
+                { code: 'invalid_skill_prompt_template', status: 400 }
+              );
+            }
+          }
 
           // due_date exists on: milestones, workstream_tasks
           if (
