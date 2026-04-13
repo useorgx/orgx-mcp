@@ -2042,9 +2042,23 @@ external: function (size) {
       };
 
       var normalizeArtifacts = function (payload) {
-        var raw = Array.isArray(payload && payload.recent_artifacts)
+        var proofCards = Array.isArray(payload && payload.proof_cards)
+          ? payload.proof_cards
+          : [];
+        var recentArtifacts = Array.isArray(payload && payload.recent_artifacts)
           ? payload.recent_artifacts
           : [];
+        var seen = Object.create(null);
+        var raw = [];
+        proofCards.concat(recentArtifacts).forEach(function (item, index) {
+          var artifact = asObject(item) || {};
+          var key =
+            readString(artifact, ["id", "artifact_id", "artifactId", "primary_url", "primaryUrl"]) ||
+            "artifact-" + index;
+          if (seen[key]) return;
+          seen[key] = true;
+          raw.push(item);
+        });
         return raw
           .map(function (item, index) {
             var artifact = asObject(item) || {};
@@ -2061,6 +2075,7 @@ external: function (size) {
               primary_url: artifactUrl(artifact, null),
               primary_label: artifactLabel(artifact),
               live_url: readString(artifact, ["live_url", "liveUrl"]),
+              needs_review: Boolean(artifact.needs_review),
             };
           })
           .filter(function (artifact) {

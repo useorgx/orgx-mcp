@@ -124,7 +124,9 @@ export function buildWidgetMeta(env: WidgetEnv) {
 }
 
 /**
- * Build metadata for MCP Apps clients (Claude, VS Code, Goose).
+ * Build metadata for MCP Apps clients and AI-tool hosts.
+ * Current install targets include ChatGPT, Claude, Cursor, Codex, VS Code,
+ * Windsurf, and Zed; all should receive the same border and CSP contract.
  * Per MCP Apps spec:
  * - resourceDomains: For loading scripts, styles, images
  * - connectDomains: For fetch/WebSocket API calls

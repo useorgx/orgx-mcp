@@ -1472,7 +1472,14 @@
         type: firstString([artifact.type, artifact.kind, artifact.artifact_type]) || 'artifact',
         status: normalizeStatus(firstString([artifact.status, artifact.review_status, artifact.state])) || 'approved',
         detail: firstString([artifact.detail, artifact.description, artifact.summary]),
-        url: firstString([artifact.url, artifact.review_url]) || null
+        url:
+          firstString([
+            artifact.primary_url,
+            artifact.url,
+            artifact.review_url,
+            artifact.task_url,
+            artifact.live_url
+          ]) || null
       };
     }
 
@@ -1492,7 +1499,10 @@
         asArray(raw.current_tasks),
         mergeUniqueItems(asArray(raw.active_tasks), asArray(raw.tasks))
       ).map(normalizeTask).filter(Boolean);
-      var artifacts = mergeUniqueItems(asArray(raw.artifacts), asArray(raw.outputs || raw.session_output))
+      var artifacts = mergeUniqueItems(
+        mergeUniqueItems(asArray(raw.proof_cards), asArray(raw.artifacts)),
+        asArray(raw.outputs || raw.session_output)
+      )
         .map(normalizeArtifact)
         .filter(Boolean);
       var blockers = asArray(raw.blockers).filter(Boolean);
