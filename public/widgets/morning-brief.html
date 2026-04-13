@@ -1194,8 +1194,23 @@
       const workspacePulse = asObject(payload.workspace_pulse);
       const workspaceStats = asObject(workspacePulse.stats);
       const topReceipts = asArray(payload.top_receipts);
-      const artifactsProduced = asArray(payload.artifacts_produced);
-      const reviewItems = asArray(payload.review_items);
+      const proofCards = asArray(payload.proof_cards);
+      const artifactsProduced = asArray(payload.artifacts_produced).length
+        ? asArray(payload.artifacts_produced)
+        : proofCards;
+      const reviewItems = asArray(payload.review_items).length
+        ? asArray(payload.review_items)
+        : proofCards.filter((item) => {
+            const record = asObject(item);
+            const status = String(record.status || '').toLowerCase();
+            return (
+              Boolean(record.needs_review) ||
+              status === 'draft' ||
+              status === 'in_review' ||
+              status === 'review' ||
+              status === 'changes_requested'
+            );
+          });
       const exceptions = asArray(payload.exceptions);
       const nextActions = asArray(payload.next_actions).length
         ? asArray(payload.next_actions)

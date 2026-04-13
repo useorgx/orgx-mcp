@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  SUPPORTED_WIDGET_SURFACES,
+  buildWidgetProofCards,
+  buildWidgetProofHandoff,
   enrichAgentStatusWithArtifacts,
   enrichInitiativePulseWithArtifacts,
   enrichMorningBriefWithArtifacts,
@@ -73,6 +76,14 @@ describe('widget artifact proof helpers', () => {
     expect((agents[0].artifacts as Array<Record<string, unknown>>)[0].title).toBe(
       'server.json manifest'
     );
+    expect((agents[1].proof_cards as Array<Record<string, unknown>>)[0]).toMatchObject({
+      title: 'Connector description',
+      needs_review: true,
+      primary_url: 'https://useorgx.com/artifacts/artifact-2',
+    });
+    expect(
+      ((agents[1].proof_handoff as Record<string, unknown>).surface_prompts as unknown[])
+    ).toHaveLength(SUPPORTED_WIDGET_SURFACES.length);
   });
 
   it('adds recent artifacts to initiative pulse payloads', () => {
@@ -94,6 +105,18 @@ describe('widget artifact proof helpers', () => {
       primary_label: 'Open artifact',
       primary_url: 'https://useorgx.com/artifacts/artifact-1',
       live_url: 'https://useorgx.com/live/init-1',
+    });
+    expect((payload.proof_cards as Array<Record<string, unknown>>)[0]).toMatchObject({
+      title: 'server.json manifest',
+      primary_url: 'https://useorgx.com/artifacts/artifact-1',
+      live_url: 'https://useorgx.com/live/init-1',
+      needs_review: false,
+    });
+    expect(payload.proof_handoff).toMatchObject({
+      source: 'orgx-mcp-widget-proof-cards',
+      preserve_tool_results: true,
+      live_url: 'https://useorgx.com/live/init-1',
+      proof_count: 2,
     });
   });
 
@@ -117,5 +140,60 @@ describe('widget artifact proof helpers', () => {
       primary_label: 'Open artifact',
       primary_url: 'https://useorgx.com/artifacts/artifact-2',
     });
+    expect((payload.proof_cards as Array<Record<string, unknown>>)[1]).toMatchObject({
+      title: 'MCP Inspector test plan',
+      needs_review: true,
+    });
+  });
+
+  it('keeps widget handoff metadata available even without artifacts', () => {
+    const payload = enrichMorningBriefWithArtifacts(
+      { summary: 'Brief', initiative_id: 'init-1' },
+      []
+    );
+
+    expect(payload.proof_cards).toEqual([]);
+    expect(payload.artifact_summary).toMatchObject({
+      total: 0,
+      approved: 0,
+      in_review: 0,
+      needs_review: 0,
+    });
+    expect(payload.proof_handoff).toMatchObject({
+      live_url: 'https://useorgx.com/live/init-1',
+      proof_count: 0,
+      review_count: 0,
+    });
+  });
+
+  it('builds surface-specific continuation prompts from proof cards', () => {
+    const proofCards = buildWidgetProofCards(
+      [
+        {
+          id: 'artifact-1',
+          title: 'Live onboarding proof',
+          status: 'changes_requested',
+          artifact_type: 'design.spec',
+          task_id: 'task-1',
+        },
+      ],
+      { initiativeId: 'init-1' }
+    );
+    const handoff = buildWidgetProofHandoff({
+      initiativeId: 'init-1',
+      initiativeTitle: 'High-converting onboarding',
+      proofCount: proofCards.length,
+      reviewCount: proofCards.filter((item) => item.needs_review).length,
+    });
+
+    expect(proofCards[0]).toMatchObject({
+      needs_review: true,
+      primary_url: 'https://useorgx.com/artifacts/artifact-1',
+      task_url: 'https://useorgx.com/live/init-1?task=task-1',
+    });
+    expect(handoff.surface_prompts.map((item) => item.surface)).toEqual(
+      SUPPORTED_WIDGET_SURFACES
+    );
+    expect(handoff.primary_prompt).toContain('preserve the tool result links');
   });
 });
