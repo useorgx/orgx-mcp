@@ -29,6 +29,7 @@ import {
   WIDGET_URIS,
 } from './toolDefinitions';
 import serverManifest from '../server.json';
+import { verifyStreamToken } from './streamToken';
 
 // Re-export type for use in index.ts
 export type { OAuthHelpers };
@@ -50,6 +51,8 @@ interface AuthHandlerEnv {
   ORGX_INTERNAL_SECRET?: string;
   // Scaffold streaming: Durable Object namespace for per-session SSE fan-out
   SCAFFOLD_SESSION: DurableObjectNamespace;
+  // Live feed: Durable Object namespace for polling SSE (agent-status, initiative-pulse)
+  LIVE_FEED: DurableObjectNamespace;
 }
 
 /**
@@ -915,6 +918,64 @@ tool_timeout_sec = 60
     }
 
     // =========================================================================
+    // Live Feed SSE — agent-status + initiative-pulse streaming
+    //
+    // GET /live-feed/agent-status/:initiativeId/stream
+    // GET /live-feed/initiative-pulse/:initiativeId/stream
+    //
+    // The DO is keyed by "feedType:feedId" so each (type, id) pair shares one
+    // polling instance with a 10-second alarm cycle.
+    // =========================================================================
+    const liveFeedMatch = url.pathname.match(
+      /^\/live-feed\/(agent-status|initiative-pulse)\/([^/]+)\/stream$/
+    );
+    if (liveFeedMatch) {
+      if (request.method === 'OPTIONS') {
+        return new Response(null, {
+          status: 204,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+          },
+        });
+      }
+
+      // Verify short-lived HMAC stream token (?t=<token>)
+      const token = url.searchParams.get('t') ?? '';
+      const jwtSecret = env.MCP_JWT_SECRET;
+      if (!token || !jwtSecret) {
+        return new Response(JSON.stringify({ error: 'missing_token' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json', ...corsHeadersObj() },
+        });
+      }
+      const payload = await verifyStreamToken(token, jwtSecret);
+      if (!payload) {
+        return new Response(JSON.stringify({ error: 'invalid_token' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json', ...corsHeadersObj() },
+        });
+      }
+
+      const feedType = liveFeedMatch[1]!;
+      const feedId = liveFeedMatch[2]!;
+
+      // Ensure token feedType/feedId match the path (prevent token reuse across feeds)
+      if (payload.ft !== feedType || payload.fi !== feedId) {
+        return new Response(JSON.stringify({ error: 'token_mismatch' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json', ...corsHeadersObj() },
+        });
+      }
+
+      const doKey = `${feedType}:${feedId}`;
+      const doId = env.LIVE_FEED.idFromName(doKey);
+      const stub = env.LIVE_FEED.get(doId);
+      return stub.fetch(request);
+    }
+
+    // =========================================================================
     // 404 for everything else
     // =========================================================================
     return withCors(
@@ -1202,4 +1263,14 @@ async function handleConsentCallback(
       serverUrl
     );
   }
+}
+
+// ─── Internal helpers ─────────────────────────────────────────────────────────
+
+function corsHeadersObj(): Record<string, string> {
+  return {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  };
 }

@@ -55,6 +55,8 @@ import {
   buildScaffoldInitiativeBatch,
 } from './scaffoldInitiative';
 import { buildScaffoldWidget } from './scaffoldWidget';
+import { buildLiveFeedWidget } from './liveFeedWidget';
+import { signStreamToken } from './streamToken';
 import { hydrateTaskContext } from './taskContextHydrator';
 import {
   CONFIGURE_ORG_POLICY_TYPES,
@@ -190,6 +192,8 @@ export { OAuthState };
 
 // Re-export ScaffoldSessionDO so wrangler can bind it as a Durable Object class
 export { ScaffoldSessionDO } from './scaffoldSessionDO';
+// Re-export LiveFeedDO so wrangler can bind it as a Durable Object class
+export { LiveFeedDO } from './liveFeedDO';
 
 // Export configSchema directly from the entry file so Smithery's source scanner
 // can detect session configuration without following a re-export.
@@ -254,6 +258,8 @@ interface Env extends OAuthEnv {
   ORGX_INTERNAL_SECRET?: string;
   // Scaffold streaming: Durable Object namespace for per-session SSE fan-out
   SCAFFOLD_SESSION: DurableObjectNamespace;
+  // Live feed: Durable Object namespace for polling SSE (agent-status, initiative-pulse)
+  LIVE_FEED: DurableObjectNamespace;
 }
 
 // =============================================================================
@@ -1877,6 +1883,40 @@ export class OrgXMcp extends McpAgent<
         // - Widget tools: JSON in content[0] for MCP Apps widget parsing
         // - Non-widget tools: concise summary only (saves 80-95% tokens)
         // structuredContent always carries the full payload for widgets.
+        // Live-feed SSE widget: inject for agent-status + initiative-pulse tools
+        let _liveFeedWidgetHtml: string | null = null;
+        if (
+          (toolId === 'get_agent_status' || toolId === 'get_initiative_pulse') &&
+          effectiveInitiativeId &&
+          this.env.LIVE_FEED &&
+          this.env.MCP_JWT_SECRET
+        ) {
+          try {
+            const _feedType = toolId === 'get_agent_status' ? 'agent-status' : 'initiative-pulse';
+            const _streamToken = await signStreamToken({
+              feedType: _feedType,
+              feedId: effectiveInitiativeId,
+              userId: resolvedUserId ?? undefined,
+              secret: this.env.MCP_JWT_SECRET,
+            });
+            const _liveUrl = hasInitiativeContext && effectiveInitiativeId
+              ? buildLiveUrl(effectiveInitiativeId)
+              : undefined;
+            _liveFeedWidgetHtml = buildLiveFeedWidget({
+              feedType: _feedType,
+              feedId: effectiveInitiativeId,
+              streamBaseUrl: this.env.MCP_SERVER_URL,
+              streamToken: _streamToken,
+              liveUrl: _liveUrl,
+              title: typeof (data.initiative as Record<string, unknown> | undefined)?.title === 'string'
+                ? (data.initiative as Record<string, unknown>).title as string
+                : undefined,
+            });
+          } catch (_err) {
+            console.warn('[live-feed-widget] token/widget build failed', { error: _err });
+          }
+        }
+
         if (isWidgetTool) {
           this.appendWidgetDebugEvent({
             phase: 'tool_result',
@@ -1884,13 +1924,14 @@ export class OrgXMcp extends McpAgent<
             outputTemplate:
               typeof outputTemplate === 'string' ? outputTemplate : undefined,
             details: {
-              contentBlocks: 2,
+              contentBlocks: _liveFeedWidgetHtml ? 3 : 2,
               hasStructuredContent: true,
               dataKeys: Object.keys(data),
             },
           });
           return {
             content: [
+              ...(_liveFeedWidgetHtml ? [{ type: 'text' as const, text: _liveFeedWidgetHtml }] : []),
               { type: 'text', text: JSON.stringify(data) },
               { type: 'text', text: finalMessage },
             ],
@@ -6469,6 +6510,15 @@ export class OrgXMcp extends McpAgent<
                   })
                 : null;
 
+              // CLI/API fallback: plain-text summary for clients that don't render HTML
+              const _cliFallback = [
+                result.summary,
+                liveUrl ? `\n\n📺 Live view: ${liveUrl}` : '',
+                scaffold_stream_url ? `\n🌊 Real-time stream: ${scaffold_stream_url}` : '',
+                launchSummary,
+                activationPayload.text,
+              ].join('').trim();
+
               return {
                 content: [
                   ...(_scaffoldWidgetHtml
@@ -6480,9 +6530,7 @@ export class OrgXMcp extends McpAgent<
                   },
                   {
                     type: 'text',
-                    text: `${result.summary}${
-                      liveUrl ? `\n\n📺 Live view: ${liveUrl}` : ''
-                    }${launchSummary}${activationPayload.text}`,
+                    text: _cliFallback,
                   },
                 ],
                 structuredContent: finalPayload,
