@@ -24,7 +24,8 @@ ORGX_WEB_URL = "https://www.useorgx.com"
 [durable_objects]
 bindings = [
   { name = "MCP_OBJECT", class_name = "OrgXMcp" },
-  { name = "OAUTH_STATE", class_name = "OAuthState" }
+  { name = "OAUTH_STATE", class_name = "OAuthState" },
+  { name = "SCAFFOLD_SESSION", class_name = "ScaffoldSessionDO" }
 ]
 
 # KV namespace for OAuth provider token/grant storage
@@ -56,6 +57,10 @@ new_sqlite_classes = ["OrgXMcp"]
 tag = "v2"
 new_sqlite_classes = ["OAuthState"]
 
+[[migrations]]
+tag = "v3"
+new_classes = ["ScaffoldSessionDO"]
+
 # Production environment
 [env.production]
 routes = [
@@ -67,7 +72,8 @@ routes = [
 [env.production.durable_objects]
 bindings = [
   { name = "MCP_OBJECT", class_name = "OrgXMcp" },
-  { name = "OAUTH_STATE", class_name = "OAuthState" }
+  { name = "OAUTH_STATE", class_name = "OAuthState" },
+  { name = "SCAFFOLD_SESSION", class_name = "ScaffoldSessionDO" }
 ]
 
 [[env.production.kv_namespaces]]
@@ -91,7 +97,8 @@ routes = [
 [env.preview.durable_objects]
 bindings = [
   { name = "MCP_OBJECT", class_name = "OrgXMcp" },
-  { name = "OAUTH_STATE", class_name = "OAuthState" }
+  { name = "OAUTH_STATE", class_name = "OAuthState" },
+  { name = "SCAFFOLD_SESSION", class_name = "ScaffoldSessionDO" }
 ]
 
 [[env.preview.kv_namespaces]]

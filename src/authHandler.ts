@@ -48,6 +48,8 @@ interface AuthHandlerEnv {
   OAUTH_STATE: DurableObjectNamespace;
   // Server-to-server shared secret for internal endpoints (e.g. /session-tokens)
   ORGX_INTERNAL_SECRET?: string;
+  // Scaffold streaming: Durable Object namespace for per-session SSE fan-out
+  SCAFFOLD_SESSION: DurableObjectNamespace;
 }
 
 /**
@@ -878,6 +880,38 @@ tool_timeout_sec = 60
       return withCors(
         Response.json({ token, expiresAt, sessionId: sessionId.trim() }, { status: 201 })
       );
+    }
+
+    // =========================================================================
+    // Scaffold Streaming — SSE fan-out via ScaffoldSessionDO
+    //
+    // GET  /scaffold/:sessionId/stream  — public EventSource endpoint
+    // POST /scaffold/:sessionId/event   — internal event push (ORGX_INTERNAL_SECRET)
+    // GET  /scaffold/:sessionId/status  — public health check
+    //
+    // The DO is keyed by sessionId so each scaffold session has its own instance.
+    // OPTIONS is handled here for CORS preflight.
+    // =========================================================================
+    const scaffoldMatch = url.pathname.match(
+      /^\/scaffold\/([a-zA-Z0-9_-]+)\/(stream|event|status)$/
+    );
+    if (scaffoldMatch) {
+      if (request.method === 'OPTIONS') {
+        return new Response(null, {
+          status: 204,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          },
+        });
+      }
+
+      const sessionId = scaffoldMatch[1]!;
+      const doId = env.SCAFFOLD_SESSION.idFromName(sessionId);
+      const stub = env.SCAFFOLD_SESSION.get(doId);
+      // Forward the request to the DO with the same URL/method/body
+      return stub.fetch(request);
     }
 
     // =========================================================================

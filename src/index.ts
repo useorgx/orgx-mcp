@@ -54,6 +54,7 @@ import {
   buildScaffoldHierarchy,
   buildScaffoldInitiativeBatch,
 } from './scaffoldInitiative';
+import { buildScaffoldWidget } from './scaffoldWidget';
 import { hydrateTaskContext } from './taskContextHydrator';
 import {
   CONFIGURE_ORG_POLICY_TYPES,
@@ -187,6 +188,9 @@ import {
 // Re-export OAuthState Durable Object
 export { OAuthState };
 
+// Re-export ScaffoldSessionDO so wrangler can bind it as a Durable Object class
+export { ScaffoldSessionDO } from './scaffoldSessionDO';
+
 // Export configSchema directly from the entry file so Smithery's source scanner
 // can detect session configuration without following a re-export.
 export const configSchema = buildSmitheryConfigSchema();
@@ -248,6 +252,8 @@ interface Env extends OAuthEnv {
   UPSTASH_REDIS_REST_TOKEN?: string;
   // Server-to-server shared secret for internal endpoints (e.g. /session-tokens)
   ORGX_INTERNAL_SECRET?: string;
+  // Scaffold streaming: Durable Object namespace for per-session SSE fan-out
+  SCAFFOLD_SESSION: DurableObjectNamespace;
 }
 
 // =============================================================================
@@ -6290,6 +6296,44 @@ export class OrgXMcp extends McpAgent<
               }
             }
 
+
+              // ── Scaffold stream session ──
+              // Push created entities as SSE events into ScaffoldSessionDO so the
+              // widget can replay them as an animated tree. Fire-and-forget.
+              let scaffold_stream_url: string | undefined;
+              let scaffold_session_id: string | undefined;
+              try {
+                scaffold_session_id = crypto.randomUUID();
+                scaffold_stream_url = `${this.env.MCP_SERVER_URL}/scaffold/${scaffold_session_id}/stream`;
+                const _doId = this.env.SCAFFOLD_SESSION.idFromName(scaffold_session_id);
+                const _stub = this.env.SCAFFOLD_SESSION.get(_doId);
+                const _internalHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+                if (this.env.ORGX_INTERNAL_SECRET) {
+                  _internalHeaders['Authorization'] = `Bearer ${this.env.ORGX_INTERNAL_SECRET}`;
+                }
+                const _pushEvent = async (payload: Record<string, unknown>) => {
+                  await _stub.fetch(
+                    `https://internal/scaffold/${scaffold_session_id}/event`,
+                    { method: 'POST', headers: _internalHeaders, body: JSON.stringify(payload) }
+                  );
+                };
+                const _emitEvents = async () => {
+                  await _pushEvent({ type: 'session.start', sessionId: scaffold_session_id, title: typeof args.title === 'string' ? args.title : undefined, ts: Date.now() });
+                  const _entities = result.results ?? [];
+                  const _total = _entities.length;
+                  for (let _i = 0; _i < _entities.length; _i++) {
+                    const _item = _entities[_i]!;
+                    if (!_item.success) continue;
+                    const _data = (_item.data ?? {}) as Record<string, unknown>;
+                    await _pushEvent({ type: 'entity.created', entityType: String(_data.type ?? _data.entity_type ?? 'entity'), entity: _data, index: _i, total: _total, ts: Date.now() });
+                  }
+                  await _pushEvent({ type: 'scaffold.complete', initiativeId: createdInitiativeId, liveUrl: liveUrl ?? null, totalEntities: _entities.filter((e: { success: boolean }) => e.success).length, ts: Date.now() });
+                };
+                this.ctx.waitUntil(_emitEvents());
+              } catch (_streamErr) {
+                console.warn('[scaffold:stream] session setup failed', { error: _streamErr });
+              }
+
 			          const machinePayload = {
 			            summary: result.summary,
 			            live_url: liveUrl ?? undefined,
@@ -6304,6 +6348,8 @@ export class OrgXMcp extends McpAgent<
 			            created: result.created,
 			            failed: result.failed,
 		            ref_map: result.ref_map,
+                scaffold_stream_url,
+                scaffold_session_id,
 	          };
 
 	          const activationSummary =
@@ -6412,8 +6458,22 @@ export class OrgXMcp extends McpAgent<
                     estimated_cost: estimatedCost,
                   };
 
+
+              // Build streaming widget for MCP Apps (Claude.ai, ChatGPT)
+              const _scaffoldWidgetHtml = scaffold_stream_url
+                ? buildScaffoldWidget({
+                    sessionId: scaffold_session_id!,
+                    streamBaseUrl: this.env.MCP_SERVER_URL,
+                    initiativeTitle: typeof args.title === 'string' ? args.title : undefined,
+                    liveUrl: liveUrl ?? undefined,
+                  })
+                : null;
+
               return {
                 content: [
+                  ...(_scaffoldWidgetHtml
+                    ? [{ type: 'text' as const, text: _scaffoldWidgetHtml }]
+                    : []),
                   {
                     type: 'text',
                     text: JSON.stringify(finalPayload),
