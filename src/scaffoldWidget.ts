@@ -1,16 +1,16 @@
 /**
  * scaffoldWidget.ts — self-contained HTML widget for real-time scaffold streaming.
  *
- * Generates a single-file HTML document that:
- *  1. Connects to GET /scaffold/:sessionId/stream via EventSource
- *  2. Renders an animated tree as entities are created
- *  3. Shows a celebration state when scaffold is complete
- *  4. Handles reconnection with exponential backoff
- *  5. Supports dark + light mode via prefers-color-scheme
- *  6. Is responsive for Claude.ai + ChatGPT MCP App iframe constraints (~600px)
- *
- * The widget is intentionally self-contained (no external dependencies) so it
- * works inside sandboxed iframes and passes CSP checks.
+ * Matches the production scaffolded-initiative.html visual language:
+ *  - Dark-first design with teal primary
+ *  - Card-based workstream layout (not flat dot-list)
+ *  - Domain-colored card accents
+ *  - WS count badges, milestone type icons, status pills
+ *  - Agent avatar placeholders
+ *  - WORK BREAKDOWN STRUCTURE section header
+ *  - SYNCED footer with Open Live View link
+ *  - Skeleton shimmer while connecting
+ *  - Celebration state on scaffold.complete
  */
 
 export interface ScaffoldWidgetOptions {
@@ -23,7 +23,8 @@ export interface ScaffoldWidgetOptions {
 export function buildScaffoldWidget(opts: ScaffoldWidgetOptions): string {
   const { sessionId, streamBaseUrl, initiativeTitle, liveUrl } = opts;
   const streamUrl = `${streamBaseUrl}/scaffold/${encodeURIComponent(sessionId)}/stream`;
-  const title = initiativeTitle ? escapeHtml(initiativeTitle) : 'Building initiative...';
+  const title = initiativeTitle ? escapeHtml(initiativeTitle) : 'Building initiative…';
+  const safeLiveUrl = liveUrl ? escapeHtml(liveUrl) : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -33,82 +34,367 @@ export function buildScaffoldWidget(opts: ScaffoldWidgetOptions): string {
 <title>${title}</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+/* ── OrgX Token System ─────────────────────────────────── */
 :root{
-  --bg:#09090b;--surface:#111113;--border:#27272a;
-  --fg:#fafafa;--muted:#71717a;--accent:#7c3aed;
-  --accent-dim:rgba(124,58,237,.12);--success:#22c55e;
-  --ws:#3b82f6;--ms:#f59e0b;--task:#a1a1aa;
-  --radius:8px;--font:system-ui,-apple-system,'Segoe UI',sans-serif;
+  /* dark-first (widget lives in Claude dark UI) */
+  --ox-bg:#02040a;
+  --ox-panel:rgba(8,12,20,.96);
+  --ox-card:rgba(14,19,30,.9);
+  --ox-border:rgba(255,255,255,.07);
+  --ox-border-strong:rgba(255,255,255,.14);
+  --ox-text:#f2f7ff;
+  --ox-text-muted:rgba(255,255,255,.46);
+  --ox-text-sub:rgba(255,255,255,.28);
+  --ox-well:rgba(0,0,0,.3);
+  --ox-shadow:0 28px 56px -24px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.04);
+  --ox-primary:#00c9a7;--ox-primary-rgb:0,201,167;
+  --ox-success:#22c55e;--ox-success-rgb:34,197,94;
+  --ox-danger:#f43f5e;
+  --ox-warn:#fbbf24;--ox-warn-rgb:251,191,36;
+  --ox-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,monospace;
+  --ox-font:-apple-system,BlinkMacSystemFont,'Inter',system-ui,sans-serif;
+  --ox-grid:rgba(255,255,255,.02);
+  /* domain rgb palette */
+  --rgb-engineering:6,182,212;
+  --rgb-product:22,163,74;
+  --rgb-marketing:249,115,22;
+  --rgb-design:236,72,153;
+  --rgb-sales:168,85,247;
+  --rgb-operations:245,158,11;
+  --rgb-ops:245,158,11;
+  --rgb-orchestration:0,201,167;
+  --rgb-default:99,102,241;
+}
+/* light-mode override for when widget renders outside Claude */
+@media(prefers-color-scheme:light){
+  :root{
+    --ox-bg:#f1f5f9;
+    --ox-panel:#fff;
+    --ox-card:#f8fafc;
+    --ox-border:rgba(0,0,0,.07);
+    --ox-border-strong:rgba(0,0,0,.14);
+    --ox-text:#0f172a;
+    --ox-text-muted:#64748b;
+    --ox-text-sub:#94a3b8;
+    --ox-well:#f1f5f9;
+    --ox-shadow:0 12px 32px -12px rgba(0,0,0,.1),0 2px 6px rgba(0,0,0,.04);
+    --ox-grid:rgba(0,0,0,.04);
+  }
+}
+
+html,body{
+  background:var(--ox-bg);color:var(--ox-text);
+  font-family:var(--ox-font);font-size:13px;line-height:1.5;min-height:100%;
+}
+body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
+
+/* ── Shell (main card) ─────────────────────────────────── */
+.shell{
+  border-radius:18px;overflow:hidden;
+  border:1px solid rgba(var(--ox-primary-rgb),.12);
+  background:linear-gradient(180deg,rgba(var(--ox-primary-rgb),.05),transparent 40%),var(--ox-panel);
+  box-shadow:var(--ox-shadow);
+  position:relative;
+}
+/* Top shine line */
+.shell::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(var(--ox-primary-rgb),.55),transparent);
+  pointer-events:none;
+}
+
+/* ── Initiative Hero ───────────────────────────────────── */
+.hero{padding:18px 20px 14px}
+.eyebrow{
+  display:flex;align-items:center;gap:7px;
+  font-family:var(--ox-mono);font-size:.56rem;font-weight:700;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--ox-text-muted);
+  margin-bottom:10px;
+}
+.live-dot{
+  width:7px;height:7px;border-radius:50%;flex-shrink:0;
+  background:var(--ox-primary);
+  box-shadow:0 0 14px rgba(var(--ox-primary-rgb),.55);
+  animation:ldot 2.2s ease-in-out infinite;
+}
+.live-dot.done{animation:none;background:var(--ox-success);box-shadow:0 0 10px rgba(var(--ox-success-rgb),.5)}
+.live-dot.error{animation:none;background:var(--ox-danger);box-shadow:none}
+@keyframes ldot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.68)}}
+
+.hero-title{
+  font-size:clamp(15px,3.5vw,20px);font-weight:700;
+  letter-spacing:-.03em;color:var(--ox-text);line-height:1.2;
+  word-break:break-word;
+}
+.hero-meta{
+  display:flex;align-items:center;gap:8px;
+  margin-top:10px;flex-wrap:wrap;
+}
+.status-pill{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:4px 12px;border-radius:999px;
+  font-family:var(--ox-mono);font-size:.6rem;font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase;
+  border:1px solid rgba(var(--ox-primary-rgb),.22);
+  background:rgba(var(--ox-primary-rgb),.1);
+  color:var(--ox-primary);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+}
+.status-pill.done{
+  border-color:rgba(var(--ox-success-rgb),.22);
+  background:rgba(var(--ox-success-rgb),.1);
+  color:var(--ox-success);
+}
+.s-dot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+.status-pill:not(.done) .s-dot{animation:sdot .8s ease-in-out infinite;box-shadow:0 0 5px currentColor}
+@keyframes sdot{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Progress bar */
+.prog-wrap{
+  height:2px;background:rgba(255,255,255,.06);border-radius:2px;
+  margin-top:12px;overflow:hidden;
+}
+@media(prefers-color-scheme:light){.prog-wrap{background:rgba(0,0,0,.08)}}
+.prog-fill{
+  height:100%;background:var(--ox-primary);border-radius:2px;width:0%;
+  transition:width .5s cubic-bezier(.4,0,.2,1);
+  box-shadow:0 0 8px rgba(var(--ox-primary-rgb),.5);
+}
+
+/* ── WBS Section ───────────────────────────────────────── */
+.wbs-wrap{border-top:1px solid var(--ox-border)}
+.wbs-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 20px;
+}
+.wbs-label{
+  font-family:var(--ox-mono);font-size:.54rem;font-weight:700;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--ox-text-sub);
+}
+.wbs-count{
+  font-family:var(--ox-mono);font-size:.6rem;font-weight:600;
+  color:var(--ox-text-muted);letter-spacing:.04em;
+}
+
+/* ── Skeleton ──────────────────────────────────────────── */
+.skeleton{display:flex;flex-direction:column;gap:8px;padding:12px 16px 14px}
+.sk-card{
+  height:72px;border-radius:10px;
+  background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.08) 50%,rgba(255,255,255,.04) 75%);
+  background-size:200% 100%;animation:shimmer 1.5s ease infinite;
 }
 @media(prefers-color-scheme:light){
-  :root{--bg:#fafafa;--surface:#fff;--border:#e4e4e7;--fg:#09090b;--muted:#71717a;--accent-dim:rgba(124,58,237,.08)}
+  .sk-card{background:linear-gradient(90deg,rgba(0,0,0,.05) 25%,rgba(0,0,0,.09) 50%,rgba(0,0,0,.05) 75%);background-size:200% 100%}
 }
-html,body{height:100%;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:13px;line-height:1.5}
-body{padding:16px;max-width:600px;margin:0 auto}
-/* ── Header ── */
-.header{display:flex;align-items:flex-start;gap:10px;margin-bottom:16px}
-.pulse{width:10px;height:10px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:4px;
-  animation:pulse 2s cubic-bezier(.4,0,.6,1) infinite}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.85)}}
-.pulse.done{background:var(--success);animation:none}
-.pulse.error{background:#ef4444;animation:none}
-.header-text h1{font-size:14px;font-weight:600;color:var(--fg)}
-.header-text p{font-size:12px;color:var(--muted);margin-top:2px}
-/* ── Progress bar ── */
-.progress-bar{height:2px;background:var(--border);border-radius:1px;margin-bottom:14px;overflow:hidden}
-.progress-fill{height:100%;background:var(--accent);border-radius:1px;transition:width .4s ease;width:0%}
-/* ── Tree ── */
-.tree{display:flex;flex-direction:column;gap:2px}
-.node{display:flex;align-items:flex-start;gap:8px;padding:6px 10px;border-radius:var(--radius);
-  border:1px solid transparent;opacity:0;transform:translateY(6px);transition:all .25s ease;
-  cursor:default}
-.node.in{opacity:1;transform:translateY(0)}
-.node.initiative{border-color:var(--border);background:var(--surface);font-weight:600;font-size:13px}
-.node.workstream{margin-left:16px;border-color:transparent;font-size:12px;color:var(--fg)}
-.node.milestone{margin-left:32px;font-size:12px;color:var(--muted)}
-.node.task{margin-left:48px;font-size:11px;color:var(--muted)}
-.node-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
-.dot-initiative{background:var(--accent)}
-.dot-workstream{background:var(--ws)}
-.dot-milestone{background:var(--ms)}
-.dot-task{background:var(--task)}
-.node-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.node-badge{font-size:10px;color:var(--muted);white-space:nowrap;margin-left:auto;padding-left:8px;flex-shrink:0}
-/* ── Complete / error states ── */
-.complete-banner{display:none;margin-top:16px;padding:12px 14px;border-radius:var(--radius);
-  background:var(--accent-dim);border:1px solid rgba(124,58,237,.2);
-  font-size:12px;color:var(--fg)}
-.complete-banner.show{display:flex;align-items:center;gap:10px}
-.complete-banner svg{flex-shrink:0;color:var(--success)}
-.complete-banner a{color:var(--accent);text-decoration:none;font-weight:500}
-.complete-banner a:hover{text-decoration:underline}
-.error-banner{display:none;margin-top:16px;padding:12px 14px;border-radius:var(--radius);
-  background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);
-  font-size:12px;color:#ef4444}
-.error-banner.show{display:block}
-/* ── Count badge ── */
-.count{font-size:11px;color:var(--muted);margin-top:10px;text-align:right}
+.sk-card:nth-child(2){opacity:.7}
+.sk-card:nth-child(3){opacity:.5}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ── Workstream Stack ──────────────────────────────────── */
+.ws-stack{
+  display:flex;flex-direction:column;gap:8px;
+  padding:10px 14px 14px;
+}
+
+/* ── Workstream Card ───────────────────────────────────── */
+.ws-card{
+  border-radius:12px;overflow:hidden;
+  border:1px solid var(--ox-border);
+  background:var(--ox-card);
+  opacity:0;transform:translateY(10px);
+  transition:opacity .28s cubic-bezier(.16,1,.3,1),transform .28s cubic-bezier(.16,1,.3,1);
+}
+.ws-card.show{opacity:1;transform:translateY(0)}
+
+/* Domain-colored top accent bar */
+.ws-card-accent{
+  height:2px;
+  background:linear-gradient(90deg,rgb(var(--ws-rgb,var(--ox-primary-rgb))),transparent 80%);
+}
+
+/* Card header row */
+.ws-head{
+  display:flex;align-items:center;gap:7px;
+  padding:9px 12px 8px;
+}
+.ws-num{
+  font-family:var(--ox-mono);font-size:.58rem;font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase;
+  padding:2px 7px;border-radius:999px;
+  background:rgba(var(--ws-rgb,var(--ox-primary-rgb)),.12);
+  border:1px solid rgba(var(--ws-rgb,var(--ox-primary-rgb)),.22);
+  color:rgb(var(--ws-rgb,var(--ox-primary-rgb)));
+  flex-shrink:0;white-space:nowrap;
+}
+.ws-title{
+  flex:1;min-width:0;
+  font-size:12px;font-weight:600;color:var(--ox-text);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.ws-domain{
+  font-family:var(--ox-mono);font-size:.54rem;font-weight:700;
+  letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ox-text-sub);flex-shrink:0;
+  white-space:nowrap;
+}
+/* Pulse effect on the most-recently-added card while still building */
+@keyframes ws-pulse{0%,100%{border-color:var(--ox-border)}50%{border-color:rgba(var(--ws-rgb,var(--ox-primary-rgb)),.22)}}
+.ws-card.active-receive{animation:ws-pulse 1.8s ease-in-out infinite}
+
+/* Divider below card header */
+.ws-body{border-top:1px solid var(--ox-border)}
+
+/* ── Milestone Rows ────────────────────────────────────── */
+.ms-row{
+  display:flex;align-items:flex-start;gap:8px;
+  padding:7px 12px;
+  border-bottom:1px solid rgba(255,255,255,.03);
+  opacity:0;transform:translateX(-6px);
+  transition:opacity .2s ease,transform .2s ease;
+}
+.ms-row.show{opacity:1;transform:translateX(0)}
+@media(prefers-color-scheme:light){.ms-row{border-bottom-color:rgba(0,0,0,.04)}}
+.ms-icon{
+  width:18px;height:18px;border-radius:5px;flex-shrink:0;margin-top:1px;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-family:var(--ox-mono);font-size:.58rem;font-weight:800;letter-spacing:0;
+  background:rgba(var(--ox-warn-rgb),.14);
+  border:1px solid rgba(var(--ox-warn-rgb),.24);
+  color:var(--ox-warn);
+  box-shadow:0 2px 6px -2px rgba(var(--ox-warn-rgb),.3);
+}
+.ms-title{flex:1;min-width:0;font-size:11.5px;font-weight:500;color:var(--ox-text);line-height:1.4}
+
+/* ── Task Rows ─────────────────────────────────────────── */
+.task-row{
+  display:flex;align-items:center;gap:7px;
+  padding:5px 12px 5px 20px;
+  opacity:0;transform:translateX(-4px);
+  transition:opacity .18s ease,transform .18s ease;
+}
+.task-row.show{opacity:1;transform:translateX(0)}
+.task-dot{
+  width:6px;height:6px;border-radius:50%;flex-shrink:0;
+  background:rgba(255,255,255,.22);
+  border:1px solid rgba(255,255,255,.1);
+}
+@media(prefers-color-scheme:light){.task-dot{background:rgba(0,0,0,.18);border-color:rgba(0,0,0,.08)}}
+.task-title{flex:1;min-width:0;font-size:11px;color:var(--ox-text-muted);line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── Completion Banner ─────────────────────────────────── */
+.banner{
+  display:none;margin:0 14px 12px;padding:12px 14px;border-radius:10px;
+  background:linear-gradient(135deg,rgba(var(--ox-primary-rgb),.1),rgba(var(--ox-primary-rgb),.04));
+  border:1px solid rgba(var(--ox-primary-rgb),.22);
+  position:relative;overflow:hidden;
+}
+.banner::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(var(--ox-primary-rgb),.6),transparent);
+}
+.banner.show{display:flex;align-items:flex-start;gap:10px;animation:bpop .35s cubic-bezier(.16,1,.3,1)}
+@keyframes bpop{0%{opacity:0;transform:translateY(6px) scale(.98)}100%{opacity:1;transform:none}}
+.banner-icon{flex-shrink:0;color:var(--ox-primary);margin-top:1px}
+.banner-body{flex:1;min-width:0}
+.banner-title{display:block;font-weight:700;font-size:12px;color:var(--ox-text);margin-bottom:3px}
+.banner-link{
+  color:var(--ox-primary);text-decoration:none;font-size:11px;font-family:var(--ox-mono);
+  letter-spacing:.02em;display:inline-flex;align-items:center;gap:3px;
+}
+.banner-link:hover{text-decoration:underline}
+
+/* ── Footer ────────────────────────────────────────────── */
+.foot{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 20px 14px;
+  border-top:1px solid var(--ox-border);
+  flex-wrap:wrap;gap:8px;
+  margin-top:2px;
+}
+.foot-meta{
+  font-family:var(--ox-mono);font-size:.58rem;font-weight:700;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ox-text-sub);
+}
+.foot-link{
+  font-family:var(--ox-mono);font-size:.62rem;font-weight:600;
+  letter-spacing:.03em;color:var(--ox-primary);text-decoration:none;
+  display:inline-flex;align-items:center;gap:4px;
+  padding:5px 11px;border-radius:7px;
+  border:1px solid rgba(var(--ox-primary-rgb),.22);
+  background:rgba(var(--ox-primary-rgb),.07);
+  transition:background .15s,border-color .15s;white-space:nowrap;
+}
+.foot-link:hover{background:rgba(var(--ox-primary-rgb),.14);border-color:rgba(var(--ox-primary-rgb),.32)}
+
+/* ── Error state ───────────────────────────────────────── */
+.err-banner{
+  display:none;margin:0 14px 12px;padding:10px 14px;border-radius:8px;
+  background:rgba(244,63,94,.06);border:1px solid rgba(244,63,94,.2);
+  font-size:11px;color:#fb7185;line-height:1.4;font-family:var(--ox-mono);
+}
+.err-banner.show{display:block}
 </style>
 </head>
 <body>
-<div class="header">
-  <div class="pulse" id="pulse"></div>
-  <div class="header-text">
-    <h1 id="title">${title}</h1>
-    <p id="subtitle">Connecting to stream…</p>
+<div class="shell">
+
+  <!-- Initiative hero -->
+  <div class="hero">
+    <div class="eyebrow">
+      <div class="live-dot" id="ldot"></div>
+      <span id="etext">INITIATIVE SCAFFOLDED</span>
+    </div>
+    <div class="hero-title" id="heroTitle">${title}</div>
+    <div class="hero-meta">
+      <span class="status-pill" id="statusPill">
+        <span class="s-dot"></span>
+        <span id="statusText">BUILDING…</span>
+      </span>
+    </div>
+    <div class="prog-wrap"><div class="prog-fill" id="prog"></div></div>
+  </div>
+
+  <!-- WBS section -->
+  <div class="wbs-wrap">
+    <div class="wbs-header">
+      <span class="wbs-label">WORK BREAKDOWN STRUCTURE</span>
+      <span class="wbs-count" id="wbsCount"></span>
+    </div>
+
+    <!-- Skeleton (while connecting) -->
+    <div class="skeleton" id="skeleton">
+      <div class="sk-card"></div>
+      <div class="sk-card"></div>
+      <div class="sk-card"></div>
+    </div>
+
+    <!-- Live workstream cards -->
+    <div class="ws-stack" id="wsStack" style="display:none"></div>
+  </div>
+
+  <!-- Completion banner -->
+  <div class="banner" id="banner">
+    <svg class="banner-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/>
+      <path d="M5 8l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="banner-body">
+      <strong class="banner-title" id="bannerTitle">Initiative created</strong>
+      <span id="bannerSub"></span>
+    </div>
+  </div>
+
+  <div class="err-banner" id="errBanner"></div>
+
+  <!-- Footer -->
+  <div class="foot">
+    <span class="foot-meta" id="footMeta">SYNCING…</span>
+    ${safeLiveUrl
+      ? `<a class="foot-link" href="${safeLiveUrl}" target="_blank" rel="noopener">Open Live View ↗</a>`
+      : '<span id="footLinkSlot"></span>'}
   </div>
 </div>
-<div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-<div class="tree" id="tree"></div>
-<div class="count" id="count" style="display:none"></div>
-<div class="complete-banner" id="completeBanner">
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-    <circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/>
-    <path d="M5 8l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>
-  <span id="completeBannerText">Initiative created.</span>
-</div>
-<div class="error-banner" id="errorBanner"></div>
 
 <script>
 (function(){
@@ -116,131 +402,276 @@ body{padding:16px;max-width:600px;margin:0 auto}
   var STREAM_URL = ${JSON.stringify(streamUrl)};
   var LIVE_URL   = ${JSON.stringify(liveUrl ?? '')};
 
-  var pulse = document.getElementById('pulse');
-  var title = document.getElementById('title');
-  var subtitle = document.getElementById('subtitle');
-  var progressFill = document.getElementById('progressFill');
-  var tree = document.getElementById('tree');
-  var countEl = document.getElementById('count');
-  var completeBanner = document.getElementById('completeBanner');
-  var completeBannerText = document.getElementById('completeBannerText');
-  var errorBanner = document.getElementById('errorBanner');
+  /* ── DOM refs ── */
+  var ldot       = document.getElementById('ldot');
+  var etext      = document.getElementById('etext');
+  var heroTitle  = document.getElementById('heroTitle');
+  var statusPill = document.getElementById('statusPill');
+  var statusText = document.getElementById('statusText');
+  var prog       = document.getElementById('prog');
+  var wbsCount   = document.getElementById('wbsCount');
+  var skeleton   = document.getElementById('skeleton');
+  var wsStack    = document.getElementById('wsStack');
+  var banner     = document.getElementById('banner');
+  var bannerTitle = document.getElementById('bannerTitle');
+  var bannerSub  = document.getElementById('bannerSub');
+  var errBanner  = document.getElementById('errBanner');
+  var footMeta   = document.getElementById('footMeta');
+  var footLinkSlot = document.getElementById('footLinkSlot');
 
-  var entityCount = 0;
-  var lastEventTs = 0;
-  var retryDelay = 1000;
-  var maxRetry = 30000;
-  var es = null;
+  /* ── State ── */
+  var entityCount   = 0;
+  var totalExpected = 0;
+  var wsCount       = 0;   /* workstream counter (WS 1, WS 2…) */
+  var isDone        = false;
+  var lastEventTs   = 0;
+  var retryDelay    = 1000;
+  var es            = null;
 
-  // Type → display label
-  var TYPE_LABELS = {
-    initiative: 'Initiative',
-    workstream: 'Workstream',
-    milestone: 'Milestone',
-    task: 'Task'
+  /* Current workstream card + its body element */
+  var curWsCard   = null; /* the .ws-card element currently receiving entities */
+  var curWsBody   = null; /* its .ws-body element */
+  var curMsRow    = null; /* last milestone row (unused for now but kept for future indent) */
+
+  /* Domain → CSS rgb variable name */
+  var DOMAIN_RGB = {
+    engineering: '6,182,212',
+    product:     '22,163,74',
+    marketing:   '249,115,22',
+    design:      '236,72,153',
+    sales:       '168,85,247',
+    operations:  '245,158,11',
+    ops:         '245,158,11',
+    orchestration:'0,201,167',
   };
 
-  function addNode(type, label, badge) {
-    var node = document.createElement('div');
-    node.className = 'node ' + type;
-    var dotClass = 'dot-' + type;
-    node.innerHTML =
-      '<div class="node-dot ' + dotClass + '"></div>' +
-      '<span class="node-label" title="' + escapeAttr(label) + '">' + escapeHtml(label) + '</span>' +
-      (badge ? '<span class="node-badge">' + escapeHtml(badge) + '</span>' : '');
-    tree.appendChild(node);
-    // Trigger animation on next frame
-    requestAnimationFrame(function() { node.classList.add('in'); });
-    return node;
+  function domainRgb(d) {
+    return DOMAIN_RGB[(d||'').toLowerCase()] || '0,201,167';
   }
 
-  function escapeHtml(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  /* ── Helpers ── */
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
-  function escapeAttr(s) {
-    return escapeHtml(s).replace(/"/g,'&quot;');
-  }
-
   function setProgress(pct) {
-    progressFill.style.width = Math.min(100, pct) + '%';
+    prog.style.width = Math.min(100, Math.round(pct)) + '%';
+  }
+  function showStack() {
+    skeleton.style.display = 'none';
+    wsStack.style.display = 'flex';
+  }
+  function resetAll() {
+    wsStack.innerHTML = '';
+    entityCount = 0;
+    totalExpected = 0;
+    wsCount = 0;
+    curWsCard = null;
+    curWsBody = null;
+    curMsRow = null;
+    wbsCount.textContent = '';
+    setProgress(2);
+    showStack();
+  }
+  function animateIn(el) {
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() { el.classList.add('show'); });
+    });
   }
 
+  /* ── Entity builders ── */
+  function addInitiative(entity) {
+    heroTitle.textContent = entity.title || entity.name || 'Initiative';
+  }
+
+  function addWorkstream(entity) {
+    wsCount++;
+    var domain = ((entity.metadata && (entity.metadata.domain || entity.metadata.agent_domain)) || entity.domain || '').toLowerCase();
+    var rgb    = domainRgb(domain);
+    var label  = entity.title || entity.name || 'Workstream';
+
+    var card = document.createElement('div');
+    card.className = 'ws-card';
+    card.style.cssText = '--ws-rgb:' + rgb;
+
+    /* Top accent bar */
+    var accent = document.createElement('div');
+    accent.className = 'ws-card-accent';
+    card.appendChild(accent);
+
+    /* Header */
+    var head = document.createElement('div');
+    head.className = 'ws-head';
+    head.innerHTML =
+      '<span class="ws-num">WS ' + wsCount + '</span>' +
+      '<span class="ws-title">' + esc(label) + '</span>' +
+      (domain ? '<span class="ws-domain">' + esc(domain.toUpperCase()) + '</span>' : '');
+    card.appendChild(head);
+
+    /* Body (milestones + tasks will go here) */
+    var body = document.createElement('div');
+    body.className = 'ws-body';
+    card.appendChild(body);
+
+    /* Remove receive-pulse from previous card */
+    if (curWsCard) curWsCard.classList.remove('active-receive');
+
+    wsStack.appendChild(card);
+    animateIn(card);
+    card.classList.add('active-receive');
+
+    curWsCard = card;
+    curWsBody = body;
+    curMsRow  = null;
+  }
+
+  function addMilestone(entity) {
+    var label = entity.title || entity.name || 'Milestone';
+    var target = curWsBody || wsStack;
+
+    var row = document.createElement('div');
+    row.className = 'ms-row';
+    row.innerHTML =
+      '<span class="ms-icon">M</span>' +
+      '<span class="ms-title">' + esc(label) + '</span>';
+
+    target.appendChild(row);
+    animateIn(row);
+    curMsRow = row;
+  }
+
+  function addTask(entity) {
+    var label  = entity.title || entity.name || 'Task';
+    var target = curWsBody || wsStack;
+
+    var row = document.createElement('div');
+    row.className = 'task-row';
+    row.innerHTML =
+      '<span class="task-dot"></span>' +
+      '<span class="task-title">' + esc(label) + '</span>';
+
+    target.appendChild(row);
+    animateIn(row);
+  }
+
+  function addEntity(entityType, entity) {
+    switch (entityType) {
+      case 'initiative':  addInitiative(entity); break;
+      case 'workstream':  addWorkstream(entity); break;
+      case 'milestone':   addMilestone(entity);  break;
+      case 'task':
+      default:            addTask(entity);        break;
+    }
+  }
+
+  /* ── Event handlers ── */
+  function onSessionStart(data) {
+    if (data.title) heroTitle.textContent = data.title;
+    etext.textContent = 'INITIATIVE SCAFFOLDED';
+    statusText.textContent = 'BUILDING…';
+    statusPill.classList.remove('done');
+    resetAll();
+    ldot.className = 'live-dot';
+  }
+
+  function onEntityCreated(data) {
+    entityCount++;
+    totalExpected = data.total || totalExpected;
+    addEntity(data.entityType || 'task', data.entity || {});
+    var pct = totalExpected > 0 ? 5 + (entityCount / totalExpected) * 85 : 50;
+    setProgress(pct);
+    wbsCount.textContent = entityCount + ' / ' + (totalExpected || '?');
+  }
+
+  function onComplete(data) {
+    isDone = true;
+    setProgress(100);
+    if (curWsCard) curWsCard.classList.remove('active-receive');
+    ldot.className = 'live-dot done';
+    etext.textContent = 'INITIATIVE SCAFFOLDED';
+    var total = data.totalEntities || entityCount;
+    statusText.textContent = total + ' ENTITIES';
+    statusPill.classList.add('done');
+    wbsCount.textContent = total + ' / ' + total;
+    footMeta.textContent = 'SYNCED';
+
+    bannerTitle.textContent = total + ' entities created successfully';
+    var liveLink = data.liveUrl || LIVE_URL;
+    if (liveLink) {
+      bannerSub.innerHTML = '<a class="banner-link" href="' + esc(liveLink) + '" target="_blank" rel="noopener">Open live view ↗</a>';
+    }
+    banner.classList.add('show');
+
+    /* Inject footer link if not already hardcoded */
+    if (footLinkSlot && liveLink) {
+      var a = document.createElement('a');
+      a.className = 'foot-link';
+      a.href = liveLink;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = 'Open Live View ↗';
+      footLinkSlot.replaceWith(a);
+      footLinkSlot = null;
+    }
+
+    if (es) { try { es.close(); } catch(_){} }
+  }
+
+  function onError(data) {
+    ldot.className = 'live-dot error';
+    statusText.textContent = 'ERROR';
+    errBanner.textContent = 'Error: ' + (data.error || 'scaffold failed');
+    errBanner.classList.add('show');
+    if (es) { try { es.close(); } catch(_){} }
+  }
+
+  function handleEvent(data) {
+    if (data.ts) lastEventTs = data.ts;
+    switch (data.type) {
+      case 'session.start':     return onSessionStart(data);
+      case 'entity.created':    return onEntityCreated(data);
+      case 'scaffold.complete': return onComplete(data);
+      case 'scaffold.error':    return onError(data);
+    }
+  }
+
+  /* ── SSE with exponential backoff ── */
   function connect() {
-    if (es) { try { es.close(); } catch(_) {} }
+    if (isDone) return;
+    if (es) { try { es.close(); } catch(_){} }
     var url = STREAM_URL + (lastEventTs ? '?since=' + lastEventTs : '');
-    subtitle.textContent = 'Connecting…';
+
+    if (entityCount === 0) {
+      skeleton.style.display = 'flex';
+      wsStack.style.display = 'none';
+      statusText.textContent = 'CONNECTING…';
+    } else {
+      statusText.textContent = 'RECONNECTING…';
+    }
+
     es = new EventSource(url);
 
     es.onopen = function() {
-      subtitle.textContent = 'Streaming live…';
+      ldot.className = 'live-dot';
+      statusText.textContent = entityCount > 0 ? 'RESUMING…' : 'BUILDING…';
+      footMeta.textContent = 'LIVE';
       retryDelay = 1000;
     };
 
     es.onmessage = function(ev) {
       var data;
       try { data = JSON.parse(ev.data); } catch(_) { return; }
-      if (data.ts) lastEventTs = data.ts;
       handleEvent(data);
     };
 
     es.onerror = function() {
+      if (isDone) return;
       try { es.close(); } catch(_) {}
-      subtitle.textContent = 'Reconnecting in ' + Math.round(retryDelay/1000) + 's…';
+      var wait = Math.round(retryDelay / 1000);
+      statusText.textContent = 'PAUSED ' + wait + 's…';
+      footMeta.textContent = 'RECONNECTING…';
       setTimeout(connect, retryDelay);
-      retryDelay = Math.min(retryDelay * 2, maxRetry);
+      retryDelay = Math.min(retryDelay * 2, 30000);
     };
-  }
-
-  function handleEvent(data) {
-    switch (data.type) {
-      case 'session.start':
-        if (data.title) title.textContent = data.title;
-        subtitle.textContent = 'Building hierarchy…';
-        setProgress(2);
-        break;
-
-      case 'entity.created':
-        entityCount++;
-        var entity = data.entity || {};
-        var label = entity.title || entity.name || data.entityType || 'Entity';
-        var domain = (entity.metadata && entity.metadata.domain) || entity.domain || '';
-        var badge = domain || '';
-        addNode(data.entityType || 'task', label, badge);
-        // Estimate progress: each entity is worth ~(80/total) % of progress
-        var pct = data.total > 0 ? Math.min(90, 2 + (data.index / data.total) * 88) : 50;
-        setProgress(pct);
-        countEl.style.display = 'block';
-        countEl.textContent = entityCount + ' ' + (entityCount === 1 ? 'entity' : 'entities') + ' created';
-        break;
-
-      case 'entity.failed':
-        // Don't show errors inline — let scaffold.error handle the fatal case
-        break;
-
-      case 'scaffold.complete':
-        setProgress(100);
-        pulse.classList.remove('pulse');
-        pulse.classList.add('done');
-        subtitle.textContent = entityCount + ' entities created';
-        var liveLink = data.liveUrl || LIVE_URL;
-        if (liveLink) {
-          completeBannerText.innerHTML =
-            'Initiative created &mdash; <a href="' + escapeAttr(liveLink) + '" target="_blank" rel="noopener">Open live view &rarr;</a>';
-        } else {
-          completeBannerText.textContent = 'Initiative created successfully.';
-        }
-        completeBanner.classList.add('show');
-        try { es.close(); } catch(_) {}
-        break;
-
-      case 'scaffold.error':
-        pulse.classList.add('error');
-        subtitle.textContent = 'Failed';
-        errorBanner.textContent = 'Error: ' + (data.error || 'Unknown error');
-        errorBanner.classList.add('show');
-        try { es.close(); } catch(_) {}
-        break;
-    }
   }
 
   connect();
