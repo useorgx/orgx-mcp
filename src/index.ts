@@ -246,6 +246,8 @@ interface Env extends OAuthEnv {
   // Optional Upstash Redis REST credentials for distributed edge rate limiting
   UPSTASH_REDIS_REST_URL?: string;
   UPSTASH_REDIS_REST_TOKEN?: string;
+  // Server-to-server shared secret for internal endpoints (e.g. /session-tokens)
+  ORGX_INTERNAL_SECRET?: string;
 }
 
 // =============================================================================
@@ -8034,6 +8036,94 @@ export class OrgXMcp extends McpAgent<
           const result = await response.json() as Record<string, unknown>;
           return {
             content: [{ type: 'text' as const, text: formatForLLM('submit_learning', result) }],
+            structuredContent: result,
+          };
+        })
+    );
+
+    // --- save_artifact ---
+    // Called by agents during sessions to persist artifacts as OrgX entities.
+    if (shouldRegister('save_artifact'))
+    this.server.registerTool(
+      'save_artifact',
+      {
+        title: 'Save Artifact',
+        description:
+          'Persist an artifact (document, code, data, decision, or analysis) as an OrgX entity. USE WHEN: an agent session has produced output that should be stored and linked to a task or initiative. NEXT: Use get_task_with_context to confirm the artifact is attached. DO NOT USE: for regular entity creation — use create_entity instead.',
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: false,
+          openWorldHint: false,
+        },
+        inputSchema: {
+          title: z.string().describe('Artifact title'),
+          type: z
+            .enum(['document', 'code', 'data', 'decision', 'analysis'])
+            .describe('Artifact type'),
+          content: z.string().describe('Full artifact content'),
+          sessionId: z
+            .string()
+            .optional()
+            .describe('Agent session ID (auto-populated from session token)'),
+          taskId: z
+            .string()
+            .optional()
+            .describe('OrgX task entity ID to link this artifact to'),
+          initiativeId: z
+            .string()
+            .optional()
+            .describe('OrgX initiative ID to link this artifact to'),
+          user_id: z.string().optional().describe('Optional user id override'),
+        },
+      },
+      async (args) =>
+        this.withOrgx(async () => {
+          const resolvedUserId = this.resolveUserId(
+            typeof args.user_id === 'string' ? args.user_id : undefined
+          );
+
+          const entityData: Record<string, unknown> = {
+            type: 'artifact',
+            title: args.title,
+            fields: {
+              artifact_type: args.type,
+              content: typeof args.content === 'string'
+                ? args.content.slice(0, 10000)
+                : '',
+              session_id: args.sessionId ?? null,
+            },
+          };
+
+          if (typeof args.taskId === 'string' && args.taskId.trim().length > 0) {
+            entityData['parent_id'] = args.taskId.trim();
+          }
+          if (typeof args.initiativeId === 'string' && args.initiativeId.trim().length > 0) {
+            entityData['initiative_id'] = args.initiativeId.trim();
+          }
+
+          const response = await callOrgxApiJson(
+            this.env,
+            '/api/entities',
+            {
+              method: 'POST',
+              body: JSON.stringify(entityData),
+            },
+            resolvedUserId ? { userId: resolvedUserId } : undefined
+          );
+
+          const result = (await response.json()) as Record<string, unknown>;
+          const artifactId =
+            typeof result['id'] === 'string' ? result['id'] : undefined;
+
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: artifactId
+                  ? `Artifact "${args.title}" created with id ${artifactId}`
+                  : `Artifact "${args.title}" created`,
+              },
+            ],
             structuredContent: result,
           };
         })

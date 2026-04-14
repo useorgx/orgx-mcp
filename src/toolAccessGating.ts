@@ -4,6 +4,74 @@ import { callOrgxApiJson } from './orgxApi';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
 import { mapPlanToAccountTier, type AccountTier } from './accountTools';
 
+// =============================================================================
+// SESSION TOKEN SUPPORT
+// =============================================================================
+
+/**
+ * Tools that agent session tokens are allowed to call.
+ * Session tokens are issued by POST /session-tokens for server-to-server use.
+ * They must NOT access billing/account settings or org configuration tools.
+ */
+export const SESSION_TOKEN_ALLOWED_TOOLS = new Set([
+  'create_entity',
+  'create_decision',
+  'orgx_emit_activity',
+  'record_quality_score',
+  'update_entity',
+  'spawn_agent_task',
+  'get_task_with_context',
+  'get_initiative_pulse',
+  'list_entities',
+  'save_artifact',
+]);
+
+/**
+ * Detect whether the calling context is an agent session token.
+ *
+ * Session tokens are produced by POST /session-tokens and encoded as a
+ * base64 JSON payload with { type: 'session', sessionId, ... }.
+ * The presence of `sessionId` in props is also treated as a session caller.
+ */
+export function isSessionToken(props: Record<string, unknown> | null | undefined): boolean {
+  if (!props) return false;
+  // Explicit marker set by the session token payload
+  if (props['type'] === 'session') return true;
+  // sessionId in props signals an agent session caller
+  if (typeof props['sessionId'] === 'string' && props['sessionId'].length > 0) return true;
+  return false;
+}
+
+/**
+ * Check whether a session token caller is allowed to invoke the given tool.
+ * Returns a blocked CallToolResult if the tool is not in the allowed set,
+ * or null if access is permitted.
+ */
+export function checkSessionTokenToolAccess(
+  toolId: string,
+  props: Record<string, unknown> | null | undefined
+): CallToolResult | null {
+  if (!isSessionToken(props)) return null; // not a session token — normal gating applies
+
+  if (SESSION_TOKEN_ALLOWED_TOOLS.has(toolId)) return null; // allowed
+
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `Tool "${toolId}" is not available to agent session tokens. Allowed tools: ${[...SESSION_TOKEN_ALLOWED_TOOLS].join(', ')}.`,
+      },
+    ],
+    structuredContent: {
+      ok: false,
+      code: 'session_token_restricted',
+      tool: toolId,
+      allowed_tools: [...SESSION_TOKEN_ALLOWED_TOOLS],
+    },
+    isError: true,
+  } as CallToolResult;
+}
+
 type ToolAccessFeature = 'spawn_agent_task' | 'start_autonomous_session';
 
 type ToolAccessRule = {

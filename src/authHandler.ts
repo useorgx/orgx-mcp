@@ -46,6 +46,8 @@ interface AuthHandlerEnv {
   MCP_JWT_SECRET: string;
   ORGX_SERVICE_KEY: string;
   OAUTH_STATE: DurableObjectNamespace;
+  // Server-to-server shared secret for internal endpoints (e.g. /session-tokens)
+  ORGX_INTERNAL_SECRET?: string;
 }
 
 /**
@@ -789,6 +791,92 @@ tool_timeout_sec = 60
             'Cache-Control': 'public, max-age=3600',
           },
         })
+      );
+    }
+
+    // =========================================================================
+    // Session Token Issuance (server-to-server, internal)
+    // POST /session-tokens — issues a short-lived scoped bearer token for an
+    // agent session so it can call OrgX MCP tools natively.
+    // Requires: Authorization: Bearer <ORGX_INTERNAL_SECRET>
+    // =========================================================================
+    if (url.pathname === '/session-tokens' && request.method === 'POST') {
+      // Validate the shared internal secret
+      const internalSecret = env.ORGX_INTERNAL_SECRET;
+      const authHeader = request.headers.get('authorization') ?? '';
+      if (
+        !internalSecret ||
+        !authHeader.startsWith('Bearer ') ||
+        authHeader.slice(7) !== internalSecret
+      ) {
+        return withCors(
+          Response.json(
+            { error: 'unauthorized', error_description: 'Invalid or missing ORGX_INTERNAL_SECRET' },
+            { status: 401 }
+          )
+        );
+      }
+
+      // Parse and validate request body
+      let body: { sessionId?: unknown; orgId?: unknown; userId?: unknown; scopes?: unknown };
+      try {
+        body = await request.json() as typeof body;
+      } catch {
+        return withCors(
+          Response.json(
+            { error: 'invalid_request', error_description: 'Request body must be valid JSON' },
+            { status: 400 }
+          )
+        );
+      }
+
+      const { sessionId, orgId, userId, scopes } = body;
+
+      if (
+        typeof sessionId !== 'string' || sessionId.trim().length === 0 ||
+        typeof orgId !== 'string' || orgId.trim().length === 0 ||
+        typeof userId !== 'string' || userId.trim().length === 0
+      ) {
+        return withCors(
+          Response.json(
+            {
+              error: 'invalid_request',
+              error_description: 'sessionId, orgId, and userId are required non-empty strings',
+            },
+            { status: 400 }
+          )
+        );
+      }
+
+      const resolvedScopes = Array.isArray(scopes)
+        ? (scopes as string[]).filter((s) => typeof s === 'string')
+        : ['agents:read', 'agents:write'];
+
+      const expiresAt = new Date(Date.now() + 3600000).toISOString();
+
+      // TODO: use OAuthProvider.createToken() when API is available.
+      // For now, we create a base64-encoded payload as a functional placeholder.
+      // NOTE: This is NOT cryptographically signed — rely on ORGX_INTERNAL_SECRET
+      // to protect the /session-tokens endpoint itself.
+      const tokenPayload = {
+        sessionId: sessionId.trim(),
+        orgId: orgId.trim(),
+        userId: userId.trim(),
+        scopes: resolvedScopes,
+        exp: Date.now() + 3600000,
+        type: 'session',
+      };
+      const token = btoa(JSON.stringify(tokenPayload));
+
+      console.info('[auth:session-tokens] Issued session token', {
+        sessionId: sessionId.trim(),
+        orgId: orgId.trim(),
+        userId: userId.trim(),
+        scopes: resolvedScopes,
+      });
+
+      return withCors(
+        Response.json({ token, expiresAt, sessionId: sessionId.trim() }, { status: 201 })
       );
     }
 
