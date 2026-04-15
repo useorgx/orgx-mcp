@@ -36,8 +36,38 @@ export function buildScaffoldWidget(opts: ScaffoldWidgetOptions): string {
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
 /* ── OrgX Token System ─────────────────────────────────── */
-:root{
-  /* dark-first (widget lives in Claude dark UI) */
+/* Light mode is the default (matches production widgets) */
+:root,:root[data-theme="light"]{
+  --ox-bg:#f8fafc;
+  --ox-panel:#ffffff;
+  --ox-card:#f1f5f9;
+  --ox-border:rgba(0,0,0,.08);
+  --ox-border-strong:rgba(0,0,0,.15);
+  --ox-text:#0f172a;
+  --ox-text-muted:#64748b;
+  --ox-text-sub:#94a3b8;
+  --ox-well:#f1f5f9;
+  --ox-shadow:0 12px 32px -12px rgba(0,0,0,.1),0 2px 6px rgba(0,0,0,.04);
+  --ox-grid:rgba(0,0,0,.03);
+}
+/* Dark mode via media query */
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ox-bg:#02040a;
+    --ox-panel:rgba(8,12,20,.96);
+    --ox-card:rgba(14,19,30,.9);
+    --ox-border:rgba(255,255,255,.07);
+    --ox-border-strong:rgba(255,255,255,.14);
+    --ox-text:#f2f7ff;
+    --ox-text-muted:rgba(255,255,255,.46);
+    --ox-text-sub:rgba(255,255,255,.28);
+    --ox-well:rgba(0,0,0,.3);
+    --ox-shadow:0 28px 56px -24px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.04);
+    --ox-grid:rgba(255,255,255,.02);
+  }
+}
+/* Explicit dark theme override */
+:root[data-theme="dark"]{
   --ox-bg:#02040a;
   --ox-panel:rgba(8,12,20,.96);
   --ox-card:rgba(14,19,30,.9);
@@ -48,13 +78,16 @@ export function buildScaffoldWidget(opts: ScaffoldWidgetOptions): string {
   --ox-text-sub:rgba(255,255,255,.28);
   --ox-well:rgba(0,0,0,.3);
   --ox-shadow:0 28px 56px -24px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.04);
+  --ox-grid:rgba(255,255,255,.02);
+}
+/* Invariant tokens */
+:root{
   --ox-primary:#00c9a7;--ox-primary-rgb:0,201,167;
   --ox-success:#22c55e;--ox-success-rgb:34,197,94;
   --ox-danger:#f43f5e;
   --ox-warn:#fbbf24;--ox-warn-rgb:251,191,36;
   --ox-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,monospace;
   --ox-font:-apple-system,BlinkMacSystemFont,'Inter',system-ui,sans-serif;
-  --ox-grid:rgba(255,255,255,.02);
   /* domain rgb palette */
   --rgb-engineering:6,182,212;
   --rgb-product:22,163,74;
@@ -65,22 +98,6 @@ export function buildScaffoldWidget(opts: ScaffoldWidgetOptions): string {
   --rgb-ops:245,158,11;
   --rgb-orchestration:0,201,167;
   --rgb-default:99,102,241;
-}
-/* light-mode override for when widget renders outside Claude */
-@media(prefers-color-scheme:light){
-  :root{
-    --ox-bg:#f1f5f9;
-    --ox-panel:#fff;
-    --ox-card:#f8fafc;
-    --ox-border:rgba(0,0,0,.07);
-    --ox-border-strong:rgba(0,0,0,.14);
-    --ox-text:#0f172a;
-    --ox-text-muted:#64748b;
-    --ox-text-sub:#94a3b8;
-    --ox-well:#f1f5f9;
-    --ox-shadow:0 12px 32px -12px rgba(0,0,0,.1),0 2px 6px rgba(0,0,0,.04);
-    --ox-grid:rgba(0,0,0,.04);
-  }
 }
 
 html,body{
@@ -152,10 +169,9 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
 
 /* Progress bar */
 .prog-wrap{
-  height:2px;background:rgba(255,255,255,.06);border-radius:2px;
+  height:2px;background:var(--ox-border);border-radius:2px;
   margin-top:12px;overflow:hidden;
 }
-@media(prefers-color-scheme:light){.prog-wrap{background:rgba(0,0,0,.08)}}
 .prog-fill{
   height:100%;background:var(--ox-primary);border-radius:2px;width:0%;
   transition:width .5s cubic-bezier(.4,0,.2,1);
@@ -181,11 +197,18 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
 .skeleton{display:flex;flex-direction:column;gap:8px;padding:12px 16px 14px}
 .sk-card{
   height:72px;border-radius:10px;
-  background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.08) 50%,rgba(255,255,255,.04) 75%);
+  background:linear-gradient(90deg,rgba(0,0,0,.05) 25%,rgba(0,0,0,.09) 50%,rgba(0,0,0,.05) 75%);
   background-size:200% 100%;animation:shimmer 1.5s ease infinite;
 }
-@media(prefers-color-scheme:light){
-  .sk-card{background:linear-gradient(90deg,rgba(0,0,0,.05) 25%,rgba(0,0,0,.09) 50%,rgba(0,0,0,.05) 75%);background-size:200% 100%}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .sk-card{
+    background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.08) 50%,rgba(255,255,255,.04) 75%);
+    background-size:200% 100%;
+  }
+}
+:root[data-theme="dark"] .sk-card{
+  background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.08) 50%,rgba(255,255,255,.04) 75%);
+  background-size:200% 100%;
 }
 .sk-card:nth-child(2){opacity:.7}
 .sk-card:nth-child(3){opacity:.5}
@@ -247,7 +270,7 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
   background:var(--ox-panel);
   border:1px solid var(--ox-border);
   color:rgb(var(--ws-rgb,var(--ox-primary-rgb)));
-  box-shadow:0 4px 8px -4px rgba(0,0,0,.5);
+  box-shadow:0 2px 6px rgba(0,0,0,.15);
 }
 .ws-domain-badge svg{width:8px;height:8px}
 
@@ -333,12 +356,11 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
 .ms-row{
   display:flex;align-items:flex-start;gap:8px;
   padding:7px 12px;
-  border-bottom:1px solid rgba(255,255,255,.03);
+  border-bottom:1px solid var(--ox-border);
   opacity:0;transform:translateX(-6px);
   transition:opacity .2s ease,transform .2s ease;
 }
 .ms-row.show{opacity:1;transform:translateX(0)}
-@media(prefers-color-scheme:light){.ms-row{border-bottom-color:rgba(0,0,0,.04)}}
 .ms-icon{
   width:18px;height:18px;border-radius:5px;flex-shrink:0;margin-top:1px;
   display:inline-flex;align-items:center;justify-content:center;

@@ -41,18 +41,51 @@ export function buildLiveFeedWidget(opts: LiveFeedWidgetOptions): string {
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
-/* ── OrgX Design Tokens ── */
-:root{
+/* ── OrgX Design Tokens (light-first, matches production widgets) ── */
+:root,:root[data-theme="light"]{
+  --ox-bg:#f8fafc;
+  --ox-panel:#ffffff;
+  --ox-border:rgba(0,0,0,.08);
+  --ox-border-strong:rgba(0,0,0,.15);
+  --ox-text:#0f172a;
+  --ox-text-muted:#64748b;
+  --ox-text-dim:#94a3b8;
+  --ox-well:#f1f5f9;
+  --ox-well-shadow:inset 0 2px 4px rgba(0,0,0,.02);
+  --ox-shadow:0 12px 32px -12px rgba(0,0,0,.1),0 2px 6px rgba(0,0,0,.04);
+  --ox-grid:rgba(0,0,0,.03);
+}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ox-bg:#02040a;
+    --ox-panel:rgba(10,15,22,.95);
+    --ox-border:rgba(255,255,255,.08);
+    --ox-border-strong:rgba(255,255,255,.15);
+    --ox-text:#f8fafc;
+    --ox-text-muted:rgba(255,255,255,.48);
+    --ox-text-dim:rgba(255,255,255,.32);
+    --ox-well:rgba(0,0,0,.28);
+    --ox-well-shadow:inset 0 2px 10px rgba(0,0,0,.4);
+    --ox-shadow:0 24px 48px -20px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05);
+    --ox-grid:rgba(255,255,255,.02);
+  }
+}
+:root[data-theme="dark"]{
   --ox-bg:#02040a;
   --ox-panel:rgba(10,15,22,.95);
   --ox-border:rgba(255,255,255,.08);
   --ox-border-strong:rgba(255,255,255,.15);
   --ox-text:#f8fafc;
   --ox-text-muted:rgba(255,255,255,.48);
+  --ox-text-dim:rgba(255,255,255,.32);
   --ox-well:rgba(0,0,0,.28);
+  --ox-well-shadow:inset 0 2px 10px rgba(0,0,0,.4);
   --ox-shadow:0 24px 48px -20px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05);
-  --ox-primary:#00c9a7;
-  --ox-primary-rgb:0,201,167;
+  --ox-grid:rgba(255,255,255,.02);
+}
+/* Invariant tokens */
+:root{
+  --ox-primary:#00c9a7;--ox-primary-rgb:0,201,167;
   --ox-success:#22c55e;--ox-success-rgb:34,197,94;
   --ox-danger:#f43f5e;
   --ox-warn:#fbbf24;--ox-warn-rgb:251,191,36;
@@ -71,16 +104,6 @@ export function buildLiveFeedWidget(opts: LiveFeedWidgetOptions): string {
   --s-queued:168,85,247;
   --s-blocked:245,158,11;
   --r:10px;
-}
-
-@media(prefers-color-scheme:light){
-  :root{
-    --ox-bg:#f8fafc;--ox-panel:#fff;
-    --ox-border:rgba(0,0,0,.08);--ox-border-strong:rgba(0,0,0,.15);
-    --ox-text:#0f172a;--ox-text-muted:#64748b;
-    --ox-well:#f1f5f9;
-    --ox-shadow:0 12px 32px -12px rgba(0,0,0,.1),0 2px 6px rgba(0,0,0,.04);
-  }
 }
 
 html,body{
