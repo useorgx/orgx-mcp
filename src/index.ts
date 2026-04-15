@@ -39,9 +39,11 @@ import {
   resolveAnonymousDistinctId,
 } from './posthogTelemetry';
 import {
+  buildAgentCreditCheckoutResult,
   buildAccountStatusResult,
   buildAccountUsageReportResult,
   buildEnterpriseUpgradeResult,
+  getAgentCreditPacks,
   resolveCheckoutUrl,
 } from './accountTools';
 import {
@@ -52,6 +54,9 @@ import {
   buildScaffoldHierarchy,
   buildScaffoldInitiativeBatch,
 } from './scaffoldInitiative';
+import { buildScaffoldWidget } from './scaffoldWidget';
+import { buildLiveFeedWidget } from './liveFeedWidget';
+import { signStreamToken } from './streamToken';
 import { hydrateTaskContext } from './taskContextHydrator';
 import {
   CONFIGURE_ORG_POLICY_TYPES,
@@ -190,6 +195,11 @@ import {
 // Re-export OAuthState Durable Object
 export { OAuthState };
 
+// Re-export ScaffoldSessionDO so wrangler can bind it as a Durable Object class
+export { ScaffoldSessionDO } from './scaffoldSessionDO';
+// Re-export LiveFeedDO so wrangler can bind it as a Durable Object class
+export { LiveFeedDO } from './liveFeedDO';
+
 // Export configSchema directly from the entry file so Smithery's source scanner
 // can detect session configuration without following a re-export.
 export const configSchema = buildSmitheryConfigSchema();
@@ -249,6 +259,12 @@ interface Env extends OAuthEnv {
   // Optional Upstash Redis REST credentials for distributed edge rate limiting
   UPSTASH_REDIS_REST_URL?: string;
   UPSTASH_REDIS_REST_TOKEN?: string;
+  // Server-to-server shared secret for internal endpoints (e.g. /session-tokens)
+  ORGX_INTERNAL_SECRET?: string;
+  // Scaffold streaming: Durable Object namespace for per-session SSE fan-out
+  SCAFFOLD_SESSION: DurableObjectNamespace;
+  // Live feed: Durable Object namespace for polling SSE (agent-status, initiative-pulse)
+  LIVE_FEED: DurableObjectNamespace;
 }
 
 // =============================================================================
@@ -1872,6 +1888,40 @@ export class OrgXMcp extends McpAgent<
         // - Widget tools: JSON in content[0] for MCP Apps widget parsing
         // - Non-widget tools: concise summary only (saves 80-95% tokens)
         // structuredContent always carries the full payload for widgets.
+        // Live-feed SSE widget: inject for agent-status + initiative-pulse tools
+        let _liveFeedWidgetHtml: string | null = null;
+        if (
+          (toolId === 'get_agent_status' || toolId === 'get_initiative_pulse') &&
+          effectiveInitiativeId &&
+          this.env.LIVE_FEED &&
+          this.env.MCP_JWT_SECRET
+        ) {
+          try {
+            const _feedType = toolId === 'get_agent_status' ? 'agent-status' : 'initiative-pulse';
+            const _streamToken = await signStreamToken({
+              feedType: _feedType,
+              feedId: effectiveInitiativeId,
+              userId: resolvedUserId ?? undefined,
+              secret: this.env.MCP_JWT_SECRET,
+            });
+            const _liveUrl = hasInitiativeContext && effectiveInitiativeId
+              ? buildLiveUrl(effectiveInitiativeId)
+              : undefined;
+            _liveFeedWidgetHtml = buildLiveFeedWidget({
+              feedType: _feedType,
+              feedId: effectiveInitiativeId,
+              streamBaseUrl: this.env.MCP_SERVER_URL,
+              streamToken: _streamToken,
+              liveUrl: _liveUrl,
+              title: typeof (data.initiative as Record<string, unknown> | undefined)?.title === 'string'
+                ? (data.initiative as Record<string, unknown>).title as string
+                : undefined,
+            });
+          } catch (_err) {
+            console.warn('[live-feed-widget] token/widget build failed', { error: _err });
+          }
+        }
+
         if (isWidgetTool) {
           this.appendWidgetDebugEvent({
             phase: 'tool_result',
@@ -1879,13 +1929,14 @@ export class OrgXMcp extends McpAgent<
             outputTemplate:
               typeof outputTemplate === 'string' ? outputTemplate : undefined,
             details: {
-              contentBlocks: 2,
+              contentBlocks: _liveFeedWidgetHtml ? 3 : 2,
               hasStructuredContent: true,
               dataKeys: Object.keys(data),
             },
           });
           return {
             content: [
+              ...(_liveFeedWidgetHtml ? [{ type: 'text' as const, text: _liveFeedWidgetHtml }] : []),
               { type: 'text', text: JSON.stringify(data) },
               { type: 'text', text: finalMessage },
             ],
@@ -3345,9 +3396,9 @@ export class OrgXMcp extends McpAgent<
       this.server.registerTool(
         'account_upgrade',
       {
-        title: 'Upgrade account tier',
+        title: 'Upgrade account tier or buy agent credits',
         description:
-          'Create the next-step upgrade flow for the authenticated OrgX account. Enterprise requests return contact guidance instead of self-serve checkout.',
+          'Create the next-step upgrade or agent credit top-up flow for the authenticated OrgX account. Enterprise requests return contact guidance instead of self-serve checkout.',
         annotations: {
           readOnlyHint: false,
           destructiveHint: true,
@@ -3363,6 +3414,10 @@ export class OrgXMcp extends McpAgent<
               .optional()
               .default('monthly')
               .describe('Billing cadence for self-serve checkout plans.'),
+            credit_pack: z
+              .enum(['credits_500', 'credits_2000'])
+              .optional()
+              .describe('Optional agent credit pack to buy instead of upgrading a plan.'),
             user_id: z.string().optional().describe('Optional user id override.'),
           },
           _meta: { 'openai/visibility': 'private' },
@@ -3375,11 +3430,56 @@ export class OrgXMcp extends McpAgent<
               securitySchemes: SECURITY_SCHEMES.authRequired,
               userId: resolvedUserId ?? undefined,
               serverUrl: this.env.MCP_SERVER_URL,
-              featureDescription: 'upgrade account',
+              featureDescription: 'upgrade account or buy agent credits',
             });
             if (authResponse) return authResponse;
 
             const userId = this.assertUserId(args.user_id);
+            if (args.credit_pack) {
+              const usageResponse = await callOrgxApiJson(
+                this.env,
+                '/api/billing/usage',
+                { method: 'GET' },
+                { userId }
+              );
+              const usage = (await usageResponse.json()) as Record<string, unknown>;
+              const pack = getAgentCreditPacks(usage).find(
+                (candidate) => candidate.id === args.credit_pack
+              );
+              if (!pack) {
+                return this.toolError('Unknown or unavailable agent credit pack');
+              }
+
+              const response = await callOrgxApiJson(
+                this.env,
+                '/api/stripe/credits/checkout',
+                {
+                  method: 'POST',
+                  body: JSON.stringify({
+                    pack_id: args.credit_pack,
+                    user_id: userId,
+                  }),
+                },
+                { userId }
+              );
+              const data = (await response.json()) as {
+                checkout_url?: string;
+                url?: string;
+              };
+              const checkoutUrl = resolveCheckoutUrl(data);
+              if (!checkoutUrl) {
+                return this.toolError('Failed to create agent credit checkout session');
+              }
+              const { text, payload } = buildAgentCreditCheckoutResult({
+                checkoutUrl,
+                pack,
+              });
+              return {
+                content: [{ type: 'text', text }],
+                structuredContent: payload,
+              };
+            }
+
             if (args.target_plan === 'enterprise') {
               const { text, payload } = buildEnterpriseUpgradeResult(
                 this.env.ORGX_WEB_URL
@@ -6242,6 +6342,44 @@ export class OrgXMcp extends McpAgent<
               }
             }
 
+
+              // ── Scaffold stream session ──
+              // Push created entities as SSE events into ScaffoldSessionDO so the
+              // widget can replay them as an animated tree. Fire-and-forget.
+              let scaffold_stream_url: string | undefined;
+              let scaffold_session_id: string | undefined;
+              try {
+                scaffold_session_id = crypto.randomUUID();
+                scaffold_stream_url = `${this.env.MCP_SERVER_URL}/scaffold/${scaffold_session_id}/stream`;
+                const _doId = this.env.SCAFFOLD_SESSION.idFromName(scaffold_session_id);
+                const _stub = this.env.SCAFFOLD_SESSION.get(_doId);
+                const _internalHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+                if (this.env.ORGX_INTERNAL_SECRET) {
+                  _internalHeaders['Authorization'] = `Bearer ${this.env.ORGX_INTERNAL_SECRET}`;
+                }
+                const _pushEvent = async (payload: Record<string, unknown>) => {
+                  await _stub.fetch(
+                    `https://internal/scaffold/${scaffold_session_id}/event`,
+                    { method: 'POST', headers: _internalHeaders, body: JSON.stringify(payload) }
+                  );
+                };
+                const _emitEvents = async () => {
+                  await _pushEvent({ type: 'session.start', sessionId: scaffold_session_id, title: typeof args.title === 'string' ? args.title : undefined, ts: Date.now() });
+                  const _entities = result.results ?? [];
+                  const _total = _entities.length;
+                  for (let _i = 0; _i < _entities.length; _i++) {
+                    const _item = _entities[_i]!;
+                    if (!_item.success) continue;
+                    const _data = (_item.data ?? {}) as Record<string, unknown>;
+                    await _pushEvent({ type: 'entity.created', entityType: String(_data.type ?? _data.entity_type ?? 'entity'), entity: _data, index: _i, total: _total, ts: Date.now() });
+                  }
+                  await _pushEvent({ type: 'scaffold.complete', initiativeId: createdInitiativeId, liveUrl: liveUrl ?? null, totalEntities: _entities.filter((e: { success: boolean }) => e.success).length, ts: Date.now() });
+                };
+                this.ctx.waitUntil(_emitEvents());
+              } catch (_streamErr) {
+                console.warn('[scaffold:stream] session setup failed', { error: _streamErr });
+              }
+
 			          const machinePayload = {
 			            summary: result.summary,
 			            live_url: liveUrl ?? undefined,
@@ -6256,6 +6394,8 @@ export class OrgXMcp extends McpAgent<
 			            created: result.created,
 			            failed: result.failed,
 		            ref_map: result.ref_map,
+                scaffold_stream_url,
+                scaffold_session_id,
 	          };
 
 	          const activationSummary =
@@ -6364,17 +6504,44 @@ export class OrgXMcp extends McpAgent<
                     estimated_cost: estimatedCost,
                   };
 
+
+              // Build streaming widget for MCP Apps (Claude.ai, ChatGPT)
+              // Wrapped in try/catch: a widget build failure must never kill the tool response
+              let _scaffoldWidgetHtml: string | null = null;
+              if (scaffold_stream_url) {
+                try {
+                  _scaffoldWidgetHtml = buildScaffoldWidget({
+                    sessionId: scaffold_session_id!,
+                    streamBaseUrl: this.env.MCP_SERVER_URL,
+                    initiativeTitle: typeof args.title === 'string' ? args.title : undefined,
+                    liveUrl: liveUrl ?? undefined,
+                  });
+                } catch (_widgetErr) {
+                  // Widget failed silently — CLI fallback still returned below
+                }
+              }
+
+              // CLI/API fallback: plain-text summary for clients that don't render HTML
+              const _cliFallback = [
+                result.summary,
+                liveUrl ? `\n\n📺 Live view: ${liveUrl}` : '',
+                scaffold_stream_url ? `\n🌊 Real-time stream: ${scaffold_stream_url}` : '',
+                launchSummary,
+                activationPayload.text,
+              ].join('').trim();
+
               return {
                 content: [
+                  ...(_scaffoldWidgetHtml
+                    ? [{ type: 'text' as const, text: _scaffoldWidgetHtml }]
+                    : []),
                   {
                     type: 'text',
                     text: JSON.stringify(finalPayload),
                   },
                   {
                     type: 'text',
-                    text: `${result.summary}${
-                      liveUrl ? `\n\n📺 Live view: ${liveUrl}` : ''
-                    }${launchSummary}${activationPayload.text}`,
+                    text: _cliFallback,
                   },
                 ],
                 structuredContent: finalPayload,
@@ -8075,6 +8242,94 @@ export class OrgXMcp extends McpAgent<
           const result = await response.json() as Record<string, unknown>;
           return {
             content: [{ type: 'text' as const, text: formatForLLM('submit_learning', result) }],
+            structuredContent: result,
+          };
+        })
+    );
+
+    // --- save_artifact ---
+    // Called by agents during sessions to persist artifacts as OrgX entities.
+    if (shouldRegister('save_artifact'))
+    this.server.registerTool(
+      'save_artifact',
+      {
+        title: 'Save Artifact',
+        description:
+          'Persist an artifact (document, code, data, decision, or analysis) as an OrgX entity. USE WHEN: an agent session has produced output that should be stored and linked to a task or initiative. NEXT: Use get_task_with_context to confirm the artifact is attached. DO NOT USE: for regular entity creation — use create_entity instead.',
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: false,
+          openWorldHint: false,
+        },
+        inputSchema: {
+          title: z.string().describe('Artifact title'),
+          type: z
+            .enum(['document', 'code', 'data', 'decision', 'analysis'])
+            .describe('Artifact type'),
+          content: z.string().describe('Full artifact content'),
+          sessionId: z
+            .string()
+            .optional()
+            .describe('Agent session ID (auto-populated from session token)'),
+          taskId: z
+            .string()
+            .optional()
+            .describe('OrgX task entity ID to link this artifact to'),
+          initiativeId: z
+            .string()
+            .optional()
+            .describe('OrgX initiative ID to link this artifact to'),
+          user_id: z.string().optional().describe('Optional user id override'),
+        },
+      },
+      async (args) =>
+        this.withOrgx(async () => {
+          const resolvedUserId = this.resolveUserId(
+            typeof args.user_id === 'string' ? args.user_id : undefined
+          );
+
+          const entityData: Record<string, unknown> = {
+            type: 'artifact',
+            title: args.title,
+            fields: {
+              artifact_type: args.type,
+              content: typeof args.content === 'string'
+                ? args.content.slice(0, 10000)
+                : '',
+              session_id: args.sessionId ?? null,
+            },
+          };
+
+          if (typeof args.taskId === 'string' && args.taskId.trim().length > 0) {
+            entityData['parent_id'] = args.taskId.trim();
+          }
+          if (typeof args.initiativeId === 'string' && args.initiativeId.trim().length > 0) {
+            entityData['initiative_id'] = args.initiativeId.trim();
+          }
+
+          const response = await callOrgxApiJson(
+            this.env,
+            '/api/entities',
+            {
+              method: 'POST',
+              body: JSON.stringify(entityData),
+            },
+            resolvedUserId ? { userId: resolvedUserId } : undefined
+          );
+
+          const result = (await response.json()) as Record<string, unknown>;
+          const artifactId =
+            typeof result['id'] === 'string' ? result['id'] : undefined;
+
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: artifactId
+                  ? `Artifact "${args.title}" created with id ${artifactId}`
+                  : `Artifact "${args.title}" created`,
+              },
+            ],
             structuredContent: result,
           };
         })

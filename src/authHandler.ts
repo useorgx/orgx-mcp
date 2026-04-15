@@ -29,6 +29,7 @@ import {
   WIDGET_URIS,
 } from './toolDefinitions';
 import serverManifest from '../server.json';
+import { verifyStreamToken } from './streamToken';
 
 // Re-export type for use in index.ts
 export type { OAuthHelpers };
@@ -46,6 +47,12 @@ interface AuthHandlerEnv {
   MCP_JWT_SECRET: string;
   ORGX_SERVICE_KEY: string;
   OAUTH_STATE: DurableObjectNamespace;
+  // Server-to-server shared secret for internal endpoints (e.g. /session-tokens)
+  ORGX_INTERNAL_SECRET?: string;
+  // Scaffold streaming: Durable Object namespace for per-session SSE fan-out
+  SCAFFOLD_SESSION: DurableObjectNamespace;
+  // Live feed: Durable Object namespace for polling SSE (agent-status, initiative-pulse)
+  LIVE_FEED: DurableObjectNamespace;
 }
 
 /**
@@ -793,6 +800,182 @@ tool_timeout_sec = 60
     }
 
     // =========================================================================
+    // Session Token Issuance (server-to-server, internal)
+    // POST /session-tokens — issues a short-lived scoped bearer token for an
+    // agent session so it can call OrgX MCP tools natively.
+    // Requires: Authorization: Bearer <ORGX_INTERNAL_SECRET>
+    // =========================================================================
+    if (url.pathname === '/session-tokens' && request.method === 'POST') {
+      // Validate the shared internal secret
+      const internalSecret = env.ORGX_INTERNAL_SECRET;
+      const authHeader = request.headers.get('authorization') ?? '';
+      if (
+        !internalSecret ||
+        !authHeader.startsWith('Bearer ') ||
+        authHeader.slice(7) !== internalSecret
+      ) {
+        return withCors(
+          Response.json(
+            { error: 'unauthorized', error_description: 'Invalid or missing ORGX_INTERNAL_SECRET' },
+            { status: 401 }
+          )
+        );
+      }
+
+      // Parse and validate request body
+      let body: { sessionId?: unknown; orgId?: unknown; userId?: unknown; scopes?: unknown };
+      try {
+        body = await request.json() as typeof body;
+      } catch {
+        return withCors(
+          Response.json(
+            { error: 'invalid_request', error_description: 'Request body must be valid JSON' },
+            { status: 400 }
+          )
+        );
+      }
+
+      const { sessionId, orgId, userId, scopes } = body;
+
+      if (
+        typeof sessionId !== 'string' || sessionId.trim().length === 0 ||
+        typeof orgId !== 'string' || orgId.trim().length === 0 ||
+        typeof userId !== 'string' || userId.trim().length === 0
+      ) {
+        return withCors(
+          Response.json(
+            {
+              error: 'invalid_request',
+              error_description: 'sessionId, orgId, and userId are required non-empty strings',
+            },
+            { status: 400 }
+          )
+        );
+      }
+
+      const resolvedScopes = Array.isArray(scopes)
+        ? (scopes as string[]).filter((s) => typeof s === 'string')
+        : ['agents:read', 'agents:write'];
+
+      const expiresAt = new Date(Date.now() + 3600000).toISOString();
+
+      // TODO: use OAuthProvider.createToken() when API is available.
+      // For now, we create a base64-encoded payload as a functional placeholder.
+      // NOTE: This is NOT cryptographically signed — rely on ORGX_INTERNAL_SECRET
+      // to protect the /session-tokens endpoint itself.
+      const tokenPayload = {
+        sessionId: sessionId.trim(),
+        orgId: orgId.trim(),
+        userId: userId.trim(),
+        scopes: resolvedScopes,
+        exp: Date.now() + 3600000,
+        type: 'session',
+      };
+      const token = btoa(JSON.stringify(tokenPayload));
+
+      console.info('[auth:session-tokens] Issued session token', {
+        sessionId: sessionId.trim(),
+        orgId: orgId.trim(),
+        userId: userId.trim(),
+        scopes: resolvedScopes,
+      });
+
+      return withCors(
+        Response.json({ token, expiresAt, sessionId: sessionId.trim() }, { status: 201 })
+      );
+    }
+
+    // =========================================================================
+    // Scaffold Streaming — SSE fan-out via ScaffoldSessionDO
+    //
+    // GET  /scaffold/:sessionId/stream  — public EventSource endpoint
+    // POST /scaffold/:sessionId/event   — internal event push (ORGX_INTERNAL_SECRET)
+    // GET  /scaffold/:sessionId/status  — public health check
+    //
+    // The DO is keyed by sessionId so each scaffold session has its own instance.
+    // OPTIONS is handled here for CORS preflight.
+    // =========================================================================
+    const scaffoldMatch = url.pathname.match(
+      /^\/scaffold\/([a-zA-Z0-9_-]+)\/(stream|event|status)$/
+    );
+    if (scaffoldMatch) {
+      if (request.method === 'OPTIONS') {
+        return new Response(null, {
+          status: 204,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          },
+        });
+      }
+
+      const sessionId = scaffoldMatch[1]!;
+      const doId = env.SCAFFOLD_SESSION.idFromName(sessionId);
+      const stub = env.SCAFFOLD_SESSION.get(doId);
+      // Forward the request to the DO with the same URL/method/body
+      return stub.fetch(request);
+    }
+
+    // =========================================================================
+    // Live Feed SSE — agent-status + initiative-pulse streaming
+    //
+    // GET /live-feed/agent-status/:initiativeId/stream
+    // GET /live-feed/initiative-pulse/:initiativeId/stream
+    //
+    // The DO is keyed by "feedType:feedId" so each (type, id) pair shares one
+    // polling instance with a 10-second alarm cycle.
+    // =========================================================================
+    const liveFeedMatch = url.pathname.match(
+      /^\/live-feed\/(agent-status|initiative-pulse)\/([^/]+)\/stream$/
+    );
+    if (liveFeedMatch) {
+      if (request.method === 'OPTIONS') {
+        return new Response(null, {
+          status: 204,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+          },
+        });
+      }
+
+      // Verify short-lived HMAC stream token (?t=<token>)
+      const token = url.searchParams.get('t') ?? '';
+      const jwtSecret = env.MCP_JWT_SECRET;
+      if (!token || !jwtSecret) {
+        return new Response(JSON.stringify({ error: 'missing_token' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json', ...corsHeadersObj() },
+        });
+      }
+      const payload = await verifyStreamToken(token, jwtSecret);
+      if (!payload) {
+        return new Response(JSON.stringify({ error: 'invalid_token' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json', ...corsHeadersObj() },
+        });
+      }
+
+      const feedType = liveFeedMatch[1]!;
+      const feedId = liveFeedMatch[2]!;
+
+      // Ensure token feedType/feedId match the path (prevent token reuse across feeds)
+      if (payload.ft !== feedType || payload.fi !== feedId) {
+        return new Response(JSON.stringify({ error: 'token_mismatch' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json', ...corsHeadersObj() },
+        });
+      }
+
+      const doKey = `${feedType}:${feedId}`;
+      const doId = env.LIVE_FEED.idFromName(doKey);
+      const stub = env.LIVE_FEED.get(doId);
+      return stub.fetch(request);
+    }
+
+    // =========================================================================
     // 404 for everything else
     // =========================================================================
     return withCors(
@@ -1080,4 +1263,14 @@ async function handleConsentCallback(
       serverUrl
     );
   }
+}
+
+// ─── Internal helpers ─────────────────────────────────────────────────────────
+
+function corsHeadersObj(): Record<string, string> {
+  return {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  };
 }
