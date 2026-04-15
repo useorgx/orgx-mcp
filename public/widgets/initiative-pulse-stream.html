@@ -337,6 +337,9 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
 }
 .ws-mini-fill{height:100%;border-radius:2px;transition:width .3s ease}
 
+/* ── Link bridge ── */
+button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:pointer;text-align:left}
+
 /* ── Footer ── */
 .footer{
   display:flex;align-items:center;justify-content:space-between;
@@ -381,7 +384,7 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
   <!-- Footer -->
   <div class="footer">
     <span class="footer-meta">LIVE FEED</span>
-    <a class="footer-link" href="https://useorgx.com/live/07f49477-6807-449c-b46c-5bc71a1219da" target="_blank" rel="noopener">Open Live View ↗</a>
+    <button class="footer-link" data-oxhref="https://useorgx.com/live/07f49477-6807-449c-b46c-5bc71a1219da">Open Live View ↗</button>
   </div>
 </div>
 
@@ -391,6 +394,22 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
   var STREAM_URL = "https://mcp.useorgx.com/live-feed/initiative-pulse/07f49477/stream?t=demo";
   var LIVE_URL   = "https://useorgx.com/live/07f49477-6807-449c-b46c-5bc71a1219da";
   var IMG_BASE   = 'https://mcp.useorgx.com/widgets/shared/';
+
+  /* ── External link bridge (ui/open-link postMessage for Claude.ai sandbox) ── */
+  function openExtLink(url) {
+    if (!url) return;
+    try {
+      window.parent.postMessage(
+        { jsonrpc:'2.0', method:'ui/open-link', params:{ url:url }, id:Date.now() },
+        '*'
+      );
+    } catch(_) {}
+    try { window.open(url, '_blank', 'noopener,noreferrer'); } catch(_) {}
+  }
+  document.addEventListener('click', function(e) {
+    var el = e.target && e.target.closest ? e.target.closest('[data-oxhref]') : null;
+    if (el) { e.preventDefault(); openExtLink(el.getAttribute('data-oxhref')); }
+  });
 
   var ldot       = document.getElementById('ldot');
   var connLabel  = document.getElementById('connLabel');

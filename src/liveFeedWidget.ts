@@ -371,6 +371,9 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
 }
 .ws-mini-fill{height:100%;border-radius:2px;transition:width .3s ease}
 
+/* ── Link bridge ── */
+button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:pointer;text-align:left}
+
 /* ── Footer ── */
 .footer{
   display:flex;align-items:center;justify-content:space-between;
@@ -415,7 +418,7 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
   <!-- Footer -->
   <div class="footer">
     <span class="footer-meta">LIVE FEED</span>
-    ${safeLiveUrl ? `<a class="footer-link" href="${safeLiveUrl}" target="_blank" rel="noopener">Open Live View ↗</a>` : ''}
+    ${safeLiveUrl ? `<button class="footer-link" data-oxhref="${safeLiveUrl}">Open Live View ↗</button>` : ''}
   </div>
 </div>
 
@@ -425,6 +428,22 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
   var STREAM_URL = ${JSON.stringify(streamUrl)};
   var LIVE_URL   = ${JSON.stringify(liveUrl ?? '')};
   var IMG_BASE   = 'https://mcp.useorgx.com/widgets/shared/';
+
+  /* ── External link bridge (ui/open-link postMessage for Claude.ai sandbox) ── */
+  function openExtLink(url) {
+    if (!url) return;
+    try {
+      window.parent.postMessage(
+        { jsonrpc:'2.0', method:'ui/open-link', params:{ url:url }, id:Date.now() },
+        '*'
+      );
+    } catch(_) {}
+    try { window.open(url, '_blank', 'noopener,noreferrer'); } catch(_) {}
+  }
+  document.addEventListener('click', function(e) {
+    var el = e.target && e.target.closest ? e.target.closest('[data-oxhref]') : null;
+    if (el) { e.preventDefault(); openExtLink(el.getAttribute('data-oxhref')); }
+  });
 
   var ldot       = document.getElementById('ldot');
   var connLabel  = document.getElementById('connLabel');
