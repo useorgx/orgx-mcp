@@ -202,21 +202,53 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
   border-radius:12px;overflow:hidden;
   border:1px solid var(--ox-border);
   background:var(--ox-card);
+  position:relative; /* needed for scan-line pseudo */
   opacity:0;transform:translateY(10px);
-  transition:opacity .28s cubic-bezier(.16,1,.3,1),transform .28s cubic-bezier(.16,1,.3,1);
+  transition:opacity .3s cubic-bezier(.16,1,.3,1),
+             transform .3s cubic-bezier(.16,1,.3,1),
+             border-color .3s ease,
+             box-shadow .4s ease;
 }
 .ws-card.show{opacity:1;transform:translateY(0)}
+
+/* Active-receive: domain-colored glow + accent pulse */
+.ws-card.active-receive{
+  border-color:rgba(var(--ws-rgb,var(--ox-primary-rgb)),.28);
+  box-shadow:
+    0 0 0 1px rgba(var(--ws-rgb,var(--ox-primary-rgb)),.06) inset,
+    0 8px 28px -8px rgba(var(--ws-rgb,var(--ox-primary-rgb)),.14),
+    0 16px 40px -20px rgba(0,0,0,.5);
+}
+/* Animated scan-line sweep across the active card */
+.ws-card.active-receive::before{
+  content:'';position:absolute;
+  left:0;right:0;height:50%;
+  background:linear-gradient(180deg,rgba(var(--ws-rgb,var(--ox-primary-rgb)),.07),transparent);
+  animation:scan-sweep 1.6s ease-in-out infinite;
+  pointer-events:none;z-index:0;
+}
+@keyframes scan-sweep{
+  0%{top:-50%;opacity:1}
+  70%{opacity:.5}
+  100%{top:110%;opacity:0}
+}
+/* Pulse the domain-colored accent while receiving */
+.ws-card.active-receive .ws-card-accent{
+  animation:accent-pulse 1.2s ease-in-out infinite;
+}
+@keyframes accent-pulse{0%,100%{opacity:1}50%{opacity:.38}}
 
 /* Domain-colored top accent bar */
 .ws-card-accent{
   height:2px;
-  background:linear-gradient(90deg,rgb(var(--ws-rgb,var(--ox-primary-rgb))),transparent 80%);
+  background:linear-gradient(90deg,rgb(var(--ws-rgb,var(--ox-primary-rgb))),transparent 70%);
+  position:relative;z-index:1;
 }
 
 /* Card header row */
 .ws-head{
   display:flex;align-items:center;gap:7px;
-  padding:9px 12px 8px;
+  padding:9px 12px 8px;position:relative;z-index:1;
 }
 .ws-num{
   font-family:var(--ox-mono);font-size:.58rem;font-weight:700;
@@ -235,12 +267,8 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
 .ws-domain{
   font-family:var(--ox-mono);font-size:.54rem;font-weight:700;
   letter-spacing:.1em;text-transform:uppercase;
-  color:var(--ox-text-sub);flex-shrink:0;
-  white-space:nowrap;
+  color:var(--ox-text-sub);flex-shrink:0;white-space:nowrap;
 }
-/* Pulse effect on the most-recently-added card while still building */
-@keyframes ws-pulse{0%,100%{border-color:var(--ox-border)}50%{border-color:rgba(var(--ws-rgb,var(--ox-primary-rgb)),.22)}}
-.ws-card.active-receive{animation:ws-pulse 1.8s ease-in-out infinite}
 
 /* Divider below card header */
 .ws-body{border-top:1px solid var(--ox-border)}
@@ -334,6 +362,35 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
   font-size:11px;color:#fb7185;line-height:1.4;font-family:var(--ox-mono);
 }
 .err-banner.show{display:block}
+
+/* ── Item flash: teal glow on arrival ─────────────────── */
+@keyframes item-appear{
+  0%  {background:rgba(var(--ox-primary-rgb),.09);
+       box-shadow:inset 3px 0 0 rgba(var(--ox-primary-rgb),.55)}
+  100%{background:transparent;box-shadow:none}
+}
+.ms-row.flash,.task-row.flash{animation:item-appear .65s ease-out}
+
+/* ── Shell: subtle border pulse while streaming ────────── */
+@keyframes stream-pulse{
+  0%,100%{border-color:rgba(var(--ox-primary-rgb),.12)}
+  50%    {border-color:rgba(var(--ox-primary-rgb),.28)}
+}
+.shell.streaming{animation:stream-pulse 2.4s ease-in-out infinite}
+
+/* ── Shell done celebration ────────────────────────────── */
+@keyframes done-pulse{
+  0%  {border-color:rgba(var(--ox-primary-rgb),.12);
+       box-shadow:var(--ox-shadow)}
+  35% {border-color:rgba(var(--ox-success-rgb),.5);
+       box-shadow:var(--ox-shadow),
+                  0 0 0 2px rgba(var(--ox-success-rgb),.1),
+                  0 0 56px -8px rgba(var(--ox-success-rgb),.22)}
+  100%{border-color:rgba(var(--ox-success-rgb),.22);
+       box-shadow:var(--ox-shadow),
+                  0 0 0 1px rgba(var(--ox-success-rgb),.05)}
+}
+.shell.done{animation:done-pulse 1.5s cubic-bezier(.16,1,.3,1) forwards}
 </style>
 </head>
 <body>
@@ -403,6 +460,7 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
   var LIVE_URL   = ${JSON.stringify(liveUrl ?? '')};
 
   /* ── DOM refs ── */
+  var shell      = document.querySelector('.shell');
   var ldot       = document.getElementById('ldot');
   var etext      = document.getElementById('etext');
   var heroTitle  = document.getElementById('heroTitle');
@@ -471,11 +529,19 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
     wbsCount.textContent = '';
     setProgress(2);
     showStack();
+    if (shell) { shell.classList.remove('streaming'); shell.classList.remove('done'); }
   }
   function animateIn(el) {
     requestAnimationFrame(function() {
       requestAnimationFrame(function() { el.classList.add('show'); });
     });
+  }
+  function flashItem(el) {
+    /* Brief teal glow + left-edge stripe on new rows */
+    el.classList.add('flash');
+    el.addEventListener('animationend', function() {
+      el.classList.remove('flash');
+    }, { once: true });
   }
 
   /* ── Entity builders ── */
@@ -536,6 +602,7 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
 
     target.appendChild(row);
     animateIn(row);
+    setTimeout(function() { flashItem(row); }, 60);
     curMsRow = row;
   }
 
@@ -551,6 +618,7 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
 
     target.appendChild(row);
     animateIn(row);
+    setTimeout(function() { flashItem(row); }, 60);
   }
 
   function addEntity(entityType, entity) {
@@ -576,6 +644,8 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
   function onEntityCreated(data) {
     entityCount++;
     totalExpected = data.total || totalExpected;
+    /* Start shell pulse on very first entity */
+    if (entityCount === 1 && shell) shell.classList.add('streaming');
     addEntity(data.entityType || 'task', data.entity || {});
     var pct = totalExpected > 0 ? 5 + (entityCount / totalExpected) * 85 : 50;
     setProgress(pct);
@@ -586,6 +656,8 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
     isDone = true;
     setProgress(100);
     if (curWsCard) curWsCard.classList.remove('active-receive');
+    /* Shell celebration: swap streaming pulse for success glow */
+    if (shell) { shell.classList.remove('streaming'); shell.classList.add('done'); }
     ldot.className = 'live-dot done';
     etext.textContent = 'INITIATIVE SCAFFOLDED';
     var total = data.totalEntities || entityCount;
