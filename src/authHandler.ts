@@ -89,6 +89,34 @@ async function serveLandingPage(
   return Response.redirect(new URL('/index.html', serverUrl).toString(), 302);
 }
 
+/** JSON Schema for optional Smithery connection configuration. */
+const SMITHERY_CONFIG_SCHEMA = {
+  type: 'object',
+  required: [],
+  additionalProperties: false,
+  properties: {
+    profile: {
+      type: 'string',
+      description:
+        'Optional tool profile to expose a narrower toolset at connection time. Defaults to full access.',
+      enum: ['full', 'commander', 'planner', 'executor', 'observer'],
+      default: 'full',
+    },
+    workspace_id: {
+      type: 'string',
+      format: 'uuid',
+      description:
+        'Optional default workspace UUID to seed MCP session context for routing and recommendations.',
+    },
+    initiative_id: {
+      type: 'string',
+      format: 'uuid',
+      description:
+        'Optional default initiative UUID to seed MCP session context for scoped workflows.',
+    },
+  },
+} as const;
+
 function buildDerivedServerCard(manifest: typeof serverManifest) {
   const publishedManifest = buildPublishedManifest(manifest);
   return {
@@ -102,6 +130,8 @@ function buildDerivedServerCard(manifest: typeof serverManifest) {
           schemes: [publishedManifest.auth.type],
         }
       : undefined,
+    /** Optional connection configuration exposed to Smithery and other MCP directories. */
+    configSchema: SMITHERY_CONFIG_SCHEMA,
     tools: (publishedManifest.tools ?? []).map((tool) => ({
       name: tool.name,
       description: tool.description,
