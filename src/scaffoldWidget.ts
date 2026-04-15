@@ -197,6 +197,60 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
   padding:10px 14px 14px;
 }
 
+/* ── Per-workstream progress ring ──────────────────────── */
+.ws-ring{
+  position:relative;width:28px;height:28px;flex-shrink:0;
+  margin-left:auto;  /* pushes ring to right of card header */
+}
+.ws-ring svg{
+  width:100%;height:100%;display:block;
+  transform:rotate(-90deg);
+}
+.ws-ring-track{
+  fill:none;
+  stroke:rgba(var(--ws-rgb,var(--ox-primary-rgb)),.14);
+  stroke-width:2.5;
+}
+.ws-ring-bar{
+  fill:none;
+  stroke:rgb(var(--ws-rgb,var(--ox-primary-rgb)));
+  stroke-width:2.5;stroke-linecap:round;
+  transition:stroke-dashoffset .3s ease,opacity .3s ease;
+}
+.ws-ring__val{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--ox-mono);font-size:.45rem;font-weight:700;
+  color:rgb(var(--ws-rgb,var(--ox-primary-rgb)));
+  letter-spacing:-.02em;
+}
+
+/* ── Agent avatar (workstream card) ────────────────────── */
+.ws-agent{
+  position:relative;width:30px;height:30px;flex-shrink:0;
+}
+.ws-avatar{
+  width:30px;height:30px;border-radius:9px;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(var(--ws-rgb,var(--ox-primary-rgb)),.12);
+  border:1px solid rgba(var(--ws-rgb,var(--ox-primary-rgb)),.22);
+  color:rgb(var(--ws-rgb,var(--ox-primary-rgb)));
+  font-family:var(--ox-mono);font-size:.7rem;font-weight:700;
+  box-shadow:0 8px 16px -12px rgba(var(--ws-rgb,var(--ox-primary-rgb)),.5),
+             inset 0 1px 0 rgba(255,255,255,.05);
+}
+.ws-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.ws-domain-badge{
+  position:absolute;right:-3px;bottom:-3px;
+  width:14px;height:14px;border-radius:999px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--ox-panel);
+  border:1px solid var(--ox-border);
+  color:rgb(var(--ws-rgb,var(--ox-primary-rgb)));
+  box-shadow:0 4px 8px -4px rgba(0,0,0,.5);
+}
+.ws-domain-badge svg{width:8px;height:8px}
+
 /* ── Workstream Card ───────────────────────────────────── */
 .ws-card{
   border-radius:12px;overflow:hidden;
@@ -286,28 +340,28 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
 .ms-icon{
   width:18px;height:18px;border-radius:5px;flex-shrink:0;margin-top:1px;
   display:inline-flex;align-items:center;justify-content:center;
-  font-family:var(--ox-mono);font-size:.58rem;font-weight:800;letter-spacing:0;
   background:rgba(var(--ox-warn-rgb),.14);
   border:1px solid rgba(var(--ox-warn-rgb),.24);
   color:var(--ox-warn);
   box-shadow:0 2px 6px -2px rgba(var(--ox-warn-rgb),.3);
 }
+.ms-icon svg{width:10px;height:10px}
 .ms-title{flex:1;min-width:0;font-size:11.5px;font-weight:500;color:var(--ox-text);line-height:1.4}
 
 /* ── Task Rows ─────────────────────────────────────────── */
 .task-row{
   display:flex;align-items:center;gap:7px;
-  padding:5px 12px 5px 20px;
+  padding:5px 12px 5px 16px;
   opacity:0;transform:translateX(-4px);
   transition:opacity .18s ease,transform .18s ease;
 }
 .task-row.show{opacity:1;transform:translateX(0)}
-.task-dot{
-  width:6px;height:6px;border-radius:50%;flex-shrink:0;
-  background:rgba(255,255,255,.22);
-  border:1px solid rgba(255,255,255,.1);
+.task-icon{
+  width:14px;height:14px;flex-shrink:0;
+  color:var(--ox-text-sub);
+  display:inline-flex;align-items:center;justify-content:center;
 }
-@media(prefers-color-scheme:light){.task-dot{background:rgba(0,0,0,.18);border-color:rgba(0,0,0,.08)}}
+.task-icon svg{width:12px;height:12px}
 .task-title{flex:1;min-width:0;font-size:11px;color:var(--ox-text-muted);line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ── Completion Banner ─────────────────────────────────── */
@@ -487,24 +541,68 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
   var es            = null;
 
   /* Current workstream card + its body element */
-  var curWsCard   = null; /* the .ws-card element currently receiving entities */
-  var curWsBody   = null; /* its .ws-body element */
-  var curMsRow    = null; /* last milestone row (unused for now but kept for future indent) */
+  var curWsCard      = null; /* the .ws-card element currently receiving entities */
+  var curWsBody      = null; /* its .ws-body element */
+  var curMsRow       = null; /* last milestone row */
+  var curWsRingBar   = null; /* <circle class="ws-ring-bar"> for current card */
+  var curWsRingVal   = null; /* .ws-ring__val text node */
+  var curWsEntityCount = 0; /* entities received into current workstream */
+  var WS_RING_R      = 11;  /* ring radius (px, viewBox 28×28 center at 14,14) */
+  var WS_RING_CIRC   = +(2 * Math.PI * WS_RING_R).toFixed(2);
+  var WS_RING_FULL   = 8;   /* treat 8 entities as "full" ring */
 
   /* Domain → CSS rgb variable name */
   var DOMAIN_RGB = {
-    engineering: '6,182,212',
-    product:     '22,163,74',
-    marketing:   '249,115,22',
-    design:      '236,72,153',
-    sales:       '168,85,247',
-    operations:  '245,158,11',
-    ops:         '245,158,11',
+    engineering:  '6,182,212',
+    product:      '22,163,74',
+    marketing:    '249,115,22',
+    design:       '236,72,153',
+    sales:        '168,85,247',
+    operations:   '245,158,11',
+    ops:          '245,158,11',
     orchestration:'0,201,167',
+  };
+
+  var ASSET_BASE = 'https://mcp.useorgx.com/widgets/shared/';
+  var DOMAIN_AVATAR = {
+    engineering:  ASSET_BASE + 'engineering_autopilot.png',
+    product:      ASSET_BASE + 'product_orchestrator.png',
+    marketing:    ASSET_BASE + 'launch_captain.png',
+    sales:        ASSET_BASE + 'pipeline_intelligence.png',
+    operations:   ASSET_BASE + 'control_tower.png',
+    ops:          ASSET_BASE + 'control_tower.png',
+    design:       ASSET_BASE + 'design_codex.png',
+    orchestration:ASSET_BASE + 'xandy_orchestrator.png',
   };
 
   function domainRgb(d) {
     return DOMAIN_RGB[(d||'').toLowerCase()] || '0,201,167';
+  }
+
+  /* ── SVG icon helpers ── */
+  function _svg(content, size) {
+    var s = typeof size === 'number' ? size + 'px' : (size || '1em');
+    return '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + content + '</svg>';
+  }
+  var DOMAIN_ICON = {
+    engineering:  function(){ return _svg('<polyline points="9 8 5 12 9 16"></polyline><polyline points="15 8 19 12 15 16"></polyline>', 9); },
+    product:      function(){ return _svg('<circle cx="12" cy="12" r="9" fill="currentColor" fill-opacity="0.1"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"></circle>', 9); },
+    marketing:    function(){ return _svg('<path d="M3 11v2"></path><path d="M6 10v4"></path><path d="M9 9v6"></path><path d="M9 10c5 0 8-4 8-4v12s-3-4-8-4"></path>', 9); },
+    design:       function(){ return _svg('<path d="m12 4 1.3 4.2L17.5 9.5l-4.2 1.3L12 15l-1.3-4.2L6.5 9.5l4.2-1.3z" fill="currentColor" stroke="none"></path>', 9); },
+    sales:        function(){ return _svg('<path d="M5 15 10 10 13 13 19 7"></path><path d="M15 7h4v4"></path>', 9); },
+    operations:   function(){ return _svg('<circle cx="12" cy="12" r="3"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>', 9); },
+  };
+  function domainIcon(d) {
+    var fn = DOMAIN_ICON[d] || DOMAIN_ICON['engineering'];
+    /* default: nodes icon */
+    if (!DOMAIN_ICON[d]) return _svg('<circle cx="6" cy="12" r="2" fill="currentColor" stroke="none"></circle><circle cx="18" cy="7" r="2" fill="currentColor" stroke="none"></circle><circle cx="18" cy="17" r="2" fill="currentColor" stroke="none"></circle><path d="M8 12h6"></path><path d="M16.2 8.3 12.8 11"></path><path d="M16.2 15.7 12.8 13"></path>', 9);
+    return fn();
+  }
+  function milestoneIcon() {
+    return _svg('<path d="M5 3v18"></path><path d="m5 4 12 1-2 4 2 4-12-1z" fill="currentColor" fill-opacity="0.15"></path>', 10);
+  }
+  function taskIcon() {
+    return _svg('<rect x="4" y="4" width="16" height="16" rx="4" fill="currentColor" fill-opacity="0.12"></rect><path d="M9 12.2 11 14.2 15.2 10"></path>', 12);
   }
 
   /* ── Helpers ── */
@@ -530,6 +628,9 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
     setProgress(2);
     showStack();
     if (shell) { shell.classList.remove('streaming'); shell.classList.remove('done'); }
+    curWsRingBar     = null;
+    curWsRingVal     = null;
+    curWsEntityCount = 0;
   }
   function animateIn(el) {
     requestAnimationFrame(function() {
@@ -542,6 +643,13 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
     el.addEventListener('animationend', function() {
       el.classList.remove('flash');
     }, { once: true });
+  }
+  function updateWsRing(fill100) {
+    if (!curWsRingBar) return;
+    var pct   = fill100 ? 1 : Math.min(1, curWsEntityCount / WS_RING_FULL);
+    var offset = +(WS_RING_CIRC * (1 - pct)).toFixed(2);
+    curWsRingBar.style.strokeDashoffset = offset;
+    if (curWsRingVal) curWsRingVal.textContent = Math.round(pct * 100) + '%';
   }
 
   /* ── Entity builders ── */
@@ -565,12 +673,29 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
     card.appendChild(accent);
 
     /* Header */
+    var avatarUrl = DOMAIN_AVATAR[domain] || '';
+    var initial   = label.charAt(0).toUpperCase() || '?';
+    var avatarImg = avatarUrl
+      ? '<img src="' + esc(avatarUrl) + '" alt="' + esc(label) + '" loading="lazy" onerror="this.style.display=&apos;none&apos;" />'
+      : esc(initial);
     var head = document.createElement('div');
     head.className = 'ws-head';
     head.innerHTML =
+      '<div class="ws-agent">' +
+        '<div class="ws-avatar">' + avatarImg + '</div>' +
+        '<div class="ws-domain-badge">' + domainIcon(domain) + '</div>' +
+      '</div>' +
       '<span class="ws-num">WS ' + wsCount + '</span>' +
       '<span class="ws-title">' + esc(label) + '</span>' +
-      (domain ? '<span class="ws-domain">' + esc(domain.toUpperCase()) + '</span>' : '');
+      (domain ? '<span class="ws-domain">' + esc(domain.toUpperCase()) + '</span>' : '') +
+      '<div class="ws-ring" aria-hidden="true">' +
+        '<svg viewBox="0 0 28 28">' +
+          '<circle class="ws-ring-track" cx="14" cy="14" r="' + WS_RING_R + '"></circle>' +
+          '<circle class="ws-ring-bar" cx="14" cy="14" r="' + WS_RING_R + '"' +
+            ' style="stroke-dasharray:' + WS_RING_CIRC + ';stroke-dashoffset:' + WS_RING_CIRC + ';"></circle>' +
+        '</svg>' +
+        '<div class="ws-ring__val">0%</div>' +
+      '</div>';
     card.appendChild(head);
 
     /* Body (milestones + tasks will go here) */
@@ -578,16 +703,22 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
     body.className = 'ws-body';
     card.appendChild(body);
 
-    /* Remove receive-pulse from previous card */
-    if (curWsCard) curWsCard.classList.remove('active-receive');
+    /* Complete the previous card's ring */
+    if (curWsCard) {
+      curWsCard.classList.remove('active-receive');
+      updateWsRing(true); /* fill to 100% */
+    }
 
     wsStack.appendChild(card);
     animateIn(card);
     card.classList.add('active-receive');
 
-    curWsCard = card;
-    curWsBody = body;
-    curMsRow  = null;
+    curWsCard        = card;
+    curWsBody        = body;
+    curMsRow         = null;
+    curWsEntityCount = 0;
+    curWsRingBar     = head.querySelector('.ws-ring-bar');
+    curWsRingVal     = head.querySelector('.ws-ring__val');
   }
 
   function addMilestone(entity) {
@@ -597,12 +728,14 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
     var row = document.createElement('div');
     row.className = 'ms-row';
     row.innerHTML =
-      '<span class="ms-icon">M</span>' +
+      '<span class="ms-icon">' + milestoneIcon() + '</span>' +
       '<span class="ms-title">' + esc(label) + '</span>';
 
     target.appendChild(row);
     animateIn(row);
     setTimeout(function() { flashItem(row); }, 60);
+    curWsEntityCount++;
+    updateWsRing(false);
     curMsRow = row;
   }
 
@@ -613,12 +746,14 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
     var row = document.createElement('div');
     row.className = 'task-row';
     row.innerHTML =
-      '<span class="task-dot"></span>' +
+      '<span class="task-icon">' + taskIcon() + '</span>' +
       '<span class="task-title">' + esc(label) + '</span>';
 
     target.appendChild(row);
     animateIn(row);
     setTimeout(function() { flashItem(row); }, 60);
+    curWsEntityCount++;
+    updateWsRing(false);
   }
 
   function addEntity(entityType, entity) {
@@ -655,7 +790,10 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
   function onComplete(data) {
     isDone = true;
     setProgress(100);
-    if (curWsCard) curWsCard.classList.remove('active-receive');
+    if (curWsCard) {
+      curWsCard.classList.remove('active-receive');
+      updateWsRing(true); /* fill last card's ring to 100% */
+    }
     /* Shell celebration: swap streaming pulse for success glow */
     if (shell) { shell.classList.remove('streaming'); shell.classList.add('done'); }
     ldot.className = 'live-dot done';
