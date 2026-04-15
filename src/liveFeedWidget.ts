@@ -134,12 +134,26 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
 
 /* ── Summary bar ── */
 .summary{
-  display:flex;gap:14px;flex-wrap:wrap;
+  display:flex;gap:8px;flex-wrap:wrap;
   margin-bottom:12px;padding-bottom:10px;
   border-bottom:1px solid var(--ox-border);
+  align-items:center;
 }
-.summary-item{font-size:11px;font-family:var(--ox-mono);color:var(--ox-text-muted)}
-.summary-item strong{color:var(--ox-text);font-weight:700}
+.sum-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:2px 8px;border-radius:999px;
+  font-family:var(--ox-mono);font-size:.6rem;font-weight:700;
+  letter-spacing:.04em;text-transform:uppercase;
+  white-space:nowrap;
+}
+.sum-badge.running{background:rgba(6,182,212,.12);color:rgb(6,182,212);border:1px solid rgba(6,182,212,.22)}
+.sum-badge.queued{background:rgba(168,85,247,.12);color:rgb(168,85,247);border:1px solid rgba(168,85,247,.22)}
+.sum-badge.blocked{background:rgba(245,158,11,.12);color:rgb(245,158,11);border:1px solid rgba(245,158,11,.22)}
+.sum-badge.idle{background:rgba(255,255,255,.06);color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.1)}
+@media(prefers-color-scheme:light){
+  .sum-badge.idle{background:rgba(0,0,0,.04);color:#94a3b8;border:1px solid rgba(0,0,0,.08)}
+}
+.sum-badge .sum-dot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
 
 /* ── Agent list ── */
 .agents{display:flex;flex-direction:column;gap:6px}
@@ -153,12 +167,19 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
 }
 .agent-row:hover{background:rgba(var(--ox-primary-rgb),.04);border-color:rgba(var(--ox-primary-rgb),.12)}
 
-/* Domain avatar (letter icon) */
+/* ── Agent presence: 34×34 container with domain badge ── */
+.av-wrap{
+  position:relative;width:34px;height:34px;flex-shrink:0;
+}
 .av{
-  width:32px;height:32px;border-radius:9px;
+  width:34px;height:34px;border-radius:9px;
   display:inline-flex;align-items:center;justify-content:center;
-  flex-shrink:0;font-family:var(--ox-mono);font-size:.65rem;font-weight:700;
+  font-family:var(--ox-mono);font-size:.65rem;font-weight:700;
   text-transform:uppercase;letter-spacing:.02em;
+  overflow:hidden;
+}
+.av img{
+  width:100%;height:100%;object-fit:cover;border-radius:9px;display:block;
 }
 /* Domain color variants */
 .av-engineering{background:rgba(6,182,212,.12);border:1px solid rgba(6,182,212,.2);color:rgb(6,182,212)}
@@ -170,9 +191,31 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
 .av-orchestration{background:rgba(0,201,167,.12);border:1px solid rgba(0,201,167,.2);color:rgb(0,201,167)}
 .av-default{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.45)}
 
+/* Domain badge chip: 14×14, bottom-right of av-wrap */
+.domain-badge{
+  position:absolute;bottom:-3px;right:-3px;
+  width:14px;height:14px;border-radius:4px;
+  display:flex;align-items:center;justify-content:center;
+  border:1.5px solid var(--ox-bg);
+  z-index:1;
+}
+.domain-badge svg{width:8px;height:8px;display:block}
+.domain-badge.engineering{background:rgb(6,182,212);color:#fff}
+.domain-badge.product{background:rgb(22,163,74);color:#fff}
+.domain-badge.marketing{background:rgb(249,115,22);color:#fff}
+.domain-badge.design{background:rgb(236,72,153);color:#fff}
+.domain-badge.sales{background:rgb(168,85,247);color:#fff}
+.domain-badge.operations{background:rgb(245,158,11);color:#fff}
+.domain-badge.orchestration,.domain-badge.default{background:rgb(0,201,167);color:#fff}
+
 .agent-body{flex:1;min-width:0}
 .agent-name{font-weight:600;font-size:12px;color:var(--ox-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .agent-task{font-size:11px;color:var(--ox-text-muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.agent-workstream{
+  font-size:10px;font-family:var(--ox-mono);color:var(--ox-text-muted);
+  opacity:.6;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  letter-spacing:.02em;
+}
 
 /* Status pill */
 .s-pill{
@@ -192,6 +235,29 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
 
 /* ── Initiative pulse ── */
 .pulse-title{font-size:13px;font-weight:600;color:var(--ox-text);letter-spacing:-.01em;margin-bottom:12px;line-height:1.35}
+
+/* Radial progress ring */
+.ring-wrap{
+  display:flex;align-items:center;justify-content:center;
+  position:relative;width:36px;height:36px;flex-shrink:0;
+}
+.ring-wrap svg{display:block}
+.ring-track{fill:none;stroke:rgba(255,255,255,.08);stroke-width:2.5}
+.ring-fill{
+  fill:none;stroke-width:2.5;stroke-linecap:round;
+  stroke:rgb(var(--progress-rgb,0,201,167));
+  transition:stroke-dashoffset 180ms ease;
+  transform-origin:center;transform:rotate(-90deg);
+}
+.ring-label{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:var(--ox-mono);font-size:.52rem;font-weight:700;
+  color:var(--ox-text);letter-spacing:-.01em;line-height:1;
+}
+@media(prefers-color-scheme:light){
+  .ring-track{stroke:rgba(0,0,0,.08)}
+}
+
 .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px}
 .stat-card{
   padding:12px 14px;border-radius:var(--r);
@@ -220,6 +286,21 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
   box-shadow:0 0 8px rgba(var(--ox-primary-rgb),.5);
 }
 
+/* Status badge with icon (health indicator) */
+.health-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 9px;border-radius:6px;
+  font-family:var(--ox-mono);font-size:.6rem;font-weight:700;
+  letter-spacing:.05em;text-transform:uppercase;margin-top:6px;
+}
+.health-badge svg{width:10px;height:10px;display:block;flex-shrink:0}
+.health-active{background:rgba(34,197,94,.1);color:rgb(34,197,94);border:1px solid rgba(34,197,94,.2)}
+.health-running{background:rgba(6,182,212,.1);color:rgb(6,182,212);border:1px solid rgba(6,182,212,.2)}
+.health-paused,.health-pending{background:rgba(245,158,11,.1);color:rgb(245,158,11);border:1px solid rgba(245,158,11,.2)}
+.health-blocked,.health-at_risk{background:rgba(244,63,94,.1);color:rgb(244,63,94);border:1px solid rgba(244,63,94,.2)}
+.health-done,.health-completed{background:rgba(34,197,94,.1);color:rgb(34,197,94);border:1px solid rgba(34,197,94,.2)}
+.health-default{background:rgba(255,255,255,.06);color:rgba(255,255,255,.38);border:1px solid rgba(255,255,255,.1)}
+
 /* Risk level badge */
 .risk-badge{
   display:inline-flex;align-items:center;gap:5px;
@@ -230,6 +311,42 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
 .risk-low{background:rgba(34,197,94,.1);color:rgb(34,197,94);border:1px solid rgba(34,197,94,.2)}
 .risk-medium{background:rgba(245,158,11,.1);color:rgb(245,158,11);border:1px solid rgba(245,158,11,.2)}
 .risk-high{background:rgba(244,63,94,.1);color:rgb(244,63,94);border:1px solid rgba(244,63,94,.2)}
+
+/* ── Workstream breakdown ── */
+.ws-section{margin-top:12px;padding-top:10px;border-top:1px solid var(--ox-border)}
+.ws-section-label{
+  font-family:var(--ox-mono);font-size:.58rem;font-weight:700;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--ox-text-muted);
+  margin-bottom:8px;
+}
+.ws-list{display:flex;flex-direction:column;gap:5px}
+.ws-row{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 10px;border-radius:8px;
+  border:1px solid var(--ox-border);
+  background:rgba(255,255,255,.015);
+}
+.ws-accent{
+  width:3px;border-radius:2px;align-self:stretch;flex-shrink:0;min-height:16px;
+}
+.ws-name{
+  flex:1;min-width:0;font-size:11px;font-weight:500;color:var(--ox-text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.ws-status-badge{
+  font-family:var(--ox-mono);font-size:.55rem;font-weight:700;
+  letter-spacing:.04em;text-transform:uppercase;
+  padding:2px 6px;border-radius:999px;white-space:nowrap;flex-shrink:0;
+}
+.ws-status-badge.running{background:rgba(6,182,212,.12);color:rgb(6,182,212)}
+.ws-status-badge.done,.ws-status-badge.completed{background:rgba(34,197,94,.12);color:rgb(34,197,94)}
+.ws-status-badge.blocked,.ws-status-badge.at_risk{background:rgba(244,63,94,.12);color:rgb(244,63,94)}
+.ws-status-badge.queued,.ws-status-badge.pending{background:rgba(168,85,247,.12);color:rgb(168,85,247)}
+.ws-status-badge.default{background:rgba(255,255,255,.06);color:rgba(255,255,255,.38)}
+.ws-mini-bar{
+  width:40px;height:3px;background:var(--ox-border);border-radius:2px;overflow:hidden;flex-shrink:0;
+}
+.ws-mini-fill{height:100%;border-radius:2px;transition:width .3s ease}
 
 /* ── Footer ── */
 .footer{
@@ -284,6 +401,7 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
   var FEED_TYPE  = ${JSON.stringify(feedType)};
   var STREAM_URL = ${JSON.stringify(streamUrl)};
   var LIVE_URL   = ${JSON.stringify(liveUrl ?? '')};
+  var IMG_BASE   = 'https://mcp.useorgx.com/widgets/shared/';
 
   var ldot       = document.getElementById('ldot');
   var connLabel  = document.getElementById('connLabel');
@@ -301,7 +419,7 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
   function esc(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
-  function domainClass(d) {
+  function domainKey(d) {
     var domain = (d || '').toLowerCase().replace(/[^a-z]/g, '');
     var valid = ['engineering','product','marketing','design','sales','operations','ops','orchestration'];
     return valid.indexOf(domain) !== -1 ? domain : 'default';
@@ -309,6 +427,111 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
   function domainInitial(name, domain) {
     if (domain) return domain.slice(0,2).toUpperCase();
     return (name || '?').slice(0,2).toUpperCase();
+  }
+
+  /* ── Domain → avatar image filename ── */
+  function domainAvatarImg(domain) {
+    var map = {
+      engineering: 'engineering_autopilot.png',
+      product: 'product_orchestrator.png',
+      marketing: 'launch_captain.png',
+      sales: 'pipeline_intelligence.png',
+      operations: 'control_tower.png',
+      design: 'design_codex.png',
+      orchestration: 'xandy_orchestrator.png',
+      ops: 'control_tower.png'
+    };
+    return map[domain] || 'xandy_orchestrator.png';
+  }
+
+  /* ── Domain badge SVG icons ── */
+  function domainBadgeSvg(domain) {
+    var icons = {
+      engineering: '<polyline points="9 8 5 12 9 16"></polyline><polyline points="15 8 19 12 15 16"></polyline>',
+      product: '<circle cx="12" cy="12" r="9" fill="currentColor" fill-opacity="0.1"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"></circle>',
+      marketing: '<path d="M3 11v2"></path><path d="M6 10v4"></path><path d="M9 9v6"></path><path d="M9 10c5 0 8-4 8-4v12s-3-4-8-4"></path>',
+      design: '<path d="m12 4 1.3 4.2L17.5 9.5l-4.2 1.3L12 15l-1.3-4.2L6.5 9.5l4.2-1.3z" fill="currentColor" stroke="none"></path>',
+      sales: '<path d="M5 15 10 10 13 13 19 7"></path><path d="M15 7h4v4"></path>',
+      operations: '<circle cx="12" cy="12" r="3"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>',
+      default: '<circle cx="6" cy="12" r="2" fill="currentColor" stroke="none"></circle><circle cx="18" cy="7" r="2" fill="currentColor" stroke="none"></circle><circle cx="18" cy="17" r="2" fill="currentColor" stroke="none"></circle><path d="M8 12h6"></path><path d="M16.2 8.3 12.8 11"></path><path d="M16.2 15.7 12.8 13"></path>'
+    };
+    return icons[domain] || icons['default'];
+  }
+
+  /* ── Build agent presence HTML (avatar + badge) ── */
+  function buildAvatar(domain, name) {
+    var cls = domainKey(domain);
+    var badgeCls = (cls === 'ops') ? 'operations' : cls;
+    var imgFile = domainAvatarImg(cls);
+    var initial = esc(domainInitial(name, domain));
+    var badgeSvg = domainBadgeSvg(badgeCls);
+    var imgSrc = esc(IMG_BASE + imgFile);
+    return (
+      '<div class="av-wrap">' +
+        '<div class="av av-' + cls + '">' +
+          '<img src="' + imgSrc + '" alt="" onerror="this.style.display=&apos;none&apos;" />' +
+          initial +
+        '</div>' +
+        '<div class="domain-badge ' + badgeCls + '">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
+            badgeSvg +
+          '</svg>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  /* ── Domain RGB helper for workstream accents ── */
+  function domainRgb(domain) {
+    var map = {
+      engineering:'6,182,212',
+      product:'22,163,74',
+      marketing:'249,115,22',
+      design:'236,72,153',
+      sales:'168,85,247',
+      operations:'245,158,11',
+      ops:'245,158,11',
+      orchestration:'0,201,167'
+    };
+    return map[(domain||'').toLowerCase()] || '0,201,167';
+  }
+
+  /* ── Health badge for initiative status ── */
+  function healthBadge(status) {
+    var s = (status || '').toLowerCase().replace(/[^a-z_]/g,'');
+    var icons = {
+      active:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor" stroke="none"></polygon></svg>',
+      running:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor" stroke="none"></polygon></svg>',
+      paused:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 8 8 12 12 16"></polyline><line x1="16" y1="12" x2="8" y2="12"></line></svg>',
+      pending:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 8 12 12 14 14"></polyline></svg>',
+      blocked:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>',
+      at_risk:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
+      done:       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
+      completed:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>'
+    };
+    var cls = 'health-' + (icons[s] ? s : 'default');
+    var icon = icons[s] || '';
+    return '<div class="health-badge ' + cls + '">' + icon + esc(status || '—') + '</div>';
+  }
+
+  /* ── Radial progress ring ── */
+  function buildRing(pct, rgb) {
+    var r = 14;
+    var circ = 2 * Math.PI * r; // ≈ 87.96
+    var offset = circ * (1 - Math.min(Math.max(pct, 0), 100) / 100);
+    return (
+      '<div class="ring-wrap">' +
+        '<svg width="36" height="36" viewBox="0 0 36 36">' +
+          '<circle class="ring-track" cx="18" cy="18" r="' + r + '"></circle>' +
+          '<circle class="ring-fill" cx="18" cy="18" r="' + r + '"' +
+            ' stroke-dasharray="' + circ.toFixed(2) + '"' +
+            ' stroke-dashoffset="' + offset.toFixed(2) + '"' +
+            ' style="--progress-rgb:' + (rgb || '0,201,167') + '">' +
+          '</circle>' +
+        '</svg>' +
+        '<div class="ring-label">' + pct + '%</div>' +
+      '</div>'
+    );
   }
 
   /* ── Agent status renderer ── */
@@ -322,29 +545,33 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
 
     var parts = [];
 
-    /* Summary bar */
+    /* Summary bar — colored count badges */
     var sumParts = [];
-    if (summary.running) sumParts.push('<span class="summary-item"><strong>' + summary.running + '</strong> running</span>');
-    if (summary.queued)  sumParts.push('<span class="summary-item"><strong>' + summary.queued  + '</strong> queued</span>');
-    if (summary.blocked) sumParts.push('<span class="summary-item"><strong>' + summary.blocked + '</strong> blocked</span>');
-    if (summary.idle)    sumParts.push('<span class="summary-item"><strong>' + summary.idle    + '</strong> idle</span>');
+    if (summary.running) sumParts.push('<span class="sum-badge running"><span class="sum-dot"></span>' + summary.running + ' running</span>');
+    if (summary.queued)  sumParts.push('<span class="sum-badge queued"><span class="sum-dot"></span>' + summary.queued  + ' queued</span>');
+    if (summary.blocked) sumParts.push('<span class="sum-badge blocked"><span class="sum-dot"></span>' + summary.blocked + ' blocked</span>');
+    if (summary.idle)    sumParts.push('<span class="sum-badge idle">' + summary.idle + ' idle</span>');
     if (sumParts.length) parts.push('<div class="summary">' + sumParts.join('') + '</div>');
 
     /* Agent rows */
     parts.push('<div class="agents">');
     agents.forEach(function(a) {
       var domain  = (a.domain || '').toLowerCase();
-      var cls     = domainClass(domain);
-      var initial = domainInitial(a.name || a.id, domain);
       var status  = (a.status || 'idle').toLowerCase();
       var pill    = '<span class="s-pill s-' + esc(status) + '"><span class="s-dot"></span>' + esc(a.status || 'idle') + '</span>';
+      var avatar  = buildAvatar(domain, a.name || a.id);
 
       parts.push(
         '<div class="agent-row">' +
-        '<div class="av av-' + cls + '">' + esc(initial) + '</div>' +
+        avatar +
         '<div class="agent-body">' +
-        '<div class="agent-name">' + esc(a.name || a.id) + '</div>' +
-        (a.currentTask ? '<div class="agent-task">' + esc(a.currentTask) + '</div>' : '<div class="agent-task" style="font-style:italic;opacity:.6">—</div>') +
+          '<div class="agent-name">' + esc(a.name || a.id) + '</div>' +
+          (a.currentTask
+            ? '<div class="agent-task">' + esc(a.currentTask) + '</div>'
+            : '<div class="agent-task" style="font-style:italic;opacity:.6">—</div>') +
+          (a.workstream
+            ? '<div class="agent-workstream">' + esc(a.workstream) + '</div>'
+            : '') +
         '</div>' +
         pill +
         '</div>'
@@ -363,10 +590,11 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
     }
 
     var pct     = Math.round(initiative.progress || initiative.progress_pct || 0);
-    var status  = esc(initiative.status || '—');
+    var status  = initiative.status || '—';
     var risk    = (initiative.risk_level || 'low').toLowerCase();
     var wsTotal = initiative.workstreamCount || initiative.activeWorkstreams || 0;
     var activeRuns = initiative.activeRuns || 0;
+    var streams = initiative.workstreams || initiative.streams || [];
 
     var parts = [];
 
@@ -376,21 +604,26 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
 
     parts.push('<div class="stat-grid">');
 
-    /* Progress card */
+    /* Progress card — with radial ring */
     parts.push(
       '<div class="stat-card">' +
-      '<div class="stat-label">Progress</div>' +
-      '<div class="stat-value">' + pct + '%</div>' +
-      '<div class="prog-bar"><div class="prog-fill" style="width:' + pct + '%"></div></div>' +
+        '<div class="stat-label">Progress</div>' +
+        '<div style="display:flex;align-items:center;gap:10px;margin-top:4px">' +
+          buildRing(pct, '0,201,167') +
+          '<div>' +
+            '<div class="stat-value" style="font-size:1.2rem">' + pct + '%</div>' +
+            '<div class="prog-bar" style="width:64px;margin-top:6px"><div class="prog-fill" style="width:' + pct + '%"></div></div>' +
+          '</div>' +
+        '</div>' +
       '</div>'
     );
 
-    /* Status card */
+    /* Status card — health indicator badge */
     parts.push(
       '<div class="stat-card">' +
-      '<div class="stat-label">Status</div>' +
-      '<div class="stat-value" style="font-size:1rem;margin-top:4px">' + status + '</div>' +
-      '<div class="risk-badge risk-' + esc(risk) + '">' + esc(risk) + ' risk</div>' +
+        '<div class="stat-label">Status</div>' +
+        healthBadge(status) +
+        '<div class="risk-badge risk-' + esc(risk) + '" style="margin-top:6px">' + esc(risk) + ' risk</div>' +
       '</div>'
     );
 
@@ -398,9 +631,9 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
     if (wsTotal > 0) {
       parts.push(
         '<div class="stat-card">' +
-        '<div class="stat-label">Workstreams</div>' +
-        '<div class="stat-value">' + wsTotal + '</div>' +
-        '<div class="stat-sub">active</div>' +
+          '<div class="stat-label">Workstreams</div>' +
+          '<div class="stat-value">' + wsTotal + '</div>' +
+          '<div class="stat-sub">active</div>' +
         '</div>'
       );
     }
@@ -409,14 +642,37 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
     if (activeRuns > 0) {
       parts.push(
         '<div class="stat-card">' +
-        '<div class="stat-label">Active Runs</div>' +
-        '<div class="stat-value">' + activeRuns + '</div>' +
-        '<div class="stat-sub">in flight</div>' +
+          '<div class="stat-label">Active Runs</div>' +
+          '<div class="stat-value">' + activeRuns + '</div>' +
+          '<div class="stat-sub">in flight</div>' +
         '</div>'
       );
     }
 
     parts.push('</div>');
+
+    /* Workstream breakdown section */
+    if (streams && streams.length > 0) {
+      parts.push('<div class="ws-section"><div class="ws-section-label">Workstreams</div><div class="ws-list">');
+      streams.forEach(function(ws) {
+        var wsDomain = (ws.domain || 'orchestration').toLowerCase();
+        var wsRgb = domainRgb(wsDomain);
+        var wsPct = Math.round(ws.progress || ws.progress_pct || 0);
+        var wsStatus = (ws.status || 'pending').toLowerCase().replace(/\s+/g,'_');
+        var wsStatusDisplay = wsStatus.replace(/_/g,' ');
+        var wsBadgeCls = ['running','done','completed','blocked','at_risk','queued','pending'].indexOf(wsStatus) !== -1 ? wsStatus : 'default';
+        parts.push(
+          '<div class="ws-row">' +
+            '<div class="ws-accent" style="background:rgb(' + wsRgb + ')"></div>' +
+            '<div class="ws-name">' + esc(ws.name || ws.title || 'Workstream') + '</div>' +
+            '<span class="ws-status-badge ' + wsBadgeCls + '">' + esc(wsStatusDisplay) + '</span>' +
+            '<div class="ws-mini-bar"><div class="ws-mini-fill" style="width:' + wsPct + '%;background:rgb(' + wsRgb + ')"></div></div>' +
+          '</div>'
+        );
+      });
+      parts.push('</div></div>');
+    }
+
     contentEl.innerHTML = parts.join('');
   }
 
@@ -439,7 +695,7 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
   function connect() {
     if (es) { try { es.close(); } catch(_) {} }
     var url = STREAM_URL + (lastTs ? '&since=' + lastTs : '');
-    connLabel.textContent = 'Connecting…';
+    connLabel.textContent = 'Connecting\u2026';
     es = new EventSource(url);
 
     es.onopen = function() {
@@ -466,7 +722,7 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
       try { es.close(); } catch(_) {}
       ldot.className = 'live-dot error';
       var wait = Math.round(retryDelay / 1000);
-      connLabel.textContent = 'Reconnecting in ' + wait + 's…';
+      connLabel.textContent = 'Reconnecting in ' + wait + 's\u2026';
       setTimeout(connect, retryDelay);
       retryDelay = Math.min(retryDelay * 2, 30000);
     };

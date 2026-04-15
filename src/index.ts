@@ -6501,14 +6501,20 @@ export class OrgXMcp extends McpAgent<
 
 
               // Build streaming widget for MCP Apps (Claude.ai, ChatGPT)
-              const _scaffoldWidgetHtml = scaffold_stream_url
-                ? buildScaffoldWidget({
+              // Wrapped in try/catch: a widget build failure must never kill the tool response
+              let _scaffoldWidgetHtml: string | null = null;
+              if (scaffold_stream_url) {
+                try {
+                  _scaffoldWidgetHtml = buildScaffoldWidget({
                     sessionId: scaffold_session_id!,
                     streamBaseUrl: this.env.MCP_SERVER_URL,
                     initiativeTitle: typeof args.title === 'string' ? args.title : undefined,
                     liveUrl: liveUrl ?? undefined,
-                  })
-                : null;
+                  });
+                } catch (_widgetErr) {
+                  // Widget failed silently — CLI fallback still returned below
+                }
+              }
 
               // CLI/API fallback: plain-text summary for clients that don't render HTML
               const _cliFallback = [

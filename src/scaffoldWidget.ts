@@ -305,6 +305,7 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
   padding:9px 12px 8px;position:relative;z-index:1;
 }
 .ws-num{
+  display:inline-flex;align-items:center;gap:4px;
   font-family:var(--ox-mono);font-size:.58rem;font-weight:700;
   letter-spacing:.08em;text-transform:uppercase;
   padding:2px 7px;border-radius:999px;
@@ -313,6 +314,7 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
   color:rgb(var(--ws-rgb,var(--ox-primary-rgb)));
   flex-shrink:0;white-space:nowrap;
 }
+.ws-num svg{opacity:.8}
 .ws-title{
   flex:1;min-width:0;
   font-size:12px;font-weight:600;color:var(--ox-text);
@@ -454,6 +456,7 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
   <div class="hero">
     <div class="eyebrow">
       <div class="live-dot" id="ldot"></div>
+      <svg width="11px" height="11px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--ox-primary);opacity:.7;flex-shrink:0"><circle cx="12" cy="12" r="9" fill="currentColor" fill-opacity="0.1"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"></circle></svg>
       <span id="etext">INITIATIVE SCAFFOLDED</span>
     </div>
     <div class="hero-title" id="heroTitle">${title}</div>
@@ -604,6 +607,12 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
   function taskIcon() {
     return _svg('<rect x="4" y="4" width="16" height="16" rx="4" fill="currentColor" fill-opacity="0.12"></rect><path d="M9 12.2 11 14.2 15.2 10"></path>', 12);
   }
+  function initiativeIcon(s) {
+    return _svg('<circle cx="12" cy="12" r="9" fill="currentColor" fill-opacity="0.1"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"></circle>', s || 14);
+  }
+  function workstreamIcon(s) {
+    return _svg('<rect x="2" y="2" width="20" height="20" rx="6" fill="currentColor" fill-opacity="0.1" stroke="none"></rect><path d="M6 6c3 0 5 6 8 6"></path><path d="M6 18c3 0 5-6 8-6"></path><path d="M6 12h12"></path><path d="m14 8 4 4-4 4"></path><circle cx="6" cy="6" r="1.5" fill="currentColor" stroke="none"></circle><circle cx="6" cy="12" r="1.5" fill="currentColor" stroke="none"></circle><circle cx="6" cy="18" r="1.5" fill="currentColor" stroke="none"></circle>', s || 13);
+  }
 
   /* ── Helpers ── */
   function esc(s) {
@@ -685,7 +694,7 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
         '<div class="ws-avatar">' + avatarImg + '</div>' +
         '<div class="ws-domain-badge">' + domainIcon(domain) + '</div>' +
       '</div>' +
-      '<span class="ws-num">WS ' + wsCount + '</span>' +
+      '<span class="ws-num">' + workstreamIcon(9) + ' WS ' + wsCount + '</span>' +
       '<span class="ws-title">' + esc(label) + '</span>' +
       (domain ? '<span class="ws-domain">' + esc(domain.toUpperCase()) + '</span>' : '') +
       '<div class="ws-ring" aria-hidden="true">' +
