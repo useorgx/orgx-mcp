@@ -433,6 +433,9 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
 }
 .foot-link:hover{background:rgba(var(--ox-primary-rgb),.14);border-color:rgba(var(--ox-primary-rgb),.32)}
 
+/* ── Link bridge: button resets so data-oxhref buttons look like links ── */
+button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:pointer;text-align:left}
+
 /* ── Error state ───────────────────────────────────────── */
 .err-banner{
   display:none;margin:0 14px 12px;padding:10px 14px;border-radius:8px;
@@ -527,7 +530,7 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
   <div class="foot">
     <span class="foot-meta" id="footMeta">SYNCING…</span>
     ${safeLiveUrl
-      ? `<a class="foot-link" href="${safeLiveUrl}" target="_blank" rel="noopener">Open Live View ↗</a>`
+      ? `<button class="foot-link" data-oxhref="${safeLiveUrl}">Open Live View ↗</button>`
       : '<span id="footLinkSlot"></span>'}
   </div>
 </div>
@@ -537,6 +540,23 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
   var SESSION_ID = ${JSON.stringify(sessionId)};
   var STREAM_URL = ${JSON.stringify(streamUrl)};
   var LIVE_URL   = ${JSON.stringify(liveUrl ?? '')};
+
+  /* ── External link bridge (ui/open-link postMessage for Claude.ai sandbox) ── */
+  function openExtLink(url) {
+    if (!url) return;
+    try {
+      window.parent.postMessage(
+        { jsonrpc:'2.0', method:'ui/open-link', params:{ url:url }, id:Date.now() },
+        '*'
+      );
+    } catch(_) {}
+    /* Fallback for non-sandboxed contexts (gallery, standalone browser) */
+    try { window.open(url, '_blank', 'noopener,noreferrer'); } catch(_) {}
+  }
+  document.addEventListener('click', function(e) {
+    var el = e.target && e.target.closest ? e.target.closest('[data-oxhref]') : null;
+    if (el) { e.preventDefault(); openExtLink(el.getAttribute('data-oxhref')); }
+  });
 
   /* ── DOM refs ── */
   var shell      = document.querySelector('.shell');
@@ -838,19 +858,21 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
     bannerTitle.textContent = total + ' entities created successfully';
     var liveLink = data.liveUrl || LIVE_URL;
     if (liveLink) {
-      bannerSub.innerHTML = '<a class="banner-link" href="' + esc(liveLink) + '" target="_blank" rel="noopener">Open live view ↗</a>';
+      var bl = document.createElement('button');
+      bl.className = 'banner-link';
+      bl.setAttribute('data-oxhref', liveLink);
+      bl.textContent = 'Open live view ↗';
+      bannerSub.appendChild(bl);
     }
     banner.classList.add('show');
 
     /* Inject footer link if not already hardcoded */
     if (footLinkSlot && liveLink) {
-      var a = document.createElement('a');
-      a.className = 'foot-link';
-      a.href = liveLink;
-      a.target = '_blank';
-      a.rel = 'noopener';
-      a.textContent = 'Open Live View ↗';
-      footLinkSlot.replaceWith(a);
+      var btn = document.createElement('button');
+      btn.className = 'foot-link';
+      btn.setAttribute('data-oxhref', liveLink);
+      btn.textContent = 'Open Live View ↗';
+      footLinkSlot.replaceWith(btn);
       footLinkSlot = null;
     }
 
