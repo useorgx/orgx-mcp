@@ -1,0 +1,41 @@
+# OrgX MCP — Smithery connection configuration
+# Smithery reads this to surface optional connection parameters in its UI.
+# The server itself reads these as MCP session props (profile, workspace_id, initiative_id).
+#
+# Auth: OAuth 2.0 with PKCE (handled by Claude.ai / Smithery OAuth flow).
+# Endpoint: https://mcp.useorgx.com/mcp (Streamable HTTP)
+
+startCommand:
+  type: http
+  configSchema:
+    type: object
+    required: []
+    additionalProperties: false
+    properties:
+      profile:
+        type: string
+        description: >
+          Optional tool profile to expose a narrower toolset at connection time.
+          Defaults to full access.
+          - full: all tools (default)
+          - commander: decision + initiative tools only
+          - planner: planning + scaffold tools only
+          - executor: task execution tools only
+          - observer: read-only monitoring tools only
+        enum:
+          - full
+          - commander
+          - planner
+          - executor
+          - observer
+        default: full
+      workspace_id:
+        type: string
+        description: >
+          Optional default workspace UUID to seed MCP session context for
+          routing and recommendations. Leave blank to use your primary workspace.
+      initiative_id:
+        type: string
+        description: >
+          Optional default initiative UUID to scope workflows to a specific
+          initiative at connection time. Leave blank for org-wide access.
