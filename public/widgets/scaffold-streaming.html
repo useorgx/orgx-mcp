@@ -1,37 +1,9 @@
-/**
- * scaffoldWidget.ts — self-contained HTML widget for real-time scaffold streaming.
- *
- * Matches the production scaffolded-initiative.html visual language:
- *  - Dark-first design with teal primary
- *  - Card-based workstream layout (not flat dot-list)
- *  - Domain-colored card accents
- *  - WS count badges, milestone type icons, status pills
- *  - Agent avatar placeholders
- *  - WORK BREAKDOWN STRUCTURE section header
- *  - SYNCED footer with Open Live View link
- *  - Skeleton shimmer while connecting
- *  - Celebration state on scaffold.complete
- */
-
-export interface ScaffoldWidgetOptions {
-  sessionId: string;
-  streamBaseUrl: string; // e.g. https://mcp.useorgx.com
-  initiativeTitle?: string;
-  liveUrl?: string;
-}
-
-export function buildScaffoldWidget(opts: ScaffoldWidgetOptions): string {
-  const { sessionId, streamBaseUrl, initiativeTitle, liveUrl } = opts;
-  const streamUrl = `${streamBaseUrl}/scaffold/${encodeURIComponent(sessionId)}/stream`;
-  const title = initiativeTitle ? escapeHtml(initiativeTitle) : 'Building initiative…';
-  const safeLiveUrl = liveUrl ? escapeHtml(liveUrl) : '';
-
-  return `<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>${title}</title>
+<title>Operation Prism: Real-Time MCP Widgets</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
@@ -481,7 +453,7 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
       <svg width="11px" height="11px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--ox-primary);opacity:.7;flex-shrink:0"><circle cx="12" cy="12" r="9" fill="currentColor" fill-opacity="0.1"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"></circle></svg>
       <span id="etext">INITIATIVE SCAFFOLDED</span>
     </div>
-    <div class="hero-title" id="heroTitle">${title}</div>
+    <div class="hero-title" id="heroTitle">Operation Prism: Real-Time MCP Widgets</div>
     <div class="hero-meta">
       <span class="status-pill" id="statusPill">
         <span class="s-dot"></span>
@@ -526,17 +498,15 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
   <!-- Footer -->
   <div class="foot">
     <span class="foot-meta" id="footMeta">SYNCING…</span>
-    ${safeLiveUrl
-      ? `<a class="foot-link" href="${safeLiveUrl}" target="_blank" rel="noopener">Open Live View ↗</a>`
-      : '<span id="footLinkSlot"></span>'}
+    <a class="foot-link" href="https://useorgx.com/live/07f49477-6807-449c-b46c-5bc71a1219da" target="_blank" rel="noopener">Open Live View ↗</a>
   </div>
 </div>
 
 <script>
 (function(){
-  var SESSION_ID = ${JSON.stringify(sessionId)};
-  var STREAM_URL = ${JSON.stringify(streamUrl)};
-  var LIVE_URL   = ${JSON.stringify(liveUrl ?? '')};
+  var SESSION_ID = "demo-session";
+  var STREAM_URL = "https://mcp.useorgx.com/scaffold/demo-session/stream";
+  var LIVE_URL   = "https://useorgx.com/live/07f49477-6807-449c-b46c-5bc71a1219da";
 
   /* ── DOM refs ── */
   var shell      = document.querySelector('.shell');
@@ -940,7 +910,7 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
     var DELAYS = [500,200,450,380,360,360,360,500,420,360,360,360,500,420,360,360,360,900];
     var idx = 0;
     ldot.className = 'live-dot';
-    statusText.textContent = 'BUILDING\u2026';
+    statusText.textContent = 'BUILDING…';
     footMeta.textContent = 'LIVE';
     function fireNext() {
       if (idx >= DEMO.length) return;
@@ -957,13 +927,4 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
 })();
 </script>
 </body>
-</html>`;
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+</html>

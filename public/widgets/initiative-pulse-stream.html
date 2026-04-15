@@ -1,43 +1,9 @@
-/**
- * liveFeedWidget.ts — HTML widgets for real-time SSE streams from LiveFeedDO.
- *
- * Generates self-contained HTML that:
- *  1. Connects to GET /live-feed/:feedType/:feedId/stream via EventSource
- *  2. Renders live data (agent status or initiative pulse)
- *  3. Handles reconnection with exponential backoff
- *  4. Supports dark + light mode via prefers-color-scheme
- *
- * Design: aligned with OrgX --ox-* token system (teal primary, domain-colored avatars)
- */
-
-export interface LiveFeedWidgetOptions {
-  feedType: 'agent-status' | 'initiative-pulse';
-  feedId: string; // initiativeId
-  streamBaseUrl: string; // e.g. https://mcp.useorgx.com
-  /** Short-lived HMAC-signed stream token embedded in the EventSource URL */
-  streamToken: string;
-  liveUrl?: string;
-  title?: string;
-}
-
-export function buildLiveFeedWidget(opts: LiveFeedWidgetOptions): string {
-  const { feedType, feedId, streamBaseUrl, streamToken, liveUrl, title } = opts;
-  // Token appended as ?t=<signed-token> — verified by authHandler before proxying to LiveFeedDO
-  const streamUrl = `${streamBaseUrl}/live-feed/${feedType}/${encodeURIComponent(feedId)}/stream?t=${encodeURIComponent(streamToken)}`;
-  const displayTitle = title
-    ? escapeHtml(title)
-    : feedType === 'agent-status'
-    ? 'Agent Status'
-    : 'Initiative Pulse';
-  const safeLiveUrl = liveUrl ? escapeHtml(liveUrl) : '';
-  const eyebrowLabel = feedType === 'agent-status' ? 'LIVE · AGENTS' : 'LIVE · INITIATIVE';
-
-  return `<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>${displayTitle} — Live</title>
+<title>Operation Prism — Initiative Pulse — Live</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
@@ -399,12 +365,12 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
   <!-- Live eyebrow -->
   <div class="eyebrow">
     <div class="live-dot" id="ldot"></div>
-    <span>${eyebrowLabel}</span>
+    <span>LIVE · INITIATIVE</span>
   </div>
 
   <!-- Title row -->
   <div class="header">
-    <div class="widget-title">${displayTitle}</div>
+    <div class="widget-title">Operation Prism — Initiative Pulse</div>
     <span class="conn-label" id="connLabel">Connecting…</span>
   </div>
   <div class="updated-row" id="updatedRow"></div>
@@ -415,15 +381,15 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
   <!-- Footer -->
   <div class="footer">
     <span class="footer-meta">LIVE FEED</span>
-    ${safeLiveUrl ? `<a class="footer-link" href="${safeLiveUrl}" target="_blank" rel="noopener">Open Live View ↗</a>` : ''}
+    <a class="footer-link" href="https://useorgx.com/live/07f49477-6807-449c-b46c-5bc71a1219da" target="_blank" rel="noopener">Open Live View ↗</a>
   </div>
 </div>
 
 <script>
 (function(){
-  var FEED_TYPE  = ${JSON.stringify(feedType)};
-  var STREAM_URL = ${JSON.stringify(streamUrl)};
-  var LIVE_URL   = ${JSON.stringify(liveUrl ?? '')};
+  var FEED_TYPE  = "initiative-pulse";
+  var STREAM_URL = "https://mcp.useorgx.com/live-feed/initiative-pulse/07f49477/stream?t=demo";
+  var LIVE_URL   = "https://useorgx.com/live/07f49477-6807-449c-b46c-5bc71a1219da";
   var IMG_BASE   = 'https://mcp.useorgx.com/widgets/shared/';
 
   var ldot       = document.getElementById('ldot');
@@ -681,7 +647,7 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
         var wsDomain = (ws.domain || 'orchestration').toLowerCase();
         var wsRgb = domainRgb(wsDomain);
         var wsPct = Math.round(ws.progress || ws.progress_pct || 0);
-        var wsStatus = (ws.status || 'pending').toLowerCase().replace(/\s+/g,'_');
+        var wsStatus = (ws.status || 'pending').toLowerCase().replace(/s+/g,'_');
         var wsStatusDisplay = wsStatus.replace(/_/g,' ');
         var wsBadgeCls = ['running','done','completed','blocked','at_risk','queued','pending'].indexOf(wsStatus) !== -1 ? wsStatus : 'default';
         parts.push(
@@ -718,7 +684,7 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
   function connect() {
     if (es) { try { es.close(); } catch(_) {} }
     var url = STREAM_URL + (lastTs ? '&since=' + lastTs : '');
-    connLabel.textContent = 'Connecting\u2026';
+    connLabel.textContent = 'Connecting…';
     es = new EventSource(url);
 
     es.onopen = function() {
@@ -745,7 +711,7 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
       try { es.close(); } catch(_) {}
       ldot.className = 'live-dot error';
       var wait = Math.round(retryDelay / 1000);
-      connLabel.textContent = 'Reconnecting in ' + wait + 's\u2026';
+      connLabel.textContent = 'Reconnecting in ' + wait + 's…';
       setTimeout(connect, retryDelay);
       retryDelay = Math.min(retryDelay * 2, 30000);
     };
@@ -805,13 +771,4 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
 })();
 </script>
 </body>
-</html>`;
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+</html>
