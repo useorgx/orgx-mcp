@@ -237,6 +237,10 @@ export interface McpAppsHtmlAssets {
  * module, add it here AND serve it under /widgets/<path>.
  */
 export const MCP_APPS_SHARED_COMPONENT_PATHS: ReadonlyArray<string> = [
+  // Base design tokens — widgets that used `@import url()` to pull this
+  // rendered unstyled in Claude's sandbox. Inline it so the served
+  // document is fully self-contained regardless of how it's referenced.
+  'shared/tokens.css',
   'shared/components/domain-accent.css',
   'shared/components/domain-accent.js',
   'shared/components/liveness-indicator.js',

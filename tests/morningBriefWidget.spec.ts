@@ -18,7 +18,10 @@ describe('morning brief widget', () => {
   );
 
   it('uses the shared token and icon system for the benchmark-style shell', () => {
-    expect(widgetSource).toContain("@import url('./shared/tokens.css');");
+    // Shared tokens must be pulled via a top-level <link> tag — `@import`
+    // inside a <style> block does not survive Claude's MCP Apps sandbox.
+    expect(widgetSource).toMatch(/<link[^>]+href=("|')shared\/tokens\.css\1/);
+    expect(widgetSource).not.toContain("@import url('./shared/tokens.css');");
     expect(widgetSource).toContain("import { icons } from './shared/icons.js';");
     expect(widgetSource).toContain('class="action-strip app-action-stack"');
     expect(widgetSource).toContain('class="metric-rail app-metric-rail"');

@@ -76,6 +76,18 @@ const SHARED_ALLOWLIST = new Set([
   'shared/demo-data.js',
 ]);
 
+// Mirrors src/widgetConfig.ts MCP_APPS_SHARED_COMPONENT_PATHS. The build
+// will fail if these drift — every runtime-inlined path must be on the
+// allowlist (otherwise the server is inlining a module the widgets aren't
+// allowed to import), and shared tokens/components that are inlined must
+// be referenced by at least one widget somewhere.
+const RUNTIME_INLINED_PATHS = new Set([
+  'shared/tokens.css',
+  'shared/components/domain-accent.css',
+  'shared/components/domain-accent.js',
+  'shared/components/liveness-indicator.js',
+]);
+
 // ── Parse helpers ─────────────────────────────────────────────────
 
 function normalizeRgb(raw) {
@@ -157,6 +169,34 @@ function validateNoStreamForks(widgetName, errors) {
   }
 }
 
+/**
+ * `@import url(...)` inside a <style> block does NOT get URL-rewritten by
+ * the MCP Apps serving pipeline (the rewriter explicitly skips <style>
+ * and <script> bodies). When the widget is served as a ui:// resource to
+ * Claude's sandbox, the relative `./shared/...` path fails to resolve,
+ * the stylesheet never loads, and the widget renders unstyled.
+ *
+ * The safe pattern is a top-level `<link rel="stylesheet" href="...">`
+ * which DOES get rewritten to an absolute URL. This rule forbids any
+ * `@import url()` pointing into `shared/` inside widget HTML.
+ */
+function validateNoSharedAtImport(widgetName, html, errors) {
+  const styleBlocks = html.match(/<style[^>]*>[\s\S]*?<\/style>/gi) ?? [];
+  for (const block of styleBlocks) {
+    const matches = [...block.matchAll(/@import\s+url\(\s*['"]?([^'")\s]+)['"]?\s*\)/gi)];
+    for (const m of matches) {
+      const target = m[1];
+      if (/\bshared\//.test(target)) {
+        errors.push(
+          `[${widgetName}] uses @import url('${target}') inside <style> — Claude's widget\n` +
+            `         sandbox cannot resolve relative paths in <style> blocks. Replace with\n` +
+            `         <link rel="stylesheet" href="${target.replace(/^\.\//, '')}" /> in <head>.`
+        );
+      }
+    }
+  }
+}
+
 // ── Main ──────────────────────────────────────────────────────────
 
 function listWidgetFiles() {
@@ -180,6 +220,7 @@ function main() {
     const html = readFileSync(full, 'utf8');
 
     validateNoStreamForks(widgetName, errors);
+    validateNoSharedAtImport(widgetName, html, errors);
 
     const rgb = extractPrimaryRgb(html);
     validatePalette(widgetName, rgb, errors);
@@ -204,6 +245,27 @@ function main() {
     if (!(name in entries)) {
       errors.push(
         `[${name}] CANONICAL_PRIMARIES has an entry with no matching HTML file`
+      );
+    }
+  }
+
+  // Every runtime-inlined path must be on the shared allowlist AND must
+  // appear in at least one widget's sharedRefs — otherwise the server is
+  // doing dead inlining work.
+  for (const path of RUNTIME_INLINED_PATHS) {
+    if (!SHARED_ALLOWLIST.has(path)) {
+      errors.push(
+        `RUNTIME_INLINED_PATHS has "${path}" but SHARED_ALLOWLIST does not.\n` +
+          `         Add it to both (scripts/build-widgets.mjs and src/widgetConfig.ts).`
+      );
+    }
+    const anyReferences = Object.values(entries).some((e) =>
+      e.sharedRefs.includes(path)
+    );
+    if (!anyReferences) {
+      errors.push(
+        `Runtime-inlined path "${path}" is not referenced by any widget.\n` +
+          `         Either remove it from MCP_APPS_SHARED_COMPONENT_PATHS or add a widget <link>/<script>.`
       );
     }
   }

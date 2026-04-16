@@ -24,11 +24,9 @@ const WIDGETS_DIR = join(__dirname, '..', 'public', 'widgets');
 const CANONICAL_PRIMARIES: Record<string, string> = {
   // Command mode — execution palette.
   'agent-status': '191,255,0',
-  'agent-status-stream': '191,255,0',
 
   // State mode — health palette (canonical teal).
   'initiative-pulse': '0,201,167',
-  'initiative-pulse-stream': '0,201,167',
 
   // Creation mode — iris.
   'scaffolded-initiative': '99,102,241',
