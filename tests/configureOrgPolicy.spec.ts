@@ -18,18 +18,6 @@ describe('configureOrgPolicy helpers', () => {
     });
   });
 
-  it('rejects mismatched workspace aliases', () => {
-    expect(
-      resolveConfigureOrgWorkspaceId({
-        workspace_id: 'ws-1',
-        command_center_id: 'ws-2',
-      })
-    ).toEqual({
-      workspaceId: null,
-      error: 'workspace_id and command_center_id must match when both are provided',
-    });
-  });
-
   it('describes artifact collection mode in success text', () => {
     expect(
       describeAppliedPolicy(

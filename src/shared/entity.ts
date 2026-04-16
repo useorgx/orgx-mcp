@@ -6,7 +6,7 @@
  */
 
 export const ENTITY_TYPES = [
-  'command_center',
+  'workspace',
   'project',
   'initiative',
   'milestone',

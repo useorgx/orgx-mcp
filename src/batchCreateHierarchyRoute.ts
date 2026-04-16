@@ -230,15 +230,12 @@ export function routeBatchCreateEntitiesToScaffoldInitiative(
   }
 
   const topLevelWorkspaceId = asNonEmptyString(args.workspace_id);
-  const topLevelCommandCenterId = asNonEmptyString(args.command_center_id);
   const topLevelOwnerId = asNonEmptyString(args.owner_id);
   const topLevelUserId = asNonEmptyString(args.user_id);
 
   return compactArgs({
     ...scaffoldArgs,
     workspace_id: topLevelWorkspaceId ?? asNonEmptyString(scaffoldArgs.workspace_id),
-    command_center_id:
-      topLevelCommandCenterId ?? asNonEmptyString(scaffoldArgs.command_center_id),
     owner_id: topLevelOwnerId,
     user_id: topLevelUserId,
     continue_on_error:

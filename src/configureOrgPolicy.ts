@@ -9,10 +9,12 @@ export const CONFIGURE_ORG_POLICY_TYPES = [
 export type ConfigureOrgPolicyType =
   (typeof CONFIGURE_ORG_POLICY_TYPES)[number];
 
-export function resolveConfigureOrgWorkspaceId(args: {
-  workspace_id?: unknown;
-  command_center_id?: unknown;
-}, sessionWorkspaceId?: string | null): {
+export function resolveConfigureOrgWorkspaceId(
+  args: {
+    workspace_id?: unknown;
+  },
+  sessionWorkspaceId?: string | null
+): {
   workspaceId: string | null;
   error: string | null;
 } {
@@ -20,28 +22,12 @@ export function resolveConfigureOrgWorkspaceId(args: {
     typeof args.workspace_id === 'string' && args.workspace_id.trim().length > 0
       ? args.workspace_id.trim()
       : null;
-  const aliasWorkspaceId =
-    typeof args.command_center_id === 'string' &&
-    args.command_center_id.trim().length > 0
-      ? args.command_center_id.trim()
-      : null;
-
-  if (
-    explicitWorkspaceId &&
-    aliasWorkspaceId &&
-    explicitWorkspaceId !== aliasWorkspaceId
-  ) {
-    return {
-      workspaceId: null,
-      error: 'workspace_id and command_center_id must match when both are provided',
-    };
-  }
 
   return {
     workspaceId:
       explicitWorkspaceId ??
-      aliasWorkspaceId ??
-      (typeof sessionWorkspaceId === 'string' && sessionWorkspaceId.trim().length > 0
+      (typeof sessionWorkspaceId === 'string' &&
+      sessionWorkspaceId.trim().length > 0
         ? sessionWorkspaceId.trim()
         : null),
     error: null,
