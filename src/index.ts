@@ -147,6 +147,7 @@ import { VERIFIABLE_COMPLETION_ENTITY_TYPES } from './shared/entity';
 import { FLYWHEEL_TOOL_DEFINITIONS } from './flywheelTools';
 import {
   buildMcpAppsMeta,
+  MCP_APPS_SHARED_COMPONENT_PATHS,
   buildWidgetMeta,
   parseWidgetResourceUri,
   rewriteWidgetHtmlAssetUrls,
@@ -8019,6 +8020,123 @@ export class OrgXMcp extends McpAgent<
     );
     }
 
+    // --- review_artifact ---
+    // Action widget for approving/rejecting production artifacts.
+    // Fetches the next in-review artifact for the caller's workspace
+    // (optionally filtered by entity_id) and attaches the artifact-review
+    // widget with the artifact as structuredContent.artifact.
+    if (shouldRegister('review_artifact'))
+      registerAppTool(
+        this.server,
+        'review_artifact',
+        {
+          title: 'Review Artifact',
+          description:
+            'Surface the next artifact awaiting review. Renders the artifact-review widget with a preview, version filmstrip, and hold-to-approve / request-changes actions. USE WHEN the user asks to review work, approve a deliverable, or handle pending artifact reviews. DO NOT USE for listing all artifacts — use list_entities type=artifact instead.',
+          inputSchema: this.withClientContext({
+            artifact_id: z
+              .string()
+              .optional()
+              .describe('Specific artifact ID to review. Defaults to the next in_review artifact.'),
+            entity_id: z
+              .string()
+              .optional()
+              .describe('Scope to artifacts attached to this entity (initiative, workstream, milestone, or task).'),
+            workspace_id: z
+              .string()
+              .optional()
+              .describe('Workspace UUID. Defaults to the session workspace.'),
+          }),
+          annotations: {
+            readOnlyHint: false,
+            destructiveHint: false,
+            openWorldHint: false,
+          },
+          _meta: {
+            'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.artifactReview,
+            'openai/toolInvocation/invoking': 'Loading artifact for review...',
+            'openai/toolInvocation/invoked': 'Artifact ready to review',
+            'openai/visibility': 'public',
+            'mcp/securitySchemes': SECURITY_SCHEMES.entityWriteRequiresAuth,
+            ui: { resourceUri: WIDGET_URIS.artifactReview },
+          },
+        },
+        async (args: Record<string, unknown>) =>
+          this.withOrgx(async () => {
+            const authResponse = buildAuthRequiredResponse({
+              toolId: 'review_artifact',
+              securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
+              userId: this.resolveUserId() ?? undefined,
+              serverUrl: this.env.MCP_SERVER_URL ?? undefined,
+              featureDescription: 'review artifacts',
+            });
+            if (authResponse) return authResponse;
+
+            const explicitArtifactId =
+              typeof args.artifact_id === 'string' && args.artifact_id.trim()
+                ? args.artifact_id.trim()
+                : null;
+
+            const wsId =
+              (args.workspace_id as string | undefined) ??
+              this.sessionContext?.workspaceId ??
+              null;
+
+            const params = new URLSearchParams();
+            params.set('type', 'artifact');
+            params.set('limit', '1');
+            if (explicitArtifactId) {
+              params.set('id', explicitArtifactId);
+            } else {
+              params.set('status', 'in_review');
+            }
+            if (typeof args.entity_id === 'string' && args.entity_id.trim()) {
+              params.set('entity_id', args.entity_id.trim());
+            }
+            if (wsId) params.set('workspace_id', wsId);
+
+            const response = await callOrgxApiJson(
+              this.env,
+              `/api/entities?${params.toString()}`,
+              undefined,
+              { userId: this.resolveUserId() }
+            );
+            const result = (await response.json()) as {
+              data?: Array<Record<string, unknown>>;
+            };
+            const artifact = Array.isArray(result.data) ? result.data[0] : null;
+
+            if (!artifact) {
+              return {
+                content: [
+                  {
+                    type: 'text' as const,
+                    text: 'No artifacts currently awaiting review.',
+                  },
+                ],
+                structuredContent: { artifact: null },
+              };
+            }
+
+            const name =
+              typeof artifact.name === 'string'
+                ? artifact.name
+                : typeof artifact.title === 'string'
+                ? (artifact.title as string)
+                : 'artifact';
+
+            return {
+              content: [
+                {
+                  type: 'text' as const,
+                  text: `Artifact ready for review: **${name}** (status: ${artifact.status ?? 'in_review'}). Approve or request changes inline.`,
+                },
+              ],
+              structuredContent: { artifact },
+            };
+          })
+      );
+
     // --- get_morning_brief ---
     if (shouldRegister('get_morning_brief'))
       registerAppTool(
@@ -8688,9 +8806,34 @@ export class OrgXMcp extends McpAgent<
           }
         }
 
+        // Inline any shared-component module the widget references. Claude's
+        // widget sandbox treats the resource document as self-contained, so
+        // external fetches of our own shared modules may not resolve. These
+        // paths are the enforceable shared-layer contract — add new shared
+        // modules to MCP_APPS_SHARED_COMPONENT_PATHS in widgetConfig.ts.
+        const sharedComponents: Record<string, string | null> = {};
+        for (const path of MCP_APPS_SHARED_COMPONENT_PATHS) {
+          if (!responseHtml.includes(path)) continue;
+          try {
+            const accept = path.endsWith('.css')
+              ? 'text/css,*/*'
+              : 'text/javascript,application/javascript,*/*';
+            const assetResponse = await fetch(
+              new URL(path, widgetBaseUrl).toString(),
+              { headers: { accept } }
+            );
+            sharedComponents[path] = assetResponse.ok
+              ? await assetResponse.text()
+              : null;
+          } catch {
+            sharedComponents[path] = null;
+          }
+        }
+
         const sanitizedHtml = sanitizeMcpAppsHtml(responseHtml, {
           interactionKitCss,
           interactionKitJs,
+          sharedComponents,
         });
         faviconStripped = sanitizedHtml !== responseHtml && !sanitizedHtml.includes('rel="icon"');
         interactionKitInlined =
