@@ -6,9 +6,9 @@
  * out to all connected SSE clients in real time.
  *
  * Routes (handled internally by this DO):
- *   GET  /scaffold/:sessionId/stream     — EventSource endpoint (public)
+ *   GET  /scaffold/:sessionId/stream     — EventSource endpoint (stream token required)
  *   POST /scaffold/:sessionId/event      — Push event (internal, ORGX_INTERNAL_SECRET)
- *   GET  /scaffold/:sessionId/status     — Health check (public)
+ *   GET  /scaffold/:sessionId/status     — Health check (stream token required)
  */
 
 export type ScaffoldEvent =
@@ -130,14 +130,19 @@ export class ScaffoldSessionDO {
   // ──────────────────────────────────────────────────────────────────────────
   private async handleEvent(request: Request): Promise<Response> {
     const secret = this.env.ORGX_INTERNAL_SECRET;
-    if (secret) {
-      const auth = request.headers.get('Authorization') ?? '';
-      if (auth !== `Bearer ${secret}`) {
-        return new Response(JSON.stringify({ error: 'unauthorized' }), {
-          status: 401,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
+    if (!secret) {
+      // Fail closed — refuse events when the internal secret is not configured.
+      return new Response(
+        JSON.stringify({ error: 'ORGX_INTERNAL_SECRET not configured' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    const auth = request.headers.get('Authorization') ?? '';
+    if (auth !== `Bearer ${secret}`) {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
     let event: ScaffoldEvent;
