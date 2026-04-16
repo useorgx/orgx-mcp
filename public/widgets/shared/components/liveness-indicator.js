@@ -139,7 +139,90 @@
     return { pulse, disconnect, reconnect, destroy };
   }
 
-  const api = Object.freeze({ attach });
+  /**
+   * Auto-mount when the widget is loaded with ?live=true in the URL
+   * (or data-widget-live="true" on <html>). Finds the first element
+   * matching the given selectors (or a default kicker target) and
+   * attaches the breathing dot. No-op otherwise.
+   *
+   * @param {{ selectors?: string[], pollMs?: number, marker?: string }} [opts]
+   */
+  function autoMount(opts) {
+    ensureStyles();
+    const params = new URLSearchParams(
+      (typeof window !== 'undefined' && window.location && window.location.search) || ''
+    );
+    const flagLive =
+      params.get('live') === 'true' ||
+      (typeof document !== 'undefined' &&
+        document.documentElement &&
+        document.documentElement.getAttribute('data-widget-live') === 'true');
+    if (!flagLive) return null;
+
+    const selectors = (opts && opts.selectors) || [
+      '[data-live-mount]',
+      '.widget-kicker',
+      '.ox-eyebrow',
+      '.widget-hero-copy',
+    ];
+    let host = null;
+    for (const sel of selectors) {
+      const el = document.querySelector(sel);
+      if (el) { host = el; break; }
+    }
+    if (!host) return null;
+
+    const marker = (opts && opts.marker) || 'Live';
+    const mount = document.createElement('span');
+    mount.className = 'ox-liveness-autoMount';
+    mount.setAttribute('data-live-auto', 'true');
+    mount.style.marginLeft = '10px';
+    mount.style.verticalAlign = 'middle';
+    host.appendChild(mount);
+
+    const wrap = document.createElement('span');
+    wrap.style.display = 'inline-flex';
+    wrap.style.alignItems = 'center';
+    wrap.style.gap = '6px';
+
+    const dotHost = document.createElement('span');
+    const label = document.createElement('span');
+    label.textContent = marker;
+    label.style.fontFamily = 'var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace)';
+    label.style.fontSize = '0.58rem';
+    label.style.fontWeight = '700';
+    label.style.letterSpacing = '0.08em';
+    label.style.textTransform = 'uppercase';
+    label.style.color = 'var(--ox-text-muted)';
+
+    wrap.appendChild(dotHost);
+    wrap.appendChild(label);
+    mount.appendChild(wrap);
+
+    const live = attach(dotHost);
+    // Demo cadence when no MCP host is present — pulse every N ms so
+    // the indicator visibly breathes against real traffic in dev.
+    const pollMs = (opts && opts.pollMs) || 4500;
+    if (typeof window !== 'undefined' && !window.openai) {
+      setTimeout(() => live.pulse(), 120);
+      setInterval(() => live.pulse(), pollMs);
+    } else {
+      live.pulse();
+    }
+    return live;
+  }
+
+  const api = Object.freeze({ attach, autoMount });
   if (typeof global !== 'undefined') global.OrgxLiveness = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
+
+  // Run autoMount on DOMContentLoaded so any widget that loads this
+  // script automatically opts into the ?live=true flow.
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => autoMount());
+    } else {
+      setTimeout(() => autoMount(), 0);
+    }
+  }
 })(typeof window !== 'undefined' ? window : globalThis);
