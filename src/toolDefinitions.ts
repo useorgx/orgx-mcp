@@ -66,6 +66,14 @@ export const WIDGET_URIS = {
     'ui://widget/morning-brief.html',
     WIDGET_BUILD_VERSION
   ), // Intelligence Flywheel: curated receipts + exceptions + ROI delta
+  artifactReview: withWidgetResourceVersion(
+    'ui://widget/artifact-review.html',
+    WIDGET_BUILD_VERSION
+  ), // Action widget for approving/rejecting production artifacts
+  planSessionLive: withWidgetResourceVersion(
+    'ui://widget/plan-session-live.html',
+    WIDGET_BUILD_VERSION
+  ), // Creation-mode widget for co-authored agent reasoning
 } as const;
 
 export const OUTPUT_TEMPLATE_URIS = {
@@ -77,6 +85,8 @@ export const OUTPUT_TEMPLATE_URIS = {
   taskSpawned: toSkybridgeResourceUri(WIDGET_URIS.taskSpawned),
   decisionHistory: toSkybridgeResourceUri(WIDGET_URIS.decisionHistory),
   morningBrief: toSkybridgeResourceUri(WIDGET_URIS.morningBrief),
+  artifactReview: toSkybridgeResourceUri(WIDGET_URIS.artifactReview),
+  planSessionLive: toSkybridgeResourceUri(WIDGET_URIS.planSessionLive),
 } as const;
 
 export const WIDGET_RESOURCES = [
@@ -114,6 +124,16 @@ export const WIDGET_RESOURCES = [
     name: 'morning-brief-widget',
     uri: WIDGET_URIS.morningBrief,
     title: 'Morning Brief Widget',
+  },
+  {
+    name: 'artifact-review-widget',
+    uri: WIDGET_URIS.artifactReview,
+    title: 'Artifact Review Widget',
+  },
+  {
+    name: 'plan-session-live-widget',
+    uri: WIDGET_URIS.planSessionLive,
+    title: 'Plan Session Live Widget',
   },
 ] as const;
 

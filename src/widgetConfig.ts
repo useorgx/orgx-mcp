@@ -216,6 +216,62 @@ export function rewriteWidgetHtmlAssetUrls(html: string, widgetBaseUrl: string) 
 export interface McpAppsHtmlAssets {
   interactionKitCss?: string | null;
   interactionKitJs?: string | null;
+  /**
+   * Arbitrary shared-component bundles to inline. Keys are asset paths
+   * relative to the widget base (e.g. "shared/components/domain-accent.js"),
+   * values are the asset body (or null to skip). Any `<link>` or `<script>`
+   * tag whose URL ends with the key (case-insensitive) gets inlined.
+   *
+   * Used to enforce the Claude MCP Apps widget-sandbox rule that shared
+   * modules ship in-document rather than as external fetches.
+   */
+  sharedComponents?: Record<string, string | null>;
+}
+
+/**
+ * Shared-component asset paths that are automatically inlined for MCP
+ * Apps widget resources. Any widget referencing one of these paths gets
+ * the corresponding file content inlined at resource-serve time.
+ *
+ * This is the enforceable "shared layer" contract. To add a new shared
+ * module, add it here AND serve it under /widgets/<path>.
+ */
+export const MCP_APPS_SHARED_COMPONENT_PATHS: ReadonlyArray<string> = [
+  'shared/components/domain-accent.css',
+  'shared/components/domain-accent.js',
+  'shared/components/liveness-indicator.js',
+];
+
+function inlineSharedAsset(
+  html: string,
+  path: string,
+  body: string
+): string {
+  const pathSuffix = path
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    .replace(/\//g, '[\\\\/]');
+  const stylePattern = new RegExp(
+    `<link\\b[^>]*\\bhref=("|')[^"']*${pathSuffix}(?:\\?[^"']*)?\\1[^>]*>\\s*`,
+    'gi'
+  );
+  const scriptPattern = new RegExp(
+    `<script\\b[^>]*\\bsrc=("|')[^"']*${pathSuffix}(?:\\?[^"']*)?\\1[^>]*><\\/script>\\s*`,
+    'gi'
+  );
+
+  if (path.endsWith('.css')) {
+    return html.replace(
+      stylePattern,
+      `<style data-inline-asset="${path}">\n${body}\n</style>\n`
+    );
+  }
+  if (path.endsWith('.js')) {
+    return html.replace(
+      scriptPattern,
+      `<script data-inline-asset="${path}">\n${body}\n</script>\n`
+    );
+  }
+  return html;
 }
 
 export function sanitizeMcpAppsHtml(
@@ -244,6 +300,13 @@ export function sanitizeMcpAppsHtml(
       /<script\b[^>]*\bsrc=("|')[^"']*interaction-kit\.js[^"']*\1[^>]*><\/script>\s*/gi,
       `<script data-inline-asset="interaction-kit.js">\n${assets.interactionKitJs}\n</script>\n`
     );
+  }
+
+  if (assets.sharedComponents) {
+    for (const [path, body] of Object.entries(assets.sharedComponents)) {
+      if (!body) continue;
+      sanitized = inlineSharedAsset(sanitized, path, body);
+    }
   }
 
   return sanitized;
