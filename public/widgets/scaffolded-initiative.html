@@ -1812,6 +1812,9 @@
       return DOMAIN_ACCENTS[key] || DOMAIN_ACCENTS.orchestrator;
     };
     var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
+    var _mcpNextId = 1;
+    function _detectProtocol() { try { if (window.parent !== window) { return 'mcp-apps'; } } catch(e) { return 'mcp-apps'; } return 'standalone'; }
+    function openWidgetLink(url, event) { if (!url) return false; var protocol = _detectProtocol(); if (protocol === 'mcp-apps') { if (event && typeof event.preventDefault === 'function') event.preventDefault(); window.parent.postMessage({ jsonrpc: '2.0', id: _mcpNextId++, method: 'ui/open-link', params: { url: url } }, '*'); return false; } return true; }
     var renderScaffoldState = (mode) => {
       var awaiting = mode === 'awaiting';
       var statusLabel = awaiting ? 'Listening' : 'Composing';
@@ -2831,7 +2834,7 @@
           
             <div class="widget-footer">
               <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
-              <a href="${initiativeUrl}" target="_blank" rel="noreferrer" class="deep-link ox-link-btn ox-link-btn--quiet">
+              <a href="${initiativeUrl}" onclick="return openWidgetLink(this.href, event)" target="_blank" rel="noreferrer" class="deep-link ox-link-btn ox-link-btn--quiet">
                 Open Live View
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
               </a>

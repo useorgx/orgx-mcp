@@ -1209,6 +1209,8 @@
       if (!decision || !decision.id) return ORGX_BASE_URL + '/decisions';
       if (typeof decision.url === 'string' && decision.url.trim()) return decision.url.trim();
       if (typeof decision.link === 'string' && decision.link.trim()) return decision.link.trim();
+      if (typeof decision._link === 'string' && decision._link.trim()) return decision._link.trim();
+      if (typeof decision.review_href === 'string' && decision.review_href.trim()) return decision.review_href.trim();
       if (typeof decision.initiative_id === 'string' && decision.initiative_id.trim()) {
         return ORGX_BASE_URL + '/initiatives/' + encodeURIComponent(decision.initiative_id.trim()) + '?focus=decisions&decision=' + encodeURIComponent(decision.id);
       }
