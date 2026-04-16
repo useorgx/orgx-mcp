@@ -116,7 +116,14 @@ echo "   MCP base:  $MCP_BASE"
 echo "   Apex base: $APEX_BASE"
 echo
 
+# ── Core health ──────────────────────────────────────────────────────────────
 check_endpoint "Health check" "$MCP_BASE/healthz" "200" "ok"
+
+# ── Upstream connectivity (catches redirect / DNS / cert issues) ─────────────
+# The MCP worker proxies API calls to ORGX_API_URL. If that URL redirects,
+# every tool call silently fails. This check catches it within minutes of deploy.
+check_endpoint "Upstream: OrgX API health (via MCP /healthz?check=upstream)" \
+  "$MCP_BASE/healthz?check=upstream" "200" "upstream"
 check_endpoint "OAuth authorization server discovery" "$MCP_BASE/.well-known/oauth-authorization-server" "200" "authorization_endpoint"
 check_endpoint "OAuth protected resource metadata" "$MCP_BASE/.well-known/oauth-protected-resource" "200" "authorization_servers"
 check_endpoint "Registry auth on MCP subdomain" "$MCP_BASE/.well-known/mcp-registry-auth" "200" "v=MCPv1; k=ed25519; p="
@@ -125,7 +132,7 @@ check_redirected_endpoint \
   "$APEX_BASE/.well-known/mcp-registry-auth" \
   "200" \
   "v=MCPv1; k=ed25519; p=" \
-  "https://www.useorgx.com/.well-known/mcp-registry-auth"
+  "https://useorgx.com/.well-known/mcp-registry-auth"
 
 echo
 if [[ "$FAIL_COUNT" -gt 0 ]]; then

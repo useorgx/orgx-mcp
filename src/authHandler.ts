@@ -29,6 +29,7 @@ import {
   WIDGET_URIS,
 } from './toolDefinitions';
 import serverManifest from '../server.json';
+import { signSessionToken } from './sessionToken';
 import { verifyStreamToken } from './streamToken';
 
 // Re-export type for use in index.ts
@@ -228,9 +229,59 @@ export const authHandler = {
     const webUrl = env.ORGX_WEB_URL ?? 'https://useorgx.com';
 
     // =========================================================================
-    // Health Check
+    // Health Check — supports ?check=upstream to verify API connectivity
     // =========================================================================
     if (url.pathname === '/healthz' || url.pathname === '/health') {
+      const check = url.searchParams.get('check');
+      if (check === 'upstream') {
+        try {
+          const apiUrl = (env as Record<string, string>).ORGX_API_URL;
+          if (!apiUrl) {
+            return withCors(
+              Response.json(
+                { status: 'fail', upstream: 'unconfigured', error: 'ORGX_API_URL not set' },
+                { status: 503 }
+              )
+            );
+          }
+          const probe = await fetch(`${apiUrl}/api/health`, {
+            redirect: 'manual',
+            signal: AbortSignal.timeout(5000),
+          });
+          if (probe.status >= 300 && probe.status < 400) {
+            const location = probe.headers.get('location') ?? 'unknown';
+            return withCors(
+              Response.json(
+                {
+                  status: 'fail',
+                  upstream: 'redirect',
+                  error: `ORGX_API_URL (${apiUrl}) returned ${probe.status} → ${location}`,
+                  fix: 'Update ORGX_API_URL in wrangler.toml to the final URL (no redirect)',
+                },
+                { status: 502 }
+              )
+            );
+          }
+          if (!probe.ok) {
+            return withCors(
+              Response.json(
+                { status: 'fail', upstream: 'error', httpStatus: probe.status },
+                { status: 502 }
+              )
+            );
+          }
+          return withCors(
+            Response.json({ status: 'ok', upstream: 'healthy', apiUrl })
+          );
+        } catch (err) {
+          return withCors(
+            Response.json(
+              { status: 'fail', upstream: 'unreachable', error: String(err) },
+              { status: 502 }
+            )
+          );
+        }
+      }
       return withCors(new Response('ok'));
     }
 
@@ -889,19 +940,24 @@ tool_timeout_sec = 60
 
       const expiresAt = new Date(Date.now() + 3600000).toISOString();
 
-      // TODO: use OAuthProvider.createToken() when API is available.
-      // For now, we create a base64-encoded payload as a functional placeholder.
-      // NOTE: This is NOT cryptographically signed — rely on ORGX_INTERNAL_SECRET
-      // to protect the /session-tokens endpoint itself.
-      const tokenPayload = {
+      // HMAC-signed session token — verifiable by any endpoint that has
+      // MCP_JWT_SECRET without trusting a plain base64 payload.
+      const signingSecret = env.MCP_JWT_SECRET || env.ORGX_INTERNAL_SECRET;
+      if (!signingSecret) {
+        return withCors(
+          Response.json(
+            { error: 'Server cannot sign tokens — MCP_JWT_SECRET not configured' },
+            { status: 500 }
+          )
+        );
+      }
+      const token = await signSessionToken({
         sessionId: sessionId.trim(),
         orgId: orgId.trim(),
         userId: userId.trim(),
         scopes: resolvedScopes,
-        exp: Date.now() + 3600000,
-        type: 'session',
-      };
-      const token = btoa(JSON.stringify(tokenPayload));
+        secret: signingSecret,
+      });
 
       console.info('[auth:session-tokens] Issued session token', {
         sessionId: sessionId.trim(),
@@ -918,9 +974,9 @@ tool_timeout_sec = 60
     // =========================================================================
     // Scaffold Streaming — SSE fan-out via ScaffoldSessionDO
     //
-    // GET  /scaffold/:sessionId/stream  — public EventSource endpoint
+    // GET  /scaffold/:sessionId/stream  — requires stream token (?t=...)
     // POST /scaffold/:sessionId/event   — internal event push (ORGX_INTERNAL_SECRET)
-    // GET  /scaffold/:sessionId/status  — public health check
+    // GET  /scaffold/:sessionId/status  — requires stream token (?t=...)
     //
     // The DO is keyed by sessionId so each scaffold session has its own instance.
     // OPTIONS is handled here for CORS preflight.
@@ -941,6 +997,32 @@ tool_timeout_sec = 60
       }
 
       const sessionId = scaffoldMatch[1]!;
+      const action = scaffoldMatch[2];
+
+      // Stream and status endpoints require a valid stream token to prevent
+      // unauthenticated access to scaffold event data.
+      if (action === 'stream' || action === 'status') {
+        const streamTokenSecret = env.MCP_JWT_SECRET || env.ORGX_INTERNAL_SECRET;
+        const tokenParam = url.searchParams.get('t');
+        if (!streamTokenSecret || !tokenParam) {
+          return withCors(
+            Response.json({ error: 'Missing stream token' }, { status: 401 })
+          );
+        }
+        const verified = await verifyStreamToken(tokenParam, streamTokenSecret);
+        if (!verified) {
+          return withCors(
+            Response.json({ error: 'Invalid or expired stream token' }, { status: 401 })
+          );
+        }
+        // Verify the token is scoped to this scaffold session
+        if (verified.ft !== 'scaffold' || verified.fi !== sessionId) {
+          return withCors(
+            Response.json({ error: 'Token does not match this scaffold session' }, { status: 403 })
+          );
+        }
+      }
+
       const doId = env.SCAFFOLD_SESSION.idFromName(sessionId);
       const stub = env.SCAFFOLD_SESSION.get(doId);
       // Forward the request to the DO with the same URL/method/body

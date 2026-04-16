@@ -52,6 +52,23 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Verify upstream URLs have no redirects
+        run: |
+          # Extract ORGX_API_URL from wrangler.toml production vars
+          api_url=$(grep -A 10 '\[env\.production\.vars\]' wrangler.toml | grep 'ORGX_API_URL' | head -1 | sed 's/.*= *"\(.*\)"/\1/')
+          if [[ -z "$api_url" ]]; then
+            api_url=$(grep 'ORGX_API_URL' wrangler.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
+          fi
+          echo "Checking ORGX_API_URL: $api_url"
+          status=$(curl -sI -o /dev/null -w '%{http_code}' "$api_url/api/health" 2>/dev/null || echo "000")
+          if [[ "$status" == "301" || "$status" == "302" ]]; then
+            location=$(curl -sI "$api_url/api/health" 2>/dev/null | grep -i '^location:' | tr -d '\r')
+            echo "::error::ORGX_API_URL ($api_url) returns HTTP $status redirect: $location"
+            echo "::error::Workers fetch() does not follow redirects — update wrangler.toml to use the final URL"
+            exit 1
+          fi
+          echo "ORGX_API_URL responds $status (no redirect) ✓"
+
       - name: Verify wrangler build (dry-run)
         run: pnpm wrangler deploy --dry-run --outdir .wrangler/dist
 
