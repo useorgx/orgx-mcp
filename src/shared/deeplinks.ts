@@ -23,8 +23,9 @@ export type DeeplinkEntityType = EntityType | DeeplinkExtraEntityType;
 
 export const DEEPLINK_ENTITY_ALIASES: Readonly<Record<string, DeeplinkEntityType>> =
   {
-    'command-center': 'command_center',
-    commandcenter: 'command_center',
+    'command-center': 'workspace',
+    commandcenter: 'workspace',
+    command_center: 'workspace',
     workspace: 'workspace',
     agentrun: 'agent_run',
     'agent-run': 'agent_run',
