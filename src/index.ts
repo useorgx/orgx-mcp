@@ -3085,14 +3085,7 @@ export class OrgXMcp extends McpAgent<
       name: args.title,
       summary: args.summary ?? args.description,
       description: args.description ?? args.summary,
-      source_system: 'mcp',
     };
-
-    // Attribute to the session's agent identity, not "autopilot"
-    const sessionScope = this.sessionAuth.scope ?? this.props?.scope ?? null;
-    if (sessionScope) {
-      payload.source_agent = sessionScope;
-    }
 
     if (ownerId) payload.owner_id = ownerId;
     if (workspaceId) payload.workspace_id = workspaceId;
@@ -7512,7 +7505,7 @@ export class OrgXMcp extends McpAgent<
             case 'list': {
               const response = await callOrgxApiJson(
                 this.env,
-                '/api/entities?type=command_center&limit=50',
+                '/api/entities?type=workspace&limit=50',
                 undefined,
                 { userId: resolvedUserId }
               );
@@ -7628,7 +7621,7 @@ export class OrgXMcp extends McpAgent<
 
               const response = await callOrgxApiJson(
                 this.env,
-                '/api/entities?type=command_center&limit=50',
+                '/api/entities?type=workspace&limit=50',
                 undefined,
                 { userId: resolvedUserId }
               );
