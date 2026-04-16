@@ -14,12 +14,12 @@ html_handling = "none"
 binding = "ASSETS"
 
 # Non-secret variables (secrets like ORGX_SERVICE_KEY, MCP_JWT_SECRET should be set via `wrangler secret put`)
-# Note: Use www.useorgx.com to avoid apex→www redirect breaking API calls
+# Note: www.useorgx.com 301-redirects to useorgx.com — use next.useorgx.com for direct VPS access
 [vars]
-ORGX_API_URL = "https://www.useorgx.com"
+ORGX_API_URL = "https://next.useorgx.com"
 MCP_SERVER_URL = "https://mcp.useorgx.com"
 AUTH_SERVER_URL = "https://mcp.useorgx.com"
-ORGX_WEB_URL = "https://www.useorgx.com"
+ORGX_WEB_URL = "https://useorgx.com"
 
 [durable_objects]
 bindings = [
@@ -87,10 +87,10 @@ binding = "OAUTH_KV"
 id = "5bff02959fa74d43ba6708d9746121e4"
 
 # Non-secret vars only; secrets (ORGX_SERVICE_KEY, MCP_JWT_SECRET, COOKIE_ENCRYPTION_KEY) set via dashboard or `wrangler secret put --env production`
-# Note: Use www.useorgx.com to avoid apex→www redirect breaking API calls
+# Note: www.useorgx.com 301-redirects to useorgx.com — use next.useorgx.com for direct VPS access
 [env.production.vars]
-ORGX_API_URL = "https://www.useorgx.com"
-ORGX_WEB_URL = "https://www.useorgx.com"
+ORGX_API_URL = "https://next.useorgx.com"
+ORGX_WEB_URL = "https://useorgx.com"
 MCP_SERVER_URL = "https://mcp.useorgx.com"
 AUTH_SERVER_URL = "https://mcp.useorgx.com"
 
