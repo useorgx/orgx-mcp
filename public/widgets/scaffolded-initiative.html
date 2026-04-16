@@ -1455,6 +1455,178 @@
       transform: rotate(-90deg);
     }
 
+    /* ─── launch-bay ───────────────────────────────────────────
+     * The cinematic centerpiece. Rendered after the work-breakdown
+     * tree completes, only when the initiative is still in draft/
+     * scaffolded state. Pre-launch checks fill the ring; at 100% a
+     * hold-to-launch button emerges. Creation mode is the only mode
+     * where celebration is appropriate — this is its earned payoff.
+     */
+    .launch-bay {
+      margin-top: 28px;
+      padding: 20px;
+      border-radius: 16px;
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.22);
+      background:
+        radial-gradient(circle at 50% -20%, rgba(var(--ox-primary-rgb), 0.14), transparent 60%),
+        rgba(var(--ox-primary-rgb), 0.04);
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 20px;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+    @media (max-width: 540px) {
+      .launch-bay { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+    }
+    .launch-bay__ring {
+      position: relative;
+      width: 72px;
+      height: 72px;
+      flex-shrink: 0;
+    }
+    .launch-bay__ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .launch-bay__ring-track {
+      stroke: rgba(var(--ox-primary-rgb), 0.15);
+      fill: none;
+      stroke-width: 4;
+    }
+    .launch-bay__ring-fill {
+      stroke: var(--ox-primary);
+      fill: none;
+      stroke-width: 4;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 480ms cubic-bezier(0.4, 0, 0.2, 1);
+      filter: drop-shadow(0 0 6px rgba(var(--ox-primary-rgb), 0.45));
+    }
+    .launch-bay__ring-value {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--ox-mono);
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--ox-primary);
+      letter-spacing: -0.02em;
+    }
+
+    .launch-bay__body { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+    .launch-bay__kicker {
+      font-family: var(--ox-mono);
+      font-size: 0.62rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(var(--ox-primary-rgb), 0.85);
+    }
+    .launch-bay__headline { font-size: 0.98rem; font-weight: 600; color: var(--ox-text); line-height: 1.4; }
+    .launch-bay__checks {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 2px;
+    }
+    .launch-bay__check {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      border: 1px solid var(--ox-border);
+      background: var(--ox-panel);
+      color: var(--ox-text-muted);
+    }
+    .launch-bay__check.is-ok {
+      color: var(--ox-primary);
+      border-color: rgba(var(--ox-primary-rgb), 0.35);
+      background: rgba(var(--ox-primary-rgb), 0.08);
+    }
+    .launch-bay__check-icon { display: inline-flex; width: 12px; height: 12px; }
+
+    .launch-bay__cta {
+      position: relative;
+      min-width: 180px;
+      min-height: 64px;
+      padding: 14px 22px;
+      border-radius: 12px;
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.5);
+      background: rgba(var(--ox-primary-rgb), 0.12);
+      color: var(--ox-primary);
+      font-weight: 700;
+      font-size: 0.92rem;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      overflow: hidden;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+    }
+    .launch-bay__cta:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+      border-color: var(--ox-border);
+      background: var(--ox-well-bg);
+      color: var(--ox-text-muted);
+    }
+    .launch-bay__cta:not(:disabled):hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 24px rgba(var(--ox-primary-rgb), 0.32);
+    }
+    .launch-bay__cta-hold {
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 0%;
+      background: rgba(var(--ox-primary-rgb), 0.28);
+      border-right: 1px solid rgba(var(--ox-primary-rgb), 0.7);
+      pointer-events: none;
+      transition: width 60ms linear;
+    }
+    .launch-bay__cta.is-holding .launch-bay__cta-hold {
+      transition: width 820ms linear;
+      width: 100%;
+    }
+    .launch-bay__cta-hint {
+      font-family: var(--ox-mono);
+      font-size: 0.58rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      opacity: 0.75;
+      margin-left: 4px;
+    }
+
+    /* When readiness ring hits 100%, a one-shot sweep passes through
+     * the scaffold tree. Pure aesthetic — no content change. */
+    .launch-bay.is-ready::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg,
+        transparent,
+        rgba(var(--ox-primary-rgb), 0.22),
+        transparent);
+      transform: translateX(-100%);
+      pointer-events: none;
+      animation: launchSweep 900ms cubic-bezier(0.4, 0, 0.2, 1) 1;
+    }
+    @keyframes launchSweep {
+      to { transform: translateX(100%); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .launch-bay__cta.is-holding .launch-bay__cta-hold { transition-duration: 300ms; }
+      .launch-bay.is-ready::before { animation: none; }
+      .launch-bay__ring-fill { transition-duration: 160ms; }
+    }
+
     .widget-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--ox-border); gap: 12px; }
     .deep-link {
       display: inline-flex;
@@ -2732,6 +2904,162 @@
        _syncSizeDuringTransition(480);
     };
 
+    /* ─── launch-readiness (Phase 3 cinematic) ───────────────────
+     * Rendered after the tree whenever the scaffold is in a
+     * pre-launch state (status draft/scaffolded). Computes 5 gates
+     * from the scaffold data and composes a ring-driven CTA that
+     * calls entity_action launch via the MCP host when the user
+     * holds the button.
+     */
+    var computeLaunchReadiness = (scaffold) => {
+      const sections = (scaffold && scaffold.sections) || [];
+      const initiative = (scaffold && scaffold.initiative) || {};
+      const allMilestones = sections.flatMap(s => s.milestones || []);
+      const allTasks = allMilestones.flatMap(m => m.tasks || []);
+
+      const checks = [
+        {
+          id: 'workstreams',
+          label: 'Workstreams',
+          ok: sections.length >= 2,
+          detail: sections.length + ' defined',
+        },
+        {
+          id: 'milestones',
+          label: 'Milestones',
+          ok: allMilestones.length >= 1,
+          detail: allMilestones.length + ' planned',
+        },
+        {
+          id: 'tasks',
+          label: 'Tasks',
+          ok: allTasks.length >= 1,
+          detail: allTasks.length + ' seeded',
+        },
+        {
+          id: 'assignees',
+          label: 'Owners',
+          ok: sections.every(s => {
+            const ex = s.execution || {};
+            return (ex.agent_name || ex.primary_agent_name || ex.domain);
+          }),
+          detail: 'Per workstream',
+        },
+        {
+          id: 'objective',
+          label: 'Objective',
+          ok: !!initiative.title,
+          detail: initiative.title ? 'Named' : 'Missing',
+        },
+      ];
+      const pass = checks.filter(c => c.ok).length;
+      return { checks, pass, total: checks.length, ready: pass === checks.length };
+    };
+
+    var isDraftStatus = (status) => {
+      const s = (status || '').toString().toLowerCase().trim();
+      return s === '' || s === 'draft' || s === 'scaffolded' || s === 'awaiting_launch' || s === 'pending';
+    };
+
+    var renderLaunchBay = (scaffold) => {
+      if (!scaffold || !scaffold.initiative) return '';
+      if (!isDraftStatus(scaffold.initiative.status)) return '';
+
+      const r = computeLaunchReadiness(scaffold);
+      const circumference = 2 * Math.PI * 22; // r = 22
+      const dashOffset = circumference * (1 - r.pass / r.total);
+      const pct = Math.round((r.pass / r.total) * 100);
+
+      const checksHtml = r.checks.map(c => {
+        const tone = c.ok ? ' is-ok' : '';
+        const icon = c.ok
+          ? '<span class="launch-bay__check-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></span>'
+          : '<span class="launch-bay__check-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></span>';
+        return `<span class="launch-bay__check${tone}" title="${escapeHtml(c.detail)}">${icon}<span>${escapeHtml(c.label)}</span></span>`;
+      }).join('');
+
+      const readyClass = r.ready ? ' is-ready' : '';
+      const btnAttrs = r.ready ? '' : 'disabled';
+      const headline = r.ready
+        ? 'Ready to launch. Hold the button to commit.'
+        : `${r.total - r.pass} check${r.total - r.pass === 1 ? '' : 's'} left before launch.`;
+
+      return `
+        <div class="launch-bay${readyClass}" data-launch-bay aria-live="polite">
+          <div class="launch-bay__ring" role="img" aria-label="Launch readiness ${pct} percent">
+            <svg viewBox="0 0 50 50">
+              <circle class="launch-bay__ring-track" cx="25" cy="25" r="22" />
+              <circle class="launch-bay__ring-fill" cx="25" cy="25" r="22"
+                      stroke-dasharray="${circumference.toFixed(2)}"
+                      stroke-dashoffset="${dashOffset.toFixed(2)}" />
+            </svg>
+            <div class="launch-bay__ring-value">${pct}%</div>
+          </div>
+          <div class="launch-bay__body">
+            <div class="launch-bay__kicker">Launch Readiness</div>
+            <div class="launch-bay__headline">${escapeHtml(headline)}</div>
+            <div class="launch-bay__checks">${checksHtml}</div>
+          </div>
+          <button type="button" class="launch-bay__cta" data-launch-cta ${btnAttrs}>
+            <span class="launch-bay__cta-hold" aria-hidden="true"></span>
+            ${icons.spark ? icons.spark(16) : ''}
+            <span>Launch initiative</span>
+            ${r.ready ? '<span class="launch-bay__cta-hint">hold</span>' : ''}
+          </button>
+        </div>
+      `;
+    };
+
+    var bindLaunchCta = (scaffold) => {
+      const cta = document.querySelector('[data-launch-cta]');
+      if (!cta || cta.disabled) return;
+      let timer = null;
+      let committed = false;
+
+      const start = (e) => {
+        if (committed) return;
+        if (e) e.preventDefault();
+        cta.classList.add('is-holding');
+        timer = setTimeout(async () => {
+          committed = true;
+          cta.classList.remove('is-holding');
+          cta.disabled = true;
+          cta.querySelector('span:not(.launch-bay__cta-hold):not(.launch-bay__cta-hint)').textContent = 'Launching…';
+          try {
+            if (window.openai && typeof window.openai.callTool === 'function') {
+              await window.openai.callTool('entity_action', {
+                type: 'initiative',
+                id: scaffold.initiative.raw_id || scaffold.initiative.id,
+                action: 'launch',
+              });
+            }
+            cta.querySelector('span:not(.launch-bay__cta-hold):not(.launch-bay__cta-hint)').textContent = 'Launched ✓';
+          } catch (err) {
+            console.warn('[scaffold:launch] failed', err);
+            cta.disabled = false;
+            committed = false;
+            cta.querySelector('span:not(.launch-bay__cta-hold):not(.launch-bay__cta-hint)').textContent = 'Launch initiative';
+          }
+        }, 820);
+      };
+      const cancel = () => {
+        if (timer) { clearTimeout(timer); timer = null; }
+        if (!committed) cta.classList.remove('is-holding');
+      };
+
+      cta.addEventListener('pointerdown', start);
+      cta.addEventListener('pointerup', cancel);
+      cta.addEventListener('pointerleave', cancel);
+      cta.addEventListener('pointercancel', cancel);
+      cta.addEventListener('keydown', (e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && !committed) {
+          e.preventDefault();
+          start(e);
+        }
+      });
+      cta.addEventListener('keyup', cancel);
+    };
+
     var render = () => {
       stopScaffoldStateAnimation();
       if (isLoading) {
@@ -2828,7 +3156,7 @@
             <div class="node-list">
               ${listHtml}
             </div>
-          
+            ${renderLaunchBay(scaffold)}
             <div class="widget-footer">
               <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
               <a href="${initiativeUrl}" target="_blank" rel="noreferrer" class="deep-link ox-link-btn ox-link-btn--quiet">
@@ -2849,6 +3177,7 @@
       queueTreeLayout(true);
       window.setTimeout(() => queueTreeLayout(false), 760 + Math.max(0, workstreamChildren.length - 1) * 210);
       _scheduleSizeSync([24, 240, 760, 1020]);
+      bindLaunchCta(scaffold);
     };
 
     window.addEventListener('resize', function(){ queueTreeLayout(false); _scheduleSizeSync([24, 180]); });

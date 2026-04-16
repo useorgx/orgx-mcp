@@ -37,6 +37,7 @@ const CANONICAL_PRIMARIES: Record<string, string> = {
 
   // Escalation / attention mode — amber.
   decisions: '251,191,36',
+  'artifact-review': '251,191,36',
 
   // Readout mode — canonical teal.
   'morning-brief': '0,201,167',

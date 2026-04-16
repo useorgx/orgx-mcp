@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en" data-widget-mode="escalation">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Artifact Review — OrgX</title>
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2302040a'/%3E%3Cpath d='M20 18h18l8 8v22H20z' fill='none' stroke='%23fbbf24' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M38 18v8h8' fill='none' stroke='%23fbbf24' stroke-width='4' stroke-linejoin='round'/%3E%3C/svg%3E" />
+
+  <link rel="stylesheet" href="shared/tokens.css" />
+  <link rel="stylesheet" href="shared/widget-foundation.css" />
+  <link rel="stylesheet" href="shared/interaction-kit.css" />
+  <link rel="stylesheet" href="shared/components/domain-accent.css" />
+
+  <style>
+    /*
+     * artifact-review — Action widget, Escalation mode.
+     * Primary = amber (shares the attention palette with decisions).
+     * Spec: orgx-design skill, Widget Types › Action Widgets.
+     *
+     * Layout:
+     *   widget-shell (kicker + title + icon)
+     *   → artifact-preview (filmstrip + main preview)
+     *   → author attribution (agent-chip) + version badge
+     *   → decision block (approve | request changes)
+     *   → footer (deep link + last-version meta)
+     */
+
+    :root { --ox-primary: #fbbf24; --ox-primary-rgb: 251, 191, 36; }
+    @media (prefers-color-scheme: dark) {
+      :root { --ox-primary: #fbbf24; --ox-primary-rgb: 251, 191, 36; }
+    }
+    [data-theme="dark"] {
+      --ox-primary: #fbbf24;
+      --ox-primary-rgb: 251, 191, 36;
+    }
+
+    .stage {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* ─── artifact-preview ──────────────────────────────────────── */
+    .artifact-preview {
+      border: 1px solid var(--ox-border);
+      border-radius: 14px;
+      background: var(--ox-well-bg);
+      box-shadow: var(--ox-well-shadow);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .artifact-preview__body {
+      position: relative;
+      min-height: 200px;
+      max-height: 420px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(var(--ox-primary-rgb), 0.06), transparent 60%),
+        var(--ox-well-bg);
+    }
+
+    .artifact-preview__body img,
+    .artifact-preview__body iframe {
+      max-width: 100%;
+      max-height: 380px;
+      border-radius: 10px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
+    }
+
+    .artifact-preview__body pre {
+      width: 100%;
+      max-height: 380px;
+      overflow: auto;
+      margin: 0;
+      padding: 16px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.22);
+      font-family: var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+      font-size: 0.78rem;
+      color: var(--ox-text);
+      line-height: 1.55;
+      border: 1px solid var(--ox-border);
+    }
+
+    .artifact-preview__markdown {
+      width: 100%;
+      max-height: 380px;
+      overflow: auto;
+      font-size: 0.88rem;
+      line-height: 1.6;
+      color: var(--ox-text);
+      padding: 4px 8px;
+    }
+    .artifact-preview__markdown h1,
+    .artifact-preview__markdown h2,
+    .artifact-preview__markdown h3 {
+      margin: 18px 0 8px;
+      line-height: 1.3;
+    }
+    .artifact-preview__markdown p { margin: 0 0 10px; }
+
+    .artifact-preview__placeholder {
+      text-align: center;
+      color: var(--ox-text-muted);
+      font-size: 0.84rem;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+    }
+    .artifact-preview__placeholder svg { opacity: 0.55; }
+
+    /* ─── version filmstrip ─────────────────────────────────────── */
+    .filmstrip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-top: 1px solid var(--ox-border);
+      background: var(--ox-panel);
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+
+    .filmstrip__label {
+      font-family: var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+      font-size: 0.62rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ox-text-muted);
+      margin-right: 4px;
+      flex-shrink: 0;
+    }
+
+    .filmstrip__item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--ox-border);
+      background: var(--ox-well-bg);
+      color: var(--ox-text-muted);
+      font-family: var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+      font-size: 0.68rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+    }
+    .filmstrip__item:hover {
+      border-color: rgba(var(--ox-primary-rgb), 0.35);
+      color: var(--ox-text);
+    }
+    .filmstrip__item.is-current {
+      color: var(--ox-primary);
+      border-color: rgba(var(--ox-primary-rgb), 0.45);
+      background: rgba(var(--ox-primary-rgb), 0.1);
+    }
+    .filmstrip__dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.6;
+    }
+
+    /* ─── attribution + version badge row ──────────────────────── */
+    .attribution-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 0 4px;
+      flex-wrap: wrap;
+    }
+
+    .version-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.3);
+      background: rgba(var(--ox-primary-rgb), 0.1);
+      color: var(--ox-primary);
+      font-family: var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+      font-size: 0.64rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    /* ─── decision block ───────────────────────────────────────── */
+    .decision-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 520px) {
+      .decision-row { grid-template-columns: 1fr; }
+    }
+
+    .decision-card {
+      position: relative;
+      min-height: 88px;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid var(--ox-border);
+      background: var(--ox-well-bg);
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      cursor: pointer;
+      text-align: left;
+      font: inherit;
+      color: var(--ox-text);
+      overflow: hidden;
+      transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .decision-card:hover {
+      transform: translateY(-1px);
+      border-color: rgba(var(--card-color-rgb), 0.45);
+    }
+
+    .decision-card--approve {
+      --card-color-rgb: var(--ox-primary-rgb);
+    }
+
+    .decision-card--changes {
+      --card-color-rgb: 148, 163, 184; /* slate */
+    }
+
+    .decision-card__icon {
+      flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: rgba(var(--card-color-rgb), 0.15);
+      color: rgb(var(--card-color-rgb));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .decision-card__body {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .decision-card__title {
+      font-weight: 600;
+      font-size: 0.92rem;
+    }
+
+    .decision-card__detail {
+      font-size: 0.76rem;
+      color: var(--ox-text-muted);
+    }
+
+    /* Hold-to-approve — the approve card fills from left-to-right
+       while the user holds. Release early → resets. 100% → commits.
+       The visual affordance doubles as the weight-of-decision signal. */
+    .decision-card__hold {
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 0%;
+      background: rgba(var(--card-color-rgb), 0.15);
+      border-right: 1px solid rgba(var(--card-color-rgb), 0.45);
+      pointer-events: none;
+      transition: width 60ms linear;
+    }
+    .decision-card.is-holding .decision-card__hold {
+      transition: width 800ms linear;
+      width: 100%;
+    }
+
+    .decision-card__hint {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      font-family: var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+      font-size: 0.56rem;
+      color: rgb(var(--card-color-rgb));
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      opacity: 0.6;
+    }
+
+    /* ─── composer (changes-requested) ─────────────────────────── */
+    .composer {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      padding: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 12px;
+      background: rgba(148, 163, 184, 0.06);
+    }
+    .composer.is-open { display: flex; }
+
+    .composer label {
+      font-family: var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+      font-size: 0.62rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ox-text-muted);
+    }
+
+    .composer textarea {
+      width: 100%;
+      min-height: 80px;
+      resize: vertical;
+      padding: 10px 12px;
+      border: 1px solid var(--ox-border);
+      border-radius: 10px;
+      background: var(--ox-panel);
+      color: var(--ox-text);
+      font: inherit;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .composer textarea:focus-visible {
+      outline: 2px solid rgba(148, 163, 184, 0.5);
+      outline-offset: 2px;
+    }
+
+    .composer__actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .composer-btn {
+      padding: 8px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--ox-border);
+      background: var(--ox-panel);
+      color: var(--ox-text);
+      font-weight: 600;
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+    .composer-btn--primary {
+      background: rgb(148, 163, 184);
+      color: var(--ox-bg);
+      border-color: rgb(148, 163, 184);
+    }
+
+    /* ─── footer ───────────────────────────────────────────────── */
+    .widget-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--ox-border);
+      font-family: var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+      font-size: 0.65rem;
+      color: var(--ox-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .widget-foot a {
+      color: var(--ox-primary);
+      text-decoration: none;
+    }
+    .widget-foot a:hover { text-decoration: underline; }
+
+    /* ─── empty + error states ─────────────────────────────────── */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+      text-align: center;
+      color: var(--ox-text-muted);
+    }
+    .empty-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(var(--ox-primary-rgb), 0.1);
+      color: var(--ox-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="widget-shell-card animate-in">
+    <div class="ox-card">
+      <div class="ox-card-inner">
+        <div class="widget-hero">
+          <div class="widget-hero-copy">
+            <div class="widget-kicker">Artifact Review</div>
+            <div class="widget-title-lg" data-artifact-title>Ready when you are</div>
+            <div class="widget-subtitle" data-artifact-subtitle>Approve or request changes — production artifacts need a human signature.</div>
+          </div>
+          <div class="widget-icon-frame">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg>
+          </div>
+        </div>
+
+        <div class="stage" data-stage></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="shared/components/domain-accent.js"></script>
+  <script>
+    (function () {
+      'use strict';
+
+      // ─── SDK shim ────────────────────────────────────────────────
+      function callTool(name, args) {
+        if (window.openai && typeof window.openai.callTool === 'function') {
+          return window.openai.callTool(name, args || {});
+        }
+        return Promise.reject(new Error('callTool unavailable outside MCP host'));
+      }
+
+      function openWidgetLink(url) {
+        if (window.openai && typeof window.openai.openExternal === 'function') {
+          window.openai.openExternal({ url });
+          return;
+        }
+        window.location.href = url;
+      }
+
+      function reportSize() {
+        if (window.openai && typeof window.openai.setWidgetHeight === 'function') {
+          const height = document.body.scrollHeight;
+          window.openai.setWidgetHeight({ height });
+        }
+      }
+
+      // ─── data resolution ─────────────────────────────────────────
+      function resolveArtifact() {
+        const toolOutput = (window.openai && window.openai.toolOutput) || null;
+        if (toolOutput && toolOutput.artifact) return toolOutput;
+        if (toolOutput && toolOutput.id) return { artifact: toolOutput };
+
+        // Demo payload for gallery / dev.
+        return {
+          artifact: {
+            id: 'ART-DEMO',
+            name: 'Amplify launch landing — v3',
+            artifact_type: 'design.mockup',
+            artifact_url: 'https://picsum.photos/seed/orgx-art/900/500',
+            status: 'in_review',
+            version: 3,
+            summary: 'Marketing hero revised for the founder-led narrative. Awaiting design review before the Amplify launch window.',
+            author: { name: 'Mark', domain: 'marketing', role: 'Marketing' },
+            versions: [
+              { version: 1, updated_at: '2026-04-10T12:00:00Z' },
+              { version: 2, updated_at: '2026-04-12T15:30:00Z' },
+              { version: 3, updated_at: '2026-04-16T09:15:00Z' },
+            ],
+            entity_type: 'initiative',
+            entity_id: 'INI-AMPLIFY',
+          },
+        };
+      }
+
+      // ─── helpers ─────────────────────────────────────────────────
+      function escapeHtml(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+      }
+
+      function formatRelative(iso) {
+        if (!iso) return '';
+        const then = new Date(iso).getTime();
+        const now = Date.now();
+        const delta = Math.max(0, now - then);
+        const min = Math.round(delta / 60000);
+        if (min < 1) return 'just now';
+        if (min < 60) return min + 'm ago';
+        const hr = Math.round(min / 60);
+        if (hr < 24) return hr + 'h ago';
+        const d = Math.round(hr / 24);
+        return d + 'd ago';
+      }
+
+      function renderPreview(artifact) {
+        const type = (artifact.artifact_type || '').toLowerCase();
+        const url = artifact.artifact_url || '';
+
+        if (url && (type.startsWith('image') || type.includes('mockup') || type.includes('screenshot') || type.includes('design'))) {
+          return '<img src="' + escapeHtml(url) + '" alt="' + escapeHtml(artifact.name || 'artifact') + '" />';
+        }
+
+        if (type.includes('markdown') || type.includes('doc') || artifact.content) {
+          const content = artifact.content || artifact.summary || '';
+          return '<div class="artifact-preview__markdown">' + escapeHtml(content).replace(/\n\n/g, '</p><p>').replace(/^(.+)$/, '<p>$1</p>') + '</div>';
+        }
+
+        if (type.includes('code') || artifact.code) {
+          return '<pre>' + escapeHtml(artifact.code || artifact.summary || '') + '</pre>';
+        }
+
+        // Fallback: placeholder with summary
+        return (
+          '<div class="artifact-preview__placeholder">' +
+          '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h7M7 16h10"/></svg>' +
+          '<div>' + escapeHtml(artifact.summary || 'Preview unavailable for this artifact type.') + '</div>' +
+          '</div>'
+        );
+      }
+
+      function renderFilmstrip(artifact) {
+        const versions = Array.isArray(artifact.versions) && artifact.versions.length ? artifact.versions : [{ version: artifact.version || 1 }];
+        const current = artifact.version || versions[versions.length - 1].version;
+        return (
+          '<div class="filmstrip" role="tablist" aria-label="Artifact version history">' +
+          '<span class="filmstrip__label">Versions</span>' +
+          versions.map(function (v) {
+            const isCurrent = v.version === current;
+            return (
+              '<button class="filmstrip__item' + (isCurrent ? ' is-current' : '') + '" type="button" role="tab" aria-selected="' + isCurrent + '" data-version="' + v.version + '">' +
+              '<span class="filmstrip__dot"></span>' +
+              '<span>v' + v.version + '</span>' +
+              '</button>'
+            );
+          }).join('') +
+          '</div>'
+        );
+      }
+
+      function renderAttribution(artifact) {
+        const authorChip = window.OrgxDomain
+          ? window.OrgxDomain.renderAgentChip(artifact.author || { name: 'Unassigned', domain: 'orchestrator' }, { size: 'sm' })
+          : '';
+        const version = artifact.version || 1;
+        return (
+          '<div class="attribution-row">' +
+          authorChip +
+          '<span class="version-badge">v' + version + ' · ' + (artifact.status || 'in_review').replace('_', ' ') + '</span>' +
+          '</div>'
+        );
+      }
+
+      function renderDecisionRow() {
+        return (
+          '<div class="decision-row">' +
+          '<button class="decision-card decision-card--approve" data-action="approve" type="button">' +
+          '<div class="decision-card__hold" aria-hidden="true"></div>' +
+          '<span class="decision-card__hint">hold to approve</span>' +
+          '<div class="decision-card__icon">' +
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>' +
+          '</div>' +
+          '<div class="decision-card__body">' +
+          '<div class="decision-card__title">Approve</div>' +
+          '<div class="decision-card__detail">Sign off and advance to production.</div>' +
+          '</div>' +
+          '</button>' +
+          '<button class="decision-card decision-card--changes" data-action="request-changes" type="button">' +
+          '<div class="decision-card__icon">' +
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3l7 7-11 11H3v-7z"/></svg>' +
+          '</div>' +
+          '<div class="decision-card__body">' +
+          '<div class="decision-card__title">Request changes</div>' +
+          '<div class="decision-card__detail">File a change request — author is notified.</div>' +
+          '</div>' +
+          '</button>' +
+          '</div>' +
+          '<div class="composer" data-composer>' +
+          '<label for="composer-input">What needs to change?</label>' +
+          '<textarea id="composer-input" data-composer-input placeholder="Be specific — this creates a decision entity linked to the artifact."></textarea>' +
+          '<div class="composer__actions">' +
+          '<button class="composer-btn" type="button" data-composer-cancel>Cancel</button>' +
+          '<button class="composer-btn composer-btn--primary" type="button" data-composer-submit>File decision</button>' +
+          '</div>' +
+          '</div>'
+        );
+      }
+
+      function renderFoot(artifact) {
+        const lastVersion = Array.isArray(artifact.versions) && artifact.versions.length
+          ? artifact.versions[artifact.versions.length - 1]
+          : null;
+        const lastLabel = lastVersion && lastVersion.updated_at
+          ? 'Updated ' + formatRelative(lastVersion.updated_at)
+          : '';
+        const deepLink = artifact.id ? '/artifacts/' + artifact.id : null;
+        return (
+          '<div class="widget-foot">' +
+          '<span>' + escapeHtml(lastLabel || 'Fresh artifact') + '</span>' +
+          (deepLink ? '<a data-deeplink href="' + deepLink + '">Open in OrgX →</a>' : '') +
+          '</div>'
+        );
+      }
+
+      // ─── interactions ────────────────────────────────────────────
+      function bindHoldToApprove(card, onCommit) {
+        let timer = null;
+        let committed = false;
+
+        function start(e) {
+          if (committed) return;
+          e.preventDefault();
+          card.classList.add('is-holding');
+          timer = setTimeout(function () {
+            committed = true;
+            card.classList.remove('is-holding');
+            onCommit();
+          }, 820);
+        }
+        function cancel() {
+          if (timer) {
+            clearTimeout(timer);
+            timer = null;
+          }
+          card.classList.remove('is-holding');
+        }
+
+        card.addEventListener('pointerdown', start);
+        card.addEventListener('pointerup', cancel);
+        card.addEventListener('pointerleave', cancel);
+        card.addEventListener('pointercancel', cancel);
+        card.addEventListener('keydown', function (e) {
+          if ((e.key === 'Enter' || e.key === ' ') && !committed) {
+            e.preventDefault();
+            start(e);
+          }
+        });
+        card.addEventListener('keyup', cancel);
+      }
+
+      async function approveArtifact(artifact) {
+        try {
+          await callTool('entity_action', {
+            type: 'artifact',
+            id: artifact.id,
+            action: 'approve',
+          });
+          render(Object.assign({}, artifact, { status: 'approved' }));
+        } catch (err) {
+          console.warn('[artifact-review] approve failed', err);
+        }
+      }
+
+      async function submitChangeRequest(artifact, notes) {
+        try {
+          await callTool('create_entity', {
+            type: 'decision',
+            title: 'Changes requested on ' + (artifact.name || 'artifact'),
+            summary: notes,
+            entity_type: 'artifact',
+            entity_id: artifact.id,
+            initiative_id: artifact.entity_type === 'initiative' ? artifact.entity_id : undefined,
+          });
+          await callTool('entity_action', {
+            type: 'artifact',
+            id: artifact.id,
+            action: 'request_changes',
+          });
+          render(Object.assign({}, artifact, { status: 'changes_requested' }));
+        } catch (err) {
+          console.warn('[artifact-review] change request failed', err);
+        }
+      }
+
+      // ─── render ─────────────────────────────────────────────────
+      function render(artifact) {
+        const stage = document.querySelector('[data-stage]');
+        const title = document.querySelector('[data-artifact-title]');
+        const subtitle = document.querySelector('[data-artifact-subtitle]');
+
+        if (!artifact || !artifact.id) {
+          stage.innerHTML = (
+            '<div class="empty-state">' +
+            '<div class="empty-icon">' +
+            '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+            '</div>' +
+            '<div>No artifacts waiting for review.</div>' +
+            '</div>'
+          );
+          title.textContent = 'Inbox clear';
+          subtitle.textContent = 'Nothing to sign off on right now.';
+          reportSize();
+          return;
+        }
+
+        title.textContent = artifact.name || 'Artifact review';
+        subtitle.textContent = artifact.summary || 'Production artifact awaiting approval.';
+
+        stage.innerHTML = (
+          '<div class="artifact-preview">' +
+          '<div class="artifact-preview__body">' + renderPreview(artifact) + '</div>' +
+          renderFilmstrip(artifact) +
+          '</div>' +
+          renderAttribution(artifact) +
+          renderDecisionRow() +
+          renderFoot(artifact)
+        );
+
+        // Wire decisions
+        const approveCard = stage.querySelector('[data-action="approve"]');
+        if (approveCard) bindHoldToApprove(approveCard, function () { approveArtifact(artifact); });
+
+        const changesCard = stage.querySelector('[data-action="request-changes"]');
+        const composer = stage.querySelector('[data-composer]');
+        const composerInput = stage.querySelector('[data-composer-input]');
+        const composerCancel = stage.querySelector('[data-composer-cancel]');
+        const composerSubmit = stage.querySelector('[data-composer-submit]');
+
+        if (changesCard && composer) {
+          changesCard.addEventListener('click', function () {
+            composer.classList.add('is-open');
+            if (composerInput) composerInput.focus();
+            reportSize();
+          });
+        }
+        if (composerCancel) {
+          composerCancel.addEventListener('click', function () {
+            composer.classList.remove('is-open');
+            reportSize();
+          });
+        }
+        if (composerSubmit) {
+          composerSubmit.addEventListener('click', function () {
+            const notes = (composerInput.value || '').trim();
+            if (!notes) {
+              composerInput.focus();
+              return;
+            }
+            submitChangeRequest(artifact, notes);
+          });
+        }
+
+        // Wire deep link
+        const deepLink = stage.querySelector('[data-deeplink]');
+        if (deepLink) {
+          deepLink.addEventListener('click', function (e) {
+            e.preventDefault();
+            openWidgetLink(deepLink.getAttribute('href'));
+          });
+        }
+
+        reportSize();
+      }
+
+      // Bootstrap
+      function bootstrap() {
+        const payload = resolveArtifact();
+        const artifact = payload && payload.artifact ? payload.artifact : payload;
+        render(artifact);
+      }
+
+      document.addEventListener('DOMContentLoaded', bootstrap);
+      window.addEventListener('resize', reportSize);
+    })();
+  </script>
+</body>
+</html>
