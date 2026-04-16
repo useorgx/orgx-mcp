@@ -1,0 +1,93 @@
+/*
+ * OrgX shared: agent-chip + domain-accent component styles.
+ *
+ * Any widget that surfaces work-by-domain inherits the same visual
+ * vocabulary. Sizes and spacing match the orgx-design spec (xs=20px,
+ * sm=24px, md=32px avatars).
+ *
+ * Widgets import this in their <head>:
+ *   <link rel="stylesheet" href="shared/components/domain-accent.css" />
+ */
+
+.agent-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 10px 3px 3px;
+  border-radius: 999px;
+  background: rgba(var(--domain-rgb, 20, 184, 166), 0.08);
+  border: 1px solid rgba(var(--domain-rgb, 20, 184, 166), 0.18);
+  color: var(--ox-text);
+  font-size: 0.75rem;
+  line-height: 1.2;
+  max-width: 100%;
+}
+
+.agent-chip__avatar {
+  flex-shrink: 0;
+  border-radius: 999px;
+  overflow: hidden;
+  width: 24px;
+  height: 24px;
+  background: rgba(var(--domain-rgb, 20, 184, 166), 0.22);
+  box-shadow: 0 0 0 1px rgba(var(--domain-rgb, 20, 184, 166), 0.32);
+}
+
+.agent-chip__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.agent-chip__identity {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.agent-chip__name {
+  font-weight: 600;
+  color: var(--ox-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.agent-chip__role {
+  font-family: var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(var(--domain-rgb, 20, 184, 166), 0.9);
+}
+
+/* Size variants */
+.agent-chip--xs .agent-chip__avatar { width: 20px; height: 20px; }
+.agent-chip--xs { padding: 2px 8px 2px 2px; font-size: 0.7rem; }
+.agent-chip--xs .agent-chip__role { font-size: 0.58rem; }
+
+.agent-chip--md .agent-chip__avatar { width: 32px; height: 32px; }
+.agent-chip--md { padding: 4px 12px 4px 4px; font-size: 0.82rem; }
+
+/* When rendered inside a tree/node, collapse role line by default. */
+[data-tree-mode] .agent-chip__role {
+  display: none;
+}
+[data-tree-mode="creation"] .agent-chip,
+[data-tree-mode="command"] .agent-chip {
+  gap: 6px;
+}
+
+/* Focus + hover states — subtle lift, driven by domain color */
+.agent-chip:hover {
+  background: rgba(var(--domain-rgb, 20, 184, 166), 0.14);
+  border-color: rgba(var(--domain-rgb, 20, 184, 166), 0.28);
+}
+.agent-chip:focus-visible {
+  outline: 2px solid rgba(var(--domain-rgb, 20, 184, 166), 0.55);
+  outline-offset: 2px;
+}
