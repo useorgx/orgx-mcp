@@ -530,7 +530,7 @@ button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:po
   <div class="foot">
     <span class="foot-meta" id="footMeta">SYNCING…</span>
     ${safeLiveUrl
-      ? `<button class="foot-link" data-oxhref="${safeLiveUrl}">Open Live View ↗</button>`
+      ? `<button class="foot-link" data-oxhref="${safeLiveUrl}?mode=preview">Launch Preview →</button>`
       : '<span id="footLinkSlot"></span>'}
   </div>
 </div>
@@ -857,21 +857,22 @@ button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:po
 
     bannerTitle.textContent = total + ' entities created successfully';
     var liveLink = data.liveUrl || LIVE_URL;
-    if (liveLink) {
+    var previewLink = liveLink ? liveLink + '?mode=preview' : '';
+    if (previewLink) {
       var bl = document.createElement('button');
       bl.className = 'banner-link';
-      bl.setAttribute('data-oxhref', liveLink);
-      bl.textContent = 'Open live view ↗';
+      bl.setAttribute('data-oxhref', previewLink);
+      bl.textContent = 'Launch Preview →';
       bannerSub.appendChild(bl);
     }
     banner.classList.add('show');
 
     /* Inject footer link if not already hardcoded */
-    if (footLinkSlot && liveLink) {
+    if (footLinkSlot && previewLink) {
       var btn = document.createElement('button');
       btn.className = 'foot-link';
-      btn.setAttribute('data-oxhref', liveLink);
-      btn.textContent = 'Open Live View ↗';
+      btn.setAttribute('data-oxhref', previewLink);
+      btn.textContent = 'Launch Preview →';
       footLinkSlot.replaceWith(btn);
       footLinkSlot = null;
     }
