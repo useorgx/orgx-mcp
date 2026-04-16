@@ -1,0 +1,170 @@
+{
+  "version": 1,
+  "generatedAt": "2026-04-16T19:05:12.696Z",
+  "allowlist": [
+    "shared/components.css",
+    "shared/components/domain-accent.css",
+    "shared/components/domain-accent.js",
+    "shared/components/liveness-indicator.js",
+    "shared/demo-data.js",
+    "shared/icons.js",
+    "shared/interaction-kit.css",
+    "shared/interaction-kit.js",
+    "shared/mcp-apps-sdk.umd.js",
+    "shared/tokens.css",
+    "shared/utils.js",
+    "shared/widget-foundation.css"
+  ],
+  "canonicalPrimaries": {
+    "agent-status": "191,255,0",
+    "initiative-pulse": "0,201,167",
+    "scaffolded-initiative": "99,102,241",
+    "scaffold-streaming": "99,102,241",
+    "task-spawned": "99,102,241",
+    "decisions": "251,191,36",
+    "artifact-review": "251,191,36",
+    "morning-brief": "0,201,167",
+    "search-results": "0,201,167",
+    "plan-session-live": "99,102,241",
+    "index": "17,24,39"
+  },
+  "widgets": {
+    "agent-status": {
+      "file": "public/widgets/agent-status.html",
+      "bytes": 72749,
+      "hash": "9a376fae1ba7",
+      "primaryRgb": "191,255,0",
+      "sharedRefs": [
+        "shared/components/domain-accent.css",
+        "shared/components/domain-accent.js",
+        "shared/components/liveness-indicator.js",
+        "shared/interaction-kit.css",
+        "shared/interaction-kit.js",
+        "shared/widget-foundation.css"
+      ],
+      "demoOnly": false
+    },
+    "artifact-review": {
+      "file": "public/widgets/artifact-review.html",
+      "bytes": 26954,
+      "hash": "093f69b8ad5b",
+      "primaryRgb": "251,191,36",
+      "sharedRefs": [
+        "shared/components/domain-accent.css",
+        "shared/components/domain-accent.js",
+        "shared/interaction-kit.css",
+        "shared/tokens.css",
+        "shared/widget-foundation.css"
+      ],
+      "demoOnly": false
+    },
+    "decisions": {
+      "file": "public/widgets/decisions.html",
+      "bytes": 69867,
+      "hash": "ea679be63213",
+      "primaryRgb": "251,191,36",
+      "sharedRefs": [
+        "shared/interaction-kit.css",
+        "shared/interaction-kit.js",
+        "shared/widget-foundation.css"
+      ],
+      "demoOnly": false
+    },
+    "index": {
+      "file": "public/widgets/index.html",
+      "bytes": 19348,
+      "hash": "721a644e0265",
+      "primaryRgb": "17,24,39",
+      "sharedRefs": [
+        "shared/interaction-kit.css",
+        "shared/interaction-kit.js",
+        "shared/widget-foundation.css"
+      ],
+      "demoOnly": true
+    },
+    "initiative-pulse": {
+      "file": "public/widgets/initiative-pulse.html",
+      "bytes": 104760,
+      "hash": "24d8ef393c30",
+      "primaryRgb": "0,201,167",
+      "sharedRefs": [
+        "shared/components/domain-accent.css",
+        "shared/components/domain-accent.js",
+        "shared/components/liveness-indicator.js",
+        "shared/interaction-kit.css",
+        "shared/interaction-kit.js",
+        "shared/widget-foundation.css"
+      ],
+      "demoOnly": false
+    },
+    "morning-brief": {
+      "file": "public/widgets/morning-brief.html",
+      "bytes": 63195,
+      "hash": "818259f82d7a",
+      "primaryRgb": "0,201,167",
+      "sharedRefs": [
+        "shared/interaction-kit.css",
+        "shared/interaction-kit.js",
+        "shared/widget-foundation.css"
+      ],
+      "demoOnly": false
+    },
+    "plan-session-live": {
+      "file": "public/widgets/plan-session-live.html",
+      "bytes": 18437,
+      "hash": "3eb039bbfbe9",
+      "primaryRgb": "99,102,241",
+      "sharedRefs": [
+        "shared/components/domain-accent.css",
+        "shared/components/domain-accent.js",
+        "shared/components/liveness-indicator.js",
+        "shared/interaction-kit.css",
+        "shared/tokens.css",
+        "shared/widget-foundation.css"
+      ],
+      "demoOnly": false
+    },
+    "scaffold-streaming": {
+      "file": "public/widgets/scaffold-streaming.html",
+      "bytes": 37811,
+      "hash": "f8fd368d30e6",
+      "primaryRgb": "99,102,241",
+      "sharedRefs": [],
+      "demoOnly": true
+    },
+    "scaffolded-initiative": {
+      "file": "public/widgets/scaffolded-initiative.html",
+      "bytes": 124753,
+      "hash": "2069fac75dd9",
+      "primaryRgb": "99,102,241",
+      "sharedRefs": [
+        "shared/interaction-kit.css",
+        "shared/interaction-kit.js",
+        "shared/widget-foundation.css"
+      ],
+      "demoOnly": false
+    },
+    "search-results": {
+      "file": "public/widgets/search-results.html",
+      "bytes": 52406,
+      "hash": "0afa1fd8ae6e",
+      "primaryRgb": "0,201,167",
+      "sharedRefs": [
+        "shared/widget-foundation.css"
+      ],
+      "demoOnly": false
+    },
+    "task-spawned": {
+      "file": "public/widgets/task-spawned.html",
+      "bytes": 35839,
+      "hash": "2f293979bfe2",
+      "primaryRgb": "99,102,241",
+      "sharedRefs": [
+        "shared/interaction-kit.css",
+        "shared/interaction-kit.js",
+        "shared/widget-foundation.css"
+      ],
+      "demoOnly": false
+    }
+  }
+}
