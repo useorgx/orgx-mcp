@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-04-16T19:05:12.696Z",
+  "generatedAt": "2026-04-16T19:53:06.064Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -31,8 +31,8 @@
   "widgets": {
     "agent-status": {
       "file": "public/widgets/agent-status.html",
-      "bytes": 72749,
-      "hash": "9a376fae1ba7",
+      "bytes": 72762,
+      "hash": "d86d1ddd7812",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/components/domain-accent.css",
@@ -40,6 +40,7 @@
         "shared/components/liveness-indicator.js",
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
+        "shared/tokens.css",
         "shared/widget-foundation.css"
       ],
       "demoOnly": false
@@ -99,12 +100,13 @@
     },
     "morning-brief": {
       "file": "public/widgets/morning-brief.html",
-      "bytes": 63195,
-      "hash": "818259f82d7a",
+      "bytes": 63208,
+      "hash": "e406a05c5357",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
+        "shared/tokens.css",
         "shared/widget-foundation.css"
       ],
       "demoOnly": false

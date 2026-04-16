@@ -14,7 +14,10 @@ describe('agent status widget', () => {
   );
 
   it('adopts the shared widget token system for attention-first cards', () => {
-    expect(widgetSource).toContain("@import url('./shared/tokens.css');");
+    // Shared tokens must be pulled via a top-level <link> tag — `@import`
+    // inside a <style> block does not survive Claude's MCP Apps sandbox.
+    expect(widgetSource).toMatch(/<link[^>]+href=("|')shared\/tokens\.css\1/);
+    expect(widgetSource).not.toContain("@import url('./shared/tokens.css');");
     expect(widgetSource).toContain('class="agent-card app-flat-card"');
     expect(widgetSource).toContain('class="agent-attention app-attention-banner"');
     expect(widgetSource).toContain('class="metric-row app-metric-rail"');
