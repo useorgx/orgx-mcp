@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en" data-widget-mode="creation">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Plan Session — Live</title>
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2302040a'/%3E%3Cpath d='M18 20h28M18 30h28M18 40h20' stroke='%236366f1' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
+
+  <link rel="stylesheet" href="shared/tokens.css" />
+  <link rel="stylesheet" href="shared/widget-foundation.css" />
+  <link rel="stylesheet" href="shared/interaction-kit.css" />
+  <link rel="stylesheet" href="shared/components/domain-accent.css" />
+
+  <style>
+    /*
+     * plan-session-live — Creation mode.
+     * Primary = iris (99,102,241). Shares the mode with scaffolded-initiative.
+     *
+     * The agent's reasoning trail rendered live. User is a peer, not an
+     * observer: hovering a plan step reveals a + affordance that opens
+     * an inline comment input. Submitting creates a plan_edit entity
+     * which the agent ingests on its next turn.
+     *
+     * No widget before this has treated agent reasoning as a first-class,
+     * co-authored surface.
+     */
+    :root { --ox-primary: #6366f1; --ox-primary-rgb: 99, 102, 241; }
+    @media (prefers-color-scheme: dark) {
+      :root { --ox-primary: #818cf8; --ox-primary-rgb: 129, 140, 248; }
+    }
+    [data-theme="dark"] {
+      --ox-primary: #818cf8;
+      --ox-primary-rgb: 129, 140, 248;
+    }
+
+    .stage {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .plan-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 10px 14px;
+      border: 1px solid var(--ox-border);
+      border-radius: 12px;
+      background: var(--ox-well-bg);
+    }
+    .plan-meta__kicker {
+      font-family: var(--ox-mono);
+      font-size: 0.62rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ox-text-muted);
+    }
+    .plan-meta__feature { font-weight: 600; font-size: 0.92rem; color: var(--ox-text); }
+
+    /* ─── plan outline ─────────────────────────────────────────
+     * Ambient motion: steps fade in sequentially. Each step is a
+     * card with a gradient rail on the left colored by step state
+     * (pending / active / done).
+     */
+    .plan-list { display: flex; flex-direction: column; gap: 10px; position: relative; }
+
+    /* The connector line between steps */
+    .plan-list::before {
+      content: '';
+      position: absolute;
+      left: 16px;
+      top: 8px;
+      bottom: 8px;
+      width: 2px;
+      background: linear-gradient(180deg,
+        rgba(var(--ox-primary-rgb), 0.08),
+        rgba(var(--ox-primary-rgb), 0.3),
+        rgba(var(--ox-primary-rgb), 0.08));
+      border-radius: 999px;
+      pointer-events: none;
+    }
+
+    .plan-step {
+      position: relative;
+      padding: 14px 16px 14px 48px;
+      border-radius: 12px;
+      border: 1px solid var(--ox-border);
+      background: var(--ox-panel);
+      animation: planStepReveal 420ms cubic-bezier(0.4, 0, 0.2, 1) backwards;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+    .plan-step:hover {
+      border-color: rgba(var(--ox-primary-rgb), 0.35);
+      background: rgba(var(--ox-primary-rgb), 0.03);
+    }
+    @keyframes planStepReveal {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .plan-step__marker {
+      position: absolute;
+      left: 10px;
+      top: 16px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--ox-panel);
+      border: 2px solid rgba(var(--ox-primary-rgb), 0.3);
+      z-index: 1;
+      transition: all 0.2s ease;
+    }
+    .plan-step[data-state="done"] .plan-step__marker {
+      background: var(--ox-primary);
+      border-color: var(--ox-primary);
+      box-shadow: 0 0 10px rgba(var(--ox-primary-rgb), 0.55);
+    }
+    .plan-step[data-state="active"] .plan-step__marker {
+      background: rgba(var(--ox-primary-rgb), 0.3);
+      border-color: var(--ox-primary);
+      animation: planMarkerPulse 1800ms ease-in-out infinite;
+    }
+    @keyframes planMarkerPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(var(--ox-primary-rgb), 0.45); }
+      50% { box-shadow: 0 0 0 6px rgba(var(--ox-primary-rgb), 0); }
+    }
+
+    .plan-step__title {
+      font-weight: 600;
+      font-size: 0.92rem;
+      color: var(--ox-text);
+      line-height: 1.4;
+    }
+    .plan-step__detail {
+      margin-top: 4px;
+      font-size: 0.82rem;
+      color: var(--ox-text-muted);
+      line-height: 1.5;
+    }
+
+    .plan-step__comment-trigger {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      border: 1px solid var(--ox-border);
+      background: var(--ox-well-bg);
+      color: var(--ox-text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.15s ease, background 0.15s ease;
+    }
+    .plan-step:hover .plan-step__comment-trigger,
+    .plan-step:focus-within .plan-step__comment-trigger {
+      opacity: 1;
+    }
+    .plan-step__comment-trigger:hover {
+      background: rgba(var(--ox-primary-rgb), 0.1);
+      color: var(--ox-primary);
+      border-color: rgba(var(--ox-primary-rgb), 0.35);
+    }
+
+    .plan-step__composer {
+      display: none;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--ox-border);
+    }
+    .plan-step__composer.is-open { display: block; }
+
+    .plan-step__textarea {
+      width: 100%;
+      min-height: 60px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--ox-border);
+      background: var(--ox-well-bg);
+      color: var(--ox-text);
+      font: inherit;
+      font-size: 0.84rem;
+      resize: vertical;
+    }
+    .plan-step__textarea:focus-visible {
+      outline: 2px solid rgba(var(--ox-primary-rgb), 0.5);
+      outline-offset: 2px;
+    }
+
+    .plan-step__composer-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+      justify-content: flex-end;
+    }
+    .plan-step__composer-btn {
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--ox-border);
+      background: var(--ox-panel);
+      color: var(--ox-text);
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .plan-step__composer-btn--primary {
+      background: var(--ox-primary);
+      color: var(--ox-bg);
+      border-color: var(--ox-primary);
+    }
+
+    .plan-step__comments {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .plan-step__comment {
+      padding: 6px 10px;
+      border-left: 2px solid rgba(var(--ox-primary-rgb), 0.4);
+      background: rgba(var(--ox-primary-rgb), 0.05);
+      border-radius: 0 6px 6px 0;
+      font-size: 0.82rem;
+      color: var(--ox-text);
+    }
+    .plan-step__comment-meta {
+      font-family: var(--ox-mono);
+      font-size: 0.58rem;
+      color: var(--ox-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 2px;
+    }
+
+    /* ─── footer ───────────────────────────────────────────── */
+    .widget-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-top: 12px;
+      margin-top: 4px;
+      border-top: 1px solid var(--ox-border);
+    }
+  </style>
+</head>
+<body>
+  <div class="widget-shell-card animate-in">
+    <div class="ox-card">
+      <div class="ox-card-inner">
+        <div class="widget-hero">
+          <div class="widget-hero-copy">
+            <div class="widget-kicker">Plan Session · Live</div>
+            <div class="widget-title-lg" data-plan-title>Planning in progress</div>
+            <div class="widget-subtitle" data-plan-subtitle>The agent is thinking out loud. Hover any step to add a note — your comments shape the next iteration.</div>
+          </div>
+          <div class="widget-icon-frame">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h16"/></svg>
+          </div>
+        </div>
+
+        <div class="stage" data-stage></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="shared/components/domain-accent.js"></script>
+  <script src="shared/components/liveness-indicator.js"></script>
+  <script>
+    (function () {
+      'use strict';
+
+      function callTool(name, args) {
+        if (window.openai && typeof window.openai.callTool === 'function') {
+          return window.openai.callTool(name, args || {});
+        }
+        return Promise.reject(new Error('callTool unavailable outside MCP host'));
+      }
+      function openWidgetLink(url) {
+        if (window.openai && typeof window.openai.openExternal === 'function') {
+          window.openai.openExternal({ url });
+          return;
+        }
+        window.location.href = url;
+      }
+      function reportSize() {
+        if (window.openai && typeof window.openai.setWidgetHeight === 'function') {
+          window.openai.setWidgetHeight({ height: document.body.scrollHeight });
+        }
+      }
+
+      function resolvePlan() {
+        const toolOutput = (window.openai && window.openai.toolOutput) || null;
+        if (toolOutput && toolOutput.plan_session) return toolOutput.plan_session;
+        if (toolOutput && Array.isArray(toolOutput.steps)) return toolOutput;
+
+        // Demo payload for gallery / dev.
+        return {
+          id: 'PLAN-DEMO',
+          feature_name: 'Amplify conversion playbook',
+          status: 'active',
+          started_at: new Date(Date.now() - 6 * 60_000).toISOString(),
+          domains_detected: ['sales', 'marketing'],
+          steps: [
+            {
+              id: 'S1',
+              title: 'Calibrate the founder sales rep volume target',
+              detail: '20 discovery calls in 6 weeks — non-negotiable feedback floor before tooling decisions.',
+              state: 'done',
+              edits: [
+                { author: 'Hope', note: 'Raise to 25 if Week 2 conversion > 15%.', at: new Date(Date.now() - 4 * 60_000).toISOString() },
+              ],
+            },
+            {
+              id: 'S2',
+              title: 'Score inbound lead list by reply-propensity',
+              detail: 'Run list through trust context + posthog persona filters before manual triage.',
+              state: 'active',
+            },
+            {
+              id: 'S3',
+              title: 'Draft Loom+follow-up sequence per persona',
+              detail: 'One variant per ICP: operator, founder, RevOps. Ship before discovery calls start.',
+              state: 'pending',
+            },
+            {
+              id: 'S4',
+              title: 'Instrument call transcript scoring',
+              detail: 'Only after 5+ calls manually reviewed — no premature automation.',
+              state: 'pending',
+            },
+          ],
+        };
+      }
+
+      function escapeHtml(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+      }
+      function formatRelative(iso) {
+        if (!iso) return '';
+        const min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+        if (min < 1) return 'just now';
+        if (min < 60) return min + 'm ago';
+        return Math.round(min / 60) + 'h ago';
+      }
+
+      function renderStep(step) {
+        const state = step.state || 'pending';
+        const edits = Array.isArray(step.edits) ? step.edits : [];
+        const editsHtml = edits.length
+          ? '<div class="plan-step__comments">' + edits.map(function (e) {
+              return '<div class="plan-step__comment">' +
+                '<div class="plan-step__comment-meta">' + escapeHtml(e.author || 'You') + ' · ' + escapeHtml(formatRelative(e.at)) + '</div>' +
+                '<div>' + escapeHtml(e.note || '') + '</div>' +
+                '</div>';
+            }).join('') + '</div>'
+          : '';
+
+        return (
+          '<div class="plan-step" data-state="' + state + '" data-step-id="' + escapeHtml(step.id || '') + '" style="animation-delay: ' + ((step.index || 0) * 80) + 'ms;">' +
+          '<div class="plan-step__marker" aria-hidden="true"></div>' +
+          '<button class="plan-step__comment-trigger" type="button" aria-label="Add note" data-open-composer>' +
+          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>' +
+          '</button>' +
+          '<div class="plan-step__title">' + escapeHtml(step.title || 'Untitled step') + '</div>' +
+          (step.detail ? '<div class="plan-step__detail">' + escapeHtml(step.detail) + '</div>' : '') +
+          editsHtml +
+          '<div class="plan-step__composer" data-composer>' +
+          '<textarea class="plan-step__textarea" data-composer-input placeholder="Add a note, correction, or constraint — the agent reads these before its next iteration."></textarea>' +
+          '<div class="plan-step__composer-actions">' +
+          '<button class="plan-step__composer-btn" type="button" data-composer-cancel>Cancel</button>' +
+          '<button class="plan-step__composer-btn plan-step__composer-btn--primary" type="button" data-composer-submit>File note</button>' +
+          '</div>' +
+          '</div>' +
+          '</div>'
+        );
+      }
+
+      async function submitPlanEdit(planId, stepId, note) {
+        try {
+          await callTool('record_plan_edit', {
+            plan_session_id: planId,
+            step_id: stepId,
+            note: note,
+          });
+        } catch (err) {
+          console.warn('[plan-session] record_plan_edit failed', err);
+        }
+      }
+
+      function bindStepComposer(stepEl, planId) {
+        const trigger = stepEl.querySelector('[data-open-composer]');
+        const composer = stepEl.querySelector('[data-composer]');
+        const input = stepEl.querySelector('[data-composer-input]');
+        const cancel = stepEl.querySelector('[data-composer-cancel]');
+        const submit = stepEl.querySelector('[data-composer-submit]');
+        const stepId = stepEl.dataset.stepId;
+
+        trigger.addEventListener('click', function () {
+          composer.classList.add('is-open');
+          input.focus();
+          reportSize();
+        });
+        cancel.addEventListener('click', function () {
+          composer.classList.remove('is-open');
+          input.value = '';
+          reportSize();
+        });
+        submit.addEventListener('click', async function () {
+          const note = (input.value || '').trim();
+          if (!note) { input.focus(); return; }
+          submit.disabled = true;
+          submit.textContent = 'Filing…';
+          await submitPlanEdit(planId, stepId, note);
+          submit.disabled = false;
+          submit.textContent = 'File note';
+          input.value = '';
+          composer.classList.remove('is-open');
+          reportSize();
+        });
+      }
+
+      function render(plan) {
+        const stage = document.querySelector('[data-stage]');
+        const title = document.querySelector('[data-plan-title]');
+        const subtitle = document.querySelector('[data-plan-subtitle]');
+
+        if (!plan || !Array.isArray(plan.steps)) {
+          stage.innerHTML = '<div style="padding:32px;text-align:center;color:var(--ox-text-muted);">No active plan session.</div>';
+          reportSize();
+          return;
+        }
+
+        title.textContent = plan.feature_name || 'Plan session';
+        subtitle.textContent = 'Hover any step to add a note — your comments shape the next iteration.';
+
+        const stepsHtml = plan.steps.map(function (s, i) {
+          s.index = i;
+          return renderStep(s);
+        }).join('');
+
+        stage.innerHTML = (
+          '<div class="plan-meta">' +
+          '<div>' +
+          '<div class="plan-meta__kicker">Feature</div>' +
+          '<div class="plan-meta__feature">' + escapeHtml(plan.feature_name || 'Untitled') + '</div>' +
+          '</div>' +
+          '<span data-liveness></span>' +
+          '</div>' +
+          '<div class="plan-list">' + stepsHtml + '</div>' +
+          '<div class="widget-foot">' +
+          '<span style="font-family:var(--ox-mono);font-size:0.62rem;color:var(--ox-text-muted);text-transform:uppercase;letter-spacing:0.08em;">' +
+          plan.steps.filter(function (s) { return s.state === 'done'; }).length + ' / ' + plan.steps.length + ' steps complete' +
+          '</span>' +
+          (plan.id ? '<a data-deeplink href="/plan-sessions/' + plan.id + '" style="font-family:var(--ox-mono);font-size:0.68rem;color:var(--ox-primary);text-decoration:none;">Open in OrgX →</a>' : '') +
+          '</div>'
+        );
+
+        // Wire composers
+        stage.querySelectorAll('.plan-step').forEach(function (stepEl) {
+          bindStepComposer(stepEl, plan.id);
+        });
+
+        // Wire deep link
+        const deepLink = stage.querySelector('[data-deeplink]');
+        if (deepLink) {
+          deepLink.addEventListener('click', function (e) {
+            e.preventDefault();
+            openWidgetLink(deepLink.getAttribute('href'));
+          });
+        }
+
+        // Attach liveness
+        const livenessHost = stage.querySelector('[data-liveness]');
+        if (livenessHost && window.OrgxLiveness) {
+          const live = window.OrgxLiveness.attach(livenessHost);
+          // Initial pulse to indicate fresh data
+          setTimeout(function () { live.pulse(); }, 120);
+
+          // In a real wiring, an SSE feed would call live.pulse() on each
+          // incoming plan_edit event. For demo/offline we simulate one.
+          if (!window.openai) {
+            setInterval(function () { live.pulse(); }, 4500);
+          }
+        }
+
+        reportSize();
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        render(resolvePlan());
+      });
+      window.addEventListener('resize', reportSize);
+    })();
+  </script>
+</body>
+</html>
