@@ -29,16 +29,19 @@ export const SESSION_TOKEN_ALLOWED_TOOLS = new Set([
 /**
  * Detect whether the calling context is an agent session token.
  *
- * Session tokens are produced by POST /session-tokens and encoded as a
- * base64 JSON payload with { type: 'session', sessionId, ... }.
- * The presence of `sessionId` in props is also treated as a session caller.
+ * Session tokens are now HMAC-signed (see sessionToken.ts). The decoded
+ * payload must have `type: 'session'` and a non-empty `sid` (sessionId).
+ * Legacy unsigned tokens (plain base64 with `sessionId` field) are rejected —
+ * only signed tokens that have been verified upstream set `type: 'session'`.
  */
 export function isSessionToken(props: Record<string, unknown> | null | undefined): boolean {
   if (!props) return false;
-  // Explicit marker set by the session token payload
-  if (props['type'] === 'session') return true;
-  // sessionId in props signals an agent session caller
-  if (typeof props['sessionId'] === 'string' && props['sessionId'].length > 0) return true;
+  // Only trust the type marker — it is set by the HMAC-verified payload.
+  // The `sid` field from signed tokens maps to sessionId in the verified payload.
+  if (props['type'] === 'session') {
+    const sid = props['sid'] ?? props['sessionId'];
+    return typeof sid === 'string' && sid.length > 0;
+  }
   return false;
 }
 

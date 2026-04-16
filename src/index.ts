@@ -3085,7 +3085,14 @@ export class OrgXMcp extends McpAgent<
       name: args.title,
       summary: args.summary ?? args.description,
       description: args.description ?? args.summary,
+      source_system: 'mcp',
     };
+
+    // Attribute to the session's agent identity, not "autopilot"
+    const sessionScope = this.sessionAuth.scope ?? this.props?.scope ?? null;
+    if (sessionScope) {
+      payload.source_agent = sessionScope;
+    }
 
     if (ownerId) payload.owner_id = ownerId;
     if (workspaceId) payload.workspace_id = workspaceId;
@@ -5572,6 +5579,16 @@ export class OrgXMcp extends McpAgent<
             .optional()
             .describe(
               'Nested workstreams. Include domain, dependencies, and estimate fields when possible. If omitted, the scaffold builder auto-fills subtasks/dependencies and OrgX re-estimates domain+agent+cost with model-guided baselines.'
+            ),
+          coordination_dependency: z
+            .object({
+              name: z.string().describe('Short label for the dependency, e.g. "Design handoff dependency" or "QA gating dependency"'),
+              fromWorkstreamName: z.string().describe('Name of the upstream workstream that must produce output first'),
+              toWorkstreamName: z.string().describe('Name of the downstream workstream that is blocked until the upstream delivers'),
+            })
+            .optional()
+            .describe(
+              'The single most important cross-workstream coordination dependency you identified while planning this initiative. Name it specifically based on what the workstreams actually do — not a generic label. Omit if only one workstream exists.'
             ),
           owner_id: z.string().optional(),
           user_id: z.string().optional(),
