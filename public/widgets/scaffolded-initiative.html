@@ -1646,6 +1646,190 @@
     }
     .launch-strip__next:hover svg { opacity: 1; transform: translateX(2px); }
 
+    /* ─── Launched — Creation-mode emergence ───────────────────────
+     *
+     * This is the one place OrgX celebrates. Controlled emergence:
+     * iris particles rise from below, the workstream rail pulses each
+     * lane online in sequence, and the primary CTA expands to a
+     * card-height button. No confetti. Signal coming online, not a
+     * party popper. (per orgx-design/references/philosophy.md)
+     * ─────────────────────────────────────────────────────────── */
+    .launch-strip.is-launched {
+      position: relative;
+      overflow: hidden;
+      padding-bottom: 18px;
+    }
+    .launch-strip__emergence {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      z-index: 1;
+    }
+    .launch-strip__stage {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      border-radius: inherit;
+      z-index: 0;
+    }
+    .launch-strip__stage::before {
+      content: '';
+      position: absolute;
+      inset: -40% -20% auto -20%;
+      height: 70%;
+      background: radial-gradient(
+          ellipse 60% 70% at 50% 100%,
+          rgba(var(--ox-primary-rgb), 0.22),
+          transparent 70%
+        );
+      opacity: 0;
+      animation: launchStageGlow 6800ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes launchStageGlow {
+      0%   { opacity: 0; transform: translateY(20%); }
+      20%  { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0.35; transform: translateY(0); }
+    }
+    .launch-strip__particle {
+      position: absolute;
+      bottom: -14px;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: rgb(var(--ox-primary-rgb));
+      filter: blur(0.5px);
+      box-shadow: 0 0 12px 2px rgba(var(--ox-primary-rgb), 0.55);
+      opacity: 0;
+      animation: launchParticleRise 7200ms cubic-bezier(0.16, 1, 0.3, 1) infinite;
+    }
+    @keyframes launchParticleRise {
+      0%   { transform: translateY(0) scale(0.6); opacity: 0; }
+      12%  { opacity: 0.9; }
+      85%  { opacity: 0.4; }
+      100% { transform: translateY(-140px) scale(1); opacity: 0; }
+    }
+    .launch-strip__horizon {
+      position: absolute;
+      left: 12%;
+      right: 12%;
+      bottom: 24%;
+      height: 1px;
+      background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(var(--ox-primary-rgb), 0.45) 40%,
+          rgba(var(--ox-primary-rgb), 0.45) 60%,
+          transparent
+        );
+      opacity: 0;
+      animation: launchHorizonDrift 7200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes launchHorizonDrift {
+      0%   { opacity: 0; transform: translateY(6px); }
+      22%  { opacity: 1; }
+      100% { opacity: 0.55; transform: translateY(-2px); }
+    }
+
+    .launch-strip__streams {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 8px 12px;
+      margin-top: 2px;
+    }
+    .launch-strip__stream {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 10px;
+      background: rgba(var(--ox-primary-rgb), 0.06);
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.12);
+      font-size: 0.78rem;
+      color: var(--ox-text);
+      opacity: 0;
+      transform: translateY(6px);
+      animation: launchStreamActivate 560ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation-delay: var(--stream-delay, 0ms);
+    }
+    @keyframes launchStreamActivate {
+      0%   { opacity: 0; transform: translateY(6px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    .launch-strip__stream-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: rgb(var(--ox-primary-rgb));
+      box-shadow: 0 0 8px 1px rgba(var(--ox-primary-rgb), 0.6);
+      animation: launchStreamPulse 2400ms cubic-bezier(0.16, 1, 0.3, 1) infinite;
+      animation-delay: var(--stream-delay, 0ms);
+      flex-shrink: 0;
+    }
+    @keyframes launchStreamPulse {
+      0%, 100% { opacity: 0.6; transform: scale(0.85); }
+      50%      { opacity: 1;   transform: scale(1.05); }
+    }
+    .launch-strip__stream-label {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .launch-strip__primary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.35);
+      background: rgba(var(--ox-primary-rgb), 0.1);
+      color: var(--ox-primary);
+      font-weight: 600;
+      font-size: 0.92rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 160ms var(--widget-motion-curve),
+                  border-color 160ms var(--widget-motion-curve),
+                  transform 160ms var(--widget-motion-curve);
+      min-height: 56px;
+      opacity: 0;
+      transform: translateY(4px);
+      animation: launchStreamActivate 560ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation-delay: var(--stream-delay, 0ms);
+    }
+    .launch-strip__primary:hover {
+      background: rgba(var(--ox-primary-rgb), 0.16);
+      border-color: rgba(var(--ox-primary-rgb), 0.55);
+      transform: translateY(-1px);
+    }
+    .launch-strip__primary:focus-visible {
+      outline: 2px solid rgb(var(--ox-primary-rgb));
+      outline-offset: 2px;
+    }
+    .launch-strip__primary-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .launch-strip__primary-title { font-size: 0.95rem; font-weight: 600; }
+    .launch-strip__primary-sub {
+      font-size: 0.74rem;
+      font-weight: 400;
+      color: rgba(var(--ox-primary-rgb), 0.75);
+      letter-spacing: 0.01em;
+    }
+    .launch-strip__primary-arrow {
+      flex-shrink: 0;
+      transition: transform 200ms var(--widget-motion-curve);
+    }
+    .launch-strip__primary:hover .launch-strip__primary-arrow {
+      transform: translateX(3px);
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .launch-strip__cta.is-holding .launch-strip__cta-fill { transition-duration: 300ms; }
       .launch-strip.is-launching .launch-strip__progress-fill {
@@ -1653,6 +1837,12 @@
         opacity: 0.7;
       }
       .launch-strip__progress-fill { transition-duration: 160ms; }
+      .launch-strip__stage::before,
+      .launch-strip__particle,
+      .launch-strip__horizon,
+      .launch-strip__stream-dot { animation: none; opacity: 0.7; }
+      .launch-strip__stream,
+      .launch-strip__primary { animation: none; opacity: 1; transform: none; }
     }
 
     .widget-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--ox-border); gap: 12px; }
@@ -3062,27 +3252,67 @@
 
       const transitionToLaunched = () => {
         if (!strip) return;
-        const id = (scaffold && scaffold.initiative && (scaffold.initiative.raw_id || scaffold.initiative.id)) || '';
-        const href = id ? `/live/${encodeURIComponent(id)}` : '/command';
+        const initiativeId = (scaffold && scaffold.initiative && (scaffold.initiative.raw_id || scaffold.initiative.id)) || '';
+        // Absolute URL. The widget runs inside claudemcpcontent.com in
+        // MCP sandboxes, so a relative /live/… path resolves to the wrong
+        // origin and the link silently 404s. Prefer server-provided live_url,
+        // then construct one against the OrgX web origin.
+        const liveUrl = (scaffold && scaffold.live_url) ||
+          (initiativeId
+            ? `https://useorgx.com/live/${encodeURIComponent(initiativeId)}`
+            : 'https://useorgx.com/command');
+
+        // Build the workstream rail for the emergence reveal. Each stream
+        // activates on a 180ms stagger so the user sees parallel capacity
+        // coming online, not a static "done" label.
+        const sections = Array.isArray(scaffold && scaffold.sections) ? scaffold.sections : [];
+        const streamCount = Math.min(sections.length, 6);
+        const streams = sections.slice(0, streamCount).map((s, i) => {
+          const label = (s && (s.title || s.name)) || ('Stream ' + (i + 1));
+          const delay = 380 + (i * 180);
+          return `
+            <div class="launch-strip__stream" style="--stream-delay: ${delay}ms">
+              <span class="launch-strip__stream-dot" aria-hidden="true"></span>
+              <span class="launch-strip__stream-label">${escapeHtml(label)}</span>
+            </div>`;
+        }).join('');
+        const ctaDelay = 380 + (streamCount * 180) + 140;
+
         strip.classList.remove('is-launching', 'is-ready');
         strip.classList.add('is-launched');
         strip.innerHTML = `
-          <div class="launch-strip__head">
-            <span class="launch-strip__eyebrow">${LAUNCH_STRIP_CHECK_SVG}Launched · just now</span>
+          <div class="launch-strip__stage" aria-hidden="true">
+            <span class="launch-strip__particle" style="left:18%; animation-delay:0ms"></span>
+            <span class="launch-strip__particle" style="left:36%; animation-delay:1200ms"></span>
+            <span class="launch-strip__particle" style="left:58%; animation-delay:2400ms"></span>
+            <span class="launch-strip__particle" style="left:78%; animation-delay:3600ms"></span>
+            <span class="launch-strip__horizon"></span>
           </div>
-          <div class="launch-strip__detail">Initiative is live. Streams activate on the next scheduling cycle.</div>
-          <a class="launch-strip__next" href="${escapeHtml(href)}" data-launch-next>
-            <span>Open in mission control</span>
-            ${LAUNCH_STRIP_ARROW_SVG}
-          </a>
+          <div class="launch-strip__emergence">
+            <div class="launch-strip__head">
+              <span class="launch-strip__eyebrow">${LAUNCH_STRIP_CHECK_SVG}Launched · just now</span>
+              <span class="launch-strip__count">${streamCount ? sections.length + ' workstreams activating' : 'Initiative live'}</span>
+            </div>
+            ${streams ? `<div class="launch-strip__streams">${streams}</div>` : ''}
+            <a class="launch-strip__primary" href="${escapeHtml(liveUrl)}" target="_blank" rel="noreferrer" data-launch-next style="--stream-delay: ${ctaDelay}ms">
+              <span class="launch-strip__primary-copy">
+                <span class="launch-strip__primary-title">Open mission control</span>
+                <span class="launch-strip__primary-sub">Live streams · agents · decisions</span>
+              </span>
+              <span class="launch-strip__primary-arrow" aria-hidden="true">${LAUNCH_STRIP_ARROW_SVG}</span>
+            </a>
+          </div>
         `;
         const next = strip.querySelector('[data-launch-next]');
         if (next) {
           next.addEventListener('click', (evt) => {
             evt.preventDefault();
-            const target = next.getAttribute('href');
-            if (typeof openWidgetLink === 'function') openWidgetLink(target);
-            else if (typeof window !== 'undefined') window.location.href = target;
+            const target = next.getAttribute('href') || liveUrl;
+            if (typeof openWidgetLink === 'function') {
+              openWidgetLink(target, evt);
+            } else if (typeof window !== 'undefined') {
+              window.open(target, '_blank', 'noopener,noreferrer');
+            }
           });
         }
       };
@@ -3237,7 +3467,7 @@
             ${renderLaunchBay(scaffold)}
             <div class="widget-footer">
               <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
-              <a href="${initiativeUrl}" target="_blank" rel="noreferrer" class="deep-link ox-link-btn ox-link-btn--quiet">
+              <a href="${initiativeUrl}" target="_blank" rel="noreferrer" class="deep-link ox-link-btn ox-link-btn--quiet" data-open-live-view>
                 Open Live View
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
               </a>
@@ -3256,6 +3486,24 @@
       window.setTimeout(() => queueTreeLayout(false), 760 + Math.max(0, workstreamChildren.length - 1) * 210);
       _scheduleSizeSync([24, 240, 760, 1020]);
       bindLaunchCta(scaffold);
+
+      // Route the footer "Open Live View" anchor through openWidgetLink —
+      // inside the claude.ai MCP sandbox, plain `target="_blank"` is blocked
+      // by iframe sandbox flags, so the click silently does nothing. The SDK
+      // hook dispatches a ui/open-link postMessage to the host, which actually
+      // opens the URL.
+      const openLiveAnchor = document.querySelector('[data-open-live-view]');
+      if (openLiveAnchor) {
+        openLiveAnchor.addEventListener('click', (evt) => {
+          evt.preventDefault();
+          const target = openLiveAnchor.getAttribute('href');
+          if (typeof openWidgetLink === 'function') {
+            openWidgetLink(target, evt);
+          } else if (typeof window !== 'undefined') {
+            window.open(target, '_blank', 'noopener,noreferrer');
+          }
+        });
+      }
     };
 
     window.addEventListener('resize', function(){ queueTreeLayout(false); _scheduleSizeSync([24, 180]); });
