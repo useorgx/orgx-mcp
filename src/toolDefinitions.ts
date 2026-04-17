@@ -74,6 +74,10 @@ export const WIDGET_URIS = {
     'ui://widget/plan-session-live.html',
     WIDGET_BUILD_VERSION
   ), // Creation-mode widget for co-authored agent reasoning
+  dailyBrief: withWidgetResourceVersion(
+    'ui://widget/daily-brief.html',
+    WIDGET_BUILD_VERSION
+  ), // Daily Brief + Trust Loop: skill/agent ascension surface
 } as const;
 
 export const OUTPUT_TEMPLATE_URIS = {
@@ -87,6 +91,7 @@ export const OUTPUT_TEMPLATE_URIS = {
   morningBrief: toSkybridgeResourceUri(WIDGET_URIS.morningBrief),
   artifactReview: toSkybridgeResourceUri(WIDGET_URIS.artifactReview),
   planSessionLive: toSkybridgeResourceUri(WIDGET_URIS.planSessionLive),
+  dailyBrief: toSkybridgeResourceUri(WIDGET_URIS.dailyBrief),
 } as const;
 
 export const WIDGET_RESOURCES = [
@@ -134,6 +139,11 @@ export const WIDGET_RESOURCES = [
     name: 'plan-session-live-widget',
     uri: WIDGET_URIS.planSessionLive,
     title: 'Plan Session Live Widget',
+  },
+  {
+    name: 'daily-brief-widget',
+    uri: WIDGET_URIS.dailyBrief,
+    title: 'Daily Brief + Trust Loop Widget',
   },
 ] as const;
 

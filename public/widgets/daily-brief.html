@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Daily Brief - OrgX</title>
+    <link rel="stylesheet" href="/widgets/shared/tokens.css" />
+    <link rel="stylesheet" href="/widgets/shared/components.css" />
+    <style>
+      :root {
+        --ox-primary-rgb: 99, 102, 241;
+        --ox-primary: rgb(var(--ox-primary-rgb));
+        --ox-warning: #fbbf24;
+        --ox-danger: #f43f5e;
+        --ox-easing: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .db-card {
+        position: relative;
+        background: var(--ox-panel);
+        border: 1px solid var(--ox-border);
+        border-radius: 20px;
+        padding: 24px 28px 20px;
+        overflow: hidden;
+      }
+      .db-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(var(--ox-primary-rgb), 0.8),
+          transparent
+        );
+      }
+      .db-masthead {
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+        margin-bottom: 20px;
+      }
+      .db-kicker {
+        font-family: var(--ox-mono);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: var(--ox-text-muted);
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .db-kicker-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--ox-primary);
+        box-shadow: 0 0 8px rgba(var(--ox-primary-rgb), 0.6);
+      }
+      .db-headline {
+        font-size: 20px;
+        font-weight: 600;
+        line-height: 1.3;
+        letter-spacing: -0.01em;
+        color: var(--ox-text);
+        margin-bottom: 6px;
+      }
+      .db-headline em {
+        font-style: normal;
+        color: var(--ox-primary);
+      }
+      .db-needs-eye {
+        color: var(--ox-warning);
+      }
+      .db-subtitle {
+        font-size: 13px;
+        color: var(--ox-text-muted);
+        line-height: 1.5;
+      }
+      .db-attention {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        padding: 12px 16px;
+        margin-bottom: 18px;
+        background: rgba(251, 191, 36, 0.05);
+        border: 1px solid rgba(251, 191, 36, 0.22);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: background 0.2s var(--ox-easing);
+      }
+      .db-attention:hover {
+        background: rgba(251, 191, 36, 0.08);
+      }
+      .db-attention-eyebrow {
+        font-family: var(--ox-mono);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--ox-warning);
+        margin-bottom: 2px;
+      }
+      .db-attention-headline {
+        font-size: 13px;
+        color: var(--ox-text);
+      }
+      .db-ledger-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      .db-lens-toggle {
+        display: inline-flex;
+        background: var(--ox-well-bg);
+        border: 1px solid var(--ox-border);
+        border-radius: 8px;
+        padding: 2px;
+      }
+      .db-lens-btn {
+        padding: 6px 12px;
+        background: transparent;
+        border: none;
+        color: var(--ox-text-muted);
+        font-family: var(--ox-mono);
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      .db-lens-btn.is-active {
+        background: rgba(var(--ox-primary-rgb), 0.15);
+        color: var(--ox-primary);
+      }
+      .db-lens-meta {
+        font-family: var(--ox-mono);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--ox-text-muted);
+      }
+      .db-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 120px 60px;
+        gap: 14px;
+        align-items: center;
+        padding: 14px;
+        border-top: 1px solid var(--ox-border);
+      }
+      .db-row-name {
+        font-family: var(--ox-mono);
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--ox-text);
+      }
+      .db-mode-pill {
+        display: inline-block;
+        font-family: var(--ox-mono);
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 2px 6px;
+        border-radius: 3px;
+        margin-left: 8px;
+        border: 1px solid var(--ox-border);
+        color: var(--ox-text-muted);
+      }
+      .db-mode-pill.is-auto {
+        background: rgba(var(--ox-primary-rgb), 0.12);
+        color: var(--ox-primary);
+        border-color: rgba(var(--ox-primary-rgb), 0.28);
+      }
+      .db-row-learning {
+        font-size: 12px;
+        color: var(--ox-text-muted);
+        line-height: 1.5;
+        margin-top: 4px;
+      }
+      .db-row-learning .ascended {
+        color: var(--ox-primary);
+        font-weight: 500;
+      }
+      .db-row-learning .regressed {
+        color: var(--ox-warning);
+        font-weight: 500;
+      }
+      .db-confidence {
+        text-align: right;
+      }
+      .db-sparkline {
+        width: 56px;
+        height: 18px;
+        display: block;
+        margin-left: auto;
+      }
+      .db-confidence-value {
+        font-family: var(--ox-mono);
+        font-size: 12px;
+        color: var(--ox-text);
+        margin-top: 3px;
+      }
+      .db-confidence-delta {
+        font-size: 10px;
+        margin-left: 5px;
+        color: var(--ox-primary);
+      }
+      .db-confidence-delta.is-warn {
+        color: var(--ox-warning);
+      }
+      .db-runs {
+        text-align: right;
+      }
+      .db-runs-value {
+        font-family: var(--ox-mono);
+        font-size: 14px;
+        color: var(--ox-text);
+      }
+      .db-runs-label {
+        font-family: var(--ox-mono);
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ox-text-muted);
+        margin-top: 2px;
+      }
+      .db-agent-avatar {
+        display: inline-flex;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: rgba(var(--agent-rgb, 99, 102, 241), 0.18);
+        color: rgb(var(--agent-rgb, 99, 102, 241));
+        align-items: center;
+        justify-content: center;
+        font-family: var(--ox-mono);
+        font-size: 10px;
+        font-weight: 600;
+        margin-right: 8px;
+        vertical-align: middle;
+      }
+      .db-cross-prompt {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        padding: 12px 16px;
+        border: 1px dashed rgba(var(--ox-primary-rgb), 0.35);
+        border-radius: 12px;
+        margin-bottom: 12px;
+        font-size: 12px;
+        color: var(--ox-text);
+        line-height: 1.5;
+      }
+      .db-cross-prompt code {
+        font-family: var(--ox-mono);
+        font-size: 11px;
+        padding: 1px 5px;
+        border-radius: 3px;
+        background: rgba(var(--ox-primary-rgb), 0.15);
+        color: var(--ox-primary);
+      }
+      .db-cross-prompt-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        background: rgba(var(--ox-primary-rgb), 0.18);
+        border: 1px solid rgba(var(--ox-primary-rgb), 0.35);
+        color: var(--ox-primary);
+        font-family: var(--ox-mono);
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      .db-proof-strip {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        padding: 16px 0 0;
+        margin-top: 20px;
+        border-top: 1px solid var(--ox-border);
+      }
+      .db-proof-stat {
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--ox-border);
+      }
+      .db-proof-value {
+        font-family: var(--ox-mono);
+        font-size: 22px;
+        font-weight: 500;
+        letter-spacing: -0.02em;
+        color: var(--ox-text);
+        line-height: 1;
+      }
+      .db-proof-value.is-empty {
+        color: var(--ox-text-muted);
+      }
+      .db-proof-label {
+        font-size: 11px;
+        color: var(--ox-text);
+        margin-top: 8px;
+      }
+      .db-proof-baseline {
+        font-family: var(--ox-mono);
+        font-size: 9px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--ox-text-muted);
+        margin-top: 3px;
+      }
+      .db-proof-goal {
+        font-family: var(--ox-mono);
+        font-size: 10px;
+        margin-top: 4px;
+        color: var(--ox-primary);
+      }
+      .db-proof-goal.is-behind {
+        color: var(--ox-warning);
+      }
+      .db-footer {
+        display: flex;
+        justify-content: space-between;
+        padding-top: 14px;
+        margin-top: 16px;
+        border-top: 1px solid var(--ox-border);
+        font-family: var(--ox-mono);
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ox-text-muted);
+      }
+      .db-footer-link {
+        color: var(--ox-primary);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" class="ox-surface"></div>
+    <script type="module">
+      import { initWidget, callTool, openWidgetLink } from '/widgets/shared/utils.js';
+
+      const root = document.getElementById('root');
+      let data = null;
+      let lens = 'skills';
+
+      function escapeHtml(v) {
+        if (v == null) return '';
+        return String(v)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function escapeAttr(v) {
+        return escapeHtml(v);
+      }
+
+      // Trusted HTML — projection builder controls these fields.
+      function rawHtml(v) {
+        return typeof v === 'string' ? v : '';
+      }
+
+      function sparkline(points, tone) {
+        if (!Array.isArray(points) || points.length === 0) {
+          return `<svg class="db-sparkline" viewBox="0 0 56 18" preserveAspectRatio="none"><line x1="0" y1="9" x2="56" y2="9" stroke="rgba(255,255,255,0.12)" stroke-dasharray="2 3" stroke-width="1"/></svg>`;
+        }
+        const stroke =
+          tone === 'warning'
+            ? 'rgb(251,191,36)'
+            : tone === 'muted'
+            ? 'rgba(255,255,255,0.35)'
+            : 'rgb(99,102,241)';
+        const step = 56 / Math.max(1, points.length - 1);
+        const coords = points
+          .map((v, i) => {
+            const y = 18 - Math.max(1, Math.min(17, v * 16 + 1));
+            return `${(i * step).toFixed(1)},${y.toFixed(1)}`;
+          })
+          .join(' ');
+        const last = points[points.length - 1] || 0;
+        const lastY = (18 - Math.max(1, Math.min(17, last * 16 + 1))).toFixed(1);
+        return `<svg class="db-sparkline" viewBox="0 0 56 18" preserveAspectRatio="none">
+          <polyline points="${coords}" fill="none" stroke="${stroke}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="56" cy="${lastY}" r="2" fill="${stroke}"/>
+        </svg>`;
+      }
+
+      function renderSkillRow(row) {
+        const tone = row.isRegressed
+          ? 'warning'
+          : row.confidence && row.confidence.placeholder
+          ? 'muted'
+          : 'primary';
+        const spark = sparkline(row.confidence?.points || [], tone);
+        const value = row.confidence?.placeholder
+          ? '—'
+          : (row.confidence?.value ?? 0).toFixed(2);
+        const delta = row.confidence?.placeholder
+          ? ''
+          : `<span class="db-confidence-delta ${
+              tone === 'warning' ? 'is-warn' : ''
+            }">${(row.confidence?.delta ?? 0) >= 0 ? '+' : ''}${(
+              row.confidence?.delta ?? 0
+            ).toFixed(2)}</span>`;
+        const modeClass = row.mode === 'auto' ? 'is-auto' : '';
+        return `
+          <div class="db-row" data-row-id="${escapeAttr(row.id)}">
+            <div>
+              <div>
+                <span class="db-row-name">${escapeHtml(row.name)}</span>
+                <span class="db-mode-pill ${modeClass}">${
+          row.mode === 'auto' ? 'Auto' : 'Manual'
+        }</span>
+              </div>
+              <div class="db-row-learning">${rawHtml(row.learningLine)}</div>
+            </div>
+            <div class="db-confidence">
+              ${spark}
+              <div class="db-confidence-value" ${
+                tone === 'warning'
+                  ? 'style="color: var(--ox-warning)"'
+                  : ''
+              }>${value}${delta}</div>
+            </div>
+            <div class="db-runs">
+              <div class="db-runs-value">${row.runs ?? 0}</div>
+              <div class="db-runs-label">runs</div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderAgentRow(row) {
+        const tone = row.isRegressed
+          ? 'warning'
+          : row.confidence && row.confidence.placeholder
+          ? 'muted'
+          : 'primary';
+        const spark = sparkline(row.confidence?.points || [], tone);
+        const value = row.confidence?.placeholder
+          ? '—'
+          : (row.confidence?.value ?? 0).toFixed(2);
+        const delta = row.confidence?.placeholder
+          ? ''
+          : `<span class="db-confidence-delta ${
+              tone === 'warning' ? 'is-warn' : ''
+            }">${(row.confidence?.delta ?? 0) >= 0 ? '+' : ''}${(
+              row.confidence?.delta ?? 0
+            ).toFixed(2)}</span>`;
+        const avatarStyle = row.accentRgb
+          ? `style="--agent-rgb: ${escapeAttr(row.accentRgb)};"`
+          : '';
+        return `
+          <div class="db-row" data-row-id="${escapeAttr(row.id)}" ${avatarStyle}>
+            <div>
+              <div>
+                <span class="db-agent-avatar">${escapeHtml(
+                  row.avatarGlyph || '?'
+                )}</span>
+                <span class="db-row-name">${escapeHtml(
+                  row.displayName
+                )} · ${escapeHtml(row.role)}</span>
+                <span class="db-mode-pill ${
+                  row.mode === 'auto' ? 'is-auto' : ''
+                }">${row.mode === 'auto' ? 'Auto' : 'Manual'}</span>
+              </div>
+              <div class="db-row-learning">${rawHtml(row.learningLine)}</div>
+              ${
+                row.sla?.displayLine
+                  ? `<div class="db-row-learning">${rawHtml(
+                      row.sla.displayLine
+                    )}</div>`
+                  : ''
+              }
+            </div>
+            <div class="db-confidence">
+              ${spark}
+              <div class="db-confidence-value" ${
+                tone === 'warning'
+                  ? 'style="color: var(--ox-warning)"'
+                  : ''
+              }>${value}${delta}</div>
+            </div>
+            <div class="db-runs">
+              <div class="db-runs-value">${row.tasks ?? 0}</div>
+              <div class="db-runs-label">tasks</div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderProof(stat) {
+        const cls = stat.value == null ? 'is-empty' : '';
+        const goal = stat.goalDelta
+          ? `<div class="db-proof-goal ${
+              stat.goalDelta.pct < 0 ? 'is-behind' : ''
+            }">${escapeHtml(stat.goalDelta.displayDelta)}</div>`
+          : '';
+        return `
+          <div class="db-proof-stat">
+            <div class="db-proof-value ${cls}">${escapeHtml(
+          stat.displayValue
+        )}</div>
+            <div class="db-proof-label">${escapeHtml(stat.label)}</div>
+            <div class="db-proof-baseline">${escapeHtml(stat.baseline)}</div>
+            ${goal}
+          </div>
+        `;
+      }
+
+      function render() {
+        if (!data) {
+          root.innerHTML = `
+            <div class="db-card"><div style="padding: 24px; text-align:center; color: var(--ox-text-muted); font-size: 13px;">
+              No brief available yet — run your first task in an editor to populate the ledger.
+            </div></div>`;
+          return;
+        }
+
+        const activeLens =
+          lens === 'skills' ? data.skillsLens : data.agentsLens;
+        const rows =
+          lens === 'skills'
+            ? (data.skillsLens.skills || []).map(renderSkillRow).join('')
+            : (data.agentsLens.agents || []).map(renderAgentRow).join('');
+
+        const crossPrompt =
+          lens === 'agents' && data.agentsLens.crossPollinationPrompt
+            ? `<div class="db-cross-prompt">
+                <div style="flex:1;">${rawHtml(
+                  data.agentsLens.crossPollinationPrompt.textHtml
+                )}</div>
+                <button class="db-cross-prompt-btn" data-action-kind="promote" data-proposal-id="${escapeAttr(
+                  data.agentsLens.crossPollinationPrompt.id
+                )}">
+                  ${escapeHtml(
+                    data.agentsLens.crossPollinationPrompt.action.title
+                  )}
+                </button>
+              </div>`
+            : '';
+
+        const attention = data.attention
+          ? `<div class="db-attention" role="button" tabindex="0" data-action-kind="open-today" data-deep-link="${escapeAttr(
+              data.attention.deepLink || '/today'
+            )}">
+              <div style="flex:1;">
+                <div class="db-attention-eyebrow">${escapeHtml(
+                  data.attention.eyebrow
+                )}</div>
+                <div class="db-attention-headline">${rawHtml(
+                  data.attention.headlineHtml
+                )}</div>
+              </div>
+            </div>`
+          : '';
+
+        const proof = data.proof
+          ? `<div class="db-proof-strip">
+              ${renderProof(data.proof.timeSaved)}
+              ${renderProof(data.proof.tokensSaved)}
+              ${renderProof(data.proof.deviationsCaught)}
+            </div>`
+          : '';
+
+        root.innerHTML = `
+          <div class="db-card">
+            <div class="db-masthead">
+              <div style="flex:1;">
+                <div class="db-kicker"><span class="db-kicker-dot"></span><span>${escapeHtml(
+                  data.masthead?.kicker || ''
+                )}</span></div>
+                <div class="db-headline">${rawHtml(
+                  activeLens.masthead?.headlineHtml || ''
+                )}</div>
+                <div class="db-subtitle">${escapeHtml(
+                  activeLens.masthead?.subtitle || ''
+                )}</div>
+              </div>
+            </div>
+            ${attention}
+            <div>
+              <div class="db-ledger-header">
+                <div class="db-lens-toggle" role="tablist">
+                  <button class="db-lens-btn ${
+                    lens === 'skills' ? 'is-active' : ''
+                  }" data-lens="skills">Skills</button>
+                  <button class="db-lens-btn ${
+                    lens === 'agents' ? 'is-active' : ''
+                  }" data-lens="agents">Agents</button>
+                </div>
+                <span class="db-lens-meta">${escapeHtml(
+                  activeLens.masthead?.metaLabel || ''
+                )}</span>
+              </div>
+              ${crossPrompt}
+              ${rows}
+            </div>
+            ${proof}
+            <div class="db-footer">
+              <span>${escapeHtml(data.footer?.syncedAgo || '')} · ${
+          data.footer?.machineCount ?? 1
+        } machine${data.footer?.machineCount === 1 ? '' : 's'}</span>
+              <a class="db-footer-link" href="#" data-action-kind="open-today" data-deep-link="${escapeAttr(
+                data.footer?.deepLink?.href || '/today'
+              )}">
+                ${escapeHtml(data.footer?.deepLink?.label || 'Open today')}
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+              </a>
+            </div>
+          </div>
+        `;
+
+        // Wire interactions
+        root.querySelectorAll('.db-lens-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            lens = btn.dataset.lens || 'skills';
+            render();
+          });
+        });
+
+        root.querySelectorAll('[data-action-kind]').forEach((el) => {
+          el.addEventListener('click', (event) => {
+            event.preventDefault();
+            const kind = el.dataset.actionKind;
+            if (kind === 'open-today') {
+              openWidgetLink(el.dataset.deepLink || '/today');
+            } else if (kind === 'promote') {
+              const proposalId = el.dataset.proposalId;
+              if (!proposalId) return;
+              callTool('cross_pollination_promote', {
+                proposal_id: proposalId,
+                idempotency_key: crypto.randomUUID(),
+              });
+            }
+          });
+        });
+      }
+
+      initWidget({
+        render: (d) => {
+          if (d) data = d;
+          if (data && data.defaultLens) lens = data.defaultLens;
+          render();
+        },
+      });
+    </script>
+  </body>
+</html>
