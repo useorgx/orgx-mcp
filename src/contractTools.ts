@@ -104,6 +104,12 @@ export const CONTRACT_TOOL_DEFINITIONS = [
         .array(z.string())
         .optional()
         .describe('Explicit assignee IDs'),
+      proof_profile: z
+        .enum(['full', 'subcomponent', 'release', 'external_artifact'])
+        .optional()
+        .describe(
+          'Proof-chain profile. "full" = independent artifact + quality_score + rubric; "subcomponent" = parent ships proof via milestone ship_batch; "release" = external ship event closes the loop; "external_artifact" = artifact lives outside OrgX, link only. See https://mcp.useorgx.com/docs/proof-chain.'
+        ),
       workspace_id: z.string().optional().describe('Workspace UUID'),
       command_center_id: z
         .string()
@@ -137,6 +143,12 @@ export const CONTRACT_TOOL_DEFINITIONS = [
         .describe('Priority'),
       sequence: z.number().int().min(0).optional().describe('Execution order'),
       domain: z.string().optional().describe('Planning domain'),
+      proof_profile: z
+        .enum(['full', 'subcomponent', 'release', 'external_artifact'])
+        .optional()
+        .describe(
+          'Proof-chain profile. "full" = independent artifact + quality_score + rubric; "subcomponent" = parent ships proof via milestone ship_batch; "release" = external ship event closes the loop; "external_artifact" = artifact lives outside OrgX, link only. See https://mcp.useorgx.com/docs/proof-chain.'
+        ),
       workspace_id: z.string().optional().describe('Workspace UUID'),
       command_center_id: z
         .string()

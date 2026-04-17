@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 
 import {
   CONTRACT_TOOL_DEFINITIONS,
@@ -25,5 +26,27 @@ describe('contract tool catalog', () => {
       id: 'entity_action',
       source: 'inline',
     });
+  });
+
+  it('exposes proof_profile on create_task and create_milestone', () => {
+    for (const toolId of ['create_task', 'create_milestone'] as const) {
+      const tool = CONTRACT_TOOL_DEFINITIONS.find((t) => t.id === toolId);
+      expect(tool, `${toolId} should be registered`).toBeDefined();
+      const schema = tool!.inputSchema as Record<string, z.ZodTypeAny>;
+      expect(schema.proof_profile, `${toolId} must accept proof_profile`).toBeDefined();
+
+      // Valid proof_profile values parse cleanly.
+      for (const profile of [
+        'full',
+        'subcomponent',
+        'release',
+        'external_artifact',
+      ] as const) {
+        expect(() => schema.proof_profile.parse(profile)).not.toThrow();
+      }
+
+      // Invalid values are rejected.
+      expect(() => schema.proof_profile.parse('invalid')).toThrow();
+    }
   });
 });
