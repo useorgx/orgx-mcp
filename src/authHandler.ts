@@ -235,7 +235,7 @@ export const authHandler = {
       const check = url.searchParams.get('check');
       if (check === 'upstream') {
         try {
-          const apiUrl = (env as Record<string, string>).ORGX_API_URL;
+          const apiUrl = (env as unknown as Record<string, string>).ORGX_API_URL;
           if (!apiUrl) {
             return withCors(
               Response.json(

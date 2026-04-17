@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-04-17T04:30:46.247Z",
+  "generatedAt": "2026-04-17T12:32:53.779Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -26,6 +26,7 @@
     "morning-brief": "0,201,167",
     "search-results": "0,201,167",
     "plan-session-live": "99,102,241",
+    "daily-brief": "99,102,241",
     "index": "17,24,39"
   },
   "widgets": {
@@ -57,6 +58,14 @@
         "shared/tokens.css",
         "shared/widget-foundation.css"
       ],
+      "demoOnly": false
+    },
+    "daily-brief": {
+      "file": "public/widgets/daily-brief.html",
+      "bytes": 21239,
+      "hash": "6cdbcc0bdb7f",
+      "primaryRgb": "99,102,241",
+      "sharedRefs": [],
       "demoOnly": false
     },
     "decisions": {
@@ -136,8 +145,8 @@
     },
     "scaffolded-initiative": {
       "file": "public/widgets/scaffolded-initiative.html",
-      "bytes": 124753,
-      "hash": "2069fac75dd9",
+      "bytes": 127471,
+      "hash": "657bbb04222e",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/interaction-kit.css",

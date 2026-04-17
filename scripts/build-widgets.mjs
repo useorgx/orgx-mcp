@@ -51,6 +51,7 @@ const CANONICAL_PRIMARIES = {
   'morning-brief': '0,201,167',
   'search-results': '0,201,167',
   'plan-session-live': '99,102,241',
+  'daily-brief': '99,102,241',
   index: '17,24,39',
 };
 
