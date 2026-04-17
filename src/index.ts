@@ -165,6 +165,7 @@ import {
   validateSkillPromptTemplate,
 } from './promptTemplatePolicy';
 import { buildEntityActionAttachPayload } from './entityActionAttach';
+import { buildEntityActionShipBatchPayload } from './entityActionShipBatch';
 import { buildSmitheryConfigSchema } from './smitheryConfig';
 import {
   applyHydrationAccessTier,
@@ -3101,6 +3102,19 @@ export class OrgXMcp extends McpAgent<
       payload.assigned_agent_ids = args.assigned_agent_ids;
     }
 
+    // proof_profile (tasks/milestones only) merges into metadata.
+    if (
+      typeof args.proof_profile === 'string' &&
+      (type === 'task' || type === 'milestone')
+    ) {
+      const existingMetadata =
+        (payload.metadata as Record<string, unknown> | undefined) ?? {};
+      payload.metadata = {
+        ...existingMetadata,
+        proof_profile: args.proof_profile,
+      };
+    }
+
     const response = await callOrgxApiJson(
       this.env,
       '/api/entities',
@@ -4123,7 +4137,7 @@ export class OrgXMcp extends McpAgent<
       'entity_action',
       {
         title: 'Execute entity action',
-        description: `Execute a lifecycle action on a single entity. Accepts short ID prefix (8+ hex chars) — no need to look up full UUIDs. USE WHEN: user wants to change entity status. For bulk operations (pausing multiple, completing multiple), use batch_action instead. Supports aliases: launch, pause, complete (resolved per type). Omit action to list available actions. NEXT: After completing, call verify_entity_completion first to check child work is done. DO NOT USE: for creating entities — use create_entity or scaffold_initiative.`,
+        description: `Execute a lifecycle action on a single entity. Accepts short ID prefix (8+ hex chars) — no need to look up full UUIDs. USE WHEN: user wants to change entity status. For bulk operations (pausing multiple, completing multiple), use batch_action instead. Supports aliases: launch, pause, complete (resolved per type). Omit action to list available actions. Special actions: attach (create an artifact linked to the entity), ship_batch (milestones only — atomically attach one artifact + mark multiple subcomponent tasks complete when a single PR covers them all). NEXT: After completing, call verify_entity_completion first to check child work is done. DO NOT USE: for creating entities — use create_entity or scaffold_initiative.`,
         annotations: {
           readOnlyHint: false,
           destructiveHint: true,
@@ -4138,7 +4152,7 @@ export class OrgXMcp extends McpAgent<
             .string()
             .optional()
             .describe(
-              'Action to execute (leave empty to list available actions). Aliases: launch, pause, complete (resolved per type). Supports update (patch fields), attach (create an artifact linked to the entity), delete for hard delete. For initiatives: reassign_streams. For studio_content: render, validate, status, remix, vary, upscale'
+              'Action to execute (leave empty to list available actions). Aliases: launch, pause, complete (resolved per type). Supports update (patch fields), attach (create an artifact linked to the entity), delete for hard delete. For milestones: ship_batch (atomically attach one artifact + mark multiple subcomponent tasks complete). For initiatives: reassign_streams. For studio_content: render, validate, status, remix, vary, upscale'
             ),
           fields: z
             .record(z.unknown())
@@ -4251,6 +4265,66 @@ export class OrgXMcp extends McpAgent<
             .optional()
             .describe(
               'Keep original style when remixing (for studio_content action=remix)'
+            ),
+          // Milestone ship_batch fields: atomically attach one artifact + mark N
+          // subcomponent tasks complete. Omit task_ids to target all subcomponent
+          // tasks on the milestone. Requires action=ship_batch and type=milestone.
+          artifact: z
+            .object({
+              name: z.string().min(1).describe('Artifact name/title'),
+              artifact_url: z
+                .string()
+                .optional()
+                .describe('Internal artifact URL (requires artifact_url or external_url)'),
+              external_url: z
+                .string()
+                .optional()
+                .describe('External artifact URL (requires artifact_url or external_url)'),
+              artifact_type: z
+                .string()
+                .min(1)
+                .describe('Artifact type code (e.g. eng.diff_pack)'),
+              artifact_hash: z
+                .string()
+                .optional()
+                .describe('Optional content hash for idempotency/provenance'),
+              status: z
+                .enum([
+                  'draft',
+                  'in_review',
+                  'approved',
+                  'changes_requested',
+                  'superseded',
+                  'archived',
+                ])
+                .optional()
+                .describe('Artifact workflow status'),
+              preview_markdown: z
+                .string()
+                .optional()
+                .describe('Markdown preview stored with the artifact'),
+              metadata: z
+                .record(z.unknown())
+                .optional()
+                .describe('Artifact metadata payload'),
+            })
+            .optional()
+            .describe(
+              'For action=ship_batch only (milestone): the single artifact that covers all batched subcomponent tasks.'
+            ),
+          quality_score: z
+            .number()
+            .min(0)
+            .max(5)
+            .optional()
+            .describe(
+              'For action=ship_batch only (milestone): quality score (0-5) recorded against the attached artifact.'
+            ),
+          task_ids: z
+            .array(z.string().uuid())
+            .optional()
+            .describe(
+              'For action=ship_batch only (milestone): explicit list of subcomponent task UUIDs to mark complete. Omit to target all subcomponent tasks under the milestone.'
             ),
         },
         _meta: { securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth },
@@ -4403,6 +4477,80 @@ export class OrgXMcp extends McpAgent<
               message: result.skipped
                 ? `Artifact attach skipped: ${result.reason ?? 'unknown'}`
                 : `Attached artifact "${attachPayload.name}" to ${attachPayload.entity_type} ${attachPayload.entity_id}`,
+            };
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: formatForLLM('entity_action', payload),
+                },
+              ],
+              structuredContent: payload,
+            };
+          }
+
+          if (resolvedAction === 'ship_batch') {
+            // ship_batch: atomically attach one artifact + mark N subcomponent tasks
+            // complete on a milestone. Only valid for milestones.
+            if (args.type !== 'milestone') {
+              return this.toolError(
+                'action=ship_batch is only supported on milestone entities',
+                { code: 'invalid_input', status: 400 }
+              );
+            }
+
+            let shipBatchBuilt: ReturnType<
+              typeof buildEntityActionShipBatchPayload
+            >;
+            try {
+              shipBatchBuilt = buildEntityActionShipBatchPayload({
+                milestone_id: args.id,
+                artifact: args.artifact,
+                quality_score: args.quality_score,
+                task_ids: args.task_ids,
+                note: args.note,
+                user_id: resolvedUserId,
+              });
+            } catch (error) {
+              return this.toolError(
+                error instanceof Error
+                  ? error.message
+                  : 'Invalid ship_batch payload',
+                { code: 'invalid_input', status: 400 }
+              );
+            }
+
+            const response = await callOrgxApiJson(
+              this.env,
+              `/api/entities/milestone/${shipBatchBuilt.milestone_id}/ship_batch`,
+              {
+                method: 'POST',
+                body: JSON.stringify(shipBatchBuilt.body),
+              },
+              { userId: resolvedUserId ?? null }
+            );
+            const result = (await response.json()) as {
+              ok?: boolean;
+              error?: string;
+              artifact?: Record<string, unknown>;
+              completed_task_ids?: string[];
+              skipped_task_ids?: string[];
+              milestone?: Record<string, unknown>;
+            };
+            if (result.error) {
+              return this.toolError(result.error);
+            }
+            const payload = {
+              ...result,
+              _action: 'ship_batch',
+              entity_type: 'milestone',
+              entity_id: args.id,
+              message: `Shipped batch on milestone ${args.id}: attached "${shipBatchBuilt.body.artifact.name}"${
+                result.completed_task_ids
+                  ? ` and completed ${result.completed_task_ids.length} task(s)`
+                  : ''
+              }`,
             };
 
             return {
@@ -4660,6 +4808,12 @@ export class OrgXMcp extends McpAgent<
             .boolean()
             .optional()
             .describe('Auto-run streams when ready'),
+          proof_profile: z
+            .enum(['full', 'subcomponent', 'release', 'external_artifact'])
+            .optional()
+            .describe(
+              'Proof-chain profile (task/milestone only). Controls completion evidence required before the entity can be marked complete. "full" = independent artifact + quality_score + rubric; "subcomponent" = parent ships proof via milestone ship_batch; "release" = external ship event closes the loop; "external_artifact" = artifact lives outside OrgX, link only. See https://mcp.useorgx.com/docs/proof-chain.'
+            ),
           owner_id: z.string().optional(),
           user_id: z.string().optional(),
           // Skill-specific fields (for type: 'skill')
@@ -4931,6 +5085,20 @@ export class OrgXMcp extends McpAgent<
             if (args.agent_domain) payload.agent_domain = args.agent_domain;
             if (args.auto_continue !== undefined)
               payload.auto_continue = args.auto_continue;
+          }
+
+          // proof_profile (tasks/milestones only) — merged into metadata so server-side
+          // proof-chain handler can read it without schema changes.
+          if (
+            args.proof_profile &&
+            (args.type === 'task' || args.type === 'milestone')
+          ) {
+            const existingMetadata =
+              (payload.metadata as Record<string, unknown> | undefined) ?? {};
+            payload.metadata = {
+              ...existingMetadata,
+              proof_profile: args.proof_profile,
+            };
           }
 
           // Skill-specific fields
@@ -7038,6 +7206,12 @@ export class OrgXMcp extends McpAgent<
             .boolean()
             .optional()
             .describe('Whether the stream should auto-run when ready'),
+          proof_profile: z
+            .enum(['full', 'subcomponent', 'release', 'external_artifact'])
+            .optional()
+            .describe(
+              'Proof-chain profile (task/milestone only). Controls completion evidence required before the entity can be marked complete. "full" = independent artifact + quality_score + rubric; "subcomponent" = parent ships proof via milestone ship_batch; "release" = external ship event closes the loop; "external_artifact" = artifact lives outside OrgX, link only. See https://mcp.useorgx.com/docs/proof-chain.'
+            ),
           // Skill-specific fields
           prompt_template: z
             .string()
@@ -7089,6 +7263,7 @@ export class OrgXMcp extends McpAgent<
             agent_domain,
             auto_continue,
             prompt_template,
+            proof_profile,
             ...safeUpdates
           } = updates as Record<string, unknown>;
 
@@ -7097,6 +7272,19 @@ export class OrgXMcp extends McpAgent<
             id,
             ...safeUpdates,
           };
+
+          // proof_profile (tasks/milestones only) merges into metadata.
+          if (
+            typeof proof_profile === 'string' &&
+            (type === 'task' || type === 'milestone')
+          ) {
+            const existingMetadata =
+              (payload.metadata as Record<string, unknown> | undefined) ?? {};
+            payload.metadata = {
+              ...existingMetadata,
+              proof_profile,
+            };
+          }
 
           if (prompt_template !== undefined) {
             if (type !== 'skill') {
@@ -8369,38 +8557,76 @@ export class OrgXMcp extends McpAgent<
         })
     );
 
-    // --- save_artifact ---
-    // Called by agents during sessions to persist artifacts as OrgX entities.
+    // --- save_artifact (DEPRECATED) ---
+    // DEPRECATED: The previous schema (type: 'document'|'code'|'data'|'decision'|'analysis')
+    // produced 400 errors on the server, which expects entity-scoped attach payloads
+    // (entity_type, entity_id, artifact_type). This tool now transparently routes to the
+    // same backend as `entity_action action=attach`. Prefer `entity_action action=attach`
+    // for new code.
     if (shouldRegister('save_artifact'))
     this.server.registerTool(
       'save_artifact',
       {
-        title: 'Save Artifact',
+        title: 'Save Artifact (deprecated)',
         description:
-          'Persist an artifact (document, code, data, decision, or analysis) as an OrgX entity. USE WHEN: an agent session has produced output that should be stored and linked to a task or initiative. NEXT: Use get_task_with_context to confirm the artifact is attached. DO NOT USE: for regular entity creation — use create_entity instead.',
+          'DEPRECATED: Use entity_action action=attach instead. This tool still works as a thin compatibility wrapper that attaches an artifact to a task, milestone, initiative, workstream, project, or decision. USE WHEN: legacy clients still call save_artifact. NEXT: Prefer entity_action action=attach for new code — it exposes the full attachment surface (preview_markdown, status, metadata, created_by_*). DO NOT USE: for generic entity creation — use create_entity instead.',
         annotations: {
           readOnlyHint: false,
           destructiveHint: false,
           openWorldHint: false,
         },
         inputSchema: {
-          title: z.string().describe('Artifact title'),
+          title: z.string().describe('Artifact title (maps to `name` on the attach payload)'),
+          // Legacy enum kept for backwards compatibility but no longer constrained:
+          // server only cares about `artifact_type` (free string like "eng.diff_pack").
+          // Accept the old legacy values OR any new free-form code — either parses to
+          // a valid artifact_type string below.
           type: z
-            .enum(['document', 'code', 'data', 'decision', 'analysis'])
-            .describe('Artifact type'),
-          content: z.string().describe('Full artifact content'),
+            .string()
+            .optional()
+            .describe(
+              'Legacy artifact category (document|code|data|decision|analysis) OR a free-form artifact_type code (e.g. eng.diff_pack). If omitted, defaults to "note".'
+            ),
+          artifact_type: z
+            .string()
+            .optional()
+            .describe(
+              'Preferred: explicit artifact type code matching the server taxonomy (e.g. eng.diff_pack, launch.launch_brief). Overrides `type` when both are set.'
+            ),
+          entity_type: z
+            .enum(['project', 'initiative', 'workstream', 'milestone', 'task', 'decision'])
+            .optional()
+            .describe('Target entity type to attach to. Falls back to inferring from taskId / initiativeId.'),
+          entity_id: z
+            .string()
+            .optional()
+            .describe('Target entity UUID. Falls back to taskId or initiativeId.'),
+          content: z
+            .string()
+            .optional()
+            .describe(
+              'Optional full artifact content. Stored as preview_markdown (truncated to 25k chars).'
+            ),
+          artifact_url: z
+            .string()
+            .optional()
+            .describe('Internal artifact URL (required unless external_url is provided).'),
+          external_url: z
+            .string()
+            .optional()
+            .describe('External artifact URL (required unless artifact_url is provided).'),
           sessionId: z
             .string()
             .optional()
-            .describe('Agent session ID (auto-populated from session token)'),
+            .describe('Agent session ID (stored on metadata.session_id).'),
           taskId: z
             .string()
             .optional()
-            .describe('OrgX task entity ID to link this artifact to'),
+            .describe('Legacy alias: OrgX task entity UUID to link this artifact to.'),
           initiativeId: z
             .string()
             .optional()
-            .describe('OrgX initiative ID to link this artifact to'),
+            .describe('Legacy alias: OrgX initiative UUID to link this artifact to.'),
           user_id: z.string().optional().describe('Optional user id override'),
         },
       },
@@ -8410,46 +8636,95 @@ export class OrgXMcp extends McpAgent<
             typeof args.user_id === 'string' ? args.user_id : undefined
           );
 
-          const entityData: Record<string, unknown> = {
-            type: 'artifact',
-            title: args.title,
-            fields: {
-              artifact_type: args.type,
-              content: typeof args.content === 'string'
-                ? args.content.slice(0, 10000)
-                : '',
-              session_id: args.sessionId ?? null,
-            },
-          };
+          // Resolve entity_type / entity_id with legacy fallbacks
+          const taskId =
+            typeof args.taskId === 'string' && args.taskId.trim().length > 0
+              ? args.taskId.trim()
+              : null;
+          const initiativeId =
+            typeof args.initiativeId === 'string' && args.initiativeId.trim().length > 0
+              ? args.initiativeId.trim()
+              : null;
+          const explicitEntityId =
+            typeof args.entity_id === 'string' && args.entity_id.trim().length > 0
+              ? args.entity_id.trim()
+              : null;
+          const entityType =
+            args.entity_type ??
+            (taskId ? 'task' : initiativeId ? 'initiative' : undefined);
+          const entityId = explicitEntityId ?? taskId ?? initiativeId ?? null;
 
-          if (typeof args.taskId === 'string' && args.taskId.trim().length > 0) {
-            entityData['parent_id'] = args.taskId.trim();
+          if (!entityType || !entityId) {
+            return this.toolError(
+              'save_artifact requires entity_type + entity_id (or legacy taskId / initiativeId). Prefer entity_action action=attach.',
+              { code: 'invalid_input', status: 400 }
+            );
           }
-          if (typeof args.initiativeId === 'string' && args.initiativeId.trim().length > 0) {
-            entityData['initiative_id'] = args.initiativeId.trim();
+
+          // Resolve artifact_type: explicit wins over legacy `type`, with a safe default.
+          const artifactType =
+            (typeof args.artifact_type === 'string' && args.artifact_type.trim()) ||
+            (typeof args.type === 'string' && args.type.trim()) ||
+            'note';
+
+          // Require at least one URL — mirrors server-side rule.
+          if (!args.artifact_url && !args.external_url) {
+            return this.toolError(
+              'save_artifact requires artifact_url or external_url. Prefer entity_action action=attach.',
+              { code: 'invalid_input', status: 400 }
+            );
           }
+
+          const previewMarkdown =
+            typeof args.content === 'string' && args.content.length > 0
+              ? args.content.slice(0, 25_000)
+              : undefined;
+          const metadata: Record<string, unknown> = {};
+          if (args.sessionId) metadata.session_id = args.sessionId;
+          if (args.type && args.type !== artifactType) {
+            // Preserve legacy category for downstream analytics.
+            metadata.legacy_type = args.type;
+          }
+
+          const attachPayload = buildEntityActionAttachPayload({
+            type: entityType,
+            id: entityId,
+            name: args.title,
+            artifact_type: artifactType,
+            artifact_url: args.artifact_url,
+            external_url: args.external_url,
+            preview_markdown: previewMarkdown,
+            metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+          });
 
           const response = await callOrgxApiJson(
             this.env,
-            '/api/entities',
+            '/api/client/artifacts',
             {
               method: 'POST',
-              body: JSON.stringify(entityData),
+              body: JSON.stringify(attachPayload),
             },
             resolvedUserId ? { userId: resolvedUserId } : undefined
           );
 
-          const result = (await response.json()) as Record<string, unknown>;
+          const result = (await response.json()) as {
+            ok?: boolean;
+            skipped?: boolean;
+            reason?: string;
+            artifact?: Record<string, unknown>;
+          };
           const artifactId =
-            typeof result['id'] === 'string' ? result['id'] : undefined;
+            result.artifact && typeof result.artifact.id === 'string'
+              ? result.artifact.id
+              : undefined;
 
           return {
             content: [
               {
                 type: 'text' as const,
                 text: artifactId
-                  ? `Artifact "${args.title}" created with id ${artifactId}`
-                  : `Artifact "${args.title}" created`,
+                  ? `Artifact "${args.title}" attached with id ${artifactId} (save_artifact is deprecated — prefer entity_action action=attach)`
+                  : `Artifact "${args.title}" attached (save_artifact is deprecated — prefer entity_action action=attach)`,
               },
             ],
             structuredContent: result,
