@@ -30,7 +30,11 @@ import {
 } from './toolDefinitions';
 import serverManifest from '../server.json';
 import { signSessionToken } from './sessionToken';
-import { verifyStreamToken } from './streamToken';
+import {
+  verifyStreamTokenDetailed,
+  withStreamTokenExpiry,
+} from './streamToken';
+import { buildAuthErrorResponse } from './authErrors';
 
 // Re-export type for use in index.ts
 export type { OAuthHelpers };
@@ -1001,32 +1005,53 @@ tool_timeout_sec = 60
 
       // Stream and status endpoints require a valid stream token to prevent
       // unauthenticated access to scaffold event data.
+      let scaffoldTokenExp: number | null = null;
       if (action === 'stream' || action === 'status') {
         const streamTokenSecret = env.MCP_JWT_SECRET || env.ORGX_INTERNAL_SECRET;
         const tokenParam = url.searchParams.get('t');
         if (!streamTokenSecret || !tokenParam) {
           return withCors(
-            Response.json({ error: 'Missing stream token' }, { status: 401 })
+            buildAuthErrorResponse({ reason: 'missing_token' })
           );
         }
-        const verified = await verifyStreamToken(tokenParam, streamTokenSecret);
-        if (!verified) {
+        const verified = await verifyStreamTokenDetailed(tokenParam, streamTokenSecret);
+        if (!verified.ok) {
           return withCors(
-            Response.json({ error: 'Invalid or expired stream token' }, { status: 401 })
+            buildAuthErrorResponse({
+              reason: verified.reason === 'expired'
+                ? 'stream_token_expired'
+                : 'stream_token_invalid',
+            })
           );
         }
-        // Verify the token is scoped to this scaffold session
-        if (verified.ft !== 'scaffold' || verified.fi !== sessionId) {
+        // Verify the token is scoped to this scaffold session. This is a
+        // 403 (not 401) — the token is valid, the caller just isn't
+        // authorized for this session. Refreshing wouldn't help.
+        if (verified.payload.ft !== 'scaffold' || verified.payload.fi !== sessionId) {
           return withCors(
-            Response.json({ error: 'Token does not match this scaffold session' }, { status: 403 })
+            Response.json(
+              {
+                error: 'access_denied',
+                error_description: 'Token does not match this scaffold session',
+              },
+              { status: 403 }
+            )
           );
         }
+        scaffoldTokenExp = verified.payload.exp;
       }
 
       const doId = env.SCAFFOLD_SESSION.idFromName(sessionId);
       const stub = env.SCAFFOLD_SESSION.get(doId);
-      // Forward the request to the DO with the same URL/method/body
-      return stub.fetch(request);
+      // Forward the request to the DO with the same URL/method/body.
+      const doResponse = await stub.fetch(request);
+      // For live SSE, wrap the response so an `auth_expired` event is
+      // emitted just before the stream token expires — otherwise the DO
+      // would keep pushing events past the token's exp.
+      if (action === 'stream' && scaffoldTokenExp !== null) {
+        return withStreamTokenExpiry(doResponse, scaffoldTokenExp);
+      }
+      return doResponse;
     }
 
     // =========================================================================
@@ -1057,18 +1082,21 @@ tool_timeout_sec = 60
       const token = url.searchParams.get('t') ?? '';
       const jwtSecret = env.MCP_JWT_SECRET;
       if (!token || !jwtSecret) {
-        return new Response(JSON.stringify({ error: 'missing_token' }), {
-          status: 401,
-          headers: { 'Content-Type': 'application/json', ...corsHeadersObj() },
+        return buildAuthErrorResponse({
+          reason: 'missing_token',
+          headers: corsHeadersObj(),
         });
       }
-      const payload = await verifyStreamToken(token, jwtSecret);
-      if (!payload) {
-        return new Response(JSON.stringify({ error: 'invalid_token' }), {
-          status: 401,
-          headers: { 'Content-Type': 'application/json', ...corsHeadersObj() },
+      const result = await verifyStreamTokenDetailed(token, jwtSecret);
+      if (!result.ok) {
+        return buildAuthErrorResponse({
+          reason: result.reason === 'expired'
+            ? 'stream_token_expired'
+            : 'stream_token_invalid',
+          headers: corsHeadersObj(),
         });
       }
+      const payload = result.payload;
 
       const feedType = liveFeedMatch[1]!;
       const feedId = liveFeedMatch[2]!;
@@ -1084,7 +1112,11 @@ tool_timeout_sec = 60
       const doKey = `${feedType}:${feedId}`;
       const doId = env.LIVE_FEED.idFromName(doKey);
       const stub = env.LIVE_FEED.get(doId);
-      return stub.fetch(request);
+      const liveFeedResponse = await stub.fetch(request);
+      // Emit an `auth_expired` SSE event before the token's exp so clients
+      // reconnect with a fresh token instead of receiving stale data past
+      // the expiry window.
+      return withStreamTokenExpiry(liveFeedResponse, payload.exp);
     }
 
     // =========================================================================
