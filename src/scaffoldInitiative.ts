@@ -358,6 +358,9 @@ export function buildScaffoldInitiativeBatch(
         // owner_id intentionally NOT omitted — it must propagate into the
         // batch so the POST handler can set it on the initiative row.
         'user_id',
+        // command_center_id was renamed to workspace_id in the DB.
+        // Strip it here so it never reaches the API entity payload.
+        'command_center_id',
       ])
     ),
     1

@@ -1500,28 +1500,23 @@ export class OrgXMcp extends McpAgent<
         ? nextArgs.command_center_id.trim()
         : null;
 
-    // Canonicalize workspace/command-center aliases for mixed clients.
-    if (workspaceId && !commandCenterId) {
-      nextArgs.command_center_id = workspaceId;
-    } else if (!workspaceId && commandCenterId) {
-      nextArgs.workspace_id = commandCenterId;
-    } else if (workspaceId && commandCenterId && workspaceId !== commandCenterId) {
-      // Prefer canonical workspace_id while preserving backward-compat field.
-      nextArgs.command_center_id = workspaceId;
+    // Canonicalize: always use workspace_id; strip command_center_id so it
+    // never reaches DB inserts (the column was renamed in the 2026-04 migration).
+    const effectiveId = workspaceId ?? commandCenterId;
+    if (effectiveId) {
+      nextArgs.workspace_id = effectiveId;
     }
+    delete nextArgs.command_center_id;
 
     const hasWorkspaceScope =
-      (typeof nextArgs.workspace_id === 'string' &&
-        nextArgs.workspace_id.trim().length > 0) ||
-      (typeof nextArgs.command_center_id === 'string' &&
-        nextArgs.command_center_id.trim().length > 0);
+      typeof nextArgs.workspace_id === 'string' &&
+      nextArgs.workspace_id.trim().length > 0;
     if (
       !hasWorkspaceScope &&
       this.sessionContext?.workspaceId &&
       workspaceScopedChatgptTools.has(toolId)
     ) {
       nextArgs.workspace_id = this.sessionContext.workspaceId;
-      nextArgs.command_center_id = this.sessionContext.workspaceId;
     }
 
     const hasInitiativeId =
@@ -5393,7 +5388,6 @@ export class OrgXMcp extends McpAgent<
                 return {
                   ...entity,
                   workspace_id: effectiveWorkspaceId,
-                  command_center_id: effectiveWorkspaceId,
                 };
               })
             : entities;

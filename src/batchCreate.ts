@@ -47,7 +47,9 @@ const REF_FIELD_MAPPINGS: Array<{ refKey: string; idKey: string }> = [
   { refKey: 'initiative_ref', idKey: 'initiative_id' },
   { refKey: 'workstream_ref', idKey: 'workstream_id' },
   { refKey: 'milestone_ref', idKey: 'milestone_id' },
-  { refKey: 'command_center_ref', idKey: 'command_center_id' },
+  // workspace_ref / command_center_ref both resolve to workspace_id (renamed column)
+  { refKey: 'workspace_ref', idKey: 'workspace_id' },
+  { refKey: 'command_center_ref', idKey: 'workspace_id' },
   { refKey: 'project_ref', idKey: 'project_id' },
   { refKey: 'objective_ref', idKey: 'objective_id' },
   { refKey: 'run_ref', idKey: 'run_id' },
@@ -108,6 +110,15 @@ function resolveRefs(params: {
   const unresolved: string[] = [];
 
   delete body.ref;
+  // command_center_id was renamed to workspace_id in the Apr-2026 DB migration.
+  // Strip it so it never reaches the API payload (the column no longer exists).
+  // workspace_id already carries the correct value from applySessionDefaults.
+  if ('command_center_id' in body) {
+    if (!body.workspace_id && body.command_center_id) {
+      body.workspace_id = body.command_center_id;
+    }
+    delete body.command_center_id;
+  }
 
   for (const { refKey, idKey } of REF_FIELD_MAPPINGS) {
     const hasId = typeof body[idKey] === 'string' && String(body[idKey]);
