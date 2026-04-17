@@ -1455,176 +1455,204 @@
       transform: rotate(-90deg);
     }
 
-    /* ─── launch-bay ───────────────────────────────────────────
-     * The cinematic centerpiece. Rendered after the work-breakdown
-     * tree completes, only when the initiative is still in draft/
-     * scaffolded state. Pre-launch checks fill the ring; at 100% a
-     * hold-to-launch button emerges. Creation mode is the only mode
-     * where celebration is appropriate — this is its earned payoff.
+    /* ─── launch-strip ────────────────────────────────────────
+     * Single focal strip with four states: progressing → ready →
+     * committing → launched. Replaces the prior three-element bay
+     * (ring + body stack + boxy CTA) where each fought for attention.
+     *
+     * Hierarchy discipline:
+     *   - progressing: quiet strip, thin progress bar, concise "awaiting" line
+     *   - ready:       strip border picks up iris, full-width hold target
+     *                  with progress-fill replacing separate "hold" hint
+     *   - launching:   CTA dissolves back into the strip; one soft pulse
+     *   - launched:    the element itself transforms — iris mutes, a single
+     *                  next-step deep link replaces the CTA. Success is not
+     *                  a text swap; it is a structural change.
      */
-    .launch-bay {
+    .launch-strip {
       margin-top: 28px;
-      padding: 20px;
-      border-radius: 16px;
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.22);
-      background:
-        radial-gradient(circle at 50% -20%, rgba(var(--ox-primary-rgb), 0.14), transparent 60%),
-        rgba(var(--ox-primary-rgb), 0.04);
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      gap: 20px;
-      align-items: center;
-      position: relative;
-      overflow: hidden;
+      padding: 16px 18px;
+      border-radius: 14px;
+      border: 1px solid var(--ox-border);
+      background: var(--ox-panel);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition:
+        background 320ms var(--widget-motion-curve),
+        border-color 320ms var(--widget-motion-curve);
     }
-    @media (max-width: 540px) {
-      .launch-bay { grid-template-columns: 1fr; justify-items: center; text-align: center; }
-    }
-    .launch-bay__ring {
-      position: relative;
-      width: 72px;
-      height: 72px;
-      flex-shrink: 0;
-    }
-    .launch-bay__ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-    .launch-bay__ring-track {
-      stroke: rgba(var(--ox-primary-rgb), 0.15);
-      fill: none;
-      stroke-width: 4;
-    }
-    .launch-bay__ring-fill {
-      stroke: var(--ox-primary);
-      fill: none;
-      stroke-width: 4;
-      stroke-linecap: round;
-      transition: stroke-dashoffset 480ms cubic-bezier(0.4, 0, 0.2, 1);
-      filter: drop-shadow(0 0 6px rgba(var(--ox-primary-rgb), 0.45));
-    }
-    .launch-bay__ring-value {
-      position: absolute;
-      inset: 0;
+    .launch-strip__head {
       display: flex;
       align-items: center;
-      justify-content: center;
-      font-family: var(--ox-mono);
-      font-size: 0.82rem;
-      font-weight: 700;
-      color: var(--ox-primary);
-      letter-spacing: -0.02em;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 14px;
     }
-
-    .launch-bay__body { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-    .launch-bay__kicker {
+    .launch-strip__eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       font-family: var(--ox-mono);
       font-size: 0.62rem;
       font-weight: 700;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: rgba(var(--ox-primary-rgb), 0.85);
+      color: var(--ox-text-muted);
+      transition: color 240ms var(--widget-motion-curve);
     }
-    .launch-bay__headline { font-size: 0.98rem; font-weight: 600; color: var(--ox-text); line-height: 1.4; }
-    .launch-bay__checks {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 2px;
+    .launch-strip__eyebrow svg { opacity: 0.85; }
+    .launch-strip__count {
+      font-size: 0.8rem;
+      color: var(--ox-text);
+      font-weight: 500;
     }
-    .launch-bay__check {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 3px 9px;
-      border-radius: 999px;
-      font-size: 0.72rem;
-      border: 1px solid var(--ox-border);
-      background: var(--ox-panel);
+    .launch-strip__progress {
+      position: relative;
+      height: 3px;
+      border-radius: 2px;
+      background: var(--ox-well-bg);
+      overflow: hidden;
+    }
+    .launch-strip__progress-fill {
+      position: absolute;
+      inset: 0 auto 0 0;
+      height: 100%;
+      background: rgba(var(--ox-primary-rgb), 0.55);
+      border-radius: 2px;
+      transition: width 420ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .launch-strip__missing {
+      font-size: 0.78rem;
+      line-height: 1.5;
       color: var(--ox-text-muted);
     }
-    .launch-bay__check.is-ok {
-      color: var(--ox-primary);
-      border-color: rgba(var(--ox-primary-rgb), 0.35);
-      background: rgba(var(--ox-primary-rgb), 0.08);
+    .launch-strip__missing strong {
+      color: var(--ox-text);
+      font-weight: 500;
     }
-    .launch-bay__check-icon { display: inline-flex; width: 12px; height: 12px; }
 
-    .launch-bay__cta {
+    /* Ready — border picks up iris, CTA emerges. */
+    .launch-strip.is-ready {
+      border-color: rgba(var(--ox-primary-rgb), 0.38);
+      background:
+        linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.04), transparent 70%),
+        var(--ox-panel);
+    }
+    .launch-strip.is-ready .launch-strip__eyebrow { color: var(--ox-primary); }
+
+    .launch-strip__cta {
       position: relative;
-      min-width: 180px;
-      min-height: 64px;
-      padding: 14px 22px;
-      border-radius: 12px;
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.5);
-      background: rgba(var(--ox-primary-rgb), 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      min-height: 44px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.38);
+      background: rgba(var(--ox-primary-rgb), 0.08);
       color: var(--ox-primary);
-      font-weight: 700;
-      font-size: 0.92rem;
-      letter-spacing: -0.01em;
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 0.88rem;
+      letter-spacing: -0.005em;
       cursor: pointer;
       overflow: hidden;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+      transition:
+        background 200ms var(--widget-motion-curve),
+        border-color 200ms var(--widget-motion-curve);
     }
-    .launch-bay__cta:disabled {
-      cursor: not-allowed;
-      opacity: 0.45;
-      border-color: var(--ox-border);
-      background: var(--ox-well-bg);
-      color: var(--ox-text-muted);
+    .launch-strip__cta:hover { background: rgba(var(--ox-primary-rgb), 0.12); }
+    .launch-strip__cta:focus-visible {
+      outline: 2px solid rgba(var(--ox-primary-rgb), 0.55);
+      outline-offset: 3px;
     }
-    .launch-bay__cta:not(:disabled):hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 24px rgba(var(--ox-primary-rgb), 0.32);
-    }
-    .launch-bay__cta-hold {
+    .launch-strip__cta-fill {
       position: absolute;
-      top: 0;
-      left: 0;
-      bottom: 0;
+      inset: 0 auto 0 0;
       width: 0%;
-      background: rgba(var(--ox-primary-rgb), 0.28);
-      border-right: 1px solid rgba(var(--ox-primary-rgb), 0.7);
+      background: rgba(var(--ox-primary-rgb), 0.22);
       pointer-events: none;
-      transition: width 60ms linear;
+      transition: width 80ms linear;
     }
-    .launch-bay__cta.is-holding .launch-bay__cta-hold {
+    .launch-strip__cta.is-holding .launch-strip__cta-fill {
       transition: width 820ms linear;
       width: 100%;
     }
-    .launch-bay__cta-hint {
-      font-family: var(--ox-mono);
-      font-size: 0.58rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      opacity: 0.75;
-      margin-left: 4px;
+    .launch-strip__cta-label {
+      position: relative;
+      z-index: 1;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .launch-strip__cta-arrow {
+      position: relative;
+      z-index: 1;
+      opacity: 0.65;
+      transition: transform 200ms var(--widget-motion-curve), opacity 200ms;
+    }
+    .launch-strip__cta:hover .launch-strip__cta-arrow {
+      opacity: 1;
+      transform: translateX(2px);
     }
 
-    /* When readiness ring hits 100%, a one-shot sweep passes through
-     * the scaffold tree. Pure aesthetic — no content change. */
-    .launch-bay.is-ready::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(90deg,
-        transparent,
-        rgba(var(--ox-primary-rgb), 0.22),
-        transparent);
-      transform: translateX(-100%);
-      pointer-events: none;
-      animation: launchSweep 900ms cubic-bezier(0.4, 0, 0.2, 1) 1;
+    /* Launching — CTA gone, strip hosts a single soft pulse. */
+    .launch-strip.is-launching {
+      border-color: rgba(var(--ox-primary-rgb), 0.28);
     }
-    @keyframes launchSweep {
-      to { transform: translateX(100%); }
+    .launch-strip.is-launching .launch-strip__progress-fill {
+      width: 100%;
+      animation: launchStripPulse 1200ms ease-in-out infinite;
     }
+    @keyframes launchStripPulse {
+      0%, 100% { opacity: 0.4; }
+      50%      { opacity: 0.9; }
+    }
+
+    /* Launched — element transforms: iris fades to quiet, a single
+     * next-step link takes the commit slot. No residual CTA. */
+    .launch-strip.is-launched {
+      border-color: rgba(var(--ox-primary-rgb), 0.18);
+      background: rgba(var(--ox-primary-rgb), 0.04);
+    }
+    .launch-strip.is-launched .launch-strip__eyebrow {
+      color: rgba(var(--ox-primary-rgb), 0.85);
+    }
+    .launch-strip__detail {
+      font-size: 0.8rem;
+      line-height: 1.5;
+      color: var(--ox-text-muted);
+    }
+    .launch-strip__next {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      align-self: flex-end;
+      padding: 6px 10px;
+      margin: -6px -10px;
+      border-radius: 8px;
+      font-size: 0.84rem;
+      font-weight: 500;
+      color: var(--ox-primary);
+      text-decoration: none;
+      transition: background 160ms var(--widget-motion-curve);
+    }
+    .launch-strip__next:hover { background: rgba(var(--ox-primary-rgb), 0.08); }
+    .launch-strip__next svg {
+      opacity: 0.7;
+      transition: transform 200ms var(--widget-motion-curve), opacity 200ms;
+    }
+    .launch-strip__next:hover svg { opacity: 1; transform: translateX(2px); }
 
     @media (prefers-reduced-motion: reduce) {
-      .launch-bay__cta.is-holding .launch-bay__cta-hold { transition-duration: 300ms; }
-      .launch-bay.is-ready::before { animation: none; }
-      .launch-bay__ring-fill { transition-duration: 160ms; }
+      .launch-strip__cta.is-holding .launch-strip__cta-fill { transition-duration: 300ms; }
+      .launch-strip.is-launching .launch-strip__progress-fill {
+        animation: none;
+        opacity: 0.7;
+      }
+      .launch-strip__progress-fill { transition-duration: 160ms; }
     }
 
     .widget-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--ox-border); gap: 12px; }
@@ -2961,60 +2989,111 @@
       return s === '' || s === 'draft' || s === 'scaffolded' || s === 'awaiting_launch' || s === 'pending';
     };
 
+    // SVG atoms reused by the strip in multiple states.
+    var LAUNCH_STRIP_CHECK_SVG =
+      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>';
+    var LAUNCH_STRIP_ARROW_SVG =
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+
+    var renderReadyStripBody = (r) => `
+        <div class="launch-strip__head">
+          <span class="launch-strip__eyebrow">${LAUNCH_STRIP_CHECK_SVG}Ready</span>
+          <span class="launch-strip__count">All ${r.total} checks green</span>
+        </div>
+        <button type="button" class="launch-strip__cta" data-launch-cta>
+          <span class="launch-strip__cta-fill" aria-hidden="true"></span>
+          <span class="launch-strip__cta-label">Hold to launch</span>
+          <span class="launch-strip__cta-arrow">${LAUNCH_STRIP_ARROW_SVG}</span>
+        </button>`;
+
     var renderLaunchBay = (scaffold) => {
       if (!scaffold || !scaffold.initiative) return '';
       if (!isDraftStatus(scaffold.initiative.status)) return '';
 
       const r = computeLaunchReadiness(scaffold);
-      const circumference = 2 * Math.PI * 22; // r = 22
-      const dashOffset = circumference * (1 - r.pass / r.total);
       const pct = Math.round((r.pass / r.total) * 100);
 
-      const checksHtml = r.checks.map(c => {
-        const tone = c.ok ? ' is-ok' : '';
-        const icon = c.ok
-          ? '<span class="launch-bay__check-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></span>'
-          : '<span class="launch-bay__check-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></span>';
-        return `<span class="launch-bay__check${tone}" title="${escapeHtml(c.detail)}">${icon}<span>${escapeHtml(c.label)}</span></span>`;
-      }).join('');
+      if (r.ready) {
+        return `<div class="launch-strip is-ready" data-launch-strip aria-live="polite">${renderReadyStripBody(r)}</div>`;
+      }
 
-      const readyClass = r.ready ? ' is-ready' : '';
-      const btnAttrs = r.ready ? '' : 'disabled';
-      const headline = r.ready
-        ? 'Ready to launch. Hold the button to commit.'
-        : `${r.total - r.pass} check${r.total - r.pass === 1 ? '' : 's'} left before launch.`;
+      // Progressing — show what's outstanding in one quiet line. No pills, no
+      // ring, no kicker. The progress bar and the missing-check summary are
+      // enough signal; the user doesn't need five shapes to understand state.
+      const missingLabels = r.checks.filter(c => !c.ok).map(c => escapeHtml(c.label));
+      const missingLine = missingLabels.length
+        ? `<div class="launch-strip__missing">Awaiting: ${missingLabels.join(' · ')}</div>`
+        : '';
 
       return `
-        <div class="launch-bay${readyClass}" data-launch-bay aria-live="polite">
-          <div class="launch-bay__ring" role="img" aria-label="Launch readiness ${pct} percent">
-            <svg viewBox="0 0 50 50">
-              <circle class="launch-bay__ring-track" cx="25" cy="25" r="22" />
-              <circle class="launch-bay__ring-fill" cx="25" cy="25" r="22"
-                      stroke-dasharray="${circumference.toFixed(2)}"
-                      stroke-dashoffset="${dashOffset.toFixed(2)}" />
-            </svg>
-            <div class="launch-bay__ring-value">${pct}%</div>
+        <div class="launch-strip" data-launch-strip aria-live="polite">
+          <div class="launch-strip__head">
+            <span class="launch-strip__eyebrow">Readiness</span>
+            <span class="launch-strip__count">${r.pass} of ${r.total}</span>
           </div>
-          <div class="launch-bay__body">
-            <div class="launch-bay__kicker">Launch Readiness</div>
-            <div class="launch-bay__headline">${escapeHtml(headline)}</div>
-            <div class="launch-bay__checks">${checksHtml}</div>
+          <div class="launch-strip__progress" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100">
+            <div class="launch-strip__progress-fill" style="width: ${pct}%"></div>
           </div>
-          <button type="button" class="launch-bay__cta" data-launch-cta ${btnAttrs}>
-            <span class="launch-bay__cta-hold" aria-hidden="true"></span>
-            ${icons.spark ? icons.spark(16) : ''}
-            <span>Launch initiative</span>
-            ${r.ready ? '<span class="launch-bay__cta-hint">hold</span>' : ''}
-          </button>
+          ${missingLine}
         </div>
       `;
     };
 
     var bindLaunchCta = (scaffold) => {
-      const cta = document.querySelector('[data-launch-cta]');
+      const strip = document.querySelector('[data-launch-strip]');
+      const cta = strip && strip.querySelector('[data-launch-cta]');
       if (!cta || cta.disabled) return;
       let timer = null;
       let committed = false;
+
+      const transitionToLaunching = () => {
+        if (!strip) return;
+        strip.classList.remove('is-ready');
+        strip.classList.add('is-launching');
+        strip.innerHTML = `
+          <div class="launch-strip__head">
+            <span class="launch-strip__eyebrow">Committing…</span>
+          </div>
+          <div class="launch-strip__progress" role="progressbar" aria-valuetext="Committing">
+            <div class="launch-strip__progress-fill"></div>
+          </div>
+        `;
+      };
+
+      const transitionToLaunched = () => {
+        if (!strip) return;
+        const id = (scaffold && scaffold.initiative && (scaffold.initiative.raw_id || scaffold.initiative.id)) || '';
+        const href = id ? `/live/${encodeURIComponent(id)}` : '/command';
+        strip.classList.remove('is-launching', 'is-ready');
+        strip.classList.add('is-launched');
+        strip.innerHTML = `
+          <div class="launch-strip__head">
+            <span class="launch-strip__eyebrow">${LAUNCH_STRIP_CHECK_SVG}Launched · just now</span>
+          </div>
+          <div class="launch-strip__detail">Initiative is live. Streams activate on the next scheduling cycle.</div>
+          <a class="launch-strip__next" href="${escapeHtml(href)}" data-launch-next>
+            <span>Open in mission control</span>
+            ${LAUNCH_STRIP_ARROW_SVG}
+          </a>
+        `;
+        const next = strip.querySelector('[data-launch-next]');
+        if (next) {
+          next.addEventListener('click', (evt) => {
+            evt.preventDefault();
+            const target = next.getAttribute('href');
+            if (typeof openWidgetLink === 'function') openWidgetLink(target);
+            else if (typeof window !== 'undefined') window.location.href = target;
+          });
+        }
+      };
+
+      const revertToReady = () => {
+        if (!strip) return;
+        strip.classList.remove('is-launching');
+        strip.classList.add('is-ready');
+        strip.innerHTML = renderReadyStripBody(computeLaunchReadiness(scaffold));
+        bindLaunchCta(scaffold);
+      };
 
       const start = (e) => {
         if (committed) return;
@@ -3023,8 +3102,7 @@
         timer = setTimeout(async () => {
           committed = true;
           cta.classList.remove('is-holding');
-          cta.disabled = true;
-          cta.querySelector('span:not(.launch-bay__cta-hold):not(.launch-bay__cta-hint)').textContent = 'Launching…';
+          transitionToLaunching();
           try {
             if (window.openai && typeof window.openai.callTool === 'function') {
               await window.openai.callTool('entity_action', {
@@ -3033,15 +3111,15 @@
                 action: 'launch',
               });
             }
-            cta.querySelector('span:not(.launch-bay__cta-hold):not(.launch-bay__cta-hint)').textContent = 'Launched ✓';
+            transitionToLaunched();
           } catch (err) {
             console.warn('[scaffold:launch] failed', err);
-            cta.disabled = false;
             committed = false;
-            cta.querySelector('span:not(.launch-bay__cta-hold):not(.launch-bay__cta-hint)').textContent = 'Launch initiative';
+            revertToReady();
           }
         }, 820);
       };
+
       const cancel = () => {
         if (timer) { clearTimeout(timer); timer = null; }
         if (!committed) cta.classList.remove('is-holding');
