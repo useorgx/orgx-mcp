@@ -72,16 +72,23 @@ export async function signSessionToken(opts: {
   return `${payloadB64}.${b64url(sig)}`;
 }
 
+export type SessionTokenVerifyResult =
+  | { ok: true; payload: SessionTokenPayload }
+  | { ok: false; reason: 'invalid' | 'expired' };
+
 /**
- * Verify a session token. Returns the payload if valid, null if invalid or expired.
+ * Verify a session token with reason tagging. Callers that emit HTTP 401s
+ * should prefer this over the legacy wrapper — an expired session token
+ * means the caller should re-request via POST /session-tokens, while an
+ * invalid one means the caller mis-wired the header.
  */
-export async function verifySessionToken(
+export async function verifySessionTokenDetailed(
   token: string,
   secret: string
-): Promise<SessionTokenPayload | null> {
+): Promise<SessionTokenVerifyResult> {
   try {
     const dot = token.lastIndexOf('.');
-    if (dot < 0) return null;
+    if (dot < 0) return { ok: false, reason: 'invalid' };
     const payloadB64 = token.slice(0, dot);
     const sigB64 = token.slice(dot + 1);
 
@@ -93,16 +100,29 @@ export async function verifySessionToken(
       b64urlDecode(sigB64),
       enc.encode(payloadB64)
     );
-    if (!valid) return null;
+    if (!valid) return { ok: false, reason: 'invalid' };
 
     const payload = JSON.parse(
       new TextDecoder().decode(b64urlDecode(payloadB64))
     ) as SessionTokenPayload;
 
-    if (payload.type !== 'session') return null;
-    if (payload.exp < Date.now()) return null; // expired
-    return payload;
+    if (payload.type !== 'session') return { ok: false, reason: 'invalid' };
+    if (typeof payload.exp !== 'number') return { ok: false, reason: 'invalid' };
+    if (payload.exp < Date.now()) return { ok: false, reason: 'expired' };
+    return { ok: true, payload };
   } catch {
-    return null;
+    return { ok: false, reason: 'invalid' };
   }
+}
+
+/**
+ * Backwards-compatible wrapper — returns the payload on success, null
+ * otherwise. Prefer `verifySessionTokenDetailed` when building 401 responses.
+ */
+export async function verifySessionToken(
+  token: string,
+  secret: string
+): Promise<SessionTokenPayload | null> {
+  const result = await verifySessionTokenDetailed(token, secret);
+  return result.ok ? result.payload : null;
 }

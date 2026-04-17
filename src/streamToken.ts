@@ -64,16 +64,23 @@ export async function signStreamToken(opts: {
   return `${payloadB64}.${b64url(sig)}`;
 }
 
+export type StreamTokenVerifyResult =
+  | { ok: true; payload: StreamTokenPayload }
+  | { ok: false; reason: 'invalid' | 'expired' };
+
 /**
- * Verify a stream token. Returns the payload if valid, null if invalid or expired.
+ * Verify a stream token. Returns a tagged result so callers can distinguish
+ * "signature/format is wrong" from "signature is fine but token is past its
+ * exp" — the latter is the only case that should trigger a refresh; the
+ * former should surface as a plain auth failure.
  */
-export async function verifyStreamToken(
+export async function verifyStreamTokenDetailed(
   token: string,
   secret: string
-): Promise<StreamTokenPayload | null> {
+): Promise<StreamTokenVerifyResult> {
   try {
     const dot = token.lastIndexOf('.');
-    if (dot < 0) return null;
+    if (dot < 0) return { ok: false, reason: 'invalid' };
     const payloadB64 = token.slice(0, dot);
     const sigB64 = token.slice(dot + 1);
 
@@ -85,15 +92,116 @@ export async function verifyStreamToken(
       b64urlDecode(sigB64),
       enc.encode(payloadB64)
     );
-    if (!valid) return null;
+    if (!valid) return { ok: false, reason: 'invalid' };
 
     const payload = JSON.parse(
       new TextDecoder().decode(b64urlDecode(payloadB64))
     ) as StreamTokenPayload;
 
-    if (payload.exp < Date.now()) return null; // expired
-    return payload;
+    if (typeof payload.exp !== 'number') return { ok: false, reason: 'invalid' };
+    if (payload.exp < Date.now()) return { ok: false, reason: 'expired' };
+    return { ok: true, payload };
   } catch {
-    return null;
+    return { ok: false, reason: 'invalid' };
   }
+}
+
+/**
+ * Backwards-compatible wrapper — returns the payload on success, null
+ * otherwise. Prefer `verifyStreamTokenDetailed` in new code so 401
+ * responses can emit `stream_token_expired` vs `stream_token_invalid`.
+ */
+export async function verifyStreamToken(
+  token: string,
+  secret: string
+): Promise<StreamTokenPayload | null> {
+  const result = await verifyStreamTokenDetailed(token, secret);
+  return result.ok ? result.payload : null;
+}
+
+/**
+ * Wrap an SSE Response so that the stream closes gracefully when the
+ * underlying stream token is about to expire — emitting a well-known
+ * `event: auth_expired` event first so the client can reconnect with a
+ * fresh token instead of seeing an abrupt disconnect.
+ *
+ * Why this exists:
+ *   Stream tokens live for 1 hour. A long-running scaffold or live-feed
+ *   stream started at t=0 will keep pushing events past t=3600s even
+ *   though the token is no longer valid — the DO has no reason to notice.
+ *   Clients then see stale data with no way to know refresh is required.
+ *
+ * Shape:
+ *   If the response is not `text/event-stream`, it's returned unchanged.
+ *   If it is, we splice a Transform that, at `expMs - marginMs`, writes:
+ *     event: auth_expired
+ *     data: {"reason":"stream_token_expired","next":"refresh"}
+ *   …then closes cleanly. Downstream data after that point is dropped so
+ *   post-expiry messages can't leak through.
+ */
+export function withStreamTokenExpiry(
+  response: Response,
+  expMs: number,
+  marginMs = 5_000
+): Response {
+  const contentType = response.headers.get('content-type') ?? '';
+  if (!contentType.includes('text/event-stream') || !response.body) {
+    return response;
+  }
+
+  const encoder = new TextEncoder();
+  const reader = response.body.getReader();
+  const fireAt = Math.max(0, expMs - marginMs - Date.now());
+
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      let closed = false;
+      const safeClose = () => {
+        if (closed) return;
+        closed = true;
+        try {
+          controller.close();
+        } catch {
+          // ignore — another path already closed it
+        }
+      };
+      const emitExpired = () => {
+        if (closed) return;
+        try {
+          controller.enqueue(
+            encoder.encode(
+              'event: auth_expired\ndata: {"reason":"stream_token_expired","next":"refresh"}\n\n'
+            )
+          );
+        } catch {
+          // ignore
+        }
+        safeClose();
+      };
+      const timer = setTimeout(emitExpired, fireAt);
+
+      const pump = async () => {
+        try {
+          while (!closed) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (value) controller.enqueue(value);
+          }
+        } catch {
+          // upstream disconnect — close cleanly
+        } finally {
+          clearTimeout(timer);
+          safeClose();
+        }
+      };
+
+      void pump();
+    },
+  });
+
+  return new Response(stream, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
 }
