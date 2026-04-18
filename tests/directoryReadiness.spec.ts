@@ -128,9 +128,9 @@ describe('Anthropic directory readiness', () => {
     expectSnippetAnnotations('list_entities', true, false);
     expectSnippetAnnotations('entity_action', false, true);
     expectSnippetAnnotations('verify_entity_completion', true, false);
-    expectSnippetAnnotations('create_entity', false, true);
-    expectSnippetAnnotations('batch_create_entities', false, true);
-    expectSnippetAnnotations('scaffold_initiative', false, true);
+    expectSnippetAnnotations('create_entity', false, false);
+    expectSnippetAnnotations('batch_create_entities', false, false);
+    expectSnippetAnnotations('scaffold_initiative', false, false);
     expectSnippetAnnotations('get_task_with_context', true, false);
     expectSnippetAnnotations('batch_delete_entities', false, true);
     expectSnippetAnnotations('update_entity', false, true);
