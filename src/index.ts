@@ -4721,7 +4721,7 @@ export class OrgXMcp extends McpAgent<
         description: `Create a new entity of any type. USE WHEN: adding a single task, milestone, workstream, or other entity to an existing hierarchy. NEXT: Use entity_action to launch/start the entity. DO NOT USE: for creating a full initiative hierarchy — use scaffold_initiative instead.`,
         annotations: {
           readOnlyHint: false,
-          destructiveHint: true,
+          destructiveHint: false,
           openWorldHint: false,
         },
         inputSchema: this.withClientContext({
@@ -5464,7 +5464,7 @@ export class OrgXMcp extends McpAgent<
           'Create multiple entities in one call with ref-based dependency resolution. USE WHEN: creating several related entities at once. NEXT: Use entity_action to launch created entities. DO NOT USE: for initiative hierarchies — use scaffold_initiative which handles the nesting automatically.',
         annotations: {
           readOnlyHint: false,
-          destructiveHint: true,
+          destructiveHint: false,
           openWorldHint: false,
         },
         inputSchema: {
@@ -5767,7 +5767,7 @@ export class OrgXMcp extends McpAgent<
         }),
         annotations: {
           readOnlyHint: false,
-          destructiveHint: true,
+          destructiveHint: false,
           openWorldHint: false,
         },
         _meta: {
