@@ -21,6 +21,33 @@ FAIL=0
 SKIP=0
 RESULTS=()
 
+# Write-side smoke tests MUST target the system sandbox workspace so real
+# orgs never get polluted with entities like "MCP write test task — safe to
+# delete". The sandbox has `metadata.system_role = 'mcp_sandbox'` and is
+# excluded from cross-workspace aggregations (org snapshot, etc.) by
+# lib/server/sandboxWorkspaces.ts.
+#
+# Provide the ID via env. Fail fast if it's missing so nobody runs this
+# script against prod without the guardrail.
+MCP_SANDBOX_WORKSPACE_ID="${MCP_SANDBOX_WORKSPACE_ID:-}"
+if [[ -z "$MCP_SANDBOX_WORKSPACE_ID" ]]; then
+  echo ""
+  echo "❌ MCP_SANDBOX_WORKSPACE_ID is not set."
+  echo ""
+  echo "   Write tests write real rows. They must target a sandbox"
+  echo "   workspace (metadata.system_role = 'mcp_sandbox') so real orgs"
+  echo "   don't accumulate debris."
+  echo ""
+  echo "   Create one in your target env via:"
+  echo "     ./scripts/bootstrap-sandbox-workspace.sh"
+  echo ""
+  echo "   Then:"
+  echo "     export MCP_SANDBOX_WORKSPACE_ID=<uuid>"
+  echo "     ./scripts/test-write-tools.sh"
+  echo ""
+  exit 2
+fi
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -219,13 +246,14 @@ echo ""
 # -- Entity CRUD --
 echo -e "${CYAN}[Entity CRUD]${NC}"
 
-# create_entity: create a test task
+# create_entity: create a test task IN THE SANDBOX WORKSPACE
 echo "  Testing create_entity (task)..."
-RESP=$(call_tool "create_entity" '{
-  "type": "task",
-  "title": "MCP write test task — safe to delete",
-  "description": "Created by test-write-tools.sh to verify MCP write tools work end-to-end."
-}')
+RESP=$(call_tool "create_entity" "{
+  \"type\": \"task\",
+  \"title\": \"MCP write test task — safe to delete\",
+  \"description\": \"Created by test-write-tools.sh to verify MCP write tools work end-to-end.\",
+  \"workspace_id\": \"${MCP_SANDBOX_WORKSPACE_ID}\"
+}")
 check_result "create_entity (task)" "$RESP"
 CREATED_TASK_ID=$(echo "$RESP" | jq -r '.result.content[0].text' 2>/dev/null | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}' | head -1 || echo "")
 

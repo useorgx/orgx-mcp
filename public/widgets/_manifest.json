@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-04-17T20:40:10.293Z",
+  "generatedAt": "2026-04-21T23:19:00.320Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -32,8 +32,8 @@
   "widgets": {
     "agent-status": {
       "file": "public/widgets/agent-status.html",
-      "bytes": 72762,
-      "hash": "d86d1ddd7812",
+      "bytes": 73746,
+      "hash": "bfe5d075111a",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/components/domain-accent.css",
@@ -48,8 +48,8 @@
     },
     "artifact-review": {
       "file": "public/widgets/artifact-review.html",
-      "bytes": 26954,
-      "hash": "093f69b8ad5b",
+      "bytes": 27742,
+      "hash": "ed21d0740769",
       "primaryRgb": "251,191,36",
       "sharedRefs": [
         "shared/components/domain-accent.css",
@@ -122,8 +122,8 @@
     },
     "plan-session-live": {
       "file": "public/widgets/plan-session-live.html",
-      "bytes": 18437,
-      "hash": "3eb039bbfbe9",
+      "bytes": 19225,
+      "hash": "31ca50fc6a59",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/components/domain-accent.css",
@@ -137,16 +137,16 @@
     },
     "scaffold-streaming": {
       "file": "public/widgets/scaffold-streaming.html",
-      "bytes": 37811,
-      "hash": "f8fd368d30e6",
+      "bytes": 38124,
+      "hash": "a1ddae0240ed",
       "primaryRgb": "99,102,241",
       "sharedRefs": [],
       "demoOnly": true
     },
     "scaffolded-initiative": {
       "file": "public/widgets/scaffolded-initiative.html",
-      "bytes": 137065,
-      "hash": "ceed0ddc02ee",
+      "bytes": 137851,
+      "hash": "262d070c054c",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/interaction-kit.css",

@@ -2151,6 +2151,11 @@
     };
 
     function _detectProtocol(){if(typeof window.openai!=='undefined')return'chatgpt';if(window.parent&&window.parent!==window)return'mcp-apps';return'standalone';}
+    // openWidgetLink: route external link clicks through the host API so
+    // Claude Desktop / MCP hosts prompt the user to open externally instead
+    // of silently blocking the sandbox navigation.
+    var _openLinkMsgId=1000;
+    function openWidgetLink(url,event){if(!url)return false;var protocol=_detectProtocol();if(protocol==='chatgpt'&&window.openai&&typeof window.openai.openExternal==='function'){if(event&&typeof event.preventDefault==='function')event.preventDefault();window.openai.openExternal({url:url});return false;}if(protocol==='mcp-apps'){if(event&&typeof event.preventDefault==='function')event.preventDefault();try{window.parent.postMessage({jsonrpc:'2.0',id:_openLinkMsgId++,method:'ui/open-link',params:{url:url}},'*');}catch(_){}return false;}return true;}
     function _extractData(out){if(out==null)return null;if(typeof out==='object'&&out.structuredContent)return out.structuredContent;if(typeof out==='object'&&Array.isArray(out.content)){for(var i=0;i<out.content.length;i++){var item=out.content[i];if(item&&item.type==='text'&&item.text){try{return JSON.parse(item.text);}catch(e){continue;}}}}if(typeof out==='string'){try{return JSON.parse(out);}catch(e){return{text:out};}}return out;}
     function _measureContentSize(){var docEl=document.documentElement;var body=document.body;var docRect=docEl.getBoundingClientRect();var bodyRect=body?body.getBoundingClientRect():{width:0,height:0};var scrollbarWidth=Math.max(0,window.innerWidth-docEl.clientWidth);var width=Math.max(Math.ceil(docRect.width+scrollbarWidth),Math.ceil(bodyRect.width),body?body.scrollWidth:0,body?body.offsetWidth:0,body?body.clientWidth:0);var height=Math.max(Math.ceil(docRect.height),Math.ceil(bodyRect.height),body?body.scrollHeight:0,body?body.offsetHeight:0,body?body.clientHeight:0);return{width:width,height:height};}
     function _sendSize(){var size=_measureContentSize();try{window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/size-changed',params:{width:size.width,height:size.height}},'*');}catch(e){}}

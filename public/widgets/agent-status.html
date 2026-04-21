@@ -1239,6 +1239,30 @@
     var _mcpPending = {};
     var _mcpNextId = 100;
 
+    // Route external link clicks through the MCP host when running inside
+    // mcp-apps. Triggers Claude Desktop's "open in new tab" prompt instead
+    // of a silent (often blocked) iframe navigation.
+    function openWidgetLink(url, event) {
+      if (!url) return false;
+      var protocol = _detectProtocol();
+      if (protocol === 'mcp-apps') {
+        if (event && typeof event.preventDefault === 'function') event.preventDefault();
+        try {
+          window.parent.postMessage(
+            {
+              jsonrpc: '2.0',
+              id: _mcpNextId++,
+              method: 'ui/open-link',
+              params: { url: url },
+            },
+            '*'
+          );
+        } catch (_) {}
+        return false;
+      }
+      return true;
+    }
+
     function initWidget(opts) {
       var render = opts.render;
       var getData = opts.getData || _extractData;
@@ -1657,7 +1681,7 @@
               '<span class="attention-body">' + escapeHtml(body) + '</span>' +
             '</div>' +
           '</div>' +
-          '<a class="attention-action" href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer" style="border-color: ' + borderTone + ';">' + action + '</a>' +
+          '<a class="attention-action" href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(this.href, event)" style="border-color: ' + borderTone + ';">' + action + '</a>' +
         '</div>'
       );
     }
@@ -1738,7 +1762,7 @@
         
         var isReview = artifact.status === 'review';
         var statusHtml = isReview 
-          ? '<a class="section-status" data-tone="review" href="' + escapeHtml(agent.openUrl) + '" target="_blank" style="text-decoration:none;">' + status + '</a>'
+          ? '<a class="section-status" data-tone="review" href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(this.href, event)" style="text-decoration:none;">' + status + '</a>'
           : '<div class="section-status" data-tone="' + statusToneForRow(artifact.status) + '">' + escapeHtml(status) + '</div>';
 
         return (
@@ -1868,7 +1892,7 @@
                   '</div>' +
                 '</div>' +
               '</div>' +
-              '<a class="ox-badge"' + chipTone + ' href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer" style="flex-shrink: 0; text-decoration: none;"><span class="chip-dot" style="width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor;"></span>' + escapeHtml(agent.statusLabel) + '</a>' +
+              '<a class="ox-badge"' + chipTone + ' href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(this.href, event)" style="flex-shrink: 0; text-decoration: none;"><span class="chip-dot" style="width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor;"></span>' + escapeHtml(agent.statusLabel) + '</a>' +
             '</div>' +
             
             renderAttention(agent) +
@@ -1908,7 +1932,7 @@
           
           '<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 24px; border-top: 1px solid var(--ox-border);">' +
             '<div class="ox-eyebrow">Synced just now</div>' +
-            '<a class="ox-text" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 500; text-decoration: none;" href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer">Open live view<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"></path><path d="M8 7h9v9"></path></svg></a>' +
+            '<a class="ox-text" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 500; text-decoration: none;" href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(this.href, event)">Open live view<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"></path><path d="M8 7h9v9"></path></svg></a>' +
           '</div>' +
         '</article>'
       );
