@@ -1,0 +1,43 @@
+{
+  "name": "orgx",
+  "displayName": "OrgX",
+  "version": "1.0.4",
+  "description": "Agent orchestration, decisions, and organizational memory for Cursor. Review pending decisions, scaffold initiatives, assign work to specialist agents, and render live widgets in-line.",
+  "author": {
+    "name": "OrgX",
+    "url": "https://useorgx.com",
+    "email": "reviewers@useorgx.com"
+  },
+  "homepage": "https://mcp.useorgx.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/useorgx/orgx-mcp"
+  },
+  "categories": ["productivity", "ai-agents", "project-management"],
+  "tags": [
+    "mcp",
+    "agent-orchestration",
+    "initiative-management",
+    "decision-workflows",
+    "organizational-memory",
+    "oauth2"
+  ],
+  "icon": "./logo.png",
+  "privacyPolicy": "https://github.com/useorgx/orgx-mcp/blob/main/docs/privacy-policy.md",
+  "support": "https://github.com/useorgx/orgx-mcp/blob/main/docs/support.md",
+  "mcpServers": {
+    "orgx": {
+      "type": "http",
+      "url": "https://mcp.useorgx.com/mcp"
+    }
+  },
+  "install": {
+    "deeplink": "cursor://anysphere.cursor-deeplink/mcp/install?name=orgx&config=eyJ1cmwiOiJodHRwczovL21jcC51c2VvcmdYLmNvbS9tY3AifQ=="
+  },
+  "sampleCommands": [
+    "Show me the pending OrgX decisions that need approval today.",
+    "Give me the pulse for the Search Copilot Readiness initiative.",
+    "Scaffold a launch initiative with two workstreams, one milestone each, and two tasks per milestone.",
+    "Show me what the OrgX agents are doing right now."
+  ]
+}

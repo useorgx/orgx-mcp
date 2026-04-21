@@ -13,6 +13,40 @@ OrgX MCP connects Claude and other MCP-capable clients to OrgX so users can:
 - assign work to OrgX agents,
 - render OrgX widgets in MCP Apps-compatible hosts.
 
+## Tools (abbreviated — see `server.json` for the full surface)
+
+| Tool | Purpose |
+|------|---------|
+| `get_pending_decisions` | List decisions awaiting approval. |
+| `approve_decision` / `reject_decision` | Resolve a pending decision inline. |
+| `get_initiative_pulse` | Health, milestones, blockers, recent activity for one initiative. |
+| `get_agent_status` | What every OrgX agent is doing right now. |
+| `scaffold_initiative` | Create a full initiative → workstreams → milestones → tasks tree in one call. |
+| `create_entity` / `create_task` / `create_milestone` / `create_decision` | Add individual entities without the full scaffold. |
+| `entity_action` | Lifecycle transitions (launch, pause, complete, archive) on any entity. |
+| `query_org_memory` | Search prior decisions, initiatives, artifacts. |
+| `spawn_agent_task` | Delegate to a specialist agent (rate-limited, quality-gated). |
+| `get_morning_brief` | Latest autonomous session brief with ROI deltas. |
+| `get_org_snapshot` | Compact or detailed org readout for onboarding and status. |
+
+Full tool contract: `server.json` at the repo root — 35+ tools with OAuth
+scopes, input schemas, and OpenAI widget metadata. Call `orgx_describe_tool`
+from any MCP client to inspect a live contract.
+
+## Resources & widgets
+
+Every state/action tool ships a matching widget via MCP Apps (Claude) and
+Skybridge (ChatGPT). Resources: `ui://widget/decisions.html`,
+`ui://widget/initiative-pulse.html`, `ui://widget/agent-status.html`,
+`ui://widget/scaffolded-initiative.html`, `ui://widget/task-spawned.html`,
+`ui://widget/morning-brief.html`, plus their skybridge variants.
+
+## License
+
+TBD — the orgx-mcp repo is currently unlicensed pending an organization-wide
+decision. Reach out to reviewers@useorgx.com if you need terms before we
+publish a `LICENSE` file.
+
 ## Directory Quick Links
 
 - Privacy Policy: [docs/privacy-policy.md](./docs/privacy-policy.md) and <https://github.com/useorgx/orgx-mcp/blob/main/docs/privacy-policy.md>
