@@ -33,6 +33,7 @@ const CANONICAL_PRIMARIES: Record<string, string> = {
   'scaffold-streaming': '99,102,241',
   'task-spawned': '99,102,241',
   'plan-session-live': '99,102,241',
+  'daily-brief': '99,102,241',
 
   // Escalation / attention mode — amber.
   decisions: '251,191,36',

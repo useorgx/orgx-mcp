@@ -508,6 +508,66 @@ export function callTool(name, args) {
 }
 
 /**
+ * Opens a URL from inside a widget, routing through the appropriate host
+ * API so the click actually opens a new tab instead of silently navigating
+ * the sandboxed iframe itself (which replaces the widget).
+ *
+ * Use this from an anchor's onclick handler:
+ *
+ *     <a href="..." target="_blank" rel="noreferrer"
+ *        onclick="return openWidgetLink(this.href, event)">
+ *
+ * Or from a delegated click handler:
+ *
+ *     el.addEventListener('click', e => {
+ *       e.preventDefault();
+ *       openWidgetLink(el.href, e);
+ *     });
+ *
+ * Returns true when the default anchor behaviour should proceed (standalone
+ * browser only) and false otherwise, so it composes cleanly with `onclick`.
+ *
+ * @param {string} url
+ * @param {Event} [event]
+ * @returns {boolean}
+ */
+let _openLinkMsgId = 1000;
+export function openWidgetLink(url, event) {
+  if (!url) return false;
+  const protocol = getProtocol();
+
+  if (protocol === 'chatgpt') {
+    if (window.openai?.openExternal) {
+      if (event && typeof event.preventDefault === 'function') event.preventDefault();
+      window.openai.openExternal({ url });
+      return false;
+    }
+  }
+
+  if (protocol === 'mcp-apps-sdk' || protocol === 'mcp-apps') {
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    try {
+      window.parent.postMessage(
+        {
+          jsonrpc: '2.0',
+          id: _openLinkMsgId++,
+          method: 'ui/open-link',
+          params: { url },
+        },
+        '*'
+      );
+    } catch (_) {
+      // Last-ditch fallback inside a broken sandbox
+      try { window.open(url, '_blank', 'noopener,noreferrer'); } catch (_) {}
+    }
+    return false;
+  }
+
+  // Standalone: let target="_blank" do its thing
+  return true;
+}
+
+/**
  * Creates a loading spinner element
  *
  * @param {string} size - 'sm', 'md', or 'lg'

@@ -514,13 +514,20 @@ button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:po
   /* ── External link bridge (ui/open-link postMessage for Claude.ai sandbox) ── */
   function openExtLink(url) {
     if (!url) return;
-    try {
-      window.parent.postMessage(
-        { jsonrpc:'2.0', method:'ui/open-link', params:{ url:url }, id:Date.now() },
-        '*'
-      );
-    } catch(_) {}
-    /* Fallback for non-sandboxed contexts (gallery, standalone browser) */
+    /* Inside an mcp-apps host (Claude Desktop, etc.) we're in a sandboxed
+       iframe — window.open is silently blocked. Route via the ui/open-link
+       postMessage so the host can prompt the user to open externally. */
+    var inMcpApps = window.parent && window.parent !== window;
+    if (inMcpApps) {
+      try {
+        window.parent.postMessage(
+          { jsonrpc:'2.0', method:'ui/open-link', params:{ url:url }, id:Date.now() },
+          '*'
+        );
+      } catch(_) {}
+      return;
+    }
+    /* Standalone browser / gallery fallback */
     try { window.open(url, '_blank', 'noopener,noreferrer'); } catch(_) {}
   }
   document.addEventListener('click', function(e) {

@@ -8001,6 +8001,84 @@ export class OrgXMcp extends McpAgent<
         })
     );
 
+    // --- resume_agent_run ---
+    // Complementary to the TTL cron that auto-closes stale reporting runs
+    // (see orgx/app/api/internal/cron/close-stale-reporting-runs). Lets a
+    // user (or agent) bring a paused/auto-closed run back to running with
+    // one call. Safe to call on any paused/blocked/queued run, not just
+    // auto-closed ones.
+    if (shouldRegister('resume_agent_run'))
+    this.server.registerTool(
+      'resume_agent_run',
+      {
+        title: 'Resume Agent Run',
+        description:
+          'Resume a paused or auto-closed agent run. Flips status back to running, clears TTL auto-close markers, and appends a resume_history entry. USE WHEN: the user wants to continue a reporting session that was auto-closed by the stale-TTL cron, or reactivate any paused run. DO NOT USE: to restart a completed/failed/cancelled run — those are terminal.',
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: false,
+          openWorldHint: false,
+        },
+        inputSchema: {
+          run_id: z.string().min(1).describe('Agent run UUID to resume'),
+          note: z
+            .string()
+            .optional()
+            .describe('Optional note appended to resume_history for audit'),
+        },
+        _meta: {
+          'openai/toolInvocation/invoking': 'Resuming run...',
+          'openai/toolInvocation/invoked': 'Run resumed',
+          securitySchemes: SECURITY_SCHEMES.authRequired,
+        },
+      },
+      async (args) =>
+        this.withOrgx(async () => {
+          const resolvedUserId =
+            this.props?.userId ?? this.sessionAuth?.userId;
+          const authResponse = buildAuthRequiredResponse({
+            toolId: 'resume_agent_run',
+            securitySchemes: SECURITY_SCHEMES.authRequired,
+            userId: resolvedUserId,
+            serverUrl: this.env.MCP_SERVER_URL,
+            featureDescription: 'resume an agent run',
+          });
+          if (authResponse) return authResponse;
+
+          const body: Record<string, unknown> = {};
+          if (
+            typeof args.note === 'string' &&
+            args.note.trim().length > 0
+          ) {
+            body.note = args.note.trim();
+          }
+
+          const response = await callOrgxApiJson(
+            this.env,
+            `/api/agent-runs/${encodeURIComponent(args.run_id)}/resume`,
+            {
+              method: 'POST',
+              body: JSON.stringify(body),
+            },
+            { userId: resolvedUserId }
+          );
+          const result = (await response.json()) as Record<string, unknown>;
+          const noop = result.noop === true;
+          const wasAutoClosed = result.was_auto_closed === true;
+          const priorStatus = result.prior_status;
+          const summary = noop
+            ? `Run ${args.run_id} is already running.`
+            : wasAutoClosed
+            ? `Resumed run ${args.run_id} (was auto-closed from '${priorStatus}').`
+            : `Resumed run ${args.run_id} (was '${priorStatus}').`;
+
+          return {
+            content: [{ type: 'text' as const, text: summary }],
+            structuredContent: result,
+          };
+        })
+    );
+
     // --- get_my_trust_context ---
     if (shouldRegister('get_my_trust_context'))
     this.server.registerTool(
