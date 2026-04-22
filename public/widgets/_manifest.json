@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-04-21T23:19:00.320Z",
+  "generatedAt": "2026-04-22T13:07:35.263Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -32,8 +32,8 @@
   "widgets": {
     "agent-status": {
       "file": "public/widgets/agent-status.html",
-      "bytes": 73746,
-      "hash": "bfe5d075111a",
+      "bytes": 79042,
+      "hash": "bc93a88079a5",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/components/domain-accent.css",
@@ -145,8 +145,8 @@
     },
     "scaffolded-initiative": {
       "file": "public/widgets/scaffolded-initiative.html",
-      "bytes": 137851,
-      "hash": "262d070c054c",
+      "bytes": 141566,
+      "hash": "c736e0e4d3d6",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/interaction-kit.css",

@@ -150,7 +150,8 @@
 
     .agent-card[data-priority='running'] { --ox-card-color-rgb: 0, 201, 167; }
     .agent-card[data-priority='blocked'] { --ox-card-color-rgb: 244, 63, 94; }
-    .agent-card[data-priority='review'] { --ox-card-color-rgb: 251, 191, 36; }
+    .agent-card[data-priority='review'],
+    .agent-card[data-priority='stalled']   { --ox-card-color-rgb: 251, 191, 36; }
     .agent-card[data-priority='idle'], .agent-card[data-priority='queued'] { --ox-card-color-rgb: 100, 116, 139; }
     
     .agent-card.app-flat-card::after {
@@ -1368,9 +1369,13 @@
       var normalized = String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '_');
       if (!normalized) return 'idle';
       if (['running', 'active', 'executing', 'in_progress', 'working'].indexOf(normalized) !== -1) return 'running';
-      if (['blocked', 'paused', 'waiting', 'at_risk'].indexOf(normalized) !== -1) return 'blocked';
+      // 'stalled' is a first-class read-time derived status — agents whose
+      // runs the API flagged as having no heartbeat in 30+ minutes. Keep
+      // it distinct from 'blocked' so the resume surface is obvious.
+      if (['stalled', 'stale'].indexOf(normalized) !== -1) return 'stalled';
+      if (['blocked', 'waiting', 'at_risk'].indexOf(normalized) !== -1) return 'blocked';
       if (['needs_review', 'review', 'in_review'].indexOf(normalized) !== -1) return 'review';
-      if (['queued', 'pending', 'not_started', 'todo', 'draft', 'backlog'].indexOf(normalized) !== -1) return 'queued';
+      if (['queued', 'pending', 'not_started', 'todo', 'draft', 'backlog', 'paused'].indexOf(normalized) !== -1) return 'queued';
       if (['done', 'complete', 'completed', 'approved', 'shipped'].indexOf(normalized) !== -1) return 'done';
       return normalized;
     }
@@ -1378,6 +1383,7 @@
     function getStatusTone(status) {
       if (status === 'blocked') return 'blocked';
       if (status === 'review') return 'review';
+      if (status === 'stalled') return 'review';
       if (status === 'queued' || status === 'idle') return 'idle';
       return 'running';
     }
@@ -1389,8 +1395,55 @@
       if (status === 'done') return 'Done';
       if (status === 'queued') return 'Queued';
       if (status === 'idle') return 'Idle';
+      if (status === 'stalled') return 'Stalled';
       return 'Running';
     }
+
+    /**
+     * Agents surfaced as "stalled" by getAgentStatus have a run_id that
+     * was auto-closed by the TTL cron (or manually paused). A single
+     * Resume button brings them back to running — calls the backing tool
+     * via the appropriate host bridge.
+     */
+    function resumeAgentRun(runId, button) {
+      if (!runId || !button) return;
+      if (button.getAttribute('data-busy') === '1') return;
+      button.setAttribute('data-busy', '1');
+      button.disabled = true;
+      var originalLabel = button.textContent;
+      button.textContent = 'Resuming…';
+      var args = { run_id: runId, note: 'Resumed from agent-status widget' };
+      var protocol = _detectProtocol();
+      var call;
+      if (protocol === 'chatgpt' && window.openai && typeof window.openai.callTool === 'function') {
+        call = window.openai.callTool('resume_agent_run', args);
+      } else if (protocol === 'mcp-apps') {
+        try {
+          window.parent.postMessage({
+            jsonrpc: '2.0',
+            id: _mcpNextId++,
+            method: 'tools/call',
+            params: { name: 'resume_agent_run', arguments: args },
+          }, '*');
+        } catch (err) {}
+        // No response plumbing today; optimistic UI update is good enough.
+        call = Promise.resolve();
+      } else {
+        call = Promise.resolve();
+      }
+      Promise.resolve(call)
+        .then(function () {
+          button.textContent = 'Resumed ✓';
+          button.setAttribute('data-resumed', '1');
+        })
+        .catch(function (err) {
+          button.textContent = 'Retry';
+          button.removeAttribute('data-busy');
+          button.disabled = false;
+          console.warn('[agent-status] resume failed', err);
+        });
+    }
+    window.__orgxResumeAgentRun = resumeAgentRun;
 
     function collectionKey(item) {
       if (typeof item === 'string') return item.trim();
@@ -1571,11 +1624,21 @@
         blockedCount: blockers.length || tasks.filter(function (task) { return task.status === 'blocked'; }).length,
         reviewCount: artifacts.filter(function (artifact) { return artifact.status === 'review'; }).length,
         openUrl: firstString([raw.url, raw.agent_url]) || buildAgentUrl(firstString([raw.agent_id, raw.id])),
+        // Stalled-run metadata from getAgentStatus (2026-04-21).
+        // `status === 'stalled'` triggers the Resume CTA in renderAttention;
+        // runId is the agent_runs UUID that resume_agent_run targets.
+        runId: firstString([raw.run_id, raw.runId]) || null,
+        stalledMinutes: typeof raw.stalled_minutes === 'number'
+          ? raw.stalled_minutes
+          : (typeof raw.stalledMinutes === 'number' ? raw.stalledMinutes : null),
+        lastHeartbeatAt: firstString([raw.last_heartbeat_at, raw.lastHeartbeatAt]) || null,
       };
     }
 
     function mergeAgentAliases(agents) {
-      var statusWeight = { idle: 1, queued: 2, running: 3, review: 4, blocked: 5 };
+      // Stalled outranks running so an auto-closed run stays visible even
+      // if a stale duplicate claims 'running'. Blocked still wins overall.
+      var statusWeight = { idle: 1, queued: 2, running: 3, stalled: 4, review: 4, blocked: 5 };
       var merged = {};
       agents.forEach(function (agent) {
         var key = (agent.name + '|' + agent.role).toLowerCase();
@@ -1603,7 +1666,12 @@
           taskCount: Math.max(existing.taskCount || 0, agent.taskCount || 0),
           blockedCount: Math.max(existing.blockedCount || 0, agent.blockedCount || 0),
           reviewCount: Math.max(existing.reviewCount || 0, agent.reviewCount || 0),
-          openUrl: existing.openUrl || agent.openUrl
+          openUrl: existing.openUrl || agent.openUrl,
+          runId: keepIncoming ? (agent.runId || existing.runId) : (existing.runId || agent.runId),
+          stalledMinutes: keepIncoming
+            ? (agent.stalledMinutes != null ? agent.stalledMinutes : existing.stalledMinutes)
+            : (existing.stalledMinutes != null ? existing.stalledMinutes : agent.stalledMinutes),
+          lastHeartbeatAt: keepIncoming ? (agent.lastHeartbeatAt || existing.lastHeartbeatAt) : (existing.lastHeartbeatAt || agent.lastHeartbeatAt),
         };
       });
       return Object.keys(merged).map(function (key) { return merged[key]; });
@@ -1617,7 +1685,11 @@
 
     function getPriority(agent) {
       if (agent.status === 'blocked') return 0;
+      // Stalled surfaces next to review — both ask the user for a
+      // one-click action (resume / review). Above running because a
+      // stalled run is a broken contract the user should see first.
       if (agent.status === 'review') return 1;
+      if (agent.status === 'stalled') return 1;
       if (agent.status === 'running') return 2;
       if (agent.status === 'queued') return 3;
       return 4;
@@ -1654,36 +1726,69 @@
       syncAgentCard(cardId);
     }
     function renderAttention(agent) {
-      if (agent.status !== 'blocked' && agent.status !== 'review') return '';
-      var tone = agent.status === 'blocked' ? 'blocked' : 'review';
-      
+      if (agent.status !== 'blocked' && agent.status !== 'review' && agent.status !== 'stalled') return '';
       var isBlocked = agent.status === 'blocked';
-      var body = isBlocked
-        ? 'Blocked: ' + String(agent.blockers[0] || 'A founder-level decision is blocking progress.')
-        : 'Review: ' + String((agent.artifacts.find(function (artifact) { return artifact.status === 'review'; }) || {}).title || 'An artifact is ready for review.');
-      
-      var action = isBlocked ? 'Resolve' : 'Review';
-      
-      var icon = isBlocked 
+      var isStalled = agent.status === 'stalled';
+      var tone = isBlocked ? 'blocked' : 'review';
+
+      // Stalled agents surface a Resume button inline — the run was
+      // auto-closed by the TTL cron. Clicking Resume calls
+      // resume_agent_run to flip the row back to running.
+      var body;
+      var action;
+      var actionHtml;
+      if (isStalled) {
+        var stalledMin = typeof agent.stalledMinutes === 'number' ? agent.stalledMinutes : null;
+        var stalledSummary = stalledMin !== null
+          ? 'No heartbeat in ' + formatStalledDuration(stalledMin) + '. Auto-paused.'
+          : 'No heartbeat in 30+ min. Auto-paused.';
+        body = stalledSummary;
+        action = 'Resume';
+        actionHtml = '<button type="button" class="attention-action" data-resume-run="' + escapeHtml(agent.runId || '') + '" onclick="window.__orgxResumeAgentRun(this.getAttribute(\'data-resume-run\'), this)" style="border-color: rgba(251, 191, 36, 0.14); cursor: pointer; font: inherit; background: transparent;">Resume</button>';
+      } else if (isBlocked) {
+        body = 'Blocked: ' + String(agent.blockers[0] || 'A founder-level decision is blocking progress.');
+        action = 'Resolve';
+      } else {
+        body = 'Review: ' + String((agent.artifacts.find(function (artifact) { return artifact.status === 'review'; }) || {}).title || 'An artifact is ready for review.');
+        action = 'Review';
+      }
+
+      var icon = isBlocked
         ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+        : isStalled
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>'
         : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>';
-        
+
       var bgTone = isBlocked ? 'rgba(244, 63, 94, 0.1)' : 'rgba(251, 191, 36, 0.1)';
       var borderTone = isBlocked ? 'rgba(244, 63, 94, 0.14)' : 'rgba(251, 191, 36, 0.14)';
       var textTone = isBlocked ? 'var(--ox-danger)' : 'var(--ox-warning)';
-      
+
+      if (!actionHtml) {
+        actionHtml = '<a class="attention-action" href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(this.href, event)" style="border-color: ' + borderTone + ';">' + action + '</a>';
+      }
+
+      var title = isBlocked ? 'Blocked' : isStalled ? 'Stalled' : 'Needs review';
+
       return (
         '<div class="agent-attention app-attention-banner" data-tone="' + tone + '" style="background: ' + bgTone + '; border-color: ' + borderTone + '; color: ' + textTone + ';">' +
           '<div style="display: flex; align-items: center; gap: 10px; min-width: 0;">' +
             '<div style="width: 18px; height: 18px; flex-shrink: 0; color: currentColor; opacity: 0.85; display: flex; align-items: center; justify-content: center;">' + icon + '</div>' +
             '<div class="attention-copy">' +
-              '<span class="attention-title">' + (isBlocked ? 'Blocked' : 'Needs review') + '</span>' +
+              '<span class="attention-title">' + title + '</span>' +
               '<span class="attention-body">' + escapeHtml(body) + '</span>' +
             '</div>' +
           '</div>' +
-          '<a class="attention-action" href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(this.href, event)" style="border-color: ' + borderTone + ';">' + action + '</a>' +
+          actionHtml +
         '</div>'
       );
+    }
+
+    function formatStalledDuration(minutes) {
+      if (minutes < 60) return minutes + 'm';
+      var hours = Math.floor(minutes / 60);
+      if (hours < 24) return hours + 'h';
+      var days = Math.floor(hours / 24);
+      return days + 'd';
     }
 
     function renderTasksSection(agent, isOpen) {

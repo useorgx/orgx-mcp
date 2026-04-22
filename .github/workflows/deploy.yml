@@ -52,6 +52,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      - name: Run vitest suite
+        # Full suite is fast (~3s) and catches regressions like the
+        # widget-link handler one — prior validate stage didn't run
+        # tests at all, so tests/widgetOpenLinkHelper.spec.ts was a
+        # regression guard that nothing checked on PR.
+        run: pnpm vitest run
+
       - name: Verify upstream URLs have no redirects
         run: |
           # Extract ORGX_API_URL from wrangler.toml production vars
