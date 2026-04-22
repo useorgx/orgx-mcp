@@ -961,7 +961,23 @@
     .ws-meta {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* Child-count hint shown next to the ID badge when the workstream is
+     * collapsed — telegraphs "structure inside" without forcing the user
+     * to expand. Mono voice so it doesn't compete with the label. */
+    .ws-child-count {
+      font-family: var(--ox-mono);
+      font-size: 0.64rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ox-text-muted);
+    }
+    .ws-block:not(.is-collapsed) .ws-child-count {
+      opacity: 0.5;
     }
 
     .ws-execution {
@@ -1547,26 +1563,47 @@
       align-items: center;
       justify-content: space-between;
       width: 100%;
-      min-height: 44px;
-      padding: 10px 14px;
-      border-radius: 10px;
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.38);
+      /* Card-height target: hold-to-launch is the primary decision on the
+       * whole surface; give it thumb-comfortable height and touch hints.
+       * touch-action: manipulation suppresses double-tap-zoom + scroll
+       * conflict on mobile; user-select: none prevents the hold from
+       * triggering the OS text-selection menu mid-press. */
+      min-height: 64px;
+      padding: 14px 18px;
+      border-radius: 12px;
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.42);
       background: rgba(var(--ox-primary-rgb), 0.08);
       color: var(--ox-primary);
       font-family: inherit;
       font-weight: 600;
-      font-size: 0.88rem;
+      font-size: 0.95rem;
       letter-spacing: -0.005em;
       cursor: pointer;
       overflow: hidden;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
       transition:
         background 200ms var(--widget-motion-curve),
-        border-color 200ms var(--widget-motion-curve);
+        border-color 200ms var(--widget-motion-curve),
+        transform 120ms var(--widget-motion-curve);
     }
     .launch-strip__cta:hover { background: rgba(var(--ox-primary-rgb), 0.12); }
+    .launch-strip__cta.is-holding { transform: scale(0.995); }
     .launch-strip__cta:focus-visible {
       outline: 2px solid rgba(var(--ox-primary-rgb), 0.55);
       outline-offset: 3px;
+    }
+    .launch-strip__cta-sub {
+      display: block;
+      margin-top: 2px;
+      font-family: var(--ox-mono);
+      font-size: 0.62rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(var(--ox-primary-rgb), 0.7);
     }
     .launch-strip__cta-fill {
       position: absolute;
@@ -1584,8 +1621,10 @@
       position: relative;
       z-index: 1;
       display: inline-flex;
-      align-items: center;
-      gap: 8px;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0;
+      line-height: 1.2;
     }
     .launch-strip__cta-arrow {
       position: relative;
@@ -1782,19 +1821,21 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      padding: 14px 16px;
+      padding: 16px 20px;
       border-radius: 12px;
       border: 1px solid rgba(var(--ox-primary-rgb), 0.35);
       background: rgba(var(--ox-primary-rgb), 0.1);
       color: var(--ox-primary);
       font-weight: 600;
-      font-size: 0.92rem;
+      font-size: 0.95rem;
       cursor: pointer;
       text-decoration: none;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
       transition: background 160ms var(--widget-motion-curve),
                   border-color 160ms var(--widget-motion-curve),
                   transform 160ms var(--widget-motion-curve);
-      min-height: 56px;
+      min-height: 64px;
       opacity: 0;
       transform: translateY(4px);
       animation: launchStreamActivate 560ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -1868,6 +1909,28 @@
         width: 100%;
         justify-content: center;
       }
+
+      /* Launch strip: thumbable CTA + tight eyebrow row. The hold-to-launch
+       * is the surface's primary decision and needs thumb-comfortable
+       * height on mobile; 72px vertical is card-height at this width. */
+      .launch-strip {
+        margin-top: 22px;
+        padding: 14px 14px 16px;
+      }
+      .launch-strip__cta {
+        min-height: 72px;
+        padding: 14px 16px;
+        font-size: 1rem;
+      }
+      .launch-strip__cta-sub { font-size: 0.6rem; }
+      .launch-strip__primary {
+        min-height: 72px;
+        padding: 16px 18px;
+        font-size: 1rem;
+      }
+      /* Child counts (5 milestones · 12 tasks) hide on narrow width — the
+       * row is already tight, and the toggle glyph telegraphs "more here". */
+      .ws-child-count { display: none; }
 
       .node-list {
         --tree-gap: 11px;
@@ -3195,9 +3258,12 @@
           <span class="launch-strip__eyebrow">${LAUNCH_STRIP_CHECK_SVG}Ready</span>
           <span class="launch-strip__count">All ${r.total} checks green</span>
         </div>
-        <button type="button" class="launch-strip__cta" data-launch-cta>
+        <button type="button" class="launch-strip__cta" data-launch-cta aria-label="Hold to launch initiative — activates workstreams and agents">
           <span class="launch-strip__cta-fill" aria-hidden="true"></span>
-          <span class="launch-strip__cta-label">Hold to launch</span>
+          <span class="launch-strip__cta-label">
+            <span>Hold to launch</span>
+            <span class="launch-strip__cta-sub">Activates workstreams and agents</span>
+          </span>
           <span class="launch-strip__cta-arrow">${LAUNCH_STRIP_ARROW_SVG}</span>
         </button>`;
 
@@ -3411,7 +3477,21 @@
           var progress = typeof execution.progress_pct === 'number' ? execution.progress_pct : 0;
           var domainKey = execution.domain || 'orchestrator';
           var domainRgb = getDomainRgb(domainKey);
-        return `<div class="ws-block" data-ws-block>
+        // Default-collapsed: on first render the workstream children are
+        // hidden. Without this the launch CTA sits below 5+ expanded
+        // workstream trees on mobile and the user has to scroll to find
+        // the decision. The tree is there for structural reassurance, not
+        // immediate inspection — users can expand individual rows or all
+        // rows via the section-level toggle.
+        var childMilestoneCount = Array.isArray(section.milestones) ? section.milestones.length : 0;
+        var childTaskCount = Array.isArray(section.milestones)
+          ? section.milestones.reduce((n, m) => n + (Array.isArray(m.tasks) ? m.tasks.length : 0), 0)
+          : 0;
+        var childSummaryBits = [];
+        if (childMilestoneCount > 0) childSummaryBits.push(childMilestoneCount + ' milestone' + (childMilestoneCount === 1 ? '' : 's'));
+        if (childTaskCount > 0) childSummaryBits.push(childTaskCount + ' task' + (childTaskCount === 1 ? '' : 's'));
+        var childSummary = childSummaryBits.join(' · ');
+        return `<div class="ws-block is-collapsed" data-ws-block>
         <div class="node-item ws" style="--ws-rgb: ${domainRgb};">
           <div class="ws-shell">
             <div class="ws-copy">
@@ -3419,7 +3499,7 @@
                 <span class="ws-node-icon" aria-hidden="true">${icons.workstream(14)}</span>
                 <div class="ws-title-stack">
                   <span class="ws-title">${escapeHtml(readLabel(section, 'Untitled'))}</span>
-                  <span class="ws-meta">${renderIdBadge(section.display_id, section.raw_id)}</span>
+                  <span class="ws-meta">${renderIdBadge(section.display_id, section.raw_id)}${childSummary ? `<span class="ws-child-count" aria-hidden="true">${escapeHtml(childSummary)}</span>` : ''}</span>
                 </div>
                 ${renderAgentPresence(execution)}
               </div>
@@ -3427,10 +3507,10 @@
             <div class="ws-execution">
               ${renderProgressRing(progress, domainRgb)}
               <span class="status-badge ${escapeHtml(status.tone)}" aria-label="${escapeHtml(status.label)}">${status.icon}<span>${escapeHtml(status.shortLabel || status.label)}</span></span>
-              <button type="button" class="node-toggle ox-icon-btn ox-icon-btn--sm" onclick="toggleNode(this)" data-expanded="true" aria-expanded="true" aria-label="Collapse workstream"><span class="node-toggle__glyph">${icons.chevronDown(12)}</span></button>
+              <button type="button" class="node-toggle ox-icon-btn ox-icon-btn--sm" onclick="toggleNode(this)" data-expanded="false" aria-expanded="false" aria-label="Expand workstream"><span class="node-toggle__glyph">${icons.chevronDown(12)}</span></button>
             </div>
           </div>
-          <div class="ws-children" data-ws-children aria-hidden="false">
+          <div class="ws-children is-collapsed" data-ws-children aria-hidden="true" hidden>
             <div class="ws-children-inner" data-ws-children-inner>
               <div class="tree-overlay" data-tree-overlay aria-hidden="true"></div>
               ${(section.milestones || []).map(renderMilestone).join('')}
@@ -3461,8 +3541,8 @@
             
             <div class="section-head">
               <div class="ox-eyebrow section-kicker">Work Breakdown Structure</div>
-              <button type="button" class="section-toggle-all" data-toggle-all data-expanded="true" onclick="toggleAllWorkstreams(this)" aria-label="Collapse all workstreams">
-                <span data-toggle-all-label>Collapse all</span>
+              <button type="button" class="section-toggle-all" data-toggle-all data-expanded="false" onclick="toggleAllWorkstreams(this)" aria-label="Expand all workstreams">
+                <span data-toggle-all-label>Expand all</span>
                 <span class="section-toggle-all__glyph">${icons.chevronDown(12)}</span>
               </button>
             </div>
