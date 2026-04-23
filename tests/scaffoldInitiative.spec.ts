@@ -293,4 +293,126 @@ describe('buildScaffoldHierarchy', () => {
       title: 'Review metrics',
     });
   });
+
+  it('preserves scaffold input metadata when create responses are sparse', () => {
+    const batch = [
+      {
+        type: 'initiative',
+        ref: 'initiative',
+        title: 'Launch proof chain',
+        domain: 'engineering',
+      },
+      {
+        type: 'workstream',
+        ref: 'ws-1',
+        name: 'Verification lane',
+        domain: 'engineering',
+        persona: 'QA lead',
+        assigned_agent_ids: ['agent-1'],
+        assigned_agent_names: ['Eng Agent'],
+      },
+      {
+        type: 'milestone',
+        ref: 'ms-1',
+        name: 'Evidence gate',
+        domain: 'engineering',
+        coordination_hints: ['ship artifacts first'],
+      },
+      {
+        type: 'task',
+        ref: 'task-1',
+        title: 'Capture artifact proof',
+        domain: 'engineering',
+        persona: 'implementation owner',
+        estimate_hours: 2,
+        assigned_agent_ids: ['agent-1'],
+      },
+    ];
+
+    const hierarchy = buildScaffoldHierarchy({
+      batch,
+      result: {
+        summary: '4/4 created',
+        total: 4,
+        created_count: 4,
+        failed_count: 0,
+        created: [],
+        failed: [],
+        ref_map: {},
+        results: [
+          {
+            index: 0,
+            success: true,
+            type: 'initiative',
+            ref: 'initiative',
+            id: 'init-1',
+            data: { id: 'init-1', status: 'draft' },
+          },
+          {
+            index: 1,
+            success: true,
+            type: 'workstream',
+            ref: 'ws-1',
+            id: 'ws-1-id',
+            data: { id: 'ws-1-id', status: 'active' },
+          },
+          {
+            index: 2,
+            success: true,
+            type: 'milestone',
+            ref: 'ms-1',
+            id: 'ms-1-id',
+            data: { id: 'ms-1-id', status: 'planned' },
+          },
+          {
+            index: 3,
+            success: true,
+            type: 'task',
+            ref: 'task-1',
+            id: 'task-1-id',
+            data: { id: 'task-1-id', status: 'todo' },
+          },
+        ],
+      },
+      initiativeRef: 'initiative',
+      wsRefs: ['ws-1'],
+      msRefs: [['ms-1']],
+      taskRefs: [[['task-1']]],
+    });
+
+    expect(hierarchy.initiative).toMatchObject({
+      id: 'init-1',
+      title: 'Launch proof chain',
+      domain: 'engineering',
+      status: 'draft',
+    });
+    expect(hierarchy.workstreams[0]).toMatchObject({
+      id: 'ws-1-id',
+      name: 'Verification lane',
+      title: 'Verification lane',
+      domain: 'engineering',
+      persona: 'QA lead',
+      assigned_agent_ids: ['agent-1'],
+      assigned_agent_names: ['Eng Agent'],
+      status: 'active',
+    });
+    expect(hierarchy.workstreams[0]?.milestones[0]).toMatchObject({
+      id: 'ms-1-id',
+      name: 'Evidence gate',
+      title: 'Evidence gate',
+      domain: 'engineering',
+      coordination_hints: ['ship artifacts first'],
+      status: 'planned',
+    });
+    expect(hierarchy.workstreams[0]?.milestones[0]?.tasks[0]).toMatchObject({
+      id: 'task-1-id',
+      title: 'Capture artifact proof',
+      name: 'Capture artifact proof',
+      domain: 'engineering',
+      persona: 'implementation owner',
+      estimate_hours: 2,
+      assigned_agent_ids: ['agent-1'],
+      status: 'todo',
+    });
+  });
 });

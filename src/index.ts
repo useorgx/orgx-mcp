@@ -6079,20 +6079,21 @@ export class OrgXMcp extends McpAgent<
             concurrency,
           });
 
-	          const hierarchy = buildScaffoldHierarchy({
-	            result,
-	            initiativeRef,
-	            wsRefs,
+          const hierarchy = buildScaffoldHierarchy({
+            result,
+            batch,
+            initiativeRef,
+            wsRefs,
             msRefs,
             taskRefs,
           });
 
-	          const createdInitiativeId =
-	            typeof (hierarchy as any)?.initiative?.id === 'string'
-	              ? ((hierarchy as any).initiative.id as string)
-	              : null;
+          const createdInitiativeId =
+            typeof (hierarchy as any)?.initiative?.id === 'string'
+              ? ((hierarchy as any).initiative.id as string)
+              : null;
 
-	          // ── Post-scaffold agent assignment (best-effort) ──
+          // ── Post-scaffold agent assignment (best-effort) ──
 	          // Assign agents to workstreams based on domain so cloud MCP users
 	          // get the same auto-assignment that the openclaw-plugin provides locally.
 	          let agent_assignment:

@@ -686,12 +686,13 @@ export function buildScaffoldInitiativeBatch(
 
 export function buildScaffoldHierarchy(params: {
   result: BatchCreateSummary;
+  batch?: Array<Record<string, unknown>>;
   initiativeRef: string;
   wsRefs: string[];
   msRefs: string[][];
   taskRefs: string[][][];
 }) {
-  const { result, initiativeRef, wsRefs, msRefs, taskRefs } = params;
+  const { result, batch, initiativeRef, wsRefs, msRefs, taskRefs } = params;
 
   const byRef = new Map<
     string,
@@ -701,9 +702,16 @@ export function buildScaffoldHierarchy(params: {
     if (item.ref) {
       byRef.set(item.ref, {
         success: item.success,
-        data: item.data ?? null,
+        data: { ...(item.data ?? {}), ...(item.id ? { id: item.id } : {}) },
         error: item.error,
       });
+    }
+  }
+  const inputByRef = new Map<string, Record<string, unknown>>();
+  for (const item of batch ?? []) {
+    const ref = typeof item.ref === 'string' ? item.ref : null;
+    if (ref) {
+      inputByRef.set(ref, item);
     }
   }
 
@@ -731,6 +739,7 @@ export function buildScaffoldHierarchy(params: {
   const nodeForRef = (ref: string) => {
     const info = byRef.get(ref);
     return normalizeHierarchyNode({
+      ...(inputByRef.get(ref) ?? {}),
       ref,
       success: info?.success ?? false,
       ...(info?.data ?? {}),
