@@ -213,7 +213,13 @@ export async function normalizeAgentDispatchPayload(params: {
   }
 
   if (!workspaceName && workspaceId && lookupEntity) {
-    const workspace = await lookupEntity('command_center', workspaceId);
+    // Migration 20260421000000 renamed command_center → workspace. Try the
+    // canonical name first; fall back to the legacy alias so older upstream
+    // API deployments still resolve during the rollout window.
+    let workspace = await lookupEntity('workspace', workspaceId);
+    if (!workspace) {
+      workspace = await lookupEntity('command_center', workspaceId);
+    }
     workspaceName = workspace
       ? pickRecordString(workspace, ['name', 'title'])
       : null;
