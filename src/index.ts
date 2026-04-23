@@ -32,6 +32,7 @@ import { resolveProfileToolSet } from './toolProfiles';
 import { withCorsAndHeaders, withSseKeepAlive } from './mcpTransport';
 import { withSecurityHeaders } from './securityHeaders';
 import { callOrgxApiJson, callOrgxApiRaw, OrgXApiError } from './orgxApi';
+import { resolveListEntitiesWorkspaceScope } from './listEntitiesWorkspaceScope';
 import { batchCreateEntities as runBatchCreateEntities } from './batchCreate';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
 import {
@@ -102,7 +103,6 @@ import {
   type OrgxFreeAuditPeriod,
 } from './freeAudit';
 import { buildInitiativeListWidgetPayload } from './initiativeWidgetPayload';
-import { resolveListEntitiesWorkspaceScope } from './listEntitiesWorkspaceScope';
 import { normalizeAgentDispatchPayload } from './agentDispatchPayload';
 import { normalizeAgentStatusPayload } from './agentStatusPayload';
 import {
@@ -3829,6 +3829,7 @@ export class OrgXMcp extends McpAgent<
           }
           const effectiveWorkspaceId = resolveListEntitiesWorkspaceScope({
             type: args.type,
+            id: typeof args.id === 'string' ? args.id : null,
             initiativeId: args.initiative_id,
             explicitWorkspaceId,
             explicitCommandCenterId,
