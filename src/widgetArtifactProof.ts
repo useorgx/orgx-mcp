@@ -259,6 +259,124 @@ function collectAgentIdentityTokens(agent: Record<string, unknown>): Set<string>
   return tokens;
 }
 
+function addOwnedTaskIds(
+  input: unknown,
+  initiativeId: string | null,
+  ids: Set<string>
+): void {
+  const record = asRecord(input);
+  if (!record) return;
+
+  const recordInitiativeId = firstString(record, ['initiative_id', 'initiativeId']);
+  if (initiativeId && recordInitiativeId && recordInitiativeId !== initiativeId) {
+    return;
+  }
+
+  const taskId =
+    firstString(record, ['task_id', 'taskId']) ??
+    (toSlug(firstString(record, ['entity_type', 'entityType', 'type'])) === 'task'
+      ? firstString(record, ['entity_id', 'entityId', 'id'])
+      : firstString(record, ['id']));
+  if (taskId) ids.add(taskId);
+}
+
+function addOwnedHierarchyIds(
+  input: unknown,
+  initiativeId: string | null,
+  ids: Set<string>
+): void {
+  const record = asRecord(input);
+  if (!record) return;
+
+  const recordInitiativeId = firstString(record, ['initiative_id', 'initiativeId']);
+  if (initiativeId && recordInitiativeId && recordInitiativeId !== initiativeId) {
+    return;
+  }
+
+  const id = firstString(record, ['id', 'entity_id', 'entityId']);
+  if (id) ids.add(id);
+
+  for (const key of [
+    'workstreams',
+    'workStreams',
+    'milestones',
+    'tasks',
+    'items',
+    'children',
+  ]) {
+    for (const child of firstArray(record, [key])) {
+      addOwnedHierarchyIds(child, initiativeId, ids);
+    }
+  }
+}
+
+function collectInitiativeOwnedEntityIds(
+  data: Record<string, unknown>,
+  initiativeId: string | null
+): Set<string> {
+  const ids = new Set<string>();
+  if (initiativeId) ids.add(initiativeId);
+
+  addOwnedHierarchyIds(data, initiativeId, ids);
+  addOwnedHierarchyIds(asRecord(data.hierarchy), initiativeId, ids);
+
+  for (const agent of firstArray(data, ['agents'])) {
+    const agentRecord = asRecord(agent);
+    if (!agentRecord) continue;
+    const agentInitiativeId = firstString(agentRecord, [
+      'initiative_id',
+      'initiativeId',
+      'workspace_initiative_id',
+    ]);
+    if (initiativeId && agentInitiativeId && agentInitiativeId !== initiativeId) {
+      continue;
+    }
+
+    for (const key of [
+      'current_tasks',
+      'currentTasks',
+      'active_tasks',
+      'activeTasks',
+      'tasks',
+      'items',
+    ]) {
+      for (const task of firstArray(agentRecord, [key])) {
+        addOwnedTaskIds(task, initiativeId, ids);
+      }
+    }
+    addOwnedTaskIds(agentRecord.task, initiativeId, ids);
+  }
+
+  return ids;
+}
+
+function artifactBelongsToInitiative(
+  artifact: NormalizedArtifact,
+  initiativeId: string | null,
+  ownedEntityIds: Set<string>
+): boolean {
+  if (!initiativeId) return true;
+
+  if (artifact.initiative_id) {
+    return artifact.initiative_id === initiativeId;
+  }
+
+  if (artifact.task_id && ownedEntityIds.has(artifact.task_id)) {
+    return true;
+  }
+
+  if (!artifact.entity_id) {
+    return false;
+  }
+
+  const entityType = toSlug(artifact.entity_type);
+  if (entityType === 'initiative') {
+    return artifact.entity_id === initiativeId;
+  }
+
+  return ownedEntityIds.has(artifact.entity_id);
+}
+
 function artifactMatchesAgent(
   artifact: NormalizedArtifact,
   taskIds: Set<string>,
@@ -466,9 +584,13 @@ export function enrichInitiativePulseWithArtifacts(
 ): Record<string, unknown> {
   const initiativeId =
     firstString(data, ['initiative_id', 'initiativeId', 'id']) ?? null;
+  const ownedEntityIds = collectInitiativeOwnedEntityIds(data, initiativeId);
   const artifacts = artifactsInput
     .map(normalizeArtifactRecord)
-    .filter((item): item is NormalizedArtifact => Boolean(item));
+    .filter((item): item is NormalizedArtifact => Boolean(item))
+    .filter((artifact) =>
+      artifactBelongsToInitiative(artifact, initiativeId, ownedEntityIds)
+    );
   const linkedArtifacts = artifacts.map((artifact) =>
     attachArtifactLinks(artifact, initiativeId)
   );
