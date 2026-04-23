@@ -88,10 +88,33 @@ describe('widget artifact proof helpers', () => {
 
   it('adds recent artifacts to initiative pulse payloads', () => {
     const payload = enrichInitiativePulseWithArtifacts(
-      { id: 'init-1', name: 'Ship MCP App Store Listing' },
+      {
+        id: 'init-1',
+        name: 'Ship MCP App Store Listing',
+        workstreams: [
+          {
+            id: 'ws-1',
+            milestones: [{ id: 'ms-1', tasks: [{ id: 'task-1' }, { id: 'task-2' }] }],
+          },
+        ],
+      },
       [
-        { id: 'artifact-1', name: 'server.json manifest', status: 'approved' },
-        { id: 'artifact-2', name: 'DNS verification', status: 'approved' },
+        {
+          id: 'artifact-1',
+          name: 'server.json manifest',
+          status: 'approved',
+          entity_type: 'task',
+          entity_id: 'task-1',
+          initiative_id: 'init-1',
+        },
+        {
+          id: 'artifact-2',
+          name: 'DNS verification',
+          status: 'approved',
+          entity_type: 'task',
+          entity_id: 'task-2',
+          initiative_id: 'init-1',
+        },
       ]
     );
 
@@ -117,6 +140,91 @@ describe('widget artifact proof helpers', () => {
       preserve_tool_results: true,
       live_url: 'https://useorgx.com/live/init-1',
       proof_count: 2,
+    });
+  });
+
+  it('filters out artifacts owned by other initiatives from initiative pulse payloads', () => {
+    const payload = enrichInitiativePulseWithArtifacts(
+      {
+        id: 'init-1',
+        name: 'Current initiative',
+        workstreams: [
+          {
+            id: 'ws-1',
+            milestones: [{ id: 'ms-1', tasks: [{ id: 'task-1' }] }],
+          },
+        ],
+      },
+      [
+        {
+          id: 'artifact-1',
+          name: 'Current initiative proof',
+          status: 'approved',
+          entity_type: 'task',
+          entity_id: 'task-1',
+          initiative_id: 'init-1',
+        },
+        {
+          id: 'artifact-2',
+          name: 'Foreign initiative proof',
+          status: 'in_review',
+          entity_type: 'task',
+          entity_id: 'task-foreign',
+          initiative_id: 'init-2',
+        },
+      ]
+    );
+
+    expect(payload.recent_artifacts).toHaveLength(1);
+    expect(payload.proof_cards).toHaveLength(1);
+    expect(payload.review_items).toHaveLength(0);
+    expect((payload.recent_artifacts as Array<Record<string, unknown>>)[0]).toMatchObject({
+      id: 'artifact-1',
+      live_url: 'https://useorgx.com/live/init-1',
+    });
+  });
+
+  it('filters out task-owned artifacts when the task is outside the initiative hierarchy', () => {
+    const payload = enrichInitiativePulseWithArtifacts(
+      {
+        id: 'init-1',
+        name: 'Current initiative',
+        workstreams: [
+          {
+            id: 'ws-1',
+            milestones: [{ id: 'ms-1', tasks: [{ id: 'task-1' }] }],
+          },
+        ],
+      },
+      [
+        {
+          id: 'artifact-1',
+          name: 'Hierarchy task proof',
+          status: 'approved',
+          entity_type: 'task',
+          entity_id: 'task-1',
+        },
+        {
+          id: 'artifact-2',
+          name: 'Foreign task proof',
+          status: 'changes_requested',
+          entity_type: 'task',
+          entity_id: 'task-foreign',
+        },
+      ]
+    );
+
+    expect(payload.recent_artifacts).toHaveLength(1);
+    expect(payload.artifact_summary).toMatchObject({
+      total: 1,
+      approved: 1,
+      in_review: 0,
+      needs_review: 0,
+    });
+    expect((payload.recent_artifacts as Array<Record<string, unknown>>)[0]).toMatchObject({
+      id: 'artifact-1',
+      entity_id: 'task-1',
+      live_url: 'https://useorgx.com/live/init-1',
     });
   });
 
