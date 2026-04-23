@@ -361,6 +361,14 @@ export function buildScaffoldInitiativeBatch(
         // command_center_id was renamed to workspace_id in the DB.
         // Strip it here so it never reaches the API entity payload.
         'command_center_id',
+        // coordination_dependency is a planning hint (the single most
+        // important cross-workstream dependency the agent identified).
+        // The initiative validator rejects top-level unknown columns —
+        // it arrived there before via args spread and failed every
+        // scaffold. We preserve the field below under
+        // metadata.coordination_dependency so downstream consumers can
+        // read it and the validator accepts the payload.
+        'coordination_dependency',
       ])
     ),
     1
@@ -382,11 +390,43 @@ export function buildScaffoldInitiativeBatch(
   // Callers can override by passing metadata.live.visibility explicitly.
   const existingMetadata = safeRecord(initiativeEntity.metadata);
   const existingLive = safeRecord(existingMetadata.live);
+  let nextMetadata: Record<string, unknown> | null = null;
   if (!existingLive.visibility) {
-    initiativeEntity.metadata = {
+    nextMetadata = {
       ...existingMetadata,
       live: { ...existingLive, visibility: 'public' },
     };
+  }
+
+  // coordination_dependency is a planning hint that arrives at the top
+  // level of the scaffold args. Fold it into metadata so the initiative
+  // validator (which rejects unknown top-level columns) accepts the
+  // payload, and downstream consumers can still read the planning intent.
+  const rawCoordination = safeRecord(args.coordination_dependency);
+  if (
+    rawCoordination &&
+    Object.keys(rawCoordination).length > 0 &&
+    typeof rawCoordination.name === 'string'
+  ) {
+    const base = nextMetadata ?? existingMetadata;
+    nextMetadata = {
+      ...base,
+      coordination_dependency: {
+        name: String(rawCoordination.name),
+        from_workstream_name:
+          typeof rawCoordination.fromWorkstreamName === 'string'
+            ? rawCoordination.fromWorkstreamName
+            : undefined,
+        to_workstream_name:
+          typeof rawCoordination.toWorkstreamName === 'string'
+            ? rawCoordination.toWorkstreamName
+            : undefined,
+      },
+    };
+  }
+
+  if (nextMetadata) {
+    initiativeEntity.metadata = nextMetadata;
   }
 
   batch.push({

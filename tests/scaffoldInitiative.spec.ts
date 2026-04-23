@@ -108,6 +108,64 @@ describe('buildScaffoldInitiativeBatch', () => {
     expect(task).not.toHaveProperty('primaryAgent');
     expect(task).not.toHaveProperty('ownerAgent');
   });
+
+  it('folds coordination_dependency into initiative metadata instead of leaking to top level', () => {
+    // Regression guard: the MCP schema exposes coordination_dependency as a
+    // top-level field. Previously it was spread into the initiative entity
+    // payload and the backend validator rejected it with
+    //   "Field 'coordination_dependency' is not valid for entity type 'initiative'"
+    // failing all 16 scaffold entities. It must land in metadata instead.
+    const result = buildScaffoldInitiativeBatch({
+      title: 'Cross-team Ship Window',
+      workspace_id: 'ws-1',
+      coordination_dependency: {
+        name: 'Design → Engineering handoff',
+        fromWorkstreamName: 'Design',
+        toWorkstreamName: 'Engineering',
+      },
+      workstreams: [
+        {
+          title: 'Design',
+          milestones: [{ title: 'Review', tasks: [{ title: 'Spec' }] }],
+        },
+        {
+          title: 'Engineering',
+          milestones: [{ title: 'Ship', tasks: [{ title: 'Build' }] }],
+        },
+      ],
+    });
+
+    const initiative = result.batch.find((entity) => entity.type === 'initiative');
+    expect(initiative).toBeDefined();
+    expect(initiative).not.toHaveProperty('coordination_dependency');
+    const metadata = initiative?.metadata as Record<string, unknown> | undefined;
+    expect(metadata).toBeDefined();
+    expect(metadata?.coordination_dependency).toEqual({
+      name: 'Design → Engineering handoff',
+      from_workstream_name: 'Design',
+      to_workstream_name: 'Engineering',
+    });
+    // Existing metadata defaults (live visibility) must still be present.
+    expect(metadata?.live).toEqual({ visibility: 'public' });
+  });
+
+  it('omits coordination_dependency metadata entry when no hint is provided', () => {
+    const result = buildScaffoldInitiativeBatch({
+      title: 'Single-stream Initiative',
+      workspace_id: 'ws-1',
+      workstreams: [
+        {
+          title: 'Lane One',
+          milestones: [{ title: 'M1', tasks: [{ title: 'T1' }] }],
+        },
+      ],
+    });
+
+    const initiative = result.batch.find((entity) => entity.type === 'initiative');
+    expect(initiative).not.toHaveProperty('coordination_dependency');
+    const metadata = initiative?.metadata as Record<string, unknown> | undefined;
+    expect(metadata?.coordination_dependency).toBeUndefined();
+  });
 });
 
 describe('buildScaffoldHierarchy', () => {
