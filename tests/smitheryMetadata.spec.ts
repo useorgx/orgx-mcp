@@ -114,6 +114,11 @@ describe('Smithery metadata coverage', () => {
         '.describe(\'Comment body in plain text or markdown.',
         '.describe(\'Optional structured metadata attached to the comment.',
       ],
+      create_entity: [
+        'annotations: {',
+        'goal_ids: z',
+        'Optional goal UUIDs for initiative/workstream/milestone/task creation. Suggested when the workspace enforces a primary goal',
+      ],
       list_entity_comments: [
         'annotations: {',
         '.describe(\'Entity type to read comments for.',
@@ -150,6 +155,11 @@ describe('Smithery metadata coverage', () => {
         'annotations: {',
         'inputSchema: autonomousSessionInputShape',
       ],
+      scaffold_initiative: [
+        'annotations: {',
+        'goal_ids: z',
+        'Optional goal UUIDs for the initiative. Suggested when the workspace requires a primary goal',
+      ],
       get_relevant_learnings: [
         'annotations: {',
         'Optional keywords for semantic matching.',
@@ -162,10 +172,17 @@ describe('Smithery metadata coverage', () => {
     };
 
     for (const [toolId, snippets] of Object.entries(expectations)) {
-      const registrationMatch = new RegExp(
-        `registerTool\\(\\s*'${toolId}'([\\s\\S]*?)(?=registerTool\\(|registerAppTool\\(|private registerResources\\()`,
-        'm'
-      ).exec(indexSource);
+      const registrationPattern =
+        toolId === 'scaffold_initiative'
+          ? new RegExp(
+              `registerAppTool\\(\\s*this\\.server,\\s*'${toolId}'([\\s\\S]*?)(?=registerTool\\(|registerAppTool\\(|private registerResources\\()`,
+              'm'
+            )
+          : new RegExp(
+              `registerTool\\(\\s*'${toolId}'([\\s\\S]*?)(?=registerTool\\(|registerAppTool\\(|private registerResources\\()`,
+              'm'
+            );
+      const registrationMatch = registrationPattern.exec(indexSource);
       expect(
         registrationMatch,
         `Missing registration block for ${toolId}`

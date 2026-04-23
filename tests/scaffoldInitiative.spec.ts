@@ -166,6 +166,49 @@ describe('buildScaffoldInitiativeBatch', () => {
     const metadata = initiative?.metadata as Record<string, unknown> | undefined;
     expect(metadata?.coordination_dependency).toBeUndefined();
   });
+
+  it('preserves optional goal_ids across the scaffold hierarchy', () => {
+    const result = buildScaffoldInitiativeBatch({
+      title: 'Goal-linked Initiative',
+      workspace_id: 'ws-1',
+      goal_ids: ['goal-init-1'],
+      workstreams: [
+        {
+          title: 'Engineering',
+          goal_ids: ['goal-ws-1'],
+          milestones: [
+            {
+              title: 'Ship API',
+              goal_ids: ['goal-ms-1'],
+              tasks: [
+                {
+                  title: 'Add contract support',
+                  goal_ids: ['goal-task-1'],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(result.batch[0]).toMatchObject({
+      type: 'initiative',
+      goal_ids: ['goal-init-1'],
+    });
+    expect(result.batch[1]).toMatchObject({
+      type: 'workstream',
+      goal_ids: ['goal-ws-1'],
+    });
+    expect(result.batch[2]).toMatchObject({
+      type: 'milestone',
+      goal_ids: ['goal-ms-1'],
+    });
+    expect(result.batch[3]).toMatchObject({
+      type: 'task',
+      goal_ids: ['goal-task-1'],
+    });
+  });
 });
 
 describe('buildScaffoldHierarchy', () => {
