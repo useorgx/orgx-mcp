@@ -32,7 +32,6 @@ import { resolveProfileToolSet } from './toolProfiles';
 import { withCorsAndHeaders, withSseKeepAlive } from './mcpTransport';
 import { withSecurityHeaders } from './securityHeaders';
 import { callOrgxApiJson, callOrgxApiRaw, OrgXApiError } from './orgxApi';
-import { resolveListEntitiesWorkspaceScope } from './listEntitiesWorkspaceScope';
 import { batchCreateEntities as runBatchCreateEntities } from './batchCreate';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
 import {
@@ -3253,11 +3252,20 @@ export class OrgXMcp extends McpAgent<
               'Pagination cursor (use pagination.next_cursor from previous result).'
             ),
         },
-        _meta: { 'openai/visibility': 'public', 'openai/readOnlyHint': true, securitySchemes: SECURITY_SCHEMES.readOptionalAuth },
+        _meta: { 'openai/visibility': 'public', 'openai/readOnlyHint': true, securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth },
       },
       async (args: Record<string, unknown>) =>
         this.withOrgx(async () => {
           const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
+          const authResponse = buildAuthRequiredResponse({
+            toolId: 'get_org_snapshot',
+            securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
+            userId: resolvedUserId,
+            serverUrl: this.env.MCP_SERVER_URL,
+            featureDescription: 'view organization snapshot',
+          });
+          if (authResponse) return authResponse;
+
           const params = new URLSearchParams();
           if (typeof args?.view === 'string' && args.view.length > 0) {
             params.set('view', args.view);
@@ -3827,14 +3835,11 @@ export class OrgXMcp extends McpAgent<
               'workspace_id and command_center_id must match when both are provided'
             );
           }
-          const effectiveWorkspaceId = resolveListEntitiesWorkspaceScope({
-            type: args.type,
-            id: typeof args.id === 'string' ? args.id : null,
-            initiativeId: args.initiative_id,
-            explicitWorkspaceId,
-            explicitCommandCenterId,
-            sessionWorkspaceId: this.sessionContext?.workspaceId ?? null,
-          });
+          const effectiveWorkspaceId =
+            explicitWorkspaceId ??
+            explicitCommandCenterId ??
+            this.sessionContext?.workspaceId ??
+            null;
           if (effectiveWorkspaceId && workspaceScopedTypes.has(args.type)) {
             params.set('workspace_id', effectiveWorkspaceId);
           }
@@ -4667,17 +4672,29 @@ export class OrgXMcp extends McpAgent<
             .describe('Entity type to verify'),
           id: z.string().min(1).describe('Entity ID'),
         },
-        _meta: { 'openai/visibility': 'public', 'openai/readOnlyHint': true, securitySchemes: SECURITY_SCHEMES.readOptionalAuth },
+        _meta: { 'openai/visibility': 'public', 'openai/readOnlyHint': true, securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth },
       },
       async (args) =>
         this.withOrgx(async () => {
+          const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
+          const authResponse = buildAuthRequiredResponse({
+            toolId: 'verify_entity_completion',
+            securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
+            userId: resolvedUserId,
+            serverUrl: this.env.MCP_SERVER_URL,
+            featureDescription: 'verify entity completion',
+          });
+          if (authResponse) return authResponse;
+
           const params = new URLSearchParams({
             type: args.type,
             id: args.id,
           });
           const response = await callOrgxApiJson(
             this.env,
-            `/api/entities/verify?${params.toString()}`
+            `/api/entities/verify?${params.toString()}`,
+            undefined,
+            { userId: resolvedUserId }
           );
           const result = (await response.json()) as {
             verification?: {
@@ -5415,11 +5432,20 @@ export class OrgXMcp extends McpAgent<
             .describe('Pagination cursor from a previous response.'),
           user_id: z.string().optional().describe('Optional user id override'),
         },
-        _meta: { 'openai/visibility': 'public', 'openai/readOnlyHint': true, securitySchemes: SECURITY_SCHEMES.readOptionalAuth },
+        _meta: { 'openai/visibility': 'public', 'openai/readOnlyHint': true, securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth },
       },
       async (args) =>
         this.withOrgx(async () => {
           const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
+          const authResponse = buildAuthRequiredResponse({
+            toolId: 'list_entity_comments',
+            securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
+            userId: resolvedUserId,
+            serverUrl: this.env.MCP_SERVER_URL,
+            featureDescription: 'read entity comments',
+          });
+          if (authResponse) return authResponse;
+
           const explicitUserId =
             typeof args.user_id === 'string' && args.user_id.trim().length > 0
               ? args.user_id.trim()
@@ -7403,11 +7429,19 @@ export class OrgXMcp extends McpAgent<
           workspace_id: z.string().optional().describe('Workspace UUID to scope policy overrides (set_policy only)'),
           command_center_id: z.string().optional().describe('Deprecated alias for workspace_id (set_policy only)'),
         },
-        _meta: { securitySchemes: SECURITY_SCHEMES.readOptionalAuth },
+        _meta: { securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth },
       },
       async (args) =>
         this.withOrgx(async () => {
           const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
+          const authResponse = buildAuthRequiredResponse({
+            toolId: 'configure_org',
+            securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
+            userId: resolvedUserId,
+            serverUrl: this.env.MCP_SERVER_URL,
+            featureDescription: 'check organization setup',
+          });
+          if (authResponse) return authResponse;
 
           switch (args.action) {
             case 'status': {
@@ -7584,10 +7618,20 @@ export class OrgXMcp extends McpAgent<
             .optional()
             .describe('Time window for the requested statistics.'),
         },
-        _meta: { securitySchemes: SECURITY_SCHEMES.readOptionalAuth },
+        _meta: { securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth },
       },
       async (args) =>
         this.withOrgx(async () => {
+          const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
+          const authResponse = buildAuthRequiredResponse({
+            toolId: 'stats',
+            securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
+            userId: resolvedUserId,
+            serverUrl: this.env.MCP_SERVER_URL,
+            featureDescription: 'view your stats',
+          });
+          if (authResponse) return authResponse;
+
           const scope = args.scope ?? 'personal';
 
           if (scope === 'session') {
@@ -7610,7 +7654,9 @@ export class OrgXMcp extends McpAgent<
 
           const response = await callOrgxApiJson(
             this.env,
-            `/api/stats/me?${params.toString()}`
+            `/api/stats/me?${params.toString()}`,
+            undefined,
+            { userId: resolvedUserId }
           );
           const statsData = (await response.json()) as {
             timeframe: string;

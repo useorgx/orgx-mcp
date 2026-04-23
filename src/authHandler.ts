@@ -35,6 +35,7 @@ import {
   withStreamTokenExpiry,
 } from './streamToken';
 import { buildAuthErrorResponse } from './authErrors';
+import { secureCompare } from './secureCompare';
 
 // Re-export type for use in index.ts
 export type { OAuthHelpers };
@@ -897,7 +898,7 @@ tool_timeout_sec = 60
       if (
         !internalSecret ||
         !authHeader.startsWith('Bearer ') ||
-        authHeader.slice(7) !== internalSecret
+        !secureCompare(authHeader.slice(7), internalSecret)
       ) {
         return withCors(
           Response.json(

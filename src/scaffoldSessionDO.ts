@@ -11,6 +11,8 @@
  *   GET  /scaffold/:sessionId/status     — Health check (stream token required)
  */
 
+import { secureCompare } from './secureCompare';
+
 export type ScaffoldEvent =
   | { type: 'session.start'; sessionId: string; title?: string; ts: number }
   | { type: 'entity.created'; entityType: string; entity: Record<string, unknown>; index: number; total: number; ts: number }
@@ -138,7 +140,7 @@ export class ScaffoldSessionDO {
       );
     }
     const auth = request.headers.get('Authorization') ?? '';
-    if (auth !== `Bearer ${secret}`) {
+    if (!secureCompare(auth, `Bearer ${secret}`)) {
       return new Response(JSON.stringify({ error: 'unauthorized' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' },
