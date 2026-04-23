@@ -19,6 +19,7 @@ export function isInitiativeScopedChildListQuery(
 
 export function resolveListEntitiesWorkspaceScope(args: {
   type: string;
+  id?: unknown;
   initiativeId?: unknown;
   explicitWorkspaceId?: string | null;
   explicitCommandCenterId?: string | null;
@@ -26,6 +27,9 @@ export function resolveListEntitiesWorkspaceScope(args: {
 }): string | null {
   if (args.explicitWorkspaceId) return args.explicitWorkspaceId;
   if (args.explicitCommandCenterId) return args.explicitCommandCenterId;
+  if (typeof args.id === 'string' && args.id.trim().length > 0) {
+    return null;
+  }
   if (isInitiativeScopedChildListQuery(args.type, args.initiativeId)) {
     return null;
   }
