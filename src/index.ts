@@ -102,6 +102,7 @@ import {
   type OrgxFreeAuditPeriod,
 } from './freeAudit';
 import { buildInitiativeListWidgetPayload } from './initiativeWidgetPayload';
+import { resolveListEntitiesWorkspaceScope } from './listEntitiesWorkspaceScope';
 import { normalizeAgentDispatchPayload } from './agentDispatchPayload';
 import { normalizeAgentStatusPayload } from './agentStatusPayload';
 import {
@@ -3826,11 +3827,13 @@ export class OrgXMcp extends McpAgent<
               'workspace_id and command_center_id must match when both are provided'
             );
           }
-          const effectiveWorkspaceId =
-            explicitWorkspaceId ??
-            explicitCommandCenterId ??
-            this.sessionContext?.workspaceId ??
-            null;
+          const effectiveWorkspaceId = resolveListEntitiesWorkspaceScope({
+            type: args.type,
+            initiativeId: args.initiative_id,
+            explicitWorkspaceId,
+            explicitCommandCenterId,
+            sessionWorkspaceId: this.sessionContext?.workspaceId ?? null,
+          });
           if (effectiveWorkspaceId && workspaceScopedTypes.has(args.type)) {
             params.set('workspace_id', effectiveWorkspaceId);
           }
