@@ -478,7 +478,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         .describe('Optional initiative UUID to scope pending decisions'),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
+    securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.decisions,
       'openai/toolInvocation/invoking': 'Checking your decision queue...',
@@ -548,7 +548,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         .describe('Include idle agents in the response'),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
+    securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.agentStatus,
       'openai/toolInvocation/invoking': 'Checking agent status...',
