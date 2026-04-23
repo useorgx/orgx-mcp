@@ -4803,6 +4803,12 @@ export class OrgXMcp extends McpAgent<
             .describe(
               'Optional dependency IDs/refs for initiative/workstream/milestone/task metadata'
             ),
+          goal_ids: z
+            .array(z.string())
+            .optional()
+            .describe(
+              'Optional goal UUIDs for initiative/workstream/milestone/task creation. Suggested when the workspace enforces a primary goal; the first goal acts as the primary anchor.'
+            ),
           expected_duration_hours: z
             .number()
             .optional()
@@ -5074,6 +5080,9 @@ export class OrgXMcp extends McpAgent<
           }
           if (args.domain && hierarchyEntityTypes.has(args.type)) {
             payload.domain = args.domain;
+          }
+          if (args.goal_ids && hierarchyEntityTypes.has(args.type)) {
+            payload.goal_ids = args.goal_ids;
           }
           if (args.depends_on && hierarchyEntityTypes.has(args.type)) {
             payload.depends_on = args.depends_on;
@@ -5680,6 +5689,12 @@ export class OrgXMcp extends McpAgent<
           .array(z.string())
           .optional()
           .describe('Task refs/IDs this task depends on'),
+        goal_ids: z
+          .array(z.string())
+          .optional()
+          .describe(
+            'Optional goal UUIDs for this task. Suggested when the parent workspace requires work to trace to a primary goal.'
+          ),
         expected_duration_hours: z.number().optional(),
         expected_tokens: z.number().optional(),
         expected_budget_usd: z.number().optional(),
@@ -5701,6 +5716,12 @@ export class OrgXMcp extends McpAgent<
           .array(z.string())
           .optional()
           .describe('Milestone refs/IDs this milestone depends on'),
+        goal_ids: z
+          .array(z.string())
+          .optional()
+          .describe(
+            'Optional goal UUIDs for this milestone. Suggested when the parent workspace requires a primary goal.'
+          ),
         expected_duration_hours: z.number().optional(),
         expected_tokens: z.number().optional(),
         expected_budget_usd: z.number().optional(),
@@ -5727,6 +5748,12 @@ export class OrgXMcp extends McpAgent<
           .array(z.string())
           .optional()
           .describe('Workstream refs/IDs this workstream depends on'),
+        goal_ids: z
+          .array(z.string())
+          .optional()
+          .describe(
+            'Optional goal UUIDs for this workstream. Suggested when the parent workspace requires a primary goal.'
+          ),
         expected_duration_hours: z.number().optional(),
         expected_tokens: z.number().optional(),
         expected_budget_usd: z.number().optional(),
@@ -5747,6 +5774,12 @@ export class OrgXMcp extends McpAgent<
           title: z.string().min(1).describe('Initiative title'),
           summary: z.string().optional().describe('Initiative summary'),
           description: z.string().optional().describe('Initiative description'),
+          goal_ids: z
+            .array(z.string())
+            .optional()
+            .describe(
+              'Optional goal UUIDs for the initiative. Suggested when the workspace requires a primary goal; provide at least one to avoid goal-invariant failures.'
+            ),
           command_center_id: z
             .string()
             .optional()
