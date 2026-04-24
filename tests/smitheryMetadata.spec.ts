@@ -83,6 +83,14 @@ describe('Smithery metadata coverage', () => {
     }
   });
 
+  it('forwards shared annotations when registering data-driven tool groups', () => {
+    const forwardedAnnotations = indexSource.match(
+      /annotations: tool\.annotations/g
+    );
+
+    expect(forwardedAnnotations?.length).toBeGreaterThanOrEqual(4);
+  });
+
   it('gives every top-level shared tool parameter a description', () => {
     for (const tool of allDefinitions) {
       for (const [fieldName, fieldSchema] of inputShapeEntries(tool.inputSchema)) {

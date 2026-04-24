@@ -2067,6 +2067,7 @@ export class OrgXMcp extends McpAgent<
           title: tool.title,
           description: tool.description,
           inputSchema: this.withClientContext(tool.inputSchema),
+          annotations: tool.annotations,
           _meta: meta,
         },
         async (args: Record<string, unknown>) =>
@@ -2099,6 +2100,7 @@ export class OrgXMcp extends McpAgent<
           title: tool.title,
           description: tool.description,
           inputSchema: this.withClientContext(tool.inputSchema),
+          annotations: tool.annotations,
           _meta: meta,
         },
         async (args: Record<string, unknown>) =>
@@ -2456,6 +2458,7 @@ export class OrgXMcp extends McpAgent<
           title: tool.title,
           description: tool.description,
           inputSchema: this.withClientContext(tool.inputSchema) as unknown as Record<string, import('zod').ZodTypeAny>,
+          annotations: tool.annotations,
           _meta: meta,
         },
         async (args: Record<string, unknown>) => {
@@ -4841,8 +4844,16 @@ export class OrgXMcp extends McpAgent<
             .describe(
               'Proof-chain profile (task/milestone only). Controls completion evidence required before the entity can be marked complete. "full" = independent artifact + quality_score + rubric; "subcomponent" = parent ships proof via milestone ship_batch; "release" = external ship event closes the loop; "external_artifact" = artifact lives outside OrgX, link only. See https://mcp.useorgx.com/docs/proof-chain.'
             ),
-          owner_id: z.string().optional(),
-          user_id: z.string().optional(),
+          owner_id: z
+            .string()
+            .optional()
+            .describe(
+              'Optional owner user ID for the created entity; defaults to the authenticated user when omitted'
+            ),
+          user_id: z
+            .string()
+            .optional()
+            .describe('Deprecated alias for owner_id; prefer owner_id for new calls'),
           // Skill-specific fields (for type: 'skill')
           prompt_template: z
             .string()
@@ -4869,9 +4880,17 @@ export class OrgXMcp extends McpAgent<
           sources: z
             .array(
               z.object({
-                type: z.enum(['url', 'file', 'asset']),
-                url: z.string().optional(),
-                assetType: z.string().optional(),
+                type: z
+                  .enum(['url', 'file', 'asset'])
+                  .describe('Source kind for brand ingestion'),
+                url: z
+                  .string()
+                  .optional()
+                  .describe('Source URL when type=url'),
+                assetType: z
+                  .string()
+                  .optional()
+                  .describe('Asset category or MIME hint when type=asset or file'),
               })
             )
             .optional()
@@ -4928,10 +4947,22 @@ export class OrgXMcp extends McpAgent<
             ),
           options: z
             .object({
-              slideCount: z.number().optional(),
-              aspectRatio: z.string().optional(),
-              style: z.string().optional(),
-              duration: z.string().optional(),
+              slideCount: z
+                .number()
+                .optional()
+                .describe('Requested number of slides or frames'),
+              aspectRatio: z
+                .string()
+                .optional()
+                .describe('Target aspect ratio, such as 1:1, 4:5, or 16:9'),
+              style: z
+                .string()
+                .optional()
+                .describe('Visual style direction for the generated content'),
+              duration: z
+                .string()
+                .optional()
+                .describe('Requested video or animation duration'),
             })
             .optional()
             .describe('Generation options (for studio_content)'),
@@ -5675,16 +5706,22 @@ export class OrgXMcp extends McpAgent<
 
     const scaffoldTaskSchema = z
       .object({
-        ref: z.string().optional(),
-        title: z.string().min(1),
-        description: z.string().optional(),
-        summary: z.string().optional(),
+        ref: z
+          .string()
+          .optional()
+          .describe('Optional stable client-side reference used in ref_map and dependencies'),
+        title: z.string().min(1).describe('Task title'),
+        description: z.string().optional().describe('Task description'),
+        summary: z.string().optional().describe('Short task summary'),
         type: z
           .enum(['research', 'create', 'review', 'implement'])
           .optional()
           .describe('Task execution type for slicing and estimate defaults'),
-        due_date: z.string().optional(),
-        priority: z.enum(['low', 'medium', 'high']).optional(),
+        due_date: z.string().optional().describe('Optional task due date'),
+        priority: z
+          .enum(['low', 'medium', 'high'])
+          .optional()
+          .describe('Task priority'),
         depends_on: z
           .array(z.string())
           .optional()
@@ -5695,9 +5732,18 @@ export class OrgXMcp extends McpAgent<
           .describe(
             'Optional goal UUIDs for this task. Suggested when the parent workspace requires work to trace to a primary goal.'
           ),
-        expected_duration_hours: z.number().optional(),
-        expected_tokens: z.number().optional(),
-        expected_budget_usd: z.number().optional(),
+        expected_duration_hours: z
+          .number()
+          .optional()
+          .describe('Estimated task effort in hours'),
+        expected_tokens: z
+          .number()
+          .optional()
+          .describe('Estimated task token budget'),
+        expected_budget_usd: z
+          .number()
+          .optional()
+          .describe('Estimated task budget in USD'),
         assigned_agent_ids: z
           .array(z.string())
           .optional()
@@ -5708,10 +5754,13 @@ export class OrgXMcp extends McpAgent<
 
     const scaffoldMilestoneSchema = z
       .object({
-        ref: z.string().optional(),
-        title: z.string().min(1),
-        description: z.string().optional(),
-        due_date: z.string().optional(),
+        ref: z
+          .string()
+          .optional()
+          .describe('Optional stable client-side reference used in ref_map and dependencies'),
+        title: z.string().min(1).describe('Milestone title'),
+        description: z.string().optional().describe('Milestone description'),
+        due_date: z.string().optional().describe('Optional milestone due date'),
         depends_on: z
           .array(z.string())
           .optional()
@@ -5722,28 +5771,46 @@ export class OrgXMcp extends McpAgent<
           .describe(
             'Optional goal UUIDs for this milestone. Suggested when the parent workspace requires a primary goal.'
           ),
-        expected_duration_hours: z.number().optional(),
-        expected_tokens: z.number().optional(),
-        expected_budget_usd: z.number().optional(),
+        expected_duration_hours: z
+          .number()
+          .optional()
+          .describe('Estimated milestone effort in hours'),
+        expected_tokens: z
+          .number()
+          .optional()
+          .describe('Estimated milestone token budget'),
+        expected_budget_usd: z
+          .number()
+          .optional()
+          .describe('Estimated milestone budget in USD'),
         context: scaffoldContextSchema,
-        tasks: z.array(scaffoldTaskSchema).optional(),
+        tasks: z
+          .array(scaffoldTaskSchema)
+          .optional()
+          .describe('Nested tasks under this milestone'),
       })
       .passthrough();
 
     const scaffoldWorkstreamSchema = z
       .object({
-        ref: z.string().optional(),
-        title: z.string().optional(),
-        name: z.string().optional(),
-        summary: z.string().optional(),
-        description: z.string().optional(),
-        persona: z.string().optional(),
+        ref: z
+          .string()
+          .optional()
+          .describe('Optional stable client-side reference used in ref_map and dependencies'),
+        title: z.string().optional().describe('Workstream title'),
+        name: z.string().optional().describe('Workstream name; alias for title'),
+        summary: z.string().optional().describe('Short workstream summary'),
+        description: z.string().optional().describe('Workstream description'),
+        persona: z.string().optional().describe('Workstream owner/persona label'),
         domain: z
           .string()
           .optional()
           .describe('Workstream domain (engineering, marketing, design, etc.)'),
-        ownerAgent: z.string().optional(),
-        primaryAgent: z.string().optional(),
+        ownerAgent: z.string().optional().describe('Owner agent alias for this workstream'),
+        primaryAgent: z
+          .string()
+          .optional()
+          .describe('Primary agent alias for this workstream'),
         depends_on: z
           .array(z.string())
           .optional()
@@ -5754,11 +5821,23 @@ export class OrgXMcp extends McpAgent<
           .describe(
             'Optional goal UUIDs for this workstream. Suggested when the parent workspace requires a primary goal.'
           ),
-        expected_duration_hours: z.number().optional(),
-        expected_tokens: z.number().optional(),
-        expected_budget_usd: z.number().optional(),
+        expected_duration_hours: z
+          .number()
+          .optional()
+          .describe('Estimated workstream effort in hours'),
+        expected_tokens: z
+          .number()
+          .optional()
+          .describe('Estimated workstream token budget'),
+        expected_budget_usd: z
+          .number()
+          .optional()
+          .describe('Estimated workstream budget in USD'),
         context: scaffoldContextSchema,
-        milestones: z.array(scaffoldMilestoneSchema).optional(),
+        milestones: z
+          .array(scaffoldMilestoneSchema)
+          .optional()
+          .describe('Nested milestones under this workstream'),
       })
       .passthrough();
 
@@ -5809,8 +5888,16 @@ export class OrgXMcp extends McpAgent<
             .describe(
               'The single most important cross-workstream coordination dependency you identified while planning this initiative. Name it specifically based on what the workstreams actually do — not a generic label. Omit if only one workstream exists.'
             ),
-          owner_id: z.string().optional(),
-          user_id: z.string().optional(),
+          owner_id: z
+            .string()
+            .optional()
+            .describe(
+              'Optional owner user ID for the scaffolded initiative; defaults to the authenticated user when omitted'
+            ),
+          user_id: z
+            .string()
+            .optional()
+            .describe('Deprecated alias for owner_id; prefer owner_id for new calls'),
           continue_on_error: z
             .boolean()
             .optional()
@@ -8493,8 +8580,13 @@ export class OrgXMcp extends McpAgent<
               'outcomeAttribution'
             )}`,
           inputSchema: this.withClientContext({
-            workspace_id: z.string(),
-            session_id: z.string().optional(),
+            workspace_id: z
+              .string()
+              .describe('Workspace UUID to load the morning brief for'),
+            session_id: z
+              .string()
+              .optional()
+              .describe('Specific autonomous session ID; defaults to the most recent session'),
           }),
           annotations: {
             readOnlyHint: true,
