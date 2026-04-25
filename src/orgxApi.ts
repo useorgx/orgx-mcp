@@ -58,7 +58,7 @@ export async function callOrgxApiRaw(
   env: OrgxApiEnv,
   path: string,
   init?: RequestInit,
-  opts?: { accept?: string; userId?: string | null }
+  opts?: { accept?: string; userId?: string | null; userEmail?: string | null }
 ) {
   if (
     looksLikeDefaultPlaceholder(env.ORGX_SERVICE_KEY) ||
@@ -77,6 +77,9 @@ export async function callOrgxApiRaw(
   // The API trusts this header only when the service key is also valid.
   if (opts?.userId) {
     headers.set('X-Orgx-User-Id', opts.userId);
+  }
+  if (opts?.userEmail) {
+    headers.set('X-Orgx-User-Email', opts.userEmail);
   }
   if (!headers.has('Accept') && opts?.accept)
     headers.set('Accept', opts.accept);
@@ -203,11 +206,12 @@ export async function callOrgxApiJson(
   env: OrgxApiEnv,
   path: string,
   init?: RequestInit,
-  opts?: { userId?: string | null }
+  opts?: { userId?: string | null; userEmail?: string | null }
 ) {
   const response = await callOrgxApiRaw(env, path, init, {
     accept: 'application/json',
     userId: opts?.userId ?? undefined,
+    userEmail: opts?.userEmail ?? undefined,
   });
   const contentType = response.headers.get('content-type') ?? '';
   if (!contentType.includes('application/json')) {

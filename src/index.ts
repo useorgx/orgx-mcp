@@ -841,6 +841,10 @@ export class OrgXMcp extends McpAgent<
     return explicit ?? this.props?.userId ?? this.sessionAuth.userId ?? null;
   }
 
+  private resolveUserEmail() {
+    return this.props?.email ?? this.sessionAuth.email ?? null;
+  }
+
   private assertUserId(explicit?: string | null) {
     const userId = this.resolveUserId(explicit);
     if (!userId) {
@@ -3398,7 +3402,7 @@ export class OrgXMcp extends McpAgent<
               this.env,
               '/api/billing/usage',
               { method: 'GET' },
-              { userId }
+              { userId, userEmail: this.resolveUserEmail() }
             );
             const usage = (await response.json()) as Record<string, unknown>;
             const { text, payload } = buildAccountStatusResult({
@@ -3462,7 +3466,7 @@ export class OrgXMcp extends McpAgent<
                 this.env,
                 '/api/billing/usage',
                 { method: 'GET' },
-                { userId }
+                { userId, userEmail: this.resolveUserEmail() }
               );
               const usage = (await usageResponse.json()) as Record<string, unknown>;
               const pack = getAgentCreditPacks(usage).find(
@@ -3584,7 +3588,7 @@ export class OrgXMcp extends McpAgent<
               this.env,
               '/api/billing/usage',
               { method: 'GET' },
-              { userId }
+              { userId, userEmail: this.resolveUserEmail() }
             );
             const usage = (await response.json()) as Record<string, unknown>;
             const { text, payload } = buildAccountUsageReportResult({
@@ -5998,16 +6002,50 @@ export class OrgXMcp extends McpAgent<
                   hasScaffolds?: boolean;
                   creditsRemaining?: number;
                   hasCredits?: boolean;
+                  identity?: {
+                    resolvedUserId?: string;
+                    resolution?: string;
+                  };
+                  identityWarning?: {
+                    code?: string;
+                    message?: string;
+                  };
                 }
               | null = null;
             try {
+              const userEmail = this.resolveUserEmail();
               const usageResp = await callOrgxApiJson(
                 this.env,
                 '/api/billing/usage',
                 undefined,
-                { userId: ownerId ?? resolvedUserId ?? undefined }
+                {
+                  userId: ownerId ?? resolvedUserId ?? undefined,
+                  userEmail,
+                }
               );
               billingUsage = (await usageResp.json()) as any;
+              if (
+                billingUsage?.identityWarning?.code ===
+                'mcp_placeholder_identity'
+              ) {
+                const lines = [
+                  `OrgX cannot scaffold from this MCP session yet because it is connected to a placeholder account, not your real OrgX account.`,
+                  '',
+                  billingUsage.identityWarning.message ??
+                    'Reconnect OrgX MCP so usage, billing, and created entities resolve to the same account you use in the web app.',
+                  '',
+                  `After reconnecting, rerun the scaffold request. Do not treat this as a plan upgrade problem.`,
+                ];
+
+                return {
+                  content: [{ type: 'text', text: lines.join('\n') }],
+                  structuredContent: {
+                    ok: false,
+                    error_kind: 'mcp_identity_mismatch',
+                    identity_warning: billingUsage.identityWarning,
+                  },
+                };
+              }
               if (billingUsage && billingUsage.hasScaffolds === false) {
                 const billingUrl = buildBillingSettingsUrl(this.env.ORGX_WEB_URL, {
                   source: 'mcp_scaffold_limit',
@@ -6055,6 +6093,14 @@ export class OrgXMcp extends McpAgent<
               billingUsage = null;
             }
 
+          const billingResolvedUserId =
+            typeof billingUsage?.identity?.resolvedUserId === 'string' &&
+            billingUsage.identity.resolvedUserId.trim().length > 0
+              ? billingUsage.identity.resolvedUserId.trim()
+              : null;
+          const scaffoldOwnerId =
+            billingResolvedUserId ?? ownerId ?? resolvedUserId ?? null;
+
           const explicitWorkspaceId =
             typeof (args as any).workspace_id === 'string' &&
             (args as any).workspace_id.trim().length > 0
@@ -6085,7 +6131,7 @@ export class OrgXMcp extends McpAgent<
             // Ensure owner_id propagates into the batch so the initiative
             // gets created with an owner — prevents dispatch stalls when
             // the POST handler can't resolve owner from gateway headers.
-            ...(ownerId ? { owner_id: ownerId } : {}),
+            ...(scaffoldOwnerId ? { owner_id: scaffoldOwnerId } : {}),
           };
 
           if (effectiveCommandCenterId) {
@@ -6159,9 +6205,12 @@ export class OrgXMcp extends McpAgent<
           const result = await runBatchCreateEntities({
             env: this.env,
             callApi: ({ env, path, init, userId }) =>
-              callOrgxApiJson(env, path, init, { userId }),
+              callOrgxApiJson(env, path, init, {
+                userId,
+                userEmail: this.resolveUserEmail(),
+              }),
             entities: batch,
-            ownerId,
+            ownerId: scaffoldOwnerId,
             continueOnError,
             concurrency,
           });
@@ -6205,7 +6254,10 @@ export class OrgXMcp extends McpAgent<
 	                this.env,
 	                `/api/entities/initiative/${createdInitiativeId}/assign-agents`,
 	                { method: 'POST' },
-	                { userId: ownerId ?? resolvedUserId ?? undefined }
+	                {
+	                  userId: scaffoldOwnerId ?? undefined,
+	                  userEmail: this.resolveUserEmail(),
+	                }
 	              );
 	              const assignPayload = (await assignResp.json()) as {
 	                ok?: boolean;
@@ -6276,7 +6328,10 @@ export class OrgXMcp extends McpAgent<
 	                  method: 'POST',
 	                  body: JSON.stringify({ initiative_id: createdInitiativeId }),
 	                },
-	                { userId: ownerId ?? resolvedUserId ?? undefined }
+	                {
+	                  userId: scaffoldOwnerId ?? undefined,
+	                  userEmail: this.resolveUserEmail(),
+	                }
 	              );
 	              const consumePayload = (await consumeResp.json()) as any;
 	              scaffold_usage = {
@@ -6311,7 +6366,10 @@ export class OrgXMcp extends McpAgent<
 	                this.env,
 	                '/api/client/credentials/status',
 	                undefined,
-	                { userId: ownerId ?? resolvedUserId ?? undefined }
+	                {
+	                  userId: scaffoldOwnerId ?? undefined,
+	                  userEmail: this.resolveUserEmail(),
+	                }
 	              );
 	              const credPayload = (await credResp.json()) as {
 	                ok?: boolean;
@@ -6388,7 +6446,10 @@ export class OrgXMcp extends McpAgent<
                     note: 'Auto-launched after scaffold_initiative',
                   }),
                 },
-                { userId: ownerId ?? resolvedUserId ?? undefined }
+                {
+                  userId: scaffoldOwnerId ?? undefined,
+                  userEmail: this.resolveUserEmail(),
+                }
 	              );
 	              const launchPayload = (await launchResponse.json()) as {
 	                message?: string;
@@ -6481,7 +6542,10 @@ export class OrgXMcp extends McpAgent<
 	                this.env,
 	                `/api/entities?${params.toString()}`,
 	                undefined,
-	                { userId: ownerId ?? resolvedUserId ?? undefined }
+	                {
+	                  userId: scaffoldOwnerId ?? undefined,
+	                  userEmail: this.resolveUserEmail(),
+	                }
 	              );
 	              const streamsPayload = (await streamsResponse.json()) as {
 	                data?: Array<Record<string, unknown>>;
@@ -6632,7 +6696,7 @@ export class OrgXMcp extends McpAgent<
                     method: 'POST',
                     body: JSON.stringify({
                       tool_id: 'spawn_agent_task',
-                      user_id: ownerId ?? resolvedUserId ?? undefined,
+                      user_id: scaffoldOwnerId ?? undefined,
                       args: {
                         agent,
                         task,
@@ -6643,7 +6707,10 @@ export class OrgXMcp extends McpAgent<
                       },
                     }),
                   },
-                  { userId: ownerId ?? resolvedUserId ?? undefined }
+                  {
+                    userId: scaffoldOwnerId ?? undefined,
+                    userEmail: this.resolveUserEmail(),
+                  }
                 );
                 const toolExecPayload = (await toolExecResponse.json()) as any;
                 fallback_agent_dispatch = {
@@ -6792,7 +6859,7 @@ export class OrgXMcp extends McpAgent<
                 toolId: 'scaffold_initiative',
                 args: args as Record<string, unknown>,
                 data: machinePayload,
-                userId: ownerId ?? resolvedUserId ?? null,
+                userId: scaffoldOwnerId,
                 sourceClient,
                 workspaceId: effectiveCommandCenterId,
                 initiativeId: createdInitiativeId,
