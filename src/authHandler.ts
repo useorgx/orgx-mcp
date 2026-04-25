@@ -34,6 +34,7 @@ import {
   verifyStreamTokenDetailed,
   withStreamTokenExpiry,
 } from './streamToken';
+import { verifyMcpIdentityTokenDetailed } from './mcpIdentityToken';
 import { buildAuthErrorResponse } from './authErrors';
 import { secureCompare } from './secureCompare';
 
@@ -73,6 +74,69 @@ function errorRedirect(
   errorUrl.searchParams.set('error', error);
   errorUrl.searchParams.set('error_description', description);
   return Response.redirect(errorUrl.toString(), 302);
+}
+
+type OAuthCallbackIdentity = {
+  userId: string;
+  userEmail: string;
+};
+
+function isPlaceholderEmail(email: string | null | undefined): boolean {
+  return Boolean(email?.toLowerCase().endsWith('@placeholder.local'));
+}
+
+async function resolveOAuthCallbackIdentity(params: {
+  url: URL;
+  env: AuthHandlerEnv;
+  stateKey: string;
+  serverUrl: string;
+}): Promise<OAuthCallbackIdentity | Response> {
+  const identityToken = params.url.searchParams.get('identity_token');
+  const signingSecret = params.env.ORGX_INTERNAL_SECRET;
+
+  if (signingSecret) {
+    if (!identityToken) {
+      return errorRedirect(
+        'invalid_request',
+        'Missing signed OrgX identity proof. Please restart MCP login from the client.',
+        params.serverUrl
+      );
+    }
+
+    const verified = await verifyMcpIdentityTokenDetailed(
+      identityToken,
+      signingSecret,
+      params.stateKey
+    );
+    if (!verified.ok) {
+      return errorRedirect(
+        'invalid_request',
+        `Invalid OrgX identity proof (${verified.reason}). Please restart MCP login from the client.`,
+        params.serverUrl
+      );
+    }
+
+    return {
+      userId: verified.payload.sub,
+      userEmail: verified.payload.email,
+    };
+  }
+
+  // Development fallback only. Production should configure ORGX_INTERNAL_SECRET
+  // so browser query params are never treated as identity proof.
+  const userId = params.url.searchParams.get('user_id');
+  const userEmail = params.url.searchParams.get('user_email');
+  if (!userId || !userEmail || isPlaceholderEmail(userEmail)) {
+    return errorRedirect(
+      'invalid_request',
+      'Missing verified OrgX identity. Please restart MCP login from the client.',
+      params.serverUrl
+    );
+  }
+  return {
+    userId,
+    userEmail: userEmail.trim().toLowerCase(),
+  };
 }
 
 async function serveLandingPage(
@@ -1241,21 +1305,10 @@ async function handleOAuthCallback(
   const url = new URL(request.url);
 
   const stateKey = url.searchParams.get('state_key');
-  const userId = url.searchParams.get('user_id');
-  const userEmail = url.searchParams.get('user_email');
-  const orgName = url.searchParams.get('org_name') ?? 'Personal account';
   const error = url.searchParams.get('error');
 
   if (error) {
     return errorRedirect('access_denied', error, serverUrl);
-  }
-
-  if (!userId) {
-    return errorRedirect(
-      'invalid_request',
-      'Missing authentication data. Please try signing in again.',
-      serverUrl
-    );
   }
 
   if (!stateKey) {
@@ -1265,6 +1318,14 @@ async function handleOAuthCallback(
       serverUrl
     );
   }
+
+  const identity = await resolveOAuthCallbackIdentity({
+    url,
+    env,
+    stateKey,
+    serverUrl,
+  });
+  if (identity instanceof Response) return identity;
 
   // Consume state from KV (read + delete = single-use) and auto-approve all
   // requested scopes. This eliminates the consent page — users get connected
@@ -1297,18 +1358,18 @@ async function handleOAuthCallback(
   try {
     const { redirectTo } = await env.OAUTH_PROVIDER.completeAuthorization({
       request: oauthReqInfo,
-      userId,
-      metadata: { label: userEmail ?? userId },
+      userId: identity.userId,
+      metadata: { label: identity.userEmail },
       scope,
       props: {
-        userId,
+        userId: identity.userId,
         scope: scope.join(' '),
-        email: userEmail ?? '',
+        email: identity.userEmail,
       },
     });
 
     console.info('[auth] Authorization auto-approved', {
-      userId,
+      userId: identity.userId,
       scope: scope.join(' '),
       clientId: oauthReqInfo.clientId,
     });
@@ -1336,16 +1397,22 @@ async function handleConsentCallback(
 
   const stateKey = url.searchParams.get('state_key');
   const finalScope = url.searchParams.get('final_scope');
-  const userId = url.searchParams.get('user_id');
-  const userEmail = url.searchParams.get('user_email');
 
-  if (!stateKey || !userId) {
+  if (!stateKey) {
     return errorRedirect(
       'invalid_request',
       'Your authorization session has expired. Please start over.',
       serverUrl
     );
   }
+
+  const identity = await resolveOAuthCallbackIdentity({
+    url,
+    env,
+    stateKey,
+    serverUrl,
+  });
+  if (identity instanceof Response) return identity;
 
   // Consume state from KV (read + delete = single-use)
   let oauthReqInfo: AuthRequest;
@@ -1380,18 +1447,18 @@ async function handleConsentCallback(
   try {
     const { redirectTo } = await env.OAUTH_PROVIDER.completeAuthorization({
       request: oauthReqInfo,
-      userId,
-      metadata: { label: userEmail ?? userId },
+      userId: identity.userId,
+      metadata: { label: identity.userEmail },
       scope,
       props: {
-        userId,
+        userId: identity.userId,
         scope: scope.join(' '),
-        email: userEmail ?? '',
+        email: identity.userEmail,
       },
     });
 
     console.info('[auth] Authorization completed', {
-      userId,
+      userId: identity.userId,
       scope: scope.join(' '),
       redirectTo: redirectTo.substring(0, 80),
     });
