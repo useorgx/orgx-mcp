@@ -55,6 +55,16 @@ const REF_FIELD_MAPPINGS: Array<{ refKey: string; idKey: string }> = [
   { refKey: 'run_ref', idKey: 'run_id' },
 ];
 
+const TASK_PRIORITY_VALUES = ['low', 'medium', 'high'] as const;
+const TASK_STATUS_VALUES = ['todo', 'in_progress', 'done', 'blocked'] as const;
+const MILESTONE_STATUS_VALUES = [
+  'planned',
+  'in_progress',
+  'completed',
+  'at_risk',
+  'cancelled',
+] as const;
+
 function extractEntityLabel(value: unknown): string | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const record = value as Record<string, unknown>;
@@ -71,6 +81,83 @@ function getString(value: unknown): string | null {
 function extractRef(entity: Record<string, unknown>): string | null {
   const raw = entity.ref;
   return getString(raw);
+}
+
+function formatValues(values: readonly string[]): string {
+  return values.map((value) => `"${value}"`).join(', ');
+}
+
+function includesString(values: readonly string[], value: string): boolean {
+  return values.includes(value);
+}
+
+function invalidEnumError(params: {
+  type: string;
+  path: string;
+  value: unknown;
+  label: string;
+  validValues: readonly string[];
+  hint?: string;
+}): string {
+  const hint = params.hint ? ` ${params.hint}` : '';
+  return `${params.path}=${JSON.stringify(params.value)} is invalid for ${
+    params.type
+  }. Valid ${params.label}: ${formatValues(params.validValues)}.${hint}`;
+}
+
+export function validateEntityCreatePayloadContract(
+  entity: Record<string, unknown>,
+  pathPrefix: string
+): string | null {
+  const type = getString(entity.type);
+  if (!type) return null;
+
+  if (type === 'task') {
+    if (
+      typeof entity.priority === 'string' &&
+      !includesString(TASK_PRIORITY_VALUES, entity.priority)
+    ) {
+      return invalidEnumError({
+        type,
+        path: `${pathPrefix}.priority`,
+        value: entity.priority,
+        label: 'task priorities',
+        validValues: TASK_PRIORITY_VALUES,
+        hint: 'Use "high" for urgent task work.',
+      });
+    }
+
+    if (
+      typeof entity.status === 'string' &&
+      !includesString(TASK_STATUS_VALUES, entity.status)
+    ) {
+      return invalidEnumError({
+        type,
+        path: `${pathPrefix}.status`,
+        value: entity.status,
+        label: 'task statuses',
+        validValues: TASK_STATUS_VALUES,
+        hint: 'Use "in_progress" for active task execution.',
+      });
+    }
+  }
+
+  if (
+    type === 'milestone' &&
+    typeof entity.status === 'string' &&
+    !includesString(MILESTONE_STATUS_VALUES, entity.status)
+  ) {
+    return invalidEnumError({
+      type,
+      path: `${pathPrefix}.status`,
+      value: entity.status,
+      label: 'milestone statuses',
+      validValues: MILESTONE_STATUS_VALUES,
+      hint: 'Use "in_progress" instead of "active" for milestones.',
+    });
+  }
+
+  return null;
 }
 
 function extractDependencies(entity: Record<string, unknown>): string[] {
@@ -234,6 +321,21 @@ export async function batchCreateEntities(params: {
         success: false,
         type: null,
         error: "Entity payload must include a non-empty 'type' field",
+      };
+      continue;
+    }
+
+    const contractError = validateEntityCreatePayloadContract(
+      entity as Record<string, unknown>,
+      `entities[${i}]`
+    );
+    if (contractError) {
+      results[i] = {
+        index: i,
+        success: false,
+        type,
+        ref: extractRef(entity as Record<string, unknown>) ?? undefined,
+        error: contractError,
       };
       continue;
     }
