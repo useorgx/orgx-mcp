@@ -57,6 +57,7 @@ OrgX MCP is organizational memory for AI agents and AI-native teams. It connects
 | `spawn_agent_task` | Delegate to a specialist agent (rate-limited, quality-gated). |
 | `get_morning_brief` | Latest autonomous session brief with ROI deltas. |
 | `get_org_snapshot` | Compact or detailed org readout for onboarding and status. |
+| `workspace` | Create, list, get, or set the active workspace context. |
 
 Full tool contract: `server.json` at the repo root — 35+ tools with OAuth
 scopes, input schemas, and OpenAI widget metadata. Call `orgx_describe_tool`
@@ -269,6 +270,7 @@ Context survival notes:
 
 - Session auth is persisted in the Durable Object SQLite store so OAuth sign-in survives DO resets/deployments.
 - Session context (last selected workspace + last active initiative) is also persisted so follow-up calls can keep working even if the client drops IDs.
+- Workspaces can be created directly from MCP with `workspace action=create name="New Workspace"`; the new workspace becomes active for follow-up calls by default.
 
 Widget protocol notes:
 

@@ -445,7 +445,7 @@ export const INLINE_TOOL_CONTRACTS = {
     id: 'workspace',
     title: 'Workspace',
     description:
-      'Inline worker tool for listing, reading, and switching workspace context.',
+      'Inline worker tool for creating, listing, reading, and switching workspace context.',
   },
   configure_org: {
     id: 'configure_org',
