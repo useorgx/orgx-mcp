@@ -1234,11 +1234,31 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     description:
       'Record a quality score (1-5) for a completed agent task. Scores feed into the quality gate — low-scoring domains get throttled. USE WHEN: after reviewing agent output. NEXT: Scores affect future check_spawn_guard decisions. DO NOT USE: for in-progress tasks — wait until completion.',
     inputSchema: {
-      task_id: z.string().min(1).describe('OrgX task ID'),
+      task_id: z
+        .string()
+        .min(1)
+        .optional()
+        .describe('OrgX task ID (snake_case alias; taskId also accepted)'),
+      taskId: z
+        .string()
+        .min(1)
+        .optional()
+        .describe('OrgX task ID (backend/camelCase alias)'),
       agent_domain: z
         .string()
         .min(1)
-        .describe('Agent domain that completed the task'),
+        .optional()
+        .describe('Agent domain that completed the task (agentDomain/domain also accepted)'),
+      agentDomain: z
+        .string()
+        .min(1)
+        .optional()
+        .describe('Agent domain that completed the task (backend/camelCase alias)'),
+      domain: z
+        .string()
+        .min(1)
+        .optional()
+        .describe('Short alias for agentDomain'),
       score: z
         .number()
         .min(1)
@@ -1247,7 +1267,11 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
       scored_by: z
         .enum(['human', 'auto', 'peer'])
         .optional()
-        .describe('Who scored this'),
+        .describe('Who scored this (snake_case alias; scoredBy also accepted)'),
+      scoredBy: z
+        .enum(['human', 'auto', 'peer'])
+        .optional()
+        .describe('Who scored this (backend/camelCase alias)'),
       notes: z.string().optional().describe('Notes on the score'),
     },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },

@@ -36,6 +36,14 @@ import {
   batchCreateEntities as runBatchCreateEntities,
   validateEntityCreatePayloadContract,
 } from './batchCreate';
+import {
+  buildFailureDetails,
+  buildJsonFirstContentBlocks,
+  diagnoseToolFailure,
+  normalizeEntityCreatePayloadForAgents,
+  normalizeRecordOutcomeArgs,
+  normalizeRecordQualityScoreArgs,
+} from './agentErgonomics';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
 import {
   captureWorkerPosthogEvent,
@@ -1940,11 +1948,11 @@ export class OrgXMcp extends McpAgent<
             },
           });
           return {
-            content: [
-              ...(_liveFeedWidgetHtml ? [{ type: 'text' as const, text: _liveFeedWidgetHtml }] : []),
-              { type: 'text', text: JSON.stringify(data) },
-              { type: 'text', text: finalMessage },
-            ],
+            content: buildJsonFirstContentBlocks({
+              data,
+              summary: finalMessage,
+              widgetHtml: _liveFeedWidgetHtml,
+            }),
             structuredContent: data,
           } as CallToolResult;
         }
@@ -2539,9 +2547,27 @@ export class OrgXMcp extends McpAgent<
               } else {
                 // Strip _context before forwarding
                 const { _context, ...toolArgs } = args;
+                let normalizedToolArgs: Record<string, unknown> = toolArgs;
+                if (tool.id === 'record_quality_score') {
+                  const normalized =
+                    normalizeRecordQualityScoreArgs(toolArgs);
+                  if (normalized.error) {
+                    return this.toolError(normalized.error.reason, {
+                      code: normalized.error.code,
+                      status: 400,
+                      details: {
+                        diagnostic: normalized.error,
+                        corrected_payload: normalized.error.corrected_payload,
+                        suggested_next_calls:
+                          normalized.error.suggested_next_calls,
+                      },
+                    });
+                  }
+                  normalizedToolArgs = normalized.body;
+                }
                 fetchInit = {
                   method: 'POST',
-                  body: JSON.stringify(toolArgs),
+                  body: JSON.stringify(normalizedToolArgs),
                 };
               }
 
@@ -2605,7 +2631,19 @@ export class OrgXMcp extends McpAgent<
                 latencyMs: Date.now() - startTime,
                 error: error instanceof Error ? error.message : String(error),
               });
-              throw error;
+              const message =
+                error instanceof Error ? error.message : String(error);
+              const status =
+                error instanceof OrgXApiError ? error.statusCode : undefined;
+              return this.toolError(message, {
+                code: 'client_integration_failed',
+                status,
+                details: buildFailureDetails({
+                  toolId: tool.id,
+                  error,
+                  args,
+                }),
+              });
             }
           });
         }
@@ -2659,8 +2697,18 @@ export class OrgXMcp extends McpAgent<
           : `🚫 Spawn blocked — ${reason ?? 'unknown reason'}`;
       }
       case 'record_quality_score': {
-        const score = data.score as number;
-        const domain = data.agentDomain as string;
+        const score =
+          typeof data.score === 'number'
+            ? data.score
+            : typeof data.quality_score === 'number'
+            ? data.quality_score
+            : 0;
+        const domain =
+          typeof data.agentDomain === 'string'
+            ? data.agentDomain
+            : typeof data.agent_domain === 'string'
+            ? data.agent_domain
+            : 'agent';
         const stars = '⭐'.repeat(score) + '☆'.repeat(5 - score);
         return `${stars} Score recorded for ${domain}`;
       }
@@ -2867,6 +2915,18 @@ export class OrgXMcp extends McpAgent<
             attach: {
               requires: ['name', 'artifact_type', 'artifact_url|external_url'],
               notes: 'artifact_url or external_url is required',
+            },
+            complete_with_proof: {
+              optional: [
+                'name',
+                'artifact_type',
+                'artifact_url|external_url',
+                'quality_score',
+                'verification',
+                'artifact_hash',
+              ],
+              notes:
+                'Attaches proof when artifact evidence is provided, verifies completion readiness, and only then runs complete. If still blocked, returns blockers and retry guidance instead of forcing status.',
             },
             validate: {
               type_specific: 'studio_content',
@@ -3214,6 +3274,12 @@ export class OrgXMcp extends McpAgent<
       };
     }
 
+    const normalizedPayload = normalizeEntityCreatePayloadForAgents(
+      payload,
+      `create_${type}`
+    );
+    Object.assign(payload, normalizedPayload.entity);
+
     const contractError = validateEntityCreatePayloadContract(
       payload,
       `create_${type}`
@@ -3253,6 +3319,7 @@ export class OrgXMcp extends McpAgent<
         type,
         title: data.title ?? data.name ?? null,
         initiative_id: args.initiative_id ?? null,
+        normalization_warnings: normalizedPayload.warnings,
       },
     };
   }
@@ -4256,7 +4323,7 @@ export class OrgXMcp extends McpAgent<
       'entity_action',
       {
         title: 'Execute entity action',
-        description: `Change work state, attach artifacts, or run lifecycle actions on OrgX records. Also known as: launch, pause, complete, attach proof, update status. Accepts short ID prefix (8+ hex chars) — no need to look up full UUIDs. USE WHEN: user wants to change entity status. For bulk operations (pausing multiple, completing multiple), use batch_action instead. Supports aliases: launch, pause, complete (resolved per type). Omit action to list available actions. Special actions: attach (create an artifact linked to the entity), ship_batch (milestones only — atomically attach one artifact + mark multiple subcomponent tasks complete when a single PR covers them all). NEXT: After completing, call verify_entity_completion first to check child work is done. DO NOT USE: for creating entities — use create_entity or scaffold_initiative.`,
+        description: `Change work state, attach artifacts, or run lifecycle actions on OrgX records. Also known as: launch, pause, complete, attach proof, update status. Accepts short ID prefix (8+ hex chars) — no need to look up full UUIDs. USE WHEN: user wants to change entity status. For bulk operations (pausing multiple, completing multiple), use batch_action instead. Supports aliases: launch, pause, complete (resolved per type). Omit action to list available actions. Special actions: attach (create an artifact linked to the entity), complete_with_proof (attach proof, verify, then complete in one call), ship_batch (milestones only — atomically attach one artifact + mark multiple subcomponent tasks complete when a single PR covers them all). NEXT: After completing, call verify_entity_completion first to check child work is done. DO NOT USE: for creating entities — use create_entity or scaffold_initiative.`,
         annotations: {
           readOnlyHint: false,
           destructiveHint: true,
@@ -4271,7 +4338,7 @@ export class OrgXMcp extends McpAgent<
             .string()
             .optional()
             .describe(
-              'Action to execute (leave empty to list available actions). Aliases: launch, pause, complete (resolved per type). Supports update (patch fields), attach (create an artifact linked to the entity), delete for hard delete. For milestones: ship_batch (atomically attach one artifact + mark multiple subcomponent tasks complete). For initiatives: reassign_streams. For studio_content: render, validate, status, remix, vary, upscale'
+              'Action to execute (leave empty to list available actions). Aliases: launch, pause, complete (resolved per type). Supports update (patch fields), attach (create an artifact linked to the entity), complete_with_proof (attach proof + verify + complete), delete for hard delete. For milestones: ship_batch (atomically attach one artifact + mark multiple subcomponent tasks complete). For initiatives: reassign_streams. For studio_content: render, validate, status, remix, vary, upscale'
             ),
           fields: z
             .record(z.unknown())
@@ -4437,7 +4504,37 @@ export class OrgXMcp extends McpAgent<
             .max(5)
             .optional()
             .describe(
-              'For action=ship_batch only (milestone): quality score (0-5) recorded against the attached artifact.'
+              'For action=ship_batch or action=complete_with_proof: quality score (0-5) recorded against the proof artifact.'
+            ),
+          verification: z
+            .array(z.string())
+            .optional()
+            .describe(
+              'For action=complete_with_proof: verification commands, checks, or review evidence that support completion.'
+            ),
+          atomic_unit_type: z
+            .string()
+            .optional()
+            .describe(
+              'For action=complete_with_proof: proof unit type, such as pull_request, release_merge, test_run, or review.'
+            ),
+          artifact_hash: z
+            .string()
+            .optional()
+            .describe(
+              'For action=complete_with_proof: durable proof hash, commit SHA, artifact digest, or external evidence ID.'
+            ),
+          schema_validated: z
+            .boolean()
+            .optional()
+            .describe(
+              'For action=complete_with_proof: whether the evidence payload/schema was validated.'
+            ),
+          schema_validated_artifact: z
+            .boolean()
+            .optional()
+            .describe(
+              'For action=complete_with_proof: whether the attached artifact conforms to the proof contract.'
             ),
           task_ids: z
             .array(z.string().uuid())
@@ -4598,6 +4695,227 @@ export class OrgXMcp extends McpAgent<
                 : `Attached artifact "${attachPayload.name}" to ${attachPayload.entity_type} ${attachPayload.entity_id}`,
             };
 
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: formatForLLM('entity_action', payload),
+                },
+              ],
+              structuredContent: payload,
+            };
+          }
+
+          if (resolvedAction === 'complete_with_proof') {
+            if (
+              !VERIFIABLE_COMPLETION_ENTITY_TYPES.includes(
+                args.type as (typeof VERIFIABLE_COMPLETION_ENTITY_TYPES)[number]
+              )
+            ) {
+              return this.toolError(
+                'action=complete_with_proof is only supported for initiative, workstream, milestone, and task entities',
+                { code: 'invalid_input', status: 400 }
+              );
+            }
+
+            const artifactInput =
+              args.artifact &&
+              typeof args.artifact === 'object' &&
+              !Array.isArray(args.artifact)
+                ? (args.artifact as Record<string, unknown>)
+                : {};
+            const firstString = (...values: unknown[]) =>
+              values.find(
+                (value): value is string =>
+                  typeof value === 'string' && value.trim().length > 0
+              )?.trim();
+            const proofVerification = Array.isArray(args.verification)
+              ? args.verification.filter(
+                  (entry): entry is string =>
+                    typeof entry === 'string' && entry.trim().length > 0
+                )
+              : [];
+            const proofMetadata = {
+              ...(args.metadata &&
+              typeof args.metadata === 'object' &&
+              !Array.isArray(args.metadata)
+                ? (args.metadata as Record<string, unknown>)
+                : {}),
+              atomic_unit_type:
+                firstString(args.atomic_unit_type, artifactInput.atomic_unit_type) ??
+                'completion_proof',
+              artifact_hash:
+                firstString(args.artifact_hash, artifactInput.artifact_hash) ??
+                undefined,
+              schema_validated: args.schema_validated ?? true,
+              schema_validated_artifact:
+                args.schema_validated_artifact ?? args.schema_validated ?? true,
+              completion_state: 'completed',
+              quality_score:
+                typeof args.quality_score === 'number'
+                  ? args.quality_score
+                  : undefined,
+              verification:
+                proofVerification.length > 0 ? proofVerification : undefined,
+              entity_type: args.type,
+              entity_id: args.id,
+              ...(args.type === 'task' ? { task_id: args.id } : {}),
+            };
+
+            const artifactUrl = firstString(
+              args.artifact_url,
+              artifactInput.artifact_url
+            );
+            const externalUrl = firstString(
+              args.external_url,
+              artifactInput.external_url
+            );
+            const artifactId = firstString(args.artifact_id);
+            const shouldAttachProof = Boolean(
+              artifactId || artifactUrl || externalUrl
+            );
+            let attachResult: Record<string, unknown> | null = null;
+
+            if (shouldAttachProof) {
+              let attachPayload: ReturnType<typeof buildEntityActionAttachPayload>;
+              try {
+                attachPayload = buildEntityActionAttachPayload({
+                  type: args.type,
+                  id: args.id,
+                  artifact_id: artifactId,
+                  initiative_id: args.initiative_id,
+                  name:
+                    firstString(args.name, artifactInput.name) ??
+                    `Completion proof for ${args.type} ${args.id}`,
+                  artifact_type:
+                    firstString(args.artifact_type, artifactInput.artifact_type) ??
+                    'eng.release_evidence',
+                  description:
+                    firstString(args.description, artifactInput.description) ??
+                    args.note,
+                  artifact_url: artifactUrl,
+                  external_url: externalUrl,
+                  preview_markdown:
+                    firstString(
+                      args.preview_markdown,
+                      artifactInput.preview_markdown
+                    ) ?? undefined,
+                  status: (args.status as any) ?? 'approved',
+                  metadata: proofMetadata,
+                  created_by_type: args.created_by_type ?? 'agent',
+                  created_by_id: args.created_by_id ?? resolvedUserId ?? undefined,
+                });
+              } catch (error) {
+                return this.toolError(
+                  error instanceof Error
+                    ? error.message
+                    : 'Invalid complete_with_proof artifact payload',
+                  {
+                    code: 'invalid_input',
+                    status: 400,
+                    details: buildFailureDetails({
+                      toolId: 'entity_action',
+                      error,
+                      args: args as Record<string, unknown>,
+                    }),
+                  }
+                );
+              }
+
+              const attachResponse = await callOrgxApiJson(
+                this.env,
+                '/api/client/artifacts',
+                {
+                  method: 'POST',
+                  body: JSON.stringify(attachPayload),
+                },
+                { userId: resolvedUserId ?? null }
+              );
+              attachResult = (await attachResponse.json()) as Record<
+                string,
+                unknown
+              >;
+            }
+
+            const verifyParams = new URLSearchParams({
+              type: String(args.type),
+              id: String(args.id),
+            });
+            const verifyResponse = await callOrgxApiJson(
+              this.env,
+              `/api/entities/verify?${verifyParams.toString()}`,
+              undefined,
+              { userId: resolvedUserId ?? null }
+            );
+            const verifyResult = (await verifyResponse.json()) as {
+              verification?: {
+                verified: boolean;
+                progress_pct: number;
+                blockers?: string[];
+              };
+            };
+            const verification = verifyResult.verification;
+            if (!verification?.verified) {
+              const blockers = verification?.blockers ?? [
+                'Completion verifier did not return ready=true',
+              ];
+              const payload = {
+                ok: false,
+                _action: 'complete_with_proof',
+                entity_type: args.type,
+                entity_id: args.id,
+                proof_attached: Boolean(attachResult),
+                attach_result: attachResult,
+                verification: verifyResult.verification ?? null,
+                diagnostic: diagnoseToolFailure({
+                  toolId: 'entity_action',
+                  error: blockers.join('; '),
+                  args: args as Record<string, unknown>,
+                }),
+              };
+              return {
+                content: [
+                  {
+                    type: 'text',
+                    text: `Proof ${
+                      attachResult ? 'attached, but completion is still blocked' : 'not attached and completion is blocked'
+                    }.\n\nBlockers:\n${blockers
+                      .map((blocker) => `• ${blocker}`)
+                      .join('\n')}`,
+                  },
+                ],
+                structuredContent: payload,
+              };
+            }
+
+            const completeResponse = await callOrgxApiJson(
+              this.env,
+              `/api/entities/${args.type}/${args.id}/complete`,
+              {
+                method: 'POST',
+                body: JSON.stringify({
+                  note: args.note,
+                  reason: args.note,
+                  force: args.force,
+                  user_id: resolvedUserId,
+                }),
+              },
+              { userId: resolvedUserId ?? null }
+            );
+            const completeResult = (await completeResponse.json()) as Record<
+              string,
+              unknown
+            >;
+            const payload = {
+              ...completeResult,
+              _action: 'complete_with_proof',
+              entity_type: args.type,
+              entity_id: args.id,
+              proof_attached: Boolean(attachResult),
+              attach_result: attachResult,
+              verification: verifyResult.verification,
+              message: `Completed ${args.type} ${args.id} with proof`,
+            };
             return {
               content: [
                 {
@@ -5308,6 +5626,12 @@ export class OrgXMcp extends McpAgent<
             if (args.options) payload.options = args.options;
           }
 
+          const normalizedPayload = normalizeEntityCreatePayloadForAgents(
+            payload,
+            'create_entity'
+          );
+          Object.assign(payload, normalizedPayload.entity);
+
           const contractError = validateEntityCreatePayloadContract(
             payload,
             'create_entity'
@@ -5383,6 +5707,7 @@ export class OrgXMcp extends McpAgent<
             ...(liveUrl ? { live_url: liveUrl } : {}),
             id: result.data.id,
             type: args.type,
+            normalization_warnings: normalizedPayload.warnings,
           };
 
           const sourceClient = resolveSourceClientFromContext(args._context);
@@ -5663,7 +5988,7 @@ export class OrgXMcp extends McpAgent<
             .min(1)
             .max(100)
             .describe(
-              "Array of entity payloads. Each item must include at least 'type' and its required fields. Contract hints: task priority is low|medium|high, not urgent; task status is todo|in_progress|done|blocked; milestone status is planned|in_progress|completed|at_risk|cancelled, not active."
+              "Array of entity payloads. Each item must include at least 'type' and its required fields. Agent-safe aliases are accepted: task priority urgent -> high; active task/milestone status -> in_progress."
             ),
           owner_id: z
             .string()
@@ -5796,6 +6121,7 @@ export class OrgXMcp extends McpAgent<
           const machinePayload = {
             created: result.created,
             failed: result.failed,
+            warnings: result.warnings,
             ref_map: result.ref_map,
           };
 
@@ -5803,10 +6129,20 @@ export class OrgXMcp extends McpAgent<
           if (createdLines) textParts.push(`\ncreated:\n${createdLines}`);
           if (refMapLines) textParts.push(`\nref_map:\n${refMapLines}`);
           if (failedLines) textParts.push(`\nfailed:\n${failedLines}`);
+          if (result.warnings.length > 0) {
+            textParts.push(
+              `\nnormalized:\n${result.warnings
+                .map(
+                  (warning) =>
+                    `- ${warning.path}: ${warning.from} -> ${warning.to} (${warning.reason})`
+                )
+                .join('\n')}`
+            );
+          }
 
           return {
             content: [{ type: 'text', text: textParts.join('\n') }],
-            structuredContent: result,
+            structuredContent: { ...result, ...machinePayload },
           };
         })
     );
@@ -5839,13 +6175,13 @@ export class OrgXMcp extends McpAgent<
           .describe('Task execution type for slicing and estimate defaults'),
         due_date: z.string().optional().describe('Optional task due date'),
         priority: z
-          .enum(['low', 'medium', 'high'])
+          .enum(['low', 'medium', 'high', 'urgent'])
           .optional()
-          .describe('Task priority. Use "high" for urgent work.'),
+          .describe('Task priority. "urgent" is accepted and normalized to "high".'),
         status: z
-          .enum(['todo', 'in_progress', 'done', 'blocked'])
+          .enum(['todo', 'in_progress', 'done', 'blocked', 'active'])
           .optional()
-          .describe('Optional task status. Use "in_progress" for active task execution.'),
+          .describe('Optional task status. "active" is accepted and normalized to "in_progress".'),
         depends_on: z
           .array(z.string())
           .optional()
@@ -5886,9 +6222,16 @@ export class OrgXMcp extends McpAgent<
         description: z.string().optional().describe('Milestone description'),
         due_date: z.string().optional().describe('Optional milestone due date'),
         status: z
-          .enum(['planned', 'in_progress', 'completed', 'at_risk', 'cancelled'])
+          .enum([
+            'planned',
+            'in_progress',
+            'completed',
+            'at_risk',
+            'cancelled',
+            'active',
+          ])
           .optional()
-          .describe('Optional milestone status. Use "in_progress" instead of "active".'),
+          .describe('Optional milestone status. "active" is accepted and normalized to "in_progress".'),
         depends_on: z
           .array(z.string())
           .optional()
@@ -5976,7 +6319,7 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Scaffold an initiative hierarchy',
         description:
-          'Turn a goal, roadmap, launch, or feature plan into executable workstreams, milestones, and tasks. Contract hints: task priority is low|medium|high (use high for urgent work); milestone status is planned|in_progress|completed|at_risk|cancelled (use in_progress, not active). Also known as: scaffold project, create roadmap, generate execution plan. USE WHEN: user wants to plan a new initiative from scratch. NEXT: Use entity_action type=initiative action=launch to start execution (auto-launches by default). DO NOT USE: for adding a single task to an existing initiative — use create_entity instead.',
+          'Turn a goal, roadmap, launch, or feature plan into executable workstreams, milestones, and tasks. Agent-safe aliases are accepted and normalized: task priority urgent -> high; active task/milestone status -> in_progress. Also known as: scaffold project, create roadmap, generate execution plan. USE WHEN: user wants to plan a new initiative from scratch. NEXT: Use entity_action type=initiative action=launch to start execution (auto-launches by default). DO NOT USE: for adding a single task to an existing initiative — use create_entity instead.',
         inputSchema: this.withClientContext({
           title: z.string().min(1).describe('Initiative title'),
           summary: z.string().optional().describe('Initiative summary'),
@@ -7046,19 +7389,11 @@ export class OrgXMcp extends McpAgent<
               ].join('').trim();
 
               return {
-                content: [
-                  ...(_scaffoldWidgetHtml
-                    ? [{ type: 'text' as const, text: _scaffoldWidgetHtml }]
-                    : []),
-                  {
-                    type: 'text',
-                    text: JSON.stringify(finalPayload),
-                  },
-                  {
-                    type: 'text',
-                    text: _cliFallback,
-                  },
-                ],
+                content: buildJsonFirstContentBlocks({
+                  data: finalPayload,
+                  summary: _cliFallback,
+                  widgetHtml: _scaffoldWidgetHtml,
+                }),
                 structuredContent: finalPayload,
               };
             } catch (error) {
@@ -7483,9 +7818,28 @@ export class OrgXMcp extends McpAgent<
           const summary = failed.length > 0
             ? `Completed ${succeeded.length}/${actions.length} actions (${failed.length} failed). ${actionSummary}`
             : `${actionSummary || 'All'} — ${succeeded.length}/${actions.length} succeeded.`;
+          const failedDetails =
+            failed.length > 0
+              ? `\n\nfailed:\n${failed
+                  .slice(0, 10)
+                  .map((item) => {
+                    const message =
+                      typeof item.error === 'string'
+                        ? item.error
+                        : typeof item.message === 'string'
+                        ? item.message
+                        : 'unknown error';
+                    return `- [${item.index}] ${item.type} ${item.id} ${item.action}: ${message}`;
+                  })
+                  .join('\n')}${
+                  failed.length > 10
+                    ? `\n... and ${failed.length - 10} more failure(s)`
+                    : ''
+                }`
+              : '';
 
           return {
-            content: [{ type: 'text', text: summary }],
+            content: [{ type: 'text', text: `${summary}${failedDetails}` }],
             structuredContent: {
               summary,
               total: actions.length,
@@ -8431,14 +8785,30 @@ export class OrgXMcp extends McpAgent<
           openWorldHint: true,
         },
         inputSchema: {
-          workspace_id: z.string().describe('Workspace ID.'),
+          workspace_id: z
+            .string()
+            .optional()
+            .describe('Workspace ID. Defaults to active MCP workspace when omitted.'),
+          workspaceId: z
+            .string()
+            .optional()
+            .describe('CamelCase alias for workspace_id.'),
           outcome_type_key: z
             .string()
+            .optional()
             .describe('Outcome type key, such as deal_closed or meeting_booked.'),
+          outcomeTypeKey: z
+            .string()
+            .optional()
+            .describe('CamelCase alias for outcome_type_key.'),
           outcome_value: z
             .number()
             .optional()
             .describe('Optional numeric value in the outcome’s native unit.'),
+          outcomeValue: z
+            .number()
+            .optional()
+            .describe('CamelCase alias for outcome_value.'),
           source: z
             .enum(['manual', 'agent_self_report', 'crm_webhook', 'linear_sync'])
             .default('manual')
@@ -8447,10 +8817,18 @@ export class OrgXMcp extends McpAgent<
             .string()
             .optional()
             .describe('Optional external source ID for deduplication.'),
+          sourceId: z
+            .string()
+            .optional()
+            .describe('CamelCase alias for source_id.'),
           occurred_at: z
             .string()
             .optional()
             .describe('Optional ISO timestamp for when the outcome occurred.'),
+          occurredAt: z
+            .string()
+            .optional()
+            .describe('CamelCase alias for occurred_at.'),
           metadata: z
             .record(z.unknown())
             .optional()
@@ -8459,27 +8837,60 @@ export class OrgXMcp extends McpAgent<
       },
       async (args) =>
         this.withOrgx(async () => {
-          const wsId = (args.workspace_id as string) ?? this.sessionContext?.workspaceId;
-          if (!wsId) return this.toolError('workspace_id required');
-          const { workspace_id: _workspaceId, ...restArgs } = args;
-
-          const response = await callOrgxApiJson(
-            this.env,
-            '/api/flywheel/outcomes',
-            {
-              method: 'POST',
-              body: JSON.stringify({
-                ...restArgs,
-                workspace_id: wsId,
-              }),
-            },
-            { userId: this.resolveUserId() }
+          const normalized = normalizeRecordOutcomeArgs(
+            args,
+            this.sessionContext?.workspaceId ?? null
           );
-          const result = await response.json() as Record<string, unknown>;
-          return {
-            content: [{ type: 'text' as const, text: formatForLLM('record_outcome', result) }],
-            structuredContent: result,
-          };
+          const wsId = normalized.workspaceId;
+          if (!wsId) return this.toolError('workspace_id required');
+          if (
+            typeof normalized.body.outcome_type_key !== 'string' ||
+            normalized.body.outcome_type_key.trim().length === 0
+          ) {
+            return this.toolError('outcome_type_key required', {
+              code: 'invalid_input',
+              status: 400,
+              details: {
+                suggested_next_calls: [
+                  { tool: 'orgx_describe_tool', args: { tool_id: 'record_outcome' } },
+                ],
+              },
+            });
+          }
+
+          try {
+            const response = await callOrgxApiJson(
+              this.env,
+              '/api/flywheel/outcomes',
+              {
+                method: 'POST',
+                body: JSON.stringify({
+                  ...normalized.body,
+                  workspace_id: wsId,
+                }),
+              },
+              { userId: this.resolveUserId() }
+            );
+            const result = (await response.json()) as Record<string, unknown>;
+            return {
+              content: [{ type: 'text' as const, text: formatForLLM('record_outcome', result) }],
+              structuredContent: result,
+            };
+          } catch (error) {
+            return this.toolError(
+              error instanceof Error ? error.message : String(error),
+              {
+                code: 'record_outcome_failed',
+                status:
+                  error instanceof OrgXApiError ? error.statusCode : undefined,
+                details: buildFailureDetails({
+                  toolId: 'record_outcome',
+                  error,
+                  args,
+                }),
+              }
+            );
+          }
         })
     );
 

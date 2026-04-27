@@ -1,4 +1,8 @@
 import type { OrgxApiEnv } from './orgxApi';
+import {
+  normalizeEntityCreatePayloadForAgents,
+  type PayloadNormalizationWarning,
+} from './agentErgonomics';
 
 export type BatchCreateEntityInput = Record<string, unknown>;
 
@@ -12,6 +16,7 @@ export type BatchCreateEntityResult = {
   data?: Record<string, unknown> | null;
   error?: string;
   skipped?: boolean;
+  warnings?: PayloadNormalizationWarning[];
 };
 
 export type BatchCreateSummary = {
@@ -33,6 +38,7 @@ export type BatchCreateSummary = {
     ref?: string;
     error: string;
   }>;
+  warnings: PayloadNormalizationWarning[];
   ref_map: Record<string, string>;
 };
 
@@ -299,6 +305,7 @@ export async function batchCreateEntities(params: {
   const results: Array<BatchCreateEntityResult | null> = new Array(
     entities.length
   ).fill(null);
+  const warnings: PayloadNormalizationWarning[] = [];
 
   // Validate payloads early and gather refs.
   const refOccurrences = new Map<string, number[]>();
@@ -314,7 +321,17 @@ export async function batchCreateEntities(params: {
       continue;
     }
 
-    const type = getString((entity as Record<string, unknown>).type);
+    const normalized = normalizeEntityCreatePayloadForAgents(
+      entity as Record<string, unknown>,
+      `entities[${i}]`
+    );
+    if (normalized.warnings.length > 0) {
+      warnings.push(...normalized.warnings);
+      entities[i] = normalized.entity;
+    }
+
+    const normalizedEntity = entities[i] as Record<string, unknown>;
+    const type = getString(normalizedEntity.type);
     if (!type) {
       results[i] = {
         index: i,
@@ -326,7 +343,7 @@ export async function batchCreateEntities(params: {
     }
 
     const contractError = validateEntityCreatePayloadContract(
-      entity as Record<string, unknown>,
+      normalizedEntity,
       `entities[${i}]`
     );
     if (contractError) {
@@ -334,13 +351,13 @@ export async function batchCreateEntities(params: {
         index: i,
         success: false,
         type,
-        ref: extractRef(entity as Record<string, unknown>) ?? undefined,
+        ref: extractRef(normalizedEntity) ?? undefined,
         error: contractError,
       };
       continue;
     }
 
-    const ref = extractRef(entity as Record<string, unknown>);
+    const ref = extractRef(normalizedEntity);
     if (ref) {
       const existing = refOccurrences.get(ref) ?? [];
       existing.push(i);
@@ -701,6 +718,7 @@ export async function batchCreateEntities(params: {
     results: finalized,
     created,
     failed,
+    warnings,
     ref_map: resolvedRefMap,
   };
 }

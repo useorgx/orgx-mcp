@@ -19,8 +19,9 @@ describe('scaffold_initiative widget registration', () => {
   });
 
   it('returns scaffold widget payload as text content block with structuredContent for MCP app hosts', () => {
-    // The code uses spread for conditional widget HTML, then JSON.stringify(finalPayload) as text
-    expect(source).toMatch(/text:\s*JSON\.stringify\(finalPayload\)/);
+    // The JSON-first helper keeps machine-readable payload before optional widget HTML.
+    expect(source).toMatch(/content:\s*buildJsonFirstContentBlocks\(\{/);
+    expect(source).toMatch(/data:\s*finalPayload/);
     expect(source).toMatch(/structuredContent:\s*finalPayload/);
   });
 });
