@@ -58,6 +58,7 @@ import { buildScaffoldWidget } from './scaffoldWidget';
 import { buildLiveFeedWidget } from './liveFeedWidget';
 import { signStreamToken } from './streamToken';
 import { hydrateTaskContext } from './taskContextHydrator';
+import { buildWorkspaceCreateBody } from './workspaceTool';
 import {
   CONFIGURE_ORG_POLICY_TYPES,
   describeAppliedPolicy,
@@ -7977,7 +7978,7 @@ export class OrgXMcp extends McpAgent<
     );
 
     /**
-     * workspace - Consolidated workspace list, get, and set
+     * workspace - Consolidated workspace list, get, set, and create
      */
     if (shouldRegister('workspace'))
     this.server.registerTool(
@@ -7985,15 +7986,43 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Workspace',
         description:
-          'List, get, or set the active workspace. action=list to see all, action=get for current, action=set to switch.',
+          'Create, list, get, or set the active workspace. action=create creates a workspace and makes it active by default; action=list shows all; action=get returns current; action=set switches active.',
         annotations: {
           readOnlyHint: false,
           destructiveHint: true,
           openWorldHint: false,
         },
         inputSchema: {
-          action: z.enum(['list', 'get', 'set']).describe('list=show all, get=current, set=switch active'),
+          action: z
+            .enum(['list', 'get', 'set', 'create'])
+            .describe(
+              'list=show all, get=current, set=switch active, create=new workspace'
+            ),
           workspace_id: z.string().optional().describe('Workspace UUID to switch to (action=set only)'),
+          name: z.string().optional().describe('Workspace name (action=create)'),
+          title: z.string().optional().describe('Alias for name (action=create)'),
+          description: z
+            .string()
+            .optional()
+            .describe('Workspace narrative/description (action=create)'),
+          tagline: z.string().optional().describe('Short workspace tagline (action=create)'),
+          narrative: z
+            .string()
+            .optional()
+            .describe('Workspace identity narrative (action=create)'),
+          key_metrics: z
+            .array(z.string())
+            .optional()
+            .describe('Workspace identity metrics (action=create)'),
+          roadmap_url: z.string().optional().describe('Roadmap URL (action=create)'),
+          source_links: z
+            .array(z.string())
+            .optional()
+            .describe('Source links for workspace identity (action=create)'),
+          set_active: z
+            .boolean()
+            .optional()
+            .describe('Whether to make the new workspace active. Defaults true.'),
         },
         _meta: { securitySchemes: SECURITY_SCHEMES.authRequired },
       },
@@ -8034,7 +8063,7 @@ export class OrgXMcp extends McpAgent<
                 return {
                   content: [{
                     type: 'text',
-                    text: `📭 **No workspaces found**\n\nYou don't have any command centers set up yet. Create one to organize your initiatives and agents.`,
+                    text: `📭 **No workspaces found**\n\nYou don't have any workspaces yet. Use \`workspace action=create name="Your Workspace"\` to organize initiatives and agents.`,
                   }],
                 };
               }
@@ -8075,7 +8104,7 @@ export class OrgXMcp extends McpAgent<
                     text:
                       `ℹ️ **No workspace set**\n\n` +
                       `Operations will use your default workspace. Use \`workspace action=list\` to see options, ` +
-                      `then \`workspace action=set\` to select one.`,
+                      `then \`workspace action=set\` to select one, or \`workspace action=create name="Your Workspace"\` to create one.`,
                   }],
                   structuredContent: { _action: 'get', workspace_id: null, workspace_name: null },
                 };
@@ -8180,6 +8209,98 @@ export class OrgXMcp extends McpAgent<
                   _action: 'set',
                   workspace_id: workspace.id,
                   workspace_name: workspace.name,
+                  live_url: liveUrl,
+                },
+              };
+            }
+
+            case 'create': {
+              const createBody = buildWorkspaceCreateBody(
+                args as Record<string, unknown>
+              );
+              if (!createBody.ok) {
+                return this.toolError(createBody.error, {
+                  code: 'invalid_workspace_payload',
+                  status: 400,
+                });
+              }
+
+              const response = await callOrgxApiJson(
+                this.env,
+                '/api/workspaces',
+                {
+                  method: 'POST',
+                  body: JSON.stringify(createBody.body),
+                },
+                { userId: resolvedUserId }
+              );
+              const result = (await response.json()) as {
+                workspace?: {
+                  id?: string;
+                  name?: string;
+                  slug?: string | null;
+                  description?: string | null;
+                  is_default?: boolean;
+                  created_at?: string;
+                };
+              };
+
+              const workspace = result.workspace;
+              if (
+                !workspace ||
+                typeof workspace.id !== 'string' ||
+                typeof workspace.name !== 'string'
+              ) {
+                return this.toolError(
+                  'Workspace was created but the response did not include id/name',
+                  { code: 'invalid_workspace_response', status: 502 }
+                );
+              }
+
+              if (createBody.setActive) {
+                this.sessionContext = {
+                  ...this.sessionContext,
+                  workspaceId: workspace.id,
+                  workspaceName: workspace.name,
+                };
+                await this.saveSessionContext();
+              }
+
+              const liveUrl = buildLiveUrl(undefined, undefined, {
+                workspace: workspace.id,
+              });
+              const slugLine = workspace.slug
+                ? `Slug: \`${workspace.slug}\`\n`
+                : '';
+              const defaultLine =
+                typeof workspace.is_default === 'boolean'
+                  ? `Default workspace: ${workspace.is_default ? 'yes' : 'no'}\n`
+                  : '';
+              const activeLine = createBody.setActive
+                ? 'This is now the active workspace for subsequent MCP calls.\n\n'
+                : 'This workspace was created but not set active.\n\n';
+
+              return {
+                content: [
+                  {
+                    type: 'text',
+                    text:
+                      `✅ **Workspace created: ${workspace.name}**\n\n` +
+                      `ID: \`${workspace.id}\`\n` +
+                      slugLine +
+                      defaultLine +
+                      activeLine +
+                      `📺 Live view: ${liveUrl}`,
+                  },
+                ],
+                structuredContent: {
+                  _action: 'create',
+                  workspace_id: workspace.id,
+                  workspace_name: workspace.name,
+                  slug: workspace.slug ?? null,
+                  is_default: workspace.is_default ?? null,
+                  created_at: workspace.created_at ?? null,
+                  set_active: createBody.setActive,
                   live_url: liveUrl,
                 },
               };

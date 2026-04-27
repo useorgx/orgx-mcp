@@ -891,10 +891,38 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'workspace',
     title: 'Workspace',
     description:
-      'List, inspect, or switch the active OrgX workspace for shared memory and project context. Also known as: workspace context, team scope, organization scope. USE WHEN: user wants to see their workspaces, check which is active, or switch workspaces. action=list to see all, action=get for current, action=set to switch.',
+      'Create, list, inspect, or switch the active OrgX workspace for shared memory and project context. Also known as: create workspace, workspace context, team scope, organization scope. USE WHEN: user wants to create a workspace, see workspaces, check which is active, or switch workspaces. action=create creates a workspace and sets it active by default; action=list to see all; action=get for current; action=set to switch.',
     inputSchema: {
-      action: z.enum(['list', 'get', 'set']).describe('list=show all, get=current, set=switch active'),
+      action: z
+        .enum(['list', 'get', 'set', 'create'])
+        .describe(
+          'list=show all, get=current, set=switch active, create=new workspace'
+        ),
       workspace_id: z.string().optional().describe('Workspace UUID to switch to (action=set only)'),
+      name: z.string().optional().describe('Workspace name (action=create)'),
+      title: z.string().optional().describe('Alias for name (action=create)'),
+      description: z
+        .string()
+        .optional()
+        .describe('Workspace narrative/description (action=create)'),
+      tagline: z.string().optional().describe('Short workspace tagline (action=create)'),
+      narrative: z
+        .string()
+        .optional()
+        .describe('Workspace identity narrative (action=create)'),
+      key_metrics: z
+        .array(z.string())
+        .optional()
+        .describe('Workspace identity metrics (action=create)'),
+      roadmap_url: z.string().optional().describe('Roadmap URL (action=create)'),
+      source_links: z
+        .array(z.string())
+        .optional()
+        .describe('Source links for workspace identity (action=create)'),
+      set_active: z
+        .boolean()
+        .optional()
+        .describe('Whether to make the new workspace active. Defaults true.'),
     },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
@@ -1530,6 +1558,7 @@ export function summarizeChatGPTToolResult(
         const ws = Array.isArray(data.workspaces) ? data.workspaces : [];
         return ws.length === 0 ? 'No workspaces found.' : `Found ${ws.length} workspace${ws.length === 1 ? '' : 's'}.`;
       }
+      if (action === 'create') return (data.message as string) ?? 'Workspace created.';
       if (action === 'set') return (data.message as string) ?? 'Workspace set.';
       return (data.message as string) ?? 'Current workspace retrieved.';
     }

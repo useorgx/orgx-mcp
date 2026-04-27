@@ -236,7 +236,7 @@
     },
     {
       "name": "workspace",
-      "description": "List, get, or set workspace context"
+      "description": "Create, list, get, or set workspace context. Use action=create to create a workspace and make it active for follow-up MCP calls."
     },
     {
       "name": "stats",
