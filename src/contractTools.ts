@@ -3,9 +3,11 @@ import { z } from 'zod';
 import {
   CHATGPT_TOOL_DEFINITIONS,
   CLIENT_INTEGRATION_TOOL_DEFINITIONS,
+  OUTPUT_TEMPLATE_URIS,
   PLAN_SESSION_TOOLS,
   SECURITY_SCHEMES,
   STREAM_TOOL_DEFINITIONS,
+  WIDGET_URIS,
   lifecycleEntityTypeEnum,
 } from './toolDefinitions';
 
@@ -14,7 +16,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_bootstrap',
     title: 'Bootstrap OrgX Contract',
     description:
-      'Discover current profile, workspace scope, granted scopes, safe first calls, canonical ID forms, and recommended workflows. USE WHEN: first call in a fresh session, after reconnecting, or before performing a multi-step workflow. Read-only.',
+      'Discover workspace context, granted scopes, safe first calls, and recommended OrgX workflows. Also known as: bootstrap, setup, tool routing. USE WHEN: first call in a fresh session, after reconnecting, or before performing a multi-step workflow. Read-only.',
     inputSchema: {},
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
@@ -28,7 +30,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_describe_tool',
     title: 'Describe OrgX Tool',
     description:
-      'Return the live input contract, auth expectations, and workflow guidance for a tool. USE WHEN: you need exact field names, accepted enums, or next-step guidance before calling a tool. Read-only.',
+      'Return the live input contract, auth expectations, and workflow guidance for an OrgX tool. Also known as: tool schema, tool help, contract. USE WHEN: you need exact field names, accepted enums, or next-step guidance before calling a tool. Read-only.',
     inputSchema: {
       tool_id: z.string().min(1).describe('Tool ID to inspect'),
     },
@@ -62,10 +64,176 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     },
   },
   {
+    id: 'remember_decision',
+    title: 'Remember Decision',
+    description:
+      'Save a decision to organizational memory so agents and teammates can recall it later. Also known as: decision log, team memory, agent memory, record decision, remember what we decided.',
+    inputSchema: {
+      decision: z
+        .string()
+        .min(1)
+        .describe('Decision text or short decision title to remember'),
+      context: z
+        .string()
+        .optional()
+        .describe('Optional background, rationale, or source context'),
+      title: z
+        .string()
+        .optional()
+        .describe('Optional explicit decision title'),
+      initiative_id: z
+        .string()
+        .optional()
+        .describe('Optional parent initiative UUID'),
+      workspace_id: z.string().optional().describe('Workspace UUID'),
+      priority: z
+        .enum(['low', 'medium', 'high', 'urgent'])
+        .optional()
+        .describe('Priority / urgency'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
+    _meta: {
+      'openai/toolInvocation/invoking': 'Remembering decision...',
+      'openai/toolInvocation/invoked': 'Decision remembered',
+    },
+  },
+  {
+    id: 'recall_memory',
+    title: 'Recall Memory',
+    description:
+      'Search organizational memory for prior decisions, artifacts, project context, and team knowledge. Also known as: search memory, recall decisions, find context, retrieve artifacts, what did we decide.',
+    inputSchema: {
+      query: z.string().min(1).describe('Search query for organizational memory'),
+      scope: z
+        .enum(['all', 'artifacts', 'decisions', 'initiatives'])
+        .optional()
+        .describe('Optional scope filter for the memory search'),
+      limit: z
+        .number()
+        .optional()
+        .describe('Maximum number of results to return'),
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
+    _meta: {
+      'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.searchResults,
+      'openai/toolInvocation/invoking': 'Recalling organizational memory...',
+      'openai/toolInvocation/invoked': 'Memory recalled',
+      'openai/readOnlyHint': true,
+      ui: { resourceUri: WIDGET_URIS.searchResults },
+    },
+  },
+  {
+    id: 'approve_agent_work',
+    title: 'Approve Agent Work',
+    description:
+      'Review agent decisions or work items awaiting human approval. Also known as: pending approvals, agent blocked, sign off, review decisions, approve AI work.',
+    inputSchema: {
+      decision_id: z
+        .string()
+        .optional()
+        .describe('Decision ID to approve or reject after user confirmation'),
+      action: z
+        .enum(['list', 'approve', 'reject'])
+        .optional()
+        .describe('Use list to review pending approvals, or approve/reject a specific decision_id'),
+      note: z.string().optional().describe('Optional approval note'),
+      reason: z.string().optional().describe('Required rejection reason'),
+      limit: z
+        .number()
+        .optional()
+        .describe('Maximum number of pending decisions to return when listing'),
+      urgency_filter: z
+        .enum(['all', 'critical', 'high'])
+        .optional()
+        .describe('Optional urgency filter for the pending decision list'),
+      initiative_id: z
+        .string()
+        .optional()
+        .describe('Optional initiative UUID to scope pending decisions'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+    securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
+    _meta: {
+      'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.decisions,
+      'openai/toolInvocation/invoking': 'Reviewing agent approvals...',
+      'openai/toolInvocation/invoked': 'Agent approvals reviewed',
+      ui: { resourceUri: WIDGET_URIS.decisions },
+    },
+  },
+  {
+    id: 'delegate_agent_task',
+    title: 'Delegate Agent Task',
+    description:
+      'Assign work to a specialist AI agent and track the result. Also known as: hand this off, spawn agent, assign task, delegate to agent, have an AI agent do it.',
+    inputSchema: {
+      agent: z.string().min(1).describe('Target agent identifier or alias'),
+      task: z.string().min(1).describe('Task instructions for the target agent'),
+      context: z
+        .string()
+        .optional()
+        .describe('Optional supporting context or background for the task'),
+      initiative_id: z
+        .string()
+        .optional()
+        .describe('Optional initiative UUID to associate with the spawned task'),
+      initiative_name: z
+        .string()
+        .optional()
+        .describe('Optional initiative title to resolve automatically if ID is unknown'),
+      expected_artifacts: z
+        .array(z.string())
+        .optional()
+        .describe('Optional final outputs you expect'),
+      deadline: z
+        .string()
+        .optional()
+        .describe('Optional due date or plain-text deadline'),
+      style_guidelines: z
+        .string()
+        .optional()
+        .describe('Optional voice, format, or style constraints'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+    securitySchemes: SECURITY_SCHEMES.agentRequiresAuth,
+    _meta: {
+      'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.taskSpawned,
+      'openai/toolInvocation/invoking': 'Delegating agent task...',
+      'openai/toolInvocation/invoked': 'Agent task delegated',
+      ui: { resourceUri: WIDGET_URIS.taskSpawned },
+    },
+  },
+  {
+    id: 'track_project_progress',
+    title: 'Track Project Progress',
+    description:
+      'Get health, blockers, milestones, owners, and recent activity for a project or initiative. Also known as: project status, initiative pulse, blockers, roadmap progress, execution health.',
+    inputSchema: {
+      initiative_id: z
+        .string()
+        .optional()
+        .describe('Optional initiative UUID to check'),
+      initiative_name: z
+        .string()
+        .optional()
+        .describe('Optional initiative title to resolve automatically if ID is unknown'),
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
+    _meta: {
+      'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.initiativePulse,
+      'openai/toolInvocation/invoking': 'Tracking project progress...',
+      'openai/toolInvocation/invoked': 'Project progress retrieved',
+      'openai/readOnlyHint': true,
+      ui: { resourceUri: WIDGET_URIS.initiativePulse },
+    },
+  },
+  {
     id: 'resume_plan_session',
     title: 'Resume Plan Session',
     description:
-      'Load a plan session using the canonical UUID or OrgX URI returned by OrgX tools. If no session_id is provided, returns the most recent active session. USE WHEN: continuing a planning workflow without guessing IDs.',
+      'Resume a planning session by UUID, orgx:// URI, or most recent active session. Also known as: continue plan, reload planning context. USE WHEN: continuing a planning workflow without guessing IDs.',
     inputSchema: {
       session_id: z
         .string()
@@ -84,7 +252,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'create_task',
     title: 'Create Task',
     description:
-      'Create a task without using the generic create_entity surface. USE WHEN: adding a single actionable task to a workstream, milestone, or initiative. NEXT: use entity_action action=start when execution should begin.',
+      'Create an actionable task in organizational memory for a project, milestone, or agent. Also known as: add task, create work item. USE WHEN: adding a single actionable task to a workstream, milestone, or initiative. NEXT: use entity_action action=start when execution should begin.',
     inputSchema: {
       title: z.string().min(1).describe('Task title'),
       summary: z.string().optional().describe('Task summary'),
@@ -129,7 +297,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'create_milestone',
     title: 'Create Milestone',
     description:
-      'Create a milestone without using the generic create_entity surface. USE WHEN: adding a phase checkpoint under an initiative or workstream.',
+      'Create a project milestone or phase checkpoint with durable context. Also known as: add milestone, create checkpoint. USE WHEN: adding a phase checkpoint under an initiative or workstream.',
     inputSchema: {
       title: z.string().min(1).describe('Milestone title'),
       summary: z.string().optional().describe('Milestone summary'),
@@ -168,7 +336,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'create_decision',
     title: 'Create Decision',
     description:
-      'Create a decision without using generic power tools. USE WHEN: surfacing a new approval or judgment point for a workspace or initiative.',
+      'Record a decision in organizational memory so agents can recall it later. Also known as: remember decision, decision log, team memory. USE WHEN: surfacing a new approval or judgment point for a workspace or initiative.',
     inputSchema: {
       title: z.string().min(1).describe('Decision title'),
       summary: z.string().optional().describe('Decision summary'),
@@ -271,7 +439,7 @@ export const INLINE_TOOL_CONTRACTS = {
     id: 'get_task_with_context',
     title: 'Get Task With Context',
     description:
-      'Inline worker tool for loading a task with hydrated context attachments.',
+      'Inline worker tool for loading a task with hydrated decisions, artifacts, entities, and plan-session context.',
   },
   workspace: {
     id: 'workspace',

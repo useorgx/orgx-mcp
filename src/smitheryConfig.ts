@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const SMITHERY_TOOL_PROFILES = [
   'full',
+  'memory',
   'commander',
   'planner',
   'executor',

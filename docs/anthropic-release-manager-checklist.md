@@ -16,7 +16,7 @@ pnpm directory:preflight
 Run the OrgX-side reviewer support verification from the deployed app:
 
 1. Sign in to `https://useorgx.com` as the dedicated Anthropic reviewer account.
-2. Visit `https://useorgx.com/api/review/anthropic/status`.
+2. Visit `https://useorgx.com/api/review/sessions/<token>/status`.
 3. If the workspace is missing or drifted, run `bootstrap` or `reset` per the reviewer runbook.
 
 ## After deploy
@@ -29,7 +29,7 @@ MCP_BASE_URL=https://mcp.useorgx.com pnpm directory:preflight
 
 Then verify the reviewer environment:
 
-1. `GET /api/review/anthropic/status`
+1. `GET /api/review/sessions/<token>/status`
 2. Confirm `baselineReady === true`
 3. Confirm `workspaceIsClean === true`
 4. Confirm the seeded counts still match the expected baseline

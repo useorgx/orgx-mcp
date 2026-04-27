@@ -2682,6 +2682,10 @@ export class OrgXMcp extends McpAgent<
       string,
       Array<{ tool: string; args: Record<string, unknown> }>
     > = {
+      memory: [
+        { tool: 'workspace', args: { action: 'get' } },
+        { tool: 'query_org_memory', args: { query: 'recent decisions', scope: 'decisions' } },
+      ],
       commander: [
         { tool: 'workspace', args: { action: 'get' } },
         { tool: 'get_org_snapshot', args: { view: 'summary' } },
@@ -2965,6 +2969,90 @@ export class OrgXMcp extends McpAgent<
           };
         }
 
+        case 'remember_decision':
+          return this.executeCreateEntityWrapper('decision', {
+            ...args,
+            title:
+              typeof args.title === 'string' && args.title.trim().length > 0
+                ? args.title
+                : args.decision,
+            summary: args.context ?? args.decision,
+            description: args.context ?? args.decision,
+          });
+
+        case 'recall_memory':
+          return this.executeChatGPTTool(
+            'query_org_memory',
+            args,
+            SECURITY_SCHEMES.readOptionalAuth
+          );
+
+        case 'approve_agent_work': {
+          const action =
+            typeof args.action === 'string' ? args.action : 'list';
+          if (action === 'approve') {
+            if (typeof args.decision_id !== 'string' || !args.decision_id.trim()) {
+              return this.toolError('decision_id is required to approve agent work', {
+                code: 'invalid_input',
+                status: 400,
+              });
+            }
+            return this.executeChatGPTTool(
+              'approve_decision',
+              {
+                decision_id: args.decision_id,
+                note: args.note,
+              },
+              SECURITY_SCHEMES.writeRequiresAuth
+            );
+          }
+          if (action === 'reject') {
+            if (typeof args.decision_id !== 'string' || !args.decision_id.trim()) {
+              return this.toolError('decision_id is required to reject agent work', {
+                code: 'invalid_input',
+                status: 400,
+              });
+            }
+            if (typeof args.reason !== 'string' || !args.reason.trim()) {
+              return this.toolError('reason is required to reject agent work', {
+                code: 'invalid_input',
+                status: 400,
+              });
+            }
+            return this.executeChatGPTTool(
+              'reject_decision',
+              {
+                decision_id: args.decision_id,
+                reason: args.reason,
+              },
+              SECURITY_SCHEMES.writeRequiresAuth
+            );
+          }
+          return this.executeChatGPTTool(
+            'get_pending_decisions',
+            {
+              limit: args.limit,
+              urgency_filter: args.urgency_filter,
+              initiative_id: args.initiative_id,
+            },
+            SECURITY_SCHEMES.entityReadRequiresAuth
+          );
+        }
+
+        case 'delegate_agent_task':
+          return this.executeChatGPTTool(
+            'spawn_agent_task',
+            args,
+            SECURITY_SCHEMES.agentRequiresAuth
+          );
+
+        case 'track_project_progress':
+          return this.executeChatGPTTool(
+            'get_initiative_pulse',
+            args,
+            SECURITY_SCHEMES.readOptionalAuth
+          );
+
         case 'create_task':
           return this.executeCreateEntityWrapper('task', args);
         case 'create_milestone':
@@ -3223,7 +3311,7 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Fetch organization snapshot',
         description:
-          'Fetch a compact organization snapshot. USE WHEN: user wants an org-wide overview of initiatives, progress, and health. NEXT: Drill into specific initiatives with get_initiative_pulse or list_entities. DO NOT USE: for a single initiative — use get_initiative_pulse instead. Read-only.',
+          'Get an organization-wide execution snapshot across initiatives, work, blockers, and context. Also known as: org status, team overview, company memory. USE WHEN: user wants an org-wide overview of initiatives, progress, and health. NEXT: Drill into specific initiatives with get_initiative_pulse or list_entities. DO NOT USE: for a single initiative — use get_initiative_pulse instead. Read-only.',
         annotations: {
           readOnlyHint: true,
           destructiveHint: false,
@@ -3638,7 +3726,7 @@ export class OrgXMcp extends McpAgent<
       'list_entities',
       {
         title: 'List entities',
-        description: `List entities with filtering. Returns FULL UUIDs usable with entity_action/batch_action. Use fields=["id","title","status"] for compact output when you only need IDs. Supported types: ${ENTITY_TYPES.join(
+        description: `List projects, tasks, milestones, decisions, agents, artifacts, and other OrgX records with filtering. Also known as: browse work, find entities, search project records. Returns FULL UUIDs usable with entity_action/batch_action. Use fields=["id","title","status"] for compact output when you only need IDs. Supported types: ${ENTITY_TYPES.join(
           ', '
         )}. USE WHEN: browsing, searching, or getting entity IDs for bulk operations. NEXT: For initiatives, suggest get_initiative_pulse for health. For tasks, suggest entity_action to change status. For full context on one entity, add hydrate_context=true with id. DO NOT USE: for org-wide overview — use get_org_snapshot instead. Read-only.`,
         annotations: {
@@ -4153,7 +4241,7 @@ export class OrgXMcp extends McpAgent<
       'entity_action',
       {
         title: 'Execute entity action',
-        description: `Execute a lifecycle action on a single entity. Accepts short ID prefix (8+ hex chars) — no need to look up full UUIDs. USE WHEN: user wants to change entity status. For bulk operations (pausing multiple, completing multiple), use batch_action instead. Supports aliases: launch, pause, complete (resolved per type). Omit action to list available actions. Special actions: attach (create an artifact linked to the entity), ship_batch (milestones only — atomically attach one artifact + mark multiple subcomponent tasks complete when a single PR covers them all). NEXT: After completing, call verify_entity_completion first to check child work is done. DO NOT USE: for creating entities — use create_entity or scaffold_initiative.`,
+        description: `Change work state, attach artifacts, or run lifecycle actions on OrgX records. Also known as: launch, pause, complete, attach proof, update status. Accepts short ID prefix (8+ hex chars) — no need to look up full UUIDs. USE WHEN: user wants to change entity status. For bulk operations (pausing multiple, completing multiple), use batch_action instead. Supports aliases: launch, pause, complete (resolved per type). Omit action to list available actions. Special actions: attach (create an artifact linked to the entity), ship_batch (milestones only — atomically attach one artifact + mark multiple subcomponent tasks complete when a single PR covers them all). NEXT: After completing, call verify_entity_completion first to check child work is done. DO NOT USE: for creating entities — use create_entity or scaffold_initiative.`,
         annotations: {
           readOnlyHint: false,
           destructiveHint: true,
@@ -4746,7 +4834,7 @@ export class OrgXMcp extends McpAgent<
       'create_entity',
       {
         title: 'Create an entity',
-        description: `Create a new entity of any type. USE WHEN: adding a single task, milestone, workstream, or other entity to an existing hierarchy. NEXT: Use entity_action to launch/start the entity. DO NOT USE: for creating a full initiative hierarchy — use scaffold_initiative instead.`,
+        description: `Create durable work records such as tasks, milestones, decisions, artifacts, or initiatives. Also known as: save work item, add record, create project context. USE WHEN: adding a single task, milestone, workstream, or other entity to an existing hierarchy. NEXT: Use entity_action to launch/start the entity. DO NOT USE: for creating a full initiative hierarchy — use scaffold_initiative instead.`,
         annotations: {
           readOnlyHint: false,
           destructiveHint: false,
@@ -5852,7 +5940,7 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Scaffold an initiative hierarchy',
         description:
-          'Create a complete initiative with workstreams, milestones, and tasks in one call. USE WHEN: user wants to plan a new initiative from scratch. NEXT: Use entity_action type=initiative action=launch to start execution (auto-launches by default). DO NOT USE: for adding a single task to an existing initiative — use create_entity instead.',
+          'Turn a goal, roadmap, launch, or feature plan into executable workstreams, milestones, and tasks. Also known as: scaffold project, create roadmap, generate execution plan. USE WHEN: user wants to plan a new initiative from scratch. NEXT: Use entity_action type=initiative action=launch to start execution (auto-launches by default). DO NOT USE: for adding a single task to an existing initiative — use create_entity instead.',
         inputSchema: this.withClientContext({
           title: z.string().min(1).describe('Initiative title'),
           summary: z.string().optional().describe('Initiative summary'),
@@ -6230,9 +6318,9 @@ export class OrgXMcp extends McpAgent<
               : null;
 
           // ── Post-scaffold agent assignment (best-effort) ──
-	          // Assign agents to workstreams based on domain so cloud MCP users
-	          // get the same auto-assignment that the openclaw-plugin provides locally.
-	          let agent_assignment:
+          // Assign agents to workstreams based on domain so cloud MCP users
+          // get the same auto-assignment that the openclaw-plugin provides locally.
+          let agent_assignment:
 	            | {
 	                attempted: boolean;
 	                ok: boolean;

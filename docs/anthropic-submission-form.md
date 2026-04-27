@@ -9,7 +9,7 @@ either changes, update this doc the same day.
 | Field | Value |
 |-------|-------|
 | Server name | OrgX MCP |
-| Tagline (≤80 chars) | Agent orchestration, decisions, and org memory for every MCP client. |
+| Tagline (≤80 chars) | Organizational memory and agent orchestration for every MCP client. |
 | Server URL | `https://mcp.useorgx.com/mcp` |
 | Transport | Streamable HTTP (primary) · SSE (fallback) |
 | Auth | OAuth 2.0 + PKCE · Dynamic Client Registration |
@@ -34,11 +34,10 @@ either changes, update this doc the same day.
 
 ## Description (long-form)
 
-OrgX is a cognitive operating system for organizations. The OrgX MCP server
-lets any MCP client — Claude, Cursor, ChatGPT, Cline — drive an OrgX
-workspace directly: review pending decisions, scaffold initiative
-hierarchies, assign work to specialist agents, query organizational memory,
-and watch initiative health in real time.
+OrgX MCP gives AI agents organizational memory. It lets any MCP client —
+Claude, Cursor, ChatGPT, Cline — remember decisions, retrieve artifacts, review
+pending approvals, scaffold initiative hierarchies, assign work to specialist
+agents, query organizational memory, and watch initiative health in real time.
 
 Unlike a project-management CRUD surface, OrgX is built around urgency-driven
 hierarchy and surveillance calm: healthy state collapses to near-silence, the
@@ -47,7 +46,7 @@ the user's live view at `useorgx.com/live/<initiative_id>`, and every widget
 can drill down to act without leaving the chat.
 
 Target user: a founder or operator delegating to autonomous agents, who wants
-organizational memory, decision queues, and initiative pulses available
+organizational memory, decision queues, artifact recall, and initiative pulses available
 wherever they think.
 
 ## Use-case prompts to include in the submission
@@ -56,11 +55,13 @@ These match the reviewer runbook and the seeded reviewer workspace baseline.
 
 1. *"Show me the pending decisions that need approval today."*
    Expected: decisions widget with three seeded pending decisions.
-2. *"Give me the pulse for the Search Copilot Readiness initiative."*
+2. *"What did we decide about Search Copilot readiness?"*
+   Expected: memory search results with prior decision context and linked artifacts.
+3. *"Give me the pulse for the Search Copilot Readiness initiative."*
    Expected: initiative-pulse widget with health + milestones + recent activity.
-3. *"Show me what the OrgX agents are doing right now."*
+4. *"Show me what the OrgX agents are doing right now."*
    Expected: agent-status widget with the seeded roster.
-4. *"Scaffold a launch initiative with two workstreams, one milestone each, and two tasks per milestone."*
+5. *"Scaffold a launch initiative with two workstreams, one milestone each, and two tasks per milestone."*
    Expected: scaffolded-initiative widget with the newly-created hierarchy.
 
 ## OAuth callback support

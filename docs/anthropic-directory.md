@@ -4,11 +4,12 @@ This checklist is the repository-side handoff for Anthropic MCP Directory submis
 
 ## Scope
 
-OrgX MCP is a remote MCP server for:
+OrgX MCP is a remote MCP server for organizational memory and agent orchestration:
 
-- reviewing pending decisions,
-- querying org memory,
-- checking initiative health,
+- remembering and recalling decisions,
+- querying team memory and artifact context,
+- reviewing pending agent approvals,
+- checking initiative health and blockers,
 - scaffolding initiative hierarchies,
 - assigning work to OrgX agents,
 - rendering OrgX widgets in MCP Apps-compatible hosts.
@@ -28,9 +29,9 @@ Before submission, prepare all of the following:
 5. If a firewall or IP allowlist is enabled, Claude IP ranges allowlisted per Anthropic guidance.
 6. Support, privacy, and security docs linked from the README.
 7. Authenticated OrgX review routes available for the reviewer account:
-   - `GET https://useorgx.com/api/review/anthropic/status`
-   - `POST https://useorgx.com/api/review/anthropic/bootstrap`
-   - `POST https://useorgx.com/api/review/anthropic/reset`
+   - `GET https://useorgx.com/api/review/sessions/<token>/status`
+   - `POST https://useorgx.com/api/review/sessions/<token>/bootstrap`
+   - `POST https://useorgx.com/api/review/sessions/<token>/reset`
 8. Reviewer runbook and release-manager checklist included in this repository.
 
 ## Pre-submission checks
@@ -48,7 +49,7 @@ pnpm directory:preflight
 
 Reviewers should be able to perform all of these on the provided account:
 
-1. Read-only flow: `get_pending_decisions`, `get_agent_status`, `query_org_memory`, `get_initiative_pulse`.
+1. Read-only flow: `approve_agent_work action=list`, `get_agent_status`, `recall_memory`, `track_project_progress`.
 2. Scoped write flow: approve or reject a seeded pending decision.
 3. Hierarchy flow: scaffold a test initiative with workstreams, milestones, and tasks.
 4. Widget flow: verify the corresponding widget renders for at least decisions, initiative pulse, agent status, and scaffolded initiative.
