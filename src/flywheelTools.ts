@@ -50,15 +50,20 @@ export const FLYWHEEL_TOOL_DEFINITIONS = [
     description:
       'Record a business outcome (deal closed, meeting booked, cycle time reduced). Agents can self-report outcomes they detect. Triggers attribution inference to connect outcomes to receipts.',
     inputSchema: z.object({
-      workspace_id: z.string().describe('Workspace ID'),
-      outcome_type_key: z.string().describe('Outcome type key: deal_closed, meeting_booked, etc.'),
+      workspace_id: z.string().optional().describe('Workspace ID'),
+      workspaceId: z.string().optional().describe('CamelCase alias for workspace_id'),
+      outcome_type_key: z.string().optional().describe('Outcome type key: deal_closed, meeting_booked, etc.'),
+      outcomeTypeKey: z.string().optional().describe('CamelCase alias for outcome_type_key'),
       outcome_value: z.number().optional().describe('Value in the outcome type unit (e.g., USD amount)'),
+      outcomeValue: z.number().optional().describe('CamelCase alias for outcome_value'),
       source: z
         .enum(['manual', 'agent_self_report', 'crm_webhook', 'linear_sync'])
         .default('manual')
         .describe('Source that observed or reported the outcome'),
       source_id: z.string().optional().describe('External source ID for deduplication'),
+      sourceId: z.string().optional().describe('CamelCase alias for source_id'),
       occurred_at: z.string().optional().describe('ISO datetime when the outcome occurred'),
+      occurredAt: z.string().optional().describe('CamelCase alias for occurred_at'),
       metadata: z.record(z.unknown()).optional().describe('Additional context'),
     }),
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },

@@ -266,8 +266,13 @@ function formatListEntities(
     | undefined;
   const entityType = opts.entityType || str(data.type);
 
-  const total = pagination?.total ?? items.length;
-  const header = `${entityType}s: showing ${items.length} of ${total}${
+  const total =
+    typeof pagination?.total === 'number' && pagination.total >= 0
+      ? pagination.total
+      : null;
+  const header = `${entityType}s: showing ${items.length}${
+    total !== null ? ` of ${total}` : ''
+  }${
     pagination?.has_more ? ' (more available)' : ''
   }`;
 
@@ -383,7 +388,13 @@ function formatEntityAction(
   const message = str(data.message);
 
   if (message) return `${success ? '✓' : '✗'} ${message}`;
-  return `${success ? '✓' : '✗'} Action '${action}' completed`;
+  const resolvedAction = str(data._action) || str(data.action) || action;
+  const entityType = str(data.entity_type) || str(data.type);
+  const entityId = str(data.entity_id) || str(data.id);
+  const target = entityType
+    ? `${entityType}${entityId ? ` ${entityId}` : ''}`
+    : 'entity';
+  return `${success ? '✓' : '✗'} ${resolvedAction} completed for ${target}`;
 }
 
 // ---------------------------------------------------------------------------

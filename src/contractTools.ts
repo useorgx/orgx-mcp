@@ -10,6 +10,7 @@ import {
   WIDGET_URIS,
   lifecycleEntityTypeEnum,
 } from './toolDefinitions';
+import { FLYWHEEL_TOOL_DEFINITIONS } from './flywheelTools';
 
 export const CONTRACT_TOOL_DEFINITIONS = [
   {
@@ -474,11 +475,22 @@ export type KnownToolContract = {
     | 'plan_session'
     | 'client_integration'
     | 'stream'
+    | 'flywheel'
     | 'contract'
     | 'inline';
 };
 
 export function getKnownToolContracts(): KnownToolContract[] {
+  const liftInputSchema = (
+    inputSchema: unknown
+  ): Record<string, z.ZodTypeAny> | undefined => {
+    if (!inputSchema) return undefined;
+    if (inputSchema instanceof z.ZodObject) {
+      return inputSchema.shape as Record<string, z.ZodTypeAny>;
+    }
+    return inputSchema as Record<string, z.ZodTypeAny>;
+  };
+
   const liftContract = (
     tool: {
       id: string;
@@ -492,7 +504,7 @@ export function getKnownToolContracts(): KnownToolContract[] {
     source: KnownToolContract['source']
   ): KnownToolContract => ({
     ...tool,
-    inputSchema: tool.inputSchema as Record<string, z.ZodTypeAny> | undefined,
+    inputSchema: liftInputSchema(tool.inputSchema),
     source,
   });
 
@@ -503,6 +515,7 @@ export function getKnownToolContracts(): KnownToolContract[] {
       liftContract(tool, 'client_integration')
     ),
     ...STREAM_TOOL_DEFINITIONS.map((tool) => liftContract(tool, 'stream')),
+    ...FLYWHEEL_TOOL_DEFINITIONS.map((tool) => liftContract(tool, 'flywheel')),
     ...CONTRACT_TOOL_DEFINITIONS.map((tool) => liftContract(tool, 'contract')),
   ];
 
