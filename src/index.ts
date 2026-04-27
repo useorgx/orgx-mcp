@@ -32,7 +32,10 @@ import { resolveProfileToolSet } from './toolProfiles';
 import { withCorsAndHeaders, withSseKeepAlive } from './mcpTransport';
 import { withSecurityHeaders } from './securityHeaders';
 import { callOrgxApiJson, callOrgxApiRaw, OrgXApiError } from './orgxApi';
-import { batchCreateEntities as runBatchCreateEntities } from './batchCreate';
+import {
+  batchCreateEntities as runBatchCreateEntities,
+  validateEntityCreatePayloadContract,
+} from './batchCreate';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
 import {
   captureWorkerPosthogEvent,
@@ -3211,6 +3214,17 @@ export class OrgXMcp extends McpAgent<
       };
     }
 
+    const contractError = validateEntityCreatePayloadContract(
+      payload,
+      `create_${type}`
+    );
+    if (contractError) {
+      return this.toolError(contractError, {
+        code: 'invalid_entity_payload',
+        status: 400,
+      });
+    }
+
     const response = await callOrgxApiJson(
       this.env,
       '/api/entities',
@@ -4882,7 +4896,9 @@ export class OrgXMcp extends McpAgent<
           priority: z
             .enum(['low', 'medium', 'high', 'urgent'])
             .optional()
-            .describe('Priority level'),
+            .describe(
+              'Priority level. For type=task use low, medium, or high; use high instead of urgent.'
+            ),
           persona: z
             .string()
             .optional()
@@ -5292,6 +5308,17 @@ export class OrgXMcp extends McpAgent<
             if (args.options) payload.options = args.options;
           }
 
+          const contractError = validateEntityCreatePayloadContract(
+            payload,
+            'create_entity'
+          );
+          if (contractError) {
+            return this.toolError(contractError, {
+              code: 'invalid_entity_payload',
+              status: 400,
+            });
+          }
+
           const response = await callOrgxApiJson(
             this.env,
             '/api/entities',
@@ -5636,7 +5663,7 @@ export class OrgXMcp extends McpAgent<
             .min(1)
             .max(100)
             .describe(
-              "Array of entity payloads. Each item must include at least 'type' and its required fields."
+              "Array of entity payloads. Each item must include at least 'type' and its required fields. Contract hints: task priority is low|medium|high, not urgent; task status is todo|in_progress|done|blocked; milestone status is planned|in_progress|completed|at_risk|cancelled, not active."
             ),
           owner_id: z
             .string()
@@ -5814,7 +5841,11 @@ export class OrgXMcp extends McpAgent<
         priority: z
           .enum(['low', 'medium', 'high'])
           .optional()
-          .describe('Task priority'),
+          .describe('Task priority. Use "high" for urgent work.'),
+        status: z
+          .enum(['todo', 'in_progress', 'done', 'blocked'])
+          .optional()
+          .describe('Optional task status. Use "in_progress" for active task execution.'),
         depends_on: z
           .array(z.string())
           .optional()
@@ -5854,6 +5885,10 @@ export class OrgXMcp extends McpAgent<
         title: z.string().min(1).describe('Milestone title'),
         description: z.string().optional().describe('Milestone description'),
         due_date: z.string().optional().describe('Optional milestone due date'),
+        status: z
+          .enum(['planned', 'in_progress', 'completed', 'at_risk', 'cancelled'])
+          .optional()
+          .describe('Optional milestone status. Use "in_progress" instead of "active".'),
         depends_on: z
           .array(z.string())
           .optional()
@@ -5941,7 +5976,7 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Scaffold an initiative hierarchy',
         description:
-          'Turn a goal, roadmap, launch, or feature plan into executable workstreams, milestones, and tasks. Also known as: scaffold project, create roadmap, generate execution plan. USE WHEN: user wants to plan a new initiative from scratch. NEXT: Use entity_action type=initiative action=launch to start execution (auto-launches by default). DO NOT USE: for adding a single task to an existing initiative — use create_entity instead.',
+          'Turn a goal, roadmap, launch, or feature plan into executable workstreams, milestones, and tasks. Contract hints: task priority is low|medium|high (use high for urgent work); milestone status is planned|in_progress|completed|at_risk|cancelled (use in_progress, not active). Also known as: scaffold project, create roadmap, generate execution plan. USE WHEN: user wants to plan a new initiative from scratch. NEXT: Use entity_action type=initiative action=launch to start execution (auto-launches by default). DO NOT USE: for adding a single task to an existing initiative — use create_entity instead.',
         inputSchema: this.withClientContext({
           title: z.string().min(1).describe('Initiative title'),
           summary: z.string().optional().describe('Initiative summary'),
