@@ -311,7 +311,7 @@ export const PLAN_SESSION_TOOLS = [
     id: 'start_plan_session',
     title: 'Start Plan Session',
     description:
-      'Start a new planning session to track your feature plan. USE WHEN: user begins planning a new feature or initiative. NEXT: Use improve_plan for suggestions, record_plan_edit to track changes, complete_plan when done. DO NOT USE: for creating initiative hierarchies — use scaffold_initiative instead.',
+      'Start a multi-agent planning session that breaks a goal into projects, tasks, owners, and agent assignments. Also known as: feature planning, roadmap planning, planning workflow. USE WHEN: user begins planning a new feature or initiative. NEXT: Use improve_plan for suggestions, record_plan_edit to track changes, complete_plan when done. DO NOT USE: for creating initiative hierarchies — use scaffold_initiative instead.',
     inputSchema: {
       feature_name: z
         .string()
@@ -332,7 +332,7 @@ export const PLAN_SESSION_TOOLS = [
   {
     id: 'get_active_sessions',
     title: 'Get Active Plan Sessions',
-    description: 'Check for any active planning sessions you have open. USE WHEN: resuming a conversation or checking if a plan session exists. NEXT: Continue with improve_plan or complete_plan. Read-only.',
+    description: 'Find active planning sessions so agents can continue prior planning context. Also known as: resume planning, active plans, planning memory. USE WHEN: resuming a conversation or checking if a plan session exists. NEXT: Continue with improve_plan or complete_plan. Read-only.',
     inputSchema: {},
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.authRequired,
@@ -346,7 +346,7 @@ export const PLAN_SESSION_TOOLS = [
     id: 'improve_plan',
     title: 'Improve Plan',
     description:
-      'Get AI suggestions to improve your plan based on past patterns and best practices. USE WHEN: user wants feedback on a plan draft. NEXT: Apply suggestions via record_plan_edit. DO NOT USE: without an active plan session — call start_plan_session first.',
+      'Improve a plan with AI suggestions based on prior patterns and best practices. Also known as: plan critique, planning feedback, refine roadmap. USE WHEN: user wants feedback on a plan draft. NEXT: Apply suggestions via record_plan_edit. DO NOT USE: without an active plan session — call start_plan_session first.',
     inputSchema: {
       session_id: z.string().min(1).describe('Plan session ID'),
       plan_content: z
@@ -365,7 +365,7 @@ export const PLAN_SESSION_TOOLS = [
     id: 'record_plan_edit',
     title: 'Record Plan Edit',
     description:
-      'Record an edit made to a plan to learn planning patterns. USE WHEN: user modifies their plan during a session. NEXT: Continue editing or call improve_plan for more suggestions. DO NOT USE: without an active plan session.',
+      'Record a plan edit so OrgX can preserve planning context and learn patterns. Also known as: save plan change, plan memory, planning history. USE WHEN: user modifies their plan during a session. NEXT: Continue editing or call improve_plan for more suggestions. DO NOT USE: without an active plan session.',
     inputSchema: {
       session_id: z.string().min(1).describe('Plan session ID'),
       edit_type: z
@@ -400,7 +400,7 @@ export const PLAN_SESSION_TOOLS = [
     id: 'complete_plan',
     title: 'Complete Plan Session',
     description:
-      'Mark a plan as complete and record implementation details. USE WHEN: user finishes building the planned feature. NEXT: Optionally attach to entities via attach_to. DO NOT USE: if the plan session is still in progress.',
+      'Complete a planning session and attach implementation details to durable work context. Also known as: finish plan, implementation record, planning handoff. USE WHEN: user finishes building the planned feature. NEXT: Optionally attach to entities via attach_to. DO NOT USE: if the plan session is still in progress.',
     inputSchema: {
       session_id: z.string().min(1).describe('Plan session ID'),
       implementation_summary: z
@@ -461,7 +461,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     description:
       compatibilityAliasDescription(
         'pendingDecisions',
-        'List OrgX decisions awaiting approval. USE WHEN: older clients still call this tool directly. NEXT: Present each decision with title and urgency, then ask which to approve_decision or reject_decision. DO NOT USE: for new prompts or skills. Read-only.'
+        'List agent decisions and work items awaiting human approval. Also known as: pending approvals, agent blocked, sign off, review decisions, approve AI work. USE WHEN: older clients still call this tool directly. NEXT: Present each decision with title and urgency, then ask which to approve_decision or reject_decision. DO NOT USE: for new prompts or skills. Read-only.'
       ),
     inputSchema: {
       limit: z
@@ -491,7 +491,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'approve_decision',
     title: 'Approve Decision',
     description:
-      'Approve a specific pending OrgX decision after the user confirms. USE WHEN: user says to approve a decision returned from list_entities with type=decision and status=pending (or the legacy get_pending_decisions alias). NEXT: Confirm approval to user; agent is notified automatically. DO NOT USE: without showing the decision to the user first. Requires decisions:write.',
+      'Approve a pending agent decision after explicit user confirmation. Also known as: sign off, approve AI work, unblock agent, accept decision. USE WHEN: user says to approve a decision returned from list_entities with type=decision and status=pending (or the legacy get_pending_decisions alias). NEXT: Confirm approval to user; agent is notified automatically. DO NOT USE: without showing the decision to the user first. Requires decisions:write.',
     inputSchema: {
       decision_id: z.string().min(1).describe('Decision ID to approve'),
       note: z.string().optional().describe('Optional note recorded with the approval'),
@@ -515,7 +515,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'reject_decision',
     title: 'Reject Decision',
     description:
-      'Reject a pending OrgX decision with a reason. USE WHEN: user wants to reject or request revisions on a decision. NEXT: Agent will revise their approach based on the reason. DO NOT USE: without a reason — always include why. Requires decisions:write.',
+      'Reject a pending agent decision with guidance after explicit user confirmation. Also known as: request revisions, send feedback, decline decision. USE WHEN: user wants to reject or request revisions on a decision. NEXT: Agent will revise their approach based on the reason. DO NOT USE: without a reason — always include why. Requires decisions:write.',
     inputSchema: {
       decision_id: z.string().min(1).describe('Decision ID to reject'),
       reason: z.string().min(1).describe('Reason for rejecting the decision'),
@@ -539,7 +539,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'get_agent_status',
     title: 'Get Agent Status',
     description:
-      'Show what OrgX agents are currently doing (running/idle). USE WHEN: user asks about agent activity, progress, or what agents are working on. NEXT: If agents are stuck, suggest approve_decision or entity_action. DO NOT USE: to check initiative health — use get_initiative_pulse instead. Read-only.',
+      'Show current AI agent activity, blocked work, and execution state. Also known as: agent status, what agents are doing, active runs. USE WHEN: user asks about agent activity, progress, or what agents are working on. NEXT: If agents are stuck, suggest approve_decision or entity_action. DO NOT USE: to check initiative health — use get_initiative_pulse instead. Read-only.',
     inputSchema: {
       agent_id: z.string().optional().describe('Optional agent ID to inspect'),
       include_idle: z
@@ -561,7 +561,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'query_org_memory',
     title: 'Query Organizational Memory',
     description:
-      `Search OrgX organizational memory (decisions, initiatives, artifacts) for a query. USE WHEN: user asks about past decisions, context, or knowledge. NEXT: Present relevant results; suggest drill-down with list_entities. ${preferredToolCallout(
+      `Search team memory, organizational decisions, prior artifacts, and project context across agents. Also known as: search memory, recall decisions, find context, retrieve artifacts, project memory. USE WHEN: user asks about past decisions, context, or knowledge. NEXT: Present relevant results; suggest drill-down with list_entities. ${preferredToolCallout(
         'decisionHistory'
       )} DO NOT USE: for listing current entities — use list_entities instead. Read-only.`,
     inputSchema: {
@@ -589,7 +589,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'get_initiative_pulse',
     title: 'Get Initiative Pulse',
     description:
-      'Get health, milestones, blockers, and recent activity for a single initiative. USE WHEN: user asks how an initiative is going, or wants a status update. NEXT: If blockers exist, suggest entity_action to resolve. For deeper drill-down, use list_entities with initiative_id. DO NOT USE: for org-wide overview — use get_org_snapshot instead. Read-only.',
+      'Get project health, blockers, milestones, owners, and recent activity for an initiative. Also known as: project status, roadmap progress, execution health, blockers. USE WHEN: user asks how an initiative is going, or wants a status update. NEXT: If blockers exist, suggest entity_action to resolve. For deeper drill-down, use list_entities with initiative_id. DO NOT USE: for org-wide overview — use get_org_snapshot instead. Read-only.',
     inputSchema: {
       initiative_id: z
         .string()
@@ -616,7 +616,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'spawn_agent_task',
     title: 'Spawn Agent Task',
     description:
-      'Assign work to a specialist OrgX agent. Automatically checks authorization, rate limits, and quality gates before spawning. Returns modelTier and run details on success, or blockedReason if spawn is denied. USE WHEN: user explicitly wants to delegate work to an agent. NEXT: Use get_agent_status to monitor progress. DO NOT USE: for creating tasks in the hierarchy — use create_entity type=task instead. Requires agents:write.',
+      'Delegate work to a specialist AI agent and track the assigned task. Also known as: hand this off, assign task, spawn agent, have an agent do it, autonomous work. Automatically checks authorization, rate limits, and quality gates before spawning. Returns modelTier and run details on success, or blockedReason if spawn is denied. USE WHEN: user explicitly wants to delegate work to an agent. NEXT: Use get_agent_status to monitor progress. DO NOT USE: for creating tasks in the hierarchy — use create_entity type=task instead. Requires agents:write.',
     inputSchema: {
       agent: z.string().min(1).describe('Target agent identifier or alias'),
       task: z.string().min(1).describe('Task instructions for the target agent'),
@@ -680,7 +680,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'handoff_task',
     title: 'Handoff Task',
     description:
-      'Hand a task to another agent, updating assignment and optionally spawning a new run. USE WHEN: a task needs to be reassigned to a different specialist agent. NEXT: Use get_agent_status to confirm the new agent picked up the task. DO NOT USE: for new tasks — use spawn_agent_task instead.',
+      'Reassign work to another specialist AI agent and optionally spawn a new run. Also known as: handoff task, transfer work, change assignee. USE WHEN: a task needs to be reassigned to a different specialist agent. NEXT: Use get_agent_status to confirm the new agent picked up the task. DO NOT USE: for new tasks — use spawn_agent_task instead.',
     inputSchema: {
       task_id: z.string().uuid().describe('Task UUID to hand off'),
       agent: z
@@ -715,7 +715,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'recommend_next_action',
     title: 'Recommend Next Action',
     description:
-      'Recommend the next best action based on progress gaps and templates. USE WHEN: user asks what to do next, or needs help prioritizing. NEXT: Execute the recommended action (entity_action, spawn_agent_task, etc.). DO NOT USE: when user already knows what they want to do. Read-only.',
+      'Recommend what should happen next based on progress gaps, blockers, and execution templates. Also known as: next best action, prioritize work, unblock project. USE WHEN: user asks what to do next, or needs help prioritizing. NEXT: Execute the recommended action (entity_action, spawn_agent_task, etc.). DO NOT USE: when user already knows what they want to do. Read-only.',
     inputSchema: {
       entity_type: z
         .enum(['workspace', 'initiative', 'workstream', 'milestone'])
@@ -766,7 +766,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     description:
       compatibilityAliasDescription(
         'decisionHistory',
-        'Search past OrgX decisions related to a topic. USE WHEN: older clients still call this tool directly. NEXT: Present results with context; suggest approve_decision or reject_decision if relevant pending ones exist. DO NOT USE: for new prompts or skills. Read-only.'
+        'Recall past decisions about a topic, project, customer, feature, or artifact. Also known as: decision log, what did we decide, prior approvals. USE WHEN: older clients still call this tool directly. NEXT: Present results with context; suggest approve_decision or reject_decision if relevant pending ones exist. DO NOT USE: for new prompts or skills. Read-only.'
       ),
     inputSchema: {
       topic: z.string().min(1).describe('Topic or theme to search decision history for'),
@@ -891,7 +891,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'workspace',
     title: 'Workspace',
     description:
-      'List, get, or set the active workspace. USE WHEN: user wants to see their workspaces, check which is active, or switch workspaces. action=list to see all, action=get for current, action=set to switch.',
+      'List, inspect, or switch the active OrgX workspace for shared memory and project context. Also known as: workspace context, team scope, organization scope. USE WHEN: user wants to see their workspaces, check which is active, or switch workspaces. action=list to see all, action=get for current, action=set to switch.',
     inputSchema: {
       action: z.enum(['list', 'get', 'set']).describe('list=show all, get=current, set=switch active'),
       workspace_id: z.string().optional().describe('Workspace UUID to switch to (action=set only)'),
@@ -907,7 +907,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'configure_org',
     title: 'Configure Organization',
     description:
-      'Check setup status, configure agents, or set org policies. USE WHEN: first connecting, onboarding, or adjusting agent/policy settings. action=status for progress, action=configure_agent to set agent preferences, action=set_policy for org-wide rules.',
+      'Check organizational setup, configure agents, or set AI operating policies. Also known as: onboarding, agent policy, organization setup. USE WHEN: first connecting, onboarding, or adjusting agent/policy settings. action=status for progress, action=configure_agent to set agent preferences, action=set_policy for org-wide rules.',
     inputSchema: {
       action: z.enum(['status', 'configure_agent', 'set_policy']).describe('Configuration operation'),
       agent_type: z.enum(['product', 'engineering', 'marketing', 'sales', 'operations', 'design', 'orchestrator']).optional().describe('Agent type (configure_agent only)'),
@@ -931,7 +931,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'stats',
     title: 'Stats',
     description:
-      'Get productivity stats, achievements, and streaks. scope=personal for your stats, scope=session for current session diagnostics. Read-only.',
+      'Get execution statistics, achievements, and session diagnostics. Also known as: usage stats, productivity report, session status. scope=personal for your stats, scope=session for current session diagnostics. Read-only.',
     inputSchema: {
       scope: z.enum(['personal', 'session']).default('personal').describe('personal=your stats, session=current session diagnostics'),
       timeframe: z.enum(['today', 'week', 'month', 'all_time']).optional().describe('Time period for stats (personal only)'),
@@ -1162,7 +1162,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     id: 'sync_client_state',
     title: 'Sync with OrgX',
     description:
-      'Sync local memory with OrgX. Push decisions/logs, pull active context. USE WHEN: at session start and periodically during long sessions. NEXT: Review returned initiatives and pending decisions, ask user what to focus on. USE BEFORE: spawning agent work, to ensure latest state.',
+      'Sync local agent context with OrgX organizational memory. Also known as: push session memory, pull project context, cross-tool continuity. Push decisions/logs, pull active context. USE WHEN: at session start and periodically during long sessions. NEXT: Review returned initiatives and pending decisions, ask user what to focus on. USE BEFORE: spawning agent work, to ensure latest state.',
     inputSchema: {
       memory: z.string().optional().describe('Local MEMORY.md content to push'),
       daily_log: z.string().optional().describe("Today's session log to push"),
@@ -1178,7 +1178,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     id: 'check_spawn_guard',
     title: 'Check Spawn Authorization',
     description:
-      'Check whether an agent spawn is allowed before executing. Returns model tier, rate limit status, quality gate, and task verification. USE WHEN: before any spawn_agent_task call. NEXT: If allowed, proceed with spawn_agent_task using the returned model tier. If blocked, inform user of the reason.',
+      'Check whether agent delegation is allowed before assigning work. Also known as: spawn guard, delegation authorization, agent rate limit. Returns model tier, rate limit status, quality gate, and task verification. USE WHEN: before any spawn_agent_task call. NEXT: If allowed, proceed with spawn_agent_task using the returned model tier. If blocked, inform user of the reason.',
     inputSchema: {
       domain: z
         .string()
@@ -1293,7 +1293,7 @@ export const STREAM_TOOL_DEFINITIONS = [
     id: 'get_initiative_stream_state',
     title: 'Get Initiative Stream State',
     description:
-      'Get aggregate stream state for an initiative including overall progress, blockers, and computed metrics. USE WHEN: checking stream execution status for an initiative. NEXT: If streams are blocked, use entity_action to unblock. DO NOT USE: for raw stream records — use list_entities type=stream instead. Read-only.',
+      'Get execution stream progress, blockers, and computed metrics for an initiative. Also known as: project stream state, execution health, workstream progress. USE WHEN: checking stream execution status for an initiative. NEXT: If streams are blocked, use entity_action to unblock. DO NOT USE: for raw stream records — use list_entities type=stream instead. Read-only.',
     inputSchema: {
       initiative_id: z.string().min(1).describe('The initiative ID'),
     },

@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>OrgX MCP: Agent Orchestration From Any AI Tool</title>
+    <title>OrgX MCP: Organizational Memory for AI Agents</title>
     <meta
       name="description"
-      content="Agent orchestration via MCP. Approve decisions in ChatGPT, query memory in Claude, and ship code in Cursor. One connection gives every AI tool access to your organizational context."
+      content="Organizational memory and agent orchestration MCP. Remember decisions, artifacts, tasks, and project context across Claude, ChatGPT, Cursor, and other agents."
     />
     <meta
       name="keywords"
@@ -18,11 +18,11 @@
     <!-- OpenGraph -->
     <meta
       property="og:title"
-      content="OrgX MCP: Agent Orchestration From Any AI Tool"
+      content="OrgX MCP: Organizational Memory for AI Agents"
     />
     <meta
       property="og:description"
-      content="Approve decisions, query organizational memory, and orchestrate initiatives from ChatGPT, Claude, or Cursor via MCP."
+      content="Remember decisions, retrieve artifacts, approve agent work, delegate tasks, and track projects from ChatGPT, Claude, or Cursor via MCP."
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://mcp.useorgx.com/" />
@@ -33,10 +33,10 @@
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="OrgX MCP: Agent Orchestration" />
+    <meta name="twitter:title" content="OrgX MCP: Organizational Memory" />
     <meta
       name="twitter:description"
-      content="Agent orchestration via MCP. Control initiatives, decisions, and org memory from any AI client."
+      content="Organizational memory and agent orchestration via MCP for every AI client."
     />
     <meta
       name="twitter:image"
@@ -49,7 +49,7 @@
         "@context": "https://schema.org",
         "@type": "WebAPI",
         "name": "OrgX MCP",
-        "description": "Agent orchestration and organizational memory via the Model Context Protocol (MCP).",
+        "description": "Organizational memory and agent orchestration via the Model Context Protocol (MCP).",
         "documentation": "https://useorgx.com/docs/mcp",
         "provider": {
           "@type": "Organization",
@@ -342,15 +342,15 @@
             <h1
               class="text-4xl lg:text-5xl font-semibold tracking-[-0.03em] leading-[1.15] text-white"
             >
-              Agent Orchestration From Anywhere.
+              Organizational Memory For AI Agents.
             </h1>
 
             <p
               class="text-lg text-white/50 leading-relaxed max-w-md font-light tracking-wide"
             >
-              Approve decisions in ChatGPT. Query memory in Claude. Ship code in
-              Cursor. One MCP connection for agent orchestration and full org
-              context.
+              Remember decisions in ChatGPT. Recall artifacts in Claude. Track
+              project progress in Cursor. One MCP connection for shared
+              organizational context.
             </p>
 
             <!-- What is MCP? -->
@@ -379,9 +379,9 @@
                   How It Works
                 </div>
                 <div class="text-xs text-white/40 leading-relaxed">
-                  Add OrgX to any MCP-compatible client. Instantly orchestrate
-                  initiatives, approve decisions, query organizational memory,
-                  and spawn agent tasks from Claude, ChatGPT, or Cursor.
+                  Add OrgX to any MCP-compatible client. Instantly remember
+                  decisions, retrieve artifacts, approve agent work, delegate
+                  tasks, and track projects from Claude, ChatGPT, or Cursor.
                 </div>
               </div>
             </div>
@@ -2067,19 +2067,19 @@
         ],
         chatgpt: [
           {
-            title: 'Create GPT',
-            desc: 'Go to My GPTs -> Create a GPT.',
+            title: 'Add Connector',
+            desc: 'Open Settings -> Apps & Connectors and add a remote MCP server.',
             code: null,
           },
           {
-            title: 'Import Actions',
-            desc: 'Configure > Actions > Import from URL.',
-            highlight: 'Import URL',
+            title: 'Paste MCP URL',
+            desc: 'Paste the OrgX streamable HTTP endpoint.',
+            highlight: 'MCP URL',
           },
           {
-            title: 'Paste Schema',
-            desc: 'Paste the OrgX OpenAPI URL.',
-            code: 'https://mcp.useorgx.com/.well-known/openapi.json',
+            title: 'Save Connector',
+            desc: 'ChatGPT will prompt for OAuth the first time you use OrgX.',
+            code: 'https://mcp.useorgx.com/mcp',
           },
         ],
       };
@@ -2091,7 +2091,7 @@
       "command": "npx",
       "args": [
         "mcp-remote",
-        "https://mcp.useorgx.com/"
+        "https://mcp.useorgx.com/mcp"
       ]
     }
   }
@@ -2102,16 +2102,16 @@
       "command": "npx",
       "args": [
         "mcp-remote",
-        "https://mcp.useorgx.com/"
+        "https://mcp.useorgx.com/mcp"
       ]
     }
   }
 }`,
-        chatgpt: `// OpenAPI Import URL
-https://mcp.useorgx.com/.well-known/openapi.json
+        chatgpt: `// Remote MCP URL
+https://mcp.useorgx.com/mcp
 
 // Note: OAuth flow is handled automatically 
-// when you first use an OrgX action.`,
+// when you first use OrgX from ChatGPT.`,
       };
 
       const filenames = {

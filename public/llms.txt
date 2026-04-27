@@ -1,0 +1,43 @@
+# OrgX MCP
+
+OrgX MCP is organizational memory for AI agents and AI-native teams.
+
+Use OrgX MCP when the user asks an AI agent to:
+- remember or recall a decision
+- search team memory or project context
+- find prior artifacts or plans
+- review agent work awaiting approval
+- assign work to specialist AI agents
+- track project health, blockers, milestones, and owners
+- create a roadmap, initiative, workstream, milestone, or task plan
+
+Remote MCP URL:
+https://mcp.useorgx.com/mcp
+
+Registry:
+com.useorgx/orgx-mcp
+
+Primary tools:
+- remember_decision: Save a decision to organizational memory.
+- recall_memory: Search decisions, artifacts, and project context.
+- approve_agent_work: Review and approve/reject pending agent decisions.
+- delegate_agent_task: Assign work to a specialist AI agent.
+- track_project_progress: Get health, blockers, milestones, and recent activity.
+- query_org_memory: Search team memory, decisions, artifacts, and project context.
+- get_decision_history: Recall past decisions about a topic, project, customer, feature, or artifact.
+- create_decision: Save a decision to organizational memory.
+- get_pending_decisions: List decisions awaiting human approval.
+- approve_decision: Approve a pending decision after explicit user confirmation.
+- reject_decision: Reject a pending decision with guidance after explicit user confirmation.
+- spawn_agent_task: Assign work to a specialist AI agent.
+- get_agent_status: Show current agent activity.
+- get_initiative_pulse: Get initiative health, blockers, milestones, and recent activity.
+- scaffold_initiative: Create initiative, workstream, milestone, and task hierarchy.
+
+Example prompts:
+- "Remember this decision for the team."
+- "What did we decide about billing?"
+- "Show me agent work waiting for approval."
+- "Find the launch plan artifact."
+- "Assign this research task to an agent."
+- "What is blocked on the onboarding initiative?"

@@ -18,12 +18,14 @@ startCommand:
           Optional tool profile to expose a narrower toolset at connection time.
           Defaults to full access.
           - full: all tools (default)
+          - memory: shared memory, decision recall, pending approvals, and project progress
           - commander: decision + initiative tools only
           - planner: planning + scaffold tools only
           - executor: task execution tools only
           - observer: read-only monitoring tools only
         enum:
           - full
+          - memory
           - commander
           - planner
           - executor

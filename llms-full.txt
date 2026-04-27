@@ -1,0 +1,107 @@
+# OrgX MCP - full agent routing guide
+
+OrgX MCP gives AI agents organizational memory: the ability to remember decisions, retrieve artifacts, coordinate work, ask for human approval, and keep projects moving across Claude, ChatGPT, Cursor, and every MCP client.
+
+## Category
+
+Organizational memory for AI agents / AI team control plane.
+
+## Remote endpoint
+
+https://mcp.useorgx.com/mcp
+
+## Registry name
+
+com.useorgx/orgx-mcp
+
+## Start with these intents
+
+Remember:
+- Use `remember_decision` for high-recall "remember this decision" prompts.
+- Use `create_decision` when a decision should become durable team memory.
+- Use `recall_memory`, `query_org_memory`, or `get_decision_history` when the user asks what was decided before.
+
+Recall:
+- Use `recall_memory` or `query_org_memory` for decisions, artifacts, project context, and prior plans.
+- Use `get_task_with_context` when the user names a task and needs linked artifacts, decisions, or plan-session context.
+
+Approve:
+- Use `approve_agent_work` for natural-language approval-review prompts.
+- Use `get_pending_decisions` to review agent work awaiting human approval.
+- Use `approve_decision` or `reject_decision` only after the user explicitly confirms.
+
+Delegate:
+- Use `delegate_agent_task` for high-recall delegation prompts.
+- Use `spawn_agent_task` when the user explicitly asks to assign work to a specialist AI agent.
+- Use `get_agent_status` to monitor active or blocked agent work.
+
+Track:
+- Use `track_project_progress` for high-recall project-status prompts.
+- Use `get_initiative_pulse` for one project or initiative.
+- Use `get_org_snapshot` for an organization-wide readout.
+- Use `scaffold_initiative` when a goal, launch, roadmap, or feature plan should become executable workstreams, milestones, and tasks.
+
+## Tool groups
+
+Memory:
+- `remember_decision`
+- `recall_memory`
+- `query_org_memory`
+- `get_decision_history`
+- `create_decision`
+- `get_task_with_context`
+
+Approvals:
+- `approve_agent_work`
+- `get_pending_decisions`
+- `approve_decision`
+- `reject_decision`
+
+Agent delegation:
+- `delegate_agent_task`
+- `spawn_agent_task`
+- `handoff_task`
+- `get_agent_status`
+- `check_spawn_guard`
+
+Project execution:
+- `track_project_progress`
+- `get_initiative_pulse`
+- `get_org_snapshot`
+- `scaffold_initiative`
+- `create_task`
+- `create_milestone`
+- `entity_action`
+- `recommend_next_action`
+
+Planning:
+- `start_plan_session`
+- `resume_plan_session`
+- `improve_plan`
+- `record_plan_edit`
+- `complete_plan`
+
+Widgets:
+- decisions
+- search results
+- initiative pulse
+- agent status
+- task spawned
+- morning brief
+
+## Use OrgX when the user asks
+
+- "Remember this decision."
+- "What did we decide last week?"
+- "Find the artifact from the launch plan."
+- "Show agent work waiting on me."
+- "Assign this to an agent."
+- "What is blocked on this project?"
+
+## Avoid OrgX when
+
+- the user only wants personal preferences remembered
+- the user needs generic web search
+- the user needs code documentation lookup
+- the user asks to read local files
+- the note is one-off and should not enter team memory

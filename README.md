@@ -1,10 +1,34 @@
-# OrgX MCP Worker
+# OrgX MCP - Organizational Memory for AI Agents
 
-A Cloudflare Workers deployment that exposes OrgX initiatives, milestones, tasks, org snapshots, and Stripe upgrades over the Model Context Protocol (MCP). The worker reuses the Next.js API routes inside this repo, so shipped business logic stays in one place.
+Give Claude, ChatGPT, Cursor, and other MCP clients a shared company memory.
+
+OrgX MCP lets agents remember decisions, recall artifacts, review pending approvals, assign work to specialist agents, track initiative health, and render interactive workflows in MCP Apps-compatible clients.
+
+## Try these prompts
+
+> Remember this decision for the team: we are moving onboarding analytics to PostHog.
+
+> What did we decide about billing?
+
+> Find the launch plan artifact.
+
+> Show me agent work waiting for approval.
+
+> Assign this research task to an agent.
+
+> What is blocked on the Growth Launch initiative?
+
+## Install
+
+Remote MCP URL:
+
+`https://mcp.useorgx.com/mcp`
+
+Use the Memory profile when you want OrgX to act as shared organizational memory for Claude, ChatGPT, Cursor, and AI agents. Use the Full profile when you want planning, task delegation, widgets, and initiative execution.
 
 ## What OrgX MCP Does
 
-OrgX MCP connects Claude and other MCP-capable clients to OrgX so users can:
+OrgX MCP is organizational memory for AI agents and AI-native teams. It connects Claude, ChatGPT, Cursor, and other MCP-capable clients to OrgX so users can:
 
 - review pending decisions and approvals,
 - inspect agent activity and initiative health,
@@ -17,6 +41,11 @@ OrgX MCP connects Claude and other MCP-capable clients to OrgX so users can:
 
 | Tool | Purpose |
 |------|---------|
+| `remember_decision` | High-recall wrapper for saving a decision to organizational memory. |
+| `recall_memory` | High-recall wrapper for searching decisions, artifacts, and project context. |
+| `approve_agent_work` | High-recall wrapper for reviewing or resolving pending agent approvals. |
+| `delegate_agent_task` | High-recall wrapper for assigning work to a specialist agent. |
+| `track_project_progress` | High-recall wrapper for initiative health, blockers, milestones, and owners. |
 | `get_pending_decisions` | List decisions awaiting approval. |
 | `approve_decision` / `reject_decision` | Resolve a pending decision inline. |
 | `get_initiative_pulse` | Health, milestones, blockers, recent activity for one initiative. |
@@ -32,6 +61,12 @@ OrgX MCP connects Claude and other MCP-capable clients to OrgX so users can:
 Full tool contract: `server.json` at the repo root — 35+ tools with OAuth
 scopes, input schemas, and OpenAI widget metadata. Call `orgx_describe_tool`
 from any MCP client to inspect a live contract.
+
+## Why OrgX instead of generic memory MCP?
+
+Personal memory remembers the user.
+
+Organizational memory remembers decisions, artifacts, teams, ownership, approvals, and execution state.
 
 ## Resources & widgets
 
@@ -54,6 +89,9 @@ publish a `LICENSE` file.
 - Security & Data Handling: [docs/security-data-handling.md](./docs/security-data-handling.md) and <https://github.com/useorgx/orgx-mcp/blob/main/docs/security-data-handling.md>
 - GitHub Presence: [docs/github-presence.md](./docs/github-presence.md) and <https://github.com/useorgx/orgx-mcp>
 - Anthropic Directory Review Guide: [docs/anthropic-directory.md](./docs/anthropic-directory.md) and <https://github.com/useorgx/orgx-mcp/blob/main/docs/anthropic-directory.md>
+- Connector Review Pack: [docs/review/connector-directory-pack.md](./docs/review/connector-directory-pack.md)
+- LLM Routing Guide: [llms.txt](./llms.txt) and [agents.md](./agents.md)
+- Directory Submission Copy: [directory-submissions/](./directory-submissions/)
 - Reviewer Runbook: [docs/anthropic-reviewer-runbook.md](./docs/anthropic-reviewer-runbook.md)
 - Release Manager Checklist: [docs/anthropic-release-manager-checklist.md](./docs/anthropic-release-manager-checklist.md)
 
@@ -73,6 +111,10 @@ pnpm sync:orgx
 ```
 
 Use `pnpm sync:orgx:check` to confirm the monorepo mirror is current before opening or merging a PR.
+
+## Maintainer / deployment notes
+
+A Cloudflare Workers deployment exposes OrgX initiatives, milestones, tasks, org snapshots, and Stripe upgrades over the Model Context Protocol (MCP). The worker reuses the Next.js API routes inside this repo, so shipped business logic stays in one place.
 
 ## Prerequisites
 
@@ -128,16 +170,17 @@ CI expects matching GitHub Secrets:
 - `ORGX_SERVICE_KEY`
 - `MCP_JWT_SECRET`
 
-The public MCP entrypoint is the bare root URL:
+The public MCP entrypoints are:
 
-- `POST /` – streamable HTTP for MCP clients
-- `GET /` – SSE when the client requests `text/event-stream`
+- `POST /mcp` – streamable HTTP for new MCP clients
+- `GET /sse` – SSE for legacy clients
 
-The raw `/mcp` and `/sse` routes are still used internally, but they sit behind the OAuth provider and are not the recommended discovery URLs for external clients.
+Use `https://mcp.useorgx.com/mcp` for client setup unless a legacy client
+explicitly asks for SSE.
 
 ## Cursor / Claude Configuration
 
-For local MCP clients like Cursor and Claude, point `mcp-remote` at the root MCP URL.
+For local MCP clients like Cursor and Claude, point `mcp-remote` at the streamable HTTP MCP URL.
 
 Hosted config discovery endpoints are metadata-only. Any local installer must prompt
 before writing files, keep generated Cursor assets under `.cursor/orgx/`, and avoid
@@ -152,7 +195,7 @@ Add the worker to Cursor's MCP config (macOS/Linux `~/.cursor/mcp.json`):
       "command": "npx",
       "args": [
         "mcp-remote",
-        "https://mcp.useorgx.com/",
+        "https://mcp.useorgx.com/mcp",
         "--header",
         "Authorization: Bearer <access-token>"
       ]
@@ -164,7 +207,7 @@ Add the worker to Cursor's MCP config (macOS/Linux `~/.cursor/mcp.json`):
 Quick CLI test:
 
 ```bash
-npx mcp-remote https://mcp.useorgx.com/ \
+npx mcp-remote https://mcp.useorgx.com/mcp \
   --header "Authorization: Bearer <access-token>" \
   --health-check
 ```
@@ -203,9 +246,9 @@ The reviewer environment is prepared inside the OrgX web app, not inside the MCP
 
 Authenticated OrgX routes for the dedicated reviewer account:
 
-- `GET https://useorgx.com/api/review/anthropic/status`
-- `POST https://useorgx.com/api/review/anthropic/bootstrap`
-- `POST https://useorgx.com/api/review/anthropic/reset`
+- `GET https://useorgx.com/api/review/sessions/<token>/status`
+- `POST https://useorgx.com/api/review/sessions/<token>/bootstrap`
+- `POST https://useorgx.com/api/review/sessions/<token>/reset`
 
 These routes operate only on the currently authenticated user's dedicated `Anthropic Review Workspace`. Use the reviewer runbook for the exact bootstrap/reset flow and the prompt matrix Anthropic should exercise.
 
@@ -561,11 +604,12 @@ The `server.json` file describes OrgX MCP for the registry:
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "com.useorgx/orgx-mcp",
-  "description": "AI agent orchestration and organizational memory...",
-  "version": "1.0.3",
+  "title": "OrgX MCP — Organizational Memory for AI Agents",
+  "description": "Organizational memory and agent orchestration MCP. Remember decisions, artifacts, tasks, and project context across Claude, ChatGPT, Cursor, and other agents.",
+  "version": "1.0.4",
   "remotes": [
-    { "type": "streamable-http", "url": "https://mcp.useorgx.com/" },
-    { "type": "sse", "url": "https://mcp.useorgx.com/" }
+    { "type": "streamable-http", "url": "https://mcp.useorgx.com/mcp" },
+    { "type": "sse", "url": "https://mcp.useorgx.com/sse" }
   ],
   "tools": [...],
   "resources": [...],
@@ -625,7 +669,7 @@ pnpm directory:preflight
 
 Operational reviewer check:
 
-- confirm the reviewer workspace is baseline-ready via `https://useorgx.com/api/review/anthropic/status`
+- confirm the reviewer workspace is baseline-ready via `https://useorgx.com/api/review/sessions/<token>/status`
 - if needed, bootstrap or reset the dedicated reviewer workspace before handing credentials to Anthropic
 
 ## Limitations

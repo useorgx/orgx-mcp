@@ -22,7 +22,9 @@ describe('authHandler widget compatibility routes', () => {
       tools?: Array<{ name?: string; inputSchema?: { type?: string } }>;
       resources?: Array<{ uri?: string }>;
     };
-    expect(body.serverInfo?.name).toBe('OrgX MCP');
+    expect(body.serverInfo?.name).toBe(
+      'OrgX MCP — Organizational Memory for AI Agents'
+    );
     expect(body.serverInfo?.version).toBeTruthy();
     expect(body.authentication).toEqual({
       required: true,

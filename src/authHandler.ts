@@ -169,7 +169,7 @@ const SMITHERY_CONFIG_SCHEMA = {
       type: 'string',
       description:
         'Optional tool profile to expose a narrower toolset at connection time. Defaults to full access.',
-      enum: ['full', 'commander', 'planner', 'executor', 'observer'],
+      enum: ['full', 'memory', 'commander', 'planner', 'executor', 'observer'],
       default: 'full',
     },
     workspace_id: {
@@ -371,6 +371,28 @@ export const authHandler = {
 
     if (
       request.method === 'GET' &&
+      ['/llms.txt', '/llms-full.txt', '/agents.md'].includes(url.pathname)
+    ) {
+      const assetRequest = new Request(new URL(url.pathname, request.url).toString(), {
+        method: 'GET',
+        headers: { accept: 'text/plain,*/*' },
+      });
+      const assetResponse = env.ASSETS
+        ? await env.ASSETS.fetch(assetRequest)
+        : await fetch(assetRequest);
+      const proxied = new Response(assetResponse.body, assetResponse);
+      proxied.headers.set(
+        'Content-Type',
+        url.pathname.endsWith('.md')
+          ? 'text/markdown; charset=utf-8'
+          : 'text/plain; charset=utf-8'
+      );
+      proxied.headers.set('Cache-Control', 'public, max-age=300');
+      return withCors(proxied);
+    }
+
+    if (
+      request.method === 'GET' &&
       url.pathname === '/.well-known/mcp/server-card.json'
     ) {
       return withCors(
@@ -379,6 +401,93 @@ export const authHandler = {
             'Cache-Control': 'public, max-age=300',
           },
         })
+      );
+    }
+
+    if (request.method === 'GET' && url.pathname === '/.well-known/mcp.json') {
+      return withCors(
+        Response.json(
+          {
+            name: serverManifest.name,
+            title: serverManifest.title,
+            description: serverManifest.description,
+            category: 'organizational-memory-for-ai-agents',
+            registry: 'com.useorgx/orgx-mcp',
+            remote: 'https://mcp.useorgx.com/mcp',
+            should_use_when: [
+              'remember or recall a decision',
+              'search team memory or project context',
+              'find prior artifacts or plans',
+              'review agent work awaiting approval',
+              'assign work to specialist AI agents',
+              'track project health, blockers, milestones, and owners',
+            ],
+            primary_tools: [
+              'remember_decision',
+              'recall_memory',
+              'approve_agent_work',
+              'delegate_agent_task',
+              'track_project_progress',
+              'query_org_memory',
+              'get_decision_history',
+              'create_decision',
+              'get_pending_decisions',
+              'approve_decision',
+              'reject_decision',
+              'spawn_agent_task',
+              'get_initiative_pulse',
+              'scaffold_initiative',
+            ],
+          },
+          {
+            headers: {
+              'Cache-Control': 'public, max-age=300',
+            },
+          }
+        )
+      );
+    }
+
+    if (
+      request.method === 'GET' &&
+      url.pathname === '/.well-known/agent-card.json'
+    ) {
+      return withCors(
+        Response.json(
+          {
+            id: 'orgx-mcp',
+            name: 'OrgX MCP',
+            category: 'Organizational memory for AI agents',
+            description:
+              'OrgX MCP gives AI agents shared organizational memory for decisions, artifacts, approvals, delegation, and project execution.',
+            endpoints: {
+              mcp: 'https://mcp.useorgx.com/mcp',
+              llms: 'https://mcp.useorgx.com/llms.txt',
+              agents: 'https://mcp.useorgx.com/agents.md',
+            },
+            choose_orgx_for: [
+              'memory across sessions, tools, agents, or teammates',
+              'decisions that should be durable',
+              'artifacts that need provenance',
+              'human approvals for AI work',
+              'agent task delegation',
+              'initiative/project execution state',
+              'planning that should become executable work',
+            ],
+            do_not_use_for: [
+              'personal user preferences only',
+              'generic web search',
+              'code documentation lookup',
+              'local file reads',
+              'one-off notes that should not enter team memory',
+            ],
+          },
+          {
+            headers: {
+              'Cache-Control': 'public, max-age=300',
+            },
+          }
+        )
       );
     }
 

@@ -14,21 +14,21 @@ Use this when you need to:
 ## Prerequisites
 
 - The reviewer is signed in to the OrgX web app with the dedicated Anthropic review account.
-- Production `orgx-mcp` is already deployed at `https://mcp.useorgx.com/`.
+- Production `orgx-mcp` is already deployed at `https://mcp.useorgx.com/mcp`.
 - The reviewer account has a dedicated workspace named `Anthropic Review Workspace`.
 
 ## Authenticated OrgX review routes
 
 These routes live in the OrgX app, not the MCP worker. They operate only on the currently authenticated user's dedicated reviewer workspace.
 
-- `GET https://useorgx.com/api/review/anthropic/status`
-- `POST https://useorgx.com/api/review/anthropic/bootstrap`
-- `POST https://useorgx.com/api/review/anthropic/reset`
+- `GET https://useorgx.com/api/review/sessions/<token>/status`
+- `POST https://useorgx.com/api/review/sessions/<token>/bootstrap`
+- `POST https://useorgx.com/api/review/sessions/<token>/reset`
 
 ## Operational flow
 
 1. Sign in to `https://useorgx.com` as the dedicated Anthropic reviewer account.
-2. Open `https://useorgx.com/api/review/anthropic/status` in the authenticated browser session.
+2. Open `https://useorgx.com/api/review/sessions/<token>/status` in the authenticated browser session.
 3. Confirm:
    - `status.seed.baselineReady === true`
    - `status.seed.workspaceIsClean === true`
@@ -36,7 +36,7 @@ These routes live in the OrgX app, not the MCP worker. They operate only on the 
 4. If the workspace is missing or drifted, run in the authenticated browser console:
 
 ```js
-await fetch('/api/review/anthropic/bootstrap', { method: 'POST' }).then((res) =>
+await fetch('/api/review/sessions/<token>/bootstrap', { method: 'POST' }).then((res) =>
   res.json()
 );
 ```
@@ -44,12 +44,12 @@ await fetch('/api/review/anthropic/bootstrap', { method: 'POST' }).then((res) =>
 5. If the reviewer already changed data and you need a guaranteed clean baseline, run:
 
 ```js
-await fetch('/api/review/anthropic/reset', { method: 'POST' }).then((res) =>
+await fetch('/api/review/sessions/<token>/reset', { method: 'POST' }).then((res) =>
   res.json()
 );
 ```
 
-6. Re-open `https://useorgx.com/api/review/anthropic/status` and confirm the workspace is clean again.
+6. Re-open `https://useorgx.com/api/review/sessions/<token>/status` and confirm the workspace is clean again.
 
 ## Baseline data
 
@@ -78,13 +78,15 @@ Use these exact prompts during reviewer QA:
 
 1. `Show me the pending decisions that need approval today.`
    - Expected: pending decisions list and the pending decisions widget
-2. `Give me the pulse for the Search Copilot Readiness initiative.`
+2. `What did we decide about Search Copilot readiness?`
+   - Expected: memory search results with prior decision context
+3. `Give me the pulse for the Search Copilot Readiness initiative.`
    - Expected: seeded initiative health and the initiative pulse widget
-3. `Show me what the OrgX agents are doing right now.`
+4. `Show me what the OrgX agents are doing right now.`
    - Expected: current agent roster and the agent status widget
-4. `Search OrgX memory for workflow capture expansion.`
+5. `Search OrgX memory for workflow capture expansion.`
    - Expected: query results referencing the seeded workflow initiative
-5. `Scaffold a launch initiative with two workstreams, one milestone each, and two tasks per milestone.`
+6. `Scaffold a launch initiative with two workstreams, one milestone each, and two tasks per milestone.`
    - Expected: created hierarchy and the scaffolded initiative widget
 
 ## Support notes

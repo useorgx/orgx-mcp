@@ -24,6 +24,29 @@ export interface ToolProfile {
 }
 
 export const TOOL_PROFILES: Record<string, ToolProfile> = {
+  memory: {
+    description:
+      'Shared organizational memory: decisions, artifacts, pending approvals, task context, and project progress',
+    tools: [
+      'orgx_bootstrap',
+      'orgx_describe_tool',
+      'orgx_describe_action',
+      'workspace',
+      'remember_decision',
+      'recall_memory',
+      'query_org_memory',
+      'get_decision_history',
+      'create_decision',
+      'get_pending_decisions',
+      'approve_agent_work',
+      'approve_decision',
+      'reject_decision',
+      'get_task_with_context',
+      'track_project_progress',
+      'get_initiative_pulse',
+      'get_org_snapshot',
+    ],
+  },
   commander: {
     description:
       'Human operators: decisions via list_entities, history via query_org_memory, prioritization via recommend_next_action, plus status and entity CRUD',

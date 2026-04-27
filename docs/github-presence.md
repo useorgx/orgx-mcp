@@ -7,7 +7,7 @@ OrgX MCP uses `useorgx` as the canonical public GitHub organization.
 - GitHub organization: `https://github.com/useorgx`
 - GitHub repository: `https://github.com/useorgx/orgx-mcp`
 - Product site: `https://useorgx.com`
-- MCP endpoint: `https://mcp.useorgx.com`
+- MCP endpoint: `https://mcp.useorgx.com/mcp`
 - Support tracker: `https://github.com/useorgx/orgx-mcp/issues`
 
 ## Listing Sources
