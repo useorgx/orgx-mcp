@@ -125,6 +125,7 @@ A Cloudflare Workers deployment exposes OrgX initiatives, milestones, tasks, org
   - `MCP_SERVICE_KEY` (Vercel) / `ORGX_SERVICE_KEY` (Worker secret)
   - `ORGX_API_URL`
   - `MCP_JWT_SECRET` (Worker secret)
+  - `ORGX_INTERNAL_SECRET` (Worker secret; must match the OrgX web app runtime secret)
   - Existing Stripe/Supabase secrets (`STRIPE_*`, `SUPABASE_*`)
 
 > **Note:** `OAUTH_CLIENT_ID` and `OAUTH_CLIENT_SECRET` are NOT needed. OAuth clients (like ChatGPT) register dynamically via `POST /register` and get their credentials stored in the OAuthState Durable Object.
@@ -144,6 +145,7 @@ pnpm dev                         # runs wrangler dev on http://127.0.0.1:8787
 ORGX_API_URL="http://localhost:3000"
 ORGX_SERVICE_KEY="oxk-..."
 MCP_JWT_SECRET="your-32-byte-secret"
+ORGX_INTERNAL_SECRET="same-secret-as-orgx-web"
 ```
 
 When running `pnpm dev`, Wrangler automatically loads `.dev.vars`, so the worker can mint JWTs and proxy to the local Next.js API.
@@ -162,6 +164,7 @@ Before deploying, seed Cloudflare secrets once per environment:
 ```bash
 pnpm wrangler secret put ORGX_SERVICE_KEY --env production
 pnpm wrangler secret put MCP_JWT_SECRET --env production
+pnpm wrangler secret put ORGX_INTERNAL_SECRET --env production
 ```
 
 These secrets are NOT overwritten by `wrangler deploy` (unlike vars in wrangler.toml).
@@ -170,6 +173,7 @@ CI expects matching GitHub Secrets:
 
 - `ORGX_SERVICE_KEY`
 - `MCP_JWT_SECRET`
+- `ORGX_INTERNAL_SECRET`
 
 The public MCP entrypoints are:
 
@@ -463,6 +467,7 @@ Set these secrets in your GitHub repository settings:
 | `CLOUDFLARE_ACCOUNT_ID`    | Your Cloudflare account ID                    | Cloudflare Dashboard → Workers                                         |
 | `ORGX_SERVICE_KEY`         | Service key for OrgX API                      | OrgX Admin Settings                                                    |
 | `MCP_JWT_SECRET`           | JWT signing secret (32+ bytes)                | Generate with `openssl rand -hex 32`                                   |
+| `ORGX_INTERNAL_SECRET`     | Shared web app / MCP worker identity secret   | Generate with `openssl rand -hex 32`; must match the web app runtime   |
 | `MCP_REGISTRY_PUBKEY`      | Ed25519 public key for registry               | Generated below                                                        |
 | `MCP_REGISTRY_PRIVATE_KEY` | Ed25519 private key (hex) for registry        | Generated below                                                        |
 

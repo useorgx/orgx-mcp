@@ -13,7 +13,8 @@ directory = "./public"
 html_handling = "none"
 binding = "ASSETS"
 
-# Non-secret variables (secrets like ORGX_SERVICE_KEY, MCP_JWT_SECRET should be set via `wrangler secret put`)
+# Non-secret variables (secrets like ORGX_SERVICE_KEY, MCP_JWT_SECRET,
+# ORGX_INTERNAL_SECRET should be set via `wrangler secret put`)
 # Note: www.useorgx.com 301-redirects to useorgx.com — use next.useorgx.com for direct VPS access
 [vars]
 ORGX_API_URL = "https://next.useorgx.com"
@@ -86,7 +87,9 @@ bindings = [
 binding = "OAUTH_KV"
 id = "5bff02959fa74d43ba6708d9746121e4"
 
-# Non-secret vars only; secrets (ORGX_SERVICE_KEY, MCP_JWT_SECRET, COOKIE_ENCRYPTION_KEY) set via dashboard or `wrangler secret put --env production`
+# Non-secret vars only; secrets (ORGX_SERVICE_KEY, MCP_JWT_SECRET,
+# ORGX_INTERNAL_SECRET, COOKIE_ENCRYPTION_KEY) set via dashboard or
+# `wrangler secret put --env production`
 # Note: www.useorgx.com 301-redirects to useorgx.com — use next.useorgx.com for direct VPS access
 [env.production.vars]
 ORGX_API_URL = "https://next.useorgx.com"
@@ -112,7 +115,9 @@ bindings = [
 binding = "OAUTH_KV"
 id = "8570c22420cf4cc1b287416cbe6bb7c6"
 
-# Non-secret vars only; secrets (ORGX_SERVICE_KEY, MCP_JWT_SECRET, COOKIE_ENCRYPTION_KEY) set via dashboard or `wrangler secret put --env preview`
+# Non-secret vars only; secrets (ORGX_SERVICE_KEY, MCP_JWT_SECRET,
+# ORGX_INTERNAL_SECRET, COOKIE_ENCRYPTION_KEY) set via dashboard or
+# `wrangler secret put --env preview`
 [env.preview.vars]
 ORGX_API_URL = "https://staging.useorgx.com"
 ORGX_WEB_URL = "https://staging.useorgx.com"

@@ -7,5 +7,6 @@ AUTH_SERVER_URL="http://127.0.0.1:8787"
 # Get from: wrangler secret list --env production
 ORGX_SERVICE_KEY="SET_PRODUCTION_SERVICE_KEY_HERE"
 MCP_JWT_SECRET="3cb2adad5656d2d9dc0e22eb1a147d6389f1a88763942ccbdd7068063ed274a536db011fd8f0028a0b0a9f1cf706912b0fcdcc489a7a8cbc9a0d6e2ecb06c40d"
+ORGX_INTERNAL_SECRET="test-shared-internal-secret"
 # Your user ID for testing
 DEV_USER_ID="5c52c8ca-c1d0-48cc-a177-9cf1ac2c5b06"
