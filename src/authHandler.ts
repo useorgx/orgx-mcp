@@ -37,6 +37,7 @@ import {
 import { verifyMcpIdentityTokenDetailed } from './mcpIdentityToken';
 import { buildAuthErrorResponse } from './authErrors';
 import { secureCompare } from './secureCompare';
+import { handlePublicMcpDiscoveryRequest } from './publicMcpDiscovery';
 
 // Re-export type for use in index.ts
 export type { OAuthHelpers };
@@ -296,6 +297,10 @@ export const authHandler = {
     const url = new URL(request.url);
     const serverUrl = env.MCP_SERVER_URL ?? 'https://mcp.useorgx.com';
     const webUrl = env.ORGX_WEB_URL ?? 'https://useorgx.com';
+
+    if (url.pathname === '/public' || url.pathname === '/public/mcp') {
+      return withCors(await handlePublicMcpDiscoveryRequest(request));
+    }
 
     // =========================================================================
     // Health Check — supports ?check=upstream to verify API connectivity
