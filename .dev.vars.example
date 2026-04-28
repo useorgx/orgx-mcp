@@ -8,6 +8,10 @@ ORGX_SERVICE_KEY=your-service-key-here
 # Required: JWT secret for token verification
 MCP_JWT_SECRET=your-jwt-secret-here
 
+# Required: shared secret for MCP OAuth identity proofs.
+# Must match the OrgX web app ORGX_INTERNAL_SECRET.
+ORGX_INTERNAL_SECRET=your-shared-internal-secret-here
+
 # Optional: Development user ID for local testing without OAuth
 # When set, allows write tools (spawn_agent_task, approve_decision, etc.) 
 # to work without requiring OAuth authentication.

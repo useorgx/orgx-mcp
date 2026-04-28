@@ -139,6 +139,7 @@ jobs:
               "OAUTH_CLIENT_ID": os.environ.get("OAUTH_CLIENT_ID"),
               "OAUTH_CLIENT_SECRET": os.environ.get("OAUTH_CLIENT_SECRET"),
               "MCP_JWT_SECRET": os.environ.get("MCP_JWT_SECRET"),
+              "ORGX_INTERNAL_SECRET": os.environ.get("ORGX_INTERNAL_SECRET"),
               "MCP_REGISTRY_PUBKEY": os.environ.get("MCP_REGISTRY_PUBKEY"),
               "COOKIE_ENCRYPTION_KEY": os.environ.get("COOKIE_ENCRYPTION_KEY"),
           }
@@ -153,6 +154,7 @@ jobs:
           OAUTH_CLIENT_ID: ${{ secrets.ORGX_OAUTH_CLIENT_ID }}
           OAUTH_CLIENT_SECRET: ${{ secrets.ORGX_OAUTH_CLIENT_SECRET }}
           MCP_JWT_SECRET: ${{ secrets.MCP_JWT_SECRET }}
+          ORGX_INTERNAL_SECRET: ${{ secrets.ORGX_INTERNAL_SECRET }}
           MCP_REGISTRY_PUBKEY: ${{ secrets.MCP_REGISTRY_PUBKEY }}
           COOKIE_ENCRYPTION_KEY: ${{ secrets.MCP_COOKIE_ENCRYPTION_KEY }}
 
@@ -207,6 +209,7 @@ jobs:
               "OAUTH_CLIENT_ID": os.environ.get("OAUTH_CLIENT_ID"),
               "OAUTH_CLIENT_SECRET": os.environ.get("OAUTH_CLIENT_SECRET"),
               "MCP_JWT_SECRET": os.environ.get("MCP_JWT_SECRET"),
+              "ORGX_INTERNAL_SECRET": os.environ.get("ORGX_INTERNAL_SECRET"),
           }
           print(json.dumps({k: v for k, v in payload.items() if v}))
           PY
@@ -219,6 +222,7 @@ jobs:
           OAUTH_CLIENT_ID: ${{ secrets.ORGX_OAUTH_CLIENT_ID }}
           OAUTH_CLIENT_SECRET: ${{ secrets.ORGX_OAUTH_CLIENT_SECRET }}
           MCP_JWT_SECRET: ${{ secrets.MCP_JWT_SECRET }}
+          ORGX_INTERNAL_SECRET: ${{ secrets.ORGX_INTERNAL_SECRET }}
 
       - name: Deploy to Cloudflare (preview)
         run: pnpm wrangler deploy --env preview
