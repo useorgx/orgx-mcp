@@ -387,6 +387,8 @@ The tool returns a nested hierarchy with IDs (plus `created[]`, `failed[]`, `ref
 
 The `fields` parameter also accepts generic aliases such as `title` and `summary`; OrgX maps them to the correct storage columns per entity type (for example, `workstream` uses `name` under the hood).
 
+Ordering defaults to newest-created first for top-level browse queries. Use `order_by` (`created_at`, `updated_at`, `sequence`, `due_date`, `priority`, `status`, `title`, `name`, or `natural`) with `order_direction` (`asc` or `desc`) when a specific sort is needed. Initiative-scoped hierarchy reads keep natural sequence order by default so scaffolded workstreams, milestones, and tasks stay in execution order.
+
 Contract note: the canonical behavior for initiative creation and hierarchy reads lives in the OrgX API. This worker must mirror that contract, especially `auto_plan` defaults, supported hierarchy filters, and generic field alias handling.
 
 ### Context attachments: `context[]` pointers on core entities
