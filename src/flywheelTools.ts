@@ -1,7 +1,7 @@
 /**
  * Intelligence Flywheel MCP Tool Definitions
  *
- * 8 new tools + 4 enhanced tool extensions for the Intelligence Flywheel.
+ * 9 new tools + 4 enhanced tool extensions for the Intelligence Flywheel.
  * These tools serve two audiences: humans (ROI proof, trust visibility)
  * and agents (self-serve trust context, baselines, learnings).
  *
@@ -45,10 +45,47 @@ export const FLYWHEEL_TOOL_DEFINITIONS = [
     _meta: { 'openai/readOnlyHint': true },
   },
   {
+    id: 'configure_outcome_type',
+    title: 'Configure Outcome Type',
+    description:
+      'Create or approve a workspace outcome type before recording custom baseline, audit, or quality-gate outcomes. Use this when record_outcome returns an unknown outcome type recovery hint.',
+    inputSchema: z.object({
+      workspace_id: z.string().optional().describe('Workspace ID'),
+      workspaceId: z.string().optional().describe('CamelCase alias for workspace_id'),
+      key: z
+        .string()
+        .describe('Outcome type key, normalized server-side to snake_case'),
+      display_name: z
+        .string()
+        .optional()
+        .describe('Human-facing outcome type label'),
+      displayName: z
+        .string()
+        .optional()
+        .describe('CamelCase alias for display_name'),
+      unit: z
+        .enum(['usd', 'hours', 'count', 'percent'])
+        .default('count')
+        .describe('Measurement unit for this outcome type'),
+      value_semantics: z
+        .enum(['revenue', 'time_saved', 'risk_reduced', 'quality_improved'])
+        .default('quality_improved')
+        .describe('How the value should be interpreted by ROI/proof loops'),
+      valueSemantics: z
+        .enum(['revenue', 'time_saved', 'risk_reduced', 'quality_improved'])
+        .optional()
+        .describe('CamelCase alias for value_semantics'),
+    }),
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+    securitySchemes: [
+      { type: 'oauth2' as const, scopes: ['initiatives:write'] },
+    ],
+  },
+  {
     id: 'record_outcome',
     title: 'Record Outcome',
     description:
-      'Record a business outcome (deal closed, meeting booked, cycle time reduced). Agents can self-report outcomes they detect. Triggers attribution inference to connect outcomes to receipts.',
+      'Record a business outcome (deal closed, meeting booked, cycle time reduced). Agents can self-report outcomes they detect. Triggers attribution inference to connect outcomes to receipts. If the outcome type is unknown, call configure_outcome_type first.',
     inputSchema: z.object({
       workspace_id: z.string().optional().describe('Workspace ID'),
       workspaceId: z.string().optional().describe('CamelCase alias for workspace_id'),

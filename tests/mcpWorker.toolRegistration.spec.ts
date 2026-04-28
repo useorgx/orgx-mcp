@@ -145,6 +145,23 @@ describe('MCP Worker tool registration integrity', () => {
     expect(overlap).toEqual([]);
   });
 
+  it('flywheel tools expose the governed outcome taxonomy recovery path', () => {
+    const configureIndex = flywheelIds.indexOf('configure_outcome_type');
+    const recordIndex = flywheelIds.indexOf('record_outcome');
+    const recordOutcome = (
+      FLYWHEEL_TOOL_DEFINITIONS as unknown as {
+        id: string;
+        description: string;
+      }[]
+    ).find((tool) => tool.id === 'record_outcome');
+
+    expect(configureIndex).toBeGreaterThanOrEqual(0);
+    expect(recordIndex).toBeGreaterThan(configureIndex);
+    expect(recordOutcome?.description).toContain(
+      'call configure_outcome_type first'
+    );
+  });
+
   it('all tool IDs match MCP naming pattern ^[a-zA-Z0-9_-]{1,64}$', () => {
     const allIds = [
       ...chatgptIds,

@@ -8771,6 +8771,128 @@ export class OrgXMcp extends McpAgent<
         })
     );
 
+    // --- configure_outcome_type ---
+    if (shouldRegister('configure_outcome_type'))
+    this.server.registerTool(
+      'configure_outcome_type',
+      {
+        title: 'Configure Outcome Type',
+        description:
+          'Create or approve a workspace outcome type before recording custom baseline, audit, or quality-gate outcomes.',
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: true,
+          openWorldHint: true,
+        },
+        inputSchema: {
+          workspace_id: z
+            .string()
+            .optional()
+            .describe('Workspace ID. Defaults to active MCP workspace when omitted.'),
+          workspaceId: z
+            .string()
+            .optional()
+            .describe('CamelCase alias for workspace_id.'),
+          key: z
+            .string()
+            .describe('Outcome type key, normalized server-side to snake_case.'),
+          display_name: z
+            .string()
+            .optional()
+            .describe('Human-facing outcome type label.'),
+          displayName: z
+            .string()
+            .optional()
+            .describe('CamelCase alias for display_name.'),
+          unit: z
+            .enum(['usd', 'hours', 'count', 'percent'])
+            .default('count')
+            .describe('Measurement unit for this outcome type.'),
+          value_semantics: z
+            .enum(['revenue', 'time_saved', 'risk_reduced', 'quality_improved'])
+            .default('quality_improved')
+            .describe('How the value should be interpreted by ROI/proof loops.'),
+          valueSemantics: z
+            .enum(['revenue', 'time_saved', 'risk_reduced', 'quality_improved'])
+            .optional()
+            .describe('CamelCase alias for value_semantics.'),
+        },
+      },
+      async (args) =>
+        this.withOrgx(async () => {
+          const wsId =
+            ((args.workspace_id as string | undefined) ??
+              (args.workspaceId as string | undefined) ??
+              this.sessionContext?.workspaceId) ?? null;
+          if (!wsId) return this.toolError('workspace_id required');
+
+          const key = typeof args.key === 'string' ? args.key.trim() : '';
+          if (!key) {
+            return this.toolError('key required', {
+              code: 'invalid_input',
+              status: 400,
+              details: {
+                suggested_next_calls: [
+                  {
+                    tool: 'orgx_describe_tool',
+                    args: { tool_id: 'configure_outcome_type' },
+                  },
+                ],
+              },
+            });
+          }
+
+          const body = {
+            workspace_id: wsId,
+            key,
+            display_name:
+              (args.display_name as string | undefined) ??
+              (args.displayName as string | undefined),
+            unit: (args.unit as string | undefined) ?? 'count',
+            value_semantics:
+              (args.value_semantics as string | undefined) ??
+              (args.valueSemantics as string | undefined) ??
+              'quality_improved',
+          };
+
+          try {
+            const response = await callOrgxApiJson(
+              this.env,
+              '/api/flywheel/outcome-types',
+              {
+                method: 'POST',
+                body: JSON.stringify(body),
+              },
+              { userId: this.resolveUserId() }
+            );
+            const result = (await response.json()) as Record<string, unknown>;
+            return {
+              content: [
+                {
+                  type: 'text' as const,
+                  text: formatForLLM('configure_outcome_type', result),
+                },
+              ],
+              structuredContent: result,
+            };
+          } catch (error) {
+            return this.toolError(
+              error instanceof Error ? error.message : String(error),
+              {
+                code: 'configure_outcome_type_failed',
+                status:
+                  error instanceof OrgXApiError ? error.statusCode : undefined,
+                details: buildFailureDetails({
+                  toolId: 'configure_outcome_type',
+                  error,
+                  args,
+                }),
+              }
+            );
+          }
+        })
+    );
+
     // --- record_outcome ---
     if (shouldRegister('record_outcome'))
     this.server.registerTool(
@@ -8778,7 +8900,7 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Record Outcome',
         description:
-          'Record a business outcome. Triggers attribution inference to connect outcomes to receipts.',
+          'Record a business outcome. Triggers attribution inference to connect outcomes to receipts. If the outcome type is unknown, call configure_outcome_type first.',
         annotations: {
           readOnlyHint: false,
           destructiveHint: true,
