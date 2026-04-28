@@ -180,7 +180,7 @@
     },
     {
       "name": "list_entities",
-      "description": "List projects, tasks, milestones, decisions, agents, artifacts, and other OrgX records. Also known as: browse work, find entities."
+      "description": "List projects, tasks, milestones, decisions, agents, artifacts, and other OrgX records with pagination, filtering, and ordering. Also known as: browse work, find entities."
     },
     {
       "name": "create_entity",

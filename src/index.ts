@@ -3829,6 +3829,26 @@ export class OrgXMcp extends McpAgent<
             .min(0)
             .optional()
             .describe('Pagination offset (default: 0)'),
+          order_by: z
+            .enum([
+              'created_at',
+              'updated_at',
+              'sequence',
+              'due_date',
+              'priority',
+              'status',
+              'title',
+              'name',
+              'natural',
+            ])
+            .optional()
+            .describe(
+              'Sort field (default: created_at; hierarchy children default to natural sequence order).'
+            ),
+          order_direction: z
+            .enum(['asc', 'desc'])
+            .optional()
+            .describe('Sort direction (default: desc/newest first).'),
           id: z
             .string()
             .optional()
@@ -3963,6 +3983,9 @@ export class OrgXMcp extends McpAgent<
           params.set('type', args.type);
           if (args.limit) params.set('limit', String(args.limit));
           if (args.offset) params.set('offset', String(args.offset));
+          if (args.order_by) params.set('order_by', args.order_by);
+          if (args.order_direction)
+            params.set('order_direction', args.order_direction);
           if (args.id) params.set('id', String(args.id));
           if (args.status) params.set('status', args.status);
           if (args.initiative_id)
