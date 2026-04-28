@@ -36,6 +36,89 @@ function getMetadata(record: Record<string, unknown>): Record<string, unknown> {
   return asRecord(record.metadata) ?? {};
 }
 
+const SOURCE_CLIENT_LABELS: Record<string, string> = {
+  api: 'API Client',
+  chatgpt: 'ChatGPT',
+  claude: 'Claude',
+  'claude-code': 'Claude Code',
+  codex: 'Codex',
+  cursor: 'Cursor',
+  mcp: 'MCP Client',
+  openclaw: 'OpenClaw',
+  vscode: 'VS Code',
+  windsurf: 'Windsurf',
+  zed: 'Zed',
+};
+
+type ArtifactCreatorIdentity = {
+  type: string | null;
+  id: string | null;
+  name: string;
+};
+
+function formatSourceClientLabel(value: string | null): string | null {
+  const slug = toSlug(value);
+  if (!slug) return null;
+  return (
+    SOURCE_CLIENT_LABELS[slug] ??
+    slug
+      .split(/[-_\s]+/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ')
+  );
+}
+
+function resolveArtifactCreatorIdentity(
+  record: Record<string, unknown>,
+  metadata: Record<string, unknown>
+): ArtifactCreatorIdentity {
+  const producer = asRecord(metadata.producer) ?? {};
+  const sourceClient = formatSourceClientLabel(
+    firstString(metadata, ['source_client', 'sourceClient', 'client'])
+  );
+  const explicitName =
+    firstString(record, ['created_by_name', 'createdByName', 'created_by']) ??
+    firstString(producer, ['label', 'name']) ??
+    firstString(metadata, [
+      'created_by_name',
+      'createdByName',
+      'agent_name',
+      'agentName',
+      'author_name',
+      'authorName',
+      'owner_name',
+      'ownerName',
+    ]);
+  const createdByType =
+    firstString(record, ['created_by_type', 'createdByType']) ??
+    firstString(metadata, ['created_by_type', 'createdByType']) ??
+    (sourceClient ? 'agent' : null);
+  const createdById =
+    firstString(record, ['created_by_id', 'createdById']) ??
+    firstString(metadata, [
+      'created_by_id',
+      'createdById',
+      'agent_id',
+      'agentId',
+      'producer_id',
+      'producerId',
+    ]);
+
+  return {
+    type: createdByType,
+    id: createdById,
+    name:
+      explicitName ??
+      sourceClient ??
+      (toSlug(createdByType) === 'agent'
+        ? 'OrgX Agent'
+        : toSlug(createdByType) === 'human' || createdById
+        ? 'Workspace member'
+        : 'OrgX'),
+  };
+}
+
 export type NormalizedArtifact = {
   id: string | null;
   title: string;
@@ -74,6 +157,8 @@ export type WidgetProofCard = {
   artifact_type: string | null;
   summary: string | null;
   created_at: string | null;
+  created_by_type: string | null;
+  created_by_id: string | null;
   created_by_name: string | null;
   primary_url: string | null;
   primary_label: string | null;
@@ -147,6 +232,7 @@ export function normalizeArtifactRecord(input: unknown): NormalizedArtifact | nu
   const record = asRecord(input);
   if (!record) return null;
   const metadata = getMetadata(record);
+  const creator = resolveArtifactCreatorIdentity(record, metadata);
   const entityId =
     firstString(record, ['entity_id', 'entityId']) ??
     firstString(metadata, ['entity_id', 'entityId', 'task_id', 'taskId']);
@@ -180,15 +266,9 @@ export function normalizeArtifactRecord(input: unknown): NormalizedArtifact | nu
     created_at:
       firstString(record, ['created_at', 'createdAt', 'updated_at', 'updatedAt']) ??
       firstString(metadata, ['created_at', 'createdAt']),
-    created_by_type:
-      firstString(record, ['created_by_type', 'createdByType']) ??
-      firstString(metadata, ['created_by_type', 'createdByType']),
-    created_by_id:
-      firstString(record, ['created_by_id', 'createdById']) ??
-      firstString(metadata, ['created_by_id', 'createdById', 'agent_id', 'agentId']),
-    created_by_name:
-      firstString(record, ['created_by_name', 'createdByName', 'created_by']) ??
-      firstString(metadata, ['created_by_name', 'createdByName', 'agent_name', 'agentName']),
+    created_by_type: creator.type,
+    created_by_id: creator.id,
+    created_by_name: creator.name,
     entity_id: entityId,
     entity_type: entityType,
     initiative_id:
@@ -473,6 +553,8 @@ function toWidgetProofCard(artifact: NormalizedArtifact): WidgetProofCard {
     artifact_type: artifact.artifact_type,
     summary: artifact.summary ?? artifact.preview_markdown,
     created_at: artifact.created_at,
+    created_by_type: artifact.created_by_type,
+    created_by_id: artifact.created_by_id,
     created_by_name: artifact.created_by_name,
     primary_url: artifact.primary_url ?? null,
     primary_label: artifact.primary_label ?? null,

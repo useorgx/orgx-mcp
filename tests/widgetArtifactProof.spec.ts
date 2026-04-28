@@ -133,6 +133,7 @@ describe('widget artifact proof helpers', () => {
       title: 'server.json manifest',
       primary_url: 'https://useorgx.com/artifacts/artifact-1',
       live_url: 'https://useorgx.com/live/init-1',
+      created_by_name: 'OrgX',
       needs_review: false,
     });
     expect(payload.proof_handoff).toMatchObject({
@@ -140,6 +141,65 @@ describe('widget artifact proof helpers', () => {
       preserve_tool_results: true,
       live_url: 'https://useorgx.com/live/init-1',
       proof_count: 2,
+    });
+  });
+
+  it('preserves proof-card creator identity from artifact metadata', () => {
+    const payload = enrichInitiativePulseWithArtifacts(
+      {
+        id: 'init-1',
+        name: 'Quality Gates V2',
+        workstreams: [{ id: 'ws-1', tasks: [{ id: 'task-1' }, { id: 'task-2' }] }],
+      },
+      [
+        {
+          id: 'artifact-1',
+          name: 'Codex proof bundle',
+          status: 'approved',
+          entity_type: 'task',
+          entity_id: 'task-1',
+          initiative_id: 'init-1',
+          created_by_type: null,
+          created_by_id: null,
+          created_by_name: null,
+          metadata: {
+            source_client: 'codex',
+            artifact_hash: 'sha256:abc123',
+          },
+        },
+        {
+          id: 'artifact-2',
+          name: 'Founder review note',
+          status: 'approved',
+          entity_type: 'task',
+          entity_id: 'task-2',
+          initiative_id: 'init-1',
+          created_by_type: 'human',
+          created_by_id: 'user-1',
+          metadata: {
+            created_by_name: 'Hope Atina',
+          },
+        },
+      ]
+    );
+
+    expect(payload.recent_artifacts).toHaveLength(2);
+    expect((payload.recent_artifacts as Array<Record<string, unknown>>)[0]).toMatchObject({
+      created_by_type: 'agent',
+      created_by_id: null,
+      created_by_name: 'Codex',
+    });
+    expect((payload.proof_cards as Array<Record<string, unknown>>)[0]).toMatchObject({
+      title: 'Codex proof bundle',
+      created_by_type: 'agent',
+      created_by_id: null,
+      created_by_name: 'Codex',
+    });
+    expect((payload.proof_cards as Array<Record<string, unknown>>)[1]).toMatchObject({
+      title: 'Founder review note',
+      created_by_type: 'human',
+      created_by_id: 'user-1',
+      created_by_name: 'Hope Atina',
     });
   });
 
