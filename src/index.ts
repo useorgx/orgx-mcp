@@ -6838,23 +6838,28 @@ export class OrgXMcp extends McpAgent<
 	            }
 	          }
 
-	          // ── Pre-launch credential check ──
-	          // Before launching, verify the user has provider credentials so agents
-	          // can actually execute. This prevents silent failures for cloud MCP users
-	          // who haven't configured API keys.
+	          // ── Pre-launch execution-account check ──
+	          // Before launching, verify the user has either API credentials or a
+	          // live subscription runner so agents can actually execute. This
+	          // prevents silent failures for cloud MCP users who haven't configured
+	          // any execution route.
 	          let credential_status:
 	            | {
 	                checked: boolean;
 	                has_credentials: boolean;
+	                has_subscription_accounts: boolean;
 	                can_execute: boolean;
 	                setup_url?: string;
 	              }
 	            | undefined;
 	          if (createdInitiativeId && launchAfterCreate) {
 	            try {
+	              const credentialStatusPath = effectiveCommandCenterId
+	                ? `/api/client/credentials/status?workspace_id=${encodeURIComponent(effectiveCommandCenterId)}`
+	                : '/api/client/credentials/status';
 	              const credResp = await callOrgxApiJson(
 	                this.env,
-	                '/api/client/credentials/status',
+	                credentialStatusPath,
 	                undefined,
 	                {
 	                  userId: scaffoldOwnerId ?? undefined,
@@ -6865,6 +6870,7 @@ export class OrgXMcp extends McpAgent<
 	                ok?: boolean;
 	                data?: {
 	                  has_credentials?: boolean;
+	                  has_subscription_accounts?: boolean;
 	                  can_execute?: boolean;
 	                  setup_url?: string;
 	                };
@@ -6872,6 +6878,9 @@ export class OrgXMcp extends McpAgent<
 	              credential_status = {
 	                checked: true,
 	                has_credentials: Boolean(credPayload?.data?.has_credentials),
+	                has_subscription_accounts: Boolean(
+	                  credPayload?.data?.has_subscription_accounts
+	                ),
 	                can_execute: Boolean(credPayload?.data?.can_execute),
 	                setup_url: credPayload?.data?.setup_url,
 	              };
@@ -6880,6 +6889,7 @@ export class OrgXMcp extends McpAgent<
 	              credential_status = {
 	                checked: false,
 	                has_credentials: false,
+	                has_subscription_accounts: false,
 	                can_execute: false,
 	              };
 	            }
@@ -6909,17 +6919,17 @@ export class OrgXMcp extends McpAgent<
 	            credential_status?.checked &&
 	            !credential_status.can_execute
 	          ) {
-	            // Credentials missing: skip launch, return actionable guidance
+	            // Execution account missing: skip launch, return actionable guidance.
 	            launch = {
 	              attempted: false,
 	              ok: false,
 	              error_kind: 'credential_missing',
 	              needs_credentials: true,
 	              error:
-	                'No AI provider credentials configured. Agents need API keys to execute.',
+	                'No execution account is active. Agents need a live subscription runner or API key to execute.',
 	              next_steps: [
-	                `Configure credentials at ${credential_status.setup_url ?? '/settings/credentials'}`,
-	                'Add an Anthropic or OpenAI API key',
+	                `Configure execution at ${credential_status.setup_url ?? '/settings/execution'}`,
+	                'Connect a Codex or Claude runner, or add an Anthropic/OpenAI API key',
 	                'Then say "start agents" to launch execution',
 	              ],
 	              start_agents_hint:
@@ -7322,7 +7332,7 @@ export class OrgXMcp extends McpAgent<
 
 		          const credentialWarning =
 		            launch?.needs_credentials
-		              ? `\n\n⚠️ Credentials required: ${launch.next_steps?.join('. ') ?? 'Configure AI provider keys at /settings/credentials'}`
+		              ? `\n\n⚠️ Execution account required: ${launch.next_steps?.join('. ') ?? 'Configure execution at /settings/execution'}`
 		              : '';
 
 		          const startAgentsHint =
