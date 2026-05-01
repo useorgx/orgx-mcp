@@ -132,7 +132,11 @@ import {
   shouldShowWelcomeBack,
   type McpSessionReentryState,
 } from './welcomeBackContext';
-import { buildNewSessionWelcomeText } from './sessionMessaging';
+import {
+  buildNewSessionWelcomeStorageKey,
+  buildNewSessionWelcomeText,
+  NEW_SESSION_WELCOME_STORAGE_TTL_SECONDS,
+} from './sessionMessaging';
 import {
   WIDGET_URIS,
   OUTPUT_TEMPLATE_URIS,
@@ -715,6 +719,42 @@ export class OrgXMcp extends McpAgent<
     }
   }
 
+  private async shouldShowNewSessionWelcome(userId: string): Promise<boolean> {
+    const key = buildNewSessionWelcomeStorageKey(userId);
+    if (!key) return false;
+
+    try {
+      const existing = await this.env.OAUTH_KV.get(key);
+      if (existing) {
+        console.info('[mcp:session] Suppressed first-run welcome', {
+          userId,
+        });
+        return false;
+      }
+
+      await this.env.OAUTH_KV.put(
+        key,
+        JSON.stringify({
+          user_id: userId,
+          first_seen_at: new Date().toISOString(),
+          version: 1,
+        }),
+        { expirationTtl: NEW_SESSION_WELCOME_STORAGE_TTL_SECONDS }
+      );
+
+      console.info('[mcp:session] First-run welcome marked shown', {
+        userId,
+      });
+      return true;
+    } catch (error) {
+      console.warn('[mcp:session] Failed to check first-run welcome state', {
+        userId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return false;
+    }
+  }
+
   async init() {
     // Deduplicate concurrent init() calls. When two requests arrive
     // simultaneously (e.g. onStart + handleMcpMessage), both call init().
@@ -798,7 +838,9 @@ export class OrgXMcp extends McpAgent<
     if (this.props?.userId) {
       const isNewAuth = this.props.userId !== this.sessionAuth.userId;
       if (isNewAuth || !this.sessionAuth.userId) {
-        this._isNewSession = true;
+        this._isNewSession = await this.shouldShowNewSessionWelcome(
+          this.props.userId
+        );
         this.sessionAuth = {
           userId: this.props.userId,
           scope: this.props.scope,
