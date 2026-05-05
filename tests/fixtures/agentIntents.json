@@ -1,0 +1,216 @@
+{
+  "version": 1,
+  "description": "Intent → expected dominant tool fixtures used by tests/agentSelection.fixture.spec.ts. Each fixture pairs a short user utterance with the tool an agent should pick AND the most common wrong tool we want to avoid. The harness runs each prompt K times against each LLM provider; selection is healthy when the dominant tool fires >= 70% of runs and the forbidden tool fires < 10%.",
+  "fixtures": [
+    {
+      "id": "scaffold-roadmap",
+      "prompt": "Plan a 4-week launch initiative with three workstreams.",
+      "expected_tool": "scaffold_initiative",
+      "forbidden_tool": "create_entity",
+      "rationale": "Multi-WS hierarchies are scaffold's job; create_entity is for single entities."
+    },
+    {
+      "id": "scaffold-roadmap-vague",
+      "prompt": "Help me set up a project with milestones and tasks.",
+      "expected_tool": "scaffold_initiative",
+      "forbidden_tool": "create_entity",
+      "rationale": "Milestones+tasks signals a hierarchy; scaffold's USE WHEN says 'plan a new initiative from scratch.'"
+    },
+    {
+      "id": "single-task-create",
+      "prompt": "Add a task called 'Review the migration plan' to the platform initiative.",
+      "expected_tool": "create_entity",
+      "forbidden_tool": "scaffold_initiative",
+      "rationale": "Adding one task to an existing initiative is create_entity territory."
+    },
+    {
+      "id": "pending-decisions-list",
+      "prompt": "What needs my approval right now?",
+      "expected_tool": "get_pending_decisions",
+      "forbidden_tool": "query_org_memory",
+      "rationale": "Pending approvals are a structured list, not a memory search."
+    },
+    {
+      "id": "pending-decisions-blockers",
+      "prompt": "Show me what's blocking the agents.",
+      "expected_tool": "get_pending_decisions",
+      "forbidden_tool": "get_agent_status",
+      "rationale": "Blockers surface as decisions; get_agent_status is for agent activity, not the blocker queue."
+    },
+    {
+      "id": "approve-decision-explicit",
+      "prompt": "Approve decision dec-abc123.",
+      "expected_tool": "approve_decision",
+      "forbidden_tool": "entity_action",
+      "rationale": "approve_decision is the canonical write path; entity_action doesn't accept decision lifecycle."
+    },
+    {
+      "id": "reject-decision-with-reason",
+      "prompt": "Reject the migration decision — the rollback plan isn't ready.",
+      "expected_tool": "reject_decision",
+      "forbidden_tool": "approve_decision",
+      "rationale": "User said reject; description requires a reason which the prompt provides."
+    },
+    {
+      "id": "launch-initiative",
+      "prompt": "Launch the Q3 platform initiative.",
+      "expected_tool": "entity_action",
+      "forbidden_tool": "scaffold_initiative",
+      "rationale": "Launch is a lifecycle action on an existing initiative; entity_action handles launch alias."
+    },
+    {
+      "id": "complete-task-with-pr",
+      "prompt": "Mark the 'Add Stripe webhook' task done — PR https://github.com/x/y/pull/42 is merged.",
+      "expected_tool": "entity_action",
+      "forbidden_tool": "update_entity",
+      "rationale": "complete_with_proof is the right action here, dispatched via entity_action; update_entity doesn't carry artifact metadata."
+    },
+    {
+      "id": "attach-artifact",
+      "prompt": "Attach this design doc URL as an artifact on the Onboarding workstream.",
+      "expected_tool": "entity_action",
+      "forbidden_tool": "create_entity",
+      "rationale": "entity_action action=attach is the canonical artifact-create path on an existing entity."
+    },
+    {
+      "id": "list-tasks-status",
+      "prompt": "List all in-progress tasks for the platform initiative.",
+      "expected_tool": "list_entities",
+      "forbidden_tool": "query_org_memory",
+      "rationale": "Structured status query is list_entities, not memory search."
+    },
+    {
+      "id": "task-detail-context",
+      "prompt": "Show me the full context for task t-abc — I need to start it.",
+      "expected_tool": "get_task_with_context",
+      "forbidden_tool": "list_entities",
+      "rationale": "Hydrated context is get_task_with_context's purpose; list_entities returns rows, not pointers."
+    },
+    {
+      "id": "initiative-health",
+      "prompt": "How is the Q3 launch going?",
+      "expected_tool": "get_initiative_pulse",
+      "forbidden_tool": "get_org_snapshot",
+      "rationale": "Single-initiative health is pulse; org-wide overview is snapshot."
+    },
+    {
+      "id": "org-overview",
+      "prompt": "Give me the company-wide picture across all initiatives.",
+      "expected_tool": "get_org_snapshot",
+      "forbidden_tool": "get_initiative_pulse",
+      "rationale": "Org overview is snapshot; pulse is single-initiative."
+    },
+    {
+      "id": "agent-activity",
+      "prompt": "What is each agent working on right now?",
+      "expected_tool": "get_agent_status",
+      "forbidden_tool": "get_org_snapshot",
+      "rationale": "Agent activity is its own structured surface."
+    },
+    {
+      "id": "comment-blocker",
+      "prompt": "Flag a blocker on milestone ms-abc: the API contract is undecided.",
+      "expected_tool": "comment_on_entity",
+      "forbidden_tool": "create_decision",
+      "rationale": "Blocker comments use comment_on_entity with comment_type=blocker_flag; create_decision is for the actual approval gate."
+    },
+    {
+      "id": "create-decision-explicit",
+      "prompt": "Open a high-priority approval for whether to ship without analytics.",
+      "expected_tool": "create_decision",
+      "forbidden_tool": "comment_on_entity",
+      "rationale": "Approval gate is create_decision; comment is annotation."
+    },
+    {
+      "id": "memory-search-prior",
+      "prompt": "What did we decide about the auth migration last quarter?",
+      "expected_tool": "query_org_memory",
+      "forbidden_tool": "get_decision_history",
+      "rationale": "Free-text search across memory; get_decision_history is filterable list, not semantic recall."
+    },
+    {
+      "id": "decision-audit-trail",
+      "prompt": "List every approved decision on the platform initiative this month.",
+      "expected_tool": "list_entities",
+      "forbidden_tool": "query_org_memory",
+      "rationale": "Filtered structured list is list_entities; memory search is for semantic recall."
+    },
+    {
+      "id": "morning-brief",
+      "prompt": "What should I focus on this morning?",
+      "expected_tool": "get_morning_brief",
+      "forbidden_tool": "get_org_snapshot",
+      "rationale": "Morning brief is the curated daily start; org_snapshot is a wider read."
+    },
+    {
+      "id": "spawn-agent",
+      "prompt": "Have the engineering agent draft the migration runbook.",
+      "expected_tool": "spawn_agent_task",
+      "forbidden_tool": "create_entity",
+      "rationale": "Delegating work to an agent is spawn_agent_task; create_entity makes a row but doesn't dispatch."
+    },
+    {
+      "id": "verify-completion",
+      "prompt": "Has milestone ms-xyz actually finished — are all child tasks done?",
+      "expected_tool": "verify_entity_completion",
+      "forbidden_tool": "list_entities",
+      "rationale": "verify_entity_completion is the explicit child-rollup check."
+    },
+    {
+      "id": "batch-create-tasks",
+      "prompt": "Add 5 tasks to the deploy milestone with dependencies between them.",
+      "expected_tool": "batch_create_entities",
+      "forbidden_tool": "create_entity",
+      "rationale": "Multiple entities with refs is batch_create_entities; description warns about looping create_entity."
+    },
+    {
+      "id": "pause-multiple",
+      "prompt": "Pause the 4 marketing tasks while we decide on the new positioning.",
+      "expected_tool": "batch_action",
+      "forbidden_tool": "entity_action",
+      "rationale": "Bulk lifecycle action is batch_action; entity_action handles one at a time."
+    },
+    {
+      "id": "scaffold-with-launch",
+      "prompt": "Spin up the migration project and start the agents now.",
+      "expected_tool": "scaffold_initiative",
+      "forbidden_tool": "spawn_agent_task",
+      "rationale": "scaffold_initiative auto-launches by default; spawn_agent_task is one-off."
+    },
+    {
+      "id": "comment-thread-read",
+      "prompt": "Show me all the comments on task t-xyz.",
+      "expected_tool": "list_entity_comments",
+      "forbidden_tool": "list_entities",
+      "rationale": "Comment threads have their own list endpoint."
+    },
+    {
+      "id": "stream-state-check",
+      "prompt": "Are the streams for initiative i-abc healthy and progressing?",
+      "expected_tool": "get_initiative_stream_state",
+      "forbidden_tool": "get_initiative_pulse",
+      "rationale": "Stream-level state is dedicated; pulse is initiative-level rollup."
+    },
+    {
+      "id": "next-action-suggestion",
+      "prompt": "What should the agent do next on the platform initiative?",
+      "expected_tool": "recommend_next_action",
+      "forbidden_tool": "get_initiative_pulse",
+      "rationale": "Recommendation has its own surface; pulse is read-only health."
+    },
+    {
+      "id": "describe-tool-meta",
+      "prompt": "How does scaffold_initiative work — what fields does it accept?",
+      "expected_tool": "orgx_describe_tool",
+      "forbidden_tool": "scaffold_initiative",
+      "rationale": "Self-describe lookup is the right path; calling the tool would actually scaffold."
+    },
+    {
+      "id": "update-entity-field",
+      "prompt": "Change the priority of task t-abc to high.",
+      "expected_tool": "update_entity",
+      "forbidden_tool": "entity_action",
+      "rationale": "Generic field patch is update_entity; entity_action is for lifecycle/special actions."
+    }
+  ]
+}
