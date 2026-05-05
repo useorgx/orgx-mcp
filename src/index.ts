@@ -52,6 +52,7 @@ import {
 import {
   isZodFlavoredErrorMessage,
   extractZodErrorPath,
+  classifyErrorKind,
 } from './zodErrorMatcher';
 import {
   buildAgentCreditCheckoutResult,
@@ -1014,6 +1015,16 @@ export class OrgXMcp extends McpAgent<
     }
   ): void {
     const distinctId = params.userId ?? this.resolveAnonymousDistinctId();
+    // When the caller didn't tag errorKind explicitly, classify from the
+    // error message so the dashboard always has a coarse category to
+    // group on. classifyErrorKind returns 'unknown' for failed events
+    // it can't pattern-match — better than null because saved queries
+    // can `coalesce(error_kind, '<no_kind>')` consistently.
+    const resolvedErrorKind =
+      params.errorKind ??
+      (event === 'mcp_tool_failed'
+        ? classifyErrorKind(params.error) ?? undefined
+        : undefined);
     this.capturePosthogEvent(event, {
       distinctId,
       properties: {
@@ -1024,7 +1035,7 @@ export class OrgXMcp extends McpAgent<
         ok: params.ok,
         latency_ms: params.latencyMs,
         error: params.error,
-        error_kind: params.errorKind,
+        error_kind: resolvedErrorKind,
         is_widget_tool: params.isWidgetTool,
       },
     });
@@ -1037,7 +1048,7 @@ export class OrgXMcp extends McpAgent<
     // input-shape failures without arbitrary substring matching.
     if (event !== 'mcp_tool_failed') return;
     const isInvalidInput =
-      params.errorKind === 'invalid_input' ||
+      resolvedErrorKind === 'invalid_input' ||
       isZodFlavoredErrorMessage(params.error);
     if (!isInvalidInput) return;
     this.capturePosthogEvent('mcp_tool_invalid_input', {
@@ -1048,7 +1059,7 @@ export class OrgXMcp extends McpAgent<
         auth_source: params.authSource,
         has_user_id: Boolean(params.userId),
         error: params.error,
-        error_kind: params.errorKind ?? 'invalid_input',
+        error_kind: resolvedErrorKind ?? 'invalid_input',
         error_path: extractZodErrorPath(params.error),
         is_widget_tool: params.isWidgetTool,
       },
@@ -4248,8 +4259,48 @@ export class OrgXMcp extends McpAgent<
 
           const { data, pagination } = result;
 
+          // Defensive client-side filter: the orgx-web /api/entities endpoint
+          // currently ignores initiative_id when type=run, returning workspace-
+          // wide runs (incl. rows whose initiative_id is null or matches a
+          // different initiative). This blinds diagnostics like "show me runs
+          // for THIS launch initiative". Until the API is fixed, we drop
+          // mismatched rows on the client and warn so callers know the upstream
+          // data was lossy. Tracked: launch-campaign empty-activity diagnosis,
+          // 2026-05-05.
+          const requestedInitiativeId =
+            typeof args.initiative_id === 'string' &&
+            args.initiative_id.trim().length > 0
+              ? args.initiative_id.trim()
+              : null;
+          let postFilteredData = data;
+          let postFilterDroppedCount = 0;
+          if (
+            args.type === 'run' &&
+            requestedInitiativeId &&
+            Array.isArray(data) &&
+            data.length > 0
+          ) {
+            const filtered = data.filter((item) => {
+              const value = (item as { initiative_id?: unknown }).initiative_id;
+              return typeof value === 'string' && value === requestedInitiativeId;
+            });
+            postFilterDroppedCount = data.length - filtered.length;
+            postFilteredData = filtered;
+            if (postFilterDroppedCount > 0) {
+              console.warn(
+                '[mcp] list_entities type=run: dropped server-side initiative_id mismatches',
+                {
+                  requestedInitiativeId,
+                  serverReturned: data.length,
+                  retained: filtered.length,
+                  dropped: postFilterDroppedCount,
+                }
+              );
+            }
+          }
+
           // Add deep links to each entity
-          const dataWithLinks = data.map((item) => ({
+          const dataWithLinks = postFilteredData.map((item) => ({
             ...item,
             _link: buildEntityLink(args.type, item.id, {
               label: item.title ?? item.name ?? undefined,
@@ -5201,30 +5252,78 @@ export class OrgXMcp extends McpAgent<
             transition?: { from: string; to: string };
             data?: unknown;
             error?: string;
+            initiative_activation?: {
+              created_stream_count?: number;
+              redispatched_stream_count?: number;
+              error?: string;
+            };
           };
 
           // Studio/initiative custom actions return { success, data } instead of { message, transition }
           if (result.error) {
             return this.toolError(result.error);
           }
+          // Detect the silent-no-op case for initiative launch: API returns 200
+          // with no transition AND no error AND no initiative_activation. Seen
+          // in production where the launch endpoint accepts the request but
+          // doesn't actually re-dispatch streams (idempotency path swallows
+          // the call when streams already exist). Without this branch the
+          // tool returns an empty success and the agent thinks launch worked.
+          const isInitiativeLaunch =
+            args.type === 'initiative' && resolvedAction === 'launch';
+          if (
+            isInitiativeLaunch &&
+            !result.transition &&
+            !result.initiative_activation &&
+            (result.data === undefined || result.data === null)
+          ) {
+            const liveUrl = buildLiveUrl(args.id);
+            const warning =
+              `⚠️  Launch endpoint returned success but no transition or stream activation was reported. ` +
+              `This often means the dispatcher silently no-op'd because streams already exist. ` +
+              `Verify with get_initiative_stream_state. If streams stay 'ready' without progress, ` +
+              `bypass via spawn_agent_task to dispatch a single task directly.`;
+            return {
+              content: [
+                { type: 'text', text: `${warning}\n\n📺 **Live view:** ${liveUrl}` },
+              ],
+              structuredContent: {
+                ok: false,
+                error_kind: 'launch_silent_no_op',
+                live_url: liveUrl,
+                warning,
+                next_steps: [
+                  'Call get_initiative_stream_state to inspect actual stream status',
+                  'If streams sit at "ready" with no current_job_id, the auto-dispatcher is not picking them up',
+                  'Bypass via spawn_agent_task to dispatch directly',
+                ],
+              },
+            };
+          }
           if (result.transition) {
             // Include live_url for initiative launch
-            const isInitiativeLaunch =
-              args.type === 'initiative' && resolvedAction === 'launch';
             const liveUrl = isInitiativeLaunch ? buildLiveUrl(args.id) : null;
             const liveSection = liveUrl
               ? `\n\n📺 **Watch progress live:** ${liveUrl}`
+              : '';
+            // Surface the actual activation count when available — agents
+            // need this to decide whether the launch did real work.
+            const activationSummary = result.initiative_activation
+              ? `\n\nStreams: +${result.initiative_activation.created_stream_count ?? 0} created, ${result.initiative_activation.redispatched_stream_count ?? 0} dispatched`
               : '';
 
             return {
               content: [
                 {
                   type: 'text',
-                  text: `✓ ${result.message}\n\nStatus: ${result.transition.from} → ${result.transition.to}${liveSection}`,
+                  text: `✓ ${result.message}\n\nStatus: ${result.transition.from} → ${result.transition.to}${activationSummary}${liveSection}`,
                 },
               ],
               ...(liveUrl && {
-                structuredContent: { live_url: liveUrl },
+                structuredContent: {
+                  live_url: liveUrl,
+                  initiative_activation: result.initiative_activation,
+                },
               }),
             };
           }

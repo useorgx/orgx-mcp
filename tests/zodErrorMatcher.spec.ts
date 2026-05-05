@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   isZodFlavoredErrorMessage,
   extractZodErrorPath,
+  classifyErrorKind,
 } from '../src/zodErrorMatcher';
 
 /**
@@ -80,5 +81,50 @@ describe('extractZodErrorPath', () => {
   it('handles null and undefined safely', () => {
     expect(extractZodErrorPath(null)).toBe(null);
     expect(extractZodErrorPath(undefined)).toBe(null);
+  });
+});
+
+describe('classifyErrorKind', () => {
+  // Precedence: launch_silent_no_op > spawn_guard_blocked > auth_failed > invalid_input > unknown
+  it.each([
+    ['Launch endpoint silently no-op\'d', 'launch_silent_no_op'],
+    ['No streams transitioned to active', 'launch_silent_no_op'],
+    ['dispatcher silently no-op\'d', 'launch_silent_no_op'],
+    ['spawn guard blocked: rate limit exceeded', 'spawn_guard_blocked'],
+    ['Quality gate failed for engineering domain', 'spawn_guard_blocked'],
+    ['Rate limited (429): retry after 60s', 'spawn_guard_blocked'],
+    ['Delegation denied for marketing-agent', 'spawn_guard_blocked'],
+    ['Unauthorized', 'auth_failed'],
+    ['Forbidden: insufficient scope', 'auth_failed'],
+    ['Authentication required', 'auth_failed'],
+    ['HTTP 401: missing bearer token', 'auth_failed'],
+    ['Required', 'invalid_input'],
+    ['Invalid enum value. Expected one of: high, medium, low', 'invalid_input'],
+    ['Expected string, received number at "priority"', 'invalid_input'],
+    ['Network timeout', 'unknown'],
+    ['Database connection refused', 'unknown'],
+  ] as const)('classifies %j as %j', (input, expected) => {
+    expect(classifyErrorKind(input)).toBe(expected);
+  });
+
+  it('returns null for null/undefined/empty so callers can omit error_kind', () => {
+    expect(classifyErrorKind(null)).toBe(null);
+    expect(classifyErrorKind(undefined)).toBe(null);
+    expect(classifyErrorKind('')).toBe(null);
+  });
+
+  it('respects the precedence order — auth + zod patterns in same string yields auth_failed', () => {
+    // "Unauthorized: required field missing" — both auth and zod-flavor
+    // tokens are present. We want auth_failed because the auth failure
+    // is the actionable signal (the request never even got validated).
+    expect(classifyErrorKind('Unauthorized: required field missing')).toBe(
+      'auth_failed'
+    );
+  });
+
+  it('spawn-guard precedes auth — rate-limit messages can include 401-like text', () => {
+    expect(
+      classifyErrorKind('spawn guard rate-limited (returns 401-equivalent)')
+    ).toBe('spawn_guard_blocked');
   });
 });
