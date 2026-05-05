@@ -1,5 +1,7 @@
 # OrgX MCP - Organizational Memory for AI Agents
 
+[![smithery badge](https://smithery.ai/badge/useorgx/orgx-mcp)](https://smithery.ai/servers/useorgx/orgx-mcp)
+
 Give Claude, ChatGPT, Cursor, and other MCP clients a shared company memory.
 
 OrgX MCP lets agents remember decisions, recall artifacts, review pending approvals, assign work to specialist agents, track initiative health, and render interactive workflows in MCP Apps-compatible clients.
