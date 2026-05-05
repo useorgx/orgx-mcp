@@ -50,6 +50,10 @@ import {
   resolveAnonymousDistinctId,
 } from './posthogTelemetry';
 import {
+  isZodFlavoredErrorMessage,
+  extractZodErrorPath,
+} from './zodErrorMatcher';
+import {
   buildAgentCreditCheckoutResult,
   buildAccountStatusResult,
   buildAccountUsageReportResult,
@@ -983,7 +987,11 @@ export class OrgXMcp extends McpAgent<
   }
 
   private captureMcpToolEvent(
-    event: 'mcp_tool_called' | 'mcp_tool_succeeded' | 'mcp_tool_failed',
+    event:
+      | 'mcp_tool_called'
+      | 'mcp_tool_succeeded'
+      | 'mcp_tool_failed'
+      | 'mcp_tool_invalid_input',
     params: {
       toolId: string;
       toolFamily: 'chatgpt' | 'stream' | 'plan_session' | 'client_integration';
@@ -993,6 +1001,16 @@ export class OrgXMcp extends McpAgent<
       latencyMs?: number;
       error?: string;
       isWidgetTool?: boolean;
+      /**
+       * Optional structured tag for the error category. When set to
+       * 'invalid_input' (or detected automatically from the error
+       * message via Zod-pattern matching), an additional
+       * `mcp_tool_invalid_input` event fires alongside the primary
+       * event so the telemetry dashboard can rank "most common ways
+       * agents fail to call X" without substring-matching arbitrary
+       * error text.
+       */
+      errorKind?: string;
     }
   ): void {
     const distinctId = params.userId ?? this.resolveAnonymousDistinctId();
@@ -1006,6 +1024,32 @@ export class OrgXMcp extends McpAgent<
         ok: params.ok,
         latency_ms: params.latencyMs,
         error: params.error,
+        error_kind: params.errorKind,
+        is_widget_tool: params.isWidgetTool,
+      },
+    });
+
+    // Pass 4: input-validation counter. Fires alongside any
+    // mcp_tool_failed where the error category is invalid_input —
+    // either explicitly tagged by the caller or detected via Zod
+    // patterns in the error text. The PRIMARY event is never
+    // suppressed; this is purely additive so the dashboard can rank
+    // input-shape failures without arbitrary substring matching.
+    if (event !== 'mcp_tool_failed') return;
+    const isInvalidInput =
+      params.errorKind === 'invalid_input' ||
+      isZodFlavoredErrorMessage(params.error);
+    if (!isInvalidInput) return;
+    this.capturePosthogEvent('mcp_tool_invalid_input', {
+      distinctId,
+      properties: {
+        tool_id: params.toolId,
+        tool_family: params.toolFamily,
+        auth_source: params.authSource,
+        has_user_id: Boolean(params.userId),
+        error: params.error,
+        error_kind: params.errorKind ?? 'invalid_input',
+        error_path: extractZodErrorPath(params.error),
         is_widget_tool: params.isWidgetTool,
       },
     });
