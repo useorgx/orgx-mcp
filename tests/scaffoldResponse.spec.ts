@@ -83,4 +83,126 @@ describe('compact scaffold responses', () => {
     expect(serialized).not.toContain('"metadata"');
     expect(serialized).not.toContain('"description"');
   });
+
+  /**
+   * Result-contract / tool_hints schema lock.
+   *
+   * scaffold_initiative is the highest-volume agent entry point. Agents
+   * read result_contract + tool_hints to decide what to do next: retry,
+   * paginate, or move on. Any change to these field names or to the shape
+   * of suggested_next_calls is a breaking change for every agent that
+   * follows the breadcrumbs — this test makes that change visible in CI.
+   */
+  it('result_contract carries the stable shape agents rely on', () => {
+    const result = buildCompactScaffoldResult({
+      initiativeId: 'init-x',
+      workspaceId: 'ws-x',
+      liveUrl: 'https://useorgx.com/live/init-x',
+      result: {
+        summary: 'Created 4/4 entities',
+        total: 4,
+        created_count: 4,
+        failed_count: 0,
+        warnings: [],
+        failed: [],
+        ref_map: { initiative: 'init-x', 'ws-1': 'ws-id', 'ms-1': 'ms-id', 't-1': 't-id' },
+        created: [
+          { index: 0, type: 'initiative', id: 'init-x' },
+          { index: 1, type: 'workstream', id: 'ws-id' },
+          { index: 2, type: 'milestone', id: 'ms-id' },
+          { index: 3, type: 'task', id: 't-id' },
+        ],
+        results: [],
+      },
+      hierarchy: {
+        initiative: { id: 'init-x', title: 'Test' },
+        workstreams: [
+          {
+            id: 'ws-id',
+            title: 'WS',
+            milestones: [{ id: 'ms-id', title: 'MS', tasks: [{ id: 't-id', title: 'T' }] }],
+          },
+        ],
+      },
+    });
+
+    // Top-level stable keys agents may rely on.
+    expect(result).toHaveProperty('initiative_id');
+    expect(result).toHaveProperty('live_url');
+    expect(result).toHaveProperty('summary_stats');
+    expect(result).toHaveProperty('hierarchy');
+    expect(result).toHaveProperty('ref_map');
+    expect(result).toHaveProperty('result_contract');
+    expect(result).toHaveProperty('tool_hints');
+
+    // result_contract shape.
+    expect(result.result_contract.mode).toBe('compact_scaffold_result');
+    expect(result.result_contract.do_not_retry_for_full_payload).toBe(true);
+    expect(Array.isArray(result.result_contract.stable_keys)).toBe(true);
+    expect(result.result_contract.stable_keys).toEqual(
+      expect.arrayContaining(['initiative_id', 'live_url', 'summary_stats', 'hierarchy', 'ref_map'])
+    );
+    expect(typeof result.result_contract.detail_policy).toBe('string');
+    expect(typeof result.result_contract.reason).toBe('string');
+
+    // suggested_next_calls is the breadcrumb agents follow when they want
+    // more detail. Each call must name a tool and an args object.
+    const nextCalls = result.result_contract.suggested_next_calls;
+    expect(Array.isArray(nextCalls)).toBe(true);
+    expect(nextCalls.length).toBeGreaterThanOrEqual(3);
+    for (const call of nextCalls) {
+      expect(typeof call.tool).toBe('string');
+      expect(call.tool.length).toBeGreaterThan(0);
+      expect(call.args).toBeTypeOf('object');
+    }
+    // The three call types we depend on for follow-up reads.
+    const tools = nextCalls.map((c) => c.tool);
+    expect(tools).toContain('list_entities');
+
+    // tool_hints flags the compaction policy so agents stop guessing.
+    expect(result.tool_hints).toMatchObject({
+      do_not_rerun_scaffold_for_more_detail: true,
+      use_ref_map_or_list_entities_for_ids: true,
+      large_payloads_are_intentionally_compacted: true,
+    });
+
+    // summary_stats shape.
+    expect(result.summary_stats).toMatchObject({
+      requested_count: expect.any(Number),
+      created_count: expect.any(Number),
+      failed_count: expect.any(Number),
+      workstream_count: expect.any(Number),
+      milestone_count: expect.any(Number),
+      task_count: expect.any(Number),
+    });
+    expect(result.summary_stats.created_by_type).toBeTypeOf('object');
+    expect(result.summary_stats.failed_by_type).toBeTypeOf('object');
+  });
+
+  it('initiative-scoped suggested_next_calls carry the initiative_id and workspace_id', () => {
+    const result = buildCompactScaffoldResult({
+      initiativeId: 'init-args',
+      workspaceId: 'ws-args',
+      liveUrl: null,
+      result: {
+        summary: '',
+        total: 0,
+        created_count: 0,
+        failed_count: 0,
+        warnings: [],
+        failed: [],
+        ref_map: {},
+        created: [],
+        results: [],
+      },
+      hierarchy: { initiative: { id: 'init-args', title: '' }, workstreams: [] },
+    });
+
+    for (const call of result.result_contract.suggested_next_calls) {
+      expect(call.args).toMatchObject({
+        initiative_id: 'init-args',
+        workspace_id: 'ws-args',
+      });
+    }
+  });
 });
