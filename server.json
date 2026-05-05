@@ -3,7 +3,7 @@
   "name": "com.useorgx/orgx-mcp",
   "title": "OrgX MCP — Organizational Memory for AI Agents",
   "description": "Organizational memory and agent orchestration MCP. Remember decisions, artifacts, tasks, and project context across Claude, ChatGPT, Cursor, and other agents.",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "websiteUrl": "https://useorgx.com",
   "vendor": {
     "name": "OrgX",
