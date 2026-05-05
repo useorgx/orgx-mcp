@@ -303,6 +303,86 @@ export function withClientContext<T extends z.ZodRawShape>(
 }
 
 // =============================================================================
+// STANDARD TOOL OUTPUT SCHEMA
+// =============================================================================
+
+/**
+ * Generic, permissive output envelope applied to every MCP tool registration
+ * unless the tool defines its own outputSchema. All fields are optional so
+ * existing handlers do not need to populate every key, but agents can rely on
+ * the shape for machine-readable post-processing (Smithery scoring, ChatGPT
+ * Apps SDK, etc.).
+ */
+export const STANDARD_TOOL_OUTPUT_SCHEMA = {
+  ok: z
+    .boolean()
+    .optional()
+    .describe(
+      'Whether the tool call succeeded. Mirrors the inverse of CallToolResult.isError.'
+    ),
+  summary: z
+    .string()
+    .optional()
+    .describe(
+      'Short human-readable summary of the tool result, suitable for inline display.'
+    ),
+  data: z
+    .record(z.unknown())
+    .optional()
+    .describe(
+      'Tool-specific structured payload. Shape varies per tool; consult the tool description.'
+    ),
+  warnings: z
+    .array(z.string())
+    .optional()
+    .describe('Non-fatal warnings emitted during tool execution.'),
+  meta: z
+    .record(z.unknown())
+    .optional()
+    .describe(
+      'Optional execution metadata (latency, request id, source, etc.).'
+    ),
+} as const;
+
+/**
+ * Ensure a CallToolResult carries `structuredContent` so the SDK output
+ * schema validator (introduced when an outputSchema is declared) does not
+ * reject otherwise-valid responses. Existing structured content is preserved
+ * verbatim; if missing, we synthesize a minimal envelope from the result.
+ */
+export function ensureStructuredContent<
+  T extends {
+    structuredContent?: unknown;
+    isError?: boolean;
+    content?: ReadonlyArray<unknown>;
+  } | null | undefined,
+>(result: T): T {
+  if (!result || typeof result !== 'object') return result;
+  if ((result as { structuredContent?: unknown }).structuredContent !== undefined) {
+    return result;
+  }
+  const isError = Boolean((result as { isError?: boolean }).isError);
+  let summary: string | undefined;
+  const content = (result as { content?: ReadonlyArray<unknown> }).content;
+  if (Array.isArray(content)) {
+    for (const block of content) {
+      if (
+        block &&
+        typeof block === 'object' &&
+        (block as { type?: unknown }).type === 'text' &&
+        typeof (block as { text?: unknown }).text === 'string'
+      ) {
+        summary = ((block as { text: string }).text || '').slice(0, 4000);
+        break;
+      }
+    }
+  }
+  const envelope: Record<string, unknown> = { ok: !isError };
+  if (summary !== undefined) envelope.summary = summary;
+  return { ...result, structuredContent: envelope };
+}
+
+// =============================================================================
 // PLAN SESSION TOOLS
 // =============================================================================
 
