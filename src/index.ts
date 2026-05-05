@@ -65,7 +65,7 @@ import {
   buildScaffoldHierarchy,
   buildScaffoldInitiativeBatch,
 } from './scaffoldInitiative';
-import { buildScaffoldWidget } from './scaffoldWidget';
+import { buildCompactScaffoldResult } from './scaffoldResponse';
 import { buildLiveFeedWidget } from './liveFeedWidget';
 import { signStreamToken } from './streamToken';
 import { hydrateTaskContext } from './taskContextHydrator';
@@ -7374,23 +7374,22 @@ export class OrgXMcp extends McpAgent<
                 console.warn('[scaffold:stream] session setup failed', { error: _streamErr });
               }
 
-			          const machinePayload = {
-			            summary: result.summary,
-			            live_url: liveUrl ?? undefined,
-			            agent_assignment,
-			            credential_status,
-			            launch,
-			            streams,
-	                billing_usage: billingUsage ?? undefined,
-	                scaffold_usage,
-	                fallback_agent_dispatch,
-			            hierarchy,
-			            created: result.created,
-			            failed: result.failed,
-		            ref_map: result.ref_map,
-                scaffold_stream_url,
-                scaffold_session_id,
-	          };
+              const compactScaffoldPayload = buildCompactScaffoldResult({
+                result,
+                hierarchy,
+                initiativeId: createdInitiativeId,
+                workspaceId: effectiveCommandCenterId,
+                liveUrl,
+                scaffoldStreamUrl: scaffold_stream_url,
+                scaffoldSessionId: scaffold_session_id,
+                agentAssignment: agent_assignment,
+                credentialStatus: credential_status,
+                launch,
+                streams,
+                billingUsage: billingUsage ?? undefined,
+                scaffoldUsage: scaffold_usage,
+                fallbackAgentDispatch: fallback_agent_dispatch,
+              });
 
 	          const activationSummary =
 	            launch?.initiative_activation &&
@@ -7461,7 +7460,7 @@ export class OrgXMcp extends McpAgent<
               const activationEvents = await this.recordMcpActivationObservation({
                 toolId: 'scaffold_initiative',
                 args: args as Record<string, unknown>,
-                data: machinePayload,
+                data: compactScaffoldPayload,
                 userId: scaffoldOwnerId,
                 sourceClient,
                 workspaceId: effectiveCommandCenterId,
@@ -7481,39 +7480,34 @@ export class OrgXMcp extends McpAgent<
                 }
                 return c;
               };
-              const expectedTokens = Math.max(8_000, countTasks(machinePayload) * 4_500);
+              const summaryStats =
+                compactScaffoldPayload.summary_stats as Record<string, unknown>;
+              const compactTaskCount =
+                typeof summaryStats.task_count === 'number'
+                  ? summaryStats.task_count
+                  : countTasks(hierarchy);
+              const expectedTokens = Math.max(8_000, compactTaskCount * 4_500);
               const etaSeconds = Math.max(120, Math.floor(expectedTokens / (6500 / 3600)));
               const estimatedCost = Number(((expectedTokens / 1000) * 0.012).toFixed(4));
-              
+
               const finalPayload = activationPayload.experience
                 ? {
-                    ...machinePayload,
+                    ...compactScaffoldPayload,
                     estimated_time_seconds: etaSeconds,
                     estimated_cost: estimatedCost,
                     client_activation: activationPayload.experience,
                   }
                 : {
-                    ...machinePayload,
+                    ...compactScaffoldPayload,
                     estimated_time_seconds: etaSeconds,
                     estimated_cost: estimatedCost,
                   };
 
-
-              // Build streaming widget for MCP Apps (Claude.ai, ChatGPT)
-              // Wrapped in try/catch: a widget build failure must never kill the tool response
-              let _scaffoldWidgetHtml: string | null = null;
-              if (scaffold_stream_url) {
-                try {
-                  _scaffoldWidgetHtml = buildScaffoldWidget({
-                    sessionId: scaffold_session_id!,
-                    streamBaseUrl: this.env.MCP_SERVER_URL,
-                    initiativeTitle: typeof args.title === 'string' ? args.title : undefined,
-                    liveUrl: liveUrl ?? undefined,
-                  });
-                } catch (_widgetErr) {
-                  // Widget failed silently — CLI fallback still returned below
-                }
-              }
+              // The registered scaffolded-initiative resource renders from the
+              // compact structured payload. Avoid returning a second inline
+              // SSE-only widget: Claude drops or externalizes very large tool
+              // results, and the inline EventSource path can remain stuck when
+              // the host does not connect to the stream.
 
               // CLI/API fallback: plain-text summary for clients that don't render HTML
               const _cliFallback = [
@@ -7528,7 +7522,6 @@ export class OrgXMcp extends McpAgent<
                 content: buildJsonFirstContentBlocks({
                   data: finalPayload,
                   summary: _cliFallback,
-                  widgetHtml: _scaffoldWidgetHtml,
                 }),
                 structuredContent: finalPayload,
               };
