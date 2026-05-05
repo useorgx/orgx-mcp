@@ -308,36 +308,43 @@ export function withClientContext<T extends z.ZodRawShape>(
 
 /**
  * Generic, permissive output envelope applied to every MCP tool registration
- * unless the tool defines its own outputSchema. All fields are optional so
- * existing handlers do not need to populate every key, but agents can rely on
- * the shape for machine-readable post-processing (Smithery scoring, ChatGPT
- * Apps SDK, etc.).
+ * unless the tool defines its own outputSchema. All fields are optional and
+ * loosely typed (`z.unknown()`) on purpose: many existing tools already place
+ * natural payload fields like `data`, `warnings`, `summary`, etc. directly on
+ * `structuredContent` (e.g. `list_entities` puts an array of entities under
+ * `data`; `batch_create_entities` puts an array of objects under `warnings`).
+ * The schema is here to declare an envelope for Smithery / Apps SDK output-
+ * schema coverage, NOT to validate per-field shapes — doing so would reject
+ * legitimate payloads with Zod errors like
+ * "Expected object, received array on data path."
  */
 export const STANDARD_TOOL_OUTPUT_SCHEMA = {
   ok: z
-    .boolean()
+    .unknown()
     .optional()
     .describe(
       'Whether the tool call succeeded. Mirrors the inverse of CallToolResult.isError.'
     ),
   summary: z
-    .string()
+    .unknown()
     .optional()
     .describe(
       'Short human-readable summary of the tool result, suitable for inline display.'
     ),
   data: z
-    .record(z.unknown())
+    .unknown()
     .optional()
     .describe(
-      'Tool-specific structured payload. Shape varies per tool; consult the tool description.'
+      'Tool-specific structured payload. Shape varies per tool (object, array, or scalar); consult the tool description.'
     ),
   warnings: z
-    .array(z.string())
+    .unknown()
     .optional()
-    .describe('Non-fatal warnings emitted during tool execution.'),
+    .describe(
+      'Non-fatal warnings emitted during tool execution. Shape varies per tool (string array, object array, etc.).'
+    ),
   meta: z
-    .record(z.unknown())
+    .unknown()
     .optional()
     .describe(
       'Optional execution metadata (latency, request id, source, etc.).'
