@@ -148,6 +148,8 @@ import {
   CLIENT_INTEGRATION_TOOL_DEFINITIONS,
   CHATGPT_TOOL_DEFINITIONS,
   CLIENT_CONTEXT_SCHEMA,
+  STANDARD_TOOL_OUTPUT_SCHEMA,
+  ensureStructuredContent,
   STREAM_TOOL_DEFINITIONS,
   ENTITY_TYPES,
   entityTypeEnum,
@@ -3397,10 +3399,63 @@ export class OrgXMcp extends McpAgent<
     }
   }
 
+  private standardOutputSchemaInstalled = false;
+
+  /**
+   * Monkey-patches `this.server.registerTool` so every tool registered after
+   * this call automatically gets a default outputSchema (when none is
+   * provided) and a handler wrapper that synthesises a minimal
+   * `structuredContent` envelope from the existing `content` blocks.
+   *
+   * Idempotent: only patches once per worker instance.
+   */
+  private installStandardOutputSchemaWrapper() {
+    if (this.standardOutputSchemaInstalled) return;
+    this.standardOutputSchemaInstalled = true;
+    const server = this.server as unknown as {
+      registerTool: (
+        name: string,
+        config: Record<string, unknown> & { outputSchema?: unknown },
+        handler: (...args: unknown[]) => unknown
+      ) => unknown;
+    };
+    const original = server.registerTool.bind(server);
+    server.registerTool = ((
+      name: string,
+      config: Record<string, unknown> & { outputSchema?: unknown },
+      handler: (...args: unknown[]) => unknown
+    ) => {
+      const enhancedConfig = {
+        ...config,
+        outputSchema:
+          config.outputSchema ??
+          (STANDARD_TOOL_OUTPUT_SCHEMA as unknown as Record<string, unknown>),
+      };
+      const wrappedHandler = async (...args: unknown[]) => {
+        const result = await handler(...args);
+        return ensureStructuredContent(
+          result as {
+            structuredContent?: unknown;
+            isError?: boolean;
+            content?: ReadonlyArray<unknown>;
+          }
+        );
+      };
+      return original(name, enhancedConfig, wrappedHandler);
+    }) as typeof server.registerTool;
+  }
+
   private registerTools() {
     // Resolve tool profile from connection props (e.g. ?profile=executor).
     // null means register all tools (default / 'full' profile).
     const allowedTools = resolveProfileToolSet(this.props?.profile);
+
+    // Wrap server.registerTool so every subsequent registration (inline,
+    // for-loop, or via registerAppTool which delegates to the same method)
+    // gets a default outputSchema and an envelope-injected handler. This
+    // boosts Smithery's "Output schemas" coverage without requiring each
+    // handler to populate structuredContent manually.
+    this.installStandardOutputSchemaWrapper();
 
     // Register ChatGPT App tools (data-driven)
     this.registerChatGPTTools(allowedTools);
@@ -5857,10 +5912,16 @@ export class OrgXMcp extends McpAgent<
               'cross_reference',
               'note',
             ])
-            .optional(),
+            .optional()
+            .describe(
+              'Optional classification for the comment (e.g. observation, concern, blocker_flag) used by downstream filters and dashboards.'
+            ),
           severity: z
             .enum(['info', 'low', 'medium', 'high', 'critical'])
-            .optional(),
+            .optional()
+            .describe(
+              'Optional severity level for triage when comment_type implies an issue (concern, blocker_flag, etc.).'
+            ),
           tags: z
             .array(z.string())
             .max(20)
