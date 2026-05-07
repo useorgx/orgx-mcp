@@ -183,14 +183,14 @@ describe('buildScaffoldInitiativeBatch', () => {
       title: 'Product proof: plan, execute, and validate',
       assigned_agent_ids: ['product-agent'],
       assigned_agent_names: ['Pace'],
-      auto_generated: true,
     });
     expect(tasks[0]).toMatchObject({
       title: 'Product proof: discovery',
       assigned_agent_ids: ['product-agent'],
       assigned_agent_names: ['Pace'],
-      auto_generated: true,
     });
+    expect(milestones[0]).not.toHaveProperty('auto_generated');
+    expect(tasks[0]).not.toHaveProperty('auto_generated');
   });
 
   it('omits coordination_dependency metadata entry when no hint is provided', () => {
