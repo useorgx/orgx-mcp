@@ -242,19 +242,16 @@ function defaultTaskList(milestoneTitle: string): Record<string, unknown>[] {
       title: `${title}: discovery`,
       description: `Gather requirements and unblock dependencies for ${title}.`,
       type: 'research',
-      auto_generated: true,
     },
     {
       title: `${title}: implementation`,
       description: `Execute core work for ${title}.`,
       type: 'implement',
-      auto_generated: true,
     },
     {
       title: `${title}: validation`,
       description: `Validate outputs and handoff for ${title}.`,
       type: 'review',
-      auto_generated: true,
     },
   ];
 }
@@ -275,7 +272,6 @@ function defaultMilestoneList(
       title: `${title}: plan, execute, and validate`,
       description: `Create the first executable checkpoint for ${title}.`,
       successCriteria: `${title} has scoped work, produced outputs, and validation evidence.`,
-      auto_generated: true,
       tasks: defaultTaskList(title),
     },
   ];
