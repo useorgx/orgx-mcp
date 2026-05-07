@@ -271,7 +271,6 @@ function defaultMilestoneList(
     {
       title: `${title}: plan, execute, and validate`,
       description: `Create the first executable checkpoint for ${title}.`,
-      successCriteria: `${title} has scoped work, produced outputs, and validation evidence.`,
       tasks: defaultTaskList(title),
     },
   ];

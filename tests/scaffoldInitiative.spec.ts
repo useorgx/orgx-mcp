@@ -190,6 +190,7 @@ describe('buildScaffoldInitiativeBatch', () => {
       assigned_agent_names: ['Pace'],
     });
     expect(milestones[0]).not.toHaveProperty('auto_generated');
+    expect(milestones[0]).not.toHaveProperty('successCriteria');
     expect(tasks[0]).not.toHaveProperty('auto_generated');
   });
 
