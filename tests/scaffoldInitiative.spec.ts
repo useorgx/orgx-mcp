@@ -149,6 +149,50 @@ describe('buildScaffoldInitiativeBatch', () => {
     expect(metadata?.live).toEqual({ visibility: 'public' });
   });
 
+  it('adds executable children for explicit workstreams without milestones', () => {
+    const result = buildScaffoldInitiativeBatch({
+      title: 'Enigma launch proof sprint',
+      workstreams: [
+        {
+          title: 'Product proof',
+          domain: 'product',
+          primaryAgent: 'product',
+        },
+        {
+          title: 'Visual proof',
+          domain: 'design',
+          primaryAgent: 'design',
+        },
+      ],
+    });
+
+    const workstreams = result.batch.filter(
+      (entity) => entity.type === 'workstream'
+    );
+    const milestones = result.batch.filter(
+      (entity) => entity.type === 'milestone'
+    );
+    const tasks = result.batch.filter((entity) => entity.type === 'task');
+
+    expect(workstreams).toHaveLength(2);
+    expect(milestones).toHaveLength(2);
+    expect(tasks).toHaveLength(6);
+    expect(result.msRefs).toEqual([['ms-1-1'], ['ms-2-1']]);
+    expect(result.taskRefs[0]?.[0]).toHaveLength(3);
+    expect(milestones[0]).toMatchObject({
+      title: 'Product proof: plan, execute, and validate',
+      assigned_agent_ids: ['product-agent'],
+      assigned_agent_names: ['Pace'],
+      auto_generated: true,
+    });
+    expect(tasks[0]).toMatchObject({
+      title: 'Product proof: discovery',
+      assigned_agent_ids: ['product-agent'],
+      assigned_agent_names: ['Pace'],
+      auto_generated: true,
+    });
+  });
+
   it('omits coordination_dependency metadata entry when no hint is provided', () => {
     const result = buildScaffoldInitiativeBatch({
       title: 'Single-stream Initiative',

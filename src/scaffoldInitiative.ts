@@ -259,6 +259,28 @@ function defaultTaskList(milestoneTitle: string): Record<string, unknown>[] {
   ];
 }
 
+function defaultMilestoneList(
+  workstream: Record<string, unknown>,
+  index: number
+): Record<string, unknown>[] {
+  const title =
+    typeof workstream.title === 'string' && workstream.title.trim().length > 0
+      ? workstream.title.trim()
+      : typeof workstream.name === 'string' && workstream.name.trim().length > 0
+      ? workstream.name.trim()
+      : `Workstream ${index + 1}`;
+
+  return [
+    {
+      title: `${title}: plan, execute, and validate`,
+      description: `Create the first executable checkpoint for ${title}.`,
+      successCriteria: `${title} has scoped work, produced outputs, and validation evidence.`,
+      auto_generated: true,
+      tasks: defaultTaskList(title),
+    },
+  ];
+}
+
 function estimateTaskHours(task: Record<string, unknown>): number {
   const explicitHours = toFiniteNumber(
     task.estimated_hours ?? task.estimatedHours ?? task.expected_duration_hours
@@ -444,9 +466,13 @@ export function buildScaffoldInitiativeBatch(
     const wsRef = ensureRef(ws, `ws-${wsIdx + 1}`);
     wsRefs[wsIdx] = wsRef;
 
-    const wsMilestones = Array.isArray(ws.milestones)
+    const wsMilestonesRaw = Array.isArray(ws.milestones)
       ? (ws.milestones as unknown[])
       : [];
+    const wsMilestones =
+      wsMilestonesRaw.length > 0
+        ? wsMilestonesRaw
+        : defaultMilestoneList(ws, wsIdx);
     msRefs[wsIdx] = [];
     taskRefs[wsIdx] = [];
 
