@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { authHandler } from '../src/authHandler';
-import { OUTPUT_TEMPLATE_URIS, WIDGET_URIS } from '../src/toolDefinitions';
+import {
+  OUTPUT_TEMPLATE_URIS,
+  WIDGET_RESOURCES,
+  WIDGET_URIS,
+} from '../src/toolDefinitions';
+import { toSkybridgeResourceUri } from '../src/widgetConfig';
 
 describe('authHandler widget compatibility routes', () => {
   it('serves a derived Smithery server card from the worker origin', async () => {
@@ -40,6 +45,18 @@ describe('authHandler widget compatibility routes', () => {
     );
     expect(scaffoldResource).toBeTruthy();
     expect(scaffoldSkybridgeResource).toBeTruthy();
+    for (const widget of WIDGET_RESOURCES) {
+      expect(
+        body.resources?.some((resource) => resource.uri === widget.uri),
+        `${widget.name} missing from server card resources`
+      ).toBe(true);
+      expect(
+        body.resources?.some(
+          (resource) => resource.uri === toSkybridgeResourceUri(widget.uri)
+        ),
+        `${widget.name} skybridge resource missing from server card resources`
+      ).toBe(true);
+    }
   });
 
   it('serves the live server.json manifest from the worker origin', async () => {
@@ -71,6 +88,18 @@ describe('authHandler widget compatibility routes', () => {
         (resource) => resource.uri === 'ui://widget/scaffolded-initiative.html'
       )
     ).toBe(false);
+    for (const widget of WIDGET_RESOURCES) {
+      expect(
+        body.resources?.some((resource) => resource.uri === widget.uri),
+        `${widget.name} missing from server.json resources`
+      ).toBe(true);
+      expect(
+        body.resources?.some(
+          (resource) => resource.uri === toSkybridgeResourceUri(widget.uri)
+        ),
+        `${widget.name} skybridge resource missing from server.json resources`
+      ).toBe(true);
+    }
   });
 
   it('proxies /api/chatgpt/widgets requests through the assets binding', async () => {

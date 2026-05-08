@@ -25,9 +25,9 @@ import {
 import { authenticateRequest } from './requestAuth';
 import {
   OAUTH_SCOPES_SUPPORTED,
-  OUTPUT_TEMPLATE_URIS,
-  WIDGET_URIS,
+  WIDGET_RESOURCES,
 } from './toolDefinitions';
+import { toSkybridgeResourceUri } from './widgetConfig';
 import serverManifest from '../server.json';
 import { signSessionToken } from './sessionToken';
 import {
@@ -221,40 +221,17 @@ function buildDerivedServerCard(manifest: typeof serverManifest) {
   };
 }
 
-const PUBLISHED_WIDGET_URI_OVERRIDES = new Map<string, string>([
-  ['ui://widget/decisions.html', WIDGET_URIS.decisions],
-  ['ui://widget/agent-status.html', WIDGET_URIS.agentStatus],
-  ['ui://widget/search-results.html', WIDGET_URIS.searchResults],
-  ['ui://widget/scaffolded-initiative.html', WIDGET_URIS.scaffoldedInitiative],
-  ['ui://widget/initiative-pulse.html', WIDGET_URIS.initiativePulse],
-  ['ui://widget/task-spawned.html', WIDGET_URIS.taskSpawned],
-  ['ui://widget/morning-brief.html', WIDGET_URIS.morningBrief],
-  ['ui://widget/decisions.skybridge.html', OUTPUT_TEMPLATE_URIS.decisions],
-  [
-    'ui://widget/agent-status.skybridge.html',
-    OUTPUT_TEMPLATE_URIS.agentStatus,
-  ],
-  [
-    'ui://widget/search-results.skybridge.html',
-    OUTPUT_TEMPLATE_URIS.searchResults,
-  ],
-  [
-    'ui://widget/scaffolded-initiative.skybridge.html',
-    OUTPUT_TEMPLATE_URIS.scaffoldedInitiative,
-  ],
-  [
-    'ui://widget/initiative-pulse.skybridge.html',
-    OUTPUT_TEMPLATE_URIS.initiativePulse,
-  ],
-  [
-    'ui://widget/task-spawned.skybridge.html',
-    OUTPUT_TEMPLATE_URIS.taskSpawned,
-  ],
-  [
-    'ui://widget/morning-brief.skybridge.html',
-    OUTPUT_TEMPLATE_URIS.morningBrief,
-  ],
-]);
+const PUBLISHED_WIDGET_URI_OVERRIDES = new Map<string, string>(
+  WIDGET_RESOURCES.flatMap((widget) => {
+    const [baseUri] = widget.uri.split('?');
+    const skybridgeUri = toSkybridgeResourceUri(widget.uri);
+    const [baseSkybridgeUri] = skybridgeUri.split('?');
+    return [
+      [baseUri, widget.uri],
+      [baseSkybridgeUri, skybridgeUri],
+    ];
+  })
+);
 
 const LOCAL_CONFIG_WRITE_POLICY = {
   automaticWrites: false,
