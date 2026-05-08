@@ -1,9 +1,24 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { authHandler } from '../src/authHandler';
+import { signMcpIdentityToken } from '../src/mcpIdentityToken';
 
 function createCtx() {
   return { waitUntil: vi.fn() } as any;
+}
+
+function createKv(initial: Record<string, string> = {}) {
+  const store = new Map(Object.entries(initial));
+  return {
+    get: vi.fn(async (key: string) => store.get(key) ?? null),
+    put: vi.fn(async (key: string, value: string) => {
+      store.set(key, value);
+    }),
+    delete: vi.fn(async (key: string) => {
+      store.delete(key);
+    }),
+    store,
+  };
 }
 
 describe('authHandler root landing page routing', () => {
@@ -122,5 +137,130 @@ describe('authHandler root landing page routing', () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(JSON.stringify(body)).not.toContain('.claude');
+  });
+});
+
+describe('authHandler OAuth consent flow', () => {
+  const secret = 'test-secret-for-mcp-identity-token';
+  const authRequest = {
+    responseType: 'code',
+    clientId: 'chatgpt-test-client',
+    redirectUri: 'https://chatgpt.com/connector_platform_oauth_redirect',
+    scope: [
+      'decisions:read',
+      'decisions:write',
+      'agents:read',
+      'agents:write',
+      'initiatives:read',
+      'initiatives:write',
+      'memory:read',
+      'offline_access',
+    ],
+    state: 'client-state-1',
+    codeChallenge: 'challenge',
+    codeChallengeMethod: 'S256',
+  };
+
+  it('redirects verified users to the consent page instead of auto-approving scopes', async () => {
+    const stateKey = 'state-consent-1';
+    const identityToken = await signMcpIdentityToken({
+      userId: 'user-1',
+      email: 'user@example.com',
+      stateKey,
+      secret,
+    });
+    const kv = createKv({
+      [`auth_state:${stateKey}`]: JSON.stringify(authRequest),
+    });
+    const completeAuthorization = vi.fn();
+
+    const response = await authHandler.fetch(
+      new Request(
+        `https://mcp.useorgx.com/oauth/callback?state_key=${stateKey}&identity_token=${encodeURIComponent(
+          identityToken
+        )}`
+      ),
+      {
+        MCP_SERVER_URL: 'https://mcp.useorgx.com',
+        ORGX_WEB_URL: 'https://useorgx.com',
+        ORGX_INTERNAL_SECRET: secret,
+        OAUTH_KV: kv,
+        OAUTH_PROVIDER: { completeAuthorization },
+      },
+      createCtx()
+    );
+
+    expect(response.status).toBe(302);
+    const location = new URL(response.headers.get('location')!);
+    expect(location.pathname).toBe('/consent.html');
+    expect(location.searchParams.get('state_key')).toBe(stateKey);
+    expect(location.searchParams.get('scope')).toContain('decisions:write');
+    expect(location.searchParams.get('user_id')).toBeNull();
+    expect(kv.store.has(`auth_state:${stateKey}`)).toBe(true);
+    expect(kv.store.has(`auth_identity:${stateKey}`)).toBe(true);
+    expect(completeAuthorization).not.toHaveBeenCalled();
+  });
+
+  it('completes authorization with consent-selected scopes clamped to requested supported scopes', async () => {
+    const stateKey = 'state-consent-2';
+    const kv = createKv({
+      [`auth_state:${stateKey}`]: JSON.stringify(authRequest),
+      [`auth_identity:${stateKey}`]: JSON.stringify({
+        userId: 'user-1',
+        userEmail: 'user@example.com',
+      }),
+    });
+    const completeAuthorization = vi.fn(async () => ({
+      redirectTo: 'https://chatgpt.com/callback?code=abc&state=client-state-1',
+    }));
+    const finalScope = [
+      'decisions:read',
+      'memory:read',
+      'memory:write',
+      'planning:read',
+      'initiatives:write',
+      'offline_access',
+    ].join(' ');
+
+    const response = await authHandler.fetch(
+      new Request(
+        `https://mcp.useorgx.com/oauth/consent-callback?state_key=${stateKey}&final_scope=${encodeURIComponent(
+          finalScope
+        )}`
+      ),
+      {
+        MCP_SERVER_URL: 'https://mcp.useorgx.com',
+        ORGX_WEB_URL: 'https://useorgx.com',
+        ORGX_INTERNAL_SECRET: secret,
+        OAUTH_KV: kv,
+        OAUTH_PROVIDER: { completeAuthorization },
+      },
+      createCtx()
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe(
+      'https://chatgpt.com/callback?code=abc&state=client-state-1'
+    );
+    expect(completeAuthorization).toHaveBeenCalledWith(
+      expect.objectContaining({
+        request: authRequest,
+        userId: 'user-1',
+        scope: [
+          'decisions:read',
+          'memory:read',
+          'initiatives:write',
+          'offline_access',
+        ],
+        props: {
+          userId: 'user-1',
+          scope:
+            'decisions:read memory:read initiatives:write offline_access',
+          email: 'user@example.com',
+        },
+      })
+    );
+    expect(kv.store.has(`auth_state:${stateKey}`)).toBe(false);
+    expect(kv.store.has(`auth_identity:${stateKey}`)).toBe(false);
   });
 });
