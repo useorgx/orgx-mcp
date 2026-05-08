@@ -17,7 +17,9 @@
     {
       "src": "https://mcp.useorgx.com/orgx-logo.png",
       "mimeType": "image/png",
-      "sizes": ["any"]
+      "sizes": [
+        "any"
+      ]
     }
   ],
   "remotes": [
@@ -55,192 +57,52 @@
   },
   "tools": [
     {
-      "name": "remember_decision",
-      "description": "Save a decision to organizational memory so agents and teammates can recall it later. Also known as: decision log, team memory, agent memory, record decision, remember what we decided."
-    },
-    {
-      "name": "recall_memory",
-      "description": "Search organizational memory for prior decisions, artifacts, project context, and team knowledge. Also known as: search memory, recall decisions, find context, retrieve artifacts, what did we decide."
-    },
-    {
-      "name": "approve_agent_work",
-      "description": "Review agent decisions or work items awaiting human approval. Also known as: pending approvals, agent blocked, sign off, review decisions, approve AI work."
-    },
-    {
-      "name": "delegate_agent_task",
-      "description": "Assign work to a specialist AI agent and track the result. Also known as: hand this off, spawn agent, assign task, delegate to agent, have an AI agent do it."
-    },
-    {
-      "name": "track_project_progress",
-      "description": "Get health, blockers, milestones, owners, and recent activity for a project or initiative. Also known as: project status, initiative pulse, blockers, roadmap progress, execution health."
-    },
-    {
-      "name": "get_pending_decisions",
-      "description": "List agent decisions and work items awaiting human approval. Also known as: pending approvals, agent blocked, sign off, review decisions, approve AI work."
-    },
-    {
-      "name": "approve_decision",
-      "description": "Approve a pending agent decision after explicit user confirmation. Also known as: sign off, approve AI work, unblock agent, accept decision."
-    },
-    {
-      "name": "reject_decision",
-      "description": "Reject a pending agent decision with guidance after explicit user confirmation. Also known as: request revisions, send feedback, decline decision."
-    },
-    {
-      "name": "get_agent_status",
-      "description": "Show current AI agent activity, blocked work, and execution state. Also known as: agent status, what agents are doing, active runs."
-    },
-    {
-      "name": "query_org_memory",
-      "description": "Search team memory, organizational decisions, prior artifacts, and project context across agents. Also known as: search memory, recall decisions, find context, retrieve artifacts, project memory."
-    },
-    {
-      "name": "get_initiative_pulse",
-      "description": "Get project health, blockers, milestones, owners, and recent activity for an initiative. Also known as: project status, roadmap progress, execution health, blockers."
-    },
-    {
-      "name": "spawn_agent_task",
-      "description": "Delegate work to a specialist AI agent and track the assigned task. Also known as: hand this off, assign task, spawn agent, have an agent do it, autonomous work."
-    },
-    {
-      "name": "get_decision_history",
-      "description": "Recall past decisions about a topic, project, customer, feature, or artifact. Also known as: decision log, what did we decide, prior approvals."
-    },
-    {
-      "name": "get_morning_brief",
-      "description": "Summarize overnight agent activity, important changes, pending approvals, and ROI deltas. Also known as: morning brief, executive readout, agent digest."
-    },
-    {
       "name": "orgx_bootstrap",
-      "description": "Discover workspace context, granted scopes, safe first calls, and recommended OrgX workflows. Also known as: bootstrap, setup, tool routing."
+      "description": "Establish OrgX session context, granted scopes, and v2 routing guidance."
     },
     {
-      "name": "orgx_describe_tool",
-      "description": "Return the live contract for an OrgX tool, including fields, auth, and next-step guidance. Also known as: tool schema, tool help, contract."
+      "name": "orgx_search",
+      "description": "Search OrgX memory and entities; replaces list_entities and query_org_memory for public guidance."
     },
     {
-      "name": "orgx_describe_action",
-      "description": "Describe lifecycle actions, aliases, and payload requirements before changing OrgX entities. Also known as: action help, status change help."
+      "name": "orgx_inspect",
+      "description": "Hydrate one OrgX entity with context; replaces get_task_with_context for public guidance."
     },
     {
-      "name": "start_plan_session",
-      "description": "Start a multi-agent planning session that breaks a goal into projects, tasks, owners, and agent assignments. Also known as: plan feature, roadmap planning."
+      "name": "orgx_recommend",
+      "description": "Recommend next actions, morning-brief signals, queue priority, pulses, and snapshots."
     },
     {
-      "name": "get_active_sessions",
-      "description": "Find active planning sessions so agents can continue prior planning context. Also known as: resume planning, active plans, session context."
+      "name": "orgx_write",
+      "description": "Create or update OrgX entities with canonical snake_case fields."
     },
     {
-      "name": "resume_plan_session",
-      "description": "Resume a planning session by UUID, orgx:// URI, or most recent active session. Also known as: continue plan, reload planning context."
+      "name": "orgx_attach",
+      "description": "Attach durable artifacts and proof to existing OrgX entities."
     },
     {
-      "name": "improve_plan",
-      "description": "Improve a plan with AI suggestions based on prior patterns and best practices. Also known as: plan critique, planning feedback, refine plan."
+      "name": "orgx_act",
+      "description": "Run lifecycle, validation, completion, delete, dry-run, and proof actions."
     },
     {
-      "name": "record_plan_edit",
-      "description": "Record a plan edit so OrgX can preserve planning context and learn patterns. Also known as: save plan change, plan memory."
+      "name": "orgx_plan",
+      "description": "Start, resume, improve, edit, or complete tracked OrgX planning sessions."
     },
     {
-      "name": "complete_plan",
-      "description": "Complete a planning session and attach implementation details to durable work context. Also known as: finish plan, implementation record."
+      "name": "orgx_spawn",
+      "description": "Guard, classify, spawn, or hand off specialist OrgX agent work."
     },
     {
-      "name": "studio_brand_ingest",
-      "description": "Ingest brand sources and create/update a Content Studio brand pack."
+      "name": "orgx_decide",
+      "description": "Create, remember, list, approve, or reject durable OrgX decisions."
     },
     {
-      "name": "studio_content_create",
-      "description": "Generate branded visual content (carousel, post, story, video, banner, thumbnail)."
+      "name": "orgx_submit_receipt",
+      "description": "Submit durable proof, attribution, quality, or outcome receipts."
     },
     {
-      "name": "studio_library_search",
-      "description": "Search the Content Studio library by filters and text."
-    },
-    {
-      "name": "studio_brands_list",
-      "description": "List available Content Studio brands for the user/org."
-    },
-    {
-      "name": "get_org_snapshot",
-      "description": "Get an organization-wide execution snapshot across initiatives, work, blockers, and context. Also known as: org status, team overview."
-    },
-    {
-      "name": "account_status",
-      "description": "Get current account tier, usage, and hourly MCP rate-limit status."
-    },
-    {
-      "name": "account_upgrade",
-      "description": "Start a plan upgrade or agent credit top-up flow and return a checkout or contact URL after explicit user confirmation. Does not charge automatically."
-    },
-    {
-      "name": "account_usage_report",
-      "description": "Get detailed usage metrics and current edge rate-limit allowance."
-    },
-    {
-      "name": "list_entities",
-      "description": "List projects, tasks, milestones, decisions, agents, artifacts, and other OrgX records with pagination, filtering, and ordering. Also known as: browse work, find entities."
-    },
-    {
-      "name": "create_entity",
-      "description": "Create durable work records such as tasks, milestones, decisions, artifacts, or initiatives. Also known as: save work item, add record."
-    },
-    {
-      "name": "create_task",
-      "description": "Create an actionable task in organizational memory for a project, milestone, or agent. Also known as: add task, create work item."
-    },
-    {
-      "name": "create_milestone",
-      "description": "Create a project milestone or phase checkpoint with durable context. Also known as: add milestone, create checkpoint."
-    },
-    {
-      "name": "create_decision",
-      "description": "Record a decision in organizational memory so agents can recall it later. Also known as: remember decision, decision log, team memory."
-    },
-    {
-      "name": "batch_create_entities",
-      "description": "Create multiple work records in one call for planning and scaffolding. Also known as: bulk create tasks, batch project setup."
-    },
-    {
-      "name": "scaffold_initiative",
-      "description": "Turn a goal, roadmap, launch, or feature plan into executable workstreams, milestones, and tasks. Also known as: scaffold project, create roadmap."
-    },
-    {
-      "name": "get_task_with_context",
-      "description": "Fetch a task with linked decisions, artifacts, entities, and plan-session context. Also known as: task context, work brief."
-    },
-    {
-      "name": "update_entity",
-      "description": "Update fields on an existing task, project, milestone, decision, or artifact. Also known as: edit work item, update context."
-    },
-    {
-      "name": "entity_action",
-      "description": "Change work state, attach artifacts, or run lifecycle actions on OrgX records. Also known as: launch, pause, complete, attach proof."
-    },
-    {
-      "name": "validate_studio_content",
-      "description": "Validate a studio_content entity without composing a generic entity_action payload manually."
-    },
-    {
-      "name": "pin_workstream",
-      "description": "Pin a workstream to the top of the Next Up queue without composing a generic queue action manually."
-    },
-    {
-      "name": "batch_delete_entities",
-      "description": "Delete multiple entities in one call using the 'delete' lifecycle action (hard delete)."
-    },
-    {
-      "name": "configure_org",
-      "description": "Check setup status, configure agents, or set org policies"
-    },
-    {
-      "name": "workspace",
-      "description": "Create, list, get, or set workspace context. Use action=create to create a workspace and make it active for follow-up MCP calls."
-    },
-    {
-      "name": "stats",
-      "description": "Get personal or session statistics"
+      "name": "orgx_emit_activity",
+      "description": "Emit append-only execution telemetry without changing durable entity state."
     }
   ],
   "resources": [

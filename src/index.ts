@@ -207,6 +207,7 @@ import {
 import { checkToolPlanAccess } from './toolAccessGating';
 import {
   CONTRACT_TOOL_DEFINITIONS,
+  V2_ORGX_TOOL_ID_SET,
   getKnownToolContract,
   getKnownToolContracts,
 } from './contractTools';
@@ -2181,7 +2182,9 @@ export class OrgXMcp extends McpAgent<
         {
           title: tool.title,
           description: tool.description,
-          inputSchema: this.withClientContext(tool.inputSchema),
+          inputSchema: V2_ORGX_TOOL_ID_SET.has(tool.id)
+            ? tool.inputSchema
+            : this.withClientContext(tool.inputSchema),
           annotations: tool.annotations,
           _meta: meta,
         },
@@ -2952,6 +2955,403 @@ export class OrgXMcp extends McpAgent<
                 text: `OrgX contract ready. Profile: ${payload.profile}. Visible tools: ${payload.visible_tools_count}.`,
               },
             ],
+            structuredContent: payload,
+          };
+        }
+
+        case 'orgx_inspect': {
+          if (args.type === 'plan_session') {
+            return this.executeContractTool(
+              'resume_plan_session',
+              { session_id: args.id },
+              SECURITY_SCHEMES.authRequired,
+              allowedTools
+            );
+          }
+
+          return this.executeChatGPTTool(
+            'list_entities',
+            {
+              type: args.type,
+              id: args.id,
+              hydrate_context: args.hydrate_context ?? true,
+              max_chars: args.max_chars,
+              limit: 1,
+            },
+            SECURITY_SCHEMES.entityReadRequiresAuth
+          );
+        }
+
+        case 'orgx_search': {
+          const query =
+            typeof args.query === 'string' && args.query.trim().length > 0
+              ? args.query.trim()
+              : null;
+          if (query && !args.type) {
+            return this.executeChatGPTTool(
+              'query_org_memory',
+              {
+                query,
+                scope: 'all',
+                workspace_id: args.workspace_id,
+                initiative_id: args.initiative_id,
+                limit: args.limit,
+              },
+              SECURITY_SCHEMES.readOptionalAuth
+            );
+          }
+
+          return this.executeChatGPTTool(
+            'list_entities',
+            {
+              type: args.type ?? 'initiative',
+              query,
+              status: args.status,
+              initiative_id: args.initiative_id,
+              workspace_id: args.workspace_id,
+              limit: args.limit,
+              fields: args.fields,
+            },
+            SECURITY_SCHEMES.entityReadRequiresAuth
+          );
+        }
+
+        case 'orgx_recommend': {
+          if (args.mode === 'morning_brief') {
+            const wsId =
+              typeof args.workspace_id === 'string'
+                ? args.workspace_id
+                : this.sessionContext?.workspaceId;
+            if (!wsId) return this.toolError('workspace_id required');
+            const response = await callOrgxApiJson(
+              this.env,
+              `/api/flywheel/briefs?workspace_id=${wsId}${
+                args.session_id ? `&session_id=${args.session_id}` : ''
+              }`,
+              undefined,
+              { userId: resolvedUserId }
+            );
+            const result = (await response.json()) as Record<string, unknown>;
+            const payload = { ...result, _v2_tool: 'orgx_recommend', mode: 'morning_brief' };
+            return {
+              content: [{ type: 'text', text: formatForLLM('get_morning_brief', payload) }],
+              structuredContent: payload,
+            };
+          }
+
+          return this.executeChatGPTTool(
+            'recommend_next_action',
+            {
+              entity_type: args.entity_type ?? (args.entity_id ? 'initiative' : 'workspace'),
+              entity_id: args.entity_id,
+              workspace_id: args.workspace_id,
+              limit: args.limit,
+            },
+            SECURITY_SCHEMES.readOptionalAuth
+          );
+        }
+
+        case 'orgx_write': {
+          const operation =
+            typeof args.operation === 'string' ? args.operation : 'create';
+          if (operation === 'update') {
+            const fields =
+              args.fields && typeof args.fields === 'object' && !Array.isArray(args.fields)
+                ? (args.fields as Record<string, unknown>)
+                : {};
+            if (!args.id || Object.keys(fields).length === 0) {
+              return this.toolError('orgx_write operation=update requires id and fields', {
+                code: 'invalid_input',
+                status: 400,
+              });
+            }
+
+            const response = await callOrgxApiJson(
+              this.env,
+              '/api/entities',
+              {
+                method: 'PATCH',
+                body: JSON.stringify({
+                  type: args.type,
+                  id: args.id,
+                  ...fields,
+                  idempotency_key: args.idempotency_key,
+                }),
+              },
+              { userId: resolvedUserId }
+            );
+            const result = (await response.json()) as Record<string, unknown>;
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: formatForLLM('orgx_write', {
+                    ...result,
+                    _v2_tool: 'orgx_write',
+                    operation: 'update',
+                  }),
+                },
+              ],
+              structuredContent: {
+                ...result,
+                _v2_tool: 'orgx_write',
+                operation: 'update',
+              },
+            };
+          }
+
+          const { operation: _operation, fields: _fields, session_id: _sessionId, ...body } = args;
+          const response = await callOrgxApiJson(
+            this.env,
+            '/api/entities',
+            {
+              method: 'POST',
+              body: JSON.stringify(body),
+            },
+            { userId: resolvedUserId }
+          );
+          const result = (await response.json()) as Record<string, unknown>;
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatForLLM('orgx_write', {
+                  ...result,
+                  _v2_tool: 'orgx_write',
+                  operation: 'create',
+                }),
+              },
+            ],
+            structuredContent: {
+              ...result,
+              _v2_tool: 'orgx_write',
+              operation: 'create',
+            },
+          };
+        }
+
+        case 'orgx_attach': {
+          const attachPayload = buildEntityActionAttachPayload({
+            type: args.type,
+            id: args.id,
+            name: args.name,
+            artifact_type: args.artifact_type,
+            description: args.description,
+            artifact_url: args.artifact_url,
+            external_url: args.external_url,
+            preview_markdown: args.preview_markdown,
+            status: args.status,
+            metadata: {
+              ...(args.metadata &&
+              typeof args.metadata === 'object' &&
+              !Array.isArray(args.metadata)
+                ? (args.metadata as Record<string, unknown>)
+                : {}),
+              idempotency_key: args.idempotency_key,
+            },
+          });
+          const response = await callOrgxApiJson(
+            this.env,
+            '/api/client/artifacts',
+            {
+              method: 'POST',
+              body: JSON.stringify(attachPayload),
+            },
+            { userId: resolvedUserId }
+          );
+          const result = (await response.json()) as Record<string, unknown>;
+          const payload = { ...result, _v2_tool: 'orgx_attach', _action: 'attach' };
+          return {
+            content: [{ type: 'text', text: formatForLLM('entity_action', payload) }],
+            structuredContent: payload,
+          };
+        }
+
+        case 'orgx_act': {
+          if (args.action === 'validate' && args.type === 'studio_content') {
+            return this.executeContractTool(
+              'validate_studio_content',
+              args,
+              SECURITY_SCHEMES.entityWriteRequiresAuth,
+              allowedTools
+            );
+          }
+          if (args.action === 'update') {
+            return this.executeContractTool(
+              'orgx_write',
+              {
+                operation: 'update',
+                type: args.type,
+                id: args.id,
+                fields: args.fields,
+                idempotency_key: args.idempotency_key,
+              },
+              SECURITY_SCHEMES.entityWriteRequiresAuth,
+              allowedTools
+            );
+          }
+          if (args.action === 'attach') {
+            return this.executeContractTool(
+              'orgx_attach',
+              args,
+              SECURITY_SCHEMES.entityWriteRequiresAuth,
+              allowedTools
+            );
+          }
+
+          const resolvedAction =
+            resolveLifecycleActionAlias(String(args.type), String(args.action)) ??
+            String(args.action);
+          const body: Record<string, unknown> = {
+            note: args.note,
+            reason: args.note,
+            dry_run: args.dry_run,
+            force: args.force,
+            spec: args.spec,
+            artifact: args.artifact,
+            verification: args.verification,
+            quality_score: args.quality_score,
+            idempotency_key: args.idempotency_key,
+            user_id: resolvedUserId,
+          };
+          const response = await callOrgxApiJson(
+            this.env,
+            `/api/entities/${args.type}/${args.id}/${resolvedAction}`,
+            {
+              method: 'POST',
+              body: JSON.stringify(body),
+            },
+            { userId: resolvedUserId }
+          );
+          const result = (await response.json()) as Record<string, unknown>;
+          const payload = {
+            ...result,
+            _v2_tool: 'orgx_act',
+            _action: resolvedAction,
+            entity_type: args.type,
+            entity_id: args.id,
+          };
+          return {
+            content: [{ type: 'text', text: formatForLLM('entity_action', payload) }],
+            structuredContent: payload,
+          };
+        }
+
+        case 'orgx_plan': {
+          const action = String(args.action);
+          const toolByAction: Record<string, string> = {
+            start: 'start_plan_session',
+            resume: 'resume_plan_session',
+            improve: 'improve_plan',
+            record_edit: 'record_plan_edit',
+            complete: 'complete_plan',
+          };
+          const planTool = toolByAction[action];
+          if (!planTool) {
+            return this.toolError(`Unknown orgx_plan action: ${action}`, {
+              code: 'invalid_input',
+              status: 400,
+            });
+          }
+          if (planTool === 'resume_plan_session') {
+            return this.executeContractTool(
+              'resume_plan_session',
+              args,
+              SECURITY_SCHEMES.authRequired,
+              allowedTools
+            );
+          }
+          return this.executePlanSessionTool(
+            planTool,
+            args,
+            SECURITY_SCHEMES.writeRequiresAuth
+          );
+        }
+
+        case 'orgx_spawn': {
+          const action = typeof args.action === 'string' ? args.action : 'spawn';
+          const targetTool =
+            action === 'guard'
+              ? 'check_spawn_guard'
+              : action === 'classify'
+              ? 'classify_task_model'
+              : action === 'handoff'
+              ? 'handoff_task'
+              : 'spawn_agent_task';
+          const clientEndpoint: Record<string, string> = {
+            check_spawn_guard: '/api/client/spawn',
+            classify_task_model: '/api/client/route-task',
+            spawn_agent_task: '/api/tools/execute',
+            handoff_task: '/api/tools/execute',
+          };
+          const body =
+            targetTool === 'spawn_agent_task' || targetTool === 'handoff_task'
+              ? { tool_id: targetTool, args, user_id: resolvedUserId }
+              : { ...args, user_id: resolvedUserId };
+          const response = await callOrgxApiJson(
+            this.env,
+            clientEndpoint[targetTool],
+            {
+              method: 'POST',
+              body: JSON.stringify(body),
+            },
+            { userId: resolvedUserId }
+          );
+          const result = (await response.json()) as Record<string, unknown>;
+          const data =
+            result.data && typeof result.data === 'object'
+              ? (result.data as Record<string, unknown>)
+              : result;
+          const payload = { ...data, _v2_tool: 'orgx_spawn', routed_tool: targetTool };
+          return {
+            content: [{ type: 'text', text: this.summarizeClientResult(targetTool, payload) }],
+            structuredContent: payload,
+          };
+        }
+
+        case 'orgx_decide': {
+          const action = String(args.action);
+          if (action === 'approve' || action === 'reject' || action === 'list_pending') {
+            return this.executeContractTool(
+              'approve_agent_work',
+              {
+                ...args,
+                action: action === 'list_pending' ? 'list' : action,
+              },
+              SECURITY_SCHEMES.writeRequiresAuth,
+              allowedTools
+            );
+          }
+
+          return this.executeContractTool(
+            action === 'remember' ? 'remember_decision' : 'create_decision',
+            {
+              ...args,
+              title: args.title ?? args.decision,
+              summary: args.summary ?? args.context ?? args.decision,
+            },
+            SECURITY_SCHEMES.entityWriteRequiresAuth,
+            allowedTools
+          );
+        }
+
+        case 'orgx_submit_receipt': {
+          const response = await callOrgxApiJson(
+            this.env,
+            '/api/flywheel/receipts',
+            {
+              method: 'POST',
+              body: JSON.stringify({
+                ...args,
+                user_id: resolvedUserId,
+              }),
+            },
+            { userId: resolvedUserId }
+          );
+          const result = (await response.json()) as Record<string, unknown>;
+          const payload = { ...result, _v2_tool: 'orgx_submit_receipt' };
+          return {
+            content: [{ type: 'text', text: formatForLLM('orgx_submit_receipt', payload) }],
             structuredContent: payload,
           };
         }
@@ -8448,7 +8848,8 @@ export class OrgXMcp extends McpAgent<
                     approval_required: args.approval_required ?? [],
                     skip_approval: args.skip_approval ?? [],
                   }),
-                }
+                },
+                { userId: resolvedUserId }
               );
               const result = (await response.json()) as {
                 agent_type: string;

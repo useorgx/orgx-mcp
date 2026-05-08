@@ -28,7 +28,8 @@ describe('public MCP discovery endpoint', () => {
     expect(body.public_tools?.map((tool) => tool.name)).toContain(
       'orgx_public_capabilities'
     );
-    expect(body.primary_authenticated_tools).toContain('remember_decision');
+    expect(body.primary_authenticated_tools).toContain('orgx_decide');
+    expect(body.primary_authenticated_tools).not.toContain('remember_decision');
   });
 
   it('supports MCP initialize and public tools/list without OAuth', async () => {
@@ -97,7 +98,7 @@ describe('public MCP discovery endpoint', () => {
           method: 'tools/call',
           params: {
             name: 'orgx_public_tool_examples',
-            arguments: { tool_name: 'remember_decision' },
+            arguments: { tool_name: 'orgx_decide' },
           },
         }),
       }),
@@ -115,7 +116,7 @@ describe('public MCP discovery endpoint', () => {
       };
     };
     expect(body.result?.structuredContent?.note).toContain('example payloads only');
-    expect(body.result?.structuredContent?.examples?.remember_decision?.prompt).toContain(
+    expect(body.result?.structuredContent?.examples?.orgx_decide?.prompt).toContain(
       'Remember this decision'
     );
     expect(JSON.stringify(body)).toContain('https://mcp.useorgx.com/mcp');
