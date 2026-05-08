@@ -1,9 +1,52 @@
 export interface OrgxApiEnv {
   ORGX_API_URL: string;
   ORGX_SERVICE_KEY: string;
+  ORGX_INTERNAL_SECRET?: string;
 }
 
 const ORGX_API_TIMEOUT_MS = 30_000;
+const ACTOR_TOKEN_TTL_MS = 5 * 60 * 1000;
+const ACTOR_TOKEN_TYPE = 'orgx.mcp.actor.v1';
+const ACTOR_TOKEN_AUD = 'orgx-api';
+
+async function importHmacKey(secret: string): Promise<CryptoKey> {
+  return crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+}
+
+function base64Url(input: ArrayBuffer): string {
+  return btoa(String.fromCharCode(...new Uint8Array(input)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
+async function signGatewayActorToken(opts: {
+  userId: string;
+  userEmail?: string | null;
+  secret: string;
+}): Promise<string> {
+  const now = Date.now();
+  const payload = {
+    type: ACTOR_TOKEN_TYPE,
+    aud: ACTOR_TOKEN_AUD,
+    iss: 'orgx-mcp',
+    sub: opts.userId,
+    ...(opts.userEmail ? { email: opts.userEmail.trim().toLowerCase() } : {}),
+    iat: now,
+    exp: now + ACTOR_TOKEN_TTL_MS,
+  };
+  const encoder = new TextEncoder();
+  const payloadB64 = base64Url(encoder.encode(JSON.stringify(payload)).buffer);
+  const key = await importHmacKey(opts.secret);
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(payloadB64));
+  return `${payloadB64}.${base64Url(signature)}`;
+}
 
 function truncateForErrorBody(input: string, max = 2000) {
   if (input.length <= max) return input;
@@ -73,8 +116,18 @@ export async function callOrgxApiRaw(
   const url = new URL(path, env.ORGX_API_URL);
   const headers = new Headers(init?.headers);
   headers.set('Authorization', `Bearer ${env.ORGX_SERVICE_KEY}`);
-  // Propagate authenticated user identity to the API.
-  // The API trusts this header only when the service key is also valid.
+  if (opts?.userId && env.ORGX_INTERNAL_SECRET) {
+    headers.set(
+      'X-Orgx-Actor-Token',
+      await signGatewayActorToken({
+        userId: opts.userId,
+        userEmail: opts.userEmail,
+        secret: env.ORGX_INTERNAL_SECRET,
+      })
+    );
+  }
+  // Legacy compatibility for older API routes. New routes should verify
+  // X-Orgx-Actor-Token instead of trusting this unsigned identity hint.
   if (opts?.userId) {
     headers.set('X-Orgx-User-Id', opts.userId);
   }
