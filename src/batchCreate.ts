@@ -84,6 +84,14 @@ function getString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
 }
 
+function getRefToken(value: unknown): string | null {
+  const direct = getString(value);
+  if (direct) return direct;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const token = (value as Record<string, unknown>).$ref;
+  return getString(token);
+}
+
 function extractRef(entity: Record<string, unknown>): string | null {
   const raw = entity.ref;
   return getString(raw);
@@ -172,7 +180,7 @@ function extractDependencies(entity: Record<string, unknown>): string[] {
   for (const { refKey, idKey } of REF_FIELD_MAPPINGS) {
     const hasId = typeof entity[idKey] === 'string' && String(entity[idKey]);
     if (hasId) continue;
-    const ref = getString(entity[refKey]);
+    const ref = getRefToken(entity[idKey]) ?? getRefToken(entity[refKey]);
     if (ref) deps.push(ref);
   }
 
@@ -184,7 +192,7 @@ function extractDependencies(entity: Record<string, unknown>): string[] {
       const hasEntityId =
         typeof record.entity_id === 'string' && String(record.entity_id);
       if (hasEntityId) continue;
-      const ref = getString(record.entity_ref);
+      const ref = getRefToken(record.entity_id) ?? getRefToken(record.entity_ref);
       if (ref) deps.push(ref);
     }
   }
@@ -196,8 +204,19 @@ function extractDependencies(entity: Record<string, unknown>): string[] {
 function resolveRefs(params: {
   entity: Record<string, unknown>;
   resolvedRefMap: Record<string, string>;
+  refAliases?: Map<string, string>;
 }): { body: Record<string, unknown>; unresolved: string[] } {
-  const { entity, resolvedRefMap } = params;
+  const { entity, resolvedRefMap, refAliases } = params;
+
+  const lookupResolvedRef = (ref: string) => {
+    const seen = new Set<string>();
+    let current = ref;
+    while (refAliases?.has(current) && !seen.has(current)) {
+      seen.add(current);
+      current = refAliases.get(current)!;
+    }
+    return resolvedRefMap[current] ?? resolvedRefMap[ref];
+  };
 
   const body: Record<string, unknown> = { ...entity };
   const unresolved: string[] = [];
@@ -219,9 +238,10 @@ function resolveRefs(params: {
       delete body[refKey];
       continue;
     }
-    const ref = getString(body[refKey]);
+    const idRef = getRefToken(body[idKey]);
+    const ref = idRef ?? getRefToken(body[refKey]);
     if (!ref) continue;
-    const resolved = resolvedRefMap[ref];
+    const resolved = lookupResolvedRef(ref);
     if (resolved) {
       body[idKey] = resolved;
       delete body[refKey];
@@ -242,9 +262,10 @@ function resolveRefs(params: {
         delete record.entity_ref;
         return record;
       }
-      const ref = getString(record.entity_ref);
+      const idRef = getRefToken(record.entity_id);
+      const ref = idRef ?? getRefToken(record.entity_ref);
       if (!ref) return record;
-      const resolved = resolvedRefMap[ref];
+      const resolved = lookupResolvedRef(ref);
       if (resolved) {
         record.entity_id = resolved;
         delete record.entity_ref;
@@ -256,6 +277,41 @@ function resolveRefs(params: {
   }
 
   return { body, unresolved };
+}
+
+function normalizeHierarchyLabel(value: unknown): string | null {
+  const label = getString(value);
+  if (!label) return null;
+  return label.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function refOrIdToken(
+  entity: Record<string, unknown>,
+  idKey: string,
+  refKey: string
+): string {
+  const id = getString(entity[idKey]);
+  if (id) return `id:${id}`;
+  const ref = getRefToken(entity[idKey]) ?? getRefToken(entity[refKey]);
+  if (ref) return `ref:${ref}`;
+  return 'none';
+}
+
+function hierarchyDedupeKey(entity: Record<string, unknown>): string | null {
+  const type = getString(entity.type);
+  if (!type || !['workstream', 'milestone', 'task'].includes(type)) return null;
+  const label = normalizeHierarchyLabel(entity.title ?? entity.name);
+  if (!label) return null;
+  const initiative = refOrIdToken(entity, 'initiative_id', 'initiative_ref');
+  if (type === 'workstream') {
+    return `${type}|${initiative}|${label}`;
+  }
+  const workstream = refOrIdToken(entity, 'workstream_id', 'workstream_ref');
+  if (type === 'milestone') {
+    return `${type}|${initiative}|${workstream}|${label}`;
+  }
+  const milestone = refOrIdToken(entity, 'milestone_id', 'milestone_ref');
+  return `${type}|${initiative}|${workstream}|${milestone}|${label}`;
 }
 
 const METADATA_REF_SUPPORTED_TYPES = new Set([
@@ -309,6 +365,8 @@ export async function batchCreateEntities(params: {
 
   // Validate payloads early and gather refs.
   const refOccurrences = new Map<string, number[]>();
+  const hierarchyKeyToIndex = new Map<string, number>();
+  const refAliases = new Map<string, string>();
   for (let i = 0; i < entities.length; i++) {
     const entity = entities[i];
     if (!entity || typeof entity !== 'object' || Array.isArray(entity)) {
@@ -363,6 +421,29 @@ export async function batchCreateEntities(params: {
       existing.push(i);
       refOccurrences.set(ref, existing);
     }
+
+    const hierarchyKey = hierarchyDedupeKey(normalizedEntity);
+    if (hierarchyKey) {
+      const canonicalIndex = hierarchyKeyToIndex.get(hierarchyKey);
+      if (typeof canonicalIndex === 'number') {
+        const canonicalRef = extractRef(
+          entities[canonicalIndex] as Record<string, unknown>
+        );
+        results[i] = {
+          index: i,
+          success: true,
+          type,
+          ref: ref ?? undefined,
+          title: extractEntityLabel(normalizedEntity),
+          skipped: true,
+        };
+        if (ref && canonicalRef) {
+          refAliases.set(ref, canonicalRef);
+        }
+      } else {
+        hierarchyKeyToIndex.set(hierarchyKey, i);
+      }
+    }
   }
 
   const refToIndex = new Map<string, number>();
@@ -389,7 +470,15 @@ export async function batchCreateEntities(params: {
   for (let i = 0; i < entities.length; i++) {
     if (results[i]) continue; // already failed validation
     const entity = entities[i] as Record<string, unknown>;
-    const deps = extractDependencies(entity);
+    const deps = extractDependencies(entity).map((dep) => {
+      const seen = new Set<string>();
+      let current = dep;
+      while (refAliases.has(current) && !seen.has(current)) {
+        seen.add(current);
+        current = refAliases.get(current)!;
+      }
+      return current;
+    });
     const unknown = deps.filter((dep) => !refToIndex.has(dep));
     if (unknown.length > 0) {
       results[i] = {
@@ -417,7 +506,11 @@ export async function batchCreateEntities(params: {
     const type = getString(entity.type);
     const ref = extractRef(entity);
 
-    const { body, unresolved } = resolveRefs({ entity, resolvedRefMap });
+    const { body, unresolved } = resolveRefs({
+      entity,
+      resolvedRefMap,
+      refAliases,
+    });
     if (unresolved.length > 0) {
       results[index] = {
         index,
@@ -539,6 +632,11 @@ export async function batchCreateEntities(params: {
 
       if (ref && id) {
         resolvedRefMap[ref] = id;
+        for (const [alias, canonicalRef] of refAliases.entries()) {
+          if (canonicalRef === ref) {
+            resolvedRefMap[alias] = id;
+          }
+        }
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
