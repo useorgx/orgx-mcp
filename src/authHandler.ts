@@ -82,8 +82,47 @@ type OAuthCallbackIdentity = {
   userEmail: string;
 };
 
+const OAUTH_STATE_TTL_SECONDS = 20 * 60;
+
+function authStateKey(stateKey: string): string {
+  return `auth_state:${stateKey}`;
+}
+
+function authIdentityKey(stateKey: string): string {
+  return `auth_identity:${stateKey}`;
+}
+
 function isPlaceholderEmail(email: string | null | undefined): boolean {
   return Boolean(email?.toLowerCase().endsWith('@placeholder.local'));
+}
+
+function scopeListToParam(scopes: readonly string[] | undefined): string {
+  return (scopes ?? []).join(' ');
+}
+
+function resolveApprovedScopes(
+  requestedScopes: readonly string[] | undefined,
+  finalScope: string | null
+): string[] {
+  const supportedScopes = new Set<string>(OAUTH_SCOPES_SUPPORTED);
+  const requested = (requestedScopes ?? []).filter((scope) =>
+    supportedScopes.has(scope)
+  );
+  const requestedSet = new Set(requested);
+
+  if (!finalScope) return requested;
+
+  const selected = finalScope.split(/\s+/).filter(Boolean);
+  const approved: string[] = [];
+  const seen = new Set<string>();
+  for (const scope of selected) {
+    if (!supportedScopes.has(scope)) continue;
+    if (requestedSet.size > 0 && !requestedSet.has(scope)) continue;
+    if (seen.has(scope)) continue;
+    seen.add(scope);
+    approved.push(scope);
+  }
+  return approved;
 }
 
 async function resolveOAuthCallbackIdentity(params: {
@@ -1324,9 +1363,9 @@ async function handleAuthorize(
   const stateKey = crypto.randomUUID();
   try {
     await env.OAUTH_KV.put(
-      `auth_state:${stateKey}`,
+      authStateKey(stateKey),
       JSON.stringify(oauthReqInfo),
-      { expirationTtl: 1200 } // 20 minutes
+      { expirationTtl: OAUTH_STATE_TTL_SECONDS }
     );
   } catch (error) {
     console.error('[auth] Failed to store OAuth state in KV:', error);
@@ -1385,12 +1424,9 @@ async function handleOAuthCallback(
   });
   if (identity instanceof Response) return identity;
 
-  // Consume state from KV (read + delete = single-use) and auto-approve all
-  // requested scopes. This eliminates the consent page — users get connected
-  // immediately after signing in, reducing friction for first-time MCP users.
   let oauthReqInfo: AuthRequest;
   try {
-    const stored = await env.OAUTH_KV.get(`auth_state:${stateKey}`);
+    const stored = await env.OAUTH_KV.get(authStateKey(stateKey));
     if (!stored) {
       return errorRedirect(
         'invalid_request',
@@ -1399,8 +1435,6 @@ async function handleOAuthCallback(
       );
     }
     oauthReqInfo = JSON.parse(stored);
-    // Delete after successful read (single-use)
-    await env.OAUTH_KV.delete(`auth_state:${stateKey}`);
   } catch (error) {
     console.error('[auth] Failed to read state from KV:', error);
     return errorRedirect(
@@ -1410,34 +1444,38 @@ async function handleOAuthCallback(
     );
   }
 
-  // Auto-approve all requested scopes (no consent page needed)
-  const scope = oauthReqInfo.scope ?? [];
-
   try {
-    const { redirectTo } = await env.OAUTH_PROVIDER.completeAuthorization({
-      request: oauthReqInfo,
-      userId: identity.userId,
-      metadata: { label: identity.userEmail },
-      scope,
-      props: {
+    await env.OAUTH_KV.put(
+      authIdentityKey(stateKey),
+      JSON.stringify({
         userId: identity.userId,
-        scope: scope.join(' '),
-        email: identity.userEmail,
-      },
-    });
+        userEmail: identity.userEmail,
+      } satisfies OAuthCallbackIdentity),
+      { expirationTtl: OAUTH_STATE_TTL_SECONDS }
+    );
 
-    console.info('[auth] Authorization auto-approved', {
+    const consentUrl = new URL(`${serverUrl}/consent.html`);
+    consentUrl.searchParams.set('state_key', stateKey);
+    consentUrl.searchParams.set('client_id', oauthReqInfo.clientId);
+    consentUrl.searchParams.set('redirect_uri', oauthReqInfo.redirectUri);
+    consentUrl.searchParams.set('scope', scopeListToParam(oauthReqInfo.scope));
+    if (oauthReqInfo.state) {
+      consentUrl.searchParams.set('oauth_state', oauthReqInfo.state);
+    }
+    consentUrl.searchParams.set('user_email', identity.userEmail);
+
+    console.info('[auth] Redirecting to OAuth consent', {
       userId: identity.userId,
-      scope: scope.join(' '),
+      scope: scopeListToParam(oauthReqInfo.scope),
       clientId: oauthReqInfo.clientId,
     });
 
-    return Response.redirect(redirectTo, 302);
+    return Response.redirect(consentUrl.toString(), 302);
   } catch (error) {
-    console.error('[auth] Failed to complete authorization:', error);
+    console.error('[auth] Failed to prepare OAuth consent:', error);
     return errorRedirect(
       'server_error',
-      "We couldn't complete your authorization. This is usually temporary — please try again.",
+      "We couldn't prepare your authorization. This is usually temporary — please try again.",
       serverUrl
     );
   }
@@ -1464,28 +1502,48 @@ async function handleConsentCallback(
     );
   }
 
-  const identity = await resolveOAuthCallbackIdentity({
-    url,
-    env,
-    stateKey,
-    serverUrl,
-  });
-  if (identity instanceof Response) return identity;
-
   // Consume state from KV (read + delete = single-use)
   let oauthReqInfo: AuthRequest;
+  let identity: OAuthCallbackIdentity;
   try {
-    const stored = await env.OAUTH_KV.get(`auth_state:${stateKey}`);
-    if (!stored) {
+    const [storedState, storedIdentity] = await Promise.all([
+      env.OAUTH_KV.get(authStateKey(stateKey)),
+      env.OAUTH_KV.get(authIdentityKey(stateKey)),
+    ]);
+    if (!storedIdentity) {
+      return errorRedirect(
+        'invalid_request',
+        'Authorization session identity expired. Please start over.',
+        serverUrl
+      );
+    }
+    if (!storedState) {
       return errorRedirect(
         'invalid_request',
         'Authorization session expired or already used. Please start over.',
         serverUrl
       );
     }
-    oauthReqInfo = JSON.parse(stored);
+    oauthReqInfo = JSON.parse(storedState);
+    identity = JSON.parse(storedIdentity);
+    if (
+      !identity ||
+      typeof identity.userId !== 'string' ||
+      typeof identity.userEmail !== 'string' ||
+      identity.userId.trim().length === 0 ||
+      identity.userEmail.trim().length === 0
+    ) {
+      return errorRedirect(
+        'invalid_request',
+        'Authorization session identity is invalid. Please start over.',
+        serverUrl
+      );
+    }
     // Delete after successful read (single-use)
-    await env.OAUTH_KV.delete(`auth_state:${stateKey}`);
+    await Promise.all([
+      env.OAUTH_KV.delete(authStateKey(stateKey)),
+      env.OAUTH_KV.delete(authIdentityKey(stateKey)),
+    ]);
   } catch (error) {
     console.error('[auth] Failed to consume state from KV:', error);
     return errorRedirect(
@@ -1495,10 +1553,9 @@ async function handleConsentCallback(
     );
   }
 
-  // Use user-selected scope from consent page, or fall back to requested scope
-  const scope = finalScope
-    ? finalScope.split(' ').filter(Boolean)
-    : oauthReqInfo.scope ?? [];
+  // Use user-selected scopes from the consent page, clamped to the scopes
+  // originally requested by the client and supported by this server.
+  const scope = resolveApprovedScopes(oauthReqInfo.scope, finalScope);
 
   // Complete authorization via the OAuthProvider
   // This creates a grant, issues an auth code, and returns the redirect URL

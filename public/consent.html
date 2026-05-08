@@ -626,7 +626,12 @@
                 <div class="toggle-group">
                   <button class="toggle-btn" data-value="none">None</button>
                   <button class="toggle-btn" data-value="read">Read</button>
-                  <button class="toggle-btn active" data-value="write">
+                  <button
+                    class="toggle-btn hidden"
+                    data-value="write"
+                    disabled
+                    aria-hidden="true"
+                  >
                     Write
                   </button>
                 </div>
@@ -643,7 +648,7 @@
 
             <!-- Planning -->
             <div
-              class="permission-row rounded-xl stagger-5 animate-fade-in"
+              class="permission-row hidden rounded-xl stagger-5 animate-fade-in"
               data-scope="planning"
             >
               <div
@@ -745,12 +750,17 @@
       // State
       // ===========================================
       let oauthState = null;
+      const scopeCapabilities = {
+        decisions: { read: 'decisions:read', write: 'decisions:write' },
+        agents: { read: 'agents:read', write: 'agents:write' },
+        initiatives: { read: 'initiatives:read', write: 'initiatives:write' },
+        memory: { read: 'memory:read' },
+      };
       let selectedScopes = {
         decisions: 'write',
         agents: 'write',
         initiatives: 'write',
-        memory: 'write',
-        planning: 'write',
+        memory: 'read',
       };
 
       // ===========================================
@@ -894,8 +904,9 @@
           const mappedResource = scopeMap[resource] || resource;
 
           if (selectedScopes.hasOwnProperty(mappedResource)) {
+            const capabilities = scopeCapabilities[mappedResource] || {};
             // Write supersedes read
-            if (permission === 'write') {
+            if (permission === 'write' && capabilities.write) {
               selectedScopes[mappedResource] = 'write';
             } else if (
               permission === 'read' &&
@@ -912,7 +923,7 @@
         );
         if (!hasAnyScope) {
           Object.keys(selectedScopes).forEach((key) => {
-            selectedScopes[key] = 'write';
+            selectedScopes[key] = scopeCapabilities[key]?.write ? 'write' : 'read';
           });
         }
       }
@@ -923,7 +934,14 @@
       function initializeToggles() {
         document.querySelectorAll('.permission-row').forEach((row) => {
           const scope = row.dataset.scope;
+          if (!scopeCapabilities[scope]) {
+            row.remove();
+            return;
+          }
           const value = selectedScopes[scope] || 'none';
+          if (!scopeCapabilities[scope]?.write) {
+            row.querySelector('[data-value="write"]')?.remove();
+          }
           setToggleValue(row.querySelector('.toggle-group'), value);
         });
         updateAllPermissionsToggle();
@@ -962,10 +980,11 @@
 
       function setAllPermissions(value) {
         Object.keys(selectedScopes).forEach((scope) => {
-          selectedScopes[scope] = value;
+          selectedScopes[scope] =
+            value === 'write' && !scopeCapabilities[scope]?.write ? 'read' : value;
           const row = document.querySelector(`[data-scope="${scope}"]`);
           if (row) {
-            setToggleValue(row.querySelector('.toggle-group'), value);
+            setToggleValue(row.querySelector('.toggle-group'), selectedScopes[scope]);
           }
         });
         updateAllPermissionsToggle();
@@ -1001,11 +1020,12 @@
         const scopes = [];
 
         Object.entries(selectedScopes).forEach(([resource, permission]) => {
-          if (permission === 'read') {
-            scopes.push(`${resource}:read`);
+          const capabilities = scopeCapabilities[resource] || {};
+          if (permission === 'read' && capabilities.read) {
+            scopes.push(capabilities.read);
           } else if (permission === 'write') {
-            scopes.push(`${resource}:read`);
-            scopes.push(`${resource}:write`);
+            if (capabilities.read) scopes.push(capabilities.read);
+            if (capabilities.write) scopes.push(capabilities.write);
           }
         });
 
@@ -1037,11 +1057,6 @@
           oauthState?.stateKey || params.get('state_key') || ''
         );
         callbackUrl.searchParams.set('final_scope', finalScope);
-        callbackUrl.searchParams.set('user_id', params.get('user_id') || '');
-        callbackUrl.searchParams.set(
-          'user_email',
-          params.get('user_email') || ''
-        );
 
         window.location.href = callbackUrl.toString();
       }

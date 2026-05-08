@@ -12,6 +12,18 @@ function makeEnv() {
   const completeAuthorization = vi.fn(async () => ({
     redirectTo: 'https://client.example/callback?code=ok',
   }));
+  const store = new Map<string, string>([
+    [
+      'auth_state:state-1',
+      JSON.stringify({
+        responseType: 'code',
+        clientId: 'client-1',
+        redirectUri: 'https://client.example/callback',
+        scope: ['read', 'write'],
+        state: 'client-state',
+      }),
+    ],
+  ]);
   return {
     ORGX_API_URL: 'https://useorgx.com',
     ORGX_WEB_URL: 'https://useorgx.com',
@@ -21,10 +33,14 @@ function makeEnv() {
     ORGX_SERVICE_KEY: 'oxk-test',
     ORGX_INTERNAL_SECRET: SECRET,
     OAUTH_KV: {
-      get: vi.fn(async () =>
-        JSON.stringify({ clientId: 'client-1', scope: ['read', 'write'] })
-      ),
-      delete: vi.fn(async () => undefined),
+      get: vi.fn(async (key: string) => store.get(key) ?? null),
+      put: vi.fn(async (key: string, value: string) => {
+        store.set(key, value);
+      }),
+      delete: vi.fn(async (key: string) => {
+        store.delete(key);
+      }),
+      store,
     },
     OAUTH_PROVIDER: {
       completeAuthorization,
@@ -84,7 +100,7 @@ describe('MCP OAuth identity token', () => {
     ).resolves.toEqual({ ok: false, reason: 'placeholder_identity' });
   });
 
-  it('completes OAuth with the signed identity instead of raw browser params', async () => {
+  it('stores the signed identity for consent instead of trusting raw browser params', async () => {
     const env = makeEnv();
     const token = await signMcpIdentityToken({
       userId: 'user_123',
@@ -104,20 +120,14 @@ describe('MCP OAuth identity token', () => {
     );
 
     expect(response.status).toBe(302);
-    expect(response.headers.get('location')).toBe(
-      'https://client.example/callback?code=ok'
+    const location = new URL(response.headers.get('location')!);
+    expect(location.pathname).toBe('/consent.html');
+    expect(location.searchParams.get('state_key')).toBe('state-1');
+    expect(location.searchParams.get('user_id')).toBeNull();
+    expect(env.OAUTH_KV.store.get('auth_identity:state-1')).toBe(
+      JSON.stringify({ userId: 'user_123', userEmail: 'hope@example.com' })
     );
-    expect(env.OAUTH_PROVIDER.completeAuthorization).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: 'user_123',
-        metadata: { label: 'hope@example.com' },
-        props: {
-          userId: 'user_123',
-          scope: 'read write',
-          email: 'hope@example.com',
-        },
-      })
-    );
+    expect(env.OAUTH_PROVIDER.completeAuthorization).not.toHaveBeenCalled();
   });
 
   it('rejects unsigned browser-supplied identity when the internal secret is configured', async () => {
