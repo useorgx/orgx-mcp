@@ -428,20 +428,18 @@ export const authHandler = {
               'track project health, blockers, milestones, and owners',
             ],
             primary_tools: [
-              'remember_decision',
-              'recall_memory',
-              'approve_agent_work',
-              'delegate_agent_task',
-              'track_project_progress',
-              'query_org_memory',
-              'get_decision_history',
-              'create_decision',
-              'get_pending_decisions',
-              'approve_decision',
-              'reject_decision',
-              'spawn_agent_task',
-              'get_initiative_pulse',
-              'scaffold_initiative',
+              'orgx_bootstrap',
+              'orgx_search',
+              'orgx_inspect',
+              'orgx_recommend',
+              'orgx_write',
+              'orgx_attach',
+              'orgx_act',
+              'orgx_plan',
+              'orgx_spawn',
+              'orgx_decide',
+              'orgx_submit_receipt',
+              'orgx_emit_activity',
             ],
           },
           {
@@ -811,87 +809,56 @@ export const authHandler = {
         capabilities: { tools: true, resources: true, prompts: true },
         tools: [
           {
-            name: 'approve_decision',
-            description: 'Approve a pending decision',
-          },
-          {
-            name: 'reject_decision',
-            description: 'Reject a pending decision with reason',
-          },
-          {
-            name: 'get_initiative_pulse',
-            description: 'Get health metrics for initiatives',
+            name: 'orgx_bootstrap',
+            description: 'Establish OrgX session context and discover the v2 routing map',
             readOnly: true,
           },
           {
-            name: 'list_entities',
-            description:
-              'List any entity type with filters, including pending decisions via type=decision and status=pending',
+            name: 'orgx_search',
+            description: 'Search OrgX entities, decisions, artifacts, and memory',
             readOnly: true,
           },
           {
-            name: 'create_entity',
-            description: 'Create initiatives, tasks, milestones',
-          },
-          {
-            name: 'batch_create_entities',
-            description: 'Create multiple entities in one call',
-          },
-          {
-            name: 'scaffold_initiative',
-            description:
-              'Create an initiative with nested workstreams/milestones/tasks in one call',
-          },
-          {
-            name: 'get_task_with_context',
-            description: 'Fetch a task plus hydrated context pointers',
-            readOnly: true,
-          },
-          { name: 'entity_action', description: 'Execute lifecycle action on entity (launch, pause, complete, etc.)' },
-          {
-            name: 'verify_entity_completion',
-            description: 'Run hierarchy completion checks before complete',
+            name: 'orgx_inspect',
+            description: 'Hydrate one OrgX entity with execution context',
             readOnly: true,
           },
           {
-            name: 'batch_delete_entities',
-            description: 'Delete multiple entities in one call',
-          },
-          {
-            name: 'get_agent_status',
-            description: 'Check agent availability and health',
+            name: 'orgx_recommend',
+            description: 'Recommend next work or return morning brief signals',
             readOnly: true,
           },
           {
-            name: 'spawn_agent_task',
-            description: 'Delegate task to specialized agent',
+            name: 'orgx_write',
+            description: 'Create or update durable OrgX records',
           },
           {
-            name: 'query_org_memory',
-            description:
-              'Search organizational memory, including historical decisions and artifacts',
-            readOnly: true,
+            name: 'orgx_attach',
+            description: 'Attach proof, URLs, or artifacts to OrgX entities',
           },
           {
-            name: 'recommend_next_action',
-            description:
-              'Recommend the next best action for a workspace or initiative',
-            readOnly: true,
+            name: 'orgx_act',
+            description: 'Run lifecycle, validation, completion, or state actions',
           },
           {
-            name: 'get_morning_brief',
-            description:
-              'Summarize the latest autonomous run, value signals, and exceptions',
-            readOnly: true,
+            name: 'orgx_emit_activity',
+            description: 'Emit append-only execution telemetry',
           },
           {
-            name: 'start_plan_session',
-            description: 'Begin feature planning session',
+            name: 'orgx_plan',
+            description: 'Start, resume, edit, improve, or complete a tracked plan session',
           },
-          { name: 'improve_plan', description: 'Get AI suggestions for plan' },
           {
-            name: 'complete_plan',
-            description: 'Finish plan and extract skills',
+            name: 'orgx_spawn',
+            description: 'Guard, classify, spawn, or hand off specialist agent work',
+          },
+          {
+            name: 'orgx_decide',
+            description: 'Create, approve, reject, remember, or list decisions',
+          },
+          {
+            name: 'orgx_submit_receipt',
+            description: 'Submit durable proof, attribution, quality, or outcome receipts',
           },
         ],
         auth: {
@@ -922,7 +889,7 @@ bearer_token_env_var = "ORGX_API_TOKEN"
 startup_timeout_sec = 30
 tool_timeout_sec = 60
 # Optional: limit to specific tools
-# enabled_tools = ["list_entities", "query_org_memory", "recommend_next_action"]
+# enabled_tools = ["orgx_bootstrap", "orgx_search", "orgx_recommend"]
 
 # To authenticate, set your token:
 # export ORGX_API_TOKEN="your-token-here"

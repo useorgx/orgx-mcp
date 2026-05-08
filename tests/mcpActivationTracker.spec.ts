@@ -10,7 +10,7 @@ describe('mcpActivationTracker', () => {
     const result = applyMcpActivationObservation(
       createEmptyMcpActivationState(),
       {
-        toolId: 'list_entities',
+        toolId: 'orgx_search',
         args: { type: 'skill' },
         sourceClient: 'cursor',
         workspaceId: 'ws-1',
@@ -31,37 +31,39 @@ describe('mcpActivationTracker', () => {
   });
 
   it('marks activation complete after structure, task creation, and morning brief', () => {
-    const scaffolded = applyMcpActivationObservation(
+    const planned = applyMcpActivationObservation(
       createEmptyMcpActivationState(),
       {
-        toolId: 'scaffold_initiative',
+        toolId: 'orgx_plan',
+        args: { action: 'start' },
         workspaceId: 'ws-1',
         initiativeId: 'init-1',
+      }
+    );
+    const taskCreated = applyMcpActivationObservation(
+      planned.state,
+      {
+        toolId: 'orgx_write',
+        args: { operation: 'create', type: 'task' },
         data: {
-          hierarchy: {
-            workstreams: [
-              {
-                milestones: [
-                  {
-                    tasks: [{ type: 'task', id: 'task-1' }],
-                  },
-                ],
-              },
-            ],
-          },
+          type: 'task',
+          id: 'task-1',
         },
       }
     );
 
-    expect(scaffolded.state.milestones.A1).toBeTruthy();
-    expect(scaffolded.state.milestones.A2).toBeTruthy();
-    expect(scaffolded.events.map((event) => event.event)).toEqual([
+    expect(planned.state.milestones.A1).toBeTruthy();
+    expect(taskCreated.state.milestones.A2).toBeTruthy();
+    expect(planned.events.map((event) => event.event)).toEqual([
       'mcp_structure_created',
+    ]);
+    expect(taskCreated.events.map((event) => event.event)).toEqual([
       'mcp_task_created',
     ]);
 
-    const activated = applyMcpActivationObservation(scaffolded.state, {
-      toolId: 'get_morning_brief',
+    const activated = applyMcpActivationObservation(taskCreated.state, {
+      toolId: 'orgx_recommend',
+      args: { mode: 'morning_brief' },
       workspaceId: 'ws-1',
       initiativeId: 'init-1',
     });
@@ -87,10 +89,12 @@ describe('mcpActivationTracker', () => {
       }
     );
     const completed = applyMcpActivationObservation(initial.state, {
-      toolId: 'get_morning_brief',
+      toolId: 'orgx_recommend',
+      args: { mode: 'morning_brief' },
     });
     const repeated = applyMcpActivationObservation(completed.state, {
-      toolId: 'get_morning_brief',
+      toolId: 'orgx_recommend',
+      args: { mode: 'morning_brief' },
     });
 
     expect(repeated.events).toEqual([]);

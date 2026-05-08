@@ -3200,7 +3200,7 @@
      * Rendered after the tree whenever the scaffold is in a
      * pre-launch state (status draft/scaffolded). Computes 5 gates
      * from the scaffold data and composes a ring-driven CTA that
-     * calls entity_action launch via the MCP host when the user
+     * calls orgx_act launch via the MCP host when the user
      * holds the button.
      */
     var computeLaunchReadiness = (scaffold) => {
@@ -3412,7 +3412,7 @@
           transitionToLaunching();
           try {
             if (window.openai && typeof window.openai.callTool === 'function') {
-              await window.openai.callTool('entity_action', {
+              await window.openai.callTool('orgx_act', {
                 type: 'initiative',
                 id: scaffold.initiative.raw_id || scaffold.initiative.id,
                 action: 'launch',

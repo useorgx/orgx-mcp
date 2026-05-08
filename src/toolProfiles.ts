@@ -60,7 +60,7 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
   },
   commander: {
     description:
-      'Human operators: decisions via list_entities, history via query_org_memory, prioritization via recommend_next_action, plus status and entity CRUD',
+      'Human operators: bootstrap, search, inspect, recommend, write, act, attach, plan, spawn, decide, and submit receipts',
     tools: [
       'orgx_bootstrap',
       'orgx_search',
@@ -107,7 +107,7 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
   },
   observer: {
     description:
-      'Read-only monitoring and reporting with list_entities, query_org_memory, recommend_next_action, and initiative health',
+      'Read-only monitoring and reporting with bootstrap, search, inspect, recommend, plan, and decisions',
     tools: [
       'orgx_bootstrap',
       'orgx_search',
@@ -118,7 +118,7 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
     ],
   },
   full: {
-    description: 'All tools (default, backward compatible)',
+    description: 'All tools for admin/debug compatibility sessions',
     tools: null,
   },
 };

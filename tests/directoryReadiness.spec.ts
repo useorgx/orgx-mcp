@@ -1,9 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-const root = process.cwd();
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const readme = readFileSync(resolve(root, 'README.md'), 'utf8');
 const serverJson = JSON.parse(
   readFileSync(resolve(root, 'server.json'), 'utf8')
@@ -71,8 +72,23 @@ describe('Anthropic directory readiness', () => {
       { type: 'streamable-http', url: 'https://mcp.useorgx.com/mcp' },
       { type: 'sse', url: 'https://mcp.useorgx.com/sse' },
     ]);
-    expect(serverJson.tools?.find((tool) => tool.name === 'account_upgrade')?.description).toContain(
-      'Does not charge automatically.'
+    const toolNames = serverJson.tools?.map((tool) => tool.name).filter(Boolean);
+    expect(toolNames).toEqual([
+      'orgx_bootstrap',
+      'orgx_search',
+      'orgx_inspect',
+      'orgx_recommend',
+      'orgx_write',
+      'orgx_attach',
+      'orgx_act',
+      'orgx_plan',
+      'orgx_spawn',
+      'orgx_decide',
+      'orgx_submit_receipt',
+      'orgx_emit_activity',
+    ]);
+    expect(serverJson.tools?.find((tool) => tool.name === 'orgx_bootstrap')?.description).toContain(
+      'v2 routing guidance'
     );
   });
 

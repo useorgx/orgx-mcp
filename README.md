@@ -39,31 +39,27 @@ OrgX MCP is organizational memory for AI agents and AI-native teams. It connects
 - assign work to OrgX agents,
 - render OrgX widgets in MCP Apps-compatible hosts.
 
-## Tools (abbreviated — see `server.json` for the full surface)
+## Tools (v2 public surface — see `server.json` for the full contract)
 
 | Tool | Purpose |
 |------|---------|
-| `remember_decision` | High-recall wrapper for saving a decision to organizational memory. |
-| `recall_memory` | High-recall wrapper for searching decisions, artifacts, and project context. |
-| `approve_agent_work` | High-recall wrapper for reviewing or resolving pending agent approvals. |
-| `delegate_agent_task` | High-recall wrapper for assigning work to a specialist agent. |
-| `track_project_progress` | High-recall wrapper for initiative health, blockers, milestones, and owners. |
-| `get_pending_decisions` | List decisions awaiting approval. |
-| `approve_decision` / `reject_decision` | Resolve a pending decision inline. |
-| `get_initiative_pulse` | Health, milestones, blockers, recent activity for one initiative. |
-| `get_agent_status` | What every OrgX agent is doing right now. |
-| `scaffold_initiative` | Create a full initiative → workstreams → milestones → tasks tree in one call. |
-| `create_entity` / `create_task` / `create_milestone` / `create_decision` | Add individual entities without the full scaffold. |
-| `entity_action` | Lifecycle transitions (launch, pause, complete, archive) on any entity. |
-| `query_org_memory` | Search prior decisions, initiatives, artifacts. |
-| `spawn_agent_task` | Delegate to a specialist agent (rate-limited, quality-gated). |
-| `get_morning_brief` | Latest autonomous session brief with ROI deltas. |
-| `get_org_snapshot` | Compact or detailed org readout for onboarding and status. |
-| `workspace` | Create, list, get, or set the active workspace context. |
+| `orgx_bootstrap` | Establish session context, scopes, and routing guidance. |
+| `orgx_search` | Find entities, decisions, artifacts, and memory. |
+| `orgx_inspect` | Hydrate one entity with execution context. |
+| `orgx_recommend` | Get next-action recommendations or morning brief signals. |
+| `orgx_write` | Create or update durable OrgX records. |
+| `orgx_attach` | Attach proof, URLs, documents, screenshots, or artifacts. |
+| `orgx_act` | Launch, pause, complete, validate, delete, or otherwise act on an entity. |
+| `orgx_plan` | Start, resume, edit, improve, or complete a plan session. |
+| `orgx_spawn` | Guard, classify, spawn, or hand off specialist agent work. |
+| `orgx_decide` | Create, remember, approve, reject, or list decisions. |
+| `orgx_submit_receipt` | Submit durable proof, attribution, quality, or outcome receipts. |
+| `orgx_emit_activity` | Emit append-only execution telemetry. |
 
-Full tool contract: `server.json` at the repo root — 35+ tools with OAuth
-scopes, input schemas, and OpenAI widget metadata. Call `orgx_describe_tool`
-from any MCP client to inspect a live contract.
+Full tool contract: `server.json` at the repo root with OAuth scopes, input
+schemas, and OpenAI widget metadata. Legacy tools remain callable during the
+sunset window, but new prompts, skills, examples, and manifests should teach the
+v2 names above.
 
 ## Why OrgX instead of generic memory MCP?
 
@@ -290,29 +286,33 @@ Widget protocol notes:
 
 **User prompt:** `Show me the pending decisions that need approval today.`
 
-**Expected behavior:** The worker calls `get_pending_decisions`, returns seeded decisions for the authenticated workspace, and renders the decisions widget in compatible hosts.
+**Expected behavior:** The worker calls `orgx_decide action=list_pending`, returns seeded decisions for the authenticated workspace, and renders the decisions widget in compatible hosts.
 
 ### Example 2: Check initiative health
 
 **User prompt:** `Give me the pulse for the Search Copilot Readiness initiative.`
 
-**Expected behavior:** The worker calls `get_initiative_pulse`, returns milestones, blockers, and activity, and renders the initiative pulse widget in compatible hosts.
+**Expected behavior:** The worker calls `orgx_inspect type=initiative`, returns milestones, blockers, and activity, and renders the initiative pulse widget in compatible hosts.
 
 ### Example 3: Scaffold a hierarchy
 
-**User prompt:** `Scaffold a launch initiative with two workstreams, one milestone each, and two tasks per milestone.`
+**User prompt:** `Plan a launch initiative with two workstreams, one milestone each, and two tasks per milestone.`
 
-**Expected behavior:** The worker calls `scaffold_initiative`, creates the nested hierarchy in OrgX, and returns the scaffold widget with the created initiative tree.
+**Expected behavior:** The worker calls `orgx_plan action=start`, then uses `orgx_write` for durable records as needed.
 
 ### Example 4: Assign work to an agent
 
 **User prompt:** `Assign the engineering agent a task to audit the onboarding funnel.`
 
-**Expected behavior:** The worker calls `spawn_agent_task`, records the assignment in OrgX, and returns the task or handoff result.
+**Expected behavior:** The worker calls `orgx_spawn`, records the assignment in OrgX, and returns the task or handoff result.
 
-## Hierarchy Scaffolding (Speed Fix) + Context Attachments
+## Compatibility Hierarchy Scaffolding + Context Attachments
 
-### `batch_create_entities`: IDs + `ref` dependency resolution
+The v2 public surface uses `orgx_plan` and `orgx_write` for new prompts and
+skills. The lower-level hierarchy tools below remain callable during the
+compatibility window for older clients and bulk migration scripts.
+
+### Legacy `batch_create_entities`: IDs + `ref` dependency resolution
 
 `batch_create_entities` now returns created IDs in a machine-usable form (and includes them in the plain text response for LLM clients that drop structured payloads).
 
@@ -347,7 +347,7 @@ It also supports caller-provided `ref` keys and `*_ref` relationship fields so y
 
 Supported relationship refs (when the corresponding `*_id` is omitted): `initiative_ref`, `workstream_ref`, `milestone_ref`, `command_center_ref`, `project_ref`, `objective_ref`, `run_ref`.
 
-### `scaffold_initiative`: Nested hierarchy in 1 call
+### Legacy `scaffold_initiative`: Nested hierarchy in 1 call
 
 For the common case of creating an initiative plus its full hierarchy, use `scaffold_initiative`:
 
@@ -379,9 +379,9 @@ When `workstreams` are provided, `scaffold_initiative` now preserves that explic
 
 The tool returns a nested hierarchy with IDs (plus `created[]`, `failed[]`, `ref_map`, and launch outcome metadata for chaining).
 
-### `list_entities`: hierarchy-scoped reads
+### `orgx_search`: hierarchy-scoped reads
 
-`list_entities` supports hierarchy filters so clients can read one branch without reconstructing the tree client-side:
+`orgx_search` supports hierarchy filters so clients can read one branch without reconstructing the tree client-side:
 
 - `initiative_id` for `workstream`, `milestone`, `task`, `stream`, `decision`
 - `workstream_id` for `milestone`, `task`, `stream`, `decision`
@@ -426,7 +426,8 @@ Each entry is a pointer with an optional `relevance` note (pointers, not payload
 }
 ```
 
-To hydrate these pointers for execution, use `get_task_with_context` (task-focused) or `list_entities` with `id` + `hydrate_context=true` (generic).
+To hydrate these pointers for execution, use `orgx_inspect` for one entity or
+`orgx_search` with `id` + `hydrate_context=true` for generic reads.
 
 ### Plan session bridge: `complete_plan.attach_to`
 

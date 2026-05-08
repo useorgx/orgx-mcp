@@ -28,7 +28,8 @@ describe('sessionMessaging', () => {
     const text = buildNewSessionWelcomeText();
 
     expect(text).toContain('Connected to OrgX.');
-    expect(text).toContain('scaffold_initiative');
-    expect(text.length).toBeLessThan(130);
+    expect(text).toContain('orgx_bootstrap');
+    expect(text).toContain('orgx_search');
+    expect(text.length).toBeLessThan(150);
   });
 });

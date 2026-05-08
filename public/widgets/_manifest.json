@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-08T05:52:30.506Z",
+  "generatedAt": "2026-05-08T06:41:02.155Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -48,8 +48,8 @@
     },
     "artifact-review": {
       "file": "public/widgets/artifact-review.html",
-      "bytes": 27742,
-      "hash": "ed21d0740769",
+      "bytes": 27785,
+      "hash": "ac8be1b8ccf6",
       "primaryRgb": "251,191,36",
       "sharedRefs": [
         "shared/components/domain-accent.css",
@@ -145,8 +145,8 @@
     },
     "scaffolded-initiative": {
       "file": "public/widgets/scaffolded-initiative.html",
-      "bytes": 142754,
-      "hash": "f820ee3e6980",
+      "bytes": 142744,
+      "hash": "daa9ac562f6b",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/interaction-kit.css",
