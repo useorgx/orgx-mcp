@@ -2558,7 +2558,7 @@ export class OrgXMcp extends McpAgent<
    * These route directly to /api/client/* endpoints (not through
    * the generic /api/tools/execute). This gives them:
    * - Dedicated server-side logic (model routing, quality gates)
-   * - Proper user identity via X-Orgx-User-Id
+   * - Proper user identity via a signed MCP actor assertion
    * - No dependency on the chatgptToolExecutor registry
    */
   private registerClientIntegrationTools(allowedTools: Set<string> | null) {
