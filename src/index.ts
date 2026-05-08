@@ -1418,12 +1418,18 @@ export class OrgXMcp extends McpAgent<
     limit?: number;
     initiativeId?: string | null;
     workspaceId?: string | null;
+    status?: string | null;
+    query?: string | null;
+    fields?: string[] | null;
   }): Promise<Array<Record<string, unknown>>> {
     const search = new URLSearchParams();
     search.set('type', params.type);
     if (params.limit) search.set('limit', String(params.limit));
     if (params.initiativeId) search.set('initiative_id', params.initiativeId);
     if (params.workspaceId) search.set('workspace_id', params.workspaceId);
+    if (params.status) search.set('status', params.status);
+    if (params.query) search.set('query', params.query);
+    if (params.fields?.length) search.set('fields', params.fields.join(','));
 
     const response = await callOrgxApiJson(
       this.env,
@@ -1435,6 +1441,19 @@ export class OrgXMcp extends McpAgent<
       data?: Array<Record<string, unknown>>;
     };
     return Array.isArray(payload.data) ? payload.data : [];
+  }
+
+  private stripContractRuntimeFields(
+    args: Record<string, unknown>
+  ): Record<string, unknown> {
+    const {
+      _context: _context,
+      session_id: _sessionId,
+      operation: _operation,
+      fields: _fields,
+      ...body
+    } = args;
+    return body;
   }
 
   private async maybeEnrichWithArtifactProof(params: {
@@ -2969,17 +2988,32 @@ export class OrgXMcp extends McpAgent<
             );
           }
 
-          return this.executeChatGPTTool(
-            'list_entities',
-            {
-              type: args.type,
-              id: args.id,
-              hydrate_context: args.hydrate_context ?? true,
-              max_chars: args.max_chars,
-              limit: 1,
-            },
-            SECURITY_SCHEMES.entityReadRequiresAuth
+          const entity = await this.fetchEntityRecord(
+            String(args.type),
+            String(args.id),
+            resolvedUserId
           );
+          if (!entity) {
+            return this.toolError(`No ${String(args.type)} found for ${String(args.id)}`, {
+              code: 'entity_not_found',
+              status: 404,
+              details: {
+                entity_type: args.type,
+                entity_id: args.id,
+                suggested_next_calls: [{ tool: 'orgx_search', args: { type: args.type } }],
+              },
+            });
+          }
+          const payload = {
+            _v2_tool: 'orgx_inspect',
+            type: args.type,
+            id: args.id,
+            entity,
+          };
+          return {
+            content: [{ type: 'text', text: formatForLLM('orgx_inspect', payload) }],
+            structuredContent: payload,
+          };
         }
 
         case 'orgx_search': {
@@ -2987,33 +3021,38 @@ export class OrgXMcp extends McpAgent<
             typeof args.query === 'string' && args.query.trim().length > 0
               ? args.query.trim()
               : null;
-          if (query && !args.type) {
-            return this.executeChatGPTTool(
-              'query_org_memory',
-              {
-                query,
-                scope: 'all',
-                workspace_id: args.workspace_id,
-                initiative_id: args.initiative_id,
-                limit: args.limit,
-              },
-              SECURITY_SCHEMES.readOptionalAuth
-            );
-          }
-
-          return this.executeChatGPTTool(
-            'list_entities',
-            {
-              type: args.type ?? 'initiative',
-              query,
-              status: args.status,
-              initiative_id: args.initiative_id,
-              workspace_id: args.workspace_id,
-              limit: args.limit,
-              fields: args.fields,
-            },
-            SECURITY_SCHEMES.entityReadRequiresAuth
-          );
+          const type =
+            typeof args.type === 'string' && args.type.trim().length > 0
+              ? args.type.trim()
+              : 'initiative';
+          const fields = Array.isArray(args.fields)
+            ? args.fields.filter((field): field is string => typeof field === 'string')
+            : null;
+          const records = await this.fetchEntityCollection({
+            type,
+            userId: resolvedUserId,
+            limit: typeof args.limit === 'number' ? args.limit : undefined,
+            initiativeId:
+              typeof args.initiative_id === 'string' ? args.initiative_id : null,
+            workspaceId:
+              typeof args.workspace_id === 'string'
+                ? args.workspace_id
+                : this.sessionContext?.workspaceId ?? null,
+            status: typeof args.status === 'string' ? args.status : null,
+            query,
+            fields,
+          });
+          const payload = {
+            _v2_tool: 'orgx_search',
+            type,
+            query,
+            count: records.length,
+            results: records,
+          };
+          return {
+            content: [{ type: 'text', text: formatForLLM('orgx_search', payload) }],
+            structuredContent: payload,
+          };
         }
 
         case 'orgx_recommend': {
@@ -3100,7 +3139,17 @@ export class OrgXMcp extends McpAgent<
             };
           }
 
-          const { operation: _operation, fields: _fields, session_id: _sessionId, ...body } = args;
+          const body = this.stripContractRuntimeFields(args);
+          const idempotencyKey =
+            typeof args.idempotency_key === 'string' ? args.idempotency_key : null;
+          if (idempotencyKey) {
+            delete body.idempotency_key;
+            const metadata =
+              body.metadata && typeof body.metadata === 'object' && !Array.isArray(body.metadata)
+                ? (body.metadata as Record<string, unknown>)
+                : {};
+            body.metadata = { ...metadata, idempotency_key: idempotencyKey };
+          }
           const response = await callOrgxApiJson(
             this.env,
             '/api/entities',
@@ -3202,6 +3251,24 @@ export class OrgXMcp extends McpAgent<
           const resolvedAction =
             resolveLifecycleActionAlias(String(args.type), String(args.action)) ??
             String(args.action);
+          if (resolvedAction === 'delete' && args.dry_run === true) {
+            const payload = {
+              success: true,
+              dry_run: true,
+              type: args.type,
+              action: resolvedAction,
+              message: `${String(args.type)} would be deleted permanently`,
+              data: { id: args.id, deleted: false, would_delete: true },
+              _v2_tool: 'orgx_act',
+              _action: resolvedAction,
+              entity_type: args.type,
+              entity_id: args.id,
+            };
+            return {
+              content: [{ type: 'text', text: formatForLLM('entity_action', payload) }],
+              structuredContent: payload,
+            };
+          }
           const body: Record<string, unknown> = {
             note: args.note,
             reason: args.note,
@@ -3284,10 +3351,18 @@ export class OrgXMcp extends McpAgent<
             spawn_agent_task: '/api/tools/execute',
             handoff_task: '/api/tools/execute',
           };
+          const spawnArgs = this.stripContractRuntimeFields(args);
+          if (
+            typeof args.agent_type === 'string' &&
+            args.agent_type.trim() &&
+            typeof spawnArgs.domain !== 'string'
+          ) {
+            spawnArgs.domain = args.agent_type.trim();
+          }
           const body =
             targetTool === 'spawn_agent_task' || targetTool === 'handoff_task'
-              ? { tool_id: targetTool, args, user_id: resolvedUserId }
-              : { ...args, user_id: resolvedUserId };
+              ? { tool_id: targetTool, args: spawnArgs, user_id: resolvedUserId }
+              : { ...spawnArgs, user_id: resolvedUserId };
           const response = await callOrgxApiJson(
             this.env,
             clientEndpoint[targetTool],
