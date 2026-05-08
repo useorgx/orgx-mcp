@@ -155,6 +155,24 @@
       "mimeType": "text/html;profile=mcp-app"
     },
     {
+      "uri": "ui://widget/artifact-review.html",
+      "name": "Artifact Review Widget",
+      "description": "Widget for reviewing, approving, or requesting changes on production artifacts",
+      "mimeType": "text/html;profile=mcp-app"
+    },
+    {
+      "uri": "ui://widget/plan-session-live.html",
+      "name": "Plan Session Live Widget",
+      "description": "Widget for live tracked planning sessions and co-authored agent reasoning",
+      "mimeType": "text/html;profile=mcp-app"
+    },
+    {
+      "uri": "ui://widget/daily-brief.html",
+      "name": "Daily Brief + Trust Loop Widget",
+      "description": "Widget showing skill and agent trust-loop signals for daily brief workflows",
+      "mimeType": "text/html;profile=mcp-app"
+    },
+    {
       "uri": "ui://widget/decisions.skybridge.html",
       "name": "Decisions Widget (Skybridge)",
       "description": "ChatGPT Apps SDK widget for displaying and managing pending decisions",
@@ -194,6 +212,24 @@
       "uri": "ui://widget/morning-brief.skybridge.html",
       "name": "Morning Brief Widget (Skybridge)",
       "description": "ChatGPT Apps SDK widget showing the latest autonomous session brief and ROI deltas",
+      "mimeType": "text/html+skybridge"
+    },
+    {
+      "uri": "ui://widget/artifact-review.skybridge.html",
+      "name": "Artifact Review Widget (Skybridge)",
+      "description": "ChatGPT Apps SDK widget for reviewing, approving, or requesting changes on production artifacts",
+      "mimeType": "text/html+skybridge"
+    },
+    {
+      "uri": "ui://widget/plan-session-live.skybridge.html",
+      "name": "Plan Session Live Widget (Skybridge)",
+      "description": "ChatGPT Apps SDK widget for live tracked planning sessions and co-authored agent reasoning",
+      "mimeType": "text/html+skybridge"
+    },
+    {
+      "uri": "ui://widget/daily-brief.skybridge.html",
+      "name": "Daily Brief + Trust Loop Widget (Skybridge)",
+      "description": "ChatGPT Apps SDK widget showing skill and agent trust-loop signals for daily brief workflows",
       "mimeType": "text/html+skybridge"
     }
   ],
