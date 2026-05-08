@@ -18,7 +18,8 @@ describe('clientActivationExperience', () => {
     expect(experience?.progress_pct).toBe(20);
     expect(experience?.next_stage).toBe('A1');
     expect(experience?.next_action).toMatchObject({
-      tool: 'scaffold_initiative',
+      tool: 'orgx_plan',
+      args: { action: 'start' },
       label: 'Scaffold the first initiative',
     });
   });
@@ -45,7 +46,7 @@ describe('clientActivationExperience', () => {
 
     expect(experience?.celebration?.title).toBe('Activation complete');
     expect(experience?.celebration?.next_action?.tool).toBe(
-      'recommend_next_action'
+      'orgx_recommend'
     );
     expect(experience?.next_stage).toBeNull();
   });

@@ -118,16 +118,32 @@ function countNestedTasks(value: unknown): number {
   return count;
 }
 
+function getObservedEntityType(
+  observation: ActivationObservation
+): string | null {
+  return typeof observation.args?.type === 'string'
+    ? observation.args.type
+    : typeof observation.data?.type === 'string'
+    ? observation.data.type
+    : null;
+}
+
 function marksStructureCreated(observation: ActivationObservation): boolean {
   if (observation.toolId === 'scaffold_initiative') return true;
-  if (observation.toolId !== 'create_entity') return false;
+  if (
+    observation.toolId === 'orgx_plan' &&
+    observation.args?.action === 'start'
+  ) {
+    return true;
+  }
+  if (
+    observation.toolId !== 'create_entity' &&
+    observation.toolId !== 'orgx_write'
+  ) {
+    return false;
+  }
 
-  const entityType =
-    typeof observation.args?.type === 'string'
-      ? observation.args.type
-      : typeof observation.data?.type === 'string'
-      ? observation.data.type
-      : null;
+  const entityType = getObservedEntityType(observation);
   return (
     entityType === 'initiative' ||
     entityType === 'workstream' ||
@@ -140,25 +156,29 @@ function marksTaskCreated(observation: ActivationObservation): boolean {
     return countNestedTasks(observation.data) > 0;
   }
 
-  if (observation.toolId !== 'create_entity') return false;
-  const entityType =
-    typeof observation.args?.type === 'string'
-      ? observation.args.type
-      : typeof observation.data?.type === 'string'
-      ? observation.data.type
-      : null;
-  return entityType === 'task';
+  if (
+    observation.toolId !== 'create_entity' &&
+    observation.toolId !== 'orgx_write'
+  ) {
+    return false;
+  }
+  return getObservedEntityType(observation) === 'task';
 }
 
 function marksSkillCatalogViewed(observation: ActivationObservation): boolean {
   return (
-    observation.toolId === 'list_entities' &&
+    (observation.toolId === 'list_entities' ||
+      observation.toolId === 'orgx_search') &&
     observation.args?.type === 'skill'
   );
 }
 
 function marksMorningBriefViewed(observation: ActivationObservation): boolean {
-  return observation.toolId === 'get_morning_brief';
+  return (
+    observation.toolId === 'get_morning_brief' ||
+    (observation.toolId === 'orgx_recommend' &&
+      observation.args?.mode === 'morning_brief')
+  );
 }
 
 export function applyMcpActivationObservation(

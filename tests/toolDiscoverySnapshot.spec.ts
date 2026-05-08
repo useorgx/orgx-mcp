@@ -141,14 +141,18 @@ describe('tool discovery snapshot', () => {
 
   it('full profile resolves to null (all tools)', () => {
     expect(resolveProfileToolSet('full')).toBeNull();
-    expect(resolveProfileToolSet(undefined)).toBeNull();
-    expect(resolveProfileToolSet(null)).toBeNull();
+  });
+
+  it('missing profile defaults to the compact v2 public surface', () => {
+    const expected = new Set(TOOL_PROFILES.v2.tools ?? []);
+    expect(resolveProfileToolSet(undefined)).toEqual(expected);
+    expect(resolveProfileToolSet(null)).toEqual(expected);
   });
 
   it('every profile includes the bootstrap/describe entry points', () => {
-    // Without these, an agent connecting under a profile can't discover what
-    // it can do. Catches accidental removal of the entry tools.
-    const REQUIRED = ['orgx_bootstrap', 'orgx_describe_tool', 'orgx_describe_action'];
+    // Bootstrap is the v2 session handshake and routing entrypoint. Catches
+    // accidental removal from filtered profiles.
+    const REQUIRED = ['orgx_bootstrap'];
     const profileNames = Object.keys(TOOL_PROFILES).filter((n) => n !== 'full');
     for (const profileName of profileNames) {
       const allowed = resolveProfileToolSet(profileName);

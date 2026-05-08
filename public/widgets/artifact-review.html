@@ -674,7 +674,7 @@
 
       async function approveArtifact(artifact) {
         try {
-          await callTool('entity_action', {
+          await callTool('orgx_act', {
             type: 'artifact',
             id: artifact.id,
             action: 'approve',
@@ -687,15 +687,16 @@
 
       async function submitChangeRequest(artifact, notes) {
         try {
-          await callTool('create_entity', {
-            type: 'decision',
+          await callTool('orgx_decide', {
+            action: 'create',
             title: 'Changes requested on ' + (artifact.name || 'artifact'),
             summary: notes,
+            context: 'Artifact review change request',
             entity_type: 'artifact',
             entity_id: artifact.id,
             initiative_id: artifact.entity_type === 'initiative' ? artifact.entity_id : undefined,
           });
-          await callTool('entity_action', {
+          await callTool('orgx_act', {
             type: 'artifact',
             id: artifact.id,
             action: 'request_changes',

@@ -34,7 +34,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_bootstrap',
     title: 'Bootstrap OrgX Contract',
     description:
-      'Establish OrgX session context, discover granted scopes, and get the v2 tool routing map. Also known as: bootstrap, setup, tool routing. USE WHEN: first call in a fresh session, after reconnecting, or before performing a multi-step workflow. DO NOT USE WHEN: you already have session context and need to read or mutate work. Common next tool: orgx_search, orgx_inspect, or orgx_recommend. Read-only.',
+      'Establish OrgX session context, discover granted scopes, and get the v2 tool routing map. Also known as: bootstrap, setup, tool routing. USE WHEN: first call in a fresh session, after reconnecting, or before performing a multi-step workflow. NEXT: use orgx_search, orgx_inspect, or orgx_recommend based on the returned routing map. DO NOT USE WHEN: you already have session context and need to read or mutate work. Read-only.',
     inputSchema: {
       workspace_id: z.string().optional().describe('Canonical workspace UUID to bind as the active session workspace'),
       conversation_id: z.string().optional().describe('Optional client conversation/session identifier for continuity'),
@@ -53,7 +53,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_inspect',
     title: 'Inspect OrgX Entity',
     description:
-      'Hydrate one OrgX entity with execution context. USE WHEN: the user names a specific task, milestone, initiative, decision, artifact, or plan session and needs details before acting. DO NOT USE WHEN: browsing or searching many records; use orgx_search. Common next tool: orgx_act, orgx_attach, or orgx_write. Read-only.',
+      'Hydrate one OrgX entity with execution context. USE WHEN: the user names a specific task, milestone, initiative, decision, artifact, or plan session and needs details before acting. NEXT: use orgx_act, orgx_attach, or orgx_write if the user asks to change what you inspected. DO NOT USE WHEN: browsing or searching many records; use orgx_search. Read-only.',
     inputSchema: {
       type: z
         .enum(['initiative', 'workstream', 'milestone', 'task', 'decision', 'artifact', 'plan_session'])
@@ -77,7 +77,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_search',
     title: 'Search OrgX',
     description:
-      'Find OrgX entities, decisions, artifacts, and memory. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect. Common next tool: orgx_inspect.',
+      'Find OrgX entities, decisions, artifacts, and memory. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use orgx_inspect for one selected result or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.',
     inputSchema: {
       query: z.string().optional().describe('Search query for memory or title/text matching'),
       type: z.string().optional().describe('Optional entity type filter, such as task, milestone, decision, artifact, or initiative'),
@@ -102,7 +102,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_recommend',
     title: 'Recommend Next OrgX Action',
     description:
-      'Recommend next work, summarize morning-brief signals, or read prioritization context. USE WHEN: user asks what to do next, wants a brief, or needs priority guidance. DO NOT USE WHEN: the user already specified the action; use orgx_act or orgx_write.',
+      'Recommend next work, summarize morning-brief signals, or read prioritization context. USE WHEN: user asks what to do next, wants a brief, or needs priority guidance. NEXT: present the recommendation, then use orgx_act, orgx_write, or orgx_spawn only after the user confirms an action. DO NOT USE WHEN: the user already specified the action; use orgx_act or orgx_write.',
     inputSchema: {
       mode: z.enum(['next_action', 'morning_brief']).optional().describe('Recommendation mode; default next_action'),
       entity_type: z.enum(['workspace', 'initiative', 'workstream', 'milestone', 'task']).optional().describe('Recommendation scope type'),
@@ -125,7 +125,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_write',
     title: 'Write OrgX Entity',
     description:
-      'Create or update durable OrgX records using canonical snake_case fields. USE WHEN: adding or editing a task, milestone, decision, artifact, skill, brand, or content entity. DO NOT USE WHEN: changing lifecycle state or attaching proof; use orgx_act or orgx_attach. Common next tool: orgx_act.',
+      'Create or update durable OrgX records using canonical snake_case fields. USE WHEN: adding or editing a task, milestone, decision, artifact, skill, brand, or content entity. NEXT: use orgx_act when the new or edited record should launch, pause, complete, or validate. DO NOT USE WHEN: changing lifecycle state or attaching proof; use orgx_act or orgx_attach.',
     inputSchema: {
       operation: z.enum(['create', 'update']).optional().describe('Write operation; default create'),
       type: z.string().min(1).describe('Entity type, such as task, milestone, decision, artifact, skill, studio_brand, or studio_content'),
@@ -156,7 +156,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_attach',
     title: 'Attach OrgX Artifact',
     description:
-      'Attach a durable artifact, proof URL, or preview to an existing OrgX entity. USE WHEN: saving evidence, PRs, documents, reports, screenshots, or external artifacts. DO NOT USE WHEN: creating generic entities; use orgx_write. Common next tool: orgx_submit_receipt or orgx_act.',
+      'Attach a durable artifact, proof URL, or preview to an existing OrgX entity. USE WHEN: saving evidence, PRs, documents, reports, screenshots, or external artifacts. NEXT: use orgx_submit_receipt to close attribution/quality loops or orgx_act to complete with proof. DO NOT USE WHEN: creating generic entities; use orgx_write.',
     inputSchema: {
       type: lifecycleEntityTypeEnum.describe('Target entity type'),
       id: z.string().min(1).describe('Target entity UUID or short ID prefix'),
@@ -182,7 +182,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_act',
     title: 'Act On OrgX Entity',
     description:
-      'Run lifecycle, validation, completion, delete, dry-run, or proof actions on an existing OrgX entity. USE WHEN: launching, pausing, completing, validating, deleting, shipping, or changing entity state. DO NOT USE WHEN: creating records; use orgx_write.',
+      'Run lifecycle, validation, completion, delete, dry-run, or proof actions on an existing OrgX entity. USE WHEN: launching, pausing, completing, validating, deleting, shipping, or changing entity state. NEXT: use orgx_inspect or orgx_search to verify resulting state, then orgx_submit_receipt for durable proof when needed. DO NOT USE WHEN: creating records; use orgx_write.',
     inputSchema: {
       type: lifecycleEntityTypeEnum.describe('Target entity type'),
       id: z.string().min(1).describe('Target entity UUID or short ID prefix'),
@@ -209,7 +209,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_plan',
     title: 'Manage OrgX Plan Session',
     description:
-      'Start, resume, edit, improve, or complete a tracked OrgX planning session. USE WHEN: work is still in planning or should become executable context. DO NOT USE WHEN: directly scaffolding a full initiative hierarchy; use scaffold_initiative for that compatibility path.',
+      'Start, resume, edit, improve, or complete a tracked OrgX planning session. USE WHEN: work is still in planning or should become executable context. NEXT: use orgx_write or orgx_act after the plan is accepted and needs durable execution state. DO NOT USE WHEN: directly scaffolding a full initiative hierarchy; use scaffold_initiative for that compatibility path.',
     inputSchema: {
       action: z.enum(['start', 'resume', 'improve', 'record_edit', 'complete']).describe('Planning action'),
       session_id: z.string().optional().describe('Plan session UUID or orgx://plan_session URI'),
@@ -231,7 +231,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_spawn',
     title: 'Spawn OrgX Agent Work',
     description:
-      'Guard, classify, spawn, or hand off specialist agent work. USE WHEN: explicitly delegating work to an OrgX agent or checking if delegation is allowed. DO NOT USE WHEN: only creating a task row; use orgx_write.',
+      'Guard, classify, spawn, or hand off specialist agent work. USE WHEN: explicitly delegating work to an OrgX agent or checking if delegation is allowed. NEXT: use orgx_inspect or orgx_search to monitor the delegated work, then orgx_submit_receipt for proof. DO NOT USE WHEN: only creating a task row; use orgx_write.',
     inputSchema: {
       action: z.enum(['guard', 'spawn', 'handoff', 'classify']).optional().describe('Spawn operation; default spawn'),
       title: z.string().optional().describe('Task title for spawn/handoff'),
@@ -254,7 +254,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_decide',
     title: 'Manage OrgX Decision',
     description:
-      'Create, approve, reject, remember, or list durable OrgX decisions. USE WHEN: capturing judgment, approval, rejection, or pending decision review. DO NOT USE WHEN: writing non-decision entities; use orgx_write.',
+      'Create, approve, reject, remember, or list durable OrgX decisions. USE WHEN: capturing judgment, approval, rejection, or pending decision review. NEXT: use orgx_act, orgx_write, or orgx_spawn only after the decision resolves the next action. DO NOT USE WHEN: writing non-decision entities; use orgx_write.',
     inputSchema: {
       action: z.enum(['create', 'remember', 'list_pending', 'approve', 'reject']).describe('Decision operation'),
       decision_id: z.string().optional().describe('Decision UUID for approve/reject'),
@@ -282,7 +282,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_submit_receipt',
     title: 'Submit OrgX Receipt',
     description:
-      'Submit durable proof, attribution, quality, or outcome receipt metadata. USE WHEN: closing the loop on agent work with provenance and measurable evidence. DO NOT USE WHEN: merely emitting telemetry; use orgx_emit_activity.',
+      'Submit durable proof, attribution, quality, or outcome receipt metadata. USE WHEN: closing the loop on agent work with provenance and measurable evidence. NEXT: use orgx_recommend or orgx_search to show the next priority or confirm the updated work graph. DO NOT USE WHEN: merely emitting telemetry; use orgx_emit_activity.',
     inputSchema: {
       workspace_id: z.string().optional().describe('Workspace UUID'),
       entity_type: z.string().optional().describe('Related entity type'),

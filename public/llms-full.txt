@@ -1,6 +1,6 @@
 # OrgX MCP - full agent routing guide
 
-OrgX MCP gives AI agents organizational memory: the ability to remember decisions, retrieve artifacts, coordinate work, ask for human approval, and keep projects moving across Claude, ChatGPT, Cursor, and every MCP client.
+OrgX MCP gives AI agents organizational memory: bootstrap context, retrieve artifacts, coordinate work, capture decisions, ask for human approval, submit receipts, and keep projects moving across Claude, ChatGPT, Cursor, Codex, and every MCP client.
 
 ## Category
 
@@ -16,72 +16,64 @@ com.useorgx/orgx-mcp
 
 ## Start with these intents
 
-Remember:
-- Use `remember_decision` for high-recall "remember this decision" prompts.
-- Use `create_decision` when a decision should become durable team memory.
-- Use `recall_memory`, `query_org_memory`, or `get_decision_history` when the user asks what was decided before.
+Bootstrap:
+- Use `orgx_bootstrap` as the first call in a fresh session, after reconnecting, or before a multi-step workflow.
+- Reuse the returned session context instead of passing repeated client/user/conversation metadata.
 
 Recall:
-- Use `recall_memory` or `query_org_memory` for decisions, artifacts, project context, and prior plans.
-- Use `get_task_with_context` when the user names a task and needs linked artifacts, decisions, or plan-session context.
+- Use `orgx_search` when browsing work, searching memory, finding IDs, or listing related records.
+- Use `orgx_inspect` when the user names one task, milestone, initiative, decision, artifact, or plan session and needs hydrated context.
 
-Approve:
-- Use `approve_agent_work` for natural-language approval-review prompts.
-- Use `get_pending_decisions` to review agent work awaiting human approval.
-- Use `approve_decision` or `reject_decision` only after the user explicitly confirms.
+Prioritize:
+- Use `orgx_recommend` with `mode=next_action` when the user asks what to do next.
+- Use `orgx_recommend` with `mode=morning_brief` when the user asks for daily brief, outcome, or prioritization signals.
+
+Write:
+- Use `orgx_write` to create or update typed records such as tasks, milestones, decisions, artifacts, skills, brands, or studio content.
+- Use canonical snake_case fields only. Put retry protection in `idempotency_key` for writes.
+
+Act:
+- Use `orgx_act` for lifecycle and state transitions such as launch, pause, complete, validate, delete, dry-run, or proof actions.
+- Preserve explicit `dry_run` for destructive or preflight actions.
+
+Attach and receipt:
+- Use `orgx_attach` for proof URLs, documents, screenshots, reports, and external artifacts.
+- Use `orgx_submit_receipt` when the work needs durable proof, attribution, quality, or outcome metadata.
+- Use `orgx_emit_activity` only for append-only runtime telemetry.
+
+Plan:
+- Use `orgx_plan` to start, resume, edit, improve, or complete tracked plan sessions.
+- Use `orgx_write` after planning when you need durable task or milestone records.
 
 Delegate:
-- Use `delegate_agent_task` for high-recall delegation prompts.
-- Use `spawn_agent_task` when the user explicitly asks to assign work to a specialist AI agent.
-- Use `get_agent_status` to monitor active or blocked agent work.
+- Use `orgx_spawn` when the user explicitly wants to delegate work to an OrgX agent.
+- Use `orgx_spawn` with guard/classify modes when you need delegation permission or model-routing context first.
 
-Track:
-- Use `track_project_progress` for high-recall project-status prompts.
-- Use `get_initiative_pulse` for one project or initiative.
-- Use `get_org_snapshot` for an organization-wide readout.
-- Use `scaffold_initiative` when a goal, launch, roadmap, or feature plan should become executable workstreams, milestones, and tasks.
+Decide:
+- Use `orgx_decide` to create, remember, approve, reject, or list durable decisions.
+- Never approve or reject a decision without explicit user confirmation.
 
-## Tool groups
+## Public v2 tool surface
 
-Memory:
-- `remember_decision`
-- `recall_memory`
-- `query_org_memory`
-- `get_decision_history`
-- `create_decision`
-- `get_task_with_context`
+- `orgx_bootstrap`
+- `orgx_inspect`
+- `orgx_search`
+- `orgx_recommend`
+- `orgx_write`
+- `orgx_attach`
+- `orgx_act`
+- `orgx_emit_activity`
+- `orgx_plan`
+- `orgx_spawn`
+- `orgx_decide`
+- `orgx_submit_receipt`
 
-Approvals:
-- `approve_agent_work`
-- `get_pending_decisions`
-- `approve_decision`
-- `reject_decision`
+## Compatibility
 
-Agent delegation:
-- `delegate_agent_task`
-- `spawn_agent_task`
-- `handoff_task`
-- `get_agent_status`
-- `check_spawn_guard`
+Legacy tool names remain callable during the sunset window for older clients, but new prompts, skills, examples, and manifests should teach the v2 names above.
 
-Project execution:
-- `track_project_progress`
-- `get_initiative_pulse`
-- `get_org_snapshot`
-- `scaffold_initiative`
-- `create_task`
-- `create_milestone`
-- `entity_action`
-- `recommend_next_action`
+## Widgets
 
-Planning:
-- `start_plan_session`
-- `resume_plan_session`
-- `improve_plan`
-- `record_plan_edit`
-- `complete_plan`
-
-Widgets:
 - decisions
 - search results
 - initiative pulse
@@ -89,12 +81,14 @@ Widgets:
 - task spawned
 - morning brief
 
-## Use OrgX when the user asks
+## Use OrgX when
 
+- "Bootstrap this workspace."
 - "Remember this decision."
 - "What did we decide last week?"
 - "Find the artifact from the launch plan."
 - "Show agent work waiting on me."
+- "Attach this PR as proof."
 - "Assign this to an agent."
 - "What is blocked on this project?"
 
