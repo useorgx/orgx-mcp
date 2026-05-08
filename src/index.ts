@@ -81,6 +81,10 @@ import {
   resolveConfigureOrgWorkspaceId,
 } from './configureOrgPolicy';
 import {
+  BOOTSTRAP_RECOMMENDED_WORKFLOWS,
+  getBootstrapSafeFirstCalls,
+} from './bootstrapPayload';
+import {
   buildClientSkillOnboarding,
   formatClientSkillOnboarding,
   resolveSourceClientFromContext,
@@ -2851,36 +2855,6 @@ export class OrgXMcp extends McpAgent<
           .map((tool) => tool.id)
           .sort();
 
-    const safeFirstCallsByProfile: Record<
-      string,
-      Array<{ tool: string; args: Record<string, unknown> }>
-    > = {
-      memory: [
-        { tool: 'workspace', args: { action: 'get' } },
-        { tool: 'query_org_memory', args: { query: 'recent decisions', scope: 'decisions' } },
-      ],
-      commander: [
-        { tool: 'workspace', args: { action: 'get' } },
-        { tool: 'get_org_snapshot', args: { view: 'summary' } },
-      ],
-      planner: [
-        { tool: 'workspace', args: { action: 'get' } },
-        { tool: 'get_active_sessions', args: {} },
-      ],
-      executor: [
-        { tool: 'workspace', args: { action: 'get' } },
-        { tool: 'sync_client_state', args: {} },
-      ],
-      observer: [
-        { tool: 'workspace', args: { action: 'get' } },
-        { tool: 'get_org_snapshot', args: { view: 'summary' } },
-      ],
-      full: [
-        { tool: 'workspace', args: { action: 'get' } },
-        { tool: 'get_org_snapshot', args: { view: 'summary' } },
-      ],
-    };
-
     return {
       server_version: MCP_SERVER_VERSION,
       profile,
@@ -2894,28 +2868,13 @@ export class OrgXMcp extends McpAgent<
         ? { id: this.sessionContext.initiativeId }
         : null,
       granted_scopes: this.parseGrantedScopes(),
-      safe_first_calls: safeFirstCallsByProfile[profile] ?? safeFirstCallsByProfile.full,
+      safe_first_calls: getBootstrapSafeFirstCalls(profile),
       accepted_id_forms: {
         plan_session: PLAN_SESSION_ACCEPTED_ID_FORMS,
         initiative: ['uuid'],
         task: ['uuid', '8+ char prefix'],
       },
-      recommended_workflows: {
-        plan_feature: [
-          'orgx_bootstrap',
-          'start_plan_session',
-          'improve_plan',
-          'record_plan_edit',
-          'complete_plan',
-        ],
-        execute_task: [
-          'workspace',
-          'get_task_with_context',
-          'check_spawn_guard',
-          'spawn_agent_task',
-          'orgx_emit_activity',
-        ],
-      },
+      recommended_workflows: BOOTSTRAP_RECOMMENDED_WORKFLOWS,
       visible_tools_count: visibleTools.length,
       visible_tools: allowedTools ? visibleTools : undefined,
     };
