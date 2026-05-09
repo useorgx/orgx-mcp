@@ -17,3 +17,20 @@ Do not use OrgX for:
 - code documentation lookup
 - local file reads
 - one-off notes that should not enter team memory
+
+## Codex Cloud Environment
+
+Use the checked-in setup scripts when configuring this repo in Codex cloud:
+
+```bash
+bash .codex/setup-cloud.sh
+```
+
+Use this as the cached-environment maintenance script:
+
+```bash
+bash .codex/maintenance-cloud.sh
+```
+
+The setup script installs from `pnpm-lock.yaml`, then runs `pnpm run verify`.
+Static worker verification does not require OrgX or Cloudflare secrets.
