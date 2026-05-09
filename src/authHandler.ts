@@ -100,6 +100,23 @@ function scopeListToParam(scopes: readonly string[] | undefined): string {
   return (scopes ?? []).join(' ');
 }
 
+function isReadOnlyCodexTool(toolName: string | undefined): boolean {
+  return Boolean(
+    toolName &&
+      (toolName === 'orgx_bootstrap' ||
+        toolName === 'orgx_search' ||
+        toolName === 'orgx_inspect' ||
+        toolName === 'orgx_recommend' ||
+        toolName === 'get_agent_status' ||
+        toolName === 'get_initiative_pulse' ||
+        toolName === 'recommend_next_action' ||
+        toolName === 'query_org_memory' ||
+        toolName === 'recall_memory' ||
+        toolName === 'track_project_progress' ||
+        toolName === 'get_morning_brief')
+  );
+}
+
 function resolveApprovedScopes(
   requestedScopes: readonly string[] | undefined,
   finalScope: string | null
@@ -823,60 +840,11 @@ export const authHandler = {
         homepage: 'https://useorgx.com',
         documentation: 'https://docs.useorgx.com/integrations/codex',
         capabilities: { tools: true, resources: true, prompts: true },
-        tools: [
-          {
-            name: 'orgx_bootstrap',
-            description: 'Establish OrgX session context and discover the v2 routing map',
-            readOnly: true,
-          },
-          {
-            name: 'orgx_search',
-            description: 'Search OrgX entities, decisions, artifacts, and memory',
-            readOnly: true,
-          },
-          {
-            name: 'orgx_inspect',
-            description: 'Hydrate one OrgX entity with execution context',
-            readOnly: true,
-          },
-          {
-            name: 'orgx_recommend',
-            description: 'Recommend next work or return morning brief signals',
-            readOnly: true,
-          },
-          {
-            name: 'orgx_write',
-            description: 'Create or update durable OrgX records',
-          },
-          {
-            name: 'orgx_attach',
-            description: 'Attach proof, URLs, or artifacts to OrgX entities',
-          },
-          {
-            name: 'orgx_act',
-            description: 'Run lifecycle, validation, completion, or state actions',
-          },
-          {
-            name: 'orgx_emit_activity',
-            description: 'Emit append-only execution telemetry',
-          },
-          {
-            name: 'orgx_plan',
-            description: 'Start, resume, edit, improve, or complete a tracked plan session',
-          },
-          {
-            name: 'orgx_spawn',
-            description: 'Guard, classify, spawn, or hand off specialist agent work',
-          },
-          {
-            name: 'orgx_decide',
-            description: 'Create, approve, reject, remember, or list decisions',
-          },
-          {
-            name: 'orgx_submit_receipt',
-            description: 'Submit durable proof, attribution, quality, or outcome receipts',
-          },
-        ],
+        tools: (serverManifest.tools ?? []).map((tool) => ({
+          name: tool.name,
+          description: tool.description,
+          ...(isReadOnlyCodexTool(tool.name) ? { readOnly: true } : {}),
+        })),
         auth: {
           type: 'oauth2',
           authorizationUrl: `${serverUrl}/authorize`,

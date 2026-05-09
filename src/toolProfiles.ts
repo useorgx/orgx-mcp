@@ -24,7 +24,7 @@ export interface ToolProfile {
   tools: string[] | null;
 }
 
-const V2_PUBLIC_SURFACE = [
+export const V2_CORE_PUBLIC_SURFACE = [
   'orgx_bootstrap',
   'orgx_inspect',
   'orgx_search',
@@ -39,10 +39,33 @@ const V2_PUBLIC_SURFACE = [
   'orgx_submit_receipt',
 ] as const;
 
+export const WIDGET_AFFORDANCE_SURFACE = [
+  'approve_decision',
+  'reject_decision',
+  'get_agent_status',
+  'get_initiative_pulse',
+  'scaffold_initiative',
+  'spawn_agent_task',
+  'handoff_task',
+  'recommend_next_action',
+  'query_org_memory',
+  'recall_memory',
+  'approve_agent_work',
+  'delegate_agent_task',
+  'track_project_progress',
+  'review_artifact',
+  'get_morning_brief',
+] as const;
+
+const V2_PUBLIC_SURFACE = [
+  ...V2_CORE_PUBLIC_SURFACE,
+  ...WIDGET_AFFORDANCE_SURFACE,
+] as const;
+
 export const TOOL_PROFILES: Record<string, ToolProfile> = {
   v2: {
     description:
-      'OrgX MCP v2 public surface: bootstrap, inspect, search, recommend, write, attach, act, plan, spawn, decide, receipts, and activity',
+      'OrgX MCP v2 public surface plus direct widget affordances for decisions, agent status, initiative pulse, scaffold, artifacts, memory search, morning brief, and task delegation',
     tools: [...V2_PUBLIC_SURFACE],
   },
   memory: {

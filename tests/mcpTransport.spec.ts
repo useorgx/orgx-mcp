@@ -64,7 +64,7 @@ describe('mcpTransport', () => {
     }
   );
 
-  it('routes get_pending_decisions to list_entities and adds deprecation headers', async () => {
+  it('routes get_pending_decisions to the decisions widget affordance and adds deprecation headers', async () => {
     let received: any = null;
     const handler = {
       fetch: vi.fn(async (req: Request) => {
@@ -95,10 +95,9 @@ describe('mcpTransport', () => {
       vi.fn(async () => ({}))
     );
 
-    expect(received?.params?.name).toBe('list_entities');
+    expect(received?.params?.name).toBe('approve_agent_work');
     expect(received?.params?.arguments).toEqual({
-      type: 'decision',
-      status: 'pending',
+      action: 'list',
       limit: 3,
       initiative_id: 'init-123',
     });
@@ -106,12 +105,12 @@ describe('mcpTransport', () => {
       'get_pending_decisions'
     );
     expect(response.headers.get('x-orgx-replacement-tool')).toBe(
-      'list_entities'
+      'approve_agent_work'
     );
     expect(response.headers.get('x-orgx-deprecation-routed')).toBe('true');
   });
 
-  it('preserves deprecated tool calls that cannot be safely rerouted yet', async () => {
+  it('routes get_pending_decisions urgency filters through the decisions widget affordance', async () => {
     let received: any = null;
     const handler = {
       fetch: vi.fn(async (req: Request) => {
@@ -142,15 +141,21 @@ describe('mcpTransport', () => {
       vi.fn(async () => ({}))
     );
 
-    expect(received?.params?.name).toBe('get_pending_decisions');
-    expect(received?.params?.arguments).toEqual({ urgency_filter: 'high' });
+    expect(received?.params?.name).toBe('approve_agent_work');
+    expect(received?.params?.arguments).toEqual({
+      action: 'list',
+      urgency_filter: 'high',
+    });
     expect(response.headers.get('x-orgx-deprecated-tool')).toBe(
       'get_pending_decisions'
     );
-    expect(response.headers.get('x-orgx-deprecation-routed')).toBe('false');
+    expect(response.headers.get('x-orgx-replacement-tool')).toBe(
+      'approve_agent_work'
+    );
+    expect(response.headers.get('x-orgx-deprecation-routed')).toBe('true');
   });
 
-  it('routes get_decision_history to query_org_memory when no legacy-only filters are used', async () => {
+  it('routes get_decision_history to recall_memory when no legacy-only filters are used', async () => {
     let received: any = null;
     const handler = {
       fetch: vi.fn(async (req: Request) => {
@@ -181,7 +186,7 @@ describe('mcpTransport', () => {
       vi.fn(async () => ({}))
     );
 
-    expect(received?.params?.name).toBe('query_org_memory');
+    expect(received?.params?.name).toBe('recall_memory');
     expect(received?.params?.arguments).toEqual({
       query: 'pricing',
       scope: 'decisions',
@@ -191,7 +196,7 @@ describe('mcpTransport', () => {
       'get_decision_history'
     );
     expect(response.headers.get('x-orgx-replacement-tool')).toBe(
-      'query_org_memory'
+      'recall_memory'
     );
     expect(response.headers.get('x-orgx-deprecation-routed')).toBe('true');
   });

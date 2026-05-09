@@ -103,6 +103,66 @@
     {
       "name": "orgx_emit_activity",
       "description": "Emit append-only execution telemetry without changing durable entity state."
+    },
+    {
+      "name": "approve_decision",
+      "description": "Approve a pending decision from the decisions widget after explicit confirmation."
+    },
+    {
+      "name": "reject_decision",
+      "description": "Reject or request changes on a pending decision from the decisions widget."
+    },
+    {
+      "name": "get_agent_status",
+      "description": "Render the agent-status widget with active, blocked, and idle agent work."
+    },
+    {
+      "name": "get_initiative_pulse",
+      "description": "Render the initiative-pulse widget for health, blockers, milestones, and activity."
+    },
+    {
+      "name": "scaffold_initiative",
+      "description": "Create a full initiative hierarchy and render the scaffolded-initiative widget."
+    },
+    {
+      "name": "spawn_agent_task",
+      "description": "Delegate work to an agent and render the task-spawned widget."
+    },
+    {
+      "name": "handoff_task",
+      "description": "Hand off an existing task and render the task-spawned widget for the new assignment."
+    },
+    {
+      "name": "recommend_next_action",
+      "description": "Render search-results style next-action recommendations for prioritization."
+    },
+    {
+      "name": "query_org_memory",
+      "description": "Render organizational memory search results in the search-results widget."
+    },
+    {
+      "name": "recall_memory",
+      "description": "Render recalled memory and prior context in the search-results widget."
+    },
+    {
+      "name": "approve_agent_work",
+      "description": "List, approve, or reject agent approval items through the decisions widget."
+    },
+    {
+      "name": "delegate_agent_task",
+      "description": "Delegate work through the task-spawned widget using agent-friendly fields."
+    },
+    {
+      "name": "track_project_progress",
+      "description": "Render project progress through the initiative-pulse widget."
+    },
+    {
+      "name": "review_artifact",
+      "description": "Render the artifact-review widget for approval or change requests on deliverables."
+    },
+    {
+      "name": "get_morning_brief",
+      "description": "Render the morning-brief widget with receipts, exceptions, ROI, and value signals."
     }
   ],
   "resources": [

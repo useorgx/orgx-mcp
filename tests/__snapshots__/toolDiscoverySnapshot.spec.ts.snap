@@ -244,6 +244,13 @@ exports[`tool discovery snapshot > per-profile snapshots > profile "planner" exp
 
 exports[`tool discovery snapshot > per-profile snapshots > profile "v2" exposes a locked tool set > profile-v2-tool-ids 1`] = `
 [
+  "approve_agent_work",
+  "approve_decision",
+  "delegate_agent_task",
+  "get_agent_status",
+  "get_initiative_pulse",
+  "get_morning_brief",
+  "handoff_task",
   "orgx_act",
   "orgx_attach",
   "orgx_bootstrap",
@@ -256,5 +263,13 @@ exports[`tool discovery snapshot > per-profile snapshots > profile "v2" exposes 
   "orgx_spawn",
   "orgx_submit_receipt",
   "orgx_write",
+  "query_org_memory",
+  "recall_memory",
+  "recommend_next_action",
+  "reject_decision",
+  "review_artifact",
+  "scaffold_initiative",
+  "spawn_agent_task",
+  "track_project_progress",
 ]
 `;

@@ -12,7 +12,11 @@ import {
 } from '../src/toolDefinitions';
 import { CONTRACT_TOOL_DEFINITIONS } from '../src/contractTools';
 import { FLYWHEEL_TOOL_DEFINITIONS } from '../src/flywheelTools';
-import { TOOL_PROFILES, resolveProfileToolSet } from '../src/toolProfiles';
+import {
+  TOOL_PROFILES,
+  WIDGET_AFFORDANCE_SURFACE,
+  resolveProfileToolSet,
+} from '../src/toolProfiles';
 
 /**
  * Tool discovery snapshot.
@@ -163,6 +167,28 @@ describe('tool discovery snapshot', () => {
           `profile "${profileName}" must include ${required}`
         ).toBe(true);
       }
+    }
+  });
+
+  it('default v2 keeps non-deprecated widget affordance tools visible', () => {
+    const allowed = resolveProfileToolSet('v2');
+    expect(allowed).not.toBeNull();
+    for (const toolId of WIDGET_AFFORDANCE_SURFACE) {
+      expect(
+        allowed?.has(toolId),
+        `v2 profile must expose widget affordance tool ${toolId}`
+      ).toBe(true);
+    }
+  });
+
+  it('default v2 does not re-advertise deprecated widget aliases', () => {
+    const allowed = resolveProfileToolSet('v2');
+    expect(allowed).not.toBeNull();
+    for (const toolId of ['get_pending_decisions', 'get_decision_history']) {
+      expect(
+        allowed?.has(toolId),
+        `deprecated widget alias ${toolId} must remain callable only through compatibility routes`
+      ).toBe(false);
     }
   });
 });
