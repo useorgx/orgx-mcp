@@ -223,8 +223,10 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
     _meta: {
+      'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.planSessionLive,
       'openai/toolInvocation/invoking': 'Updating OrgX plan...',
       'openai/toolInvocation/invoked': 'OrgX plan updated',
+      ui: { resourceUri: WIDGET_URIS.planSessionLive },
     },
   },
   {

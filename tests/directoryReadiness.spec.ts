@@ -86,6 +86,21 @@ describe('Anthropic directory readiness', () => {
       'orgx_decide',
       'orgx_submit_receipt',
       'orgx_emit_activity',
+      'approve_decision',
+      'reject_decision',
+      'get_agent_status',
+      'get_initiative_pulse',
+      'scaffold_initiative',
+      'spawn_agent_task',
+      'handoff_task',
+      'recommend_next_action',
+      'query_org_memory',
+      'recall_memory',
+      'approve_agent_work',
+      'delegate_agent_task',
+      'track_project_progress',
+      'review_artifact',
+      'get_morning_brief',
     ]);
     expect(serverJson.tools?.find((tool) => tool.name === 'orgx_bootstrap')?.description).toContain(
       'v2 routing guidance'

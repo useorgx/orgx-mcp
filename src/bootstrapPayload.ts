@@ -16,6 +16,21 @@ export const V2_PUBLIC_TOOL_IDS = [
   'orgx_spawn',
   'orgx_submit_receipt',
   'orgx_write',
+  'approve_decision',
+  'reject_decision',
+  'get_agent_status',
+  'get_initiative_pulse',
+  'scaffold_initiative',
+  'spawn_agent_task',
+  'handoff_task',
+  'recommend_next_action',
+  'query_org_memory',
+  'recall_memory',
+  'approve_agent_work',
+  'delegate_agent_task',
+  'track_project_progress',
+  'review_artifact',
+  'get_morning_brief',
 ] as const;
 
 export const BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE: Record<
