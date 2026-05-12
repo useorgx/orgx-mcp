@@ -6893,7 +6893,7 @@ export class OrgXMcp extends McpAgent<
           .array(z.string())
           .optional()
           .describe(
-            'Optional goal UUIDs for this task. Suggested when the parent workspace requires work to trace to a primary goal.'
+            'Optional objective UUIDs for this task. This field is named goal_ids for API compatibility; use IDs from list_entities type=objective when the workspace requires a primary objective.'
           ),
         expected_duration_hours: z
           .number()
@@ -7022,7 +7022,7 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Scaffold an initiative hierarchy',
         description:
-          'Turn a goal, roadmap, launch, or feature plan into executable workstreams, milestones, and tasks. Agent-safe aliases are accepted and normalized: task priority urgent -> high; active task/milestone status -> in_progress. Also known as: scaffold project, create roadmap, generate execution plan. USE WHEN: user wants to plan a new initiative from scratch. NEXT: Use entity_action type=initiative action=launch to start execution (auto-launches by default). DO NOT USE: for adding a single task to an existing initiative — use create_entity instead.',
+          'Turn an objective, roadmap, launch, or feature plan into executable workstreams, milestones, and tasks. Agent-safe aliases are accepted and normalized: task priority urgent -> high; active task/milestone status -> in_progress. Also known as: scaffold project, create roadmap, generate execution plan. USE WHEN: user wants to plan a new initiative from scratch. IMPORTANT: goal_ids means objective UUIDs, not a separate goal entity; resolve them with list_entities type=objective. workspace_id is required unless the MCP session already has workspace context; resolve it with list_entities type=command_center or get_org_snapshot. NEXT: Use entity_action type=initiative action=launch to start execution (auto-launches by default). DO NOT USE: for adding a single task to an existing initiative — use create_entity instead.',
         inputSchema: this.withClientContext({
           title: z.string().min(1).describe('Initiative title'),
           summary: z.string().optional().describe('Initiative summary'),
@@ -7043,7 +7043,7 @@ export class OrgXMcp extends McpAgent<
             .string()
             .optional()
             .describe(
-              'Optional workspace ID to scope the initiative hierarchy'
+              'Workspace/command center UUID to scope the initiative hierarchy. Required unless the MCP session already has workspace context; resolve with list_entities type=command_center or get_org_snapshot.'
             ),
           context: scaffoldContextSchema,
           workstreams: z
@@ -7130,13 +7130,50 @@ export class OrgXMcp extends McpAgent<
             debug?: Record<string, unknown>;
           }) => {
             const safeError = sanitizeErrorMessage(params.error);
-            const text = `${params.message}\n\nDetails: ${safeError}\n\nTry:\n- Re-run the same prompt (transient failures happen)\n- Set launch_after_create=false, then say \"start agents\"\n- Reduce concurrency (e.g. concurrency=2)\n- If this is an auth issue, reconnect and try again`;
+            const lowerError = safeError.toLowerCase();
+            const needsWorkspace =
+              lowerError.includes('workspace_id') ||
+              lowerError.includes('workspace id') ||
+              lowerError.includes('workspace is required') ||
+              lowerError.includes('command_center_id') ||
+              lowerError.includes('command center');
+            const needsObjective =
+              lowerError.includes('primary goal') ||
+              lowerError.includes('goal invariant') ||
+              lowerError.includes('goal_ids') ||
+              lowerError.includes('objective');
+            const nextSteps = needsWorkspace
+              ? [
+                  'Resolve a workspace first with list_entities type=command_center or get_org_snapshot',
+                  'Retry scaffold_initiative with workspace_id set to that command center UUID',
+                  'If you also see a primary-goal invariant, resolve objectives with list_entities type=objective and pass the chosen objective UUID in goal_ids',
+                ]
+              : needsObjective
+              ? [
+                  'Resolve objectives with list_entities type=objective',
+                  'Retry scaffold_initiative with goal_ids set to one of those objective UUIDs; goal_ids is the API field name for objective IDs',
+                  'Keep the same workspace_id/command_center_id on the retry',
+                ]
+              : [
+                  'Re-run the same prompt (transient failures happen)',
+                  'Set launch_after_create=false, then say "start agents"',
+                  'Reduce concurrency (e.g. concurrency=2)',
+                  'If this is an auth issue, reconnect and try again',
+                ];
+            const text = `${params.message}\n\nDetails: ${safeError}\n\nTry:\n${nextSteps
+              .map((step) => `- ${step}`)
+              .join('\n')}`;
             return {
               content: [{ type: 'text' as const, text }],
               structuredContent: {
                 ok: false,
                 error_kind: 'scaffold_initiative_failed',
                 error: safeError,
+                resolution_hint: needsWorkspace
+                  ? 'workspace_id_required'
+                  : needsObjective
+                  ? 'objective_goal_ids_required'
+                  : undefined,
                 ...params.debug,
               },
             };
