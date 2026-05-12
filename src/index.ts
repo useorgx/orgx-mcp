@@ -6943,7 +6943,7 @@ export class OrgXMcp extends McpAgent<
           .array(z.string())
           .optional()
           .describe(
-            'Optional goal UUIDs for this milestone. Suggested when the parent workspace requires a primary goal.'
+            'Optional objective UUIDs for this milestone. OrgX stores workspace objectives in goal_ids; provide at least one when the parent workspace requires a primary objective.'
           ),
         expected_duration_hours: z
           .number()
@@ -6993,7 +6993,7 @@ export class OrgXMcp extends McpAgent<
           .array(z.string())
           .optional()
           .describe(
-            'Optional goal UUIDs for this workstream. Suggested when the parent workspace requires a primary goal.'
+            'Optional objective UUIDs for this workstream. OrgX stores workspace objectives in goal_ids; provide at least one when the parent workspace requires a primary objective.'
           ),
         expected_duration_hours: z
           .number()
@@ -7031,7 +7031,7 @@ export class OrgXMcp extends McpAgent<
             .array(z.string())
             .optional()
             .describe(
-              'Optional goal UUIDs for the initiative. Suggested when the workspace requires a primary goal; provide at least one to avoid goal-invariant failures.'
+              'Optional objective UUIDs for the initiative. OrgX stores workspace objectives in goal_ids; provide at least one to avoid objective-invariant failures.'
             ),
           command_center_id: z
             .string()
@@ -7295,6 +7295,46 @@ export class OrgXMcp extends McpAgent<
             explicitCommandCenterId ??
             this.sessionContext?.workspaceId ??
             null;
+
+          if (!effectiveCommandCenterId) {
+            const text = [
+              'I need a workspace_id before I can scaffold this initiative.',
+              '',
+              'This MCP session does not include a workspace context, and creating the hierarchy without one will fail before any agents can launch.',
+              '',
+              'Suggested next calls:',
+              '- orgx_search with type="workspace" to pick the workspace',
+              '- orgx_search with type="objective" and workspace_id to pick objective UUIDs for goal_ids when the workspace requires a primary objective',
+              '- scaffold_initiative again with workspace_id and, when available, goal_ids',
+            ].join('\n');
+            return {
+              content: [{ type: 'text' as const, text }],
+              structuredContent: {
+                ok: false,
+                error_kind: 'missing_workspace_context',
+                missing: ['workspace_id'],
+                suggested_next_calls: [
+                  {
+                    tool: 'orgx_search',
+                    arguments: {
+                      type: 'workspace',
+                      query: 'workspace',
+                    },
+                    purpose: 'Find the workspace_id for this scaffold.',
+                  },
+                  {
+                    tool: 'orgx_search',
+                    arguments: {
+                      type: 'objective',
+                      workspace_id: '<workspace_id>',
+                    },
+                    purpose:
+                      'Find objective UUIDs to pass as goal_ids when required.',
+                  },
+                ],
+              },
+            };
+          }
 
           const argsForBatch: Record<string, unknown> = {
             ...(args as unknown as Record<string, unknown>),
@@ -7593,11 +7633,18 @@ export class OrgXMcp extends McpAgent<
 	                start_agents_hint?: string;
 	              }
 	            | undefined;
+	          const hasExecutionAccount = Boolean(
+	            credential_status?.has_credentials ||
+	              credential_status?.has_subscription_accounts
+	          );
+	          const canLaunchWithExecutionAccount = Boolean(
+	            credential_status?.can_execute && hasExecutionAccount
+	          );
 	          if (
 	            createdInitiativeId &&
 	            launchAfterCreate &&
 	            credential_status?.checked &&
-	            !credential_status.can_execute
+	            !canLaunchWithExecutionAccount
 	          ) {
 	            // Execution account missing: skip launch, return actionable guidance.
 	            launch = {

@@ -254,6 +254,49 @@ describe('buildScaffoldInitiativeBatch', () => {
       goal_ids: ['goal-task-1'],
     });
   });
+
+  it('adds a minimal execution policy when callers provide tiny demo budgets', () => {
+    const result = buildScaffoldInitiativeBatch({
+      title: 'ICP demo smoke',
+      workspace_id: 'ws-1',
+      expected_budget_usd: 0.03,
+      workstreams: [
+        {
+          title: 'Launch proof',
+          domain: 'engineering',
+          milestones: [
+            {
+              title: 'One visible proof',
+              tasks: [
+                {
+                  title: 'Create proof artifact',
+                  expected_duration_hours: 0.1,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    const initiative = result.batch[0];
+    expect(initiative.metadata).toMatchObject({
+      execution_policy: {
+        profile: 'custom',
+        slice_scope_preference: 'task',
+        max_slice_tasks: 1,
+        target_slice_minutes: 5,
+        max_slice_minutes: 10,
+        max_parallel_agents: 1,
+        dependency_mode: 'strict',
+        include_in_progress: false,
+      },
+      cost_control: {
+        source: 'mcp_scaffold_tiny_budget',
+        demo_safe: true,
+      },
+    });
+  });
 });
 
 describe('buildScaffoldHierarchy', () => {

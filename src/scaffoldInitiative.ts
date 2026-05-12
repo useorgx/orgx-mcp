@@ -207,6 +207,101 @@ function toFiniteNumber(value: unknown): number | null {
   return null;
 }
 
+function readExplicitEstimateSignal(
+  entity: Record<string, unknown>
+): {
+  durationHours: number | null;
+  tokens: number | null;
+  budgetUsd: number | null;
+} {
+  return {
+    durationHours: toFiniteNumber(
+      entity.expected_duration_hours ??
+        entity.expectedDurationHours ??
+        entity.duration_hours ??
+        entity.durationHours ??
+        entity.estimated_hours ??
+        entity.estimatedHours
+    ),
+    tokens: toFiniteNumber(
+      entity.expected_tokens ??
+        entity.expectedTokens ??
+        entity.token_budget ??
+        entity.tokenBudget ??
+        entity.tokens
+    ),
+    budgetUsd: toFiniteNumber(
+      entity.expected_budget_usd ??
+        entity.expectedBudgetUsd ??
+        entity.budget_usd ??
+        entity.budgetUsd
+    ),
+  };
+}
+
+function hasTinyExplicitEstimate(entity: Record<string, unknown>): boolean {
+  const estimate = readExplicitEstimateSignal(entity);
+  return (
+    (estimate.durationHours !== null && estimate.durationHours <= 0.25) ||
+    (estimate.tokens !== null && estimate.tokens <= 2_000) ||
+    (estimate.budgetUsd !== null && estimate.budgetUsd <= 0.05)
+  );
+}
+
+function shouldUseMinimalExecutionPolicy(
+  args: Record<string, unknown>,
+  workstreamsInput: unknown[]
+): boolean {
+  if (hasTinyExplicitEstimate(args)) return true;
+
+  for (const wsInput of workstreamsInput) {
+    const ws = safeRecord(wsInput);
+    if (hasTinyExplicitEstimate(ws)) return true;
+    const milestones = Array.isArray(ws.milestones) ? ws.milestones : [];
+    for (const msInput of milestones) {
+      const ms = safeRecord(msInput);
+      if (hasTinyExplicitEstimate(ms)) return true;
+      const tasks = Array.isArray(ms.tasks) ? ms.tasks : [];
+      if (tasks.some((task) => hasTinyExplicitEstimate(safeRecord(task)))) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+function withMinimalExecutionPolicy(
+  metadata: Record<string, unknown>
+): Record<string, unknown> {
+  if (
+    metadata.execution_policy &&
+    typeof metadata.execution_policy === 'object' &&
+    !Array.isArray(metadata.execution_policy)
+  ) {
+    return metadata;
+  }
+
+  return {
+    ...metadata,
+    execution_policy: {
+      profile: 'custom',
+      slice_scope_preference: 'task',
+      max_slice_tasks: 1,
+      target_slice_minutes: 5,
+      max_slice_minutes: 10,
+      max_parallel_agents: 1,
+      dependency_mode: 'strict',
+      include_in_progress: false,
+    },
+    cost_control: {
+      ...(safeRecord(metadata.cost_control)),
+      source: 'mcp_scaffold_tiny_budget',
+      demo_safe: true,
+    },
+  };
+}
+
 function withDefaultSequence(
   entity: Record<string, unknown>,
   fallbackSequence: number
@@ -391,6 +486,10 @@ export function buildScaffoldInitiativeBatch(
     1
   );
   const hasExplicitWorkstreams = workstreamsInput.length > 0;
+  const minimalExecutionPolicy = shouldUseMinimalExecutionPolicy(
+    args,
+    workstreamsInput
+  );
   const autoPlanOverride =
     typeof args.auto_plan === 'boolean'
       ? args.auto_plan
@@ -413,6 +512,9 @@ export function buildScaffoldInitiativeBatch(
       ...existingMetadata,
       live: { ...existingLive, visibility: 'public' },
     };
+  }
+  if (minimalExecutionPolicy) {
+    nextMetadata = withMinimalExecutionPolicy(nextMetadata ?? existingMetadata);
   }
 
   // coordination_dependency is a planning hint that arrives at the top
