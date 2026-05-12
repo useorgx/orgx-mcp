@@ -91,6 +91,18 @@ export function normalizeEntityCreatePayloadForAgents(
     rewrite('status', 'active', 'in_progress', 'OrgX milestone status uses in_progress, not active.');
   }
 
+  if (type === 'decision') {
+    rewrite('status', 'active', 'pending', 'OrgX decision status uses pending for unresolved decisions.');
+  }
+
+  if (type === 'blocker') {
+    rewrite('status', 'active', 'open', 'OrgX blocker status uses open for active blockers.');
+  }
+
+  if (type === 'artifact') {
+    rewrite('status', 'active', 'draft', 'OrgX artifact status uses draft for newly attached artifacts.');
+  }
+
   return { entity: next, warnings };
 }
 

@@ -70,6 +70,16 @@ const MILESTONE_STATUS_VALUES = [
   'at_risk',
   'cancelled',
 ] as const;
+const DECISION_STATUS_VALUES = ['pending', 'approved', 'rejected', 'superseded'] as const;
+const BLOCKER_STATUS_VALUES = ['open', 'resolved', 'dismissed'] as const;
+const ARTIFACT_STATUS_VALUES = [
+  'draft',
+  'in_review',
+  'approved',
+  'changes_requested',
+  'superseded',
+  'archived',
+] as const;
 
 function extractEntityLabel(value: unknown): string | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
@@ -168,6 +178,51 @@ export function validateEntityCreatePayloadContract(
       label: 'milestone statuses',
       validValues: MILESTONE_STATUS_VALUES,
       hint: 'Use "in_progress" instead of "active" for milestones.',
+    });
+  }
+
+  if (
+    type === 'decision' &&
+    typeof entity.status === 'string' &&
+    !includesString(DECISION_STATUS_VALUES, entity.status)
+  ) {
+    return invalidEnumError({
+      type,
+      path: `${pathPrefix}.status`,
+      value: entity.status,
+      label: 'decision statuses',
+      validValues: DECISION_STATUS_VALUES,
+      hint: 'Use "pending" for unresolved decisions.',
+    });
+  }
+
+  if (
+    type === 'blocker' &&
+    typeof entity.status === 'string' &&
+    !includesString(BLOCKER_STATUS_VALUES, entity.status)
+  ) {
+    return invalidEnumError({
+      type,
+      path: `${pathPrefix}.status`,
+      value: entity.status,
+      label: 'blocker statuses',
+      validValues: BLOCKER_STATUS_VALUES,
+      hint: 'Use "open" for active blockers.',
+    });
+  }
+
+  if (
+    type === 'artifact' &&
+    typeof entity.status === 'string' &&
+    !includesString(ARTIFACT_STATUS_VALUES, entity.status)
+  ) {
+    return invalidEnumError({
+      type,
+      path: `${pathPrefix}.status`,
+      value: entity.status,
+      label: 'artifact statuses',
+      validValues: ARTIFACT_STATUS_VALUES,
+      hint: 'Use "draft" for newly attached artifacts.',
     });
   }
 
