@@ -166,7 +166,8 @@ describe('Smithery metadata coverage', () => {
       scaffold_initiative: [
         'annotations: {',
         'goal_ids: z',
-        'Optional objective UUIDs for the initiative. OrgX stores workspace objectives in goal_ids',
+        'goal_ids means objective UUIDs',
+        'Workspace/command center UUID to scope the initiative hierarchy. Required unless the MCP session already has workspace context',
       ],
       get_relevant_learnings: [
         'annotations: {',
