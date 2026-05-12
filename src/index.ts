@@ -3099,6 +3099,41 @@ export class OrgXMcp extends McpAgent<
           }
 
           const body = this.stripContractRuntimeFields(args);
+          if (body.type === 'blocker') {
+            delete body.workspace_id;
+            delete body.command_center_id;
+            delete body.initiative_id;
+            delete body.workstream_id;
+            delete body.milestone_id;
+          }
+          if (body.type === 'initiative') {
+            const metadata =
+              body.metadata && typeof body.metadata === 'object' && !Array.isArray(body.metadata)
+                ? (body.metadata as Record<string, unknown>)
+                : {};
+            const liveMetadata =
+              metadata.live && typeof metadata.live === 'object' && !Array.isArray(metadata.live)
+                ? (metadata.live as Record<string, unknown>)
+                : {};
+            if (body.live_visibility === 'public' || body.live_public === true) {
+              metadata.liveVisibility = 'public';
+              metadata.live = {
+                ...liveMetadata,
+                public: true,
+                revealTitle: body.live_reveal_title !== false,
+              };
+            } else if (body.live_visibility === 'private') {
+              metadata.liveVisibility = 'private';
+              metadata.live = {
+                ...liveMetadata,
+                public: false,
+              };
+            }
+            body.metadata = metadata;
+            delete body.live_visibility;
+            delete body.live_public;
+            delete body.live_reveal_title;
+          }
           const idempotencyKey =
             typeof args.idempotency_key === 'string' ? args.idempotency_key : null;
           if (idempotencyKey) {
@@ -3109,6 +3144,11 @@ export class OrgXMcp extends McpAgent<
                 : {};
             body.metadata = { ...metadata, idempotency_key: idempotencyKey };
           }
+          const normalizedPayload = normalizeEntityCreatePayloadForAgents(
+            body,
+            'orgx_write'
+          );
+          Object.assign(body, normalizedPayload.entity);
           const response = await callOrgxApiJson(
             this.env,
             '/api/entities',
@@ -3127,6 +3167,7 @@ export class OrgXMcp extends McpAgent<
                   ...result,
                   _v2_tool: 'orgx_write',
                   operation: 'create',
+                  normalization_warnings: normalizedPayload.warnings,
                 }),
               },
             ],
@@ -3134,6 +3175,7 @@ export class OrgXMcp extends McpAgent<
               ...result,
               _v2_tool: 'orgx_write',
               operation: 'create',
+              normalization_warnings: normalizedPayload.warnings,
             },
           };
         }
@@ -5885,6 +5927,10 @@ export class OrgXMcp extends McpAgent<
             .describe(
               'Optional context attachments (initiative, workstream, milestone, task). Each entry is a pointer with a relevance note.'
             ),
+          metadata: z
+            .record(z.unknown())
+            .optional()
+            .describe('Optional metadata payload persisted with supported entity types'),
           initiative_id: z
             .string()
             .optional()
@@ -5900,6 +5946,10 @@ export class OrgXMcp extends McpAgent<
             .optional()
             .describe('Parent milestone ID (for tasks)'),
           due_date: z.string().optional().describe('Due date (YYYY-MM-DD)'),
+          status: z
+            .string()
+            .optional()
+            .describe('Initial workflow status; common agent aliases such as active are normalized per entity type'),
           sequence: z
             .number()
             .int()
@@ -5978,6 +6028,62 @@ export class OrgXMcp extends McpAgent<
             .string()
             .optional()
             .describe('Deprecated alias for owner_id; prefer owner_id for new calls'),
+          entity_type: z
+            .string()
+            .optional()
+            .describe('Artifact target entity type, such as initiative, workstream, milestone, task, or decision'),
+          entity_id: z
+            .string()
+            .optional()
+            .describe('Artifact target entity UUID'),
+          task_id: z
+            .string()
+            .optional()
+            .describe('Artifact target task UUID shortcut'),
+          artifact_type: z
+            .string()
+            .optional()
+            .describe('Artifact type code, such as eng.demo_report or proof.link'),
+          artifact_url: z
+            .string()
+            .optional()
+            .describe('Internal artifact URL'),
+          external_url: z
+            .string()
+            .optional()
+            .describe('External artifact URL'),
+          preview_markdown: z
+            .string()
+            .optional()
+            .describe('Artifact markdown preview'),
+          run_id: z
+            .string()
+            .optional()
+            .describe('Agent run UUID for blocker creation'),
+          step_id: z
+            .string()
+            .optional()
+            .describe('Optional agent run step UUID for blocker creation'),
+          blocker_type: z
+            .string()
+            .optional()
+            .describe('Blocker category/type when type=blocker'),
+          resolution: z
+            .string()
+            .optional()
+            .describe('Blocker resolution text when known'),
+          live_visibility: z
+            .enum(['private', 'public'])
+            .optional()
+            .describe('Initiative live-link visibility'),
+          live_public: z
+            .boolean()
+            .optional()
+            .describe('Shortcut to publish an initiative live link'),
+          live_reveal_title: z
+            .boolean()
+            .optional()
+            .describe('Allow public live-link visitors to see the initiative title'),
           // Skill-specific fields (for type: 'skill')
           prompt_template: z
             .string()
@@ -6192,6 +6298,14 @@ export class OrgXMcp extends McpAgent<
             summary: args.summary ?? args.description,
             description: args.description ?? args.summary,
           };
+          if (
+            args.metadata &&
+            typeof args.metadata === 'object' &&
+            !Array.isArray(args.metadata)
+          ) {
+            payload.metadata = args.metadata;
+          }
+          if (args.status) payload.status = args.status;
 
           // Include owner_id in body when explicitly available
           if (ownerId) {
@@ -6209,9 +6323,23 @@ export class OrgXMcp extends McpAgent<
           }
 
           // Add optional fields (only for types whose tables have these columns)
-          if (args.initiative_id) payload.initiative_id = args.initiative_id;
-          if (args.workstream_id) payload.workstream_id = args.workstream_id;
-          if (args.milestone_id) payload.milestone_id = args.milestone_id;
+          if (args.initiative_id && args.type !== 'blocker') {
+            payload.initiative_id = args.initiative_id;
+          }
+          if (
+            args.workstream_id &&
+            args.type !== 'blocker' &&
+            args.type !== 'artifact'
+          ) {
+            payload.workstream_id = args.workstream_id;
+          }
+          if (
+            args.milestone_id &&
+            args.type !== 'blocker' &&
+            args.type !== 'artifact'
+          ) {
+            payload.milestone_id = args.milestone_id;
+          }
           // due_date exists on: milestones, workstream_tasks
           if (args.due_date && datedEntityTypes.has(args.type)) {
             payload.due_date = args.due_date;
@@ -6270,6 +6398,68 @@ export class OrgXMcp extends McpAgent<
             if (args.agent_domain) payload.agent_domain = args.agent_domain;
             if (args.auto_continue !== undefined)
               payload.auto_continue = args.auto_continue;
+          }
+
+          if (args.type === 'artifact') {
+            payload.entity_type =
+              args.entity_type ??
+              (args.task_id ? 'task' : undefined) ??
+              (args.milestone_id ? 'milestone' : undefined) ??
+              (args.workstream_id ? 'workstream' : undefined) ??
+              (args.initiative_id ? 'initiative' : undefined);
+            payload.entity_id =
+              args.entity_id ??
+              args.task_id ??
+              args.milestone_id ??
+              args.workstream_id ??
+              args.initiative_id;
+            if (args.artifact_type) payload.artifact_type = args.artifact_type;
+            if (args.artifact_url) payload.artifact_url = args.artifact_url;
+            if (args.external_url) payload.external_url = args.external_url;
+            if (args.preview_markdown)
+              payload.preview_markdown = args.preview_markdown;
+          }
+
+          if (args.type === 'blocker') {
+            if (args.run_id) payload.run_id = args.run_id;
+            if (args.step_id) payload.step_id = args.step_id;
+            if (args.blocker_type) payload.blocker_type = args.blocker_type;
+            if (args.resolution) payload.resolution = args.resolution;
+          }
+
+          if (args.type === 'initiative') {
+            const metadata =
+              payload.metadata &&
+              typeof payload.metadata === 'object' &&
+              !Array.isArray(payload.metadata)
+                ? (payload.metadata as Record<string, unknown>)
+                : {};
+            const liveMetadata =
+              metadata.live &&
+              typeof metadata.live === 'object' &&
+              !Array.isArray(metadata.live)
+                ? (metadata.live as Record<string, unknown>)
+                : {};
+            if (args.live_visibility === 'public' || args.live_public === true) {
+              payload.metadata = {
+                ...metadata,
+                liveVisibility: 'public',
+                live: {
+                  ...liveMetadata,
+                  public: true,
+                  revealTitle: args.live_reveal_title !== false,
+                },
+              };
+            } else if (args.live_visibility === 'private') {
+              payload.metadata = {
+                ...metadata,
+                liveVisibility: 'private',
+                live: {
+                  ...liveMetadata,
+                  public: false,
+                },
+              };
+            }
           }
 
           // proof_profile (tasks/milestones only) — merged into metadata so server-side

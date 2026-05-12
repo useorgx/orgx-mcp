@@ -35,6 +35,24 @@ describe('agent ergonomics helpers', () => {
       'entities[0]'
     );
     expect(milestone.entity.status).toBe('in_progress');
+
+    const decision = normalizeEntityCreatePayloadForAgents(
+      { type: 'decision', status: 'active' },
+      'create_entity'
+    );
+    expect(decision.entity.status).toBe('pending');
+
+    const blocker = normalizeEntityCreatePayloadForAgents(
+      { type: 'blocker', status: 'active' },
+      'create_entity'
+    );
+    expect(blocker.entity.status).toBe('open');
+
+    const artifact = normalizeEntityCreatePayloadForAgents(
+      { type: 'artifact', status: 'active' },
+      'create_entity'
+    );
+    expect(artifact.entity.status).toBe('draft');
   });
 
   it('normalizes quality score aliases to the backend contract', () => {
