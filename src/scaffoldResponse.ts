@@ -1,4 +1,11 @@
 import type { BatchCreateSummary } from './batchCreate';
+import type {
+  ExternalSyncRequest,
+  FirstAgentWorkState,
+  MaterializedDependencyEdge,
+  ScaffoldContractWarning,
+  ScaffoldMode,
+} from './scaffoldControl';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -259,11 +266,13 @@ function buildResultContract(params: {
       'Large scaffold results return summary stats and a renderable compact hierarchy instead of full entity rows.',
     do_not_retry_for_full_payload: true,
     stable_keys: [
+      'mode',
       'initiative_id',
       'live_url',
       'summary_stats',
       'hierarchy',
       'ref_map',
+      'first_agent_work',
     ],
     detail_policy:
       'Fetch details through list_entities/get_task_with_context with pagination instead of asking scaffold_initiative to return a larger payload.',
@@ -305,9 +314,16 @@ function buildResultContract(params: {
 export function buildCompactScaffoldResult(params: {
   result: BatchCreateSummary;
   hierarchy: unknown;
+  mode?: ScaffoldMode;
   initiativeId?: string | null;
   workspaceId?: string | null;
   liveUrl?: string | null;
+  idempotencyKey?: string | null;
+  contractWarnings?: ScaffoldContractWarning[];
+  dependencyEdges?: MaterializedDependencyEdge[];
+  firstAgentWork?: FirstAgentWorkState;
+  externalSync?: (ExternalSyncRequest & { status: 'queued' }) | null;
+  benchmarkMetrics?: Record<string, unknown>;
   scaffoldStreamUrl?: string | null;
   scaffoldSessionId?: string | null;
   agentAssignment?: unknown;
@@ -324,9 +340,15 @@ export function buildCompactScaffoldResult(params: {
   const failedPreview = params.result.failed.slice(0, FAILED_PREVIEW_LIMIT);
 
   return {
+    mode: params.mode ?? 'launch',
     summary: params.result.summary,
     initiative_id: params.initiativeId ?? undefined,
     live_url: params.liveUrl ?? undefined,
+    idempotency_key: params.idempotencyKey ?? undefined,
+    contract_warnings:
+      params.contractWarnings && params.contractWarnings.length > 0
+        ? params.contractWarnings
+        : undefined,
     summary_stats: {
       requested_count: params.result.total,
       created_count: params.result.created_count,
@@ -338,7 +360,12 @@ export function buildCompactScaffoldResult(params: {
       task_count: counts.tasks,
       inline_task_count: counts.inline_tasks,
       omitted_task_count: counts.omitted_tasks,
+      dependency_edge_count: params.dependencyEdges?.length ?? 0,
     },
+    dependency_edges: params.dependencyEdges ?? [],
+    first_agent_work: params.firstAgentWork,
+    external_sync: params.externalSync ?? undefined,
+    benchmark_metrics: params.benchmarkMetrics,
     hierarchy,
     created_preview: createdPreview,
     created_preview_count: createdPreview.length,
@@ -366,6 +393,71 @@ export function buildCompactScaffoldResult(params: {
       do_not_rerun_scaffold_for_more_detail: true,
       use_ref_map_or_list_entities_for_ids: true,
       large_payloads_are_intentionally_compacted: true,
+    },
+  };
+}
+
+export function buildScaffoldDraftResult(params: {
+  batch: Array<Record<string, unknown>>;
+  workspaceId?: string | null;
+  idempotencyKey?: string | null;
+  contractWarnings?: ScaffoldContractWarning[];
+  dependencyEdges?: MaterializedDependencyEdge[];
+}) {
+  const createdLike = params.batch.map((entity, index) => ({
+    index,
+    type: typeof entity.type === 'string' ? entity.type : 'entity',
+    id: '',
+    title:
+      typeof entity.title === 'string'
+        ? entity.title
+        : typeof entity.name === 'string'
+        ? entity.name
+        : null,
+    ref: typeof entity.ref === 'string' ? entity.ref : undefined,
+  }));
+  const typeCounts = tallyByType(createdLike);
+  const preview = params.batch.slice(0, 40).map((entity, index) => ({
+    index,
+    type: typeof entity.type === 'string' ? entity.type : 'entity',
+    ref: typeof entity.ref === 'string' ? entity.ref : undefined,
+    title:
+      typeof entity.title === 'string'
+        ? entity.title
+        : typeof entity.name === 'string'
+        ? entity.name
+        : undefined,
+    depends_on: Array.isArray(entity.depends_on)
+      ? entity.depends_on.filter((entry): entry is string => typeof entry === 'string')
+      : undefined,
+  }));
+
+  return {
+    mode: 'draft' as const,
+    summary: `Draft scaffold plan: ${params.batch.length} entities would be created.`,
+    idempotency_key: params.idempotencyKey ?? undefined,
+    contract_warnings:
+      params.contractWarnings && params.contractWarnings.length > 0
+        ? params.contractWarnings
+        : undefined,
+    summary_stats: {
+      requested_count: params.batch.length,
+      created_count: 0,
+      failed_count: 0,
+      planned_by_type: typeCounts,
+      dependency_edge_count: params.dependencyEdges?.length ?? 0,
+    },
+    dependency_edges: params.dependencyEdges ?? [],
+    entity_plan_preview: preview,
+    entity_plan_count: params.batch.length,
+    entity_plan_preview_count: preview.length,
+    result_contract: buildResultContract({
+      workspaceId: params.workspaceId,
+    }),
+    tool_hints: {
+      draft_mode_has_no_side_effects: true,
+      use_mode_scaffold_to_create_without_launch: true,
+      use_mode_launch_to_create_and_start_agents: true,
     },
   };
 }

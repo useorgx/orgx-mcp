@@ -726,7 +726,7 @@ export const INLINE_TOOL_CONTRACTS = {
     id: 'scaffold_initiative',
     title: 'Scaffold Initiative',
     description:
-      'Inline worker tool for creating a full initiative hierarchy in one call.',
+      'Inline worker tool for drafting, creating, or launching a full initiative hierarchy in one call.',
   },
   get_task_with_context: {
     id: 'get_task_with_context',
