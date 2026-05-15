@@ -61,6 +61,14 @@ const REF_FIELD_MAPPINGS: Array<{ refKey: string; idKey: string }> = [
   { refKey: 'run_ref', idKey: 'run_id' },
 ];
 
+const DEPENDENCY_ARRAY_FIELDS = [
+  'depends_on',
+  'dependsOn',
+  'dependencies',
+  'dependency_ids',
+  'dependencyIds',
+] as const;
+
 const TASK_PRIORITY_VALUES = ['low', 'medium', 'high'] as const;
 const TASK_STATUS_VALUES = ['todo', 'in_progress', 'done', 'blocked'] as const;
 const MILESTONE_STATUS_VALUES = [
@@ -229,7 +237,10 @@ export function validateEntityCreatePayloadContract(
   return null;
 }
 
-function extractDependencies(entity: Record<string, unknown>): string[] {
+function extractDependencies(
+  entity: Record<string, unknown>,
+  knownRefs?: ReadonlySet<string>
+): string[] {
   const deps: string[] = [];
 
   for (const { refKey, idKey } of REF_FIELD_MAPPINGS) {
@@ -249,6 +260,15 @@ function extractDependencies(entity: Record<string, unknown>): string[] {
       if (hasEntityId) continue;
       const ref = getRefToken(record.entity_id) ?? getRefToken(record.entity_ref);
       if (ref) deps.push(ref);
+    }
+  }
+
+  for (const key of DEPENDENCY_ARRAY_FIELDS) {
+    const value = entity[key];
+    const entries = Array.isArray(value) ? value : typeof value === 'string' ? [value] : [];
+    for (const entry of entries) {
+      const ref = getRefToken(entry);
+      if (ref && (!knownRefs || knownRefs.has(ref))) deps.push(ref);
     }
   }
 
@@ -328,6 +348,18 @@ function resolveRefs(params: {
         unresolved.push(ref);
       }
       return record;
+    });
+  }
+
+  for (const key of DEPENDENCY_ARRAY_FIELDS) {
+    const value = body[key];
+    if (!Array.isArray(value)) continue;
+    body[key] = value.map((entry) => {
+      const ref = getRefToken(entry);
+      if (!ref) return entry;
+      const resolved = lookupResolvedRef(ref);
+      if (resolved) return resolved;
+      return entry;
     });
   }
 
@@ -525,7 +557,7 @@ export async function batchCreateEntities(params: {
   for (let i = 0; i < entities.length; i++) {
     if (results[i]) continue; // already failed validation
     const entity = entities[i] as Record<string, unknown>;
-    const deps = extractDependencies(entity).map((dep) => {
+    const deps = extractDependencies(entity, new Set(refToIndex.keys())).map((dep) => {
       const seen = new Set<string>();
       let current = dep;
       while (refAliases.has(current) && !seen.has(current)) {
@@ -633,6 +665,42 @@ export async function batchCreateEntities(params: {
       }
 
       if (!ok) {
+        const conflictData =
+          parsed &&
+          typeof parsed === 'object' &&
+          !Array.isArray(parsed) &&
+          (parsed.data || parsed.existing || parsed.entity);
+        const conflictRecord =
+          conflictData &&
+          typeof conflictData === 'object' &&
+          !Array.isArray(conflictData)
+            ? (conflictData as Record<string, unknown>)
+            : null;
+        const conflictId =
+          typeof conflictRecord?.id === 'string' ? conflictRecord.id : null;
+        if (status === 409 && conflictId) {
+          const title = extractEntityLabel(conflictRecord) ?? extractEntityLabel(body);
+          results[index] = {
+            index,
+            success: true,
+            type,
+            ref: ref ?? undefined,
+            id: conflictId,
+            title,
+            data: conflictRecord,
+            skipped: true,
+          };
+          if (ref) {
+            resolvedRefMap[ref] = conflictId;
+            for (const [alias, canonicalRef] of refAliases.entries()) {
+              if (canonicalRef === ref) {
+                resolvedRefMap[alias] = conflictId;
+              }
+            }
+          }
+          return;
+        }
+
         const apiMessage =
           parsed &&
           typeof parsed === 'object' &&

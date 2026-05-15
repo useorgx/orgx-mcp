@@ -366,8 +366,9 @@ const TOOL_EXAMPLES: Record<
   scaffold_initiative: {
     prompt: 'Create an initiative with workstreams, milestones, and tasks.',
     arguments: {
+      mode: 'scaffold',
       title: 'Example launch',
-      launch_after_create: false,
+      objective_ids: ['objective_123'],
       workstreams: [
         {
           title: 'Engineering',

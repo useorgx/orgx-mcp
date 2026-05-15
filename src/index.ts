@@ -70,7 +70,23 @@ import {
   buildScaffoldHierarchy,
   buildScaffoldInitiativeBatch,
 } from './scaffoldInitiative';
-import { buildCompactScaffoldResult } from './scaffoldResponse';
+import {
+  buildCompactScaffoldResult,
+  buildScaffoldDraftResult,
+} from './scaffoldResponse';
+import {
+  buildFirstAgentWorkState,
+  deriveScaffoldIdempotencyKey,
+  normalizeExternalSyncRequest,
+  normalizeScaffoldObjectiveAliases,
+  resolveScaffoldMode,
+  type ExternalSyncRequest,
+  type ScaffoldContractWarning,
+} from './scaffoldControl';
+import {
+  createScaffoldTelemetryTrace,
+  recordDurableMcpToolInvocation,
+} from './mcpInvocationTelemetry';
 import { buildLiveFeedWidget } from './liveFeedWidget';
 import { signStreamToken } from './streamToken';
 import { hydrateTaskContext } from './taskContextHydrator';
@@ -7085,6 +7101,10 @@ export class OrgXMcp extends McpAgent<
           .describe(
             'Optional objective UUIDs for this task. This field is named goal_ids for API compatibility; use IDs from list_entities type=objective when the workspace requires a primary objective.'
           ),
+        objective_ids: z
+          .array(z.string())
+          .optional()
+          .describe('Preferred alias for goal_ids; objective UUIDs linked to this task.'),
         expected_duration_hours: z
           .number()
           .optional()
@@ -7135,6 +7155,10 @@ export class OrgXMcp extends McpAgent<
           .describe(
             'Optional objective UUIDs for this milestone. OrgX stores workspace objectives in goal_ids; provide at least one when the parent workspace requires a primary objective.'
           ),
+        objective_ids: z
+          .array(z.string())
+          .optional()
+          .describe('Preferred alias for goal_ids; objective UUIDs linked to this milestone.'),
         expected_duration_hours: z
           .number()
           .optional()
@@ -7185,6 +7209,10 @@ export class OrgXMcp extends McpAgent<
           .describe(
             'Optional objective UUIDs for this workstream. OrgX stores workspace objectives in goal_ids; provide at least one when the parent workspace requires a primary objective.'
           ),
+        objective_ids: z
+          .array(z.string())
+          .optional()
+          .describe('Preferred alias for goal_ids; objective UUIDs linked to this workstream.'),
         expected_duration_hours: z
           .number()
           .optional()
@@ -7212,16 +7240,41 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Scaffold an initiative hierarchy',
         description:
-          'Turn an objective, roadmap, launch, or feature plan into executable workstreams, milestones, and tasks. Agent-safe aliases are accepted and normalized: task priority urgent -> high; active task/milestone status -> in_progress. Also known as: scaffold project, create roadmap, generate execution plan. USE WHEN: user wants to plan a new initiative from scratch. IMPORTANT: goal_ids means objective UUIDs, not a separate goal entity; resolve them with list_entities type=objective. workspace_id is required unless the MCP session already has workspace context; resolve it with list_entities type=command_center or get_org_snapshot. NEXT: Use entity_action type=initiative action=launch to start execution (auto-launches by default). DO NOT USE: for adding a single task to an existing initiative — use create_entity instead.',
+          'Turn an objective, roadmap, launch, or feature plan into executable workstreams, milestones, and tasks. Minimal call: title, workspace_id, optional objective_ids/goal_ids, optional workstreams, and mode. Agent-safe aliases are accepted and normalized: task priority urgent -> high; active task/milestone status -> in_progress. Also known as: scaffold project, create roadmap, generate execution plan. USE WHEN: user wants to plan a new initiative from scratch. IMPORTANT: goal_ids means objective UUIDs, not a separate goal entity; objective_ids is the preferred alias and is normalized to goal_ids for API compatibility. workspace_id is required unless the MCP session already has workspace context; resolve it with list_entities type=command_center or get_org_snapshot. NEXT: use mode="launch" to create and start agents, mode="scaffold" to create without launching, or mode="draft" to validate the plan without writes. DO NOT USE: for adding a single task to an existing initiative — use create_entity instead.',
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: false,
+          openWorldHint: false,
+        },
         inputSchema: this.withClientContext({
+          mode: z
+            .enum(['draft', 'scaffold', 'launch'])
+            .optional()
+            .describe(
+              'Optional stage. draft validates without writes; scaffold creates records without launching agents; launch creates records and starts agents. Defaults to launch for backwards compatibility.'
+            ),
           title: z.string().min(1).describe('Initiative title'),
           summary: z.string().optional().describe('Initiative summary'),
           description: z.string().optional().describe('Initiative description'),
+          objective_ids: z
+            .array(z.string())
+            .optional()
+            .describe(
+              'Preferred objective UUIDs for the initiative. Normalized to goal_ids for API compatibility.'
+            ),
           goal_ids: z
             .array(z.string())
             .optional()
             .describe(
               'Optional objective UUIDs for the initiative. OrgX stores workspace objectives in goal_ids; provide at least one to avoid objective-invariant failures.'
+            ),
+          idempotency_key: z
+            .string()
+            .min(8)
+            .max(120)
+            .optional()
+            .describe(
+              'Optional stable retry key. When omitted, OrgX derives one from workspace, owner, title, objectives, and hierarchy.'
             ),
           command_center_id: z
             .string()
@@ -7270,8 +7323,24 @@ export class OrgXMcp extends McpAgent<
             .boolean()
             .optional()
             .describe(
-              'When true (default), launch the initiative after scaffold creation so streams can dispatch immediately'
+              'Legacy alias for mode. false maps to mode=scaffold; true maps to mode=launch when mode is omitted.'
             ),
+          external_sync: z
+            .object({
+              targets: z
+                .array(z.enum(['linear', 'jira']))
+                .describe('Optional work-tracker targets to mirror after scaffold. Linear is active v1; Jira is a non-blocking stub.'),
+              mode: z
+                .enum(['project_and_tasks', 'tasks_only'])
+                .optional()
+                .describe('Mirror shape. Defaults to project_and_tasks.'),
+              linear_project_id: z
+                .string()
+                .optional()
+                .describe('Optional existing Linear project ID for tasks_only or project reuse.'),
+            })
+            .optional()
+            .describe('Optional async mirror request for external work trackers. Omit for fastest scaffold response.'),
           concurrency: z
             .number()
             .min(1)
@@ -7279,11 +7348,6 @@ export class OrgXMcp extends McpAgent<
             .optional()
             .describe('Parallel creation concurrency (default 8)'),
         }),
-        annotations: {
-          readOnlyHint: false,
-          destructiveHint: false,
-          openWorldHint: false,
-        },
         _meta: {
           'openai/visibility': 'private',
           'mcp/securitySchemes': SECURITY_SCHEMES.entityWriteRequiresAuth,
@@ -7302,6 +7366,37 @@ export class OrgXMcp extends McpAgent<
             featureDescription: 'scaffold initiative hierarchy',
           });
           if (authResponse) return authResponse;
+
+          const sourceClient = resolveSourceClientFromContext(
+            (args._context ?? undefined) as
+              | Record<string, unknown>
+              | undefined
+          );
+          const telemetryTrace = createScaffoldTelemetryTrace();
+          const recordScaffoldTelemetry = (params: {
+            status: 'success' | 'error';
+            userId?: string | null;
+            workspaceId?: string | null;
+            errorCode?: string | null;
+            metadata?: Record<string, unknown>;
+          }) => {
+            this.ctx.waitUntil(
+              recordDurableMcpToolInvocation({
+                env: this.env,
+                toolId: 'scaffold_initiative',
+                status: params.status,
+                latencyMs: Date.now() - telemetryTrace.startedAt,
+                metadata: telemetryTrace.snapshot(params.metadata),
+                userId: params.userId,
+                workspaceId: params.workspaceId,
+                sourceClient,
+                context: args._context,
+                errorCode: params.errorCode,
+                serverVersion: MCP_SERVER_VERSION,
+                isWidgetTool: true,
+              })
+            );
+          };
 
           const sanitizeErrorMessage = (error: unknown): string => {
             const raw =
@@ -7370,23 +7465,30 @@ export class OrgXMcp extends McpAgent<
           };
 
           try {
+            const modeResolution = resolveScaffoldMode(args);
+            const objectiveAliasResult = normalizeScaffoldObjectiveAliases(args);
+            const normalizedArgs = objectiveAliasResult.args;
+            const contractWarnings: ScaffoldContractWarning[] = [
+              ...modeResolution.warnings,
+              ...objectiveAliasResult.warnings,
+            ];
+            const scaffoldMode = modeResolution.mode;
             const explicitOwnerId =
-              typeof args.owner_id === 'string'
-                ? args.owner_id
-                : typeof args.user_id === 'string'
-                ? args.user_id
+              typeof normalizedArgs.owner_id === 'string'
+                ? normalizedArgs.owner_id
+                : typeof normalizedArgs.user_id === 'string'
+                ? normalizedArgs.user_id
                 : undefined;
             const ownerId = this.resolveUserId(explicitOwnerId);
             const continueOnError =
-              typeof args.continue_on_error === 'boolean'
-                ? args.continue_on_error
+              typeof normalizedArgs.continue_on_error === 'boolean'
+                ? normalizedArgs.continue_on_error
                 : true;
-            const launchAfterCreate =
-              typeof args.launch_after_create === 'boolean'
-                ? args.launch_after_create
-                : true;
+            const launchAfterCreate = modeResolution.launchAfterCreate;
             const concurrencyInput =
-              typeof args.concurrency === 'number' ? args.concurrency : 8;
+              typeof normalizedArgs.concurrency === 'number'
+                ? normalizedArgs.concurrency
+                : 8;
             const concurrency = Math.max(1, Math.min(concurrencyInput, 20));
 
             // Free-tier guardrail: limit scaffolds per billing period.
@@ -7409,6 +7511,7 @@ export class OrgXMcp extends McpAgent<
                   };
                 }
               | null = null;
+            if (scaffoldMode !== 'draft') {
             try {
               const userEmail = this.resolveUserEmail();
               const usageResp = await callOrgxApiJson(
@@ -7434,6 +7537,15 @@ export class OrgXMcp extends McpAgent<
                   `After reconnecting, rerun the scaffold request. Do not treat this as a plan upgrade problem.`,
                 ];
 
+                recordScaffoldTelemetry({
+                  status: 'error',
+                  userId: ownerId ?? resolvedUserId ?? null,
+                  errorCode: 'mcp_identity_mismatch',
+                  metadata: {
+                    mode: scaffoldMode,
+                    failure_stage: 'billing_precheck',
+                  },
+                });
                 return {
                   content: [{ type: 'text', text: lines.join('\n') }],
                   structuredContent: {
@@ -7470,6 +7582,17 @@ export class OrgXMcp extends McpAgent<
                   `You can also wait for the next billing period to reset your usage.`,
                 ];
 
+                recordScaffoldTelemetry({
+                  status: 'error',
+                  userId: ownerId ?? resolvedUserId ?? null,
+                  errorCode: 'billing_scaffold_limit_reached',
+                  metadata: {
+                    mode: scaffoldMode,
+                    failure_stage: 'billing_precheck',
+                    scaffolds_used: used,
+                    scaffolds_included: included,
+                  },
+                });
                 return {
                   content: [
                     {
@@ -7489,6 +7612,8 @@ export class OrgXMcp extends McpAgent<
             } catch {
               billingUsage = null;
             }
+            }
+            telemetryTrace.mark('billing_precheck');
 
           const billingResolvedUserId =
             typeof billingUsage?.identity?.resolvedUserId === 'string' &&
@@ -7499,20 +7624,29 @@ export class OrgXMcp extends McpAgent<
             billingResolvedUserId ?? ownerId ?? resolvedUserId ?? null;
 
           const explicitWorkspaceId =
-            typeof (args as any).workspace_id === 'string' &&
-            (args as any).workspace_id.trim().length > 0
-              ? ((args as any).workspace_id as string).trim()
+            typeof (normalizedArgs as any).workspace_id === 'string' &&
+            (normalizedArgs as any).workspace_id.trim().length > 0
+              ? ((normalizedArgs as any).workspace_id as string).trim()
               : null;
           const explicitCommandCenterId =
-            typeof (args as any).command_center_id === 'string' &&
-            (args as any).command_center_id.trim().length > 0
-              ? ((args as any).command_center_id as string).trim()
+            typeof (normalizedArgs as any).command_center_id === 'string' &&
+            (normalizedArgs as any).command_center_id.trim().length > 0
+              ? ((normalizedArgs as any).command_center_id as string).trim()
               : null;
           if (
             explicitWorkspaceId &&
             explicitCommandCenterId &&
             explicitWorkspaceId !== explicitCommandCenterId
           ) {
+            recordScaffoldTelemetry({
+              status: 'error',
+              userId: scaffoldOwnerId,
+              errorCode: 'workspace_alias_conflict',
+              metadata: {
+                mode: scaffoldMode,
+                failure_stage: 'workspace_resolution',
+              },
+            });
             return this.toolError(
               'workspace_id and command_center_id must match when both are provided'
             );
@@ -7522,8 +7656,9 @@ export class OrgXMcp extends McpAgent<
             explicitCommandCenterId ??
             this.sessionContext?.workspaceId ??
             null;
+          telemetryTrace.mark('workspace_resolution');
 
-          if (!effectiveCommandCenterId) {
+          if (!effectiveCommandCenterId && scaffoldMode !== 'draft') {
             const text = [
               'I need a workspace_id before I can scaffold this initiative.',
               '',
@@ -7534,6 +7669,15 @@ export class OrgXMcp extends McpAgent<
               '- orgx_search with type="objective" and workspace_id to pick objective UUIDs for goal_ids when the workspace requires a primary objective',
               '- scaffold_initiative again with workspace_id and, when available, goal_ids',
             ].join('\n');
+            recordScaffoldTelemetry({
+              status: 'error',
+              userId: scaffoldOwnerId,
+              errorCode: 'missing_workspace_context',
+              metadata: {
+                mode: scaffoldMode,
+                failure_stage: 'workspace_resolution',
+              },
+            });
             return {
               content: [{ type: 'text' as const, text }],
               structuredContent: {
@@ -7564,7 +7708,7 @@ export class OrgXMcp extends McpAgent<
           }
 
           const argsForBatch: Record<string, unknown> = {
-            ...(args as unknown as Record<string, unknown>),
+            ...(normalizedArgs as unknown as Record<string, unknown>),
             // Ensure owner_id propagates into the batch so the initiative
             // gets created with an owner — prevents dispatch stalls when
             // the POST handler can't resolve owner from gateway headers.
@@ -7634,10 +7778,61 @@ export class OrgXMcp extends McpAgent<
             }
           }
 
-          const { batch, initiativeRef, wsRefs, msRefs, taskRefs } =
+          const scaffoldIdempotencyKey = deriveScaffoldIdempotencyKey({
+            args: argsForBatch,
+            workspaceId: effectiveCommandCenterId,
+            ownerId: scaffoldOwnerId,
+          });
+          argsForBatch.idempotency_key = scaffoldIdempotencyKey;
+          delete argsForBatch.idempotencyKey;
+          const externalSync = normalizeExternalSyncRequest(
+            argsForBatch.external_sync ?? argsForBatch.externalSync
+          );
+
+          const {
+            batch,
+            initiativeRef,
+            wsRefs,
+            msRefs,
+            taskRefs,
+            materializedDependencies,
+            warnings: buildWarnings,
+          } =
             buildScaffoldInitiativeBatch(
               argsForBatch as unknown as Record<string, unknown>
             );
+          const allContractWarnings = [...contractWarnings, ...buildWarnings];
+          telemetryTrace.mark('batch_build');
+
+          if (scaffoldMode === 'draft') {
+            const draftPayload = buildScaffoldDraftResult({
+              batch,
+              workspaceId: effectiveCommandCenterId,
+              idempotencyKey: scaffoldIdempotencyKey,
+              contractWarnings: allContractWarnings,
+              dependencyEdges: materializedDependencies,
+            });
+            telemetryTrace.mark('draft_response');
+            recordScaffoldTelemetry({
+              status: 'success',
+              userId: scaffoldOwnerId,
+              workspaceId: effectiveCommandCenterId,
+              metadata: {
+                mode: scaffoldMode,
+                requested_count: batch.length,
+                dependency_edge_count: materializedDependencies.length,
+                contract_warning_count: allContractWarnings.length,
+                idempotency_key_present: Boolean(scaffoldIdempotencyKey),
+              },
+            });
+            return {
+              content: buildJsonFirstContentBlocks({
+                data: draftPayload,
+                summary: draftPayload.summary,
+              }),
+              structuredContent: draftPayload,
+            };
+          }
 
           const result = await runBatchCreateEntities({
             env: this.env,
@@ -7651,6 +7846,7 @@ export class OrgXMcp extends McpAgent<
             continueOnError,
             concurrency,
           });
+          telemetryTrace.mark('entity_create');
 
           const hierarchy = buildScaffoldHierarchy({
             result,
@@ -7750,6 +7946,7 @@ export class OrgXMcp extends McpAgent<
 	              };
 	            }
 	          }
+          telemetryTrace.mark('agent_assignment');
 
 	          // Record scaffold usage after the initiative exists (best-effort).
 	          let scaffold_usage:
@@ -7784,6 +7981,7 @@ export class OrgXMcp extends McpAgent<
 	              };
 	            }
 	          }
+          telemetryTrace.mark('billing_consume');
 
 	          // ── Pre-launch execution-account check ──
 	          // Before launching, verify the user has either API credentials or a
@@ -7841,6 +8039,7 @@ export class OrgXMcp extends McpAgent<
 	              };
 	            }
 	          }
+          telemetryTrace.mark('credential_check');
 
 	          let launch:
 	            | {
@@ -7957,6 +8156,7 @@ export class OrgXMcp extends McpAgent<
           } else if (createdInitiativeId) {
             launch = { attempted: false, ok: false };
           }
+          telemetryTrace.mark('launch');
 
           const liveUrl = createdInitiativeId
             ? buildLiveUrl(createdInitiativeId)
@@ -8068,6 +8268,7 @@ export class OrgXMcp extends McpAgent<
                       // snapshot streams for the response.
                     }
                   }
+          telemetryTrace.mark('stream_snapshot');
 
             let fallback_agent_dispatch:
               | {
@@ -8186,6 +8387,7 @@ export class OrgXMcp extends McpAgent<
                 };
               }
             }
+            telemetryTrace.mark('fallback_dispatch');
 
 
               // ── Scaffold stream session ──
@@ -8209,7 +8411,7 @@ export class OrgXMcp extends McpAgent<
                   );
                 };
                 const _emitEvents = async () => {
-                  await _pushEvent({ type: 'session.start', sessionId: scaffold_session_id, title: typeof args.title === 'string' ? args.title : undefined, ts: Date.now() });
+                  await _pushEvent({ type: 'session.start', sessionId: scaffold_session_id, title: typeof normalizedArgs.title === 'string' ? normalizedArgs.title : undefined, ts: Date.now() });
                   const _entities = result.results ?? [];
                   const _total = _entities.length;
                   for (let _i = 0; _i < _entities.length; _i++) {
@@ -8225,12 +8427,85 @@ export class OrgXMcp extends McpAgent<
                 console.warn('[scaffold:stream] session setup failed', { error: _streamErr });
               }
 
+              let external_sync:
+                | (ExternalSyncRequest & { status: 'queued' })
+                | undefined;
+              if (createdInitiativeId && externalSync) {
+                external_sync = { ...externalSync, status: 'queued' };
+                this.ctx.waitUntil(
+                  callOrgxApiJson(
+                    this.env,
+                    '/api/integrations/work-graph/mirror',
+                    {
+                      method: 'POST',
+                      body: JSON.stringify({
+                        source: 'scaffold_initiative',
+                        initiative_id: createdInitiativeId,
+                        workspace_id: effectiveCommandCenterId,
+                        idempotency_key: scaffoldIdempotencyKey,
+                        targets: externalSync.targets,
+                        mode: externalSync.mode,
+                        linear_project_id: externalSync.linear_project_id,
+                        ref_map: result.ref_map,
+                        hierarchy,
+                      }),
+                    },
+                    {
+                      userId: scaffoldOwnerId ?? undefined,
+                      userEmail: this.resolveUserEmail(),
+                    }
+                  ).catch((error) => {
+                    console.warn('[scaffold:external-sync] mirror failed', {
+                      initiativeId: createdInitiativeId,
+                      targets: externalSync.targets,
+                      error:
+                        error instanceof Error ? error.message : String(error),
+                    });
+                  })
+                );
+              }
+              telemetryTrace.mark('external_sync_enqueue');
+
+              const firstAgentWork = buildFirstAgentWorkState({
+                mode: scaffoldMode,
+                initiativeId: createdInitiativeId,
+                launch: (launch ?? null) as Record<string, unknown> | null,
+                streams: (streams ?? null) as Record<string, unknown> | null,
+                fallbackAgentDispatch: (fallback_agent_dispatch ?? null) as
+                  | Record<string, unknown>
+                  | null,
+              });
+              const replayedEntityCount = result.results.filter(
+                (entry) => entry.success && entry.skipped
+              ).length;
+
+              const benchmarkMetrics = {
+                mode: scaffoldMode,
+                requested_count: result.total,
+                created_count: result.created_count,
+                failed_count: result.failed_count,
+                replayed_entity_count: replayedEntityCount,
+                response_contract: 'compact_scaffold_result',
+                dependency_edge_count: materializedDependencies.length,
+                idempotency_key_present: Boolean(scaffoldIdempotencyKey),
+                first_agent_status: firstAgentWork.status,
+                external_sync_target_count: externalSync?.targets.length ?? 0,
+                external_sync_status: external_sync?.status ?? 'not_requested',
+              };
+
               const compactScaffoldPayload = buildCompactScaffoldResult({
                 result,
                 hierarchy,
+                mode: scaffoldMode,
                 initiativeId: createdInitiativeId,
                 workspaceId: effectiveCommandCenterId,
                 liveUrl,
+                idempotencyKey: scaffoldIdempotencyKey,
+                contractWarnings: allContractWarnings,
+                dependencyEdges: materializedDependencies,
+                firstAgentWork,
+                externalSync: external_sync,
+                benchmarkMetrics,
                 scaffoldStreamUrl: scaffold_stream_url,
                 scaffoldSessionId: scaffold_session_id,
                 agentAssignment: agent_assignment,
@@ -8303,14 +8578,9 @@ export class OrgXMcp extends McpAgent<
 		                : '\n\nLaunch: skipped (launch_after_create=false)'
 		            : '';
 
-              const sourceClient = resolveSourceClientFromContext(
-                (args._context ?? undefined) as
-                  | Record<string, unknown>
-                  | undefined
-              );
               const activationEvents = await this.recordMcpActivationObservation({
                 toolId: 'scaffold_initiative',
-                args: args as Record<string, unknown>,
+                args: normalizedArgs as Record<string, unknown>,
                 data: compactScaffoldPayload,
                 userId: scaffoldOwnerId,
                 sourceClient,
@@ -8353,6 +8623,27 @@ export class OrgXMcp extends McpAgent<
                     estimated_time_seconds: etaSeconds,
                     estimated_cost: estimatedCost,
                   };
+              telemetryTrace.mark('response_build');
+              recordScaffoldTelemetry({
+                status: 'success',
+                userId: scaffoldOwnerId,
+                workspaceId: effectiveCommandCenterId,
+                metadata: {
+                  mode: scaffoldMode,
+                  requested_count: result.total,
+                  created_count: result.created_count,
+                  failed_count: result.failed_count,
+                  replayed_entity_count: replayedEntityCount,
+                  dependency_edge_count: materializedDependencies.length,
+                  contract_warning_count: allContractWarnings.length,
+                  idempotency_key_present: Boolean(scaffoldIdempotencyKey),
+                  first_agent_status: firstAgentWork.status,
+                  external_sync_target_count: externalSync?.targets.length ?? 0,
+                  external_sync_status:
+                    external_sync?.status ?? 'not_requested',
+                  response_size_bytes: JSON.stringify(finalPayload).length,
+                },
+              });
 
               // The registered scaffolded-initiative resource renders from the
               // compact structured payload. Avoid returning a second inline
@@ -8377,6 +8668,15 @@ export class OrgXMcp extends McpAgent<
                 structuredContent: finalPayload,
               };
             } catch (error) {
+              recordScaffoldTelemetry({
+                status: 'error',
+                errorCode:
+                  classifyErrorKind(error instanceof Error ? error.message : String(error)) ??
+                  'scaffold_initiative_failed',
+                metadata: {
+                  failure_stage: 'unknown',
+                },
+              });
               return buildHumanErrorResponse({
                 message:
                   'Scaffold failed while creating your initiative hierarchy.',

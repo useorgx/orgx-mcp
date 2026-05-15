@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildCompactScaffoldResult } from '../src/scaffoldResponse';
+import {
+  buildCompactScaffoldResult,
+  buildScaffoldDraftResult,
+} from '../src/scaffoldResponse';
 
 describe('compact scaffold responses', () => {
   it('keeps scaffold tool results small and gives agents retrieval hints', () => {
@@ -124,14 +127,22 @@ describe('compact scaffold responses', () => {
           },
         ],
       },
+      firstAgentWork: {
+        mode: 'launch',
+        status: 'work_started',
+        initiative_id: 'init-x',
+        first_stream_id: 'stream-x',
+      },
     });
 
     // Top-level stable keys agents may rely on.
+    expect(result).toHaveProperty('mode');
     expect(result).toHaveProperty('initiative_id');
     expect(result).toHaveProperty('live_url');
     expect(result).toHaveProperty('summary_stats');
     expect(result).toHaveProperty('hierarchy');
     expect(result).toHaveProperty('ref_map');
+    expect(result).toHaveProperty('first_agent_work');
     expect(result).toHaveProperty('result_contract');
     expect(result).toHaveProperty('tool_hints');
 
@@ -140,7 +151,15 @@ describe('compact scaffold responses', () => {
     expect(result.result_contract.do_not_retry_for_full_payload).toBe(true);
     expect(Array.isArray(result.result_contract.stable_keys)).toBe(true);
     expect(result.result_contract.stable_keys).toEqual(
-      expect.arrayContaining(['initiative_id', 'live_url', 'summary_stats', 'hierarchy', 'ref_map'])
+      expect.arrayContaining([
+        'mode',
+        'initiative_id',
+        'live_url',
+        'summary_stats',
+        'hierarchy',
+        'ref_map',
+        'first_agent_work',
+      ])
     );
     expect(typeof result.result_contract.detail_policy).toBe('string');
     expect(typeof result.result_contract.reason).toBe('string');
@@ -204,5 +223,47 @@ describe('compact scaffold responses', () => {
         workspace_id: 'ws-args',
       });
     }
+  });
+
+  it('builds a no-write draft response with entity counts and dependency hints', () => {
+    const result = buildScaffoldDraftResult({
+      workspaceId: 'ws-1',
+      idempotencyKey: 'scaffold:draft',
+      dependencyEdges: [
+        {
+          type: 'workstream',
+          name: 'Design handoff',
+          from_ref: 'ws-design',
+          to_ref: 'ws-eng',
+        },
+      ],
+      batch: [
+        { type: 'initiative', ref: 'initiative', title: 'Launch' },
+        { type: 'workstream', ref: 'ws-design', title: 'Design' },
+        {
+          type: 'workstream',
+          ref: 'ws-eng',
+          title: 'Engineering',
+          depends_on: ['ws-design'],
+        },
+      ],
+    });
+
+    expect(result.mode).toBe('draft');
+    expect(result.summary_stats).toMatchObject({
+      requested_count: 3,
+      created_count: 0,
+      failed_count: 0,
+      dependency_edge_count: 1,
+    });
+    expect(result.tool_hints).toMatchObject({
+      draft_mode_has_no_side_effects: true,
+      use_mode_scaffold_to_create_without_launch: true,
+      use_mode_launch_to_create_and_start_agents: true,
+    });
+    expect(result.entity_plan_preview[2]).toMatchObject({
+      ref: 'ws-eng',
+      depends_on: ['ws-design'],
+    });
   });
 });

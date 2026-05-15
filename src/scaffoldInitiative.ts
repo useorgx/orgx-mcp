@@ -1,4 +1,8 @@
 import type { BatchCreateSummary } from './batchCreate';
+import type {
+  MaterializedDependencyEdge,
+  ScaffoldContractWarning,
+} from './scaffoldControl';
 
 export type ScaffoldBatchBuildResult = {
   batch: Array<Record<string, unknown>>;
@@ -6,6 +10,8 @@ export type ScaffoldBatchBuildResult = {
   wsRefs: string[];
   msRefs: string[][];
   taskRefs: string[][][];
+  materializedDependencies: MaterializedDependencyEdge[];
+  warnings: ScaffoldContractWarning[];
 };
 
 function safeRecord(value: unknown): Record<string, unknown> {
@@ -24,6 +30,12 @@ function ensureRef(input: Record<string, unknown>, fallback: string): string {
   return typeof input.ref === 'string' && input.ref.trim().length > 0
     ? input.ref.trim()
     : fallback;
+}
+
+function normalizeDependencyLabel(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.toLowerCase().replace(/\s+/g, ' ').trim();
+  return normalized.length > 0 ? normalized : null;
 }
 
 const TOKENS_PER_HOUR = 6_500;
@@ -118,6 +130,17 @@ function parseStringArray(value: unknown): string[] {
       .filter(Boolean);
   }
   return [];
+}
+
+function withObjectiveAlias(entity: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...entity };
+  const objectiveIds = parseStringArray(next.objective_ids);
+  const goalIds = parseStringArray(next.goal_ids);
+  if (objectiveIds.length > 0 && goalIds.length === 0) {
+    next.goal_ids = objectiveIds;
+  }
+  delete next.objective_ids;
+  return next;
 }
 
 function dedupeStrings(values: string[]): string[] {
@@ -457,19 +480,37 @@ export function buildScaffoldInitiativeBatch(
     : [];
 
   const batch: Array<Record<string, unknown>> = [];
+  const warnings: ScaffoldContractWarning[] = [];
+  const materializedDependencies: MaterializedDependencyEdge[] = [];
+  const workstreamRefByLabel = new Map<string, string>();
+  for (let wsIdx = 0; wsIdx < workstreamsInput.length; wsIdx++) {
+    const ws = safeRecord(workstreamsInput[wsIdx]);
+    const wsRef = ensureRef(ws, `ws-${wsIdx + 1}`);
+    for (const label of [ws.title, ws.name, wsRef]) {
+      const normalized = normalizeDependencyLabel(label);
+      if (normalized && !workstreamRefByLabel.has(normalized)) {
+        workstreamRefByLabel.set(normalized, wsRef);
+      }
+    }
+  }
 
   const initiativeEntity = withDefaultSequence(
     omitKeys(
-      safeRecord(args),
+      withObjectiveAlias(safeRecord(args)),
       new Set([
         'workstreams',
+        'mode',
+        'objective_ids',
         'launch_after_create',
         'continue_on_error',
         'concurrency',
+        'external_sync',
+        'externalSync',
         '_context',
         // owner_id intentionally NOT omitted — it must propagate into the
         // batch so the POST handler can set it on the initiative row.
         'user_id',
+        'idempotencyKey',
         // command_center_id was renamed to workspace_id in the DB.
         // Strip it here so it never reaches the API entity payload.
         'command_center_id',
@@ -507,10 +548,26 @@ export function buildScaffoldInitiativeBatch(
   const existingMetadata = safeRecord(initiativeEntity.metadata);
   const existingLive = safeRecord(existingMetadata.live);
   let nextMetadata: Record<string, unknown> | null = null;
+  const scaffoldIdempotencyKey =
+    typeof initiativeEntity.idempotency_key === 'string' &&
+    initiativeEntity.idempotency_key.trim().length > 0
+      ? initiativeEntity.idempotency_key.trim()
+      : null;
   if (!existingLive.visibility) {
     nextMetadata = {
       ...existingMetadata,
       live: { ...existingLive, visibility: 'public' },
+    };
+  }
+  if (scaffoldIdempotencyKey) {
+    const base = nextMetadata ?? existingMetadata;
+    const existingScaffold = safeRecord(base.scaffold);
+    nextMetadata = {
+      ...base,
+      scaffold: {
+        ...existingScaffold,
+        idempotency_key: scaffoldIdempotencyKey,
+      },
     };
   }
   if (minimalExecutionPolicy) {
@@ -522,26 +579,49 @@ export function buildScaffoldInitiativeBatch(
   // validator (which rejects unknown top-level columns) accepts the
   // payload, and downstream consumers can still read the planning intent.
   const rawCoordination = safeRecord(args.coordination_dependency);
+  const coordinationName =
+    typeof rawCoordination.name === 'string'
+      ? String(rawCoordination.name)
+      : null;
+  const fromWorkstreamName =
+    typeof rawCoordination.fromWorkstreamName === 'string'
+      ? rawCoordination.fromWorkstreamName
+      : undefined;
+  const toWorkstreamName =
+    typeof rawCoordination.toWorkstreamName === 'string'
+      ? rawCoordination.toWorkstreamName
+      : undefined;
+  const coordinationFromRef = fromWorkstreamName
+    ? workstreamRefByLabel.get(normalizeDependencyLabel(fromWorkstreamName) ?? '')
+    : undefined;
+  const coordinationToRef = toWorkstreamName
+    ? workstreamRefByLabel.get(normalizeDependencyLabel(toWorkstreamName) ?? '')
+    : undefined;
   if (
     rawCoordination &&
     Object.keys(rawCoordination).length > 0 &&
-    typeof rawCoordination.name === 'string'
+    coordinationName
   ) {
     const base = nextMetadata ?? existingMetadata;
     nextMetadata = {
       ...base,
       coordination_dependency: {
-        name: String(rawCoordination.name),
-        from_workstream_name:
-          typeof rawCoordination.fromWorkstreamName === 'string'
-            ? rawCoordination.fromWorkstreamName
-            : undefined,
-        to_workstream_name:
-          typeof rawCoordination.toWorkstreamName === 'string'
-            ? rawCoordination.toWorkstreamName
-            : undefined,
+        name: coordinationName,
+        from_workstream_name: fromWorkstreamName,
+        to_workstream_name: toWorkstreamName,
+        from_workstream_ref: coordinationFromRef,
+        to_workstream_ref: coordinationToRef,
+        materialized: Boolean(coordinationFromRef && coordinationToRef),
       },
     };
+
+    if ((fromWorkstreamName || toWorkstreamName) && !(coordinationFromRef && coordinationToRef)) {
+      warnings.push({
+        code: 'coordination_dependency_unresolved',
+        message:
+          'coordination_dependency could not be matched to both workstream refs, so no dependency edge was materialized.',
+      });
+    }
   }
 
   if (nextMetadata) {
@@ -559,7 +639,7 @@ export function buildScaffoldInitiativeBatch(
   const taskRefs: string[][][] = [];
 
   for (let wsIdx = 0; wsIdx < workstreamsInput.length; wsIdx++) {
-    const ws = safeRecord(workstreamsInput[wsIdx]);
+    const ws = withObjectiveAlias(safeRecord(workstreamsInput[wsIdx]));
     const wsRef = ensureRef(ws, `ws-${wsIdx + 1}`);
     wsRefs[wsIdx] = wsRef;
 
@@ -574,7 +654,10 @@ export function buildScaffoldInitiativeBatch(
     taskRefs[wsIdx] = [];
 
     const wsEntity = withDefaultSequence(
-      omitKeys(ws, new Set(['milestones', 'ownerAgent', 'primaryAgent'])),
+      omitKeys(
+        ws,
+        new Set(['milestones', 'ownerAgent', 'primaryAgent', 'objective_ids'])
+      ),
       wsIdx + 1
     );
     const normalizedDomain = normalizeDomain(
@@ -591,6 +674,21 @@ export function buildScaffoldInitiativeBatch(
       expectedTokens: wsExpectedTokens,
       expectedHours: wsExpectedHours,
     });
+    if (
+      coordinationName &&
+      coordinationFromRef &&
+      coordinationToRef &&
+      wsRef === coordinationToRef &&
+      !hasDependsOn(wsWithEstimates)
+    ) {
+      wsWithEstimates.depends_on = [coordinationFromRef];
+      materializedDependencies.push({
+        type: 'workstream',
+        name: coordinationName,
+        from_ref: coordinationFromRef,
+        to_ref: coordinationToRef,
+      });
+    }
     const wsAssignedAgentIds = resolveAssignedAgentIds(wsWithEstimates, wsMetadata);
     const wsAssignedAgentNames = resolveAssignedAgentNames(
       wsWithEstimates,
@@ -649,7 +747,7 @@ export function buildScaffoldInitiativeBatch(
     });
 
     for (let msIdx = 0; msIdx < wsMilestones.length; msIdx++) {
-      const ms = safeRecord(wsMilestones[msIdx]);
+      const ms = withObjectiveAlias(safeRecord(wsMilestones[msIdx]));
       const msRef = ensureRef(ms, `ms-${wsIdx + 1}-${msIdx + 1}`);
       msRefs[wsIdx]![msIdx] = msRef;
       taskRefs[wsIdx]![msIdx] = [];
@@ -662,7 +760,10 @@ export function buildScaffoldInitiativeBatch(
               typeof ms.title === 'string' ? ms.title : `Milestone ${msIdx + 1}`
             );
       const msEntityBase = withDefaultSequence(
-        omitKeys(ms, new Set(['tasks', 'ownerAgent', 'primaryAgent'])),
+        omitKeys(
+          ms,
+          new Set(['tasks', 'ownerAgent', 'primaryAgent', 'objective_ids'])
+        ),
         msIdx + 1
       );
       const msTaskCount = Math.max(1, msTasks.length);
@@ -722,7 +823,7 @@ export function buildScaffoldInitiativeBatch(
       });
 
       const taskEntries = msTasks.map((taskInput, tIdx) => {
-        const task = safeRecord(taskInput);
+        const task = withObjectiveAlias(safeRecord(taskInput));
         const tRef = ensureRef(
           task,
           `task-${wsIdx + 1}-${msIdx + 1}-${tIdx + 1}`
@@ -740,7 +841,10 @@ export function buildScaffoldInitiativeBatch(
         );
         const taskEntity = withEstimateDefaults(
           withDefaultSequence(
-            omitKeys(task, new Set(['ownerAgent', 'primaryAgent'])),
+            omitKeys(
+              task,
+              new Set(['ownerAgent', 'primaryAgent', 'objective_ids'])
+            ),
             tIdx + 1
           ),
           {
@@ -804,7 +908,15 @@ export function buildScaffoldInitiativeBatch(
     }
   }
 
-  return { batch, initiativeRef, wsRefs, msRefs, taskRefs };
+  return {
+    batch,
+    initiativeRef,
+    wsRefs,
+    msRefs,
+    taskRefs,
+    materializedDependencies,
+    warnings,
+  };
 }
 
 export function buildScaffoldHierarchy(params: {
