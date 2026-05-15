@@ -91,6 +91,23 @@ describe('Smithery metadata coverage', () => {
     expect(forwardedAnnotations?.length).toBeGreaterThanOrEqual(4);
   });
 
+  it('keeps stripped compatibility aliases for stale MCP clients', () => {
+    expect(indexSource).toContain('registerLegacyStrippedAliasTools');
+    for (const alias of [
+      "'inspect'",
+      "'search'",
+      "'attach'",
+      "'act'",
+      "'write'",
+      "'submit_receipt'",
+      "'emit_activity'",
+    ]) {
+      expect(indexSource).toContain(alias);
+    }
+    expect(indexSource).toContain('preferred_replacement: canonicalToolId');
+    expect(indexSource).toContain("preferred_replacement: 'orgx_emit_activity'");
+  });
+
   it('gives every top-level shared tool parameter a description', () => {
     for (const tool of allDefinitions) {
       for (const [fieldName, fieldSchema] of inputShapeEntries(tool.inputSchema)) {

@@ -2847,6 +2847,206 @@ export class OrgXMcp extends McpAgent<
     }
   }
 
+  private registerLegacyStrippedAliasTools(allowedTools: Set<string> | null) {
+    const contractAliases = [
+      ['inspect', 'orgx_inspect'],
+      ['search', 'orgx_search'],
+      ['attach', 'orgx_attach'],
+      ['act', 'orgx_act'],
+      ['write', 'orgx_write'],
+      ['submit_receipt', 'orgx_submit_receipt'],
+    ] as const;
+
+    for (const [aliasId, canonicalToolId] of contractAliases) {
+      if (
+        allowedTools &&
+        !allowedTools.has(aliasId) &&
+        !allowedTools.has(canonicalToolId)
+      ) {
+        continue;
+      }
+
+      const contract = getKnownToolContract(canonicalToolId);
+      if (!contract) continue;
+      const metaObj = contract._meta as Record<string, unknown> | undefined;
+      const isReadOnly = metaObj?.['openai/readOnlyHint'] === true;
+      const meta = {
+        ...contract._meta,
+        'openai/visibility': isReadOnly ? 'public' : 'private',
+        'mcp/securitySchemes': contract.securitySchemes,
+        preferred_replacement: canonicalToolId,
+      };
+
+      this.server.registerTool(
+        aliasId,
+        {
+          title: `${contract.title} (legacy alias)`,
+          description: `Legacy compatibility alias for ${canonicalToolId}. Prefer ${canonicalToolId} for new calls.`,
+          inputSchema: this.withClientContext(
+            contract.inputSchema ?? {}
+          ) as unknown as Record<string, import('zod').ZodTypeAny>,
+          annotations: contract.annotations,
+          _meta: meta,
+        },
+        async (args: Record<string, unknown>) =>
+          this.executeContractTool(
+            canonicalToolId,
+            args,
+            contract.securitySchemes,
+            allowedTools
+          )
+      );
+    }
+
+    if (
+      allowedTools &&
+      !allowedTools.has('emit_activity') &&
+      !allowedTools.has('orgx_emit_activity')
+    ) {
+      return;
+    }
+
+    const emitTool = CLIENT_INTEGRATION_TOOL_DEFINITIONS.find(
+      (tool) => tool.id === 'orgx_emit_activity'
+    );
+    if (!emitTool) return;
+
+    const emitSecuritySchemes =
+      emitTool.securitySchemes as readonly SecurityScheme[];
+    this.server.registerTool(
+      'emit_activity',
+      {
+        title: 'Emit OrgX Activity (legacy alias)',
+        description:
+          'Legacy compatibility alias for orgx_emit_activity. Prefer orgx_emit_activity for new calls.',
+        inputSchema: this.withClientContext(
+          emitTool.inputSchema as Record<string, unknown>
+        ) as unknown as Record<string, import('zod').ZodTypeAny>,
+        annotations: emitTool.annotations,
+        _meta: {
+          ...emitTool._meta,
+          'openai/visibility': 'private',
+          'mcp/securitySchemes': emitSecuritySchemes,
+          preferred_replacement: 'orgx_emit_activity',
+        },
+      },
+      async (args: Record<string, unknown>) => {
+        const startTime = Date.now();
+        const resolvedUserId = this.props?.userId ?? this.sessionAuth.userId;
+        const authSource: 'request' | 'session' | 'none' = this.props?.userId
+          ? 'request'
+          : this.sessionAuth.userId
+          ? 'session'
+          : 'none';
+
+        this.captureMcpToolEvent('mcp_tool_called', {
+          toolId: 'emit_activity',
+          toolFamily: 'client_integration',
+          userId: resolvedUserId,
+          authSource,
+        });
+
+        const authResponse = buildAuthRequiredResponse({
+          toolId: 'orgx_emit_activity',
+          securitySchemes: emitSecuritySchemes,
+          userId: resolvedUserId,
+          serverUrl: this.env.MCP_SERVER_URL,
+          featureDescription: 'use orgx emit activity',
+        });
+        if (authResponse) return authResponse;
+
+        return this.withOrgx(async () => {
+          try {
+            const { _context, ...toolArgs } = args;
+            const response = await callOrgxApiJson(
+              this.env,
+              '/api/client/live/activity',
+              {
+                method: 'POST',
+                body: JSON.stringify(toolArgs),
+              },
+              { userId: resolvedUserId }
+            );
+            const result = (await response.json()) as {
+              ok: boolean;
+              data?: Record<string, unknown>;
+              error?: string;
+              message?: string;
+            };
+            const latencyMs = Date.now() - startTime;
+            if (!result.ok) {
+              this.captureMcpToolEvent('mcp_tool_failed', {
+                toolId: 'emit_activity',
+                toolFamily: 'client_integration',
+                userId: resolvedUserId,
+                authSource,
+                ok: false,
+                latencyMs,
+                error:
+                  result.error ??
+                  result.message ??
+                  'client_integration_execution_failed',
+              });
+              return this.toolError(
+                result.error ??
+                  result.message ??
+                  'Client integration tool execution failed'
+              );
+            }
+
+            this.captureMcpToolEvent('mcp_tool_succeeded', {
+              toolId: 'emit_activity',
+              toolFamily: 'client_integration',
+              userId: resolvedUserId,
+              authSource,
+              ok: true,
+              latencyMs,
+            });
+
+            const data =
+              (result.data as Record<string, unknown> | undefined) ??
+              (result as unknown as Record<string, unknown>);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: this.summarizeClientResult('orgx_emit_activity', data),
+                },
+              ],
+              structuredContent: {
+                ...data,
+                preferred_replacement: 'orgx_emit_activity',
+              },
+            } as CallToolResult;
+          } catch (error) {
+            this.captureMcpToolEvent('mcp_tool_failed', {
+              toolId: 'emit_activity',
+              toolFamily: 'client_integration',
+              userId: resolvedUserId,
+              authSource,
+              ok: false,
+              latencyMs: Date.now() - startTime,
+              error: error instanceof Error ? error.message : String(error),
+            });
+            return this.toolError(
+              error instanceof Error ? error.message : String(error),
+              {
+                code: 'client_integration_failed',
+                status:
+                  error instanceof OrgXApiError ? error.statusCode : undefined,
+                details: buildFailureDetails({
+                  toolId: 'emit_activity',
+                  error,
+                  args,
+                }),
+              }
+            );
+          }
+        });
+      }
+    );
+  }
+
   private buildBootstrapPayload(allowedTools: Set<string> | null) {
     const profile = this.props?.profile ?? 'full';
     const visibleTools = allowedTools
@@ -4005,6 +4205,9 @@ export class OrgXMcp extends McpAgent<
 
     // Register additive contract/introspection tools and safe wrappers
     this.registerContractTools(allowedTools);
+
+    // Route stale clients that strip the `orgx_` prefix to canonical v2 tools.
+    this.registerLegacyStrippedAliasTools(allowedTools);
 
     // =========================================================================
     // CORE UTILITY TOOLS
