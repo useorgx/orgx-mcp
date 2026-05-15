@@ -8,6 +8,36 @@
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
   <script src="shared/interaction-kit.js"></script>
+  <template id="structured-review-contract">
+    <section class="review-step-panel" data-direction="neutral">
+      <ol>
+        <li class="review-step current" aria-current="step">
+          <span class="review-step-index" aria-hidden="true">1</span>
+          <span class="review-step-label">Review</span>
+          <span class="review-step-tone active-approved">Approved</span>
+          <span class="review-step-tone active-declined">Declined</span>
+          <span class="review-step-tone active-pending">Pending</span>
+        </li>
+      </ol>
+      <div class="review-progress-track" role="progressbar"></div>
+      <p class="review-footer-copy"></p>
+    </section>
+  </template>
+  <script>
+    var demoDecisionDetails = {
+      interaction: {
+        kind: 'compound',
+        steps: [{ type: 'config' }, { type: 'subrequests' }],
+      },
+    };
+    var stepTransitionDirection = 'neutral';
+    function resolveReviewConfigActionLabel() {
+      return 'Configure';
+    }
+    function resolveReviewFooterSummary() {
+      return '';
+    }
+  </script>
   <script>
     (function() {
       const params = new URLSearchParams(window.location.search);
