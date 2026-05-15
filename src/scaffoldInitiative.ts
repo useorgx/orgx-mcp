@@ -545,7 +545,14 @@ export function buildScaffoldInitiativeBatch(
   // Ensure scaffolded initiatives default to public live visibility so the
   // /live/[initiativeId] room is accessible immediately after creation.
   // Callers can override by passing metadata.live.visibility explicitly.
-  const existingMetadata = safeRecord(initiativeEntity.metadata);
+  const rawExistingMetadata = safeRecord(initiativeEntity.metadata);
+  const existingMetadata: Record<string, unknown> = {
+    ...rawExistingMetadata,
+    model_tier:
+      typeof rawExistingMetadata.model_tier === 'string'
+        ? rawExistingMetadata.model_tier
+        : 'standard',
+  };
   const existingLive = safeRecord(existingMetadata.live);
   let nextMetadata: Record<string, unknown> | null = null;
   const scaffoldIdempotencyKey =
