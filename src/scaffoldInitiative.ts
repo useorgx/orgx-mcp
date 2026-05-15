@@ -546,15 +546,19 @@ export function buildScaffoldInitiativeBatch(
   // /live/[initiativeId] room is accessible immediately after creation.
   // Callers can override by passing metadata.live.visibility explicitly.
   const rawExistingMetadata = safeRecord(initiativeEntity.metadata);
+  const hasExplicitModelTier =
+    typeof rawExistingMetadata.model_tier === 'string' &&
+    rawExistingMetadata.model_tier.trim().length > 0;
   const existingMetadata: Record<string, unknown> = {
     ...rawExistingMetadata,
-    model_tier:
-      typeof rawExistingMetadata.model_tier === 'string'
-        ? rawExistingMetadata.model_tier
-        : 'standard',
+    model_tier: hasExplicitModelTier
+      ? rawExistingMetadata.model_tier
+      : 'standard',
   };
   const existingLive = safeRecord(existingMetadata.live);
-  let nextMetadata: Record<string, unknown> | null = null;
+  let nextMetadata: Record<string, unknown> | null = hasExplicitModelTier
+    ? null
+    : existingMetadata;
   const scaffoldIdempotencyKey =
     typeof initiativeEntity.idempotency_key === 'string' &&
     initiativeEntity.idempotency_key.trim().length > 0
