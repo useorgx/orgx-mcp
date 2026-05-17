@@ -177,7 +177,9 @@ export type WidgetProofHandoff = {
   preserve_tool_results: true;
   live_url: string | null;
   proof_count: number;
+  visible_proof_count: number;
   review_count: number;
+  visible_review_count: number;
   primary_prompt: string;
   surface_prompts: WidgetContinuationPrompt[];
 };
@@ -622,24 +624,44 @@ export function buildWidgetProofHandoff(options: {
   initiativeId?: string | null;
   initiativeTitle?: string | null;
   proofCount?: number;
+  visibleProofCount?: number;
   reviewCount?: number;
+  visibleReviewCount?: number;
 }): WidgetProofHandoff {
   const liveUrl = options.initiativeId ? buildLiveUrl(options.initiativeId) : null;
   const initiativeName = options.initiativeTitle?.trim() || 'this OrgX initiative';
   const proofCount = options.proofCount ?? 0;
+  const visibleProofCount = options.visibleProofCount ?? proofCount;
   const reviewCount = options.reviewCount ?? 0;
+  const visibleReviewCount = options.visibleReviewCount ?? reviewCount;
+  const proofPhrase =
+    proofCount > visibleProofCount
+      ? `${visibleProofCount} visible proof card${
+          visibleProofCount === 1 ? '' : 's'
+        } from ${proofCount} tracked artifact${
+          proofCount === 1 ? '' : 's'
+        }`
+      : `${proofCount} proof card${proofCount === 1 ? '' : 's'}`;
   const reviewPhrase =
-    reviewCount > 0
-      ? `Start with the ${reviewCount} proof card${reviewCount === 1 ? '' : 's'} marked for review.`
+    visibleReviewCount > 0
+      ? `Start with the ${visibleReviewCount} visible proof card${
+          visibleReviewCount === 1 ? '' : 's'
+        } marked for review.`
+      : reviewCount > 0
+      ? `The summary shows ${reviewCount} tracked artifact${
+          reviewCount === 1 ? '' : 's'
+        } needing review; use the live link if the review card is not visible in this result.`
       : 'Start by inspecting the newest proof card and the live initiative link.';
-  const basePrompt = `Continue ${initiativeName} from this OrgX handoff. Use the ${proofCount} proof card${proofCount === 1 ? '' : 's'}, preserve the tool result links, cite the artifact or task link you used, then propose the next concrete action. ${reviewPhrase}${liveUrl ? ` Live view: ${liveUrl}` : ''}`;
+  const basePrompt = `Continue ${initiativeName} from this OrgX handoff. Use the ${proofPhrase}, preserve the tool result links, cite the artifact or task link you used, then propose the next concrete action. ${reviewPhrase}${liveUrl ? ` Live view: ${liveUrl}` : ''}`;
 
   return {
     source: 'orgx-mcp-widget-proof-cards',
     preserve_tool_results: true,
     live_url: liveUrl,
     proof_count: proofCount,
+    visible_proof_count: visibleProofCount,
     review_count: reviewCount,
+    visible_review_count: visibleReviewCount,
     primary_prompt: basePrompt,
     surface_prompts: SUPPORTED_WIDGET_SURFACES.map((surface) => ({
       surface,
@@ -722,6 +744,7 @@ export function enrichInitiativePulseWithArtifacts(
     data.artifact_summary,
     summarizeArtifacts(artifacts)
   );
+  const visibleReviewCount = proofCards.filter((item) => item.needs_review).length;
   const reviewCount = countReviewableProofs(artifactSummary, proofCards);
   return {
     ...data,
@@ -733,7 +756,9 @@ export function enrichInitiativePulseWithArtifacts(
       initiativeId,
       initiativeTitle: firstString(data, ['name', 'title', 'initiative_title', 'initiativeTitle']),
       proofCount: artifactSummary.total,
+      visibleProofCount: proofCards.length,
       reviewCount,
+      visibleReviewCount,
     }),
     widget_state_contract: WIDGET_PROOF_STATE_CONTRACT,
   };

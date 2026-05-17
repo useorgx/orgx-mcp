@@ -189,8 +189,36 @@ describe('widget artifact proof helpers', () => {
     });
     expect(payload.proof_handoff).toMatchObject({
       proof_count: 20,
+      visible_proof_count: 5,
       review_count: 1,
+      visible_review_count: 1,
     });
+  });
+
+  it('distinguishes tracked artifacts from visible cards in handoff prompts', () => {
+    const handoff = buildWidgetProofHandoff({
+      initiativeId: 'init-1',
+      initiativeTitle: 'Quality Gates V2',
+      proofCount: 141,
+      visibleProofCount: 5,
+      reviewCount: 3,
+      visibleReviewCount: 0,
+    });
+
+    expect(handoff).toMatchObject({
+      proof_count: 141,
+      visible_proof_count: 5,
+      review_count: 3,
+      visible_review_count: 0,
+    });
+    expect(handoff.primary_prompt).toContain(
+      '5 visible proof cards from 141 tracked artifacts'
+    );
+    expect(handoff.primary_prompt).toContain(
+      'The summary shows 3 tracked artifacts needing review'
+    );
+    expect(handoff.primary_prompt).not.toContain('141 proof cards');
+    expect(handoff.primary_prompt).not.toContain('3 proof cards marked for review');
   });
 
   it('preserves proof-card creator identity from artifact metadata', () => {
