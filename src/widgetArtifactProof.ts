@@ -545,6 +545,47 @@ function summarizeArtifacts(artifacts: NormalizedArtifact[]) {
   };
 }
 
+function normalizeArtifactSummary(
+  value: unknown
+): Record<string, number> | null {
+  const record = asRecord(value);
+  if (!record) return null;
+
+  const summary: Record<string, number> = {};
+  for (const [key, rawValue] of Object.entries(record)) {
+    if (typeof rawValue !== 'number' || !Number.isFinite(rawValue)) continue;
+    summary[key] = Math.max(0, Math.trunc(rawValue));
+  }
+
+  return Object.keys(summary).length > 0 ? summary : null;
+}
+
+function mergeArtifactSummary(
+  upstreamSummary: unknown,
+  displaySummary: Record<string, number>
+): Record<string, number> {
+  const normalizedUpstream = normalizeArtifactSummary(upstreamSummary);
+  if (!normalizedUpstream) return displaySummary;
+
+  const merged: Record<string, number> = { ...displaySummary };
+  for (const [key, value] of Object.entries(normalizedUpstream)) {
+    merged[key] = Math.max(merged[key] ?? 0, value);
+  }
+  merged.total = Math.max(displaySummary.total ?? 0, normalizedUpstream.total ?? 0);
+  return merged;
+}
+
+function countReviewableProofs(
+  summary: Record<string, number>,
+  proofCards: WidgetProofCard[]
+): number {
+  return Math.max(
+    proofCards.filter((item) => item.needs_review).length,
+    summary.needs_review ?? 0,
+    summary.in_review ?? 0
+  );
+}
+
 function toWidgetProofCard(artifact: NormalizedArtifact): WidgetProofCard {
   return {
     id: artifact.id,
@@ -677,17 +718,22 @@ export function enrichInitiativePulseWithArtifacts(
     attachArtifactLinks(artifact, initiativeId)
   );
   const proofCards = linkedArtifacts.slice(0, 5).map(toWidgetProofCard);
+  const artifactSummary = mergeArtifactSummary(
+    data.artifact_summary,
+    summarizeArtifacts(artifacts)
+  );
+  const reviewCount = countReviewableProofs(artifactSummary, proofCards);
   return {
     ...data,
     recent_artifacts: linkedArtifacts.slice(0, 5),
     proof_cards: proofCards,
     review_items: proofCards.filter((item) => item.needs_review).slice(0, 4),
-    artifact_summary: summarizeArtifacts(artifacts),
+    artifact_summary: artifactSummary,
     proof_handoff: buildWidgetProofHandoff({
       initiativeId,
       initiativeTitle: firstString(data, ['name', 'title', 'initiative_title', 'initiativeTitle']),
-      proofCount: artifacts.length,
-      reviewCount: proofCards.filter((item) => item.needs_review).length,
+      proofCount: artifactSummary.total,
+      reviewCount,
     }),
     widget_state_contract: WIDGET_PROOF_STATE_CONTRACT,
   };
