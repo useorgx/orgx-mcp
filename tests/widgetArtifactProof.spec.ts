@@ -144,6 +144,55 @@ describe('widget artifact proof helpers', () => {
     });
   });
 
+  it('preserves upstream full artifact counts when enrichment only has a display window', () => {
+    const payload = enrichInitiativePulseWithArtifacts(
+      {
+        id: 'init-1',
+        name: 'Ship MCP App Store Listing',
+        artifact_summary: {
+          total: 20,
+          approved: 19,
+          in_review: 1,
+          needs_review: 1,
+        },
+        workstreams: [
+          {
+            id: 'ws-1',
+            milestones: [
+              {
+                id: 'ms-1',
+                tasks: Array.from({ length: 8 }, (_, index) => ({
+                  id: `task-${index + 1}`,
+                })),
+              },
+            ],
+          },
+        ],
+      },
+      Array.from({ length: 8 }, (_, index) => ({
+        id: `artifact-${index + 1}`,
+        name: `Proof ${index + 1}`,
+        status: index === 0 ? 'in_review' : 'approved',
+        entity_type: 'task',
+        entity_id: `task-${index + 1}`,
+        initiative_id: 'init-1',
+      }))
+    );
+
+    expect(payload.recent_artifacts).toHaveLength(5);
+    expect(payload.proof_cards).toHaveLength(5);
+    expect(payload.artifact_summary).toMatchObject({
+      total: 20,
+      approved: 19,
+      in_review: 1,
+      needs_review: 1,
+    });
+    expect(payload.proof_handoff).toMatchObject({
+      proof_count: 20,
+      review_count: 1,
+    });
+  });
+
   it('preserves proof-card creator identity from artifact metadata', () => {
     const payload = enrichInitiativePulseWithArtifacts(
       {
