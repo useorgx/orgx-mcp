@@ -1274,6 +1274,63 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     },
   },
   {
+    id: 'consolidate_pr',
+    title: 'Consolidate Pull Request',
+    description:
+      'Generate and persist an orchestration.consolidation_pass receipt for a GitHub pull request. USE WHEN: Eli or another engineering agent needs a durable PR review receipt with reading order, existence evidence, deduped findings, verdict, and server-derived AQ score. NEXT: inspect the returned artifact_id or attach it to task completion proof. DO NOT USE WHEN: only asking for PR status; use GitHub tools instead.',
+    inputSchema: {
+      pr_url: z
+        .string()
+        .url()
+        .regex(/^https:\/\/github\.com\/[^/]+\/[^/]+\/pull\/\d+\/?(?:[?#].*)?$/)
+        .describe(
+          'GitHub pull request URL, e.g. https://github.com/org/repo/pull/123'
+        ),
+      workspace_id: z.string().uuid().optional().describe('OrgX workspace UUID'),
+      initiative_id: z
+        .string()
+        .uuid()
+        .optional()
+        .describe('Initiative to attach the consolidation_pass artifact to'),
+      task_id: z
+        .string()
+        .uuid()
+        .optional()
+        .describe('Task to attach the consolidation_pass artifact to'),
+      decision_id: z
+        .string()
+        .uuid()
+        .optional()
+        .describe('Decision to attach the consolidation_pass artifact to'),
+      commit_sha: z
+        .string()
+        .min(7)
+        .optional()
+        .describe(
+          'Override commit SHA for idempotency; defaults to merge commit or PR head SHA'
+        ),
+      verdict: z
+        .enum(['ship', 'simplify_first', 'escalate'])
+        .optional()
+        .describe('Optional verdict override; defaults from PR state'),
+      reviewer_note: z
+        .string()
+        .max(2000)
+        .optional()
+        .describe('Optional reviewer note to include in critic evidence'),
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
+    securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
+    _meta: {
+      'openai/toolInvocation/invoking': 'Consolidating pull request...',
+      'openai/toolInvocation/invoked': 'Pull request consolidated',
+    },
+  },
+  {
     id: 'sync_client_state',
     title: 'Sync with OrgX',
     description:

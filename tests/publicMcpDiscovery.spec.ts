@@ -29,6 +29,7 @@ describe('public MCP discovery endpoint', () => {
       'orgx_public_capabilities'
     );
     expect(body.primary_authenticated_tools).toContain('orgx_decide');
+    expect(body.primary_authenticated_tools).toContain('consolidate_pr');
     expect(body.primary_authenticated_tools).not.toContain('remember_decision');
   });
 
@@ -98,7 +99,7 @@ describe('public MCP discovery endpoint', () => {
           method: 'tools/call',
           params: {
             name: 'orgx_public_tool_examples',
-            arguments: { tool_name: 'orgx_decide' },
+            arguments: { tool_name: 'consolidate_pr' },
           },
         }),
       }),
@@ -116,9 +117,9 @@ describe('public MCP discovery endpoint', () => {
       };
     };
     expect(body.result?.structuredContent?.note).toContain('example payloads only');
-    expect(body.result?.structuredContent?.examples?.orgx_decide?.prompt).toContain(
-      'Remember this decision'
-    );
+    expect(
+      body.result?.structuredContent?.examples?.consolidate_pr?.prompt
+    ).toContain('consolidation_pass');
     expect(JSON.stringify(body)).toContain('https://mcp.useorgx.com/mcp');
   });
 });

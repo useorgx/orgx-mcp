@@ -163,6 +163,10 @@
     {
       "name": "get_morning_brief",
       "description": "Render the morning-brief widget with receipts, exceptions, ROI, and value signals."
+    },
+    {
+      "name": "consolidate_pr",
+      "description": "Generate and persist an orchestration.consolidation_pass receipt for a GitHub pull request."
     }
   ],
   "resources": [

@@ -52,6 +52,7 @@ const PRIMARY_AUTHENTICATED_TOOLS = [
   'track_project_progress',
   'review_artifact',
   'get_morning_brief',
+  'consolidate_pr',
 ] as const;
 
 const PUBLIC_DISCOVERY_TOOLS: PublicTool[] = [
@@ -340,7 +341,7 @@ const TOOL_EXAMPLES: Record<
     },
     sample_response: {
       profile: 'v2',
-      visible_tools_count: 27,
+      visible_tools_count: 28,
     },
   },
   approve_decision: {
@@ -427,6 +428,21 @@ const TOOL_EXAMPLES: Record<
     prompt: 'Show today’s OrgX morning brief.',
     arguments: { workspace_id: 'workspace_123' },
     sample_response: { brief: { receipts: [], exceptions: [] } },
+  },
+  consolidate_pr: {
+    prompt:
+      'Create a durable consolidation_pass receipt for this pull request.',
+    arguments: {
+      pr_url: 'https://github.com/useorgx/example/pull/42',
+      initiative_id: '00000000-0000-4000-8000-000000000000',
+      reviewer_note: 'Focus on duplication and dead code before approval.',
+    },
+    sample_response: {
+      artifact_id: 'artifact_123',
+      artifact_type: 'orchestration.consolidation_pass',
+      verdict: 'ship',
+      aq_score: 0.91,
+    },
   },
 };
 

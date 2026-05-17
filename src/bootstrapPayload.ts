@@ -31,6 +31,7 @@ export const V2_PUBLIC_TOOL_IDS = [
   'track_project_progress',
   'review_artifact',
   'get_morning_brief',
+  'consolidate_pr',
 ] as const;
 
 export const BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE: Record<
@@ -81,6 +82,7 @@ export const BOOTSTRAP_RECOMMENDED_WORKFLOWS = {
     'orgx_spawn',
     'orgx_emit_activity',
     'orgx_attach',
+    'consolidate_pr',
     'orgx_act',
     'orgx_submit_receipt',
   ],

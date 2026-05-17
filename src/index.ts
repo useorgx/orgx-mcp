@@ -2592,6 +2592,10 @@ export class OrgXMcp extends McpAgent<
         path: '/api/client/live/changesets/apply',
         method: 'POST',
       },
+      consolidate_pr: {
+        path: '/api/client/consolidate-pr',
+        method: 'POST',
+      },
       sync_client_state: { path: '/api/client/sync', method: 'POST' },
       check_spawn_guard: { path: '/api/client/spawn', method: 'POST' },
       record_quality_score: { path: '/api/client/quality', method: 'POST' },
@@ -2822,6 +2826,17 @@ export class OrgXMcp extends McpAgent<
         return `✅ Changeset applied · ${appliedCount} operation${
           appliedCount === 1 ? '' : 's'
         }`;
+      }
+      case 'consolidate_pr': {
+        const status = typeof data.status === 'string' ? data.status : 'ok';
+        const artifactId =
+          typeof data.artifact_id === 'string' ? data.artifact_id : null;
+        const verdict = typeof data.verdict === 'string' ? data.verdict : null;
+        const aqScore =
+          typeof data.aq_score === 'number' ? ` · AQ ${data.aq_score}` : '';
+        return `✅ PR consolidated (${status})${
+          verdict ? ` · ${verdict}` : ''
+        }${aqScore}${artifactId ? ` · artifact ${artifactId.slice(0, 8)}...` : ''}`;
       }
       case 'sync_client_state': {
         const initiatives = (data.initiatives as unknown[])?.length ?? 0;
