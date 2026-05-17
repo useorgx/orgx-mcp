@@ -31,6 +31,7 @@ Primary v2 tools:
 - orgx_decide: Create, remember, approve, reject, or list decisions.
 - orgx_submit_receipt: Submit durable proof, attribution, quality, or outcome receipts.
 - orgx_emit_activity: Emit append-only execution telemetry.
+- consolidate_pr: Generate and persist a consolidation_pass receipt for a GitHub pull request.
 
 Example prompts:
 - "Bootstrap this workspace and show me what to inspect first."
@@ -38,5 +39,6 @@ Example prompts:
 - "Show me agent work waiting for approval."
 - "Find the launch plan artifact."
 - "Attach this PR as proof for the task."
+- "Create a consolidation_pass receipt for this pull request."
 - "Assign this research task to an agent."
 - "What is blocked on the onboarding initiative?"

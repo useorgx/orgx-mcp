@@ -40,6 +40,7 @@ Attach and receipt:
 - Use `orgx_attach` for proof URLs, documents, screenshots, reports, and external artifacts.
 - Use `orgx_submit_receipt` when the work needs durable proof, attribution, quality, or outcome metadata.
 - Use `orgx_emit_activity` only for append-only runtime telemetry.
+- Use `consolidate_pr` when an engineering agent needs a durable consolidation_pass receipt for a GitHub pull request.
 
 Plan:
 - Use `orgx_plan` to start, resume, edit, improve, or complete tracked plan sessions.
@@ -67,6 +68,7 @@ Decide:
 - `orgx_spawn`
 - `orgx_decide`
 - `orgx_submit_receipt`
+- `consolidate_pr`
 
 ## Compatibility
 
@@ -87,6 +89,7 @@ Legacy tool names remain callable during the sunset window for older clients, bu
 - "Remember this decision."
 - "What did we decide last week?"
 - "Find the artifact from the launch plan."
+- "Create a consolidation_pass receipt for this pull request."
 - "Show agent work waiting on me."
 - "Attach this PR as proof."
 - "Assign this to an agent."

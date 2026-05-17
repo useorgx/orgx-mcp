@@ -55,6 +55,7 @@ OrgX MCP is organizational memory for AI agents and AI-native teams. It connects
 | `orgx_decide` | Create, remember, approve, reject, or list decisions. |
 | `orgx_submit_receipt` | Submit durable proof, attribution, quality, or outcome receipts. |
 | `orgx_emit_activity` | Emit append-only execution telemetry. |
+| `consolidate_pr` | Generate and persist a consolidation_pass receipt for a GitHub pull request. |
 
 Full tool contract: `server.json` at the repo root with OAuth scopes, input
 schemas, and OpenAI widget metadata. Legacy tools remain callable during the

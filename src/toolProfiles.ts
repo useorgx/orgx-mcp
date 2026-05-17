@@ -57,9 +57,12 @@ export const WIDGET_AFFORDANCE_SURFACE = [
   'get_morning_brief',
 ] as const;
 
+export const CLIENT_INTEGRATION_PUBLIC_SURFACE = ['consolidate_pr'] as const;
+
 const V2_PUBLIC_SURFACE = [
   ...V2_CORE_PUBLIC_SURFACE,
   ...WIDGET_AFFORDANCE_SURFACE,
+  ...CLIENT_INTEGRATION_PUBLIC_SURFACE,
 ] as const;
 
 export const TOOL_PROFILES: Record<string, ToolProfile> = {
@@ -97,6 +100,7 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
       'orgx_decide',
       'orgx_submit_receipt',
       'scaffold_initiative',
+      'consolidate_pr',
     ],
   },
   planner: {
@@ -126,6 +130,7 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
       'orgx_plan',
       'orgx_spawn',
       'orgx_submit_receipt',
+      'consolidate_pr',
     ],
   },
   observer: {
