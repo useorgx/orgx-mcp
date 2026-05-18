@@ -1106,6 +1106,9 @@ const reportingSourceClientSchema = z.enum([
   'openclaw',
   'codex',
   'claude-code',
+  'chatgpt',
+  'cursor',
+  'web-ui',
   'api',
 ]);
 
@@ -1117,6 +1120,55 @@ const reportingPhaseSchema = z.enum([
   'handoff',
   'completed',
 ]);
+
+const reportingRuntimeSourceSchema = z.enum([
+  'codex_cloud',
+  'codex_local',
+  'anthropic',
+  'orgx_managed',
+  'local_openclaw',
+  'managed_agent',
+  'unknown',
+]);
+
+const reportingRuntimeContextSchema = z.object({
+  source_runtime: reportingRuntimeSourceSchema
+    .optional()
+    .describe('Canonical runtime bucket that produced this activity'),
+  source_system: z
+    .string()
+    .optional()
+    .describe('Provider or system name, e.g. codex, anthropic, openai-managed'),
+  provider: z.string().optional().describe('Model/provider identifier'),
+  execution_target: z
+    .string()
+    .optional()
+    .describe('Execution target such as cloud, local, local-openclaw'),
+  adapter: z.string().optional().describe('Runtime adapter or bridge name'),
+  job_id: z.string().optional().describe('Runtime job id for correlation'),
+});
+
+const reportingChokepointSchema = z.object({
+  kind: z
+    .enum(['blocker', 'approval', 'stall', 'error'])
+    .default('blocker')
+    .describe('Kind of runtime chokepoint being reported'),
+  tier: z
+    .enum(['critical', 'blocking', 'attention', 'advisory'])
+    .optional()
+    .describe('User-facing urgency tier for /live'),
+  title: z.string().min(1).describe('Short visible chokepoint title'),
+  reason: z.string().min(1).describe('Specific reason execution cannot proceed'),
+  suggested_actions: z
+    .array(z.string().min(1))
+    .max(8)
+    .optional()
+    .describe('Concrete recovery actions to show in /live'),
+  metadata: z
+    .record(z.unknown())
+    .optional()
+    .describe('Additional runtime evidence, never secrets'),
+});
 
 const applyChangesetOperationSchema = z.union([
   z
@@ -1232,6 +1284,16 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         .record(z.unknown())
         .optional()
         .describe('Optional structured metadata to attach to the activity event'),
+      runtime: reportingRuntimeContextSchema
+        .optional()
+        .describe(
+          'Runtime provenance used by /live to bucket cloud, local, Anthropic, managed, and OpenClaw chokepoints'
+        ),
+      chokepoint: reportingChokepointSchema
+        .optional()
+        .describe(
+          'Durable blocker/stall/error/approval to surface in /live when execution cannot proceed'
+        ),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.authRequired,
@@ -1265,6 +1327,11 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
       source_client: reportingSourceClientSchema
         .optional()
         .describe('Required when run_id is not provided'),
+      runtime: reportingRuntimeContextSchema
+        .optional()
+        .describe(
+          'Runtime provenance used by /live to bucket cloud, local, Anthropic, managed, and OpenClaw changeset decisions'
+        ),
     },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.authRequired,
