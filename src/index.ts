@@ -2880,6 +2880,7 @@ export class OrgXMcp extends McpAgent<
 
   private registerLegacyStrippedAliasTools(allowedTools: Set<string> | null) {
     const contractAliases = [
+      ['bootstrap', 'orgx_bootstrap'],
       ['inspect', 'orgx_inspect'],
       ['search', 'orgx_search'],
       ['attach', 'orgx_attach'],
