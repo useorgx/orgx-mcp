@@ -94,6 +94,7 @@ describe('Smithery metadata coverage', () => {
   it('keeps stripped compatibility aliases for stale MCP clients', () => {
     expect(indexSource).toContain('registerLegacyStrippedAliasTools');
     for (const alias of [
+      "'bootstrap'",
       "'inspect'",
       "'search'",
       "'attach'",
