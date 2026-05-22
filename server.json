@@ -58,115 +58,283 @@
   "tools": [
     {
       "name": "orgx_bootstrap",
-      "description": "Establish OrgX session context, granted scopes, and v2 routing guidance."
+      "title": "Bootstrap OrgX Session",
+      "description": "Establish OrgX session context, granted scopes, and v2 routing guidance.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
       "name": "orgx_search",
-      "description": "Search OrgX memory and entities; replaces list_entities and query_org_memory for public guidance."
+      "title": "Search OrgX Memory",
+      "description": "Search OrgX memory and entities; replaces list_entities and query_org_memory for public guidance.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
       "name": "orgx_inspect",
-      "description": "Hydrate one OrgX entity with context; replaces get_task_with_context for public guidance."
+      "title": "Inspect OrgX Entity",
+      "description": "Hydrate one OrgX entity with context; replaces get_task_with_context for public guidance.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
       "name": "orgx_recommend",
-      "description": "Recommend next actions, morning-brief signals, queue priority, pulses, and snapshots."
+      "title": "Recommend Next Action",
+      "description": "Recommend next actions, morning-brief signals, queue priority, pulses, and snapshots.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
       "name": "orgx_write",
-      "description": "Create or update OrgX entities with canonical snake_case fields."
+      "title": "Write OrgX Entity",
+      "description": "Create or update OrgX entities with canonical snake_case fields.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
       "name": "orgx_attach",
-      "description": "Attach durable artifacts and proof to existing OrgX entities."
+      "title": "Attach OrgX Proof",
+      "description": "Attach durable artifacts and proof to existing OrgX entities.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
       "name": "orgx_act",
-      "description": "Run lifecycle, validation, completion, delete, dry-run, and proof actions."
+      "title": "Run OrgX Lifecycle Action",
+      "description": "Run lifecycle, validation, completion, delete, dry-run, and proof actions.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      }
     },
     {
       "name": "orgx_plan",
-      "description": "Start, resume, improve, edit, or complete tracked OrgX planning sessions."
+      "title": "Manage OrgX Plan",
+      "description": "Start, resume, improve, edit, or complete tracked OrgX planning sessions.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
       "name": "orgx_spawn",
-      "description": "Guard, classify, spawn, or hand off specialist OrgX agent work."
+      "title": "Spawn OrgX Agent Work",
+      "description": "Guard, classify, spawn, or hand off specialist OrgX agent work.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
       "name": "orgx_decide",
-      "description": "Create, remember, list, approve, or reject durable OrgX decisions."
+      "title": "Manage OrgX Decision",
+      "description": "Create, remember, list, approve, or reject durable OrgX decisions.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      }
     },
     {
       "name": "orgx_submit_receipt",
-      "description": "Submit durable proof, attribution, quality, or outcome receipts."
+      "title": "Submit OrgX Receipt",
+      "description": "Submit durable proof, attribution, quality, or outcome receipts.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
       "name": "orgx_emit_activity",
-      "description": "Emit append-only execution telemetry without changing durable entity state."
+      "title": "Emit OrgX Activity",
+      "description": "Emit append-only execution telemetry without changing durable entity state.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      }
     },
     {
       "name": "approve_decision",
-      "description": "Approve a pending decision from the decisions widget after explicit confirmation."
+      "title": "Approve Decision",
+      "description": "Approve a pending decision from the decisions widget after explicit confirmation.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      }
     },
     {
       "name": "reject_decision",
-      "description": "Reject or request changes on a pending decision from the decisions widget."
+      "title": "Reject Decision",
+      "description": "Reject or request changes on a pending decision from the decisions widget.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      }
     },
     {
       "name": "get_agent_status",
-      "description": "Render the agent-status widget with active, blocked, and idle agent work."
+      "title": "Get Agent Status",
+      "description": "Render the agent-status widget with active, blocked, and idle agent work.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
       "name": "get_initiative_pulse",
-      "description": "Render the initiative-pulse widget for health, blockers, milestones, and activity."
+      "title": "Get Initiative Pulse",
+      "description": "Render the initiative-pulse widget for health, blockers, milestones, and activity.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
       "name": "scaffold_initiative",
-      "description": "Create a full initiative hierarchy and render the scaffolded-initiative widget."
+      "title": "Scaffold Initiative",
+      "description": "Create a full initiative hierarchy and render the scaffolded-initiative widget.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
       "name": "spawn_agent_task",
-      "description": "Delegate work to an agent and render the task-spawned widget."
+      "title": "Spawn Agent Task",
+      "description": "Delegate work to an agent and render the task-spawned widget.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      }
     },
     {
       "name": "handoff_task",
-      "description": "Hand off an existing task and render the task-spawned widget for the new assignment."
+      "title": "Handoff Task",
+      "description": "Hand off an existing task and render the task-spawned widget for the new assignment.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      }
     },
     {
       "name": "recommend_next_action",
-      "description": "Render search-results style next-action recommendations for prioritization."
+      "title": "Recommend Next Action",
+      "description": "Render search-results style next-action recommendations for prioritization.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
       "name": "query_org_memory",
-      "description": "Render organizational memory search results in the search-results widget."
+      "title": "Query Org Memory",
+      "description": "Render organizational memory search results in the search-results widget.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
       "name": "recall_memory",
-      "description": "Render recalled memory and prior context in the search-results widget."
+      "title": "Recall Memory",
+      "description": "Render recalled memory and prior context in the search-results widget.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
       "name": "approve_agent_work",
-      "description": "List, approve, or reject agent approval items through the decisions widget."
+      "title": "Approve Agent Work",
+      "description": "List, approve, or reject agent approval items through the decisions widget.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      }
     },
     {
       "name": "delegate_agent_task",
-      "description": "Delegate work through the task-spawned widget using agent-friendly fields."
+      "title": "Delegate Agent Task",
+      "description": "Delegate work through the task-spawned widget using agent-friendly fields.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      }
     },
     {
       "name": "track_project_progress",
-      "description": "Render project progress through the initiative-pulse widget."
+      "title": "Track Project Progress",
+      "description": "Render project progress through the initiative-pulse widget.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
       "name": "review_artifact",
-      "description": "Render the artifact-review widget for approval or change requests on deliverables."
+      "title": "Review Artifact",
+      "description": "Render the artifact-review widget for approval or change requests on deliverables.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
       "name": "get_morning_brief",
-      "description": "Render the morning-brief widget with receipts, exceptions, ROI, and value signals."
+      "title": "Get Morning Brief",
+      "description": "Render the morning-brief widget with receipts, exceptions, ROI, and value signals.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
       "name": "consolidate_pr",
-      "description": "Generate and persist an orchestration.consolidation_pass receipt for a GitHub pull request."
+      "title": "Consolidate Pull Request",
+      "description": "Generate and persist an orchestration.consolidation_pass receipt for a GitHub pull request.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      }
     }
   ],
   "resources": [
