@@ -13,7 +13,16 @@ const serverJson = JSON.parse(
   title?: string;
   description?: string;
   remotes?: Array<{ type?: string; url?: string }>;
-  tools?: Array<{ name?: string; description?: string }>;
+  tools?: Array<{
+    name?: string;
+    title?: string;
+    description?: string;
+    annotations?: {
+      readOnlyHint?: boolean;
+      destructiveHint?: boolean;
+      openWorldHint?: boolean;
+    };
+  }>;
 };
 const packageJson = JSON.parse(
   readFileSync(resolve(root, 'package.json'), 'utf8')
@@ -106,6 +115,21 @@ describe('Anthropic directory readiness', () => {
     expect(serverJson.tools?.find((tool) => tool.name === 'orgx_bootstrap')?.description).toContain(
       'v2 routing guidance'
     );
+  });
+
+  it('publishes reviewer-facing tool titles and annotations in server.json', () => {
+    expect(serverJson.tools?.length).toBeGreaterThan(0);
+
+    for (const tool of serverJson.tools ?? []) {
+      expect(tool.title, `${tool.name} is missing a title`).toEqual(
+        expect.any(String)
+      );
+      expect(tool.annotations, `${tool.name} is missing annotations`).toEqual({
+        readOnlyHint: expect.any(Boolean),
+        destructiveHint: expect.any(Boolean),
+        openWorldHint: expect.any(Boolean),
+      });
+    }
   });
 
   it('marks high-risk shared tool definitions as destructive where appropriate', () => {
