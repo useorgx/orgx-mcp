@@ -29,6 +29,7 @@ import {
 } from './toolDefinitions';
 import { toSkybridgeResourceUri } from './widgetConfig';
 import serverManifest from '../server.json';
+import glamaConnectorManifest from '../glama.json';
 import { signSessionToken } from './sessionToken';
 import {
   verifyStreamTokenDetailed,
@@ -400,6 +401,16 @@ export const authHandler = {
     if (request.method === 'GET' && url.pathname === '/server.json') {
       return withCors(
         Response.json(buildPublishedManifest(serverManifest), {
+          headers: {
+            'Cache-Control': 'public, max-age=300',
+          },
+        })
+      );
+    }
+
+    if (request.method === 'GET' && url.pathname === '/.well-known/glama.json') {
+      return withCors(
+        Response.json(glamaConnectorManifest, {
           headers: {
             'Cache-Control': 'public, max-age=300',
           },

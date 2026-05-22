@@ -48,7 +48,12 @@ describe('canonical GitHub presence', () => {
   });
 
   it('keeps Glama listing ownership explicit', () => {
-    expect(glamaJson.maintainers).toContain('hopeatina');
+    expect(glamaJson.$schema).toBe(
+      'https://glama.ai/mcp/schemas/connector.json'
+    );
+    expect(glamaJson.maintainers).toContainEqual({
+      email: 'reviewers@useorgx.com',
+    });
   });
 
   it('keeps external listing sources free of legacy GitHub org links', () => {

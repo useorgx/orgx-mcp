@@ -97,8 +97,10 @@ async function main() {
   );
   assert(
     Array.isArray(glamaJson.maintainers) &&
-      glamaJson.maintainers.includes('hopeatina'),
-    'glama.json should keep an explicit maintainer for external listing ownership'
+      glamaJson.maintainers.some(
+        (maintainer) => maintainer?.email === 'reviewers@useorgx.com'
+      ),
+    'glama.json should keep an explicit maintainer email for external listing ownership'
   );
 
   const listingText = [
@@ -122,6 +124,10 @@ async function main() {
   const normalizedBase = metadataBaseUrl(configuredBaseUrl);
 
   await checkJsonEndpoint('server.json', `${normalizedBase}/server.json`);
+  await checkJsonEndpoint(
+    'glama.json',
+    `${normalizedBase}/.well-known/glama.json`
+  );
   await checkJsonEndpoint(
     'oauth-authorization-server',
     `${normalizedBase}/.well-known/oauth-authorization-server`
