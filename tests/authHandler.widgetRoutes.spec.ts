@@ -102,6 +102,26 @@ describe('authHandler widget compatibility routes', () => {
     }
   });
 
+  it('serves Glama connector ownership metadata from the well-known route', async () => {
+    const response = await authHandler.fetch(
+      new Request('https://mcp.useorgx.com/.well-known/glama.json'),
+      {
+        MCP_SERVER_URL: 'https://mcp.useorgx.com',
+        ORGX_WEB_URL: 'https://www.useorgx.com',
+      },
+      {} as ExecutionContext
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('application/json');
+    const body = (await response.json()) as {
+      $schema?: string;
+      maintainers?: Array<{ email?: string }>;
+    };
+    expect(body.$schema).toBe('https://glama.ai/mcp/schemas/connector.json');
+    expect(body.maintainers).toContainEqual({ email: 'reviewers@useorgx.com' });
+  });
+
   it('proxies /api/chatgpt/widgets requests through the assets binding', async () => {
     const assetsFetch = vi.fn(async (input: RequestInfo | URL) => {
       const url =
