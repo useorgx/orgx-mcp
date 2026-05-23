@@ -9,3 +9,14 @@ keys/
 # Node
 node_modules/
 dist/
+
+# Generated submission screenshots — regenerable via scripts/render-app-*.mjs
+public/screenshots/app-card/
+public/screenshots/app-mobile/
+
+# macOS metadata
+.DS_Store
+
+# Agent/tooling state — local-only
+.claude/
+.playwright-mcp/

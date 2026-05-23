@@ -2878,207 +2878,6 @@ export class OrgXMcp extends McpAgent<
     }
   }
 
-  private registerLegacyStrippedAliasTools(allowedTools: Set<string> | null) {
-    const contractAliases = [
-      ['bootstrap', 'orgx_bootstrap'],
-      ['inspect', 'orgx_inspect'],
-      ['search', 'orgx_search'],
-      ['attach', 'orgx_attach'],
-      ['act', 'orgx_act'],
-      ['write', 'orgx_write'],
-      ['submit_receipt', 'orgx_submit_receipt'],
-    ] as const;
-
-    for (const [aliasId, canonicalToolId] of contractAliases) {
-      if (
-        allowedTools &&
-        !allowedTools.has(aliasId) &&
-        !allowedTools.has(canonicalToolId)
-      ) {
-        continue;
-      }
-
-      const contract = getKnownToolContract(canonicalToolId);
-      if (!contract) continue;
-      const metaObj = contract._meta as Record<string, unknown> | undefined;
-      const isReadOnly = metaObj?.['openai/readOnlyHint'] === true;
-      const meta = {
-        ...contract._meta,
-        'openai/visibility': isReadOnly ? 'public' : 'private',
-        'mcp/securitySchemes': contract.securitySchemes,
-        preferred_replacement: canonicalToolId,
-      };
-
-      this.server.registerTool(
-        aliasId,
-        {
-          title: `${contract.title} (legacy alias)`,
-          description: `Legacy compatibility alias for ${canonicalToolId}. Prefer ${canonicalToolId} for new calls.`,
-          inputSchema: this.withClientContext(
-            contract.inputSchema ?? {}
-          ) as unknown as Record<string, import('zod').ZodTypeAny>,
-          annotations: contract.annotations,
-          _meta: meta,
-        },
-        async (args: Record<string, unknown>) =>
-          this.executeContractTool(
-            canonicalToolId,
-            args,
-            contract.securitySchemes,
-            allowedTools
-          )
-      );
-    }
-
-    if (
-      allowedTools &&
-      !allowedTools.has('emit_activity') &&
-      !allowedTools.has('orgx_emit_activity')
-    ) {
-      return;
-    }
-
-    const emitTool = CLIENT_INTEGRATION_TOOL_DEFINITIONS.find(
-      (tool) => tool.id === 'orgx_emit_activity'
-    );
-    if (!emitTool) return;
-
-    const emitSecuritySchemes =
-      emitTool.securitySchemes as readonly SecurityScheme[];
-    this.server.registerTool(
-      'emit_activity',
-      {
-        title: 'Emit OrgX Activity (legacy alias)',
-        description:
-          'Legacy compatibility alias for orgx_emit_activity. Prefer orgx_emit_activity for new calls.',
-        inputSchema: this.withClientContext(
-          emitTool.inputSchema as Record<string, unknown>
-        ) as unknown as Record<string, import('zod').ZodTypeAny>,
-        annotations: emitTool.annotations,
-        _meta: {
-          ...emitTool._meta,
-          'openai/visibility': 'private',
-          'mcp/securitySchemes': emitSecuritySchemes,
-          preferred_replacement: 'orgx_emit_activity',
-        },
-      },
-      async (args: Record<string, unknown>) => {
-        const startTime = Date.now();
-        const resolvedUserId = this.props?.userId ?? this.sessionAuth.userId;
-        const authSource: 'request' | 'session' | 'none' = this.props?.userId
-          ? 'request'
-          : this.sessionAuth.userId
-          ? 'session'
-          : 'none';
-
-        this.captureMcpToolEvent('mcp_tool_called', {
-          toolId: 'emit_activity',
-          toolFamily: 'client_integration',
-          userId: resolvedUserId,
-          authSource,
-        });
-
-        const authResponse = buildAuthRequiredResponse({
-          toolId: 'orgx_emit_activity',
-          securitySchemes: emitSecuritySchemes,
-          userId: resolvedUserId,
-          serverUrl: this.env.MCP_SERVER_URL,
-          featureDescription: 'use orgx emit activity',
-        });
-        if (authResponse) return authResponse;
-
-        return this.withOrgx(async () => {
-          try {
-            const { _context, ...toolArgs } = args;
-            const response = await callOrgxApiJson(
-              this.env,
-              '/api/client/live/activity',
-              {
-                method: 'POST',
-                body: JSON.stringify(toolArgs),
-              },
-              { userId: resolvedUserId }
-            );
-            const result = (await response.json()) as {
-              ok: boolean;
-              data?: Record<string, unknown>;
-              error?: string;
-              message?: string;
-            };
-            const latencyMs = Date.now() - startTime;
-            if (!result.ok) {
-              this.captureMcpToolEvent('mcp_tool_failed', {
-                toolId: 'emit_activity',
-                toolFamily: 'client_integration',
-                userId: resolvedUserId,
-                authSource,
-                ok: false,
-                latencyMs,
-                error:
-                  result.error ??
-                  result.message ??
-                  'client_integration_execution_failed',
-              });
-              return this.toolError(
-                result.error ??
-                  result.message ??
-                  'Client integration tool execution failed'
-              );
-            }
-
-            this.captureMcpToolEvent('mcp_tool_succeeded', {
-              toolId: 'emit_activity',
-              toolFamily: 'client_integration',
-              userId: resolvedUserId,
-              authSource,
-              ok: true,
-              latencyMs,
-            });
-
-            const data =
-              (result.data as Record<string, unknown> | undefined) ??
-              (result as unknown as Record<string, unknown>);
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: this.summarizeClientResult('orgx_emit_activity', data),
-                },
-              ],
-              structuredContent: {
-                ...data,
-                preferred_replacement: 'orgx_emit_activity',
-              },
-            } as CallToolResult;
-          } catch (error) {
-            this.captureMcpToolEvent('mcp_tool_failed', {
-              toolId: 'emit_activity',
-              toolFamily: 'client_integration',
-              userId: resolvedUserId,
-              authSource,
-              ok: false,
-              latencyMs: Date.now() - startTime,
-              error: error instanceof Error ? error.message : String(error),
-            });
-            return this.toolError(
-              error instanceof Error ? error.message : String(error),
-              {
-                code: 'client_integration_failed',
-                status:
-                  error instanceof OrgXApiError ? error.statusCode : undefined,
-                details: buildFailureDetails({
-                  toolId: 'emit_activity',
-                  error,
-                  args,
-                }),
-              }
-            );
-          }
-        });
-      }
-    );
-  }
-
   private buildBootstrapPayload(allowedTools: Set<string> | null) {
     const profile = this.props?.profile ?? 'full';
     const visibleTools = allowedTools
@@ -4238,8 +4037,11 @@ export class OrgXMcp extends McpAgent<
     // Register additive contract/introspection tools and safe wrappers
     this.registerContractTools(allowedTools);
 
-    // Route stale clients that strip the `orgx_` prefix to canonical v2 tools.
-    this.registerLegacyStrippedAliasTools(allowedTools);
+    // Note: previously registered legacy unprefixed aliases (bootstrap,
+    // inspect, search, attach, act, write, submit_receipt, emit_activity)
+    // were removed during the OpenAI MCP submission cleanup. They lacked
+    // per-annotation justifications and bloated the public tool surface.
+    // Clients should call the canonical orgx_-prefixed tools directly.
 
     // =========================================================================
     // CORE UTILITY TOOLS
@@ -7404,8 +7206,18 @@ export class OrgXMcp extends McpAgent<
           .string()
           .optional()
           .describe('Optional stable client-side reference used in ref_map and dependencies'),
-        title: z.string().optional().describe('Workstream title'),
-        name: z.string().optional().describe('Workstream name; alias for title'),
+        title: z
+          .string()
+          .optional()
+          .describe(
+            'Workstream title. REQUIRED on each workstream (provide either "title" or "name" — they are aliases).'
+          ),
+        name: z
+          .string()
+          .optional()
+          .describe(
+            'Workstream name; alias for "title". REQUIRED on each workstream when "title" is not provided.'
+          ),
         summary: z.string().optional().describe('Short workstream summary'),
         description: z.string().optional().describe('Workstream description'),
         persona: z.string().optional().describe('Workstream owner/persona label'),
@@ -7459,7 +7271,19 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Scaffold an initiative hierarchy',
         description:
-          'Turn an objective, roadmap, launch, or feature plan into executable workstreams, milestones, and tasks. Minimal call: title, workspace_id, optional objective_ids/goal_ids, optional workstreams, and mode. Agent-safe aliases are accepted and normalized: task priority urgent -> high; active task/milestone status -> in_progress. Also known as: scaffold project, create roadmap, generate execution plan. USE WHEN: user wants to plan a new initiative from scratch. IMPORTANT: goal_ids means objective UUIDs, not a separate goal entity; objective_ids is the preferred alias and is normalized to goal_ids for API compatibility. workspace_id is required unless the MCP session already has workspace context; resolve it with list_entities type=command_center or get_org_snapshot. NEXT: use mode="launch" to create and start agents, mode="scaffold" to create without launching, or mode="draft" to validate the plan without writes. DO NOT USE: for adding a single task to an existing initiative — use create_entity instead.',
+          'Turn an objective, roadmap, launch, or feature plan into executable workstreams, milestones, and tasks. Also known as: scaffold project, create roadmap, generate execution plan.\n\n' +
+          'Minimum required input: title.\n' +
+          'Conditionally required:\n' +
+          '  • workspace_id — REQUIRED unless the MCP session already carries workspace context (resolve via list_entities type=command_center or get_org_snapshot).\n' +
+          '  • objective_ids (or goal_ids) — REQUIRED only when workspace policy enforces a primary objective. objective_ids is the preferred alias; goal_ids carries the same content for API compatibility.\n\n' +
+          'Per-nested-entity rules (when workstreams[]/milestones[]/tasks[] are provided):\n' +
+          '  • Each workstream MUST have either "title" or "name" set (they are aliases — provide one).\n' +
+          '  • Each milestone MUST have "title" set.\n' +
+          '  • Each task MUST have "title" set.\n' +
+          '  • All other workstream/milestone/task fields are optional and can be omitted — the scaffold builder auto-fills defaults for missing domain/duration/owner/agent/budget.\n' +
+          '  • "ref" is a client-side label used inside this single call (in depends_on and ref_map). It is not persisted as an ID.\n\n' +
+          'Agent-safe aliases that are accepted and normalized server-side: task priority "urgent" → "high"; task/milestone status "active" → "in_progress".\n\n' +
+          'USE WHEN: user wants to plan a new initiative from scratch. NEXT: use mode="launch" to create and start agents (default), mode="scaffold" to create without launching, or mode="draft" to validate the plan without writes. DO NOT USE: for adding a single task to an existing initiative — use create_entity instead.',
         annotations: {
           readOnlyHint: false,
           destructiveHint: false,
