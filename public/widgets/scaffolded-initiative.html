@@ -763,10 +763,16 @@
     :root { --ox-primary: #6366f1; --ox-primary-rgb: 99, 102, 241; }
 
     /* Hierarchy Specifics */
-    .h-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--ox-border); }
+    .h-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--ox-border); transition: border-color 260ms var(--widget-motion-curve); }
     .h-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
     .h-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .h-icon { width: 48px; height: 48px; border-radius: 12px; background: rgba(var(--ox-primary-rgb), 0.1); border: 1px solid rgba(var(--ox-primary-rgb), 0.2); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
+    .h-icon { width: 48px; height: 48px; border-radius: 12px; background: rgba(var(--ox-primary-rgb), 0.1); border: 1px solid rgba(var(--ox-primary-rgb), 0.2); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); transition: background 260ms var(--widget-motion-curve), border-color 260ms var(--widget-motion-curve), box-shadow 260ms var(--widget-motion-curve); }
+    .h-header.is-launched { border-bottom-color: rgba(var(--ox-primary-rgb), 0.18); }
+    .h-header.is-launched .h-icon {
+      background: rgba(var(--ox-primary-rgb), 0.14);
+      border-color: rgba(var(--ox-primary-rgb), 0.34);
+      box-shadow: 0 0 24px rgba(var(--ox-primary-rgb), 0.24);
+    }
     
     .section-head {
       display: flex;
@@ -1438,7 +1444,15 @@
 
     
     .badge-id { font-family: var(--ox-mono); font-size: 0.53rem; padding: 2px 6px; border-radius: 999px; border: 1px solid var(--ox-border); color: var(--ox-text-muted); letter-spacing: 0.05em; line-height: 1; white-space: nowrap; }
-    .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary); font-family: var(--ox-mono); font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; border: 1px solid rgba(var(--ox-primary-rgb), 0.2); }
+    .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary); font-family: var(--ox-mono); font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; border: 1px solid rgba(var(--ox-primary-rgb), 0.2); width: fit-content; transition: background 240ms var(--widget-motion-curve), border-color 240ms var(--widget-motion-curve), color 240ms var(--widget-motion-curve); }
+    .status-pill.is-live {
+      background: rgba(var(--ox-primary-rgb), 0.14);
+      border-color: rgba(var(--ox-primary-rgb), 0.34);
+    }
+    .status-pill.is-live .status-dot {
+      animation: none;
+      box-shadow: 0 0 10px currentColor;
+    }
     .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; animation: pulse 2s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
   
@@ -3013,6 +3027,14 @@
       }
     };
     var data = isDemo ? (demoScenarios[demoScenario] || demoScenarios.default) : null;
+    var demoStatusOverride = queryParams.get('status');
+    if (isDemo && data && demoStatusOverride) {
+      data = JSON.parse(JSON.stringify(data));
+      data.initiative = Object.assign({}, data.initiative || {}, { status: demoStatusOverride });
+      if (data.hierarchy && data.hierarchy.initiative) {
+        data.hierarchy.initiative = Object.assign({}, data.hierarchy.initiative, { status: demoStatusOverride });
+      }
+    }
     var isLoading = !isDemo;
 
     var isLoadingOverride = queryParams.get('loading') === 'true';
@@ -3246,6 +3268,39 @@
       const s = (status || '').toString().toLowerCase().trim();
       return s === '' || s === 'draft' || s === 'scaffolded' || s === 'awaiting_launch' || s === 'pending';
     };
+    var getInitiativeViewState = (initiative, overrideStatus) => {
+      const rawStatus = overrideStatus || (initiative && initiative.status) || '';
+      const s = normalizeTextKey(rawStatus);
+      if (['active', 'launched', 'launching', 'in_progress', 'in progress', 'running', 'executing'].includes(s)) {
+        return { header: 'Initiative Launched', status: 'Live', tone: 'live' };
+      }
+      if (['complete', 'completed', 'done', 'success', 'succeeded'].includes(s)) {
+        return { header: 'Initiative Complete', status: 'Complete', tone: 'complete' };
+      }
+      if (['paused', 'cancelled', 'canceled'].includes(s)) {
+        return { header: 'Initiative Paused', status: 'Paused', tone: 'paused' };
+      }
+      return {
+        header: 'Initiative Scaffolded',
+        status: rawStatus && String(rawStatus).trim() ? String(rawStatus).trim() : 'Scaffolded',
+        tone: 'scaffolded',
+      };
+    };
+    var applyInitiativeHeaderState = (state) => {
+      const nextState = state || getInitiativeViewState(null);
+      const header = document.querySelector('[data-scaffold-header]');
+      const kicker = document.querySelector('[data-scaffold-kicker]');
+      const statusPill = document.querySelector('[data-scaffold-status-pill]');
+      const statusLabel = document.querySelector('[data-scaffold-status-label]');
+      if (header) header.classList.toggle('is-launched', nextState.tone === 'live');
+      if (kicker) kicker.textContent = nextState.header;
+      if (statusPill) {
+        statusPill.classList.toggle('is-live', nextState.tone === 'live');
+        statusPill.setAttribute('aria-label', 'Initiative status: ' + nextState.status);
+      }
+      if (statusLabel) statusLabel.textContent = nextState.status;
+      if (typeof document !== 'undefined') document.title = nextState.header + ' - OrgX';
+    };
 
     // SVG atoms reused by the strip in multiple states.
     var LAUNCH_STRIP_CHECK_SVG =
@@ -3323,6 +3378,7 @@
 
       const transitionToLaunched = () => {
         if (!strip) return;
+        applyInitiativeHeaderState(getInitiativeViewState(scaffold && scaffold.initiative, 'launched'));
         const initiativeId = (scaffold && scaffold.initiative && (scaffold.initiative.raw_id || scaffold.initiative.id)) || '';
         // Absolute URL. The widget runs inside claudemcpcontent.com in
         // MCP sandboxes, so a relative /live/… path resolves to the wrong
@@ -3351,6 +3407,7 @@
 
         strip.classList.remove('is-launching', 'is-ready');
         strip.classList.add('is-launched');
+        strip.setAttribute('aria-label', 'Initiative launched');
         strip.innerHTML = `
           <div class="launch-strip__stage" aria-hidden="true">
             <span class="launch-strip__particle" style="left:18%; animation-delay:0ms"></span>
@@ -3521,20 +3578,24 @@
       }).join('');
 
       const initiativeUrl = data.live_url || (data.initiative.id ? `https://useorgx.com/live/${encodeURIComponent(data.initiative.id)}` : 'https://useorgx.com/live?view=mission-control');
+      const initiativeViewState = getInitiativeViewState(scaffold.initiative);
+      const headerStateClass = initiativeViewState.tone === 'live' ? ' is-launched' : '';
+      const statusStateClass = initiativeViewState.tone === 'live' ? ' is-live' : '';
+      if (typeof document !== 'undefined') document.title = initiativeViewState.header + ' - OrgX';
 
       injectHtml(`
         <div class="ox-card animate-in">
           <div class="ox-card-inner">
-            <div class="h-header">
+            <div class="h-header${headerStateClass}" data-scaffold-header>
               <div class="h-icon">${icons.initiative(24)}</div>
               <div class="h-copy">
-                <div class="ox-eyebrow" style="margin-bottom:4px;">Initiative Scaffolded</div>
+                <div class="ox-eyebrow" style="margin-bottom:4px;" data-scaffold-kicker>${escapeHtml(initiativeViewState.header)}</div>
                 <div class="h-title-row">
                   <h2 class="ox-title" style="font-size:1.3rem;">${escapeHtml(scaffold.initiative.title)}</h2>
                   ${renderIdBadge(scaffold.initiative.display_id, scaffold.initiative.raw_id)}
                 </div>
-                <div class="status-pill">
-                  <div class="status-dot"></div> ${escapeHtml(scaffold.initiative.status)}
+                <div class="status-pill${statusStateClass}" data-scaffold-status-pill aria-label="Initiative status: ${escapeHtml(initiativeViewState.status)}">
+                  <div class="status-dot"></div> <span data-scaffold-status-label>${escapeHtml(initiativeViewState.status)}</span>
                 </div>
               </div>
             </div>
