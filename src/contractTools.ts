@@ -125,20 +125,20 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_write',
     title: 'Write OrgX Entity',
     description:
-      'Create or update durable OrgX records using canonical snake_case fields.\n\n' +
-      'Per-type required fields (operation=create):\n' +
-      '  • type="initiative" → REQUIRES title (or name). Recommended: summary, workspace_id, goal_ids (if workspace enforces a primary objective).\n' +
-      '  • type="workstream" → REQUIRES title (or name) + initiative_id.\n' +
-      '  • type="milestone"  → REQUIRES title (or name) + workstream_id.\n' +
-      '  • type="task"       → REQUIRES title (or name) + workstream_id (initiative_id and milestone_id are auto-resolved when present).\n' +
-      '  • type="decision"   → REQUIRES title (or name). Recommended: context, initiative_id.\n' +
-      '  • type="artifact"   → REQUIRES entity_type + entity_id (or task_id) + artifact_type + one of: artifact_url | external_url | preview_markdown. Recommended: name, description.\n' +
-      '  • type="blocker"    → REQUIRES run_id and a description of what is blocking the agent run. Optional: step_id, blocker_type, resolution.\n' +
-      '  • type="skill" | "studio_brand" | "studio_content" → REQUIRES title (or name). Other fields vary by subtype (use metadata for sub-type-specific data).\n\n' +
+      'Create or update one OrgX record (snake_case fields).\n\n' +
       'Per-operation rules:\n' +
-      '  • operation="create" (default) — uses the per-type required fields above.\n' +
-      '  • operation="update" — REQUIRES id AND fields (the patch object). Other top-level fields are ignored.\n\n' +
-      'USE WHEN: adding or editing a task, milestone, decision, artifact, skill, brand, or content entity. NEXT: use orgx_act when the new or edited record should launch, pause, complete, or validate. DO NOT USE WHEN: changing lifecycle state or attaching proof; use orgx_act or orgx_attach.',
+      '  • create (default) — uses the per-type required fields below.\n' +
+      '  • update — REQUIRES id + fields (patch object). Other top-level fields are ignored.\n\n' +
+      'Per-type required fields on create:\n' +
+      '  initiative: title (or name).\n' +
+      '  workstream: title + initiative_id.\n' +
+      '  milestone: title + workstream_id.\n' +
+      '  task: title + workstream_id (initiative_id/milestone_id auto-resolve when present).\n' +
+      '  decision: title. Recommended: context, initiative_id.\n' +
+      '  artifact: entity_type + entity_id (or task_id) + artifact_type + one of artifact_url|external_url|preview_markdown.\n' +
+      '  blocker: run_id + description (via metadata). Optional: step_id, blocker_type, resolution.\n' +
+      '  skill, studio_brand, studio_content: title. Subtype fields go in metadata.\n\n' +
+      'USE WHEN: adding/editing records. NEXT: orgx_act to launch/complete the record. DO NOT USE for lifecycle changes — use orgx_act or orgx_attach.',
     inputSchema: {
       operation: z.enum(['create', 'update']).optional().describe('Write operation. Defaults to "create". Set "update" (with id + fields) to patch an existing entity.'),
       type: z.string().min(1).describe('Entity type to write: task, milestone, decision, artifact, skill, blocker, studio_brand, studio_content, initiative, workstream, or objective. See top-level description for per-type required fields.'),
@@ -211,23 +211,19 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_act',
     title: 'Act On OrgX Entity',
     description:
-      'Run lifecycle, validation, completion, delete, dry-run, or proof actions on an existing OrgX entity.\n\n' +
-      'Valid (type → action) pairs:\n' +
-      '  • initiative → launch | pause | resume | complete | archive | update | delete\n' +
-      '  • milestone  → start | complete | flag_risk | cancel | ship_batch | update | delete\n' +
-      '  • workstream → start | pause | resume | block | complete | reassign_streams | update | delete\n' +
-      '  • task       → start | complete | complete_with_proof | block | unblock | reopen | update | delete\n' +
-      '  • objective  → pause | resume | complete | archive | update | delete\n' +
-      '  • playbook   → activate | archive | update | delete\n' +
-      '  • decision   → approve | decline | supersede | cancel | update | delete\n' +
-      '  • studio     → validate (with spec)\n\n' +
-      'Per-action input requirements:\n' +
-      '  • action=update → REQUIRES the "fields" object with the entity fields to patch.\n' +
-      '  • action=complete_with_proof | ship_batch → REQUIRES the "artifact" object describing the proof artifact (artifact_type + url/preview).\n' +
-      '  • action=validate (studio) → REQUIRES "spec" object with the studio spec payload to validate.\n' +
-      '  • action=block | flag_risk | decline | cancel | delete → "note" is strongly recommended.\n' +
-      '  • All lifecycle actions accept "dry_run=true" for a preview where supported.\n\n' +
-      'USE WHEN: launching, pausing, completing, validating, deleting, shipping, or changing entity state. NEXT: use orgx_inspect or orgx_search to verify resulting state, then orgx_submit_receipt for durable proof when needed. DO NOT USE WHEN: creating records; use orgx_write.',
+      'Run a lifecycle, validation, completion, or proof action on one OrgX entity. Per-action required inputs:\n' +
+      '  • update → "fields" patch object.\n' +
+      '  • complete_with_proof, ship_batch → "artifact" (artifact_type + url/preview).\n' +
+      '  • validate (studio) → "spec" payload.\n' +
+      '  • block, flag_risk, decline, cancel, delete → "note" strongly recommended.\n' +
+      '  • dry_run=true previews any lifecycle action without mutating where supported.\n\n' +
+      'Allowed (type → action) pairs (others return an error):\n' +
+      '  initiative: launch|pause|resume|complete|archive|update|delete\n' +
+      '  milestone: start|complete|flag_risk|cancel|ship_batch|update|delete\n' +
+      '  workstream: start|pause|resume|block|complete|reassign_streams|update|delete\n' +
+      '  task: start|complete|complete_with_proof|block|unblock|reopen|update|delete\n' +
+      '  objective, playbook, decision, studio: see field descriptions.\n\n' +
+      'USE WHEN: changing entity state. NEXT: orgx_submit_receipt for durable proof. DO NOT USE for creating records — use orgx_write.',
     inputSchema: {
       type: lifecycleEntityTypeEnum.describe('Target entity type (initiative, milestone, workstream, task, objective, playbook, decision, or studio).'),
       id: z.string().min(1).describe('Target entity UUID or short ID prefix (8+ hex chars).'),
@@ -373,24 +369,17 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_submit_receipt',
     title: 'Submit OrgX Receipt',
     description:
-      'Submit durable proof, attribution, quality, or outcome receipt metadata.\n\n' +
-      'Required inputs: receipt_type AND summary.\n' +
-      'Strongly recommended: one entity anchor (entity_type + entity_id, OR artifact_id) AND at least one evidence URL inside the evidence object so the receipt is verifiable.\n\n' +
-      'Recognized receipt_type values:\n' +
-      '  • "proof"      — generic completion proof (e.g. merged PR, deployed change).\n' +
-      '  • "outcome"    — measurable result (deal closed, meeting booked, metric delta).\n' +
-      '  • "quality"    — review/score receipt (code review, design critique).\n' +
-      '  • "attribution"— credit-assignment receipt linking work to revenue/value.\n' +
-      '  • "learning"   — distilled lesson or pattern captured from the work.\n\n' +
-      'Recognized evidence shapes (all keys optional, mix and match):\n' +
-      '  • { prs: string[] }       — GitHub PR URLs.\n' +
-      '  • { deploys: string[] }   — deployment URLs / IDs.\n' +
-      '  • { test_runs: string[] } — CI run URLs.\n' +
-      '  • { metrics: { name: string, value: number, unit?: string }[] } — quantitative outcomes.\n' +
-      '  • { links: string[] }     — generic external evidence URLs.\n' +
-      '  • { notes: string }       — free-text supporting note.\n\n' +
-      'Idempotency: pass idempotency_key when retrying the same logical receipt; the server deduplicates.\n\n' +
-      'USE WHEN: closing the loop on agent work with provenance and measurable evidence. NEXT: use orgx_recommend or orgx_search to show the next priority or confirm the updated work graph. DO NOT USE WHEN: merely emitting telemetry; use orgx_emit_activity.',
+      'Submit a durable receipt (proof, outcome, quality, attribution, or learning) anchored to an OrgX entity or artifact.\n\n' +
+      'Required: receipt_type + summary. Strongly recommended: one anchor (entity_type+entity_id OR artifact_id) AND at least one verifiable URL inside evidence.\n\n' +
+      'Recognized receipt_type: "proof" (completion proof), "outcome" (measurable result), "quality" (review/score), "attribution" (credit link to revenue/value), "learning" (distilled lesson). Custom keys also accepted.\n\n' +
+      'Recognized evidence shapes (mix and match):\n' +
+      '  { prs: string[] } — GitHub PR URLs.\n' +
+      '  { deploys: string[] } — deployment URLs.\n' +
+      '  { test_runs: string[] } — CI run URLs.\n' +
+      '  { metrics: { name, value, unit? }[] } — quantitative outcomes.\n' +
+      '  { links: string[] }, { notes: string } — supporting URLs/text.\n\n' +
+      'Pass idempotency_key when retrying — server deduplicates.\n\n' +
+      'USE WHEN: closing the loop on agent work with provenance. NEXT: orgx_recommend or orgx_search to find the next priority. DO NOT USE for telemetry — use orgx_emit_activity.',
     inputSchema: {
       workspace_id: z.string().optional().describe('Workspace UUID. Defaults to the MCP session\'s workspace when omitted.'),
       entity_type: z.string().optional().describe('Related entity type (initiative, workstream, milestone, task, decision). Required if no artifact_id is provided — pair with entity_id.'),
