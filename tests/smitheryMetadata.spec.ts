@@ -91,22 +91,24 @@ describe('Smithery metadata coverage', () => {
     expect(forwardedAnnotations?.length).toBeGreaterThanOrEqual(4);
   });
 
-  it('keeps stripped compatibility aliases for stale MCP clients', () => {
-    expect(indexSource).toContain('registerLegacyStrippedAliasTools');
-    for (const alias of [
-      "'bootstrap'",
-      "'inspect'",
-      "'search'",
-      "'attach'",
-      "'act'",
-      "'write'",
-      "'submit_receipt'",
-      "'emit_activity'",
+  it('exposes canonical orgx_-prefixed tools and not their unprefixed legacy aliases', () => {
+    // The unprefixed aliases (bootstrap, inspect, search, attach, act, write,
+    // submit_receipt, emit_activity) were removed during the OpenAI MCP
+    // submission cleanup so the public tool surface only exposes the
+    // documented orgx_-prefixed contracts.
+    expect(indexSource).not.toContain('registerLegacyStrippedAliasTools(');
+    for (const canonical of [
+      "'orgx_bootstrap'",
+      "'orgx_inspect'",
+      "'orgx_search'",
+      "'orgx_attach'",
+      "'orgx_act'",
+      "'orgx_write'",
+      "'orgx_submit_receipt'",
+      "'orgx_emit_activity'",
     ]) {
-      expect(indexSource).toContain(alias);
+      expect(indexSource).toContain(canonical);
     }
-    expect(indexSource).toContain('preferred_replacement: canonicalToolId');
-    expect(indexSource).toContain("preferred_replacement: 'orgx_emit_activity'");
   });
 
   it('gives every top-level shared tool parameter a description', () => {
@@ -184,7 +186,10 @@ describe('Smithery metadata coverage', () => {
       scaffold_initiative: [
         'annotations: {',
         'goal_ids: z',
-        'goal_ids means objective UUIDs',
+        // The scaffold_initiative top-level description spells out that the
+        // legacy 'goal_ids' alias carries the same content as objective_ids
+        // for API compatibility.
+        'goal_ids carries the same content for API compatibility',
         'Workspace/command center UUID to scope the initiative hierarchy. Required unless the MCP session already has workspace context',
       ],
       get_relevant_learnings: [

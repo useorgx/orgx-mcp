@@ -125,41 +125,54 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_write',
     title: 'Write OrgX Entity',
     description:
-      'Create or update durable OrgX records using canonical snake_case fields. USE WHEN: adding or editing a task, milestone, decision, artifact, skill, brand, or content entity. NEXT: use orgx_act when the new or edited record should launch, pause, complete, or validate. DO NOT USE WHEN: changing lifecycle state or attaching proof; use orgx_act or orgx_attach.',
+      'Create or update one OrgX record (snake_case fields).\n\n' +
+      'Per-operation rules:\n' +
+      '  • create (default) — uses the per-type required fields below.\n' +
+      '  • update — REQUIRES id + fields (patch object). Other top-level fields are ignored.\n\n' +
+      'Per-type required fields on create:\n' +
+      '  initiative: title (or name).\n' +
+      '  workstream: title + initiative_id.\n' +
+      '  milestone: title + workstream_id.\n' +
+      '  task: title + workstream_id (initiative_id/milestone_id auto-resolve when present).\n' +
+      '  decision: title. Recommended: context, initiative_id.\n' +
+      '  artifact: entity_type + entity_id (or task_id) + artifact_type + one of artifact_url|external_url|preview_markdown.\n' +
+      '  blocker: run_id + description (via metadata). Optional: step_id, blocker_type, resolution.\n' +
+      '  skill, studio_brand, studio_content: title. Subtype fields go in metadata.\n\n' +
+      'USE WHEN: adding/editing records. NEXT: orgx_act to launch/complete the record. DO NOT USE for lifecycle changes — use orgx_act or orgx_attach.',
     inputSchema: {
-      operation: z.enum(['create', 'update']).optional().describe('Write operation; default create'),
-      type: z.string().min(1).describe('Entity type, such as task, milestone, decision, artifact, skill, studio_brand, or studio_content'),
-      id: z.string().optional().describe('Entity ID for operation=update'),
-      title: z.string().optional().describe('Title/name for created records'),
-      name: z.string().optional().describe('Alternative name/title'),
-      summary: z.string().optional().describe('Summary'),
-      description: z.string().optional().describe('Description'),
-      fields: z.record(z.unknown()).optional().describe('Fields to update when operation=update'),
-      initiative_id: z.string().optional().describe('Parent initiative UUID'),
-      workstream_id: z.string().optional().describe('Parent workstream UUID'),
-      milestone_id: z.string().optional().describe('Parent milestone UUID; task parents are auto-resolved server-side where available'),
-      workspace_id: z.string().optional().describe('Workspace UUID'),
-      goal_ids: z.array(z.string()).optional().describe('Goal UUIDs for initiative/workstream/milestone/task creation when the workspace enforces a primary goal'),
-      priority: z.enum(['low', 'medium', 'high', 'urgent']).optional().describe('Priority'),
-      due_date: z.string().optional().describe('Due date as YYYY-MM-DD'),
-      status: z.string().optional().describe('Initial workflow status; common agent aliases such as active are normalized per entity type'),
-      entity_type: z.string().optional().describe('Artifact target entity type, such as initiative, workstream, milestone, task, or decision'),
-      entity_id: z.string().optional().describe('Artifact target entity UUID'),
-      task_id: z.string().optional().describe('Artifact target task UUID shortcut'),
-      artifact_type: z.string().optional().describe('Artifact type code, such as eng.demo_report or proof.link'),
-      artifact_url: z.string().optional().describe('Internal artifact URL'),
-      external_url: z.string().optional().describe('External artifact URL'),
-      preview_markdown: z.string().optional().describe('Artifact markdown preview'),
-      run_id: z.string().optional().describe('Agent run UUID for blocker creation'),
-      step_id: z.string().optional().describe('Optional agent run step UUID for blocker creation'),
-      blocker_type: z.string().optional().describe('Blocker category/type when type=blocker'),
-      resolution: z.string().optional().describe('Blocker resolution text when known'),
-      live_visibility: z.enum(['private', 'public']).optional().describe('Initiative live-link visibility'),
-      live_public: z.boolean().optional().describe('Shortcut to publish an initiative live link'),
-      live_reveal_title: z.boolean().optional().describe('Allow public live-link visitors to see the initiative title'),
-      metadata: z.record(z.unknown()).optional().describe('Optional metadata payload'),
-      idempotency_key: z.string().optional().describe('Strongly recommended client-generated idempotency key for safe retries'),
-      session_id: z.string().optional().describe('Optional bootstrap/session identifier'),
+      operation: z.enum(['create', 'update']).optional().describe('Write operation. Defaults to "create". Set "update" (with id + fields) to patch an existing entity.'),
+      type: z.string().min(1).describe('Entity type to write: task, milestone, decision, artifact, skill, blocker, studio_brand, studio_content, initiative, workstream, or objective. See top-level description for per-type required fields.'),
+      id: z.string().optional().describe('REQUIRED when operation="update". Target entity UUID to patch.'),
+      title: z.string().optional().describe('REQUIRED on create (provide either "title" or "name" — they are aliases). Display title of the new entity.'),
+      name: z.string().optional().describe('Alternative to "title" on create. REQUIRED on create when "title" is not provided.'),
+      summary: z.string().optional().describe('Short description shown in lists and previews. Recommended on create.'),
+      description: z.string().optional().describe('Longer-form description used in detail views.'),
+      fields: z.record(z.unknown()).optional().describe('REQUIRED when operation="update". Map of entity fields to patch (only include fields you want to change).'),
+      initiative_id: z.string().optional().describe('Parent initiative UUID. REQUIRED when type="workstream". Optional context for tasks/milestones/artifacts to associate them with an initiative.'),
+      workstream_id: z.string().optional().describe('Parent workstream UUID. REQUIRED when type="milestone" or type="task".'),
+      milestone_id: z.string().optional().describe('Optional parent milestone UUID for tasks; auto-resolved server-side from workstream context when omitted.'),
+      workspace_id: z.string().optional().describe('Workspace UUID. REQUIRED when the MCP session does not already carry workspace context (resolve via list_entities type=command_center or orgx_inspect type=workspace).'),
+      goal_ids: z.array(z.string()).optional().describe('Objective UUIDs for initiative/workstream/milestone/task creation. REQUIRED when the workspace enforces a primary objective. Resolve via orgx_inspect type=objective.'),
+      priority: z.enum(['low', 'medium', 'high', 'urgent']).optional().describe('Priority. "urgent" is normalized to "high" server-side.'),
+      due_date: z.string().optional().describe('Due date as YYYY-MM-DD.'),
+      status: z.string().optional().describe('Initial workflow status; common agent aliases such as "active" are normalized per entity type ("active" → "in_progress").'),
+      entity_type: z.string().optional().describe('REQUIRED when type="artifact". Entity type to attach the artifact to (initiative, workstream, milestone, task, or decision).'),
+      entity_id: z.string().optional().describe('REQUIRED when type="artifact" (unless task_id is provided). UUID of the entity to attach the artifact to.'),
+      task_id: z.string().optional().describe('Shortcut for attaching an artifact directly to a task. Use instead of entity_type+entity_id when type="artifact" and the target is a task.'),
+      artifact_type: z.string().optional().describe('REQUIRED when type="artifact". Artifact type code (e.g. "eng.demo_report", "proof.link", "doc.spec", "note.text").'),
+      artifact_url: z.string().optional().describe('Internal artifact URL (e.g. /api/artifacts/...). One of artifact_url, external_url, or preview_markdown is required when type="artifact".'),
+      external_url: z.string().optional().describe('External artifact URL (https://). One of artifact_url, external_url, or preview_markdown is required when type="artifact".'),
+      preview_markdown: z.string().optional().describe('Inline markdown preview of artifact content. One of artifact_url, external_url, or preview_markdown is required when type="artifact".'),
+      run_id: z.string().optional().describe('REQUIRED when type="blocker". Agent run UUID the blocker applies to.'),
+      step_id: z.string().optional().describe('Optional agent run step UUID for blocker creation.'),
+      blocker_type: z.string().optional().describe('Blocker category/type when type="blocker" (e.g. "missing_input", "permission", "external_dependency").'),
+      resolution: z.string().optional().describe('Blocker resolution text when known. Used to mark a blocker as resolved.'),
+      live_visibility: z.enum(['private', 'public']).optional().describe('Initiative live-link visibility. Only applies when type="initiative".'),
+      live_public: z.boolean().optional().describe('Shortcut to publish an initiative live link (sets live_visibility="public"). Only applies when type="initiative".'),
+      live_reveal_title: z.boolean().optional().describe('When true, public live-link visitors see the initiative title. Only applies when type="initiative" with live_visibility="public".'),
+      metadata: z.record(z.unknown()).optional().describe('Free-form object for type-specific metadata. Schema varies per entity type (e.g. for skills: { capabilities, guardrails, channels }; for studio_brand: { tokens, voice, exemplars }).'),
+      idempotency_key: z.string().optional().describe('Strongly recommended client-generated idempotency key for safe retries. Same key returns the same result without creating a duplicate.'),
+      session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
@@ -198,21 +211,57 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_act',
     title: 'Act On OrgX Entity',
     description:
-      'Run lifecycle, validation, completion, delete, dry-run, or proof actions on an existing OrgX entity. USE WHEN: launching, pausing, completing, validating, deleting, shipping, or changing entity state. NEXT: use orgx_inspect or orgx_search to verify resulting state, then orgx_submit_receipt for durable proof when needed. DO NOT USE WHEN: creating records; use orgx_write.',
+      'Run a lifecycle, validation, completion, or proof action on one OrgX entity. Per-action required inputs:\n' +
+      '  • update → "fields" patch object.\n' +
+      '  • complete_with_proof, ship_batch → "artifact" (artifact_type + url/preview).\n' +
+      '  • validate (studio) → "spec" payload.\n' +
+      '  • block, flag_risk, decline, cancel, delete → "note" strongly recommended.\n' +
+      '  • dry_run=true previews any lifecycle action without mutating where supported.\n\n' +
+      'Allowed (type → action) pairs (others return an error):\n' +
+      '  initiative: launch|pause|resume|complete|archive|update|delete\n' +
+      '  milestone: start|complete|flag_risk|cancel|ship_batch|update|delete\n' +
+      '  workstream: start|pause|resume|block|complete|reassign_streams|update|delete\n' +
+      '  task: start|complete|complete_with_proof|block|unblock|reopen|update|delete\n' +
+      '  objective, playbook, decision, studio: see field descriptions.\n\n' +
+      'USE WHEN: changing entity state. NEXT: orgx_submit_receipt for durable proof. DO NOT USE for creating records — use orgx_write.',
     inputSchema: {
-      type: lifecycleEntityTypeEnum.describe('Target entity type'),
-      id: z.string().min(1).describe('Target entity UUID or short ID prefix'),
-      action: z.string().min(1).describe('Action, such as launch, pause, complete, complete_with_proof, update, delete, validate, ship_batch, or reassign_streams'),
-      fields: z.record(z.unknown()).optional().describe('Patch fields for action=update'),
-      note: z.string().optional().describe('Optional action note or reason'),
-      dry_run: z.boolean().optional().describe('Preview risky actions without mutating where supported'),
-      force: z.boolean().optional().describe('Force action where server supports override semantics'),
-      spec: z.record(z.unknown()).optional().describe('Spec payload for studio validation'),
-      artifact: z.record(z.unknown()).optional().describe('Proof artifact payload for ship_batch or completion flows'),
-      verification: z.array(z.string()).optional().describe('Verification evidence for completion flows'),
-      quality_score: z.number().min(0).max(5).optional().describe('Quality score for proof flows'),
-      idempotency_key: z.string().optional().describe('Optional idempotency key for safe retries'),
-      session_id: z.string().optional().describe('Optional bootstrap/session identifier'),
+      type: lifecycleEntityTypeEnum.describe('Target entity type (initiative, milestone, workstream, task, objective, playbook, decision, or studio).'),
+      id: z.string().min(1).describe('Target entity UUID or short ID prefix (8+ hex chars).'),
+      action: z
+        .enum([
+          'launch',
+          'pause',
+          'resume',
+          'complete',
+          'complete_with_proof',
+          'archive',
+          'start',
+          'flag_risk',
+          'cancel',
+          'block',
+          'unblock',
+          'reopen',
+          'activate',
+          'approve',
+          'decline',
+          'supersede',
+          'update',
+          'delete',
+          'validate',
+          'ship_batch',
+          'reassign_streams',
+        ])
+        .describe('Lifecycle action to execute on the target entity. Must be valid for the given type — see tool description for the (type → action) matrix.'),
+      fields: z.record(z.unknown()).optional().describe('REQUIRED when action=update. Map of entity fields to patch (e.g. { name?: string, description?: string, owner_id?: string, status?: string, due_date?: string }). Only include fields you want to change.'),
+      note: z.string().optional().describe('Strongly recommended for destructive or blocking actions (block, flag_risk, decline, supersede, cancel, delete). Free-text rationale shown in audit history and downstream agent context.'),
+      dry_run: z.boolean().optional().describe('Preview risky actions without mutating where supported. Returns the diff/plan without applying.'),
+      force: z.boolean().optional().describe('Force action where server supports override semantics (skips pre-flight checks).'),
+      spec: z.record(z.unknown()).optional().describe('REQUIRED when action=validate. Spec payload for studio validation (shape varies per studio entity subtype).'),
+      artifact: z.record(z.unknown()).optional().describe('REQUIRED when action=complete_with_proof or action=ship_batch. Proof artifact payload. Expected shape: { artifact_type: string (e.g. "eng.demo_report", "proof.link"), artifact_url?: string, external_url?: string, preview_markdown?: string, name?: string, description?: string }.'),
+      verification: z.array(z.string()).optional().describe('Optional list of verification evidence URLs/IDs for completion flows.'),
+      quality_score: z.number().min(0).max(5).optional().describe('Quality score (0-5) attached to the action when used in proof/completion flows.'),
+      idempotency_key: z.string().optional().describe('Optional client-supplied idempotency key for safe retries. Same key returns the same result without re-executing.'),
+      session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
     },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
@@ -225,16 +274,23 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_plan',
     title: 'Manage OrgX Plan Session',
     description:
-      'Start, resume, edit, improve, or complete a tracked OrgX planning session. USE WHEN: work is still in planning or should become executable context. NEXT: use orgx_write or orgx_act after the plan is accepted and needs durable execution state. DO NOT USE WHEN: directly scaffolding a full initiative hierarchy; use scaffold_initiative for that compatibility path.',
+      'Start, resume, edit, improve, or complete a tracked OrgX planning session.\n\n' +
+      'Per-action input requirements:\n' +
+      '  • action="start"       → REQUIRES feature_name. Optional: initial_plan (markdown to seed the session).\n' +
+      '  • action="resume"      → REQUIRES session_id.\n' +
+      '  • action="improve"     → REQUIRES session_id AND plan_content (the current draft to critique).\n' +
+      '  • action="record_edit" → REQUIRES session_id AND edit_summary (one-line description of the change).\n' +
+      '  • action="complete"    → REQUIRES session_id AND plan_content (the final accepted plan). Optional: attach_to (target entity to link the completed plan to).\n\n' +
+      'USE WHEN: work is still in planning or should become executable context. NEXT: use orgx_write or orgx_act after the plan is accepted and needs durable execution state. DO NOT USE WHEN: directly scaffolding a full initiative hierarchy; use scaffold_initiative for that compatibility path.',
     inputSchema: {
-      action: z.enum(['start', 'resume', 'improve', 'record_edit', 'complete']).describe('Planning action'),
-      session_id: z.string().optional().describe('Plan session UUID or orgx://plan_session URI'),
-      feature_name: z.string().optional().describe('Feature or plan name for action=start'),
-      initial_plan: z.string().optional().describe('Initial plan for action=start'),
-      plan_content: z.string().optional().describe('Plan content for improve/complete'),
-      edit_summary: z.string().optional().describe('Edit summary for record_edit'),
-      attach_to: z.record(z.unknown()).optional().describe('Optional target attachment for completed plans'),
-      idempotency_key: z.string().optional().describe('Optional idempotency key for safe retries'),
+      action: z.enum(['start', 'resume', 'improve', 'record_edit', 'complete']).describe('Planning action to perform. See top-level description for per-action required fields.'),
+      session_id: z.string().optional().describe('Plan session UUID or orgx://plan_session/<uuid> URI. REQUIRED for action=resume | improve | record_edit | complete. Omit for action=start.'),
+      feature_name: z.string().optional().describe('Feature or plan name. REQUIRED when action=start.'),
+      initial_plan: z.string().optional().describe('Markdown plan content to seed the new session. Optional on action=start; the session can also be started empty and filled via improve/record_edit.'),
+      plan_content: z.string().optional().describe('Current/final plan markdown. REQUIRED when action=improve (the draft to critique) or action=complete (the final accepted plan).'),
+      edit_summary: z.string().optional().describe('One-line description of the change being recorded. REQUIRED when action=record_edit.'),
+      attach_to: z.record(z.unknown()).optional().describe('Optional target to link the completed plan to when action=complete. Shape: { entity_type: "initiative" | "workstream" | "task", entity_id: string }.'),
+      idempotency_key: z.string().optional().describe('Optional idempotency key for safe retries. Same key returns the same result without creating duplicate session state.'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
@@ -249,17 +305,23 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_spawn',
     title: 'Spawn OrgX Agent Work',
     description:
-      'Guard, classify, spawn, or hand off specialist agent work. USE WHEN: explicitly delegating work to an OrgX agent or checking if delegation is allowed. NEXT: use orgx_inspect or orgx_search to monitor the delegated work, then orgx_submit_receipt for proof. DO NOT USE WHEN: only creating a task row; use orgx_write.',
+      'Guard, classify, spawn, or hand off specialist agent work.\n\n' +
+      'Per-action input requirements:\n' +
+      '  • action="spawn" (default when action omitted) → Spawn from an existing task: REQUIRES task_id. Spawn ad-hoc: REQUIRES title AND instructions (and recommended agent_type).\n' +
+      '  • action="handoff"  → REQUIRES task_id AND agent_type (the target agent to hand off to). Optional: instructions to override.\n' +
+      '  • action="guard"    → REQUIRES agent_type. Returns whether spawning is permitted under current policy/budget for that agent.\n' +
+      '  • action="classify" → REQUIRES title OR task_id. Returns the recommended agent_type and model tier without spawning.\n\n' +
+      'USE WHEN: explicitly delegating work to an OrgX agent or checking if delegation is allowed. NEXT: use orgx_inspect or orgx_search to monitor the delegated work, then orgx_submit_receipt for proof. DO NOT USE WHEN: only creating a task row; use orgx_write.',
     inputSchema: {
-      action: z.enum(['guard', 'spawn', 'handoff', 'classify']).optional().describe('Spawn operation; default spawn'),
-      title: z.string().optional().describe('Task title for spawn/handoff'),
-      task_id: z.string().optional().describe('Existing task UUID'),
-      initiative_id: z.string().optional().describe('Initiative UUID scope'),
-      workspace_id: z.string().optional().describe('Workspace UUID scope'),
-      agent_type: z.string().optional().describe('Requested agent type/domain'),
-      instructions: z.string().optional().describe('Delegation instructions'),
-      idempotency_key: z.string().optional().describe('Optional idempotency key for safe retries'),
-      session_id: z.string().optional().describe('Optional bootstrap/session identifier'),
+      action: z.enum(['guard', 'spawn', 'handoff', 'classify']).optional().describe('Spawn operation. Defaults to "spawn". See top-level description for per-action required fields.'),
+      title: z.string().optional().describe('Task title. REQUIRED for ad-hoc spawn (action=spawn without task_id) or action=classify without task_id. Used as the human-readable label of the spawned task.'),
+      task_id: z.string().optional().describe('Existing task UUID. REQUIRED for action=handoff. REQUIRED for action=spawn when spawning work for an already-created task. Either task_id or title (with instructions) must be provided for action=spawn.'),
+      initiative_id: z.string().optional().describe('Optional initiative UUID to scope the spawned task. Inferred from task_id when omitted.'),
+      workspace_id: z.string().optional().describe('Optional workspace UUID to scope the spawned task. Defaults to the MCP session\'s workspace.'),
+      agent_type: z.string().optional().describe('Target agent type/domain (e.g. "engineering", "marketing", "design"). REQUIRED for action=guard or action=handoff. Strongly recommended for action=spawn so the work routes to the right specialist.'),
+      instructions: z.string().optional().describe('Delegation instructions for the agent. REQUIRED for action=spawn when spawning ad-hoc (without task_id). Used to override the task description for action=handoff.'),
+      idempotency_key: z.string().optional().describe('Optional client-supplied idempotency key for safe retries. Same key returns the same spawn result without re-running.'),
+      session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.agentRequiresAuth,
@@ -272,20 +334,27 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_decide',
     title: 'Manage OrgX Decision',
     description:
-      'Create, approve, reject, remember, or list durable OrgX decisions. USE WHEN: capturing judgment, approval, rejection, or pending decision review. NEXT: use orgx_act, orgx_write, or orgx_spawn only after the decision resolves the next action. DO NOT USE WHEN: writing non-decision entities; use orgx_write.',
+      'Create, approve, reject, remember, or list durable OrgX decisions.\n\n' +
+      'Per-action input requirements:\n' +
+      '  • action="list_pending" → No required fields. Optional: initiative_id, workspace_id (scope filters).\n' +
+      '  • action="create"       → REQUIRES title AND decision (the resolved decision text). Recommended: context, initiative_id.\n' +
+      '  • action="remember"     → REQUIRES decision (the text to capture as a remembered decision). Optional: title, context.\n' +
+      '  • action="approve"      → REQUIRES decision_id. Optional: note (free-text approver rationale).\n' +
+      '  • action="reject"       → REQUIRES decision_id AND reason (explanation shown to the assigned agent).\n\n' +
+      'USE WHEN: capturing judgment, approval, rejection, or pending decision review. NEXT: use orgx_act, orgx_write, or orgx_spawn only after the decision resolves the next action. DO NOT USE WHEN: writing non-decision entities; use orgx_write.',
     inputSchema: {
-      action: z.enum(['create', 'remember', 'list_pending', 'approve', 'reject']).describe('Decision operation'),
-      decision_id: z.string().optional().describe('Decision UUID for approve/reject'),
-      title: z.string().optional().describe('Decision title'),
-      decision: z.string().optional().describe('Decision text for remember/create'),
-      summary: z.string().optional().describe('Decision summary'),
-      context: z.string().optional().describe('Decision context/rationale'),
-      reason: z.string().optional().describe('Required rejection reason'),
-      note: z.string().optional().describe('Optional approval note'),
-      initiative_id: z.string().optional().describe('Optional initiative scope'),
-      workspace_id: z.string().optional().describe('Optional workspace scope'),
-      idempotency_key: z.string().optional().describe('Strongly recommended idempotency key for writes'),
-      session_id: z.string().optional().describe('Optional bootstrap/session identifier'),
+      action: z.enum(['create', 'remember', 'list_pending', 'approve', 'reject']).describe('Decision operation. See top-level description for per-action required fields.'),
+      decision_id: z.string().optional().describe('Decision UUID. REQUIRED for action=approve or action=reject. Returned by action=list_pending or action=create.'),
+      title: z.string().optional().describe('Short title for the decision. REQUIRED for action=create.'),
+      decision: z.string().optional().describe('The decision text itself (what was decided). REQUIRED for action=create and action=remember.'),
+      summary: z.string().optional().describe('Optional one-line summary used in lists. Falls back to title when omitted.'),
+      context: z.string().optional().describe('Background context / rationale that led to the decision. Recommended for action=create to capture provenance.'),
+      reason: z.string().optional().describe('REQUIRED for action=reject. Explanation of why the decision was rejected — used by the assigned agent to adjust its next attempt.'),
+      note: z.string().optional().describe('Optional approver note for action=approve. Free-text rationale stored in audit history.'),
+      initiative_id: z.string().optional().describe('Optional initiative UUID to scope the decision. Used as filter when action=list_pending; used as parent when action=create.'),
+      workspace_id: z.string().optional().describe('Optional workspace UUID to scope the decision. Defaults to the MCP session\'s workspace.'),
+      idempotency_key: z.string().optional().describe('Strongly recommended client-supplied idempotency key for writes (action=create, remember, approve, reject). Same key returns the same result without duplicating state.'),
+      session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
     },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
@@ -300,17 +369,27 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_submit_receipt',
     title: 'Submit OrgX Receipt',
     description:
-      'Submit durable proof, attribution, quality, or outcome receipt metadata. USE WHEN: closing the loop on agent work with provenance and measurable evidence. NEXT: use orgx_recommend or orgx_search to show the next priority or confirm the updated work graph. DO NOT USE WHEN: merely emitting telemetry; use orgx_emit_activity.',
+      'Submit a durable receipt (proof, outcome, quality, attribution, or learning) anchored to an OrgX entity or artifact.\n\n' +
+      'Required: receipt_type + summary. Strongly recommended: one anchor (entity_type+entity_id OR artifact_id) AND at least one verifiable URL inside evidence.\n\n' +
+      'Recognized receipt_type: "proof" (completion proof), "outcome" (measurable result), "quality" (review/score), "attribution" (credit link to revenue/value), "learning" (distilled lesson). Custom keys also accepted.\n\n' +
+      'Recognized evidence shapes (mix and match):\n' +
+      '  { prs: string[] } — GitHub PR URLs.\n' +
+      '  { deploys: string[] } — deployment URLs.\n' +
+      '  { test_runs: string[] } — CI run URLs.\n' +
+      '  { metrics: { name, value, unit? }[] } — quantitative outcomes.\n' +
+      '  { links: string[] }, { notes: string } — supporting URLs/text.\n\n' +
+      'Pass idempotency_key when retrying — server deduplicates.\n\n' +
+      'USE WHEN: closing the loop on agent work with provenance. NEXT: orgx_recommend or orgx_search to find the next priority. DO NOT USE for telemetry — use orgx_emit_activity.',
     inputSchema: {
-      workspace_id: z.string().optional().describe('Workspace UUID'),
-      entity_type: z.string().optional().describe('Related entity type'),
-      entity_id: z.string().optional().describe('Related entity UUID'),
-      receipt_type: z.string().min(1).describe('Receipt type, such as proof, outcome, quality, attribution, or learning'),
-      summary: z.string().min(1).describe('Receipt summary'),
-      evidence: z.record(z.unknown()).optional().describe('Structured evidence payload'),
-      artifact_id: z.string().optional().describe('Related artifact UUID'),
-      idempotency_key: z.string().optional().describe('Strongly recommended idempotency key for safe retries'),
-      session_id: z.string().optional().describe('Optional bootstrap/session identifier'),
+      workspace_id: z.string().optional().describe('Workspace UUID. Defaults to the MCP session\'s workspace when omitted.'),
+      entity_type: z.string().optional().describe('Related entity type (initiative, workstream, milestone, task, decision). Required if no artifact_id is provided — pair with entity_id.'),
+      entity_id: z.string().optional().describe('Related entity UUID. Required when entity_type is provided.'),
+      receipt_type: z.string().min(1).describe('Receipt category key. Recognized values: "proof", "outcome", "quality", "attribution", "learning". Custom domain-specific keys are also accepted.'),
+      summary: z.string().min(1).describe('One-sentence human-readable description of what the receipt proves (e.g. "Merged PR #142 unblocking the auth refactor").'),
+      evidence: z.record(z.unknown()).optional().describe('Structured evidence payload. Recognized shapes: { prs: string[] }, { deploys: string[] }, { test_runs: string[] }, { metrics: { name, value, unit? }[] }, { links: string[] }, { notes: string }. See top-level description for full list. At least one verifiable URL is strongly recommended.'),
+      artifact_id: z.string().optional().describe('Related artifact UUID to anchor the receipt to. Alternative to entity_type+entity_id when the proof lives in OrgX as an artifact.'),
+      idempotency_key: z.string().optional().describe('Strongly recommended client-supplied idempotency key. Submitting the same key twice will not create a duplicate receipt.'),
+      session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
@@ -421,30 +500,34 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'approve_agent_work',
     title: 'Approve Agent Work',
     description:
-      'Review agent decisions or work items awaiting human approval. Also known as: pending approvals, agent blocked, sign off, review decisions, approve AI work.',
+      'Review or act on agent decisions awaiting human approval. Also known as: pending approvals, agent blocked, sign off, review decisions, approve AI work.\n\n' +
+      'Per-action input requirements:\n' +
+      '  • action="list" (default when action omitted) → No required fields. Optional filters: limit, urgency_filter, initiative_id.\n' +
+      '  • action="approve" → REQUIRES decision_id. Optional: note (free-text approver rationale).\n' +
+      '  • action="reject"  → REQUIRES decision_id AND reason (explanation shown to the assigned agent so it can adjust its next attempt).',
     inputSchema: {
       decision_id: z
         .string()
         .optional()
-        .describe('Decision ID to approve or reject after user confirmation'),
+        .describe('REQUIRED when action="approve" or action="reject". Decision UUID from the pending approvals list.'),
       action: z
         .enum(['list', 'approve', 'reject'])
         .optional()
-        .describe('Use list to review pending approvals, or approve/reject a specific decision_id'),
-      note: z.string().optional().describe('Optional approval note'),
-      reason: z.string().optional().describe('Required rejection reason'),
+        .describe('Operation to perform. Defaults to "list" (returns pending approvals). Use "approve" or "reject" to act on a specific decision_id.'),
+      note: z.string().optional().describe('Optional approver note for action="approve". Free-text rationale stored in audit history.'),
+      reason: z.string().optional().describe('REQUIRED for action="reject". Explanation of why the decision was rejected — used by the agent to adjust its next attempt.'),
       limit: z
         .number()
         .optional()
-        .describe('Maximum number of pending decisions to return when listing'),
+        .describe('Used only when action="list" (or omitted). Max pending decisions to return.'),
       urgency_filter: z
         .enum(['all', 'critical', 'high'])
         .optional()
-        .describe('Optional urgency filter for the pending decision list'),
+        .describe('Used only when action="list". Filters the returned pending decisions by urgency.'),
       initiative_id: z
         .string()
         .optional()
-        .describe('Optional initiative UUID to scope pending decisions'),
+        .describe('Used only when action="list". Scopes pending decisions to a specific initiative UUID.'),
     },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
