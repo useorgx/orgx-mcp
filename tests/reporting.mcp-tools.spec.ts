@@ -45,6 +45,61 @@ describe('MCP reporting tools', () => {
     expect(valid.success).toBe(true);
   });
 
+  it('accepts runtime provenance and chokepoint payloads for live surfacing', () => {
+    const emitTool = findTool('orgx_emit_activity');
+    const schema = z.object(emitTool.inputSchema);
+
+    const parsed = schema.safeParse({
+      initiative_id: INITIATIVE_ID,
+      correlation_id: 'codex-cloud-stall',
+      source_client: 'codex',
+      message: 'Codex Cloud stopped emitting heartbeats',
+      phase: 'blocked',
+      level: 'warn',
+      runtime: {
+        source_runtime: 'codex_cloud',
+        source_system: 'codex',
+        provider: 'openai',
+        execution_target: 'cloud',
+        adapter: 'codex-cloud',
+        job_id: 'job-codex-cloud-1',
+      },
+      chokepoint: {
+        kind: 'stall',
+        tier: 'attention',
+        title: 'Codex Cloud run stalled',
+        reason: 'No progress event has arrived within the expected window.',
+        suggested_actions: ['Inspect the cloud run heartbeat.'],
+      },
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it('accepts all supported runtime source clients', () => {
+    const emitTool = findTool('orgx_emit_activity');
+    const schema = z.object(emitTool.inputSchema);
+
+    for (const sourceClient of [
+      'openclaw',
+      'codex',
+      'claude-code',
+      'chatgpt',
+      'cursor',
+      'web-ui',
+      'api',
+    ]) {
+      const parsed = schema.safeParse({
+        initiative_id: INITIATIVE_ID,
+        correlation_id: `source-${sourceClient}`,
+        source_client: sourceClient,
+        message: `Runtime event from ${sourceClient}`,
+      });
+
+      expect(parsed.success).toBe(true);
+    }
+  });
+
   it('enforces operation-level rules for apply changeset', () => {
     const applyTool = findTool('orgx_apply_changeset');
     const schema = z.object(applyTool.inputSchema);
@@ -83,5 +138,37 @@ describe('MCP reporting tools', () => {
     });
 
     expect(valid.success).toBe(true);
+  });
+
+  it('accepts runtime provenance on apply changeset for decision surfacing', () => {
+    const applyTool = findTool('orgx_apply_changeset');
+    const schema = z.object(applyTool.inputSchema);
+
+    const parsed = schema.safeParse({
+      initiative_id: INITIATIVE_ID,
+      correlation_id: 'managed-decision-runtime',
+      source_client: 'chatgpt',
+      idempotency_key: 'mcp-runtime-decision',
+      runtime: {
+        source_runtime: 'orgx_managed',
+        source_system: 'chatgpt',
+        provider: 'openai',
+        execution_target: 'cloud',
+        adapter: 'managed-agent',
+        job_id: 'managed-job-1',
+      },
+      operations: [
+        {
+          op: 'decision.create',
+          title: 'Choose provider recovery',
+          summary: 'Managed runtime needs a recovery choice.',
+          urgency: 'urgent',
+          options: ['retry Codex Cloud', 'switch to Anthropic', 'pause lane'],
+          blocking: true,
+        },
+      ],
+    });
+
+    expect(parsed.success).toBe(true);
   });
 });

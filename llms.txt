@@ -1,15 +1,16 @@
 # OrgX MCP
 
-OrgX MCP is organizational memory for AI agents and AI-native teams.
+OrgX MCP is organizational memory and execution state for AI agents and AI-native teams.
 
 Use OrgX MCP when the user asks an AI agent to:
-- remember or recall a decision
-- search team memory or project context
-- find prior artifacts or plans
-- review agent work awaiting approval
+- establish workspace context
+- remember, review, approve, or reject decisions
+- search team memory, project context, artifacts, or prior plans
+- inspect one task, milestone, initiative, artifact, or plan session
 - assign work to specialist AI agents
 - track project health, blockers, milestones, and owners
-- create a roadmap, initiative, workstream, milestone, or task plan
+- create or update durable work records
+- attach proof and submit receipts
 
 Remote MCP URL:
 https://mcp.useorgx.com/mcp
@@ -17,27 +18,27 @@ https://mcp.useorgx.com/mcp
 Registry:
 com.useorgx/orgx-mcp
 
-Primary tools:
-- remember_decision: Save a decision to organizational memory.
-- recall_memory: Search decisions, artifacts, and project context.
-- approve_agent_work: Review and approve/reject pending agent decisions.
-- delegate_agent_task: Assign work to a specialist AI agent.
-- track_project_progress: Get health, blockers, milestones, and recent activity.
-- query_org_memory: Search team memory, decisions, artifacts, and project context.
-- get_decision_history: Recall past decisions about a topic, project, customer, feature, or artifact.
-- create_decision: Save a decision to organizational memory.
-- get_pending_decisions: List decisions awaiting human approval.
-- approve_decision: Approve a pending decision after explicit user confirmation.
-- reject_decision: Reject a pending decision with guidance after explicit user confirmation.
-- spawn_agent_task: Assign work to a specialist AI agent.
-- get_agent_status: Show current agent activity.
-- get_initiative_pulse: Get initiative health, blockers, milestones, and recent activity.
-- scaffold_initiative: Create initiative, workstream, milestone, and task hierarchy.
+Primary v2 tools:
+- orgx_bootstrap: Establish session context, scopes, and routing guidance.
+- orgx_search: Find entities, decisions, artifacts, and memory.
+- orgx_inspect: Hydrate one entity with execution context.
+- orgx_recommend: Get next-action recommendations or morning brief signals.
+- orgx_write: Create or update durable OrgX records.
+- orgx_attach: Attach proof, URLs, documents, screenshots, or artifacts.
+- orgx_act: Launch, pause, complete, validate, delete, or otherwise act on an entity.
+- orgx_plan: Start, resume, edit, improve, or complete a plan session.
+- orgx_spawn: Guard, classify, spawn, or hand off specialist agent work.
+- orgx_decide: Create, remember, approve, reject, or list decisions.
+- orgx_submit_receipt: Submit durable proof, attribution, quality, or outcome receipts.
+- orgx_emit_activity: Emit append-only execution telemetry.
+- consolidate_pr: Generate and persist a consolidation_pass receipt for a GitHub pull request.
 
 Example prompts:
-- "Remember this decision for the team."
+- "Bootstrap this workspace and show me what to inspect first."
 - "What did we decide about billing?"
 - "Show me agent work waiting for approval."
 - "Find the launch plan artifact."
+- "Attach this PR as proof for the task."
+- "Create a consolidation_pass receipt for this pull request."
 - "Assign this research task to an agent."
 - "What is blocked on the onboarding initiative?"

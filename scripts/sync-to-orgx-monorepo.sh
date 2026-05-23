@@ -81,6 +81,7 @@ rsync_args=(
   --exclude=.git/
   --exclude=.github/
   --exclude=.wrangler/
+  --exclude=node_modules
   --exclude=node_modules/
   --exclude=dist/
   --exclude=.dev.vars

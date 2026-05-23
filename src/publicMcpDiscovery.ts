@@ -25,16 +25,34 @@ const AUTHENTICATED_MCP_URL = 'https://mcp.useorgx.com/mcp';
 const PUBLIC_MCP_URL = 'https://mcp.useorgx.com/public';
 
 const PRIMARY_AUTHENTICATED_TOOLS = [
-  'remember_decision',
+  'orgx_bootstrap',
+  'orgx_search',
+  'orgx_inspect',
+  'orgx_recommend',
+  'orgx_write',
+  'orgx_attach',
+  'orgx_act',
+  'orgx_plan',
+  'orgx_spawn',
+  'orgx_decide',
+  'orgx_submit_receipt',
+  'orgx_emit_activity',
+  'approve_decision',
+  'reject_decision',
+  'get_agent_status',
+  'get_initiative_pulse',
+  'scaffold_initiative',
+  'spawn_agent_task',
+  'handoff_task',
+  'recommend_next_action',
+  'query_org_memory',
   'recall_memory',
   'approve_agent_work',
   'delegate_agent_task',
   'track_project_progress',
-  'query_org_memory',
-  'get_pending_decisions',
-  'get_agent_status',
-  'get_initiative_pulse',
-  'scaffold_initiative',
+  'review_artifact',
+  'get_morning_brief',
+  'consolidate_pr',
 ] as const;
 
 const PUBLIC_DISCOVERY_TOOLS: PublicTool[] = [
@@ -176,10 +194,11 @@ const TOOL_EXAMPLES: Record<
     sample_response: Record<string, unknown>;
   }
 > = {
-  remember_decision: {
+  orgx_decide: {
     prompt:
       'Remember this decision for the team: we are moving onboarding analytics to PostHog.',
     arguments: {
+      action: 'remember',
       decision: 'Move onboarding analytics to PostHog',
       context: 'Chosen for funnel visibility and product-led activation reporting.',
     },
@@ -189,11 +208,11 @@ const TOOL_EXAMPLES: Record<
       recall_hint: 'Ask "what did we decide about onboarding analytics?"',
     },
   },
-  recall_memory: {
+  orgx_search: {
     prompt: 'What did we decide about billing?',
     arguments: {
       query: 'billing decisions',
-      scope: 'decisions',
+      type: 'decision',
     },
     sample_response: {
       results: [
@@ -205,91 +224,224 @@ const TOOL_EXAMPLES: Record<
       ],
     },
   },
-  approve_agent_work: {
-    prompt: 'Show me agent work waiting for approval.',
+  orgx_inspect: {
+    prompt: 'Show me the full context for this task before I work on it.',
     arguments: {
-      action: 'list',
+      type: 'task',
+      id: 'task_123',
+      hydrate_context: true,
     },
     sample_response: {
-      pending: [
-        {
-          id: 'D-123',
-          title: 'Approve launch checklist',
-          requires_confirmation: true,
-        },
-      ],
+      task: { id: 'task_123', title: 'Prepare launch checklist' },
+      hydrated_context: [],
     },
   },
-  delegate_agent_task: {
-    prompt: 'Assign this research task to an engineering agent.',
+  orgx_recommend: {
+    prompt: 'What should we prioritize next?',
     arguments: {
-      agent: 'engineering-agent',
-      task: 'Scope the implementation options for the onboarding analytics migration.',
+      mode: 'next_action',
+      entity_type: 'workspace',
+      limit: 3,
     },
     sample_response: {
-      delegated: true,
-      agent: 'engineering-agent',
+      recommendations: [{ title: 'Unblock launch checklist', priority: 'high' }],
+    },
+  },
+  orgx_write: {
+    prompt: 'Create a high-priority task under this milestone.',
+    arguments: {
+      operation: 'create',
+      type: 'task',
+      milestone_id: 'milestone_123',
+      title: 'Prepare launch checklist',
+      priority: 'high',
+      idempotency_key: 'example-create-task-1',
+    },
+    sample_response: {
+      type: 'task',
+      data: { id: 'task_123', title: 'Prepare launch checklist' },
+    },
+  },
+  orgx_attach: {
+    prompt: 'Attach this PR as proof for the task.',
+    arguments: {
+      type: 'task',
+      id: 'task_123',
+      name: 'Launch checklist PR',
+      artifact_type: 'eng.pull_request',
+      external_url: 'https://github.com/useorgx/example/pull/1',
+      idempotency_key: 'example-attach-pr-1',
+    },
+    sample_response: {
+      artifact: { id: 'artifact_123', status: 'approved' },
+    },
+  },
+  orgx_act: {
+    prompt: 'Complete this task after proof is attached.',
+    arguments: {
+      type: 'task',
+      id: 'task_123',
+      action: 'complete',
+    },
+    sample_response: {
+      transition: { from: 'in_progress', to: 'completed' },
+    },
+  },
+  orgx_plan: {
+    prompt: 'Start a tracked plan for the new onboarding flow.',
+    arguments: {
+      action: 'start',
+      feature_name: 'New onboarding flow',
+      initial_plan: 'Draft the first-pass scope and owners.',
+    },
+    sample_response: {
+      session_id: 'plan_123',
+    },
+  },
+  orgx_spawn: {
+    prompt: 'Delegate this task to an engineering agent.',
+    arguments: {
+      action: 'spawn',
+      task_id: 'task_123',
+      agent_type: 'engineering-agent',
+    },
+    sample_response: {
+      run_id: 'run_123',
       status: 'queued',
     },
   },
-  track_project_progress: {
-    prompt: 'What is blocked on the Growth Launch initiative?',
+  orgx_submit_receipt: {
+    prompt: 'Submit the proof receipt for this completed task.',
     arguments: {
-      initiative: 'Growth Launch',
+      receipt_type: 'proof',
+      entity_type: 'task',
+      entity_id: 'task_123',
+      summary: 'PR merged and tests passed.',
+      evidence: { pull_request: 'https://github.com/useorgx/example/pull/1' },
+      idempotency_key: 'example-receipt-1',
     },
     sample_response: {
-      health: 'at_risk',
-      blockers: ['Analytics decision awaiting approval'],
-      next_action: 'Review pending decision D-123',
+      receipt_id: 'receipt_123',
     },
   },
-  query_org_memory: {
-    prompt: 'Find the launch plan artifact.',
+  orgx_emit_activity: {
+    prompt: 'Record execution progress for the active run.',
     arguments: {
-      query: 'launch plan artifact',
-      scope: 'artifacts',
+      phase: 'running',
+      message: 'Implementation started.',
     },
     sample_response: {
-      results: [{ type: 'artifact', title: 'Launch plan v2' }],
+      ok: true,
     },
   },
-  get_pending_decisions: {
-    prompt: 'What needs my approval?',
+  orgx_bootstrap: {
+    prompt: 'Start an OrgX MCP session and show me the available v2 tools.',
     arguments: {
-      limit: 5,
+      client_name: 'example-client',
     },
     sample_response: {
-      decisions: [{ id: 'D-123', title: 'Approve launch checklist' }],
+      profile: 'v2',
+      visible_tools_count: 28,
     },
+  },
+  approve_decision: {
+    prompt: 'Approve the selected decision from the decisions widget.',
+    arguments: { decision_id: 'decision_123', note: 'Approved for launch.' },
+    sample_response: { status: 'approved' },
+  },
+  reject_decision: {
+    prompt: 'Request changes on this decision.',
+    arguments: { decision_id: 'decision_123', reason: 'Need clearer proof.' },
+    sample_response: { status: 'rejected' },
   },
   get_agent_status: {
-    prompt: 'What are my agents working on?',
-    arguments: {
-      include_idle: false,
-    },
-    sample_response: {
-      running_agents: [{ agent: 'engineering-agent', focus: 'Billing migration' }],
-    },
+    prompt: 'Show me what the agents are doing.',
+    arguments: { include_idle: false },
+    sample_response: { agents: [{ id: 'agent_123', status: 'running' }] },
   },
   get_initiative_pulse: {
-    prompt: 'Show the pulse for the onboarding initiative.',
-    arguments: {
-      initiative_id: 'init_123',
-    },
-    sample_response: {
-      health: 'green',
-      milestones: { complete: 3, total: 5 },
-    },
+    prompt: 'Show the health of this initiative.',
+    arguments: { initiative_id: 'initiative_123' },
+    sample_response: { health: 'on_track', blockers: [] },
   },
   scaffold_initiative: {
-    prompt: 'Create an initiative to launch the new onboarding flow.',
+    prompt: 'Create an initiative with workstreams, milestones, and tasks.',
     arguments: {
-      title: 'Launch new onboarding flow',
-      summary: 'Plan workstreams, milestones, and tasks for launch readiness.',
+      mode: 'scaffold',
+      title: 'Example launch',
+      objective_ids: ['objective_123'],
+      workstreams: [
+        {
+          title: 'Engineering',
+          milestones: [{ title: 'Ship worker', tasks: [{ title: 'Merge PR' }] }],
+        },
+      ],
+    },
+    sample_response: { initiative: { id: 'initiative_123' } },
+  },
+  spawn_agent_task: {
+    prompt: 'Have an engineering agent handle this task.',
+    arguments: { agent: 'engineering-agent', task: 'Implement the worker fix.' },
+    sample_response: { run_id: 'run_123', status: 'queued' },
+  },
+  handoff_task: {
+    prompt: 'Hand this task to the design agent.',
+    arguments: { task_id: 'task_123', agent: 'design-agent', spawn: true },
+    sample_response: { status: 'handed_off' },
+  },
+  recommend_next_action: {
+    prompt: 'Show the next best actions for this initiative.',
+    arguments: { entity_type: 'initiative', entity_id: 'initiative_123', limit: 3 },
+    sample_response: { recommendations: [{ title: 'Resolve blocker' }] },
+  },
+  query_org_memory: {
+    prompt: 'Search memory for billing launch decisions.',
+    arguments: { query: 'billing launch decisions', scope: 'decisions' },
+    sample_response: { results: [{ title: 'Billing launch direction' }] },
+  },
+  recall_memory: {
+    prompt: 'Recall prior decisions about onboarding.',
+    arguments: { query: 'onboarding decisions', scope: 'decisions' },
+    sample_response: { results: [{ title: 'Onboarding analytics' }] },
+  },
+  approve_agent_work: {
+    prompt: 'Show agent work awaiting approval.',
+    arguments: { action: 'list', limit: 5 },
+    sample_response: { decisions: [{ id: 'decision_123', status: 'pending' }] },
+  },
+  delegate_agent_task: {
+    prompt: 'Delegate this launch task to an agent.',
+    arguments: { agent: 'marketing-agent', task: 'Draft the launch email.' },
+    sample_response: { run_id: 'run_123', status: 'queued' },
+  },
+  track_project_progress: {
+    prompt: 'Track progress for this project.',
+    arguments: { initiative_id: 'initiative_123' },
+    sample_response: { health: 'on_track', progress: 62 },
+  },
+  review_artifact: {
+    prompt: 'Review the next artifact awaiting approval.',
+    arguments: { workspace_id: 'workspace_123' },
+    sample_response: { artifact: { id: 'artifact_123', status: 'in_review' } },
+  },
+  get_morning_brief: {
+    prompt: 'Show today’s OrgX morning brief.',
+    arguments: { workspace_id: 'workspace_123' },
+    sample_response: { brief: { receipts: [], exceptions: [] } },
+  },
+  consolidate_pr: {
+    prompt:
+      'Create a durable consolidation_pass receipt for this pull request.',
+    arguments: {
+      pr_url: 'https://github.com/useorgx/example/pull/42',
+      initiative_id: '00000000-0000-4000-8000-000000000000',
+      reviewer_note: 'Focus on duplication and dead code before approval.',
     },
     sample_response: {
-      created: true,
-      hierarchy: ['initiative', 'workstreams', 'milestones', 'tasks'],
+      artifact_id: 'artifact_123',
+      artifact_type: 'orchestration.consolidation_pass',
+      verdict: 'ship',
+      aq_score: 0.91,
     },
   },
 };

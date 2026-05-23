@@ -1,4 +1,4 @@
 {
-  "$schema": "https://glama.ai/mcp/schemas/server.json",
-  "maintainers": ["hopeatina"]
+  "$schema": "https://glama.ai/mcp/schemas/connector.json",
+  "maintainers": [{ "email": "reviewers@useorgx.com" }]
 }

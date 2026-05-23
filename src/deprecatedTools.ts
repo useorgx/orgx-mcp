@@ -38,23 +38,18 @@ function asBillingCycle(value: unknown): 'monthly' | 'annual' | undefined {
 
 const DEPRECATED_TOOL_ROUTES: Record<string, DeprecatedToolRoute> = {
   get_pending_decisions: {
-    replacementToolId: 'list_entities',
+    replacementToolId: 'approve_agent_work',
     route: (args) => {
-      const urgencyFilter = asNonEmptyString(args.urgency_filter);
-      if (urgencyFilter && urgencyFilter !== 'all') {
-        return null;
-      }
-
       return compactArgs({
-        type: 'decision',
-        status: 'pending',
+        action: 'list',
         limit: asFiniteNumber(args.limit),
+        urgency_filter: asNonEmptyString(args.urgency_filter),
         initiative_id: asNonEmptyString(args.initiative_id),
       });
     },
   },
   get_decision_history: {
-    replacementToolId: 'query_org_memory',
+    replacementToolId: 'recall_memory',
     route: (args) => {
       const topic = asNonEmptyString(args.topic);
       if (!topic || asNonEmptyString(args.initiative_id)) {

@@ -140,13 +140,77 @@ describe('buildScaffoldInitiativeBatch', () => {
     expect(initiative).not.toHaveProperty('coordination_dependency');
     const metadata = initiative?.metadata as Record<string, unknown> | undefined;
     expect(metadata).toBeDefined();
-    expect(metadata?.coordination_dependency).toEqual({
+    expect(metadata?.coordination_dependency).toMatchObject({
       name: 'Design → Engineering handoff',
       from_workstream_name: 'Design',
       to_workstream_name: 'Engineering',
+      from_workstream_ref: 'ws-1',
+      to_workstream_ref: 'ws-2',
+      materialized: true,
     });
     // Existing metadata defaults (live visibility) must still be present.
     expect(metadata?.live).toEqual({ visibility: 'public' });
+    expect(result.materializedDependencies).toEqual([
+      {
+        type: 'workstream',
+        name: 'Design → Engineering handoff',
+        from_ref: 'ws-1',
+        to_ref: 'ws-2',
+      },
+    ]);
+    const engineeringWorkstream = result.batch.find(
+      (entity) => entity.type === 'workstream' && entity.ref === 'ws-2'
+    );
+    expect(engineeringWorkstream).toMatchObject({
+      type: 'workstream',
+      ref: 'ws-2',
+      depends_on: ['ws-1'],
+    });
+  });
+
+  it('adds executable children for explicit workstreams without milestones', () => {
+    const result = buildScaffoldInitiativeBatch({
+      title: 'Enigma launch proof sprint',
+      workstreams: [
+        {
+          title: 'Product proof',
+          domain: 'product',
+          primaryAgent: 'product',
+        },
+        {
+          title: 'Visual proof',
+          domain: 'design',
+          primaryAgent: 'design',
+        },
+      ],
+    });
+
+    const workstreams = result.batch.filter(
+      (entity) => entity.type === 'workstream'
+    );
+    const milestones = result.batch.filter(
+      (entity) => entity.type === 'milestone'
+    );
+    const tasks = result.batch.filter((entity) => entity.type === 'task');
+
+    expect(workstreams).toHaveLength(2);
+    expect(milestones).toHaveLength(2);
+    expect(tasks).toHaveLength(6);
+    expect(result.msRefs).toEqual([['ms-1-1'], ['ms-2-1']]);
+    expect(result.taskRefs[0]?.[0]).toHaveLength(3);
+    expect(milestones[0]).toMatchObject({
+      title: 'Product proof: plan, execute, and validate',
+      assigned_agent_ids: ['product-agent'],
+      assigned_agent_names: ['Pace'],
+    });
+    expect(tasks[0]).toMatchObject({
+      title: 'Product proof: discovery',
+      assigned_agent_ids: ['product-agent'],
+      assigned_agent_names: ['Pace'],
+    });
+    expect(milestones[0]).not.toHaveProperty('auto_generated');
+    expect(milestones[0]).not.toHaveProperty('successCriteria');
+    expect(tasks[0]).not.toHaveProperty('auto_generated');
   });
 
   it('omits coordination_dependency metadata entry when no hint is provided', () => {
@@ -207,6 +271,101 @@ describe('buildScaffoldInitiativeBatch', () => {
     expect(result.batch[3]).toMatchObject({
       type: 'task',
       goal_ids: ['goal-task-1'],
+    });
+  });
+
+  it('normalizes preferred objective_ids to goal_ids and keeps idempotency metadata on the initiative', () => {
+    const result = buildScaffoldInitiativeBatch({
+      title: 'Objective-linked Initiative',
+      workspace_id: 'ws-1',
+      objective_ids: ['objective-init-1'],
+      idempotency_key: 'scaffold:objective-linked',
+      workstreams: [
+        {
+          title: 'Engineering',
+          objective_ids: ['objective-ws-1'],
+          milestones: [
+            {
+              title: 'Ship API',
+              objective_ids: ['objective-ms-1'],
+              tasks: [
+                {
+                  title: 'Add contract support',
+                  objective_ids: ['objective-task-1'],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(result.batch[0]).toMatchObject({
+      type: 'initiative',
+      goal_ids: ['objective-init-1'],
+      idempotency_key: 'scaffold:objective-linked',
+      metadata: {
+        scaffold: { idempotency_key: 'scaffold:objective-linked' },
+      },
+    });
+    expect(result.batch[0]).not.toHaveProperty('objective_ids');
+    expect(result.batch[1]).toMatchObject({
+      type: 'workstream',
+      goal_ids: ['objective-ws-1'],
+    });
+    expect(result.batch[1]).not.toHaveProperty('objective_ids');
+    expect(result.batch[2]).toMatchObject({
+      type: 'milestone',
+      goal_ids: ['objective-ms-1'],
+    });
+    expect(result.batch[2]).not.toHaveProperty('objective_ids');
+    expect(result.batch[3]).toMatchObject({
+      type: 'task',
+      goal_ids: ['objective-task-1'],
+    });
+    expect(result.batch[3]).not.toHaveProperty('objective_ids');
+  });
+
+  it('adds a minimal execution policy when callers provide tiny demo budgets', () => {
+    const result = buildScaffoldInitiativeBatch({
+      title: 'ICP demo smoke',
+      workspace_id: 'ws-1',
+      expected_budget_usd: 0.03,
+      workstreams: [
+        {
+          title: 'Launch proof',
+          domain: 'engineering',
+          milestones: [
+            {
+              title: 'One visible proof',
+              tasks: [
+                {
+                  title: 'Create proof artifact',
+                  expected_duration_hours: 0.1,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    const initiative = result.batch[0];
+    expect(initiative.metadata).toMatchObject({
+      execution_policy: {
+        profile: 'custom',
+        slice_scope_preference: 'task',
+        max_slice_tasks: 1,
+        target_slice_minutes: 5,
+        max_slice_minutes: 10,
+        max_parallel_agents: 1,
+        dependency_mode: 'strict',
+        include_in_progress: false,
+      },
+      cost_control: {
+        source: 'mcp_scaffold_tiny_budget',
+        demo_safe: true,
+      },
     });
   });
 });

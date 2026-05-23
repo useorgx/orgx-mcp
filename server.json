@@ -3,7 +3,7 @@
   "name": "com.useorgx/orgx-mcp",
   "title": "OrgX MCP — Organizational Memory for AI Agents",
   "description": "Organizational memory and agent orchestration for decisions, artifacts, tasks, and projects.",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "websiteUrl": "https://useorgx.com",
   "vendor": {
     "name": "OrgX",
@@ -17,7 +17,9 @@
     {
       "src": "https://mcp.useorgx.com/orgx-logo.png",
       "mimeType": "image/png",
-      "sizes": ["any"]
+      "sizes": [
+        "any"
+      ]
     }
   ],
   "remotes": [
@@ -55,192 +57,284 @@
   },
   "tools": [
     {
-      "name": "remember_decision",
-      "description": "Save a decision to organizational memory so agents and teammates can recall it later. Also known as: decision log, team memory, agent memory, record decision, remember what we decided."
+      "name": "orgx_bootstrap",
+      "title": "Bootstrap OrgX Session",
+      "description": "Establish OrgX session context, granted scopes, and v2 routing guidance.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
-      "name": "recall_memory",
-      "description": "Search organizational memory for prior decisions, artifacts, project context, and team knowledge. Also known as: search memory, recall decisions, find context, retrieve artifacts, what did we decide."
+      "name": "orgx_search",
+      "title": "Search OrgX Memory",
+      "description": "Search OrgX memory and entities; replaces list_entities and query_org_memory for public guidance.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
-      "name": "approve_agent_work",
-      "description": "Review agent decisions or work items awaiting human approval. Also known as: pending approvals, agent blocked, sign off, review decisions, approve AI work."
+      "name": "orgx_inspect",
+      "title": "Inspect OrgX Entity",
+      "description": "Hydrate one OrgX entity with context; replaces get_task_with_context for public guidance.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
-      "name": "delegate_agent_task",
-      "description": "Assign work to a specialist AI agent and track the result. Also known as: hand this off, spawn agent, assign task, delegate to agent, have an AI agent do it."
+      "name": "orgx_recommend",
+      "title": "Recommend Next Action",
+      "description": "Recommend next actions, morning-brief signals, queue priority, pulses, and snapshots.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
-      "name": "track_project_progress",
-      "description": "Get health, blockers, milestones, owners, and recent activity for a project or initiative. Also known as: project status, initiative pulse, blockers, roadmap progress, execution health."
+      "name": "orgx_write",
+      "title": "Write OrgX Entity",
+      "description": "Create or update OrgX entities with canonical snake_case fields.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
-      "name": "get_pending_decisions",
-      "description": "List agent decisions and work items awaiting human approval. Also known as: pending approvals, agent blocked, sign off, review decisions, approve AI work."
+      "name": "orgx_attach",
+      "title": "Attach OrgX Proof",
+      "description": "Attach durable artifacts and proof to existing OrgX entities.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "orgx_act",
+      "title": "Run OrgX Lifecycle Action",
+      "description": "Run lifecycle, validation, completion, delete, dry-run, and proof actions.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      }
+    },
+    {
+      "name": "orgx_plan",
+      "title": "Manage OrgX Plan",
+      "description": "Start, resume, improve, edit, or complete tracked OrgX planning sessions.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "orgx_spawn",
+      "title": "Spawn OrgX Agent Work",
+      "description": "Guard, classify, spawn, or hand off specialist OrgX agent work.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "orgx_decide",
+      "title": "Manage OrgX Decision",
+      "description": "Create, remember, list, approve, or reject durable OrgX decisions.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      }
+    },
+    {
+      "name": "orgx_submit_receipt",
+      "title": "Submit OrgX Receipt",
+      "description": "Submit durable proof, attribution, quality, or outcome receipts.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "orgx_emit_activity",
+      "title": "Emit OrgX Activity",
+      "description": "Emit append-only execution telemetry without changing durable entity state.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      }
     },
     {
       "name": "approve_decision",
-      "description": "Approve a pending agent decision after explicit user confirmation. Also known as: sign off, approve AI work, unblock agent, accept decision."
+      "title": "Approve Decision",
+      "description": "Approve a pending decision from the decisions widget after explicit confirmation.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      }
     },
     {
       "name": "reject_decision",
-      "description": "Reject a pending agent decision with guidance after explicit user confirmation. Also known as: request revisions, send feedback, decline decision."
+      "title": "Reject Decision",
+      "description": "Reject or request changes on a pending decision from the decisions widget.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      }
     },
     {
       "name": "get_agent_status",
-      "description": "Show current AI agent activity, blocked work, and execution state. Also known as: agent status, what agents are doing, active runs."
-    },
-    {
-      "name": "query_org_memory",
-      "description": "Search team memory, organizational decisions, prior artifacts, and project context across agents. Also known as: search memory, recall decisions, find context, retrieve artifacts, project memory."
+      "title": "Get Agent Status",
+      "description": "Render the agent-status widget with active, blocked, and idle agent work.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
       "name": "get_initiative_pulse",
-      "description": "Get project health, blockers, milestones, owners, and recent activity for an initiative. Also known as: project status, roadmap progress, execution health, blockers."
-    },
-    {
-      "name": "spawn_agent_task",
-      "description": "Delegate work to a specialist AI agent and track the assigned task. Also known as: hand this off, assign task, spawn agent, have an agent do it, autonomous work."
-    },
-    {
-      "name": "get_decision_history",
-      "description": "Recall past decisions about a topic, project, customer, feature, or artifact. Also known as: decision log, what did we decide, prior approvals."
-    },
-    {
-      "name": "get_morning_brief",
-      "description": "Summarize overnight agent activity, important changes, pending approvals, and ROI deltas. Also known as: morning brief, executive readout, agent digest."
-    },
-    {
-      "name": "orgx_bootstrap",
-      "description": "Discover workspace context, granted scopes, safe first calls, and recommended OrgX workflows. Also known as: bootstrap, setup, tool routing."
-    },
-    {
-      "name": "orgx_describe_tool",
-      "description": "Return the live contract for an OrgX tool, including fields, auth, and next-step guidance. Also known as: tool schema, tool help, contract."
-    },
-    {
-      "name": "orgx_describe_action",
-      "description": "Describe lifecycle actions, aliases, and payload requirements before changing OrgX entities. Also known as: action help, status change help."
-    },
-    {
-      "name": "start_plan_session",
-      "description": "Start a multi-agent planning session that breaks a goal into projects, tasks, owners, and agent assignments. Also known as: plan feature, roadmap planning."
-    },
-    {
-      "name": "get_active_sessions",
-      "description": "Find active planning sessions so agents can continue prior planning context. Also known as: resume planning, active plans, session context."
-    },
-    {
-      "name": "resume_plan_session",
-      "description": "Resume a planning session by UUID, orgx:// URI, or most recent active session. Also known as: continue plan, reload planning context."
-    },
-    {
-      "name": "improve_plan",
-      "description": "Improve a plan with AI suggestions based on prior patterns and best practices. Also known as: plan critique, planning feedback, refine plan."
-    },
-    {
-      "name": "record_plan_edit",
-      "description": "Record a plan edit so OrgX can preserve planning context and learn patterns. Also known as: save plan change, plan memory."
-    },
-    {
-      "name": "complete_plan",
-      "description": "Complete a planning session and attach implementation details to durable work context. Also known as: finish plan, implementation record."
-    },
-    {
-      "name": "studio_brand_ingest",
-      "description": "Ingest brand sources and create/update a Content Studio brand pack."
-    },
-    {
-      "name": "studio_content_create",
-      "description": "Generate branded visual content (carousel, post, story, video, banner, thumbnail)."
-    },
-    {
-      "name": "studio_library_search",
-      "description": "Search the Content Studio library by filters and text."
-    },
-    {
-      "name": "studio_brands_list",
-      "description": "List available Content Studio brands for the user/org."
-    },
-    {
-      "name": "get_org_snapshot",
-      "description": "Get an organization-wide execution snapshot across initiatives, work, blockers, and context. Also known as: org status, team overview."
-    },
-    {
-      "name": "account_status",
-      "description": "Get current account tier, usage, and hourly MCP rate-limit status."
-    },
-    {
-      "name": "account_upgrade",
-      "description": "Start a plan upgrade or agent credit top-up flow and return a checkout or contact URL after explicit user confirmation. Does not charge automatically."
-    },
-    {
-      "name": "account_usage_report",
-      "description": "Get detailed usage metrics and current edge rate-limit allowance."
-    },
-    {
-      "name": "list_entities",
-      "description": "List projects, tasks, milestones, decisions, agents, artifacts, and other OrgX records with pagination, filtering, and ordering. Also known as: browse work, find entities."
-    },
-    {
-      "name": "create_entity",
-      "description": "Create durable work records such as tasks, milestones, decisions, artifacts, or initiatives. Also known as: save work item, add record."
-    },
-    {
-      "name": "create_task",
-      "description": "Create an actionable task in organizational memory for a project, milestone, or agent. Also known as: add task, create work item."
-    },
-    {
-      "name": "create_milestone",
-      "description": "Create a project milestone or phase checkpoint with durable context. Also known as: add milestone, create checkpoint."
-    },
-    {
-      "name": "create_decision",
-      "description": "Record a decision in organizational memory so agents can recall it later. Also known as: remember decision, decision log, team memory."
-    },
-    {
-      "name": "batch_create_entities",
-      "description": "Create multiple work records in one call for planning and scaffolding. Also known as: bulk create tasks, batch project setup."
+      "title": "Get Initiative Pulse",
+      "description": "Render the initiative-pulse widget for health, blockers, milestones, and activity.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
       "name": "scaffold_initiative",
-      "description": "Turn a goal, roadmap, launch, or feature plan into executable workstreams, milestones, and tasks. Also known as: scaffold project, create roadmap."
+      "title": "Scaffold Initiative",
+      "description": "Create a full initiative hierarchy and render the scaffolded-initiative widget.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
-      "name": "get_task_with_context",
-      "description": "Fetch a task with linked decisions, artifacts, entities, and plan-session context. Also known as: task context, work brief."
+      "name": "spawn_agent_task",
+      "title": "Spawn Agent Task",
+      "description": "Delegate work to an agent and render the task-spawned widget.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      }
     },
     {
-      "name": "update_entity",
-      "description": "Update fields on an existing task, project, milestone, decision, or artifact. Also known as: edit work item, update context."
+      "name": "handoff_task",
+      "title": "Handoff Task",
+      "description": "Hand off an existing task and render the task-spawned widget for the new assignment.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      }
     },
     {
-      "name": "entity_action",
-      "description": "Change work state, attach artifacts, or run lifecycle actions on OrgX records. Also known as: launch, pause, complete, attach proof."
+      "name": "recommend_next_action",
+      "title": "Recommend Next Action",
+      "description": "Render search-results style next-action recommendations for prioritization.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
-      "name": "validate_studio_content",
-      "description": "Validate a studio_content entity without composing a generic entity_action payload manually."
+      "name": "query_org_memory",
+      "title": "Query Org Memory",
+      "description": "Render organizational memory search results in the search-results widget.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
-      "name": "pin_workstream",
-      "description": "Pin a workstream to the top of the Next Up queue without composing a generic queue action manually."
+      "name": "recall_memory",
+      "title": "Recall Memory",
+      "description": "Render recalled memory and prior context in the search-results widget.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
-      "name": "batch_delete_entities",
-      "description": "Delete multiple entities in one call using the 'delete' lifecycle action (hard delete)."
+      "name": "approve_agent_work",
+      "title": "Approve Agent Work",
+      "description": "List, approve, or reject agent approval items through the decisions widget.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      }
     },
     {
-      "name": "configure_org",
-      "description": "Check setup status, configure agents, or set org policies"
+      "name": "delegate_agent_task",
+      "title": "Delegate Agent Task",
+      "description": "Delegate work through the task-spawned widget using agent-friendly fields.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      }
     },
     {
-      "name": "workspace",
-      "description": "Create, list, get, or set workspace context. Use action=create to create a workspace and make it active for follow-up MCP calls."
+      "name": "track_project_progress",
+      "title": "Track Project Progress",
+      "description": "Render project progress through the initiative-pulse widget.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     },
     {
-      "name": "stats",
-      "description": "Get personal or session statistics"
+      "name": "review_artifact",
+      "title": "Review Artifact",
+      "description": "Render the artifact-review widget for approval or change requests on deliverables.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "get_morning_brief",
+      "title": "Get Morning Brief",
+      "description": "Render the morning-brief widget with receipts, exceptions, ROI, and value signals.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "consolidate_pr",
+      "title": "Consolidate Pull Request",
+      "description": "Generate and persist an orchestration.consolidation_pass receipt for a GitHub pull request.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      }
     }
   ],
   "resources": [
@@ -293,6 +387,24 @@
       "mimeType": "text/html;profile=mcp-app"
     },
     {
+      "uri": "ui://widget/artifact-review.html",
+      "name": "Artifact Review Widget",
+      "description": "Widget for reviewing, approving, or requesting changes on production artifacts",
+      "mimeType": "text/html;profile=mcp-app"
+    },
+    {
+      "uri": "ui://widget/plan-session-live.html",
+      "name": "Plan Session Live Widget",
+      "description": "Widget for live tracked planning sessions and co-authored agent reasoning",
+      "mimeType": "text/html;profile=mcp-app"
+    },
+    {
+      "uri": "ui://widget/daily-brief.html",
+      "name": "Daily Brief + Trust Loop Widget",
+      "description": "Widget showing skill and agent trust-loop signals for daily brief workflows",
+      "mimeType": "text/html;profile=mcp-app"
+    },
+    {
       "uri": "ui://widget/decisions.skybridge.html",
       "name": "Decisions Widget (Skybridge)",
       "description": "ChatGPT Apps SDK widget for displaying and managing pending decisions",
@@ -332,6 +444,24 @@
       "uri": "ui://widget/morning-brief.skybridge.html",
       "name": "Morning Brief Widget (Skybridge)",
       "description": "ChatGPT Apps SDK widget showing the latest autonomous session brief and ROI deltas",
+      "mimeType": "text/html+skybridge"
+    },
+    {
+      "uri": "ui://widget/artifact-review.skybridge.html",
+      "name": "Artifact Review Widget (Skybridge)",
+      "description": "ChatGPT Apps SDK widget for reviewing, approving, or requesting changes on production artifacts",
+      "mimeType": "text/html+skybridge"
+    },
+    {
+      "uri": "ui://widget/plan-session-live.skybridge.html",
+      "name": "Plan Session Live Widget (Skybridge)",
+      "description": "ChatGPT Apps SDK widget for live tracked planning sessions and co-authored agent reasoning",
+      "mimeType": "text/html+skybridge"
+    },
+    {
+      "uri": "ui://widget/daily-brief.skybridge.html",
+      "name": "Daily Brief + Trust Loop Widget (Skybridge)",
+      "description": "ChatGPT Apps SDK widget showing skill and agent trust-loop signals for daily brief workflows",
       "mimeType": "text/html+skybridge"
     }
   ],

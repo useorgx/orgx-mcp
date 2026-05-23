@@ -13,7 +13,8 @@
  * Usage: pass ?profile=executor on the connection URL:
  *   wss://mcp.useorgx.com/sse?profile=executor
  *
- * Default is 'full' — all tools registered, backward compatible.
+ * Default is 'v2' — the compact public surface. Use profile=full only for
+ * admin/debug compatibility sessions.
  */
 
 export interface ToolProfile {
@@ -23,67 +24,83 @@ export interface ToolProfile {
   tools: string[] | null;
 }
 
+export const V2_CORE_PUBLIC_SURFACE = [
+  'orgx_bootstrap',
+  'orgx_inspect',
+  'orgx_search',
+  'orgx_recommend',
+  'orgx_write',
+  'orgx_attach',
+  'orgx_act',
+  'orgx_emit_activity',
+  'orgx_plan',
+  'orgx_spawn',
+  'orgx_decide',
+  'orgx_submit_receipt',
+] as const;
+
+export const WIDGET_AFFORDANCE_SURFACE = [
+  'approve_decision',
+  'reject_decision',
+  'get_agent_status',
+  'get_initiative_pulse',
+  'scaffold_initiative',
+  'spawn_agent_task',
+  'handoff_task',
+  'recommend_next_action',
+  'query_org_memory',
+  'recall_memory',
+  'approve_agent_work',
+  'delegate_agent_task',
+  'track_project_progress',
+  'review_artifact',
+  'get_morning_brief',
+] as const;
+
+export const CLIENT_INTEGRATION_PUBLIC_SURFACE = ['consolidate_pr'] as const;
+
+const V2_PUBLIC_SURFACE = [
+  ...V2_CORE_PUBLIC_SURFACE,
+  ...WIDGET_AFFORDANCE_SURFACE,
+  ...CLIENT_INTEGRATION_PUBLIC_SURFACE,
+] as const;
+
 export const TOOL_PROFILES: Record<string, ToolProfile> = {
+  v2: {
+    description:
+      'OrgX MCP v2 public surface plus direct widget affordances for decisions, agent status, initiative pulse, scaffold, artifacts, memory search, morning brief, and task delegation',
+    tools: [...V2_PUBLIC_SURFACE],
+  },
   memory: {
     description:
       'Shared organizational memory: decisions, artifacts, pending approvals, task context, and project progress',
     tools: [
       'orgx_bootstrap',
-      'orgx_describe_tool',
-      'orgx_describe_action',
-      'workspace',
-      'remember_decision',
-      'recall_memory',
-      'query_org_memory',
-      'get_decision_history',
-      'create_decision',
-      'get_pending_decisions',
-      'approve_agent_work',
-      'approve_decision',
-      'reject_decision',
-      'get_task_with_context',
-      'track_project_progress',
-      'get_initiative_pulse',
-      'get_org_snapshot',
+      'orgx_search',
+      'orgx_inspect',
+      'orgx_decide',
+      'orgx_recommend',
+      'orgx_attach',
+      'orgx_submit_receipt',
     ],
   },
   commander: {
     description:
-      'Human operators: decisions via list_entities, history via query_org_memory, prioritization via recommend_next_action, plus status and entity CRUD',
+      'Human operators: bootstrap, search, inspect, recommend, write, act, attach, plan, spawn, decide, and submit receipts',
     tools: [
       'orgx_bootstrap',
-      'orgx_describe_tool',
-      'orgx_describe_action',
-      'get_pending_decisions',
-      'approve_decision',
-      'reject_decision',
-      'get_decision_history',
-      'get_agent_status',
-      'get_initiative_pulse',
-      'get_org_snapshot',
-      'query_org_memory',
-      'recommend_next_action',
-      'create_task',
-      'create_milestone',
-      'create_decision',
-      'pin_workstream',
-      'list_entities',
-      'get_task_with_context',
-      'create_entity',
-      'update_entity',
-      'entity_action',
-      'verify_entity_completion',
+      'orgx_search',
+      'orgx_inspect',
+      'orgx_recommend',
+      'orgx_write',
+      'orgx_attach',
+      'orgx_act',
+      'orgx_plan',
+      'orgx_spawn',
+      'orgx_decide',
+      'orgx_submit_receipt',
       'scaffold_initiative',
-      'comment_on_entity',
-      'list_entity_comments',
-      'score_next_up_queue',
-      'scoring_config',
-      'queue_action',
-      'record_quality_score',
-      'orgx_free_audit',
-      'workspace',
-      'configure_org',
-      'stats',
+      'consolidate_pr',
     ],
   },
   planner: {
@@ -91,81 +108,45 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
       'Planning: create initiatives, scaffold hierarchies, plan sessions',
     tools: [
       'orgx_bootstrap',
-      'orgx_describe_tool',
-      'orgx_describe_action',
-      'start_plan_session',
-      'get_active_sessions',
-      'resume_plan_session',
-      'improve_plan',
-      'record_plan_edit',
-      'complete_plan',
-      'create_task',
-      'create_milestone',
-      'create_decision',
+      'orgx_plan',
+      'orgx_write',
+      'orgx_act',
+      'orgx_search',
+      'orgx_inspect',
+      'orgx_decide',
       'scaffold_initiative',
-      'create_entity',
-      'update_entity',
-      'batch_create_entities',
-      'list_entities',
-      'get_task_with_context',
-      'entity_action',
-      'orgx_free_audit',
-      'query_org_memory',
-      'get_initiative_pulse',
-      'recommend_next_action',
-      'workspace',
     ],
   },
   executor: {
     description: 'Agent execution: progress reporting, changesets, spawning',
     tools: [
       'orgx_bootstrap',
-      'orgx_describe_tool',
-      'orgx_describe_action',
       'orgx_emit_activity',
-      'orgx_apply_changeset',
-      'sync_client_state',
-      'spawn_agent_task',
-      'handoff_task',
-      'update_stream_progress',
-      'get_initiative_stream_state',
-      'entity_action',
-      'validate_studio_content',
-      'pin_workstream',
-      'list_entities',
-      'get_task_with_context',
-      'comment_on_entity',
-      'workspace',
+      'orgx_search',
+      'orgx_inspect',
+      'orgx_write',
+      'orgx_attach',
+      'orgx_act',
+      'orgx_plan',
+      'orgx_spawn',
+      'orgx_submit_receipt',
+      'consolidate_pr',
     ],
   },
   observer: {
     description:
-      'Read-only monitoring and reporting with list_entities, query_org_memory, recommend_next_action, and initiative health',
+      'Read-only monitoring and reporting with bootstrap, search, inspect, recommend, plan, and decisions',
     tools: [
       'orgx_bootstrap',
-      'orgx_describe_tool',
-      'orgx_describe_action',
-      'get_pending_decisions',
-      'get_agent_status',
-      'get_initiative_pulse',
-      'get_org_snapshot',
-      'query_org_memory',
-      'get_decision_history',
-      'resume_plan_session',
-      'recommend_next_action',
-      'list_entities',
-      'get_task_with_context',
-      'list_entity_comments',
-      'score_next_up_queue',
-      'scoring_config',
-      'get_initiative_stream_state',
-      'orgx_free_audit',
-      'workspace',
-      'stats',
+      'orgx_search',
+      'orgx_inspect',
+      'orgx_recommend',
+      'orgx_plan',
+      'orgx_decide',
     ],
   },
   full: {
-    description: 'All tools (default, backward compatible)',
+    description: 'All tools for admin/debug compatibility sessions',
     tools: null,
   },
 };
@@ -180,7 +161,8 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
 export function resolveProfileToolSet(
   profileName: string | undefined | null
 ): Set<string> | null {
-  if (!profileName || profileName === 'full') return null;
+  if (profileName === 'full') return null;
+  if (!profileName) return new Set(TOOL_PROFILES.v2.tools ?? []);
   const profile = TOOL_PROFILES[profileName];
   if (!profile || profile.tools === null) return null;
   return new Set(profile.tools);

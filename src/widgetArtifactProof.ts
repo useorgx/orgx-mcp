@@ -177,7 +177,9 @@ export type WidgetProofHandoff = {
   preserve_tool_results: true;
   live_url: string | null;
   proof_count: number;
+  visible_proof_count: number;
   review_count: number;
+  visible_review_count: number;
   primary_prompt: string;
   surface_prompts: WidgetContinuationPrompt[];
 };
@@ -545,6 +547,47 @@ function summarizeArtifacts(artifacts: NormalizedArtifact[]) {
   };
 }
 
+function normalizeArtifactSummary(
+  value: unknown
+): Record<string, number> | null {
+  const record = asRecord(value);
+  if (!record) return null;
+
+  const summary: Record<string, number> = {};
+  for (const [key, rawValue] of Object.entries(record)) {
+    if (typeof rawValue !== 'number' || !Number.isFinite(rawValue)) continue;
+    summary[key] = Math.max(0, Math.trunc(rawValue));
+  }
+
+  return Object.keys(summary).length > 0 ? summary : null;
+}
+
+function mergeArtifactSummary(
+  upstreamSummary: unknown,
+  displaySummary: Record<string, number>
+): Record<string, number> {
+  const normalizedUpstream = normalizeArtifactSummary(upstreamSummary);
+  if (!normalizedUpstream) return displaySummary;
+
+  const merged: Record<string, number> = { ...displaySummary };
+  for (const [key, value] of Object.entries(normalizedUpstream)) {
+    merged[key] = Math.max(merged[key] ?? 0, value);
+  }
+  merged.total = Math.max(displaySummary.total ?? 0, normalizedUpstream.total ?? 0);
+  return merged;
+}
+
+function countReviewableProofs(
+  summary: Record<string, number>,
+  proofCards: WidgetProofCard[]
+): number {
+  return Math.max(
+    proofCards.filter((item) => item.needs_review).length,
+    summary.needs_review ?? 0,
+    summary.in_review ?? 0
+  );
+}
+
 function toWidgetProofCard(artifact: NormalizedArtifact): WidgetProofCard {
   return {
     id: artifact.id,
@@ -581,24 +624,44 @@ export function buildWidgetProofHandoff(options: {
   initiativeId?: string | null;
   initiativeTitle?: string | null;
   proofCount?: number;
+  visibleProofCount?: number;
   reviewCount?: number;
+  visibleReviewCount?: number;
 }): WidgetProofHandoff {
   const liveUrl = options.initiativeId ? buildLiveUrl(options.initiativeId) : null;
   const initiativeName = options.initiativeTitle?.trim() || 'this OrgX initiative';
   const proofCount = options.proofCount ?? 0;
+  const visibleProofCount = options.visibleProofCount ?? proofCount;
   const reviewCount = options.reviewCount ?? 0;
+  const visibleReviewCount = options.visibleReviewCount ?? reviewCount;
+  const proofPhrase =
+    proofCount > visibleProofCount
+      ? `${visibleProofCount} visible proof card${
+          visibleProofCount === 1 ? '' : 's'
+        } from ${proofCount} tracked artifact${
+          proofCount === 1 ? '' : 's'
+        }`
+      : `${proofCount} proof card${proofCount === 1 ? '' : 's'}`;
   const reviewPhrase =
-    reviewCount > 0
-      ? `Start with the ${reviewCount} proof card${reviewCount === 1 ? '' : 's'} marked for review.`
+    visibleReviewCount > 0
+      ? `Start with the ${visibleReviewCount} visible proof card${
+          visibleReviewCount === 1 ? '' : 's'
+        } marked for review.`
+      : reviewCount > 0
+      ? `The summary shows ${reviewCount} tracked artifact${
+          reviewCount === 1 ? '' : 's'
+        } needing review; use the live link if the review card is not visible in this result.`
       : 'Start by inspecting the newest proof card and the live initiative link.';
-  const basePrompt = `Continue ${initiativeName} from this OrgX handoff. Use the ${proofCount} proof card${proofCount === 1 ? '' : 's'}, preserve the tool result links, cite the artifact or task link you used, then propose the next concrete action. ${reviewPhrase}${liveUrl ? ` Live view: ${liveUrl}` : ''}`;
+  const basePrompt = `Continue ${initiativeName} from this OrgX handoff. Use the ${proofPhrase}, preserve the tool result links, cite the artifact or task link you used, then propose the next concrete action. ${reviewPhrase}${liveUrl ? ` Live view: ${liveUrl}` : ''}`;
 
   return {
     source: 'orgx-mcp-widget-proof-cards',
     preserve_tool_results: true,
     live_url: liveUrl,
     proof_count: proofCount,
+    visible_proof_count: visibleProofCount,
     review_count: reviewCount,
+    visible_review_count: visibleReviewCount,
     primary_prompt: basePrompt,
     surface_prompts: SUPPORTED_WIDGET_SURFACES.map((surface) => ({
       surface,
@@ -677,17 +740,25 @@ export function enrichInitiativePulseWithArtifacts(
     attachArtifactLinks(artifact, initiativeId)
   );
   const proofCards = linkedArtifacts.slice(0, 5).map(toWidgetProofCard);
+  const artifactSummary = mergeArtifactSummary(
+    data.artifact_summary,
+    summarizeArtifacts(artifacts)
+  );
+  const visibleReviewCount = proofCards.filter((item) => item.needs_review).length;
+  const reviewCount = countReviewableProofs(artifactSummary, proofCards);
   return {
     ...data,
     recent_artifacts: linkedArtifacts.slice(0, 5),
     proof_cards: proofCards,
     review_items: proofCards.filter((item) => item.needs_review).slice(0, 4),
-    artifact_summary: summarizeArtifacts(artifacts),
+    artifact_summary: artifactSummary,
     proof_handoff: buildWidgetProofHandoff({
       initiativeId,
       initiativeTitle: firstString(data, ['name', 'title', 'initiative_title', 'initiativeTitle']),
-      proofCount: artifacts.length,
-      reviewCount: proofCards.filter((item) => item.needs_review).length,
+      proofCount: artifactSummary.total,
+      visibleProofCount: proofCards.length,
+      reviewCount,
+      visibleReviewCount,
     }),
     widget_state_contract: WIDGET_PROOF_STATE_CONTRACT,
   };

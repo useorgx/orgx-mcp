@@ -31,7 +31,7 @@ const entityActionAttachSchema = z
     external_url: z.string().trim().max(2_000).optional(),
     preview_markdown: z.string().max(25_000).optional(),
     status: z.enum(ATTACHABLE_ARTIFACT_STATUSES).optional(),
-    metadata: z.record(z.unknown()).optional(),
+    metadata: z.record(z.string(), z.unknown()).optional(),
     created_by_type: z.enum(['human', 'agent']).optional(),
     created_by_id: z.string().trim().min(1).optional(),
   })

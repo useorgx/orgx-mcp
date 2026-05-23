@@ -2233,7 +2233,8 @@
     // of silently blocking the sandbox navigation.
     var _openLinkMsgId=1000;
     function openWidgetLink(url,event){if(!url)return false;var protocol=_detectProtocol();if(protocol==='chatgpt'&&window.openai&&typeof window.openai.openExternal==='function'){if(event&&typeof event.preventDefault==='function')event.preventDefault();window.openai.openExternal({url:url});return false;}if(protocol==='mcp-apps'){if(event&&typeof event.preventDefault==='function')event.preventDefault();try{window.parent.postMessage({jsonrpc:'2.0',id:_openLinkMsgId++,method:'ui/open-link',params:{url:url}},'*');}catch(_){}return false;}return true;}
-    function _extractData(out){if(out==null)return null;if(typeof out==='object'&&out.structuredContent)return out.structuredContent;if(typeof out==='object'&&Array.isArray(out.content)){for(var i=0;i<out.content.length;i++){var item=out.content[i];if(item&&item.type==='text'&&item.text){try{return JSON.parse(item.text);}catch(e){continue;}}}}if(typeof out==='string'){try{return JSON.parse(out);}catch(e){return{text:out};}}return out;}
+    function _extractData(out){return _extractDataDepth(out,0);}
+    function _extractDataDepth(out,depth){if(out==null||depth>4)return null;if(typeof out==='object'&&out.structuredContent)return out.structuredContent;if(typeof out==='object'&&out.result)return _extractDataDepth(out.result,depth+1);if(typeof out==='object'&&out.toolOutput)return _extractDataDepth(out.toolOutput,depth+1);if(typeof out==='object'&&out.output)return _extractDataDepth(out.output,depth+1);if(typeof out==='object'&&Array.isArray(out.content)){for(var i=0;i<out.content.length;i++){var item=out.content[i];if(item&&item.type==='text'&&item.text){try{return JSON.parse(item.text);}catch(e){continue;}}}}if(typeof out==='string'){try{return JSON.parse(out);}catch(e){return{text:out};}}return out;}
     function _measureContentSize(){var docEl=document.documentElement;var body=document.body;var docRect=docEl.getBoundingClientRect();var bodyRect=body?body.getBoundingClientRect():{width:0,height:0};var scrollbarWidth=Math.max(0,window.innerWidth-docEl.clientWidth);var width=Math.max(Math.ceil(docRect.width+scrollbarWidth),Math.ceil(bodyRect.width),body?body.scrollWidth:0,body?body.offsetWidth:0,body?body.clientWidth:0);var height=Math.max(Math.ceil(docRect.height),Math.ceil(bodyRect.height),body?body.scrollHeight:0,body?body.offsetHeight:0,body?body.clientHeight:0);return{width:width,height:height};}
     function _sendSize(){var size=_measureContentSize();try{window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/size-changed',params:{width:size.width,height:size.height}},'*');}catch(e){}}
     var _sizeObserver=null;
@@ -3061,6 +3062,11 @@
       var delay = Math.max(0, MIN_LOADING_MS - (Date.now() - bootStartedAt));
       window.setTimeout(commit, delay);
     };
+    if (!isDemo && !isLoadingOverride) {
+      window.setTimeout(function() {
+        if (isLoading && !data) applyBootPayload();
+      }, 6500);
+    }
 
     var scaffoldStateCycleTimer = 0;
     var scaffoldStateCaptionTimer = 0;
@@ -3216,7 +3222,7 @@
      * Rendered after the tree whenever the scaffold is in a
      * pre-launch state (status draft/scaffolded). Computes 5 gates
      * from the scaffold data and composes a ring-driven CTA that
-     * calls entity_action launch via the MCP host when the user
+     * calls orgx_act launch via the MCP host when the user
      * holds the button.
      */
     var computeLaunchReadiness = (scaffold) => {
@@ -3463,7 +3469,7 @@
           transitionToLaunching();
           try {
             if (window.openai && typeof window.openai.callTool === 'function') {
-              await window.openai.callTool('entity_action', {
+              await window.openai.callTool('orgx_act', {
                 type: 'initiative',
                 id: scaffold.initiative.raw_id || scaffold.initiative.id,
                 action: 'launch',
@@ -3519,13 +3525,20 @@
         </div>`;
       };
       const renderMilestone = (milestone) => {
+        const omittedTaskCount = typeof milestone.omitted_task_count === 'number' ? milestone.omitted_task_count : 0;
+        const omittedTaskRow = omittedTaskCount > 0
+          ? `<div class="node-item tk" data-tk-row>
+              <span class="node-icon" style="display:flex; align-items:center;">${icons.chevronRight(14)}</span>
+              <span class="tree-label">${escapeHtml(omittedTaskCount + ' more task' + (omittedTaskCount === 1 ? '' : 's') + ' in Live View')}</span>
+            </div>`
+          : '';
         return `<div class="ms-block" data-ms-block>
           <div class="node-item ms" data-ms-row>
             <span class="node-icon" style="display:flex; align-items:center;">${icons.milestone(14)}</span>
             <span class="tree-label">${escapeHtml(readLabel(milestone, 'Untitled'))}</span>
             ${renderIdBadge(milestone.display_id, milestone.raw_id)}
           </div>
-          ${milestone.tasks && milestone.tasks.length ? `<div class="ms-tasks">${milestone.tasks.map(renderTask).join('')}</div>` : ''}
+          ${milestone.tasks && milestone.tasks.length || omittedTaskRow ? `<div class="ms-tasks">${(milestone.tasks || []).map(renderTask).join('')}${omittedTaskRow}</div>` : ''}
         </div>`;
       };
       const listHtml = sections.map((section) => {
@@ -3541,8 +3554,10 @@
         // immediate inspection — users can expand individual rows or all
         // rows via the section-level toggle.
         var childMilestoneCount = Array.isArray(section.milestones) ? section.milestones.length : 0;
-        var childTaskCount = Array.isArray(section.milestones)
-          ? section.milestones.reduce((n, m) => n + (Array.isArray(m.tasks) ? m.tasks.length : 0), 0)
+        var childTaskCount = typeof section.task_count === 'number'
+          ? section.task_count
+          : Array.isArray(section.milestones)
+          ? section.milestones.reduce((n, m) => n + (typeof m.task_count === 'number' ? m.task_count : (Array.isArray(m.tasks) ? m.tasks.length : 0)), 0)
           : 0;
         var childSummaryBits = [];
         if (childMilestoneCount > 0) childSummaryBits.push(childMilestoneCount + ' milestone' + (childMilestoneCount === 1 ? '' : 's'));

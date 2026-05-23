@@ -25,10 +25,11 @@ import {
 import { authenticateRequest } from './requestAuth';
 import {
   OAUTH_SCOPES_SUPPORTED,
-  OUTPUT_TEMPLATE_URIS,
-  WIDGET_URIS,
+  WIDGET_RESOURCES,
 } from './toolDefinitions';
+import { toSkybridgeResourceUri } from './widgetConfig';
 import serverManifest from '../server.json';
+import glamaConnectorManifest from '../glama.json';
 import { signSessionToken } from './sessionToken';
 import {
   verifyStreamTokenDetailed,
@@ -82,8 +83,64 @@ type OAuthCallbackIdentity = {
   userEmail: string;
 };
 
+const OAUTH_STATE_TTL_SECONDS = 20 * 60;
+
+function authStateKey(stateKey: string): string {
+  return `auth_state:${stateKey}`;
+}
+
+function authIdentityKey(stateKey: string): string {
+  return `auth_identity:${stateKey}`;
+}
+
 function isPlaceholderEmail(email: string | null | undefined): boolean {
   return Boolean(email?.toLowerCase().endsWith('@placeholder.local'));
+}
+
+function scopeListToParam(scopes: readonly string[] | undefined): string {
+  return (scopes ?? []).join(' ');
+}
+
+function isReadOnlyCodexTool(toolName: string | undefined): boolean {
+  return Boolean(
+    toolName &&
+      (toolName === 'orgx_bootstrap' ||
+        toolName === 'orgx_search' ||
+        toolName === 'orgx_inspect' ||
+        toolName === 'orgx_recommend' ||
+        toolName === 'get_agent_status' ||
+        toolName === 'get_initiative_pulse' ||
+        toolName === 'recommend_next_action' ||
+        toolName === 'query_org_memory' ||
+        toolName === 'recall_memory' ||
+        toolName === 'track_project_progress' ||
+        toolName === 'get_morning_brief')
+  );
+}
+
+function resolveApprovedScopes(
+  requestedScopes: readonly string[] | undefined,
+  finalScope: string | null
+): string[] {
+  const supportedScopes = new Set<string>(OAUTH_SCOPES_SUPPORTED);
+  const requested = (requestedScopes ?? []).filter((scope) =>
+    supportedScopes.has(scope)
+  );
+  const requestedSet = new Set(requested);
+
+  if (!finalScope) return requested;
+
+  const selected = finalScope.split(/\s+/).filter(Boolean);
+  const approved: string[] = [];
+  const seen = new Set<string>();
+  for (const scope of selected) {
+    if (!supportedScopes.has(scope)) continue;
+    if (requestedSet.size > 0 && !requestedSet.has(scope)) continue;
+    if (seen.has(scope)) continue;
+    seen.add(scope);
+    approved.push(scope);
+  }
+  return approved;
 }
 
 async function resolveOAuthCallbackIdentity(params: {
@@ -221,40 +278,17 @@ function buildDerivedServerCard(manifest: typeof serverManifest) {
   };
 }
 
-const PUBLISHED_WIDGET_URI_OVERRIDES = new Map<string, string>([
-  ['ui://widget/decisions.html', WIDGET_URIS.decisions],
-  ['ui://widget/agent-status.html', WIDGET_URIS.agentStatus],
-  ['ui://widget/search-results.html', WIDGET_URIS.searchResults],
-  ['ui://widget/scaffolded-initiative.html', WIDGET_URIS.scaffoldedInitiative],
-  ['ui://widget/initiative-pulse.html', WIDGET_URIS.initiativePulse],
-  ['ui://widget/task-spawned.html', WIDGET_URIS.taskSpawned],
-  ['ui://widget/morning-brief.html', WIDGET_URIS.morningBrief],
-  ['ui://widget/decisions.skybridge.html', OUTPUT_TEMPLATE_URIS.decisions],
-  [
-    'ui://widget/agent-status.skybridge.html',
-    OUTPUT_TEMPLATE_URIS.agentStatus,
-  ],
-  [
-    'ui://widget/search-results.skybridge.html',
-    OUTPUT_TEMPLATE_URIS.searchResults,
-  ],
-  [
-    'ui://widget/scaffolded-initiative.skybridge.html',
-    OUTPUT_TEMPLATE_URIS.scaffoldedInitiative,
-  ],
-  [
-    'ui://widget/initiative-pulse.skybridge.html',
-    OUTPUT_TEMPLATE_URIS.initiativePulse,
-  ],
-  [
-    'ui://widget/task-spawned.skybridge.html',
-    OUTPUT_TEMPLATE_URIS.taskSpawned,
-  ],
-  [
-    'ui://widget/morning-brief.skybridge.html',
-    OUTPUT_TEMPLATE_URIS.morningBrief,
-  ],
-]);
+const PUBLISHED_WIDGET_URI_OVERRIDES = new Map<string, string>(
+  WIDGET_RESOURCES.flatMap((widget) => {
+    const [baseUri] = widget.uri.split('?');
+    const skybridgeUri = toSkybridgeResourceUri(widget.uri);
+    const [baseSkybridgeUri] = skybridgeUri.split('?');
+    return [
+      [baseUri, widget.uri],
+      [baseSkybridgeUri, skybridgeUri],
+    ];
+  })
+);
 
 const LOCAL_CONFIG_WRITE_POLICY = {
   automaticWrites: false,
@@ -374,6 +408,16 @@ export const authHandler = {
       );
     }
 
+    if (request.method === 'GET' && url.pathname === '/.well-known/glama.json') {
+      return withCors(
+        Response.json(glamaConnectorManifest, {
+          headers: {
+            'Cache-Control': 'public, max-age=300',
+          },
+        })
+      );
+    }
+
     if (
       request.method === 'GET' &&
       ['/llms.txt', '/llms-full.txt', '/agents.md'].includes(url.pathname)
@@ -428,20 +472,18 @@ export const authHandler = {
               'track project health, blockers, milestones, and owners',
             ],
             primary_tools: [
-              'remember_decision',
-              'recall_memory',
-              'approve_agent_work',
-              'delegate_agent_task',
-              'track_project_progress',
-              'query_org_memory',
-              'get_decision_history',
-              'create_decision',
-              'get_pending_decisions',
-              'approve_decision',
-              'reject_decision',
-              'spawn_agent_task',
-              'get_initiative_pulse',
-              'scaffold_initiative',
+              'orgx_bootstrap',
+              'orgx_search',
+              'orgx_inspect',
+              'orgx_recommend',
+              'orgx_write',
+              'orgx_attach',
+              'orgx_act',
+              'orgx_plan',
+              'orgx_spawn',
+              'orgx_decide',
+              'orgx_submit_receipt',
+              'orgx_emit_activity',
             ],
           },
           {
@@ -809,91 +851,11 @@ export const authHandler = {
         homepage: 'https://useorgx.com',
         documentation: 'https://docs.useorgx.com/integrations/codex',
         capabilities: { tools: true, resources: true, prompts: true },
-        tools: [
-          {
-            name: 'approve_decision',
-            description: 'Approve a pending decision',
-          },
-          {
-            name: 'reject_decision',
-            description: 'Reject a pending decision with reason',
-          },
-          {
-            name: 'get_initiative_pulse',
-            description: 'Get health metrics for initiatives',
-            readOnly: true,
-          },
-          {
-            name: 'list_entities',
-            description:
-              'List any entity type with filters, including pending decisions via type=decision and status=pending',
-            readOnly: true,
-          },
-          {
-            name: 'create_entity',
-            description: 'Create initiatives, tasks, milestones',
-          },
-          {
-            name: 'batch_create_entities',
-            description: 'Create multiple entities in one call',
-          },
-          {
-            name: 'scaffold_initiative',
-            description:
-              'Create an initiative with nested workstreams/milestones/tasks in one call',
-          },
-          {
-            name: 'get_task_with_context',
-            description: 'Fetch a task plus hydrated context pointers',
-            readOnly: true,
-          },
-          { name: 'entity_action', description: 'Execute lifecycle action on entity (launch, pause, complete, etc.)' },
-          {
-            name: 'verify_entity_completion',
-            description: 'Run hierarchy completion checks before complete',
-            readOnly: true,
-          },
-          {
-            name: 'batch_delete_entities',
-            description: 'Delete multiple entities in one call',
-          },
-          {
-            name: 'get_agent_status',
-            description: 'Check agent availability and health',
-            readOnly: true,
-          },
-          {
-            name: 'spawn_agent_task',
-            description: 'Delegate task to specialized agent',
-          },
-          {
-            name: 'query_org_memory',
-            description:
-              'Search organizational memory, including historical decisions and artifacts',
-            readOnly: true,
-          },
-          {
-            name: 'recommend_next_action',
-            description:
-              'Recommend the next best action for a workspace or initiative',
-            readOnly: true,
-          },
-          {
-            name: 'get_morning_brief',
-            description:
-              'Summarize the latest autonomous run, value signals, and exceptions',
-            readOnly: true,
-          },
-          {
-            name: 'start_plan_session',
-            description: 'Begin feature planning session',
-          },
-          { name: 'improve_plan', description: 'Get AI suggestions for plan' },
-          {
-            name: 'complete_plan',
-            description: 'Finish plan and extract skills',
-          },
-        ],
+        tools: (serverManifest.tools ?? []).map((tool) => ({
+          name: tool.name,
+          description: tool.description,
+          ...(isReadOnlyCodexTool(tool.name) ? { readOnly: true } : {}),
+        })),
         auth: {
           type: 'oauth2',
           authorizationUrl: `${serverUrl}/authorize`,
@@ -922,7 +884,7 @@ bearer_token_env_var = "ORGX_API_TOKEN"
 startup_timeout_sec = 30
 tool_timeout_sec = 60
 # Optional: limit to specific tools
-# enabled_tools = ["list_entities", "query_org_memory", "recommend_next_action"]
+# enabled_tools = ["orgx_bootstrap", "orgx_search", "orgx_recommend"]
 
 # To authenticate, set your token:
 # export ORGX_API_TOKEN="your-token-here"
@@ -1380,9 +1342,9 @@ async function handleAuthorize(
   const stateKey = crypto.randomUUID();
   try {
     await env.OAUTH_KV.put(
-      `auth_state:${stateKey}`,
+      authStateKey(stateKey),
       JSON.stringify(oauthReqInfo),
-      { expirationTtl: 1200 } // 20 minutes
+      { expirationTtl: OAUTH_STATE_TTL_SECONDS }
     );
   } catch (error) {
     console.error('[auth] Failed to store OAuth state in KV:', error);
@@ -1441,12 +1403,9 @@ async function handleOAuthCallback(
   });
   if (identity instanceof Response) return identity;
 
-  // Consume state from KV (read + delete = single-use) and auto-approve all
-  // requested scopes. This eliminates the consent page — users get connected
-  // immediately after signing in, reducing friction for first-time MCP users.
   let oauthReqInfo: AuthRequest;
   try {
-    const stored = await env.OAUTH_KV.get(`auth_state:${stateKey}`);
+    const stored = await env.OAUTH_KV.get(authStateKey(stateKey));
     if (!stored) {
       return errorRedirect(
         'invalid_request',
@@ -1455,8 +1414,6 @@ async function handleOAuthCallback(
       );
     }
     oauthReqInfo = JSON.parse(stored);
-    // Delete after successful read (single-use)
-    await env.OAUTH_KV.delete(`auth_state:${stateKey}`);
   } catch (error) {
     console.error('[auth] Failed to read state from KV:', error);
     return errorRedirect(
@@ -1466,34 +1423,38 @@ async function handleOAuthCallback(
     );
   }
 
-  // Auto-approve all requested scopes (no consent page needed)
-  const scope = oauthReqInfo.scope ?? [];
-
   try {
-    const { redirectTo } = await env.OAUTH_PROVIDER.completeAuthorization({
-      request: oauthReqInfo,
-      userId: identity.userId,
-      metadata: { label: identity.userEmail },
-      scope,
-      props: {
+    await env.OAUTH_KV.put(
+      authIdentityKey(stateKey),
+      JSON.stringify({
         userId: identity.userId,
-        scope: scope.join(' '),
-        email: identity.userEmail,
-      },
-    });
+        userEmail: identity.userEmail,
+      } satisfies OAuthCallbackIdentity),
+      { expirationTtl: OAUTH_STATE_TTL_SECONDS }
+    );
 
-    console.info('[auth] Authorization auto-approved', {
+    const consentUrl = new URL(`${serverUrl}/consent.html`);
+    consentUrl.searchParams.set('state_key', stateKey);
+    consentUrl.searchParams.set('client_id', oauthReqInfo.clientId);
+    consentUrl.searchParams.set('redirect_uri', oauthReqInfo.redirectUri);
+    consentUrl.searchParams.set('scope', scopeListToParam(oauthReqInfo.scope));
+    if (oauthReqInfo.state) {
+      consentUrl.searchParams.set('oauth_state', oauthReqInfo.state);
+    }
+    consentUrl.searchParams.set('user_email', identity.userEmail);
+
+    console.info('[auth] Redirecting to OAuth consent', {
       userId: identity.userId,
-      scope: scope.join(' '),
+      scope: scopeListToParam(oauthReqInfo.scope),
       clientId: oauthReqInfo.clientId,
     });
 
-    return Response.redirect(redirectTo, 302);
+    return Response.redirect(consentUrl.toString(), 302);
   } catch (error) {
-    console.error('[auth] Failed to complete authorization:', error);
+    console.error('[auth] Failed to prepare OAuth consent:', error);
     return errorRedirect(
       'server_error',
-      "We couldn't complete your authorization. This is usually temporary — please try again.",
+      "We couldn't prepare your authorization. This is usually temporary — please try again.",
       serverUrl
     );
   }
@@ -1520,28 +1481,48 @@ async function handleConsentCallback(
     );
   }
 
-  const identity = await resolveOAuthCallbackIdentity({
-    url,
-    env,
-    stateKey,
-    serverUrl,
-  });
-  if (identity instanceof Response) return identity;
-
   // Consume state from KV (read + delete = single-use)
   let oauthReqInfo: AuthRequest;
+  let identity: OAuthCallbackIdentity;
   try {
-    const stored = await env.OAUTH_KV.get(`auth_state:${stateKey}`);
-    if (!stored) {
+    const [storedState, storedIdentity] = await Promise.all([
+      env.OAUTH_KV.get(authStateKey(stateKey)),
+      env.OAUTH_KV.get(authIdentityKey(stateKey)),
+    ]);
+    if (!storedIdentity) {
+      return errorRedirect(
+        'invalid_request',
+        'Authorization session identity expired. Please start over.',
+        serverUrl
+      );
+    }
+    if (!storedState) {
       return errorRedirect(
         'invalid_request',
         'Authorization session expired or already used. Please start over.',
         serverUrl
       );
     }
-    oauthReqInfo = JSON.parse(stored);
+    oauthReqInfo = JSON.parse(storedState);
+    identity = JSON.parse(storedIdentity);
+    if (
+      !identity ||
+      typeof identity.userId !== 'string' ||
+      typeof identity.userEmail !== 'string' ||
+      identity.userId.trim().length === 0 ||
+      identity.userEmail.trim().length === 0
+    ) {
+      return errorRedirect(
+        'invalid_request',
+        'Authorization session identity is invalid. Please start over.',
+        serverUrl
+      );
+    }
     // Delete after successful read (single-use)
-    await env.OAUTH_KV.delete(`auth_state:${stateKey}`);
+    await Promise.all([
+      env.OAUTH_KV.delete(authStateKey(stateKey)),
+      env.OAUTH_KV.delete(authIdentityKey(stateKey)),
+    ]);
   } catch (error) {
     console.error('[auth] Failed to consume state from KV:', error);
     return errorRedirect(
@@ -1551,10 +1532,9 @@ async function handleConsentCallback(
     );
   }
 
-  // Use user-selected scope from consent page, or fall back to requested scope
-  const scope = finalScope
-    ? finalScope.split(' ').filter(Boolean)
-    : oauthReqInfo.scope ?? [];
+  // Use user-selected scopes from the consent page, clamped to the scopes
+  // originally requested by the client and supported by this server.
+  const scope = resolveApprovedScopes(oauthReqInfo.scope, finalScope);
 
   // Complete authorization via the OAuthProvider
   // This creates a grant, issues an auth code, and returns the redirect URL

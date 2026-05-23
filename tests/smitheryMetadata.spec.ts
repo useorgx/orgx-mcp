@@ -91,6 +91,24 @@ describe('Smithery metadata coverage', () => {
     expect(forwardedAnnotations?.length).toBeGreaterThanOrEqual(4);
   });
 
+  it('keeps stripped compatibility aliases for stale MCP clients', () => {
+    expect(indexSource).toContain('registerLegacyStrippedAliasTools');
+    for (const alias of [
+      "'bootstrap'",
+      "'inspect'",
+      "'search'",
+      "'attach'",
+      "'act'",
+      "'write'",
+      "'submit_receipt'",
+      "'emit_activity'",
+    ]) {
+      expect(indexSource).toContain(alias);
+    }
+    expect(indexSource).toContain('preferred_replacement: canonicalToolId');
+    expect(indexSource).toContain("preferred_replacement: 'orgx_emit_activity'");
+  });
+
   it('gives every top-level shared tool parameter a description', () => {
     for (const tool of allDefinitions) {
       for (const [fieldName, fieldSchema] of inputShapeEntries(tool.inputSchema)) {
@@ -166,7 +184,8 @@ describe('Smithery metadata coverage', () => {
       scaffold_initiative: [
         'annotations: {',
         'goal_ids: z',
-        'Optional goal UUIDs for the initiative. Suggested when the workspace requires a primary goal',
+        'goal_ids means objective UUIDs',
+        'Workspace/command center UUID to scope the initiative hierarchy. Required unless the MCP session already has workspace context',
       ],
       get_relevant_learnings: [
         'annotations: {',

@@ -58,6 +58,89 @@ describe('batch create payload contract normalization', () => {
     expect(normalized).toBeNull();
   });
 
+  it('treats idempotent 409 responses with existing entity data as successful replays', async () => {
+    const result = await batchCreateEntities({
+      env: {} as OrgxApiEnv,
+      callApi: async () =>
+        new Response(
+          JSON.stringify({
+            error: 'initiative already exists',
+            existing: {
+              id: 'initiative-existing',
+              title: 'Launch replay',
+            },
+          }),
+          { status: 409 }
+        ),
+      entities: [
+        {
+          type: 'initiative',
+          ref: 'initiative',
+          title: 'Launch replay',
+          idempotency_key: 'scaffold:launch-replay',
+        },
+      ],
+      continueOnError: true,
+      concurrency: 1,
+    });
+
+    expect(result.failed_count).toBe(0);
+    expect(result.created_count).toBe(1);
+    expect(result.ref_map).toEqual({ initiative: 'initiative-existing' });
+    expect(result.results[0]).toMatchObject({
+      success: true,
+      skipped: true,
+      id: 'initiative-existing',
+    });
+  });
+
+  it('orders and resolves depends_on refs before sending create payloads', async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+
+    const result = await batchCreateEntities({
+      env: {} as OrgxApiEnv,
+      callApi: async ({ init }) => {
+        const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+        bodies.push(body);
+        return new Response(
+          JSON.stringify({
+            type: body.type,
+            data: {
+              id:
+                body.title === 'Design'
+                  ? 'ws-upstream-id'
+                  : 'ws-downstream-id',
+              title: body.title ?? body.name,
+            },
+          }),
+          { status: 200 }
+        );
+      },
+      entities: [
+        {
+          type: 'workstream',
+          ref: 'ws-upstream',
+          title: 'Design',
+        },
+        {
+          type: 'workstream',
+          ref: 'ws-downstream',
+          title: 'Engineering',
+          depends_on: ['ws-upstream'],
+        },
+      ],
+      continueOnError: true,
+      concurrency: 2,
+    });
+
+    expect(result.failed_count).toBe(0);
+    expect(bodies[0]).toMatchObject({ title: 'Design' });
+    expect(bodies[1]).toMatchObject({
+      title: 'Engineering',
+      depends_on: ['ws-upstream-id'],
+    });
+  });
+
   it('still explains unsupported task priority values before calling the API', () => {
     const error = validateEntityCreatePayloadContract(
       {

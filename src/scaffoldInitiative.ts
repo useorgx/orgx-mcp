@@ -1,4 +1,8 @@
 import type { BatchCreateSummary } from './batchCreate';
+import type {
+  MaterializedDependencyEdge,
+  ScaffoldContractWarning,
+} from './scaffoldControl';
 
 export type ScaffoldBatchBuildResult = {
   batch: Array<Record<string, unknown>>;
@@ -6,6 +10,8 @@ export type ScaffoldBatchBuildResult = {
   wsRefs: string[];
   msRefs: string[][];
   taskRefs: string[][][];
+  materializedDependencies: MaterializedDependencyEdge[];
+  warnings: ScaffoldContractWarning[];
 };
 
 function safeRecord(value: unknown): Record<string, unknown> {
@@ -20,14 +26,63 @@ function omitKeys(obj: Record<string, unknown>, keys: Set<string>) {
   );
 }
 
+const DIRECT_ECONOMICS_KEYS = new Set([
+  'estimated_hours',
+  'estimatedHours',
+  'estimated_spend_usd',
+  'estimatedSpendUsd',
+  'estimated_roi_usd',
+  'estimatedRoiUsd',
+  'actual_hours',
+  'actualHours',
+  'actual_spend_usd',
+  'actualSpendUsd',
+  'daily_limit_usd',
+  'dailyLimitUsd',
+  'hourly_limit_usd',
+  'hourlyLimitUsd',
+  'priority_rank',
+  'priorityRank',
+  'human_equivalent_hourly_rate_usd',
+  'humanEquivalentHourlyRateUsd',
+  'human_equivalent_value_usd',
+  'humanEquivalentValueUsd',
+  'value_basis',
+  'valueBasis',
+]);
+
+function omitScaffoldInputKeys(
+  obj: Record<string, unknown>,
+  keys: Iterable<string>
+) {
+  return omitKeys(obj, new Set([...keys, ...DIRECT_ECONOMICS_KEYS]));
+}
+
 function ensureRef(input: Record<string, unknown>, fallback: string): string {
   return typeof input.ref === 'string' && input.ref.trim().length > 0
     ? input.ref.trim()
     : fallback;
 }
 
+function normalizeDependencyLabel(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.toLowerCase().replace(/\s+/g, ' ').trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
 const TOKENS_PER_HOUR = 6_500;
 const USD_PER_1K_TOKENS = 0.012;
+const TASK_TYPES = ['research', 'create', 'review', 'implement'] as const;
+type ScaffoldTaskType = (typeof TASK_TYPES)[number];
+const DEFAULT_HUMAN_EQUIVALENT_RATE_USD = 175;
+const HUMAN_EQUIVALENT_RATE_BY_TASK_TYPE_USD: Record<ScaffoldTaskType, number> =
+  {
+    research: 140,
+    create: 175,
+    review: 155,
+    implement: 210,
+  };
+const ECONOMICS_VALUE_BASIS = 'market_rate_by_task_type_less_spend';
 
 const DOMAIN_ALIASES: Record<string, string> = {
   eng: 'engineering',
@@ -120,6 +175,52 @@ function parseStringArray(value: unknown): string[] {
   return [];
 }
 
+function normalizeTaskType(value: unknown): ScaffoldTaskType | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toLowerCase();
+  return TASK_TYPES.includes(normalized as ScaffoldTaskType)
+    ? (normalized as ScaffoldTaskType)
+    : null;
+}
+
+function taskTypeHint(
+  record: Record<string, unknown>
+): ScaffoldTaskType | null {
+  const metadata = safeRecord(record.metadata);
+  return (
+    normalizeTaskType(record.task_type) ??
+    normalizeTaskType(record.taskType) ??
+    normalizeTaskType(record.work_type) ??
+    normalizeTaskType(record.workType) ??
+    normalizeTaskType(metadata.task_type) ??
+    normalizeTaskType(metadata.taskType) ??
+    normalizeTaskType(metadata.work_type) ??
+    normalizeTaskType(metadata.workType) ??
+    normalizeTaskType(record.type)
+  );
+}
+
+function humanEquivalentRateUsd(value: unknown): number {
+  const taskType =
+    value && typeof value === 'object' && !Array.isArray(value)
+      ? taskTypeHint(value as Record<string, unknown>)
+      : normalizeTaskType(value);
+  return taskType
+    ? HUMAN_EQUIVALENT_RATE_BY_TASK_TYPE_USD[taskType]
+    : DEFAULT_HUMAN_EQUIVALENT_RATE_USD;
+}
+
+function withObjectiveAlias(entity: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...entity };
+  const objectiveIds = parseStringArray(next.objective_ids);
+  const goalIds = parseStringArray(next.goal_ids);
+  if (objectiveIds.length > 0 && goalIds.length === 0) {
+    next.goal_ids = objectiveIds;
+  }
+  delete next.objective_ids;
+  return next;
+}
+
 function dedupeStrings(values: string[]): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
@@ -207,6 +308,101 @@ function toFiniteNumber(value: unknown): number | null {
   return null;
 }
 
+function readExplicitEstimateSignal(
+  entity: Record<string, unknown>
+): {
+  durationHours: number | null;
+  tokens: number | null;
+  budgetUsd: number | null;
+} {
+  return {
+    durationHours: toFiniteNumber(
+      entity.expected_duration_hours ??
+        entity.expectedDurationHours ??
+        entity.duration_hours ??
+        entity.durationHours ??
+        entity.estimated_hours ??
+        entity.estimatedHours
+    ),
+    tokens: toFiniteNumber(
+      entity.expected_tokens ??
+        entity.expectedTokens ??
+        entity.token_budget ??
+        entity.tokenBudget ??
+        entity.tokens
+    ),
+    budgetUsd: toFiniteNumber(
+      entity.expected_budget_usd ??
+        entity.expectedBudgetUsd ??
+        entity.budget_usd ??
+        entity.budgetUsd
+    ),
+  };
+}
+
+function hasTinyExplicitEstimate(entity: Record<string, unknown>): boolean {
+  const estimate = readExplicitEstimateSignal(entity);
+  return (
+    (estimate.durationHours !== null && estimate.durationHours <= 0.25) ||
+    (estimate.tokens !== null && estimate.tokens <= 2_000) ||
+    (estimate.budgetUsd !== null && estimate.budgetUsd <= 0.05)
+  );
+}
+
+function shouldUseMinimalExecutionPolicy(
+  args: Record<string, unknown>,
+  workstreamsInput: unknown[]
+): boolean {
+  if (hasTinyExplicitEstimate(args)) return true;
+
+  for (const wsInput of workstreamsInput) {
+    const ws = safeRecord(wsInput);
+    if (hasTinyExplicitEstimate(ws)) return true;
+    const milestones = Array.isArray(ws.milestones) ? ws.milestones : [];
+    for (const msInput of milestones) {
+      const ms = safeRecord(msInput);
+      if (hasTinyExplicitEstimate(ms)) return true;
+      const tasks = Array.isArray(ms.tasks) ? ms.tasks : [];
+      if (tasks.some((task) => hasTinyExplicitEstimate(safeRecord(task)))) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+function withMinimalExecutionPolicy(
+  metadata: Record<string, unknown>
+): Record<string, unknown> {
+  if (
+    metadata.execution_policy &&
+    typeof metadata.execution_policy === 'object' &&
+    !Array.isArray(metadata.execution_policy)
+  ) {
+    return metadata;
+  }
+
+  return {
+    ...metadata,
+    execution_policy: {
+      profile: 'custom',
+      slice_scope_preference: 'task',
+      max_slice_tasks: 1,
+      target_slice_minutes: 5,
+      max_slice_minutes: 10,
+      max_parallel_agents: 1,
+      dependency_mode: 'strict',
+      include_in_progress: false,
+    },
+    cost_control: {
+      ...(safeRecord(metadata.cost_control)),
+      source: 'mcp_scaffold_tiny_budget',
+      demo_safe: true,
+    },
+  };
+}
+
 function withDefaultSequence(
   entity: Record<string, unknown>,
   fallbackSequence: number
@@ -242,31 +438,50 @@ function defaultTaskList(milestoneTitle: string): Record<string, unknown>[] {
       title: `${title}: discovery`,
       description: `Gather requirements and unblock dependencies for ${title}.`,
       type: 'research',
-      auto_generated: true,
     },
     {
       title: `${title}: implementation`,
       description: `Execute core work for ${title}.`,
       type: 'implement',
-      auto_generated: true,
     },
     {
       title: `${title}: validation`,
       description: `Validate outputs and handoff for ${title}.`,
       type: 'review',
-      auto_generated: true,
+    },
+  ];
+}
+
+function defaultMilestoneList(
+  workstream: Record<string, unknown>,
+  index: number
+): Record<string, unknown>[] {
+  const title =
+    typeof workstream.title === 'string' && workstream.title.trim().length > 0
+      ? workstream.title.trim()
+      : typeof workstream.name === 'string' && workstream.name.trim().length > 0
+      ? workstream.name.trim()
+      : `Workstream ${index + 1}`;
+
+  return [
+    {
+      title: `${title}: plan, execute, and validate`,
+      description: `Create the first executable checkpoint for ${title}.`,
+      tasks: defaultTaskList(title),
     },
   ];
 }
 
 function estimateTaskHours(task: Record<string, unknown>): number {
   const explicitHours = toFiniteNumber(
-    task.estimated_hours ?? task.estimatedHours ?? task.expected_duration_hours
+    task.expected_duration_hours ??
+      task.expectedDurationHours ??
+      task.duration_hours ??
+      task.durationHours
   );
   if (explicitHours && explicitHours > 0) return explicitHours;
 
-  const type =
-    typeof task.type === 'string' ? task.type.toLowerCase().trim() : '';
+  const type = taskTypeHint(task);
   const base =
     type === 'implement'
       ? 4
@@ -345,19 +560,37 @@ export function buildScaffoldInitiativeBatch(
     : [];
 
   const batch: Array<Record<string, unknown>> = [];
+  const warnings: ScaffoldContractWarning[] = [];
+  const materializedDependencies: MaterializedDependencyEdge[] = [];
+  const workstreamRefByLabel = new Map<string, string>();
+  for (let wsIdx = 0; wsIdx < workstreamsInput.length; wsIdx++) {
+    const ws = safeRecord(workstreamsInput[wsIdx]);
+    const wsRef = ensureRef(ws, `ws-${wsIdx + 1}`);
+    for (const label of [ws.title, ws.name, wsRef]) {
+      const normalized = normalizeDependencyLabel(label);
+      if (normalized && !workstreamRefByLabel.has(normalized)) {
+        workstreamRefByLabel.set(normalized, wsRef);
+      }
+    }
+  }
 
   const initiativeEntity = withDefaultSequence(
-    omitKeys(
-      safeRecord(args),
-      new Set([
+    omitScaffoldInputKeys(
+      withObjectiveAlias(safeRecord(args)),
+      [
         'workstreams',
+        'mode',
+        'objective_ids',
         'launch_after_create',
         'continue_on_error',
         'concurrency',
+        'external_sync',
+        'externalSync',
         '_context',
         // owner_id intentionally NOT omitted — it must propagate into the
         // batch so the POST handler can set it on the initiative row.
         'user_id',
+        'idempotencyKey',
         // command_center_id was renamed to workspace_id in the DB.
         // Strip it here so it never reaches the API entity payload.
         'command_center_id',
@@ -369,11 +602,15 @@ export function buildScaffoldInitiativeBatch(
         // metadata.coordination_dependency so downstream consumers can
         // read it and the validator accepts the payload.
         'coordination_dependency',
-      ])
+      ]
     ),
     1
   );
   const hasExplicitWorkstreams = workstreamsInput.length > 0;
+  const minimalExecutionPolicy = shouldUseMinimalExecutionPolicy(
+    args,
+    workstreamsInput
+  );
   const autoPlanOverride =
     typeof args.auto_plan === 'boolean'
       ? args.auto_plan
@@ -388,14 +625,44 @@ export function buildScaffoldInitiativeBatch(
   // Ensure scaffolded initiatives default to public live visibility so the
   // /live/[initiativeId] room is accessible immediately after creation.
   // Callers can override by passing metadata.live.visibility explicitly.
-  const existingMetadata = safeRecord(initiativeEntity.metadata);
+  const rawExistingMetadata = safeRecord(initiativeEntity.metadata);
+  const hasExplicitModelTier =
+    typeof rawExistingMetadata.model_tier === 'string' &&
+    rawExistingMetadata.model_tier.trim().length > 0;
+  const existingMetadata: Record<string, unknown> = {
+    ...rawExistingMetadata,
+    model_tier: hasExplicitModelTier
+      ? rawExistingMetadata.model_tier
+      : 'standard',
+  };
   const existingLive = safeRecord(existingMetadata.live);
-  let nextMetadata: Record<string, unknown> | null = null;
+  let nextMetadata: Record<string, unknown> | null = hasExplicitModelTier
+    ? null
+    : existingMetadata;
+  const scaffoldIdempotencyKey =
+    typeof initiativeEntity.idempotency_key === 'string' &&
+    initiativeEntity.idempotency_key.trim().length > 0
+      ? initiativeEntity.idempotency_key.trim()
+      : null;
   if (!existingLive.visibility) {
     nextMetadata = {
       ...existingMetadata,
       live: { ...existingLive, visibility: 'public' },
     };
+  }
+  if (scaffoldIdempotencyKey) {
+    const base = nextMetadata ?? existingMetadata;
+    const existingScaffold = safeRecord(base.scaffold);
+    nextMetadata = {
+      ...base,
+      scaffold: {
+        ...existingScaffold,
+        idempotency_key: scaffoldIdempotencyKey,
+      },
+    };
+  }
+  if (minimalExecutionPolicy) {
+    nextMetadata = withMinimalExecutionPolicy(nextMetadata ?? existingMetadata);
   }
 
   // coordination_dependency is a planning hint that arrives at the top
@@ -403,26 +670,49 @@ export function buildScaffoldInitiativeBatch(
   // validator (which rejects unknown top-level columns) accepts the
   // payload, and downstream consumers can still read the planning intent.
   const rawCoordination = safeRecord(args.coordination_dependency);
+  const coordinationName =
+    typeof rawCoordination.name === 'string'
+      ? String(rawCoordination.name)
+      : null;
+  const fromWorkstreamName =
+    typeof rawCoordination.fromWorkstreamName === 'string'
+      ? rawCoordination.fromWorkstreamName
+      : undefined;
+  const toWorkstreamName =
+    typeof rawCoordination.toWorkstreamName === 'string'
+      ? rawCoordination.toWorkstreamName
+      : undefined;
+  const coordinationFromRef = fromWorkstreamName
+    ? workstreamRefByLabel.get(normalizeDependencyLabel(fromWorkstreamName) ?? '')
+    : undefined;
+  const coordinationToRef = toWorkstreamName
+    ? workstreamRefByLabel.get(normalizeDependencyLabel(toWorkstreamName) ?? '')
+    : undefined;
   if (
     rawCoordination &&
     Object.keys(rawCoordination).length > 0 &&
-    typeof rawCoordination.name === 'string'
+    coordinationName
   ) {
     const base = nextMetadata ?? existingMetadata;
     nextMetadata = {
       ...base,
       coordination_dependency: {
-        name: String(rawCoordination.name),
-        from_workstream_name:
-          typeof rawCoordination.fromWorkstreamName === 'string'
-            ? rawCoordination.fromWorkstreamName
-            : undefined,
-        to_workstream_name:
-          typeof rawCoordination.toWorkstreamName === 'string'
-            ? rawCoordination.toWorkstreamName
-            : undefined,
+        name: coordinationName,
+        from_workstream_name: fromWorkstreamName,
+        to_workstream_name: toWorkstreamName,
+        from_workstream_ref: coordinationFromRef,
+        to_workstream_ref: coordinationToRef,
+        materialized: Boolean(coordinationFromRef && coordinationToRef),
       },
     };
+
+    if ((fromWorkstreamName || toWorkstreamName) && !(coordinationFromRef && coordinationToRef)) {
+      warnings.push({
+        code: 'coordination_dependency_unresolved',
+        message:
+          'coordination_dependency could not be matched to both workstream refs, so no dependency edge was materialized.',
+      });
+    }
   }
 
   if (nextMetadata) {
@@ -440,18 +730,22 @@ export function buildScaffoldInitiativeBatch(
   const taskRefs: string[][][] = [];
 
   for (let wsIdx = 0; wsIdx < workstreamsInput.length; wsIdx++) {
-    const ws = safeRecord(workstreamsInput[wsIdx]);
+    const ws = withObjectiveAlias(safeRecord(workstreamsInput[wsIdx]));
     const wsRef = ensureRef(ws, `ws-${wsIdx + 1}`);
     wsRefs[wsIdx] = wsRef;
 
-    const wsMilestones = Array.isArray(ws.milestones)
+    const wsMilestonesRaw = Array.isArray(ws.milestones)
       ? (ws.milestones as unknown[])
-      : [];
+      : null;
+    const wsMilestones = wsMilestonesRaw ?? defaultMilestoneList(ws, wsIdx);
     msRefs[wsIdx] = [];
     taskRefs[wsIdx] = [];
 
     const wsEntity = withDefaultSequence(
-      omitKeys(ws, new Set(['milestones', 'ownerAgent', 'primaryAgent'])),
+      omitScaffoldInputKeys(
+        ws,
+        ['milestones', 'ownerAgent', 'primaryAgent', 'objective_ids']
+      ),
       wsIdx + 1
     );
     const normalizedDomain = normalizeDomain(
@@ -468,6 +762,21 @@ export function buildScaffoldInitiativeBatch(
       expectedTokens: wsExpectedTokens,
       expectedHours: wsExpectedHours,
     });
+    if (
+      coordinationName &&
+      coordinationFromRef &&
+      coordinationToRef &&
+      wsRef === coordinationToRef &&
+      !hasDependsOn(wsWithEstimates)
+    ) {
+      wsWithEstimates.depends_on = [coordinationFromRef];
+      materializedDependencies.push({
+        type: 'workstream',
+        name: coordinationName,
+        from_ref: coordinationFromRef,
+        to_ref: coordinationToRef,
+      });
+    }
     const wsAssignedAgentIds = resolveAssignedAgentIds(wsWithEstimates, wsMetadata);
     const wsAssignedAgentNames = resolveAssignedAgentNames(
       wsWithEstimates,
@@ -526,7 +835,7 @@ export function buildScaffoldInitiativeBatch(
     });
 
     for (let msIdx = 0; msIdx < wsMilestones.length; msIdx++) {
-      const ms = safeRecord(wsMilestones[msIdx]);
+      const ms = withObjectiveAlias(safeRecord(wsMilestones[msIdx]));
       const msRef = ensureRef(ms, `ms-${wsIdx + 1}-${msIdx + 1}`);
       msRefs[wsIdx]![msIdx] = msRef;
       taskRefs[wsIdx]![msIdx] = [];
@@ -539,7 +848,10 @@ export function buildScaffoldInitiativeBatch(
               typeof ms.title === 'string' ? ms.title : `Milestone ${msIdx + 1}`
             );
       const msEntityBase = withDefaultSequence(
-        omitKeys(ms, new Set(['tasks', 'ownerAgent', 'primaryAgent'])),
+        omitScaffoldInputKeys(
+          ms,
+          ['tasks', 'ownerAgent', 'primaryAgent', 'objective_ids']
+        ),
         msIdx + 1
       );
       const msTaskCount = Math.max(1, msTasks.length);
@@ -599,7 +911,7 @@ export function buildScaffoldInitiativeBatch(
       });
 
       const taskEntries = msTasks.map((taskInput, tIdx) => {
-        const task = safeRecord(taskInput);
+        const task = withObjectiveAlias(safeRecord(taskInput));
         const tRef = ensureRef(
           task,
           `task-${wsIdx + 1}-${msIdx + 1}-${tIdx + 1}`
@@ -617,7 +929,18 @@ export function buildScaffoldInitiativeBatch(
         );
         const taskEntity = withEstimateDefaults(
           withDefaultSequence(
-            omitKeys(task, new Set(['ownerAgent', 'primaryAgent'])),
+            omitScaffoldInputKeys(
+              task,
+              [
+                'ownerAgent',
+                'primaryAgent',
+                'objective_ids',
+                'task_type',
+                'taskType',
+                'work_type',
+                'workType',
+              ]
+            ),
             tIdx + 1
           ),
           {
@@ -632,6 +955,7 @@ export function buildScaffoldInitiativeBatch(
           taskEntity.metadata && typeof taskEntity.metadata === 'object'
             ? (taskEntity.metadata as Record<string, unknown>)
             : {};
+        const taskExecutionType = taskTypeHint(task);
         const taskAssignedAgentIds = resolveAssignedAgentIds(taskEntity, taskMetadata);
         const taskAssignedAgentNames = resolveAssignedAgentNames(
           taskEntity,
@@ -656,6 +980,7 @@ export function buildScaffoldInitiativeBatch(
         }
         taskEntity.metadata = {
           ...taskMetadata,
+          ...(taskExecutionType ? { task_type: taskExecutionType } : {}),
           domain:
             normalizedDomain ??
             (typeof taskMetadata.domain === 'string' ? taskMetadata.domain : null),
@@ -681,7 +1006,15 @@ export function buildScaffoldInitiativeBatch(
     }
   }
 
-  return { batch, initiativeRef, wsRefs, msRefs, taskRefs };
+  return {
+    batch,
+    initiativeRef,
+    wsRefs,
+    msRefs,
+    taskRefs,
+    materializedDependencies,
+    warnings,
+  };
 }
 
 export function buildScaffoldHierarchy(params: {
@@ -747,14 +1080,133 @@ export function buildScaffoldHierarchy(params: {
     });
   };
 
+  const firstNumber = (
+    node: Record<string, unknown>,
+    keys: string[]
+  ): number | null => {
+    for (const key of keys) {
+      const value = toFiniteNumber(node[key]);
+      if (value !== null && value >= 0) return value;
+    }
+    return null;
+  };
+
+  const sumNumbers = (values: Array<number | null | undefined>) => {
+    let total = 0;
+    let found = false;
+    for (const value of values) {
+      if (typeof value !== 'number' || !Number.isFinite(value)) continue;
+      total += value;
+      found = true;
+    }
+    return found ? total : null;
+  };
+
+  const round = (value: number, precision = 2) =>
+    Number(value.toFixed(precision));
+
+  const estimateEconomics = (
+    node: Record<string, unknown>,
+    children: Array<Record<string, unknown>>
+  ) => {
+    const childHours = sumNumbers(
+      children.map((child) => toFiniteNumber(child.estimated_hours))
+    );
+    const childSpend = sumNumbers(
+      children.map((child) => toFiniteNumber(child.estimated_spend_usd))
+    );
+    const childRoi = sumNumbers(
+      children.map((child) => toFiniteNumber(child.estimated_roi_usd))
+    );
+    const childHumanEquivalentValue = sumNumbers(
+      children.map((child) => toFiniteNumber(child.human_equivalent_value_usd))
+    );
+
+    const hours =
+      firstNumber(node, [
+        'estimated_hours',
+        'estimatedHours',
+        'expected_duration_hours',
+        'expectedDurationHours',
+        'duration_hours',
+        'durationHours',
+      ]) ??
+      childHours ??
+      0;
+    const spend =
+      firstNumber(node, [
+        'estimated_spend_usd',
+        'estimatedSpendUsd',
+        'expected_budget_usd',
+        'expectedBudgetUsd',
+        'budget_usd',
+        'budgetUsd',
+      ]) ??
+      childSpend ??
+      0;
+    const explicitRoi = firstNumber(node, [
+      'estimated_roi_usd',
+      'estimatedRoiUsd',
+      'expected_roi_usd',
+      'expectedRoiUsd',
+      'projected_value_usd',
+      'projectedValueUsd',
+      'expected_value_usd',
+      'expectedValueUsd',
+      'value_usd',
+      'valueUsd',
+    ]);
+    const fallbackHumanEquivalentValue =
+      childHumanEquivalentValue ?? hours * humanEquivalentRateUsd(node);
+    const humanEquivalentHourlyRate =
+      hours > 0
+        ? fallbackHumanEquivalentValue / hours
+        : humanEquivalentRateUsd(node);
+    const roi =
+      explicitRoi ??
+      childRoi ??
+      Math.max(0, fallbackHumanEquivalentValue - spend);
+
+    return {
+      estimated_hours: round(hours, 1),
+      estimated_spend_usd: round(spend, 2),
+      estimated_roi_usd: round(roi, 0),
+      human_equivalent_hourly_rate_usd: round(humanEquivalentHourlyRate, 0),
+      human_equivalent_value_usd: round(fallbackHumanEquivalentValue, 0),
+      value_basis: ECONOMICS_VALUE_BASIS,
+    };
+  };
+
+  const workstreams = wsRefs.map((wsRef, wsIdx) => {
+    const milestones = (msRefs[wsIdx] ?? []).map((msRef, msIdx) => {
+      const tasks = (taskRefs[wsIdx]?.[msIdx] ?? []).map((tRef) => {
+        const task = nodeForRef(tRef);
+        return { ...task, ...estimateEconomics(task, []) };
+      });
+      const milestone = nodeForRef(msRef);
+      return { ...milestone, tasks, ...estimateEconomics(milestone, tasks) };
+    });
+    const workstream = nodeForRef(wsRef);
+    return {
+      ...workstream,
+      milestones,
+      ...estimateEconomics(workstream, milestones),
+    };
+  });
+
+  const initiativeBase = nodeForRef(initiativeRef);
+  const initiativeEconomics = estimateEconomics(initiativeBase, workstreams);
+
   return {
-    initiative: nodeForRef(initiativeRef),
-    workstreams: wsRefs.map((wsRef, wsIdx) => ({
-      ...nodeForRef(wsRef),
-      milestones: (msRefs[wsIdx] ?? []).map((msRef, msIdx) => ({
-        ...nodeForRef(msRef),
-        tasks: (taskRefs[wsIdx]?.[msIdx] ?? []).map((tRef) => nodeForRef(tRef)),
-      })),
-    })),
+    initiative: { ...initiativeBase, ...initiativeEconomics },
+    workstreams,
+    economics: {
+      ...initiativeEconomics,
+      currency: 'USD',
+      source: 'derived',
+      editable: true,
+      value_basis: ECONOMICS_VALUE_BASIS,
+      rate_card_usd: HUMAN_EQUIVALENT_RATE_BY_TASK_TYPE_USD,
+    },
   };
 }

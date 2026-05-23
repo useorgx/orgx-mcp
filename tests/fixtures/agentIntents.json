@@ -1,0 +1,216 @@
+{
+  "version": 1,
+  "description": "Intent → expected dominant v2 tool fixtures used by tests/agentSelection.fixture.spec.ts. Each fixture pairs a short user utterance with the tool an agent should pick AND the most common wrong tool we want to avoid. The harness runs each prompt K times against each LLM provider; selection is healthy when the dominant tool fires >= 70% of runs and the forbidden tool fires < 10%.",
+  "fixtures": [
+    {
+      "id": "scaffold-roadmap",
+      "prompt": "Plan a 4-week launch initiative with three workstreams.",
+      "expected_tool": "orgx_plan",
+      "forbidden_tool": "orgx_write",
+      "rationale": "Multi-workstream hierarchies are planning/scaffold work; orgx_write is for single entity writes."
+    },
+    {
+      "id": "scaffold-roadmap-vague",
+      "prompt": "Help me set up a project with milestones and tasks.",
+      "expected_tool": "orgx_plan",
+      "forbidden_tool": "orgx_write",
+      "rationale": "Milestones+tasks signals a hierarchy; orgx_plan handles initiative planning/scaffolding."
+    },
+    {
+      "id": "single-task-create",
+      "prompt": "Add a task called 'Review the migration plan' to the platform initiative.",
+      "expected_tool": "orgx_write",
+      "forbidden_tool": "orgx_plan",
+      "rationale": "Adding one task to an existing initiative is a single entity write, not a new plan scaffold."
+    },
+    {
+      "id": "pending-decisions-list",
+      "prompt": "What needs my approval right now?",
+      "expected_tool": "orgx_decide",
+      "forbidden_tool": "orgx_search",
+      "rationale": "Pending approvals are decision workflow state, not a semantic memory search."
+    },
+    {
+      "id": "pending-decisions-blockers",
+      "prompt": "Show me what's blocking the agents.",
+      "expected_tool": "orgx_decide",
+      "forbidden_tool": "orgx_spawn",
+      "rationale": "Agent blockers surface through decision workflow state; orgx_spawn is for delegation and guard/classify flows."
+    },
+    {
+      "id": "approve-decision-explicit",
+      "prompt": "Approve decision dec-abc123.",
+      "expected_tool": "orgx_decide",
+      "forbidden_tool": "orgx_act",
+      "rationale": "Decision approvals use orgx_decide; lifecycle actions on entities belong to orgx_act."
+    },
+    {
+      "id": "reject-decision-with-reason",
+      "prompt": "Reject the migration decision — the rollback plan isn't ready.",
+      "expected_tool": "orgx_decide",
+      "forbidden_tool": "orgx_act",
+      "rationale": "Decision rejections use orgx_decide with an explicit reject action and reason."
+    },
+    {
+      "id": "launch-initiative",
+      "prompt": "Launch the Q3 platform initiative.",
+      "expected_tool": "orgx_act",
+      "forbidden_tool": "orgx_plan",
+      "rationale": "Launch is a lifecycle action on an existing initiative; orgx_plan is for creating/scaffolding plans."
+    },
+    {
+      "id": "complete-task-with-pr",
+      "prompt": "Mark the 'Add Stripe webhook' task done — PR https://github.com/x/y/pull/42 is merged.",
+      "expected_tool": "orgx_act",
+      "forbidden_tool": "orgx_write",
+      "rationale": "Completion with proof is a lifecycle action; generic writes do not carry the proof/action semantics."
+    },
+    {
+      "id": "attach-artifact",
+      "prompt": "Attach this design doc URL as an artifact on the Onboarding workstream.",
+      "expected_tool": "orgx_attach",
+      "forbidden_tool": "orgx_write",
+      "rationale": "Artifacts use the dedicated durability path in orgx_attach, not generic entity writes."
+    },
+    {
+      "id": "list-tasks-status",
+      "prompt": "List all in-progress tasks for the platform initiative.",
+      "expected_tool": "orgx_search",
+      "forbidden_tool": "orgx_inspect",
+      "rationale": "Structured list/find queries use orgx_search; orgx_inspect is for one hydrated entity."
+    },
+    {
+      "id": "task-detail-context",
+      "prompt": "Show me the full context for task t-abc — I need to start it.",
+      "expected_tool": "orgx_inspect",
+      "forbidden_tool": "orgx_search",
+      "rationale": "Hydrated context for one entity is orgx_inspect; orgx_search returns lists/results."
+    },
+    {
+      "id": "initiative-health",
+      "prompt": "How is the Q3 launch going?",
+      "expected_tool": "orgx_recommend",
+      "forbidden_tool": "orgx_search",
+      "rationale": "Initiative health and next-step readouts belong to orgx_recommend; orgx_search is lower-level retrieval."
+    },
+    {
+      "id": "org-overview",
+      "prompt": "Give me the company-wide picture across all initiatives.",
+      "expected_tool": "orgx_bootstrap",
+      "forbidden_tool": "orgx_inspect",
+      "rationale": "A company-wide session overview starts with orgx_bootstrap; orgx_inspect is for one entity."
+    },
+    {
+      "id": "agent-activity",
+      "prompt": "What is each agent working on right now?",
+      "expected_tool": "orgx_spawn",
+      "forbidden_tool": "orgx_bootstrap",
+      "rationale": "Agent work status/guard/classify flows route through orgx_spawn; bootstrap is only the session overview."
+    },
+    {
+      "id": "comment-blocker",
+      "prompt": "Flag a blocker on milestone ms-abc: the API contract is undecided.",
+      "expected_tool": "orgx_act",
+      "forbidden_tool": "orgx_decide",
+      "rationale": "A blocker annotation is an entity action/comment workflow, while orgx_decide is for approval gates."
+    },
+    {
+      "id": "create-decision-explicit",
+      "prompt": "Open a high-priority approval for whether to ship without analytics.",
+      "expected_tool": "orgx_decide",
+      "forbidden_tool": "orgx_act",
+      "rationale": "Approval gates use orgx_decide; entity actions/comments are annotations or lifecycle changes."
+    },
+    {
+      "id": "memory-search-prior",
+      "prompt": "What did we decide about the auth migration last quarter?",
+      "expected_tool": "orgx_search",
+      "forbidden_tool": "orgx_decide",
+      "rationale": "Free-text recall across memory uses orgx_search; orgx_decide handles active decision workflows."
+    },
+    {
+      "id": "decision-audit-trail",
+      "prompt": "List every approved decision on the platform initiative this month.",
+      "expected_tool": "orgx_search",
+      "forbidden_tool": "orgx_decide",
+      "rationale": "Filtered structured lists and recall use orgx_search; orgx_decide is for create/approve/reject/remember flows."
+    },
+    {
+      "id": "morning-brief",
+      "prompt": "What should I focus on this morning?",
+      "expected_tool": "orgx_recommend",
+      "forbidden_tool": "orgx_bootstrap",
+      "rationale": "Morning brief/next-up readouts route through orgx_recommend; bootstrap is setup context."
+    },
+    {
+      "id": "spawn-agent",
+      "prompt": "Have the engineering agent draft the migration runbook.",
+      "expected_tool": "orgx_spawn",
+      "forbidden_tool": "orgx_write",
+      "rationale": "Delegating work to an agent is orgx_spawn; orgx_write creates records without dispatching work."
+    },
+    {
+      "id": "verify-completion",
+      "prompt": "Has milestone ms-xyz actually finished — are all child tasks done?",
+      "expected_tool": "orgx_act",
+      "forbidden_tool": "orgx_search",
+      "rationale": "Completion verification is an action dry-run/lifecycle check; orgx_search only retrieves rows."
+    },
+    {
+      "id": "batch-create-tasks",
+      "prompt": "Add 5 tasks to the deploy milestone with dependencies between them.",
+      "expected_tool": "orgx_write",
+      "forbidden_tool": "orgx_plan",
+      "rationale": "Multiple task writes with dependencies stay in the type-discriminated write surface unless a full initiative scaffold is needed."
+    },
+    {
+      "id": "pause-multiple",
+      "prompt": "Pause the 4 marketing tasks while we decide on the new positioning.",
+      "expected_tool": "orgx_act",
+      "forbidden_tool": "orgx_write",
+      "rationale": "Bulk lifecycle changes are still lifecycle actions; generic writes are for field/entity mutations."
+    },
+    {
+      "id": "scaffold-with-launch",
+      "prompt": "Spin up the migration project and start the agents now.",
+      "expected_tool": "orgx_plan",
+      "forbidden_tool": "orgx_spawn",
+      "rationale": "Spinning up a project is planning/scaffold work; orgx_spawn is for delegating a bounded task."
+    },
+    {
+      "id": "comment-thread-read",
+      "prompt": "Show me all the comments on task t-xyz.",
+      "expected_tool": "orgx_inspect",
+      "forbidden_tool": "orgx_search",
+      "rationale": "A comment thread for one entity belongs with the hydrated entity inspection path."
+    },
+    {
+      "id": "stream-state-check",
+      "prompt": "Are the streams for initiative i-abc healthy and progressing?",
+      "expected_tool": "orgx_recommend",
+      "forbidden_tool": "orgx_inspect",
+      "rationale": "Stream health/readout belongs to the recommendation/readout surface; inspect is for one hydrated entity."
+    },
+    {
+      "id": "next-action-suggestion",
+      "prompt": "What should the agent do next on the platform initiative?",
+      "expected_tool": "orgx_recommend",
+      "forbidden_tool": "orgx_search",
+      "rationale": "Next-action recommendations use orgx_recommend; search is retrieval-only."
+    },
+    {
+      "id": "describe-tool-meta",
+      "prompt": "How does orgx_plan work — what fields does it accept?",
+      "expected_tool": "orgx_describe_tool",
+      "forbidden_tool": "orgx_plan",
+      "rationale": "Self-describe lookup is the right path; calling the tool would actually start planning."
+    },
+    {
+      "id": "update-entity-field",
+      "prompt": "Change the priority of task t-abc to high.",
+      "expected_tool": "orgx_write",
+      "forbidden_tool": "orgx_act",
+      "rationale": "Generic field patches use orgx_write; orgx_act is for lifecycle/special actions."
+    }
+  ]
+}

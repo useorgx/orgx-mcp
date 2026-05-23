@@ -303,6 +303,93 @@ export function withClientContext<T extends z.ZodRawShape>(
 }
 
 // =============================================================================
+// STANDARD TOOL OUTPUT SCHEMA
+// =============================================================================
+
+/**
+ * Generic, permissive output envelope applied to every MCP tool registration
+ * unless the tool defines its own outputSchema. All fields are optional and
+ * loosely typed (`z.unknown()`) on purpose: many existing tools already place
+ * natural payload fields like `data`, `warnings`, `summary`, etc. directly on
+ * `structuredContent` (e.g. `list_entities` puts an array of entities under
+ * `data`; `batch_create_entities` puts an array of objects under `warnings`).
+ * The schema is here to declare an envelope for Smithery / Apps SDK output-
+ * schema coverage, NOT to validate per-field shapes — doing so would reject
+ * legitimate payloads with Zod errors like
+ * "Expected object, received array on data path."
+ */
+export const STANDARD_TOOL_OUTPUT_SCHEMA = {
+  ok: z
+    .unknown()
+    .optional()
+    .describe(
+      'Whether the tool call succeeded. Mirrors the inverse of CallToolResult.isError.'
+    ),
+  summary: z
+    .unknown()
+    .optional()
+    .describe(
+      'Short human-readable summary of the tool result, suitable for inline display.'
+    ),
+  data: z
+    .unknown()
+    .optional()
+    .describe(
+      'Tool-specific structured payload. Shape varies per tool (object, array, or scalar); consult the tool description.'
+    ),
+  warnings: z
+    .unknown()
+    .optional()
+    .describe(
+      'Non-fatal warnings emitted during tool execution. Shape varies per tool (string array, object array, etc.).'
+    ),
+  meta: z
+    .unknown()
+    .optional()
+    .describe(
+      'Optional execution metadata (latency, request id, source, etc.).'
+    ),
+} as const;
+
+/**
+ * Ensure a CallToolResult carries `structuredContent` so the SDK output
+ * schema validator (introduced when an outputSchema is declared) does not
+ * reject otherwise-valid responses. Existing structured content is preserved
+ * verbatim; if missing, we synthesize a minimal envelope from the result.
+ */
+export function ensureStructuredContent<
+  T extends {
+    structuredContent?: unknown;
+    isError?: boolean;
+    content?: ReadonlyArray<unknown>;
+  } | null | undefined,
+>(result: T): T {
+  if (!result || typeof result !== 'object') return result;
+  if ((result as { structuredContent?: unknown }).structuredContent !== undefined) {
+    return result;
+  }
+  const isError = Boolean((result as { isError?: boolean }).isError);
+  let summary: string | undefined;
+  const content = (result as { content?: ReadonlyArray<unknown> }).content;
+  if (Array.isArray(content)) {
+    for (const block of content) {
+      if (
+        block &&
+        typeof block === 'object' &&
+        (block as { type?: unknown }).type === 'text' &&
+        typeof (block as { text?: unknown }).text === 'string'
+      ) {
+        summary = ((block as { text: string }).text || '').slice(0, 4000);
+        break;
+      }
+    }
+  }
+  const envelope: Record<string, unknown> = { ok: !isError };
+  if (summary !== undefined) envelope.summary = summary;
+  return { ...result, structuredContent: envelope };
+}
+
+// =============================================================================
 // PLAN SESSION TOOLS
 // =============================================================================
 
@@ -1019,6 +1106,9 @@ const reportingSourceClientSchema = z.enum([
   'openclaw',
   'codex',
   'claude-code',
+  'chatgpt',
+  'cursor',
+  'web-ui',
   'api',
 ]);
 
@@ -1030,6 +1120,55 @@ const reportingPhaseSchema = z.enum([
   'handoff',
   'completed',
 ]);
+
+const reportingRuntimeSourceSchema = z.enum([
+  'codex_cloud',
+  'codex_local',
+  'anthropic',
+  'orgx_managed',
+  'local_openclaw',
+  'managed_agent',
+  'unknown',
+]);
+
+const reportingRuntimeContextSchema = z.object({
+  source_runtime: reportingRuntimeSourceSchema
+    .optional()
+    .describe('Canonical runtime bucket that produced this activity'),
+  source_system: z
+    .string()
+    .optional()
+    .describe('Provider or system name, e.g. codex, anthropic, openai-managed'),
+  provider: z.string().optional().describe('Model/provider identifier'),
+  execution_target: z
+    .string()
+    .optional()
+    .describe('Execution target such as cloud, local, local-openclaw'),
+  adapter: z.string().optional().describe('Runtime adapter or bridge name'),
+  job_id: z.string().optional().describe('Runtime job id for correlation'),
+});
+
+const reportingChokepointSchema = z.object({
+  kind: z
+    .enum(['blocker', 'approval', 'stall', 'error'])
+    .default('blocker')
+    .describe('Kind of runtime chokepoint being reported'),
+  tier: z
+    .enum(['critical', 'blocking', 'attention', 'advisory'])
+    .optional()
+    .describe('User-facing urgency tier for /live'),
+  title: z.string().min(1).describe('Short visible chokepoint title'),
+  reason: z.string().min(1).describe('Specific reason execution cannot proceed'),
+  suggested_actions: z
+    .array(z.string().min(1))
+    .max(8)
+    .optional()
+    .describe('Concrete recovery actions to show in /live'),
+  metadata: z
+    .record(z.unknown())
+    .optional()
+    .describe('Additional runtime evidence, never secrets'),
+});
 
 const applyChangesetOperationSchema = z.union([
   z
@@ -1145,6 +1284,16 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         .record(z.unknown())
         .optional()
         .describe('Optional structured metadata to attach to the activity event'),
+      runtime: reportingRuntimeContextSchema
+        .optional()
+        .describe(
+          'Runtime provenance used by /live to bucket cloud, local, Anthropic, managed, and OpenClaw chokepoints'
+        ),
+      chokepoint: reportingChokepointSchema
+        .optional()
+        .describe(
+          'Durable blocker/stall/error/approval to surface in /live when execution cannot proceed'
+        ),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.authRequired,
@@ -1178,12 +1327,74 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
       source_client: reportingSourceClientSchema
         .optional()
         .describe('Required when run_id is not provided'),
+      runtime: reportingRuntimeContextSchema
+        .optional()
+        .describe(
+          'Runtime provenance used by /live to bucket cloud, local, Anthropic, managed, and OpenClaw changeset decisions'
+        ),
     },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.authRequired,
     _meta: {
       'openai/toolInvocation/invoking': 'Applying changeset...',
       'openai/toolInvocation/invoked': 'Changeset applied',
+    },
+  },
+  {
+    id: 'consolidate_pr',
+    title: 'Consolidate Pull Request',
+    description:
+      'Generate and persist an orchestration.consolidation_pass receipt for a GitHub pull request. USE WHEN: Eli or another engineering agent needs a durable PR review receipt with reading order, existence evidence, deduped findings, verdict, and server-derived AQ score. NEXT: inspect the returned artifact_id or attach it to task completion proof. DO NOT USE WHEN: only asking for PR status; use GitHub tools instead.',
+    inputSchema: {
+      pr_url: z
+        .string()
+        .url()
+        .regex(/^https:\/\/github\.com\/[^/]+\/[^/]+\/pull\/\d+\/?(?:[?#].*)?$/)
+        .describe(
+          'GitHub pull request URL, e.g. https://github.com/org/repo/pull/123'
+        ),
+      workspace_id: z.string().uuid().optional().describe('OrgX workspace UUID'),
+      initiative_id: z
+        .string()
+        .uuid()
+        .optional()
+        .describe('Initiative to attach the consolidation_pass artifact to'),
+      task_id: z
+        .string()
+        .uuid()
+        .optional()
+        .describe('Task to attach the consolidation_pass artifact to'),
+      decision_id: z
+        .string()
+        .uuid()
+        .optional()
+        .describe('Decision to attach the consolidation_pass artifact to'),
+      commit_sha: z
+        .string()
+        .min(7)
+        .optional()
+        .describe(
+          'Override commit SHA for idempotency; defaults to merge commit or PR head SHA'
+        ),
+      verdict: z
+        .enum(['ship', 'simplify_first', 'escalate'])
+        .optional()
+        .describe('Optional verdict override; defaults from PR state'),
+      reviewer_note: z
+        .string()
+        .max(2000)
+        .optional()
+        .describe('Optional reviewer note to include in critic evidence'),
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
+    securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
+    _meta: {
+      'openai/toolInvocation/invoking': 'Consolidating pull request...',
+      'openai/toolInvocation/invoked': 'Pull request consolidated',
     },
   },
   {

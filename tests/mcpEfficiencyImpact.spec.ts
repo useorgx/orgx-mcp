@@ -123,7 +123,7 @@ const SAMPLE_SKILL_ONBOARDING: ClientSkillOnboarding = {
     },
   ],
   next_action: {
-    tool: 'list_entities',
+    tool: 'orgx_search',
     label: 'Seed the default skill catalog',
     args: {
       type: 'skill',
@@ -151,10 +151,10 @@ const SAMPLE_ACTIVATION_EXPERIENCE: ClientActivationExperience = {
   optimization_hint:
     'Optimize for guided conversation: seed the catalog, scaffold from intent, then use the morning brief to keep the assistant anchored in ROI.',
   next_action: {
-    tool: 'get_morning_brief',
+    tool: 'orgx_recommend',
     label: 'Review the morning brief',
     prompt:
-      'Run get_morning_brief to connect the conversation to measurable value and next actions.',
+      'Run orgx_recommend with mode=morning_brief to connect the conversation to measurable value and next actions.',
   },
 };
 

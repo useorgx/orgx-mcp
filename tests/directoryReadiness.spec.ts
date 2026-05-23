@@ -1,9 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-const root = process.cwd();
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const readme = readFileSync(resolve(root, 'README.md'), 'utf8');
 const serverJson = JSON.parse(
   readFileSync(resolve(root, 'server.json'), 'utf8')
@@ -12,7 +13,16 @@ const serverJson = JSON.parse(
   title?: string;
   description?: string;
   remotes?: Array<{ type?: string; url?: string }>;
-  tools?: Array<{ name?: string; description?: string }>;
+  tools?: Array<{
+    name?: string;
+    title?: string;
+    description?: string;
+    annotations?: {
+      readOnlyHint?: boolean;
+      destructiveHint?: boolean;
+      openWorldHint?: boolean;
+    };
+  }>;
 };
 const packageJson = JSON.parse(
   readFileSync(resolve(root, 'package.json'), 'utf8')
@@ -71,9 +81,55 @@ describe('Anthropic directory readiness', () => {
       { type: 'streamable-http', url: 'https://mcp.useorgx.com/mcp' },
       { type: 'sse', url: 'https://mcp.useorgx.com/sse' },
     ]);
-    expect(serverJson.tools?.find((tool) => tool.name === 'account_upgrade')?.description).toContain(
-      'Does not charge automatically.'
+    const toolNames = serverJson.tools?.map((tool) => tool.name).filter(Boolean);
+    expect(toolNames).toEqual([
+      'orgx_bootstrap',
+      'orgx_search',
+      'orgx_inspect',
+      'orgx_recommend',
+      'orgx_write',
+      'orgx_attach',
+      'orgx_act',
+      'orgx_plan',
+      'orgx_spawn',
+      'orgx_decide',
+      'orgx_submit_receipt',
+      'orgx_emit_activity',
+      'approve_decision',
+      'reject_decision',
+      'get_agent_status',
+      'get_initiative_pulse',
+      'scaffold_initiative',
+      'spawn_agent_task',
+      'handoff_task',
+      'recommend_next_action',
+      'query_org_memory',
+      'recall_memory',
+      'approve_agent_work',
+      'delegate_agent_task',
+      'track_project_progress',
+      'review_artifact',
+      'get_morning_brief',
+      'consolidate_pr',
+    ]);
+    expect(serverJson.tools?.find((tool) => tool.name === 'orgx_bootstrap')?.description).toContain(
+      'v2 routing guidance'
     );
+  });
+
+  it('publishes reviewer-facing tool titles and annotations in server.json', () => {
+    expect(serverJson.tools?.length).toBeGreaterThan(0);
+
+    for (const tool of serverJson.tools ?? []) {
+      expect(tool.title, `${tool.name} is missing a title`).toEqual(
+        expect.any(String)
+      );
+      expect(tool.annotations, `${tool.name} is missing annotations`).toEqual({
+        readOnlyHint: expect.any(Boolean),
+        destructiveHint: expect.any(Boolean),
+        openWorldHint: expect.any(Boolean),
+      });
+    }
   });
 
   it('marks high-risk shared tool definitions as destructive where appropriate', () => {

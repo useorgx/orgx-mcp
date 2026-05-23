@@ -50,6 +50,11 @@ import {
   resolveAnonymousDistinctId,
 } from './posthogTelemetry';
 import {
+  isZodFlavoredErrorMessage,
+  extractZodErrorPath,
+  classifyErrorKind,
+} from './zodErrorMatcher';
+import {
   buildAgentCreditCheckoutResult,
   buildAccountStatusResult,
   buildAccountUsageReportResult,
@@ -65,7 +70,23 @@ import {
   buildScaffoldHierarchy,
   buildScaffoldInitiativeBatch,
 } from './scaffoldInitiative';
-import { buildScaffoldWidget } from './scaffoldWidget';
+import {
+  buildCompactScaffoldResult,
+  buildScaffoldDraftResult,
+} from './scaffoldResponse';
+import {
+  buildFirstAgentWorkState,
+  deriveScaffoldIdempotencyKey,
+  normalizeExternalSyncRequest,
+  normalizeScaffoldObjectiveAliases,
+  resolveScaffoldMode,
+  type ExternalSyncRequest,
+  type ScaffoldContractWarning,
+} from './scaffoldControl';
+import {
+  createScaffoldTelemetryTrace,
+  recordDurableMcpToolInvocation,
+} from './mcpInvocationTelemetry';
 import { buildLiveFeedWidget } from './liveFeedWidget';
 import { signStreamToken } from './streamToken';
 import { hydrateTaskContext } from './taskContextHydrator';
@@ -75,6 +96,10 @@ import {
   describeAppliedPolicy,
   resolveConfigureOrgWorkspaceId,
 } from './configureOrgPolicy';
+import {
+  BOOTSTRAP_RECOMMENDED_WORKFLOWS,
+  getBootstrapSafeFirstCalls,
+} from './bootstrapPayload';
 import {
   buildClientSkillOnboarding,
   formatClientSkillOnboarding,
@@ -148,6 +173,8 @@ import {
   CLIENT_INTEGRATION_TOOL_DEFINITIONS,
   CHATGPT_TOOL_DEFINITIONS,
   CLIENT_CONTEXT_SCHEMA,
+  STANDARD_TOOL_OUTPUT_SCHEMA,
+  ensureStructuredContent,
   STREAM_TOOL_DEFINITIONS,
   ENTITY_TYPES,
   entityTypeEnum,
@@ -200,6 +227,7 @@ import {
 import { checkToolPlanAccess } from './toolAccessGating';
 import {
   CONTRACT_TOOL_DEFINITIONS,
+  V2_ORGX_TOOL_ID_SET,
   getKnownToolContract,
   getKnownToolContracts,
 } from './contractTools';
@@ -981,7 +1009,11 @@ export class OrgXMcp extends McpAgent<
   }
 
   private captureMcpToolEvent(
-    event: 'mcp_tool_called' | 'mcp_tool_succeeded' | 'mcp_tool_failed',
+    event:
+      | 'mcp_tool_called'
+      | 'mcp_tool_succeeded'
+      | 'mcp_tool_failed'
+      | 'mcp_tool_invalid_input',
     params: {
       toolId: string;
       toolFamily: 'chatgpt' | 'stream' | 'plan_session' | 'client_integration';
@@ -991,9 +1023,29 @@ export class OrgXMcp extends McpAgent<
       latencyMs?: number;
       error?: string;
       isWidgetTool?: boolean;
+      /**
+       * Optional structured tag for the error category. When set to
+       * 'invalid_input' (or detected automatically from the error
+       * message via Zod-pattern matching), an additional
+       * `mcp_tool_invalid_input` event fires alongside the primary
+       * event so the telemetry dashboard can rank "most common ways
+       * agents fail to call X" without substring-matching arbitrary
+       * error text.
+       */
+      errorKind?: string;
     }
   ): void {
     const distinctId = params.userId ?? this.resolveAnonymousDistinctId();
+    // When the caller didn't tag errorKind explicitly, classify from the
+    // error message so the dashboard always has a coarse category to
+    // group on. classifyErrorKind returns 'unknown' for failed events
+    // it can't pattern-match — better than null because saved queries
+    // can `coalesce(error_kind, '<no_kind>')` consistently.
+    const resolvedErrorKind =
+      params.errorKind ??
+      (event === 'mcp_tool_failed'
+        ? classifyErrorKind(params.error) ?? undefined
+        : undefined);
     this.capturePosthogEvent(event, {
       distinctId,
       properties: {
@@ -1004,6 +1056,32 @@ export class OrgXMcp extends McpAgent<
         ok: params.ok,
         latency_ms: params.latencyMs,
         error: params.error,
+        error_kind: resolvedErrorKind,
+        is_widget_tool: params.isWidgetTool,
+      },
+    });
+
+    // Pass 4: input-validation counter. Fires alongside any
+    // mcp_tool_failed where the error category is invalid_input —
+    // either explicitly tagged by the caller or detected via Zod
+    // patterns in the error text. The PRIMARY event is never
+    // suppressed; this is purely additive so the dashboard can rank
+    // input-shape failures without arbitrary substring matching.
+    if (event !== 'mcp_tool_failed') return;
+    const isInvalidInput =
+      resolvedErrorKind === 'invalid_input' ||
+      isZodFlavoredErrorMessage(params.error);
+    if (!isInvalidInput) return;
+    this.capturePosthogEvent('mcp_tool_invalid_input', {
+      distinctId,
+      properties: {
+        tool_id: params.toolId,
+        tool_family: params.toolFamily,
+        auth_source: params.authSource,
+        has_user_id: Boolean(params.userId),
+        error: params.error,
+        error_kind: resolvedErrorKind ?? 'invalid_input',
+        error_path: extractZodErrorPath(params.error),
         is_widget_tool: params.isWidgetTool,
       },
     });
@@ -1360,12 +1438,18 @@ export class OrgXMcp extends McpAgent<
     limit?: number;
     initiativeId?: string | null;
     workspaceId?: string | null;
+    status?: string | null;
+    query?: string | null;
+    fields?: string[] | null;
   }): Promise<Array<Record<string, unknown>>> {
     const search = new URLSearchParams();
     search.set('type', params.type);
     if (params.limit) search.set('limit', String(params.limit));
     if (params.initiativeId) search.set('initiative_id', params.initiativeId);
     if (params.workspaceId) search.set('workspace_id', params.workspaceId);
+    if (params.status) search.set('status', params.status);
+    if (params.query) search.set('query', params.query);
+    if (params.fields?.length) search.set('fields', params.fields.join(','));
 
     const response = await callOrgxApiJson(
       this.env,
@@ -1377,6 +1461,19 @@ export class OrgXMcp extends McpAgent<
       data?: Array<Record<string, unknown>>;
     };
     return Array.isArray(payload.data) ? payload.data : [];
+  }
+
+  private stripContractRuntimeFields(
+    args: Record<string, unknown>
+  ): Record<string, unknown> {
+    const {
+      _context: _context,
+      session_id: _sessionId,
+      operation: _operation,
+      fields: _fields,
+      ...body
+    } = args;
+    return body;
   }
 
   private async maybeEnrichWithArtifactProof(params: {
@@ -2124,7 +2221,9 @@ export class OrgXMcp extends McpAgent<
         {
           title: tool.title,
           description: tool.description,
-          inputSchema: this.withClientContext(tool.inputSchema),
+          inputSchema: V2_ORGX_TOOL_ID_SET.has(tool.id)
+            ? tool.inputSchema
+            : this.withClientContext(tool.inputSchema),
           annotations: tool.annotations,
           _meta: meta,
         },
@@ -2479,7 +2578,7 @@ export class OrgXMcp extends McpAgent<
    * These route directly to /api/client/* endpoints (not through
    * the generic /api/tools/execute). This gives them:
    * - Dedicated server-side logic (model routing, quality gates)
-   * - Proper user identity via X-Orgx-User-Id
+   * - Proper user identity via a signed MCP actor assertion
    * - No dependency on the chatgptToolExecutor registry
    */
   private registerClientIntegrationTools(allowedTools: Set<string> | null) {
@@ -2491,6 +2590,10 @@ export class OrgXMcp extends McpAgent<
       },
       orgx_apply_changeset: {
         path: '/api/client/live/changesets/apply',
+        method: 'POST',
+      },
+      consolidate_pr: {
+        path: '/api/client/consolidate-pr',
         method: 'POST',
       },
       sync_client_state: { path: '/api/client/sync', method: 'POST' },
@@ -2724,6 +2827,17 @@ export class OrgXMcp extends McpAgent<
           appliedCount === 1 ? '' : 's'
         }`;
       }
+      case 'consolidate_pr': {
+        const status = typeof data.status === 'string' ? data.status : 'ok';
+        const artifactId =
+          typeof data.artifact_id === 'string' ? data.artifact_id : null;
+        const verdict = typeof data.verdict === 'string' ? data.verdict : null;
+        const aqScore =
+          typeof data.aq_score === 'number' ? ` · AQ ${data.aq_score}` : '';
+        return `✅ PR consolidated (${status})${
+          verdict ? ` · ${verdict}` : ''
+        }${aqScore}${artifactId ? ` · artifact ${artifactId.slice(0, 8)}...` : ''}`;
+      }
       case 'sync_client_state': {
         const initiatives = (data.initiatives as unknown[])?.length ?? 0;
         const tasks = (data.activeTasks as unknown[])?.length ?? 0;
@@ -2764,6 +2878,207 @@ export class OrgXMcp extends McpAgent<
     }
   }
 
+  private registerLegacyStrippedAliasTools(allowedTools: Set<string> | null) {
+    const contractAliases = [
+      ['bootstrap', 'orgx_bootstrap'],
+      ['inspect', 'orgx_inspect'],
+      ['search', 'orgx_search'],
+      ['attach', 'orgx_attach'],
+      ['act', 'orgx_act'],
+      ['write', 'orgx_write'],
+      ['submit_receipt', 'orgx_submit_receipt'],
+    ] as const;
+
+    for (const [aliasId, canonicalToolId] of contractAliases) {
+      if (
+        allowedTools &&
+        !allowedTools.has(aliasId) &&
+        !allowedTools.has(canonicalToolId)
+      ) {
+        continue;
+      }
+
+      const contract = getKnownToolContract(canonicalToolId);
+      if (!contract) continue;
+      const metaObj = contract._meta as Record<string, unknown> | undefined;
+      const isReadOnly = metaObj?.['openai/readOnlyHint'] === true;
+      const meta = {
+        ...contract._meta,
+        'openai/visibility': isReadOnly ? 'public' : 'private',
+        'mcp/securitySchemes': contract.securitySchemes,
+        preferred_replacement: canonicalToolId,
+      };
+
+      this.server.registerTool(
+        aliasId,
+        {
+          title: `${contract.title} (legacy alias)`,
+          description: `Legacy compatibility alias for ${canonicalToolId}. Prefer ${canonicalToolId} for new calls.`,
+          inputSchema: this.withClientContext(
+            contract.inputSchema ?? {}
+          ) as unknown as Record<string, import('zod').ZodTypeAny>,
+          annotations: contract.annotations,
+          _meta: meta,
+        },
+        async (args: Record<string, unknown>) =>
+          this.executeContractTool(
+            canonicalToolId,
+            args,
+            contract.securitySchemes,
+            allowedTools
+          )
+      );
+    }
+
+    if (
+      allowedTools &&
+      !allowedTools.has('emit_activity') &&
+      !allowedTools.has('orgx_emit_activity')
+    ) {
+      return;
+    }
+
+    const emitTool = CLIENT_INTEGRATION_TOOL_DEFINITIONS.find(
+      (tool) => tool.id === 'orgx_emit_activity'
+    );
+    if (!emitTool) return;
+
+    const emitSecuritySchemes =
+      emitTool.securitySchemes as readonly SecurityScheme[];
+    this.server.registerTool(
+      'emit_activity',
+      {
+        title: 'Emit OrgX Activity (legacy alias)',
+        description:
+          'Legacy compatibility alias for orgx_emit_activity. Prefer orgx_emit_activity for new calls.',
+        inputSchema: this.withClientContext(
+          emitTool.inputSchema as Record<string, unknown>
+        ) as unknown as Record<string, import('zod').ZodTypeAny>,
+        annotations: emitTool.annotations,
+        _meta: {
+          ...emitTool._meta,
+          'openai/visibility': 'private',
+          'mcp/securitySchemes': emitSecuritySchemes,
+          preferred_replacement: 'orgx_emit_activity',
+        },
+      },
+      async (args: Record<string, unknown>) => {
+        const startTime = Date.now();
+        const resolvedUserId = this.props?.userId ?? this.sessionAuth.userId;
+        const authSource: 'request' | 'session' | 'none' = this.props?.userId
+          ? 'request'
+          : this.sessionAuth.userId
+          ? 'session'
+          : 'none';
+
+        this.captureMcpToolEvent('mcp_tool_called', {
+          toolId: 'emit_activity',
+          toolFamily: 'client_integration',
+          userId: resolvedUserId,
+          authSource,
+        });
+
+        const authResponse = buildAuthRequiredResponse({
+          toolId: 'orgx_emit_activity',
+          securitySchemes: emitSecuritySchemes,
+          userId: resolvedUserId,
+          serverUrl: this.env.MCP_SERVER_URL,
+          featureDescription: 'use orgx emit activity',
+        });
+        if (authResponse) return authResponse;
+
+        return this.withOrgx(async () => {
+          try {
+            const { _context, ...toolArgs } = args;
+            const response = await callOrgxApiJson(
+              this.env,
+              '/api/client/live/activity',
+              {
+                method: 'POST',
+                body: JSON.stringify(toolArgs),
+              },
+              { userId: resolvedUserId }
+            );
+            const result = (await response.json()) as {
+              ok: boolean;
+              data?: Record<string, unknown>;
+              error?: string;
+              message?: string;
+            };
+            const latencyMs = Date.now() - startTime;
+            if (!result.ok) {
+              this.captureMcpToolEvent('mcp_tool_failed', {
+                toolId: 'emit_activity',
+                toolFamily: 'client_integration',
+                userId: resolvedUserId,
+                authSource,
+                ok: false,
+                latencyMs,
+                error:
+                  result.error ??
+                  result.message ??
+                  'client_integration_execution_failed',
+              });
+              return this.toolError(
+                result.error ??
+                  result.message ??
+                  'Client integration tool execution failed'
+              );
+            }
+
+            this.captureMcpToolEvent('mcp_tool_succeeded', {
+              toolId: 'emit_activity',
+              toolFamily: 'client_integration',
+              userId: resolvedUserId,
+              authSource,
+              ok: true,
+              latencyMs,
+            });
+
+            const data =
+              (result.data as Record<string, unknown> | undefined) ??
+              (result as unknown as Record<string, unknown>);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: this.summarizeClientResult('orgx_emit_activity', data),
+                },
+              ],
+              structuredContent: {
+                ...data,
+                preferred_replacement: 'orgx_emit_activity',
+              },
+            } as CallToolResult;
+          } catch (error) {
+            this.captureMcpToolEvent('mcp_tool_failed', {
+              toolId: 'emit_activity',
+              toolFamily: 'client_integration',
+              userId: resolvedUserId,
+              authSource,
+              ok: false,
+              latencyMs: Date.now() - startTime,
+              error: error instanceof Error ? error.message : String(error),
+            });
+            return this.toolError(
+              error instanceof Error ? error.message : String(error),
+              {
+                code: 'client_integration_failed',
+                status:
+                  error instanceof OrgXApiError ? error.statusCode : undefined,
+                details: buildFailureDetails({
+                  toolId: 'emit_activity',
+                  error,
+                  args,
+                }),
+              }
+            );
+          }
+        });
+      }
+    );
+  }
+
   private buildBootstrapPayload(allowedTools: Set<string> | null) {
     const profile = this.props?.profile ?? 'full';
     const visibleTools = allowedTools
@@ -2771,36 +3086,6 @@ export class OrgXMcp extends McpAgent<
       : getKnownToolContracts()
           .map((tool) => tool.id)
           .sort();
-
-    const safeFirstCallsByProfile: Record<
-      string,
-      Array<{ tool: string; args: Record<string, unknown> }>
-    > = {
-      memory: [
-        { tool: 'workspace', args: { action: 'get' } },
-        { tool: 'query_org_memory', args: { query: 'recent decisions', scope: 'decisions' } },
-      ],
-      commander: [
-        { tool: 'workspace', args: { action: 'get' } },
-        { tool: 'get_org_snapshot', args: { view: 'summary' } },
-      ],
-      planner: [
-        { tool: 'workspace', args: { action: 'get' } },
-        { tool: 'get_active_sessions', args: {} },
-      ],
-      executor: [
-        { tool: 'workspace', args: { action: 'get' } },
-        { tool: 'sync_client_state', args: {} },
-      ],
-      observer: [
-        { tool: 'workspace', args: { action: 'get' } },
-        { tool: 'get_org_snapshot', args: { view: 'summary' } },
-      ],
-      full: [
-        { tool: 'workspace', args: { action: 'get' } },
-        { tool: 'get_org_snapshot', args: { view: 'summary' } },
-      ],
-    };
 
     return {
       server_version: MCP_SERVER_VERSION,
@@ -2815,28 +3100,13 @@ export class OrgXMcp extends McpAgent<
         ? { id: this.sessionContext.initiativeId }
         : null,
       granted_scopes: this.parseGrantedScopes(),
-      safe_first_calls: safeFirstCallsByProfile[profile] ?? safeFirstCallsByProfile.full,
+      safe_first_calls: getBootstrapSafeFirstCalls(profile),
       accepted_id_forms: {
         plan_session: PLAN_SESSION_ACCEPTED_ID_FORMS,
         initiative: ['uuid'],
         task: ['uuid', '8+ char prefix'],
       },
-      recommended_workflows: {
-        plan_feature: [
-          'orgx_bootstrap',
-          'start_plan_session',
-          'improve_plan',
-          'record_plan_edit',
-          'complete_plan',
-        ],
-        execute_task: [
-          'workspace',
-          'get_task_with_context',
-          'check_spawn_guard',
-          'spawn_agent_task',
-          'orgx_emit_activity',
-        ],
-      },
+      recommended_workflows: BOOTSTRAP_RECOMMENDED_WORKFLOWS,
       visible_tools_count: visibleTools.length,
       visible_tools: allowedTools ? visibleTools : undefined,
     };
@@ -2895,6 +3165,501 @@ export class OrgXMcp extends McpAgent<
                 text: `OrgX contract ready. Profile: ${payload.profile}. Visible tools: ${payload.visible_tools_count}.`,
               },
             ],
+            structuredContent: payload,
+          };
+        }
+
+        case 'orgx_inspect': {
+          if (args.type === 'plan_session') {
+            return this.executeContractTool(
+              'resume_plan_session',
+              { session_id: args.id },
+              SECURITY_SCHEMES.authRequired,
+              allowedTools
+            );
+          }
+
+          const entity = await this.fetchEntityRecord(
+            String(args.type),
+            String(args.id),
+            resolvedUserId
+          );
+          if (!entity) {
+            return this.toolError(`No ${String(args.type)} found for ${String(args.id)}`, {
+              code: 'entity_not_found',
+              status: 404,
+              details: {
+                entity_type: args.type,
+                entity_id: args.id,
+                suggested_next_calls: [{ tool: 'orgx_search', args: { type: args.type } }],
+              },
+            });
+          }
+          const payload = {
+            _v2_tool: 'orgx_inspect',
+            type: args.type,
+            id: args.id,
+            entity,
+          };
+          return {
+            content: [{ type: 'text', text: formatForLLM('orgx_inspect', payload) }],
+            structuredContent: payload,
+          };
+        }
+
+        case 'orgx_search': {
+          const query =
+            typeof args.query === 'string' && args.query.trim().length > 0
+              ? args.query.trim()
+              : null;
+          const type =
+            typeof args.type === 'string' && args.type.trim().length > 0
+              ? args.type.trim()
+              : 'initiative';
+          const fields = Array.isArray(args.fields)
+            ? args.fields.filter((field): field is string => typeof field === 'string')
+            : null;
+          const records = await this.fetchEntityCollection({
+            type,
+            userId: resolvedUserId,
+            limit: typeof args.limit === 'number' ? args.limit : undefined,
+            initiativeId:
+              typeof args.initiative_id === 'string' ? args.initiative_id : null,
+            workspaceId:
+              typeof args.workspace_id === 'string'
+                ? args.workspace_id
+                : this.sessionContext?.workspaceId ?? null,
+            status: typeof args.status === 'string' ? args.status : null,
+            query,
+            fields,
+          });
+          const payload = {
+            _v2_tool: 'orgx_search',
+            type,
+            query,
+            count: records.length,
+            results: records,
+          };
+          return {
+            content: [{ type: 'text', text: formatForLLM('orgx_search', payload) }],
+            structuredContent: payload,
+          };
+        }
+
+        case 'orgx_recommend': {
+          if (args.mode === 'morning_brief') {
+            const wsId =
+              typeof args.workspace_id === 'string'
+                ? args.workspace_id
+                : this.sessionContext?.workspaceId;
+            if (!wsId) return this.toolError('workspace_id required');
+            const response = await callOrgxApiJson(
+              this.env,
+              `/api/flywheel/briefs?workspace_id=${wsId}${
+                args.session_id ? `&session_id=${args.session_id}` : ''
+              }`,
+              undefined,
+              { userId: resolvedUserId }
+            );
+            const result = (await response.json()) as Record<string, unknown>;
+            const payload = { ...result, _v2_tool: 'orgx_recommend', mode: 'morning_brief' };
+            return {
+              content: [{ type: 'text', text: formatForLLM('get_morning_brief', payload) }],
+              structuredContent: payload,
+            };
+          }
+
+          return this.executeChatGPTTool(
+            'recommend_next_action',
+            {
+              entity_type: args.entity_type ?? (args.entity_id ? 'initiative' : 'workspace'),
+              entity_id: args.entity_id,
+              workspace_id: args.workspace_id,
+              limit: args.limit,
+            },
+            SECURITY_SCHEMES.readOptionalAuth
+          );
+        }
+
+        case 'orgx_write': {
+          const operation =
+            typeof args.operation === 'string' ? args.operation : 'create';
+          if (operation === 'update') {
+            const fields =
+              args.fields && typeof args.fields === 'object' && !Array.isArray(args.fields)
+                ? (args.fields as Record<string, unknown>)
+                : {};
+            if (!args.id || Object.keys(fields).length === 0) {
+              return this.toolError('orgx_write operation=update requires id and fields', {
+                code: 'invalid_input',
+                status: 400,
+              });
+            }
+
+            const response = await callOrgxApiJson(
+              this.env,
+              '/api/entities',
+              {
+                method: 'PATCH',
+                body: JSON.stringify({
+                  type: args.type,
+                  id: args.id,
+                  ...fields,
+                  idempotency_key: args.idempotency_key,
+                }),
+              },
+              { userId: resolvedUserId }
+            );
+            const result = (await response.json()) as Record<string, unknown>;
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: formatForLLM('orgx_write', {
+                    ...result,
+                    _v2_tool: 'orgx_write',
+                    operation: 'update',
+                  }),
+                },
+              ],
+              structuredContent: {
+                ...result,
+                _v2_tool: 'orgx_write',
+                operation: 'update',
+              },
+            };
+          }
+
+          const body = this.stripContractRuntimeFields(args);
+          if (body.type === 'blocker') {
+            delete body.workspace_id;
+            delete body.command_center_id;
+            delete body.initiative_id;
+            delete body.workstream_id;
+            delete body.milestone_id;
+          }
+          if (body.type === 'initiative') {
+            const metadata =
+              body.metadata && typeof body.metadata === 'object' && !Array.isArray(body.metadata)
+                ? (body.metadata as Record<string, unknown>)
+                : {};
+            const liveMetadata =
+              metadata.live && typeof metadata.live === 'object' && !Array.isArray(metadata.live)
+                ? (metadata.live as Record<string, unknown>)
+                : {};
+            if (body.live_visibility === 'public' || body.live_public === true) {
+              metadata.liveVisibility = 'public';
+              metadata.live = {
+                ...liveMetadata,
+                public: true,
+                revealTitle: body.live_reveal_title !== false,
+              };
+            } else if (body.live_visibility === 'private') {
+              metadata.liveVisibility = 'private';
+              metadata.live = {
+                ...liveMetadata,
+                public: false,
+              };
+            }
+            body.metadata = metadata;
+            delete body.live_visibility;
+            delete body.live_public;
+            delete body.live_reveal_title;
+          }
+          const idempotencyKey =
+            typeof args.idempotency_key === 'string' ? args.idempotency_key : null;
+          if (idempotencyKey) {
+            delete body.idempotency_key;
+            const metadata =
+              body.metadata && typeof body.metadata === 'object' && !Array.isArray(body.metadata)
+                ? (body.metadata as Record<string, unknown>)
+                : {};
+            body.metadata = { ...metadata, idempotency_key: idempotencyKey };
+          }
+          const normalizedPayload = normalizeEntityCreatePayloadForAgents(
+            body,
+            'orgx_write'
+          );
+          Object.assign(body, normalizedPayload.entity);
+          const response = await callOrgxApiJson(
+            this.env,
+            '/api/entities',
+            {
+              method: 'POST',
+              body: JSON.stringify(body),
+            },
+            { userId: resolvedUserId }
+          );
+          const result = (await response.json()) as Record<string, unknown>;
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatForLLM('orgx_write', {
+                  ...result,
+                  _v2_tool: 'orgx_write',
+                  operation: 'create',
+                  normalization_warnings: normalizedPayload.warnings,
+                }),
+              },
+            ],
+            structuredContent: {
+              ...result,
+              _v2_tool: 'orgx_write',
+              operation: 'create',
+              normalization_warnings: normalizedPayload.warnings,
+            },
+          };
+        }
+
+        case 'orgx_attach': {
+          const attachPayload = buildEntityActionAttachPayload({
+            type: args.type,
+            id: args.id,
+            name: args.name,
+            artifact_type: args.artifact_type,
+            description: args.description,
+            artifact_url: args.artifact_url,
+            external_url: args.external_url,
+            preview_markdown: args.preview_markdown,
+            status: args.status,
+            metadata: {
+              ...(args.metadata &&
+              typeof args.metadata === 'object' &&
+              !Array.isArray(args.metadata)
+                ? (args.metadata as Record<string, unknown>)
+                : {}),
+              idempotency_key: args.idempotency_key,
+            },
+          });
+          const response = await callOrgxApiJson(
+            this.env,
+            '/api/client/artifacts',
+            {
+              method: 'POST',
+              body: JSON.stringify(attachPayload),
+            },
+            { userId: resolvedUserId }
+          );
+          const result = (await response.json()) as Record<string, unknown>;
+          const payload = { ...result, _v2_tool: 'orgx_attach', _action: 'attach' };
+          return {
+            content: [{ type: 'text', text: formatForLLM('entity_action', payload) }],
+            structuredContent: payload,
+          };
+        }
+
+        case 'orgx_act': {
+          if (args.action === 'validate' && args.type === 'studio_content') {
+            return this.executeContractTool(
+              'validate_studio_content',
+              args,
+              SECURITY_SCHEMES.entityWriteRequiresAuth,
+              allowedTools
+            );
+          }
+          if (args.action === 'update') {
+            return this.executeContractTool(
+              'orgx_write',
+              {
+                operation: 'update',
+                type: args.type,
+                id: args.id,
+                fields: args.fields,
+                idempotency_key: args.idempotency_key,
+              },
+              SECURITY_SCHEMES.entityWriteRequiresAuth,
+              allowedTools
+            );
+          }
+          if (args.action === 'attach') {
+            return this.executeContractTool(
+              'orgx_attach',
+              args,
+              SECURITY_SCHEMES.entityWriteRequiresAuth,
+              allowedTools
+            );
+          }
+
+          const resolvedAction =
+            resolveLifecycleActionAlias(String(args.type), String(args.action)) ??
+            String(args.action);
+          if (resolvedAction === 'delete' && args.dry_run === true) {
+            const payload = {
+              success: true,
+              dry_run: true,
+              type: args.type,
+              action: resolvedAction,
+              message: `${String(args.type)} would be deleted permanently`,
+              data: { id: args.id, deleted: false, would_delete: true },
+              _v2_tool: 'orgx_act',
+              _action: resolvedAction,
+              entity_type: args.type,
+              entity_id: args.id,
+            };
+            return {
+              content: [{ type: 'text', text: formatForLLM('entity_action', payload) }],
+              structuredContent: payload,
+            };
+          }
+          const body: Record<string, unknown> = {
+            note: args.note,
+            reason: args.note,
+            dry_run: args.dry_run,
+            force: args.force,
+            spec: args.spec,
+            artifact: args.artifact,
+            verification: args.verification,
+            quality_score: args.quality_score,
+            idempotency_key: args.idempotency_key,
+            user_id: resolvedUserId,
+          };
+          const response = await callOrgxApiJson(
+            this.env,
+            `/api/entities/${args.type}/${args.id}/${resolvedAction}`,
+            {
+              method: 'POST',
+              body: JSON.stringify(body),
+            },
+            { userId: resolvedUserId }
+          );
+          const result = (await response.json()) as Record<string, unknown>;
+          const payload = {
+            ...result,
+            _v2_tool: 'orgx_act',
+            _action: resolvedAction,
+            entity_type: args.type,
+            entity_id: args.id,
+          };
+          return {
+            content: [{ type: 'text', text: formatForLLM('entity_action', payload) }],
+            structuredContent: payload,
+          };
+        }
+
+        case 'orgx_plan': {
+          const action = String(args.action);
+          const toolByAction: Record<string, string> = {
+            start: 'start_plan_session',
+            resume: 'resume_plan_session',
+            improve: 'improve_plan',
+            record_edit: 'record_plan_edit',
+            complete: 'complete_plan',
+          };
+          const planTool = toolByAction[action];
+          if (!planTool) {
+            return this.toolError(`Unknown orgx_plan action: ${action}`, {
+              code: 'invalid_input',
+              status: 400,
+            });
+          }
+          if (planTool === 'resume_plan_session') {
+            return this.executeContractTool(
+              'resume_plan_session',
+              args,
+              SECURITY_SCHEMES.authRequired,
+              allowedTools
+            );
+          }
+          return this.executePlanSessionTool(
+            planTool,
+            args,
+            SECURITY_SCHEMES.writeRequiresAuth
+          );
+        }
+
+        case 'orgx_spawn': {
+          const action = typeof args.action === 'string' ? args.action : 'spawn';
+          const targetTool =
+            action === 'guard'
+              ? 'check_spawn_guard'
+              : action === 'classify'
+              ? 'classify_task_model'
+              : action === 'handoff'
+              ? 'handoff_task'
+              : 'spawn_agent_task';
+          const clientEndpoint: Record<string, string> = {
+            check_spawn_guard: '/api/client/spawn',
+            classify_task_model: '/api/client/route-task',
+            spawn_agent_task: '/api/tools/execute',
+            handoff_task: '/api/tools/execute',
+          };
+          const spawnArgs = this.stripContractRuntimeFields(args);
+          if (
+            typeof args.agent_type === 'string' &&
+            args.agent_type.trim() &&
+            typeof spawnArgs.domain !== 'string'
+          ) {
+            spawnArgs.domain = args.agent_type.trim();
+          }
+          const body =
+            targetTool === 'spawn_agent_task' || targetTool === 'handoff_task'
+              ? { tool_id: targetTool, args: spawnArgs, user_id: resolvedUserId }
+              : { ...spawnArgs, user_id: resolvedUserId };
+          const response = await callOrgxApiJson(
+            this.env,
+            clientEndpoint[targetTool],
+            {
+              method: 'POST',
+              body: JSON.stringify(body),
+            },
+            { userId: resolvedUserId }
+          );
+          const result = (await response.json()) as Record<string, unknown>;
+          const data =
+            result.data && typeof result.data === 'object'
+              ? (result.data as Record<string, unknown>)
+              : result;
+          const payload = { ...data, _v2_tool: 'orgx_spawn', routed_tool: targetTool };
+          return {
+            content: [{ type: 'text', text: this.summarizeClientResult(targetTool, payload) }],
+            structuredContent: payload,
+          };
+        }
+
+        case 'orgx_decide': {
+          const action = String(args.action);
+          if (action === 'approve' || action === 'reject' || action === 'list_pending') {
+            return this.executeContractTool(
+              'approve_agent_work',
+              {
+                ...args,
+                action: action === 'list_pending' ? 'list' : action,
+              },
+              SECURITY_SCHEMES.writeRequiresAuth,
+              allowedTools
+            );
+          }
+
+          return this.executeContractTool(
+            action === 'remember' ? 'remember_decision' : 'create_decision',
+            {
+              ...args,
+              title: args.title ?? args.decision,
+              summary: args.summary ?? args.context ?? args.decision,
+            },
+            SECURITY_SCHEMES.entityWriteRequiresAuth,
+            allowedTools
+          );
+        }
+
+        case 'orgx_submit_receipt': {
+          const response = await callOrgxApiJson(
+            this.env,
+            '/api/flywheel/receipts',
+            {
+              method: 'POST',
+              body: JSON.stringify({
+                ...args,
+                user_id: resolvedUserId,
+              }),
+            },
+            { userId: resolvedUserId }
+          );
+          const result = (await response.json()) as Record<string, unknown>;
+          const payload = { ...result, _v2_tool: 'orgx_submit_receipt' };
+          return {
+            content: [{ type: 'text', text: formatForLLM('orgx_submit_receipt', payload) }],
             structuredContent: payload,
           };
         }
@@ -3397,10 +4162,63 @@ export class OrgXMcp extends McpAgent<
     }
   }
 
+  private standardOutputSchemaInstalled = false;
+
+  /**
+   * Monkey-patches `this.server.registerTool` so every tool registered after
+   * this call automatically gets a default outputSchema (when none is
+   * provided) and a handler wrapper that synthesises a minimal
+   * `structuredContent` envelope from the existing `content` blocks.
+   *
+   * Idempotent: only patches once per worker instance.
+   */
+  private installStandardOutputSchemaWrapper() {
+    if (this.standardOutputSchemaInstalled) return;
+    this.standardOutputSchemaInstalled = true;
+    const server = this.server as unknown as {
+      registerTool: (
+        name: string,
+        config: Record<string, unknown> & { outputSchema?: unknown },
+        handler: (...args: unknown[]) => unknown
+      ) => unknown;
+    };
+    const original = server.registerTool.bind(server);
+    server.registerTool = ((
+      name: string,
+      config: Record<string, unknown> & { outputSchema?: unknown },
+      handler: (...args: unknown[]) => unknown
+    ) => {
+      const enhancedConfig = {
+        ...config,
+        outputSchema:
+          config.outputSchema ??
+          (STANDARD_TOOL_OUTPUT_SCHEMA as unknown as Record<string, unknown>),
+      };
+      const wrappedHandler = async (...args: unknown[]) => {
+        const result = await handler(...args);
+        return ensureStructuredContent(
+          result as {
+            structuredContent?: unknown;
+            isError?: boolean;
+            content?: ReadonlyArray<unknown>;
+          }
+        );
+      };
+      return original(name, enhancedConfig, wrappedHandler);
+    }) as typeof server.registerTool;
+  }
+
   private registerTools() {
     // Resolve tool profile from connection props (e.g. ?profile=executor).
     // null means register all tools (default / 'full' profile).
     const allowedTools = resolveProfileToolSet(this.props?.profile);
+
+    // Wrap server.registerTool so every subsequent registration (inline,
+    // for-loop, or via registerAppTool which delegates to the same method)
+    // gets a default outputSchema and an envelope-injected handler. This
+    // boosts Smithery's "Output schemas" coverage without requiring each
+    // handler to populate structuredContent manually.
+    this.installStandardOutputSchemaWrapper();
 
     // Register ChatGPT App tools (data-driven)
     this.registerChatGPTTools(allowedTools);
@@ -3419,6 +4237,9 @@ export class OrgXMcp extends McpAgent<
 
     // Register additive contract/introspection tools and safe wrappers
     this.registerContractTools(allowedTools);
+
+    // Route stale clients that strip the `orgx_` prefix to canonical v2 tools.
+    this.registerLegacyStrippedAliasTools(allowedTools);
 
     // =========================================================================
     // CORE UTILITY TOOLS
@@ -4149,8 +4970,48 @@ export class OrgXMcp extends McpAgent<
 
           const { data, pagination } = result;
 
+          // Defensive client-side filter: the orgx-web /api/entities endpoint
+          // currently ignores initiative_id when type=run, returning workspace-
+          // wide runs (incl. rows whose initiative_id is null or matches a
+          // different initiative). This blinds diagnostics like "show me runs
+          // for THIS launch initiative". Until the API is fixed, we drop
+          // mismatched rows on the client and warn so callers know the upstream
+          // data was lossy. Tracked: launch-campaign empty-activity diagnosis,
+          // 2026-05-05.
+          const requestedInitiativeId =
+            typeof args.initiative_id === 'string' &&
+            args.initiative_id.trim().length > 0
+              ? args.initiative_id.trim()
+              : null;
+          let postFilteredData = data;
+          let postFilterDroppedCount = 0;
+          if (
+            args.type === 'run' &&
+            requestedInitiativeId &&
+            Array.isArray(data) &&
+            data.length > 0
+          ) {
+            const filtered = data.filter((item) => {
+              const value = (item as { initiative_id?: unknown }).initiative_id;
+              return typeof value === 'string' && value === requestedInitiativeId;
+            });
+            postFilterDroppedCount = data.length - filtered.length;
+            postFilteredData = filtered;
+            if (postFilterDroppedCount > 0) {
+              console.warn(
+                '[mcp] list_entities type=run: dropped server-side initiative_id mismatches',
+                {
+                  requestedInitiativeId,
+                  serverReturned: data.length,
+                  retained: filtered.length,
+                  dropped: postFilterDroppedCount,
+                }
+              );
+            }
+          }
+
           // Add deep links to each entity
-          const dataWithLinks = data.map((item) => ({
+          const dataWithLinks = postFilteredData.map((item) => ({
             ...item,
             _link: buildEntityLink(args.type, item.id, {
               label: item.title ?? item.name ?? undefined,
@@ -5102,30 +5963,78 @@ export class OrgXMcp extends McpAgent<
             transition?: { from: string; to: string };
             data?: unknown;
             error?: string;
+            initiative_activation?: {
+              created_stream_count?: number;
+              redispatched_stream_count?: number;
+              error?: string;
+            };
           };
 
           // Studio/initiative custom actions return { success, data } instead of { message, transition }
           if (result.error) {
             return this.toolError(result.error);
           }
+          // Detect the silent-no-op case for initiative launch: API returns 200
+          // with no transition AND no error AND no initiative_activation. Seen
+          // in production where the launch endpoint accepts the request but
+          // doesn't actually re-dispatch streams (idempotency path swallows
+          // the call when streams already exist). Without this branch the
+          // tool returns an empty success and the agent thinks launch worked.
+          const isInitiativeLaunch =
+            args.type === 'initiative' && resolvedAction === 'launch';
+          if (
+            isInitiativeLaunch &&
+            !result.transition &&
+            !result.initiative_activation &&
+            (result.data === undefined || result.data === null)
+          ) {
+            const liveUrl = buildLiveUrl(args.id);
+            const warning =
+              `⚠️  Launch endpoint returned success but no transition or stream activation was reported. ` +
+              `This often means the dispatcher silently no-op'd because streams already exist. ` +
+              `Verify with get_initiative_stream_state. If streams stay 'ready' without progress, ` +
+              `bypass via spawn_agent_task to dispatch a single task directly.`;
+            return {
+              content: [
+                { type: 'text', text: `${warning}\n\n📺 **Live view:** ${liveUrl}` },
+              ],
+              structuredContent: {
+                ok: false,
+                error_kind: 'launch_silent_no_op',
+                live_url: liveUrl,
+                warning,
+                next_steps: [
+                  'Call get_initiative_stream_state to inspect actual stream status',
+                  'If streams sit at "ready" with no current_job_id, the auto-dispatcher is not picking them up',
+                  'Bypass via spawn_agent_task to dispatch directly',
+                ],
+              },
+            };
+          }
           if (result.transition) {
             // Include live_url for initiative launch
-            const isInitiativeLaunch =
-              args.type === 'initiative' && resolvedAction === 'launch';
             const liveUrl = isInitiativeLaunch ? buildLiveUrl(args.id) : null;
             const liveSection = liveUrl
               ? `\n\n📺 **Watch progress live:** ${liveUrl}`
+              : '';
+            // Surface the actual activation count when available — agents
+            // need this to decide whether the launch did real work.
+            const activationSummary = result.initiative_activation
+              ? `\n\nStreams: +${result.initiative_activation.created_stream_count ?? 0} created, ${result.initiative_activation.redispatched_stream_count ?? 0} dispatched`
               : '';
 
             return {
               content: [
                 {
                   type: 'text',
-                  text: `✓ ${result.message}\n\nStatus: ${result.transition.from} → ${result.transition.to}${liveSection}`,
+                  text: `✓ ${result.message}\n\nStatus: ${result.transition.from} → ${result.transition.to}${activationSummary}${liveSection}`,
                 },
               ],
               ...(liveUrl && {
-                structuredContent: { live_url: liveUrl },
+                structuredContent: {
+                  live_url: liveUrl,
+                  initiative_activation: result.initiative_activation,
+                },
               }),
             };
           }
@@ -5253,6 +6162,10 @@ export class OrgXMcp extends McpAgent<
             .describe(
               'Optional context attachments (initiative, workstream, milestone, task). Each entry is a pointer with a relevance note.'
             ),
+          metadata: z
+            .record(z.unknown())
+            .optional()
+            .describe('Optional metadata payload persisted with supported entity types'),
           initiative_id: z
             .string()
             .optional()
@@ -5268,6 +6181,10 @@ export class OrgXMcp extends McpAgent<
             .optional()
             .describe('Parent milestone ID (for tasks)'),
           due_date: z.string().optional().describe('Due date (YYYY-MM-DD)'),
+          status: z
+            .string()
+            .optional()
+            .describe('Initial workflow status; common agent aliases such as active are normalized per entity type'),
           sequence: z
             .number()
             .int()
@@ -5346,6 +6263,62 @@ export class OrgXMcp extends McpAgent<
             .string()
             .optional()
             .describe('Deprecated alias for owner_id; prefer owner_id for new calls'),
+          entity_type: z
+            .string()
+            .optional()
+            .describe('Artifact target entity type, such as initiative, workstream, milestone, task, or decision'),
+          entity_id: z
+            .string()
+            .optional()
+            .describe('Artifact target entity UUID'),
+          task_id: z
+            .string()
+            .optional()
+            .describe('Artifact target task UUID shortcut'),
+          artifact_type: z
+            .string()
+            .optional()
+            .describe('Artifact type code, such as eng.demo_report or proof.link'),
+          artifact_url: z
+            .string()
+            .optional()
+            .describe('Internal artifact URL'),
+          external_url: z
+            .string()
+            .optional()
+            .describe('External artifact URL'),
+          preview_markdown: z
+            .string()
+            .optional()
+            .describe('Artifact markdown preview'),
+          run_id: z
+            .string()
+            .optional()
+            .describe('Agent run UUID for blocker creation'),
+          step_id: z
+            .string()
+            .optional()
+            .describe('Optional agent run step UUID for blocker creation'),
+          blocker_type: z
+            .string()
+            .optional()
+            .describe('Blocker category/type when type=blocker'),
+          resolution: z
+            .string()
+            .optional()
+            .describe('Blocker resolution text when known'),
+          live_visibility: z
+            .enum(['private', 'public'])
+            .optional()
+            .describe('Initiative live-link visibility'),
+          live_public: z
+            .boolean()
+            .optional()
+            .describe('Shortcut to publish an initiative live link'),
+          live_reveal_title: z
+            .boolean()
+            .optional()
+            .describe('Allow public live-link visitors to see the initiative title'),
           // Skill-specific fields (for type: 'skill')
           prompt_template: z
             .string()
@@ -5560,6 +6533,14 @@ export class OrgXMcp extends McpAgent<
             summary: args.summary ?? args.description,
             description: args.description ?? args.summary,
           };
+          if (
+            args.metadata &&
+            typeof args.metadata === 'object' &&
+            !Array.isArray(args.metadata)
+          ) {
+            payload.metadata = args.metadata;
+          }
+          if (args.status) payload.status = args.status;
 
           // Include owner_id in body when explicitly available
           if (ownerId) {
@@ -5577,9 +6558,23 @@ export class OrgXMcp extends McpAgent<
           }
 
           // Add optional fields (only for types whose tables have these columns)
-          if (args.initiative_id) payload.initiative_id = args.initiative_id;
-          if (args.workstream_id) payload.workstream_id = args.workstream_id;
-          if (args.milestone_id) payload.milestone_id = args.milestone_id;
+          if (args.initiative_id && args.type !== 'blocker') {
+            payload.initiative_id = args.initiative_id;
+          }
+          if (
+            args.workstream_id &&
+            args.type !== 'blocker' &&
+            args.type !== 'artifact'
+          ) {
+            payload.workstream_id = args.workstream_id;
+          }
+          if (
+            args.milestone_id &&
+            args.type !== 'blocker' &&
+            args.type !== 'artifact'
+          ) {
+            payload.milestone_id = args.milestone_id;
+          }
           // due_date exists on: milestones, workstream_tasks
           if (args.due_date && datedEntityTypes.has(args.type)) {
             payload.due_date = args.due_date;
@@ -5638,6 +6633,68 @@ export class OrgXMcp extends McpAgent<
             if (args.agent_domain) payload.agent_domain = args.agent_domain;
             if (args.auto_continue !== undefined)
               payload.auto_continue = args.auto_continue;
+          }
+
+          if (args.type === 'artifact') {
+            payload.entity_type =
+              args.entity_type ??
+              (args.task_id ? 'task' : undefined) ??
+              (args.milestone_id ? 'milestone' : undefined) ??
+              (args.workstream_id ? 'workstream' : undefined) ??
+              (args.initiative_id ? 'initiative' : undefined);
+            payload.entity_id =
+              args.entity_id ??
+              args.task_id ??
+              args.milestone_id ??
+              args.workstream_id ??
+              args.initiative_id;
+            if (args.artifact_type) payload.artifact_type = args.artifact_type;
+            if (args.artifact_url) payload.artifact_url = args.artifact_url;
+            if (args.external_url) payload.external_url = args.external_url;
+            if (args.preview_markdown)
+              payload.preview_markdown = args.preview_markdown;
+          }
+
+          if (args.type === 'blocker') {
+            if (args.run_id) payload.run_id = args.run_id;
+            if (args.step_id) payload.step_id = args.step_id;
+            if (args.blocker_type) payload.blocker_type = args.blocker_type;
+            if (args.resolution) payload.resolution = args.resolution;
+          }
+
+          if (args.type === 'initiative') {
+            const metadata =
+              payload.metadata &&
+              typeof payload.metadata === 'object' &&
+              !Array.isArray(payload.metadata)
+                ? (payload.metadata as Record<string, unknown>)
+                : {};
+            const liveMetadata =
+              metadata.live &&
+              typeof metadata.live === 'object' &&
+              !Array.isArray(metadata.live)
+                ? (metadata.live as Record<string, unknown>)
+                : {};
+            if (args.live_visibility === 'public' || args.live_public === true) {
+              payload.metadata = {
+                ...metadata,
+                liveVisibility: 'public',
+                live: {
+                  ...liveMetadata,
+                  public: true,
+                  revealTitle: args.live_reveal_title !== false,
+                },
+              };
+            } else if (args.live_visibility === 'private') {
+              payload.metadata = {
+                ...metadata,
+                liveVisibility: 'private',
+                live: {
+                  ...liveMetadata,
+                  public: false,
+                },
+              };
+            }
           }
 
           // proof_profile (tasks/milestones only) — merged into metadata so server-side
@@ -5857,10 +6914,16 @@ export class OrgXMcp extends McpAgent<
               'cross_reference',
               'note',
             ])
-            .optional(),
+            .optional()
+            .describe(
+              'Optional classification for the comment (e.g. observation, concern, blocker_flag) used by downstream filters and dashboards.'
+            ),
           severity: z
             .enum(['info', 'low', 'medium', 'high', 'critical'])
-            .optional(),
+            .optional()
+            .describe(
+              'Optional severity level for triage when comment_type implies an issue (concern, blocker_flag, etc.).'
+            ),
           tags: z
             .array(z.string())
             .max(20)
@@ -6255,8 +7318,12 @@ export class OrgXMcp extends McpAgent<
           .array(z.string())
           .optional()
           .describe(
-            'Optional goal UUIDs for this task. Suggested when the parent workspace requires work to trace to a primary goal.'
+            'Optional objective UUIDs for this task. This field is named goal_ids for API compatibility; use IDs from list_entities type=objective when the workspace requires a primary objective.'
           ),
+        objective_ids: z
+          .array(z.string())
+          .optional()
+          .describe('Preferred alias for goal_ids; objective UUIDs linked to this task.'),
         expected_duration_hours: z
           .number()
           .optional()
@@ -6305,8 +7372,12 @@ export class OrgXMcp extends McpAgent<
           .array(z.string())
           .optional()
           .describe(
-            'Optional goal UUIDs for this milestone. Suggested when the parent workspace requires a primary goal.'
+            'Optional objective UUIDs for this milestone. OrgX stores workspace objectives in goal_ids; provide at least one when the parent workspace requires a primary objective.'
           ),
+        objective_ids: z
+          .array(z.string())
+          .optional()
+          .describe('Preferred alias for goal_ids; objective UUIDs linked to this milestone.'),
         expected_duration_hours: z
           .number()
           .optional()
@@ -6355,8 +7426,12 @@ export class OrgXMcp extends McpAgent<
           .array(z.string())
           .optional()
           .describe(
-            'Optional goal UUIDs for this workstream. Suggested when the parent workspace requires a primary goal.'
+            'Optional objective UUIDs for this workstream. OrgX stores workspace objectives in goal_ids; provide at least one when the parent workspace requires a primary objective.'
           ),
+        objective_ids: z
+          .array(z.string())
+          .optional()
+          .describe('Preferred alias for goal_ids; objective UUIDs linked to this workstream.'),
         expected_duration_hours: z
           .number()
           .optional()
@@ -6384,16 +7459,41 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Scaffold an initiative hierarchy',
         description:
-          'Turn a goal, roadmap, launch, or feature plan into executable workstreams, milestones, and tasks. Agent-safe aliases are accepted and normalized: task priority urgent -> high; active task/milestone status -> in_progress. Also known as: scaffold project, create roadmap, generate execution plan. USE WHEN: user wants to plan a new initiative from scratch. NEXT: Use entity_action type=initiative action=launch to start execution (auto-launches by default). DO NOT USE: for adding a single task to an existing initiative — use create_entity instead.',
+          'Turn an objective, roadmap, launch, or feature plan into executable workstreams, milestones, and tasks. Minimal call: title, workspace_id, optional objective_ids/goal_ids, optional workstreams, and mode. Agent-safe aliases are accepted and normalized: task priority urgent -> high; active task/milestone status -> in_progress. Also known as: scaffold project, create roadmap, generate execution plan. USE WHEN: user wants to plan a new initiative from scratch. IMPORTANT: goal_ids means objective UUIDs, not a separate goal entity; objective_ids is the preferred alias and is normalized to goal_ids for API compatibility. workspace_id is required unless the MCP session already has workspace context; resolve it with list_entities type=command_center or get_org_snapshot. NEXT: use mode="launch" to create and start agents, mode="scaffold" to create without launching, or mode="draft" to validate the plan without writes. DO NOT USE: for adding a single task to an existing initiative — use create_entity instead.',
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: false,
+          openWorldHint: false,
+        },
         inputSchema: this.withClientContext({
+          mode: z
+            .enum(['draft', 'scaffold', 'launch'])
+            .optional()
+            .describe(
+              'Optional stage. draft validates without writes; scaffold creates records without launching agents; launch creates records and starts agents. Defaults to launch for backwards compatibility.'
+            ),
           title: z.string().min(1).describe('Initiative title'),
           summary: z.string().optional().describe('Initiative summary'),
           description: z.string().optional().describe('Initiative description'),
+          objective_ids: z
+            .array(z.string())
+            .optional()
+            .describe(
+              'Preferred objective UUIDs for the initiative. Normalized to goal_ids for API compatibility.'
+            ),
           goal_ids: z
             .array(z.string())
             .optional()
             .describe(
-              'Optional goal UUIDs for the initiative. Suggested when the workspace requires a primary goal; provide at least one to avoid goal-invariant failures.'
+              'Optional objective UUIDs for the initiative. OrgX stores workspace objectives in goal_ids; provide at least one to avoid objective-invariant failures.'
+            ),
+          idempotency_key: z
+            .string()
+            .min(8)
+            .max(120)
+            .optional()
+            .describe(
+              'Optional stable retry key. When omitted, OrgX derives one from workspace, owner, title, objectives, and hierarchy.'
             ),
           command_center_id: z
             .string()
@@ -6405,7 +7505,7 @@ export class OrgXMcp extends McpAgent<
             .string()
             .optional()
             .describe(
-              'Optional workspace ID to scope the initiative hierarchy'
+              'Workspace/command center UUID to scope the initiative hierarchy. Required unless the MCP session already has workspace context; resolve with list_entities type=command_center or get_org_snapshot.'
             ),
           context: scaffoldContextSchema,
           workstreams: z
@@ -6442,8 +7542,24 @@ export class OrgXMcp extends McpAgent<
             .boolean()
             .optional()
             .describe(
-              'When true (default), launch the initiative after scaffold creation so streams can dispatch immediately'
+              'Legacy alias for mode. false maps to mode=scaffold; true maps to mode=launch when mode is omitted.'
             ),
+          external_sync: z
+            .object({
+              targets: z
+                .array(z.enum(['linear', 'jira']))
+                .describe('Optional work-tracker targets to mirror after scaffold. Linear is active v1; Jira is a non-blocking stub.'),
+              mode: z
+                .enum(['project_and_tasks', 'tasks_only'])
+                .optional()
+                .describe('Mirror shape. Defaults to project_and_tasks.'),
+              linear_project_id: z
+                .string()
+                .optional()
+                .describe('Optional existing Linear project ID for tasks_only or project reuse.'),
+            })
+            .optional()
+            .describe('Optional async mirror request for external work trackers. Omit for fastest scaffold response.'),
           concurrency: z
             .number()
             .min(1)
@@ -6451,11 +7567,6 @@ export class OrgXMcp extends McpAgent<
             .optional()
             .describe('Parallel creation concurrency (default 8)'),
         }),
-        annotations: {
-          readOnlyHint: false,
-          destructiveHint: false,
-          openWorldHint: false,
-        },
         _meta: {
           'openai/visibility': 'private',
           'mcp/securitySchemes': SECURITY_SCHEMES.entityWriteRequiresAuth,
@@ -6475,6 +7586,37 @@ export class OrgXMcp extends McpAgent<
           });
           if (authResponse) return authResponse;
 
+          const sourceClient = resolveSourceClientFromContext(
+            (args._context ?? undefined) as
+              | Record<string, unknown>
+              | undefined
+          );
+          const telemetryTrace = createScaffoldTelemetryTrace();
+          const recordScaffoldTelemetry = (params: {
+            status: 'success' | 'error';
+            userId?: string | null;
+            workspaceId?: string | null;
+            errorCode?: string | null;
+            metadata?: Record<string, unknown>;
+          }) => {
+            this.ctx.waitUntil(
+              recordDurableMcpToolInvocation({
+                env: this.env,
+                toolId: 'scaffold_initiative',
+                status: params.status,
+                latencyMs: Date.now() - telemetryTrace.startedAt,
+                metadata: telemetryTrace.snapshot(params.metadata),
+                userId: params.userId,
+                workspaceId: params.workspaceId,
+                sourceClient,
+                context: args._context,
+                errorCode: params.errorCode,
+                serverVersion: MCP_SERVER_VERSION,
+                isWidgetTool: true,
+              })
+            );
+          };
+
           const sanitizeErrorMessage = (error: unknown): string => {
             const raw =
               error instanceof Error
@@ -6492,36 +7634,80 @@ export class OrgXMcp extends McpAgent<
             debug?: Record<string, unknown>;
           }) => {
             const safeError = sanitizeErrorMessage(params.error);
-            const text = `${params.message}\n\nDetails: ${safeError}\n\nTry:\n- Re-run the same prompt (transient failures happen)\n- Set launch_after_create=false, then say \"start agents\"\n- Reduce concurrency (e.g. concurrency=2)\n- If this is an auth issue, reconnect and try again`;
+            const lowerError = safeError.toLowerCase();
+            const needsWorkspace =
+              lowerError.includes('workspace_id') ||
+              lowerError.includes('workspace id') ||
+              lowerError.includes('workspace is required') ||
+              lowerError.includes('command_center_id') ||
+              lowerError.includes('command center');
+            const needsObjective =
+              lowerError.includes('primary goal') ||
+              lowerError.includes('goal invariant') ||
+              lowerError.includes('goal_ids') ||
+              lowerError.includes('objective');
+            const nextSteps = needsWorkspace
+              ? [
+                  'Resolve a workspace first with list_entities type=command_center or get_org_snapshot',
+                  'Retry scaffold_initiative with workspace_id set to that command center UUID',
+                  'If you also see a primary-goal invariant, resolve objectives with list_entities type=objective and pass the chosen objective UUID in goal_ids',
+                ]
+              : needsObjective
+              ? [
+                  'Resolve objectives with list_entities type=objective',
+                  'Retry scaffold_initiative with goal_ids set to one of those objective UUIDs; goal_ids is the API field name for objective IDs',
+                  'Keep the same workspace_id/command_center_id on the retry',
+                ]
+              : [
+                  'Re-run the same prompt (transient failures happen)',
+                  'Set launch_after_create=false, then say "start agents"',
+                  'Reduce concurrency (e.g. concurrency=2)',
+                  'If this is an auth issue, reconnect and try again',
+                ];
+            const text = `${params.message}\n\nDetails: ${safeError}\n\nTry:\n${nextSteps
+              .map((step) => `- ${step}`)
+              .join('\n')}`;
             return {
               content: [{ type: 'text' as const, text }],
               structuredContent: {
                 ok: false,
                 error_kind: 'scaffold_initiative_failed',
                 error: safeError,
+                resolution_hint: needsWorkspace
+                  ? 'workspace_id_required'
+                  : needsObjective
+                  ? 'objective_goal_ids_required'
+                  : undefined,
                 ...params.debug,
               },
             };
           };
 
           try {
+            const modeResolution = resolveScaffoldMode(args);
+            const objectiveAliasResult = normalizeScaffoldObjectiveAliases(args);
+            const normalizedArgs = objectiveAliasResult.args;
+            const contractWarnings: ScaffoldContractWarning[] = [
+              ...modeResolution.warnings,
+              ...objectiveAliasResult.warnings,
+            ];
+            const scaffoldMode = modeResolution.mode;
             const explicitOwnerId =
-              typeof args.owner_id === 'string'
-                ? args.owner_id
-                : typeof args.user_id === 'string'
-                ? args.user_id
+              typeof normalizedArgs.owner_id === 'string'
+                ? normalizedArgs.owner_id
+                : typeof normalizedArgs.user_id === 'string'
+                ? normalizedArgs.user_id
                 : undefined;
             const ownerId = this.resolveUserId(explicitOwnerId);
             const continueOnError =
-              typeof args.continue_on_error === 'boolean'
-                ? args.continue_on_error
+              typeof normalizedArgs.continue_on_error === 'boolean'
+                ? normalizedArgs.continue_on_error
                 : true;
-            const launchAfterCreate =
-              typeof args.launch_after_create === 'boolean'
-                ? args.launch_after_create
-                : true;
+            const launchAfterCreate = modeResolution.launchAfterCreate;
             const concurrencyInput =
-              typeof args.concurrency === 'number' ? args.concurrency : 8;
+              typeof normalizedArgs.concurrency === 'number'
+                ? normalizedArgs.concurrency
+                : 8;
             const concurrency = Math.max(1, Math.min(concurrencyInput, 20));
 
             // Free-tier guardrail: limit scaffolds per billing period.
@@ -6544,6 +7730,7 @@ export class OrgXMcp extends McpAgent<
                   };
                 }
               | null = null;
+            if (scaffoldMode !== 'draft') {
             try {
               const userEmail = this.resolveUserEmail();
               const usageResp = await callOrgxApiJson(
@@ -6569,6 +7756,15 @@ export class OrgXMcp extends McpAgent<
                   `After reconnecting, rerun the scaffold request. Do not treat this as a plan upgrade problem.`,
                 ];
 
+                recordScaffoldTelemetry({
+                  status: 'error',
+                  userId: ownerId ?? resolvedUserId ?? null,
+                  errorCode: 'mcp_identity_mismatch',
+                  metadata: {
+                    mode: scaffoldMode,
+                    failure_stage: 'billing_precheck',
+                  },
+                });
                 return {
                   content: [{ type: 'text', text: lines.join('\n') }],
                   structuredContent: {
@@ -6605,6 +7801,17 @@ export class OrgXMcp extends McpAgent<
                   `You can also wait for the next billing period to reset your usage.`,
                 ];
 
+                recordScaffoldTelemetry({
+                  status: 'error',
+                  userId: ownerId ?? resolvedUserId ?? null,
+                  errorCode: 'billing_scaffold_limit_reached',
+                  metadata: {
+                    mode: scaffoldMode,
+                    failure_stage: 'billing_precheck',
+                    scaffolds_used: used,
+                    scaffolds_included: included,
+                  },
+                });
                 return {
                   content: [
                     {
@@ -6624,6 +7831,8 @@ export class OrgXMcp extends McpAgent<
             } catch {
               billingUsage = null;
             }
+            }
+            telemetryTrace.mark('billing_precheck');
 
           const billingResolvedUserId =
             typeof billingUsage?.identity?.resolvedUserId === 'string' &&
@@ -6634,20 +7843,29 @@ export class OrgXMcp extends McpAgent<
             billingResolvedUserId ?? ownerId ?? resolvedUserId ?? null;
 
           const explicitWorkspaceId =
-            typeof (args as any).workspace_id === 'string' &&
-            (args as any).workspace_id.trim().length > 0
-              ? ((args as any).workspace_id as string).trim()
+            typeof (normalizedArgs as any).workspace_id === 'string' &&
+            (normalizedArgs as any).workspace_id.trim().length > 0
+              ? ((normalizedArgs as any).workspace_id as string).trim()
               : null;
           const explicitCommandCenterId =
-            typeof (args as any).command_center_id === 'string' &&
-            (args as any).command_center_id.trim().length > 0
-              ? ((args as any).command_center_id as string).trim()
+            typeof (normalizedArgs as any).command_center_id === 'string' &&
+            (normalizedArgs as any).command_center_id.trim().length > 0
+              ? ((normalizedArgs as any).command_center_id as string).trim()
               : null;
           if (
             explicitWorkspaceId &&
             explicitCommandCenterId &&
             explicitWorkspaceId !== explicitCommandCenterId
           ) {
+            recordScaffoldTelemetry({
+              status: 'error',
+              userId: scaffoldOwnerId,
+              errorCode: 'workspace_alias_conflict',
+              metadata: {
+                mode: scaffoldMode,
+                failure_stage: 'workspace_resolution',
+              },
+            });
             return this.toolError(
               'workspace_id and command_center_id must match when both are provided'
             );
@@ -6657,9 +7875,59 @@ export class OrgXMcp extends McpAgent<
             explicitCommandCenterId ??
             this.sessionContext?.workspaceId ??
             null;
+          telemetryTrace.mark('workspace_resolution');
+
+          if (!effectiveCommandCenterId && scaffoldMode !== 'draft') {
+            const text = [
+              'I need a workspace_id before I can scaffold this initiative.',
+              '',
+              'This MCP session does not include a workspace context, and creating the hierarchy without one will fail before any agents can launch.',
+              '',
+              'Suggested next calls:',
+              '- orgx_search with type="workspace" to pick the workspace',
+              '- orgx_search with type="objective" and workspace_id to pick objective UUIDs for goal_ids when the workspace requires a primary objective',
+              '- scaffold_initiative again with workspace_id and, when available, goal_ids',
+            ].join('\n');
+            recordScaffoldTelemetry({
+              status: 'error',
+              userId: scaffoldOwnerId,
+              errorCode: 'missing_workspace_context',
+              metadata: {
+                mode: scaffoldMode,
+                failure_stage: 'workspace_resolution',
+              },
+            });
+            return {
+              content: [{ type: 'text' as const, text }],
+              structuredContent: {
+                ok: false,
+                error_kind: 'missing_workspace_context',
+                missing: ['workspace_id'],
+                suggested_next_calls: [
+                  {
+                    tool: 'orgx_search',
+                    arguments: {
+                      type: 'workspace',
+                      query: 'workspace',
+                    },
+                    purpose: 'Find the workspace_id for this scaffold.',
+                  },
+                  {
+                    tool: 'orgx_search',
+                    arguments: {
+                      type: 'objective',
+                      workspace_id: '<workspace_id>',
+                    },
+                    purpose:
+                      'Find objective UUIDs to pass as goal_ids when required.',
+                  },
+                ],
+              },
+            };
+          }
 
           const argsForBatch: Record<string, unknown> = {
-            ...(args as unknown as Record<string, unknown>),
+            ...(normalizedArgs as unknown as Record<string, unknown>),
             // Ensure owner_id propagates into the batch so the initiative
             // gets created with an owner — prevents dispatch stalls when
             // the POST handler can't resolve owner from gateway headers.
@@ -6729,10 +7997,61 @@ export class OrgXMcp extends McpAgent<
             }
           }
 
-          const { batch, initiativeRef, wsRefs, msRefs, taskRefs } =
+          const scaffoldIdempotencyKey = deriveScaffoldIdempotencyKey({
+            args: argsForBatch,
+            workspaceId: effectiveCommandCenterId,
+            ownerId: scaffoldOwnerId,
+          });
+          argsForBatch.idempotency_key = scaffoldIdempotencyKey;
+          delete argsForBatch.idempotencyKey;
+          const externalSync = normalizeExternalSyncRequest(
+            argsForBatch.external_sync ?? argsForBatch.externalSync
+          );
+
+          const {
+            batch,
+            initiativeRef,
+            wsRefs,
+            msRefs,
+            taskRefs,
+            materializedDependencies,
+            warnings: buildWarnings,
+          } =
             buildScaffoldInitiativeBatch(
               argsForBatch as unknown as Record<string, unknown>
             );
+          const allContractWarnings = [...contractWarnings, ...buildWarnings];
+          telemetryTrace.mark('batch_build');
+
+          if (scaffoldMode === 'draft') {
+            const draftPayload = buildScaffoldDraftResult({
+              batch,
+              workspaceId: effectiveCommandCenterId,
+              idempotencyKey: scaffoldIdempotencyKey,
+              contractWarnings: allContractWarnings,
+              dependencyEdges: materializedDependencies,
+            });
+            telemetryTrace.mark('draft_response');
+            recordScaffoldTelemetry({
+              status: 'success',
+              userId: scaffoldOwnerId,
+              workspaceId: effectiveCommandCenterId,
+              metadata: {
+                mode: scaffoldMode,
+                requested_count: batch.length,
+                dependency_edge_count: materializedDependencies.length,
+                contract_warning_count: allContractWarnings.length,
+                idempotency_key_present: Boolean(scaffoldIdempotencyKey),
+              },
+            });
+            return {
+              content: buildJsonFirstContentBlocks({
+                data: draftPayload,
+                summary: draftPayload.summary,
+              }),
+              structuredContent: draftPayload,
+            };
+          }
 
           const result = await runBatchCreateEntities({
             env: this.env,
@@ -6746,6 +8065,7 @@ export class OrgXMcp extends McpAgent<
             continueOnError,
             concurrency,
           });
+          telemetryTrace.mark('entity_create');
 
           const hierarchy = buildScaffoldHierarchy({
             result,
@@ -6845,6 +8165,7 @@ export class OrgXMcp extends McpAgent<
 	              };
 	            }
 	          }
+          telemetryTrace.mark('agent_assignment');
 
 	          // Record scaffold usage after the initiative exists (best-effort).
 	          let scaffold_usage:
@@ -6879,6 +8200,7 @@ export class OrgXMcp extends McpAgent<
 	              };
 	            }
 	          }
+          telemetryTrace.mark('billing_consume');
 
 	          // ── Pre-launch execution-account check ──
 	          // Before launching, verify the user has either API credentials or a
@@ -6936,6 +8258,7 @@ export class OrgXMcp extends McpAgent<
 	              };
 	            }
 	          }
+          telemetryTrace.mark('credential_check');
 
 	          let launch:
 	            | {
@@ -6955,11 +8278,18 @@ export class OrgXMcp extends McpAgent<
 	                start_agents_hint?: string;
 	              }
 	            | undefined;
+	          const hasExecutionAccount = Boolean(
+	            credential_status?.has_credentials ||
+	              credential_status?.has_subscription_accounts
+	          );
+	          const canLaunchWithExecutionAccount = Boolean(
+	            credential_status?.can_execute && hasExecutionAccount
+	          );
 	          if (
 	            createdInitiativeId &&
 	            launchAfterCreate &&
 	            credential_status?.checked &&
-	            !credential_status.can_execute
+	            !canLaunchWithExecutionAccount
 	          ) {
 	            // Execution account missing: skip launch, return actionable guidance.
 	            launch = {
@@ -7045,6 +8375,7 @@ export class OrgXMcp extends McpAgent<
           } else if (createdInitiativeId) {
             launch = { attempted: false, ok: false };
           }
+          telemetryTrace.mark('launch');
 
           const liveUrl = createdInitiativeId
             ? buildLiveUrl(createdInitiativeId)
@@ -7156,6 +8487,7 @@ export class OrgXMcp extends McpAgent<
                       // snapshot streams for the response.
                     }
                   }
+          telemetryTrace.mark('stream_snapshot');
 
             let fallback_agent_dispatch:
               | {
@@ -7274,6 +8606,7 @@ export class OrgXMcp extends McpAgent<
                 };
               }
             }
+            telemetryTrace.mark('fallback_dispatch');
 
 
               // ── Scaffold stream session ──
@@ -7297,7 +8630,7 @@ export class OrgXMcp extends McpAgent<
                   );
                 };
                 const _emitEvents = async () => {
-                  await _pushEvent({ type: 'session.start', sessionId: scaffold_session_id, title: typeof args.title === 'string' ? args.title : undefined, ts: Date.now() });
+                  await _pushEvent({ type: 'session.start', sessionId: scaffold_session_id, title: typeof normalizedArgs.title === 'string' ? normalizedArgs.title : undefined, ts: Date.now() });
                   const _entities = result.results ?? [];
                   const _total = _entities.length;
                   for (let _i = 0; _i < _entities.length; _i++) {
@@ -7313,23 +8646,95 @@ export class OrgXMcp extends McpAgent<
                 console.warn('[scaffold:stream] session setup failed', { error: _streamErr });
               }
 
-			          const machinePayload = {
-			            summary: result.summary,
-			            live_url: liveUrl ?? undefined,
-			            agent_assignment,
-			            credential_status,
-			            launch,
-			            streams,
-	                billing_usage: billingUsage ?? undefined,
-	                scaffold_usage,
-	                fallback_agent_dispatch,
-			            hierarchy,
-			            created: result.created,
-			            failed: result.failed,
-		            ref_map: result.ref_map,
-                scaffold_stream_url,
-                scaffold_session_id,
-	          };
+              let external_sync:
+                | (ExternalSyncRequest & { status: 'queued' })
+                | undefined;
+              if (createdInitiativeId && externalSync) {
+                external_sync = { ...externalSync, status: 'queued' };
+                this.ctx.waitUntil(
+                  callOrgxApiJson(
+                    this.env,
+                    '/api/integrations/work-graph/mirror',
+                    {
+                      method: 'POST',
+                      body: JSON.stringify({
+                        source: 'scaffold_initiative',
+                        initiative_id: createdInitiativeId,
+                        workspace_id: effectiveCommandCenterId,
+                        idempotency_key: scaffoldIdempotencyKey,
+                        targets: externalSync.targets,
+                        mode: externalSync.mode,
+                        linear_project_id: externalSync.linear_project_id,
+                        ref_map: result.ref_map,
+                        hierarchy,
+                      }),
+                    },
+                    {
+                      userId: scaffoldOwnerId ?? undefined,
+                      userEmail: this.resolveUserEmail(),
+                    }
+                  ).catch((error) => {
+                    console.warn('[scaffold:external-sync] mirror failed', {
+                      initiativeId: createdInitiativeId,
+                      targets: externalSync.targets,
+                      error:
+                        error instanceof Error ? error.message : String(error),
+                    });
+                  })
+                );
+              }
+              telemetryTrace.mark('external_sync_enqueue');
+
+              const firstAgentWork = buildFirstAgentWorkState({
+                mode: scaffoldMode,
+                initiativeId: createdInitiativeId,
+                launch: (launch ?? null) as Record<string, unknown> | null,
+                streams: (streams ?? null) as Record<string, unknown> | null,
+                fallbackAgentDispatch: (fallback_agent_dispatch ?? null) as
+                  | Record<string, unknown>
+                  | null,
+              });
+              const replayedEntityCount = result.results.filter(
+                (entry) => entry.success && entry.skipped
+              ).length;
+
+              const benchmarkMetrics = {
+                mode: scaffoldMode,
+                requested_count: result.total,
+                created_count: result.created_count,
+                failed_count: result.failed_count,
+                replayed_entity_count: replayedEntityCount,
+                response_contract: 'compact_scaffold_result',
+                dependency_edge_count: materializedDependencies.length,
+                idempotency_key_present: Boolean(scaffoldIdempotencyKey),
+                first_agent_status: firstAgentWork.status,
+                external_sync_target_count: externalSync?.targets.length ?? 0,
+                external_sync_status: external_sync?.status ?? 'not_requested',
+              };
+
+              const compactScaffoldPayload = buildCompactScaffoldResult({
+                result,
+                hierarchy,
+                mode: scaffoldMode,
+                initiativeId: createdInitiativeId,
+                workspaceId: effectiveCommandCenterId,
+                liveUrl,
+                idempotencyKey: scaffoldIdempotencyKey,
+                contractWarnings: allContractWarnings,
+                dependencyEdges: materializedDependencies,
+                firstAgentWork,
+                externalSync: external_sync,
+                benchmarkMetrics,
+                scaffoldStreamUrl: scaffold_stream_url,
+                scaffoldSessionId: scaffold_session_id,
+                agentAssignment: agent_assignment,
+                credentialStatus: credential_status,
+                launch,
+                streams,
+                billingUsage: billingUsage ?? undefined,
+                scaffoldUsage: scaffold_usage,
+                fallbackAgentDispatch: fallback_agent_dispatch,
+              });
 
 	          const activationSummary =
 	            launch?.initiative_activation &&
@@ -7392,15 +8797,10 @@ export class OrgXMcp extends McpAgent<
 		                : '\n\nLaunch: skipped (launch_after_create=false)'
 		            : '';
 
-              const sourceClient = resolveSourceClientFromContext(
-                (args._context ?? undefined) as
-                  | Record<string, unknown>
-                  | undefined
-              );
               const activationEvents = await this.recordMcpActivationObservation({
                 toolId: 'scaffold_initiative',
-                args: args as Record<string, unknown>,
-                data: machinePayload,
+                args: normalizedArgs as Record<string, unknown>,
+                data: compactScaffoldPayload,
                 userId: scaffoldOwnerId,
                 sourceClient,
                 workspaceId: effectiveCommandCenterId,
@@ -7420,39 +8820,55 @@ export class OrgXMcp extends McpAgent<
                 }
                 return c;
               };
-              const expectedTokens = Math.max(8_000, countTasks(machinePayload) * 4_500);
+              const summaryStats =
+                compactScaffoldPayload.summary_stats as Record<string, unknown>;
+              const compactTaskCount =
+                typeof summaryStats.task_count === 'number'
+                  ? summaryStats.task_count
+                  : countTasks(hierarchy);
+              const expectedTokens = Math.max(8_000, compactTaskCount * 4_500);
               const etaSeconds = Math.max(120, Math.floor(expectedTokens / (6500 / 3600)));
               const estimatedCost = Number(((expectedTokens / 1000) * 0.012).toFixed(4));
-              
+
               const finalPayload = activationPayload.experience
                 ? {
-                    ...machinePayload,
+                    ...compactScaffoldPayload,
                     estimated_time_seconds: etaSeconds,
                     estimated_cost: estimatedCost,
                     client_activation: activationPayload.experience,
                   }
                 : {
-                    ...machinePayload,
+                    ...compactScaffoldPayload,
                     estimated_time_seconds: etaSeconds,
                     estimated_cost: estimatedCost,
                   };
+              telemetryTrace.mark('response_build');
+              recordScaffoldTelemetry({
+                status: 'success',
+                userId: scaffoldOwnerId,
+                workspaceId: effectiveCommandCenterId,
+                metadata: {
+                  mode: scaffoldMode,
+                  requested_count: result.total,
+                  created_count: result.created_count,
+                  failed_count: result.failed_count,
+                  replayed_entity_count: replayedEntityCount,
+                  dependency_edge_count: materializedDependencies.length,
+                  contract_warning_count: allContractWarnings.length,
+                  idempotency_key_present: Boolean(scaffoldIdempotencyKey),
+                  first_agent_status: firstAgentWork.status,
+                  external_sync_target_count: externalSync?.targets.length ?? 0,
+                  external_sync_status:
+                    external_sync?.status ?? 'not_requested',
+                  response_size_bytes: JSON.stringify(finalPayload).length,
+                },
+              });
 
-
-              // Build streaming widget for MCP Apps (Claude.ai, ChatGPT)
-              // Wrapped in try/catch: a widget build failure must never kill the tool response
-              let _scaffoldWidgetHtml: string | null = null;
-              if (scaffold_stream_url) {
-                try {
-                  _scaffoldWidgetHtml = buildScaffoldWidget({
-                    sessionId: scaffold_session_id!,
-                    streamBaseUrl: this.env.MCP_SERVER_URL,
-                    initiativeTitle: typeof args.title === 'string' ? args.title : undefined,
-                    liveUrl: liveUrl ?? undefined,
-                  });
-                } catch (_widgetErr) {
-                  // Widget failed silently — CLI fallback still returned below
-                }
-              }
+              // The registered scaffolded-initiative resource renders from the
+              // compact structured payload. Avoid returning a second inline
+              // SSE-only widget: Claude drops or externalizes very large tool
+              // results, and the inline EventSource path can remain stuck when
+              // the host does not connect to the stream.
 
               // CLI/API fallback: plain-text summary for clients that don't render HTML
               const _cliFallback = [
@@ -7467,11 +8883,19 @@ export class OrgXMcp extends McpAgent<
                 content: buildJsonFirstContentBlocks({
                   data: finalPayload,
                   summary: _cliFallback,
-                  widgetHtml: _scaffoldWidgetHtml,
                 }),
                 structuredContent: finalPayload,
               };
             } catch (error) {
+              recordScaffoldTelemetry({
+                status: 'error',
+                errorCode:
+                  classifyErrorKind(error instanceof Error ? error.message : String(error)) ??
+                  'scaffold_initiative_failed',
+                metadata: {
+                  failure_stage: 'unknown',
+                },
+              });
               return buildHumanErrorResponse({
                 message:
                   'Scaffold failed while creating your initiative hierarchy.',
@@ -8251,7 +9675,8 @@ export class OrgXMcp extends McpAgent<
                     approval_required: args.approval_required ?? [],
                     skip_approval: args.skip_approval ?? [],
                   }),
-                }
+                },
+                { userId: resolvedUserId }
               );
               const result = (await response.json()) as {
                 agent_type: string;

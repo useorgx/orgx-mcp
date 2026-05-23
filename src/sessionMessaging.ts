@@ -17,6 +17,6 @@ export function buildNewSessionWelcomeStorageKey(
 export function buildNewSessionWelcomeText(): string {
   return [
     'Connected to OrgX.',
-    'Start with `scaffold_initiative`, `list_entities`, `get_org_snapshot`, or `recommend_next_action`.',
+    'Start with `orgx_bootstrap`, then use `orgx_search`, `orgx_inspect`, `orgx_recommend`, or `orgx_plan`.',
   ].join(' ');
 }
