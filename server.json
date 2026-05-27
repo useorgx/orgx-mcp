@@ -229,7 +229,7 @@
     {
       "name": "spawn_agent_task",
       "title": "Spawn Agent Task",
-      "description": "Delegate work to an agent and render the task-spawned widget.",
+      "description": "Delegate work to an agent and render the task-spawned widget. Supports optional model_tier, provider/model hints, budget_mode, and max_cost_usd controls; omit them for normal OrgX auto-routing.",
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": true,
