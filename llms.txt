@@ -42,3 +42,36 @@ Example prompts:
 - "Create a consolidation_pass receipt for this pull request."
 - "Assign this research task to an agent."
 - "What is blocked on the onboarding initiative?"
+
+Model and budget routing:
+- Use `orgx_spawn` with `action: "estimate"` before dispatch when the user asks
+  for a cost comparison, budget fit, or cheapest valid validation route.
+- Omit `model_tier`, `provider`, and `model` for normal agent work so OrgX can
+  auto-route by task complexity and workspace policy.
+- Include `max_cost_usd` when a cap is known.
+- Include `provider` or `model` only when explicitly selected.
+- Use `model_tier: "standard"` and `budget_mode: "cheapest_valid"` for
+  controlled reliability validation runs while the loop is being proven.
+- Require concrete receipts: artifact, verification evidence, PR URL, sales
+  plan, or structured blocker. Do not treat prose-only completion as done.
+
+Founder/team artifact contract:
+- First identify whether the user is an early founder, an existing founder-led
+  company, or an operating team.
+- Return the next useful company artifact: next initiative, engineering PR,
+  deploy proof, sales strategy, customer discovery synthesis, pricing
+  hypothesis, launch asset, product decision, design spec, operator brief,
+  runbook, or budget envelope.
+- Include owner, review point, expected business outcome, and verification
+  receipt.
+- Cost controls are execution constraints for validation or budget pressure,
+  not the agent's default mindset.
+
+Loop validation receipts:
+- For reliability validation, call `orgx_submit_receipt` with
+  `loop_validation: true`, `validation_rung`, `artifact_type`, `agent_type`,
+  `business_outcome`, `verification_status`, `model_tier`, `budget_mode`, and
+  evidence.
+- Treat `loop_validation.promotable=true` as the promotion signal. If false,
+  fix the missing fields, routing posture, or evidence before expanding
+  autonomy.

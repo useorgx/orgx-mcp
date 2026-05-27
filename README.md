@@ -39,6 +39,19 @@ OrgX MCP is organizational memory for AI agents and AI-native teams. It connects
 - assign work to OrgX agents,
 - render OrgX widgets in MCP Apps-compatible hosts.
 
+## Practical founder and team artifacts
+
+OrgX agents should return the next useful company artifact for the user's
+stage, not generic analysis. For an early founder, that may be a sales strategy,
+customer discovery synthesis, pricing hypothesis, launch asset, or first PR. For
+an existing founder-led company or operating team, it may be a weekly operator
+brief, roadmap decision, reliability fix, budget envelope, or cross-domain
+initiative with owners and acceptance gates.
+
+Normal agent work should let OrgX auto-route by task complexity and workspace
+policy. Use explicit low-cost routing only for controlled reliability
+validation or when the user/workspace sets a budget constraint.
+
 ## Tools (v2 public surface — see `server.json` for the full contract)
 
 | Tool | Purpose |
@@ -91,6 +104,7 @@ publish a `LICENSE` file.
 - Anthropic Directory Review Guide: [docs/anthropic-directory.md](./docs/anthropic-directory.md) and <https://github.com/useorgx/orgx-mcp/blob/main/docs/anthropic-directory.md>
 - Connector Review Pack: [docs/review/connector-directory-pack.md](./docs/review/connector-directory-pack.md)
 - LLM Routing Guide: [llms.txt](./llms.txt) and [agents.md](./agents.md)
+- OrgX Loop Reliability Plan: [docs/orgx-loop-reliability-plan.md](./docs/orgx-loop-reliability-plan.md)
 - Directory Submission Copy: [directory-submissions/](./directory-submissions/)
 - Reviewer Runbook: [docs/anthropic-reviewer-runbook.md](./docs/anthropic-reviewer-runbook.md)
 - Release Manager Checklist: [docs/anthropic-release-manager-checklist.md](./docs/anthropic-release-manager-checklist.md)
@@ -305,7 +319,23 @@ Widget protocol notes:
 
 **User prompt:** `Assign the engineering agent a task to audit the onboarding funnel.`
 
-**Expected behavior:** The worker calls `orgx_spawn`, records the assignment in OrgX, and returns the task or handoff result.
+**Expected behavior:** The worker calls `orgx_spawn`, records the assignment in OrgX, and returns the task or handoff result. For normal agent work, omit `model_tier`, `provider`, and `model` so OrgX can auto-route by task complexity and workspace policy.
+
+During controlled reliability validation, pin the run to the low-cost verification path:
+
+```json
+{
+  "action": "spawn",
+  "agent_type": "engineering",
+  "title": "Audit onboarding funnel",
+  "instructions": "Find the highest-impact onboarding defect and return a PR URL or structured blocker with verification evidence.",
+  "model_tier": "standard",
+  "budget_mode": "cheapest_valid",
+  "max_cost_usd": 0.5
+}
+```
+
+Only use those verification overrides while proving loop reliability or when the user, workspace policy, or a routing decision explicitly constrains spend.
 
 ## Compatibility Hierarchy Scaffolding + Context Attachments
 
