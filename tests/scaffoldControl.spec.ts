@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildFirstAgentWorkState,
+  canLaunchWithCredentialStatus,
   deriveScaffoldIdempotencyKey,
   normalizeExternalSyncRequest,
   normalizeScaffoldObjectiveAliases,
@@ -114,5 +115,34 @@ describe('scaffold control helpers', () => {
       first_stream_id: 'stream-1',
       current_job_id: 'job-1',
     });
+  });
+
+  it('uses can_execute as the authoritative scaffold launch credential gate', () => {
+    expect(
+      canLaunchWithCredentialStatus({
+        checked: true,
+        has_credentials: false,
+        has_subscription_accounts: false,
+        has_execution_credentials: true,
+        can_execute: true,
+      })
+    ).toBe(true);
+
+    expect(
+      canLaunchWithCredentialStatus({
+        checked: true,
+        has_credentials: true,
+        has_subscription_accounts: true,
+        has_execution_credentials: true,
+        can_execute: false,
+      })
+    ).toBe(false);
+
+    expect(
+      canLaunchWithCredentialStatus({
+        checked: true,
+        has_execution_credentials: true,
+      })
+    ).toBe(true);
   });
 });
