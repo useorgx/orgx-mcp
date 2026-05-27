@@ -44,7 +44,12 @@ import {
   normalizeRecordOutcomeArgs,
   normalizeRecordQualityScoreArgs,
 } from './agentErgonomics';
+import { evaluateLoopReliabilityReceipt } from './loopReliabilityValidation';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
+import {
+  buildRouteTaskEstimateSummary,
+  formatRouteTaskEstimateSummary,
+} from './routeTaskEstimate';
 import {
   captureWorkerPosthogEvent,
   resolveAnonymousDistinctId,
@@ -2760,11 +2765,18 @@ export class OrgXMcp extends McpAgent<
               const data =
                 (result.data as Record<string, unknown> | undefined) ??
                 (result as unknown as Record<string, unknown>);
-              const message = this.summarizeClientResult(tool.id, data);
+              const enrichedData =
+                tool.id === 'classify_task_model'
+                  ? {
+                      ...data,
+                      estimate: buildRouteTaskEstimateSummary(data, args),
+                    }
+                  : data;
+              const message = this.summarizeClientResult(tool.id, enrichedData);
 
               return {
                 content: [{ type: 'text', text: message }],
-                structuredContent: data,
+                structuredContent: enrichedData,
               } as CallToolResult;
             } catch (error) {
               this.captureMcpToolEvent('mcp_tool_failed', {
@@ -2869,9 +2881,13 @@ export class OrgXMcp extends McpAgent<
         return `${stars} Score recorded for ${domain}`;
       }
       case 'classify_task_model': {
-        const tier = data.tier as string;
-        const complexity = data.complexity as string;
-        return `🧭 Task classified as ${complexity} → model tier: ${tier}`;
+        const estimate =
+          data.estimate && typeof data.estimate === 'object'
+            ? (data.estimate as ReturnType<typeof buildRouteTaskEstimateSummary>)
+            : buildRouteTaskEstimateSummary(data);
+        const complexity =
+          typeof data.complexity === 'string' ? ` (${data.complexity})` : '';
+        return `🧭 ${formatRouteTaskEstimateSummary(estimate)}${complexity}`;
       }
       default:
         return JSON.stringify(data, null, 2);
@@ -3222,6 +3238,12 @@ export class OrgXMcp extends McpAgent<
             external_url: args.external_url,
             preview_markdown: args.preview_markdown,
             status: args.status,
+            agent_type: args.agent_type,
+            company_stage: args.company_stage,
+            business_outcome: args.business_outcome,
+            owner: args.owner,
+            review_date: args.review_date,
+            verification: args.verification,
             metadata: {
               ...(args.metadata &&
               typeof args.metadata === 'object' &&
@@ -3372,7 +3394,7 @@ export class OrgXMcp extends McpAgent<
           const targetTool =
             action === 'guard'
               ? 'check_spawn_guard'
-              : action === 'classify'
+              : action === 'classify' || action === 'estimate'
               ? 'classify_task_model'
               : action === 'handoff'
               ? 'handoff_task'
@@ -3394,7 +3416,11 @@ export class OrgXMcp extends McpAgent<
           const body =
             targetTool === 'spawn_agent_task' || targetTool === 'handoff_task'
               ? { tool_id: targetTool, args: spawnArgs, user_id: resolvedUserId }
-              : { ...spawnArgs, user_id: resolvedUserId };
+              : {
+                  ...spawnArgs,
+                  ...(action === 'estimate' ? { estimate_only: true } : {}),
+                  user_id: resolvedUserId,
+                };
           const response = await callOrgxApiJson(
             this.env,
             clientEndpoint[targetTool],
@@ -3409,7 +3435,18 @@ export class OrgXMcp extends McpAgent<
             result.data && typeof result.data === 'object'
               ? (result.data as Record<string, unknown>)
               : result;
-          const payload = { ...data, _v2_tool: 'orgx_spawn', routed_tool: targetTool };
+          const estimate =
+            targetTool === 'classify_task_model'
+              ? buildRouteTaskEstimateSummary(data, spawnArgs)
+              : undefined;
+          const payload = {
+            ...data,
+            _v2_tool: 'orgx_spawn',
+            _action: action,
+            routed_tool: targetTool,
+            ...(action === 'estimate' ? { estimate_only: true } : {}),
+            ...(estimate ? { estimate } : {}),
+          };
           return {
             content: [{ type: 'text', text: this.summarizeClientResult(targetTool, payload) }],
             structuredContent: payload,
@@ -3443,6 +3480,7 @@ export class OrgXMcp extends McpAgent<
         }
 
         case 'orgx_submit_receipt': {
+          const loopValidation = evaluateLoopReliabilityReceipt(args);
           const response = await callOrgxApiJson(
             this.env,
             '/api/flywheel/receipts',
@@ -3456,7 +3494,11 @@ export class OrgXMcp extends McpAgent<
             { userId: resolvedUserId }
           );
           const result = (await response.json()) as Record<string, unknown>;
-          const payload = { ...result, _v2_tool: 'orgx_submit_receipt' };
+          const payload = {
+            ...result,
+            _v2_tool: 'orgx_submit_receipt',
+            loop_validation: loopValidation,
+          };
           return {
             content: [{ type: 'text', text: formatForLLM('orgx_submit_receipt', payload) }],
             structuredContent: payload,

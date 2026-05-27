@@ -150,6 +150,37 @@
       "rationale": "Delegating work to an agent is orgx_spawn; orgx_write creates records without dispatching work."
     },
     {
+      "id": "cost-estimate-before-spawn",
+      "prompt": "Before we hand this to the engineering agent, estimate the cheapest valid model route and cap it at $0.50.",
+      "expected_tool": "orgx_spawn",
+      "expected_arguments": {
+        "action": "estimate",
+        "agent_type": "engineering",
+        "title": "Estimate engineering agent route",
+        "model_tier": "standard",
+        "budget_mode": "cheapest_valid",
+        "provider": "auto",
+        "max_cost_usd": 0.5
+      },
+      "forbidden_tool": "spawn_agent_task",
+      "rationale": "Budget/cost questions need non-dispatching estimate mode first; spawn_agent_task would start work too early."
+    },
+    {
+      "id": "loop-validation-budget-check",
+      "prompt": "For the overnight canary validation, estimate the route using the cheapest valid budget posture before dispatching anything.",
+      "expected_tool": "orgx_spawn",
+      "expected_arguments": {
+        "action": "estimate",
+        "agent_type": "operations",
+        "title": "Estimate overnight canary validation route",
+        "model_tier": "standard",
+        "budget_mode": "cheapest_valid",
+        "provider": "auto"
+      },
+      "forbidden_tool": "spawn_agent_task",
+      "rationale": "Validation rungs constrain routing for measurement, but should use estimate mode until the route and cap are known."
+    },
+    {
       "id": "verify-completion",
       "prompt": "Has milestone ms-xyz actually finished — are all child tasks done?",
       "expected_tool": "orgx_act",
