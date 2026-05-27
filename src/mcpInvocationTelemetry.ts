@@ -97,6 +97,8 @@ export function recordDurableMcpToolInvocation(params: {
   errorCode?: string | null;
   serverVersion?: string;
   isWidgetTool?: boolean;
+  toolFamily?: string;
+  requestId?: string | null;
 }): Promise<void> {
   const clientInfo = cleanClientInfo(params.context);
   return callOrgxApiJson(
@@ -112,12 +114,12 @@ export function recordDurableMcpToolInvocation(params: {
         client_name: clientInfo.clientName ?? params.sourceClient ?? undefined,
         client_platform: params.sourceClient ?? undefined,
         client_version: clientInfo.clientVersion,
-        tool_family: 'entity_creation',
+        tool_family: params.toolFamily ?? 'mcp_tool',
         auth_source: params.userId ? 'session' : 'none',
         error_code: params.errorCode ?? undefined,
         is_widget_tool: params.isWidgetTool ?? true,
         mcp_server_version: params.serverVersion,
-        request_id: clientInfo.requestId,
+        request_id: params.requestId ?? clientInfo.requestId,
         conversation_id: clientInfo.conversationId,
         user_id: params.userId ?? undefined,
         workspace_id: params.workspaceId ?? undefined,

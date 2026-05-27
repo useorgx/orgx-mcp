@@ -341,8 +341,8 @@ describe('mcpTransport', () => {
         vi.fn(async () => ({ userId: 'user-123', scope: 'mcp:all' }))
       );
 
-      expect(waitUntil).toHaveBeenCalledTimes(1);
-      expect(telemetryFetch).toHaveBeenCalledTimes(1);
+      expect(waitUntil).toHaveBeenCalledTimes(2);
+      expect(telemetryFetch).toHaveBeenCalledTimes(2);
       expect(telemetryFetch).toHaveBeenCalledWith(
         'https://app.posthog.com/batch/',
         expect.objectContaining({
@@ -351,13 +351,18 @@ describe('mcpTransport', () => {
         })
       );
 
-      const payload = JSON.parse(
-        telemetryFetch.mock.calls[0][1].body as string
-      ) as {
+      const payloads = telemetryFetch.mock.calls.map((call) =>
+        JSON.parse(call[1].body as string)
+      ) as Array<{
         batch: Array<{ event: string; properties: Record<string, unknown> }>;
-      };
-      expect(payload.batch[0]?.event).toBe('mcp_deprecated_tool_called');
-      expect(payload.batch[0]?.properties).toMatchObject({
+      }>;
+      const deprecatedPayload = payloads.find(
+        (payload) => payload.batch[0]?.event === 'mcp_deprecated_tool_called'
+      );
+      const invocationPayload = payloads.find(
+        (payload) => payload.batch[0]?.event === 'mcp_tool_invocation'
+      );
+      expect(deprecatedPayload?.batch[0]?.properties).toMatchObject({
         deprecated_tool_id: 'create_checkout_session',
         replacement_tool_id: 'account_upgrade',
         routed: true,
@@ -366,6 +371,217 @@ describe('mcpTransport', () => {
         deprecation_sunset_at: DEPRECATION_SUNSET_AT_ISO,
         deprecation_window_days: DEPRECATION_WINDOW_DAYS,
         $lib: 'orgx-mcp',
+      });
+      expect(invocationPayload?.batch[0]?.properties).toMatchObject({
+        tool_id: 'account_upgrade',
+        status: 'success',
+        tool_family: 'mcp_tool',
+        auth_scope: 'mcp:all',
+        has_user_id: true,
+        $lib: 'orgx-mcp',
+      });
+    } finally {
+      vi.stubGlobal('fetch', originalFetch);
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('captures generic MCP tool invocation visibility in PostHog and backend telemetry', async () => {
+    const waitUntil = vi.fn();
+    const ctx = { waitUntil } as any;
+    const telemetryFetch = vi.fn(async (url: string) => {
+      if (url.includes('/api/internal/mcp/tool-invocations')) {
+        return new Response(JSON.stringify({ ok: true, id: 'inv-1' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      return new Response(null, { status: 200 });
+    });
+    const originalFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', telemetryFetch);
+
+    try {
+      const handler = {
+        fetch: vi.fn(async () =>
+          new Response(JSON.stringify({ ok: true }), {
+            headers: { 'content-type': 'application/json' },
+          })
+        ),
+      };
+      const request = new Request('http://localhost/mcp', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 'req-1',
+          method: 'tools/call',
+          params: {
+            name: 'orgx_write',
+            arguments: {
+              type: 'task',
+              operation: 'create',
+              workspace_id: '4be1ff06-a5e5-4b34-8974-3348c47ea4f1',
+              initiative_id: '9b543d86-ea3e-47b8-8109-7160547f2745',
+              _context: {
+                client: {
+                  name: 'claude-code',
+                  platform: 'macos',
+                  version: '1.2.3',
+                },
+                conversation: { id: 'conv-1' },
+                user: { workingDirectory: '/repo' },
+              },
+            },
+          },
+        }),
+      });
+
+      await handleMcpRequest(
+        request,
+        {
+          POSTHOG_KEY: 'phc_test_key',
+          POSTHOG_HOST: 'https://app.posthog.com',
+          ORGX_API_URL: 'https://useorgx.test',
+          ORGX_SERVICE_KEY: 'oxk-service-test',
+        } as any,
+        ctx,
+        handler,
+        vi.fn(async () => ({ userId: 'user-123', scope: 'mcp:all' }))
+      );
+
+      expect(waitUntil).toHaveBeenCalledTimes(2);
+      const posthogCall = telemetryFetch.mock.calls.find(
+        ([url]) => url === 'https://app.posthog.com/batch/'
+      );
+      expect(posthogCall).toBeTruthy();
+      const posthogPayload = JSON.parse(posthogCall?.[1].body as string) as {
+        batch: Array<{ event: string; properties: Record<string, unknown> }>;
+      };
+      expect(posthogPayload.batch[0]?.event).toBe('mcp_tool_invocation');
+      expect(posthogPayload.batch[0]?.properties).toMatchObject({
+        tool_id: 'orgx_write',
+        status: 'success',
+        tool_family: 'entity_write',
+        workspace_id: '4be1ff06-a5e5-4b34-8974-3348c47ea4f1',
+        source_client: 'claude',
+        entity_type: 'task',
+        action: 'create',
+        has_initiative_id: true,
+        client_name: 'claude-code',
+        client_platform: 'macos',
+        has_conversation_id: true,
+        has_working_directory: true,
+        request_id: 'req-1',
+        $lib: 'orgx-mcp',
+      });
+
+      const backendCall = telemetryFetch.mock.calls.find(([url]) =>
+        String(url).includes('/api/internal/mcp/tool-invocations')
+      );
+      expect(backendCall).toBeTruthy();
+      const backendPayload = JSON.parse(backendCall?.[1].body as string);
+      expect(backendPayload).toMatchObject({
+        tool_id: 'orgx_write',
+        status: 'success',
+        source: 'mcp_worker',
+        client_name: 'claude-code',
+        client_platform: 'claude',
+        tool_family: 'entity_write',
+        auth_source: 'session',
+        is_widget_tool: false,
+        request_id: 'req-1',
+        conversation_id: 'conv-1',
+        user_id: 'user-123',
+        workspace_id: '4be1ff06-a5e5-4b34-8974-3348c47ea4f1',
+        metadata: expect.objectContaining({
+          tool_family: 'entity_write',
+          entity_type: 'task',
+          action: 'create',
+        }),
+      });
+    } finally {
+      vi.stubGlobal('fetch', originalFetch);
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('captures failed MCP tool visibility when the handler throws', async () => {
+    const waitUntil = vi.fn();
+    const ctx = { waitUntil } as any;
+    const telemetryFetch = vi.fn(async (url: string) => {
+      if (url.includes('/api/internal/mcp/tool-invocations')) {
+        return new Response(JSON.stringify({ ok: true, id: 'inv-1' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      return new Response(null, { status: 200 });
+    });
+    const originalFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', telemetryFetch);
+
+    try {
+      const request = new Request('http://localhost/mcp', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 'req-fail',
+          method: 'tools/call',
+          params: {
+            name: 'orgx_decide',
+            arguments: {
+              workspace_id: '4be1ff06-a5e5-4b34-8974-3348c47ea4f1',
+              _context: { client: { name: 'codex' } },
+            },
+          },
+        }),
+      });
+
+      await expect(
+        handleMcpRequest(
+          request,
+          {
+            POSTHOG_KEY: 'phc_test_key',
+            POSTHOG_HOST: 'https://app.posthog.com',
+            ORGX_API_URL: 'https://useorgx.test',
+            ORGX_SERVICE_KEY: 'oxk-service-test',
+          } as any,
+          ctx,
+          {
+            fetch: vi.fn(async () => {
+              throw new TypeError('boom');
+            }),
+          },
+          vi.fn(async () => ({ userId: 'user-123', scope: 'mcp:all' }))
+        )
+      ).rejects.toThrow('boom');
+
+      const posthogCall = telemetryFetch.mock.calls.find(
+        ([url]) => url === 'https://app.posthog.com/batch/'
+      );
+      const posthogPayload = JSON.parse(posthogCall?.[1].body as string) as {
+        batch: Array<{ event: string; properties: Record<string, unknown> }>;
+      };
+      expect(posthogPayload.batch[0]?.properties).toMatchObject({
+        tool_id: 'orgx_decide',
+        status: 'error',
+        tool_family: 'decision',
+        error_code: 'exception_typeerror',
+        http_status: 500,
+      });
+
+      const backendCall = telemetryFetch.mock.calls.find(([url]) =>
+        String(url).includes('/api/internal/mcp/tool-invocations')
+      );
+      const backendPayload = JSON.parse(backendCall?.[1].body as string);
+      expect(backendPayload).toMatchObject({
+        tool_id: 'orgx_decide',
+        status: 'error',
+        tool_family: 'decision',
+        error_code: 'exception_typeerror',
+        request_id: 'req-fail',
       });
     } finally {
       vi.stubGlobal('fetch', originalFetch);
