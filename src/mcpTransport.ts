@@ -10,6 +10,9 @@ import {
   resolveAnonymousDistinctId,
   type PosthogTelemetryEnv,
 } from './posthogTelemetry';
+import { recordDurableMcpToolInvocation } from './mcpInvocationTelemetry';
+import type { OrgxApiEnv } from './orgxApi';
+import type { SourceClient } from './cross-pollination';
 
 export type ExecutionContextWithProps<Props> = ExecutionContext & {
   props?: Props;
@@ -28,6 +31,13 @@ export type AuthResult = {
   scope?: string;
   email?: string;
   response?: Response;
+};
+
+type McpToolCallTelemetry = {
+  jsonrpcId?: string | number;
+  toolName: string;
+  args: Record<string, unknown>;
+  context?: unknown;
 };
 
 export type AuthenticateRequest<Env> = (
@@ -50,9 +60,9 @@ function normalizeToolName(name: string): string {
     /^mcp__orgx__/i, // mcp__orgx__spawn_agent_task
     /^orgx-mcp[._:/-]/i, // orgx-mcp: / orgx-mcp. / orgx-mcp/
     /^orgx-mcp[_:-]/i, // orgx-mcp:, orgx-mcp-
-    /^orgx[._:/-]/i, // orgx: / orgx. / orgx/
-    /^orgx[_:-]/i, // Orgx:, orgx-, orgx_
-    /^OrgX[_:-]/, // Exact case OrgX:
+    /^orgx[.:/-]/i, // orgx: / orgx. / orgx/
+    /^orgx[:-]/i, // Orgx:, orgx-
+    /^OrgX[:-]/, // Exact case OrgX:
   ];
 
   for (const pattern of prefixPatterns) {
@@ -76,6 +86,7 @@ function normalizeToolName(name: string): string {
 async function normalizeRequestBody(request: Request): Promise<{
   request: Request;
   warning?: DeprecatedToolWarning;
+  toolCall?: McpToolCallTelemetry;
 }> {
   // Only process POST requests with JSON body
   if (request.method !== 'POST') return { request };
@@ -85,6 +96,7 @@ async function normalizeRequestBody(request: Request): Promise<{
 
   try {
     const body = (await request.clone().json()) as {
+      id?: string | number;
       method?: string;
       params?: { name?: string; arguments?: Record<string, unknown> };
     };
@@ -104,6 +116,11 @@ async function normalizeRequestBody(request: Request): Promise<{
       normalizedName,
       originalArgs
     );
+    const toolCall = buildMcpToolCallTelemetry(
+      body.id,
+      resolvedToolId,
+      resolvedArgs
+    );
 
     // If nothing changed and there is no warning, return the original request.
     if (
@@ -111,7 +128,7 @@ async function normalizeRequestBody(request: Request): Promise<{
       resolvedArgs === originalArgs &&
       !warning
     ) {
-      return { request };
+      return { request, toolCall };
     }
 
     // Create new request with normalized tool name
@@ -126,11 +143,230 @@ async function normalizeRequestBody(request: Request): Promise<{
         body: JSON.stringify(newBody),
       }),
       warning,
+      toolCall,
     };
   } catch {
     // If parsing fails, return original request
     return { request };
   }
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function pickString(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    if (typeof value !== 'string') continue;
+    const trimmed = value.trim();
+    if (trimmed) return trimmed;
+  }
+  return undefined;
+}
+
+function buildMcpToolCallTelemetry(
+  jsonrpcId: string | number | undefined,
+  toolName: string,
+  args: Record<string, unknown>
+): McpToolCallTelemetry {
+  return {
+    jsonrpcId,
+    toolName,
+    args,
+    context: args._context,
+  };
+}
+
+function classifyToolFamily(toolName: string): string {
+  if (toolName === 'orgx_emit_activity') return 'activity';
+  if (toolName === 'orgx_write') return 'entity_write';
+  if (toolName === 'orgx_act' || toolName === 'entity_action') {
+    return 'entity_action';
+  }
+  if (toolName === 'orgx_spawn' || toolName === 'spawn_agent_task') {
+    return 'agent_dispatch';
+  }
+  if (toolName === 'orgx_decide' || toolName.includes('decision')) {
+    return 'decision';
+  }
+  if (toolName === 'orgx_submit_receipt') return 'receipt';
+  if (
+    toolName.startsWith('get_') ||
+    toolName.startsWith('list_') ||
+    toolName.startsWith('query_') ||
+    toolName.startsWith('recall_') ||
+    toolName === 'orgx_search' ||
+    toolName === 'orgx_inspect' ||
+    toolName === 'orgx_recommend'
+  ) {
+    return 'read';
+  }
+  return 'mcp_tool';
+}
+
+function extractClientContext(context: unknown): {
+  clientName?: string;
+  clientPlatform?: string;
+  clientVersion?: string;
+  conversationId?: string;
+  workingDirectoryPresent: boolean;
+} {
+  const record = asRecord(context);
+  const client = asRecord(record.client);
+  const conversation = asRecord(record.conversation);
+  const user = asRecord(record.user);
+  return {
+    clientName: pickString(client.name),
+    clientPlatform: pickString(client.platform),
+    clientVersion: pickString(client.version),
+    conversationId: pickString(conversation.id),
+    workingDirectoryPresent: Boolean(pickString(user.workingDirectory)),
+  };
+}
+
+function isOrgxApiTelemetryConfigured(env: unknown): env is OrgxApiEnv {
+  const record = asRecord(env);
+  return Boolean(
+    pickString(record.ORGX_API_URL) &&
+      pickString(record.ORGX_SERVICE_KEY)?.startsWith('oxk-')
+  );
+}
+
+function sanitizeToolCallMetadata(toolCall: McpToolCallTelemetry): {
+  metadata: Record<string, unknown>;
+  workspaceId?: string;
+  sourceClient?: SourceClient;
+} {
+  const args = toolCall.args;
+  const context = extractClientContext(toolCall.context);
+  const workspaceId = pickString(args.workspace_id, args.workspaceId);
+  const initiativeId = pickString(args.initiative_id, args.initiativeId);
+  const workstreamId = pickString(args.workstream_id, args.workstreamId);
+  const taskId = pickString(args.task_id, args.taskId);
+  const entityType = pickString(args.type, args.entity_type, args.entityType);
+  const action = pickString(args.action, args.operation, args.phase);
+  const sourceClient = normalizeTelemetrySourceClient(
+    pickString(
+      asRecord(asRecord(toolCall.context).client).name,
+      args.source_client,
+      args.sourceClient
+    )
+  );
+
+  return {
+    workspaceId,
+    sourceClient,
+    metadata: {
+      tool_family: classifyToolFamily(toolCall.toolName),
+      entity_type: entityType,
+      action,
+      has_workspace_id: Boolean(workspaceId),
+      has_initiative_id: Boolean(initiativeId),
+      has_workstream_id: Boolean(workstreamId),
+      has_task_id: Boolean(taskId),
+      argument_keys: Object.keys(args)
+        .filter((key) => key !== '_context')
+        .sort()
+        .slice(0, 40),
+      client_name: context.clientName,
+      client_platform: context.clientPlatform,
+      client_version: context.clientVersion,
+      has_conversation_id: Boolean(context.conversationId),
+      has_working_directory: context.workingDirectoryPresent,
+    },
+  };
+}
+
+function normalizeTelemetrySourceClient(
+  value: string | undefined
+): SourceClient | undefined {
+  const normalized = value?.trim().toLowerCase();
+  if (!normalized) return undefined;
+  if (normalized === 'claude-code' || normalized === 'claude_code')
+    return 'claude';
+  if (normalized === 'chatgpt' || normalized === 'openai') return 'chatgpt';
+  if (normalized === 'cursor') return 'cursor';
+  if (normalized === 'vscode' || normalized === 'vs-code') return 'vscode';
+  if (normalized === 'goose') return 'goose';
+  if (normalized === 'api') return 'api';
+  if (
+    normalized === 'web' ||
+    normalized === 'web-ui' ||
+    normalized === 'webapp'
+  ) {
+    return 'webapp';
+  }
+  return 'other';
+}
+
+function captureMcpToolCallVisibility<Env>(
+  env: Env,
+  ctx: ExecutionContextWithProps<unknown>,
+  auth: AuthResult,
+  toolCall: McpToolCallTelemetry | undefined,
+  response: Response,
+  latencyMs: number,
+  errorCode?: string | null
+): void {
+  if (!toolCall) return;
+
+  const status = errorCode || response.status >= 400 ? 'error' : 'success';
+  const distinctId = auth.userId ?? resolveAnonymousDistinctId(ctx);
+  const { metadata, workspaceId, sourceClient } =
+    sanitizeToolCallMetadata(toolCall);
+  const toolFamily = classifyToolFamily(toolCall.toolName);
+  const requestId =
+    typeof toolCall.jsonrpcId === 'string' ||
+    typeof toolCall.jsonrpcId === 'number'
+      ? String(toolCall.jsonrpcId)
+      : undefined;
+
+  captureWorkerPosthogEvent({
+    env: env as PosthogTelemetryEnv,
+    ctx,
+    event: 'mcp_tool_invocation',
+    distinctId,
+    properties: {
+      tool_id: toolCall.toolName,
+      status,
+      latency_ms: latencyMs,
+      http_status: response.status,
+      tool_family: toolFamily,
+      auth_scope: auth.scope,
+      error_code: errorCode ?? undefined,
+      has_user_id: Boolean(auth.userId),
+      workspace_id: workspaceId,
+      source_client: sourceClient,
+      request_id: requestId,
+      ...metadata,
+    },
+  });
+
+  if (!isOrgxApiTelemetryConfigured(env)) return;
+
+  ctx.waitUntil?.(
+    recordDurableMcpToolInvocation({
+      env,
+      toolId: toolCall.toolName,
+      status,
+      latencyMs,
+      metadata: {
+        ...metadata,
+        http_status: response.status,
+      },
+      userId: auth.userId ?? null,
+      workspaceId: workspaceId ?? null,
+      sourceClient: sourceClient ?? null,
+      context: toolCall.context,
+      errorCode:
+        errorCode ?? (status === 'error' ? `http_${response.status}` : null),
+      isWidgetTool: false,
+      toolFamily,
+      requestId,
+    })
+  );
 }
 
 function captureDeprecatedToolTelemetry<Env>(
@@ -158,6 +394,15 @@ function captureDeprecatedToolTelemetry<Env>(
       deprecation_window_days: DEPRECATION_WINDOW_DAYS,
     },
   });
+}
+
+function classifyMcpToolError(error: unknown): string {
+  if (!(error instanceof Error) || !error.name) return 'exception';
+  const normalized = error.name
+    .toLowerCase()
+    .replace(/[^a-z0-9_:-]+/g, '_')
+    .slice(0, 64);
+  return normalized ? `exception_${normalized}` : 'exception';
 }
 
 export async function handleMcpRequest<Env, Props>(
@@ -189,12 +434,34 @@ export async function handleMcpRequest<Env, Props>(
   } as unknown as Props;
 
   // Normalize tool names in the request body (strips server prefixes like "Orgx:")
-  const { request: normalizedRequest, warning } = await normalizeRequestBody(
-    request
-  );
+  const { request: normalizedRequest, warning, toolCall } =
+    await normalizeRequestBody(request);
   captureDeprecatedToolTelemetry(env, ctx as ExecutionContextWithProps<unknown>, auth, warning);
 
-  const response = await handler.fetch(normalizedRequest, env, ctx);
+  const startedAt = Date.now();
+  let response: Response;
+  try {
+    response = await handler.fetch(normalizedRequest, env, ctx);
+  } catch (error) {
+    captureMcpToolCallVisibility(
+      env,
+      ctx as ExecutionContextWithProps<unknown>,
+      auth,
+      toolCall,
+      new Response(null, { status: 500 }),
+      Date.now() - startedAt,
+      classifyMcpToolError(error)
+    );
+    throw error;
+  }
+  captureMcpToolCallVisibility(
+    env,
+    ctx as ExecutionContextWithProps<unknown>,
+    auth,
+    toolCall,
+    response,
+    Date.now() - startedAt
+  );
   return withCors(withDeprecatedToolWarningHeaders(response, warning));
 }
 
