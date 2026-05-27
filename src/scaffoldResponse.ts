@@ -5,6 +5,7 @@ import type {
   MaterializedDependencyEdge,
   ScaffoldContractWarning,
   ScaffoldMode,
+  ScaffoldResponseMode,
 } from './scaffoldControl';
 
 type JsonRecord = Record<string, unknown>;
@@ -239,7 +240,13 @@ function compactAgentAssignment(agentAssignment: unknown) {
     })
     .filter(Boolean);
   return {
-    ...pickDefined(record, ['attempted', 'ok', 'assigned_count', 'error']),
+    ...pickDefined(record, [
+      'attempted',
+      'ok',
+      'status',
+      'assigned_count',
+      'error',
+    ]),
     assignments,
   };
 }
@@ -247,7 +254,14 @@ function compactAgentAssignment(agentAssignment: unknown) {
 function compactFallbackDispatch(fallback: unknown) {
   const record = asRecord(fallback);
   if (!record) return undefined;
-  return pickDefined(record, ['attempted', 'ok', 'agent', 'message', 'error']);
+  return pickDefined(record, [
+    'attempted',
+    'ok',
+    'status',
+    'agent',
+    'message',
+    'error',
+  ]);
 }
 
 function buildResultContract(params: {
@@ -315,6 +329,7 @@ export function buildCompactScaffoldResult(params: {
   result: BatchCreateSummary;
   hierarchy: unknown;
   mode?: ScaffoldMode;
+  responseMode?: ScaffoldResponseMode;
   initiativeId?: string | null;
   workspaceId?: string | null;
   liveUrl?: string | null;
@@ -341,6 +356,7 @@ export function buildCompactScaffoldResult(params: {
 
   return {
     mode: params.mode ?? 'launch',
+    response_mode: params.responseMode,
     summary: params.result.summary,
     initiative_id: params.initiativeId ?? undefined,
     live_url: params.liveUrl ?? undefined,

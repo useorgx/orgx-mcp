@@ -7,6 +7,7 @@ export type ScaffoldStageName =
   | 'batch_build'
   | 'draft_response'
   | 'entity_create'
+  | 'post_create_enqueue'
   | 'agent_assignment'
   | 'billing_consume'
   | 'credential_check'

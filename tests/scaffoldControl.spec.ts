@@ -7,6 +7,7 @@ import {
   normalizeExternalSyncRequest,
   normalizeScaffoldObjectiveAliases,
   resolveScaffoldMode,
+  resolveScaffoldResponseMode,
 } from '../src/scaffoldControl';
 
 describe('scaffold control helpers', () => {
@@ -26,6 +27,27 @@ describe('scaffold control helpers', () => {
           code: 'legacy_launch_after_create_ignored',
         }),
       ],
+    });
+  });
+
+  it('defaults non-draft scaffolds to fast acknowledgements', () => {
+    expect(resolveScaffoldResponseMode({}, 'launch')).toMatchObject({
+      responseMode: 'fast_ack',
+      warnings: [],
+    });
+    expect(resolveScaffoldResponseMode({}, 'scaffold')).toMatchObject({
+      responseMode: 'fast_ack',
+      warnings: [],
+    });
+    expect(resolveScaffoldResponseMode({}, 'draft')).toMatchObject({
+      responseMode: 'complete',
+      warnings: [],
+    });
+    expect(
+      resolveScaffoldResponseMode({ response_mode: 'complete' }, 'launch')
+    ).toMatchObject({
+      responseMode: 'complete',
+      warnings: [],
     });
   });
 
@@ -97,6 +119,17 @@ describe('scaffold control helpers', () => {
       targets: ['linear', 'jira'],
       mode: 'project_and_tasks',
       linear_project_id: 'linear-project',
+    });
+
+    expect(
+      buildFirstAgentWorkState({
+        mode: 'launch',
+        initiativeId: 'init-1',
+        launch: { queued_async: true },
+      })
+    ).toMatchObject({
+      status: 'queued_async',
+      initiative_id: 'init-1',
     });
 
     expect(

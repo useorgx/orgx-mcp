@@ -262,6 +262,9 @@ function sanitizeToolCallMetadata(toolCall: McpToolCallTelemetry): {
       tool_family: classifyToolFamily(toolCall.toolName),
       entity_type: entityType,
       action,
+      argument_count: Object.keys(args).filter((key) => key !== '_context')
+        .length,
+      estimated_argument_bytes: JSON.stringify(args).length,
       has_workspace_id: Boolean(workspaceId),
       has_initiative_id: Boolean(initiativeId),
       has_workstream_id: Boolean(workstreamId),
@@ -317,6 +320,14 @@ function captureMcpToolCallVisibility<Env>(
   const { metadata, workspaceId, sourceClient } =
     sanitizeToolCallMetadata(toolCall);
   const toolFamily = classifyToolFamily(toolCall.toolName);
+  const responseSizeHeader = Number(response.headers.get('content-length'));
+  const transportMetadata = {
+    ...metadata,
+    http_status: response.status,
+    response_size_header_bytes: Number.isFinite(responseSizeHeader)
+      ? responseSizeHeader
+      : undefined,
+  };
   const requestId =
     typeof toolCall.jsonrpcId === 'string' ||
     typeof toolCall.jsonrpcId === 'number'
@@ -332,7 +343,6 @@ function captureMcpToolCallVisibility<Env>(
       tool_id: toolCall.toolName,
       status,
       latency_ms: latencyMs,
-      http_status: response.status,
       tool_family: toolFamily,
       auth_scope: auth.scope,
       error_code: errorCode ?? undefined,
@@ -340,7 +350,7 @@ function captureMcpToolCallVisibility<Env>(
       workspace_id: workspaceId,
       source_client: sourceClient,
       request_id: requestId,
-      ...metadata,
+      ...transportMetadata,
     },
   });
 
@@ -352,10 +362,7 @@ function captureMcpToolCallVisibility<Env>(
       toolId: toolCall.toolName,
       status,
       latencyMs,
-      metadata: {
-        ...metadata,
-        http_status: response.status,
-      },
+      metadata: transportMetadata,
       userId: auth.userId ?? null,
       workspaceId: workspaceId ?? null,
       sourceClient: sourceClient ?? null,

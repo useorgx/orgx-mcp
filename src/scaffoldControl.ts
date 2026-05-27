@@ -1,4 +1,5 @@
 export type ScaffoldMode = 'draft' | 'scaffold' | 'launch';
+export type ScaffoldResponseMode = 'fast_ack' | 'complete';
 
 export type ScaffoldContractWarning = {
   code: string;
@@ -31,6 +32,7 @@ export type ScaffoldCredentialStatus = {
 export type FirstAgentWorkState = {
   status:
     | 'not_requested'
+    | 'queued_async'
     | 'blocked'
     | 'launch_requested'
     | 'work_started'
@@ -101,6 +103,39 @@ export function resolveScaffoldMode(args: Record<string, unknown>): {
 
   const mode = legacyLaunch === false ? 'scaffold' : 'launch';
   return { mode, launchAfterCreate: mode === 'launch', warnings };
+}
+
+export function resolveScaffoldResponseMode(
+  args: Record<string, unknown>,
+  mode: ScaffoldMode
+): {
+  responseMode: ScaffoldResponseMode;
+  warnings: ScaffoldContractWarning[];
+} {
+  const warnings: ScaffoldContractWarning[] = [];
+  const raw =
+    typeof args.response_mode === 'string'
+      ? args.response_mode.trim()
+      : typeof args.responseMode === 'string'
+      ? args.responseMode.trim()
+      : '';
+
+  if (raw === 'fast_ack' || raw === 'complete') {
+    return { responseMode: raw, warnings };
+  }
+
+  if (raw) {
+    warnings.push({
+      code: 'invalid_response_mode_defaulted',
+      message:
+        'Unsupported response_mode ignored. Valid modes: fast_ack, complete.',
+    });
+  }
+
+  return {
+    responseMode: mode === 'draft' ? 'complete' : 'fast_ack',
+    warnings,
+  };
 }
 
 function normalizeObjectiveNode(
@@ -265,6 +300,13 @@ export function buildFirstAgentWorkState(params: {
   if (params.mode !== 'launch') return base;
 
   const launch = params.launch ?? {};
+  if (launch.queued_async) {
+    return {
+      ...base,
+      status: 'queued_async',
+      next_steps: stringArray(launch.next_steps),
+    };
+  }
   if (launch.needs_credentials) {
     return {
       ...base,
