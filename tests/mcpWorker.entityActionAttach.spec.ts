@@ -36,6 +36,12 @@ describe('entity_action attach payload builder', () => {
         artifact_url: 'https://example.com/artifacts/launch-brief.md',
         status: 'approved',
         metadata: { source: 'mcp' },
+        agent_type: 'marketing',
+        company_stage: 'founder_led_company',
+        business_outcome: 'Launch the founder-led onboarding campaign',
+        owner: 'marketing-agent',
+        review_date: '2026-05-27',
+        verification: ['brief reviewed', 'channel hypothesis named'],
       })
     ).toEqual({
       entity_type: 'workstream',
@@ -45,7 +51,17 @@ describe('entity_action attach payload builder', () => {
       artifact_type: 'launch.launch_brief',
       artifact_url: 'https://example.com/artifacts/launch-brief.md',
       status: 'approved',
-      metadata: { source: 'mcp' },
+      metadata: {
+        source: 'mcp',
+        artifact_contract: {
+          agent_type: 'marketing',
+          company_stage: 'founder_led_company',
+          business_outcome: 'Launch the founder-led onboarding campaign',
+          owner: 'marketing-agent',
+          review_date: '2026-05-27',
+          verification: ['brief reviewed', 'channel hypothesis named'],
+        },
+      },
     });
   });
 

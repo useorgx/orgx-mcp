@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
 import {
+  FOUNDER_TEAM_ARTIFACT_TYPE_SUMMARY,
+  FOUNDER_TEAM_COMPANY_STAGES,
+} from './artifactContracts';
+import { LOOP_VALIDATION_RUNGS } from './loopReliabilityValidation';
+import {
   CHATGPT_TOOL_DEFINITIONS,
   CLIENT_INTEGRATION_TOOL_DEFINITIONS,
   OUTPUT_TEMPLATE_URIS,
@@ -126,19 +131,17 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     title: 'Write OrgX Entity',
     description:
       'Create or update one OrgX record (snake_case fields).\n\n' +
-      'Per-operation rules:\n' +
-      '  • create (default) — uses the per-type required fields below.\n' +
-      '  • update — REQUIRES id + fields (patch object). Other top-level fields are ignored.\n\n' +
-      'Per-type required fields on create:\n' +
+      'Operations: create (default) uses per-type fields; update REQUIRES id + fields patch.\n\n' +
+      'Create requirements:\n' +
       '  initiative: title (or name).\n' +
       '  workstream: title + initiative_id.\n' +
       '  milestone: title + workstream_id.\n' +
-      '  task: title + workstream_id (initiative_id/milestone_id auto-resolve when present).\n' +
-      '  decision: title. Recommended: context, initiative_id.\n' +
-      '  artifact: entity_type + entity_id (or task_id) + artifact_type + one of artifact_url|external_url|preview_markdown.\n' +
-      '  blocker: run_id + description (via metadata). Optional: step_id, blocker_type, resolution.\n' +
-      '  skill, studio_brand, studio_content: title. Subtype fields go in metadata.\n\n' +
-      'USE WHEN: adding/editing records. NEXT: orgx_act to launch/complete the record. DO NOT USE for lifecycle changes — use orgx_act or orgx_attach.',
+      '  task: title + workstream_id.\n' +
+      '  decision: title.\n' +
+      '  artifact: target entity/task + artifact_type + artifact_url|external_url|preview_markdown.\n' +
+      '  blocker: run_id + description.\n' +
+      '  skill, studio_brand, studio_content: title.\n\n' +
+      'USE WHEN: adding/editing records. NEXT: orgx_act to launch/complete. DO NOT USE for lifecycle changes; use orgx_act or orgx_attach.',
     inputSchema: {
       operation: z.enum(['create', 'update']).optional().describe('Write operation. Defaults to "create". Set "update" (with id + fields) to patch an existing entity.'),
       type: z.string().min(1).describe('Entity type to write: task, milestone, decision, artifact, skill, blocker, studio_brand, studio_content, initiative, workstream, or objective. See top-level description for per-type required fields.'),
@@ -159,7 +162,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       entity_type: z.string().optional().describe('REQUIRED when type="artifact". Entity type to attach the artifact to (initiative, workstream, milestone, task, or decision).'),
       entity_id: z.string().optional().describe('REQUIRED when type="artifact" (unless task_id is provided). UUID of the entity to attach the artifact to.'),
       task_id: z.string().optional().describe('Shortcut for attaching an artifact directly to a task. Use instead of entity_type+entity_id when type="artifact" and the target is a task.'),
-      artifact_type: z.string().optional().describe('REQUIRED when type="artifact". Artifact type code (e.g. "eng.demo_report", "proof.link", "doc.spec", "note.text").'),
+      artifact_type: z.string().optional().describe(`REQUIRED when type="artifact". Artifact type code. Preferred founder/team examples: ${FOUNDER_TEAM_ARTIFACT_TYPE_SUMMARY}. Custom codes remain accepted.`),
       artifact_url: z.string().optional().describe('Internal artifact URL (e.g. /api/artifacts/...). One of artifact_url, external_url, or preview_markdown is required when type="artifact".'),
       external_url: z.string().optional().describe('External artifact URL (https://). One of artifact_url, external_url, or preview_markdown is required when type="artifact".'),
       preview_markdown: z.string().optional().describe('Inline markdown preview of artifact content. One of artifact_url, external_url, or preview_markdown is required when type="artifact".'),
@@ -185,18 +188,26 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_attach',
     title: 'Attach OrgX Artifact',
     description:
-      'Attach a durable artifact, proof URL, or preview to an existing OrgX entity. USE WHEN: saving evidence, PRs, documents, reports, screenshots, or external artifacts. NEXT: use orgx_submit_receipt to close attribution/quality loops or orgx_act to complete with proof. DO NOT USE WHEN: creating generic entities; use orgx_write.',
+      'Attach a durable artifact, proof URL, or preview to an existing OrgX entity. USE WHEN: saving evidence, PRs, documents, reports, screenshots, or external artifacts. For founder/team work, prefer practical artifact_type codes such as ' +
+      FOUNDER_TEAM_ARTIFACT_TYPE_SUMMARY +
+      '. Include business_outcome, owner/review_date, and verification when the artifact should close agent work. NEXT: use orgx_submit_receipt to close attribution/quality loops or orgx_act to complete with proof. DO NOT USE WHEN: creating generic entities; use orgx_write.',
     inputSchema: {
       type: lifecycleEntityTypeEnum.describe('Target entity type'),
       id: z.string().min(1).describe('Target entity UUID or short ID prefix'),
       name: z.string().min(1).describe('Artifact title'),
-      artifact_type: z.string().min(1).describe('Artifact type code, such as eng.diff_pack'),
+      artifact_type: z.string().min(1).describe(`Artifact type code. Preferred founder/team examples: ${FOUNDER_TEAM_ARTIFACT_TYPE_SUMMARY}. Custom codes remain accepted.`),
       artifact_url: z.string().optional().describe('Internal artifact URL'),
       external_url: z.string().optional().describe('External artifact URL'),
       description: z.string().optional().describe('Artifact description'),
       preview_markdown: z.string().optional().describe('Markdown preview'),
       status: z.enum(['draft', 'in_review', 'approved', 'changes_requested', 'superseded', 'archived']).optional().describe('Artifact workflow status'),
       metadata: z.record(z.unknown()).optional().describe('Artifact metadata'),
+      agent_type: z.string().optional().describe('Agent/domain that produced the artifact, such as engineering, sales, product, design, operations, marketing, or orchestrator. Stored under metadata.artifact_contract.'),
+      company_stage: z.enum(FOUNDER_TEAM_COMPANY_STAGES).optional().describe('Founder/team context this artifact is calibrated for. Stored under metadata.artifact_contract.'),
+      business_outcome: z.string().optional().describe('Business outcome this artifact is meant to advance, such as ship a PR, start founder-led sales, unblock launch, reduce incident risk, or choose the next initiative. Stored under metadata.artifact_contract.'),
+      owner: z.string().optional().describe('Human or agent owner for the next review/action. Stored under metadata.artifact_contract.'),
+      review_date: z.string().optional().describe('Date or cadence for the next review point. Stored under metadata.artifact_contract.'),
+      verification: z.array(z.string()).optional().describe('Verification evidence or checks required before the artifact can count as done. Stored under metadata.artifact_contract.'),
       idempotency_key: z.string().optional().describe('Strongly recommended client-generated idempotency key for safe retries'),
       session_id: z.string().optional().describe('Optional bootstrap/session identifier'),
     },
@@ -257,7 +268,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       dry_run: z.boolean().optional().describe('Preview risky actions without mutating where supported. Returns the diff/plan without applying.'),
       force: z.boolean().optional().describe('Force action where server supports override semantics (skips pre-flight checks).'),
       spec: z.record(z.unknown()).optional().describe('REQUIRED when action=validate. Spec payload for studio validation (shape varies per studio entity subtype).'),
-      artifact: z.record(z.unknown()).optional().describe('REQUIRED when action=complete_with_proof or action=ship_batch. Proof artifact payload. Expected shape: { artifact_type: string (e.g. "eng.demo_report", "proof.link"), artifact_url?: string, external_url?: string, preview_markdown?: string, name?: string, description?: string }.'),
+      artifact: z.record(z.unknown()).optional().describe(`REQUIRED when action=complete_with_proof or action=ship_batch. Proof artifact payload. Expected shape: { artifact_type: string, artifact_url?: string, external_url?: string, preview_markdown?: string, name?: string, description?: string }. Preferred founder/team artifact examples: ${FOUNDER_TEAM_ARTIFACT_TYPE_SUMMARY}.`),
       verification: z.array(z.string()).optional().describe('Optional list of verification evidence URLs/IDs for completion flows.'),
       quality_score: z.number().min(0).max(5).optional().describe('Quality score (0-5) attached to the action when used in proof/completion flows.'),
       idempotency_key: z.string().optional().describe('Optional client-supplied idempotency key for safe retries. Same key returns the same result without re-executing.'),
@@ -305,21 +316,23 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_spawn',
     title: 'Spawn OrgX Agent Work',
     description:
-      'Guard, classify, spawn, or hand off specialist agent work.\n\n' +
-      'Per-action input requirements:\n' +
-      '  • action="spawn" (default when action omitted) → Spawn from an existing task: REQUIRES task_id. Spawn ad-hoc: REQUIRES title AND instructions (and recommended agent_type).\n' +
-      '  • action="handoff"  → REQUIRES task_id AND agent_type (the target agent to hand off to). Optional: instructions to override.\n' +
-      '  • action="guard"    → REQUIRES agent_type. Returns whether spawning is permitted under current policy/budget for that agent.\n' +
-      '  • action="classify" → REQUIRES title OR task_id. Returns the recommended agent_type and model tier without spawning.\n\n' +
-      'USE WHEN: explicitly delegating work to an OrgX agent or checking if delegation is allowed. NEXT: use orgx_inspect or orgx_search to monitor the delegated work, then orgx_submit_receipt for proof. DO NOT USE WHEN: only creating a task row; use orgx_write.',
+      'Guard, estimate, classify, spawn, or hand off specialist agent work.\n\n' +
+      'Actions: spawn (default) uses task_id or title+instructions; handoff needs task_id+agent_type; guard needs agent_type; classify/estimate need title or task_id.\n\n' +
+      'action="estimate" returns candidate routes/cost context without dispatching work. Omit model_tier/provider/model for normal work so OrgX auto-routes by task complexity and workspace policy. Set model_tier=standard and budget_mode=cheapest_valid only for controlled validation runs.\n\n' +
+      'USE WHEN: delegating work or checking delegation policy. NEXT: orgx_inspect/orgx_search, then orgx_submit_receipt. DO NOT USE to only create a task row; use orgx_write.',
     inputSchema: {
-      action: z.enum(['guard', 'spawn', 'handoff', 'classify']).optional().describe('Spawn operation. Defaults to "spawn". See top-level description for per-action required fields.'),
+      action: z.enum(['guard', 'estimate', 'spawn', 'handoff', 'classify']).optional().describe('Spawn operation. Defaults to "spawn". Use estimate for pre-spawn cost/routing context without dispatching work. See top-level description for per-action required fields.'),
       title: z.string().optional().describe('Task title. REQUIRED for ad-hoc spawn (action=spawn without task_id) or action=classify without task_id. Used as the human-readable label of the spawned task.'),
       task_id: z.string().optional().describe('Existing task UUID. REQUIRED for action=handoff. REQUIRED for action=spawn when spawning work for an already-created task. Either task_id or title (with instructions) must be provided for action=spawn.'),
       initiative_id: z.string().optional().describe('Optional initiative UUID to scope the spawned task. Inferred from task_id when omitted.'),
       workspace_id: z.string().optional().describe('Optional workspace UUID to scope the spawned task. Defaults to the MCP session\'s workspace.'),
       agent_type: z.string().optional().describe('Target agent type/domain (e.g. "engineering", "marketing", "design"). REQUIRED for action=guard or action=handoff. Strongly recommended for action=spawn so the work routes to the right specialist.'),
       instructions: z.string().optional().describe('Delegation instructions for the agent. REQUIRED for action=spawn when spawning ad-hoc (without task_id). Used to override the task description for action=handoff.'),
+      model_tier: z.enum(['standard', 'balanced', 'precision', 'local', 'sonnet', 'opus']).optional().describe('Optional model tier override. Omit to let OrgX auto-route from task complexity. Legacy local/sonnet/opus are accepted for older clients.'),
+      model: z.string().optional().describe('Optional exact model identifier when the user explicitly selects one. Otherwise OrgX resolves the model from task, tier, provider, policy, and budget.'),
+      provider: z.enum(['auto', 'openai', 'anthropic', 'openrouter', 'groq', 'local']).optional().describe('Optional provider preference. Use auto unless the user asks for a specific provider or a cost comparison selects one.'),
+      budget_mode: z.enum(['cheapest_valid', 'balanced', 'highest_quality']).optional().describe('Optional budget posture override. Use cheapest_valid for controlled validation runs while reliability is being proven.'),
+      max_cost_usd: z.number().nonnegative().optional().describe('Optional per-task hard cost ceiling in USD. If the estimate exceeds this, OrgX should block, downgrade, or request approval before dispatch.'),
       idempotency_key: z.string().optional().describe('Optional client-supplied idempotency key for safe retries. Same key returns the same spawn result without re-running.'),
       session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
     },
@@ -370,7 +383,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     title: 'Submit OrgX Receipt',
     description:
       'Submit a durable receipt (proof, outcome, quality, attribution, or learning) anchored to an OrgX entity or artifact.\n\n' +
-      'Required: receipt_type + summary. Strongly recommended: one anchor (entity_type+entity_id OR artifact_id) AND at least one verifiable URL inside evidence.\n\n' +
+      'Required: receipt_type + summary. Strongly recommended: one anchor (entity_type+entity_id OR artifact_id), artifact_type, business_outcome, agent_type, AND at least one verifiable URL inside evidence.\n\n' +
       'Recognized receipt_type: "proof" (completion proof), "outcome" (measurable result), "quality" (review/score), "attribution" (credit link to revenue/value), "learning" (distilled lesson). Custom keys also accepted.\n\n' +
       'Recognized evidence shapes (mix and match):\n' +
       '  { prs: string[] } — GitHub PR URLs.\n' +
@@ -379,7 +392,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       '  { metrics: { name, value, unit? }[] } — quantitative outcomes.\n' +
       '  { links: string[] }, { notes: string } — supporting URLs/text.\n\n' +
       'Pass idempotency_key when retrying — server deduplicates.\n\n' +
-      'USE WHEN: closing the loop on agent work with provenance. NEXT: orgx_recommend or orgx_search to find the next priority. DO NOT USE for telemetry — use orgx_emit_activity.',
+      'USE WHEN: closing the loop on agent work with provenance. For founder/team work, receipts should prove the practical artifact and its business outcome, not just say the agent finished. NEXT: orgx_recommend or orgx_search to find the next priority. DO NOT USE for telemetry — use orgx_emit_activity.',
     inputSchema: {
       workspace_id: z.string().optional().describe('Workspace UUID. Defaults to the MCP session\'s workspace when omitted.'),
       entity_type: z.string().optional().describe('Related entity type (initiative, workstream, milestone, task, decision). Required if no artifact_id is provided — pair with entity_id.'),
@@ -388,6 +401,15 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       summary: z.string().min(1).describe('One-sentence human-readable description of what the receipt proves (e.g. "Merged PR #142 unblocking the auth refactor").'),
       evidence: z.record(z.unknown()).optional().describe('Structured evidence payload. Recognized shapes: { prs: string[] }, { deploys: string[] }, { test_runs: string[] }, { metrics: { name, value, unit? }[] }, { links: string[] }, { notes: string }. See top-level description for full list. At least one verifiable URL is strongly recommended.'),
       artifact_id: z.string().optional().describe('Related artifact UUID to anchor the receipt to. Alternative to entity_type+entity_id when the proof lives in OrgX as an artifact.'),
+      artifact_type: z.string().optional().describe(`Artifact type this receipt proves. Preferred founder/team examples: ${FOUNDER_TEAM_ARTIFACT_TYPE_SUMMARY}.`),
+      agent_type: z.string().optional().describe('Agent/domain that produced the receipt, such as engineering, sales, product, design, operations, marketing, or orchestrator.'),
+      business_outcome: z.string().optional().describe('Business outcome advanced by the receipt.'),
+      verification_status: z.enum(['passed', 'failed', 'blocked', 'not_run']).optional().describe('Whether the artifact verification passed, failed, was blocked, or was not run.'),
+      validation_rung: z.enum(LOOP_VALIDATION_RUNGS).optional().describe('Optional OrgX loop validation rung this receipt proves. Required for promotion-grade loop validation receipts.'),
+      loop_validation: z.boolean().optional().describe('Set true when this receipt should be evaluated against the OrgX loop reliability validation ladder.'),
+      model_tier: z.enum(['standard', 'balanced', 'precision', 'local', 'sonnet', 'opus']).optional().describe('Model tier used for the run being receipted. For validation rungs before calibrated expansion, use standard.'),
+      budget_mode: z.enum(['cheapest_valid', 'balanced', 'highest_quality']).optional().describe('Budget posture used for the run being receipted. For validation rungs before calibrated expansion, use cheapest_valid.'),
+      max_cost_usd: z.number().nonnegative().optional().describe('Per-task or canary spend cap used during the validation run, when known.'),
       idempotency_key: z.string().optional().describe('Strongly recommended client-supplied idempotency key. Submitting the same key twice will not create a duplicate receipt.'),
       session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
     },
