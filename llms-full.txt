@@ -48,7 +48,42 @@ Plan:
 
 Delegate:
 - Use `orgx_spawn` when the user explicitly wants to delegate work to an OrgX agent.
-- Use `orgx_spawn` with guard/classify modes when you need delegation permission or model-routing context first.
+- Use `orgx_spawn` with guard/classify/estimate modes when you need delegation
+  permission, model-routing context, or pre-spawn cost context first.
+- Use `orgx_spawn` with `action: "estimate"` before dispatch when the user asks
+  for a cost comparison, budget fit, or cheapest valid validation route.
+- Omit `model_tier`, `provider`, and exact `model` for normal work so OrgX can
+  auto-route by task complexity and workspace policy.
+- Pass `max_cost_usd` when a daily or per-task cap is known.
+- Pass `provider` or exact `model` only when the user explicitly selected one
+  or a cost/quality comparison picked it.
+- During controlled reliability validation, pass `model_tier: "standard"` and
+  `budget_mode: "cheapest_valid"` so verification does not waste spend before
+  the execution loop is proven.
+- Require a receipt before completion: artifact, verification evidence, PR URL,
+  sales plan, or structured blocker.
+
+Founder/team artifact contract:
+- Before delegating or completing work, identify whether the user is an early
+  founder, existing founder-led company, or operating team.
+- Return the next useful company artifact instead of generic analysis:
+  orchestrator next initiative, engineering PR/deploy proof, sales strategy,
+  customer discovery synthesis, pricing or packaging hypothesis, launch asset,
+  product decision record, design audit/spec, weekly operator brief, runbook,
+  or budget/cost envelope.
+- Include owner, review point, expected business outcome, and verification
+  receipt.
+- Cost controls are execution constraints for validation or budget pressure,
+  not the agent's default mindset.
+
+Loop validation receipts:
+- For reliability validation, close each rung with `orgx_submit_receipt`.
+- Include `loop_validation: true`, `validation_rung`, `artifact_type`,
+  `agent_type`, `business_outcome`, `verification_status`, `model_tier`,
+  `budget_mode`, and evidence.
+- Treat `loop_validation.promotable=true` as the promotion signal. If false,
+  fix the missing fields, routing posture, or evidence before expanding
+  autonomy.
 
 Decide:
 - Use `orgx_decide` to create, remember, approve, reject, or list durable decisions.

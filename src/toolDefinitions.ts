@@ -211,6 +211,30 @@ export const SECURITY_SCHEMES = {
   authRequired: [{ type: 'oauth2' as const }],
 } as const;
 
+const agentModelTierSchema = z.enum([
+  'standard',
+  'balanced',
+  'precision',
+  'local',
+  'sonnet',
+  'opus',
+]);
+
+const agentProviderPreferenceSchema = z.enum([
+  'auto',
+  'openai',
+  'anthropic',
+  'openrouter',
+  'groq',
+  'local',
+]);
+
+const agentBudgetModeSchema = z.enum([
+  'cheapest_valid',
+  'balanced',
+  'highest_quality',
+]);
+
 // =============================================================================
 // CLIENT CONTEXT SCHEMA
 // =============================================================================
@@ -703,7 +727,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'spawn_agent_task',
     title: 'Spawn Agent Task',
     description:
-      'Delegate work to a specialist AI agent and track the assigned task. Also known as: hand this off, assign task, spawn agent, have an agent do it, autonomous work. Automatically checks authorization, rate limits, and quality gates before spawning. Returns modelTier and run details on success, or blockedReason if spawn is denied. USE WHEN: user explicitly wants to delegate work to an agent. NEXT: Use get_agent_status to monitor progress. DO NOT USE: for creating tasks in the hierarchy — use create_entity type=task instead. Requires agents:write.',
+      'Delegate work to a specialist AI agent and track the assigned task. Also known as: hand this off, assign task, spawn agent, have an agent do it, autonomous work. Automatically checks authorization, rate limits, quality gates, model routing, and budget policy before spawning. Omit model_tier/provider/model to let OrgX auto-route from task complexity; provide them only when the user or verification plan intentionally constrains routing. Returns modelTier, budget, and run details on success, or blockedReason if spawn is denied. USE WHEN: user explicitly wants to delegate work to an agent. NEXT: Use get_agent_status to monitor progress and record_quality_score after reviewing output. DO NOT USE: for creating tasks in the hierarchy — use create_entity type=task instead. Requires agents:write.',
     inputSchema: {
       agent: z.string().min(1).describe('Target agent identifier or alias'),
       task: z.string().min(1).describe('Task instructions for the target agent'),
@@ -740,6 +764,34 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         .optional()
         .describe(
           'Optional: If true and safe, wait briefly for the first result before replying.'
+        ),
+      model_tier: agentModelTierSchema
+        .optional()
+        .describe(
+          'Optional model tier override. Omit to let OrgX auto-route according to task complexity. Use standard for controlled verification runs; use balanced or precision when explicitly selected by the user, policy, or routing decision. Legacy tiers local/sonnet/opus are accepted for older clients.'
+        ),
+      model: z
+        .string()
+        .optional()
+        .describe(
+          'Optional exact model identifier when the user explicitly chooses one. Omit to let OrgX resolve the model from task, tier, provider, policy, and budget.'
+        ),
+      provider: agentProviderPreferenceSchema
+        .optional()
+        .describe(
+          'Optional provider preference. Use auto unless the user requests a specific provider or the budget/capability comparison has selected one.'
+        ),
+      budget_mode: agentBudgetModeSchema
+        .optional()
+        .describe(
+          'Optional budget posture override. Omit to let OrgX apply workspace policy. Use cheapest_valid for controlled reliability/validation runs where cost must be pinned while the loop is being proven.'
+        ),
+      max_cost_usd: z
+        .number()
+        .nonnegative()
+        .optional()
+        .describe(
+          'Optional per-task hard cost ceiling in USD. If the estimate exceeds this, OrgX should block, downgrade, or ask for approval before dispatch.'
         ),
       execution_target: z
         .enum(['auto', 'cloud', 'local', 'local_preferred'])
@@ -1494,9 +1546,9 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
   },
   {
     id: 'classify_task_model',
-    title: 'Route Task to Model Tier',
+    title: 'Estimate Task Routing',
     description:
-      'Classify a task and get the recommended model tier (opus for planning/architecture, sonnet for execution, local for routine). USE WHEN: deciding which model to use for agent work. NEXT: Use the returned tier when spawning via spawn_agent_task. Read-only.',
+      'Classify a task and get pre-spawn model routing context. Also known as: estimate task cost, model routing estimate, cost frontier, route task. USE WHEN: deciding which model/budget posture to use before agent work. Returns the recommended tier and, when the backend can compute it, estimated tokens/cost and candidate route comparisons. NEXT: Use the returned tier or cost frontier when spawning via spawn_agent_task. Read-only.',
     inputSchema: {
       title: z.string().min(1).describe('Task title'),
       description: z.string().optional().describe('Task description'),
@@ -1505,6 +1557,24 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         .optional()
         .describe('Entity type: task, decision, initiative'),
       domain: z.string().optional().describe('Agent domain'),
+      model_tier: agentModelTierSchema
+        .optional()
+        .describe('Optional tier to estimate. Omit to let OrgX auto-route.'),
+      provider: agentProviderPreferenceSchema
+        .optional()
+        .describe('Optional provider preference for the estimate. Use auto unless explicitly selected.'),
+      budget_mode: agentBudgetModeSchema
+        .optional()
+        .describe('Optional budget posture for the estimate. Use cheapest_valid for controlled validation runs only.'),
+      max_cost_usd: z
+        .number()
+        .nonnegative()
+        .optional()
+        .describe('Optional per-task hard cost ceiling to compare against the estimate.'),
+      estimate_only: z
+        .boolean()
+        .optional()
+        .describe('When true, return pre-spawn estimate context without dispatching work.'),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.readOptionalAuth,

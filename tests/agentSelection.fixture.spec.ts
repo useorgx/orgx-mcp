@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve as resolvePath } from 'node:path';
+import { z } from 'zod';
 
 import {
   CHATGPT_TOOL_DEFINITIONS,
@@ -36,6 +37,7 @@ interface IntentFixture {
   id: string;
   prompt: string;
   expected_tool: string;
+  expected_arguments?: Record<string, unknown>;
   forbidden_tool: string;
   rationale: string;
 }
@@ -52,8 +54,9 @@ function loadFixtures(): FixtureFile {
   return JSON.parse(readFileSync(path, 'utf8')) as FixtureFile;
 }
 
-function collectAllToolIds(): Set<string> {
+function collectAllTools(): Map<string, { inputSchema?: Record<string, unknown> }> {
   const ids = new Set<string>();
+  const tools = new Map<string, { inputSchema?: Record<string, unknown> }>();
   const sources = [
     CHATGPT_TOOL_DEFINITIONS,
     PLAN_SESSION_TOOLS,
@@ -64,8 +67,11 @@ function collectAllToolIds(): Set<string> {
   ] as ReadonlyArray<ReadonlyArray<unknown>>;
   for (const source of sources) {
     for (const tool of source) {
-      const t = tool as { id?: string };
-      if (typeof t.id === 'string') ids.add(t.id);
+      const t = tool as { id?: string; inputSchema?: Record<string, unknown> };
+      if (typeof t.id === 'string') {
+        ids.add(t.id);
+        tools.set(t.id, t);
+      }
     }
   }
   const here = dirname(fileURLToPath(import.meta.url));
@@ -76,12 +82,16 @@ function collectAllToolIds(): Set<string> {
   while ((match = inlineRe.exec(indexSrc))) ids.add(match[1]!);
   const appRe = /registerAppTool\(\s*this\.server,\s*['"]([a-zA-Z0-9_-]+)['"]/g;
   while ((match = appRe.exec(indexSrc))) ids.add(match[1]!);
-  return ids;
+  for (const id of ids) {
+    if (!tools.has(id)) tools.set(id, {});
+  }
+  return tools;
 }
 
 describe('agent selection fixtures (validation, free)', () => {
   const fixtures = loadFixtures();
-  const allToolIds = collectAllToolIds();
+  const allTools = collectAllTools();
+  const allToolIds = new Set(allTools.keys());
 
   it('fixture file has a positive version + non-empty fixtures array', () => {
     expect(fixtures.version).toBeGreaterThanOrEqual(1);
@@ -136,6 +146,41 @@ describe('agent selection fixtures (validation, free)', () => {
       .filter((f) => f.expected_tool === f.forbidden_tool)
       .map((f) => f.id);
     expect(broken).toEqual([]);
+  });
+
+  it('fixtures with expected_arguments validate against the expected tool schema', () => {
+    const broken: string[] = [];
+    for (const f of fixtures.fixtures) {
+      if (!f.expected_arguments) continue;
+      const inputSchema = allTools.get(f.expected_tool)?.inputSchema;
+      if (!inputSchema) {
+        broken.push(`${f.id}: ${f.expected_tool} has no registered input schema`);
+        continue;
+      }
+      const parsed = z.object(inputSchema).safeParse(f.expected_arguments);
+      if (!parsed.success) {
+        broken.push(`${f.id}: ${parsed.error.issues.map((issue) => issue.message).join(', ')}`);
+      }
+    }
+    expect(broken, broken.join('; ')).toEqual([]);
+  });
+
+  it('cost and validation fixtures estimate before dispatching work', () => {
+    const estimateFixtures = fixtures.fixtures.filter(
+      (f) =>
+        f.id.includes('cost') ||
+        f.id.includes('budget') ||
+        f.id.includes('validation')
+    );
+
+    expect(estimateFixtures.length).toBeGreaterThanOrEqual(2);
+    for (const f of estimateFixtures) {
+      expect(f.expected_tool).toBe('orgx_spawn');
+      expect(f.expected_arguments).toMatchObject({
+        action: 'estimate',
+        budget_mode: 'cheapest_valid',
+      });
+    }
   });
 });
 

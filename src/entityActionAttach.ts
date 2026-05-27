@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+import {
+  buildFounderTeamArtifactMetadata,
+  FOUNDER_TEAM_COMPANY_STAGES,
+} from './artifactContracts';
+
 const ATTACHABLE_ENTITY_TYPES = [
   'project',
   'initiative',
@@ -32,6 +37,12 @@ const entityActionAttachSchema = z
     preview_markdown: z.string().max(25_000).optional(),
     status: z.enum(ATTACHABLE_ARTIFACT_STATUSES).optional(),
     metadata: z.record(z.string(), z.unknown()).optional(),
+    agent_type: z.string().trim().min(1).max(120).optional(),
+    company_stage: z.enum(FOUNDER_TEAM_COMPANY_STAGES).optional(),
+    business_outcome: z.string().trim().min(1).max(1_000).optional(),
+    owner: z.string().trim().min(1).max(200).optional(),
+    review_date: z.string().trim().min(1).max(120).optional(),
+    verification: z.array(z.string().trim().min(1).max(2_000)).optional(),
     created_by_type: z.enum(['human', 'agent']).optional(),
     created_by_id: z.string().trim().min(1).optional(),
   })
@@ -59,6 +70,12 @@ export type EntityActionAttachPayload = {
   preview_markdown?: string;
   status?: (typeof ATTACHABLE_ARTIFACT_STATUSES)[number];
   metadata?: Record<string, unknown>;
+  agent_type?: string;
+  company_stage?: (typeof FOUNDER_TEAM_COMPANY_STAGES)[number];
+  business_outcome?: string;
+  owner?: string;
+  review_date?: string;
+  verification?: string[];
   created_by_type?: 'human' | 'agent';
   created_by_id?: string;
 };
@@ -67,6 +84,18 @@ export function buildEntityActionAttachPayload(
   args: unknown
 ): EntityActionAttachPayload {
   const parsed = entityActionAttachSchema.parse(args);
+  const artifactContractMetadata = buildFounderTeamArtifactMetadata({
+    agent_type: parsed.agent_type,
+    company_stage: parsed.company_stage,
+    business_outcome: parsed.business_outcome,
+    owner: parsed.owner,
+    review_date: parsed.review_date,
+    verification: parsed.verification,
+  });
+  const metadata = {
+    ...(parsed.metadata ?? {}),
+    ...(artifactContractMetadata ?? {}),
+  };
 
   return {
     entity_type: parsed.type,
@@ -82,7 +111,7 @@ export function buildEntityActionAttachPayload(
       ? { preview_markdown: parsed.preview_markdown }
       : {}),
     ...(parsed.status ? { status: parsed.status } : {}),
-    ...(parsed.metadata ? { metadata: parsed.metadata } : {}),
+    ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
     ...(parsed.created_by_type
       ? { created_by_type: parsed.created_by_type }
       : {}),
