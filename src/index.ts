@@ -81,6 +81,7 @@ import {
 } from './scaffoldResponse';
 import {
   buildFirstAgentWorkState,
+  canLaunchWithCredentialStatus,
   deriveScaffoldIdempotencyKey,
   normalizeExternalSyncRequest,
   normalizeScaffoldObjectiveAliases,
@@ -8077,6 +8078,7 @@ export class OrgXMcp extends McpAgent<
 	            | {
 	                checked: boolean;
 	                has_credentials: boolean;
+	                has_execution_credentials: boolean;
 	                has_subscription_accounts: boolean;
 	                can_execute: boolean;
 	                setup_url?: string;
@@ -8100,6 +8102,7 @@ export class OrgXMcp extends McpAgent<
 	                ok?: boolean;
 	                data?: {
 	                  has_credentials?: boolean;
+	                  has_execution_credentials?: boolean;
 	                  has_subscription_accounts?: boolean;
 	                  can_execute?: boolean;
 	                  setup_url?: string;
@@ -8108,6 +8111,9 @@ export class OrgXMcp extends McpAgent<
 	              credential_status = {
 	                checked: true,
 	                has_credentials: Boolean(credPayload?.data?.has_credentials),
+	                has_execution_credentials: Boolean(
+	                  credPayload?.data?.has_execution_credentials
+	                ),
 	                has_subscription_accounts: Boolean(
 	                  credPayload?.data?.has_subscription_accounts
 	                ),
@@ -8119,6 +8125,7 @@ export class OrgXMcp extends McpAgent<
 	              credential_status = {
 	                checked: false,
 	                has_credentials: false,
+	                has_execution_credentials: false,
 	                has_subscription_accounts: false,
 	                can_execute: false,
 	              };
@@ -8144,18 +8151,11 @@ export class OrgXMcp extends McpAgent<
 	                start_agents_hint?: string;
 	              }
 	            | undefined;
-	          const hasExecutionAccount = Boolean(
-	            credential_status?.has_credentials ||
-	              credential_status?.has_subscription_accounts
-	          );
-	          const canLaunchWithExecutionAccount = Boolean(
-	            credential_status?.can_execute && hasExecutionAccount
-	          );
 	          if (
 	            createdInitiativeId &&
 	            launchAfterCreate &&
 	            credential_status?.checked &&
-	            !canLaunchWithExecutionAccount
+	            !canLaunchWithCredentialStatus(credential_status)
 	          ) {
 	            // Execution account missing: skip launch, return actionable guidance.
 	            launch = {

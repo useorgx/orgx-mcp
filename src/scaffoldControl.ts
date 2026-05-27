@@ -20,6 +20,14 @@ export type ExternalSyncRequest = {
   linear_project_id?: string;
 };
 
+export type ScaffoldCredentialStatus = {
+  checked?: boolean;
+  has_credentials?: boolean;
+  has_execution_credentials?: boolean;
+  has_subscription_accounts?: boolean;
+  can_execute?: boolean;
+};
+
 export type FirstAgentWorkState = {
   status:
     | 'not_requested'
@@ -227,6 +235,19 @@ export function normalizeExternalSyncRequest(
     mode,
     ...(linearProjectId ? { linear_project_id: linearProjectId } : {}),
   };
+}
+
+export function canLaunchWithCredentialStatus(
+  status: ScaffoldCredentialStatus | null | undefined
+): boolean {
+  if (!status) return false;
+  if (typeof status.can_execute === 'boolean') return status.can_execute;
+
+  return Boolean(
+    status.has_execution_credentials ||
+      status.has_credentials ||
+      status.has_subscription_accounts
+  );
 }
 
 export function buildFirstAgentWorkState(params: {
