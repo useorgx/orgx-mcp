@@ -81,14 +81,18 @@ import {
 } from './scaffoldResponse';
 import {
   buildFirstAgentWorkState,
-  canLaunchWithCredentialStatus,
   deriveScaffoldIdempotencyKey,
   normalizeExternalSyncRequest,
   normalizeScaffoldObjectiveAliases,
   resolveScaffoldMode,
+  resolveScaffoldResponseMode,
   type ExternalSyncRequest,
   type ScaffoldContractWarning,
 } from './scaffoldControl';
+import {
+  buildQueuedScaffoldFollowups,
+  runScaffoldPostCreateFollowups,
+} from './scaffoldFollowups';
 import {
   createScaffoldTelemetryTrace,
   recordDurableMcpToolInvocation,
@@ -7339,6 +7343,12 @@ export class OrgXMcp extends McpAgent<
             .describe(
               'Optional stage. draft validates without writes; scaffold creates records without launching agents; launch creates records and starts agents. Defaults to launch for backwards compatibility.'
             ),
+          response_mode: z
+            .enum(['fast_ack', 'complete'])
+            .optional()
+            .describe(
+              'Optional response timing. fast_ack returns after durable record creation and queues launch follow-ups asynchronously; complete waits for agent assignment, launch, and stream snapshot before returning. Defaults to fast_ack for non-draft scaffolds.'
+            ),
           title: z.string().min(1).describe('Initiative title'),
           summary: z.string().optional().describe('Initiative summary'),
           description: z.string().optional().describe('Initiative description'),
@@ -7554,11 +7564,17 @@ export class OrgXMcp extends McpAgent<
             const modeResolution = resolveScaffoldMode(args);
             const objectiveAliasResult = normalizeScaffoldObjectiveAliases(args);
             const normalizedArgs = objectiveAliasResult.args;
+            const responseModeResolution = resolveScaffoldResponseMode(
+              normalizedArgs,
+              modeResolution.mode
+            );
             const contractWarnings: ScaffoldContractWarning[] = [
               ...modeResolution.warnings,
               ...objectiveAliasResult.warnings,
+              ...responseModeResolution.warnings,
             ];
             const scaffoldMode = modeResolution.mode;
+            const responseMode = responseModeResolution.responseMode;
             const explicitOwnerId =
               typeof normalizedArgs.owner_id === 'string'
                 ? normalizedArgs.owner_id
@@ -7874,6 +7890,8 @@ export class OrgXMcp extends McpAgent<
           const externalSync = normalizeExternalSyncRequest(
             argsForBatch.external_sync ?? argsForBatch.externalSync
           );
+          delete argsForBatch.response_mode;
+          delete argsForBatch.responseMode;
 
           const {
             batch,
@@ -7948,531 +7966,68 @@ export class OrgXMcp extends McpAgent<
               ? ((hierarchy as any).initiative.id as string)
               : null;
 
-          // ── Post-scaffold agent assignment (best-effort) ──
-          // Assign agents to workstreams based on domain so cloud MCP users
-          // get the same auto-assignment that the openclaw-plugin provides locally.
-          let agent_assignment:
-	            | {
-	                attempted: boolean;
-	                ok: boolean;
-	                assigned_count?: number;
-	                total_workstreams?: number;
-	                assignments?: Array<{
-	                  workstream_id: string;
-	                  domain?: string | null;
-	                  agent_id: string;
-	                  agent_name?: string | null;
-	                }>;
-	                error?: string;
-	              }
-	            | undefined;
-	          if (createdInitiativeId) {
-	            try {
-	              agent_assignment = { attempted: true, ok: false };
-	              const assignResp = await callOrgxApiJson(
-	                this.env,
-	                `/api/entities/initiative/${createdInitiativeId}/assign-agents`,
-	                { method: 'POST' },
-	                {
-	                  userId: scaffoldOwnerId ?? undefined,
-	                  userEmail: this.resolveUserEmail(),
-	                }
-	              );
-	              const assignPayload = (await assignResp.json()) as {
-	                ok?: boolean;
-	                data?: {
-	                  assignments?: Array<Record<string, unknown>>;
-	                  summary?: string;
-	                };
-	              };
-	              const parsedAssignments = Array.isArray(assignPayload?.data?.assignments)
-	                ? assignPayload.data.assignments
-	                    .map((item) => {
-	                      if (!item || typeof item !== 'object') return null;
-	                      const workstreamId =
-	                        typeof item.workstream_id === 'string'
-	                          ? item.workstream_id
-	                          : null;
-	                      const agentId =
-	                        typeof item.agent_id === 'string' ? item.agent_id : null;
-	                      if (!workstreamId || !agentId) return null;
-	                      return {
-	                        workstream_id: workstreamId,
-	                        domain:
-	                          typeof item.domain === 'string' ? item.domain : null,
-	                        agent_id: agentId,
-	                        agent_name:
-	                          typeof item.agent_name === 'string'
-	                            ? item.agent_name
-	                            : null,
-	                      };
-	                    })
-	                    .filter(
-	                      (
-	                        entry
-	                      ): entry is {
-	                        workstream_id: string;
-	                        domain: string | null;
-	                        agent_id: string;
-	                        agent_name: string | null;
-	                      } => Boolean(entry)
-	                    )
-	                : [];
-	              agent_assignment = {
-	                attempted: true,
-	                ok: Boolean(assignPayload?.ok),
-	                assigned_count: parsedAssignments.length,
-	                assignments: parsedAssignments,
-	              };
-	            } catch (error) {
-	              agent_assignment = {
-	                attempted: true,
-	                ok: false,
-	                error: error instanceof Error ? error.message : String(error),
-	              };
-	            }
-	          }
-          telemetryTrace.mark('agent_assignment');
-
-	          // Record scaffold usage after the initiative exists (best-effort).
-	          let scaffold_usage:
-	            | { attempted: boolean; ok: boolean; error?: string; usage?: unknown }
-	            | undefined;
-	          if (createdInitiativeId) {
-	            try {
-	              scaffold_usage = { attempted: true, ok: false };
-	              const consumeResp = await callOrgxApiJson(
-	                this.env,
-	                '/api/billing/scaffolds/consume',
-	                {
-	                  method: 'POST',
-	                  body: JSON.stringify({ initiative_id: createdInitiativeId }),
-	                },
-	                {
-	                  userId: scaffoldOwnerId ?? undefined,
-	                  userEmail: this.resolveUserEmail(),
-	                }
-	              );
-	              const consumePayload = (await consumeResp.json()) as any;
-	              scaffold_usage = {
-	                attempted: true,
-	                ok: Boolean(consumePayload?.ok),
-	                usage: consumePayload?.data?.usage,
-	              };
-	            } catch (error) {
-	              scaffold_usage = {
-	                attempted: true,
-	                ok: false,
-	                error: error instanceof Error ? error.message : String(error),
-	              };
-	            }
-	          }
-          telemetryTrace.mark('billing_consume');
-
-	          // ── Pre-launch execution-account check ──
-	          // Before launching, verify the user has either API credentials or a
-	          // live subscription runner so agents can actually execute. This
-	          // prevents silent failures for cloud MCP users who haven't configured
-	          // any execution route.
-	          let credential_status:
-	            | {
-	                checked: boolean;
-	                has_credentials: boolean;
-	                has_execution_credentials: boolean;
-	                has_subscription_accounts: boolean;
-	                can_execute: boolean;
-	                setup_url?: string;
-	              }
-	            | undefined;
-	          if (createdInitiativeId && launchAfterCreate) {
-	            try {
-	              const credentialStatusPath = effectiveCommandCenterId
-	                ? `/api/client/credentials/status?workspace_id=${encodeURIComponent(effectiveCommandCenterId)}`
-	                : '/api/client/credentials/status';
-	              const credResp = await callOrgxApiJson(
-	                this.env,
-	                credentialStatusPath,
-	                undefined,
-	                {
-	                  userId: scaffoldOwnerId ?? undefined,
-	                  userEmail: this.resolveUserEmail(),
-	                }
-	              );
-	              const credPayload = (await credResp.json()) as {
-	                ok?: boolean;
-	                data?: {
-	                  has_credentials?: boolean;
-	                  has_execution_credentials?: boolean;
-	                  has_subscription_accounts?: boolean;
-	                  can_execute?: boolean;
-	                  setup_url?: string;
-	                };
-	              };
-	              credential_status = {
-	                checked: true,
-	                has_credentials: Boolean(credPayload?.data?.has_credentials),
-	                has_execution_credentials: Boolean(
-	                  credPayload?.data?.has_execution_credentials
-	                ),
-	                has_subscription_accounts: Boolean(
-	                  credPayload?.data?.has_subscription_accounts
-	                ),
-	                can_execute: Boolean(credPayload?.data?.can_execute),
-	                setup_url: credPayload?.data?.setup_url,
-	              };
-	            } catch {
-	              // Best-effort: don't block scaffold if credential check fails
-	              credential_status = {
-	                checked: false,
-	                has_credentials: false,
-	                has_execution_credentials: false,
-	                has_subscription_accounts: false,
-	                can_execute: false,
-	              };
-	            }
-	          }
-          telemetryTrace.mark('credential_check');
-
-	          let launch:
-	            | {
-	                attempted: boolean;
-	                ok: boolean;
-	                message?: string;
-	                transition?: { from: string; to: string };
-	                initiative_activation?: {
-	                  created_stream_count: number;
-	                  redispatched_stream_count: number;
-	                  error?: string;
-	                };
-	                error?: string;
-	                error_kind?: string;
-	                needs_credentials?: boolean;
-	                next_steps?: string[];
-	                start_agents_hint?: string;
-	              }
-	            | undefined;
-	          if (
-	            createdInitiativeId &&
-	            launchAfterCreate &&
-	            credential_status?.checked &&
-	            !canLaunchWithCredentialStatus(credential_status)
-	          ) {
-	            // Execution account missing: skip launch, return actionable guidance.
-	            launch = {
-	              attempted: false,
-	              ok: false,
-	              error_kind: 'credential_missing',
-	              needs_credentials: true,
-	              error:
-	                'No execution account is active. Agents need a live subscription runner or API key to execute.',
-	              next_steps: [
-	                `Configure execution at ${credential_status.setup_url ?? '/settings/execution'}`,
-	                'Connect a Codex or Claude runner, or add an Anthropic/OpenAI API key',
-	                'Then say "start agents" to launch execution',
-	              ],
-	              start_agents_hint:
-	                'After configuring credentials, say "start agents" to begin.',
-	            };
-	          } else if (createdInitiativeId && launchAfterCreate) {
-	            try {
-              const launchResponse = await callOrgxApiJson(
-                this.env,
-                `/api/entities/initiative/${createdInitiativeId}/launch`,
-                {
-                  method: 'POST',
-                  body: JSON.stringify({
-                    note: 'Auto-launched after scaffold_initiative',
-                  }),
-                },
-                {
-                  userId: scaffoldOwnerId ?? undefined,
-                  userEmail: this.resolveUserEmail(),
-                }
-	              );
-	              const launchPayload = (await launchResponse.json()) as {
-	                message?: string;
-	                transition?: { from: string; to: string };
-	                initiative_activation?: {
-	                  created_stream_count: number;
-	                  redispatched_stream_count: number;
-	                  error?: string;
-	                };
-	              };
-	              launch = {
-	                attempted: true,
-	                ok: true,
-	                message: launchPayload.message ?? 'Initiative launched',
-	                transition: launchPayload.transition,
-	                initiative_activation: launchPayload.initiative_activation,
-	              };
-	            } catch (error) {
-	              const errorMessage =
-	                error instanceof Error ? error.message : String(error);
-	              const isSpawnGuard =
-	                errorMessage.includes('spawn') ||
-	                errorMessage.includes('guard') ||
-	                errorMessage.includes('quality');
-	              const isStreamError =
-	                errorMessage.includes('stream') ||
-	                errorMessage.includes('activation');
-	              launch = {
-	                attempted: true,
-	                ok: false,
-	                error: errorMessage,
-	                error_kind: isSpawnGuard
-	                  ? 'spawn_guard_blocked'
-	                  : isStreamError
-	                  ? 'stream_creation_failed'
-	                  : 'launch_failed',
-	                next_steps: isSpawnGuard
-	                  ? [
-	                      'Check agent quality scores',
-	                      'Approve pending decisions to unblock',
-	                      'Then say "start agents" to retry',
-	                    ]
-	                  : [
-	                      'Try re-running the same prompt (transient failures happen)',
-	                      'Say "start agents" to retry launch',
-	                    ],
-	                start_agents_hint:
-	                  'Say "start agents" to retry launching this initiative.',
-              };
-            }
-          } else if (createdInitiativeId) {
-            launch = { attempted: false, ok: false };
-          }
-          telemetryTrace.mark('launch');
-
           const liveUrl = createdInitiativeId
             ? buildLiveUrl(createdInitiativeId)
             : null;
-	          if (createdInitiativeId) {
-	            this.sessionContext = {
-	              ...this.sessionContext,
-	              initiativeId: createdInitiativeId,
-	            };
-	            await this.saveSessionContext();
-	          }
 
-	          let streams:
-	            | {
-	                total: number;
-	                by_status: Record<string, number>;
-	                workstream_to_stream_id: Record<string, string>;
-	                items: Array<{
-	                  id: string;
-	                  workstream_id: string | null;
-	                  status: string | null;
-	                  auto_continue: boolean | null;
-	                  agent_domain: string | null;
-	                  progress_pct: number | null;
-	                  current_job_id: string | null;
-	                }>;
-	              }
-	            | undefined;
-		          if (createdInitiativeId) {
-		            try {
-	              const params = new URLSearchParams();
-	              params.set('type', 'stream');
-	              params.set('initiative_id', createdInitiativeId);
-	              params.set('limit', '50');
-	
-	              const streamsResponse = await callOrgxApiJson(
-	                this.env,
-	                `/api/entities?${params.toString()}`,
-	                undefined,
-	                {
-	                  userId: scaffoldOwnerId ?? undefined,
-	                  userEmail: this.resolveUserEmail(),
-	                }
-	              );
-	              const streamsPayload = (await streamsResponse.json()) as {
-	                data?: Array<Record<string, unknown>>;
-	              };
-	              const rawItems = Array.isArray(streamsPayload.data)
-	                ? streamsPayload.data
-	                : [];
-	
-	              const byStatus: Record<string, number> = {};
-	              const workstreamToStreamId: Record<string, string> = {};
-	              const items = rawItems
-	                .map((row) => {
-	                  const id = typeof row.id === 'string' ? row.id : null;
-	                  if (!id) return null;
-	                  const workstreamId =
-	                    typeof row.workstream_id === 'string' ? row.workstream_id : null;
-	                  const status = typeof row.status === 'string' ? row.status : null;
-	                  const autoContinue =
-	                    typeof row.auto_continue === 'boolean'
-	                      ? row.auto_continue
-	                      : null;
-	                  const agentDomain =
-	                    typeof row.agent_domain === 'string' ? row.agent_domain : null;
-	                  const progressPct =
-	                    typeof row.progress_pct === 'number' ? row.progress_pct : null;
-	                  const currentJobId =
-	                    typeof row.current_job_id === 'string'
-	                      ? row.current_job_id
-	                      : null;
-	
-	                  if (status) byStatus[status] = (byStatus[status] ?? 0) + 1;
-	                  if (workstreamId) workstreamToStreamId[workstreamId] = id;
-	
-	                  return {
-	                    id,
-	                    workstream_id: workstreamId,
-	                    status,
-	                    auto_continue: autoContinue,
-	                    agent_domain: agentDomain,
-	                    progress_pct: progressPct,
-	                    current_job_id: currentJobId,
-	                  };
-	                })
-	                .filter(
-	                  (
-	                    value
-	                  ): value is {
-	                    id: string;
-	                    workstream_id: string | null;
-	                    status: string | null;
-	                    auto_continue: boolean | null;
-	                    agent_domain: string | null;
-	                    progress_pct: number | null;
-	                    current_job_id: string | null;
-	                  } => Boolean(value)
-	                );
-	
-	              streams = {
-	                total: items.length,
-	                by_status: byStatus,
-	                workstream_to_stream_id: workstreamToStreamId,
-	                items,
-	              };
-                    } catch {
-                      // Best-effort: scaffolding should not fail just because we can't
-                      // snapshot streams for the response.
-                    }
-                  }
-          telemetryTrace.mark('stream_snapshot');
-
-            let fallback_agent_dispatch:
-              | {
-                  attempted: boolean;
-                  ok: boolean;
-                  agent?: string;
-                  message?: string;
-                  error?: string;
-                  tool_result?: unknown;
-                }
-              | undefined;
-
-            // Fallback: if launch succeeded but didn't create/dispatch streams (or streams are
-            // otherwise unavailable), spawn a single agent task so users immediately see
-            // "agents do work after scaffold" even if the stream coordinator isn't firing.
-            if (
-              createdInitiativeId &&
-              launchAfterCreate &&
-              launch?.attempted &&
-              launch.ok &&
-              (streams?.total ?? 0) === 0
-            ) {
-              const workstreams = Array.isArray((hierarchy as any)?.workstreams)
-                ? ((hierarchy as any).workstreams as Array<Record<string, unknown>>)
-                : [];
-
-              const firstWs = workstreams[0] ?? null;
-              const wsLabel =
-                firstWs &&
-                (typeof firstWs.title === 'string'
-                  ? firstWs.title
-                  : typeof firstWs.name === 'string'
-                  ? firstWs.name
-                  : null);
-
-              const wsHint =
-                firstWs &&
-                (typeof (firstWs as any).domain === 'string'
-                  ? String((firstWs as any).domain)
-                  : typeof (firstWs as any).persona === 'string'
-                  ? String((firstWs as any).persona)
-                  : wsLabel);
-              const normalizedHint =
-                typeof wsHint === 'string' ? wsHint.toLowerCase() : '';
-
-              const assignedAgent =
-                Array.isArray(agent_assignment?.assignments) &&
-                agent_assignment.assignments.length > 0
-                  ? agent_assignment.assignments[0]?.agent_id
-                  : null;
-
-              const agent =
-                typeof assignedAgent === 'string' && assignedAgent.length > 0
-                  ? assignedAgent
-                  : normalizedHint.includes('engineering') ||
-                normalizedHint.includes('build') ||
-                normalizedHint.includes('dev')
-                  ? 'engineering-agent'
-                  : normalizedHint.includes('product')
-                  ? 'product-agent'
-                  : normalizedHint.includes('design') ||
-                    normalizedHint.includes('brand')
-                  ? 'design-agent'
-                  : normalizedHint.includes('sales')
-                  ? 'sales-agent'
-                  : normalizedHint.includes('ops') ||
-                    normalizedHint.includes('operation')
-                  ? 'operations-agent'
-                  : 'operations-agent';
-
-              try {
-                fallback_agent_dispatch = { attempted: true, ok: false, agent };
-                const task = wsLabel
-                  ? `Start work on the "${wsLabel}" workstream.`
-                  : 'Start work on the first workstream in this initiative.';
-                const toolExecResponse = await callOrgxApiJson(
-                  this.env,
-                  `/api/tools/execute`,
-                  {
-                    method: 'POST',
-                    body: JSON.stringify({
-                      tool_id: 'spawn_agent_task',
-                      user_id: scaffoldOwnerId ?? undefined,
-                      args: {
-                        agent,
-                        task,
-                        initiative_id: createdInitiativeId,
-                        context:
-                          'Auto-started after scaffold as a fallback path when stream dispatch is unavailable.',
-                        wait_for_completion: false,
-                      },
-                    }),
-                  },
-                  {
-                    userId: scaffoldOwnerId ?? undefined,
-                    userEmail: this.resolveUserEmail(),
-                  }
-                );
-                const toolExecPayload = (await toolExecResponse.json()) as any;
-                fallback_agent_dispatch = {
-                  attempted: true,
-                  ok: Boolean(toolExecPayload?.ok),
-                  agent,
-                  message:
-                    typeof toolExecPayload?.data?.message === 'string'
-                      ? toolExecPayload.data.message
-                      : undefined,
-                  tool_result: toolExecPayload,
-                };
-              } catch (error) {
-                fallback_agent_dispatch = {
-                  attempted: true,
-                  ok: false,
-                  agent,
-                  error: error instanceof Error ? error.message : String(error),
-                };
-              }
+          if (createdInitiativeId) {
+            this.sessionContext = {
+              ...this.sessionContext,
+              initiativeId: createdInitiativeId,
+            };
+            const saveContext = this.saveSessionContext();
+            if (responseMode === 'fast_ack') {
+              this.ctx.waitUntil(saveContext);
+            } else {
+              await saveContext;
             }
-            telemetryTrace.mark('fallback_dispatch');
+          }
+
+          const followups =
+            responseMode === 'fast_ack'
+              ? buildQueuedScaffoldFollowups({
+                  createdInitiativeId,
+                  launchAfterCreate,
+                })
+              : await runScaffoldPostCreateFollowups({
+                  env: this.env,
+                  createdInitiativeId,
+                  launchAfterCreate,
+                  effectiveCommandCenterId,
+                  scaffoldOwnerId,
+                  hierarchy,
+                  resolveUserEmail: () => this.resolveUserEmail(),
+                  onStage: (stage) => telemetryTrace.mark(stage),
+                });
+
+          if (responseMode === 'fast_ack') {
+            telemetryTrace.mark('post_create_enqueue');
+            this.ctx.waitUntil(
+              runScaffoldPostCreateFollowups({
+                env: this.env,
+                createdInitiativeId,
+                launchAfterCreate,
+                effectiveCommandCenterId,
+                scaffoldOwnerId,
+                hierarchy,
+                resolveUserEmail: () => this.resolveUserEmail(),
+              }).catch((error) => {
+                console.warn('[scaffold:followups] async follow-up failed', {
+                  initiativeId: createdInitiativeId,
+                  error: error instanceof Error ? error.message : String(error),
+                });
+              })
+            );
+          }
+
+          const {
+            agent_assignment,
+            scaffold_usage,
+            credential_status,
+            launch,
+            streams,
+            fallback_agent_dispatch,
+          } = followups;
 
 
               // ── Scaffold stream session ──
@@ -8566,6 +8121,7 @@ export class OrgXMcp extends McpAgent<
 
               const benchmarkMetrics = {
                 mode: scaffoldMode,
+                response_mode: responseMode,
                 requested_count: result.total,
                 created_count: result.created_count,
                 failed_count: result.failed_count,
@@ -8582,6 +8138,7 @@ export class OrgXMcp extends McpAgent<
                 result,
                 hierarchy,
                 mode: scaffoldMode,
+                responseMode,
                 initiativeId: createdInitiativeId,
                 workspaceId: effectiveCommandCenterId,
                 liveUrl,
@@ -8658,12 +8215,18 @@ export class OrgXMcp extends McpAgent<
 		              ? launch.ok
 		                ? `\n\nLaunch: ${launch.message ?? 'Initiative launched'}${activationSummary}${streamSnapshotSummary}${fallbackDispatchSummary}${agentAssignmentSummary}${startAgentsHint}`
 		                : `\n\nLaunch warning: ${launch.error ?? 'unknown error'}${launch.next_steps ? '\nNext steps: ' + launch.next_steps.join('. ') : ''}`
+		              : launch.queued_async
+		                ? `\n\nLaunch: queued asynchronously after scaffold creation${agentAssignmentSummary}${startAgentsHint}`
 		              : launch.needs_credentials
 		                ? `\n\nLaunch: skipped (credentials required)${credentialWarning}${agentAssignmentSummary}`
 		                : '\n\nLaunch: skipped (launch_after_create=false)'
 		            : '';
 
-              const activationEvents = await this.recordMcpActivationObservation({
+              let activationPayload: {
+                experience?: ReturnType<typeof buildClientActivationExperience>;
+                text: string;
+              } = { text: '' };
+              const activationObservation = {
                 toolId: 'scaffold_initiative',
                 args: normalizedArgs as Record<string, unknown>,
                 data: compactScaffoldPayload,
@@ -8671,11 +8234,23 @@ export class OrgXMcp extends McpAgent<
                 sourceClient,
                 workspaceId: effectiveCommandCenterId,
                 initiativeId: createdInitiativeId,
-              });
-              const activationPayload = this.buildClientActivationPayload({
-                sourceClient,
-                events: activationEvents,
-              });
+              };
+              if (responseMode === 'fast_ack') {
+                this.ctx.waitUntil(
+                  this.recordMcpActivationObservation(activationObservation).then(
+                    () => undefined
+                  )
+                );
+              } else {
+                const activationEvents =
+                  await this.recordMcpActivationObservation(
+                    activationObservation
+                  );
+                activationPayload = this.buildClientActivationPayload({
+                  sourceClient,
+                  events: activationEvents,
+                });
+              }
               const countTasks = (v: any): number => {
                 if (!v) return 0;
                 if (Array.isArray(v)) return v.reduce((sum, i) => sum + countTasks(i), 0);
@@ -8715,6 +8290,7 @@ export class OrgXMcp extends McpAgent<
                 workspaceId: effectiveCommandCenterId,
                 metadata: {
                   mode: scaffoldMode,
+                  response_mode: responseMode,
                   requested_count: result.total,
                   created_count: result.created_count,
                   failed_count: result.failed_count,

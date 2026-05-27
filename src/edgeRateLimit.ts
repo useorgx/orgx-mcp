@@ -30,12 +30,23 @@ const TIER_LIMITS: Record<Exclude<BillingTier, 'enterprise'>, number> = {
   pro: 1000,
 };
 const TIER_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const TOKEN_USER_CACHE_TTL_MS = 60 * 1000; // 1 minute
 
 const tierCache = new Map<
   string,
   { tier: BillingTier; plan: string; expiresAt: number }
 >();
+const tokenUserCache = new Map<
+  string,
+  { userId: string | null; expiresAt: number }
+>();
 const memoryBuckets = new Map<string, number[]>();
+
+export function __resetEdgeRateLimitStateForTests() {
+  tierCache.clear();
+  tokenUserCache.clear();
+  memoryBuckets.clear();
+}
 
 function normalizePlanToTier(plan: string | null | undefined): BillingTier {
   const normalized = (plan ?? 'free').trim().toLowerCase();
@@ -89,13 +100,28 @@ async function resolveUserIdFromToken(
   env: RateLimitEnv
 ): Promise<string | null> {
   if (!token || !env.OAUTH_PROVIDER) return null;
+  const cacheKey = hashToken(token);
+  const cached = tokenUserCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.userId;
+  }
+
   try {
     const tokenData = await env.OAUTH_PROVIDER.unwrapToken<{
       userId?: string;
       grant?: { props?: { userId?: string } };
     }>(token);
-    return tokenData?.grant?.props?.userId ?? tokenData?.userId ?? null;
+    const userId = tokenData?.grant?.props?.userId ?? tokenData?.userId ?? null;
+    tokenUserCache.set(cacheKey, {
+      userId,
+      expiresAt: Date.now() + TOKEN_USER_CACHE_TTL_MS,
+    });
+    return userId;
   } catch {
+    tokenUserCache.set(cacheKey, {
+      userId: null,
+      expiresAt: Date.now() + TOKEN_USER_CACHE_TTL_MS,
+    });
     return null;
   }
 }

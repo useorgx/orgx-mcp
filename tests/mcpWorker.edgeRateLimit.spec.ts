@@ -1,12 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { checkEdgeRateLimit } from '../src/edgeRateLimit';
+import {
+  __resetEdgeRateLimitStateForTests,
+  checkEdgeRateLimit,
+} from '../src/edgeRateLimit';
 import { buildRateLimitExceededPayload } from '../src/rateLimitResponse';
 
 describe('edge rate limiting', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
+    __resetEdgeRateLimitStateForTests();
   });
 
   it('returns rate-limit headers for allowed free-tier requests', async () => {
@@ -128,6 +132,34 @@ describe('edge rate limiting', () => {
     expect(decision.allowed).toBe(false);
     expect(decision.source).toBe('upstash');
     expect(decision.retryAfterSeconds).toBe(60 * 60);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('caches OAuth token unwraps on the hot rate-limit path', async () => {
+    const unwrapToken = vi.fn(async () => ({
+      grant: { props: { userId: 'user-cache' } },
+    }));
+    const fetchMock = vi.fn(async () => Response.json({ plan: 'pro' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const env = {
+      ORGX_API_URL: 'https://example.com',
+      ORGX_SERVICE_KEY: 'oxk-test',
+      OAUTH_PROVIDER: { unwrapToken } as any,
+    };
+    const request = () =>
+      new Request('https://example.com/mcp', {
+        headers: {
+          authorization: 'Bearer cached-token',
+        },
+      });
+
+    const first = await checkEdgeRateLimit(request(), env);
+    const second = await checkEdgeRateLimit(request(), env);
+
+    expect(first.allowed).toBe(true);
+    expect(second.allowed).toBe(true);
+    expect(unwrapToken).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 

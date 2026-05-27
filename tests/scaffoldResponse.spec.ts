@@ -19,6 +19,7 @@ describe('compact scaffold responses', () => {
       initiativeId: 'init-1',
       workspaceId: 'workspace-1',
       liveUrl: 'https://useorgx.com/live/init-1',
+      responseMode: 'fast_ack',
       result: {
         summary: 'Created 263/263 entities',
         total: 263,
@@ -72,6 +73,7 @@ describe('compact scaffold responses', () => {
     });
 
     expect(result.summary_stats.task_count).toBe(260);
+    expect(result.response_mode).toBe('fast_ack');
     expect(result.summary_stats.inline_task_count).toBe(250);
     expect(result.summary_stats.omitted_task_count).toBe(10);
     expect(result.created_preview).toHaveLength(30);
