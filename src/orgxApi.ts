@@ -3,9 +3,12 @@ export interface OrgxApiEnv {
   ORGX_API_FALLBACK_URL?: string;
   ORGX_SERVICE_KEY: string;
   ORGX_INTERNAL_SECRET?: string;
+  ORGX_API_TIMEOUT_MS?: string;
+  ORGX_API_PRIMARY_TIMEOUT_MS?: string;
 }
 
-const ORGX_API_TIMEOUT_MS = 30_000;
+const DEFAULT_ORGX_API_TIMEOUT_MS = 30_000;
+const DEFAULT_ORGX_API_PRIMARY_TIMEOUT_MS = 5_000;
 const ACTOR_TOKEN_TTL_MS = 5 * 60 * 1000;
 const ACTOR_TOKEN_TYPE = 'orgx.mcp.actor.v1';
 const ACTOR_TOKEN_AUD = 'orgx-api';
@@ -77,8 +80,33 @@ function getOrgxApiBaseUrls(env: OrgxApiEnv): string[] {
   return urls;
 }
 
+function parseTimeoutMs(value: string | undefined, fallback: number): number {
+  if (!value) return fallback;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return Math.floor(parsed);
+}
+
+function getRequestTimeoutMs(
+  env: OrgxApiEnv,
+  hasFallbackRemaining: boolean
+): number {
+  if (hasFallbackRemaining) {
+    return parseTimeoutMs(
+      env.ORGX_API_PRIMARY_TIMEOUT_MS,
+      DEFAULT_ORGX_API_PRIMARY_TIMEOUT_MS
+    );
+  }
+  return parseTimeoutMs(env.ORGX_API_TIMEOUT_MS, DEFAULT_ORGX_API_TIMEOUT_MS);
+}
+
 function shouldTryFallbackForStatus(status: number): boolean {
-  return status === 502 || status === 503 || status === 504;
+  return (
+    status === 502 ||
+    status === 503 ||
+    status === 504 ||
+    (status >= 520 && status <= 524)
+  );
 }
 
 /**
@@ -167,10 +195,11 @@ export async function callOrgxApiRaw(
     // IMPORTANT: do not auto-follow redirects; a common prod misconfig is redirecting /api/* to a different host.
     const controller = new AbortController();
     let timedOut = false;
+    const requestTimeoutMs = getRequestTimeoutMs(env, hasFallbackRemaining);
     const timeout = setTimeout(() => {
       timedOut = true;
-      controller.abort(`timeout after ${ORGX_API_TIMEOUT_MS}ms`);
-    }, ORGX_API_TIMEOUT_MS);
+      controller.abort(`timeout after ${requestTimeoutMs}ms`);
+    }, requestTimeoutMs);
     const upstreamSignal = init?.signal ?? null;
     if (upstreamSignal) {
       if (upstreamSignal.aborted) {
@@ -196,7 +225,7 @@ export async function callOrgxApiRaw(
       clearTimeout(timeout);
       if (controller.signal.aborted) {
         if (timedOut) {
-          lastRetryableFailure = `Request timed out after ${ORGX_API_TIMEOUT_MS}ms for ${url.toString()}`;
+          lastRetryableFailure = `Request timed out after ${requestTimeoutMs}ms for ${url.toString()}`;
           if (hasFallbackRemaining) {
             console.warn(`[orgx-api] ${lastRetryableFailure}; trying fallback`);
             continue;
