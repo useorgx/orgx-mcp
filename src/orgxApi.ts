@@ -1,5 +1,6 @@
 export interface OrgxApiEnv {
   ORGX_API_URL: string;
+  ORGX_API_FALLBACK_URL?: string;
   ORGX_SERVICE_KEY: string;
   ORGX_INTERNAL_SECRET?: string;
 }
@@ -64,6 +65,22 @@ function looksLikeDefaultPlaceholder(value: string | undefined) {
   );
 }
 
+function getOrgxApiBaseUrls(env: OrgxApiEnv): string[] {
+  const seen = new Set<string>();
+  const urls: string[] = [];
+  for (const value of [env.ORGX_API_URL, env.ORGX_API_FALLBACK_URL]) {
+    const trimmed = value?.trim();
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    urls.push(trimmed);
+  }
+  return urls;
+}
+
+function shouldTryFallbackForStatus(status: number): boolean {
+  return status === 502 || status === 503 || status === 504;
+}
+
 /**
  * Error class for OrgX API errors with separate user-facing and internal messages.
  * The `message` property contains a user-friendly error that's safe to expose.
@@ -113,7 +130,6 @@ export async function callOrgxApiRaw(
     );
   }
 
-  const url = new URL(path, env.ORGX_API_URL);
   const headers = new Headers(init?.headers);
   headers.set('Authorization', `Bearer ${env.ORGX_SERVICE_KEY}`);
   if (opts?.userId && env.ORGX_INTERNAL_SECRET) {
@@ -140,119 +156,160 @@ export async function callOrgxApiRaw(
     headers.set('Content-Type', 'application/json');
   }
 
-  // IMPORTANT: do not auto-follow redirects; a common prod misconfig is redirecting /api/* to a different host.
-  const controller = new AbortController();
-  let timedOut = false;
-  const timeout = setTimeout(() => {
-    timedOut = true;
-    controller.abort(`timeout after ${ORGX_API_TIMEOUT_MS}ms`);
-  }, ORGX_API_TIMEOUT_MS);
-  const upstreamSignal = init?.signal ?? null;
-  if (upstreamSignal) {
-    if (upstreamSignal.aborted) {
-      controller.abort(upstreamSignal.reason);
-    } else {
-      upstreamSignal.addEventListener(
-        'abort',
-        () => controller.abort(upstreamSignal.reason),
-        { once: true }
-      );
-    }
-  }
+  const baseUrls = getOrgxApiBaseUrls(env);
+  let lastRetryableFailure: string | null = null;
 
-  let response: Response;
-  try {
-    response = await fetch(url.toString(), {
-      ...init,
-      headers,
-      redirect: 'manual',
-      signal: controller.signal,
-    });
-  } catch (error) {
-    if (controller.signal.aborted) {
-      if (timedOut) {
-        throw createApiError(
-          'The request took too long. Please try again.',
-          `Request timed out after ${ORGX_API_TIMEOUT_MS}ms for ${url.toString()}`
+  for (const [index, baseUrl] of baseUrls.entries()) {
+    const isFallbackAttempt = index > 0;
+    const hasFallbackRemaining = index < baseUrls.length - 1;
+    const url = new URL(path, baseUrl);
+
+    // IMPORTANT: do not auto-follow redirects; a common prod misconfig is redirecting /api/* to a different host.
+    const controller = new AbortController();
+    let timedOut = false;
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      controller.abort(`timeout after ${ORGX_API_TIMEOUT_MS}ms`);
+    }, ORGX_API_TIMEOUT_MS);
+    const upstreamSignal = init?.signal ?? null;
+    if (upstreamSignal) {
+      if (upstreamSignal.aborted) {
+        controller.abort(upstreamSignal.reason);
+      } else {
+        upstreamSignal.addEventListener(
+          'abort',
+          () => controller.abort(upstreamSignal.reason),
+          { once: true }
         );
       }
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(url.toString(), {
+        ...init,
+        headers,
+        redirect: 'manual',
+        signal: controller.signal,
+      });
+    } catch (error) {
+      clearTimeout(timeout);
+      if (controller.signal.aborted) {
+        if (timedOut) {
+          lastRetryableFailure = `Request timed out after ${ORGX_API_TIMEOUT_MS}ms for ${url.toString()}`;
+          if (hasFallbackRemaining) {
+            console.warn(`[orgx-api] ${lastRetryableFailure}; trying fallback`);
+            continue;
+          }
+          throw createApiError(
+            'The request took too long. Please try again.',
+            lastRetryableFailure
+          );
+        }
+        throw createApiError(
+          'The request was cancelled.',
+          `Request aborted for ${url.toString()}`
+        );
+      }
+      lastRetryableFailure = `Network error for ${url.toString()}: ${
+        error instanceof Error ? error.message : String(error)
+      }`;
+      if (hasFallbackRemaining) {
+        console.warn(`[orgx-api] ${lastRetryableFailure}; trying fallback`);
+        continue;
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (
+      hasFallbackRemaining &&
+      shouldTryFallbackForStatus(response.status)
+    ) {
+      lastRetryableFailure = `API ${response.status} from ${url.toString()}`;
+      console.warn(`[orgx-api] ${lastRetryableFailure}; trying fallback`);
+      continue;
+    }
+
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get('location');
       throw createApiError(
-        'The request was cancelled.',
-        `Request aborted for ${url.toString()}`
+        'Unable to connect to OrgX. The service configuration needs to be updated by your administrator.',
+        `Redirect detected (${response.status}): ${url.toString()}${
+          location ? ` → ${location}` : ''
+        }. ` +
+          'ORGX_API_URL likely points to a domain with redirect rules (e.g. apex→www).',
+        response.status
       );
     }
-    throw error;
-  } finally {
-    clearTimeout(timeout);
-  }
 
-  if (response.status >= 300 && response.status < 400) {
-    const location = response.headers.get('location');
-    throw createApiError(
-      'Unable to connect to OrgX. The service configuration needs to be updated by your administrator.',
-      `Redirect detected (${response.status}): ${url.toString()}${
-        location ? ` → ${location}` : ''
-      }. ` +
-        'ORGX_API_URL likely points to a domain with redirect rules (e.g. apex→www).',
-      response.status
-    );
-  }
+    if (!response.ok) {
+      const text = truncateForErrorBody(
+        await response.text().catch(() => 'Unable to read error body')
+      );
+      let parsedMessage: string | null = null;
+      try {
+        const parsed = JSON.parse(text) as {
+          error?: string | { code?: string; message?: string };
+          message?: string;
+        };
+        // Handle string error: { "error": "Something went wrong" }
+        if (typeof parsed?.error === 'string' && parsed.error.trim()) {
+          parsedMessage = parsed.error.trim();
+        }
+        // Handle nested error object: { "error": { "code": "...", "message": "..." } }
+        else if (
+          typeof parsed?.error === 'object' &&
+          parsed.error !== null &&
+          typeof parsed.error.message === 'string' &&
+          parsed.error.message.trim()
+        ) {
+          parsedMessage = parsed.error.message.trim();
+        }
+        // Handle top-level message: { "message": "Something went wrong" }
+        else if (typeof parsed?.message === 'string' && parsed.message.trim()) {
+          parsedMessage = parsed.message.trim();
+        }
+      } catch {
+        parsedMessage = null;
+      }
 
-  if (!response.ok) {
-    const text = truncateForErrorBody(
-      await response.text().catch(() => 'Unable to read error body')
-    );
-    let parsedMessage: string | null = null;
-    try {
-      const parsed = JSON.parse(text) as {
-        error?: string | { code?: string; message?: string };
-        message?: string;
-      };
-      // Handle string error: { "error": "Something went wrong" }
-      if (typeof parsed?.error === 'string' && parsed.error.trim()) {
-        parsedMessage = parsed.error.trim();
+      // Map status codes to user-friendly messages
+      let userMessage: string;
+      if (response.status === 401 || response.status === 403) {
+        userMessage = 'Access denied. Please check your authentication.';
+      } else if (response.status === 404) {
+        userMessage = 'The requested resource was not found.';
+      } else if (response.status >= 500) {
+        userMessage = 'OrgX is temporarily unavailable. Please try again later.';
+      } else {
+        userMessage = 'Unable to complete the request. Please try again.';
       }
-      // Handle nested error object: { "error": { "code": "...", "message": "..." } }
-      else if (
-        typeof parsed?.error === 'object' &&
-        parsed.error !== null &&
-        typeof parsed.error.message === 'string' &&
-        parsed.error.message.trim()
-      ) {
-        parsedMessage = parsed.error.message.trim();
+
+      if (parsedMessage) {
+        userMessage = parsedMessage;
       }
-      // Handle top-level message: { "message": "Something went wrong" }
-      else if (typeof parsed?.message === 'string' && parsed.message.trim()) {
-        parsedMessage = parsed.message.trim();
-      }
-    } catch {
-      parsedMessage = null;
+
+      throw createApiError(
+        userMessage,
+        `API ${response.status} from ${url.toString()}: ${text}`,
+        response.status
+      );
     }
 
-    // Map status codes to user-friendly messages
-    let userMessage: string;
-    if (response.status === 401 || response.status === 403) {
-      userMessage = 'Access denied. Please check your authentication.';
-    } else if (response.status === 404) {
-      userMessage = 'The requested resource was not found.';
-    } else if (response.status >= 500) {
-      userMessage = 'OrgX is temporarily unavailable. Please try again later.';
-    } else {
-      userMessage = 'Unable to complete the request. Please try again.';
+    if (isFallbackAttempt && lastRetryableFailure) {
+      console.warn(
+        `[orgx-api] Fallback succeeded for ${url.toString()} after ${lastRetryableFailure}`
+      );
     }
-
-    if (parsedMessage) {
-      userMessage = parsedMessage;
-    }
-
-    throw createApiError(
-      userMessage,
-      `API ${response.status} from ${url.toString()}: ${text}`,
-      response.status
-    );
+    return response;
   }
 
-  return response;
+  throw createApiError(
+    'OrgX is temporarily unavailable. Please try again later.',
+    lastRetryableFailure ?? 'No OrgX API base URL was configured'
+  );
 }
 
 export async function callOrgxApiJson(

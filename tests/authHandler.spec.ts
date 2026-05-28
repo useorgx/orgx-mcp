@@ -22,6 +22,34 @@ function createKv(initial: Record<string, string> = {}) {
 }
 
 describe('authHandler root landing page routing', () => {
+  it('reports a healthy fallback upstream when the primary API is unreachable', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('primary timeout'))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: 'healthy' })));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await authHandler.fetch(
+      new Request('https://mcp.useorgx.com/healthz?check=upstream'),
+      {
+        MCP_SERVER_URL: 'https://mcp.useorgx.com',
+        ORGX_API_URL: 'https://primary.useorgx.test',
+        ORGX_API_FALLBACK_URL: 'https://fallback.useorgx.test',
+        ORGX_WEB_URL: 'https://useorgx.com',
+      },
+      createCtx()
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      status: 'ok',
+      upstream: 'fallback_healthy',
+      apiUrl: 'https://fallback.useorgx.test',
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('serves index.html for unauthenticated browser GET / requests when assets are available', async () => {
     const assetResponse = new Response('<html>landing</html>', {
       status: 200,
