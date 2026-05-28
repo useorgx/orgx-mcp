@@ -124,7 +124,7 @@ export const DEFAULT_SKILL_CATALOG: SkillSeed[] = [
     description:
       'Require every OrgX specialist agent to finish with a concrete founder/team artifact, verification evidence, or structured blocker.',
     prompt_template:
-      'Define the agent output contract before dispatch: engineering returns a PR URL or command-level blocker; sales returns ICP, offer, sales strategy, sequence, objections, and send plan; marketing returns campaign asset and channel hypothesis; product returns success metrics and decision record; design returns audit/spec/tokens; operations returns runbook, budget report, or incident state; orchestrator returns next initiative, owners, dependencies, and acceptance gates. Tie every artifact to the founder or team outcome it advances. Do not mark done with prose alone.',
+      'Define the agent output contract before dispatch: engineering returns a PR URL or command-level blocker; sales returns ICP, offer, sales strategy, sequence, objections, conversion gates, and send plan; marketing returns positioning, proof distribution, interview/PR mechanics, campaign asset, and channel hypothesis; product returns success metrics and decision record; design returns audit/spec/tokens; operations returns runbook, budget report, or incident state; orchestrator returns next initiative, owners, dependencies, and acceptance gates. Tie every artifact to the founder or team outcome it advances. Do not mark done with prose alone.',
     trigger_keywords: [
       'agent output',
       'artifact',
@@ -157,7 +157,7 @@ export const DEFAULT_SKILL_CATALOG: SkillSeed[] = [
     description:
       'Shape OrgX agent work around the practical artifacts a founder or operating team needs next.',
     prompt_template:
-      'Before delegating or completing work, decide whether the user is an early founder, existing founder-led company, or operating team. Return the next valuable initiative and the concrete artifact that would move the company forward now: engineering PR/deploy proof, sales strategy with ICP/offer/list/sequence, customer discovery synthesis, pricing or packaging hypothesis, weekly operator brief, product decision record, launch campaign, design audit/spec, operations runbook, or budget/cost envelope. Include owner, due date or review point, verification receipt, and the business outcome expected. Use routing controls only when requested or when validation intentionally constrains the run; otherwise let OrgX auto-route by task complexity.',
+      'Before delegating or completing work, decide whether the user is an early founder, existing founder-led company, or operating team. Return the next valuable initiative and the concrete artifact that would move the company forward now: engineering PR/deploy proof, sales strategy with ICP/offer/list/sequence/conversion gates, positioning brief, proof distribution plan, interview/PR mechanics, customer discovery synthesis, pricing or packaging hypothesis, weekly operator brief, product decision record, launch campaign, design audit/spec, operations runbook, or budget/cost envelope. Include owner, due date or review point, verification receipt, and the business outcome expected. Use routing controls only when requested or when validation intentionally constrains the run; otherwise let OrgX auto-route by task complexity.',
     trigger_keywords: [
       'founder',
       'team',

@@ -3,6 +3,49 @@ export type BootstrapSafeFirstCall = {
   args: Record<string, unknown>;
 };
 
+export type BootstrapSessionContext = {
+  workspaceId?: string;
+  workspaceName?: string;
+  initiativeId?: string;
+};
+
+function nonEmptyString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0
+    ? value.trim()
+    : null;
+}
+
+export function resolveBootstrapSessionContext(
+  args: Record<string, unknown>,
+  current: BootstrapSessionContext,
+  fetchedWorkspaceName?: string | null
+): { context: BootstrapSessionContext; changed: boolean; requestedWorkspaceId: string | null } {
+  const requestedWorkspaceId =
+    nonEmptyString(args.workspace_id) ?? nonEmptyString(args.command_center_id);
+  if (!requestedWorkspaceId) {
+    return { context: current, changed: false, requestedWorkspaceId: null };
+  }
+
+  const nextWorkspaceName =
+    fetchedWorkspaceName ??
+    (current.workspaceId === requestedWorkspaceId
+      ? current.workspaceName
+      : undefined);
+  const context = {
+    ...current,
+    workspaceId: requestedWorkspaceId,
+    workspaceName: nextWorkspaceName,
+  };
+
+  return {
+    context,
+    changed:
+      current.workspaceId !== context.workspaceId ||
+      current.workspaceName !== context.workspaceName,
+    requestedWorkspaceId,
+  };
+}
+
 export const V2_PUBLIC_TOOL_IDS = [
   'orgx_act',
   'orgx_attach',

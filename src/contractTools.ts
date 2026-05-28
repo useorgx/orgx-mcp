@@ -132,10 +132,10 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     title: 'Write OrgX Entity',
     description:
       'Create or update one OrgX record (snake_case fields).\n\n' +
-      'Create needs: initiative title; workstream title+initiative_id; milestone title+workstream_id; task title+workstream_id; decision title; blocker run_id+description in metadata; skill/studio records title.\n\n' +
-      `Artifacts need entity_type+entity_id (or task_id), artifact_type, and artifact_url|external_url|preview_markdown. Practical founder/team artifact examples: ${FOUNDER_TEAM_ARTIFACT_TYPE_SUMMARY}.\n\n` +
-      'Update REQUIRES id + fields patch. Priority/due_date/status aliases normalize server-side.\n\n' +
-      'USE WHEN: adding or editing durable OrgX records. NEXT: orgx_act to launch/complete records, or orgx_submit_receipt when the write is completion proof. DO NOT USE for lifecycle state changes or artifact-only proof; use orgx_act or orgx_attach.',
+      'Operations: create (default) uses per-type fields; update REQUIRES id + fields.\n\n' +
+      'Create requirements: initiative title/name + workspace_id + goal_ids when the workspace enforces primary objectives; workstream title + initiative_id; milestone title + workstream_id; task title + workstream_id + milestone_id when the workspace requires backlog milestones; decision title; artifact target + artifact_type + artifact_url/external_url; blocker run_id + metadata.description; skill/studio records title.\n\n' +
+      'Initiative gotchas: priority only accepts low|medium|high|urgent, not portfolio labels such as active/critical/maintenance/hold; put portfolio urgency in metadata/priority_rank. due_date is not accepted on initiative create in current workspaces; put target dates in metadata until a typed initiative schedule field exists.\n\n' +
+      'USE WHEN: adding/editing records. NEXT: orgx_act to launch/complete the record. DO NOT USE for lifecycle changes — use orgx_act or orgx_attach.',
     inputSchema: {
       operation: z.enum(['create', 'update']).optional().describe('Write operation. Defaults to "create". Set "update" (with id + fields) to patch an existing entity.'),
       type: z.string().min(1).describe('Entity type to write: task, milestone, decision, artifact, skill, blocker, studio_brand, studio_content, initiative, workstream, or objective. See top-level description for per-type required fields.'),
@@ -147,19 +147,19 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       fields: z.record(z.unknown()).optional().describe('REQUIRED when operation="update". Map of entity fields to patch (only include fields you want to change).'),
       initiative_id: z.string().optional().describe('Parent initiative UUID. REQUIRED when type="workstream". Optional context for tasks/milestones/artifacts to associate them with an initiative.'),
       workstream_id: z.string().optional().describe('Parent workstream UUID. REQUIRED when type="milestone" or type="task".'),
-      milestone_id: z.string().optional().describe('Optional parent milestone UUID for tasks; auto-resolved server-side from workstream context when omitted.'),
+      milestone_id: z.string().optional().describe('Parent milestone UUID for tasks. Some workspaces require an explicit backlog milestone under the workstream; create/resolve that milestone first instead of relying on auto-resolution.'),
       workspace_id: z.string().optional().describe('Workspace UUID. REQUIRED when the MCP session does not already carry workspace context (resolve via list_entities type=command_center or orgx_inspect type=workspace).'),
       goal_ids: z.array(z.string()).optional().describe('Objective UUIDs for initiative/workstream/milestone/task creation. REQUIRED when the workspace enforces a primary objective. Resolve via orgx_inspect type=objective.'),
-      priority: z.enum(['low', 'medium', 'high', 'urgent']).optional().describe('Priority. "urgent" is normalized to "high" server-side.'),
-      due_date: z.string().optional().describe('Due date as YYYY-MM-DD.'),
+      priority: z.enum(['low', 'medium', 'high', 'urgent']).optional().describe('Record urgency. Only low|medium|high|urgent are accepted here; do not send portfolio/live labels such as active, critical, maintenance, or hold. "urgent" is normalized to "high" server-side.'),
+      due_date: z.string().optional().describe('Due date as YYYY-MM-DD for supported entity types. Do not send due_date when type="initiative"; put initiative target dates in metadata.'),
       status: z.string().optional().describe('Initial workflow status; common agent aliases such as "active" are normalized per entity type ("active" → "in_progress").'),
       entity_type: z.string().optional().describe('REQUIRED when type="artifact". Entity type to attach the artifact to (initiative, workstream, milestone, task, or decision).'),
       entity_id: z.string().optional().describe('REQUIRED when type="artifact" (unless task_id is provided). UUID of the entity to attach the artifact to.'),
       task_id: z.string().optional().describe('Shortcut for attaching an artifact directly to a task. Use instead of entity_type+entity_id when type="artifact" and the target is a task.'),
       artifact_type: z.string().optional().describe(`REQUIRED when type="artifact". Artifact type code. Preferred founder/team examples: ${FOUNDER_TEAM_ARTIFACT_TYPE_SUMMARY}. Custom codes remain accepted.`),
-      artifact_url: z.string().optional().describe('Internal artifact URL (e.g. /api/artifacts/...). One of artifact_url, external_url, or preview_markdown is required when type="artifact".'),
-      external_url: z.string().optional().describe('External artifact URL (https://). One of artifact_url, external_url, or preview_markdown is required when type="artifact".'),
-      preview_markdown: z.string().optional().describe('Inline markdown preview of artifact content. One of artifact_url, external_url, or preview_markdown is required when type="artifact".'),
+      artifact_url: z.string().optional().describe('Internal artifact URL (e.g. /api/artifacts/...). Either artifact_url or external_url is required when type="artifact"; preview_markdown alone is not accepted.'),
+      external_url: z.string().optional().describe('External artifact URL (https://). Either artifact_url or external_url is required when type="artifact"; preview_markdown alone is not accepted.'),
+      preview_markdown: z.string().optional().describe('Optional inline markdown preview shown with the linked artifact. Supporting context only; it does not replace artifact_url/external_url.'),
       run_id: z.string().optional().describe('REQUIRED when type="blocker". Agent run UUID the blocker applies to.'),
       step_id: z.string().optional().describe('Optional agent run step UUID for blocker creation.'),
       blocker_type: z.string().optional().describe('Blocker category/type when type="blocker" (e.g. "missing_input", "permission", "external_dependency").'),
@@ -182,7 +182,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_attach',
     title: 'Attach OrgX Artifact',
     description:
-      'Attach a durable artifact, proof URL, or preview to an existing OrgX entity. USE WHEN: saving evidence, PRs, documents, reports, screenshots, or external artifacts. For founder/team work, prefer practical artifact_type codes such as ' +
+      'Attach a durable artifact or proof URL to an existing OrgX entity. Requires artifact_url or external_url; preview_markdown is supporting context only. USE WHEN: saving evidence, PRs, documents, reports, screenshots, or external artifacts. For founder/team work, prefer practical artifact_type codes such as ' +
       FOUNDER_TEAM_ARTIFACT_TYPE_SUMMARY +
       '. Include business_outcome, owner/review_date, and verification when the artifact should close agent work. NEXT: use orgx_submit_receipt to close attribution/quality loops or orgx_act to complete with proof. DO NOT USE WHEN: creating generic entities; use orgx_write.',
     inputSchema: {
@@ -190,10 +190,10 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       id: z.string().min(1).describe('Target entity UUID or short ID prefix'),
       name: z.string().min(1).describe('Artifact title'),
       artifact_type: z.string().min(1).describe(`Artifact type code. Preferred founder/team examples: ${FOUNDER_TEAM_ARTIFACT_TYPE_SUMMARY}. Custom codes remain accepted.`),
-      artifact_url: z.string().optional().describe('Internal artifact URL'),
-      external_url: z.string().optional().describe('External artifact URL'),
+      artifact_url: z.string().optional().describe('Internal artifact URL. REQUIRED unless external_url is provided; preview_markdown alone is rejected.'),
+      external_url: z.string().optional().describe('External artifact URL. REQUIRED unless artifact_url is provided; preview_markdown alone is rejected.'),
       description: z.string().optional().describe('Artifact description'),
-      preview_markdown: z.string().optional().describe('Markdown preview'),
+      preview_markdown: z.string().optional().describe('Optional markdown preview shown with the linked artifact. Does not replace artifact_url/external_url.'),
       status: z.enum(['draft', 'in_review', 'approved', 'changes_requested', 'superseded', 'archived']).optional().describe('Artifact workflow status'),
       metadata: z.record(z.unknown()).optional().describe('Artifact metadata'),
       agent_type: z.string().optional().describe('Agent/domain that produced the artifact, such as engineering, sales, product, design, operations, marketing, or orchestrator. Stored under metadata.artifact_contract.'),
@@ -218,10 +218,10 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     description:
       'Run a lifecycle, validation, completion, or proof action on one OrgX entity. Per-action required inputs:\n' +
       '  • update → "fields" patch object.\n' +
-      '  • complete_with_proof, ship_batch → "artifact" (artifact_type + url/preview).\n' +
+      '  • complete_with_proof, ship_batch → "artifact" (artifact_type + artifact_url/external_url; preview_markdown optional).\n' +
       '  • validate (studio) → "spec" payload.\n' +
       '  • block, flag_risk, decline, cancel, delete → "note" strongly recommended.\n' +
-      '  • dry_run=true previews any lifecycle action without mutating where supported.\n\n' +
+      '  • dry_run=true previews update/delete and other supported lifecycle actions without mutating; update dry-runs must return would_update instead of delegating to orgx_write.\n\n' +
       'Allowed (type → action) pairs (others return an error):\n' +
       '  initiative: launch|pause|resume|complete|archive|update|delete\n' +
       '  milestone: start|complete|flag_risk|cancel|ship_batch|update|delete\n' +
@@ -259,10 +259,10 @@ export const CONTRACT_TOOL_DEFINITIONS = [
         .describe('Lifecycle action to execute on the target entity. Must be valid for the given type — see tool description for the (type → action) matrix.'),
       fields: z.record(z.unknown()).optional().describe('REQUIRED when action=update. Map of entity fields to patch (e.g. { name?: string, description?: string, owner_id?: string, status?: string, due_date?: string }). Only include fields you want to change.'),
       note: z.string().optional().describe('Strongly recommended for destructive or blocking actions (block, flag_risk, decline, supersede, cancel, delete). Free-text rationale shown in audit history and downstream agent context.'),
-      dry_run: z.boolean().optional().describe('Preview risky actions without mutating where supported. Returns the diff/plan without applying.'),
+      dry_run: z.boolean().optional().describe('Preview update/delete or supported lifecycle actions without mutating. For action=update this returns would_update and must not delegate to orgx_write.'),
       force: z.boolean().optional().describe('Force action where server supports override semantics (skips pre-flight checks).'),
       spec: z.record(z.unknown()).optional().describe('REQUIRED when action=validate. Spec payload for studio validation (shape varies per studio entity subtype).'),
-      artifact: z.record(z.unknown()).optional().describe(`REQUIRED when action=complete_with_proof or action=ship_batch. Proof artifact payload. Expected shape: { artifact_type: string, artifact_url?: string, external_url?: string, preview_markdown?: string, name?: string, description?: string }. Preferred founder/team artifact examples: ${FOUNDER_TEAM_ARTIFACT_TYPE_SUMMARY}.`),
+      artifact: z.record(z.unknown()).optional().describe(`REQUIRED when action=complete_with_proof or action=ship_batch. Proof artifact payload. Expected shape: { artifact_type: string, artifact_url?: string, external_url?: string, preview_markdown?: string, name?: string, description?: string }. Either artifact_url or external_url is required; preview_markdown alone is rejected. Preferred founder/team artifact examples: ${FOUNDER_TEAM_ARTIFACT_TYPE_SUMMARY}.`),
       verification: z.array(z.string()).optional().describe('Optional list of verification evidence URLs/IDs for completion flows.'),
       quality_score: z.number().min(0).max(5).optional().describe('Quality score (0-5) attached to the action when used in proof/completion flows.'),
       idempotency_key: z.string().optional().describe('Optional client-supplied idempotency key for safe retries. Same key returns the same result without re-executing.'),
@@ -295,6 +295,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       plan_content: z.string().optional().describe('Current/final plan markdown. REQUIRED when action=improve (the draft to critique) or action=complete (the final accepted plan).'),
       edit_summary: z.string().optional().describe('One-line description of the change being recorded. REQUIRED when action=record_edit.'),
       attach_to: z.record(z.unknown()).optional().describe('Optional target to link the completed plan to when action=complete. Shape: { entity_type: "initiative" | "workstream" | "task", entity_id: string }.'),
+      workspace_id: z.string().optional().describe('Workspace UUID to scope action=start plan sessions. Defaults to current session workspace when omitted.'),
       idempotency_key: z.string().optional().describe('Optional idempotency key for safe retries. Same key returns the same result without creating duplicate session state.'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
@@ -311,9 +312,9 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     title: 'Spawn OrgX Agent Work',
     description:
       'Guard, estimate, classify, spawn, or hand off specialist agent work.\n\n' +
-      'Inputs: spawn from task REQUIRES task_id; ad-hoc spawn REQUIRES title+instructions and should include agent_type. handoff REQUIRES task_id+agent_type. guard REQUIRES agent_type. classify REQUIRES title OR task_id. action="estimate" returns candidate routes and cost context without dispatching work.\n\n' +
-      'Routing: omit model_tier/provider/model for OrgX auto-routing from task complexity and workspace policy. Set model_tier, provider, model, budget_mode, or max_cost_usd only when the user, policy, or validation plan constrains routing. Use model_tier="standard" plus budget_mode="cheapest_valid" for controlled reliability canaries before escalating.\n\n' +
-      'USE WHEN: delegating work to an OrgX agent, handing off an existing task, or checking routing/cost before delegation. NEXT: monitor via orgx_inspect/orgx_search, then orgx_submit_receipt with artifact, quality, cost, and model proof. DO NOT USE WHEN: only creating a task row; use orgx_write.',
+      'Per-action requirements: spawn from an existing task REQUIRES task_id; ad-hoc spawn REQUIRES title + instructions and should include agent_type. handoff REQUIRES task_id + agent_type. guard REQUIRES agent_type. classify REQUIRES title or task_id. action="estimate" REQUIRES title or task_id, returns candidate routes/cost context, and runs without dispatching work.\n\n' +
+      'Routing policy: omit model_tier/provider/model for OrgX auto-routing. Set model_tier, provider, model, budget_mode, or max_cost_usd only when the user, policy, or verification plan constrains routing. For controlled reliability validation, use model_tier="standard" and budget_mode="cheapest_valid".\n\n' +
+      'USE WHEN: explicitly delegating work to an OrgX agent or checking if delegation is allowed. NEXT: use orgx_inspect or orgx_search to monitor the delegated work, then orgx_submit_receipt for proof. DO NOT USE WHEN: only creating a task row; use orgx_write.',
     inputSchema: {
       action: z.enum(['guard', 'estimate', 'spawn', 'handoff', 'classify']).optional().describe('Spawn operation. Defaults to "spawn". Use estimate for pre-spawn cost/routing context without dispatching work. See top-level description for per-action required fields.'),
       title: z.string().optional().describe('Task title. REQUIRED for ad-hoc spawn (action=spawn without task_id) or action=classify without task_id. Used as the human-readable label of the spawned task.'),
@@ -797,59 +798,269 @@ export const CONTRACT_TOOL_DEFINITIONS = [
 ] as const;
 
 export const INLINE_TOOL_CONTRACTS = {
+  get_org_snapshot: {
+    id: 'get_org_snapshot',
+    title: 'Fetch Organization Snapshot',
+    description:
+      'Inline worker tool for reading an organization-wide execution snapshot across initiatives, work, blockers, and context.',
+    inputSchema: {
+      view: z.enum(['summary', 'detailed']).optional().describe('Response view mode. Defaults to summary.'),
+      initiative_status: z.enum(['active', 'paused', 'all']).optional().describe('Initiative status filter. Defaults to active.'),
+      include: z.array(z.enum(['initiatives', 'milestones', 'tasks'])).optional().describe('Detailed mode sections to include.'),
+      limit: z.number().min(1).max(100).optional().describe('Maximum initiatives to return.'),
+      cursor: z.string().optional().describe('Pagination cursor from a previous response.'),
+    },
+  },
+  account_status: {
+    id: 'account_status',
+    title: 'Get Account Status',
+    description:
+      'Inline worker tool for reading the authenticated user account tier, billing status, and usage snapshot.',
+    inputSchema: {
+      user_id: z.string().optional().describe('Optional user ID override.'),
+    },
+  },
+  account_upgrade: {
+    id: 'account_upgrade',
+    title: 'Upgrade Account',
+    description:
+      'Inline worker tool for creating account upgrade or agent credit checkout flows.',
+    inputSchema: {
+      target_plan: z.enum(['pro', 'enterprise']).optional().describe('Target account plan. Defaults to pro.'),
+      billing_cycle: z.enum(['monthly', 'annual']).optional().describe('Billing cadence for self-serve checkout.'),
+      credit_pack: z.enum(['credits_500', 'credits_2000']).optional().describe('Optional agent credit pack to buy instead of upgrading a plan.'),
+      user_id: z.string().optional().describe('Optional user ID override.'),
+    },
+  },
+  account_usage_report: {
+    id: 'account_usage_report',
+    title: 'Get Account Usage Report',
+    description:
+      'Inline worker tool for reading detailed usage, quota, billing-period, and overage signals.',
+    inputSchema: {
+      user_id: z.string().optional().describe('Optional user ID override.'),
+    },
+  },
   list_entities: {
     id: 'list_entities',
     title: 'List Entities',
     description:
       'Inline worker tool for listing OrgX entities with filtering, pagination, and optional hydration.',
+    inputSchema: {
+      type: z.string().optional().describe('Entity type to list, such as initiative, workstream, milestone, task, decision, artifact, objective, or agent.'),
+      id: z.string().optional().describe('Exact entity ID filter.'),
+      limit: z.number().min(1).max(100).optional().describe('Maximum rows to return.'),
+      offset: z.number().min(0).optional().describe('Pagination offset.'),
+      order_by: z.enum(['created_at', 'updated_at', 'sequence', 'due_date', 'priority', 'status', 'title', 'name', 'natural']).optional().describe('Sort field.'),
+      order_direction: z.enum(['asc', 'desc']).optional().describe('Sort direction.'),
+      status: z.string().optional().describe('Optional status filter.'),
+      initiative_id: z.string().optional().describe('Optional initiative scope.'),
+      workspace_id: z.string().optional().describe('Optional workspace scope.'),
+      hydrate_context: z.boolean().optional().describe('Hydrate linked context when an ID is provided.'),
+      fields: z.array(z.string()).optional().describe('Compact field list to return.'),
+    },
+  },
+  comment_on_entity: {
+    id: 'comment_on_entity',
+    title: 'Comment On Entity',
+    description:
+      'Inline worker tool for adding threaded comments, concerns, progress notes, or handoff notes to an entity.',
+    inputSchema: {
+      entity_type: z.enum(['initiative', 'workstream', 'milestone', 'task', 'decision']).describe('Entity type to comment on.'),
+      entity_id: z.string().min(1).describe('Entity ID to attach the comment to.'),
+      body: z.string().min(1).max(4000).describe('Comment body in plain text or markdown.'),
+      parent_comment_id: z.string().uuid().optional().describe('Optional parent comment ID when replying in-thread.'),
+      comment_type: z.enum(['observation', 'concern', 'suggestion', 'progress_note', 'blocker_flag', 'question', 'handoff_note', 'cross_reference', 'note']).optional().describe('Optional comment classification.'),
+      severity: z.enum(['info', 'low', 'medium', 'high', 'critical']).optional().describe('Optional severity for triage.'),
+      tags: z.array(z.string()).optional().describe('Optional tags.'),
+      metadata: z.record(z.unknown()).optional().describe('Optional structured metadata.'),
+      user_id: z.string().optional().describe('Optional user ID override.'),
+    },
+  },
+  list_entity_comments: {
+    id: 'list_entity_comments',
+    title: 'List Entity Comments',
+    description:
+      'Inline worker tool for reading the comment thread attached to an entity.',
+    inputSchema: {
+      entity_type: z.enum(['initiative', 'workstream', 'milestone', 'task', 'decision']).describe('Entity type to read comments for.'),
+      entity_id: z.string().min(1).describe('Entity ID whose comment thread should be returned.'),
+      limit: z.number().min(1).max(100).optional().describe('Maximum comments to return.'),
+    },
+  },
+  batch_create_entities: {
+    id: 'batch_create_entities',
+    title: 'Batch Create Entities',
+    description:
+      'Inline worker tool for creating multiple related entities with ref-based dependency resolution.',
+    inputSchema: {
+      entities: z.array(z.record(z.unknown())).min(1).max(100).describe('Entity payloads. Each item must include type and required fields.'),
+      owner_id: z.string().optional().describe('Optional owner ID applied when item owner is omitted.'),
+      user_id: z.string().optional().describe('Deprecated alias for owner_id.'),
+      continue_on_error: z.boolean().optional().describe('Continue creating remaining entities after an error.'),
+      concurrency: z.number().min(1).max(20).optional().describe('Parallel creation concurrency.'),
+    },
+  },
+  batch_delete_entities: {
+    id: 'batch_delete_entities',
+    title: 'Batch Delete Entities',
+    description:
+      'Inline worker tool for permanently deleting multiple entities in one authenticated call.',
+    inputSchema: {
+      entities: z.array(z.object({ type: lifecycleEntityTypeEnum.describe('Entity type'), id: z.string().min(1).describe('Entity ID') })).min(1).max(100).describe('Entities to delete.'),
+      concurrency: z.number().min(1).max(20).optional().describe('Parallel deletion concurrency.'),
+      continue_on_error: z.boolean().optional().describe('Continue deleting remaining entities after an error.'),
+      note: z.string().optional().describe('Optional reason note.'),
+    },
+  },
+  batch_action: {
+    id: 'batch_action',
+    title: 'Batch Entity Actions',
+    description:
+      'Inline worker tool for running lifecycle actions against multiple entities in one authenticated call.',
+    inputSchema: {
+      actions: z.array(z.object({
+        type: lifecycleEntityTypeEnum.describe('Entity type'),
+        id: z.string().min(1).describe('Entity ID or accepted short prefix.'),
+        action: z.string().min(1).describe('Lifecycle action, such as pause, launch, complete, resume, or block.'),
+        note: z.string().optional().describe('Optional action note.'),
+        force: z.boolean().optional().describe('Force action when supported.'),
+      })).min(1).max(100).describe('Lifecycle actions to execute.'),
+      concurrency: z.number().min(1).max(20).optional().describe('Parallel action concurrency.'),
+      continue_on_error: z.boolean().optional().describe('Continue after an action error.'),
+    },
   },
   create_entity: {
     id: 'create_entity',
     title: 'Create Entity',
     description:
       'Inline worker power tool for creating any entity type. Prefer create_task, create_milestone, or create_decision for common flows.',
+    inputSchema: {
+      type: z.string().min(1).describe('Entity type to create.'),
+      title: z.string().optional().describe('Display title/name for the entity.'),
+      name: z.string().optional().describe('Alias for title.'),
+      summary: z.string().optional().describe('Short summary.'),
+      description: z.string().optional().describe('Longer description.'),
+      workspace_id: z.string().optional().describe('Workspace scope.'),
+      initiative_id: z.string().optional().describe('Parent initiative ID.'),
+      workstream_id: z.string().optional().describe('Parent workstream ID.'),
+      milestone_id: z.string().optional().describe('Parent milestone ID.'),
+      metadata: z.record(z.unknown()).optional().describe('Type-specific metadata.'),
+    },
   },
   update_entity: {
     id: 'update_entity',
     title: 'Update Entity',
     description:
       'Inline worker tool for updating mutable fields on an existing entity.',
+    inputSchema: {
+      type: z.string().min(1).describe('Entity type to update.'),
+      id: z.string().min(1).describe('Entity ID to update.'),
+      fields: z.record(z.unknown()).optional().describe('Fields to patch.'),
+      title: z.string().optional().describe('Optional title patch.'),
+      name: z.string().optional().describe('Optional name patch.'),
+      description: z.string().optional().describe('Optional description patch.'),
+      status: z.string().optional().describe('Optional status patch.'),
+    },
   },
   entity_action: {
     id: 'entity_action',
     title: 'Entity Action',
     description:
       'Inline worker tool for lifecycle actions, attachments, and specialized operations like studio validation.',
+    inputSchema: {
+      type: lifecycleEntityTypeEnum.describe('Target entity type.'),
+      id: z.string().min(1).describe('Target entity ID or accepted short prefix.'),
+      action: z.string().optional().describe('Lifecycle action. Omit to list available actions.'),
+      fields: z.record(z.unknown()).optional().describe('Fields patch for action=update.'),
+      note: z.string().optional().describe('Optional action note.'),
+      artifact_type: z.string().optional().describe('Artifact type for attach/proof actions.'),
+      artifact_url: z.string().optional().describe('Internal artifact URL for attach/proof actions.'),
+      external_url: z.string().optional().describe('External artifact URL for attach/proof actions.'),
+      preview_markdown: z.string().optional().describe('Optional markdown preview for linked artifact.'),
+      metadata: z.record(z.unknown()).optional().describe('Optional metadata payload.'),
+      force: z.boolean().optional().describe('Force action when supported.'),
+      dry_run: z.boolean().optional().describe('Preview action when supported.'),
+    },
   },
   scaffold_initiative: {
     id: 'scaffold_initiative',
     title: 'Scaffold Initiative',
     description:
       'Inline worker tool for drafting, creating, or launching a full initiative hierarchy in one call.',
+    inputSchema: {
+      title: z.string().min(1).describe('Initiative title.'),
+      summary: z.string().optional().describe('Initiative summary.'),
+      description: z.string().optional().describe('Initiative description.'),
+      workspace_id: z.string().optional().describe('Workspace UUID; required unless session context provides one.'),
+      objective_ids: z.array(z.string()).optional().describe('Preferred objective UUIDs.'),
+      goal_ids: z.array(z.string()).optional().describe('Objective UUID alias for API compatibility.'),
+      mode: z.enum(['draft', 'scaffold', 'launch']).optional().describe('Draft validates, scaffold creates records, launch creates and starts follow-up work.'),
+      workstreams: z.array(z.record(z.unknown())).optional().describe('Nested workstream hierarchy.'),
+      idempotency_key: z.string().optional().describe('Stable retry key.'),
+    },
   },
   get_task_with_context: {
     id: 'get_task_with_context',
     title: 'Get Task With Context',
     description:
       'Inline worker tool for loading a task with hydrated decisions, artifacts, entities, and plan-session context.',
+    inputSchema: {
+      task_id: z.string().min(1).describe('Task UUID or accepted short prefix.'),
+      include_artifacts: z.boolean().optional().describe('Include linked artifacts.'),
+      include_decisions: z.boolean().optional().describe('Include linked decisions.'),
+      include_context: z.boolean().optional().describe('Include broader execution context.'),
+    },
   },
-  workspace: {
-    id: 'workspace',
-    title: 'Workspace',
+  verify_entity_completion: {
+    id: 'verify_entity_completion',
+    title: 'Verify Entity Completion',
     description:
-      'Inline worker tool for creating, listing, reading, and switching workspace context.',
+      'Inline worker tool for checking hierarchy and proof-chain readiness before completing an entity.',
+    inputSchema: {
+      type: lifecycleEntityTypeEnum.describe('Entity type to verify.'),
+      id: z.string().min(1).describe('Entity ID to verify.'),
+    },
   },
-  configure_org: {
-    id: 'configure_org',
-    title: 'Configure Organization',
+  resume_agent_run: {
+    id: 'resume_agent_run',
+    title: 'Resume Agent Run',
     description:
-      'Inline worker tool for setup status, agent config, and organization policy changes.',
+      'Inline worker tool for resuming a paused or TTL auto-closed agent run.',
+    inputSchema: {
+      run_id: z.string().min(1).describe('Agent run UUID to resume.'),
+      note: z.string().optional().describe('Optional audit note.'),
+    },
   },
-  stats: {
-    id: 'stats',
-    title: 'Stats',
+  review_artifact: {
+    id: 'review_artifact',
+    title: 'Review Artifact',
     description:
-      'Inline worker tool for personal or session usage statistics.',
+      'Inline app tool for loading the next artifact awaiting review into the artifact-review widget.',
+    inputSchema: {
+      artifact_id: z.string().optional().describe('Specific artifact ID to review.'),
+      entity_id: z.string().optional().describe('Optional entity scope for artifacts.'),
+      workspace_id: z.string().optional().describe('Workspace UUID. Defaults to session workspace.'),
+    },
+  },
+  save_artifact: {
+    id: 'save_artifact',
+    title: 'Save Artifact',
+    description:
+      'Deprecated inline compatibility wrapper that attaches a linked artifact to an entity; prefer entity_action action=attach.',
+    inputSchema: {
+      title: z.string().describe('Artifact title.'),
+      type: z.string().optional().describe('Legacy artifact category or artifact type code.'),
+      artifact_type: z.string().optional().describe('Preferred artifact type code.'),
+      entity_type: z.enum(['project', 'initiative', 'workstream', 'milestone', 'task', 'decision']).optional().describe('Target entity type.'),
+      entity_id: z.string().optional().describe('Target entity UUID.'),
+      taskId: z.string().optional().describe('Legacy task target shortcut.'),
+      initiativeId: z.string().optional().describe('Legacy initiative target shortcut.'),
+      content: z.string().optional().describe('Optional content stored as preview_markdown.'),
+      artifact_url: z.string().optional().describe('Internal artifact URL; required unless external_url is provided.'),
+      external_url: z.string().optional().describe('External artifact URL; required unless artifact_url is provided.'),
+      metadata: z.record(z.unknown()).optional().describe('Optional metadata.'),
+    },
   },
 } as const;
 

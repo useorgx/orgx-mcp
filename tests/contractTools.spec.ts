@@ -1,10 +1,30 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve as resolvePath } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 
 import {
   CONTRACT_TOOL_DEFINITIONS,
   getKnownToolContract,
+  getKnownToolContracts,
 } from '../src/contractTools';
+import { CLIENT_INTEGRATION_TOOL_DEFINITIONS } from '../src/toolDefinitions';
+
+function collectInlineRegisteredToolIds(): string[] {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const indexPath = resolvePath(here, '..', 'src', 'index.ts');
+  const src = readFileSync(indexPath, 'utf8');
+  const ids = new Set<string>();
+  const inlineRe = /this\.server\.registerTool\(\s*['"]([a-zA-Z0-9_-]+)['"]/g;
+  const appRe = /registerAppTool\(\s*this\.server,\s*['"]([a-zA-Z0-9_-]+)['"]/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = inlineRe.exec(src))) ids.add(match[1]!);
+  while ((match = appRe.exec(src))) ids.add(match[1]!);
+
+  return [...ids].sort();
+}
 
 describe('contract tool catalog', () => {
   it('includes bootstrap, describe, and wrapper tools', () => {
@@ -28,6 +48,60 @@ describe('contract tool catalog', () => {
     });
   });
 
+  it('can describe every inline-registered tool', () => {
+    const missing = collectInlineRegisteredToolIds().filter(
+      (toolId) => !getKnownToolContract(toolId)
+    );
+
+    expect(
+      missing,
+      `Inline tools missing orgx_describe_tool coverage: ${missing.join(', ')}`
+    ).toEqual([]);
+  });
+
+  it('describes each known tool id exactly once', () => {
+    const knownContracts = getKnownToolContracts();
+    const duplicateIds = knownContracts
+      .map((tool) => tool.id)
+      .filter((toolId, index, ids) => ids.indexOf(toolId) !== index)
+      .sort();
+
+    expect(
+      duplicateIds,
+      `Duplicate orgx_describe_tool contracts: ${duplicateIds.join(', ')}`
+    ).toEqual([]);
+  });
+
+  it('does not shadow inline-registered tools with duplicate descriptors', () => {
+    const knownContracts = getKnownToolContracts();
+    const shadowedInlineTools = collectInlineRegisteredToolIds()
+      .map((toolId) => ({
+        toolId,
+        count: knownContracts.filter((tool) => tool.id === toolId).length,
+      }))
+      .filter(({ count }) => count !== 1);
+
+    expect(
+      shadowedInlineTools,
+      `Inline tools with duplicate/missing descriptors: ${shadowedInlineTools
+        .map(({ toolId, count }) => `${toolId}:${count}`)
+        .join(', ')}`
+    ).toEqual([]);
+  });
+
+  it('exposes non-empty input contracts for every inline-registered tool', () => {
+    const missingInputContracts = collectInlineRegisteredToolIds()
+      .map((toolId) => getKnownToolContract(toolId))
+      .filter((contract) => contract?.source === 'inline')
+      .filter((contract) => !contract?.inputSchema || Object.keys(contract.inputSchema).length === 0)
+      .map((contract) => contract?.id);
+
+    expect(
+      missingInputContracts,
+      `Inline tools missing input contracts: ${missingInputContracts.join(', ')}`
+    ).toEqual([]);
+  });
+
   it('exposes proof_profile on create_task and create_milestone', () => {
     for (const toolId of ['create_task', 'create_milestone'] as const) {
       const tool = CONTRACT_TOOL_DEFINITIONS.find((t) => t.id === toolId);
@@ -48,5 +122,73 @@ describe('contract tool catalog', () => {
       // Invalid values are rejected.
       expect(() => schema.proof_profile.parse('invalid')).toThrow();
     }
+  });
+
+  it('allows planning sessions to be scoped to a workspace', () => {
+    const orgxPlan = CONTRACT_TOOL_DEFINITIONS.find((t) => t.id === 'orgx_plan');
+    expect(orgxPlan, 'orgx_plan should be registered').toBeDefined();
+    const orgxPlanSchema = orgxPlan!.inputSchema as Record<string, z.ZodTypeAny>;
+    expect(orgxPlanSchema.workspace_id.description).toContain('Workspace UUID');
+    expect(orgxPlanSchema.workspace_id.description).toContain('current session workspace');
+  });
+
+  it('documents live initiative create requirements that prevent known write failures', () => {
+    const tool = CONTRACT_TOOL_DEFINITIONS.find((t) => t.id === 'orgx_write');
+    expect(tool, 'orgx_write should be registered').toBeDefined();
+
+    const description = tool!.description;
+    const schema = tool!.inputSchema as Record<string, z.ZodTypeAny>;
+
+    expect(description).toContain('workspace_id');
+    expect(description).toContain('goal_ids');
+    expect(description).toContain('primary objectives');
+    expect(description).toContain('due_date is not accepted on initiative create');
+    expect(description).toContain('not portfolio labels such as active/critical/maintenance/hold');
+    expect(schema.priority.description).toContain('do not send portfolio/live labels');
+    expect(schema.priority.description).toContain('active');
+    expect(schema.due_date.description).toContain('Do not send due_date when type="initiative"');
+    expect(schema.milestone_id.description).toContain('explicit backlog milestone');
+  });
+
+  it('documents URL-backed artifact requirements for write, attach, and proof actions', () => {
+    const writeTool = CONTRACT_TOOL_DEFINITIONS.find((t) => t.id === 'orgx_write');
+    const attachTool = CONTRACT_TOOL_DEFINITIONS.find((t) => t.id === 'orgx_attach');
+    const actTool = CONTRACT_TOOL_DEFINITIONS.find((t) => t.id === 'orgx_act');
+
+    expect(writeTool, 'orgx_write should be registered').toBeDefined();
+    expect(attachTool, 'orgx_attach should be registered').toBeDefined();
+    expect(actTool, 'orgx_act should be registered').toBeDefined();
+
+    const writeSchema = writeTool!.inputSchema as Record<string, z.ZodTypeAny>;
+    const attachSchema = attachTool!.inputSchema as Record<string, z.ZodTypeAny>;
+    const actSchema = actTool!.inputSchema as Record<string, z.ZodTypeAny>;
+
+    expect(writeTool!.description).toContain('artifact_url/external_url');
+    expect(writeTool!.description).not.toContain('artifact_url/external_url/preview_markdown');
+    expect(writeSchema.artifact_url.description).toContain('preview_markdown alone is not accepted');
+    expect(writeSchema.preview_markdown.description).toContain('does not replace artifact_url/external_url');
+
+    expect(attachTool!.description).toContain('Requires artifact_url or external_url');
+    expect(attachTool!.description).not.toContain('or preview');
+    expect(attachSchema.artifact_url.description).toContain('preview_markdown alone is rejected');
+    expect(attachSchema.preview_markdown.description).toContain('Does not replace artifact_url/external_url');
+
+    expect(actTool!.description).toContain('artifact_type + artifact_url/external_url');
+    expect(actTool!.description).toContain('update dry-runs must return would_update');
+    expect(actSchema.artifact.description).toContain('Either artifact_url or external_url is required');
+    expect(actSchema.artifact.description).toContain('preview_markdown alone is rejected');
+    expect(actSchema.dry_run.description).toContain('must not delegate to orgx_write');
+  });
+
+  it('documents consolidate_pr server-side GitHub credential requirements', () => {
+    const tool = CLIENT_INTEGRATION_TOOL_DEFINITIONS.find(
+      (definition) => definition.id === 'consolidate_pr'
+    );
+    expect(tool, 'consolidate_pr should be registered').toBeDefined();
+
+    const schema = tool!.inputSchema as Record<string, z.ZodTypeAny>;
+    expect(tool!.description).toContain('server-side GitHub credentials');
+    expect(tool!.description).toContain('GitHub token is unavailable');
+    expect(schema.pr_url.description).toContain('server-side GitHub credentials');
   });
 });
