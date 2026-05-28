@@ -432,6 +432,10 @@ export const PLAN_SESSION_TOOLS = [
         .string()
         .optional()
         .describe('Initial plan content if any'),
+      workspace_id: z
+        .string()
+        .optional()
+        .describe('Workspace UUID to scope the planning session. Defaults to current session workspace when omitted.'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
@@ -1396,14 +1400,14 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     id: 'consolidate_pr',
     title: 'Consolidate Pull Request',
     description:
-      'Generate and persist an orchestration.consolidation_pass receipt for a GitHub pull request. USE WHEN: Eli or another engineering agent needs a durable PR review receipt with reading order, existence evidence, deduped findings, verdict, and server-derived AQ score. NEXT: inspect the returned artifact_id or attach it to task completion proof. DO NOT USE WHEN: only asking for PR status; use GitHub tools instead.',
+      'Generate and persist an orchestration.consolidation_pass receipt for a GitHub pull request. Requires OrgX server-side GitHub credentials; if the GitHub token is unavailable, use GitHub tools for PR facts and return a structured blocker instead of retrying. USE WHEN: Eli or another engineering agent needs a durable PR review receipt with reading order, existence evidence, deduped findings, verdict, and server-derived AQ score. NEXT: inspect the returned artifact_id or attach it to task completion proof. DO NOT USE WHEN: only asking for PR status; use GitHub tools instead.',
     inputSchema: {
       pr_url: z
         .string()
         .url()
         .regex(/^https:\/\/github\.com\/[^/]+\/[^/]+\/pull\/\d+\/?(?:[?#].*)?$/)
         .describe(
-          'GitHub pull request URL, e.g. https://github.com/org/repo/pull/123'
+          'GitHub pull request URL, e.g. https://github.com/org/repo/pull/123. OrgX must have server-side GitHub credentials to inspect it.'
         ),
       workspace_id: z.string().uuid().optional().describe('OrgX workspace UUID'),
       initiative_id: z

@@ -109,6 +109,7 @@ import {
 import {
   BOOTSTRAP_RECOMMENDED_WORKFLOWS,
   getBootstrapSafeFirstCalls,
+  resolveBootstrapSessionContext,
 } from './bootstrapPayload';
 import {
   buildClientSkillOnboarding,
@@ -2521,6 +2522,13 @@ export class OrgXMcp extends McpAgent<
           // Map feature_name to title for start_plan_session
           if (toolId === 'start_plan_session') {
             body.title = normalizedArgs.feature_name || 'Untitled Plan';
+            if (
+              typeof body.workspace_id !== 'string' ||
+              body.workspace_id.trim().length === 0
+            ) {
+              const workspaceId = this.sessionContext.workspaceId;
+              if (workspaceId) body.workspace_id = workspaceId;
+            }
           }
 
           init.body = JSON.stringify(body);
@@ -2977,6 +2985,36 @@ export class OrgXMcp extends McpAgent<
     return this.withOrgx(async () => {
       switch (toolId) {
         case 'orgx_bootstrap': {
+          const requestedWorkspaceId =
+            typeof args.workspace_id === 'string' && args.workspace_id.trim()
+              ? args.workspace_id.trim()
+              : null;
+          let fetchedWorkspaceName: string | null = null;
+          if (requestedWorkspaceId) {
+            const workspace = await this.fetchEntityRecord(
+              'workspace',
+              requestedWorkspaceId,
+              resolvedUserId
+            );
+            fetchedWorkspaceName =
+              typeof workspace?.name === 'string'
+                ? workspace.name
+                : typeof workspace?.title === 'string'
+                ? workspace.title
+                : null;
+          }
+          const resolvedContext = resolveBootstrapSessionContext(
+            args,
+            this.sessionContext,
+            fetchedWorkspaceName
+          );
+          if (resolvedContext.changed) {
+            this.sessionContext = {
+              ...this.sessionContext,
+              ...resolvedContext.context,
+            };
+            await this.saveSessionContext();
+          }
           const payload = this.buildBootstrapPayload(allowedTools ?? null);
           return {
             content: [
@@ -3285,13 +3323,46 @@ export class OrgXMcp extends McpAgent<
             );
           }
           if (args.action === 'update') {
+            const fields =
+              args.fields && typeof args.fields === 'object'
+                ? (args.fields as Record<string, unknown>)
+                : null;
+            if (!fields || Object.keys(fields).length === 0) {
+              return this.toolError(
+                'action=update requires fields (object) with at least one field to patch'
+              );
+            }
+            if (args.dry_run === true) {
+              const payload = {
+                success: true,
+                dry_run: true,
+                type: args.type,
+                action: 'update',
+                fields,
+                updated_fields: Object.keys(fields),
+                message: `${String(args.type)} would be updated`,
+                data: {
+                  id: args.id,
+                  updated: false,
+                  would_update: true,
+                },
+                _v2_tool: 'orgx_act',
+                _action: 'update',
+                entity_type: args.type,
+                entity_id: args.id,
+              };
+              return {
+                content: [{ type: 'text', text: formatForLLM('entity_action', payload) }],
+                structuredContent: payload,
+              };
+            }
             return this.executeContractTool(
               'orgx_write',
               {
                 operation: 'update',
                 type: args.type,
                 id: args.id,
-                fields: args.fields,
+                fields,
                 idempotency_key: args.idempotency_key,
               },
               SECURITY_SCHEMES.entityWriteRequiresAuth,
@@ -5382,6 +5453,32 @@ export class OrgXMcp extends McpAgent<
               return this.toolError(
                 'action=update requires fields (object) with at least one field to patch'
               );
+            }
+            if (args.dry_run === true) {
+              const payload = {
+                success: true,
+                dry_run: true,
+                type: args.type,
+                action: 'update',
+                fields,
+                updated_fields: Object.keys(fields),
+                message: `${String(args.type)} would be updated`,
+                data: {
+                  id: args.id,
+                  updated: false,
+                  would_update: true,
+                },
+              };
+
+              return {
+                content: [
+                  {
+                    type: 'text',
+                    text: formatForLLM('entity_action', payload),
+                  },
+                ],
+                structuredContent: payload,
+              };
             }
 
             const response = await callOrgxApiJson(
