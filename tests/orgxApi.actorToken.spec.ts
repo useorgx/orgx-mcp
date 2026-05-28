@@ -45,4 +45,30 @@ describe('callOrgxApiRaw actor token propagation', () => {
     });
     expect(payload.exp).toBeGreaterThan(Date.now());
   });
+
+  it('retries through ORGX_API_FALLBACK_URL when the primary upstream is unavailable', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('bad gateway', { status: 502 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true })));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await callOrgxApiRaw(
+      {
+        ORGX_API_URL: 'https://primary.useorgx.test',
+        ORGX_API_FALLBACK_URL: 'https://fallback.useorgx.test',
+        ORGX_SERVICE_KEY: 'oxk-test',
+      },
+      '/api/health'
+    );
+
+    expect(response.ok).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      'https://primary.useorgx.test/api/health'
+    );
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      'https://fallback.useorgx.test/api/health'
+    );
+  });
 });

@@ -45,6 +45,7 @@ export type { OAuthHelpers };
 
 interface AuthHandlerEnv {
   ORGX_API_URL: string;
+  ORGX_API_FALLBACK_URL?: string;
   ORGX_WEB_URL: string;
   MCP_SERVER_URL: string;
   AUTH_SERVER_URL: string;
@@ -298,6 +299,18 @@ const LOCAL_CONFIG_WRITE_POLICY = {
     'Hosted config endpoints only describe install metadata. Local installers must prompt before writing files and must keep generated Cursor assets under .cursor/orgx/.',
 } as const;
 
+function getUpstreamHealthUrls(env: AuthHandlerEnv): string[] {
+  const seen = new Set<string>();
+  const urls: string[] = [];
+  for (const value of [env.ORGX_API_URL, env.ORGX_API_FALLBACK_URL]) {
+    const trimmed = value?.trim();
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    urls.push(trimmed);
+  }
+  return urls;
+}
+
 function buildPublishedManifest(manifest: typeof serverManifest) {
   return {
     ...manifest,
@@ -343,8 +356,8 @@ export const authHandler = {
       const check = url.searchParams.get('check');
       if (check === 'upstream') {
         try {
-          const apiUrl = (env as unknown as Record<string, string>).ORGX_API_URL;
-          if (!apiUrl) {
+          const apiUrls = getUpstreamHealthUrls(env);
+          if (apiUrls.length === 0) {
             return withCors(
               Response.json(
                 { status: 'fail', upstream: 'unconfigured', error: 'ORGX_API_URL not set' },
@@ -352,34 +365,60 @@ export const authHandler = {
               )
             );
           }
-          const probe = await fetch(`${apiUrl}/api/health`, {
-            redirect: 'manual',
-            signal: AbortSignal.timeout(5000),
-          });
-          if (probe.status >= 300 && probe.status < 400) {
-            const location = probe.headers.get('location') ?? 'unknown';
-            return withCors(
-              Response.json(
-                {
-                  status: 'fail',
+
+          const failures: Array<Record<string, unknown>> = [];
+          for (const [index, apiUrl] of apiUrls.entries()) {
+            try {
+              const probe = await fetch(`${apiUrl}/api/health`, {
+                redirect: 'manual',
+                signal: AbortSignal.timeout(5000),
+              });
+              if (probe.status >= 300 && probe.status < 400) {
+                const location = probe.headers.get('location') ?? 'unknown';
+                failures.push({
+                  apiUrl,
                   upstream: 'redirect',
-                  error: `ORGX_API_URL (${apiUrl}) returned ${probe.status} → ${location}`,
-                  fix: 'Update ORGX_API_URL in wrangler.toml to the final URL (no redirect)',
-                },
-                { status: 502 }
-              )
-            );
+                  httpStatus: probe.status,
+                  location,
+                });
+                continue;
+              }
+              if (!probe.ok) {
+                failures.push({
+                  apiUrl,
+                  upstream: 'error',
+                  httpStatus: probe.status,
+                });
+                continue;
+              }
+              return withCors(
+                Response.json({
+                  status: 'ok',
+                  upstream: index === 0 ? 'healthy' : 'fallback_healthy',
+                  apiUrl,
+                  attempted: apiUrls,
+                  ...(failures.length ? { failures } : {}),
+                })
+              );
+            } catch (err) {
+              failures.push({
+                apiUrl,
+                upstream: 'unreachable',
+                error: String(err),
+              });
+            }
           }
-          if (!probe.ok) {
-            return withCors(
-              Response.json(
-                { status: 'fail', upstream: 'error', httpStatus: probe.status },
-                { status: 502 }
-              )
-            );
-          }
+
           return withCors(
-            Response.json({ status: 'ok', upstream: 'healthy', apiUrl })
+            Response.json(
+              {
+                status: 'fail',
+                upstream: 'unreachable',
+                failures,
+                fix: 'Update ORGX_API_URL or ORGX_API_FALLBACK_URL in wrangler.toml to a reachable URL with no redirect.',
+              },
+              { status: 502 }
+            )
           );
         } catch (err) {
           return withCors(

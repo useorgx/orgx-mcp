@@ -18,6 +18,7 @@ binding = "ASSETS"
 # Note: www.useorgx.com 301-redirects to useorgx.com — use next.useorgx.com for direct VPS access
 [vars]
 ORGX_API_URL = "https://next.useorgx.com"
+ORGX_API_FALLBACK_URL = "https://orgx-api-fallback-brain-buffet.vercel.app"
 MCP_SERVER_URL = "https://mcp.useorgx.com"
 AUTH_SERVER_URL = "https://mcp.useorgx.com"
 ORGX_WEB_URL = "https://useorgx.com"
@@ -93,6 +94,7 @@ id = "5bff02959fa74d43ba6708d9746121e4"
 # Note: www.useorgx.com 301-redirects to useorgx.com — use next.useorgx.com for direct VPS access
 [env.production.vars]
 ORGX_API_URL = "https://next.useorgx.com"
+ORGX_API_FALLBACK_URL = "https://orgx-api-fallback-brain-buffet.vercel.app"
 ORGX_WEB_URL = "https://useorgx.com"
 MCP_SERVER_URL = "https://mcp.useorgx.com"
 AUTH_SERVER_URL = "https://mcp.useorgx.com"
