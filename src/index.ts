@@ -51,6 +51,12 @@ import {
   formatRouteTaskEstimateSummary,
 } from './routeTaskEstimate';
 import {
+  buildSpawnBudgetPreflightArgs,
+  evaluateSpawnBudgetPreflightResult,
+  type SpawnBudgetPreflight,
+  type SpawnBudgetPreflightEvaluation,
+} from './spawnBudgetPreflight';
+import {
   captureWorkerPosthogEvent,
   resolveAnonymousDistinctId,
 } from './posthogTelemetry';
@@ -1395,6 +1401,39 @@ export class OrgXMcp extends McpAgent<
     };
   }
 
+  private async runSpawnBudgetPreflight(
+    args: Record<string, unknown>,
+    userId: string | null
+  ): Promise<SpawnBudgetPreflightEvaluation> {
+    const routeArgs = buildSpawnBudgetPreflightArgs(args);
+    try {
+      const response = await callOrgxApiJson(
+        this.env,
+        '/api/client/route-task',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            ...routeArgs,
+            user_id: userId,
+          }),
+        },
+        { userId }
+      );
+      const result = (await response.json()) as Record<string, unknown>;
+      return evaluateSpawnBudgetPreflightResult(result, routeArgs);
+    } catch (error) {
+      return {
+        ok: false,
+        message: 'Budget preflight failed before dispatch.',
+        details: {
+          code: 'budget_preflight_failed',
+          route_task: routeArgs,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      };
+    }
+  }
+
   private getRelatedContextQuery(
     args: Record<string, unknown>,
     data: Record<string, unknown>
@@ -1923,6 +1962,36 @@ export class OrgXMcp extends McpAgent<
 
     return this.withOrgx(async () => {
       try {
+        let budgetPreflight: SpawnBudgetPreflight | null = null;
+        if (
+          resolvedToolId === 'spawn_agent_task' ||
+          resolvedToolId === 'handoff_task'
+        ) {
+          const preflight = await this.runSpawnBudgetPreflight(
+            expandedArgs,
+            resolvedUserId ?? null
+          );
+          if (!preflight.ok) {
+            this.captureMcpToolEvent('mcp_tool_failed', {
+              toolId,
+              toolFamily: 'chatgpt',
+              userId: resolvedUserId,
+              authSource,
+              ok: false,
+              latencyMs: Date.now() - startTime,
+              error: String(preflight.details.code ?? 'budget_preflight_failed'),
+              isWidgetTool,
+            });
+            return this.toolError(preflight.message, {
+              code: String(preflight.details.code ?? 'budget_preflight_failed'),
+              status:
+                preflight.details.code === 'budget_cap_exceeded' ? 402 : 424,
+              details: preflight.details,
+            });
+          }
+          budgetPreflight = preflight.preflight;
+        }
+
         // Use direct endpoints for high-traffic tools (lower latency)
         // Fall back to generic /api/tools/execute for others
         // Use resolvedToolId/expandedArgs from expandConsolidatedTool
@@ -1983,6 +2052,12 @@ export class OrgXMcp extends McpAgent<
 
         // Extract message if present, otherwise use imported summarizer
         let data = result.data ?? {};
+        if (budgetPreflight) {
+          data = {
+            ...data,
+            budget_preflight: budgetPreflight,
+          };
+        }
         let message =
           typeof data.message === 'string'
             ? data.message
@@ -3418,6 +3493,22 @@ export class OrgXMcp extends McpAgent<
           ) {
             spawnArgs.domain = args.agent_type.trim();
           }
+          let budgetPreflight: SpawnBudgetPreflight | null = null;
+          if (targetTool === 'spawn_agent_task' || targetTool === 'handoff_task') {
+            const preflight = await this.runSpawnBudgetPreflight(
+              spawnArgs,
+              resolvedUserId ?? null
+            );
+            if (!preflight.ok) {
+              return this.toolError(preflight.message, {
+                code: String(preflight.details.code ?? 'budget_preflight_failed'),
+                status:
+                  preflight.details.code === 'budget_cap_exceeded' ? 402 : 424,
+                details: preflight.details,
+              });
+            }
+            budgetPreflight = preflight.preflight;
+          }
           const body =
             targetTool === 'spawn_agent_task' || targetTool === 'handoff_task'
               ? { tool_id: targetTool, args: spawnArgs, user_id: resolvedUserId }
@@ -3451,6 +3542,7 @@ export class OrgXMcp extends McpAgent<
             routed_tool: targetTool,
             ...(action === 'estimate' ? { estimate_only: true } : {}),
             ...(estimate ? { estimate } : {}),
+            ...(budgetPreflight ? { budget_preflight: budgetPreflight } : {}),
           };
           return {
             content: [{ type: 'text', text: this.summarizeClientResult(targetTool, payload) }],

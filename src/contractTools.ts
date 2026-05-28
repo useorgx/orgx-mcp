@@ -131,17 +131,10 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     title: 'Write OrgX Entity',
     description:
       'Create or update one OrgX record (snake_case fields).\n\n' +
-      'Operations: create (default) uses per-type fields; update REQUIRES id + fields patch.\n\n' +
-      'Create requirements:\n' +
-      '  initiative: title (or name).\n' +
-      '  workstream: title + initiative_id.\n' +
-      '  milestone: title + workstream_id.\n' +
-      '  task: title + workstream_id (initiative_id/milestone_id auto-resolve when present).\n' +
-      '  decision: title. Recommended: context, initiative_id.\n' +
-      `  artifact: entity_type + entity_id (or task_id) + artifact_type + one of artifact_url|external_url|preview_markdown. Practical founder/team artifact examples: ${FOUNDER_TEAM_ARTIFACT_TYPE_SUMMARY}.\n` +
-      '  blocker: run_id + description (via metadata). Optional: step_id, blocker_type, resolution.\n' +
-      '  skill, studio_brand, studio_content: title. Subtype fields go in metadata.\n\n' +
-      'USE WHEN: adding/editing records. NEXT: orgx_act to launch/complete the record. DO NOT USE for lifecycle changes — use orgx_act or orgx_attach.',
+      'Create needs: initiative title; workstream title+initiative_id; milestone title+workstream_id; task title+workstream_id; decision title; blocker run_id+description in metadata; skill/studio records title.\n\n' +
+      `Artifacts need entity_type+entity_id (or task_id), artifact_type, and artifact_url|external_url|preview_markdown. Practical founder/team artifact examples: ${FOUNDER_TEAM_ARTIFACT_TYPE_SUMMARY}.\n\n` +
+      'Update REQUIRES id + fields patch. Priority/due_date/status aliases normalize server-side.\n\n' +
+      'USE WHEN: adding or editing durable OrgX records. NEXT: orgx_act to launch/complete records, or orgx_submit_receipt when the write is completion proof. DO NOT USE for lifecycle state changes or artifact-only proof; use orgx_act or orgx_attach.',
     inputSchema: {
       operation: z.enum(['create', 'update']).optional().describe('Write operation. Defaults to "create". Set "update" (with id + fields) to patch an existing entity.'),
       type: z.string().min(1).describe('Entity type to write: task, milestone, decision, artifact, skill, blocker, studio_brand, studio_content, initiative, workstream, or objective. See top-level description for per-type required fields.'),
@@ -317,14 +310,9 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     title: 'Spawn OrgX Agent Work',
     description:
       'Guard, estimate, classify, spawn, or hand off specialist agent work.\n\n' +
-      'Per-action input requirements:\n' +
-      '  • action="spawn" (default when action omitted) → Spawn from an existing task: REQUIRES task_id. Spawn ad-hoc: REQUIRES title AND instructions (and recommended agent_type).\n' +
-      '  • action="handoff"  → REQUIRES task_id AND agent_type (the target agent to hand off to). Optional: instructions to override.\n' +
-      '  • action="guard"    → REQUIRES agent_type. Returns whether spawning is permitted under current policy/budget for that agent.\n' +
-      '  • action="classify" → REQUIRES title OR task_id. Returns the recommended agent_type and model tier without spawning.\n\n' +
-      '  • action="estimate" → REQUIRES title OR task_id. Returns pre-spawn routing/cost context when available, including candidate routes, estimated tokens/cost, and budget posture without dispatching work.\n\n' +
-      'Routing policy: omit model_tier/provider/model to let OrgX auto-route from task complexity and workspace policy. Provide model_tier, provider, model, budget_mode, or max_cost_usd only when the user, policy, or verification plan intentionally constrains routing. Use model_tier="standard" and budget_mode="cheapest_valid" for controlled reliability validation runs while the loop is being proven.\n\n' +
-      'USE WHEN: explicitly delegating work to an OrgX agent or checking if delegation is allowed. NEXT: use orgx_inspect or orgx_search to monitor the delegated work, then orgx_submit_receipt for proof. DO NOT USE WHEN: only creating a task row; use orgx_write.',
+      'Inputs: spawn from task REQUIRES task_id; ad-hoc spawn REQUIRES title+instructions and should include agent_type. handoff REQUIRES task_id+agent_type. guard REQUIRES agent_type. classify REQUIRES title OR task_id. action="estimate" returns candidate routes and cost context without dispatching work.\n\n' +
+      'Routing: omit model_tier/provider/model for OrgX auto-routing from task complexity and workspace policy. Set model_tier, provider, model, budget_mode, or max_cost_usd only when the user, policy, or validation plan constrains routing. Use model_tier="standard" plus budget_mode="cheapest_valid" for controlled reliability canaries before escalating.\n\n' +
+      'USE WHEN: delegating work to an OrgX agent, handing off an existing task, or checking routing/cost before delegation. NEXT: monitor via orgx_inspect/orgx_search, then orgx_submit_receipt with artifact, quality, cost, and model proof. DO NOT USE WHEN: only creating a task row; use orgx_write.',
     inputSchema: {
       action: z.enum(['guard', 'estimate', 'spawn', 'handoff', 'classify']).optional().describe('Spawn operation. Defaults to "spawn". Use estimate for pre-spawn cost/routing context without dispatching work. See top-level description for per-action required fields.'),
       title: z.string().optional().describe('Task title. REQUIRED for ad-hoc spawn (action=spawn without task_id) or action=classify without task_id. Used as the human-readable label of the spawned task.'),
