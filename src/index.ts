@@ -2397,12 +2397,15 @@ export class OrgXMcp extends McpAgent<
     return this.withOrgx(async () => {
       try {
         // Route to the appropriate endpoint
-        const endpoint =
-          toolId === 'update_stream_progress'
-            ? '/api/streams/progress'
-            : '/api/streams/initiative-state';
+        const isLifecycle = toolId === 'manage_lifecycle';
+        const endpoint = isLifecycle
+          ? '/api/internal/lifecycle'
+          : toolId === 'update_stream_progress'
+          ? '/api/streams/progress'
+          : '/api/streams/initiative-state';
 
-        const method = toolId === 'update_stream_progress' ? 'POST' : 'GET';
+        const method =
+          toolId === 'update_stream_progress' || isLifecycle ? 'POST' : 'GET';
 
         let response;
         if (method === 'GET') {
@@ -2415,9 +2418,17 @@ export class OrgXMcp extends McpAgent<
             `${endpoint}?${url.searchParams.toString()}`
           );
         } else {
+          const body = isLifecycle
+            ? {
+                level: args.level,
+                id: args.id,
+                action: args.action,
+                userId: resolvedUserId,
+              }
+            : { ...args, user_id: resolvedUserId };
           response = await callOrgxApiJson(this.env, endpoint, {
             method: 'POST',
-            body: JSON.stringify({ ...args, user_id: resolvedUserId }),
+            body: JSON.stringify(body),
           });
         }
 
