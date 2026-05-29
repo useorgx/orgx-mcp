@@ -1638,6 +1638,31 @@ export const STREAM_TOOL_DEFINITIONS = [
       'openai/readOnlyHint': true,
     },
   },
+  {
+    id: 'manage_lifecycle',
+    title: 'Manage Lifecycle (pause/resume/retry/cancel)',
+    description:
+      'Pause, resume, retry, or cancel any node in the work hierarchy — an initiative, workstream, milestone, task, or run. Propagates to descendant tasks + active runs. USE WHEN: the user wants to halt, restart, or re-run part of an initiative. resume/retry re-dispatch the work; pause/cancel stop active runs. NEXT: get_initiative_pulse to confirm. DO NOT USE: to mark a task done — use entity_action instead.',
+    inputSchema: {
+      level: z
+        .enum(['initiative', 'workstream', 'milestone', 'task', 'run'])
+        .describe('Which hierarchy node to act on'),
+      id: z.string().min(1).describe('UUID of the node'),
+      action: z
+        .enum(['pause', 'resume', 'retry', 'cancel'])
+        .describe('Lifecycle action to apply'),
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
+    securitySchemes: SECURITY_SCHEMES.agentRequiresAuth,
+    _meta: {
+      'openai/toolInvocation/invoking': 'Applying lifecycle action...',
+      'openai/toolInvocation/invoked': 'Lifecycle action applied',
+    },
+  },
 ] as const;
 
 /**
