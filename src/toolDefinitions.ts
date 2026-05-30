@@ -745,6 +745,24 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         .describe(
           'Optional: Initiative title to resolve automatically if ID is unknown.'
         ),
+      workstream_id: z
+        .string()
+        .optional()
+        .describe(
+          'Optional workstream UUID. Bind the spawned run to an existing IWMT workstream so progress rolls up into the scaffolded hierarchy and the agent inherits workstream context (preferred over relying on domain resolution). Initiative is inferred from the workstream if initiative_id is omitted.'
+        ),
+      milestone_id: z
+        .string()
+        .optional()
+        .describe(
+          'Optional milestone UUID under the workstream to bind the spawned run to.'
+        ),
+      task_id: z
+        .string()
+        .optional()
+        .describe(
+          'Optional task UUID to bind the spawned run to a specific scaffolded task, enabling direct task-level progress rollup. Use create_entity type=task first if the task does not exist yet.'
+        ),
       expected_artifacts: z
         .array(z.string())
         .optional()
