@@ -19,6 +19,13 @@ import { OAuthState, type OAuthEnv } from './oauth';
 // Auth handler for OAuthProvider's defaultHandler
 import { authHandler } from './authHandler';
 
+// Per-run, user-scoped bearer verification (detached agent runtimes)
+import {
+  isRunMcpToken,
+  runMcpTokenSecret,
+  verifyRunMcpToken,
+} from './runMcpToken';
+
 // Import extracted modules for DRY code
 import {
   buildAuthRequiredResponse,
@@ -323,6 +330,8 @@ interface Env extends OAuthEnv {
   UPSTASH_REDIS_REST_TOKEN?: string;
   // Server-to-server shared secret for internal endpoints (e.g. /session-tokens)
   ORGX_INTERNAL_SECRET?: string;
+  // Optional dedicated secret for per-run MCP bearer tokens (falls back to ORGX_SERVICE_KEY)
+  ORGX_RUN_MCP_TOKEN_SECRET?: string;
   // Scaffold streaming: Durable Object namespace for per-session SSE fan-out
   SCAFFOLD_SESSION: DurableObjectNamespace;
   // Live feed: Durable Object namespace for polling SSE (agent-status, initiative-pulse)
@@ -11683,12 +11692,56 @@ const oauthProvider = new OAuthProvider({
   scopesSupported: [...OAUTH_SCOPES_SUPPORTED],
 });
 
+/**
+ * Run-token fast path: detached agent runtimes (e2b/CLI) authenticate to the
+ * MCP endpoint with a per-run, user-scoped bearer that the OAuth provider would
+ * reject (it isn't an OAuth access token). Verify it here, inject the resolved
+ * identity as `props`, and delegate straight to the MCP handler — bypassing the
+ * OAuth provider. Only our own `oxrun1.` tokens are intercepted, so OAuth
+ * bearers are untouched.
+ */
+async function tryRunTokenAuth(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext
+): Promise<Response | null> {
+  const url = new URL(request.url);
+  if (url.pathname !== '/mcp' && url.pathname !== '/sse') return null;
+
+  const header = request.headers.get('authorization');
+  if (!header || !header.toLowerCase().startsWith('bearer ')) return null;
+  const token = header.slice(7).trim();
+  if (!isRunMcpToken(token)) return null;
+
+  const payload = await verifyRunMcpToken(
+    token,
+    runMcpTokenSecret(env),
+    Date.now()
+  );
+  if (!payload) return null;
+
+  (ctx as unknown as { props?: OrgXMcpProps }).props = {
+    userId: payload.uid,
+    scope: 'mcp:run',
+    ...(payload.wid ? { workspace_id: payload.wid } : {}),
+    authSource: 'run_token',
+  };
+
+  const handler =
+    url.pathname === '/sse' ? getSseHandler() : getHttpHandler();
+  const response = await handler.fetch(request, env, ctx);
+  return withSecurityHeaders(response);
+}
+
 export default {
   async fetch(
     request: Request,
     env: Env,
     ctx: ExecutionContext
   ): Promise<Response> {
+    const runTokenResponse = await tryRunTokenAuth(request, env, ctx);
+    if (runTokenResponse) return runTokenResponse;
+
     const response = await oauthProvider.fetch(request, env, ctx);
     return withSecurityHeaders(response);
   },
