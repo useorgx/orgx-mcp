@@ -1,0 +1,67 @@
+name: Publish MCP Artifact
+
+# Builds the consumable mcp-artifact (tool-catalog.json + widgets + VERSION) and
+# publishes it so the orgx monorepo can pull it instead of vendoring this
+# worker's source. Replaces the full-source `sync:orgx` mirror for the data the
+# monorepo actually consumes.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/toolDefinitions.ts'
+      - 'src/flywheelTools.ts'
+      - 'src/toolProfiles.ts'
+      - 'src/contractTools.ts'
+      - 'public/widgets/**'
+      - 'scripts/generate-tool-catalog.ts'
+      - 'scripts/pack-artifact.mjs'
+      - '.github/workflows/publish-mcp-artifact.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v5
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build artifact (widgets + catalog + VERSION)
+        run: pnpm pack:artifact
+
+      - name: Tar the bundle
+        run: tar -czf mcp-artifact.tgz -C dist mcp-artifact
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-artifact
+          path: dist/mcp-artifact/
+          if-no-files-found: error
+
+      - name: Publish rolling release asset (main only)
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Stable tag the monorepo pulls from: `gh release download mcp-artifact-latest`.
+          gh release view mcp-artifact-latest >/dev/null 2>&1 \
+            && gh release upload mcp-artifact-latest mcp-artifact.tgz --clobber \
+            || gh release create mcp-artifact-latest mcp-artifact.tgz \
+                 --title "MCP artifact (latest)" \
+                 --notes "Rolling build of tool-catalog.json + widgets. Pulled by the orgx monorepo sync:mcp-artifact script." \
+                 --prerelease
