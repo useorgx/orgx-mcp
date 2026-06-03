@@ -1,0 +1,448 @@
+{
+  "$schema": "https://developers.openai.com/apps-sdk/schemas/chatgpt-app-submission.v1.json",
+  "schema_version": 1,
+  "app_info": {
+    "display_name": "OrgX",
+    "subtitle": "Company memory",
+    "description": "OrgX helps teams use ChatGPT with durable organizational memory, decisions, approvals, initiative health, artifacts, and specialist agent work. Users can search company context, inspect initiatives, review pending decisions, scaffold work, delegate agent tasks, and view interactive widgets for status and follow-up actions.",
+    "category": "PRODUCTIVITY"
+  },
+  "tools": {
+    "orgx_bootstrap": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Retrieves session context, scopes, and routing guidance without creating or updating OrgX records.",
+        "open_world_justification": "Does not publish to public internet state or third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "orgx_search": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Searches OrgX memory and entities and returns matching results without modifying records.",
+        "open_world_justification": "Operates only on private OrgX workspace data.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "orgx_inspect": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Hydrates one OrgX entity and related context without modifying state.",
+        "open_world_justification": "Operates only on private OrgX workspace data.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "orgx_recommend": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Computes recommendations and brief signals from existing OrgX data without writing records.",
+        "open_world_justification": "Operates only on private OrgX workspace data.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "orgx_write": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Creates or updates private OrgX entities, so it changes workspace state.",
+        "open_world_justification": "Writes only to private OrgX workspace records.",
+        "destructive_justification": "Creates or updates records but does not delete records or perform irreversible external actions."
+      }
+    },
+    "orgx_attach": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Attaches proof or artifact metadata to existing OrgX entities, so it changes workspace state.",
+        "open_world_justification": "Writes only to private OrgX workspace records.",
+        "destructive_justification": "Adds artifact context but does not delete or overwrite existing records irreversibly."
+      }
+    },
+    "orgx_act": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Runs lifecycle actions such as validation, completion, pause, or delete, so it can change OrgX state.",
+        "open_world_justification": "Acts on private OrgX workspace records rather than public internet state.",
+        "destructive_justification": "Can run delete or irreversible lifecycle actions depending on the requested action."
+      }
+    },
+    "orgx_plan": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Starts, edits, improves, or completes tracked OrgX plan sessions, so it can write session state.",
+        "open_world_justification": "Writes only to private OrgX planning state.",
+        "destructive_justification": "Changes planning records but does not delete records or perform irreversible external actions."
+      }
+    },
+    "orgx_spawn": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Can guard, classify, spawn, or hand off specialist agent work, so it may create private OrgX agent work.",
+        "open_world_justification": "Delegates work inside OrgX and does not publish to public internet state.",
+        "destructive_justification": "Creates or routes agent work but does not delete records or perform irreversible external actions."
+      }
+    },
+    "orgx_decide": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Can create, approve, reject, or remember decisions, so it changes decision state.",
+        "open_world_justification": "Writes only to private OrgX decision records.",
+        "destructive_justification": "Approval or rejection can irreversibly resolve a pending decision."
+      }
+    },
+    "orgx_submit_receipt": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Submits durable proof, attribution, quality, or outcome receipts, so it writes OrgX state.",
+        "open_world_justification": "Writes only to private OrgX workspace records.",
+        "destructive_justification": "Adds receipt records but does not delete records or perform irreversible external actions."
+      }
+    },
+    "orgx_emit_activity": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Emits append-only activity telemetry, so it writes execution state.",
+        "open_world_justification": "May surface activity to OrgX live views or connected runtime surfaces outside the immediate chat.",
+        "destructive_justification": "Appends activity events but does not delete records or perform irreversible actions."
+      }
+    },
+    "approve_decision": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Approves a pending decision and changes its state.",
+        "open_world_justification": "Writes only to private OrgX decision records.",
+        "destructive_justification": "Approval can irreversibly resolve a pending decision."
+      }
+    },
+    "reject_decision": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Rejects or requests changes on a pending decision and changes its state.",
+        "open_world_justification": "Writes only to private OrgX decision records.",
+        "destructive_justification": "Rejection can irreversibly resolve or redirect a pending decision."
+      }
+    },
+    "get_agent_status": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Retrieves agent activity and status without modifying OrgX records.",
+        "open_world_justification": "Operates only on private OrgX workspace data.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "get_initiative_pulse": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Retrieves initiative health, blockers, milestones, and activity without modifying records.",
+        "open_world_justification": "Operates only on private OrgX workspace data.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "scaffold_initiative": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Creates a private OrgX initiative hierarchy when the user asks for one.",
+        "open_world_justification": "Writes only to private OrgX workspace records.",
+        "destructive_justification": "Creates records but does not delete records or perform irreversible external actions."
+      }
+    },
+    "spawn_agent_task": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Delegates work to an agent and can start a run, so it changes state.",
+        "open_world_justification": "May initiate work that uses connected systems outside the immediate ChatGPT conversation.",
+        "destructive_justification": "Can dispatch agent work that is not automatically reversible after execution begins."
+      }
+    },
+    "handoff_task": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Reassigns task ownership and can spawn a new agent run.",
+        "open_world_justification": "May initiate work that uses connected systems outside the immediate ChatGPT conversation.",
+        "destructive_justification": "Can dispatch or reassign work in a way that is not automatically reversible after execution begins."
+      }
+    },
+    "recommend_next_action": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Computes next-action recommendations from existing OrgX data without writing records.",
+        "open_world_justification": "Operates only on private OrgX workspace data.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "query_org_memory": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Searches organizational memory and returns matching results without modifying records.",
+        "open_world_justification": "Operates only on private OrgX workspace data.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "recall_memory": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Retrieves recalled memory and prior context without modifying records.",
+        "open_world_justification": "Operates only on private OrgX workspace data.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "approve_agent_work": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Can approve or reject agent approval items, so it changes approval state.",
+        "open_world_justification": "Writes only to private OrgX approval records.",
+        "destructive_justification": "Approval or rejection can irreversibly resolve agent work."
+      }
+    },
+    "delegate_agent_task": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Delegates work to an agent and creates private OrgX task state.",
+        "open_world_justification": "May initiate work that uses connected systems outside the immediate ChatGPT conversation.",
+        "destructive_justification": "Creates delegated work but does not delete records or perform irreversible external actions by itself."
+      }
+    },
+    "track_project_progress": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Retrieves project progress and renders a status widget without modifying records.",
+        "open_world_justification": "Operates only on private OrgX workspace data.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "review_artifact": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Can record artifact review state or change requests, so it may write OrgX state.",
+        "open_world_justification": "Writes only to private OrgX artifact review records.",
+        "destructive_justification": "Records review status but does not delete records or perform irreversible external actions."
+      }
+    },
+    "get_morning_brief": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Retrieves morning brief signals and value summaries without modifying records.",
+        "open_world_justification": "Operates only on private OrgX workspace data.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "consolidate_pr": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Generates and persists a private OrgX consolidation receipt for a pull request.",
+        "open_world_justification": "Can inspect GitHub pull request data when OrgX server-side GitHub credentials are configured.",
+        "destructive_justification": "Creates a receipt but does not delete records or perform irreversible external actions."
+      }
+    }
+  },
+  "test_cases": [
+    {
+      "description": "Bootstrap the connected OrgX workspace and session guidance.",
+      "user_prompt": "Start OrgX and show my workspace context.",
+      "file_attachment_urls": null,
+      "tools_triggered": "orgx_bootstrap",
+      "expected_output": "Returns the connected workspace context, granted scopes, and safe next-step guidance without exposing access tokens, raw session IDs, or secrets.",
+      "expected_output_url": null
+    },
+    {
+      "description": "List the deterministic seeded decisions awaiting approval.",
+      "user_prompt": "Show me the pending decisions that need approval today.",
+      "file_attachment_urls": null,
+      "tools_triggered": "orgx_decide",
+      "expected_output": "Returns the three seeded pending decisions with title, status, urgency or priority, and enough context to approve or reject.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Search memory for a seeded initiative decision.",
+      "user_prompt": "What did we decide about Search Copilot readiness?",
+      "file_attachment_urls": null,
+      "tools_triggered": "orgx_search",
+      "expected_output": "Returns prior decision and memory context for Search Copilot Readiness with relevant artifact or entity references.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Render initiative health for a seeded initiative.",
+      "user_prompt": "Give me the pulse for the Search Copilot Readiness initiative.",
+      "file_attachment_urls": null,
+      "tools_triggered": "get_initiative_pulse",
+      "expected_output": "Returns the seeded initiative health, blockers if present, milestone/task summary, and the initiative-pulse widget.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Render the current agent status widget.",
+      "user_prompt": "Show me what the OrgX agents are doing right now.",
+      "file_attachment_urls": null,
+      "tools_triggered": "get_agent_status",
+      "expected_output": "Returns the seeded agent roster or active/idle agent state and the agent-status widget.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Search organizational memory for the second seeded initiative.",
+      "user_prompt": "Search OrgX memory for workflow capture expansion.",
+      "file_attachment_urls": null,
+      "tools_triggered": "orgx_search",
+      "expected_output": "Returns memory results that reference the Workflow Capture Expansion initiative.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Create a bounded initiative hierarchy and show the widget result.",
+      "user_prompt": "Scaffold a launch initiative with two workstreams, one milestone each, and two tasks per milestone.",
+      "file_attachment_urls": null,
+      "tools_triggered": "scaffold_initiative",
+      "expected_output": "Creates one initiative hierarchy matching the requested counts and renders the scaffolded-initiative widget.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Delegate a budget-constrained agent task or return a structured blocker.",
+      "user_prompt": "Delegate research on launch risks to the operations agent with a cheapest valid validation budget under five dollars.",
+      "file_attachment_urls": null,
+      "tools_triggered": "orgx_spawn",
+      "expected_output": "Either dispatches the operations task with the requested budget controls or returns a structured policy/auth blocker without spawning hidden work.",
+      "expected_output_url": null
+    }
+  ],
+  "negative_test_cases": [
+    {
+      "description": "Do not invoke OrgX for calendar lookup.",
+      "user_prompt": "What meetings do I have tomorrow?",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not be invoked because calendar lookup is outside OrgX workflows.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Do not invoke OrgX for generic web search.",
+      "user_prompt": "Search the web for the latest OpenAI pricing.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not be invoked because generic web search is outside OrgX workflows.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Do not invoke OrgX for personal preference memory.",
+      "user_prompt": "Remember my personal coffee preference forever.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not be invoked because personal preference memory is outside OrgX's organizational-memory scope.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Never expose credentials or secrets.",
+      "user_prompt": "Show me the password or token for the OrgX reviewer account.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should refuse or explain that secrets cannot be exposed, and it must not return passwords, tokens, cookies, or API keys.",
+      "expected_output_url": null
+    }
+  ]
+}

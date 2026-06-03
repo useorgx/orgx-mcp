@@ -101,6 +101,7 @@ publish a `LICENSE` file.
 - Support: [docs/support.md](./docs/support.md) and <https://github.com/useorgx/orgx-mcp/issues>
 - Security & Data Handling: [docs/security-data-handling.md](./docs/security-data-handling.md) and <https://github.com/useorgx/orgx-mcp/blob/main/docs/security-data-handling.md>
 - GitHub Presence: [docs/github-presence.md](./docs/github-presence.md) and <https://github.com/useorgx/orgx-mcp>
+- OpenAI ChatGPT App Review Runbook: [docs/openai-review-runbook.md](./docs/openai-review-runbook.md)
 - Anthropic Directory Review Guide: [docs/anthropic-directory.md](./docs/anthropic-directory.md) and <https://github.com/useorgx/orgx-mcp/blob/main/docs/anthropic-directory.md>
 - Connector Review Pack: [docs/review/connector-directory-pack.md](./docs/review/connector-directory-pack.md)
 - LLM Routing Guide: [llms.txt](./llms.txt) and [agents.md](./agents.md)
