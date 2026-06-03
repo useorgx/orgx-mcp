@@ -41,6 +41,7 @@ describe('Anthropic directory readiness', () => {
       'docs/privacy-policy.md',
       'docs/security-data-handling.md',
       'docs/support.md',
+      'docs/openai-review-runbook.md',
       'docs/anthropic-directory.md',
       'docs/anthropic-reviewer-runbook.md',
       'docs/anthropic-release-manager-checklist.md',
