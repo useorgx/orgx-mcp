@@ -1698,6 +1698,7 @@ export class OrgXMcp extends McpAgent<
     const nextArgs = { ...args };
     const workspaceScopedChatgptTools = new Set([
       'recommend_next_action',
+      'get_agent_status',
       'score_next_up_queue',
       'scoring_config',   // replaces get_scoring_config, set_scoring_config, set_scoring_weights
       'queue_action',     // replaces pin_queue_item, unpin_queue_item, skip_workstream
