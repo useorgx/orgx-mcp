@@ -15,6 +15,7 @@ const requiredDocs = [
   'docs/privacy-policy.md',
   'docs/security-data-handling.md',
   'docs/github-presence.md',
+  'docs/openai-review-runbook.md',
   'docs/support.md',
   'docs/anthropic-directory.md',
   'docs/anthropic-reviewer-runbook.md',
