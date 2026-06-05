@@ -107,9 +107,10 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_recommend',
     title: 'Recommend Next OrgX Action',
     description:
-      'Recommend next work, summarize morning-brief signals, or read prioritization context. USE WHEN: user asks what to do next, wants a brief, or needs priority guidance. NEXT: present the recommendation, then use orgx_act, orgx_write, or orgx_spawn only after the user confirms an action. DO NOT USE WHEN: the user already specified the action; use orgx_act or orgx_write.',
+      'Recommend next work, summarize operator-chronicle/morning-brief signals, or read prioritization context. USE WHEN: user asks what to do next, wants a brief, asks what changed yesterday/week/30 days, or needs priority guidance. mode=morning_brief returns the operator chronicle when available. NEXT: present the recommendation, then use orgx_act, orgx_write, or orgx_spawn only after the user confirms an action. DO NOT USE WHEN: the user already specified the action; use orgx_act or orgx_write.',
     inputSchema: {
       mode: z.enum(['next_action', 'morning_brief']).optional().describe('Recommendation mode; default next_action'),
+      period: z.enum(['day', 'week', '30d']).optional().describe('Reporting period for mode=morning_brief; default 30d'),
       entity_type: z.enum(['workspace', 'initiative', 'workstream', 'milestone', 'task']).optional().describe('Recommendation scope type'),
       entity_id: z.string().optional().describe('Scoped entity ID'),
       workspace_id: z.string().optional().describe('Workspace UUID'),

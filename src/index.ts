@@ -157,6 +157,10 @@ import {
   formatMorningBriefSummary,
 } from './morningBriefValue';
 import {
+  buildOperatorChroniclePath,
+  formatOperatorChronicleBrief,
+} from './operatorChronicleFallback';
+import {
   buildOrgxFreeAudit,
   formatOrgxFreeAuditSummary,
   type OrgxFreeAuditPeriod,
@@ -3212,23 +3216,24 @@ export class OrgXMcp extends McpAgent<
 
         case 'orgx_recommend': {
           if (args.mode === 'morning_brief') {
-            const wsId =
-              typeof args.workspace_id === 'string'
-                ? args.workspace_id
-                : this.sessionContext?.workspaceId;
-            if (!wsId) return this.toolError('workspace_id required');
             const response = await callOrgxApiJson(
               this.env,
-              `/api/flywheel/briefs?workspace_id=${wsId}${
-                args.session_id ? `&session_id=${args.session_id}` : ''
-              }`,
+              buildOperatorChroniclePath(
+                args,
+                this.sessionContext?.workspaceId ?? null
+              ),
               undefined,
               { userId: resolvedUserId }
             );
             const result = (await response.json()) as Record<string, unknown>;
-            const payload = { ...result, _v2_tool: 'orgx_recommend', mode: 'morning_brief' };
+            const payload = {
+              ...result,
+              _v2_tool: 'orgx_recommend',
+              mode: 'morning_brief',
+              source_tool: 'get_operator_chronicle',
+            };
             return {
-              content: [{ type: 'text', text: formatForLLM('get_morning_brief', payload) }],
+              content: [{ type: 'text', text: formatOperatorChronicleBrief(payload) }],
               structuredContent: payload,
             };
           }
