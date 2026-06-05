@@ -24,6 +24,8 @@ export type SourceClient =
   | 'cursor'
   | 'claude'
   | 'chatgpt'
+  | 'codex'
+  | 'openclaw'
   | 'vscode'
   | 'goose'
   | 'api'
@@ -407,6 +409,8 @@ export function detectSourceClient(clientInfo?: McpClientInfo): SourceClient {
   if (name.includes('cursor')) return 'cursor';
   if (name.includes('claude')) return 'claude';
   if (name.includes('chatgpt') || name.includes('openai')) return 'chatgpt';
+  if (name.includes('codex')) return 'codex';
+  if (name.includes('openclaw')) return 'openclaw';
   if (name.includes('vscode') || name.includes('visual studio code'))
     return 'vscode';
   if (name.includes('goose')) return 'goose';
