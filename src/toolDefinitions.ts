@@ -1321,6 +1321,33 @@ const applyChangesetOperationSchema = z.union([
 
 export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
   {
+    id: 'get_operator_chronicle',
+    title: 'Get Operator Chronicle',
+    description:
+      'Read the operator chronicle: decision chronology, yesterday/week/30-day rollups, reportingNarrative.briefMarkdown, artifacts, PR receipts, active initiatives, goals, top priorities, velocity, and reporting gaps for a workspace. USE WHEN: user asks what changed yesterday, this week, or this month; asks for decision chronology, top priorities, PR velocity, artifacts, goals, or what OrgX is missing. NEXT: present reportingNarrative.briefMarkdown first, then use reportingNarrative.nextAction and topPriorities for drill-down. Read-only.',
+    inputSchema: {
+      workspace_id: z
+        .string()
+        .optional()
+        .describe('Workspace UUID to scope the chronicle.'),
+      command_center_id: z
+        .string()
+        .optional()
+        .describe('Deprecated alias for workspace_id.'),
+      period: z
+        .enum(['day', 'week', '30d'])
+        .optional()
+        .describe('Reporting window. day=24h, week=7d, 30d=30 days.'),
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
+    _meta: {
+      'openai/toolInvocation/invoking': 'Loading operator chronicle...',
+      'openai/toolInvocation/invoked': 'Operator chronicle ready',
+      'openai/readOnlyHint': true,
+    },
+  },
+  {
     id: 'orgx_emit_activity',
     title: 'Emit OrgX Activity',
     description:

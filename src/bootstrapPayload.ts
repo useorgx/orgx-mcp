@@ -31,6 +31,7 @@ export const V2_PUBLIC_TOOL_IDS = [
   'track_project_progress',
   'review_artifact',
   'get_morning_brief',
+  'get_operator_chronicle',
   'consolidate_pr',
 ] as const;
 
@@ -43,10 +44,10 @@ export const BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE: Record<
       tool: 'orgx_search',
       args: { query: 'recent decisions', type: 'decision', limit: 10 },
     },
-    { tool: 'orgx_recommend', args: { mode: 'morning_brief', limit: 5 } },
+    { tool: 'get_operator_chronicle', args: { period: '30d' } },
   ],
   commander: [
-    { tool: 'orgx_recommend', args: { mode: 'morning_brief', limit: 5 } },
+    { tool: 'get_operator_chronicle', args: { period: '30d' } },
     { tool: 'orgx_search', args: { type: 'initiative', limit: 10 } },
   ],
   planner: [
@@ -58,11 +59,11 @@ export const BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE: Record<
     { tool: 'orgx_recommend', args: { mode: 'next_action', limit: 5 } },
   ],
   observer: [
-    { tool: 'orgx_recommend', args: { mode: 'morning_brief', limit: 5 } },
+    { tool: 'get_operator_chronicle', args: { period: '30d' } },
     { tool: 'orgx_search', args: { type: 'initiative', limit: 10 } },
   ],
   full: [
-    { tool: 'orgx_recommend', args: { mode: 'morning_brief', limit: 5 } },
+    { tool: 'get_operator_chronicle', args: { period: '30d' } },
     { tool: 'orgx_search', args: { type: 'initiative', limit: 10 } },
   ],
 };
