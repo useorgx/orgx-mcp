@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildClientActivationExperience } from '../src/clientActivationExperience';
+import { detectSourceClient } from '../src/cross-pollination';
 import { createEmptyMcpActivationState } from '../src/mcpActivationTracker';
 
 describe('clientActivationExperience', () => {
@@ -22,6 +23,15 @@ describe('clientActivationExperience', () => {
       args: { action: 'start' },
       label: 'Scaffold the first initiative',
     });
+    expect(experience?.hook_coverage.coverage_level).toBe('native_hooks');
+    expect(experience?.hook_coverage.surfaces).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          surface: 'Lifecycle hooks',
+          status: 'wired',
+        }),
+      ])
+    );
   });
 
   it('emits a celebration once activation is completed', () => {
@@ -49,5 +59,67 @@ describe('clientActivationExperience', () => {
       'orgx_recommend'
     );
     expect(experience?.next_stage).toBeNull();
+  });
+
+  it('keeps ChatGPT chronicle reporting tied to the action-list proof gap', () => {
+    const state = createEmptyMcpActivationState();
+    state.source_client = 'chatgpt';
+
+    const experience = buildClientActivationExperience({
+      state,
+      sourceClient: 'chatgpt',
+    });
+
+    expect(experience?.hook_coverage.coverage_level).toBe('tool_actions');
+    expect(experience?.hook_coverage.reporting_entrypoints).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ tool: 'get_operator_chronicle' }),
+      ])
+    );
+    expect(experience?.hook_coverage.surfaces).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          surface: 'Ambient lifecycle hooks',
+          status: 'missing',
+        }),
+      ])
+    );
+    expect(experience?.hook_coverage.required_proof.join('\n')).toContain(
+      'installed ChatGPT app action list'
+    );
+  });
+
+  it('recognizes Codex as its own reporting client instead of generic other', () => {
+    const state = createEmptyMcpActivationState();
+    state.source_client = 'codex';
+    state.milestones.D1 = '2026-06-05T09:00:00.000Z';
+    state.milestones.A1 = '2026-06-05T09:05:00.000Z';
+    state.milestones.A2 = '2026-06-05T09:10:00.000Z';
+
+    const experience = buildClientActivationExperience({
+      state,
+      sourceClient: 'codex',
+    });
+
+    expect(detectSourceClient({ name: 'Codex CLI' })).toBe('codex');
+    expect(experience?.source_client).toBe('codex');
+    expect(experience?.playbook).toBe('Codex local execution proof loop');
+    expect(experience?.next_stage).toBe('A3');
+    expect(experience?.next_action).toMatchObject({
+      tool: 'get_operator_chronicle',
+      args: { period: '30d' },
+    });
+    expect(experience?.hook_coverage.surfaces).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          surface: 'Native lifecycle hooks',
+          status: 'missing',
+        }),
+        expect.objectContaining({
+          surface: 'Direct chronicle action in active Codex sessions',
+          status: 'partial',
+        }),
+      ])
+    );
   });
 });

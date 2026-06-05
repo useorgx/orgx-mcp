@@ -1,4 +1,8 @@
 import type { SourceClient } from './cross-pollination';
+import {
+  getClientHookCoverage,
+  type ClientHookCoverage,
+} from './clientHookCoverage';
 import type {
   McpActivationStage,
   McpActivationState,
@@ -20,6 +24,7 @@ export type ClientActivationExperience = {
   next_stage: McpActivationStage | null;
   optimization_hint: string | null;
   next_action: ClientActivationAction | null;
+  hook_coverage: ClientHookCoverage;
   celebration?: {
     title: string;
     message: string;
@@ -156,6 +161,80 @@ const CLIENT_PLAYBOOKS: Record<SourceClient, ClientPlaybook> = {
         label: 'Review the morning brief',
         prompt:
           'Run orgx_recommend mode=morning_brief to connect the conversation to measurable value and next actions.',
+      },
+      A4: DEFAULT_RECOMMEND_NEXT_ACTION,
+    },
+    celebrationNextAction: DEFAULT_RECOMMEND_NEXT_ACTION,
+  },
+  codex: {
+    playbook: 'Codex local execution proof loop',
+    optimizationHint:
+      'Optimize for local execution proof: bootstrap the MCP server, inspect active work, emit receipts during execution, then read the operator chronicle before closing the session.',
+    nextActions: {
+      D1: {
+        tool: 'orgx_bootstrap',
+        label: 'Bootstrap Codex against OrgX',
+        prompt:
+          'Run orgx_bootstrap so Codex can discover the current tool profile, safe first calls, and reporting contract.',
+        args: {},
+      },
+      A1: {
+        tool: 'orgx_search',
+        args: { type: 'initiative', limit: 10 },
+        label: 'Inspect active initiatives',
+        prompt:
+          'Run orgx_search type=initiative so Codex can anchor local work to the right initiative instead of generic session context.',
+      },
+      A2: {
+        tool: 'orgx_submit_receipt',
+        args: { receipt_type: 'execution_checkpoint' },
+        label: 'Submit the first execution receipt',
+        prompt:
+          'Run orgx_submit_receipt after the first meaningful local result so OrgX can see proof, not just a chat summary.',
+      },
+      A3: {
+        tool: 'get_operator_chronicle',
+        args: { period: '30d' },
+        label: 'Read the operator chronicle',
+        prompt:
+          'Run get_operator_chronicle period=30d to verify decisions, artifacts, PRs, velocity, goals, and gaps from the same session.',
+      },
+      A4: DEFAULT_RECOMMEND_NEXT_ACTION,
+    },
+    celebrationNextAction: DEFAULT_RECOMMEND_NEXT_ACTION,
+  },
+  openclaw: {
+    playbook: 'OpenClaw gateway proof loop',
+    optimizationHint:
+      'Optimize for local gateway handoff: connect the plugin peer, emit phase changes, submit receipts, then checkpoint with the operator chronicle.',
+    nextActions: {
+      D1: {
+        tool: 'orgx_bootstrap',
+        label: 'Bootstrap the gateway session',
+        prompt:
+          'Run orgx_bootstrap so the gateway client receives the current routing and reporting contract.',
+        args: {},
+      },
+      A1: {
+        tool: 'orgx_search',
+        args: { type: 'task', status: 'active', limit: 10 },
+        label: 'Find executable work',
+        prompt:
+          'Run orgx_search type=task status=active so OpenClaw can bind the local runner to a concrete task.',
+      },
+      A2: {
+        tool: 'orgx_emit_activity',
+        args: { phase: 'execution' },
+        label: 'Emit gateway activity',
+        prompt:
+          'Run orgx_emit_activity phase=execution at the first phase transition so the chronicle gets live progress.',
+      },
+      A3: {
+        tool: 'get_operator_chronicle',
+        args: { period: '30d' },
+        label: 'Verify reporting in the chronicle',
+        prompt:
+          'Run get_operator_chronicle period=30d to confirm gateway work is visible in reporting.',
       },
       A4: DEFAULT_RECOMMEND_NEXT_ACTION,
     },
@@ -364,6 +443,7 @@ export function buildClientActivationExperience(params: {
   if (!sourceClient && !params.state?.milestones) return null;
 
   const playbook = CLIENT_PLAYBOOKS[sourceClient ?? 'other'];
+  const hookCoverage = getClientHookCoverage(sourceClient);
   const completedStages = resolveCompletedStages(params.state);
   const nextStage =
     ACTIVATION_STAGE_ORDER.find((stage) => !completedStages.includes(stage)) ??
@@ -383,6 +463,7 @@ export function buildClientActivationExperience(params: {
     next_stage: nextStage,
     optimization_hint: nextStage ? playbook.optimizationHint : null,
     next_action: nextStage ? playbook.nextActions[nextStage] : null,
+    hook_coverage: hookCoverage,
     ...(celebrationTriggered
       ? {
           celebration: {

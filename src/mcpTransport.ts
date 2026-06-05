@@ -290,6 +290,9 @@ function normalizeTelemetrySourceClient(
   if (normalized === 'claude-code' || normalized === 'claude_code')
     return 'claude';
   if (normalized === 'chatgpt' || normalized === 'openai') return 'chatgpt';
+  if (normalized === 'codex') return 'codex';
+  if (normalized === 'openclaw' || normalized === 'openclaw-plugin')
+    return 'openclaw';
   if (normalized === 'cursor') return 'cursor';
   if (normalized === 'vscode' || normalized === 'vs-code') return 'vscode';
   if (normalized === 'goose') return 'goose';

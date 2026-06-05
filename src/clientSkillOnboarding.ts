@@ -54,6 +54,16 @@ const CLIENT_STARTER_SKILLS: Record<SourceClient, string[]> = {
     'retro_synthesis',
   ],
   chatgpt: ['initiative_breakdown', 'stakeholder_update', 'competitive_scan'],
+  codex: [
+    'quality_gate_review',
+    'release_readiness_review',
+    'initiative_breakdown',
+  ],
+  openclaw: [
+    'quality_gate_review',
+    'release_readiness_review',
+    'retro_synthesis',
+  ],
   vscode: [
     'sprint_plan_optimizer',
     'quality_gate_review',
@@ -69,6 +79,8 @@ const CLIENT_DOMAIN_WEIGHTS: Record<SourceClient, Record<string, number>> = {
   cursor: { engineering: 3, operations: 2, product: 1 },
   claude: { engineering: 2, product: 2, operations: 1 },
   chatgpt: { product: 3, marketing: 2, sales: 2, operations: 1 },
+  codex: { engineering: 3, operations: 2, product: 1 },
+  openclaw: { engineering: 3, operations: 3, product: 1 },
   vscode: { engineering: 3, operations: 1 },
   goose: { operations: 3, engineering: 2 },
   api: { engineering: 2, operations: 1, product: 1 },
