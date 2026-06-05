@@ -111,6 +111,7 @@ describe('Anthropic directory readiness', () => {
       'track_project_progress',
       'review_artifact',
       'get_morning_brief',
+      'get_operator_chronicle',
       'consolidate_pr',
     ]);
     expect(serverJson.tools?.find((tool) => tool.name === 'orgx_bootstrap')?.description).toContain(

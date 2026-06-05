@@ -30,6 +30,7 @@ exports[`tool discovery snapshot > full tool catalog ID set is locked (sorted) >
   "get_initiative_stream_state",
   "get_morning_brief",
   "get_my_trust_context",
+  "get_operator_chronicle",
   "get_org_snapshot",
   "get_outcome_attribution",
   "get_pending_decisions",
@@ -119,6 +120,7 @@ exports[`tool discovery snapshot > full tool catalog description hashes are lock
   "get_initiative_stream_state": "e475687922d2",
   "get_morning_brief": "9e518ba964ae",
   "get_my_trust_context": "9607303bfebb",
+  "get_operator_chronicle": "fc378a0fb17e",
   "get_org_snapshot": "e3b0c44298fc",
   "get_outcome_attribution": "6e52c9ca7f8f",
   "get_pending_decisions": "d36f50e1bd2f",
@@ -181,6 +183,7 @@ exports[`tool discovery snapshot > full tool catalog description hashes are lock
 exports[`tool discovery snapshot > per-profile snapshots > profile "commander" exposes a locked tool set > profile-commander-tool-ids 1`] = `
 [
   "consolidate_pr",
+  "get_operator_chronicle",
   "orgx_act",
   "orgx_attach",
   "orgx_bootstrap",
@@ -226,6 +229,7 @@ exports[`tool discovery snapshot > per-profile snapshots > profile "memory" expo
 
 exports[`tool discovery snapshot > per-profile snapshots > profile "observer" exposes a locked tool set > profile-observer-tool-ids 1`] = `
 [
+  "get_operator_chronicle",
   "orgx_bootstrap",
   "orgx_decide",
   "orgx_inspect",
@@ -257,6 +261,7 @@ exports[`tool discovery snapshot > per-profile snapshots > profile "v2" exposes 
   "get_agent_status",
   "get_initiative_pulse",
   "get_morning_brief",
+  "get_operator_chronicle",
   "handoff_task",
   "orgx_act",
   "orgx_attach",

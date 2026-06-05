@@ -327,6 +327,16 @@
       }
     },
     {
+      "name": "get_operator_chronicle",
+      "title": "Get Operator Chronicle",
+      "description": "Read decision chronology, artifacts, PR receipts, priorities, goals, velocity, and reporting gaps for a workspace.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
       "name": "consolidate_pr",
       "title": "Consolidate Pull Request",
       "description": "Generate and persist an orchestration.consolidation_pass receipt for a GitHub pull request.",

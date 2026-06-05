@@ -2690,6 +2690,10 @@ export class OrgXMcp extends McpAgent<
   private registerClientIntegrationTools(allowedTools: Set<string> | null) {
     // Map tool IDs to their direct API endpoints and HTTP methods
     const CLIENT_ENDPOINTS: Record<string, { path: string; method: string }> = {
+      get_operator_chronicle: {
+        path: '/api/operator/chronicle',
+        method: 'GET',
+      },
       orgx_emit_activity: {
         path: '/api/client/live/activity',
         method: 'POST',
@@ -2792,6 +2796,14 @@ export class OrgXMcp extends McpAgent<
                   if (k !== '_context' && v !== undefined) {
                     params.set(k, String(v));
                   }
+                }
+                if (
+                  tool.id === 'get_operator_chronicle' &&
+                  !params.has('workspace_id') &&
+                  !params.has('command_center_id') &&
+                  this.sessionContext?.workspaceId
+                ) {
+                  params.set('workspace_id', this.sessionContext.workspaceId);
                 }
                 url = `${endpoint.path}?${params.toString()}`;
                 fetchInit = { method: 'GET' };
@@ -2939,6 +2951,42 @@ export class OrgXMcp extends McpAgent<
         return `✅ Changeset applied · ${appliedCount} operation${
           appliedCount === 1 ? '' : 's'
         }`;
+      }
+      case 'get_operator_chronicle': {
+        const chronicle =
+          data.chronicle && typeof data.chronicle === 'object'
+            ? (data.chronicle as Record<string, unknown>)
+            : data;
+        const headline =
+          typeof chronicle.headline === 'string'
+            ? chronicle.headline
+            : 'Operator chronicle ready';
+        const metrics =
+          chronicle.metrics && typeof chronicle.metrics === 'object'
+            ? (chronicle.metrics as Record<string, unknown>)
+            : {};
+        const pending =
+          typeof metrics.pendingDecisions === 'number'
+            ? metrics.pendingDecisions
+            : 0;
+        const blocked =
+          typeof metrics.blockedWork === 'number' ? metrics.blockedWork : 0;
+        const artifacts =
+          typeof metrics.artifactsProduced === 'number'
+            ? metrics.artifactsProduced
+            : 0;
+        const prs =
+          typeof metrics.prReceipts === 'number' ? metrics.prReceipts : 0;
+        const narrative =
+          chronicle.reportingNarrative &&
+          typeof chronicle.reportingNarrative === 'object'
+            ? (chronicle.reportingNarrative as Record<string, unknown>)
+            : {};
+        const nextAction =
+          typeof narrative.nextAction === 'string' && narrative.nextAction.trim()
+            ? ` · Next: ${narrative.nextAction.trim()}`
+            : '';
+        return `${headline} · ${pending} decisions pending · ${blocked} blocked · ${artifacts} artifacts · ${prs} PR receipts${nextAction}`;
       }
       case 'consolidate_pr': {
         const status = typeof data.status === 'string' ? data.status : 'ok';
