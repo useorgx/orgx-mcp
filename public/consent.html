@@ -1050,16 +1050,22 @@
 
       function updateAllPermissionsToggle() {
         const values = Object.values(selectedScopes);
-        const allSame = values.every((v) => v === values[0]);
+        const allNone = values.every((v) => v === 'none');
+        const allRead = values.every((v) => v === 'read');
+        const allFull = Object.entries(selectedScopes).every(
+          ([scope, permission]) =>
+            permission === (scopeCapabilities[scope]?.write ? 'write' : 'read')
+        );
+        const activeValue = allFull ? 'write' : allRead ? 'read' : allNone ? 'none' : null;
         const toggle = document.getElementById('all-permissions-toggle');
 
         toggle.querySelectorAll('.toggle-btn').forEach((btn) => {
           btn.classList.remove('active', 'active-read', 'active-none');
-          if (allSame && btn.dataset.value === values[0]) {
+          if (btn.dataset.value === activeValue) {
             btn.classList.add(
-              values[0] === 'write'
+              activeValue === 'write'
                 ? 'active'
-                : values[0] === 'read'
+                : activeValue === 'read'
                 ? 'active-read'
                 : 'active-none'
             );
