@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-15T22:54:59.761Z",
+  "generatedAt": "2026-06-06T18:14:09.855Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -145,8 +145,8 @@
     },
     "scaffolded-initiative": {
       "file": "public/widgets/scaffolded-initiative.html",
-      "bytes": 142744,
-      "hash": "daa9ac562f6b",
+      "bytes": 146707,
+      "hash": "e3e2c1e4ccc3",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/interaction-kit.css",

@@ -58,11 +58,13 @@ export const WIDGET_AFFORDANCE_SURFACE = [
 ] as const;
 
 export const CLIENT_INTEGRATION_PUBLIC_SURFACE = ['consolidate_pr'] as const;
+export const CLIENT_REPORTING_PUBLIC_SURFACE = ['orgx_memory_context'] as const;
 
 const V2_PUBLIC_SURFACE = [
   ...V2_CORE_PUBLIC_SURFACE,
   ...WIDGET_AFFORDANCE_SURFACE,
   ...CLIENT_INTEGRATION_PUBLIC_SURFACE,
+  ...CLIENT_REPORTING_PUBLIC_SURFACE,
 ] as const;
 
 export const TOOL_PROFILES: Record<string, ToolProfile> = {
@@ -82,6 +84,7 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
       'orgx_recommend',
       'orgx_attach',
       'orgx_submit_receipt',
+      'orgx_memory_context',
     ],
   },
   commander: {
@@ -101,6 +104,7 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
       'orgx_submit_receipt',
       'scaffold_initiative',
       'consolidate_pr',
+      'orgx_memory_context',
     ],
   },
   planner: {
@@ -143,6 +147,7 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
       'orgx_recommend',
       'orgx_plan',
       'orgx_decide',
+      'orgx_memory_context',
     ],
   },
   full: {

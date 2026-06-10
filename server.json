@@ -327,6 +327,16 @@
       }
     },
     {
+      "name": "orgx_memory_context",
+      "title": "OrgX Memory Context",
+      "description": "Read compact, source-backed OrgX memory projections for Codex, Claude Code, OpenCode, Goose, Cursor, OpenClaw, ChatGPT, and MCP clients.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
       "name": "consolidate_pr",
       "title": "Consolidate Pull Request",
       "description": "Generate and persist an orchestration.consolidation_pass receipt for a GitHub pull request.",

@@ -207,6 +207,9 @@ export const SECURITY_SCHEMES = {
   entityReadRequiresAuth: [
     { type: 'oauth2' as const, scopes: ['initiatives:read'] },
   ],
+  memoryReadRequiresAuth: [
+    { type: 'oauth2' as const, scopes: ['memory:read'] },
+  ],
   // Generic auth-required tools (no specific scopes enforced yet)
   authRequired: [{ type: 'oauth2' as const }],
 } as const;
@@ -1303,6 +1306,56 @@ const applyChangesetOperationSchema = z.union([
 ]);
 
 export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
+  {
+    id: 'orgx_memory_context',
+    title: 'OrgX Memory Context',
+    description:
+      'Read compact, source-backed OrgX memory projections for the current client. OrgX remains canonical; this returns client-native context blocks with source refs, confidence, stale_after, sensitivity, and projection_targets. USE WHEN: Codex, Claude Code, OpenCode, Goose, Cursor, OpenClaw, or another client needs durable project/initiative/agent context without loading raw transcripts or secrets. NEXT: inject only the returned relevant blocks into the client context and preserve source_refs/confidence when summarizing. Read-only.',
+    inputSchema: {
+      workspace_id: z
+        .string()
+        .optional()
+        .describe('Workspace UUID to scope memory context.'),
+      project_id: z
+        .string()
+        .optional()
+        .describe('Project UUID to include product brief context.'),
+      initiative_id: z
+        .string()
+        .optional()
+        .describe('Initiative UUID to include initiative brief and artifact context.'),
+      agent_id: z
+        .string()
+        .optional()
+        .describe('Agent ID to scope learned operating memory.'),
+      client: z
+        .enum([
+          'codex',
+          'claude_code',
+          'opencode',
+          'goose',
+          'cursor',
+          'openclaw',
+          'chatgpt',
+          'mcp',
+        ])
+        .describe('Client receiving the projection.'),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(25)
+        .optional()
+        .describe('Maximum context blocks to return.'),
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    securitySchemes: SECURITY_SCHEMES.memoryReadRequiresAuth,
+    _meta: {
+      'openai/toolInvocation/invoking': 'Loading OrgX memory context...',
+      'openai/toolInvocation/invoked': 'OrgX memory context ready',
+      'openai/readOnlyHint': true,
+    },
+  },
   {
     id: 'orgx_emit_activity',
     title: 'Emit OrgX Activity',

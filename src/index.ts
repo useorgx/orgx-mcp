@@ -2602,6 +2602,10 @@ export class OrgXMcp extends McpAgent<
   private registerClientIntegrationTools(allowedTools: Set<string> | null) {
     // Map tool IDs to their direct API endpoints and HTTP methods
     const CLIENT_ENDPOINTS: Record<string, { path: string; method: string }> = {
+      orgx_memory_context: {
+        path: '/api/client/memory/context',
+        method: 'GET',
+      },
       orgx_emit_activity: {
         path: '/api/client/live/activity',
         method: 'POST',
@@ -2850,6 +2854,17 @@ export class OrgXMcp extends McpAgent<
         }
         return `✅ Changeset applied · ${appliedCount} operation${
           appliedCount === 1 ? '' : 's'
+        }`;
+      }
+      case 'orgx_memory_context': {
+        const blocks = Array.isArray(data.blocks) ? data.blocks : [];
+        const meta =
+          data.meta && typeof data.meta === 'object'
+            ? (data.meta as Record<string, unknown>)
+            : {};
+        const client = typeof meta.client === 'string' ? meta.client : 'client';
+        return `OrgX memory context ready for ${client} · ${blocks.length} source-backed block${
+          blocks.length === 1 ? '' : 's'
         }`;
       }
       case 'consolidate_pr': {

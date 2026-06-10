@@ -127,7 +127,7 @@
         background: transparent;
         border: none;
         cursor: pointer;
-        transition: all 0.15s ease;
+        transition: color 0.15s ease, transform 0.15s ease;
         position: relative;
       }
 
@@ -135,35 +135,37 @@
         border-right: 1px solid rgba(255, 255, 255, 0.06);
       }
 
-      .toggle-btn:hover:not(.active):not(.active-read) {
+      .toggle-btn:hover:not(.active):not(.active-read):not(.active-none) {
         color: rgba(255, 255, 255, 0.6);
         background: rgba(255, 255, 255, 0.03);
+      }
+
+      .toggle-btn.active,
+      .toggle-btn.active-read,
+      .toggle-btn.active-none {
+        font-weight: 600;
+        z-index: 1;
       }
 
       .toggle-btn.active {
         color: #02040a;
         background: #bfff00;
-        font-weight: 600;
         box-shadow: 0 0 0 1px rgba(191, 255, 0, 0.65),
           0 0 18px rgba(191, 255, 0, 0.28);
-        z-index: 1;
       }
 
       .toggle-btn.active-read {
-        color: white;
-        background: rgba(20, 184, 166, 0.85);
-        font-weight: 600;
-        box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.58),
-          0 0 16px rgba(20, 184, 166, 0.24);
-        z-index: 1;
+        color: #03110f;
+        background: #2dd4bf;
+        box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.72),
+          0 0 18px rgba(20, 184, 166, 0.3);
       }
 
       .toggle-btn.active-none {
-        color: white;
-        background: rgba(255, 255, 255, 0.13);
-        font-weight: 600;
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
-        z-index: 1;
+        color: #f2f7ff;
+        background: rgba(255, 255, 255, 0.22);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28),
+          0 0 14px rgba(255, 255, 255, 0.08);
       }
 
       .toggle-btn:focus-visible {
