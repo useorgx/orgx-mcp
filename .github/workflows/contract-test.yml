@@ -13,7 +13,7 @@ jobs:
 
       - name: Verify main app API is reachable
         run: |
-          STATUS=$(curl -s -o /dev/null -w '%{http_code}' https://www.useorgx.com/api/health)
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' https://useorgx.com/api/health)
           if [ "$STATUS" != "200" ]; then
             echo "Main app API unreachable (HTTP $STATUS)"
             exit 1
