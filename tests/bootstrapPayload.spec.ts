@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 
 import {
   BOOTSTRAP_RECOMMENDED_WORKFLOWS,
   BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE,
   V2_PUBLIC_TOOL_IDS,
   getBootstrapSafeFirstCalls,
+  resolveBootstrapSessionContext,
 } from '../src/bootstrapPayload';
 
 const DEPRECATED_BOOTSTRAP_GUIDANCE = [
@@ -48,5 +50,48 @@ describe('bootstrap payload routing hints', () => {
     expect(getBootstrapSafeFirstCalls('unknown-profile')).toBe(
       BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE.full
     );
+  });
+
+  it('binds bootstrap workspace_id into session context before payload rendering', () => {
+    expect(
+      resolveBootstrapSessionContext(
+        { workspace_id: ' ws-123 ' },
+        { initiativeId: 'init-1' },
+        'Revenue Ops'
+      )
+    ).toEqual({
+      requestedWorkspaceId: 'ws-123',
+      changed: true,
+      context: {
+        workspaceId: 'ws-123',
+        workspaceName: 'Revenue Ops',
+        initiativeId: 'init-1',
+      },
+    });
+  });
+
+  it('clears stale workspace names when bootstrap switches workspaces without a fetched name', () => {
+    expect(
+      resolveBootstrapSessionContext(
+        { workspace_id: 'ws-2' },
+        { workspaceId: 'ws-1', workspaceName: 'Old Workspace' }
+      )
+    ).toEqual({
+      requestedWorkspaceId: 'ws-2',
+      changed: true,
+      context: {
+        workspaceId: 'ws-2',
+      },
+    });
+  });
+
+  it('keeps workspace as the canonical bootstrap entity type', () => {
+    const indexSource = readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8');
+    const bootstrapBranch = indexSource.match(
+      /case 'orgx_bootstrap': \{[\s\S]*?case 'orgx_inspect':/
+    )?.[0];
+
+    expect(bootstrapBranch).toContain("'workspace'");
+    expect(bootstrapBranch).not.toContain("'command_center'");
   });
 });

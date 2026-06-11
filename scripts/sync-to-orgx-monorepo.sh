@@ -9,7 +9,8 @@ Mirror the canonical orgx-mcp worker into the vendored monorepo copy at
 orgx/workers/orgx-mcp.
 
 Defaults:
-  destination: ../orgx-clean/orgx/workers/orgx-mcp
+  destination: ../orgx/orgx/workers/orgx-mcp when present, otherwise
+               ../orgx-clean/orgx/workers/orgx-mcp
   override via ORGX_MONOREPO_WORKER_DIR
 
 Notes:
@@ -47,7 +48,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 source_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-default_destination="${source_root}/../orgx-clean/orgx/workers/orgx-mcp"
+default_destination="${source_root}/../orgx/orgx/workers/orgx-mcp"
+fallback_destination="${source_root}/../orgx-clean/orgx/workers/orgx-mcp"
+if [[ ! -d "$default_destination" && -d "$fallback_destination" ]]; then
+  default_destination="$fallback_destination"
+fi
 destination_root="${destination_arg:-${ORGX_MONOREPO_WORKER_DIR:-$default_destination}}"
 
 if [[ ! -d "$source_root/.github" ]]; then

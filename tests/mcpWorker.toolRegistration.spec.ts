@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve as resolvePath } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   CHATGPT_TOOL_DEFINITIONS,
@@ -8,27 +11,6 @@ import {
 } from '../src/toolDefinitions';
 import { CONTRACT_TOOL_DEFINITIONS } from '../src/contractTools';
 import { FLYWHEEL_TOOL_DEFINITIONS } from '../src/flywheelTools';
-
-const INLINE_REGISTERED_TOOL_IDS = [
-  'get_org_snapshot',
-  'account_status',
-  'account_upgrade',
-  'account_usage_report',
-  'list_entities',
-  'entity_action',
-  'verify_entity_completion',
-  'create_entity',
-  'comment_on_entity',
-  'list_entity_comments',
-  'batch_create_entities',
-  'scaffold_initiative',
-  'get_task_with_context',
-  'batch_delete_entities',
-  'update_entity',
-  'configure_org',
-  'stats',
-  'workspace',
-] as const;
 
 const INLINE_HANDLED_TOOLS = new Set(['workspace', 'configure_org', 'stats']);
 
@@ -46,6 +28,25 @@ function findDuplicates(arr: string[]): string[] {
   return dupes;
 }
 
+function collectInlineRegisteredToolIds(): string[] {
+  const src = readWorkerSource();
+  const ids = new Set<string>();
+  const inlineRe = /this\.server\.registerTool\(\s*['"]([a-zA-Z0-9_-]+)['"]/g;
+  const appRe = /registerAppTool\(\s*this\.server,\s*['"]([a-zA-Z0-9_-]+)['"]/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = inlineRe.exec(src))) ids.add(match[1]!);
+  while ((match = appRe.exec(src))) ids.add(match[1]!);
+
+  return [...ids].sort();
+}
+
+function readWorkerSource(): string {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const indexPath = resolvePath(here, '..', 'src', 'index.ts');
+  return readFileSync(indexPath, 'utf8');
+}
+
 describe('MCP Worker tool registration integrity', () => {
   const chatgptIds = extractIds(
     CHATGPT_TOOL_DEFINITIONS as unknown as { id: string }[]
@@ -60,7 +61,7 @@ describe('MCP Worker tool registration integrity', () => {
   const contractIds = extractIds(
     CONTRACT_TOOL_DEFINITIONS as unknown as { id: string }[]
   );
-  const inlineIds = [...INLINE_REGISTERED_TOOL_IDS];
+  const inlineIds = collectInlineRegisteredToolIds();
   const flywheelIds = extractIds(
     FLYWHEEL_TOOL_DEFINITIONS as unknown as { id: string }[]
   );
@@ -145,6 +146,15 @@ describe('MCP Worker tool registration integrity', () => {
     expect(overlap).toEqual([]);
   });
 
+  it('flywheel tool definitions are implemented by inline registrations', () => {
+    const inlineSet = new Set(inlineIds);
+    const missingHandlers = flywheelIds.filter((id) => !inlineSet.has(id));
+    expect(
+      missingHandlers,
+      `Flywheel tool definitions without inline handlers: ${missingHandlers.join(', ')}`
+    ).toEqual([]);
+  });
+
   it('flywheel tools expose the governed outcome taxonomy recovery path', () => {
     const configureIndex = flywheelIds.indexOf('configure_outcome_type');
     const recordIndex = flywheelIds.indexOf('record_outcome');
@@ -185,6 +195,9 @@ describe('MCP Worker tool registration integrity', () => {
       (id) => !INLINE_HANDLED_TOOLS.has(id)
     );
 
+    const inlineSet = new Set(inlineIds);
+    const flywheelCatalogOnlyIds = flywheelIds.filter((id) => !inlineSet.has(id));
+
     const allRegistered = [
       ...chatgptRegistered,
       ...planIds,
@@ -192,7 +205,7 @@ describe('MCP Worker tool registration integrity', () => {
       ...clientIds,
       ...contractIds,
       ...inlineIds,
-      ...flywheelIds,
+      ...flywheelCatalogOnlyIds,
     ];
 
     const dupes = findDuplicates(allRegistered);
@@ -217,5 +230,40 @@ describe('MCP Worker tool registration integrity', () => {
         `INLINE_HANDLED_TOOLS contains "${toolId}" which is NOT inline-registered.`
       ).toBe(true);
     }
+  });
+
+  it('orgx_act and entity_action update dry-runs do not call write endpoints', () => {
+    const src = readWorkerSource();
+    const contractUpdateBranch = src.match(
+      /if \(args\.action === 'update'\) \{[\s\S]*?return this\.executeContractTool\(\s*'orgx_write'/
+    )?.[0];
+    const inlineUpdateBranch = src.match(
+      /if \(resolvedAction === 'update'\) \{[\s\S]*?const response = await callOrgxApiJson/
+    )?.[0];
+
+    expect(contractUpdateBranch).toBeDefined();
+    expect(inlineUpdateBranch).toBeDefined();
+    expect(contractUpdateBranch).toContain('args.dry_run === true');
+    expect(inlineUpdateBranch).toContain('args.dry_run === true');
+    expect(contractUpdateBranch!.indexOf('args.dry_run === true')).toBeLessThan(
+      contractUpdateBranch!.indexOf("return this.executeContractTool(\n              'orgx_write'")
+    );
+    expect(inlineUpdateBranch!.indexOf('args.dry_run === true')).toBeLessThan(
+      inlineUpdateBranch!.indexOf('const response = await callOrgxApiJson')
+    );
+  });
+
+  it('start_plan_session defaults workspace_id from session context when omitted', () => {
+    const src = readWorkerSource();
+    const startPlanBranch = src.match(
+      /if \(toolId === 'start_plan_session'\) \{[\s\S]*?init\.body = JSON\.stringify\(body\);/
+    )?.[0];
+
+    expect(startPlanBranch).toBeDefined();
+    expect(startPlanBranch).toContain('body.workspace_id');
+    expect(startPlanBranch).toContain('this.sessionContext.workspaceId');
+    expect(startPlanBranch!.indexOf('body.workspace_id')).toBeLessThan(
+      startPlanBranch!.indexOf('init.body = JSON.stringify(body);')
+    );
   });
 });
