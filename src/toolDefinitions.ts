@@ -1323,6 +1323,75 @@ const applyChangesetOperationSchema = z.union([
   }),
 ]);
 
+// Execution-graph (WEG) emission — the deterministic graph + trust ledger any
+// client posts to /api/client/live/execution-graph. The backend re-validates
+// strictly (run-context, dangling edges, unique ids) and DERIVES trust signals;
+// these schemas keep the tool surface aligned without owning the strict rules.
+const executionGraphNodeSchema = z.object({
+  id: z.string().min(1).max(200).describe('Stable node id within this graph'),
+  type: z.enum(['initiative', 'workstream', 'milestone', 'task', 'step']),
+  title: z.string().min(1).max(500),
+  status: z
+    .enum(['pending', 'running', 'blocked', 'completed', 'failed', 'skipped'])
+    .describe('Claimed lifecycle status — reconciled against verification'),
+  requires_evidence: z
+    .boolean()
+    .optional()
+    .describe('Completing without passing verification is a hallucinated-receipt risk'),
+  verification: z
+    .object({
+      state: z.enum(['unverified', 'passed', 'failed']),
+      evidence_ref: z
+        .string()
+        .min(1)
+        .max(500)
+        .optional()
+        .describe('Checkable artifact / diff / test run behind the claim'),
+      method: z.string().min(1).max(120).optional(),
+      detail: z.string().max(2000).optional(),
+    })
+    .optional(),
+  economy: z
+    .object({
+      model: z.string().min(1).max(160).optional(),
+      cost_usd: z.number().min(0).optional(),
+      tokens: z.number().int().min(0).optional(),
+      duration_ms: z.number().int().min(0).optional(),
+    })
+    .optional()
+    .describe('Per-step economy: which model ran this and what it cost'),
+  started_at: z.string().optional(),
+  completed_at: z.string().optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+const executionGraphEdgeSchema = z.object({
+  from: z.string().min(1).max(200),
+  to: z.string().min(1).max(200),
+  kind: z
+    .literal('depends_on')
+    .default('depends_on')
+    .describe('to must not start before from is verified-complete'),
+});
+
+const executionTrustEventSchema = z.object({
+  id: z.string().min(1).max(200).optional(),
+  kind: z.enum(['claim', 'reconcile', 'violation']),
+  node_id: z.string().min(1).max(200).optional(),
+  violation_type: z
+    .enum([
+      'false_completion',
+      'hallucinated_receipt',
+      'authority_exceeded',
+      'dependency_violation',
+    ])
+    .optional(),
+  claimed: z.string().max(500).optional(),
+  actual: z.string().max(500).optional(),
+  evidence_ref: z.string().min(1).max(500).optional(),
+  detail: z.string().max(2000).optional(),
+});
+
 export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
   {
     id: 'get_operator_chronicle',
@@ -1404,6 +1473,57 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     _meta: {
       'openai/toolInvocation/invoking': 'Emitting activity...',
       'openai/toolInvocation/invoked': 'Activity emitted',
+    },
+  },
+  {
+    id: 'orgx_emit_execution_graph',
+    title: 'Emit OrgX Execution Graph',
+    description:
+      'Emit the deterministic execution graph + trust ledger for the active run: nodes (claimed status + verification evidence), depends_on edges, and trust events. OrgX derives false-completion, hallucinated-receipt, and dependency-violation signals from this and surfaces them on /live. USE WHEN: reporting the structured shape of multi-step work — NOT a single progress line (use orgx_emit_activity for that). NEXT: continue work; re-emit as the graph advances (idempotent per run + graph fingerprint). DO NOT USE to mark entities complete — telemetry only.',
+    inputSchema: {
+      initiative_id: z.string().uuid().describe('Initiative UUID'),
+      run_id: z.string().uuid().optional().describe('Existing run UUID'),
+      correlation_id: z
+        .string()
+        .optional()
+        .describe('Required when run_id is not provided'),
+      source_client: reportingSourceClientSchema
+        .optional()
+        .describe('Required when run_id is not provided'),
+      runtime: reportingRuntimeContextSchema
+        .optional()
+        .describe('Runtime provenance used by /live to bucket chokepoints'),
+      summary: z
+        .string()
+        .min(1)
+        .max(2000)
+        .optional()
+        .describe('Optional human-readable rollup of the graph state'),
+      nodes: z
+        .array(executionGraphNodeSchema)
+        .min(1)
+        .max(2000)
+        .describe('Execution graph nodes; each carries claimed status + optional verification'),
+      edges: z
+        .array(executionGraphEdgeSchema)
+        .max(8000)
+        .optional()
+        .describe('depends_on edges between node ids'),
+      trust_events: z
+        .array(executionTrustEventSchema)
+        .max(2000)
+        .optional()
+        .describe('Explicit trust-ledger events such as authority_exceeded that OrgX cannot infer from graph shape'),
+      metadata: z
+        .record(z.unknown())
+        .optional()
+        .describe('Optional structured metadata to attach to the execution-graph emission'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+    securitySchemes: SECURITY_SCHEMES.authRequired,
+    _meta: {
+      'openai/toolInvocation/invoking': 'Emitting execution graph...',
+      'openai/toolInvocation/invoked': 'Execution graph emitted',
     },
   },
   {
