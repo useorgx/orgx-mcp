@@ -112,6 +112,7 @@ import {
 } from './mcpInvocationTelemetry';
 import { extractRunCostTelemetry } from './runCostTelemetry';
 import { detectProviderPinning } from './providerPinning';
+import { validateSpawnContract } from './spawnContract';
 import { buildLiveFeedWidget } from './liveFeedWidget';
 import { signStreamToken } from './streamToken';
 import { hydrateTaskContext } from './taskContextHydrator';
@@ -3654,6 +3655,16 @@ export class OrgXMcp extends McpAgent<
 
         case 'orgx_spawn': {
           const action = typeof args.action === 'string' ? args.action : 'spawn';
+          // A5: enforce the documented per-action contract at the MCP layer
+          // (the inputSchema marks all fields optional), failing fast with a
+          // clear message instead of a vague downstream error.
+          const spawnContract = validateSpawnContract(action, args);
+          if (!spawnContract.ok) {
+            return this.toolError(spawnContract.message ?? 'Invalid orgx_spawn call', {
+              code: 'spawn_contract_violation',
+              status: 422,
+            });
+          }
           const targetTool =
             action === 'guard'
               ? 'check_spawn_guard'
