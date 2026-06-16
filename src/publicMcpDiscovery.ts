@@ -37,6 +37,7 @@ const PRIMARY_AUTHENTICATED_TOOLS = [
   'orgx_decide',
   'orgx_submit_receipt',
   'orgx_emit_activity',
+  'orgx_emit_execution_graph',
   'approve_decision',
   'reject_decision',
   'get_agent_status',
@@ -343,6 +344,25 @@ const TOOL_EXAMPLES: Record<
     arguments: {
       phase: 'running',
       message: 'Implementation started.',
+    },
+    sample_response: {
+      ok: true,
+    },
+  },
+  orgx_emit_execution_graph: {
+    prompt: 'Emit the execution graph and trust ledger for the active run.',
+    arguments: {
+      initiative_id: '00000000-0000-0000-0000-000000000000',
+      nodes: [
+        {
+          id: 'build',
+          type: 'task',
+          title: 'Build the feature',
+          status: 'completed',
+          requires_evidence: true,
+          verification: { state: 'passed', evidence_ref: 'pr#1' },
+        },
+      ],
     },
     sample_response: {
       ok: true,

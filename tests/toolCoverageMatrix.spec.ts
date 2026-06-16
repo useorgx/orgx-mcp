@@ -291,6 +291,10 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     tier: 'live_read_verified',
     evidence: ['live events evt_1779925592864_dc7a83cc and evt_1779925941304_8dd45ad4, 2026-05-27', 'tests/toolDiscoverySnapshot.spec.ts'],
   },
+  orgx_emit_execution_graph: {
+    tier: 'contract_and_unit',
+    evidence: ['tests/toolDiscoverySnapshot.spec.ts', 'tests/smitheryMetadata.spec.ts'],
+  },
   orgx_free_audit: {
     tier: 'contract_and_unit',
     evidence: ['tests/freeAudit.spec.ts'],

@@ -2710,6 +2710,10 @@ export class OrgXMcp extends McpAgent<
         path: '/api/client/live/activity',
         method: 'POST',
       },
+      orgx_emit_execution_graph: {
+        path: '/api/client/live/execution-graph',
+        method: 'POST',
+      },
       orgx_apply_changeset: {
         path: '/api/client/live/changesets/apply',
         method: 'POST',
