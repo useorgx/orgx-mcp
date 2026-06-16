@@ -1421,6 +1421,25 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     },
   },
   {
+    id: 'check_execution_readiness',
+    title: 'Check Execution Readiness',
+    description:
+      'Check whether the workspace has the credentials needed to dispatch agent work, BEFORE spawning. USE WHEN: about to call orgx_spawn / spawn_agent_task and you want to confirm execution credentials exist — avoids dispatching a run that fails on missing keys. NEXT: if not ready, surface what is missing and resolve it; if ready, proceed to orgx_spawn. Read-only; dispatches nothing.',
+    inputSchema: {
+      workspace_id: z
+        .string()
+        .optional()
+        .describe('Workspace UUID to check. Defaults to the MCP session workspace.'),
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
+    _meta: {
+      'openai/toolInvocation/invoking': 'Checking execution readiness...',
+      'openai/toolInvocation/invoked': 'Execution readiness checked',
+      'openai/readOnlyHint': true,
+    },
+  },
+  {
     id: 'orgx_emit_activity',
     title: 'Emit OrgX Activity',
     description:

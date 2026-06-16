@@ -201,6 +201,11 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     evidence: ['tests/operatorChronicleFallback.spec.ts', 'tests/reporting.mcp-tools.spec.ts'],
     remaining: 'Live read against prod chronicle endpoint not yet captured.',
   },
+  check_execution_readiness: {
+    tier: 'contract_and_unit',
+    evidence: ['tests/toolDiscoverySnapshot.spec.ts'],
+    remaining: 'Live read against prod credentials/status endpoint not yet captured.',
+  },
   manage_lifecycle: {
     tier: 'contract_and_unit',
     evidence: ['tests/mcpLifecycleActionAliases.spec.ts'],
