@@ -110,6 +110,7 @@ import {
   createScaffoldTelemetryTrace,
   recordDurableMcpToolInvocation,
 } from './mcpInvocationTelemetry';
+import { extractRunCostTelemetry } from './runCostTelemetry';
 import { buildLiveFeedWidget } from './liveFeedWidget';
 import { signStreamToken } from './streamToken';
 import { hydrateTaskContext } from './taskContextHydrator';
@@ -1063,6 +1064,11 @@ export class OrgXMcp extends McpAgent<
        * error text.
        */
       errorKind?: string;
+      // A6/A7: realized per-run token/cost telemetry, when the tool-execute
+      // response carried it (see runCostTelemetry.extractRunCostTelemetry).
+      tokensUsed?: number;
+      costUsd?: number;
+      estimatedCostUsd?: number;
     }
   ): void {
     const distinctId = params.userId ?? this.resolveAnonymousDistinctId();
@@ -1088,6 +1094,9 @@ export class OrgXMcp extends McpAgent<
         error: params.error,
         error_kind: resolvedErrorKind,
         is_widget_tool: params.isWidgetTool,
+        tokens_used: params.tokensUsed,
+        cost_usd: params.costUsd,
+        estimated_cost_usd: params.estimatedCostUsd,
       },
     });
 
@@ -2134,6 +2143,8 @@ export class OrgXMcp extends McpAgent<
           ok: true,
           latencyMs,
           isWidgetTool,
+          // A6/A7: capture realized token/cost spend when the response carried it.
+          ...extractRunCostTelemetry(result.data),
         });
 
         // Dual-protocol return:
