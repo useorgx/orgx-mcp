@@ -111,6 +111,7 @@ import {
   recordDurableMcpToolInvocation,
 } from './mcpInvocationTelemetry';
 import { extractRunCostTelemetry } from './runCostTelemetry';
+import { detectProviderPinning } from './providerPinning';
 import { buildLiveFeedWidget } from './liveFeedWidget';
 import { signStreamToken } from './streamToken';
 import { hydrateTaskContext } from './taskContextHydrator';
@@ -1069,6 +1070,11 @@ export class OrgXMcp extends McpAgent<
       tokensUsed?: number;
       costUsd?: number;
       estimatedCostUsd?: number;
+      // A1: provider-pinning verification — whether a requested provider/model
+      // was honored end-to-end (see providerPinning.detectProviderPinning).
+      providerRequested?: string;
+      providerUsed?: string;
+      providerMismatch?: boolean;
     }
   ): void {
     const distinctId = params.userId ?? this.resolveAnonymousDistinctId();
@@ -1097,6 +1103,9 @@ export class OrgXMcp extends McpAgent<
         tokens_used: params.tokensUsed,
         cost_usd: params.costUsd,
         estimated_cost_usd: params.estimatedCostUsd,
+        provider_requested: params.providerRequested,
+        provider_used: params.providerUsed,
+        provider_mismatch: params.providerMismatch,
       },
     });
 
@@ -2145,6 +2154,20 @@ export class OrgXMcp extends McpAgent<
           isWidgetTool,
           // A6/A7: capture realized token/cost spend when the response carried it.
           ...extractRunCostTelemetry(result.data),
+          // A1: verify a requested provider/model pin was honored end-to-end.
+          ...(() => {
+            const pinning = detectProviderPinning(
+              { provider: expandedArgs.provider, model: expandedArgs.model },
+              result.data
+            );
+            return pinning
+              ? {
+                  providerRequested: pinning.requested_provider,
+                  providerUsed: pinning.used_provider,
+                  providerMismatch: pinning.provider_mismatch || pinning.model_mismatch,
+                }
+              : {};
+          })(),
         });
 
         // Dual-protocol return:
