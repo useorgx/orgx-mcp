@@ -119,7 +119,32 @@ describe('clientActivationExperience', () => {
           surface: 'Direct chronicle action in active Codex sessions',
           status: 'partial',
         }),
+        // The WEG execution-graph emitter is wired even though Codex has no
+        // native activity/receipt hook bundle.
+        expect.objectContaining({
+          surface: 'Execution-graph auto-emit hook',
+          status: 'wired',
+        }),
       ])
     );
+  });
+
+  it('reports the execution-graph auto-emit hook as wired for Claude Code and Cursor', () => {
+    for (const sourceClient of ['claude', 'cursor'] as const) {
+      const state = createEmptyMcpActivationState();
+      state.source_client = sourceClient;
+      const experience = buildClientActivationExperience({
+        state,
+        sourceClient,
+      });
+      expect(experience?.hook_coverage.surfaces).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            surface: 'Execution-graph auto-emit hook',
+            status: 'wired',
+          }),
+        ])
+      );
+    }
   });
 });

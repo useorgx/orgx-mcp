@@ -106,14 +106,22 @@ const CLIENT_HOOK_COVERAGE: Record<SourceClient, ClientHookCoverage> = {
         reporting_role:
           'Keeps execution behavior and follow-up actions available without leaving the editor.',
       },
+      {
+        surface: 'Execution-graph auto-emit hook',
+        status: 'wired',
+        proof: '/cursor/config bundle.executionGraphHook binds the OPT-IN emitter to the existing Stop hook; the portable emitter posted a real transcript-derived graph to /api/client/live/execution-graph (live-verified end-to-end, 0 false trust signals).',
+        reporting_role:
+          'Emits the deterministic execution graph + trust ledger (the WEG keystone) on Stop, turning the declared hooks into a live emission trace.',
+      },
     ],
     reporting_entrypoints: REPORTING_ENTRYPOINTS,
     required_proof: [
       'Run cursor-agent mcp list-tools orgx and confirm get_operator_chronicle is present.',
       'Run a Cursor session that triggers SessionStart, PostToolUse, and Stop, then verify OrgX chronicle receives activity/receipt rows.',
+      'Enable ORGX_EMIT_EXECUTION_GRAPH on the Stop hook and confirm an execution_graph_emissions row lands.',
     ],
     gaps: [
-      'Tool listing proves availability; a live hook-emission trace is still needed for full seamless-reporting proof.',
+      'The activity/receipt reporting path still needs a live trace; the execution-graph emitter covers the session-boundary graph snapshot.',
     ],
   },
   codex: {
@@ -148,15 +156,23 @@ const CLIENT_HOOK_COVERAGE: Record<SourceClient, ClientHookCoverage> = {
         reporting_role:
           'Use orgx_recommend mode=morning_brief as fallback until the direct tool is visible in the client namespace.',
       },
+      {
+        surface: 'Execution-graph auto-emit hook',
+        status: 'wired',
+        proof: '/codex/config advertises the OPT-IN execution-graph emitter via notify (Codex has no native hook bundle); the portable emitter posted a real transcript-derived graph to /api/client/live/execution-graph (live-verified end-to-end, 0 false trust signals).',
+        reporting_role:
+          'Emits the deterministic execution graph + trust ledger (the WEG keystone) at the session boundary, so proof is continuous rather than explicit-call-only.',
+      },
     ],
     reporting_entrypoints: REPORTING_ENTRYPOINTS,
     required_proof: [
       'Run Codex MCP tool discovery in a fresh session and confirm get_operator_chronicle is directly callable.',
       'Emit a Codex receipt or activity event, then confirm it appears in the operator chronicle.',
+      'Set notify to the emitter, enable ORGX_EMIT_EXECUTION_GRAPH, run a session, and confirm an execution_graph_emissions row lands.',
     ],
     gaps: [
       'Direct get_operator_chronicle visibility must be proven in the active Codex tool namespace.',
-      'No Codex-native lifecycle hook path is wired; reporting is explicit-call based.',
+      'The activity/receipt reporting path remains explicit-call based; the execution-graph emitter covers the session-boundary graph snapshot.',
     ],
   },
   claude: {
@@ -180,18 +196,26 @@ const CLIENT_HOOK_COVERAGE: Record<SourceClient, ClientHookCoverage> = {
       {
         surface: 'Native lifecycle hooks',
         status: 'partial',
-        proof: 'The app has plugin ingestion endpoints for activity, receipts, and deviations, but /claude-code/config does not advertise a hook bundle.',
+        proof: 'The app has plugin ingestion endpoints for activity, receipts, and deviations, but /claude-code/config does not advertise an activity/receipt hook bundle.',
         reporting_role:
-          'Claude work can report through tools, but ambient hook capture is not proven from this config surface.',
+          'Claude work can report through tools; ambient activity/receipt hook capture is not yet proven from this config surface.',
+      },
+      {
+        surface: 'Execution-graph auto-emit hook',
+        status: 'wired',
+        proof: '/claude-code/config advertises the OPT-IN execution-graph emitter (Claude Code Stop/SessionEnd hook); the portable emitter posted a real transcript-derived graph to /api/client/live/execution-graph (live-verified end-to-end, 0 false trust signals). Described abstractly — the hosted config writes no local files.',
+        reporting_role:
+          'Emits the deterministic execution graph + trust ledger (the WEG keystone) at session end, giving Claude Code continuous self-serve proof.',
       },
     ],
     reporting_entrypoints: REPORTING_ENTRYPOINTS,
     required_proof: [
       'List Claude MCP tools and confirm get_operator_chronicle is visible.',
       'Run a Claude Code session that emits activity or a receipt, then verify the chronicle includes it.',
+      'Register the Stop hook, enable ORGX_EMIT_EXECUTION_GRAPH, run a session, and confirm an execution_graph_emissions row lands.',
     ],
     gaps: [
-      'Claude Code needs live receipt/activity proof; config alone only proves MCP availability.',
+      'The activity/receipt reporting path still needs live proof; the execution-graph emitter covers the session-boundary graph snapshot.',
     ],
   },
   openclaw: {
@@ -219,10 +243,18 @@ const CLIENT_HOOK_COVERAGE: Record<SourceClient, ClientHookCoverage> = {
         reporting_role:
           'Closes the loop by showing gateway work, decisions, artifacts, and gaps.',
       },
+      {
+        surface: 'Execution-graph auto-emit hook',
+        status: 'wired',
+        proof: 'The gateway run-completed peer can post the execution graph to /api/client/live/execution-graph; the portable emitter was live-verified end-to-end (0 false trust signals).',
+        reporting_role:
+          'Emits the deterministic execution graph + trust ledger (the WEG keystone) from the same run-completed event that already posts receipts.',
+      },
     ],
     reporting_entrypoints: REPORTING_ENTRYPOINTS,
     required_proof: [
       'Send heartbeat, activity/deviation, and receipt events from the gateway plugin and verify they appear in the chronicle.',
+      'Emit the execution graph from the run-completed peer and confirm an execution_graph_emissions row lands.',
     ],
     gaps: [
       'Gateway proof must be end-to-end: heartbeat plus emitted receipt/deviation plus chronicle visibility.',

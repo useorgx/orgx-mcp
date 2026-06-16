@@ -39,6 +39,7 @@ import { verifyMcpIdentityTokenDetailed } from './mcpIdentityToken';
 import { buildAuthErrorResponse } from './authErrors';
 import { secureCompare } from './secureCompare';
 import { handlePublicMcpDiscoveryRequest } from './publicMcpDiscovery';
+import { buildExecutionGraphHookBundle } from './executionGraphHookBundle';
 
 // Re-export type for use in index.ts
 export type { OAuthHelpers };
@@ -928,6 +929,17 @@ tool_timeout_sec = 60
 # To authenticate, set your token:
 # export ORGX_API_TOKEN="your-token-here"
 # Get your token at: https://app.useorgx.com/settings/api
+
+# --- OrgX execution-graph auto-emit hook (WEG keystone, OPT-IN) ---
+# Codex has no native lifecycle hook bundle, so wire the emitter via notify.
+# It no-ops unless ORGX_EMIT_EXECUTION_GRAPH is set, so this is safe to add.
+#   notify = ["node", "/absolute/path/to/orgx-emit-execution-graph.mjs"]
+# Enable per shell:
+#   export ORGX_EMIT_EXECUTION_GRAPH=1
+#   export ORGX_INITIATIVE_ID="<initiative-uuid>"
+#   export ORGX_CLIENT_KEY="oxk_..."           # or ORGX_SERVICE_KEY + ORGX_USER_ID
+#   export ORGX_SOURCE_CLIENT="codex"
+# Emitter + full instructions: ${webUrl}/docs/integrations/execution-graph-hook
 `;
       return withCors(
         new Response(tomlConfig, {
@@ -949,6 +961,13 @@ tool_timeout_sec = 60
             description: 'OrgX platform - initiatives, decisions, org memory',
           },
         },
+        // Execution-graph auto-emit hook (WEG keystone). Advertised, OPT-IN, and
+        // described abstractly — the hosted config intentionally does not write
+        // local files; see docs for the settings hook snippet.
+        lifecycleHooks: buildExecutionGraphHookBundle({
+          sourceClient: 'claude',
+          webUrl,
+        }),
       };
       return withCors(
         Response.json(claudeConfig, {
@@ -1031,6 +1050,11 @@ tool_timeout_sec = 60
         },
         bundle: {
           hooks: ['SessionStart', 'PostToolUse', 'Stop'],
+          // The Stop hook can fire the execution-graph auto-emit (WEG keystone).
+          executionGraphHook: buildExecutionGraphHookBundle({
+            sourceClient: 'cursor',
+            webUrl,
+          }),
           commands: [
             'OrgX: Start Workstream',
             'OrgX: Resume Workstream',
