@@ -23,6 +23,7 @@ export const SESSION_TOKEN_ALLOWED_TOOLS = new Set([
   'spawn_agent_task',
   'get_task_with_context',
   'get_initiative_pulse',
+  'check_execution_readiness',
   'list_entities',
   'save_artifact',
 ]);

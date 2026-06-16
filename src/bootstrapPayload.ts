@@ -76,6 +76,7 @@ export const V2_PUBLIC_TOOL_IDS = [
   'review_artifact',
   'get_morning_brief',
   'get_operator_chronicle',
+  'check_execution_readiness',
   'consolidate_pr',
 ] as const;
 

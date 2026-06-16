@@ -2742,6 +2742,10 @@ export class OrgXMcp extends McpAgent<
         path: '/api/operator/chronicle',
         method: 'GET',
       },
+      check_execution_readiness: {
+        path: '/api/client/credentials/status',
+        method: 'GET',
+      },
       orgx_emit_activity: {
         path: '/api/client/live/activity',
         method: 'POST',
@@ -2850,7 +2854,8 @@ export class OrgXMcp extends McpAgent<
                   }
                 }
                 if (
-                  tool.id === 'get_operator_chronicle' &&
+                  (tool.id === 'get_operator_chronicle' ||
+                    tool.id === 'check_execution_readiness') &&
                   !params.has('workspace_id') &&
                   !params.has('command_center_id') &&
                   this.sessionContext?.workspaceId
