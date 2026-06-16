@@ -411,7 +411,23 @@ const TOOL_EXAMPLES: Record<
         },
       ],
     },
-    sample_response: { initiative: { id: 'initiative_123' } },
+    sample_response: {
+      initiative_id: 'initiative_123',
+      ref_map: {
+        initiative: 'initiative_123',
+        'workstream:engineering': 'workstream_123',
+      },
+      preferred_next_calls: [
+        {
+          tool: 'orgx_inspect',
+          args: {
+            type: 'initiative',
+            id: 'initiative_123',
+            hydrate_context: true,
+          },
+        },
+      ],
+    },
   },
   spawn_agent_task: {
     prompt: 'Have an engineering agent handle this task.',

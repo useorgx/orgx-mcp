@@ -166,6 +166,10 @@ import {
   formatOperatorChronicleBrief,
 } from './operatorChronicleFallback';
 import {
+  entityMatchesIdempotencyKey,
+  readEntityIdempotencyKey,
+} from './idempotentReplay';
+import {
   buildOrgxFreeAudit,
   formatOrgxFreeAuditSummary,
   type OrgxFreeAuditPeriod,
@@ -1544,6 +1548,65 @@ export class OrgXMcp extends McpAgent<
       data?: Array<Record<string, unknown>>;
     };
     return Array.isArray(payload.data) ? payload.data : [];
+  }
+
+  private async findExistingEntityByIdempotencyKey(params: {
+    body: Record<string, unknown>;
+    idempotencyKey: string | null;
+    userId: string | null;
+  }): Promise<Record<string, unknown> | null> {
+    const type =
+      typeof params.body.type === 'string' && params.body.type.trim().length > 0
+        ? params.body.type.trim()
+        : null;
+    const idempotencyKey =
+      typeof params.idempotencyKey === 'string' &&
+      params.idempotencyKey.trim().length > 0
+        ? params.idempotencyKey.trim()
+        : null;
+    if (!type || !idempotencyKey) return null;
+
+    const title =
+      typeof params.body.title === 'string' && params.body.title.trim().length > 0
+        ? params.body.title.trim()
+        : typeof params.body.name === 'string' && params.body.name.trim().length > 0
+        ? params.body.name.trim()
+        : null;
+
+    const baseSearch = {
+      type,
+      userId: params.userId,
+      limit: 100,
+      workspaceId:
+        typeof params.body.workspace_id === 'string'
+          ? params.body.workspace_id
+          : this.sessionContext?.workspaceId ?? null,
+      initiativeId:
+        typeof params.body.initiative_id === 'string'
+          ? params.body.initiative_id
+          : null,
+    };
+
+    const records = await this.fetchEntityCollection({
+      ...baseSearch,
+      query: title,
+    });
+
+    const exactMatch = records.find((record) =>
+      entityMatchesIdempotencyKey(record, idempotencyKey)
+    );
+    if (exactMatch) return exactMatch;
+    if (!title) return null;
+
+    const fallbackRecords = await this.fetchEntityCollection({
+      ...baseSearch,
+      query: null,
+    });
+    return (
+      fallbackRecords.find((record) =>
+        entityMatchesIdempotencyKey(record, idempotencyKey)
+      ) ?? null
+    );
   }
 
   private stripContractRuntimeFields(
@@ -3443,6 +3506,34 @@ export class OrgXMcp extends McpAgent<
             'orgx_write'
           );
           Object.assign(body, normalizedPayload.entity);
+          const existingEntity = await this.findExistingEntityByIdempotencyKey({
+            body,
+            idempotencyKey,
+            userId: resolvedUserId,
+          });
+          if (existingEntity) {
+            const payload = {
+              ok: true,
+              type: body.type,
+              data: existingEntity,
+              existing: existingEntity,
+              idempotent_replay: true,
+              idempotency_key: idempotencyKey,
+              _v2_tool: 'orgx_write',
+              operation: 'create',
+              normalization_warnings: normalizedPayload.warnings,
+              replay_source: 'metadata.idempotency_key',
+            };
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: formatForLLM('orgx_write', payload),
+                },
+              ],
+              structuredContent: payload,
+            };
+          }
           const response = await callOrgxApiJson(
             this.env,
             '/api/entities',
@@ -7384,6 +7475,12 @@ export class OrgXMcp extends McpAgent<
             env: this.env,
             callApi: ({ env, path, init, userId }) =>
               callOrgxApiJson(env, path, init, { userId }),
+            findExistingEntity: ({ body }) =>
+              this.findExistingEntityByIdempotencyKey({
+                body,
+                idempotencyKey: readEntityIdempotencyKey(body),
+                userId: ownerId,
+              }),
             entities: patchedEntities,
             ownerId,
             continueOnError,
@@ -7646,7 +7743,7 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Scaffold an initiative hierarchy',
         description:
-          'Turn an objective, roadmap, launch, or feature plan into executable workstreams, milestones, and tasks. Also known as: scaffold project, create roadmap, generate execution plan.\n\n' +
+          'Turn an objective, roadmap, launch, or feature plan into executable workstreams, milestones, and tasks. Also known as: Scaffold an initiative hierarchy, scaffold project, create roadmap, generate execution plan, build a workstream tree.\n\n' +
           'Minimum required input: title.\n' +
           'Conditionally required:\n' +
           '  • workspace_id — REQUIRED unless the MCP session already carries workspace context (resolve via list_entities type=command_center or get_org_snapshot).\n' +
@@ -7658,7 +7755,7 @@ export class OrgXMcp extends McpAgent<
           '  • All other workstream/milestone/task fields are optional and can be omitted — the scaffold builder auto-fills defaults for missing domain/duration/owner/agent/budget.\n' +
           '  • "ref" is a client-side label used inside this single call (in depends_on and ref_map). It is not persisted as an ID.\n\n' +
           'Agent-safe aliases that are accepted and normalized server-side: task priority "urgent" → "high"; task/milestone status "active" → "in_progress".\n\n' +
-          'USE WHEN: user wants to plan a new initiative from scratch. NEXT: use mode="launch" to create and start agents (default), mode="scaffold" to create without launching, or mode="draft" to validate the plan without writes. DO NOT USE: for adding a single task to an existing initiative — use create_entity instead.',
+          'USE WHEN: user wants to plan a new initiative from scratch. NEXT: use mode="launch" to create and start agents (default), mode="scaffold" to create without launching, or mode="draft" to validate the plan without writes. The result returns initiative_id, ref_map, and preferred_next_calls for orgx_inspect/orgx_search/orgx_write chaining. DO NOT USE: for adding a single task to an existing initiative — use create_entity instead.',
         annotations: {
           readOnlyHint: false,
           destructiveHint: false,
@@ -8272,6 +8369,12 @@ export class OrgXMcp extends McpAgent<
               callOrgxApiJson(env, path, init, {
                 userId,
                 userEmail: this.resolveUserEmail(),
+              }),
+            findExistingEntity: ({ body }) =>
+              this.findExistingEntityByIdempotencyKey({
+                body,
+                idempotencyKey: readEntityIdempotencyKey(body),
+                userId: scaffoldOwnerId,
               }),
             entities: batch,
             ownerId: scaffoldOwnerId,

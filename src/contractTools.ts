@@ -58,7 +58,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_inspect',
     title: 'Inspect OrgX Entity',
     description:
-      'Hydrate one OrgX entity with execution context. USE WHEN: the user names a specific task, milestone, initiative, decision, artifact, or plan session and needs details before acting. NEXT: use orgx_act, orgx_attach, or orgx_write if the user asks to change what you inspected. DO NOT USE WHEN: browsing or searching many records; use orgx_search. Read-only.',
+      'Hydrate one OrgX entity with execution context. Also known as: Inspect OrgX Entity, inspect initiative, get full entity context. USE WHEN: the user names a specific task, milestone, initiative, decision, artifact, or plan session and needs details before acting. NEXT: use orgx_act, orgx_attach, or orgx_write if the user asks to change what you inspected. DO NOT USE WHEN: browsing or searching many records; use orgx_search. Read-only.',
     inputSchema: {
       type: z
         .enum(['initiative', 'workstream', 'milestone', 'task', 'decision', 'artifact', 'plan_session'])
@@ -82,7 +82,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_search',
     title: 'Search OrgX',
     description:
-      'Find OrgX entities, decisions, artifacts, and memory. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use orgx_inspect for one selected result or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.',
+      'Find OrgX entities, decisions, artifacts, and memory. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use orgx_inspect for one selected result or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.',
     inputSchema: {
       query: z.string().optional().describe('Search query for memory or title/text matching'),
       type: z.string().optional().describe('Optional entity type filter, such as task, milestone, decision, artifact, or initiative'),
@@ -134,6 +134,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       'Create or update one OrgX record (snake_case fields).\n\n' +
       'Operations: create (default) uses per-type fields; update REQUIRES id + fields.\n\n' +
       'Create requirements: initiative title/name + workspace_id + goal_ids when the workspace enforces primary objectives; workstream title + initiative_id; milestone title + workstream_id; task title + workstream_id + milestone_id when the workspace requires backlog milestones; decision title; artifact target + artifact_type + artifact_url/external_url; blocker run_id + metadata.description; skill/studio records title.\n\n' +
+      'Retry behavior: pass idempotency_key on creates. If a persisted key matches, the worker returns that UUID as an idempotent replay instead of creating a duplicate.\n\n' +
       'Initiative gotchas: priority only accepts low|medium|high|urgent, not portfolio labels such as active/critical/maintenance/hold; put portfolio urgency in metadata/priority_rank. due_date is not accepted on initiative create in current workspaces; put target dates in metadata until a typed initiative schedule field exists.\n\n' +
       'USE WHEN: adding/editing records. NEXT: orgx_act to launch/complete the record. DO NOT USE for lifecycle changes — use orgx_act or orgx_attach.',
     inputSchema: {
@@ -987,7 +988,7 @@ export const INLINE_TOOL_CONTRACTS = {
     id: 'scaffold_initiative',
     title: 'Scaffold Initiative',
     description:
-      'Inline worker tool for drafting, creating, or launching a full initiative hierarchy in one call.',
+      'Inline worker tool for drafting, creating, or launching a full initiative hierarchy in one call. Also known as: Scaffold an initiative hierarchy, create workstream tree, build initiative plan. Returns initiative_id, ref_map, and preferred_next_calls with orgx_search/orgx_inspect next calls for chaining.',
     inputSchema: {
       title: z.string().min(1).describe('Initiative title.'),
       summary: z.string().optional().describe('Initiative summary.'),

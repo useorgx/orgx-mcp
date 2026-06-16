@@ -142,12 +142,27 @@ describe('contract tool catalog', () => {
     expect(description).toContain('workspace_id');
     expect(description).toContain('goal_ids');
     expect(description).toContain('primary objectives');
+    expect(description).toContain('idempotent replay');
     expect(description).toContain('due_date is not accepted on initiative create');
     expect(description).toContain('not portfolio labels such as active/critical/maintenance/hold');
     expect(schema.priority.description).toContain('do not send portfolio/live labels');
     expect(schema.priority.description).toContain('active');
     expect(schema.due_date.description).toContain('Do not send due_date when type="initiative"');
     expect(schema.milestone_id.description).toContain('explicit backlog milestone');
+  });
+
+  it('uses human-facing aliases for search, inspect, and scaffold discovery', () => {
+    const searchTool = CONTRACT_TOOL_DEFINITIONS.find((t) => t.id === 'orgx_search');
+    const inspectTool = CONTRACT_TOOL_DEFINITIONS.find((t) => t.id === 'orgx_inspect');
+    const scaffoldTool = getKnownToolContract('scaffold_initiative');
+
+    expect(searchTool?.description).toContain('Search OrgX');
+    expect(searchTool?.description).toContain('find initiative ID');
+    expect(inspectTool?.description).toContain('Inspect OrgX Entity');
+    expect(inspectTool?.description).toContain('get full entity context');
+    expect(scaffoldTool?.description).toContain('Scaffold an initiative hierarchy');
+    expect(scaffoldTool?.description).toContain('initiative_id');
+    expect(scaffoldTool?.description).toContain('preferred_next_calls');
   });
 
   it('documents URL-backed artifact requirements for write, attach, and proof actions', () => {

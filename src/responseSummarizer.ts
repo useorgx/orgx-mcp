@@ -397,6 +397,120 @@ function formatEntityAction(
   return `${success ? '✓' : '✗'} ${resolvedAction} completed for ${target}`;
 }
 
+function firstRecord(value: unknown): EntityRow | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  return value as EntityRow;
+}
+
+function entityFromWriteResult(data: Record<string, unknown>): EntityRow | null {
+  const direct = firstRecord(data.data);
+  if (direct) return direct;
+  const existing = firstRecord(data.existing);
+  if (existing) return existing;
+  const entity = firstRecord(data.entity);
+  if (entity) return entity;
+  if (str(data.id)) return data;
+  return null;
+}
+
+function formatOrgxSearch(
+  data: Record<string, unknown>,
+  opts: Required<FormatOptions>
+): string {
+  const results = Array.isArray(data.results)
+    ? (data.results as EntityRow[])
+    : Array.isArray(data.data)
+    ? (data.data as EntityRow[])
+    : [];
+  const type = str(data.type) || opts.entityType || 'record';
+  const query = str(data.query);
+  const count =
+    typeof data.count === 'number' ? data.count : results.length;
+  const header = `OrgX search: ${count} ${type}${count === 1 ? '' : 's'}${
+    query ? ` for "${truncateField(query, 80)}"` : ''
+  }.`;
+
+  if (results.length === 0) {
+    return `${header}\nNext: adjust query/type or call orgx_bootstrap to confirm visible tools and workspace context.`;
+  }
+
+  return `${header}\n\n${formatEntityList(results, type, opts)}\n\nNext: call orgx_inspect with the selected id for full context.`;
+}
+
+function formatOrgxInspect(
+  data: Record<string, unknown>,
+  opts: Required<FormatOptions>
+): string {
+  const entity = firstRecord(data.entity) ?? firstRecord(data.data);
+  if (!entity) return 'OrgX inspect returned no entity.';
+
+  const type = str(data.type) || str(entity.type) || str(entity.entity_type) || 'entity';
+  const line = formatGenericRow(entity, 1, opts).replace(/^1\. /, '');
+  const description = str(entity.description) || str(entity.summary);
+  const details = description
+    ? `\nDescription: ${truncateField(description, opts.maxFieldLength)}`
+    : '';
+  return `OrgX ${type}: ${line}${details}`;
+}
+
+function formatOrgxWrite(data: Record<string, unknown>): string {
+  const operation = str(data.operation) || 'write';
+  const replayed = data.idempotent_replay === true || data.replayed === true;
+  const entity = entityFromWriteResult(data);
+  const type =
+    str(entity?.type) ||
+    str(entity?.entity_type) ||
+    str(data.type) ||
+    'entity';
+  const title =
+    str(entity?.title) ||
+    str(entity?.name) ||
+    str(data.title) ||
+    str(data.name) ||
+    type;
+  const id = str(entity?.id) || str(data.id) || str(data.entity_id);
+  const status = str(entity?.status) || str(data.status);
+  const prefix =
+    operation === 'update'
+      ? 'Updated'
+      : replayed
+      ? 'Reused existing'
+      : 'Created';
+  const parts = [`${prefix} ${type}: **${title}**`];
+  if (status) parts.push(`[${status}]`);
+  if (id) parts.push(`id:${id}`);
+
+  const next: string[] = [];
+  if (type === 'initiative' && id) {
+    next.push(`orgx_inspect type="initiative" id="${id}"`);
+    next.push(`orgx_write type="workstream" initiative_id="${id}"`);
+  } else if (id) {
+    next.push(`orgx_inspect type="${type}" id="${id}"`);
+  }
+
+  return `${parts.join(' ')}${
+    next.length > 0 ? `\nNext: ${next.join(' or ')}.` : ''
+  }`;
+}
+
+function formatOrgxReceipt(data: Record<string, unknown>): string {
+  const receipt = firstRecord(data.receipt) ?? firstRecord(data.data) ?? data;
+  const id = str(receipt.id) || str(receipt.receipt_id) || str(data.receipt_id);
+  const summary = str(receipt.summary) || str(data.summary) || 'Receipt submitted';
+  const status =
+    str(data.verification_status) ||
+    str(receipt.verification_status) ||
+    str(data.status);
+  const loopValidation = firstRecord(data.loop_validation);
+  const promotable =
+    typeof loopValidation?.promotable === 'boolean'
+      ? ` promotable:${loopValidation.promotable}`
+      : '';
+  return `OrgX receipt: ${summary}${status ? ` [${status}]` : ''}${
+    id ? ` id:${id}` : ''
+  }${promotable}`;
+}
+
 // ---------------------------------------------------------------------------
 // Main entry point
 // ---------------------------------------------------------------------------
@@ -424,6 +538,18 @@ export function formatForLLM(
 
     case 'entity_action':
       return formatEntityAction(data, str(data._action) || 'unknown');
+
+    case 'orgx_search':
+      return formatOrgxSearch(data, o);
+
+    case 'orgx_inspect':
+      return formatOrgxInspect(data, o);
+
+    case 'orgx_write':
+      return formatOrgxWrite(data);
+
+    case 'orgx_submit_receipt':
+      return formatOrgxReceipt(data);
 
     default:
       // For unrecognized tools, build a generic summary

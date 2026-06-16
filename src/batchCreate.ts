@@ -49,6 +49,13 @@ export type BatchCreateApiCaller = (params: {
   userId?: string | null;
 }) => Promise<Response>;
 
+export type BatchCreateExistingEntityFinder = (params: {
+  body: Record<string, unknown>;
+  ref: string | null;
+  index: number;
+  ownerId: string | null;
+}) => Promise<Record<string, unknown> | null | undefined>;
+
 const REF_FIELD_MAPPINGS: Array<{ refKey: string; idKey: string }> = [
   { refKey: 'initiative_ref', idKey: 'initiative_id' },
   { refKey: 'workstream_ref', idKey: 'workstream_id' },
@@ -431,6 +438,7 @@ function attachReferenceMetadata(body: Record<string, unknown>, ref: string | nu
 export async function batchCreateEntities(params: {
   env: OrgxApiEnv;
   callApi: BatchCreateApiCaller;
+  findExistingEntity?: BatchCreateExistingEntityFinder;
   entities: Array<BatchCreateEntityInput>;
   ownerId?: string | null;
   continueOnError: boolean;
@@ -439,6 +447,7 @@ export async function batchCreateEntities(params: {
   const {
     env,
     callApi,
+    findExistingEntity,
     entities,
     ownerId = null,
     continueOnError,
@@ -588,6 +597,16 @@ export async function batchCreateEntities(params: {
   const resolvedRefMap: Record<string, string> = {};
   const failedRefs = new Set<string>();
 
+  const recordResolvedRef = (ref: string | null, id: string | null) => {
+    if (!ref || !id) return;
+    resolvedRefMap[ref] = id;
+    for (const [alias, canonicalRef] of refAliases.entries()) {
+      if (canonicalRef === ref) {
+        resolvedRefMap[alias] = id;
+      }
+    }
+  };
+
   const createOne = async (index: number): Promise<void> => {
     const entity = entities[index] as Record<string, unknown>;
     const type = getString(entity.type);
@@ -622,6 +641,46 @@ export async function batchCreateEntities(params: {
     delete (body as any).updated_at;
 
     try {
+      if (findExistingEntity) {
+        try {
+          const existing = await findExistingEntity({
+            body,
+            ref,
+            index,
+            ownerId,
+          });
+          const existingId =
+            existing && typeof existing.id === 'string' ? existing.id : null;
+          if (existingId) {
+            const title =
+              extractEntityLabel(existing) ?? extractEntityLabel(body);
+            results[index] = {
+              index,
+              success: true,
+              type,
+              ref: ref ?? undefined,
+              id: existingId,
+              title,
+              data: existing,
+              skipped: true,
+            };
+            recordResolvedRef(ref, existingId);
+            return;
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          results[index] = {
+            index,
+            success: false,
+            type: type ?? null,
+            ref: ref ?? undefined,
+            error: `Idempotent replay lookup failed: ${message}`,
+          };
+          if (ref) failedRefs.add(ref);
+          return;
+        }
+      }
+
       const response = await callApi({
         env,
         path: '/api/entities',
@@ -690,14 +749,7 @@ export async function batchCreateEntities(params: {
             data: conflictRecord,
             skipped: true,
           };
-          if (ref) {
-            resolvedRefMap[ref] = conflictId;
-            for (const [alias, canonicalRef] of refAliases.entries()) {
-              if (canonicalRef === ref) {
-                resolvedRefMap[alias] = conflictId;
-              }
-            }
-          }
+          recordResolvedRef(ref, conflictId);
           return;
         }
 
@@ -753,14 +805,7 @@ export async function batchCreateEntities(params: {
         data,
       };
 
-      if (ref && id) {
-        resolvedRefMap[ref] = id;
-        for (const [alias, canonicalRef] of refAliases.entries()) {
-          if (canonicalRef === ref) {
-            resolvedRefMap[alias] = id;
-          }
-        }
-      }
+      recordResolvedRef(ref, id ?? null);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       results[index] = {
