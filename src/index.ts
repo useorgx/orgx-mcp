@@ -113,6 +113,7 @@ import {
 import { extractRunCostTelemetry } from './runCostTelemetry';
 import { detectProviderPinning } from './providerPinning';
 import { validateSpawnContract } from './spawnContract';
+import { validateWriteCreateContract } from './writeContract';
 import { buildLiveFeedWidget } from './liveFeedWidget';
 import { signStreamToken } from './streamToken';
 import { hydrateTaskContext } from './taskContextHydrator';
@@ -3374,6 +3375,16 @@ export class OrgXMcp extends McpAgent<
                 operation: 'update',
               },
             };
+          }
+
+          // A4: enforce the documented create-path contract (unambiguous
+          // per-type requirements only) — fail fast instead of downstream.
+          const writeContract = validateWriteCreateContract(args);
+          if (!writeContract.ok) {
+            return this.toolError(writeContract.message ?? 'Invalid orgx_write call', {
+              code: 'write_contract_violation',
+              status: 422,
+            });
           }
 
           const body = this.stripContractRuntimeFields(args);
