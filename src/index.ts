@@ -59,7 +59,9 @@ import {
 } from './routeTaskEstimate';
 import {
   buildSpawnBudgetPreflightArgs,
+  buildSpawnGateArgs,
   evaluateSpawnBudgetPreflightResult,
+  evaluateSpawnGateResult,
   type SpawnBudgetPreflight,
   type SpawnBudgetPreflightEvaluation,
 } from './spawnBudgetPreflight';
@@ -1458,7 +1460,26 @@ export class OrgXMcp extends McpAgent<
         { userId }
       );
       const result = (await response.json()) as Record<string, unknown>;
-      return evaluateSpawnBudgetPreflightResult(result, routeArgs);
+      const routeEval = evaluateSpawnBudgetPreflightResult(result, routeArgs);
+      if (!routeEval.ok) return routeEval;
+
+      // Per-task ceiling passed. Now enforce WORKSPACE daily/monthly spend caps
+      // via /api/client/spawn-gate (policy lives in orgx: enforceBudget). Skip
+      // when no workspace is resolvable — caps can't be enforced without one.
+      const gateArgs = buildSpawnGateArgs(routeArgs, userId);
+      if (gateArgs) {
+        const gateResponse = await callOrgxApiJson(
+          this.env,
+          '/api/client/spawn-gate',
+          { method: 'POST', body: JSON.stringify(gateArgs) },
+          { userId }
+        );
+        const gateResult = (await gateResponse.json()) as Record<string, unknown>;
+        const gateEval = evaluateSpawnGateResult(gateResult);
+        if (!gateEval.ok) return gateEval;
+      }
+
+      return routeEval;
     } catch (error) {
       return {
         ok: false,
