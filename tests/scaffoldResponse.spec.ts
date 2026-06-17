@@ -79,6 +79,30 @@ describe('compact scaffold responses', () => {
     expect(result.created_preview).toHaveLength(30);
     expect(result.created_count).toBe(263);
     expect(result.result_contract.do_not_retry_for_full_payload).toBe(true);
+    expect(result.result_contract.preferred_next_calls[0]).toMatchObject({
+      tool: 'orgx_inspect',
+      args: {
+        type: 'initiative',
+        id: 'init-1',
+        hydrate_context: true,
+      },
+    });
+    expect(result.result_contract.preferred_next_calls[1]).toMatchObject({
+      tool: 'orgx_search',
+      args: {
+        type: 'workstream',
+        initiative_id: 'init-1',
+        workspace_id: 'workspace-1',
+      },
+    });
+    expect(result.result_contract.preferred_next_calls[2]).toMatchObject({
+      tool: 'orgx_write',
+      args: {
+        operation: 'create',
+        type: 'workstream',
+        initiative_id: 'init-1',
+      },
+    });
     expect(result.result_contract.suggested_next_calls[2]?.tool).toBe(
       'list_entities'
     );
@@ -179,6 +203,14 @@ describe('compact scaffold responses', () => {
     // The three call types we depend on for follow-up reads.
     const tools = nextCalls.map((c) => c.tool);
     expect(tools).toContain('list_entities');
+    const preferredTools = result.result_contract.preferred_next_calls.map(
+      (c) => c.tool
+    );
+    expect(preferredTools).toEqual([
+      'orgx_inspect',
+      'orgx_search',
+      'orgx_write',
+    ]);
 
     // tool_hints flags the compaction policy so agents stop guessing.
     expect(result.tool_hints).toMatchObject({
@@ -225,6 +257,14 @@ describe('compact scaffold responses', () => {
         workspace_id: 'ws-args',
       });
     }
+    expect(result.result_contract.preferred_next_calls[0]).toMatchObject({
+      tool: 'orgx_inspect',
+      args: { id: 'init-args' },
+    });
+    expect(result.result_contract.preferred_next_calls[1]).toMatchObject({
+      tool: 'orgx_search',
+      args: { initiative_id: 'init-args', workspace_id: 'ws-args' },
+    });
   });
 
   it('builds a no-write draft response with entity counts and dependency hints', () => {

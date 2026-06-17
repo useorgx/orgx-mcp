@@ -94,6 +94,80 @@ describe('batch create payload contract normalization', () => {
     });
   });
 
+  it('reuses preflight idempotency matches and resolves downstream refs', async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+
+    const result = await batchCreateEntities({
+      env: {} as OrgxApiEnv,
+      callApi: async ({ init }) => {
+        const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+        bodies.push(body);
+        return new Response(
+          JSON.stringify({
+            type: body.type,
+            data: {
+              id: 'workstream-new',
+              title: body.title,
+            },
+          }),
+          { status: 200 }
+        );
+      },
+      findExistingEntity: async ({ body }) => {
+        if (
+          body.type === 'initiative' &&
+          body.metadata &&
+          typeof body.metadata === 'object' &&
+          !Array.isArray(body.metadata) &&
+          (body.metadata as Record<string, unknown>).idempotency_key ===
+            'scaffold:launch-replay'
+        ) {
+          return {
+            id: 'initiative-existing',
+            title: 'Launch replay',
+            metadata: body.metadata,
+          };
+        }
+        return null;
+      },
+      entities: [
+        {
+          type: 'initiative',
+          ref: 'initiative',
+          title: 'Launch replay',
+          metadata: {
+            idempotency_key: 'scaffold:launch-replay',
+          },
+        },
+        {
+          type: 'workstream',
+          ref: 'workstream',
+          title: 'Execution',
+          initiative_ref: 'initiative',
+        },
+      ],
+      continueOnError: true,
+      concurrency: 2,
+    });
+
+    expect(result.failed_count).toBe(0);
+    expect(result.created_count).toBe(2);
+    expect(result.ref_map).toEqual({
+      initiative: 'initiative-existing',
+      workstream: 'workstream-new',
+    });
+    expect(result.results[0]).toMatchObject({
+      success: true,
+      skipped: true,
+      id: 'initiative-existing',
+    });
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0]).toMatchObject({
+      type: 'workstream',
+      initiative_id: 'initiative-existing',
+    });
+  });
+
   it('orders and resolves depends_on refs before sending create payloads', async () => {
     const bodies: Array<Record<string, unknown>> = [];
 

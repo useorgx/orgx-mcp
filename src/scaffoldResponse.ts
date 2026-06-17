@@ -290,6 +290,40 @@ function buildResultContract(params: {
     ],
     detail_policy:
       'Fetch details through list_entities/get_task_with_context with pagination instead of asking scaffold_initiative to return a larger payload.',
+    preferred_next_calls: [
+      ...(params.initiativeId
+        ? [
+            {
+              tool: 'orgx_inspect',
+              args: {
+                type: 'initiative',
+                id: params.initiativeId,
+                hydrate_context: true,
+              },
+            },
+            {
+              tool: 'orgx_search',
+              args: {
+                type: 'workstream',
+                ...listBase,
+                ...workspaceScoped,
+                limit: 50,
+                fields: ['id', 'title', 'status', 'domain'],
+              },
+            },
+            {
+              tool: 'orgx_write',
+              args: {
+                operation: 'create',
+                type: 'workstream',
+                initiative_id: params.initiativeId,
+                title: '<next workstream title>',
+                idempotency_key: '<stable retry key>',
+              },
+            },
+          ]
+        : []),
+    ],
     suggested_next_calls: [
       {
         tool: 'list_entities',

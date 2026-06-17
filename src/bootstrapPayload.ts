@@ -121,6 +121,15 @@ export const BOOTSTRAP_RECOMMENDED_WORKFLOWS = {
     'orgx_act',
     'orgx_submit_receipt',
   ],
+  scaffold_hierarchy: [
+    'orgx_bootstrap',
+    'scaffold_initiative',
+    'orgx_inspect',
+    'orgx_search',
+    'orgx_write',
+    'orgx_spawn',
+    'orgx_submit_receipt',
+  ],
   execute_task: [
     'orgx_bootstrap',
     'orgx_search',

@@ -122,4 +122,42 @@ describe('public MCP discovery endpoint', () => {
     ).toContain('consolidation_pass');
     expect(JSON.stringify(body)).toContain('https://mcp.useorgx.com/mcp');
   });
+
+  it('shows scaffold examples with chainable initiative IDs and next calls', async () => {
+    const response = await authHandler.fetch(
+      new Request('https://mcp.useorgx.com/public', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 'scaffold-example',
+          method: 'tools/call',
+          params: {
+            name: 'orgx_public_tool_examples',
+            arguments: { tool_name: 'scaffold_initiative' },
+          },
+        }),
+      }),
+      env,
+      {} as ExecutionContext
+    );
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      result?: {
+        structuredContent?: {
+          examples?: Record<
+            string,
+            { sample_response?: Record<string, unknown> }
+          >;
+        };
+      };
+    };
+    const sample =
+      body.result?.structuredContent?.examples?.scaffold_initiative
+        ?.sample_response;
+    expect(sample?.initiative_id).toBe('initiative_123');
+    expect(JSON.stringify(sample)).toContain('orgx_inspect');
+    expect(JSON.stringify(sample)).toContain('ref_map');
+  });
 });
