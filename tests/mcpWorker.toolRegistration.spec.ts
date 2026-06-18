@@ -120,6 +120,19 @@ describe('MCP Worker tool registration integrity', () => {
       visibilityClauses.length,
       'both registerChatGPTTools and registerContractTools must derive hasOutputTemplate'
     ).toBeGreaterThanOrEqual(2);
+
+    const scaffoldStart = src.search(
+      /registerAppTool\(\s*this\.server,\s*'scaffold_initiative'/
+    );
+    expect(scaffoldStart, 'scaffold_initiative inline registration must exist').toBeGreaterThanOrEqual(0);
+    const scaffoldEnd = src.indexOf(
+      'async (args: Record<string, unknown>) =>',
+      scaffoldStart
+    );
+    expect(scaffoldEnd, 'scaffold_initiative handler must exist').toBeGreaterThan(scaffoldStart);
+    const scaffoldRegistration = src.slice(scaffoldStart, scaffoldEnd);
+    expect(scaffoldRegistration).toContain('SCAFFOLD_INITIATIVE_WIDGET_META');
+    expect(scaffoldRegistration).toContain("'openai/visibility': 'public'");
   });
 
   it('definition arrays have no overlapping IDs', () => {

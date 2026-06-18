@@ -224,12 +224,13 @@ describe('conversation replay — decision blocker', () => {
    * the contract that the decision-tool family accepts the args a
    * blocker discovery flow would synthesise.
    */
-  it('get_pending_decisions accepts urgency_filter, initiative_id, and limit', () => {
+  it('get_pending_decisions accepts urgency_filter, initiative_id, workspace_id, and limit', () => {
     const tool = findTool('get_pending_decisions');
     expect(tool, 'get_pending_decisions must be registered').not.toBeNull();
     const schema = tool!.inputSchema!;
     expect(schema).toHaveProperty('urgency_filter');
     expect(schema).toHaveProperty('initiative_id');
+    expect(schema).toHaveProperty('workspace_id');
     expect(schema).toHaveProperty('limit');
   });
 

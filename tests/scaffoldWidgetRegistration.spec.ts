@@ -18,6 +18,18 @@ describe('scaffold_initiative widget registration', () => {
     );
   });
 
+  it('registers scaffold_initiative as public so ChatGPT can load the widget template', () => {
+    const start = source.search(
+      /registerAppTool\(\s*this\.server,\s*'scaffold_initiative'/
+    );
+    expect(start, 'scaffold_initiative registration must exist').toBeGreaterThanOrEqual(0);
+    const end = source.indexOf('async (args: Record<string, unknown>) =>', start);
+    expect(end, 'scaffold_initiative handler must exist').toBeGreaterThan(start);
+    const registration = source.slice(start, end);
+
+    expect(registration).toContain("'openai/visibility': 'public'");
+  });
+
   it('returns scaffold widget payload as text content block with structuredContent for MCP app hosts', () => {
     // The JSON-first helper keeps machine-readable payload before optional widget HTML.
     expect(source).toMatch(/content:\s*buildJsonFirstContentBlocks\(\{/);

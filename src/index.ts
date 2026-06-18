@@ -1165,6 +1165,28 @@ export class OrgXMcp extends McpAgent<
     }
   }
 
+  private async fetchClientBootstrapWorkspace(
+    userId?: string | null
+  ): Promise<{ id: string; name: string | null } | null> {
+    if (!userId) return null;
+    const payload = await this.fetchOrgxJsonOrNull<{
+      data?: {
+        workspace?: {
+          id?: unknown;
+          name?: unknown;
+        };
+      };
+    }>('/api/client/bootstrap?source_client=mcp', userId);
+    const workspace = payload?.data?.workspace;
+    const id = typeof workspace?.id === 'string' ? workspace.id.trim() : '';
+    if (!id) return null;
+    const name =
+      typeof workspace?.name === 'string' && workspace.name.trim()
+        ? workspace.name.trim()
+        : null;
+    return { id, name };
+  }
+
   private async recordMcpActivationObservation(params: {
     toolId: string;
     args?: Record<string, unknown> | null;
@@ -1806,6 +1828,7 @@ export class OrgXMcp extends McpAgent<
   ): Record<string, unknown> {
     const nextArgs = { ...args };
     const workspaceScopedChatgptTools = new Set([
+      'get_pending_decisions',
       'recommend_next_action',
       'get_agent_status',
       'score_next_up_queue',
@@ -3270,6 +3293,7 @@ export class OrgXMcp extends McpAgent<
               ? args.workspace_id.trim()
               : null;
           let fetchedWorkspaceName: string | null = null;
+          let bootstrapArgs = args;
           if (requestedWorkspaceId) {
             const workspace = await this.fetchEntityRecord(
               'workspace',
@@ -3283,8 +3307,19 @@ export class OrgXMcp extends McpAgent<
                 ? workspace.title
                 : null;
           }
+          if (!requestedWorkspaceId && !this.sessionContext.workspaceId) {
+            const inferredWorkspace =
+              await this.fetchClientBootstrapWorkspace(resolvedUserId);
+            if (inferredWorkspace) {
+              bootstrapArgs = {
+                ...args,
+                workspace_id: inferredWorkspace.id,
+              };
+              fetchedWorkspaceName = inferredWorkspace.name;
+            }
+          }
           const resolvedContext = resolveBootstrapSessionContext(
-            args,
+            bootstrapArgs,
             this.sessionContext,
             fetchedWorkspaceName
           );
@@ -4168,6 +4203,7 @@ export class OrgXMcp extends McpAgent<
               limit: args.limit,
               urgency_filter: args.urgency_filter,
               initiative_id: args.initiative_id,
+              workspace_id: args.workspace_id,
             },
             SECURITY_SCHEMES.entityReadRequiresAuth
           );
@@ -7899,7 +7935,7 @@ export class OrgXMcp extends McpAgent<
             .describe('Parallel creation concurrency (default 8)'),
         }),
         _meta: {
-          'openai/visibility': 'private',
+          'openai/visibility': 'public',
           'mcp/securitySchemes': SECURITY_SCHEMES.entityWriteRequiresAuth,
           securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
           ...SCAFFOLD_INITIATIVE_WIDGET_META,
