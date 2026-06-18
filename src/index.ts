@@ -2367,6 +2367,8 @@ export class OrgXMcp extends McpAgent<
   private registerChatGPTTools(allowedTools: Set<string> | null) {
     // Tools that use output templates must be visible, otherwise ChatGPT disables the template.
     // These tools are still protected by OAuth scopes, but we mark them public so their widgets work.
+    // The generic rule below force-publics ANY template-bearing tool; this set is kept for
+    // template-less tools that must still be public for ChatGPT to expose them.
     const FORCE_PUBLIC_TEMPLATE_TOOLS = new Set([
       'approve_decision',
       'reject_decision',
@@ -2388,8 +2390,9 @@ export class OrgXMcp extends McpAgent<
         | Record<string, unknown>
         | undefined;
       const isReadOnly = metaObj?.['openai/readOnlyHint'] === true;
+      const hasOutputTemplate = Boolean(metaObj?.['openai/outputTemplate']);
       const visibility =
-        isReadOnly || FORCE_PUBLIC_TEMPLATE_TOOLS.has(tool.id)
+        isReadOnly || hasOutputTemplate || FORCE_PUBLIC_TEMPLATE_TOOLS.has(tool.id)
           ? 'public'
           : 'private';
 
@@ -4396,9 +4399,14 @@ export class OrgXMcp extends McpAgent<
       if (allowedTools && !allowedTools.has(tool.id)) continue;
       const metaObj = tool._meta as Record<string, unknown> | undefined;
       const isReadOnly = metaObj?.['openai/readOnlyHint'] === true;
+      // Any tool that ships an output template MUST be visible, otherwise
+      // ChatGPT hides the tool and disables the template ("Templates tied to
+      // hidden tools won't be usable"). Visibility only controls ChatGPT
+      // rendering — the tool stays protected by its OAuth securitySchemes.
+      const hasOutputTemplate = Boolean(metaObj?.['openai/outputTemplate']);
       const meta = {
         ...tool._meta,
-        'openai/visibility': isReadOnly ? 'public' : 'private',
+        'openai/visibility': isReadOnly || hasOutputTemplate ? 'public' : 'private',
         'mcp/securitySchemes': tool.securitySchemes,
       };
 
