@@ -262,6 +262,7 @@ export const CLIENT_CONTEXT_SCHEMA = z
       .object({
         id: z
           .string()
+          .optional()
           .describe('Client conversation/chat ID (client-specific format)'),
         title: z
           .string()
@@ -591,6 +592,10 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         .string()
         .optional()
         .describe('Optional initiative UUID to scope pending decisions'),
+      workspace_id: z
+        .string()
+        .optional()
+        .describe('Optional workspace UUID to scope pending decisions'),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,

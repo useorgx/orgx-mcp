@@ -546,6 +546,10 @@ export const CONTRACT_TOOL_DEFINITIONS = [
         .string()
         .optional()
         .describe('Used only when action="list". Scopes pending decisions to a specific initiative UUID.'),
+      workspace_id: z
+        .string()
+        .optional()
+        .describe('Used only when action="list". Scopes pending decisions to a specific workspace UUID. Defaults to the MCP session workspace when omitted.'),
     },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,

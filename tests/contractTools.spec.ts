@@ -9,7 +9,10 @@ import {
   getKnownToolContract,
   getKnownToolContracts,
 } from '../src/contractTools';
-import { CLIENT_INTEGRATION_TOOL_DEFINITIONS } from '../src/toolDefinitions';
+import {
+  CLIENT_CONTEXT_SCHEMA,
+  CLIENT_INTEGRATION_TOOL_DEFINITIONS,
+} from '../src/toolDefinitions';
 
 function collectInlineRegisteredToolIds(): string[] {
   const here = dirname(fileURLToPath(import.meta.url));
@@ -27,6 +30,15 @@ function collectInlineRegisteredToolIds(): string[] {
 }
 
 describe('contract tool catalog', () => {
+  it('accepts partial client conversation context without requiring a client-specific id', () => {
+    expect(() =>
+      CLIENT_CONTEXT_SCHEMA.parse({
+        client: { name: 'chatgpt' },
+        conversation: { title: 'Reviewer smoke test' },
+      })
+    ).not.toThrow();
+  });
+
   it('includes bootstrap, describe, and wrapper tools', () => {
     const ids = CONTRACT_TOOL_DEFINITIONS.map((tool) => tool.id);
     expect(ids).toContain('orgx_bootstrap');
@@ -130,6 +142,16 @@ describe('contract tool catalog', () => {
     const orgxPlanSchema = orgxPlan!.inputSchema as Record<string, z.ZodTypeAny>;
     expect(orgxPlanSchema.workspace_id.description).toContain('Workspace UUID');
     expect(orgxPlanSchema.workspace_id.description).toContain('current session workspace');
+  });
+
+  it('allows decision listing wrappers to be scoped to a workspace', () => {
+    for (const toolId of ['orgx_decide', 'approve_agent_work'] as const) {
+      const tool = CONTRACT_TOOL_DEFINITIONS.find((t) => t.id === toolId);
+      expect(tool, `${toolId} should be registered`).toBeDefined();
+      const schema = tool!.inputSchema as Record<string, z.ZodTypeAny>;
+      expect(schema.workspace_id, `${toolId} must accept workspace_id`).toBeDefined();
+      expect(schema.workspace_id.description).toContain('workspace');
+    }
   });
 
   it('documents live initiative create requirements that prevent known write failures', () => {

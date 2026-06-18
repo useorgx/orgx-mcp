@@ -62,13 +62,15 @@ describe('decision tools contract', () => {
       expect(tool.annotations?.destructiveHint).toBe(false);
     });
 
-    it('exposes optional limit / urgency_filter / initiative_id args', () => {
+    it('exposes optional limit / urgency_filter / initiative_id / workspace_id args', () => {
       expect(tool.inputSchema).toHaveProperty('limit');
       expect(tool.inputSchema).toHaveProperty('urgency_filter');
       expect(tool.inputSchema).toHaveProperty('initiative_id');
+      expect(tool.inputSchema).toHaveProperty('workspace_id');
       expect(isOptional(tool.inputSchema.limit)).toBe(true);
       expect(isOptional(tool.inputSchema.urgency_filter)).toBe(true);
       expect(isOptional(tool.inputSchema.initiative_id)).toBe(true);
+      expect(isOptional(tool.inputSchema.workspace_id)).toBe(true);
     });
 
     it('renders to the decisions widget output template', () => {
