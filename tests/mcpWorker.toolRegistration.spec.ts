@@ -11,6 +11,9 @@ import {
 } from '../src/toolDefinitions';
 import { CONTRACT_TOOL_DEFINITIONS } from '../src/contractTools';
 import { FLYWHEEL_TOOL_DEFINITIONS } from '../src/flywheelTools';
+import { resolveProfileToolSet } from '../src/toolProfiles';
+
+type ToolDef = { id: string; _meta?: Record<string, unknown> };
 
 const INLINE_HANDLED_TOOLS = new Set(['workspace', 'configure_org', 'stats']);
 
@@ -84,6 +87,39 @@ describe('MCP Worker tool registration integrity', () => {
 
   it('CONTRACT_TOOL_DEFINITIONS has no duplicate IDs', () => {
     expect(findDuplicates(contractIds)).toEqual([]);
+  });
+
+  it('every v2-surface tool that ships an output template is registered public (ChatGPT hides private template tools)', () => {
+    // ChatGPT disables a widget template if its owning tool is hidden ("Templates
+    // tied to hidden tools won't be usable"). Both registration paths must therefore
+    // force-public any tool carrying an openai/outputTemplate, regardless of whether
+    // it is a write tool. This guards the fix for orgx_decide/orgx_plan/etc.
+    const v2 = resolveProfileToolSet('v2') ?? new Set<string>();
+    const allDefs = [
+      ...(CHATGPT_TOOL_DEFINITIONS as unknown as ToolDef[]),
+      ...(CONTRACT_TOOL_DEFINITIONS as unknown as ToolDef[]),
+    ];
+    const templateToolsInV2 = allDefs.filter(
+      (d) =>
+        v2.has(d.id) &&
+        Boolean((d._meta as Record<string, unknown> | undefined)?.['openai/outputTemplate'])
+    );
+    // Sanity: the known decision/plan/agent widgets are present in v2.
+    expect(templateToolsInV2.map((d) => d.id)).toEqual(
+      expect.arrayContaining(['orgx_decide', 'orgx_plan'])
+    );
+
+    // The worker source must compute visibility from outputTemplate in BOTH paths.
+    const src = readWorkerSource();
+    const visibilityClauses = src.match(/openai\/outputTemplate'\]\)/g) ?? [];
+    expect(
+      src.includes('hasOutputTemplate'),
+      'index.ts must force-public template-bearing tools via hasOutputTemplate in registration'
+    ).toBe(true);
+    expect(
+      visibilityClauses.length,
+      'both registerChatGPTTools and registerContractTools must derive hasOutputTemplate'
+    ).toBeGreaterThanOrEqual(2);
   });
 
   it('definition arrays have no overlapping IDs', () => {
