@@ -19,6 +19,8 @@
     "og:render": "node scripts/render-social-preview.mjs",
     "widget:version": "node scripts/generate-widget-build-info.mjs",
     "widget:build": "node scripts/build-widgets.mjs",
+    "catalog:generate": "tsx scripts/generate-tool-catalog.ts",
+    "pack:artifact": "pnpm widget:build && pnpm catalog:generate && node scripts/pack-artifact.mjs",
     "prepare": "node scripts/setup-git-hooks.mjs",
     "precommit:og": "node scripts/precommit-og-render.mjs",
     "prebuild": "pnpm widget:build && pnpm widget:version",
@@ -53,9 +55,11 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260103.0",
+    "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "vite": "^6.3.4",
     "vitest": "^3.2.4",
-    "wrangler": "^4.54.0"
+    "wrangler": "^4.54.0",
+    "zod-to-json-schema": "^3.24.1"
   }
 }
