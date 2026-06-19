@@ -1168,7 +1168,6 @@ export class OrgXMcp extends McpAgent<
   private async fetchClientBootstrapWorkspace(
     userId?: string | null
   ): Promise<{ id: string; name: string | null } | null> {
-    if (!userId) return null;
     const payload = await this.fetchOrgxJsonOrNull<{
       data?: {
         workspace?: {
