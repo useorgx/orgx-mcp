@@ -6,6 +6,7 @@ import {
   BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE,
   V2_PUBLIC_TOOL_IDS,
   getBootstrapSafeFirstCalls,
+  pickBootstrapWorkspaceFallback,
   resolveBootstrapSessionContext,
 } from '../src/bootstrapPayload';
 
@@ -114,6 +115,36 @@ describe('bootstrap payload routing hints', () => {
     });
   });
 
+  it('falls back to the default workspace from accessible workspace candidates', () => {
+    expect(
+      pickBootstrapWorkspaceFallback([
+        { id: 'ws-1', name: 'First Workspace' },
+        { id: 'ws-2', title: 'Default Workspace', is_default: true },
+      ])
+    ).toEqual({
+      workspaceId: 'ws-2',
+      workspaceName: 'Default Workspace',
+    });
+  });
+
+  it('falls back to a sole accessible workspace when no default is marked', () => {
+    expect(
+      pickBootstrapWorkspaceFallback([{ id: 'ws-only', name: 'Only Workspace' }])
+    ).toEqual({
+      workspaceId: 'ws-only',
+      workspaceName: 'Only Workspace',
+    });
+  });
+
+  it('does not fallback-bind an ambiguous workspace list', () => {
+    expect(
+      pickBootstrapWorkspaceFallback([
+        { id: 'ws-1', name: 'First Workspace' },
+        { id: 'ws-2', name: 'Second Workspace' },
+      ])
+    ).toBeNull();
+  });
+
   it('keeps workspace as the canonical bootstrap entity type', () => {
     const indexSource = readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8');
     const bootstrapBranch = indexSource.match(
@@ -134,7 +165,8 @@ describe('bootstrap payload routing hints', () => {
     )?.[0];
 
     expect(bootstrapBranch).toContain('fetchClientBootstrapWorkspace');
-    expect(bootstrapBranch).not.toContain("type: 'workspace'");
+    expect(bootstrapBranch).toContain('pickBootstrapWorkspaceFallback');
+    expect(bootstrapBranch).toContain("type: 'workspace'");
     expect(bootstrapWorkspaceHelper).toContain(
       '/api/client/bootstrap?source_client=mcp'
     );
