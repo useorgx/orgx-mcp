@@ -270,21 +270,31 @@
       }
 
       @media (max-width: 420px) {
+        .permissions-header {
+          flex-direction: column;
+          align-items: stretch !important;
+          gap: 12px;
+        }
+
+        .permissions-header .toggle-group {
+          width: 100%;
+        }
+
         .permission-row > div:first-child {
-          display: grid !important;
-          grid-template-columns: minmax(0, 1fr) 144px;
-          gap: 10px;
-          align-items: center;
+          display: flex !important;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 12px;
         }
 
         .permission-row > div:first-child > .flex {
+          width: 100%;
           min-width: 0;
           gap: 9px;
         }
 
         .permission-row > div:first-child > .toggle-group {
-          width: 144px;
-          justify-self: end;
+          width: 100%;
         }
 
         .toggle-group {
@@ -420,7 +430,7 @@
 
         <!-- Permissions Section -->
         <div class="px-6 py-4">
-          <div class="flex items-center justify-between mb-3">
+          <div class="permissions-header flex items-center justify-between mb-3">
             <span
               class="text-xs text-white/40 uppercase tracking-wider font-medium"
               >Permissions</span
