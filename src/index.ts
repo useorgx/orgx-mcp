@@ -3291,6 +3291,9 @@ export class OrgXMcp extends McpAgent<
           const requestedWorkspaceId =
             typeof args.workspace_id === 'string' && args.workspace_id.trim()
               ? args.workspace_id.trim()
+              : typeof args.command_center_id === 'string' &&
+                args.command_center_id.trim()
+              ? args.command_center_id.trim()
               : null;
           let fetchedWorkspaceName: string | null = null;
           let bootstrapArgs = args;

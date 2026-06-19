@@ -82,6 +82,23 @@ describe('bootstrap payload routing hints', () => {
     });
   });
 
+  it('binds bootstrap command_center_id as a legacy workspace alias', () => {
+    expect(
+      resolveBootstrapSessionContext(
+        { command_center_id: ' ws-legacy ' },
+        {},
+        'Legacy Workspace'
+      )
+    ).toEqual({
+      requestedWorkspaceId: 'ws-legacy',
+      changed: true,
+      context: {
+        workspaceId: 'ws-legacy',
+        workspaceName: 'Legacy Workspace',
+      },
+    });
+  });
+
   it('clears stale workspace names when bootstrap switches workspaces without a fetched name', () => {
     expect(
       resolveBootstrapSessionContext(
@@ -105,5 +122,21 @@ describe('bootstrap payload routing hints', () => {
 
     expect(bootstrapBranch).toContain("'workspace'");
     expect(bootstrapBranch).not.toContain("'command_center'");
+  });
+
+  it('bootstrap delegates default workspace selection to the app bootstrap route', () => {
+    const indexSource = readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8');
+    const bootstrapBranch = indexSource.match(
+      /case 'orgx_bootstrap': \{[\s\S]*?case 'orgx_inspect':/
+    )?.[0];
+    const bootstrapWorkspaceHelper = indexSource.match(
+      /private async fetchClientBootstrapWorkspace[\s\S]*?private async recordMcpActivationObservation/
+    )?.[0];
+
+    expect(bootstrapBranch).toContain('fetchClientBootstrapWorkspace');
+    expect(bootstrapBranch).not.toContain("type: 'workspace'");
+    expect(bootstrapWorkspaceHelper).toContain(
+      '/api/client/bootstrap?source_client=mcp'
+    );
   });
 });
