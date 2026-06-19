@@ -128,6 +128,7 @@ import {
 import {
   BOOTSTRAP_RECOMMENDED_WORKFLOWS,
   getBootstrapSafeFirstCalls,
+  pickBootstrapWorkspaceFallback,
   resolveBootstrapSessionContext,
 } from './bootstrapPayload';
 import {
@@ -3318,6 +3319,29 @@ export class OrgXMcp extends McpAgent<
                 workspace_id: inferredWorkspace.id,
               };
               fetchedWorkspaceName = inferredWorkspace.name;
+            } else {
+              try {
+                const fallbackWorkspaces = await this.fetchEntityCollection({
+                  type: 'workspace',
+                  userId: resolvedUserId,
+                  limit: 50,
+                });
+                const fallbackWorkspace =
+                  pickBootstrapWorkspaceFallback(fallbackWorkspaces);
+                if (fallbackWorkspace) {
+                  bootstrapArgs = {
+                    ...args,
+                    workspace_id: fallbackWorkspace.workspaceId,
+                  };
+                  fetchedWorkspaceName =
+                    fallbackWorkspace.workspaceName ?? null;
+                }
+              } catch (error) {
+                console.warn('[mcp:bootstrap] Workspace fallback skipped', {
+                  error:
+                    error instanceof Error ? error.message : String(error),
+                });
+              }
             }
           }
           const resolvedContext = resolveBootstrapSessionContext(

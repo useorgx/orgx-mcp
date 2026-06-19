@@ -9,10 +9,52 @@ export type BootstrapSessionContext = {
   initiativeId?: string;
 };
 
+export type BootstrapWorkspaceCandidate = Record<string, unknown>;
+
 function nonEmptyString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0
     ? value.trim()
     : null;
+}
+
+export function pickBootstrapWorkspaceFallback(
+  candidates: BootstrapWorkspaceCandidate[]
+): Pick<BootstrapSessionContext, 'workspaceId' | 'workspaceName'> | null {
+  const normalized = candidates
+    .map((workspace) => {
+      const workspaceId = nonEmptyString(workspace.id);
+      if (!workspaceId) return null;
+      return {
+        workspaceId,
+        workspaceName:
+          nonEmptyString(workspace.name) ??
+          nonEmptyString(workspace.title) ??
+          undefined,
+        isDefault:
+          workspace.is_default === true || workspace.isDefault === true,
+      };
+    })
+    .filter((workspace): workspace is {
+      workspaceId: string;
+      workspaceName: string | undefined;
+      isDefault: boolean;
+    } => Boolean(workspace));
+
+  if (normalized.length === 0) return null;
+
+  const defaults = normalized.filter((workspace) => workspace.isDefault);
+  const selected =
+    defaults.length === 1
+      ? defaults[0]
+      : defaults.length === 0 && normalized.length === 1
+      ? normalized[0]
+      : null;
+
+  if (!selected) return null;
+  return {
+    workspaceId: selected.workspaceId,
+    ...(selected.workspaceName ? { workspaceName: selected.workspaceName } : {}),
+  };
 }
 
 export function resolveBootstrapSessionContext(
