@@ -9,6 +9,7 @@ keys/
 # Node
 node_modules/
 dist/
+tmp/wrangler-dry-run/
 
 # Generated submission screenshots — regenerable via scripts/render-app-*.mjs
 public/screenshots/app-card/
