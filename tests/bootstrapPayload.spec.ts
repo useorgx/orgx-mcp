@@ -138,5 +138,6 @@ describe('bootstrap payload routing hints', () => {
     expect(bootstrapWorkspaceHelper).toContain(
       '/api/client/bootstrap?source_client=mcp'
     );
+    expect(bootstrapWorkspaceHelper).not.toContain('if (!userId) return null');
   });
 });
