@@ -19,7 +19,11 @@ export function resolveBootstrapSessionContext(
   args: Record<string, unknown>,
   current: BootstrapSessionContext,
   fetchedWorkspaceName?: string | null
-): { context: BootstrapSessionContext; changed: boolean; requestedWorkspaceId: string | null } {
+): {
+  context: BootstrapSessionContext;
+  changed: boolean;
+  requestedWorkspaceId: string | null;
+} {
   const requestedWorkspaceId =
     nonEmptyString(args.workspace_id) ?? nonEmptyString(args.command_center_id);
   if (!requestedWorkspaceId) {
