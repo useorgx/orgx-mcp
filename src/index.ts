@@ -39,6 +39,7 @@ import { resolveProfileToolSet } from './toolProfiles';
 import { withCorsAndHeaders, withSseKeepAlive } from './mcpTransport';
 import { withSecurityHeaders } from './securityHeaders';
 import { callOrgxApiJson, callOrgxApiRaw, OrgXApiError } from './orgxApi';
+import { fetchContextPack } from './contextPack';
 import {
   batchCreateEntities as runBatchCreateEntities,
   validateEntityCreatePayloadContract,
@@ -3394,11 +3395,19 @@ export class OrgXMcp extends McpAgent<
               },
             });
           }
+          // M backbone: attach the compiled AgentContextPack so any client —
+          // including hookless ones — starts briefed on first call. Additive and
+          // never-throws (null when unavailable).
+          const context_pack = await fetchContextPack(this.env, resolvedUserId, {
+            type: String(args.type),
+            id: String(args.id),
+          });
           const payload = {
             _v2_tool: 'orgx_inspect',
             type: args.type,
             id: args.id,
             entity,
+            context_pack,
           };
           return {
             content: [{ type: 'text', text: formatForLLM('orgx_inspect', payload) }],
