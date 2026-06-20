@@ -825,12 +825,13 @@ export const authHandler = {
           Response.json(
             {
               error: 'invalid_token',
-              error_description: 'Missing or invalid access token',
+              error_description:
+                'Missing, invalid, or expired access token. Re-authorize the OrgX MCP connection (run the orgx authorize flow), then retry.',
             },
             {
               status: 401,
               headers: {
-                'WWW-Authenticate': `Bearer realm="OAuth", resource_metadata="${resourceMetadataUrl}", error="invalid_token", error_description="Missing or invalid access token"`,
+                'WWW-Authenticate': `Bearer realm="OAuth", resource_metadata="${resourceMetadataUrl}", error="invalid_token", error_description="Missing, invalid, or expired access token. Re-authorize the OrgX MCP connection, then retry."`,
               },
             }
           )
