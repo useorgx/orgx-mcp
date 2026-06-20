@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { normalizeAgentDispatchPayload } from '../src/agentDispatchPayload';
-import { handleMcpRequest } from '../src/mcpTransport';
+import {
+  buildMcpTransportExceptionResponse,
+  handleMcpRequest,
+} from '../src/mcpTransport';
 import {
   DEPRECATION_SUNSET_AT_ISO,
   DEPRECATION_SUNSET_HEADER,
@@ -868,5 +871,54 @@ describe('mcpTransport', () => {
     expect(response.headers.get('Access-Control-Allow-Methods')).toContain(
       'POST'
     );
+  });
+
+  it('formats pre-tool transport exceptions as detectable JSON-RPC errors', async () => {
+    const request = new Request('https://mcp.useorgx.com/mcp', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 'bootstrap-1',
+        method: 'tools/call',
+        params: {
+          name: 'orgx_bootstrap',
+          arguments: { client_name: 'claude-code' },
+        },
+      }),
+    });
+
+    const response = await buildMcpTransportExceptionResponse(
+      request,
+      new TypeError('provider crashed'),
+      { stage: 'oauth_provider' }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('x-orgx-mcp-error-code')).toBe(
+      'mcp_transport_exception'
+    );
+    expect(response.headers.get('x-orgx-mcp-error-kind')).toBe(
+      'exception_typeerror'
+    );
+    expect(response.headers.get('x-orgx-mcp-error-stage')).toBe(
+      'oauth_provider'
+    );
+    expect(body).toMatchObject({
+      jsonrpc: '2.0',
+      id: 'bootstrap-1',
+      error: {
+        code: -32603,
+        data: {
+          code: 'mcp_transport_exception',
+          error_kind: 'exception_typeerror',
+          stage: 'oauth_provider',
+          retryable: true,
+          health_check_url: 'https://mcp.useorgx.com/healthz?check=upstream',
+        },
+      },
+    });
+    expect(JSON.stringify(body)).not.toContain('provider crashed');
   });
 });

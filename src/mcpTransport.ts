@@ -45,6 +45,11 @@ export type AuthenticateRequest<Env> = (
   env: Env
 ) => Promise<AuthResult>;
 
+type McpTransportExceptionOptions = {
+  stage?: string;
+  status?: number;
+};
+
 /**
  * Normalize tool names by stripping server namespace prefixes.
  * MCP clients may call tools as "ServerName:tool_name" but our tools
@@ -413,6 +418,67 @@ function classifyMcpToolError(error: unknown): string {
     .replace(/[^a-z0-9_:-]+/g, '_')
     .slice(0, 64);
   return normalized ? `exception_${normalized}` : 'exception';
+}
+
+async function readJsonRpcId(request: Request): Promise<string | number | null> {
+  const contentType = request.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) return null;
+
+  try {
+    const body = (await request.clone().json()) as { id?: unknown };
+    if (typeof body.id === 'string' || typeof body.id === 'number') {
+      return body.id;
+    }
+  } catch {
+    // If the request body cannot be read, return a valid JSON-RPC error id.
+  }
+
+  return null;
+}
+
+export async function buildMcpTransportExceptionResponse(
+  request: Request,
+  error: unknown,
+  options: McpTransportExceptionOptions = {}
+): Promise<Response> {
+  const status = options.status ?? 200;
+  const errorKind = classifyMcpToolError(error);
+  const url = new URL(request.url);
+  const healthCheckUrl = new URL('/healthz?check=upstream', url.origin);
+  const id = await readJsonRpcId(request);
+  const stage = options.stage ?? 'mcp_transport';
+
+  const payload = {
+    jsonrpc: '2.0',
+    id,
+    error: {
+      code: -32603,
+      message:
+        'OrgX MCP hit a transport failure before the tool could return a structured result.',
+      data: {
+        code: 'mcp_transport_exception',
+        error_kind: errorKind,
+        stage,
+        retryable: true,
+        health_check_url: healthCheckUrl.toString(),
+        next_steps: [
+          'Retry the tool call once.',
+          'If it repeats, reconnect the OrgX MCP OAuth session.',
+          'Check /healthz?check=upstream to separate upstream health from an authenticated-session failure.',
+        ],
+      },
+    },
+  };
+
+  return Response.json(payload, {
+    status,
+    headers: {
+      'x-orgx-mcp-error-code': 'mcp_transport_exception',
+      'x-orgx-mcp-error-kind': errorKind,
+      'x-orgx-mcp-error-stage': stage,
+      'x-orgx-retryable': 'true',
+    },
+  });
 }
 
 export async function handleMcpRequest<Env, Props>(
