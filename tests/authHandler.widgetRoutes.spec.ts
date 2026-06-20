@@ -186,7 +186,7 @@ describe('authHandler widget compatibility routes', () => {
       error_description?: string;
     };
     expect(body.error).toBe('invalid_token');
-    expect(body.error_description).toBe('Missing or invalid access token');
+    expect(body.error_description).toContain('Re-authorize the OrgX MCP connection');
   });
 
   it('keeps GET / browser navigations on the landing page', async () => {
