@@ -36,7 +36,11 @@ import { buildEntityLink, entityLinkMarkdown, buildLiveUrl } from './deepLinks';
 import { formatInitiativeMarkdown, type OrgXInitiative } from './formatters';
 import { formatForLLM } from './responseSummarizer';
 import { resolveProfileToolSet } from './toolProfiles';
-import { withCorsAndHeaders, withSseKeepAlive } from './mcpTransport';
+import {
+  buildMcpTransportExceptionResponse,
+  withCorsAndHeaders,
+  withSseKeepAlive,
+} from './mcpTransport';
 import { withSecurityHeaders } from './securityHeaders';
 import { callOrgxApiJson, callOrgxApiRaw, OrgXApiError } from './orgxApi';
 import { fetchContextPack } from './contextPack';
@@ -12031,8 +12035,18 @@ const rateLimitedHttpHandler = {
       return buildRateLimitedResponse(rateLimit, env.ORGX_WEB_URL);
     }
 
-    const response = await httpHandler.fetch(request, env, ctx);
-    return withCorsAndHeaders(response, rateLimit.headers);
+    try {
+      const response = await httpHandler.fetch(request, env, ctx);
+      return withCorsAndHeaders(response, rateLimit.headers);
+    } catch (error) {
+      console.error('[mcp] HTTP handler failed before structured tool result', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      const response = await buildMcpTransportExceptionResponse(request, error, {
+        stage: 'mcp_http_handler',
+      });
+      return withCorsAndHeaders(response, rateLimit.headers);
+    }
   },
 };
 
@@ -12077,8 +12091,18 @@ const rateLimitedSseHandler = {
         headers: cloned.headers,
         body: cloned.body,
       });
-      const response = await httpHandler.fetch(httpReq, env, ctx);
-      return withCorsAndHeaders(response, rateLimit.headers);
+      try {
+        const response = await httpHandler.fetch(httpReq, env, ctx);
+        return withCorsAndHeaders(response, rateLimit.headers);
+      } catch (error) {
+        console.error('[mcp] POST /sse rewrite failed before structured tool result', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        const response = await buildMcpTransportExceptionResponse(httpReq, error, {
+          stage: 'mcp_sse_post_rewrite',
+        });
+        return withCorsAndHeaders(response, rateLimit.headers);
+      }
     }
 
     // GET /sse → SSE transport (default behavior)
@@ -12161,7 +12185,21 @@ export default {
     const runTokenResponse = await tryRunTokenAuth(request, env, ctx);
     if (runTokenResponse) return runTokenResponse;
 
-    const response = await oauthProvider.fetch(request, env, ctx);
-    return withSecurityHeaders(response);
+    const diagnosticRequest = request.clone();
+    try {
+      const response = await oauthProvider.fetch(request, env, ctx);
+      return withSecurityHeaders(response);
+    } catch (error) {
+      console.error('[mcp] OAuth provider request failed', {
+        path: new URL(diagnosticRequest.url).pathname,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      const response = await buildMcpTransportExceptionResponse(
+        diagnosticRequest as unknown as Request,
+        error,
+        { stage: 'oauth_provider' }
+      );
+      return withSecurityHeaders(response);
+    }
   },
 };
