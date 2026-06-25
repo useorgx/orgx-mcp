@@ -1,6 +1,6 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
-import { callOrgxApiJson } from './orgxApi';
+import { resolveBillingPlanContext } from './billingPlan';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
 import { mapPlanToAccountTier, type AccountTier } from './accountTools';
 
@@ -110,10 +110,6 @@ type ToolAccessBlocked = {
 };
 
 export type ToolAccessResult = ToolAccessAllowed | ToolAccessBlocked;
-
-interface UsageResponse {
-  plan?: unknown;
-}
 
 const TOOL_ACCESS_RULES: Record<ToolAccessFeature, ToolAccessRule> = {
   spawn_agent_task: {
@@ -231,21 +227,7 @@ export async function checkToolPlanAccess(params: {
     );
   }
 
-  let plan = 'free';
-  try {
-    const response = await callOrgxApiJson(
-      params.env,
-      '/api/billing/usage',
-      { method: 'GET' },
-      { userId }
-    );
-    const usage = (await response.json()) as UsageResponse;
-    if (typeof usage.plan === 'string' && usage.plan.trim().length > 0) {
-      plan = usage.plan.trim().toLowerCase();
-    }
-  } catch {
-    plan = 'free';
-  }
+  const { plan } = await resolveBillingPlanContext(params.env, userId);
 
   const access = evaluateToolAccess({
     feature: params.feature,

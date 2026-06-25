@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { callOrgxApiRaw } from '../src/orgxApi';
+import { _clearOrgxApiCachesForTests, callOrgxApiRaw } from '../src/orgxApi';
 
 function decodeActorToken(token: string) {
   const [payloadB64] = token.split('.');
@@ -19,6 +19,7 @@ describe('callOrgxApiRaw actor token propagation', () => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    _clearOrgxApiCachesForTests();
   });
 
   it('sends a signed short-lived actor assertion with service requests', async () => {
@@ -50,6 +51,35 @@ describe('callOrgxApiRaw actor token propagation', () => {
       email: 'hope@example.com',
     });
     expect(payload.exp).toBeGreaterThan(Date.now());
+  });
+
+  it('reuses actor assertions inside the safe token cache window', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(Date.parse('2026-06-20T12:00:00.000Z'));
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true })));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const env = {
+      ORGX_API_URL: 'https://api.useorgx.test',
+      ORGX_SERVICE_KEY: 'oxk-test',
+      ORGX_INTERNAL_SECRET: 'test-internal-secret',
+    };
+
+    await callOrgxApiRaw(env, '/api/one', undefined, {
+      userId: 'user_123',
+      userEmail: 'Hope@Example.com',
+    });
+    await callOrgxApiRaw(env, '/api/two', undefined, {
+      userId: 'user_123',
+      userEmail: 'hope@example.com',
+    });
+
+    const firstHeaders = new Headers(fetchMock.mock.calls[0]?.[1]?.headers);
+    const secondHeaders = new Headers(fetchMock.mock.calls[1]?.[1]?.headers);
+    expect(firstHeaders.get('x-orgx-actor-token')).toBeTruthy();
+    expect(secondHeaders.get('x-orgx-actor-token')).toBe(
+      firstHeaders.get('x-orgx-actor-token')
+    );
   });
 
   it('retries through ORGX_API_FALLBACK_URL when the primary upstream is unavailable', async () => {

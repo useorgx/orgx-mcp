@@ -1,5 +1,8 @@
 import type { OAuthHelpers } from '@cloudflare/workers-oauth-provider';
-import { callOrgxApiJson } from './orgxApi';
+import {
+  resetBillingPlanCacheForTests,
+  resolveBillingPlanContext,
+} from './billingPlan';
 
 type BillingTier = 'free' | 'pro' | 'enterprise';
 type LimitSource = 'upstash' | 'memory' | 'bypass';
@@ -10,10 +13,6 @@ interface RateLimitEnv {
   OAUTH_PROVIDER?: OAuthHelpers;
   UPSTASH_REDIS_REST_URL?: string;
   UPSTASH_REDIS_REST_TOKEN?: string;
-}
-
-interface UsageResponse {
-  plan?: unknown;
 }
 
 export interface RateLimitDecision {
@@ -29,44 +28,21 @@ const TIER_LIMITS: Record<Exclude<BillingTier, 'enterprise'>, number> = {
   free: 100,
   pro: 1000,
 };
-const TIER_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const TOKEN_USER_CACHE_TTL_MS = 60 * 1000; // 1 minute
+const UPSTASH_PIPELINE_TIMEOUT_MS = 750;
 
-const tierCache = new Map<
-  string,
-  { tier: BillingTier; plan: string; expiresAt: number }
->();
 const tokenUserCache = new Map<
   string,
   { userId: string | null; expiresAt: number }
 >();
+const tokenUserInFlight = new Map<string, Promise<string | null>>();
 const memoryBuckets = new Map<string, number[]>();
 
 export function __resetEdgeRateLimitStateForTests() {
-  tierCache.clear();
+  resetBillingPlanCacheForTests();
   tokenUserCache.clear();
+  tokenUserInFlight.clear();
   memoryBuckets.clear();
-}
-
-function normalizePlanToTier(plan: string | null | undefined): BillingTier {
-  const normalized = (plan ?? 'free').trim().toLowerCase();
-  if (
-    normalized === 'enterprise' ||
-    normalized === 'enterprise_plus' ||
-    normalized === 'enterprise-pro'
-  ) {
-    return 'enterprise';
-  }
-  if (
-    normalized === 'pro' ||
-    normalized === 'team' ||
-    normalized === 'starter' ||
-    normalized === 'growth' ||
-    normalized === 'scale'
-  ) {
-    return 'pro';
-  }
-  return 'free';
 }
 
 function extractBearerToken(request: Request): string | null {
@@ -100,61 +76,42 @@ async function resolveUserIdFromToken(
   env: RateLimitEnv
 ): Promise<string | null> {
   if (!token || !env.OAUTH_PROVIDER) return null;
+  const oauthProvider = env.OAUTH_PROVIDER;
   const cacheKey = hashToken(token);
   const cached = tokenUserCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
     return cached.userId;
   }
 
-  try {
-    const tokenData = await env.OAUTH_PROVIDER.unwrapToken<{
-      userId?: string;
-      grant?: { props?: { userId?: string } };
-    }>(token);
-    const userId = tokenData?.grant?.props?.userId ?? tokenData?.userId ?? null;
-    tokenUserCache.set(cacheKey, {
-      userId,
-      expiresAt: Date.now() + TOKEN_USER_CACHE_TTL_MS,
-    });
-    return userId;
-  } catch {
-    tokenUserCache.set(cacheKey, {
-      userId: null,
-      expiresAt: Date.now() + TOKEN_USER_CACHE_TTL_MS,
-    });
-    return null;
-  }
-}
+  const inFlight = tokenUserInFlight.get(cacheKey);
+  if (inFlight) return inFlight;
 
-async function resolveTier(
-  env: RateLimitEnv,
-  userId: string | null
-): Promise<{ tier: BillingTier; plan: string }> {
-  if (!userId) return { tier: 'free', plan: 'free' };
+  const promise = (async () => {
+    try {
+      const tokenData = await oauthProvider.unwrapToken<{
+        userId?: string;
+        grant?: { props?: { userId?: string } };
+      }>(token);
+      const userId =
+        tokenData?.grant?.props?.userId ?? tokenData?.userId ?? null;
+      tokenUserCache.set(cacheKey, {
+        userId,
+        expiresAt: Date.now() + TOKEN_USER_CACHE_TTL_MS,
+      });
+      return userId;
+    } catch {
+      tokenUserCache.set(cacheKey, {
+        userId: null,
+        expiresAt: Date.now() + TOKEN_USER_CACHE_TTL_MS,
+      });
+      return null;
+    } finally {
+      tokenUserInFlight.delete(cacheKey);
+    }
+  })();
 
-  const cached = tierCache.get(userId);
-  if (cached && cached.expiresAt > Date.now()) {
-    return { tier: cached.tier, plan: cached.plan };
-  }
-
-  try {
-    const response = await callOrgxApiJson(
-      env,
-      '/api/billing/usage',
-      { method: 'GET' },
-      { userId }
-    );
-    const data = (await response.json()) as UsageResponse;
-    const plan =
-      typeof data.plan === 'string' && data.plan.trim().length > 0
-        ? data.plan.trim().toLowerCase()
-        : 'free';
-    const tier = normalizePlanToTier(plan);
-    tierCache.set(userId, { tier, plan, expiresAt: Date.now() + TIER_CACHE_TTL_MS });
-    return { tier, plan };
-  } catch {
-    return { tier: 'free', plan: 'free' };
-  }
+  tokenUserInFlight.set(cacheKey, promise);
+  return promise;
 }
 
 function buildRateHeaders(params: {
@@ -205,14 +162,25 @@ async function runUpstashPipeline(
   }
 
   const endpoint = `${url.replace(/\/+$/, '')}/pipeline`;
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(commands),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort('upstash pipeline timeout'),
+    UPSTASH_PIPELINE_TIMEOUT_MS
+  );
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(commands),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     const text = await response.text().catch(() => '');
@@ -314,7 +282,7 @@ export async function checkEdgeRateLimit(
 
   const token = extractBearerToken(request);
   const userId = await resolveUserIdFromToken(token, env);
-  const { tier } = await resolveTier(env, userId);
+  const { tier } = await resolveBillingPlanContext(env, userId);
 
   if (tier === 'enterprise') {
     return {
@@ -335,45 +303,53 @@ export async function checkEdgeRateLimit(
   const nowMs = Date.now();
   const bucketKey = buildSubjectKey(request, token, userId);
   const redisKey = `mcp:rate:${tier}:${bucketKey}`;
+  const hasUpstash =
+    Boolean(env.UPSTASH_REDIS_REST_URL?.trim()) &&
+    Boolean(env.UPSTASH_REDIS_REST_TOKEN?.trim());
 
-  try {
-    const upstash = await checkWithUpstash({
-      env,
-      key: redisKey,
-      limit,
-      nowMs,
-    });
-    return {
-      allowed: upstash.allowed,
-      tier,
-      source: 'upstash',
-      retryAfterSeconds: upstash.allowed
-        ? undefined
-        : Math.max(1, upstash.resetAtSeconds - Math.floor(nowMs / 1000)),
-      headers: buildRateHeaders({
-        tier,
+  if (hasUpstash) {
+    try {
+      const upstash = await checkWithUpstash({
+        env,
+        key: redisKey,
         limit,
-        remaining: upstash.remaining,
-        resetAtSeconds: upstash.resetAtSeconds,
+        nowMs,
+      });
+      return {
+        allowed: upstash.allowed,
+        tier,
         source: 'upstash',
-      }),
-    };
-  } catch {
-    const memory = checkWithMemory({ key: redisKey, limit, nowMs });
-    return {
-      allowed: memory.allowed,
-      tier,
-      source: 'memory',
-      retryAfterSeconds: memory.allowed
-        ? undefined
-        : Math.max(1, memory.resetAtSeconds - Math.floor(nowMs / 1000)),
-      headers: buildRateHeaders({
-        tier,
-        limit,
-        remaining: memory.remaining,
-        resetAtSeconds: memory.resetAtSeconds,
-        source: 'memory',
-      }),
-    };
+        retryAfterSeconds: upstash.allowed
+          ? undefined
+          : Math.max(1, upstash.resetAtSeconds - Math.floor(nowMs / 1000)),
+        headers: buildRateHeaders({
+          tier,
+          limit,
+          remaining: upstash.remaining,
+          resetAtSeconds: upstash.resetAtSeconds,
+          source: 'upstash',
+        }),
+      };
+    } catch {
+      // Fall back to local protection rather than making a slow/failed Redis
+      // dependency the request bottleneck.
+    }
   }
+
+  const memory = checkWithMemory({ key: redisKey, limit, nowMs });
+  return {
+    allowed: memory.allowed,
+    tier,
+    source: 'memory',
+    retryAfterSeconds: memory.allowed
+      ? undefined
+      : Math.max(1, memory.resetAtSeconds - Math.floor(nowMs / 1000)),
+    headers: buildRateHeaders({
+      tier,
+      limit,
+      remaining: memory.remaining,
+      resetAtSeconds: memory.resetAtSeconds,
+      source: 'memory',
+    }),
+  };
 }

@@ -56,6 +56,7 @@ export type RequireWorkspaceResult =
 
 const MEMBERSHIP_CACHE_TTL_MS = 60_000;
 const membershipCache = new Map<string, { ok: boolean; expiresAt: number }>();
+const membershipInFlight = new Map<string, Promise<void>>();
 
 export async function requireWorkspace(
   opts: RequireWorkspaceOptions
@@ -92,13 +93,19 @@ export async function requireWorkspace(
   }
 
   let owns = false;
-  try {
-    await callOrgxApiJson(
+  let probe = membershipInFlight.get(cacheKey);
+  if (!probe) {
+    probe = callOrgxApiJson(
       opts.env,
       `/api/workspaces/${encodeURIComponent(workspaceId)}`,
       { method: 'GET' },
       { userId: opts.userId }
-    );
+    ).then(() => undefined);
+    membershipInFlight.set(cacheKey, probe);
+  }
+
+  try {
+    await probe;
     owns = true;
   } catch (err) {
     if (err instanceof OrgXApiError && err.statusCode === 404) {
@@ -119,6 +126,10 @@ export async function requireWorkspace(
           { code: 'membership_check_failed', status: 503 }
         ),
       };
+    }
+  } finally {
+    if (membershipInFlight.get(cacheKey) === probe) {
+      membershipInFlight.delete(cacheKey);
     }
   }
 
@@ -191,4 +202,5 @@ export function detectWorkspaceArgConflict(
  */
 export function _clearMembershipCacheForTests(): void {
   membershipCache.clear();
+  membershipInFlight.clear();
 }

@@ -21,6 +21,87 @@ function has(value: unknown): boolean {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+function readString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0
+    ? value.trim()
+    : null;
+}
+
+function normalizeAgentAlias(value: unknown): string | null {
+  const raw = readString(value);
+  if (!raw) return null;
+  const normalized = raw.toLowerCase().replace(/_/g, '-');
+  if (normalized.endsWith('-agent')) return normalized;
+  const byDomain: Record<string, string> = {
+    product: 'product-agent',
+    engineering: 'engineering-agent',
+    engineer: 'engineering-agent',
+    marketing: 'marketing-agent',
+    sales: 'sales-agent',
+    operations: 'operations-agent',
+    ops: 'operations-agent',
+    design: 'design-agent',
+    orchestrator: 'orchestrator-agent',
+  };
+  return byDomain[normalized] ?? raw;
+}
+
+function omitContractOnlyFields(
+  args: Record<string, unknown>
+): Record<string, unknown> {
+  const {
+    action: _action,
+    title: _title,
+    instructions: _instructions,
+    agent_type: _agentType,
+    domain: _domain,
+    ...rest
+  } = args;
+  return rest;
+}
+
+/**
+ * Translate the v2 orgx_spawn contract fields into the legacy app tool args
+ * that /api/tools/execute expects. This keeps orgx_spawn ergonomic while
+ * preserving task/workstream/initiative IDs for app-side GoalFrame hydration.
+ */
+export function buildOrgxSpawnForwardArgs(
+  targetTool: 'spawn_agent_task' | 'handoff_task',
+  args: Record<string, unknown>
+): Record<string, unknown> {
+  const out = omitContractOnlyFields(args);
+  const agent =
+    readString(out.agent) ??
+    normalizeAgentAlias(args.agent_type) ??
+    normalizeAgentAlias(args.domain);
+
+  if (targetTool === 'handoff_task') {
+    if (agent && !readString(out.agent)) out.agent = agent;
+    const note = readString(out.note) ?? readString(args.instructions);
+    if (note) out.note = note;
+    return out;
+  }
+
+  if (agent && !readString(out.agent)) out.agent = agent;
+
+  const title = readString(args.title);
+  const instructions = readString(args.instructions);
+  const taskId = readString(args.task_id);
+  const task =
+    readString(out.task) ??
+    title ??
+    instructions ??
+    (taskId ? `Execute task ${taskId}` : null);
+  if (task) out.task = task;
+
+  const context = readString(out.context);
+  if (!context && instructions && instructions !== task) {
+    out.context = instructions;
+  }
+
+  return out;
+}
+
 export function validateSpawnContract(
   action: string,
   args: Record<string, unknown>

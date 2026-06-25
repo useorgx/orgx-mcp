@@ -10,17 +10,32 @@ export interface OrgxApiEnv {
 const DEFAULT_ORGX_API_TIMEOUT_MS = 30_000;
 const DEFAULT_ORGX_API_PRIMARY_TIMEOUT_MS = 5_000;
 const ACTOR_TOKEN_TTL_MS = 5 * 60 * 1000;
+const ACTOR_TOKEN_CACHE_SKEW_MS = 30_000;
+const ACTOR_TOKEN_CACHE_MAX_ENTRIES = 500;
 const ACTOR_TOKEN_TYPE = 'orgx.mcp.actor.v1';
 const ACTOR_TOKEN_AUD = 'orgx-api';
 
+const hmacKeyCache = new Map<string, Promise<CryptoKey>>();
+const actorTokenCache = new Map<string, { token: string; expiresAt: number }>();
+
 async function importHmacKey(secret: string): Promise<CryptoKey> {
-  return crypto.subtle.importKey(
+  const cached = hmacKeyCache.get(secret);
+  if (cached) return cached;
+
+  const promise = crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(secret),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign']
   );
+  hmacKeyCache.set(secret, promise);
+  try {
+    return await promise;
+  } catch (error) {
+    hmacKeyCache.delete(secret);
+    throw error;
+  }
 }
 
 function base64Url(input: ArrayBuffer): string {
@@ -36,12 +51,19 @@ async function signGatewayActorToken(opts: {
   secret: string;
 }): Promise<string> {
   const now = Date.now();
+  const normalizedEmail = opts.userEmail?.trim().toLowerCase() ?? '';
+  const cacheKey = `${opts.secret}::${opts.userId}::${normalizedEmail}`;
+  const cached = actorTokenCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return cached.token;
+  }
+
   const payload = {
     type: ACTOR_TOKEN_TYPE,
     aud: ACTOR_TOKEN_AUD,
     iss: 'orgx-mcp',
     sub: opts.userId,
-    ...(opts.userEmail ? { email: opts.userEmail.trim().toLowerCase() } : {}),
+    ...(normalizedEmail ? { email: normalizedEmail } : {}),
     iat: now,
     exp: now + ACTOR_TOKEN_TTL_MS,
   };
@@ -49,7 +71,15 @@ async function signGatewayActorToken(opts: {
   const payloadB64 = base64Url(encoder.encode(JSON.stringify(payload)).buffer);
   const key = await importHmacKey(opts.secret);
   const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(payloadB64));
-  return `${payloadB64}.${base64Url(signature)}`;
+  const token = `${payloadB64}.${base64Url(signature)}`;
+  actorTokenCache.set(cacheKey, {
+    token,
+    expiresAt: payload.exp - ACTOR_TOKEN_CACHE_SKEW_MS,
+  });
+  if (actorTokenCache.size > ACTOR_TOKEN_CACHE_MAX_ENTRIES) {
+    actorTokenCache.delete(actorTokenCache.keys().next().value as string);
+  }
+  return token;
 }
 
 function truncateForErrorBody(input: string, max = 2000) {
@@ -365,4 +395,12 @@ export async function callOrgxApiJson(
     );
   }
   return response;
+}
+
+/**
+ * @internal test helper
+ */
+export function _clearOrgxApiCachesForTests(): void {
+  hmacKeyCache.clear();
+  actorTokenCache.clear();
 }
