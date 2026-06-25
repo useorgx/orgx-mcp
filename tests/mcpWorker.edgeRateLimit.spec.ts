@@ -163,6 +163,80 @@ describe('edge rate limiting', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('dedupes concurrent OAuth unwraps and billing plan lookups', async () => {
+    let resolveToken!: (value: {
+      grant: { props: { userId: string } };
+    }) => void;
+    const tokenGate = new Promise<{ grant: { props: { userId: string } } }>(
+      (resolve) => {
+        resolveToken = resolve;
+      }
+    );
+    const unwrapToken = vi.fn(() => tokenGate);
+    const fetchMock = vi.fn(async () => Response.json({ plan: 'pro' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const env = {
+      ORGX_API_URL: 'https://example.com',
+      ORGX_SERVICE_KEY: 'oxk-test',
+      OAUTH_PROVIDER: { unwrapToken } as any,
+    };
+    const request = () =>
+      new Request('https://example.com/mcp', {
+        headers: {
+          authorization: 'Bearer concurrent-token',
+        },
+      });
+
+    const first = checkEdgeRateLimit(request(), env);
+    const second = checkEdgeRateLimit(request(), env);
+
+    await Promise.resolve();
+    expect(unwrapToken).toHaveBeenCalledTimes(1);
+
+    resolveToken({ grant: { props: { userId: 'user-concurrent' } } });
+    const results = await Promise.all([first, second]);
+
+    expect(results.every((decision) => decision.allowed)).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to memory when the Upstash pipeline exceeds the edge timeout', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(
+      (_url: RequestInfo | URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener(
+            'abort',
+            () => reject(new DOMException('aborted', 'AbortError')),
+            { once: true }
+          );
+        })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const decisionPromise = checkEdgeRateLimit(
+      new Request('https://example.com/mcp', {
+        headers: {
+          'cf-connecting-ip': '198.51.100.14',
+        },
+      }),
+      {
+        ORGX_API_URL: 'https://example.com',
+        ORGX_SERVICE_KEY: 'oxk-test',
+        UPSTASH_REDIS_REST_URL: 'https://redis.example.com',
+        UPSTASH_REDIS_REST_TOKEN: 'redis-test',
+      }
+    );
+
+    await vi.advanceTimersByTimeAsync(750);
+    const decision = await decisionPromise;
+
+    expect(decision.allowed).toBe(true);
+    expect(decision.source).toBe('memory');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('adds an upgrade CTA to the 429 payload', () => {
     const payload = buildRateLimitExceededPayload(
       {

@@ -119,7 +119,10 @@ import {
 } from './mcpInvocationTelemetry';
 import { extractRunCostTelemetry } from './runCostTelemetry';
 import { detectProviderPinning } from './providerPinning';
-import { validateSpawnContract } from './spawnContract';
+import {
+  buildOrgxSpawnForwardArgs,
+  validateSpawnContract,
+} from './spawnContract';
 import { validateWriteCreateContract } from './writeContract';
 import { buildLiveFeedWidget } from './liveFeedWidget';
 import { signStreamToken } from './streamToken';
@@ -865,10 +868,12 @@ export class OrgXMcp extends McpAgent<
 
     // First, try to restore session auth from persistent storage
     // This handles DO resets after deployments
-    await this.loadSessionAuth();
-    await this.loadSessionContext();
-    await this.loadMcpActivationState();
-    await this.loadMcpSessionReentryState();
+    await Promise.all([
+      this.loadSessionAuth(),
+      this.loadSessionContext(),
+      this.loadMcpActivationState(),
+      this.loadMcpSessionReentryState(),
+    ]);
 
     // Diagnostic: log what the DO received from the provider
     console.info('[mcp:init] DO initialized', {
@@ -1215,7 +1220,7 @@ export class OrgXMcp extends McpAgent<
       );
 
       this.mcpActivationState = state;
-      await this.saveMcpActivationState();
+      this.ctx.waitUntil(this.saveMcpActivationState());
 
       if (events.length === 0) return [];
       const distinctId = params.userId ?? this.resolveAnonymousDistinctId();
@@ -1404,7 +1409,7 @@ export class OrgXMcp extends McpAgent<
         this.mcpSessionReentryState,
         now
       );
-      await this.saveMcpSessionReentryState();
+      this.ctx.waitUntil(this.saveMcpSessionReentryState());
 
       if (leadingBlock) {
         const existingContent = Array.isArray(result.content)
@@ -3908,11 +3913,19 @@ export class OrgXMcp extends McpAgent<
             }
             budgetPreflight = preflight.preflight;
           }
+          const forwardedSpawnArgs =
+            targetTool === 'spawn_agent_task' || targetTool === 'handoff_task'
+              ? buildOrgxSpawnForwardArgs(targetTool, spawnArgs)
+              : spawnArgs;
           const body =
             targetTool === 'spawn_agent_task' || targetTool === 'handoff_task'
-              ? { tool_id: targetTool, args: spawnArgs, user_id: resolvedUserId }
+              ? {
+                  tool_id: targetTool,
+                  args: forwardedSpawnArgs,
+                  user_id: resolvedUserId,
+                }
               : {
-                  ...spawnArgs,
+                  ...forwardedSpawnArgs,
                   ...(action === 'estimate' ? { estimate_only: true } : {}),
                   user_id: resolvedUserId,
                 };

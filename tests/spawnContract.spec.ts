@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { validateSpawnContract } from '../src/spawnContract';
+import {
+  buildOrgxSpawnForwardArgs,
+  validateSpawnContract,
+} from '../src/spawnContract';
 
 describe('validateSpawnContract', () => {
   it('spawn: accepts task_id, or title + instructions; rejects neither', () => {
@@ -41,5 +44,63 @@ describe('validateSpawnContract', () => {
 
   it('passes unknown actions through (handled elsewhere)', () => {
     expect(validateSpawnContract('something_else', {}).ok).toBe(true);
+  });
+});
+
+describe('buildOrgxSpawnForwardArgs', () => {
+  it('maps orgx_spawn ad-hoc spawn fields to spawn_agent_task args', () => {
+    expect(
+      buildOrgxSpawnForwardArgs('spawn_agent_task', {
+        action: 'spawn',
+        agent_type: 'engineering',
+        title: 'Draft migration runbook',
+        instructions: 'Use the existing rollback checklist.',
+        initiative_id: 'init-1',
+        model_tier: 'standard',
+        budget_mode: 'cheapest_valid',
+      })
+    ).toEqual({
+      agent: 'engineering-agent',
+      task: 'Draft migration runbook',
+      context: 'Use the existing rollback checklist.',
+      initiative_id: 'init-1',
+      model_tier: 'standard',
+      budget_mode: 'cheapest_valid',
+    });
+  });
+
+  it('preserves task bindings for app-side context hydration', () => {
+    expect(
+      buildOrgxSpawnForwardArgs('spawn_agent_task', {
+        action: 'spawn',
+        task_id: 'task-1',
+        workstream_id: 'workstream-1',
+        milestone_id: 'milestone-1',
+        initiative_id: 'init-1',
+        workspace_id: 'workspace-1',
+      })
+    ).toEqual({
+      task_id: 'task-1',
+      workstream_id: 'workstream-1',
+      milestone_id: 'milestone-1',
+      initiative_id: 'init-1',
+      workspace_id: 'workspace-1',
+      task: 'Execute task task-1',
+    });
+  });
+
+  it('maps orgx_spawn handoff fields to handoff_task args', () => {
+    expect(
+      buildOrgxSpawnForwardArgs('handoff_task', {
+        action: 'handoff',
+        task_id: 'task-1',
+        agent_type: 'ops',
+        instructions: 'Take over the incident runbook.',
+      })
+    ).toEqual({
+      task_id: 'task-1',
+      agent: 'operations-agent',
+      note: 'Take over the incident runbook.',
+    });
   });
 });

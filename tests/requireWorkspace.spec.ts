@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiCalls: Array<{ path: string; userId?: string | null }> = [];
 const apiResponses: Array<
-  | { kind: 'ok'; body: unknown }
-  | { kind: 'error'; statusCode?: number; message?: string }
+  | { kind: 'ok'; body: unknown; wait?: Promise<void> }
+  | { kind: 'error'; statusCode?: number; message?: string; wait?: Promise<void> }
 > = [];
 
 vi.mock('../src/orgxApi', async () => {
@@ -18,6 +18,7 @@ vi.mock('../src/orgxApi', async () => {
       if (!next) {
         throw new Error(`no response queued for path ${path}`);
       }
+      if ('wait' in next && next.wait) await next.wait;
       if (next.kind === 'ok') return next.body;
       throw new actual.OrgXApiError(
         next.message ?? 'api error',
@@ -170,6 +171,33 @@ describe('requireWorkspace', () => {
       env,
     });
     expect(a.ok && b.ok).toBe(true);
+    expect(apiCalls).toHaveLength(1);
+  });
+
+  it('dedupes concurrent membership checks for the same user and workspace', async () => {
+    let release!: () => void;
+    const wait = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    apiResponses.push({ kind: 'ok', body: { id: 'ws-A' }, wait });
+
+    const first = requireWorkspace({
+      args: { workspace_id: 'ws-A' },
+      userId: 'user_alice',
+      env,
+    });
+    const second = requireWorkspace({
+      args: { workspace_id: 'ws-A' },
+      userId: 'user_alice',
+      env,
+    });
+
+    await Promise.resolve();
+    expect(apiCalls).toHaveLength(1);
+    release();
+
+    const results = await Promise.all([first, second]);
+    expect(results.every((result) => result.ok)).toBe(true);
     expect(apiCalls).toHaveLength(1);
   });
 
