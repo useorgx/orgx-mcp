@@ -10,7 +10,71 @@
         --ox-primary: rgb(var(--ox-primary-rgb));
         --ox-warning: #fbbf24;
         --ox-danger: #f43f5e;
-        --ox-easing: cubic-bezier(0.16, 1, 0.3, 1);
+
+        /* Canonical OrgX motion vocabulary (standalone — no shared foundation). */
+        --ox-ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+        --ox-ease-entry: cubic-bezier(0, 0, 0.2, 1);
+        --ox-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+        --ox-ease-morph: cubic-bezier(0.4, 0, 0.2, 1);
+        --ox-dur-instant: 50ms;
+        --ox-dur-fast: 150ms;
+        --ox-dur-base: 250ms;
+        --ox-dur-slow: 400ms;
+        --ox-dur-slower: 600ms;
+
+        /* Settled UI / hover / press — route through the standard curve. */
+        --ox-easing: var(--ox-ease-standard);
+      }
+
+      /* Accessibility-safe reduced-motion guard. Collapse motion to ~instant
+         rather than killing it, so `forwards` entrances still settle visibly. */
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+          scroll-behavior: auto !important;
+        }
+      }
+
+      /* Calm staggered entrance for ledger rows + sections. */
+      @keyframes db-enter {
+        from {
+          opacity: 0;
+          transform: translateY(12px) scale(0.99);
+          filter: blur(2px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+          filter: blur(0);
+        }
+      }
+
+      .db-stagger {
+        opacity: 0;
+        animation: db-enter var(--ox-dur-slow) var(--ox-ease-entry) forwards;
+        animation-delay: calc(var(--i, 0) * 60ms);
+      }
+
+      .db-empty {
+        padding: 40px 28px;
+        text-align: center;
+      }
+      .db-empty-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--ox-text);
+        margin-bottom: 6px;
+      }
+      .db-empty-desc {
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--ox-text-muted);
+        max-width: 320px;
+        margin: 0 auto;
       }
 
       .db-card {
@@ -130,6 +194,9 @@
         text-transform: uppercase;
         border-radius: 6px;
         cursor: pointer;
+        transition:
+          background var(--ox-dur-fast) var(--ox-ease-standard),
+          color var(--ox-dur-fast) var(--ox-ease-standard);
       }
       .db-lens-btn.is-active {
         background: rgba(var(--ox-primary-rgb), 0.15);
@@ -231,8 +298,8 @@
         width: 20px;
         height: 20px;
         border-radius: 50%;
-        background: rgba(var(--agent-rgb, 99, 102, 241), 0.18);
-        color: rgb(var(--agent-rgb, 99, 102, 241));
+        background: rgba(var(--agent-rgb, var(--ox-primary-rgb)), 0.18);
+        color: rgb(var(--agent-rgb, var(--ox-primary-rgb)));
         align-items: center;
         justify-content: center;
         font-family: var(--ox-mono);
@@ -275,6 +342,15 @@
         text-transform: uppercase;
         border-radius: 6px;
         cursor: pointer;
+        transition:
+          background var(--ox-dur-fast) var(--ox-ease-standard),
+          border-color var(--ox-dur-fast) var(--ox-ease-standard),
+          transform var(--ox-dur-fast) var(--ox-ease-standard);
+      }
+      .db-cross-prompt-btn:hover {
+        transform: translateY(-1px);
+        background: rgba(var(--ox-primary-rgb), 0.26);
+        border-color: rgba(var(--ox-primary-rgb), 0.45);
       }
       .db-proof-strip {
         display: grid;
@@ -340,6 +416,10 @@
         display: inline-flex;
         align-items: center;
         gap: 6px;
+        transition: gap var(--ox-dur-fast) var(--ox-ease-standard);
+      }
+      .db-footer-link:hover {
+        gap: 8px;
       }
     </style>
   </head>
@@ -379,7 +459,7 @@
             ? 'rgb(251,191,36)'
             : tone === 'muted'
             ? 'rgba(255,255,255,0.35)'
-            : 'rgb(99,102,241)';
+            : 'rgb(var(--ox-primary-rgb))';
         const step = 56 / Math.max(1, points.length - 1);
         const coords = points
           .map((v, i) => {
@@ -395,7 +475,7 @@
         </svg>`;
       }
 
-      function renderSkillRow(row) {
+      function renderSkillRow(row, index = 0) {
         const tone = row.isRegressed
           ? 'warning'
           : row.confidence && row.confidence.placeholder
@@ -414,7 +494,7 @@
             ).toFixed(2)}</span>`;
         const modeClass = row.mode === 'auto' ? 'is-auto' : '';
         return `
-          <div class="db-row" data-row-id="${escapeAttr(row.id)}">
+          <div class="db-row db-stagger" style="--i:${index};" data-row-id="${escapeAttr(row.id)}">
             <div>
               <div>
                 <span class="db-row-name">${escapeHtml(row.name)}</span>
@@ -440,7 +520,7 @@
         `;
       }
 
-      function renderAgentRow(row) {
+      function renderAgentRow(row, index = 0) {
         const tone = row.isRegressed
           ? 'warning'
           : row.confidence && row.confidence.placeholder
@@ -458,10 +538,10 @@
               row.confidence?.delta ?? 0
             ).toFixed(2)}</span>`;
         const avatarStyle = row.accentRgb
-          ? `style="--agent-rgb: ${escapeAttr(row.accentRgb)};"`
+          ? `--agent-rgb: ${escapeAttr(row.accentRgb)};`
           : '';
         return `
-          <div class="db-row" data-row-id="${escapeAttr(row.id)}" ${avatarStyle}>
+          <div class="db-row db-stagger" style="--i:${index};${avatarStyle}" data-row-id="${escapeAttr(row.id)}">
             <div>
               <div>
                 <span class="db-agent-avatar">${escapeHtml(
@@ -521,9 +601,12 @@
       function render() {
         if (!data) {
           root.innerHTML = `
-            <div class="db-card"><div style="padding: 24px; text-align:center; color: var(--ox-text-muted); font-size: 13px;">
-              No brief available yet — run your first task in an editor to populate the ledger.
-            </div></div>`;
+            <div class="db-card db-stagger" style="--i:0;">
+              <div class="db-empty">
+                <div class="db-empty-title">Nothing needs you yet</div>
+                <div class="db-empty-desc">The ledger fills in as skills and agents run. Complete your first task in an editor and the daily readout will appear here.</div>
+              </div>
+            </div>`;
           return;
         }
 
@@ -531,8 +614,12 @@
           lens === 'skills' ? data.skillsLens : data.agentsLens;
         const rows =
           lens === 'skills'
-            ? (data.skillsLens.skills || []).map(renderSkillRow).join('')
-            : (data.agentsLens.agents || []).map(renderAgentRow).join('');
+            ? (data.skillsLens.skills || [])
+                .map((row, i) => renderSkillRow(row, i))
+                .join('')
+            : (data.agentsLens.agents || [])
+                .map((row, i) => renderAgentRow(row, i))
+                .join('');
 
         const crossPrompt =
           lens === 'agents' && data.agentsLens.crossPollinationPrompt
@@ -574,7 +661,7 @@
           : '';
 
         root.innerHTML = `
-          <div class="db-card">
+          <div class="db-card db-stagger" style="--i:0;">
             <div class="db-masthead">
               <div style="flex:1;">
                 <div class="db-kicker"><span class="db-kicker-dot"></span><span>${escapeHtml(

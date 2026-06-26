@@ -60,6 +60,16 @@
   --ox-warn:#fbbf24;--ox-warn-rgb:251,191,36;
   --ox-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,monospace;
   --ox-font:-apple-system,BlinkMacSystemFont,'Inter',system-ui,sans-serif;
+  /* ── Canonical motion vocabulary (standalone — must declare its own) ── */
+  --ox-ease-standard:cubic-bezier(0.16,1,0.3,1); /* settled UI / hover / press */
+  --ox-ease-entry:cubic-bezier(0,0,0.2,1);       /* arriving */
+  --ox-ease-exit:cubic-bezier(0.4,0,1,1);        /* leaving */
+  --ox-ease-morph:cubic-bezier(0.4,0,0.2,1);     /* shape/state change in place */
+  --ox-dur-instant:50ms;
+  --ox-dur-fast:150ms;
+  --ox-dur-base:250ms;
+  --ox-dur-slow:400ms;
+  --ox-dur-slower:600ms;
   /* domain rgb palette */
   --rgb-engineering:6,182,212;
   --rgb-product:22,163,74;
@@ -146,7 +156,7 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
 }
 .prog-fill{
   height:100%;background:var(--ox-primary);border-radius:2px;width:0%;
-  transition:width .5s cubic-bezier(.4,0,.2,1);
+  transition:width var(--ox-dur-slow) var(--ox-ease-morph);
   box-shadow:0 0 8px rgba(var(--ox-primary-rgb),.5);
 }
 
@@ -210,7 +220,7 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
   fill:none;
   stroke:rgb(var(--ws-rgb,var(--ox-primary-rgb)));
   stroke-width:2.5;stroke-linecap:round;
-  transition:stroke-dashoffset .3s ease,opacity .3s ease;
+  transition:stroke-dashoffset var(--ox-dur-base) var(--ox-ease-morph),opacity var(--ox-dur-base) var(--ox-ease-morph);
 }
 .ws-ring__val{
   position:absolute;inset:0;
@@ -252,11 +262,12 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
   border:1px solid var(--ox-border);
   background:var(--ox-card);
   position:relative; /* needed for scan-line pseudo */
+  /* Controlled emergence: workstream cards arrive on the entry curve. */
   opacity:0;transform:translateY(10px);
-  transition:opacity .3s cubic-bezier(.16,1,.3,1),
-             transform .3s cubic-bezier(.16,1,.3,1),
-             border-color .3s ease,
-             box-shadow .4s ease;
+  transition:opacity var(--ox-dur-slow) var(--ox-ease-entry),
+             transform var(--ox-dur-slow) var(--ox-ease-entry),
+             border-color var(--ox-dur-base) var(--ox-ease-standard),
+             box-shadow var(--ox-dur-slow) var(--ox-ease-standard);
 }
 .ws-card.show{opacity:1;transform:translateY(0)}
 
@@ -330,7 +341,7 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
   padding:7px 12px;
   border-bottom:1px solid var(--ox-border);
   opacity:0;transform:translateX(-6px);
-  transition:opacity .2s ease,transform .2s ease;
+  transition:opacity var(--ox-dur-base) var(--ox-ease-entry),transform var(--ox-dur-base) var(--ox-ease-entry);
 }
 .ms-row.show{opacity:1;transform:translateX(0)}
 .ms-icon{
@@ -349,7 +360,7 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
   display:flex;align-items:center;gap:7px;
   padding:5px 12px 5px 16px;
   opacity:0;transform:translateX(-4px);
-  transition:opacity .18s ease,transform .18s ease;
+  transition:opacity var(--ox-dur-fast) var(--ox-ease-entry),transform var(--ox-dur-fast) var(--ox-ease-entry);
 }
 .task-row.show{opacity:1;transform:translateX(0)}
 .task-icon{
@@ -371,7 +382,7 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
   content:'';position:absolute;top:0;left:0;right:0;height:1px;
   background:linear-gradient(90deg,transparent,rgba(var(--ox-primary-rgb),.6),transparent);
 }
-.banner.show{display:flex;align-items:flex-start;gap:10px;animation:bpop .35s cubic-bezier(.16,1,.3,1)}
+.banner.show{display:flex;align-items:flex-start;gap:10px;animation:bpop var(--ox-dur-slow) var(--ox-ease-entry)}
 @keyframes bpop{0%{opacity:0;transform:translateY(6px) scale(.98)}100%{opacity:1;transform:none}}
 .banner-icon{flex-shrink:0;color:var(--ox-primary);margin-top:1px}
 .banner-body{flex:1;min-width:0}
@@ -401,7 +412,7 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
   padding:5px 11px;border-radius:7px;
   border:1px solid rgba(var(--ox-primary-rgb),.22);
   background:rgba(var(--ox-primary-rgb),.07);
-  transition:background .15s,border-color .15s;white-space:nowrap;
+  transition:background var(--ox-dur-fast) var(--ox-ease-standard),border-color var(--ox-dur-fast) var(--ox-ease-standard);white-space:nowrap;
 }
 .foot-link:hover{background:rgba(var(--ox-primary-rgb),.14);border-color:rgba(var(--ox-primary-rgb),.32)}
 
@@ -416,7 +427,7 @@ button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:po
 }
 .err-banner.show{display:block}
 
-/* ── Item flash: teal glow on arrival ─────────────────── */
+/* ── Item flash: iris-primary glow on arrival ─────────── */
 @keyframes item-appear{
   0%  {background:rgba(var(--ox-primary-rgb),.09);
        box-shadow:inset 3px 0 0 rgba(var(--ox-primary-rgb),.55)}
@@ -443,7 +454,19 @@ button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:po
        box-shadow:var(--ox-shadow),
                   0 0 0 1px rgba(var(--ox-success-rgb),.05)}
 }
-.shell.done{animation:done-pulse 1.5s cubic-bezier(.16,1,.3,1) forwards}
+.shell.done{animation:done-pulse var(--ox-dur-slower) var(--ox-ease-standard) forwards}
+
+/* ── Accessibility: reduced-motion guard (standalone widget) ──────────
+ * Don't kill animations outright — collapse their duration so `forwards`
+ * states still settle visibly and ambient effects degrade gracefully.
+ */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:0.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:0.01ms !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -666,7 +689,7 @@ button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:po
     });
   }
   function flashItem(el) {
-    /* Brief teal glow + left-edge stripe on new rows */
+    /* Brief iris-primary glow + left-edge stripe on new rows */
     el.classList.add('flash');
     el.addEventListener('animationend', function() {
       el.classList.remove('flash');

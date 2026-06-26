@@ -99,7 +99,7 @@
         content: "";
         position: fixed;
         inset: 0;
-        background: radial-gradient(circle at 50% -18%, rgba(0, 201, 167, 0.08), transparent 56%),
+        background: radial-gradient(circle at 50% -18%, rgba(var(--ox-primary-rgb), 0.08), transparent 56%),
                     linear-gradient(var(--ox-grid) 1px, transparent 1px),
                     linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px);
         background-size: 100% 100%, 20px 20px, 20px 20px;
@@ -370,7 +370,7 @@
     }
     .agent-section.is-open {
       display: block;
-      animation: sectionFadeIn 240ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation: sectionFadeIn var(--ox-dur-base, 250ms) var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) forwards;
     }
 
     .agent-section-trigger {
@@ -576,12 +576,37 @@
     }
 
     .empty-state {
-      padding: 32px;
+      padding: 40px 32px;
       text-align: center;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
       align-items: center;
+    }
+
+    .empty-state__glyph {
+      width: 44px;
+      height: 44px;
+      margin-bottom: 4px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--ox-text-muted);
+      background: rgba(var(--ox-primary-rgb), 0.06);
+      border: 1px solid var(--ox-border);
+      position: relative;
+    }
+
+    .empty-state__glyph::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: currentColor;
+      opacity: 0.55;
+      box-shadow: 0 0 0 6px rgba(var(--ox-primary-rgb), 0.05);
+      animation: breathe 2.4s ease-in-out infinite;
     }
 
     .empty-state strong {
@@ -619,7 +644,7 @@
         linear-gradient(
           90deg,
           var(--ox-well-bg) 0%,
-          rgba(16, 163, 127, 0.12) 50%,
+          rgba(var(--ox-primary-rgb), 0.14) 50%,
           var(--ox-well-bg) 100%
         );
       background-size: 200% 100%;
@@ -1121,7 +1146,7 @@
       from { opacity: 0; transform: translateY(16px) scale(0.98); filter: blur(4px); }
       to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
     }
-    .animate-in { opacity: 0; animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .animate-in { opacity: 0; animation: fadeSlideUp var(--ox-dur-slower, 600ms) var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) forwards; }
 
 </style>
 </head>
@@ -1132,16 +1157,16 @@
       <div class="skeleton-card">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
           <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
-            <div class="skeleton-line" style="width:32px;height:32px;border-radius:10px;background:linear-gradient(90deg, var(--ox-border) 25%, rgba(0,201,167,0.1) 50%, var(--ox-border) 75%);background-size:200% 100%;animation:shimmer 2s infinite linear;"></div>
+            <div class="skeleton-line" style="width:32px;height:32px;border-radius:10px;background:linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.16) 50%, var(--ox-border) 75%);background-size:200% 100%;animation:shimmer 1.8s infinite linear;"></div>
             <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;">
-              <div class="skeleton-line" style="width:42%;height:16px;background:linear-gradient(90deg, var(--ox-border) 25%, rgba(0,201,167,0.1) 50%, var(--ox-border) 75%);background-size:200% 100%;animation:shimmer 2s infinite linear;"></div>
-              <div class="skeleton-line" style="width:68%;height:12px;background:linear-gradient(90deg, var(--ox-border) 25%, rgba(0,201,167,0.1) 50%, var(--ox-border) 75%);background-size:200% 100%;animation:shimmer 2s infinite linear;"></div>
+              <div class="skeleton-line" style="width:42%;height:16px;background:linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.16) 50%, var(--ox-border) 75%);background-size:200% 100%;animation:shimmer 1.8s infinite linear;"></div>
+              <div class="skeleton-line" style="width:68%;height:12px;background:linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.16) 50%, var(--ox-border) 75%);background-size:200% 100%;animation:shimmer 1.8s infinite linear;"></div>
             </div>
           </div>
-          <div class="skeleton-line" style="width:88px;height:28px;border-radius:999px;background:linear-gradient(90deg, var(--ox-border) 25%, rgba(0,201,167,0.1) 50%, var(--ox-border) 75%);background-size:200% 100%;animation:shimmer 2s infinite linear;"></div>
+          <div class="skeleton-line" style="width:88px;height:28px;border-radius:999px;background:linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.16) 50%, var(--ox-border) 75%);background-size:200% 100%;animation:shimmer 1.8s infinite linear;"></div>
         </div>
-        <div class="skeleton-line" style="width:100%;height:52px;border-radius:12px;background:linear-gradient(90deg, var(--ox-border) 25%, rgba(0,201,167,0.1) 50%, var(--ox-border) 75%);background-size:200% 100%;animation:shimmer 2s infinite linear;"></div>
-        <div class="skeleton-line" style="width:100%;height:40px;border-radius:10px;background:linear-gradient(90deg, var(--ox-border) 25%, rgba(0,201,167,0.1) 50%, var(--ox-border) 75%);background-size:200% 100%;animation:shimmer 2s infinite linear;"></div>
+        <div class="skeleton-line" style="width:100%;height:52px;border-radius:12px;background:linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.16) 50%, var(--ox-border) 75%);background-size:200% 100%;animation:shimmer 1.8s infinite linear;"></div>
+        <div class="skeleton-line" style="width:100%;height:40px;border-radius:10px;background:linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.16) 50%, var(--ox-border) 75%);background-size:200% 100%;animation:shimmer 1.8s infinite linear;"></div>
       </div>
     </div>
   </main>
@@ -2057,7 +2082,8 @@
       if (!agents.length) {
         injectHtml(
           '<div class="surface-label">Agent Status</div>' +
-          '<div class="empty-state ox-card">' +
+          '<div class="empty-state ox-card animate-in">' +
+            '<span class="empty-state__glyph" aria-hidden="true"></span>' +
             '<strong>No agents need you right now</strong>' +
             '<p>Everything is moving in the background. Expand a metric only when you need to act, then return to the quiet state.</p>' +
           '</div>'

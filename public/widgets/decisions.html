@@ -118,12 +118,12 @@
       }
 
       /* Smooth UX Transitions */
-      .skeleton-wrapper { transition: opacity 0.3s ease; }
+      .skeleton-wrapper { transition: opacity var(--ox-dur-base, 250ms) var(--ox-ease-exit, cubic-bezier(0.4,0,1,1)); }
       @keyframes fadeSlideUp {
         from { opacity: 0; transform: translateY(16px) scale(0.98); filter: blur(4px); }
         to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
       }
-      .animate-in { opacity: 0; animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+      .animate-in { opacity: 0; animation: fadeSlideUp var(--ox-dur-slower, 600ms) var(--ox-ease-entry, cubic-bezier(0,0,0.2,1)) forwards; }
       .delay-1 { animation-delay: 0.1s; }
       .delay-2 { animation-delay: 0.2s; }
       .delay-3 { animation-delay: 0.3s; }
@@ -235,7 +235,11 @@
         color: var(--ox-text);
         box-shadow: 0 14px 30px -24px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255,255,255,0.06);
         cursor: pointer;
-        transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 240ms cubic-bezier(0.16, 1, 0.3, 1), border-color 160ms cubic-bezier(0.16, 1, 0.3, 1), opacity 160ms cubic-bezier(0.16, 1, 0.3, 1);
+        transition:
+          transform var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16,1,0.3,1)),
+          box-shadow var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16,1,0.3,1)),
+          border-color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16,1,0.3,1)),
+          opacity var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16,1,0.3,1));
       }
 
       .ox-btn-primary {
@@ -277,10 +281,42 @@
       }
 
       .skeleton-line {
-        background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%);
-        background-size: 200% 100%; animation: shimmer 2s infinite linear; border-radius: 4px;
+        background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.14) 50%, var(--ox-border) 75%);
+        background-size: 200% 100%; animation: shimmer 1.6s infinite linear; border-radius: 4px;
       }
       @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+      .decision-skeleton-card {
+        position: relative;
+        overflow: hidden;
+        background: var(--ox-panel);
+        border: 1px solid var(--ox-border);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: var(--ox-shadow);
+      }
+      .decision-skeleton-rule {
+        position: absolute; top: 0; left: 0; right: 0; height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(var(--ox-primary-rgb), 0.4), transparent);
+        background-size: 200% 100%;
+        animation: shimmer 1.6s infinite linear;
+      }
+      .decision-skeleton-head {
+        display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+      }
+      .decision-skeleton-avatar {
+        width: 24px; height: 24px; border-radius: 6px; flex-shrink: 0;
+      }
+      .decision-skeleton-actions {
+        display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px; margin-top: 22px;
+      }
+      .decision-skeleton-btn {
+        height: 88px; border-radius: 16px;
+      }
+      @media (max-width: 560px) {
+        .decision-skeleton-actions { grid-template-columns: 1fr; }
+      }
 
 
     :root { --ox-primary-rgb: 251, 191, 36; }
@@ -295,24 +331,29 @@
 
     .decision-shell[data-page-direction="forward"] .decision-card {
       animation-name: decisionSlideForward;
+      animation-duration: var(--ox-dur-slow, 400ms);
+      animation-timing-function: var(--ox-ease-entry, cubic-bezier(0,0,0.2,1));
     }
 
     .decision-shell[data-page-direction="backward"] .decision-card {
       animation-name: decisionSlideBackward;
+      animation-duration: var(--ox-dur-slow, 400ms);
+      animation-timing-function: var(--ox-ease-entry, cubic-bezier(0,0,0.2,1));
     }
 
     .decision-card {
       margin-bottom: 8px;
       transition:
-        opacity 180ms ease,
-        transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
-        filter 220ms ease;
+        opacity var(--ox-dur-base, 250ms) var(--ox-ease-exit, cubic-bezier(0.4,0,1,1)),
+        transform var(--ox-dur-base, 250ms) var(--ox-ease-exit, cubic-bezier(0.4,0,1,1)),
+        filter var(--ox-dur-base, 250ms) var(--ox-ease-exit, cubic-bezier(0.4,0,1,1));
     }
 
     .decision-card.is-resolving {
       opacity: 0;
-      transform: translateY(-8px) scale(0.985);
+      transform: translateY(-8px) scale(0.975);
       filter: blur(6px);
+      pointer-events: none;
     }
 
     @keyframes decisionSlideForward {
@@ -342,7 +383,22 @@
     .decision-card.urgency-medium { --ox-card-color-rgb: 132, 204, 22; --ox-card-color: var(--ox-lime); }
     .decision-card.urgency-low { --ox-card-color-rgb: 100, 116, 139; --ox-card-color: var(--ox-text-muted); }
 
-    .decision-card .ox-card::after { background: linear-gradient(90deg, transparent, rgba(var(--ox-card-color-rgb), 0.6), transparent); }
+    .decision-card .ox-card {
+      border-color: rgba(var(--ox-card-color-rgb), 0.22);
+      transition:
+        border-color var(--ox-dur-base, 250ms) var(--ox-ease-morph, cubic-bezier(0.4,0,0.2,1)),
+        box-shadow var(--ox-dur-base, 250ms) var(--ox-ease-morph, cubic-bezier(0.4,0,0.2,1));
+    }
+
+    .decision-card.urgency-critical .ox-card,
+    .decision-card.urgency-high .ox-card {
+      box-shadow: var(--ox-shadow), 0 0 0 1px rgba(var(--ox-card-color-rgb), 0.12);
+    }
+
+    .decision-card .ox-card::after {
+      background: linear-gradient(90deg, transparent, rgba(var(--ox-card-color-rgb), 0.6), transparent);
+      transition: background var(--ox-dur-base, 250ms) var(--ox-ease-morph, cubic-bezier(0.4,0,0.2,1));
+    }
 
     .decision-header {
       display: flex;
@@ -430,9 +486,9 @@
       letter-spacing: 0.08em;
       white-space: nowrap;
       transition:
-        transform 160ms cubic-bezier(0.16, 1, 0.3, 1),
-        border-color 160ms cubic-bezier(0.16, 1, 0.3, 1),
-        background 160ms cubic-bezier(0.16, 1, 0.3, 1);
+        transform var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16,1,0.3,1)),
+        border-color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16,1,0.3,1)),
+        background var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16,1,0.3,1));
     }
 
     .decision-open-link:hover {
@@ -451,7 +507,9 @@
     .decision-title-link {
       color: inherit;
       text-decoration: none;
-      transition: color 160ms ease, opacity 160ms ease;
+      transition:
+        color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16,1,0.3,1)),
+        opacity var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16,1,0.3,1));
     }
 
     .decision-title-link:hover {
@@ -592,17 +650,18 @@
         radial-gradient(circle at top left, rgba(var(--ox-card-color-rgb), 0.12), transparent 50%),
         var(--ox-well-bg);
       box-shadow: var(--ox-well-shadow);
-      animation: rejectComposerIn 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      transform-origin: top center;
+      animation: rejectComposerIn var(--ox-dur-base, 250ms) var(--ox-ease-morph, cubic-bezier(0.4,0,0.2,1)) forwards;
     }
 
     @keyframes rejectComposerIn {
       from {
         opacity: 0;
-        transform: translateY(10px) scale(0.985);
+        transform: translateY(-6px) scaleY(0.96);
       }
       to {
         opacity: 1;
-        transform: translateY(0) scale(1);
+        transform: translateY(0) scaleY(1);
       }
     }
 
@@ -642,9 +701,9 @@
       font-size: 0.9rem;
       line-height: 1.45;
       transition:
-        border-color 0.18s ease,
-        box-shadow 0.18s ease,
-        background 0.18s ease;
+        border-color var(--ox-dur-fast, 150ms) var(--ox-ease-morph, cubic-bezier(0.4,0,0.2,1)),
+        box-shadow var(--ox-dur-fast, 150ms) var(--ox-ease-morph, cubic-bezier(0.4,0,0.2,1)),
+        background var(--ox-dur-fast, 150ms) var(--ox-ease-morph, cubic-bezier(0.4,0,0.2,1));
     }
 
     .reject-textarea::placeholder {
@@ -1032,17 +1091,35 @@
       </div>
     </div>
     <div id="content">
-      <!-- Skeleton shown during loading -->
+      <!-- Skeleton mirrors a decision card: signature line, agent row, body, action pair -->
       <div class="skeleton-wrapper" style="display:flex; flex-direction:column; gap:16px;">
-        <div style="background:var(--ox-well-bg); border-radius:16px; padding:20px;">
-          <div class="skeleton-line" style="width:60%; height:18px; margin-bottom:12px;"></div>
-          <div class="skeleton-line" style="width:90%; height:14px; margin-bottom:8px;"></div>
-          <div class="skeleton-line" style="width:75%; height:14px;"></div>
+        <div class="decision-skeleton-card">
+          <div class="decision-skeleton-rule"></div>
+          <div class="decision-skeleton-head">
+            <div class="skeleton-line decision-skeleton-avatar"></div>
+            <div class="skeleton-line" style="width:36%; height:12px;"></div>
+          </div>
+          <div class="skeleton-line" style="width:78%; height:18px; margin-bottom:16px;"></div>
+          <div class="skeleton-line" style="width:92%; height:13px; margin-bottom:8px;"></div>
+          <div class="skeleton-line" style="width:70%; height:13px;"></div>
+          <div class="decision-skeleton-actions">
+            <div class="skeleton-line decision-skeleton-btn"></div>
+            <div class="skeleton-line decision-skeleton-btn"></div>
+          </div>
         </div>
-        <div style="background:var(--ox-well-bg); border-radius:16px; padding:20px;">
-          <div class="skeleton-line" style="width:50%; height:18px; margin-bottom:12px;"></div>
-          <div class="skeleton-line" style="width:85%; height:14px; margin-bottom:8px;"></div>
-          <div class="skeleton-line" style="width:70%; height:14px;"></div>
+        <div class="decision-skeleton-card">
+          <div class="decision-skeleton-rule"></div>
+          <div class="decision-skeleton-head">
+            <div class="skeleton-line decision-skeleton-avatar"></div>
+            <div class="skeleton-line" style="width:30%; height:12px;"></div>
+          </div>
+          <div class="skeleton-line" style="width:64%; height:18px; margin-bottom:16px;"></div>
+          <div class="skeleton-line" style="width:88%; height:13px; margin-bottom:8px;"></div>
+          <div class="skeleton-line" style="width:74%; height:13px;"></div>
+          <div class="decision-skeleton-actions">
+            <div class="skeleton-line decision-skeleton-btn"></div>
+            <div class="skeleton-line decision-skeleton-btn"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -1502,7 +1579,7 @@
           delete rejectDrafts[id];
           pendingDecisionId = null;
           render();
-        }, 180);
+        }, 240);
       } catch (error) {
         pendingDecisionId = null;
         setPageButtonsDisabled(false);
@@ -1542,7 +1619,7 @@
           delete rejectDrafts[id];
           pendingDecisionId = null;
           render();
-        }, 180);
+        }, 240);
       } catch (error) {
         pendingDecisionId = null;
         setPageButtonsDisabled(false);
