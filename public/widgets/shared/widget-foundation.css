@@ -404,6 +404,22 @@
         transform: none;
         box-shadow: none;
       }
+      /* Loading ≠ disabled. setLoading() sets button.disabled, which would
+         otherwise dim a primary .ox-btn to muddy olive via the rule above.
+         A working button stays vivid; just lock interaction + show the
+         spinner. This sheet loads after interaction-kit.css, so on the
+         compound .ox-btn.ox-action-btn buttons (e.g. decisions' Approve)
+         this is the rule that ultimately wins. */
+      .ox-btn.is-loading {
+        cursor: progress;
+        opacity: 1;
+        transform: none;
+      }
+      .ox-btn-primary.is-card-tone.is-loading {
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.18) inset,
+          0 18px 34px -24px rgba(var(--ox-button-accent-rgb), 0.82);
+      }
 
 /* ── Shared entrance + loading primitives ──────────────────────────
  * Cohesive defaults for any foundation-loading widget. Widgets may

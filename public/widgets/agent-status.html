@@ -712,11 +712,39 @@
       background: var(--ox-border);
     }
     
-    .agent-card .ox-metric-button:hover,
-    .agent-card .ox-metric-button[aria-pressed='true'] {
-      background: rgba(var(--agent-accent-rgb, var(--ox-card-color-rgb)), 0.08);
+    .agent-card .ox-metric-button:hover {
+      background: rgba(var(--agent-accent-rgb, var(--ox-card-color-rgb)), 0.06);
     }
-    
+    .agent-card .ox-metric-button[aria-pressed='true'] {
+      background: rgba(var(--agent-accent-rgb, var(--ox-card-color-rgb)), 0.13);
+    }
+    /* Active-tab indicator — an accent underline that slides in, so the
+       rail reads as switchable tabs rather than a static stat strip.
+       The bar sits on the rail's bottom edge for a clear tab metaphor. */
+    .ox-metric-button::after {
+      content: '';
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      bottom: -1px;
+      height: 2px;
+      border-radius: 2px 2px 0 0;
+      background: rgb(var(--agent-accent-rgb, var(--ox-card-color-rgb)));
+      transform: scaleX(0);
+      opacity: 0;
+      transition:
+        transform var(--ox-motion-medium, 240ms cubic-bezier(0.16, 1, 0.3, 1)),
+        opacity var(--ox-motion-medium, 240ms cubic-bezier(0.16, 1, 0.3, 1));
+      pointer-events: none;
+    }
+    .agent-card .ox-metric-button[aria-pressed='true']::after {
+      transform: scaleX(1);
+      opacity: 1;
+    }
+    .agent-card .ox-metric-button[aria-pressed='true'] .ox-eyebrow {
+      color: var(--ox-text);
+    }
+
     .ox-metric-button[data-tone='blocked'] .metric-value {
       color: var(--ox-danger);
     }

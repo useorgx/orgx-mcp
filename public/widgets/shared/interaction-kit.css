@@ -228,9 +228,33 @@
   animation: ox-spin 0.75s linear infinite;
 }
 
+/* Loading is not disabled. A button mid-action is doing work, not
+   unavailable — so it must stay vivid and legible. The :disabled rule
+   above (set by setLoading via button.disabled) would otherwise dim a
+   primary button to a muddy olive and flatten its depth. Re-assert the
+   live look here; this rule is later in source, so it wins the cascade. */
 .ox-action-btn.is-loading,
+.ox-link-btn.is-loading,
 .ox-icon-btn.is-loading {
   pointer-events: none;
+  cursor: progress;
+  opacity: 1;
+  transform: none;
+  box-shadow: var(--ox-control-shadow);
+}
+
+.ox-action-btn--primary.is-loading,
+.ox-link-btn--primary.is-loading {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.18) inset,
+    0 18px 36px -24px rgba(var(--ox-primary-rgb-effective), 0.8);
+}
+
+.ox-action-btn--danger.is-loading,
+.ox-link-btn--danger.is-loading {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 16px 28px -24px rgba(244, 63, 94, 0.6);
 }
 
 .ox-inline-spinner {
@@ -460,5 +484,9 @@
   .ox-inline-spinner {
     animation: none !important;
     transition-duration: 0ms !important;
+    /* A frozen quarter-cut arc reads as broken. Close the ring and dim
+       it so a non-spinning spinner still reads as an honest "busy" mark. */
+    border-right-color: currentColor;
+    opacity: 0.65;
   }
 }
