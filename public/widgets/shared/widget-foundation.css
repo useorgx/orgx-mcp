@@ -4,6 +4,13 @@
   --widget-panel-radius: 14px;
   --widget-shell-padding: 24px;
 
+  /* Canonical type stacks. Defined here so any foundation-linked surface
+     (e.g. the gallery index) that uses var(--ox-font) gets the OrgX sans
+     stack instead of falling back to the browser serif. Production widgets
+     may still redefine these inline; these are the floor. */
+  --ox-font: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
+  --ox-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
   /* ── Canonical OrgX motion vocabulary ────────────────────────────
    * Single source of truth, mirrored from the orgx monorepo
    * (app/globals.css). Four easings, five durations. Reach for a

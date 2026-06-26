@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-06-26T22:45:52.376Z",
+  "generatedAt": "2026-06-26T23:35:23.426Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -62,8 +62,8 @@
     },
     "daily-brief": {
       "file": "public/widgets/daily-brief.html",
-      "bytes": 24209,
-      "hash": "bb660f1cf91b",
+      "bytes": 25935,
+      "hash": "241e612f8d59",
       "primaryRgb": "99,102,241",
       "sharedRefs": [],
       "demoOnly": false
@@ -94,8 +94,8 @@
     },
     "initiative-pulse": {
       "file": "public/widgets/initiative-pulse.html",
-      "bytes": 107703,
-      "hash": "5a142009000b",
+      "bytes": 108633,
+      "hash": "00eb126ca2e7",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/components/domain-accent.css",

@@ -11,6 +11,21 @@
         --ox-warning: #fbbf24;
         --ox-danger: #f43f5e;
 
+        /* Surface + text tokens (standalone — no shared foundation to inherit
+           these from). Without them every `color: var(--ox-text)` fell back to
+           black, rendering all copy invisible on the dark host surface.
+           Light is the default; dark via prefers-color-scheme below. */
+        --ox-bg: #f8fafc;
+        --ox-panel: #ffffff;
+        --ox-well-bg: #f1f5f9;
+        --ox-border: rgba(0, 0, 0, 0.08);
+        --ox-border-strong: rgba(0, 0, 0, 0.15);
+        --ox-text: #0f172a;
+        --ox-text-muted: #64748b;
+        --ox-text-dim: #94a3b8;
+        --ox-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+        --ox-font: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
+
         /* Canonical OrgX motion vocabulary (standalone — no shared foundation). */
         --ox-ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
         --ox-ease-entry: cubic-bezier(0, 0, 0.2, 1);
@@ -24,6 +39,29 @@
 
         /* Settled UI / hover / press — route through the standard curve. */
         --ox-easing: var(--ox-ease-standard);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          --ox-bg: #02040a;
+          --ox-panel: rgba(8, 12, 20, 0.96);
+          --ox-well-bg: rgba(0, 0, 0, 0.3);
+          --ox-border: rgba(255, 255, 255, 0.07);
+          --ox-border-strong: rgba(255, 255, 255, 0.14);
+          --ox-text: #f2f7ff;
+          --ox-text-muted: rgba(255, 255, 255, 0.46);
+          --ox-text-dim: rgba(255, 255, 255, 0.28);
+        }
+      }
+      :root[data-theme='dark'] {
+        --ox-bg: #02040a;
+        --ox-panel: rgba(8, 12, 20, 0.96);
+        --ox-well-bg: rgba(0, 0, 0, 0.3);
+        --ox-border: rgba(255, 255, 255, 0.07);
+        --ox-border-strong: rgba(255, 255, 255, 0.14);
+        --ox-text: #f2f7ff;
+        --ox-text-muted: rgba(255, 255, 255, 0.46);
+        --ox-text-dim: rgba(255, 255, 255, 0.28);
       }
 
       /* Accessibility-safe reduced-motion guard. Collapse motion to ~instant
@@ -57,6 +95,12 @@
         opacity: 0;
         animation: db-enter var(--ox-dur-slow) var(--ox-ease-entry) forwards;
         animation-delay: calc(var(--i, 0) * 60ms);
+      }
+
+      body {
+        font-family: var(--ox-font);
+        color: var(--ox-text);
+        -webkit-font-smoothing: antialiased;
       }
 
       .db-empty {

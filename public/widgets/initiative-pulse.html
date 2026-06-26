@@ -597,6 +597,18 @@
         background: var(--ox-danger);
       }
 
+      /* Warning tier — amber, one step below danger. For signals that want
+         attention but aren't blockers (e.g. output awaiting review). */
+      .pulse-rail-button.is-warn.is-active {
+        background: rgba(245, 158, 11, 0.05);
+      }
+      .pulse-rail-button.is-warn::after {
+        background: rgba(245, 158, 11, 0.5);
+      }
+      .pulse-rail-button.is-warn.is-active::after {
+        background: var(--ox-warning);
+      }
+
       .pulse-rail-icon {
         color: var(--ox-text-muted);
         display: inline-flex;
@@ -611,6 +623,11 @@
       .pulse-rail-button.is-alert .pulse-rail-icon,
       .pulse-rail-button.is-alert .pulse-rail-value {
         color: var(--ox-danger);
+      }
+
+      .pulse-rail-button.is-warn .pulse-rail-icon,
+      .pulse-rail-button.is-warn .pulse-rail-value {
+        color: var(--ox-warning);
       }
 
       .pulse-rail-value {
@@ -2306,6 +2323,7 @@ external: function (size) {
                 '<button type="button" class="pulse-rail-button' +
                 (activePanel === section.key ? " is-active" : "") +
                 (section.alert ? " is-alert" : "") +
+                (section.warn ? " is-warn" : "") +
                 '" onclick="togglePulsePanel(\'' +
                 escapeHtml(section.key) +
                 '\')" data-panel-key="' +
@@ -2968,7 +2986,10 @@ external: function (size) {
             icon: icons.workstream(15),
             value: streamCount || pulse.workstreams.length || pulse.milestones.length,
             label: "Workstreams",
-            alert: Boolean(pulse.blocked_workstreams),
+            // The blocked child is already loud via the attention banner, the
+            // red "Needs you" metric, and the red bar in the signal strip /
+            // list. Keep the aggregate count neutral so red stays meaningful.
+            alert: false,
           });
         }
         if (attentionItems.length) {
@@ -2997,7 +3018,8 @@ external: function (size) {
               (pulse.artifact_summary && pulse.artifact_summary.total) ||
               pulse.recent_artifacts.length,
             label: "Output",
-            alert: reviewCount > 0,
+            // Items awaiting review warrant attention, not alarm — amber, not red.
+            warn: reviewCount > 0,
           });
         }
 
