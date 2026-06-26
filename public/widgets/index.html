@@ -87,13 +87,20 @@
         padding: 24px;
         box-shadow: var(--ox-shadow);
         border: 1px solid var(--ox-border);
-        transition: transform 0.2s ease, border-color 0.2s ease;
+        /* Calm staggered entrance on the entry curve (delay set inline via --i). */
+        opacity: 0;
+        animation: cardArrive var(--ox-dur-slow, 400ms) var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) forwards;
+        animation-delay: calc(var(--i, 0) * 55ms);
+        transition: transform var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
+                    border-color var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
+      }
+      @keyframes cardArrive {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
       }
 
-      .widget-card:hover { transform: translateY(-2px); border-color: rgba(0, 201, 167, 0.4); }
-      @media (prefers-color-scheme: dark) {
-        .widget-card:hover { border-color: rgba(191, 255, 0, 0.3); }
-      }
+      /* Crisp hover lift, primary-tinted border — cohesive with the system. */
+      .widget-card:hover { transform: translateY(-1px); border-color: rgba(var(--ox-primary-rgb), 0.4); }
 
       .widget-name { font-size: 1.1rem; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
       .widget-description { font-size: 0.9rem; color: var(--ox-text-muted); line-height: 1.6; margin-bottom: 24px; min-height: 44px; }
@@ -111,9 +118,9 @@
 
       .badge {
         font-family: var(--ox-mono); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em;
-        padding: 4px 8px; border-radius: 4px; background: rgba(0,201,167,0.1); color: #0d9488; border: 1px solid rgba(0,201,167,0.2);
+        padding: 4px 8px; border-radius: 4px;
+        background: rgba(var(--ox-primary-rgb), 0.08); color: var(--ox-text-muted); border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
       }
-      @media (prefers-color-scheme: dark) { .badge { color: #00C9A7; } }
 
       .gallery-shell {
         margin-bottom: 28px;
@@ -399,6 +406,11 @@
       
       // Initialize
       updateThemeUI();
+
+      // Calm staggered card entrance: assign --i per card in DOM order.
+      document.querySelectorAll('.widget-grid .widget-card').forEach(function (card, i) {
+        card.style.setProperty('--i', i);
+      });
 
       
       let currentUrlBase = 'decisions.html';

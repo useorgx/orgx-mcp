@@ -90,8 +90,10 @@
       border-radius: 12px;
       border: 1px solid var(--ox-border);
       background: var(--ox-panel);
-      animation: planStepReveal 420ms cubic-bezier(0.4, 0, 0.2, 1) backwards;
-      transition: border-color 0.2s ease, background 0.2s ease;
+      /* Plan steps arrive on the entry curve, calm staggered (see --delay below). */
+      animation: planStepReveal var(--ox-dur-slow, 400ms) var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) backwards;
+      transition: border-color var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
+                  background var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
     }
     .plan-step:hover {
       border-color: rgba(var(--ox-primary-rgb), 0.35);
@@ -112,7 +114,7 @@
       background: var(--ox-panel);
       border: 2px solid rgba(var(--ox-primary-rgb), 0.3);
       z-index: 1;
-      transition: all 0.2s ease;
+      transition: all var(--ox-dur-base, 250ms) var(--ox-ease-morph, cubic-bezier(0.4, 0, 0.2, 1));
     }
     .plan-step[data-state="done"] .plan-step__marker {
       background: var(--ox-primary);
@@ -157,7 +159,8 @@
       justify-content: center;
       cursor: pointer;
       opacity: 0;
-      transition: opacity 0.15s ease, background 0.15s ease;
+      transition: opacity var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
+                  background var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
     }
     .plan-step:hover .plan-step__comment-trigger,
     .plan-step:focus-within .plan-step__comment-trigger {
@@ -238,6 +241,37 @@
       letter-spacing: 0.06em;
       margin-bottom: 2px;
     }
+
+    /* ─── empty / connecting state ─────────────────────────────
+     * Composed waiting surface. The pulse uses the widget's OWN iris
+     * primary — never gray or a foreign accent.
+     */
+    .plan-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 8px;
+      padding: 36px 24px;
+      border: 1px dashed var(--ox-border);
+      border-radius: 12px;
+      background: var(--ox-well-bg);
+    }
+    .plan-empty__pulse {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--ox-primary);
+      box-shadow: 0 0 0 0 rgba(var(--ox-primary-rgb), 0.45);
+      animation: planThinkPulse 1800ms ease-in-out infinite;
+      margin-bottom: 4px;
+    }
+    @keyframes planThinkPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(var(--ox-primary-rgb), 0.45); opacity: 1; }
+      50% { box-shadow: 0 0 0 7px rgba(var(--ox-primary-rgb), 0); opacity: 0.6; }
+    }
+    .plan-empty__title { font-weight: 600; font-size: 0.92rem; color: var(--ox-text); }
+    .plan-empty__detail { font-size: 0.82rem; color: var(--ox-text-muted); line-height: 1.5; max-width: 320px; }
 
     /* ─── footer ───────────────────────────────────────────── */
     .widget-foot {
@@ -389,7 +423,7 @@
           : '';
 
         return (
-          '<div class="plan-step" data-state="' + state + '" data-step-id="' + escapeHtml(step.id || '') + '" style="animation-delay: ' + ((step.index || 0) * 80) + 'ms;">' +
+          '<div class="plan-step" data-state="' + state + '" data-step-id="' + escapeHtml(step.id || '') + '" style="animation-delay: ' + Math.min((step.index || 0) * 80, 640) + 'ms;">' +
           '<div class="plan-step__marker" aria-hidden="true"></div>' +
           '<button class="plan-step__comment-trigger" type="button" aria-label="Add note" data-open-composer>' +
           '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>' +
@@ -457,8 +491,14 @@
         const title = document.querySelector('[data-plan-title]');
         const subtitle = document.querySelector('[data-plan-subtitle]');
 
-        if (!plan || !Array.isArray(plan.steps)) {
-          stage.innerHTML = '<div style="padding:32px;text-align:center;color:var(--ox-text-muted);">No active plan session.</div>';
+        if (!plan || !Array.isArray(plan.steps) || plan.steps.length === 0) {
+          stage.innerHTML = (
+            '<div class="plan-empty">' +
+            '<span class="plan-empty__pulse" aria-hidden="true"></span>' +
+            '<div class="plan-empty__title">Waiting for the agent to think</div>' +
+            '<div class="plan-empty__detail">Plan steps will stream in here as the agent reasons. Hover any step to add a note.</div>' +
+            '</div>'
+          );
           reportSize();
           return;
         }

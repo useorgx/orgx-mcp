@@ -154,7 +154,9 @@
       font-weight: 600;
       cursor: pointer;
       white-space: nowrap;
-      transition: all 0.15s ease;
+      transition: color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
+        border-color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
+        background var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
       flex-shrink: 0;
     }
     .filmstrip__item:hover {
@@ -226,7 +228,9 @@
       font: inherit;
       color: var(--ox-text);
       overflow: hidden;
-      transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+      transition: transform var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
+        border-color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
+        background var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
     }
 
     .decision-card:hover {
@@ -284,11 +288,21 @@
       background: rgba(var(--card-color-rgb), 0.15);
       border-right: 1px solid rgba(var(--card-color-rgb), 0.45);
       pointer-events: none;
-      transition: width 60ms linear;
+      transition: width var(--ox-dur-instant, 50ms) linear;
     }
     .decision-card.is-holding .decision-card__hold {
       transition: width 800ms linear;
       width: 100%;
+    }
+
+    /* Resolve — when a decision commits, the stage leaves decisively.
+       Approve / request-changes both accelerate out (exit curve). */
+    .stage.is-resolving {
+      animation: resolve-out var(--ox-dur-base, 250ms) var(--ox-ease-exit, cubic-bezier(0.4, 0, 1, 1)) forwards;
+      pointer-events: none;
+    }
+    @keyframes resolve-out {
+      to { opacity: 0; transform: translateY(-6px) scale(0.99); filter: blur(4px); }
     }
 
     .decision-card__hint {
@@ -672,6 +686,18 @@
         card.addEventListener('keyup', cancel);
       }
 
+      // Play the decisive exit on the live stage, then re-render the
+      // resolved state. Exit curve = the decision is leaving the surface.
+      function resolveStage(next) {
+        const stage = document.querySelector('[data-stage]');
+        if (!stage || !stage.animate) { next(); return; }
+        stage.classList.add('is-resolving');
+        let done = false;
+        const finish = function () { if (done) return; done = true; next(); };
+        stage.addEventListener('animationend', finish, { once: true });
+        setTimeout(finish, 320);
+      }
+
       async function approveArtifact(artifact) {
         try {
           await callTool('orgx_act', {
@@ -679,7 +705,7 @@
             id: artifact.id,
             action: 'approve',
           });
-          render(Object.assign({}, artifact, { status: 'approved' }));
+          resolveStage(function () { render(Object.assign({}, artifact, { status: 'approved' })); });
         } catch (err) {
           console.warn('[artifact-review] approve failed', err);
         }
@@ -701,7 +727,7 @@
             id: artifact.id,
             action: 'request_changes',
           });
-          render(Object.assign({}, artifact, { status: 'changes_requested' }));
+          resolveStage(function () { render(Object.assign({}, artifact, { status: 'changes_requested' })); });
         } catch (err) {
           console.warn('[artifact-review] change request failed', err);
         }
@@ -714,8 +740,9 @@
         const subtitle = document.querySelector('[data-artifact-subtitle]');
 
         if (!artifact || !artifact.id) {
+          stage.classList.remove('is-resolving');
           stage.innerHTML = (
-            '<div class="empty-state">' +
+            '<div class="empty-state animate-in">' +
             '<div class="empty-icon">' +
             '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
             '</div>' +
@@ -731,8 +758,9 @@
         title.textContent = artifact.name || 'Artifact review';
         subtitle.textContent = artifact.summary || 'Production artifact awaiting approval.';
 
+        stage.classList.remove('is-resolving');
         stage.innerHTML = (
-          '<div class="artifact-preview">' +
+          '<div class="artifact-preview animate-in">' +
           '<div class="artifact-preview__body">' + renderPreview(artifact) + '</div>' +
           renderFilmstrip(artifact) +
           '</div>' +

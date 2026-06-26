@@ -86,15 +86,24 @@
       }
 
       /* Smooth UX Transitions */
-      .skeleton-wrapper { transition: opacity 0.3s ease; }
+      .skeleton-wrapper { transition: opacity var(--ox-dur-slow, 400ms) var(--ox-ease-exit, cubic-bezier(0.4, 0, 1, 1)); }
       @keyframes fadeSlideUp {
         from { opacity: 0; transform: translateY(16px) scale(0.98); filter: blur(4px); }
         to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
       }
-      .animate-in { opacity: 0; animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+      /* Arrivals decelerate in (entry curve). */
+      .animate-in { opacity: 0; animation: fadeSlideUp var(--ox-dur-slower, 600ms) var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) forwards; }
       .delay-1 { animation-delay: 0.1s; }
       .delay-2 { animation-delay: 0.2s; }
       .delay-3 { animation-delay: 0.3s; }
+
+      /* Result rows arrive in a calm stagger after the card settles. */
+      .result-list > .result-card,
+      .result-list--recommendations > .result-card {
+        opacity: 0;
+        animation: fadeSlideUp var(--ox-dur-slow, 400ms) var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) forwards;
+        animation-delay: calc(120ms + var(--i, 0) * 60ms);
+      }
       
       .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 24px; text-align: center; background: var(--ox-well-bg); border: 1px dashed var(--ox-border-strong); border-radius: 16px; margin: 16px 0; }
       .empty-icon { width: 48px; height: 48px; border-radius: 50%; background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
@@ -185,7 +194,10 @@
       background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.04), transparent 45%), var(--ox-well-bg);
       border: 1px solid var(--ox-border);
       border-radius: 14px;
-      transition: border-color 0.2s, background 0.2s, transform 0.2s, box-shadow 0.2s;
+      transition: border-color var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
+        background var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
+        transform var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
+        box-shadow var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
       position: relative;
       overflow: hidden;
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
@@ -194,7 +206,7 @@
     .result-card:focus-visible {
       border-color: rgba(var(--ox-primary-rgb), 0.38);
       background: rgba(var(--ox-primary-rgb), 0.06);
-      transform: translateY(-2px);
+      transform: translateY(-1px);
       box-shadow: 0 16px 28px -24px rgba(0, 0, 0, 0.45);
       outline: none;
     }
@@ -208,7 +220,7 @@
     
     .score-pill { font-family: var(--ox-mono); font-size: 0.65rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; border: 1px solid currentColor; }
     .score-high { color: var(--ox-lime); background: rgba(212,237,49,0.1); }
-    .score-med { color: var(--ox-teal); background: rgba(0,201,167,0.1); }
+    .score-med { color: var(--ox-primary); background: rgba(var(--ox-primary-rgb), 0.1); }
     .score-low { color: var(--ox-warning); background: rgba(251,191,36,0.1); }
 
     
@@ -407,7 +419,8 @@
       font-size: 0.76rem;
       font-weight: 600;
       cursor: pointer;
-      transition: border-color 0.2s ease, background 0.2s ease;
+      transition: border-color var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
+        background var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
     }
 
     .page-btn:hover:not(:disabled) {
@@ -457,21 +470,33 @@
   <div class="container" id="content">
     <!-- Skeleton shown during loading -->
     <div class="skeleton-wrapper" style="display:flex; flex-direction:column; gap:16px; padding:24px;">
-      <div class="skeleton-line" style="width:180px; height:24px; margin-bottom:8px;"></div>
-      <div style="background:var(--ox-well-bg); border-radius:12px; padding:16px;">
-        <div class="skeleton-line" style="width:70%; height:16px; margin-bottom:10px;"></div>
-        <div class="skeleton-line" style="width:90%; height:12px; margin-bottom:6px;"></div>
-        <div class="skeleton-line" style="width:80%; height:12px;"></div>
+      <div style="display:flex; align-items:center; gap:12px; padding-bottom:16px; border-bottom:1px solid var(--ox-border);">
+        <div class="skeleton-line" style="width:18px; height:18px; border-radius:5px;"></div>
+        <div class="skeleton-line" style="width:200px; height:18px;"></div>
       </div>
-      <div style="background:var(--ox-well-bg); border-radius:12px; padding:16px;">
-        <div class="skeleton-line" style="width:60%; height:16px; margin-bottom:10px;"></div>
-        <div class="skeleton-line" style="width:85%; height:12px; margin-bottom:6px;"></div>
-        <div class="skeleton-line" style="width:75%; height:12px;"></div>
+      <div style="background:var(--ox-well-bg); border:1px solid var(--ox-border); border-radius:14px; padding:18px;">
+        <div style="display:flex; justify-content:space-between; gap:14px; margin-bottom:12px;">
+          <div class="skeleton-line" style="width:62%; height:16px;"></div>
+          <div class="skeleton-line" style="width:64px; height:16px; border-radius:6px;"></div>
+        </div>
+        <div class="skeleton-line" style="width:92%; height:12px; margin-bottom:6px;"></div>
+        <div class="skeleton-line" style="width:78%; height:12px;"></div>
       </div>
-      <div style="background:var(--ox-well-bg); border-radius:12px; padding:16px;">
-        <div class="skeleton-line" style="width:65%; height:16px; margin-bottom:10px;"></div>
-        <div class="skeleton-line" style="width:80%; height:12px; margin-bottom:6px;"></div>
+      <div style="background:var(--ox-well-bg); border:1px solid var(--ox-border); border-radius:14px; padding:18px;">
+        <div style="display:flex; justify-content:space-between; gap:14px; margin-bottom:12px;">
+          <div class="skeleton-line" style="width:54%; height:16px;"></div>
+          <div class="skeleton-line" style="width:64px; height:16px; border-radius:6px;"></div>
+        </div>
+        <div class="skeleton-line" style="width:88%; height:12px; margin-bottom:6px;"></div>
         <div class="skeleton-line" style="width:70%; height:12px;"></div>
+      </div>
+      <div style="background:var(--ox-well-bg); border:1px solid var(--ox-border); border-radius:14px; padding:18px;">
+        <div style="display:flex; justify-content:space-between; gap:14px; margin-bottom:12px;">
+          <div class="skeleton-line" style="width:58%; height:16px;"></div>
+          <div class="skeleton-line" style="width:64px; height:16px; border-radius:6px;"></div>
+        </div>
+        <div class="skeleton-line" style="width:84%; height:12px; margin-bottom:6px;"></div>
+        <div class="skeleton-line" style="width:66%; height:12px;"></div>
       </div>
     </div>
   </div>
@@ -856,7 +881,7 @@
           return;
         }
         var historyHtml = history.map((r, index) => `
-          <a href="${escapeHtml(r.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${serializeJsString(r.url)}, event)' class="result-card">
+          <a href="${escapeHtml(r.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${serializeJsString(r.url)}, event)' class="result-card" style="--i:${index}">
             <div class="r-header">
               <div class="r-title">
                 <div class="r-rank">${index + 1}</div>
@@ -906,8 +931,8 @@
           injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.search(24)}</div><div class="empty-title">No recommendations available</div><div class="empty-desc">${escapeHtml(data.message || 'OrgX did not find a clear next action yet.')}</div></div>`);
           return;
         }
-        var recommendationsHtml = recommendations.map(r => `
-          <a href="${escapeHtml(r.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${serializeJsString(r.url)}, event)' class="result-card">
+        var recommendationsHtml = recommendations.map((r, index) => `
+          <a href="${escapeHtml(r.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${serializeJsString(r.url)}, event)' class="result-card" style="--i:${index}">
             <div class="r-header">
               <div class="r-title">
                 <div class="r-rank">${r.rank}</div>
@@ -966,8 +991,8 @@
       const paginatedResults = normalizedResults.slice(startIdx, startIdx + itemsPerPage);
       const progress = Math.max(14, Math.round((currentPage / totalPages) * 100));
 
-      const resultsHtml = paginatedResults.map(r => `
-        <a href="${escapeHtml(r.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${serializeJsString(r.url)}, event)' class="result-card">
+      const resultsHtml = paginatedResults.map((r, index) => `
+        <a href="${escapeHtml(r.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${serializeJsString(r.url)}, event)' class="result-card" style="--i:${index}">
           
           <div class="r-header">
             <div class="r-title">

@@ -3,10 +3,36 @@
   --widget-shell-radius: 18px;
   --widget-panel-radius: 14px;
   --widget-shell-padding: 24px;
-  --widget-motion-fast: 160ms;
-  --widget-motion-base: 240ms;
-  --widget-motion-slow: 360ms;
-  --widget-motion-curve: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ── Canonical OrgX motion vocabulary ────────────────────────────
+   * Single source of truth, mirrored from the orgx monorepo
+   * (app/globals.css). Four easings, five durations. Reach for a
+   * semantic curve by intent — don't hand-roll cubic-beziers.
+   *   standard → settled UI transitions (the OrgX default)
+   *   entry    → elements arriving (decelerate in)
+   *   exit     → elements leaving (accelerate out)
+   *   morph    → a thing changing shape/state in place
+   */
+  --ox-ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+  --ox-ease-entry: cubic-bezier(0, 0, 0.2, 1);
+  --ox-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ox-ease-morph: cubic-bezier(0.4, 0, 0.2, 1);
+  --ox-dur-instant: 50ms;
+  --ox-dur-fast: 150ms;
+  --ox-dur-base: 250ms;
+  --ox-dur-slow: 400ms;
+  --ox-dur-slower: 600ms;
+
+  /* Back-compat aliases — existing widgets consume these as a
+   * `<duration> <curve>` pair. Now realigned to the canonical scale. */
+  --widget-motion-fast: var(--ox-dur-fast);
+  --widget-motion-base: var(--ox-dur-base);
+  --widget-motion-slow: var(--ox-dur-slow);
+  --widget-motion-curve: var(--ox-ease-standard);
+  --widget-motion-curve-entry: var(--ox-ease-entry);
+  --widget-motion-curve-exit: var(--ox-ease-exit);
+  --widget-motion-curve-morph: var(--ox-ease-morph);
+
   --widget-domain-product-rgb: 22, 163, 74;
   --widget-domain-engineering-rgb: 6, 182, 212;
   --widget-domain-marketing-rgb: 249, 115, 22;
@@ -379,4 +405,65 @@
         box-shadow: none;
       }
 
-      
+/* ── Shared entrance + loading primitives ──────────────────────────
+ * Cohesive defaults for any foundation-loading widget. Widgets may
+ * still override in their own <style> block; these are the floor, so
+ * every surface arrives and loads with the same physics.
+ */
+@keyframes ox-fade-slide-up {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); filter: blur(3px); }
+  to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+
+.animate-in {
+  opacity: 0;
+  animation: ox-fade-slide-up var(--ox-dur-slower) var(--ox-ease-entry) forwards;
+}
+
+/* Stagger helper — set --i on successive children for a calm cascade. */
+.animate-in[style*="--i"],
+.ox-stagger > .animate-in {
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+@keyframes ox-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.ox-skeleton {
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    rgba(148, 163, 184, 0.08) 25%,
+    rgba(148, 163, 184, 0.16) 37%,
+    rgba(148, 163, 184, 0.08) 63%
+  );
+  background-size: 200% 100%;
+  animation: ox-shimmer 1.6s linear infinite;
+}
+
+.ox-fade-out {
+  animation: ox-fade-out var(--ox-dur-base) var(--ox-ease-exit) forwards;
+}
+
+@keyframes ox-fade-out {
+  to { opacity: 0; transform: translateY(-6px) scale(0.99); filter: blur(4px); }
+}
+
+/* ── Global reduced-motion guard ───────────────────────────────────
+ * Accessibility-safe: collapse motion to ~instant rather than killing
+ * it outright, so `forwards` animations still settle on their visible
+ * end-state (an `.animate-in` that starts at opacity:0 must NOT be left
+ * invisible). Covers every widget that loads this foundation.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

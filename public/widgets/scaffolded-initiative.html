@@ -854,6 +854,26 @@
     .ws-block:focus-within {
       z-index: 16;
     }
+
+    /* Workstream emergence — the second tier of the staggered cascade
+     * (initiative header → workstream cards → milestones → tasks). Each
+     * card arrives on the entry curve, hierarchy-ordered, so the breakdown
+     * structure materializes calmly rather than appearing all at once. */
+    .ws-block.is-emerging {
+      animation: wsBlockEmerge var(--ox-dur-slow, 400ms) var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) both;
+      animation-delay: var(--ws-emerge-delay, 0ms);
+    }
+
+    @keyframes wsBlockEmerge {
+      from {
+        opacity: 0;
+        transform: translateY(14px) scale(0.985);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
     .node-item {
       display: flex;
       align-items: center;
@@ -1334,7 +1354,7 @@
     }
 
     .tree-overlay path.is-drawing {
-      animation: treeDrawIn var(--draw-duration, 360ms) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation: treeDrawIn var(--draw-duration, 360ms) var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) forwards;
       animation-delay: var(--draw-delay, 0ms);
       stroke-dasharray: var(--path-length, 0);
       stroke-dashoffset: var(--path-length, 0);
@@ -1347,7 +1367,7 @@
 
     .node-item.ms.row-enter,
     .node-item.tk.row-enter {
-      animation: hierarchyRowEnter 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+      animation: hierarchyRowEnter 420ms var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) both;
       animation-delay: var(--enter-delay, 0ms);
     }
 
@@ -3636,6 +3656,16 @@
 </div>
         </div>
       `);
+      // Workstream emergence — calm, hierarchy-ordered cascade. The
+      // initiative header (.ox-card.animate-in) settles first; each
+      // workstream card then materializes on the entry curve in sequence
+      // (~80ms steps after a short lead), so the breakdown structure
+      // arrives top-down rather than all at once.
+      const workstreamBlocks = Array.from(document.querySelectorAll('[data-ws-block]'));
+      workstreamBlocks.forEach((block, index) => {
+        block.style.setProperty('--ws-emerge-delay', (180 + index * 80) + 'ms');
+        block.classList.add('is-emerging');
+      });
       const workstreamChildren = Array.from(document.querySelectorAll('[data-ws-children]'));
       workstreamChildren.forEach((children, index) => {
         const baseDelay = index * 210;

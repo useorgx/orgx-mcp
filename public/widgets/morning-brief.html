@@ -70,7 +70,8 @@
       --ox-font: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
       --ox-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
       --brief-shell-max: 468px;
-      --brief-ease: cubic-bezier(0.16, 1, 0.3, 1);
+      /* Settled UI / hover / press — route through the foundation's standard curve. */
+      --brief-ease: var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
     }
 
     * {
@@ -138,7 +139,17 @@
 
     .animate-in {
       opacity: 0;
-      animation: brief-enter 0.72s var(--brief-ease) forwards;
+      /* Arriving content decelerates in — entry curve. */
+      animation: brief-enter var(--ox-dur-slower, 600ms)
+        var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) forwards;
+    }
+
+    /* Calm staggered entrance for brief sections + list items. */
+    .brief-stagger {
+      opacity: 0;
+      animation: brief-enter var(--ox-dur-slow, 400ms)
+        var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) forwards;
+      animation-delay: calc(var(--i, 0) * 60ms);
     }
 
     .brief-shell {
@@ -1505,8 +1516,8 @@
       content.innerHTML = `
         <div class="empty-state animate-in">
           <div class="empty-icon">${icons.status(24)}</div>
-          <div class="empty-title">No brief available</div>
-          <div class="empty-desc">Your morning briefing has not been generated yet. Run the brief again after the next autonomous session lands.</div>
+          <div class="empty-title">Nothing needs you</div>
+          <div class="empty-desc">No brief has landed yet. When the next autonomous session finishes, the morning readout will appear here.</div>
         </div>
       `;
     }
@@ -1517,7 +1528,7 @@
       }
 
       return brief.priorities
-        .map((priority) => {
+        .map((priority, index) => {
           const domain = String(priority.domain || 'Execution').toLowerCase();
           const colors = {
             engineering: '#06b6d4',
@@ -1529,7 +1540,7 @@
           };
           const priorityColor = colors[domain] || 'var(--ox-primary)';
           return `
-            <div class="priority-row">
+            <div class="priority-row brief-stagger" style="--i:${index};">
               <div class="priority-bar" style="--priority-color:${priorityColor};"></div>
               <div class="priority-body">
                 <div class="priority-domain" style="--priority-color:${priorityColor};">${escapeHtml(
@@ -1558,7 +1569,7 @@
       );
 
       return brief.outputRows
-        .map((artifact) => {
+        .map((artifact, index) => {
           const row = asObject(artifact);
           const status = titleCase(String(row.status || 'draft'));
           const url = artifactUrl(row);
@@ -1576,7 +1587,7 @@
           const actionLabel = artifactLabel(row, reviewable ? 'Review' : 'Open');
 
           return `
-            <div class="app-list-row">
+            <div class="app-list-row brief-stagger" style="--i:${index};">
               <div class="app-list-row-body">
                 <div class="app-list-row-title">${escapeHtml(
                   row.title || row.name || 'Untitled artifact'
@@ -1610,10 +1621,10 @@
       }
 
       return brief.topReceipts
-        .map((receipt) => {
+        .map((receipt, index) => {
           const value = formatCurrency(receipt.attributed_value_usd) || 'Captured';
           return `
-            <div class="app-list-row receipt-row">
+            <div class="app-list-row receipt-row brief-stagger" style="--i:${index};">
               <div class="app-list-row-body">
                 <div class="app-list-row-title">${escapeHtml(
                   receipt.intent || 'Execution receipt'
@@ -1628,10 +1639,10 @@
 
     function renderAttentionRows(brief) {
       const rows = brief.attentionSignals
-        .map((item) => {
+        .map((item, index) => {
           const tone = item.tone === 'warning' ? 'review' : 'attention';
           return `
-            <div class="app-list-row attention-row" data-tone="${tone}">
+            <div class="app-list-row attention-row brief-stagger" style="--i:${index};" data-tone="${tone}">
               <div class="attention-main">
                 <div class="attention-dot"></div>
                 <div class="app-list-row-body">

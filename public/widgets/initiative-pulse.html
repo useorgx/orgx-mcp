@@ -277,7 +277,9 @@
         stroke: var(--ox-primary);
         stroke-width: 5;
         stroke-linecap: round;
-        transition: stroke-dashoffset 360ms ease, stroke 180ms ease;
+        transition:
+          stroke-dashoffset var(--ox-dur-slow, 400ms) var(--ox-ease-morph, cubic-bezier(0.4, 0, 0.2, 1)),
+          stroke var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
       }
 
       .pulse-health.tone-warning .pulse-health__bar {
@@ -556,8 +558,10 @@
         background: rgba(148, 163, 184, 0.18);
         transform: scaleX(0.62);
         transform-origin: center;
-        transition: background 160ms ease, transform 160ms ease,
-          opacity 160ms ease;
+        transition:
+          background var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
+          transform var(--ox-dur-fast, 150ms) var(--ox-ease-morph, cubic-bezier(0.4, 0, 0.2, 1)),
+          opacity var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
         opacity: 0.95;
       }
 
@@ -649,7 +653,9 @@
         height: 100%;
         border-radius: inherit;
         background: var(--ox-primary);
-        transition: width 220ms ease, background 180ms ease;
+        transition:
+          width var(--ox-dur-base, 250ms) var(--ox-ease-morph, cubic-bezier(0.4, 0, 0.2, 1)),
+          background var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
       }
 
       .pulse-signal__fill.tone-warning {
@@ -667,15 +673,16 @@
         gap: 16px;
         transform-origin: top center;
         will-change: transform, opacity;
-        animation: panelSlideDown var(--widget-motion-slow) var(--widget-motion-curve) both;
+        animation: panelSlideDown var(--ox-dur-slow, 400ms)
+          var(--ox-ease-morph, cubic-bezier(0.4, 0, 0.2, 1)) both;
       }
 
       .pulse-panel-host {
         display: grid;
         overflow: hidden;
         transition:
-          height var(--widget-motion-slow) var(--widget-motion-curve),
-          opacity var(--widget-motion-base) var(--widget-motion-curve);
+          height var(--ox-dur-slow, 400ms) var(--ox-ease-morph, cubic-bezier(0.4, 0, 0.2, 1)),
+          opacity var(--ox-dur-base, 250ms) var(--ox-ease-morph, cubic-bezier(0.4, 0, 0.2, 1));
       }
 
       .pulse-panel-host:empty {
@@ -746,23 +753,24 @@
       }
 
       .pulse-panel.is-active .pulse-list-row {
-        animation: pulseListRowIn 340ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation: pulseListRowIn var(--ox-dur-slow, 400ms)
+          var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) both;
       }
 
       .pulse-panel.is-active .pulse-list-row:nth-child(2) {
-        animation-delay: 46ms;
+        animation-delay: 56ms;
       }
 
       .pulse-panel.is-active .pulse-list-row:nth-child(3) {
-        animation-delay: 92ms;
+        animation-delay: 112ms;
       }
 
       .pulse-panel.is-active .pulse-list-row:nth-child(4) {
-        animation-delay: 138ms;
+        animation-delay: 168ms;
       }
 
       .pulse-panel.is-active .pulse-list-row:nth-child(5) {
-        animation-delay: 184ms;
+        animation-delay: 224ms;
       }
 
       .pulse-list-leading {
@@ -786,7 +794,7 @@
         line-height: 1.32;
         font-weight: 600;
         color: var(--ox-text);
-        transition: color 160ms ease;
+        transition: color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
       }
 
       .pulse-list-meta {
@@ -1012,8 +1020,10 @@
         color: var(--ox-text);
         text-decoration: none;
         line-height: 1.1;
-        transition: transform 180ms ease, border-color 180ms ease,
-          background 180ms ease;
+        transition:
+          transform var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
+          border-color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
+          background var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
       }
 
       .deep-link:hover {
@@ -1079,7 +1089,7 @@
       }
 
       .skeleton-wrapper {
-        transition: opacity 0.28s ease;
+        transition: opacity var(--ox-dur-base, 250ms) var(--ox-ease-exit, cubic-bezier(0.4, 0, 1, 1));
       }
 
       @keyframes fadeSlideUp {
@@ -1095,19 +1105,31 @@
 
       .animate-in {
         opacity: 0;
-        animation: fadeSlideUp 420ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        animation: fadeSlideUp var(--ox-dur-slow, 400ms)
+          var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) forwards;
       }
 
       .pulse-skeleton {
         display: flex;
         flex-direction: column;
         gap: 18px;
-      }      .skeleton-line {
-        background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%);
-        background-size: 200% 100%; animation: shimmer 2s infinite linear; border-radius: 4px;
       }
-      @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-      @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+      .skeleton-line {
+        background: linear-gradient(
+          90deg,
+          rgba(var(--ox-primary-rgb), 0.04) 25%,
+          rgba(var(--ox-primary-rgb), 0.14) 50%,
+          rgba(var(--ox-primary-rgb), 0.04) 75%
+        );
+        background-size: 200% 100%;
+        animation: shimmer 1.6s infinite linear;
+        border-radius: 4px;
+      }
+
+      .skeleton-line.skeleton-ring {
+        border-radius: 50%;
+      }
 
       @keyframes shimmer {
         from {
@@ -1231,7 +1253,8 @@
       }
 
       .pulse-panel.is-active {
-        animation: panelSlideDown 320ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        animation: panelSlideDown var(--ox-dur-base, 250ms)
+          var(--ox-ease-morph, cubic-bezier(0.4, 0, 0.2, 1)) forwards;
       }
 
 </style>
@@ -1239,19 +1262,30 @@
   <body>
     <div class="container" role="region" aria-label="Initiative Status">
       <div id="content" aria-live="polite">
-        <div class="ox-card">
+        <div class="ox-card pulse-shell-card">
           <div class="ox-card-inner pulse-skeleton" role="status" aria-label="Loading initiative pulse">
-              <span class="skeleton-line" style="width: 88px; height: 10px"></span>
-              <span class="skeleton-line" style="width: 72%; height: 28px"></span>
-              <span class="skeleton-line" style="width: 58%; height: 14px"></span>
-              <span class="skeleton-line" style="width: 100%; height: 58px; border-radius: 18px"></span>
-              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px">
-                <span class="skeleton-line" style="height: 72px; border-radius: 14px"></span>
-                <span class="skeleton-line" style="height: 72px; border-radius: 14px"></span>
-                <span class="skeleton-line" style="height: 72px; border-radius: 14px"></span>
-                <span class="skeleton-line" style="height: 72px; border-radius: 14px"></span>
+              <div style="display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 22px; align-items: center">
+                <span class="skeleton-line skeleton-ring" style="width: 116px; height: 116px"></span>
+                <div style="display: flex; flex-direction: column; gap: 12px; min-width: 0">
+                  <span class="skeleton-line" style="width: 88px; height: 10px"></span>
+                  <span class="skeleton-line" style="width: 72%; height: 28px"></span>
+                  <span class="skeleton-line" style="width: 58%; height: 14px"></span>
+                </div>
               </div>
-              <span class="skeleton-line" style="width: 100%; height: 8px; border-radius: 999px"></span>
+              <span class="skeleton-line" style="width: 100%; height: 58px; border-radius: 14px"></span>
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px">
+                <span class="skeleton-line" style="height: 74px; border-radius: 14px"></span>
+                <span class="skeleton-line" style="height: 74px; border-radius: 14px"></span>
+                <span class="skeleton-line" style="height: 74px; border-radius: 14px"></span>
+                <span class="skeleton-line" style="height: 74px; border-radius: 14px"></span>
+              </div>
+              <div style="display: flex; gap: 8px">
+                <span class="skeleton-line" style="flex: 1; height: 7px; border-radius: 999px"></span>
+                <span class="skeleton-line" style="flex: 1; height: 7px; border-radius: 999px"></span>
+                <span class="skeleton-line" style="flex: 1; height: 7px; border-radius: 999px"></span>
+                <span class="skeleton-line" style="flex: 1; height: 7px; border-radius: 999px"></span>
+              </div>
+              <span class="skeleton-line" style="width: 100%; height: 46px; border-radius: 16px"></span>
             </div>
           </div>
       </div>
@@ -2747,18 +2781,29 @@ external: function (size) {
       var render = function () {
         if (isLoading) {
           injectHtml(
-            '<div class="ox-card"><div class="ox-card-inner pulse-skeleton">' +
-              '<span class="skeleton-line" style="width: 88px; height: 10px"></span>' +
-              '<span class="skeleton-line" style="width: 72%; height: 28px"></span>' +
-              '<span class="skeleton-line" style="width: 58%; height: 14px"></span>' +
-              '<span class="skeleton-line" style="width: 100%; height: 58px; border-radius: 18px"></span>' +
-              '<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px">' +
-                '<span class="skeleton-line" style="height: 72px; border-radius: 14px"></span>' +
-                '<span class="skeleton-line" style="height: 72px; border-radius: 14px"></span>' +
-                '<span class="skeleton-line" style="height: 72px; border-radius: 14px"></span>' +
-                '<span class="skeleton-line" style="height: 72px; border-radius: 14px"></span>' +
+            '<div class="ox-card pulse-shell-card"><div class="ox-card-inner pulse-skeleton" role="status" aria-label="Loading initiative pulse">' +
+              '<div style="display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 22px; align-items: center">' +
+                '<span class="skeleton-line skeleton-ring" style="width: 116px; height: 116px"></span>' +
+                '<div style="display: flex; flex-direction: column; gap: 12px; min-width: 0">' +
+                  '<span class="skeleton-line" style="width: 88px; height: 10px"></span>' +
+                  '<span class="skeleton-line" style="width: 72%; height: 28px"></span>' +
+                  '<span class="skeleton-line" style="width: 58%; height: 14px"></span>' +
+                '</div>' +
               '</div>' +
-              '<span class="skeleton-line" style="width: 100%; height: 8px; border-radius: 999px"></span>' +
+              '<span class="skeleton-line" style="width: 100%; height: 58px; border-radius: 14px"></span>' +
+              '<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px">' +
+                '<span class="skeleton-line" style="height: 74px; border-radius: 14px"></span>' +
+                '<span class="skeleton-line" style="height: 74px; border-radius: 14px"></span>' +
+                '<span class="skeleton-line" style="height: 74px; border-radius: 14px"></span>' +
+                '<span class="skeleton-line" style="height: 74px; border-radius: 14px"></span>' +
+              '</div>' +
+              '<div style="display: flex; gap: 8px">' +
+                '<span class="skeleton-line" style="flex: 1; height: 7px; border-radius: 999px"></span>' +
+                '<span class="skeleton-line" style="flex: 1; height: 7px; border-radius: 999px"></span>' +
+                '<span class="skeleton-line" style="flex: 1; height: 7px; border-radius: 999px"></span>' +
+                '<span class="skeleton-line" style="flex: 1; height: 7px; border-radius: 999px"></span>' +
+              '</div>' +
+              '<span class="skeleton-line" style="width: 100%; height: 46px; border-radius: 16px"></span>' +
             "</div></div>"
           );
           return;
