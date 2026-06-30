@@ -124,6 +124,7 @@ export type NormalizedArtifact = {
   title: string;
   status: string;
   artifact_type: string | null;
+  eval_score: number | null;
   preview_markdown: string | null;
   summary: string | null;
   created_at: string | null;
@@ -155,6 +156,7 @@ export type WidgetProofCard = {
   title: string;
   status: string;
   artifact_type: string | null;
+  eval_score: number | null;
   summary: string | null;
   created_at: string | null;
   created_by_type: string | null;
@@ -230,6 +232,75 @@ function isReviewableStatus(status: string | null): boolean {
   );
 }
 
+// The independently-judged quality score (work_artifacts.verification.eval.score),
+// surfaced so proof cards can show "AQ 0.86" instead of hiding the one number that
+// proves the work was reviewed.
+function extractEvalScore(
+  record: Record<string, unknown>,
+  metadata: Record<string, unknown>
+): number | null {
+  const verification =
+    asRecord(record.verification) ?? asRecord(metadata.verification);
+  const evalBlock = verification ? asRecord(verification.eval) : null;
+  const raw =
+    (evalBlock ? evalBlock.score : undefined) ??
+    metadata.eval_score ??
+    metadata.aq_score;
+  if (raw === null || raw === undefined) return null;
+  const num = typeof raw === 'number' ? raw : Number(raw);
+  return Number.isFinite(num) ? num : null;
+}
+
+// Process / status artifacts that describe a run rather than deliver founder-facing
+// work — they must not crowd the real, scored deliverables out of the proof cards.
+const META_OR_PROCESS_SUFFIXES = [
+  'structured_blocker',
+  'code_review',
+  'progress_update',
+  'status_update',
+  'retro',
+  'retrospective',
+  'reconciliation',
+  'run_summary',
+  'session_summary',
+  'recommendation_memo',
+  'synthesis_brief',
+];
+
+function isMetaOrProcessArtifact(artifact: NormalizedArtifact): boolean {
+  const type = toSlug(artifact.artifact_type);
+  if (!type) return false;
+  const local = type.includes('.')
+    ? type.slice(type.lastIndexOf('.') + 1)
+    : type;
+  return META_OR_PROCESS_SUFFIXES.some(
+    (suffix) => local === suffix || local.endsWith(`_${suffix}`)
+  );
+}
+
+// Rank artifacts for proof surfacing: real, scored domain deliverables first;
+// archived rows and process/meta notes (blockers, code reviews, progress updates)
+// last. Recency only breaks ties — so a fresh blocker never buries an older scored
+// deliverable the way a pure created_at sort did.
+function proofRank(artifact: NormalizedArtifact): number {
+  let rank = 0;
+  if (toSlug(artifact.status) === 'archived') rank -= 100;
+  if (isMetaOrProcessArtifact(artifact)) rank -= 50;
+  if (typeof artifact.eval_score === 'number') rank += 20;
+  return rank;
+}
+
+function compareArtifactsForProof(
+  a: NormalizedArtifact,
+  b: NormalizedArtifact
+): number {
+  const rankDelta = proofRank(b) - proofRank(a);
+  if (rankDelta !== 0) return rankDelta;
+  const at = a.created_at ? Date.parse(a.created_at) : 0;
+  const bt = b.created_at ? Date.parse(b.created_at) : 0;
+  return (Number.isFinite(bt) ? bt : 0) - (Number.isFinite(at) ? at : 0);
+}
+
 export function normalizeArtifactRecord(input: unknown): NormalizedArtifact | null {
   const record = asRecord(input);
   if (!record) return null;
@@ -259,6 +330,7 @@ export function normalizeArtifactRecord(input: unknown): NormalizedArtifact | nu
     artifact_type:
       firstString(record, ['artifact_type', 'artifactType']) ??
       firstString(metadata, ['artifact_type', 'artifactType']),
+    eval_score: extractEvalScore(record, metadata),
     preview_markdown:
       firstString(record, ['preview_markdown', 'previewMarkdown']) ??
       firstString(metadata, ['preview_markdown', 'previewMarkdown']),
@@ -539,11 +611,22 @@ function attachArtifactLinks(
 }
 
 function summarizeArtifacts(artifacts: NormalizedArtifact[]) {
+  const approved = artifacts.filter(
+    (item) => toSlug(item.status) === 'approved'
+  ).length;
+  const inReview = artifacts.filter(
+    (item) => toSlug(item.status) === 'in_review'
+  ).length;
   return {
     total: artifacts.length,
-    approved: artifacts.filter((item) => toSlug(item.status) === 'approved').length,
-    in_review: artifacts.filter((item) => toSlug(item.status) === 'in_review').length,
-    needs_review: artifacts.filter((item) => isReviewableStatus(item.status)).length,
+    approved,
+    in_review: inReview,
+    needs_review: artifacts.filter((item) => isReviewableStatus(item.status))
+      .length,
+    // Work produced and either shipped or in review — the honest "delivered"
+    // count for the headline, so 20 in-review deliverables don't read as 0 just
+    // because none have been terminally approved yet.
+    delivered: approved + inReview,
   };
 }
 
@@ -594,6 +677,7 @@ function toWidgetProofCard(artifact: NormalizedArtifact): WidgetProofCard {
     title: artifact.title,
     status: artifact.status,
     artifact_type: artifact.artifact_type,
+    eval_score: artifact.eval_score ?? null,
     summary: artifact.summary ?? artifact.preview_markdown,
     created_at: artifact.created_at,
     created_by_type: artifact.created_by_type,
@@ -739,7 +823,10 @@ export function enrichInitiativePulseWithArtifacts(
   const linkedArtifacts = artifacts.map((artifact) =>
     attachArtifactLinks(artifact, initiativeId)
   );
-  const proofCards = linkedArtifacts.slice(0, 5).map(toWidgetProofCard);
+  // Surface real, scored deliverables first — not whatever was created most
+  // recently (which was reliably a blocker, a code review, or a mistyped image).
+  const rankedArtifacts = [...linkedArtifacts].sort(compareArtifactsForProof);
+  const proofCards = rankedArtifacts.slice(0, 5).map(toWidgetProofCard);
   const artifactSummary = mergeArtifactSummary(
     data.artifact_summary,
     summarizeArtifacts(artifacts)
@@ -748,7 +835,7 @@ export function enrichInitiativePulseWithArtifacts(
   const reviewCount = countReviewableProofs(artifactSummary, proofCards);
   return {
     ...data,
-    recent_artifacts: linkedArtifacts.slice(0, 5),
+    recent_artifacts: rankedArtifacts.slice(0, 5),
     proof_cards: proofCards,
     review_items: proofCards.filter((item) => item.needs_review).slice(0, 4),
     artifact_summary: artifactSummary,
