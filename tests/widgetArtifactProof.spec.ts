@@ -411,6 +411,61 @@ describe('widget artifact proof helpers', () => {
     });
   });
 
+  it('ranks scored deliverables above newer process noise and carries the AQ score', () => {
+    const payload = enrichInitiativePulseWithArtifacts(
+      {
+        id: 'init-1',
+        name: 'Earnings Analyst Agent',
+        workstreams: [
+          {
+            id: 'ws-1',
+            milestones: [{ id: 'ms-1', tasks: [{ id: 'task-1' }, { id: 'task-2' }] }],
+          },
+        ],
+      },
+      [
+        {
+          id: 'deliverable-1',
+          name: 'Earnings Analyst dashboard spec',
+          status: 'in_review',
+          artifact_type: 'design.component_spec',
+          entity_type: 'task',
+          entity_id: 'task-1',
+          initiative_id: 'init-1',
+          created_at: '2026-06-30T13:51:00.000Z',
+          verification: { eval: { score: 0.86 } },
+        },
+        {
+          id: 'blocker-1',
+          name: 'design run blocked',
+          status: 'in_review',
+          artifact_type: 'design.structured_blocker',
+          entity_type: 'task',
+          entity_id: 'task-2',
+          initiative_id: 'init-1',
+          created_at: '2026-06-30T13:58:00.000Z',
+          metadata: { structured_blocker: true },
+        },
+      ]
+    );
+
+    const proofCards = payload.proof_cards as Array<Record<string, unknown>>;
+    // The scored deliverable leads even though the blocker is newer.
+    expect(proofCards[0]).toMatchObject({
+      id: 'deliverable-1',
+      artifact_type: 'design.component_spec',
+      eval_score: 0.86,
+    });
+    expect(proofCards[1]).toMatchObject({ id: 'blocker-1', eval_score: null });
+    // Delivered count includes in-review work, not just terminally approved.
+    expect(payload.artifact_summary).toMatchObject({
+      total: 2,
+      approved: 0,
+      in_review: 2,
+      delivered: 2,
+    });
+  });
+
   it('builds surface-specific continuation prompts from proof cards', () => {
     const proofCards = buildWidgetProofCards(
       [
