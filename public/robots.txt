@@ -1,6 +1,7 @@
 # robots.txt for mcp.useorgx.com
 User-agent: *
 Allow: /
+Allow: /hope-ux
 
 # Avoid indexing protocol/tool endpoints (traffic + noisy SERP results)
 Disallow: /mcp
@@ -15,4 +16,3 @@ Disallow: /register
 Disallow: /.well-known/
 
 Sitemap: https://mcp.useorgx.com/sitemap.xml
-

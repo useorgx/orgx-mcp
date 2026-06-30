@@ -38,7 +38,10 @@ import {
 import { verifyMcpIdentityTokenDetailed } from './mcpIdentityToken';
 import { buildAuthErrorResponse } from './authErrors';
 import { secureCompare } from './secureCompare';
-import { handlePublicMcpDiscoveryRequest } from './publicMcpDiscovery';
+import {
+  handlePublicMcpDiscoveryRequest,
+  PRIMARY_AUTHENTICATED_TOOLS,
+} from './publicMcpDiscovery';
 import { buildExecutionGraphHookBundle } from './executionGraphHookBundle';
 
 // Re-export type for use in index.ts
@@ -203,10 +206,19 @@ async function serveLandingPage(
   request: Request,
   env: Pick<AuthHandlerEnv, 'ASSETS' | 'MCP_SERVER_URL'>
 ): Promise<Response> {
+  return serveStaticAsset(request, env, '/index.html', '/index.html');
+}
+
+async function serveStaticAsset(
+  request: Request,
+  env: Pick<AuthHandlerEnv, 'ASSETS' | 'MCP_SERVER_URL'>,
+  assetPath: string,
+  fallbackPath: string
+): Promise<Response> {
   const serverUrl = env.MCP_SERVER_URL ?? 'https://mcp.useorgx.com';
 
   if (env.ASSETS?.fetch) {
-    const assetRequest = new Request(new URL('/index.html', serverUrl).toString(), {
+    const assetRequest = new Request(new URL(assetPath, serverUrl).toString(), {
       method: request.method === 'HEAD' ? 'HEAD' : 'GET',
       headers: request.headers,
     });
@@ -216,7 +228,7 @@ async function serveLandingPage(
     }
   }
 
-  return Response.redirect(new URL('/index.html', serverUrl).toString(), 302);
+  return Response.redirect(new URL(fallbackPath, serverUrl).toString(), 302);
 }
 
 /** JSON Schema for optional Smithery connection configuration. */
@@ -500,9 +512,14 @@ export const authHandler = {
             name: serverManifest.name,
             title: serverManifest.title,
             description: serverManifest.description,
+            version: serverManifest.version,
             category: 'organizational-memory-for-ai-agents',
             registry: 'com.useorgx/orgx-mcp',
             remote: 'https://mcp.useorgx.com/mcp',
+            public_discovery: 'https://mcp.useorgx.com/public',
+            integration_walkthrough: 'https://mcp.useorgx.com/hope-ux',
+            llms: 'https://mcp.useorgx.com/llms.txt',
+            server_manifest: 'https://mcp.useorgx.com/server.json',
             should_use_when: [
               'remember or recall a decision',
               'search team memory or project context',
@@ -510,20 +527,23 @@ export const authHandler = {
               'review agent work awaiting approval',
               'assign work to specialist AI agents',
               'track project health, blockers, milestones, and owners',
+              'create a full initiative hierarchy from a partner workflow',
+              'read back operator chronicle proof across decisions, artifacts, PRs, goals, and gaps',
             ],
-            primary_tools: [
+            primary_tools: PRIMARY_AUTHENTICATED_TOOLS,
+            integration_tool_chain: [
               'orgx_bootstrap',
-              'orgx_search',
-              'orgx_inspect',
-              'orgx_recommend',
-              'orgx_write',
-              'orgx_attach',
-              'orgx_act',
-              'orgx_plan',
-              'orgx_spawn',
-              'orgx_decide',
+              'scaffold_initiative',
+              'get_initiative_pulse',
+              'get_operator_chronicle',
               'orgx_submit_receipt',
-              'orgx_emit_activity',
+            ],
+            answer_engine_topics: [
+              'OrgX MCP integration',
+              'organizational memory MCP server',
+              'MCP initiative scaffolding',
+              'AI agent proof receipts',
+              'operator chronicle for agent work',
             ],
           },
           {
@@ -533,6 +553,13 @@ export const authHandler = {
           }
         )
       );
+    }
+
+    if (
+      (request.method === 'GET' || request.method === 'HEAD') &&
+      (url.pathname === '/hope-ux' || url.pathname === '/hope-ux/')
+    ) {
+      return serveStaticAsset(request, env, '/hope-ux.html', '/hope-ux.html');
     }
 
     if (

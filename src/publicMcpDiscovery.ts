@@ -24,7 +24,7 @@ type PublicTool = {
 const AUTHENTICATED_MCP_URL = 'https://mcp.useorgx.com/mcp';
 const PUBLIC_MCP_URL = 'https://mcp.useorgx.com/public';
 
-const PRIMARY_AUTHENTICATED_TOOLS = [
+export const PRIMARY_AUTHENTICATED_TOOLS = [
   'orgx_bootstrap',
   'orgx_search',
   'orgx_inspect',
@@ -53,6 +53,7 @@ const PRIMARY_AUTHENTICATED_TOOLS = [
   'track_project_progress',
   'review_artifact',
   'get_morning_brief',
+  'get_operator_chronicle',
   'consolidate_pr',
 ] as const;
 
@@ -489,6 +490,20 @@ const TOOL_EXAMPLES: Record<
     prompt: 'Show today’s OrgX morning brief.',
     arguments: { workspace_id: 'workspace_123' },
     sample_response: { brief: { receipts: [], exceptions: [] } },
+  },
+  get_operator_chronicle: {
+    prompt:
+      'Show the operator chronicle for the last 30 days so I can verify decisions, artifacts, PRs, velocity, goals, and gaps.',
+    arguments: { period: '30d' },
+    sample_response: {
+      reportingNarrative: {
+        briefMarkdown:
+          '2 decisions recorded, 3 proof artifacts attached, and 1 launch gap remains open.',
+      },
+      topPriorities: [{ title: 'Close launch proof gap', status: 'review' }],
+      prVelocity: { merged: 4, open: 1 },
+      gaps: [{ title: 'Missing final proof receipt', severity: 'medium' }],
+    },
   },
   consolidate_pr: {
     prompt:

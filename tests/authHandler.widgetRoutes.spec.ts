@@ -122,6 +122,52 @@ describe('authHandler widget compatibility routes', () => {
     expect(body.maintainers).toContainEqual({ email: 'reviewers@useorgx.com' });
   });
 
+  it('serves a well-known MCP manifest with integration discovery tools', async () => {
+    const response = await authHandler.fetch(
+      new Request('https://mcp.useorgx.com/.well-known/mcp.json'),
+      {
+        MCP_SERVER_URL: 'https://mcp.useorgx.com',
+        ORGX_WEB_URL: 'https://www.useorgx.com',
+      },
+      {} as ExecutionContext
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('application/json');
+    const body = (await response.json()) as {
+      version?: string;
+      public_discovery?: string;
+      integration_walkthrough?: string;
+      llms?: string;
+      server_manifest?: string;
+      primary_tools?: string[];
+      integration_tool_chain?: string[];
+      answer_engine_topics?: string[];
+    };
+
+    expect(body.version).toBeTruthy();
+    expect(body.public_discovery).toBe('https://mcp.useorgx.com/public');
+    expect(body.integration_walkthrough).toBe('https://mcp.useorgx.com/hope-ux');
+    expect(body.llms).toBe('https://mcp.useorgx.com/llms.txt');
+    expect(body.server_manifest).toBe('https://mcp.useorgx.com/server.json');
+    expect(body.primary_tools).toEqual(
+      expect.arrayContaining([
+        'scaffold_initiative',
+        'get_initiative_pulse',
+        'get_operator_chronicle',
+        'orgx_submit_receipt',
+      ])
+    );
+    expect(body.integration_tool_chain).toEqual([
+      'orgx_bootstrap',
+      'scaffold_initiative',
+      'get_initiative_pulse',
+      'get_operator_chronicle',
+      'orgx_submit_receipt',
+    ]);
+    expect(body.answer_engine_topics).toContain('OrgX MCP integration');
+  });
+
   it('proxies /api/chatgpt/widgets requests through the assets binding', async () => {
     const assetsFetch = vi.fn(async (input: RequestInfo | URL) => {
       const url =

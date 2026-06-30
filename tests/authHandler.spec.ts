@@ -108,6 +108,36 @@ describe('authHandler root landing page routing', () => {
     );
   });
 
+  it('serves the Hope UX walkthrough from the clean /hope-ux route', async () => {
+    const env = {
+      MCP_SERVER_URL: 'https://mcp.useorgx.com',
+      ORGX_WEB_URL: 'https://useorgx.com',
+      ASSETS: {
+        fetch: vi.fn(async (input: RequestInfo | URL) => {
+          const request = input instanceof Request ? input : new Request(input);
+          expect(new URL(request.url).pathname).toBe('/hope-ux.html');
+          return new Response('<html><title>Hope UX</title></html>', {
+            status: 200,
+            headers: { 'content-type': 'text/html; charset=utf-8' },
+          });
+        }),
+      },
+    } as any;
+
+    const response = await authHandler.fetch(
+      new Request('https://mcp.useorgx.com/hope-ux', {
+        method: 'GET',
+        headers: { accept: 'text/html' },
+      }),
+      env,
+      createCtx()
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain('Hope UX');
+    expect(env.ASSETS.fetch).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps Cursor generated config writes scoped to the OrgX namespace', async () => {
     const response = await authHandler.fetch(
       new Request('https://mcp.useorgx.com/cursor/config'),

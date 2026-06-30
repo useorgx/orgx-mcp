@@ -68,12 +68,26 @@ validation or when the user/workspace sets a budget constraint.
 | `orgx_decide` | Create, remember, approve, reject, or list decisions. |
 | `orgx_submit_receipt` | Submit durable proof, attribution, quality, or outcome receipts. |
 | `orgx_emit_activity` | Emit append-only execution telemetry. |
+| `get_agent_status` | Read active, blocked, and idle agent work. |
+| `get_initiative_pulse` | Read initiative health, blockers, milestones, and activity. |
+| `scaffold_initiative` | Create a complete initiative hierarchy in one call. |
+| `get_morning_brief` | Read receipts, exceptions, and executive operating signals. |
+| `get_operator_chronicle` | Read back decisions, artifacts, PR velocity, goals, and gaps over a period. |
 | `consolidate_pr` | Generate and persist a consolidation_pass receipt for a GitHub pull request. |
 
 Full tool contract: `server.json` at the repo root with OAuth scopes, input
 schemas, and OpenAI widget metadata. Legacy tools remain callable during the
 sunset window, but new prompts, skills, examples, and manifests should teach the
 v2 names above.
+
+## Integration Walkthrough
+
+Use <https://mcp.useorgx.com/hope-ux> as the live conversation surface when a
+partner team wants to understand how OrgX receives external workflow context,
+scaffolds the initiative, shows health, and returns proof through receipts and
+the operator chronicle. Machine-readable discovery lives at
+<https://mcp.useorgx.com/.well-known/mcp.json> and
+<https://mcp.useorgx.com/public>.
 
 ## Why OrgX instead of generic memory MCP?
 
