@@ -14,6 +14,25 @@
     />
 
     <link rel="canonical" href="https://mcp.useorgx.com/" />
+    <link
+      rel="alternate"
+      type="application/json"
+      href="https://mcp.useorgx.com/.well-known/mcp.json"
+      title="OrgX MCP manifest"
+    />
+    <link
+      rel="alternate"
+      type="application/json"
+      href="https://mcp.useorgx.com/public"
+      title="OrgX public MCP discovery"
+    />
+    <link
+      rel="alternate"
+      type="text/plain"
+      href="https://mcp.useorgx.com/llms.txt"
+      title="OrgX MCP LLM routing guide"
+    />
+    <link rel="help" href="https://mcp.useorgx.com/hope-ux" />
 
     <!-- OpenGraph -->
     <meta
@@ -50,14 +69,36 @@
         "@type": "WebAPI",
         "name": "OrgX MCP",
         "description": "Organizational memory and agent orchestration via the Model Context Protocol (MCP).",
-        "documentation": "https://useorgx.com/docs/mcp",
+        "documentation": "https://mcp.useorgx.com/llms.txt",
         "provider": {
           "@type": "Organization",
           "name": "OrgX",
           "url": "https://useorgx.com"
         },
         "termsOfService": "https://useorgx.com/terms",
-        "url": "https://mcp.useorgx.com/"
+        "url": "https://mcp.useorgx.com/",
+        "entryPoint": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://mcp.useorgx.com/mcp",
+          "encodingType": "application/json"
+        },
+        "potentialAction": [
+          {
+            "@type": "ReadAction",
+            "target": "https://mcp.useorgx.com/.well-known/mcp.json",
+            "name": "Read OrgX MCP discovery manifest"
+          },
+          {
+            "@type": "ReadAction",
+            "target": "https://mcp.useorgx.com/hope-ux",
+            "name": "Review the OrgX MCP integration walkthrough"
+          }
+        ],
+        "subjectOf": [
+          "https://mcp.useorgx.com/public",
+          "https://mcp.useorgx.com/llms.txt",
+          "https://mcp.useorgx.com/hope-ux"
+        ]
       }
     </script>
 
@@ -461,6 +502,12 @@
                 class="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-white/10 text-white/60 text-sm font-medium hover:text-white hover:border-white/20 transition-all"
               >
                 See Tools
+              </a>
+              <a
+                href="/hope-ux"
+                class="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-white/10 text-white/60 text-sm font-medium hover:text-white hover:border-white/20 transition-all"
+              >
+                Walkthrough
               </a>
             </div>
 

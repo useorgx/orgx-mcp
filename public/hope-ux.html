@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hope UX | OrgX MCP Integration Walkthrough</title>
+    <meta
+      name="description"
+      content="A conversation walkthrough for exploring how a partner product can send workflow context into OrgX, scaffold initiatives, review execution health, and read back proof through MCP."
+    />
+    <meta
+      name="keywords"
+      content="OrgX MCP integration, Hope UX, organizational memory, MCP initiative scaffolding, AI agent proof receipts, operator chronicle"
+    />
+    <link rel="canonical" href="https://mcp.useorgx.com/hope-ux" />
+    <link
+      rel="alternate"
+      type="application/json"
+      href="https://mcp.useorgx.com/.well-known/mcp.json"
+      title="OrgX MCP manifest"
+    />
+    <link
+      rel="alternate"
+      type="text/plain"
+      href="https://mcp.useorgx.com/llms.txt"
+      title="OrgX MCP LLM routing guide"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Hope UX | OrgX MCP Integration Walkthrough" />
+    <meta
+      property="og:description"
+      content="Talk through the OrgX MCP integration path: context in, initiative scaffolded, pulse verified, proof returned."
+    />
+    <meta property="og:url" content="https://mcp.useorgx.com/hope-ux" />
+    <meta
+      property="og:image"
+      content="https://mcp.useorgx.com/screenshots/orgx-mcp-og.png"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Hope UX | OrgX MCP Walkthrough" />
+    <meta
+      name="twitter:description"
+      content="A practical walkthrough for partner teams evaluating OrgX as the execution memory layer behind an MCP integration."
+    />
+    <meta
+      name="twitter:image"
+      content="https://mcp.useorgx.com/screenshots/orgx-mcp-og.png"
+    />
+    <link rel="icon" type="image/png" href="/orgx-logo.png" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        "headline": "Hope UX OrgX MCP Integration Walkthrough",
+        "description": "A conversation walkthrough for partner teams evaluating OrgX MCP as an organizational memory and execution proof layer.",
+        "url": "https://mcp.useorgx.com/hope-ux",
+        "isPartOf": {
+          "@type": "WebSite",
+          "name": "OrgX MCP",
+          "url": "https://mcp.useorgx.com/"
+        },
+        "about": [
+          "Model Context Protocol",
+          "organizational memory",
+          "AI agent orchestration",
+          "proof receipts"
+        ],
+        "provider": {
+          "@type": "Organization",
+          "name": "OrgX",
+          "url": "https://useorgx.com"
+        },
+        "mainEntity": {
+          "@type": "HowTo",
+          "name": "Evaluate an OrgX MCP partner integration",
+          "step": [
+            {
+              "@type": "HowToStep",
+              "name": "Bootstrap",
+              "text": "Establish workspace context with orgx_bootstrap."
+            },
+            {
+              "@type": "HowToStep",
+              "name": "Scaffold",
+              "text": "Create the integration initiative with scaffold_initiative."
+            },
+            {
+              "@type": "HowToStep",
+              "name": "Verify",
+              "text": "Read get_initiative_pulse and get_operator_chronicle for health and proof."
+            }
+          ]
+        }
+      }
+    </script>
+    <style>
+      :root {
+        --ox-primary-rgb: 99, 102, 241;
+        --ox-primary: rgb(var(--ox-primary-rgb));
+        --ox-bg: #02040a;
+        --ox-panel: rgba(10, 15, 22, 0.95);
+        --ox-well-bg: rgba(0, 0, 0, 0.3);
+        --ox-border: rgba(255, 255, 255, 0.08);
+        --ox-border-strong: rgba(255, 255, 255, 0.15);
+        --ox-text: #f8fafc;
+        --ox-text-muted: rgba(255, 255, 255, 0.58);
+        --ox-danger: #f43f5e;
+        --ox-warning: #fbbf24;
+        --ox-teal: #00c9a7;
+        --ox-lime: #d4ed31;
+        --ox-iris: #6366f1;
+        --ox-font: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+        --ox-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+        --ox-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.5),
+          inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        --ox-ease: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        background: var(--ox-bg);
+        color: var(--ox-text);
+        font-family: var(--ox-font);
+        scroll-behavior: smooth;
+      }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        color: var(--ox-text);
+        background: var(--ox-bg);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background:
+          radial-gradient(circle at 50% 0%, rgba(var(--ox-primary-rgb), 0.08), transparent 58%),
+          linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+        background-size: 100% 100%, 20px 20px, 20px 20px;
+        opacity: 0.72;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .page {
+        position: relative;
+        z-index: 1;
+        width: min(1180px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 24px 0 56px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 44px;
+        margin-bottom: 22px;
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .brand img {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+      }
+
+      .brand-copy {
+        display: grid;
+        gap: 2px;
+      }
+
+      .brand-name {
+        font-size: 0.88rem;
+        font-weight: 700;
+        letter-spacing: 0;
+      }
+
+      .brand-meta {
+        font-family: var(--ox-mono);
+        font-size: 0.62rem;
+        color: var(--ox-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+
+      .top-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      .ox-btn {
+        min-height: 38px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border: 1px solid var(--ox-border);
+        border-radius: 10px;
+        padding: 0 12px;
+        background: rgba(255, 255, 255, 0.035);
+        color: var(--ox-text);
+        font-size: 0.78rem;
+        font-weight: 650;
+        transition:
+          border-color 160ms var(--ox-ease),
+          background 160ms var(--ox-ease),
+          transform 160ms var(--ox-ease);
+      }
+
+      .ox-btn:hover {
+        border-color: rgba(var(--ox-primary-rgb), 0.42);
+        background: rgba(var(--ox-primary-rgb), 0.09);
+        transform: translateY(-1px);
+      }
+
+      .ox-card {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--ox-border);
+        border-radius: 16px;
+        background: var(--ox-panel);
+        box-shadow: var(--ox-shadow);
+      }
+
+      .ox-card::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(var(--ox-primary-rgb), 0.55),
+          transparent
+        );
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.95fr);
+        gap: 0;
+        min-height: 560px;
+      }
+
+      .hero-copy {
+        padding: clamp(24px, 4vw, 44px);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 32px;
+      }
+
+      .kicker {
+        font-family: var(--ox-mono);
+        font-size: 0.64rem;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: var(--ox-text-muted);
+        font-weight: 700;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        max-width: 780px;
+        margin-top: 12px;
+        font-size: 4.65rem;
+        line-height: 0.96;
+        letter-spacing: 0;
+        font-weight: 760;
+      }
+
+      .subtitle {
+        max-width: 690px;
+        margin-top: 18px;
+        color: var(--ox-text-muted);
+        font-size: 1.05rem;
+        line-height: 1.62;
+      }
+
+      .hero-signal {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .signal {
+        min-height: 96px;
+        border-top: 1px solid var(--ox-border);
+        padding-top: 14px;
+      }
+
+      .signal-value {
+        font-family: var(--ox-mono);
+        font-size: 1.15rem;
+        color: var(--ox-text);
+        font-weight: 750;
+      }
+
+      .signal-label {
+        margin-top: 8px;
+        font-size: 0.78rem;
+        line-height: 1.4;
+        color: var(--ox-text-muted);
+      }
+
+      .walkthrough-panel {
+        border-left: 1px solid var(--ox-border);
+        background:
+          linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.06), transparent 36%),
+          rgba(0, 0, 0, 0.18);
+        padding: clamp(20px, 3vw, 30px);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .conversation-strip {
+        display: grid;
+        gap: 12px;
+      }
+
+      .conversation-row {
+        display: grid;
+        grid-template-columns: 96px minmax(0, 1fr);
+        gap: 12px;
+        align-items: start;
+        padding: 14px 0;
+        border-top: 1px solid var(--ox-border);
+      }
+
+      .conversation-row:first-child {
+        border-top: 0;
+      }
+
+      .speaker {
+        font-family: var(--ox-mono);
+        font-size: 0.62rem;
+        line-height: 1.3;
+        color: var(--ox-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+
+      .line-title {
+        font-weight: 720;
+        font-size: 0.94rem;
+      }
+
+      .line-copy {
+        margin-top: 5px;
+        color: var(--ox-text-muted);
+        font-size: 0.82rem;
+        line-height: 1.55;
+      }
+
+      .tool-rail {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        margin-top: 26px;
+      }
+
+      .rail-item {
+        position: relative;
+        min-height: 46px;
+        display: grid;
+        grid-template-columns: 42px minmax(0, 1fr);
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border: 1px solid var(--ox-border);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.025);
+      }
+
+      .rail-item::after {
+        content: "";
+        position: absolute;
+        left: 10px;
+        right: 10px;
+        bottom: 8px;
+        height: 2px;
+        border-radius: 999px;
+        background: rgba(var(--ox-primary-rgb), 0.18);
+      }
+
+      .rail-step {
+        font-family: var(--ox-mono);
+        font-size: 0.62rem;
+        color: var(--ox-primary);
+      }
+
+      .rail-tool {
+        font-family: var(--ox-mono);
+        font-size: 0.72rem;
+        line-height: 1.35;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .section {
+        margin-top: 34px;
+      }
+
+      .section-head {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 14px;
+      }
+
+      .section-title {
+        font-size: 1.7rem;
+        letter-spacing: 0;
+        font-weight: 730;
+      }
+
+      .section-note {
+        max-width: 420px;
+        color: var(--ox-text-muted);
+        font-size: 0.84rem;
+        line-height: 1.52;
+      }
+
+      .grid-three {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .step-card {
+        min-height: 220px;
+        padding: 18px;
+      }
+
+      .step-index {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        border: 1px solid rgba(var(--ox-primary-rgb), 0.24);
+        color: var(--ox-primary);
+        background: rgba(var(--ox-primary-rgb), 0.08);
+        font-family: var(--ox-mono);
+        font-size: 0.72rem;
+        font-weight: 800;
+      }
+
+      .step-card h3 {
+        margin-top: 18px;
+        font-size: 1rem;
+        line-height: 1.25;
+      }
+
+      .step-card p {
+        margin-top: 10px;
+        color: var(--ox-text-muted);
+        font-size: 0.84rem;
+        line-height: 1.56;
+      }
+
+      .data-contract {
+        display: grid;
+        grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+        gap: 0;
+      }
+
+      .contract-list,
+      .proof-preview {
+        padding: clamp(20px, 3vw, 30px);
+      }
+
+      .proof-preview {
+        border-left: 1px solid var(--ox-border);
+      }
+
+      .checklist {
+        display: grid;
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      .check-row {
+        display: grid;
+        grid-template-columns: 22px minmax(0, 1fr);
+        gap: 10px;
+        align-items: start;
+      }
+
+      .check-dot {
+        width: 18px;
+        height: 18px;
+        margin-top: 2px;
+        border-radius: 999px;
+        border: 1px solid rgba(var(--ox-primary-rgb), 0.34);
+        background: rgba(var(--ox-primary-rgb), 0.1);
+      }
+
+      .check-row strong {
+        display: block;
+        font-size: 0.88rem;
+      }
+
+      .check-row span {
+        display: block;
+        margin-top: 4px;
+        color: var(--ox-text-muted);
+        font-size: 0.8rem;
+        line-height: 1.45;
+      }
+
+      .preview-frame {
+        overflow: hidden;
+        border-radius: 14px;
+        border: 1px solid var(--ox-border);
+        background: var(--ox-well-bg);
+      }
+
+      .preview-frame img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .proof-caption {
+        margin-top: 12px;
+        color: var(--ox-text-muted);
+        font-size: 0.78rem;
+        line-height: 1.48;
+      }
+
+      .footer {
+        margin-top: 34px;
+        padding: 18px 0 0;
+        border-top: 1px solid var(--ox-border);
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        color: var(--ox-text-muted);
+        font-size: 0.76rem;
+      }
+
+      .mono {
+        font-family: var(--ox-mono);
+      }
+
+      @media (max-width: 900px) {
+        h1 {
+          font-size: 3.5rem;
+        }
+
+        .hero,
+        .data-contract {
+          grid-template-columns: 1fr;
+        }
+
+        .walkthrough-panel,
+        .proof-preview {
+          border-left: 0;
+          border-top: 1px solid var(--ox-border);
+        }
+
+        .tool-rail,
+        .grid-three,
+        .hero-signal {
+          grid-template-columns: 1fr;
+        }
+
+        .rail-item {
+          grid-template-columns: 38px minmax(0, 1fr);
+        }
+      }
+
+      @media (max-width: 520px) {
+        .page {
+          width: min(100vw - 20px, 1180px);
+          padding-top: 14px;
+        }
+
+        .topbar,
+        .section-head,
+        .footer {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .top-actions {
+          width: 100%;
+          justify-content: stretch;
+        }
+
+        .ox-btn {
+          flex: 1 1 auto;
+        }
+
+        .hero-copy,
+        .walkthrough-panel,
+        .contract-list,
+        .proof-preview {
+          padding: 18px;
+        }
+
+        h1 {
+          font-size: 3.05rem;
+        }
+
+        .subtitle {
+          font-size: 0.96rem;
+        }
+
+        .section-title {
+          font-size: 1.35rem;
+        }
+
+        .conversation-row {
+          grid-template-columns: 1fr;
+          gap: 6px;
+        }
+      }
+
+      @media (max-width: 380px) {
+        h1 {
+          font-size: 2.82rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="topbar" aria-label="Walkthrough header">
+        <a class="brand" href="/" aria-label="OrgX MCP home">
+          <img src="/orgx-logo.png" alt="OrgX" />
+          <span class="brand-copy">
+            <span class="brand-name">OrgX MCP</span>
+            <span class="brand-meta">Hope UX walkthrough</span>
+          </span>
+        </a>
+        <nav class="top-actions" aria-label="Walkthrough links">
+          <a class="ox-btn" href="/.well-known/mcp.json">MCP manifest</a>
+          <a class="ox-btn" href="/public">Public discovery</a>
+          <a class="ox-btn" href="/llms.txt">LLM guide</a>
+        </nav>
+      </header>
+
+      <section class="ox-card hero" aria-label="Integration walkthrough">
+        <div class="hero-copy">
+          <div>
+            <div class="kicker">Partner integration question</div>
+            <h1>Can outside workflow context become accountable execution?</h1>
+            <p class="subtitle">
+              Use this surface to talk through a possible OrgX integration with a
+              partner product such as Attrove, customer success, product ops, or
+              sales. The conversation is simple: what context arrives, what OrgX
+              creates, what the partner reads back, and where human approval stays
+              in control.
+            </p>
+          </div>
+
+          <div class="hero-signal" aria-label="Walkthrough state">
+            <div class="signal">
+              <div class="signal-value">1 call</div>
+              <div class="signal-label">
+                Create the initiative hierarchy from a partner signal.
+              </div>
+            </div>
+            <div class="signal">
+              <div class="signal-value">2 reads</div>
+              <div class="signal-label">
+                Verify health through pulse and chronicle before claiming progress.
+              </div>
+            </div>
+            <div class="signal">
+              <div class="signal-value">0 secrets</div>
+              <div class="signal-label">
+                Public pages explain the path without exposing workspace data.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="walkthrough-panel">
+          <div class="kicker">Talk track</div>
+          <div class="conversation-strip">
+            <div class="conversation-row">
+              <div class="speaker">Partner asks</div>
+              <div>
+                <div class="line-title">What can we hand OrgX?</div>
+                <p class="line-copy">
+                  A customer signal, product request, account risk, or internal
+                  workflow moment with enough context to name the outcome and owner.
+                </p>
+              </div>
+            </div>
+            <div class="conversation-row">
+              <div class="speaker">OrgX returns</div>
+              <div>
+                <div class="line-title">A structured initiative, not a loose note.</div>
+                <p class="line-copy">
+                  Workstreams, milestones, tasks, owners, and an idempotent ref map
+                  the partner can store against its own object.
+                </p>
+              </div>
+            </div>
+            <div class="conversation-row">
+              <div class="speaker">Both verify</div>
+              <div>
+                <div class="line-title">Health and proof are read back explicitly.</div>
+                <p class="line-copy">
+                  The integration checks pulse, chronicle, receipts, and gaps before
+                  telling a human that work moved.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="tool-rail" aria-label="MCP integration sequence">
+            <div class="rail-item">
+              <div class="rail-step">01</div>
+              <div class="rail-tool">orgx_bootstrap</div>
+            </div>
+            <div class="rail-item">
+              <div class="rail-step">02</div>
+              <div class="rail-tool">scaffold_initiative</div>
+            </div>
+            <div class="rail-item">
+              <div class="rail-step">03</div>
+              <div class="rail-tool">get_initiative_pulse</div>
+            </div>
+            <div class="rail-item">
+              <div class="rail-step">04</div>
+              <div class="rail-tool">get_operator_chronicle</div>
+            </div>
+            <div class="rail-item">
+              <div class="rail-step">05</div>
+              <div class="rail-tool">orgx_submit_receipt</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="learn-each-other">
+        <div class="section-head">
+          <h2 class="section-title" id="learn-each-other">Learn each other fast</h2>
+          <p class="section-note">
+            The walkthrough is built around the minimum questions that determine
+            whether an integration should exist.
+          </p>
+        </div>
+        <div class="grid-three">
+          <article class="ox-card step-card">
+            <div class="step-index">01</div>
+            <h3>Context boundary</h3>
+            <p>
+              What partner object triggers work, what fields are durable, and what
+              should stay in the source system?
+            </p>
+          </article>
+          <article class="ox-card step-card">
+            <div class="step-index">02</div>
+            <h3>Execution boundary</h3>
+            <p>
+              Which workstreams can OrgX scaffold immediately, and which actions
+              require explicit human approval?
+            </p>
+          </article>
+          <article class="ox-card step-card">
+            <div class="step-index">03</div>
+            <h3>Proof boundary</h3>
+            <p>
+              What evidence counts as done, how does the partner read it back, and
+              what gaps should remain visible?
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section ox-card data-contract" aria-labelledby="contract-title">
+        <div class="contract-list">
+          <div class="kicker">Integration contract</div>
+          <h2 class="section-title" id="contract-title">What each side owns</h2>
+          <div class="checklist">
+            <div class="check-row">
+              <span class="check-dot" aria-hidden="true"></span>
+              <span>
+                <strong>Partner owns the trigger.</strong>
+                <span>Customer signal, account context, source object id, and the user-facing moment.</span>
+              </span>
+            </div>
+            <div class="check-row">
+              <span class="check-dot" aria-hidden="true"></span>
+              <span>
+                <strong>OrgX owns the execution record.</strong>
+                <span>Initiative hierarchy, owners, status, decisions, artifacts, and receipts.</span>
+              </span>
+            </div>
+            <div class="check-row">
+              <span class="check-dot" aria-hidden="true"></span>
+              <span>
+                <strong>The human owns approval.</strong>
+                <span>Decision gates stay explicit; the integration can surface them but not silently approve them.</span>
+              </span>
+            </div>
+            <div class="check-row">
+              <span class="check-dot" aria-hidden="true"></span>
+              <span>
+                <strong>Both systems own read-back.</strong>
+                <span>Pulse and chronicle responses become the shared proof layer for the conversation.</span>
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="proof-preview">
+          <div class="preview-frame">
+            <img
+              src="/screenshots/orgx-mcp-og.png"
+              alt="OrgX MCP widget proof cards showing search, scaffold, and decision states"
+            />
+          </div>
+          <p class="proof-caption">
+            Product proof should stay visible: context in, scaffold created, decision
+            surfaced, receipt returned. If a step is missing evidence, OrgX should
+            show the gap instead of smoothing it over.
+          </p>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <span>OrgX MCP · Hope UX · Integration conversation surface</span>
+        <span class="mono">mcp.useorgx.com/hope-ux</span>
+      </footer>
+    </main>
+  </body>
+</html>

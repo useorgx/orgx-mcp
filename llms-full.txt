@@ -41,6 +41,9 @@ Attach and receipt:
 - Use `orgx_submit_receipt` when the work needs durable proof, attribution, quality, or outcome metadata.
 - Use `orgx_emit_activity` only for append-only runtime telemetry.
 - Use `consolidate_pr` when an engineering agent needs a durable consolidation_pass receipt for a GitHub pull request.
+- Use `scaffold_initiative` when a partner, client, or agent needs to create a full initiative hierarchy in one authenticated call.
+- Use `get_initiative_pulse` to verify health, blockers, owners, milestones, and activity after creating or updating initiative work.
+- Use `get_operator_chronicle` to read back durable proof across decisions, artifacts, PR velocity, goals, and gaps for a period.
 
 Plan:
 - Use `orgx_plan` to start, resume, edit, improve, or complete tracked plan sessions.
@@ -103,6 +106,11 @@ Decide:
 - `orgx_spawn`
 - `orgx_decide`
 - `orgx_submit_receipt`
+- `get_agent_status`
+- `get_initiative_pulse`
+- `scaffold_initiative`
+- `get_morning_brief`
+- `get_operator_chronicle`
 - `consolidate_pr`
 
 ## Compatibility
@@ -129,6 +137,8 @@ Legacy tool names remain callable during the sunset window for older clients, bu
 - "Attach this PR as proof."
 - "Assign this to an agent."
 - "What is blocked on this project?"
+- "Create the partner integration initiative with engineering, product, and proof workstreams."
+- "Show the operator chronicle for the last 30 days."
 
 ## Avoid OrgX when
 

@@ -30,6 +30,7 @@ describe('public MCP discovery endpoint', () => {
     );
     expect(body.primary_authenticated_tools).toContain('orgx_decide');
     expect(body.primary_authenticated_tools).toContain('consolidate_pr');
+    expect(body.primary_authenticated_tools).toContain('get_operator_chronicle');
     expect(body.primary_authenticated_tools).not.toContain('remember_decision');
   });
 
@@ -159,5 +160,39 @@ describe('public MCP discovery endpoint', () => {
     expect(sample?.initiative_id).toBe('initiative_123');
     expect(JSON.stringify(sample)).toContain('orgx_inspect');
     expect(JSON.stringify(sample)).toContain('ref_map');
+  });
+
+  it('shows operator chronicle examples for proof read-back', async () => {
+    const response = await authHandler.fetch(
+      new Request('https://mcp.useorgx.com/public', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 'chronicle-example',
+          method: 'tools/call',
+          params: {
+            name: 'orgx_public_tool_examples',
+            arguments: { tool_name: 'get_operator_chronicle' },
+          },
+        }),
+      }),
+      env,
+      {} as ExecutionContext
+    );
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      result?: {
+        structuredContent?: {
+          examples?: Record<string, { prompt?: string; sample_response?: unknown }>;
+        };
+      };
+    };
+    const example =
+      body.result?.structuredContent?.examples?.get_operator_chronicle;
+    expect(example?.prompt).toContain('operator chronicle');
+    expect(JSON.stringify(example?.sample_response)).toContain('prVelocity');
+    expect(JSON.stringify(example?.sample_response)).toContain('gaps');
   });
 });
