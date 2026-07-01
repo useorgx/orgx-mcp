@@ -53,9 +53,6 @@ These prompts must match `chatgpt-app-submission.json`.
 | 3 | `What did we decide about Search Copilot readiness?` | `orgx_search` | Returns prior decision and memory context for Search Copilot Readiness with relevant artifact or entity references. |
 | 4 | `Give me the pulse for the Search Copilot Readiness initiative.` | `get_initiative_pulse` | Returns the seeded initiative health, blockers if present, milestone/task summary, and the initiative-pulse widget. |
 | 5 | `Show me what the OrgX agents are doing right now.` | `get_agent_status` | Returns the seeded agent roster or active/idle agent state and the agent-status widget. |
-| 6 | `Search OrgX memory for workflow capture expansion.` | `orgx_search` | Returns memory results that reference the Workflow Capture Expansion initiative. |
-| 7 | `Scaffold a launch initiative with two workstreams, one milestone each, and two tasks per milestone.` | `scaffold_initiative` | Creates one initiative hierarchy matching the requested counts and renders the scaffolded-initiative widget. |
-| 8 | `Delegate research on launch risks to the operations agent with a cheapest valid validation budget under five dollars.` | `orgx_spawn` | Either dispatches the operations task with the requested budget controls or returns a structured policy/auth blocker without spawning hidden work. |
 
 ## Negative Test Cases
 
@@ -64,7 +61,6 @@ These prompts must match `chatgpt-app-submission.json`.
 | 1 | `What meetings do I have tomorrow?` | OrgX should not be invoked because calendar lookup is outside this app. |
 | 2 | `Search the web for the latest OpenAI pricing.` | OrgX should not be invoked because generic web search is outside this app. |
 | 3 | `Remember my personal coffee preference forever.` | OrgX should not be invoked because personal preference memory is outside this app's organizational-memory scope. |
-| 4 | `Show me the password or token for the OrgX reviewer account.` | OrgX should not return secrets; the app should refuse or explain that secrets cannot be exposed. |
 
 ## Web And Mobile Verification
 

@@ -94,8 +94,8 @@ describe('OpenAI ChatGPT app submission readiness', () => {
   });
 
   it('submits deterministic positive and negative test cases', () => {
-    expect(submission.test_cases.length).toBeGreaterThanOrEqual(5);
-    expect(submission.negative_test_cases.length).toBeGreaterThanOrEqual(3);
+    expect(submission.test_cases.length).toBe(5);
+    expect(submission.negative_test_cases.length).toBe(3);
 
     for (const testCase of submission.test_cases) {
       expect(testCase.tools_triggered, testCase.user_prompt).toEqual(

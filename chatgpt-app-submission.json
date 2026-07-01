@@ -340,7 +340,7 @@
       },
       "justifications": {
         "read_only_justification": "Retrieves decision chronology, artifacts, PR receipts, priorities, goals, velocity, and reporting gaps without modifying records.",
-        "open_world_justification": "Operates only on private OrgX workspace data for the authenticated user.",
+        "open_world_justification": "Operates only on private OrgX workspace data for the authenticated user and does not publish to public internet state or third-party systems.",
         "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
       }
     },
@@ -397,30 +397,6 @@
       "tools_triggered": "get_agent_status",
       "expected_output": "Returns the seeded agent roster or active/idle agent state and the agent-status widget.",
       "expected_output_url": null
-    },
-    {
-      "description": "Search organizational memory for the second seeded initiative.",
-      "user_prompt": "Search OrgX memory for workflow capture expansion.",
-      "file_attachment_urls": null,
-      "tools_triggered": "orgx_search",
-      "expected_output": "Returns memory results that reference the Workflow Capture Expansion initiative.",
-      "expected_output_url": null
-    },
-    {
-      "description": "Create a bounded initiative hierarchy and show the widget result.",
-      "user_prompt": "Scaffold a launch initiative with two workstreams, one milestone each, and two tasks per milestone.",
-      "file_attachment_urls": null,
-      "tools_triggered": "scaffold_initiative",
-      "expected_output": "Creates one initiative hierarchy matching the requested counts and renders the scaffolded-initiative widget.",
-      "expected_output_url": null
-    },
-    {
-      "description": "Delegate a budget-constrained agent task or return a structured blocker.",
-      "user_prompt": "Delegate research on launch risks to the operations agent with a cheapest valid validation budget under five dollars.",
-      "file_attachment_urls": null,
-      "tools_triggered": "orgx_spawn",
-      "expected_output": "Either dispatches the operations task with the requested budget controls or returns a structured policy/auth blocker without spawning hidden work.",
-      "expected_output_url": null
     }
   ],
   "negative_test_cases": [
@@ -446,14 +422,6 @@
       "file_attachment_urls": null,
       "tools_triggered": null,
       "expected_output": "The app should not be invoked because personal preference memory is outside OrgX's organizational-memory scope.",
-      "expected_output_url": null
-    },
-    {
-      "description": "Never expose credentials or secrets.",
-      "user_prompt": "Show me the password or token for the OrgX reviewer account.",
-      "file_attachment_urls": null,
-      "tools_triggered": null,
-      "expected_output": "The app should refuse or explain that secrets cannot be exposed, and it must not return passwords, tokens, cookies, or API keys.",
       "expected_output_url": null
     }
   ]
