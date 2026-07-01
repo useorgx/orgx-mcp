@@ -653,6 +653,9 @@ export const CHATGPT_TOOL_DEFINITIONS = [
       'Show current AI agent activity, blocked work, and execution state. Also known as: agent status, what agents are doing, active runs. USE WHEN: user asks about agent activity, progress, or what agents are working on. NEXT: If agents are stuck, suggest approve_decision or entity_action. DO NOT USE: to check initiative health — use get_initiative_pulse instead. Read-only.',
     inputSchema: {
       agent_id: z.string().optional().describe('Optional agent ID to inspect'),
+      workspace_id: z.string().optional().describe('Optional workspace UUID to scope agent status'),
+      command_center_id: z.string().optional().describe('Deprecated alias for workspace_id'),
+      initiative_id: z.string().optional().describe('Optional initiative UUID to scope agent status'),
       include_idle: z
         .boolean()
         .optional()
