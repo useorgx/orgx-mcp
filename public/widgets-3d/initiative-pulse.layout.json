@@ -1,0 +1,5973 @@
+{
+  "widget": "initiative-pulse",
+  "theme": "dark",
+  "capturedAt": "2026-04-29T04:46:21.993Z",
+  "referenceImage": "public/widgets-3d/initiative_pulse_html.png",
+  "rootSize": {
+    "w": 528,
+    "h": 595.625
+  },
+  "nodeCount": 73,
+  "nodes": [
+    {
+      "id": "div.card",
+      "tag": "div",
+      "classes": [
+        "card"
+      ],
+      "depth": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 528,
+        "h": 595.625
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0.0392156862745098,
+          "g": 0.058823529411764705,
+          "b": 0.08627450980392157,
+          "a": 0.95
+        },
+        "backgroundImage": "linear-gradient(rgba(0, 201, 167, 0.05), rgba(0, 0, 0, 0) 48%), none",
+        "backgroundGradient": {
+          "angle": 0,
+          "stops": [
+            {
+              "color": {
+                "r": 0,
+                "g": 0.788235294117647,
+                "b": 0.6549019607843137,
+                "a": 0.05
+              },
+              "pos": null
+            },
+            {
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 0,
+                "a": 0
+              },
+              "pos": 0.48
+            }
+          ]
+        },
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 1,
+          "color": {
+            "r": 0,
+            "g": 0.788235294117647,
+            "b": 0.6549019607843137,
+            "a": 0.14
+          }
+        },
+        "borderRight": {
+          "width": 1,
+          "color": {
+            "r": 0,
+            "g": 0.788235294117647,
+            "b": 0.6549019607843137,
+            "a": 0.14
+          }
+        },
+        "borderBottom": {
+          "width": 1,
+          "color": {
+            "r": 0,
+            "g": 0.788235294117647,
+            "b": 0.6549019607843137,
+            "a": 0.14
+          }
+        },
+        "borderLeft": {
+          "width": 1,
+          "color": {
+            "r": 0,
+            "g": 0.788235294117647,
+            "b": 0.6549019607843137,
+            "a": 0.14
+          }
+        },
+        "borderRadius": {
+          "tl": 16,
+          "tr": 16,
+          "br": 16,
+          "bl": 16
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div.eyebrow:0",
+      "tag": "div",
+      "classes": [
+        "eyebrow"
+      ],
+      "depth": 1,
+      "rect": {
+        "x": 19,
+        "y": 17,
+        "w": 490,
+        "h": 11.3125
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 0.48
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, monospace",
+        "fontSize": 7.54,
+        "fontWeight": 700,
+        "letterSpacing": 1.0556,
+        "textTransform": "uppercase",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div.eyebrow:0>div.live-dot.ok",
+      "tag": "div",
+      "classes": [
+        "live-dot",
+        "ok"
+      ],
+      "depth": 2,
+      "rect": {
+        "x": 19,
+        "y": 19.15625,
+        "w": 7,
+        "h": 7
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0.13333333333333333,
+          "g": 0.7725490196078432,
+          "b": 0.3686274509803922,
+          "a": 1
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 0.48
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRadius": {
+          "tl": 50,
+          "tr": 50,
+          "br": 50,
+          "bl": 50
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, monospace",
+        "fontSize": 7.54,
+        "fontWeight": 700,
+        "letterSpacing": 1.0556,
+        "textTransform": "uppercase",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div.eyebrow:0>span",
+      "tag": "span",
+      "classes": [],
+      "depth": 2,
+      "rect": {
+        "x": 33,
+        "y": 17,
+        "w": 94.875,
+        "h": 11.3125
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 0.48
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, monospace",
+        "fontSize": 7.54,
+        "fontWeight": 700,
+        "letterSpacing": 1.0556,
+        "textTransform": "uppercase",
+        "textAlign": "start"
+      },
+      "text": "LIVE · INITIATIVE"
+    },
+    {
+      "id": "shell>div.header:1",
+      "tag": "div",
+      "classes": [
+        "header"
+      ],
+      "depth": 1,
+      "rect": {
+        "x": 19,
+        "y": 36.3125,
+        "w": 490,
+        "h": 21
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div.header:1>div.widget-title",
+      "tag": "div",
+      "classes": [
+        "widget-title"
+      ],
+      "depth": 2,
+      "rect": {
+        "x": 19,
+        "y": 36.3125,
+        "w": 453.59375,
+        "h": 21
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 14,
+        "fontWeight": 700,
+        "letterSpacing": -0.28,
+        "textTransform": "none",
+        "textAlign": "start"
+      },
+      "text": "Initiative Pulse"
+    },
+    {
+      "id": "shell>div.header:1>span.conn-label",
+      "tag": "span",
+      "classes": [
+        "conn-label"
+      ],
+      "depth": 2,
+      "rect": {
+        "x": 482.59375,
+        "y": 38.5625,
+        "w": 26.40625,
+        "h": 16.5
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 0.48
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, monospace",
+        "fontSize": 11,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      },
+      "text": "Live"
+    },
+    {
+      "id": "shell>div.updated-row:2",
+      "tag": "div",
+      "classes": [
+        "updated-row"
+      ],
+      "depth": 1,
+      "rect": {
+        "x": 19,
+        "y": 61.3125,
+        "w": 490,
+        "h": 15
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 0.48
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, monospace",
+        "fontSize": 10,
+        "fontWeight": 400,
+        "letterSpacing": 0.4,
+        "textTransform": "none",
+        "textAlign": "start"
+      },
+      "text": "Updated 11:46:12 PM"
+    },
+    {
+      "id": "shell>div:3",
+      "tag": "div",
+      "classes": [],
+      "depth": 1,
+      "rect": {
+        "x": 19,
+        "y": 88.3125,
+        "w": 490,
+        "h": 443.8125
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.pulse-title:0",
+      "tag": "div",
+      "classes": [
+        "pulse-title"
+      ],
+      "depth": 2,
+      "rect": {
+        "x": 19,
+        "y": 88.3125,
+        "w": 490,
+        "h": 17.546875
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 600,
+        "letterSpacing": -0.13,
+        "textTransform": "none",
+        "textAlign": "start"
+      },
+      "text": "Operation Prism: Real-Time MCP Widgets"
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1",
+      "tag": "div",
+      "classes": [
+        "stat-grid"
+      ],
+      "depth": 2,
+      "rect": {
+        "x": 19,
+        "y": 117.859375,
+        "w": 490,
+        "h": 189.453125
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:0",
+      "tag": "div",
+      "classes": [
+        "stat-card"
+      ],
+      "depth": 3,
+      "rect": {
+        "x": 19,
+        "y": 117.859375,
+        "w": 158,
+        "h": 99.0625
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0.28
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderRight": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderBottom": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderLeft": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderRadius": {
+          "tl": 10,
+          "tr": 10,
+          "br": 10,
+          "bl": 10
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:0>div.stat-label:0",
+      "tag": "div",
+      "classes": [
+        "stat-label"
+      ],
+      "depth": 4,
+      "rect": {
+        "x": 34,
+        "y": 130.859375,
+        "w": 128,
+        "h": 11.6875
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 0.48
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, monospace",
+        "fontSize": 7.8,
+        "fontWeight": 700,
+        "letterSpacing": 0.78,
+        "textTransform": "uppercase",
+        "textAlign": "start"
+      },
+      "text": "Progress"
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:0>div:1",
+      "tag": "div",
+      "classes": [],
+      "depth": 4,
+      "rect": {
+        "x": 34,
+        "y": 148.546875,
+        "w": 128,
+        "h": 36
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:0>div:1>div.ring-wrap:0",
+      "tag": "div",
+      "classes": [
+        "ring-wrap"
+      ],
+      "depth": 5,
+      "rect": {
+        "x": 34,
+        "y": 148.546875,
+        "w": 36,
+        "h": 36
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:0>div:1>div.ring-wrap:0>svg",
+      "tag": "svg",
+      "classes": [],
+      "depth": 6,
+      "rect": {
+        "x": 34,
+        "y": 148.546875,
+        "w": 36,
+        "h": 36
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      },
+      "svg": {
+        "paths": [
+          {
+            "tag": "circle",
+            "attrs": {
+              "class": "ring-track",
+              "cx": "18",
+              "cy": "18",
+              "r": "14"
+            }
+          },
+          {
+            "tag": "circle",
+            "attrs": {
+              "class": "ring-fill",
+              "cx": "18",
+              "cy": "18",
+              "r": "14",
+              "stroke-dasharray": "87.96",
+              "stroke-dashoffset": "33.43",
+              "style": "--progress-rgb:0,201,167"
+            }
+          }
+        ],
+        "viewBox": [
+          0,
+          0,
+          36,
+          36
+        ],
+        "stroke": null,
+        "fill": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 1
+        },
+        "strokeWidth": 1,
+        "outerHTML": "<svg width=\"36\" height=\"36\" viewBox=\"0 0 36 36\"><circle class=\"ring-track\" cx=\"18\" cy=\"18\" r=\"14\"></circle><circle class=\"ring-fill\" cx=\"18\" cy=\"18\" r=\"14\" stroke-dasharray=\"87.96\" stroke-dashoffset=\"33.43\" style=\"--progress-rgb:0,201,167\"></circle></svg>",
+        "computedColor": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        }
+      }
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:0>div:1>div.ring-wrap:0>svg>circle:0",
+      "tag": "circle",
+      "classes": [],
+      "depth": 7,
+      "rect": {
+        "x": 38,
+        "y": 152.546875,
+        "w": 28,
+        "h": 28
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:0>div:1>div.ring-wrap:0>svg>circle:1",
+      "tag": "circle",
+      "classes": [],
+      "depth": 7,
+      "rect": {
+        "x": 38,
+        "y": 152.546875,
+        "w": 28,
+        "h": 28
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:0>div:1>div.ring-wrap:0>div.ring-label",
+      "tag": "div",
+      "classes": [
+        "ring-label"
+      ],
+      "depth": 6,
+      "rect": {
+        "x": 34,
+        "y": 148.546875,
+        "w": 36,
+        "h": 36
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, monospace",
+        "fontSize": 6.76,
+        "fontWeight": 700,
+        "letterSpacing": -0.0676,
+        "textTransform": "none",
+        "textAlign": "start"
+      },
+      "text": "62%"
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:0>div:1>div:1",
+      "tag": "div",
+      "classes": [],
+      "depth": 5,
+      "rect": {
+        "x": 80,
+        "y": 154.25,
+        "w": 64,
+        "h": 24.59375
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:0>div:1>div:1>div.stat-value:0",
+      "tag": "div",
+      "classes": [
+        "stat-value"
+      ],
+      "depth": 6,
+      "rect": {
+        "x": 80,
+        "y": 154.25,
+        "w": 64,
+        "h": 15.59375
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, monospace",
+        "fontSize": 15.6,
+        "fontWeight": 700,
+        "letterSpacing": -0.468,
+        "textTransform": "none",
+        "textAlign": "start"
+      },
+      "text": "62%"
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:0>div:1>div:1>div.prog-bar:1",
+      "tag": "div",
+      "classes": [
+        "prog-bar"
+      ],
+      "depth": 6,
+      "rect": {
+        "x": 80,
+        "y": 175.84375,
+        "w": 64,
+        "h": 3
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 0.08
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 2,
+          "tr": 2,
+          "br": 2,
+          "bl": 2
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:0>div:1>div:1>div.prog-bar:1>div.prog-fill",
+      "tag": "div",
+      "classes": [
+        "prog-fill"
+      ],
+      "depth": 7,
+      "rect": {
+        "x": 80,
+        "y": 175.84375,
+        "w": 39.671875,
+        "h": 3
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0.788235294117647,
+          "b": 0.6549019607843137,
+          "a": 1
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 2,
+          "tr": 2,
+          "br": 2,
+          "bl": 2
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:1",
+      "tag": "div",
+      "classes": [
+        "stat-card"
+      ],
+      "depth": 3,
+      "rect": {
+        "x": 185,
+        "y": 117.859375,
+        "w": 158,
+        "h": 99.0625
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0.28
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderRight": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderBottom": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderLeft": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderRadius": {
+          "tl": 10,
+          "tr": 10,
+          "br": 10,
+          "bl": 10
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:1>div.stat-label:0",
+      "tag": "div",
+      "classes": [
+        "stat-label"
+      ],
+      "depth": 4,
+      "rect": {
+        "x": 200,
+        "y": 130.859375,
+        "w": 128,
+        "h": 11.6875
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 0.48
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, monospace",
+        "fontSize": 7.8,
+        "fontWeight": 700,
+        "letterSpacing": 0.78,
+        "textTransform": "uppercase",
+        "textAlign": "start"
+      },
+      "text": "Status"
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:1>div.health-badge.health-active:1",
+      "tag": "div",
+      "classes": [
+        "health-badge",
+        "health-active"
+      ],
+      "depth": 4,
+      "rect": {
+        "x": 200,
+        "y": 154.546875,
+        "w": 65.4375,
+        "h": 21.6875
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0.13333333333333333,
+          "g": 0.7725490196078432,
+          "b": 0.3686274509803922,
+          "a": 0.1
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.13333333333333333,
+          "g": 0.7725490196078432,
+          "b": 0.3686274509803922,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 1,
+          "color": {
+            "r": 0.13333333333333333,
+            "g": 0.7725490196078432,
+            "b": 0.3686274509803922,
+            "a": 0.2
+          }
+        },
+        "borderRight": {
+          "width": 1,
+          "color": {
+            "r": 0.13333333333333333,
+            "g": 0.7725490196078432,
+            "b": 0.3686274509803922,
+            "a": 0.2
+          }
+        },
+        "borderBottom": {
+          "width": 1,
+          "color": {
+            "r": 0.13333333333333333,
+            "g": 0.7725490196078432,
+            "b": 0.3686274509803922,
+            "a": 0.2
+          }
+        },
+        "borderLeft": {
+          "width": 1,
+          "color": {
+            "r": 0.13333333333333333,
+            "g": 0.7725490196078432,
+            "b": 0.3686274509803922,
+            "a": 0.2
+          }
+        },
+        "borderRadius": {
+          "tl": 6,
+          "tr": 6,
+          "br": 6,
+          "bl": 6
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, monospace",
+        "fontSize": 7.8,
+        "fontWeight": 700,
+        "letterSpacing": 0.39,
+        "textTransform": "uppercase",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:1>div.health-badge.health-active:1>svg",
+      "tag": "svg",
+      "classes": [],
+      "depth": 5,
+      "rect": {
+        "x": 210,
+        "y": 160.390625,
+        "w": 10,
+        "h": 10
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.13333333333333333,
+          "g": 0.7725490196078432,
+          "b": 0.3686274509803922,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.13333333333333333,
+            "g": 0.7725490196078432,
+            "b": 0.3686274509803922,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.13333333333333333,
+            "g": 0.7725490196078432,
+            "b": 0.3686274509803922,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.13333333333333333,
+            "g": 0.7725490196078432,
+            "b": 0.3686274509803922,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.13333333333333333,
+            "g": 0.7725490196078432,
+            "b": 0.3686274509803922,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, monospace",
+        "fontSize": 7.8,
+        "fontWeight": 700,
+        "letterSpacing": 0.39,
+        "textTransform": "uppercase",
+        "textAlign": "start"
+      },
+      "svg": {
+        "paths": [
+          {
+            "tag": "polygon",
+            "attrs": {
+              "points": "5 3 19 12 5 21 5 3",
+              "fill": "currentColor",
+              "stroke": "none"
+            }
+          }
+        ],
+        "viewBox": [
+          0,
+          0,
+          24,
+          24
+        ],
+        "stroke": {
+          "r": 0.13333333333333333,
+          "g": 0.7725490196078432,
+          "b": 0.3686274509803922,
+          "a": 1
+        },
+        "fill": null,
+        "strokeWidth": 2.5,
+        "outerHTML": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polygon points=\"5 3 19 12 5 21 5 3\" fill=\"currentColor\" stroke=\"none\"></polygon></svg>",
+        "computedColor": {
+          "r": 0.13333333333333333,
+          "g": 0.7725490196078432,
+          "b": 0.3686274509803922,
+          "a": 1
+        }
+      }
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:1>div.health-badge.health-active:1>svg>polygon",
+      "tag": "polygon",
+      "classes": [],
+      "depth": 6,
+      "rect": {
+        "x": 212.08334350585938,
+        "y": 161.640625,
+        "w": 5.83331298828125,
+        "h": 7.5
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.13333333333333333,
+          "g": 0.7725490196078432,
+          "b": 0.3686274509803922,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.13333333333333333,
+            "g": 0.7725490196078432,
+            "b": 0.3686274509803922,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.13333333333333333,
+            "g": 0.7725490196078432,
+            "b": 0.3686274509803922,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.13333333333333333,
+            "g": 0.7725490196078432,
+            "b": 0.3686274509803922,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.13333333333333333,
+            "g": 0.7725490196078432,
+            "b": 0.3686274509803922,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, monospace",
+        "fontSize": 7.8,
+        "fontWeight": 700,
+        "letterSpacing": 0.39,
+        "textTransform": "uppercase",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:1>div.risk-badge.risk-medium:2",
+      "tag": "div",
+      "classes": [
+        "risk-badge",
+        "risk-medium"
+      ],
+      "depth": 4,
+      "rect": {
+        "x": 200,
+        "y": 182.234375,
+        "w": 77.78125,
+        "h": 21.6875
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0.9607843137254902,
+          "g": 0.6196078431372549,
+          "b": 0.043137254901960784,
+          "a": 0.1
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9607843137254902,
+          "g": 0.6196078431372549,
+          "b": 0.043137254901960784,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 1,
+          "color": {
+            "r": 0.9607843137254902,
+            "g": 0.6196078431372549,
+            "b": 0.043137254901960784,
+            "a": 0.2
+          }
+        },
+        "borderRight": {
+          "width": 1,
+          "color": {
+            "r": 0.9607843137254902,
+            "g": 0.6196078431372549,
+            "b": 0.043137254901960784,
+            "a": 0.2
+          }
+        },
+        "borderBottom": {
+          "width": 1,
+          "color": {
+            "r": 0.9607843137254902,
+            "g": 0.6196078431372549,
+            "b": 0.043137254901960784,
+            "a": 0.2
+          }
+        },
+        "borderLeft": {
+          "width": 1,
+          "color": {
+            "r": 0.9607843137254902,
+            "g": 0.6196078431372549,
+            "b": 0.043137254901960784,
+            "a": 0.2
+          }
+        },
+        "borderRadius": {
+          "tl": 6,
+          "tr": 6,
+          "br": 6,
+          "bl": 6
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, monospace",
+        "fontSize": 7.8,
+        "fontWeight": 700,
+        "letterSpacing": 0.39,
+        "textTransform": "uppercase",
+        "textAlign": "start"
+      },
+      "text": "medium risk"
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:2",
+      "tag": "div",
+      "classes": [
+        "stat-card"
+      ],
+      "depth": 3,
+      "rect": {
+        "x": 351,
+        "y": 117.859375,
+        "w": 158,
+        "h": 99.0625
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0.28
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderRight": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderBottom": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderLeft": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderRadius": {
+          "tl": 10,
+          "tr": 10,
+          "br": 10,
+          "bl": 10
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:2>div.stat-label:0",
+      "tag": "div",
+      "classes": [
+        "stat-label"
+      ],
+      "depth": 4,
+      "rect": {
+        "x": 366,
+        "y": 130.859375,
+        "w": 128,
+        "h": 11.6875
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 0.48
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, monospace",
+        "fontSize": 7.8,
+        "fontWeight": 700,
+        "letterSpacing": 0.78,
+        "textTransform": "uppercase",
+        "textAlign": "start"
+      },
+      "text": "Workstreams"
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:2>div.stat-value:1",
+      "tag": "div",
+      "classes": [
+        "stat-value"
+      ],
+      "depth": 4,
+      "rect": {
+        "x": 366,
+        "y": 148.546875,
+        "w": 128,
+        "h": 19.5
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, monospace",
+        "fontSize": 19.5,
+        "fontWeight": 700,
+        "letterSpacing": -0.585,
+        "textTransform": "none",
+        "textAlign": "start"
+      },
+      "text": "5"
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:2>div.stat-sub:2",
+      "tag": "div",
+      "classes": [
+        "stat-sub"
+      ],
+      "depth": 4,
+      "rect": {
+        "x": 366,
+        "y": 172.046875,
+        "w": 128,
+        "h": 15.203125
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 0.48
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 10.14,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      },
+      "text": "active"
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:3",
+      "tag": "div",
+      "classes": [
+        "stat-card"
+      ],
+      "depth": 3,
+      "rect": {
+        "x": 19,
+        "y": 224.921875,
+        "w": 158,
+        "h": 82.390625
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0.28
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderRight": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderBottom": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderLeft": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderRadius": {
+          "tl": 10,
+          "tr": 10,
+          "br": 10,
+          "bl": 10
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:3>div.stat-label:0",
+      "tag": "div",
+      "classes": [
+        "stat-label"
+      ],
+      "depth": 4,
+      "rect": {
+        "x": 34,
+        "y": 237.921875,
+        "w": 128,
+        "h": 11.6875
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 0.48
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, monospace",
+        "fontSize": 7.8,
+        "fontWeight": 700,
+        "letterSpacing": 0.78,
+        "textTransform": "uppercase",
+        "textAlign": "start"
+      },
+      "text": "Active Runs"
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:3>div.stat-value:1",
+      "tag": "div",
+      "classes": [
+        "stat-value"
+      ],
+      "depth": 4,
+      "rect": {
+        "x": 34,
+        "y": 255.609375,
+        "w": 128,
+        "h": 19.5
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, monospace",
+        "fontSize": 19.5,
+        "fontWeight": 700,
+        "letterSpacing": -0.585,
+        "textTransform": "none",
+        "textAlign": "start"
+      },
+      "text": "3"
+    },
+    {
+      "id": "shell>div:3>div.stat-grid:1>div.stat-card:3>div.stat-sub:2",
+      "tag": "div",
+      "classes": [
+        "stat-sub"
+      ],
+      "depth": 4,
+      "rect": {
+        "x": 34,
+        "y": 279.109375,
+        "w": 128,
+        "h": 15.203125
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 0.48
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 10.14,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      },
+      "text": "in flight"
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2",
+      "tag": "div",
+      "classes": [
+        "ws-section"
+      ],
+      "depth": 2,
+      "rect": {
+        "x": 19,
+        "y": 319.3125,
+        "w": 490,
+        "h": 212.8125
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-section-label:0",
+      "tag": "div",
+      "classes": [
+        "ws-section-label"
+      ],
+      "depth": 3,
+      "rect": {
+        "x": 19,
+        "y": 330.3125,
+        "w": 490,
+        "h": 11.3125
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 0.48
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, monospace",
+        "fontSize": 7.54,
+        "fontWeight": 700,
+        "letterSpacing": 0.9048,
+        "textTransform": "uppercase",
+        "textAlign": "start"
+      },
+      "text": "Workstreams"
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1",
+      "tag": "div",
+      "classes": [
+        "ws-list"
+      ],
+      "depth": 3,
+      "rect": {
+        "x": 19,
+        "y": 349.625,
+        "w": 490,
+        "h": 182.5
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:0",
+      "tag": "div",
+      "classes": [
+        "ws-row"
+      ],
+      "depth": 4,
+      "rect": {
+        "x": 19,
+        "y": 349.625,
+        "w": 490,
+        "h": 32.5
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 0.016
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderRight": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderBottom": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderLeft": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderRadius": {
+          "tl": 8,
+          "tr": 8,
+          "br": 8,
+          "bl": 8
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:0>div.ws-accent:0",
+      "tag": "div",
+      "classes": [
+        "ws-accent"
+      ],
+      "depth": 5,
+      "rect": {
+        "x": 30,
+        "y": 357.625,
+        "w": 3,
+        "h": 16.5
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0.023529411764705882,
+          "g": 0.7137254901960784,
+          "b": 0.8313725490196079,
+          "a": 1
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 2,
+          "tr": 2,
+          "br": 2,
+          "bl": 2
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:0>div.ws-name:1",
+      "tag": "div",
+      "classes": [
+        "ws-name"
+      ],
+      "depth": 5,
+      "rect": {
+        "x": 41,
+        "y": 357.625,
+        "w": 370.6875,
+        "h": 16.5
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 11,
+        "fontWeight": 500,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      },
+      "text": "SSE Infrastructure"
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:0>span.ws-status-badge.done",
+      "tag": "span",
+      "classes": [
+        "ws-status-badge",
+        "done"
+      ],
+      "depth": 5,
+      "rect": {
+        "x": 419.6875,
+        "y": 358.5,
+        "w": 30.3125,
+        "h": 14.734375
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0.13333333333333333,
+          "g": 0.7725490196078432,
+          "b": 0.3686274509803922,
+          "a": 0.12
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.13333333333333333,
+          "g": 0.7725490196078432,
+          "b": 0.3686274509803922,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.13333333333333333,
+            "g": 0.7725490196078432,
+            "b": 0.3686274509803922,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.13333333333333333,
+            "g": 0.7725490196078432,
+            "b": 0.3686274509803922,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.13333333333333333,
+            "g": 0.7725490196078432,
+            "b": 0.3686274509803922,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.13333333333333333,
+            "g": 0.7725490196078432,
+            "b": 0.3686274509803922,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 999,
+          "tr": 999,
+          "br": 999,
+          "bl": 999
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, monospace",
+        "fontSize": 7.15,
+        "fontWeight": 700,
+        "letterSpacing": 0.286,
+        "textTransform": "uppercase",
+        "textAlign": "start"
+      },
+      "text": "done"
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:0>div.ws-mini-bar:2",
+      "tag": "div",
+      "classes": [
+        "ws-mini-bar"
+      ],
+      "depth": 5,
+      "rect": {
+        "x": 458,
+        "y": 364.375,
+        "w": 40,
+        "h": 3
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 0.08
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 2,
+          "tr": 2,
+          "br": 2,
+          "bl": 2
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:0>div.ws-mini-bar:2>div.ws-mini-fill",
+      "tag": "div",
+      "classes": [
+        "ws-mini-fill"
+      ],
+      "depth": 6,
+      "rect": {
+        "x": 458,
+        "y": 364.375,
+        "w": 40,
+        "h": 3
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0.023529411764705882,
+          "g": 0.7137254901960784,
+          "b": 0.8313725490196079,
+          "a": 1
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 2,
+          "tr": 2,
+          "br": 2,
+          "bl": 2
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:1",
+      "tag": "div",
+      "classes": [
+        "ws-row"
+      ],
+      "depth": 4,
+      "rect": {
+        "x": 19,
+        "y": 387.125,
+        "w": 490,
+        "h": 32.5
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 0.016
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderRight": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderBottom": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderLeft": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderRadius": {
+          "tl": 8,
+          "tr": 8,
+          "br": 8,
+          "bl": 8
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:1>div.ws-accent:0",
+      "tag": "div",
+      "classes": [
+        "ws-accent"
+      ],
+      "depth": 5,
+      "rect": {
+        "x": 30,
+        "y": 395.125,
+        "w": 3,
+        "h": 16.5
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0.9254901960784314,
+          "g": 0.2823529411764706,
+          "b": 0.6,
+          "a": 1
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 2,
+          "tr": 2,
+          "br": 2,
+          "bl": 2
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:1>div.ws-name:1",
+      "tag": "div",
+      "classes": [
+        "ws-name"
+      ],
+      "depth": 5,
+      "rect": {
+        "x": 41,
+        "y": 395.125,
+        "w": 356.953125,
+        "h": 16.5
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 11,
+        "fontWeight": 500,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      },
+      "text": "Widget Polish"
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:1>span.ws-status-badge.running",
+      "tag": "span",
+      "classes": [
+        "ws-status-badge",
+        "running"
+      ],
+      "depth": 5,
+      "rect": {
+        "x": 405.953125,
+        "y": 396,
+        "w": 44.046875,
+        "h": 14.734375
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0.023529411764705882,
+          "g": 0.7137254901960784,
+          "b": 0.8313725490196079,
+          "a": 0.12
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.023529411764705882,
+          "g": 0.7137254901960784,
+          "b": 0.8313725490196079,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.023529411764705882,
+            "g": 0.7137254901960784,
+            "b": 0.8313725490196079,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.023529411764705882,
+            "g": 0.7137254901960784,
+            "b": 0.8313725490196079,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.023529411764705882,
+            "g": 0.7137254901960784,
+            "b": 0.8313725490196079,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.023529411764705882,
+            "g": 0.7137254901960784,
+            "b": 0.8313725490196079,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 999,
+          "tr": 999,
+          "br": 999,
+          "bl": 999
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, monospace",
+        "fontSize": 7.15,
+        "fontWeight": 700,
+        "letterSpacing": 0.286,
+        "textTransform": "uppercase",
+        "textAlign": "start"
+      },
+      "text": "running"
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:1>div.ws-mini-bar:2",
+      "tag": "div",
+      "classes": [
+        "ws-mini-bar"
+      ],
+      "depth": 5,
+      "rect": {
+        "x": 458,
+        "y": 401.875,
+        "w": 40,
+        "h": 3
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 0.08
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 2,
+          "tr": 2,
+          "br": 2,
+          "bl": 2
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:1>div.ws-mini-bar:2>div.ws-mini-fill",
+      "tag": "div",
+      "classes": [
+        "ws-mini-fill"
+      ],
+      "depth": 6,
+      "rect": {
+        "x": 458,
+        "y": 401.875,
+        "w": 30,
+        "h": 3
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0.9254901960784314,
+          "g": 0.2823529411764706,
+          "b": 0.6,
+          "a": 1
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 2,
+          "tr": 2,
+          "br": 2,
+          "bl": 2
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:2",
+      "tag": "div",
+      "classes": [
+        "ws-row"
+      ],
+      "depth": 4,
+      "rect": {
+        "x": 19,
+        "y": 424.625,
+        "w": 490,
+        "h": 32.5
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 0.016
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderRight": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderBottom": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderLeft": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderRadius": {
+          "tl": 8,
+          "tr": 8,
+          "br": 8,
+          "bl": 8
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:2>div.ws-accent:0",
+      "tag": "div",
+      "classes": [
+        "ws-accent"
+      ],
+      "depth": 5,
+      "rect": {
+        "x": 30,
+        "y": 432.625,
+        "w": 3,
+        "h": 16.5
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0.9764705882352941,
+          "g": 0.45098039215686275,
+          "b": 0.08627450980392157,
+          "a": 1
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 2,
+          "tr": 2,
+          "br": 2,
+          "bl": 2
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:2>div.ws-name:1",
+      "tag": "div",
+      "classes": [
+        "ws-name"
+      ],
+      "depth": 5,
+      "rect": {
+        "x": 41,
+        "y": 432.625,
+        "w": 361.53125,
+        "h": 16.5
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 11,
+        "fontWeight": 500,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      },
+      "text": "Go-to-Market"
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:2>span.ws-status-badge.queued",
+      "tag": "span",
+      "classes": [
+        "ws-status-badge",
+        "queued"
+      ],
+      "depth": 5,
+      "rect": {
+        "x": 410.53125,
+        "y": 433.5,
+        "w": 39.46875,
+        "h": 14.734375
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0.6588235294117647,
+          "g": 0.3333333333333333,
+          "b": 0.9686274509803922,
+          "a": 0.12
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.6588235294117647,
+          "g": 0.3333333333333333,
+          "b": 0.9686274509803922,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.6588235294117647,
+            "g": 0.3333333333333333,
+            "b": 0.9686274509803922,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.6588235294117647,
+            "g": 0.3333333333333333,
+            "b": 0.9686274509803922,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.6588235294117647,
+            "g": 0.3333333333333333,
+            "b": 0.9686274509803922,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.6588235294117647,
+            "g": 0.3333333333333333,
+            "b": 0.9686274509803922,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 999,
+          "tr": 999,
+          "br": 999,
+          "bl": 999
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, monospace",
+        "fontSize": 7.15,
+        "fontWeight": 700,
+        "letterSpacing": 0.286,
+        "textTransform": "uppercase",
+        "textAlign": "start"
+      },
+      "text": "queued"
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:2>div.ws-mini-bar:2",
+      "tag": "div",
+      "classes": [
+        "ws-mini-bar"
+      ],
+      "depth": 5,
+      "rect": {
+        "x": 458,
+        "y": 439.375,
+        "w": 40,
+        "h": 3
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 0.08
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 2,
+          "tr": 2,
+          "br": 2,
+          "bl": 2
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:2>div.ws-mini-bar:2>div.ws-mini-fill",
+      "tag": "div",
+      "classes": [
+        "ws-mini-fill"
+      ],
+      "depth": 6,
+      "rect": {
+        "x": 458,
+        "y": 439.375,
+        "w": 4,
+        "h": 3
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0.9764705882352941,
+          "g": 0.45098039215686275,
+          "b": 0.08627450980392157,
+          "a": 1
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 2,
+          "tr": 2,
+          "br": 2,
+          "bl": 2
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:3",
+      "tag": "div",
+      "classes": [
+        "ws-row"
+      ],
+      "depth": 4,
+      "rect": {
+        "x": 19,
+        "y": 462.125,
+        "w": 490,
+        "h": 32.5
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 0.016
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderRight": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderBottom": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderLeft": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderRadius": {
+          "tl": 8,
+          "tr": 8,
+          "br": 8,
+          "bl": 8
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:3>div.ws-accent:0",
+      "tag": "div",
+      "classes": [
+        "ws-accent"
+      ],
+      "depth": 5,
+      "rect": {
+        "x": 30,
+        "y": 470.125,
+        "w": 3,
+        "h": 16.5
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0.08627450980392157,
+          "g": 0.6392156862745098,
+          "b": 0.2901960784313726,
+          "a": 1
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 2,
+          "tr": 2,
+          "br": 2,
+          "bl": 2
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:3>div.ws-name:1",
+      "tag": "div",
+      "classes": [
+        "ws-name"
+      ],
+      "depth": 5,
+      "rect": {
+        "x": 41,
+        "y": 470.125,
+        "w": 370.6875,
+        "h": 16.5
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 11,
+        "fontWeight": 500,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      },
+      "text": "Credit Gate"
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:3>span.ws-status-badge.done",
+      "tag": "span",
+      "classes": [
+        "ws-status-badge",
+        "done"
+      ],
+      "depth": 5,
+      "rect": {
+        "x": 419.6875,
+        "y": 471,
+        "w": 30.3125,
+        "h": 14.734375
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0.13333333333333333,
+          "g": 0.7725490196078432,
+          "b": 0.3686274509803922,
+          "a": 0.12
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.13333333333333333,
+          "g": 0.7725490196078432,
+          "b": 0.3686274509803922,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.13333333333333333,
+            "g": 0.7725490196078432,
+            "b": 0.3686274509803922,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.13333333333333333,
+            "g": 0.7725490196078432,
+            "b": 0.3686274509803922,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.13333333333333333,
+            "g": 0.7725490196078432,
+            "b": 0.3686274509803922,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.13333333333333333,
+            "g": 0.7725490196078432,
+            "b": 0.3686274509803922,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 999,
+          "tr": 999,
+          "br": 999,
+          "bl": 999
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, monospace",
+        "fontSize": 7.15,
+        "fontWeight": 700,
+        "letterSpacing": 0.286,
+        "textTransform": "uppercase",
+        "textAlign": "start"
+      },
+      "text": "done"
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:3>div.ws-mini-bar:2",
+      "tag": "div",
+      "classes": [
+        "ws-mini-bar"
+      ],
+      "depth": 5,
+      "rect": {
+        "x": 458,
+        "y": 476.875,
+        "w": 40,
+        "h": 3
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 0.08
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 2,
+          "tr": 2,
+          "br": 2,
+          "bl": 2
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:3>div.ws-mini-bar:2>div.ws-mini-fill",
+      "tag": "div",
+      "classes": [
+        "ws-mini-fill"
+      ],
+      "depth": 6,
+      "rect": {
+        "x": 458,
+        "y": 476.875,
+        "w": 40,
+        "h": 3
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0.08627450980392157,
+          "g": 0.6392156862745098,
+          "b": 0.2901960784313726,
+          "a": 1
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 2,
+          "tr": 2,
+          "br": 2,
+          "bl": 2
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:4",
+      "tag": "div",
+      "classes": [
+        "ws-row"
+      ],
+      "depth": 4,
+      "rect": {
+        "x": 19,
+        "y": 499.625,
+        "w": 490,
+        "h": 32.5
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 0.016
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderRight": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderBottom": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderLeft": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderRadius": {
+          "tl": 8,
+          "tr": 8,
+          "br": 8,
+          "bl": 8
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:4>div.ws-accent:0",
+      "tag": "div",
+      "classes": [
+        "ws-accent"
+      ],
+      "depth": 5,
+      "rect": {
+        "x": 30,
+        "y": 507.625,
+        "w": 3,
+        "h": 16.5
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0.9607843137254902,
+          "g": 0.6196078431372549,
+          "b": 0.043137254901960784,
+          "a": 1
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 2,
+          "tr": 2,
+          "br": 2,
+          "bl": 2
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:4>div.ws-name:1",
+      "tag": "div",
+      "classes": [
+        "ws-name"
+      ],
+      "depth": 5,
+      "rect": {
+        "x": 41,
+        "y": 507.625,
+        "w": 356.953125,
+        "h": 16.5
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 11,
+        "fontWeight": 500,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      },
+      "text": "Deploy & Monitor"
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:4>span.ws-status-badge.blocked",
+      "tag": "span",
+      "classes": [
+        "ws-status-badge",
+        "blocked"
+      ],
+      "depth": 5,
+      "rect": {
+        "x": 405.953125,
+        "y": 508.5,
+        "w": 44.046875,
+        "h": 14.734375
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0.9568627450980393,
+          "g": 0.24705882352941178,
+          "b": 0.3686274509803922,
+          "a": 0.12
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9568627450980393,
+          "g": 0.24705882352941178,
+          "b": 0.3686274509803922,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9568627450980393,
+            "g": 0.24705882352941178,
+            "b": 0.3686274509803922,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9568627450980393,
+            "g": 0.24705882352941178,
+            "b": 0.3686274509803922,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9568627450980393,
+            "g": 0.24705882352941178,
+            "b": 0.3686274509803922,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9568627450980393,
+            "g": 0.24705882352941178,
+            "b": 0.3686274509803922,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 999,
+          "tr": 999,
+          "br": 999,
+          "bl": 999
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, monospace",
+        "fontSize": 7.15,
+        "fontWeight": 700,
+        "letterSpacing": 0.286,
+        "textTransform": "uppercase",
+        "textAlign": "start"
+      },
+      "text": "blocked"
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:4>div.ws-mini-bar:2",
+      "tag": "div",
+      "classes": [
+        "ws-mini-bar"
+      ],
+      "depth": 5,
+      "rect": {
+        "x": 458,
+        "y": 514.375,
+        "w": 40,
+        "h": 3
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 0.08
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 2,
+          "tr": 2,
+          "br": 2,
+          "bl": 2
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div:3>div.ws-section:2>div.ws-list:1>div.ws-row:4>div.ws-mini-bar:2>div.ws-mini-fill",
+      "tag": "div",
+      "classes": [
+        "ws-mini-fill"
+      ],
+      "depth": 6,
+      "rect": {
+        "x": 458,
+        "y": 514.375,
+        "w": 8,
+        "h": 3
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0.9607843137254902,
+          "g": 0.6196078431372549,
+          "b": 0.043137254901960784,
+          "a": 1
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 2,
+          "tr": 2,
+          "br": 2,
+          "bl": 2
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div.footer:4",
+      "tag": "div",
+      "classes": [
+        "footer"
+      ],
+      "depth": 1,
+      "rect": {
+        "x": 19,
+        "y": 546.125,
+        "w": 490,
+        "h": 32.5
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0.9725490196078431,
+          "g": 0.9803921568627451,
+          "b": 0.9882352941176471,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 1,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.08
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0.9725490196078431,
+            "g": 0.9803921568627451,
+            "b": 0.9882352941176471,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "textTransform": "none",
+        "textAlign": "start"
+      }
+    },
+    {
+      "id": "shell>div.footer:4>span.footer-meta",
+      "tag": "span",
+      "classes": [
+        "footer-meta"
+      ],
+      "depth": 2,
+      "rect": {
+        "x": 19,
+        "y": 563.03125,
+        "w": 49.15625,
+        "h": 11.6875
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 0.48
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.48
+          }
+        },
+        "borderRadius": {
+          "tl": 0,
+          "tr": 0,
+          "br": 0,
+          "bl": 0
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, monospace",
+        "fontSize": 7.8,
+        "fontWeight": 700,
+        "letterSpacing": 0.78,
+        "textTransform": "uppercase",
+        "textAlign": "start"
+      },
+      "text": "LIVE FEED"
+    },
+    {
+      "id": "shell>div.footer:4>button.footer-link",
+      "tag": "button",
+      "classes": [
+        "footer-link"
+      ],
+      "depth": 2,
+      "rect": {
+        "x": 393.734375,
+        "y": 559.125,
+        "w": 115.265625,
+        "h": 19.5
+      },
+      "style": {
+        "backgroundColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0
+        },
+        "backgroundImage": null,
+        "backgroundGradient": null,
+        "color": {
+          "r": 0,
+          "g": 0.788235294117647,
+          "b": 0.6549019607843137,
+          "a": 1
+        },
+        "borderTop": {
+          "width": 0,
+          "color": {
+            "r": 0,
+            "g": 0.788235294117647,
+            "b": 0.6549019607843137,
+            "a": 1
+          }
+        },
+        "borderRight": {
+          "width": 0,
+          "color": {
+            "r": 0,
+            "g": 0.788235294117647,
+            "b": 0.6549019607843137,
+            "a": 1
+          }
+        },
+        "borderBottom": {
+          "width": 0,
+          "color": {
+            "r": 0,
+            "g": 0.788235294117647,
+            "b": 0.6549019607843137,
+            "a": 1
+          }
+        },
+        "borderLeft": {
+          "width": 0,
+          "color": {
+            "r": 0,
+            "g": 0.788235294117647,
+            "b": 0.6549019607843137,
+            "a": 1
+          }
+        },
+        "borderRadius": {
+          "tl": 6,
+          "tr": 6,
+          "br": 6,
+          "bl": 6
+        },
+        "boxShadow": [],
+        "opacity": 1,
+        "fontFamily": "-apple-system, \"system-ui\", Inter, system-ui, sans-serif",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "letterSpacing": 0.52,
+        "textTransform": "none",
+        "textAlign": "left"
+      },
+      "text": "Open Live View ↗"
+    }
+  ]
+}

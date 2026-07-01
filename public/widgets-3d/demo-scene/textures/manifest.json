@@ -1,0 +1,35 @@
+{
+  "generatedAt": "2026-04-29T06:46:03.840Z",
+  "textures": {
+    "projectTitle": {
+      "path": "public/widgets-3d/demo-scene/textures/project-title.png",
+      "width": 900,
+      "height": 90
+    },
+    "userPrompt": {
+      "path": "public/widgets-3d/demo-scene/textures/user-prompt.png",
+      "width": 960,
+      "height": 250
+    },
+    "assistantPlan": {
+      "path": "public/widgets-3d/demo-scene/textures/assistant-plan.png",
+      "width": 1040,
+      "height": 300
+    },
+    "portalLabel": {
+      "path": "public/widgets-3d/demo-scene/textures/portal-label.png",
+      "width": 420,
+      "height": 72
+    },
+    "composer": {
+      "path": "public/widgets-3d/demo-scene/textures/composer.png",
+      "width": 980,
+      "height": 120
+    },
+    "finalLabel": {
+      "path": "public/widgets-3d/demo-scene/textures/final-label.png",
+      "width": 760,
+      "height": 130
+    }
+  }
+}

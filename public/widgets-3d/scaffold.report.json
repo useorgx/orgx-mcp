@@ -1,0 +1,13 @@
+{
+  "widget": "scaffold",
+  "ssim": 0.9754748773753597,
+  "mean_delta": 0.006753263809163088,
+  "max_delta": 0.3857316779001177,
+  "resolution": {
+    "w": 552,
+    "h": 803
+  },
+  "threshold": 0.95,
+  "passed": true,
+  "generatedAt": "2026-04-29T04:45:51.686Z"
+}

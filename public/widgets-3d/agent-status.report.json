@@ -1,0 +1,13 @@
+{
+  "widget": "agent-status",
+  "ssim": 0.9832572361216643,
+  "mean_delta": 0.006217199046745991,
+  "max_delta": 0.36789664730574556,
+  "resolution": {
+    "w": 528,
+    "h": 670
+  },
+  "threshold": 0.95,
+  "passed": true,
+  "generatedAt": "2026-04-29T04:46:11.828Z"
+}

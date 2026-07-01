@@ -1,0 +1,13 @@
+{
+  "widget": "initiative-pulse",
+  "ssim": 0.9843495707459049,
+  "mean_delta": 0.005873242355199609,
+  "max_delta": 0.3976091562552651,
+  "resolution": {
+    "w": 528,
+    "h": 596
+  },
+  "threshold": 0.95,
+  "passed": true,
+  "generatedAt": "2026-04-29T04:46:26.680Z"
+}

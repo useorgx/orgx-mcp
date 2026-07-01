@@ -40,7 +40,21 @@
     "release": "./scripts/release.sh",
     "release:patch": "./scripts/release.sh patch",
     "release:minor": "./scripts/release.sh minor",
-    "release:major": "./scripts/release.sh major"
+    "release:major": "./scripts/release.sh major",
+    "widget3d:server": "python3 -m http.server 9099 --directory public",
+    "widget3d:extract": "node --import tsx scripts/3d-widgets/extract_layout.mjs",
+    "widget3d:build": "/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python scripts/3d-widgets/build_widget.py --",
+    "widget3d:validate": "node scripts/3d-widgets/validate.mjs",
+    "widget3d:scaffold": "pnpm widget3d:extract --widget=scaffold && pnpm widget3d:build --layout=public/widgets-3d/scaffold.layout.json --out=public/widgets-3d/scaffold --mode=flat --theme=dark && pnpm widget3d:validate --widget=scaffold --threshold=0.95",
+    "widget3d:scaffold:hero": "pnpm widget3d:extract --widget=scaffold && pnpm widget3d:build --layout=public/widgets-3d/scaffold.layout.json --out=public/widgets-3d/scaffold_hero --mode=hero --theme=dark",
+    "widget3d:demo-textures": "node scripts/3d-widgets/render_demo_textures.mjs",
+    "widget3d:demo-scaffold": "pnpm widget3d:scaffold:hero",
+    "widget3d:demo-scene": "pnpm widget3d:demo-textures && /Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python scripts/3d-widgets/build_demo_scene.py -- --mode=styleframe",
+    "widget3d:demo-encode": "pnpm widget3d:demo-textures && /Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python scripts/3d-widgets/build_demo_scene.py -- --mode=animation --width=1280 --height=720 --fps=12 --seconds=6 --samples=8",
+    "widget3d:demo-encode:full": "pnpm widget3d:demo-textures && /Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python scripts/3d-widgets/build_demo_scene.py -- --mode=animation",
+    "widget3d:agent-status": "pnpm widget3d:extract --widget=agent-status && pnpm widget3d:build --layout=public/widgets-3d/agent-status.layout.json --out=public/widgets-3d/agent_status --mode=flat --theme=dark && pnpm widget3d:validate --widget=agent-status --threshold=0.95",
+    "widget3d:initiative-pulse": "pnpm widget3d:extract --widget=initiative-pulse && pnpm widget3d:build --layout=public/widgets-3d/initiative-pulse.layout.json --out=public/widgets-3d/initiative_pulse --mode=flat --theme=dark && pnpm widget3d:validate --widget=initiative-pulse --threshold=0.95",
+    "widget3d:all": "pnpm widget3d:scaffold && pnpm widget3d:agent-status && pnpm widget3d:initiative-pulse"
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "0.2.4",
@@ -51,6 +65,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260103.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.6.3",
     "vite": "^6.3.4",
     "vitest": "^3.2.4",
