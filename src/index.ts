@@ -1197,6 +1197,48 @@ export class OrgXMcp extends McpAgent<
     return { id, name };
   }
 
+  /**
+   * Resolve a workspace for a write path when the MCP session carries none.
+   * Mirrors the orgx_bootstrap resolution ladder so workspace-scoped tools
+   * (notably scaffold_initiative) don't hard-fail just because the agent
+   * skipped orgx_bootstrap or the session lost its binding:
+   *
+   *   1. `/api/client/bootstrap` — the web app's authoritative active
+   *      workspace for this caller (the same source orgx_bootstrap prefers).
+   *   2. The caller's workspace collection, when exactly one is the default
+   *      (or exactly one exists) via pickBootstrapWorkspaceFallback.
+   *
+   * Returns null when neither source can pick a workspace unambiguously — the
+   * caller should then surface a clear "pick a workspace" error rather than
+   * silently guess and scaffold into the wrong place.
+   */
+  private async inferSessionWorkspace(
+    userId?: string | null
+  ): Promise<{ id: string; name: string | null } | null> {
+    const appWorkspace = await this.fetchClientBootstrapWorkspace(userId);
+    if (appWorkspace) return appWorkspace;
+
+    try {
+      const workspaces = await this.fetchEntityCollection({
+        type: 'workspace',
+        userId: userId ?? null,
+        limit: 50,
+      });
+      const fallback = pickBootstrapWorkspaceFallback(workspaces);
+      if (fallback?.workspaceId) {
+        return {
+          id: fallback.workspaceId,
+          name: fallback.workspaceName ?? null,
+        };
+      }
+    } catch (error) {
+      console.warn('[mcp:workspace] inference fallback skipped', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    return null;
+  }
+
   private async recordMcpActivationObservation(params: {
     toolId: string;
     args?: Record<string, unknown> | null;
@@ -8295,11 +8337,41 @@ export class OrgXMcp extends McpAgent<
               'workspace_id and command_center_id must match when both are provided'
             );
           }
-          const effectiveCommandCenterId =
+          let effectiveCommandCenterId =
             explicitWorkspaceId ??
             explicitCommandCenterId ??
             this.sessionContext?.workspaceId ??
             null;
+
+          // When the session carries no workspace, infer it the same way
+          // orgx_bootstrap does — from the web app's active-workspace binding,
+          // then a single/default workspace. Without this, scaffold_initiative
+          // hard-fails whenever the agent didn't run orgx_bootstrap first (or
+          // its bind was lost), even though the account has an obvious default.
+          // That gap is exactly what made "create an initiative" dead-end on a
+          // missing_workspace_context error mid-demo.
+          if (!effectiveCommandCenterId && scaffoldMode !== 'draft') {
+            const inferred = await this.inferSessionWorkspace(scaffoldOwnerId);
+            if (inferred) {
+              effectiveCommandCenterId = inferred.id;
+              contractWarnings.push({
+                code: 'workspace_auto_resolved',
+                message: `No workspace_id was provided; auto-selected ${
+                  inferred.name ? `"${inferred.name}"` : 'your active workspace'
+                } from your OrgX app context. Pass workspace_id explicitly to target a different workspace.`,
+              });
+              // Bind to the session so every subsequent tool in this session
+              // inherits the same workspace instead of re-inferring per call.
+              if (this.sessionContext?.workspaceId !== inferred.id) {
+                this.sessionContext = {
+                  ...this.sessionContext,
+                  workspaceId: inferred.id,
+                  ...(inferred.name ? { workspaceName: inferred.name } : {}),
+                };
+                await this.saveSessionContext();
+              }
+            }
+          }
           telemetryTrace.mark('workspace_resolution');
 
           if (!effectiveCommandCenterId && scaffoldMode !== 'draft') {

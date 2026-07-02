@@ -145,6 +145,20 @@ describe('bootstrap payload routing hints', () => {
     ).toBeNull();
   });
 
+  it('picks the marked default even when buried in canary/test workspaces', () => {
+    // Reproduces the account shape that broke the live scaffold demo: the
+    // workspace list is mostly canary/test/proof harnesses, with the real
+    // workspace flagged as default. Resolution must find it, not give up.
+    expect(
+      pickBootstrapWorkspaceFallback([
+        { id: 'ws-canary-1', name: 'canary-harness' },
+        { id: 'ws-test-2', name: 'proof-fixture' },
+        { id: 'ws-prod', name: 'OrgX', is_default: true },
+        { id: 'ws-test-3', name: 'e2e-canary' },
+      ])
+    ).toEqual({ workspaceId: 'ws-prod', workspaceName: 'OrgX' });
+  });
+
   it('keeps workspace as the canonical bootstrap entity type', () => {
     const indexSource = readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8');
     const bootstrapBranch = indexSource.match(
@@ -153,6 +167,42 @@ describe('bootstrap payload routing hints', () => {
 
     expect(bootstrapBranch).toContain("'workspace'");
     expect(bootstrapBranch).not.toContain("'command_center'");
+  });
+
+  it('scaffold_initiative auto-resolves a missing workspace like bootstrap does', () => {
+    // Regression: scaffold_initiative used to hard-fail with
+    // missing_workspace_context whenever the session had no workspace bound
+    // (e.g. the agent scaffolded before running orgx_bootstrap). It must now
+    // run the same resolution ladder so "create an initiative" just works.
+    const indexSource = readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8');
+    // Scope to the scaffold_initiative handler body: from its tool
+    // registration to the start of the next registerAppTool call.
+    const scaffoldStart = indexSource.indexOf("      'scaffold_initiative',");
+    const nextRegister = indexSource.indexOf(
+      'registerAppTool(',
+      scaffoldStart + 1
+    );
+    const scaffoldBranch =
+      scaffoldStart > -1 && nextRegister > scaffoldStart
+        ? indexSource.slice(scaffoldStart, nextRegister)
+        : undefined;
+
+    expect(scaffoldBranch).toBeTruthy();
+    // Resolution runs before the missing-workspace hard-fail, and binds the
+    // inferred workspace into the session for subsequent tools.
+    expect(scaffoldBranch).toContain('inferSessionWorkspace');
+    expect(scaffoldBranch).toContain('workspace_auto_resolved');
+    const inferIdx = scaffoldBranch!.indexOf('inferSessionWorkspace');
+    const failIdx = scaffoldBranch!.indexOf("error_kind: 'missing_workspace_context'");
+    expect(inferIdx).toBeGreaterThan(-1);
+    expect(failIdx).toBeGreaterThan(inferIdx);
+
+    // The shared resolver reuses the bootstrap ladder rather than reinventing it.
+    const inferHelper = indexSource.match(
+      /private async inferSessionWorkspace[\s\S]*?\n  }\n/
+    )?.[0];
+    expect(inferHelper).toContain('fetchClientBootstrapWorkspace');
+    expect(inferHelper).toContain('pickBootstrapWorkspaceFallback');
   });
 
   it('bootstrap delegates default workspace selection to the app bootstrap route', () => {
