@@ -53,6 +53,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260103.0",
+    "jsdom": "^29.1.1",
     "tsx": "^4.22.5",
     "typescript": "^5.6.3",
     "vite": "^6.3.4",
