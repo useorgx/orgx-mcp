@@ -25,8 +25,6 @@
     "predev": "pnpm widget:build && pnpm widget:version",
     "pretype-check": "pnpm widget:build && pnpm widget:version",
     "pretest": "pnpm widget:build && pnpm widget:version",
-    "sync:orgx": "./scripts/sync-to-orgx-monorepo.sh",
-    "sync:orgx:check": "./scripts/sync-to-orgx-monorepo.sh --check",
     "type-check": "tsc --noEmit",
     "test": "vitest",
     "test:watch": "vitest --watch",
@@ -42,7 +40,9 @@
     "release": "./scripts/release.sh",
     "release:patch": "./scripts/release.sh patch",
     "release:minor": "./scripts/release.sh minor",
-    "release:major": "./scripts/release.sh major"
+    "release:major": "./scripts/release.sh major",
+    "catalog:generate": "tsx scripts/generate-tool-catalog.ts",
+    "catalog:sync:monorepo": "TOOL_CATALOG_EXTRA_OUT=${ORGX_MONOREPO_DIR:-../orgx}/orgx/docs/mintlify/generated/tool-catalog.json tsx scripts/generate-tool-catalog.ts"
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "0.2.4",
@@ -53,9 +53,12 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260103.0",
+    "jsdom": "^29.1.1",
+    "tsx": "^4.22.5",
     "typescript": "^5.6.3",
     "vite": "^6.3.4",
     "vitest": "^3.2.4",
-    "wrangler": "^4.54.0"
+    "wrangler": "^4.54.0",
+    "zod-to-json-schema": "^3.25.2"
   }
 }
