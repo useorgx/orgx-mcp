@@ -3,6 +3,10 @@ export const SESSION_CONTEXT_STORAGE_KEY = 'session_context_v1';
 
 export type SessionAuth = {
   userId: string;
+  // Internal Supabase user UUID resolved at MCP login (identity-token mint).
+  // Optional — absent on sessions minted before the UUID-forward change; those
+  // resolve via the userId (Clerk id) + email path on the API side.
+  orgxUserId?: string;
   scope?: string;
   email?: string;
   authenticatedAt?: number;
@@ -17,6 +21,8 @@ export type SessionContext = {
 type StoredAuth = {
   user_id?: unknown;
   userId?: unknown;
+  orgx_user_id?: unknown;
+  orgxUserId?: unknown;
   scope?: unknown;
   email?: unknown;
   authenticated_at?: unknown;
@@ -48,13 +54,19 @@ export function parseStoredSessionAuth(stored: unknown): SessionAuth | null {
       : null;
   if (!userId || userId.trim().length === 0) return null;
 
+  const orgxUserId =
+    typeof record.orgx_user_id === 'string'
+      ? record.orgx_user_id
+      : typeof record.orgxUserId === 'string'
+      ? record.orgxUserId
+      : undefined;
   const scope = typeof record.scope === 'string' ? record.scope : undefined;
   const email = typeof record.email === 'string' ? record.email : undefined;
   const authenticatedAtRaw = record.authenticated_at ?? record.authenticatedAt;
   const authenticatedAt =
     typeof authenticatedAtRaw === 'number' ? authenticatedAtRaw : undefined;
 
-  return { userId, scope, email, authenticatedAt };
+  return { userId, orgxUserId, scope, email, authenticatedAt };
 }
 
 export function toStoredSessionAuth(
@@ -63,6 +75,7 @@ export function toStoredSessionAuth(
 ): Record<string, unknown> {
   return {
     user_id: auth.userId,
+    orgx_user_id: auth.orgxUserId ?? null,
     scope: auth.scope ?? null,
     email: auth.email ?? null,
     authenticated_at: auth.authenticatedAt ?? now,

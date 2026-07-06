@@ -271,6 +271,7 @@ import {
   toStoredSessionAuth,
   toStoredSessionContext,
 } from './sessionStorage';
+import { ensureSqliteColumn } from './sqliteSchema';
 import { checkToolPlanAccess } from './toolAccessGating';
 import {
   CONTRACT_TOOL_DEFINITIONS,
@@ -371,12 +372,19 @@ interface Env extends OAuthEnv {
 
 interface OrgXMcpProps extends Record<string, unknown> {
   userId?: string;
+  // Internal Supabase user UUID resolved at MCP login. Optional — see SessionAuth.
+  orgxUserId?: string;
   scope?: string;
   email?: string;
   profile?: string;
   workspace_id?: string;
   initiative_id?: string;
 }
+
+// Canonical Supabase user UUID shape. Used to guard the orgx_user_id we forward
+// to the API so a malformed persisted value never becomes an identity hint.
+const ORGX_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type WidgetDebugEventPhase =
   | 'tool_call'
@@ -432,6 +440,7 @@ export class OrgXMcp extends McpAgent<
   // This ensures authenticated users stay authenticated across DO resets
   sessionAuth: {
     userId?: string;
+    orgxUserId?: string;
     scope?: string;
     email?: string;
     authenticatedAt?: number;
@@ -508,6 +517,14 @@ export class OrgXMcp extends McpAgent<
         );
       `);
 
+      // Schema evolution: CREATE TABLE IF NOT EXISTS is a NO-OP on a table that
+      // already exists in a long-lived Durable Object, so new columns must be
+      // added explicitly. Add orgx_user_id (the login-resolved Supabase UUID)
+      // when it's absent. Idempotent: PRAGMA-gated so it runs at most once per DO,
+      // and if the INSERT below ran against the old shape it would otherwise throw
+      // "table session_auth has no column named orgx_user_id".
+      this.ensureSessionAuthColumn('orgx_user_id', 'TEXT');
+
       // Persist non-auth session context (workspace + initiative scoping).
       // This improves "context survival" across DO resets/deployments.
       this.sessionSql.exec(`
@@ -522,6 +539,38 @@ export class OrgXMcp extends McpAgent<
       this.sessionSqlInitialized = true;
     } catch (error) {
       console.error('[mcp:session] Failed to initialize SQLite', { error });
+    }
+  }
+
+  /**
+   * Add a column to session_auth if it is not already present.
+   *
+   * Durable Object SQLite tables persist across deploys, so an existing DO keeps
+   * whatever schema it was first created with — CREATE TABLE IF NOT EXISTS never
+   * reconciles it. We read PRAGMA table_info and issue ALTER TABLE ADD COLUMN
+   * only when the column is missing. Idempotent and cheap (runs during the
+   * already-guarded initSessionSql). Errors are surfaced with a distinct log code
+   * rather than swallowed, because a silent failure here would make saveSessionAuth
+   * throw on every write against the old shape.
+   */
+  private ensureSessionAuthColumn(column: string, type: string): void {
+    try {
+      const { added } = ensureSqliteColumn(
+        (query, ...bindings) => this.sessionSql.exec(query, ...bindings),
+        'session_auth',
+        column,
+        type
+      );
+      if (added) {
+        console.info('[mcp:session] Migrated session_auth: added column', {
+          column,
+        });
+      }
+    } catch (error) {
+      console.error('[mcp:session:migrate] Failed to add session_auth column', {
+        column,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
@@ -541,12 +590,17 @@ export class OrgXMcp extends McpAgent<
           const row = rows[0] as Record<string, unknown>;
           this.sessionAuth = {
             userId: row.user_id as string,
+            orgxUserId:
+              typeof row.orgx_user_id === 'string'
+                ? row.orgx_user_id
+                : undefined,
             scope: row.scope as string | undefined,
             email: row.email as string | undefined,
             authenticatedAt: row.authenticated_at as number,
           };
           console.info('[mcp:session] Restored session auth from SQLite', {
             userId: this.sessionAuth.userId,
+            hasOrgxUserId: Boolean(this.sessionAuth.orgxUserId),
             authenticatedAt: this.sessionAuth.authenticatedAt,
           });
 
@@ -558,6 +612,7 @@ export class OrgXMcp extends McpAgent<
               toStoredSessionAuth(
                 {
                   userId: this.sessionAuth.userId!,
+                  orgxUserId: this.sessionAuth.orgxUserId,
                   scope: this.sessionAuth.scope,
                   email: this.sessionAuth.email,
                   authenticatedAt: this.sessionAuth.authenticatedAt,
@@ -612,6 +667,7 @@ export class OrgXMcp extends McpAgent<
         toStoredSessionAuth(
           {
             userId: this.sessionAuth.userId,
+            orgxUserId: this.sessionAuth.orgxUserId,
             scope: this.sessionAuth.scope,
             email: this.sessionAuth.email,
             authenticatedAt: this.sessionAuth.authenticatedAt,
@@ -622,9 +678,10 @@ export class OrgXMcp extends McpAgent<
 
       if (this.sessionSqlInitialized) {
         this.sessionSql.exec(
-          `INSERT OR REPLACE INTO session_auth (id, user_id, scope, email, authenticated_at, updated_at)
-           VALUES (1, ?, ?, ?, ?, ?)`,
+          `INSERT OR REPLACE INTO session_auth (id, user_id, orgx_user_id, scope, email, authenticated_at, updated_at)
+           VALUES (1, ?, ?, ?, ?, ?, ?)`,
           this.sessionAuth.userId,
+          this.sessionAuth.orgxUserId ?? null,
           this.sessionAuth.scope ?? null,
           this.sessionAuth.email ?? null,
           this.sessionAuth.authenticatedAt ?? now,
@@ -916,19 +973,30 @@ export class OrgXMcp extends McpAgent<
     // Then, update from props if user authenticated with a new token
     if (this.props?.userId) {
       const isNewAuth = this.props.userId !== this.sessionAuth.userId;
-      if (isNewAuth || !this.sessionAuth.userId) {
+      // A returning session may carry a newly-minted orgx_user_id (the UUID
+      // claim shipped after the session was first created). Persist it even when
+      // the Clerk userId is unchanged so existing sessions converge to the UUID
+      // path without waiting for full re-auth.
+      const gainedOrgxUserId = Boolean(
+        this.props.orgxUserId &&
+          this.props.orgxUserId !== this.sessionAuth.orgxUserId
+      );
+      if (isNewAuth || !this.sessionAuth.userId || gainedOrgxUserId) {
         this._isNewSession = await this.shouldShowNewSessionWelcome(
           this.props.userId
         );
         this.sessionAuth = {
           userId: this.props.userId,
-          scope: this.props.scope,
+          // Prefer the fresh props UUID, preserve an existing one otherwise.
+          orgxUserId: this.props.orgxUserId ?? this.sessionAuth.orgxUserId,
+          scope: this.props.scope ?? this.sessionAuth.scope,
           email: this.props.email ?? this.sessionAuth.email, // prefer props email, preserve existing
           authenticatedAt: Date.now(),
         };
         await this.saveSessionAuth();
         console.info('[mcp:session] User authenticated, stored in session', {
           userId: this.props.userId,
+          hasOrgxUserId: Boolean(this.sessionAuth.orgxUserId),
           scope: this.props.scope,
         });
       }
@@ -976,6 +1044,33 @@ export class OrgXMcp extends McpAgent<
 
   private resolveUserEmail() {
     return this.props?.email ?? this.sessionAuth.email ?? null;
+  }
+
+  /**
+   * The login-resolved internal Supabase UUID for the CURRENT session, when the
+   * call acts as the session user. Forwarded to the API as a verified fast-path
+   * identity hint (the API re-checks existence + email before trusting it).
+   *
+   * Returns null — so the API falls back to the Clerk-id + email path — whenever:
+   *  - the session carries no UUID (pre-migration sessions), or
+   *  - the stored value is not a valid UUID, or
+   *  - the caller passed an EXPLICIT owner that is a different user. This last
+   *    guard prevents a tool that targets another owner from being silently
+   *    resolved to the session user via the session's UUID.
+   */
+  private resolveOrgxUserId(effectiveUserId?: string | null): string | null {
+    const uuid = this.props?.orgxUserId ?? this.sessionAuth.orgxUserId ?? null;
+    if (!uuid || !ORGX_UUID_RE.test(uuid)) return null;
+    const sessionUserId =
+      this.props?.userId ?? this.sessionAuth.userId ?? null;
+    if (
+      effectiveUserId &&
+      effectiveUserId !== sessionUserId &&
+      effectiveUserId !== uuid
+    ) {
+      return null;
+    }
+    return uuid;
   }
 
   private assertUserId(explicit?: string | null) {
@@ -1163,7 +1258,7 @@ export class OrgXMcp extends McpAgent<
         this.env,
         path,
         undefined,
-        { userId: userId ?? undefined, userEmail: this.resolveUserEmail() }
+        { userId: userId ?? undefined, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(userId ?? undefined) }
       );
       if (!response.ok) return null;
       return (await response.json()) as T;
@@ -1531,7 +1626,7 @@ export class OrgXMcp extends McpAgent<
             user_id: userId,
           }),
         },
-        { userId, userEmail: this.resolveUserEmail() }
+        { userId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(userId) }
       );
       const result = (await response.json()) as Record<string, unknown>;
       const routeEval = evaluateSpawnBudgetPreflightResult(result, routeArgs);
@@ -1546,7 +1641,7 @@ export class OrgXMcp extends McpAgent<
           this.env,
           '/api/client/spawn-gate',
           { method: 'POST', body: JSON.stringify(gateArgs) },
-          { userId, userEmail: this.resolveUserEmail() }
+          { userId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(userId) }
         );
         const gateResult = (await gateResponse.json()) as Record<string, unknown>;
         const gateEval = evaluateSpawnGateResult(gateResult);
@@ -1606,7 +1701,7 @@ export class OrgXMcp extends McpAgent<
       this.env,
       `/api/entities?${params.toString()}`,
       undefined,
-      userId ? { userId, userEmail: this.resolveUserEmail() } : undefined
+      userId ? { userId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(userId) } : undefined
     );
     const payload = (await response.json()) as {
       data?: Array<Record<string, unknown>>;
@@ -1637,7 +1732,7 @@ export class OrgXMcp extends McpAgent<
       this.env,
       `/api/entities?${search.toString()}`,
       undefined,
-      params.userId ? { userId: params.userId, userEmail: this.resolveUserEmail() } : undefined
+      params.userId ? { userId: params.userId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(params.userId) } : undefined
     );
     const payload = (await response.json()) as {
       data?: Array<Record<string, unknown>>;
@@ -1993,7 +2088,7 @@ export class OrgXMcp extends McpAgent<
         this.env,
         `/api/cross-pollination/context?${search.toString()}`,
         undefined,
-        { userId: params.userId, userEmail: this.resolveUserEmail() }
+        { userId: params.userId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(params.userId) }
       );
       const relatedContext = (await contextResponse.json()) as RelatedContext;
 
@@ -2201,7 +2296,7 @@ export class OrgXMcp extends McpAgent<
             method: 'POST',
             body: JSON.stringify(body),
           },
-          { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+          { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
         );
 
         const result = (await response.json()) as {
@@ -3514,7 +3609,7 @@ export class OrgXMcp extends McpAgent<
                 this.sessionContext?.workspaceId ?? null
               ),
               undefined,
-              { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+              { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
             );
             const result = (await response.json()) as Record<string, unknown>;
             const payload = {
@@ -3568,7 +3663,7 @@ export class OrgXMcp extends McpAgent<
                   idempotency_key: args.idempotency_key,
                 }),
               },
-              { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+              { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
             );
             const result = (await response.json()) as Record<string, unknown>;
             return {
@@ -3686,7 +3781,7 @@ export class OrgXMcp extends McpAgent<
               method: 'POST',
               body: JSON.stringify(body),
             },
-            { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+            { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
           );
           const result = (await response.json()) as Record<string, unknown>;
           return {
@@ -3743,7 +3838,7 @@ export class OrgXMcp extends McpAgent<
               method: 'POST',
               body: JSON.stringify(attachPayload),
             },
-            { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+            { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
           );
           const result = (await response.json()) as Record<string, unknown>;
           const payload = { ...result, _v2_tool: 'orgx_attach', _action: 'attach' };
@@ -3858,7 +3953,7 @@ export class OrgXMcp extends McpAgent<
               method: 'POST',
               body: JSON.stringify(body),
             },
-            { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+            { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
           );
           const result = (await response.json()) as Record<string, unknown>;
           const payload = {
@@ -3978,7 +4073,7 @@ export class OrgXMcp extends McpAgent<
               method: 'POST',
               body: JSON.stringify(body),
             },
-            { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+            { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
           );
           const result = (await response.json()) as Record<string, unknown>;
           const data =
@@ -4042,7 +4137,7 @@ export class OrgXMcp extends McpAgent<
                 user_id: resolvedUserId,
               }),
             },
-            { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+            { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
           );
           const result = (await response.json()) as Record<string, unknown>;
           const payload = {
@@ -4098,7 +4193,7 @@ export class OrgXMcp extends McpAgent<
                 this.env,
                 `/api/entities/${type}/${args.id}/actions`,
                 undefined,
-                { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+                { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
               );
               liveAvailability = (await response.json()) as Record<string, unknown>;
             } catch {
@@ -4197,7 +4292,7 @@ export class OrgXMcp extends McpAgent<
             this.env,
             `${url.pathname}?${url.searchParams.toString()}`,
             undefined,
-            { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+            { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
           );
           const rawResult = (await response.json()) as Record<string, unknown>;
           const payload = normalizedSessionId
@@ -4337,7 +4432,7 @@ export class OrgXMcp extends McpAgent<
                 user_id: resolvedUserId,
               }),
             },
-            { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+            { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
           );
           const result = (await response.json()) as Record<string, unknown>;
           const payload = {
@@ -4374,7 +4469,7 @@ export class OrgXMcp extends McpAgent<
                 user_id: resolvedUserId,
               }),
             },
-            { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+            { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
           );
           const result = (await response.json()) as {
             ok?: boolean;
@@ -4498,7 +4593,7 @@ export class OrgXMcp extends McpAgent<
         method: 'POST',
         body: JSON.stringify(payload),
       },
-      { userId: ownerId ?? resolvedUserId, userEmail: this.resolveUserEmail() }
+      { userId: ownerId ?? resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(ownerId ?? resolvedUserId) }
     );
     const result = (await response.json()) as {
       type?: string;
@@ -4734,7 +4829,7 @@ export class OrgXMcp extends McpAgent<
             this.env,
             path,
             undefined,
-            { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+            { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
           );
           const snapshot = (await response.json()) as {
             view?: string;
@@ -4836,7 +4931,7 @@ export class OrgXMcp extends McpAgent<
               this.env,
               '/api/billing/usage',
               { method: 'GET' },
-              { userId, userEmail: this.resolveUserEmail() }
+              { userId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(userId) }
             );
             const usage = (await response.json()) as Record<string, unknown>;
             const { text, payload } = buildAccountStatusResult({
@@ -4900,7 +4995,7 @@ export class OrgXMcp extends McpAgent<
                 this.env,
                 '/api/billing/usage',
                 { method: 'GET' },
-                { userId, userEmail: this.resolveUserEmail() }
+                { userId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(userId) }
               );
               const usage = (await usageResponse.json()) as Record<string, unknown>;
               const pack = getAgentCreditPacks(usage).find(
@@ -4920,7 +5015,7 @@ export class OrgXMcp extends McpAgent<
                     user_id: userId,
                   }),
                 },
-                { userId, userEmail: this.resolveUserEmail() }
+                { userId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(userId) }
               );
               const data = (await response.json()) as {
                 checkout_url?: string;
@@ -4961,7 +5056,7 @@ export class OrgXMcp extends McpAgent<
                   user_id: userId,
                 }),
               },
-              { userId, userEmail: this.resolveUserEmail() }
+              { userId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(userId) }
             );
             const data = (await response.json()) as {
               checkout_url?: string;
@@ -5022,7 +5117,7 @@ export class OrgXMcp extends McpAgent<
               this.env,
               '/api/billing/usage',
               { method: 'GET' },
-              { userId, userEmail: this.resolveUserEmail() }
+              { userId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(userId) }
             );
             const usage = (await response.json()) as Record<string, unknown>;
             const { text, payload } = buildAccountUsageReportResult({
@@ -5313,7 +5408,7 @@ export class OrgXMcp extends McpAgent<
               this.env,
               `/api/entities?${params.toString()}`,
               undefined,
-              { userId: authUserId, userEmail: this.resolveUserEmail() }
+              { userId: authUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(authUserId) }
             );
             return (await response.json()) as {
               type: string;
@@ -5355,7 +5450,7 @@ export class OrgXMcp extends McpAgent<
                       ...skill,
                     }),
                   },
-                  { userId: authUserId, userEmail: this.resolveUserEmail() }
+                  { userId: authUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(authUserId) }
                 );
               } catch (error) {
                 console.warn('[mcp] failed to seed default skill', {
@@ -5489,7 +5584,7 @@ export class OrgXMcp extends McpAgent<
                 this.env,
                 `/api/entities?${nested.toString()}`,
                 undefined,
-                { userId: authUserId, userEmail: this.resolveUserEmail() }
+                { userId: authUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(authUserId) }
               );
               const payload = (await resp.json()) as {
                 type: string;
@@ -5973,7 +6068,7 @@ export class OrgXMcp extends McpAgent<
                   ...fields,
                 }),
               },
-              { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail() }
+              { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? null) }
             );
             const result = (await response.json()) as {
               type?: string;
@@ -6021,7 +6116,7 @@ export class OrgXMcp extends McpAgent<
                 method: 'POST',
                 body: JSON.stringify(attachPayload),
               },
-              { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail() }
+              { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? null) }
             );
             const result = (await response.json()) as {
               ok?: boolean;
@@ -6182,7 +6277,7 @@ export class OrgXMcp extends McpAgent<
                   method: 'POST',
                   body: JSON.stringify(attachPayload),
                 },
-                { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail() }
+                { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? null) }
               );
               attachResult = (await attachResponse.json()) as Record<
                 string,
@@ -6198,7 +6293,7 @@ export class OrgXMcp extends McpAgent<
               this.env,
               `/api/entities/verify?${verifyParams.toString()}`,
               undefined,
-              { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail() }
+              { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? null) }
             );
             const verifyResult = (await verifyResponse.json()) as {
               verification?: {
@@ -6253,7 +6348,7 @@ export class OrgXMcp extends McpAgent<
                   user_id: resolvedUserId,
                 }),
               },
-              { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail() }
+              { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? null) }
             );
             const completeResult = (await completeResponse.json()) as Record<
               string,
@@ -6318,7 +6413,7 @@ export class OrgXMcp extends McpAgent<
                 method: 'POST',
                 body: JSON.stringify(shipBatchBuilt.body),
               },
-              { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail() }
+              { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? null) }
             );
             const result = (await response.json()) as {
               ok?: boolean;
@@ -6382,7 +6477,7 @@ export class OrgXMcp extends McpAgent<
               method: 'POST',
               body: JSON.stringify(body),
             },
-            { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail() }
+            { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? null) }
           );
           const result = (await response.json()) as {
             success?: boolean;
@@ -6523,7 +6618,7 @@ export class OrgXMcp extends McpAgent<
             this.env,
             `/api/entities/verify?${params.toString()}`,
             undefined,
-            { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+            { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
           );
           const result = (await response.json()) as {
             verification?: {
@@ -7199,7 +7294,7 @@ export class OrgXMcp extends McpAgent<
               method: 'POST',
               body: JSON.stringify(payload),
             },
-            { userId: ownerId, userEmail: this.resolveUserEmail() }
+            { userId: ownerId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(ownerId) }
           );
           const result = (await response.json()) as {
             type: string;
@@ -7413,7 +7508,7 @@ export class OrgXMcp extends McpAgent<
                 metadata: args.metadata ?? {},
               }),
             },
-            { userId: authUserId, userEmail: this.resolveUserEmail() }
+            { userId: authUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(authUserId) }
           );
           const result = (await response.json()) as {
             status: string;
@@ -7500,7 +7595,7 @@ export class OrgXMcp extends McpAgent<
             this.env,
             `/api/entities/${args.entity_type}/${args.entity_id}/comments?${params.toString()}`,
             undefined,
-            { userId: authUserId, userEmail: this.resolveUserEmail() }
+            { userId: authUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(authUserId) }
           );
           const result = (await response.json()) as {
             status: string;
@@ -7633,7 +7728,7 @@ export class OrgXMcp extends McpAgent<
           const result = await runBatchCreateEntities({
             env: this.env,
             callApi: ({ env, path, init, userId }) =>
-              callOrgxApiJson(env, path, init, { userId, userEmail: this.resolveUserEmail() }),
+              callOrgxApiJson(env, path, init, { userId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(userId) }),
             findExistingEntity: ({ body }) =>
               this.findExistingEntityByIdempotencyKey({
                 body,
@@ -8558,6 +8653,7 @@ export class OrgXMcp extends McpAgent<
               callOrgxApiJson(env, path, init, {
                 userId,
                 userEmail: this.resolveUserEmail(),
+                orgxUserId: this.resolveOrgxUserId(userId),
               }),
             findExistingEntity: ({ body }) =>
               this.findExistingEntityByIdempotencyKey({
@@ -8713,6 +8809,9 @@ export class OrgXMcp extends McpAgent<
                     {
                       userId: scaffoldOwnerId ?? undefined,
                       userEmail: this.resolveUserEmail(),
+                      orgxUserId: this.resolveOrgxUserId(
+                        scaffoldOwnerId ?? undefined
+                      ),
                     }
                   ).catch((error) => {
                     console.warn('[scaffold:external-sync] mirror failed', {
@@ -9024,7 +9123,7 @@ export class OrgXMcp extends McpAgent<
               this.env,
               `/api/entities?${params.toString()}`,
               undefined,
-              { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+              { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
             );
             const payload = (await response.json()) as {
               type: string;
@@ -9176,7 +9275,7 @@ export class OrgXMcp extends McpAgent<
                       reason: args.note,
                     }),
                   },
-                  { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail() }
+                  { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? null) }
                 );
                 const payload = (await response.json()) as Record<
                   string,
@@ -9322,7 +9421,7 @@ export class OrgXMcp extends McpAgent<
                       force: target.force,
                     }),
                   },
-                  { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail() }
+                  { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? null) }
                 );
                 const payload = (await response.json()) as Record<
                   string,
@@ -9604,7 +9703,7 @@ export class OrgXMcp extends McpAgent<
               method: 'PATCH',
               body: JSON.stringify(payload),
             },
-            { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+            { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
           );
           const result = (await response.json()) as {
             type: string;
@@ -9676,7 +9775,7 @@ export class OrgXMcp extends McpAgent<
                 this.env,
                 '/api/setup/status',
                 undefined,
-                { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+                { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
               );
               const status = (await response.json()) as {
                 onboarding_complete: boolean;
@@ -9738,7 +9837,7 @@ export class OrgXMcp extends McpAgent<
                     skip_approval: args.skip_approval ?? [],
                   }),
                 },
-                { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+                { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
               );
               const result = (await response.json()) as {
                 agent_type: string;
@@ -9792,7 +9891,7 @@ export class OrgXMcp extends McpAgent<
                       : {}),
                   }),
                 },
-                { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+                { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
               );
               const result = (await response.json()) as {
                 policy_type?: string;
@@ -9884,7 +9983,7 @@ export class OrgXMcp extends McpAgent<
             this.env,
             `/api/stats/me?${params.toString()}`,
             undefined,
-            { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+            { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
           );
           const statsData = (await response.json()) as {
             timeframe: string;
@@ -9996,7 +10095,7 @@ export class OrgXMcp extends McpAgent<
                 this.env,
                 '/api/entities?type=workspace&limit=50',
                 undefined,
-                { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+                { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
               );
               const result = (await response.json()) as {
                 data: Array<{
@@ -10067,7 +10166,7 @@ export class OrgXMcp extends McpAgent<
                   this.env,
                   `/api/v1/workspaces/${workspaceId}/dashboard/pulse`,
                   undefined,
-                  { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+                  { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
                 );
                 const data = (await response.json()) as Record<string, number>;
                 wsStats = {
@@ -10112,7 +10211,7 @@ export class OrgXMcp extends McpAgent<
                 this.env,
                 '/api/entities?type=workspace&limit=50',
                 undefined,
-                { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+                { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
               );
               if (!response.ok) {
                 return {
@@ -10183,7 +10282,7 @@ export class OrgXMcp extends McpAgent<
                   method: 'POST',
                   body: JSON.stringify(createBody.body),
                 },
-                { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+                { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
               );
               const result = (await response.json()) as {
                 workspace?: {
@@ -10322,7 +10421,7 @@ export class OrgXMcp extends McpAgent<
             this.env,
             `/api/flywheel/attribution?workspace_id=${wsId}&period=${args.period ?? '30d'}${args.agent_type ? `&agent_type=${args.agent_type}` : ''}${args.capability_key ? `&capability_key=${args.capability_key}` : ''}`,
             undefined,
-            { userId: this.resolveUserId(), userEmail: this.resolveUserEmail() }
+            { userId: this.resolveUserId(), userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(this.resolveUserId()) }
           );
           const result = await response.json() as Record<string, unknown>;
 
@@ -10425,7 +10524,7 @@ export class OrgXMcp extends McpAgent<
                 method: 'POST',
                 body: JSON.stringify(body),
               },
-              { userId: this.resolveUserId(), userEmail: this.resolveUserEmail() }
+              { userId: this.resolveUserId(), userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(this.resolveUserId()) }
             );
             const result = (await response.json()) as Record<string, unknown>;
             return {
@@ -10553,7 +10652,7 @@ export class OrgXMcp extends McpAgent<
                   workspace_id: wsId,
                 }),
               },
-              { userId: this.resolveUserId(), userEmail: this.resolveUserEmail() }
+              { userId: this.resolveUserId(), userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(this.resolveUserId()) }
             );
             const result = (await response.json()) as Record<string, unknown>;
             return {
@@ -10637,7 +10736,7 @@ export class OrgXMcp extends McpAgent<
               method: 'POST',
               body: JSON.stringify(body),
             },
-            { userId: resolvedUserId, userEmail: this.resolveUserEmail() }
+            { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
           );
           const result = (await response.json()) as Record<string, unknown>;
           const noop = result.noop === true;
@@ -10684,7 +10783,7 @@ export class OrgXMcp extends McpAgent<
             this.env,
             `/api/flywheel/trust?workspace_id=${wsId}&agent_type=${args.agent_type}`,
             undefined,
-            { userId: this.resolveUserId(), userEmail: this.resolveUserEmail() }
+            { userId: this.resolveUserId(), userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(this.resolveUserId()) }
           );
           const result = await response.json() as Record<string, unknown>;
           return {
@@ -10845,7 +10944,7 @@ export class OrgXMcp extends McpAgent<
               method: 'POST',
               body: JSON.stringify(payloadResult.payload),
             },
-            { userId: resolvedUserId ?? undefined, userEmail: this.resolveUserEmail() }
+            { userId: resolvedUserId ?? undefined, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? undefined) }
           );
           const result = await response.json() as Record<string, unknown>;
           return {
@@ -10936,7 +11035,7 @@ export class OrgXMcp extends McpAgent<
               this.env,
               `/api/entities?${params.toString()}`,
               undefined,
-              { userId: this.resolveUserId(), userEmail: this.resolveUserEmail() }
+              { userId: this.resolveUserId(), userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(this.resolveUserId()) }
             );
             const result = (await response.json()) as {
               data?: Array<Record<string, unknown>>;
@@ -11033,7 +11132,7 @@ export class OrgXMcp extends McpAgent<
               this.env,
               `/api/flywheel/briefs?workspace_id=${wsId}${args.session_id ? `&session_id=${args.session_id}` : ''}`,
               undefined,
-              { userId: resolvedUserId ?? undefined, userEmail: this.resolveUserEmail() }
+              { userId: resolvedUserId ?? undefined, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? undefined) }
             );
             const result = (await response.json()) as Record<string, unknown>;
             const [outcomeAttribution, workspacePulse] = await Promise.all([
@@ -11143,7 +11242,7 @@ export class OrgXMcp extends McpAgent<
             this.env,
             `/api/flywheel/learnings?workspace_id=${wsId}${args.capability_key ? `&capability_key=${args.capability_key}` : ''}&limit=${args.limit ?? 5}`,
             undefined,
-            { userId: this.resolveUserId(), userEmail: this.resolveUserEmail() }
+            { userId: this.resolveUserId(), userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(this.resolveUserId()) }
           );
           const result = await response.json() as Record<string, unknown>;
           return {
@@ -11207,7 +11306,7 @@ export class OrgXMcp extends McpAgent<
                 workspace_id: wsId,
               }),
             },
-            { userId: this.resolveUserId(), userEmail: this.resolveUserEmail() }
+            { userId: this.resolveUserId(), userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(this.resolveUserId()) }
           );
           const result = await response.json() as Record<string, unknown>;
           return {
@@ -11364,7 +11463,7 @@ export class OrgXMcp extends McpAgent<
               method: 'POST',
               body: JSON.stringify(attachPayload),
             },
-            resolvedUserId ? { userId: resolvedUserId, userEmail: this.resolveUserEmail() } : undefined
+            resolvedUserId ? { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) } : undefined
           );
 
           const result = (await response.json()) as {

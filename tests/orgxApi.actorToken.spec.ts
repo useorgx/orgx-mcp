@@ -10,9 +10,12 @@ function decodeActorToken(token: string) {
     iss: string;
     sub: string;
     email?: string;
+    orgx_user_id?: string;
     exp: number;
   };
 }
+
+const UUID = '5c52c8ca-c1d0-48cc-a177-9cf1ac2c5b06';
 
 describe('callOrgxApiRaw actor token propagation', () => {
   afterEach(() => {
@@ -51,6 +54,83 @@ describe('callOrgxApiRaw actor token propagation', () => {
       email: 'hope@example.com',
     });
     expect(payload.exp).toBeGreaterThan(Date.now());
+  });
+
+  it('carries the login-resolved orgx_user_id in the actor token and X-Orgx-Orgx-User-Id header, without changing X-Orgx-User-Id', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true })));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await callOrgxApiRaw(
+      {
+        ORGX_API_URL: 'https://api.useorgx.test',
+        ORGX_SERVICE_KEY: 'oxk-test',
+        ORGX_INTERNAL_SECRET: 'test-internal-secret',
+      },
+      '/api/entities',
+      { method: 'POST', body: '{}' },
+      { userId: 'user_123', userEmail: 'hope@example.com', orgxUserId: UUID }
+    );
+
+    const headers = new Headers(fetchMock.mock.calls[0]?.[1]?.headers);
+    // X-Orgx-User-Id stays the Clerk id — the UUID is additive.
+    expect(headers.get('x-orgx-user-id')).toBe('user_123');
+    expect(headers.get('x-orgx-orgx-user-id')).toBe(UUID);
+
+    const payload = decodeActorToken(headers.get('x-orgx-actor-token')!);
+    expect(payload.sub).toBe('user_123');
+    expect(payload.orgx_user_id).toBe(UUID);
+  });
+
+  it('omits the orgx_user_id claim and header when no UUID is present (pre-migration session)', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true })));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await callOrgxApiRaw(
+      {
+        ORGX_API_URL: 'https://api.useorgx.test',
+        ORGX_SERVICE_KEY: 'oxk-test',
+        ORGX_INTERNAL_SECRET: 'test-internal-secret',
+      },
+      '/api/entities',
+      undefined,
+      { userId: 'user_123', userEmail: 'hope@example.com' }
+    );
+
+    const headers = new Headers(fetchMock.mock.calls[0]?.[1]?.headers);
+    expect(headers.get('x-orgx-orgx-user-id')).toBeNull();
+    const payload = decodeActorToken(headers.get('x-orgx-actor-token')!);
+    expect(payload.orgx_user_id).toBeUndefined();
+  });
+
+  it('keys the actor-token cache on orgx_user_id so a session that gains a UUID does not reuse the pre-UUID token', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(Date.parse('2026-06-20T12:00:00.000Z'));
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true })));
+    vi.stubGlobal('fetch', fetchMock);
+    const env = {
+      ORGX_API_URL: 'https://api.useorgx.test',
+      ORGX_SERVICE_KEY: 'oxk-test',
+      ORGX_INTERNAL_SECRET: 'test-internal-secret',
+    };
+
+    await callOrgxApiRaw(env, '/api/one', undefined, {
+      userId: 'user_123',
+      userEmail: 'hope@example.com',
+    });
+    await callOrgxApiRaw(env, '/api/two', undefined, {
+      userId: 'user_123',
+      userEmail: 'hope@example.com',
+      orgxUserId: UUID,
+    });
+
+    const first = new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get(
+      'x-orgx-actor-token'
+    );
+    const second = new Headers(fetchMock.mock.calls[1]?.[1]?.headers).get(
+      'x-orgx-actor-token'
+    );
+    expect(first).not.toBe(second);
+    expect(decodeActorToken(second!).orgx_user_id).toBe(UUID);
   });
 
   it('reuses actor assertions inside the safe token cache window', async () => {

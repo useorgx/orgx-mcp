@@ -86,7 +86,14 @@ function errorRedirect(
 type OAuthCallbackIdentity = {
   userId: string;
   userEmail: string;
+  // Internal Supabase user UUID resolved + email-cross-checked by the web app at
+  // token-mint time. Optional — absent when the web app couldn't safely resolve
+  // it; the gateway then forwards only the Clerk id + email as before.
+  orgxUserId?: string;
 };
+
+const ORGX_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const OAUTH_STATE_TTL_SECONDS = 20 * 60;
 
@@ -179,9 +186,15 @@ async function resolveOAuthCallbackIdentity(params: {
       );
     }
 
+    const claimedOrgxUserId = verified.payload.orgx_user_id;
     return {
       userId: verified.payload.sub,
       userEmail: verified.payload.email,
+      orgxUserId:
+        typeof claimedOrgxUserId === 'string' &&
+        ORGX_UUID_RE.test(claimedOrgxUserId)
+          ? claimedOrgxUserId
+          : undefined,
     };
   }
 
@@ -1519,6 +1532,7 @@ async function handleOAuthCallback(
       JSON.stringify({
         userId: identity.userId,
         userEmail: identity.userEmail,
+        ...(identity.orgxUserId ? { orgxUserId: identity.orgxUserId } : {}),
       } satisfies OAuthCallbackIdentity),
       { expirationTtl: OAUTH_STATE_TTL_SECONDS }
     );
@@ -1608,6 +1622,13 @@ async function handleConsentCallback(
         serverUrl
       );
     }
+    // Drop a malformed persisted UUID rather than propagating it into props.
+    if (
+      typeof identity.orgxUserId !== 'string' ||
+      !ORGX_UUID_RE.test(identity.orgxUserId)
+    ) {
+      identity.orgxUserId = undefined;
+    }
     // Delete after successful read (single-use)
     await Promise.all([
       env.OAUTH_KV.delete(authStateKey(stateKey)),
@@ -1636,6 +1657,7 @@ async function handleConsentCallback(
       scope,
       props: {
         userId: identity.userId,
+        ...(identity.orgxUserId ? { orgxUserId: identity.orgxUserId } : {}),
         scope: scope.join(' '),
         email: identity.userEmail,
       },
