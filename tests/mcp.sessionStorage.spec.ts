@@ -55,11 +55,44 @@ describe('MCP session storage (DO persistence)', () => {
 
     expect(stored).toEqual({
       user_id: 'user_789',
+      orgx_user_id: null,
       scope: 'admin',
       email: 'a@b.com',
       authenticated_at: 111,
       updated_at: 222,
     });
+  });
+
+  it('round-trips the orgx_user_id (Supabase UUID) through store + parse', () => {
+    const uuid = '5c52c8ca-c1d0-48cc-a177-9cf1ac2c5b06';
+    const stored = toStoredSessionAuth(
+      {
+        userId: 'user_789',
+        orgxUserId: uuid,
+        scope: 'admin',
+        email: 'a@b.com',
+        authenticatedAt: 111,
+      },
+      222
+    );
+    expect(stored.orgx_user_id).toBe(uuid);
+    expect(parseStoredSessionAuth(stored)).toEqual({
+      userId: 'user_789',
+      orgxUserId: uuid,
+      scope: 'admin',
+      email: 'a@b.com',
+      authenticatedAt: 111,
+    });
+  });
+
+  it('omits orgxUserId when the stored row predates the UUID column', () => {
+    const parsed = parseStoredSessionAuth({
+      user_id: 'user_789',
+      scope: 'admin',
+      email: 'a@b.com',
+      authenticated_at: 111,
+    });
+    expect(parsed?.orgxUserId).toBeUndefined();
   });
 
   it('parses stored session context (snake_case)', () => {

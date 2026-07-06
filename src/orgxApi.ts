@@ -48,11 +48,13 @@ function base64Url(input: ArrayBuffer): string {
 async function signGatewayActorToken(opts: {
   userId: string;
   userEmail?: string | null;
+  orgxUserId?: string | null;
   secret: string;
 }): Promise<string> {
   const now = Date.now();
   const normalizedEmail = opts.userEmail?.trim().toLowerCase() ?? '';
-  const cacheKey = `${opts.secret}::${opts.userId}::${normalizedEmail}`;
+  const orgxUserId = opts.orgxUserId ?? '';
+  const cacheKey = `${opts.secret}::${opts.userId}::${normalizedEmail}::${orgxUserId}`;
   const cached = actorTokenCache.get(cacheKey);
   if (cached && cached.expiresAt > now) {
     return cached.token;
@@ -64,6 +66,10 @@ async function signGatewayActorToken(opts: {
     iss: 'orgx-mcp',
     sub: opts.userId,
     ...(normalizedEmail ? { email: normalizedEmail } : {}),
+    // The internal Supabase UUID, when the session carries one. The API uses it
+    // as a verified fast path (existence + email cross-check) and falls back to
+    // resolving `sub` (Clerk id) + email when it is absent or disagrees.
+    ...(orgxUserId ? { orgx_user_id: orgxUserId } : {}),
     iat: now,
     exp: now + ACTOR_TOKEN_TTL_MS,
   };
@@ -176,7 +182,12 @@ export async function callOrgxApiRaw(
   env: OrgxApiEnv,
   path: string,
   init?: RequestInit,
-  opts?: { accept?: string; userId?: string | null; userEmail?: string | null }
+  opts?: {
+    accept?: string;
+    userId?: string | null;
+    userEmail?: string | null;
+    orgxUserId?: string | null;
+  }
 ) {
   if (
     looksLikeDefaultPlaceholder(env.ORGX_SERVICE_KEY) ||
@@ -196,17 +207,24 @@ export async function callOrgxApiRaw(
       await signGatewayActorToken({
         userId: opts.userId,
         userEmail: opts.userEmail,
+        orgxUserId: opts.orgxUserId,
         secret: env.ORGX_INTERNAL_SECRET,
       })
     );
   }
   // Legacy compatibility for older API routes. New routes should verify
-  // X-Orgx-Actor-Token instead of trusting this unsigned identity hint.
+  // X-Orgx-Actor-Token instead of trusting these unsigned identity hints.
   if (opts?.userId) {
     headers.set('X-Orgx-User-Id', opts.userId);
   }
   if (opts?.userEmail) {
     headers.set('X-Orgx-User-Email', opts.userEmail);
+  }
+  // The login-resolved internal Supabase UUID (additive — X-Orgx-User-Id stays
+  // the Clerk id). Trusted only behind service-key auth, like the headers above;
+  // the API verifies it (existence + email cross-check) before using it.
+  if (opts?.orgxUserId) {
+    headers.set('X-Orgx-Orgx-User-Id', opts.orgxUserId);
   }
   if (!headers.has('Accept') && opts?.accept)
     headers.set('Accept', opts.accept);
@@ -375,12 +393,17 @@ export async function callOrgxApiJson(
   env: OrgxApiEnv,
   path: string,
   init?: RequestInit,
-  opts?: { userId?: string | null; userEmail?: string | null }
+  opts?: {
+    userId?: string | null;
+    userEmail?: string | null;
+    orgxUserId?: string | null;
+  }
 ) {
   const response = await callOrgxApiRaw(env, path, init, {
     accept: 'application/json',
     userId: opts?.userId ?? undefined,
     userEmail: opts?.userEmail ?? undefined,
+    orgxUserId: opts?.orgxUserId ?? undefined,
   });
   const contentType = response.headers.get('content-type') ?? '';
   if (!contentType.includes('application/json')) {

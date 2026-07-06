@@ -18,6 +18,11 @@ export interface McpIdentityTokenPayload {
   sub: string;
   email: string;
   email_verified?: boolean;
+  // Internal Supabase user UUID, resolved + email-cross-checked by the web app
+  // at mint time. Optional: the web app omits it when resolution is ambiguous
+  // or degraded, so the gateway must treat its absence as "resolve downstream
+  // via sub (Clerk id) + email" exactly as before.
+  orgx_user_id?: string;
   state_key?: string;
   mcp_state?: string;
   iat: number;
