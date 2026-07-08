@@ -75,6 +75,14 @@ describe('worker tool access gating', () => {
     expect(checkSessionTokenToolAccess('orgx_submit_receipt', props)).toBeNull();
   });
 
+  it('allows verified agent session tokens to retrieve work context', () => {
+    const props = { type: 'session', sid: 'sess-123' };
+
+    expect(checkSessionTokenToolAccess('orgx_search', props)).toBeNull();
+    expect(checkSessionTokenToolAccess('orgx_inspect', props)).toBeNull();
+    expect(checkSessionTokenToolAccess('recall_memory', props)).toBeNull();
+  });
+
   it('keeps account and billing tools unavailable to agent session tokens', () => {
     const result = checkSessionTokenToolAccess('account_status', {
       type: 'session',
