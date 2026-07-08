@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildPlanRestrictedToolResult,
+  checkSessionTokenToolAccess,
   evaluateToolAccess,
 } from '../src/toolAccessGating';
 
@@ -64,6 +65,27 @@ describe('worker tool access gating', () => {
       code: 'plan_restricted',
       required_plan: 'pro',
       tier: 'free',
+    });
+  });
+
+  it('allows verified agent session tokens to use v2 spawn and receipt tools', () => {
+    const props = { type: 'session', sid: 'sess-123' };
+
+    expect(checkSessionTokenToolAccess('orgx_spawn', props)).toBeNull();
+    expect(checkSessionTokenToolAccess('orgx_submit_receipt', props)).toBeNull();
+  });
+
+  it('keeps account and billing tools unavailable to agent session tokens', () => {
+    const result = checkSessionTokenToolAccess('account_status', {
+      type: 'session',
+      sid: 'sess-123',
+    });
+
+    expect(result?.isError).toBe(true);
+    expect(result?.structuredContent).toMatchObject({
+      ok: false,
+      code: 'session_token_restricted',
+      tool: 'account_status',
     });
   });
 });
