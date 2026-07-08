@@ -4,14 +4,15 @@ import { callOrgxApiJson, type OrgxApiEnv } from './orgxApi';
 export type BillingPlanContext = {
   plan: string;
   tier: AccountTier;
-  source: 'api' | 'fallback';
+  source: 'api' | 'fallback' | 'stale';
 };
 
 const BILLING_PLAN_CACHE_TTL_MS = 5 * 60 * 1000;
+const BILLING_PLAN_STALE_IF_ERROR_MS = 24 * 60 * 60 * 1000;
 
 const billingPlanCache = new Map<
   string,
-  { value: BillingPlanContext; expiresAt: number }
+  { value: BillingPlanContext; expiresAt: number; staleUntil: number }
 >();
 const billingPlanInFlight = new Map<string, Promise<BillingPlanContext>>();
 
@@ -25,20 +26,36 @@ function cacheKey(env: Pick<OrgxApiEnv, 'ORGX_API_URL'>, userId: string): string
   return `${env.ORGX_API_URL.trim()}::${userId}`;
 }
 
-function getCachedPlan(key: string): BillingPlanContext | null {
+function getCachedPlan(
+  key: string,
+  opts: { allowStale?: boolean } = {}
+): BillingPlanContext | null {
   const cached = billingPlanCache.get(key);
   if (!cached) return null;
-  if (cached.expiresAt <= Date.now()) {
-    billingPlanCache.delete(key);
+  const now = Date.now();
+  if (cached.expiresAt <= now) {
+    if (opts.allowStale && cached.staleUntil > now) {
+      return { ...cached.value, source: 'stale' };
+    }
+    if (cached.staleUntil <= now) {
+      billingPlanCache.delete(key);
+    }
     return null;
   }
   return cached.value;
 }
 
+function getStaleCachedPlan(key: string): BillingPlanContext | null {
+  const cached = getCachedPlan(key, { allowStale: true });
+  return cached?.source === 'stale' ? cached : null;
+}
+
 function setCachedPlan(key: string, value: BillingPlanContext): void {
+  const expiresAt = Date.now() + BILLING_PLAN_CACHE_TTL_MS;
   billingPlanCache.set(key, {
     value,
-    expiresAt: Date.now() + BILLING_PLAN_CACHE_TTL_MS,
+    expiresAt,
+    staleUntil: expiresAt + BILLING_PLAN_STALE_IF_ERROR_MS,
   });
 }
 
@@ -83,6 +100,8 @@ export async function resolveBillingPlanContext(
       return value;
     })
     .catch((): BillingPlanContext => {
+      const stale = getStaleCachedPlan(key);
+      if (stale) return stale;
       return { plan: 'free', tier: 'free', source: 'fallback' };
     })
     .finally(() => {

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   applyHydrationAccessTier,
@@ -15,6 +15,10 @@ describe('context hydration access tiers', () => {
   beforeEach(() => {
     resetHydrationAccessContextCache();
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('caps free-tier hydration to 4000 chars', () => {
@@ -153,5 +157,35 @@ describe('context hydration access tiers', () => {
       tier: 'free',
       plan: 'free',
     });
+  });
+
+  it('uses stale paid access when billing usage refresh fails', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-08T12:00:00Z'));
+
+    const { callOrgxApiJson } = await import('../src/orgxApi');
+    vi.mocked(callOrgxApiJson)
+      .mockResolvedValueOnce({
+        json: async () => ({ plan: 'starter' }),
+      } as Response)
+      .mockRejectedValueOnce(new Error('billing unavailable'));
+
+    const env = {
+      ORGX_API_URL: 'https://example.com',
+      ORGX_SERVICE_KEY: 'oxk-test',
+    };
+
+    await expect(resolveHydrationAccessContext(env, 'user-1')).resolves.toEqual({
+      tier: 'paid',
+      plan: 'starter',
+    });
+
+    vi.advanceTimersByTime(5 * 60 * 1000 + 1);
+
+    await expect(resolveHydrationAccessContext(env, 'user-1')).resolves.toEqual({
+      tier: 'paid',
+      plan: 'starter',
+    });
+    expect(callOrgxApiJson).toHaveBeenCalledTimes(2);
   });
 });
