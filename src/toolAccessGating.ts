@@ -16,6 +16,9 @@ import { mapPlanToAccountTier, type AccountTier } from './accountTools';
 export const SESSION_TOKEN_ALLOWED_TOOLS = new Set([
   'orgx_spawn',
   'orgx_submit_receipt',
+  'orgx_search',
+  'orgx_inspect',
+  'recall_memory',
   'create_entity',
   'create_decision',
   'orgx_emit_activity',
