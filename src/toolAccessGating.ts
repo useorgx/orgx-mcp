@@ -14,6 +14,8 @@ import { mapPlanToAccountTier, type AccountTier } from './accountTools';
  * They must NOT access billing/account settings or org configuration tools.
  */
 export const SESSION_TOKEN_ALLOWED_TOOLS = new Set([
+  'orgx_spawn',
+  'orgx_submit_receipt',
   'create_entity',
   'create_decision',
   'orgx_emit_activity',
