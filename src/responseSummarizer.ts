@@ -9,6 +9,8 @@
  * 100-500 for single entities) instead of 15,000-50,000 tokens of raw JSON.
  */
 
+import { formatContextPackSummary } from './contextPackSummary';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -450,7 +452,10 @@ function formatOrgxInspect(
   const details = description
     ? `\nDescription: ${truncateField(description, opts.maxFieldLength)}`
     : '';
-  return `OrgX ${type}: ${line}${details}`;
+  const context = formatContextPackSummary(data.context_pack, opts);
+  return `OrgX ${type}: ${line}${details}${
+    context ? `\n\n${context}` : ''
+  }`;
 }
 
 function formatOrgxWrite(data: Record<string, unknown>): string {
