@@ -44,6 +44,109 @@ describe('response summarizer v2 OrgX workflows', () => {
     expect(text).not.toContain('Result with');
   });
 
+  it('mirrors orgx_inspect context packs into concise text for hookless clients', () => {
+    const text = formatForLLM('orgx_inspect', {
+      _v2_tool: 'orgx_inspect',
+      type: 'initiative',
+      id: 'init-1',
+      entity: {
+        id: 'init-1',
+        title: 'Frontier model leverage',
+        status: 'active',
+      },
+      context_pack: {
+        schemaVersion: 'gf_v1',
+        compiledAt: '2026-07-08T15:04:00.000Z',
+        tools: ['orgx_search', 'orgx_inspect', 'recall_memory'],
+        missingPermissions: ['billing.write'],
+        recommendedNextActions: [
+          {
+            action: 'Inspect context pack in text channel',
+            confidence: 'high',
+          },
+        ],
+        frame: {
+          anchor: {
+            type: 'initiative',
+            id: 'init-1',
+            title: 'Frontier model leverage',
+          },
+          definitionOfDone: {
+            expectedArtifacts: [
+              { type: 'pull_request' },
+              { type: 'verification_receipt' },
+            ],
+            checks: ['typecheck', 'focused tests'],
+            source: 'declared',
+          },
+          artifacts: {
+            expected: [{ type: 'pull_request' }],
+            produced: [{ receiptId: 'receipt-1', type: 'pull_request' }],
+          },
+          blockers: [
+            {
+              title: 'MCP context not visible',
+              description: 'Text channel omitted the pack.',
+              status: 'open',
+            },
+          ],
+          decisions: [
+            {
+              id: 'decision-1',
+              choice: 'Use context pack text mirror',
+              rationale: 'Hookless clients read text content first.',
+            },
+          ],
+          budget: {
+            capCents: 800,
+            spentCents: 150,
+            remainingCents: 650,
+          },
+          risk: 'key',
+          chronology: {
+            lastRun: 'Session-token read tools were merged.',
+            openLoops: ['Merge context text slice'],
+          },
+          coverage: {
+            band: 'medium',
+            ratio: 0.75,
+            degraded: false,
+          },
+          earnedBoundary: {
+            sentence: 'Session tools can read initiative context.',
+          },
+          degraded: false,
+        },
+      },
+    });
+
+    expect(text).toContain('Context pack:');
+    expect(text).toContain('Working from: Frontier model leverage (as of 15:04)');
+    expect(text).toContain(
+      'Definition of done: 2 artifact(s) - pull_request, verification_receipt'
+    );
+    expect(text).toContain('Checks: typecheck, focused tests');
+    expect(text).toContain('Boundary: Session tools can read initiative context.');
+    expect(text).toContain('Confidence: medium 0.75');
+    expect(text).toContain('Budget: $6.50 of $8.00 left');
+    expect(text).toContain('Produced artifacts: 1 - pull_request');
+    expect(text).toContain('Open blockers:');
+    expect(text).toContain('MCP context not visible: Text channel omitted the pack.');
+    expect(text).toContain('Decisions already made:');
+    expect(text).toContain(
+      'Use context pack text mirror - because Hookless clients read text content first.'
+    );
+    expect(text).toContain('Recommended next:');
+    expect(text).toContain('Inspect context pack in text channel (high)');
+    expect(text).toContain('Missing permissions: billing.write');
+    expect(text).toContain(
+      'Available tools: 3 (orgx_search, orgx_inspect, recall_memory)'
+    );
+    expect(text).not.toContain('schemaVersion');
+    expect(text).not.toContain('compiledAt');
+    expect(text).not.toContain('gf_v1');
+  });
+
   it('summarizes orgx_write creates with chainable entity IDs', () => {
     const text = formatForLLM('orgx_write', {
       _v2_tool: 'orgx_write',
