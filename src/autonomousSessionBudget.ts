@@ -10,11 +10,17 @@ export const AUTONOMOUS_SESSION_TRUST_LEVELS = [
 export type AutonomousSessionTrustLevel =
   (typeof AUTONOMOUS_SESSION_TRUST_LEVELS)[number];
 
+// Defaults stay conservative; the ABSOLUTE ceilings are what changed. At
+// $5/50 the schema cap was the binding constraint on every autonomous
+// session — below the cost of a single serious frontier-model run. Spend
+// safety is enforced server-side (global daily cap + workspace budgets in
+// the OrgX backend); this schema cap only needs to stop runaway requests,
+// not price the work.
 export const AUTONOMOUS_SESSION_BUDGET_LIMITS = {
-  defaultMaxCostUsd: 5,
-  absoluteMaxCostUsd: 5,
-  defaultMaxReceipts: 50,
-  absoluteMaxReceipts: 50,
+  defaultMaxCostUsd: 10,
+  absoluteMaxCostUsd: 100,
+  defaultMaxReceipts: 100,
+  absoluteMaxReceipts: 500,
   defaultAllowedTrustLevels: [
     'autonomous',
     'act_with_approval',
