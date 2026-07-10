@@ -452,8 +452,14 @@ const TOOL_EXAMPLES: Record<
     sample_response: { status: 'handed_off' },
   },
   recommend_next_action: {
-    prompt: 'Show the next best actions for this initiative.',
-    arguments: { entity_type: 'initiative', entity_id: 'initiative_123', limit: 3 },
+    prompt: 'Show the next best actions assigned to the operations agent.',
+    arguments: {
+      entity_type: 'workspace',
+      entity_id: 'default',
+      agent_id: 'operations-agent',
+      domain: 'operations',
+      limit: 3,
+    },
     sample_response: { recommendations: [{ title: 'Resolve blocker' }] },
   },
   query_org_memory: {

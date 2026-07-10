@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-03T17:31:57.472Z",
-  "sourceHash": "23276ae4e1ae5b62",
+  "generatedAt": "2026-07-10T02:01:14.211Z",
+  "sourceHash": "1b451faf64a7fda6",
   "version": "1.0.0",
   "totalTools": 76,
   "categories": [
@@ -125,7 +125,7 @@
     {
       "id": "recommend_next_action",
       "title": "Recommend Next Action",
-      "description": "Recommend what should happen next based on progress gaps, blockers, and execution templates. Also known as: next best action, prioritize work, unblock project. USE WHEN: user asks what to do next, or needs help prioritizing. NEXT: Execute the recommended action (entity_action, spawn_agent_task, etc.). DO NOT USE: when user already knows what they want to do. Read-only.",
+      "description": "Recommend what should happen next based on progress gaps, blockers, and execution templates. Pass agent_id or domain for an agent-owned runnable queue instead of the workspace-wide operator queue. Also known as: next best action, prioritize work, unblock project. USE WHEN: user asks what to do next, or needs help prioritizing. NEXT: Execute the recommended action (entity_action, spawn_agent_task, etc.). DO NOT USE: when user already knows what they want to do. Read-only.",
       "category": "Agents",
       "inputSchema": {
         "type": "object",
@@ -152,11 +152,28 @@
             "type": "string",
             "description": "Deprecated alias for workspace_id."
           },
+          "agent_id": {
+            "type": "string",
+            "description": "Optional canonical agent ID. When present, only return work assigned to that agent."
+          },
+          "domain": {
+            "type": "string",
+            "enum": [
+              "engineering",
+              "product",
+              "design",
+              "marketing",
+              "sales",
+              "operations",
+              "orchestration"
+            ],
+            "description": "Optional agent domain used to derive the canonical agent ID when agent_id is omitted."
+          },
           "limit": {
             "type": "number",
             "minimum": 1,
-            "maximum": 5,
-            "description": "Max recommendations to return (default 5, max 5)"
+            "maximum": 25,
+            "description": "Max recommendations to return (default 5, max 25)"
           },
           "cascade": {
             "type": "boolean",
@@ -2516,15 +2533,15 @@
           "max_cost_usd": {
             "type": "number",
             "exclusiveMinimum": 0,
-            "maximum": 5,
-            "default": 5,
+            "maximum": 100,
+            "default": 10,
             "description": "Maximum budget in USD before the session stops."
           },
           "max_receipts": {
             "type": "integer",
             "exclusiveMinimum": 0,
-            "maximum": 50,
-            "default": 50,
+            "maximum": 500,
+            "default": 100,
             "description": "Maximum number of receipts the session may produce."
           },
           "allowed_trust_levels": {
