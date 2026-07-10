@@ -3,8 +3,8 @@
   "schema_version": 1,
   "app_info": {
     "display_name": "OrgX",
-    "subtitle": "Company memory",
-    "description": "OrgX helps teams use ChatGPT with durable organizational memory, decisions, approvals, initiative health, artifacts, and specialist agent work. Users can search company context, inspect initiatives, review pending decisions, scaffold work, delegate agent tasks, and view interactive widgets for status and follow-up actions.",
+    "subtitle": "Continuity for AI agents",
+    "description": "Organizational continuity for AI agents. Make AI work resumable, reviewable, and provable across agents. The task outlives the chat: OrgX lets the next agent continue from the decisions, artifacts, approvals, owners, and proof the last agent left behind. Users can search company context, inspect initiatives, review pending decisions, scaffold work, delegate agent tasks, and view interactive widgets for status and follow-up actions.",
     "category": "PRODUCTIVITY"
   },
   "tools": {

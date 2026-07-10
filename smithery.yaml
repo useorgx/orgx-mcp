@@ -1,4 +1,7 @@
-# OrgX MCP — Smithery connection configuration
+# OrgX MCP — organizational continuity for AI agents.
+# Make AI work resumable, reviewable, and provable across agents.
+#
+# Smithery connection configuration.
 # Smithery reads this to surface optional connection parameters in its UI.
 # The server itself reads these as MCP session props (profile, workspace_id, initiative_id).
 #

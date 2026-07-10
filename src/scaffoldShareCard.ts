@@ -1,3 +1,10 @@
+// Forward-provisioned: no runtime path imports this module yet (only
+// tests/scaffoldShareCard.spec.ts exercises it). It builds the share-ready
+// Initiative Velocity Card artifact for the scaffold flow to attach once the
+// scaffold_initiative pipeline posts share artifacts; wiring it into
+// scaffoldResponse/scaffoldFollowups today would be speculative product work.
+import { PROOF_SURFACE_QUIET_CTA } from './widgetArtifactProof';
+
 export const INITIATIVE_VELOCITY_CARD_WIDGET_ASSETS = [
   '/blog/widgets/scaffolded-initiative-widget.png',
   '/blog/widgets/query-org-memory-widget.png',
@@ -33,6 +40,7 @@ export type InitiativeVelocityCardArtifact = {
     og_image_url: string;
     stats: InitiativeVelocityCardStats;
     widget_assets: typeof INITIATIVE_VELOCITY_CARD_WIDGET_ASSETS;
+    quiet_cta: typeof PROOF_SURFACE_QUIET_CTA;
     card_version: '2026-04-13';
   };
   created_by_type: 'agent';
@@ -152,6 +160,10 @@ export function buildInitiativeVelocityCardArtifact({
     '',
     'Widget anchors:',
     ...INITIATIVE_VELOCITY_CARD_WIDGET_ASSETS.map((asset) => `- ${asset}`),
+    '',
+    // Positioning spine: share cards carry one quiet CTA, verbatim, as the
+    // final unobtrusive caption line.
+    PROOF_SURFACE_QUIET_CTA,
   ]
     .filter((line): line is string => typeof line === 'string')
     .join('\n');
@@ -176,6 +188,7 @@ export function buildInitiativeVelocityCardArtifact({
       og_image_url: ogImageUrl,
       stats,
       widget_assets: INITIATIVE_VELOCITY_CARD_WIDGET_ASSETS,
+      quiet_cta: PROOF_SURFACE_QUIET_CTA,
       card_version: '2026-04-13',
     },
     created_by_type: 'agent',

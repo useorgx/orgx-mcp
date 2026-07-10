@@ -433,6 +433,13 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
 }
 .foot-link:hover{background:rgba(var(--ox-primary-rgb),.14);border-color:rgba(var(--ox-primary-rgb),.32)}
 
+/* ── Quiet CTA (positioning spine: one unobtrusive line per proof card) ── */
+.quiet-cta{
+  padding:0 20px 14px;
+  font-size:10px;color:var(--ox-text-sub);letter-spacing:.02em;
+}
+.quiet-cta[hidden]{display:none}
+
 /* ── Link bridge: button resets so data-oxhref buttons look like links ── */
 button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:pointer;text-align:left}
 
@@ -533,6 +540,9 @@ button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:po
       ? `<button class="foot-link" data-oxhref="${safeLiveUrl}?mode=preview">Launch Preview →</button>`
       : '<span id="footLinkSlot"></span>'}
   </div>
+
+  <!-- Quiet CTA: shown only when scaffold.complete carries proof_handoff.quiet_cta -->
+  <div class="quiet-cta" id="quietCta" hidden></div>
 </div>
 
 <script>
@@ -575,6 +585,7 @@ button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:po
   var errBanner  = document.getElementById('errBanner');
   var footMeta   = document.getElementById('footMeta');
   var footLinkSlot = document.getElementById('footLinkSlot');
+  var quietCta   = document.getElementById('quietCta');
 
   /* ── State ── */
   var entityCount   = 0;
@@ -679,6 +690,7 @@ button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:po
     setProgress(2);
     showStack();
     if (shell) { shell.classList.remove('streaming'); shell.classList.remove('done'); }
+    if (quietCta) { quietCta.textContent = ''; quietCta.hidden = true; }
     curWsRingBar     = null;
     curWsRingVal     = null;
     curWsEntityCount = 0;
@@ -875,6 +887,19 @@ button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:po
       btn.textContent = 'Launch Preview →';
       footLinkSlot.replaceWith(btn);
       footLinkSlot = null;
+    }
+
+    /* Quiet CTA (positioning spine): proof surfaces carry one quiet CTA,
+       verbatim, rendered exactly once per card as an unobtrusive footer
+       line — only when the completion handoff carries the field. */
+    var handoff = data.proof_handoff;
+    var cta =
+      handoff && typeof handoff === 'object' && typeof handoff.quiet_cta === 'string'
+        ? handoff.quiet_cta.trim()
+        : '';
+    if (quietCta && cta) {
+      quietCta.textContent = cta;
+      quietCta.hidden = false;
     }
 
     if (es) { try { es.close(); } catch(_){} }

@@ -3,6 +3,12 @@
 OrgX optimizes MCP for agent price/performance: low edge latency, compact tool
 payloads, dependable follow-up execution, and high leverage per tool call.
 
+This directory also hosts the [Agent Amnesia Test](./agent-amnesia-test/README.md),
+an open cross-session continuity benchmark: it scores how much of a finished
+session's why, state, and proof a fresh agent in a different client can recover.
+The same rule applies to both harnesses: publish what you measured, and keep
+the raw evidence next to the score.
+
 Run the public benchmark:
 
 ```bash

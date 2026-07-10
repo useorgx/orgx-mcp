@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-03T17:31:57.472Z",
-  "sourceHash": "23276ae4e1ae5b62",
+  "generatedAt": "2026-07-10T00:11:15.742Z",
+  "sourceHash": "af6155a51935a255",
   "version": "1.0.0",
   "totalTools": 76,
   "categories": [
@@ -27,7 +27,7 @@
     {
       "id": "get_agent_status",
       "title": "Get Agent Status",
-      "description": "Show current AI agent activity, blocked work, and execution state. Also known as: agent status, what agents are doing, active runs. USE WHEN: user asks about agent activity, progress, or what agents are working on. NEXT: If agents are stuck, suggest approve_decision or entity_action. DO NOT USE: to check initiative health — use get_initiative_pulse instead. Read-only.",
+      "description": "Use when the user asks what agents are working on right now, whether delegated work is still running, or why nothing has landed yet. Also known as: agent status, what agents are doing, active runs. USE WHEN: user asks about agent activity, progress, or what agents are working on. NEXT: If agents are stuck, suggest approve_decision or entity_action. DO NOT USE: to check initiative health — use get_initiative_pulse instead. Read-only.",
       "category": "Agents",
       "inputSchema": {
         "type": "object",
@@ -75,7 +75,7 @@
     {
       "id": "handoff_task",
       "title": "Handoff Task",
-      "description": "Reassign work to another specialist AI agent and optionally spawn a new run. Also known as: handoff task, transfer work, change assignee. USE WHEN: a task needs to be reassigned to a different specialist agent. NEXT: Use get_agent_status to confirm the new agent picked up the task. DO NOT USE: for new tasks — use spawn_agent_task instead.",
+      "description": "Use when in-flight work must move to a different specialist agent without losing its context or execution state. Also known as: handoff task, transfer work, change assignee. USE WHEN: a task needs to be reassigned to a different specialist agent. NEXT: Use get_agent_status to confirm the new agent picked up the task. DO NOT USE: for new tasks — use spawn_agent_task instead.",
       "category": "Agents",
       "inputSchema": {
         "type": "object",
@@ -125,7 +125,7 @@
     {
       "id": "recommend_next_action",
       "title": "Recommend Next Action",
-      "description": "Recommend what should happen next based on progress gaps, blockers, and execution templates. Also known as: next best action, prioritize work, unblock project. USE WHEN: user asks what to do next, or needs help prioritizing. NEXT: Execute the recommended action (entity_action, spawn_agent_task, etc.). DO NOT USE: when user already knows what they want to do. Read-only.",
+      "description": "Use when the user asks what to do next, returns after time away, or needs help choosing the highest-priority work. Also known as: next best action, prioritize work, unblock project. USE WHEN: user asks what to do next, or needs help prioritizing. NEXT: Execute the recommended action (entity_action, spawn_agent_task, etc.). DO NOT USE: when user already knows what they want to do. Read-only.",
       "category": "Agents",
       "inputSchema": {
         "type": "object",
@@ -186,7 +186,7 @@
     {
       "id": "spawn_agent_task",
       "title": "Spawn Agent Task",
-      "description": "Delegate work to a specialist AI agent and track the assigned task. Also known as: hand this off, assign task, spawn agent, have an agent do it, autonomous work. Automatically checks authorization, rate limits, quality gates, model routing, and budget policy before spawning. Omit model_tier/provider/model to let OrgX auto-route from task complexity; provide them only when the user or verification plan intentionally constrains routing. Returns modelTier, budget, and run details on success, or blockedReason if spawn is denied. USE WHEN: user explicitly wants to delegate work to an agent. NEXT: Use get_agent_status to monitor progress and record_quality_score after reviewing output. DO NOT USE: for creating tasks in the hierarchy — use create_entity type=task instead. Requires agents:write.",
+      "description": "Use when the user says \"delegate this and tell me when it's done\" — assign work to a specialist AI agent that owns the task and reports back with results. Also known as: hand this off, assign task, spawn agent, have an agent do it, autonomous work. Automatically checks authorization, rate limits, quality gates, model routing, and budget policy before spawning. Omit model_tier/provider/model to let OrgX auto-route from task complexity; provide them only when the user or verification plan intentionally constrains routing. Returns modelTier, budget, and run details on success, or blockedReason if spawn is denied. USE WHEN: user explicitly wants to delegate work to an agent. NEXT: Use get_agent_status to monitor progress and record_quality_score after reviewing output. DO NOT USE: for creating tasks in the hierarchy — use create_entity type=task instead. Requires agents:write.",
       "category": "Agents",
       "inputSchema": {
         "type": "object",
@@ -571,7 +571,7 @@
     {
       "id": "consolidate_pr",
       "title": "Consolidate Pull Request",
-      "description": "Generate and persist an orchestration.consolidation_pass receipt for a GitHub pull request. Requires OrgX server-side GitHub credentials; if the GitHub token is unavailable, use GitHub tools for PR facts and return a structured blocker instead of retrying. USE WHEN: Eli or another engineering agent needs a durable PR review receipt with reading order, existence evidence, deduped findings, verdict, and server-derived AQ score. NEXT: inspect the returned artifact_id or attach it to task completion proof. DO NOT USE WHEN: only asking for PR status; use GitHub tools instead.",
+      "description": "Use when the user or an engineering agent must show a pull request actually shipped and needs durable review proof, not a status glance. Generate and persist an orchestration.consolidation_pass receipt for a GitHub pull request. Requires OrgX server-side GitHub credentials; if the GitHub token is unavailable, use GitHub tools for PR facts and return a structured blocker instead of retrying. USE WHEN: Eli or another engineering agent needs a durable PR review receipt with reading order, existence evidence, deduped findings, verdict, and server-derived AQ score. NEXT: inspect the returned artifact_id or attach it to task completion proof. DO NOT USE WHEN: only asking for PR status; use GitHub tools instead.",
       "category": "Client Integration",
       "inputSchema": {
         "type": "object",
@@ -911,7 +911,7 @@
     {
       "id": "orgx_emit_activity",
       "title": "Emit OrgX Activity",
-      "description": "Emit append-only run telemetry for OrgX control-plane reporting. USE WHEN: agent is executing and needs to report progress. NEXT: Continue work; emit again at each phase change. DO NOT USE: for entity status changes — use entity_action instead. Setting phase=\"completed\" records telemetry only and does not mark tasks, workstreams, or initiatives complete.",
+      "description": "Use when an agent is mid-execution and its progress must stay visible to operators and to the next agent that resumes the run. Emit append-only run telemetry for OrgX control-plane reporting. USE WHEN: agent is executing and needs to report progress. NEXT: Continue work; emit again at each phase change. DO NOT USE: for entity status changes — use entity_action instead. Setting phase=\"completed\" records telemetry only and does not mark tasks, workstreams, or initiatives complete.",
       "category": "Client Integration",
       "inputSchema": {
         "type": "object",
@@ -1246,7 +1246,7 @@
     {
       "id": "approve_decision",
       "title": "Approve Decision",
-      "description": "Approve a pending agent decision after explicit user confirmation. Also known as: sign off, approve AI work, unblock agent, accept decision. USE WHEN: user says to approve a decision returned from list_entities with type=decision and status=pending (or the legacy get_pending_decisions alias). NEXT: Confirm approval to user; agent is notified automatically. DO NOT USE: without showing the decision to the user first. Requires decisions:write.",
+      "description": "Use when the user has reviewed a pending decision that is blocking agent work and gives explicit confirmation to approve it. Also known as: sign off, approve AI work, unblock agent, accept decision. USE WHEN: user says to approve a decision returned from list_entities with type=decision and status=pending (or the legacy get_pending_decisions alias). NEXT: Confirm approval to user; agent is notified automatically. DO NOT USE: without showing the decision to the user first. Requires decisions:write.",
       "category": "Decisions",
       "inputSchema": {
         "type": "object",
@@ -1395,7 +1395,7 @@
     {
       "id": "reject_decision",
       "title": "Reject Decision",
-      "description": "Reject a pending agent decision with guidance after explicit user confirmation. Also known as: request revisions, send feedback, decline decision. USE WHEN: user wants to reject or request revisions on a decision. NEXT: Agent will revise their approach based on the reason. DO NOT USE: without a reason — always include why. Requires decisions:write.",
+      "description": "Use when the user has reviewed a pending decision and wants to reject it or send the agent back with revisions. Also known as: request revisions, send feedback, decline decision. USE WHEN: user wants to reject or request revisions on a decision. NEXT: Agent will revise their approach based on the reason. DO NOT USE: without a reason — always include why. Requires decisions:write.",
       "category": "Decisions",
       "inputSchema": {
         "type": "object",
@@ -2178,7 +2178,7 @@
     {
       "id": "get_initiative_pulse",
       "title": "Get Initiative Pulse",
-      "description": "Get project health, blockers, milestones, owners, and recent activity for an initiative. Also known as: project status, roadmap progress, execution health, blockers. USE WHEN: user asks how an initiative is going, or wants a status update. NEXT: If blockers exist, suggest entity_action to resolve. For deeper drill-down, use list_entities with initiative_id. DO NOT USE: for org-wide overview — use get_org_snapshot instead. Read-only.",
+      "description": "Use when the user asks how a project is going, what is blocked, or whether an initiative is on track. Also known as: project status, roadmap progress, execution health, blockers. USE WHEN: user asks how an initiative is going, or wants a status update. NEXT: If blockers exist, suggest entity_action to resolve. For deeper drill-down, use list_entities with initiative_id. DO NOT USE: for org-wide overview — use get_org_snapshot instead. Read-only.",
       "category": "Initiative Monitoring",
       "inputSchema": {
         "type": "object",
@@ -2219,7 +2219,7 @@
     {
       "id": "get_morning_brief",
       "title": "Get Morning Brief",
-      "description": "Returns the morning brief: curated receipts, exceptions, ROI delta, and value signals from the most recent autonomous session. Defaults to the most recent session if no session ID is provided. Prefer `get_morning_brief` with workspace brief with value and exception summaries for new prompts, skills, and examples.",
+      "description": "Use when the user asks 'what happened,' 'catch me up,' or starts a session after time away. Returns the morning brief: curated receipts, exceptions, ROI delta, and value signals from the most recent autonomous session. Defaults to the most recent session if no session ID is provided. Prefer `get_morning_brief` with workspace brief with value and exception summaries for new prompts, skills, and examples.",
       "category": "Intelligence Flywheel",
       "inputSchema": {
         "type": "object",
@@ -2262,7 +2262,7 @@
     {
       "id": "get_my_trust_context",
       "title": "Get My Trust Context",
-      "description": "Agent-facing: \"What's my trust level per capability? What do I need for promotion? Which receipts are helping/hurting?\" Returns the full trust context for an agent including levels, scores, thresholds, and recent trust events.",
+      "description": "Use when an agent asks \"what am I trusted to do, what do I need for promotion, and which receipts are helping or hurting?\" Returns the full trust context for an agent including per-capability levels, scores, thresholds, and recent trust events.",
       "category": "Intelligence Flywheel",
       "inputSchema": {
         "type": "object",
@@ -2303,7 +2303,7 @@
     {
       "id": "get_outcome_attribution",
       "title": "Get Outcome Attribution",
-      "description": "ROI summary from the economic ledger. Human: \"3.2x ROI this month.\" Agent: \"My outreach_draft receipts average $0.26 attributed value.\" Returns cost/value/ROI breakdowns by agent, capability, and time period. Compatibility alias retained for older clients. Prefer `get_morning_brief` with workspace brief with value and exception summaries for new prompts, skills, and examples.",
+      "description": "Use when the user asks what agent work is actually worth — ROI summary from the economic ledger. Human: \"3.2x ROI this month.\" Agent: \"My outreach_draft receipts average $0.26 attributed value.\" Returns cost/value/ROI breakdowns by agent, capability, and time period. Compatibility alias retained for older clients. Prefer `get_morning_brief` with workspace brief with value and exception summaries for new prompts, skills, and examples.",
       "category": "Intelligence Flywheel",
       "inputSchema": {
         "type": "object",
@@ -2359,7 +2359,7 @@
     {
       "id": "get_relevant_learnings",
       "title": "Get Relevant Learnings",
-      "description": "Agent-facing: \"What has the org learned about my capability?\" Returns ranked org learnings relevant to a specific capability or task context.",
+      "description": "Use when an agent is about to attempt work the org may already have learned something about. Answers \"what has the org learned about my capability?\" Returns ranked org learnings relevant to a specific capability or task context.",
       "category": "Intelligence Flywheel",
       "inputSchema": {
         "type": "object",
@@ -2413,7 +2413,7 @@
     {
       "id": "record_outcome",
       "title": "Record Outcome",
-      "description": "Record a business outcome (deal closed, meeting booked, cycle time reduced). Agents can self-report outcomes they detect. Triggers attribution inference to connect outcomes to receipts. If the outcome type is unknown, call configure_outcome_type first.",
+      "description": "Use when a business outcome lands — deal closed, meeting booked, cycle time reduced — and it must be credited to the work that produced it. Agents can self-report outcomes they detect. Triggers attribution inference to connect outcomes to receipts. If the outcome type is unknown, call configure_outcome_type first.",
       "category": "Intelligence Flywheel",
       "inputSchema": {
         "type": "object",
@@ -2493,7 +2493,7 @@
     {
       "id": "start_autonomous_session",
       "title": "Start Autonomous Session",
-      "description": "Start an autonomous execution session with budget guardrails. Human: \"Run overnight with $5 budget.\" Creates a session that produces receipts while executing eligible work items.",
+      "description": "Use when the user says \"run overnight with $5 budget\" or wants eligible work executed unattended within guardrails. Starts an autonomous execution session that produces receipts while executing eligible work items.",
       "category": "Intelligence Flywheel",
       "inputSchema": {
         "type": "object",
@@ -2568,7 +2568,7 @@
     {
       "id": "submit_learning",
       "title": "Submit Learning",
-      "description": "Agent-facing: Submit a discovery or insight as an org learning. Enters org_learnings after confidence validation. One agent's discovery benefits all agents.",
+      "description": "Use when an agent discovers a pattern worth teaching the whole org — a failure mode, success pattern, cost optimization, or quality heuristic. Submits it as an org learning; enters org_learnings after confidence validation. One agent's discovery benefits all agents.",
       "category": "Intelligence Flywheel",
       "inputSchema": {
         "type": "object",
@@ -2633,7 +2633,7 @@
     {
       "id": "orgx_act",
       "title": "Act On OrgX Entity",
-      "description": "Run a lifecycle, validation, completion, or proof action on one OrgX entity. Per-action required inputs:\n  • update → \"fields\" patch object.\n  • complete_with_proof, ship_batch → \"artifact\" (artifact_type + artifact_url/external_url; preview_markdown optional).\n  • validate (studio) → \"spec\" payload.\n  • block, flag_risk, decline, cancel, delete → \"note\" strongly recommended.\n  • dry_run=true previews update/delete and other supported lifecycle actions without mutating; update dry-runs must return would_update instead of delegating to orgx_write.\n\nAllowed (type → action) pairs (others return an error):\n  initiative: launch|pause|resume|complete|archive|update|delete\n  milestone: start|complete|flag_risk|cancel|ship_batch|update|delete\n  workstream: start|pause|resume|block|complete|reassign_streams|update|delete\n  task: start|complete|complete_with_proof|block|unblock|reopen|update|delete\n  objective, playbook, decision, studio: see field descriptions.\n\nUSE WHEN: changing entity state. NEXT: orgx_submit_receipt for durable proof. DO NOT USE for creating records — use orgx_write.",
+      "description": "Use when an entity's execution state must change so the next agent resumes from real status. Runs a lifecycle, validation, completion, or proof action on one OrgX entity. Per-action required inputs:\n  • update → \"fields\" patch object.\n  • complete_with_proof, ship_batch → \"artifact\" (artifact_type + artifact_url/external_url; preview_markdown optional).\n  • validate (studio) → \"spec\" payload.\n  • block, flag_risk, decline, cancel, delete → \"note\" strongly recommended.\n  • dry_run=true previews update/delete and other supported lifecycle actions without mutating; update dry-runs must return would_update instead of delegating to orgx_write.\n\nAllowed (type → action) pairs (others return an error):\n  initiative: launch|pause|resume|complete|archive|update|delete\n  milestone: start|complete|flag_risk|cancel|ship_batch|update|delete\n  workstream: start|pause|resume|block|complete|reassign_streams|update|delete\n  task: start|complete|complete_with_proof|block|unblock|reopen|update|delete\n  objective, playbook, decision, studio: see field descriptions.\n\nUSE WHEN: changing entity state. NEXT: orgx_submit_receipt for durable proof. DO NOT USE for creating records — use orgx_write.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -2757,7 +2757,7 @@
     {
       "id": "orgx_attach",
       "title": "Attach OrgX Artifact",
-      "description": "Attach a durable artifact or proof URL to an existing OrgX entity. Requires artifact_url or external_url; preview_markdown is supporting context only. USE WHEN: saving evidence, PRs, documents, reports, screenshots, or external artifacts. For founder/team work, prefer practical artifact_type codes such as orchestration.next_initiative, eng.pull_request, eng.deploy_proof, eng.structured_blocker, sales.strategy, sales.icp_offer_sequence, sales.send_plan, sales.conversion_gates, marketing.launch_asset, marketing.channel_hypothesis, marketing.positioning_brief, marketing.proof_distribution_plan, marketing.interview_pr_plan, product.customer_discovery, product.prd, product.pricing_hypothesis, product.decision_record, design.audit, design.component_spec, design.token_package, ops.operator_brief, ops.runbook, ops.budget_envelope, ops.incident_status, proof.link. Include business_outcome, owner/review_date, and verification when the artifact should close agent work. NEXT: use orgx_submit_receipt to close attribution/quality loops or orgx_act to complete with proof. DO NOT USE WHEN: creating generic entities; use orgx_write.",
+      "description": "Use when work produced a deliverable that needs provenance and review — attach the artifact or proof URL to an OrgX entity. Requires artifact_url or external_url; preview_markdown is supporting context only. USE WHEN: saving evidence, PRs, documents, reports, screenshots, or external artifacts. For founder/team work, prefer practical artifact_type codes such as orchestration.next_initiative, eng.pull_request, eng.deploy_proof, eng.structured_blocker, sales.strategy, sales.icp_offer_sequence, sales.send_plan, sales.conversion_gates, marketing.launch_asset, marketing.channel_hypothesis, marketing.positioning_brief, marketing.proof_distribution_plan, marketing.interview_pr_plan, product.customer_discovery, product.prd, product.pricing_hypothesis, product.decision_record, design.audit, design.component_spec, design.token_package, ops.operator_brief, ops.runbook, ops.budget_envelope, ops.incident_status, proof.link. Include business_outcome, owner/review_date, and verification when the artifact should close agent work. NEXT: use orgx_submit_receipt to close attribution/quality loops or orgx_act to complete with proof. DO NOT USE WHEN: creating generic entities; use orgx_write.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -2890,7 +2890,7 @@
     {
       "id": "orgx_bootstrap",
       "title": "Bootstrap OrgX Contract",
-      "description": "Establish OrgX session context, discover granted scopes, and get the v2 tool routing map. Also known as: bootstrap, setup, tool routing. USE WHEN: first call in a fresh session, after reconnecting, or before performing a multi-step workflow. NEXT: use orgx_search, orgx_inspect, or orgx_recommend based on the returned routing map. DO NOT USE WHEN: you already have session context and need to read or mutate work. Read-only.",
+      "description": "Use at the start of a fresh session, after reconnecting, or before continuing work another agent left behind. Establishes OrgX session context, discovers granted scopes, and returns the v2 tool routing map. Also known as: bootstrap, setup, tool routing. USE WHEN: first call in a fresh session, after reconnecting, or before performing a multi-step workflow. NEXT: use orgx_search, orgx_inspect, or orgx_recommend based on the returned routing map. DO NOT USE WHEN: you already have session context and need to read or mutate work. Read-only.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -2935,7 +2935,7 @@
     {
       "id": "orgx_decide",
       "title": "Manage OrgX Decision",
-      "description": "Create, approve, reject, remember, or list durable OrgX decisions.\n\nPer-action input requirements:\n  • action=\"list_pending\" → No required fields. Optional: initiative_id, workspace_id (scope filters).\n  • action=\"create\"       → REQUIRES title AND decision (the resolved decision text). Recommended: context, initiative_id.\n  • action=\"remember\"     → REQUIRES decision (the text to capture as a remembered decision). Optional: title, context.\n  • action=\"approve\"      → REQUIRES decision_id. Optional: note (free-text approver rationale).\n  • action=\"reject\"       → REQUIRES decision_id AND reason (explanation shown to the assigned agent).\n\nUSE WHEN: capturing judgment, approval, rejection, or pending decision review. NEXT: use orgx_act, orgx_write, or orgx_spawn only after the decision resolves the next action. DO NOT USE WHEN: writing non-decision entities; use orgx_write.",
+      "description": "Use when the user says \"remember this decision,\" asks \"what did we decide about X,\" or agent work needs human approval before it proceeds. Creates, approves, rejects, remembers, or lists durable OrgX decisions.\n\nPer-action input requirements:\n  • action=\"list_pending\" → No required fields. Optional: initiative_id, workspace_id (scope filters).\n  • action=\"create\"       → REQUIRES title AND decision (the resolved decision text). Recommended: context, initiative_id.\n  • action=\"remember\"     → REQUIRES decision (the text to capture as a remembered decision). Optional: title, context.\n  • action=\"approve\"      → REQUIRES decision_id. Optional: note (free-text approver rationale).\n  • action=\"reject\"       → REQUIRES decision_id AND reason (explanation shown to the assigned agent).\n\nUSE WHEN: capturing judgment, approval, rejection, or pending decision review. NEXT: use orgx_act, orgx_write, or orgx_spawn only after the decision resolves the next action. DO NOT USE WHEN: writing non-decision entities; use orgx_write.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -3018,7 +3018,7 @@
     {
       "id": "orgx_inspect",
       "title": "Inspect OrgX Entity",
-      "description": "Hydrate one OrgX entity with execution context. Also known as: Inspect OrgX Entity, inspect initiative, get full entity context. USE WHEN: the user names a specific task, milestone, initiative, decision, artifact, or plan session and needs details before acting. NEXT: use orgx_act, orgx_attach, or orgx_write if the user asks to change what you inspected. DO NOT USE WHEN: browsing or searching many records; use orgx_search. Read-only.",
+      "description": "Use when the user names a specific task, milestone, initiative, decision, artifact, or plan session and you need its real state — decisions, owners, linked proof — before acting. Hydrates one OrgX entity with execution context. Also known as: Inspect OrgX Entity, inspect initiative, get full entity context. USE WHEN: continuing work on a named entity or verifying state before a lifecycle change. NEXT: use orgx_act, orgx_attach, or orgx_write if the user asks to change what you inspected. DO NOT USE WHEN: browsing or searching many records; use orgx_search. Read-only.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -3080,7 +3080,7 @@
     {
       "id": "orgx_plan",
       "title": "Manage OrgX Plan Session",
-      "description": "Start, resume, edit, improve, or complete a tracked OrgX planning session.\n\nPer-action input requirements:\n  • action=\"start\"       → REQUIRES feature_name. Optional: initial_plan (markdown to seed the session).\n  • action=\"resume\"      → REQUIRES session_id.\n  • action=\"improve\"     → REQUIRES session_id AND plan_content (the current draft to critique).\n  • action=\"record_edit\" → REQUIRES session_id AND edit_summary (one-line description of the change).\n  • action=\"complete\"    → REQUIRES session_id AND plan_content (the final accepted plan). Optional: attach_to (target entity to link the completed plan to).\n\nUSE WHEN: work is still in planning or should become executable context. NEXT: use orgx_write or orgx_act after the plan is accepted and needs durable execution state. DO NOT USE WHEN: directly scaffolding a full initiative hierarchy; use scaffold_initiative for that compatibility path.",
+      "description": "Use when planning should survive the session and become executable context instead of a lost chat draft. Starts, resumes, edits, improves, or completes a tracked OrgX planning session.\n\nPer-action input requirements:\n  • action=\"start\"       → REQUIRES feature_name. Optional: initial_plan (markdown to seed the session).\n  • action=\"resume\"      → REQUIRES session_id.\n  • action=\"improve\"     → REQUIRES session_id AND plan_content (the current draft to critique).\n  • action=\"record_edit\" → REQUIRES session_id AND edit_summary (one-line description of the change).\n  • action=\"complete\"    → REQUIRES session_id AND plan_content (the final accepted plan). Optional: attach_to (target entity to link the completed plan to).\n\nUSE WHEN: work is still in planning or should become executable context. NEXT: use orgx_write or orgx_act after the plan is accepted and needs durable execution state. DO NOT USE WHEN: directly scaffolding a full initiative hierarchy; use scaffold_initiative for that compatibility path.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -3152,7 +3152,7 @@
     {
       "id": "orgx_recommend",
       "title": "Recommend Next OrgX Action",
-      "description": "Recommend next work, summarize operator-chronicle/morning-brief signals, or read prioritization context. USE WHEN: user asks what to do next, wants a brief, asks what changed yesterday/week/30 days, or needs priority guidance. mode=morning_brief returns the operator chronicle when available. NEXT: present the recommendation, then use orgx_act, orgx_write, or orgx_spawn only after the user confirms an action. DO NOT USE WHEN: the user already specified the action; use orgx_act or orgx_write.",
+      "description": "Use when the user asks what to do next, wants a brief, or returns after time away and needs priorities. Recommends next work, summarizes operator-chronicle/morning-brief signals, and reads prioritization context. USE WHEN: user asks what to do next, wants a brief, asks what changed yesterday/week/30 days, or needs priority guidance. mode=morning_brief returns the operator chronicle when available. NEXT: present the recommendation, then use orgx_act, orgx_write, or orgx_spawn only after the user confirms an action. DO NOT USE WHEN: the user already specified the action; use orgx_act or orgx_write.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -3225,7 +3225,7 @@
     {
       "id": "orgx_search",
       "title": "Search OrgX",
-      "description": "Find OrgX entities, decisions, artifacts, and memory. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use orgx_inspect for one selected result or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.",
+      "description": "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Finds OrgX entities, decisions, artifacts, and memory. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use orgx_inspect for one selected result or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -3288,7 +3288,7 @@
     {
       "id": "orgx_spawn",
       "title": "Spawn OrgX Agent Work",
-      "description": "Guard, estimate, classify, spawn, or hand off specialist agent work.\n\nPer-action requirements: spawn from an existing task REQUIRES task_id; ad-hoc spawn REQUIRES title + instructions and should include agent_type. handoff REQUIRES task_id + agent_type. guard REQUIRES agent_type. classify REQUIRES title or task_id. action=\"estimate\" REQUIRES title or task_id, returns candidate routes/cost context, and runs without dispatching work.\n\nRouting policy: omit model_tier/provider/model for OrgX auto-routing. Set model_tier, provider, model, budget_mode, or max_cost_usd only when the user, policy, or verification plan constrains routing. For controlled reliability validation, use model_tier=\"standard\" and budget_mode=\"cheapest_valid\".\n\nUSE WHEN: explicitly delegating work to an OrgX agent or checking if delegation is allowed. NEXT: use orgx_inspect or orgx_search to monitor the delegated work, then orgx_submit_receipt for proof. DO NOT USE WHEN: only creating a task row; use orgx_write.",
+      "description": "Use when the user says \"delegate this and tell me when it's done,\" or when you must check whether delegation is allowed before dispatching. Guards, estimates, classifies, spawns, or hands off specialist agent work.\n\nPer-action requirements: spawn from an existing task REQUIRES task_id; ad-hoc spawn REQUIRES title + instructions and should include agent_type. handoff REQUIRES task_id + agent_type. guard REQUIRES agent_type. classify REQUIRES title or task_id. action=\"estimate\" REQUIRES title or task_id, returns candidate routes/cost context, and runs without dispatching work.\n\nRouting policy: omit model_tier/provider/model for OrgX auto-routing. Set model_tier, provider, model, budget_mode, or max_cost_usd only when the user, policy, or verification plan constrains routing. For controlled reliability validation, use model_tier=\"standard\" and budget_mode=\"cheapest_valid\".\n\nUSE WHEN: explicitly delegating work to an OrgX agent or checking if delegation is allowed. NEXT: use orgx_inspect or orgx_search to monitor the delegated work, then orgx_submit_receipt for proof. DO NOT USE WHEN: only creating a task row; use orgx_write.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -3396,7 +3396,7 @@
     {
       "id": "orgx_submit_receipt",
       "title": "Submit OrgX Receipt",
-      "description": "Submit a durable receipt (proof, outcome, quality, attribution, or learning) anchored to an OrgX entity or artifact.\n\nRequired: receipt_type + summary. Strongly recommended: one anchor (entity_type+entity_id OR artifact_id), artifact_type, business_outcome, agent_type, AND at least one verifiable URL inside evidence.\n\nRecognized receipt_type: \"proof\" (completion proof), \"outcome\" (measurable result), \"quality\" (review/score), \"attribution\" (credit link to revenue/value), \"learning\" (distilled lesson). Custom keys also accepted.\n\nRecognized evidence shapes (mix and match):\n  { prs: string[] } — GitHub PR URLs.\n  { deploys: string[] } — deployment URLs.\n  { test_runs: string[] } — CI run URLs.\n  { metrics: { name, value, unit? }[] } — quantitative outcomes.\n  { links: string[] }, { notes: string } — supporting URLs/text.\n\nPass idempotency_key when retrying — server deduplicates.\n\nUSE WHEN: closing the loop on agent work with provenance. For founder/team work, receipts should prove the practical artifact and its business outcome, not just say the agent finished. NEXT: orgx_recommend or orgx_search to find the next priority. DO NOT USE for telemetry — use orgx_emit_activity.",
+      "description": "Use when the user says \"show me it actually shipped\" — completion must be proven with evidence, not prose. Submits a durable receipt anchored to an OrgX entity or artifact.\n\nRequired: receipt_type + summary. Strongly recommended: one anchor (entity_type+entity_id OR artifact_id), artifact_type, business_outcome, agent_type, and a verifiable URL in evidence.\n\nRecognized receipt_type: \"proof\", \"outcome\" (measurable result), \"quality\" (review/score), \"attribution\" (credit link to revenue/value), \"learning\" (distilled lesson). Custom keys also accepted.\n\nRecognized evidence shapes (mix and match):\n  { prs: string[] } — GitHub PR URLs.\n  { deploys: string[] } — deployment URLs.\n  { test_runs: string[] } — CI run URLs.\n  { metrics: { name, value, unit? }[] } — quantitative outcomes.\n  { links: string[] }, { notes: string } — supporting URLs/text.\n\nPass idempotency_key when retrying — server deduplicates.\n\nUSE WHEN: closing the loop on agent work with provenance. Receipts should prove the practical artifact and its business outcome, not just say the agent finished. NEXT: orgx_recommend or orgx_search to find the next priority. DO NOT USE for telemetry — use orgx_emit_activity.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -3527,7 +3527,7 @@
     {
       "id": "orgx_write",
       "title": "Write OrgX Entity",
-      "description": "Create or update one OrgX record (snake_case fields).\n\nOperations: create (default) uses per-type fields; update REQUIRES id + fields.\n\nCreate requirements: initiative title/name + workspace_id + goal_ids when the workspace enforces primary objectives; workstream title + initiative_id; milestone title + workstream_id; task title + workstream_id + milestone_id when the workspace requires backlog milestones; decision title; artifact target + artifact_type + artifact_url/external_url; blocker run_id + metadata.description; skill/studio records title.\n\nRetry behavior: pass idempotency_key on creates. If a persisted key matches, the worker returns that UUID as an idempotent replay instead of creating a duplicate.\n\nInitiative gotchas: priority only accepts low|medium|high|urgent, not portfolio labels such as active/critical/maintenance/hold; put portfolio urgency in metadata/priority_rank. due_date is not accepted on initiative create in current workspaces; put target dates in metadata until a typed initiative schedule field exists.\n\nUSE WHEN: adding/editing records. NEXT: orgx_act to launch/complete the record. DO NOT USE for lifecycle changes — use orgx_act or orgx_attach.",
+      "description": "Use when work, decisions, or artifacts must outlive this chat. Creates or updates one OrgX record (snake_case fields).\n\nOperations: create (default) uses per-type fields; update REQUIRES id + fields.\n\nCreate requirements: initiative title/name + workspace_id + goal_ids when the workspace enforces primary objectives; workstream title + initiative_id; milestone title + workstream_id; task title + workstream_id + milestone_id when the workspace requires backlog milestones; decision title; artifact target + artifact_type + artifact_url/external_url; blocker run_id + metadata.description; skill/studio records title.\n\nRetry behavior: pass idempotency_key on creates; a persisted key match returns that UUID as an idempotent replay instead of creating a duplicate.\n\nInitiative gotchas: priority only accepts low|medium|high|urgent, not portfolio labels such as active/critical/maintenance/hold; put portfolio urgency in metadata/priority_rank. due_date is not accepted on initiative create; put target dates in metadata.\n\nUSE WHEN: adding/editing records. NEXT: orgx_act to launch/complete the record. DO NOT USE for lifecycle changes — use orgx_act or orgx_attach.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -3706,7 +3706,7 @@
     {
       "id": "query_org_memory",
       "title": "Query Organizational Memory",
-      "description": "Search team memory, organizational decisions, prior artifacts, and project context across agents. Also known as: search memory, recall decisions, find context, retrieve artifacts, project memory. USE WHEN: user asks about past decisions, context, or knowledge. NEXT: Present relevant results; suggest drill-down with list_entities. Prefer `query_org_memory` with scope=decisions with a topic query for new prompts, skills, and examples. DO NOT USE: for listing current entities — use list_entities instead. Read-only.",
+      "description": "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Also known as: search memory, recall decisions, find context, retrieve artifacts, project memory. USE WHEN: user asks about past decisions, context, or knowledge. NEXT: Present relevant results; suggest drill-down with list_entities. Prefer `query_org_memory` with scope=decisions with a topic query for new prompts, skills, and examples. DO NOT USE: for listing current entities — use list_entities instead. Read-only.",
       "category": "Memory",
       "inputSchema": {
         "type": "object",
@@ -3967,7 +3967,7 @@
     {
       "id": "configure_outcome_type",
       "title": "Configure Outcome Type",
-      "description": "Create or approve a workspace outcome type before recording custom baseline, audit, or quality-gate outcomes. Use this when record_outcome returns an unknown outcome type recovery hint.",
+      "description": "Use when record_outcome returns an unknown outcome type recovery hint, or a custom result must become measurable. Creates or approves a workspace outcome type before recording custom baseline, audit, or quality-gate outcomes.",
       "category": "Other",
       "inputSchema": {
         "type": "object",
@@ -4041,7 +4041,7 @@
     {
       "id": "get_operator_chronicle",
       "title": "Get Operator Chronicle",
-      "description": "Read the operator chronicle: decision chronology, yesterday/week/30-day rollups, reportingNarrative.briefMarkdown, artifacts, PR receipts, active initiatives, goals, top priorities, velocity, and reporting gaps for a workspace. USE WHEN: user asks what changed yesterday, this week, or this month; asks for decision chronology, top priorities, PR velocity, artifacts, goals, or what OrgX is missing. NEXT: present reportingNarrative.briefMarkdown first, then use reportingNarrative.nextAction and topPriorities for drill-down. Read-only.",
+      "description": "Use when the user asks what happened, wants to catch up after time away, or needs a reporting window summarized with decisions and proof. Read the operator chronicle: decision chronology, yesterday/week/30-day rollups, reportingNarrative.briefMarkdown, artifacts, PR receipts, active initiatives, goals, top priorities, velocity, and reporting gaps for a workspace. USE WHEN: user asks what changed yesterday, this week, or this month; asks for decision chronology, top priorities, PR velocity, artifacts, goals, or what OrgX is missing. NEXT: present reportingNarrative.briefMarkdown first, then use reportingNarrative.nextAction and topPriorities for drill-down. Read-only.",
       "category": "Other",
       "inputSchema": {
         "type": "object",
@@ -4440,7 +4440,7 @@
     {
       "id": "orgx_free_audit",
       "title": "OrgX Free Audit",
-      "description": "Run a free autonomy benchmark from trust, proof, ROI, and workspace signals. Returns Proof Score, Context Debt, Autonomy Maturity, ROI Visibility, and next recommendations without starting an autonomous session or consuming agent credits.",
+      "description": "Use when a workspace wants to know how ready it is for autonomous agent work before spending anything. Runs a free autonomy benchmark from trust, proof, ROI, and workspace signals. Returns Proof Score, Context Debt, Autonomy Maturity, ROI Visibility, and next recommendations without starting an autonomous session or consuming agent credits.",
       "category": "Other",
       "inputSchema": {
         "type": "object",
@@ -4885,7 +4885,7 @@
     {
       "id": "approve_agent_work",
       "title": "Approve Agent Work",
-      "description": "Review agent decisions or work items awaiting human approval. Also known as: pending approvals, agent blocked, sign off, review decisions, approve AI work.",
+      "description": "Use when agent work is paused waiting for a human yes — review pending decisions, then approve or reject them. Also known as: pending approvals, agent blocked, sign off, review decisions, approve AI work.",
       "category": "Recommended Entry Points",
       "inputSchema": {
         "type": "object",
@@ -4945,7 +4945,7 @@
     {
       "id": "delegate_agent_task",
       "title": "Delegate Agent Task",
-      "description": "Assign work to a specialist AI agent and track the result. Also known as: hand this off, spawn agent, assign task, delegate to agent, have an AI agent do it.",
+      "description": "Use when the user says \"delegate this and tell me when it's done\" — assign work to a specialist AI agent that owns the task and reports back with results. Also known as: hand this off, spawn agent, assign task, delegate to agent, have an AI agent do it.",
       "category": "Recommended Entry Points",
       "inputSchema": {
         "type": "object",
@@ -5009,7 +5009,7 @@
     {
       "id": "recall_memory",
       "title": "Recall Memory",
-      "description": "Search organizational memory for prior decisions, artifacts, project context, and team knowledge. Also known as: search memory, recall decisions, find context, retrieve artifacts, what did we decide.",
+      "description": "Use when the user asks \"what did we decide about X\" or prior context must be recovered from team memory. Searches organizational memory for prior decisions, artifacts, project context, and team knowledge. Also known as: search memory, recall decisions, find context, retrieve artifacts, what did we decide.",
       "category": "Recommended Entry Points",
       "inputSchema": {
         "type": "object",
@@ -5052,7 +5052,7 @@
     {
       "id": "remember_decision",
       "title": "Remember Decision",
-      "description": "Save a decision to organizational memory so agents and teammates can recall it later. Also known as: decision log, team memory, agent memory, record decision, remember what we decided.",
+      "description": "Use when the user says \"remember this decision\" or a judgment call must not be relitigated next session. Saves the decision to organizational memory so agents and teammates can recall it later. Also known as: decision log, team memory, agent memory, record decision, remember what we decided.",
       "category": "Recommended Entry Points",
       "inputSchema": {
         "type": "object",
@@ -5108,7 +5108,7 @@
     {
       "id": "track_project_progress",
       "title": "Track Project Progress",
-      "description": "Get health, blockers, milestones, owners, and recent activity for a project or initiative. Also known as: project status, initiative pulse, blockers, roadmap progress, execution health.",
+      "description": "Use when the user asks how a project is going, what is blocked, or whether an initiative is on track. Returns health, blockers, milestones, owners, and recent activity. Also known as: project status, initiative pulse, blockers, roadmap progress, execution health.",
       "category": "Recommended Entry Points",
       "inputSchema": {
         "type": "object",

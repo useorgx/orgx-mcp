@@ -68,7 +68,12 @@ describe('OpenAI ChatGPT app submission readiness', () => {
   it('keeps app info concise and review-facing', () => {
     expect(submission.app_info.display_name).toBe('OrgX');
     expect(submission.app_info.subtitle.length).toBeLessThanOrEqual(30);
-    expect(submission.app_info.description).toContain('organizational memory');
+    expect(submission.app_info.description).toContain(
+      'Organizational continuity for AI agents'
+    );
+    expect(submission.app_info.description).toContain(
+      'Make AI work resumable, reviewable, and provable across agents.'
+    );
     expect(submission.app_info.category).toBe('PRODUCTIVITY');
   });
 

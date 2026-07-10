@@ -76,8 +76,10 @@ describe('Anthropic directory readiness', () => {
       'node scripts/directory-preflight.mjs'
     );
     expect(serverJson.websiteUrl).toBe('https://useorgx.com');
-    expect(serverJson.title).toBe('OrgX MCP — Organizational Memory for AI Agents');
-    expect(serverJson.description).toContain('Organizational memory');
+    expect(serverJson.title).toBe('OrgX MCP — Organizational Continuity for AI Agents');
+    expect(serverJson.description).toContain(
+      'Make AI work resumable, reviewable, and provable across agents.'
+    );
     expect(serverJson.remotes).toEqual([
       { type: 'streamable-http', url: 'https://mcp.useorgx.com/mcp' },
       { type: 'sse', url: 'https://mcp.useorgx.com/sse' },

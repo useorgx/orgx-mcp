@@ -255,7 +255,7 @@ const INLINE_TOOL_METADATA: Array<{
     id: 'remember_decision',
     title: 'Remember Decision',
     description:
-      'Save a decision to organizational memory so agents and teammates can recall it later. Also known as: decision log, team memory, agent memory, record decision, remember what we decided.',
+      'Use when the user says "remember this decision" or a judgment call must not be relitigated next session. Saves the decision to organizational memory so agents and teammates can recall it later. Also known as: decision log, team memory, agent memory, record decision, remember what we decided.',
     inputSchema: z.object({
       decision: z
         .string()
@@ -281,7 +281,7 @@ const INLINE_TOOL_METADATA: Array<{
     id: 'recall_memory',
     title: 'Recall Memory',
     description:
-      'Search organizational memory for prior decisions, artifacts, project context, and team knowledge. Also known as: search memory, recall decisions, find context, retrieve artifacts, what did we decide.',
+      'Use when the user asks "what did we decide about X" or prior context must be recovered from team memory. Searches organizational memory for prior decisions, artifacts, project context, and team knowledge. Also known as: search memory, recall decisions, find context, retrieve artifacts, what did we decide.',
     inputSchema: z.object({
       query: z.string().min(1).describe('Search query for organizational memory'),
       scope: z
@@ -298,7 +298,7 @@ const INLINE_TOOL_METADATA: Array<{
     id: 'approve_agent_work',
     title: 'Approve Agent Work',
     description:
-      'Review agent decisions or work items awaiting human approval. Also known as: pending approvals, agent blocked, sign off, review decisions, approve AI work.',
+      'Use when agent work is paused waiting for a human yes — review pending decisions, then approve or reject them. Also known as: pending approvals, agent blocked, sign off, review decisions, approve AI work.',
     inputSchema: z.object({
       decision_id: z
         .string()
@@ -331,7 +331,7 @@ const INLINE_TOOL_METADATA: Array<{
     id: 'delegate_agent_task',
     title: 'Delegate Agent Task',
     description:
-      'Assign work to a specialist AI agent and track the result. Also known as: hand this off, spawn agent, assign task, delegate to agent, have an AI agent do it.',
+      'Use when the user says "delegate this and tell me when it\'s done" — assign work to a specialist AI agent that owns the task and reports back with results. Also known as: hand this off, spawn agent, assign task, delegate to agent, have an AI agent do it.',
     inputSchema: z.object({
       agent: z.string().min(1).describe('Target agent identifier or alias'),
       task: z.string().min(1).describe('Task instructions for the target agent'),
@@ -362,7 +362,7 @@ const INLINE_TOOL_METADATA: Array<{
     id: 'track_project_progress',
     title: 'Track Project Progress',
     description:
-      'Get health, blockers, milestones, owners, and recent activity for a project or initiative. Also known as: project status, initiative pulse, blockers, roadmap progress, execution health.',
+      'Use when the user asks how a project is going, what is blocked, or whether an initiative is on track. Returns health, blockers, milestones, owners, and recent activity. Also known as: project status, initiative pulse, blockers, roadmap progress, execution health.',
     inputSchema: z.object({
       initiative_id: z.string().optional().describe('Optional initiative UUID to check'),
       initiative_name: z

@@ -74,6 +74,41 @@ describe('buildInitiativeListWidgetPayload', () => {
     });
   });
 
+  it('hoists the proof handoff so the widget can render the quiet CTA footer', () => {
+    const payload = {
+      type: 'initiative',
+      data: [
+        {
+          id: 'ini_12345678',
+          title: 'Launch OrgX MCP widgets',
+          workstreams: [{ id: 'ws_12345678', title: 'Worker integration' }],
+          proof_handoff: { quiet_cta: 'Make your agent work resumable.' },
+        },
+      ],
+    };
+
+    expect(buildInitiativeListWidgetPayload(payload)).toMatchObject({
+      proof_handoff: { quiet_cta: 'Make your agent work resumable.' },
+    });
+  });
+
+  it('leaves the proof handoff undefined when no source provides one', () => {
+    const payload = {
+      type: 'initiative',
+      data: [
+        {
+          id: 'ini_12345678',
+          title: 'Launch OrgX MCP widgets',
+          workstreams: [{ id: 'ws_12345678', title: 'Worker integration' }],
+        },
+      ],
+    };
+
+    expect(
+      buildInitiativeListWidgetPayload(payload)?.proof_handoff
+    ).toBeUndefined();
+  });
+
   it('skips non-initiative or multi-row payloads', () => {
     expect(
       buildInitiativeListWidgetPayload({

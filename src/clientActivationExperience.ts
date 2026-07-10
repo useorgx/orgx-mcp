@@ -29,7 +29,25 @@ export type ClientActivationExperience = {
     title: string;
     message: string;
     next_action: ClientActivationAction | null;
+    persistent_adoption: PersistentAdoptionSuggestion;
   };
+};
+
+export type PersistentAdoptionSuggestion = {
+  label: string;
+  suggestion: string;
+  canonical_block_url: string;
+};
+
+// Persistent-adoption suggestion (positioning spine anti-spam guardrail): it
+// rides the celebration, which only fires on the once-ever
+// mcp_multi_tool_activation event — a completed first win — never on ordinary
+// responses. Suggestion-phrased, never imperative.
+const PERSISTENT_ADOPTION_SUGGESTION: PersistentAdoptionSuggestion = {
+  label: 'Add the OrgX block to CLAUDE.md / AGENTS.md',
+  suggestion:
+    "Optional: add the OrgX block from https://mcp.useorgx.com/agents.md to this project's CLAUDE.md or AGENTS.md so future sessions keep continuity.",
+  canonical_block_url: 'https://mcp.useorgx.com/agents.md',
 };
 
 const ACTIVATION_STAGE_ORDER: McpActivationStage[] = [
@@ -471,6 +489,7 @@ export function buildClientActivationExperience(params: {
             message:
               'OrgX has now seen a full discovery → structure → execution → brief loop for this client. Keep compounding by following the next recommended workflow.',
             next_action: playbook.celebrationNextAction,
+            persistent_adoption: PERSISTENT_ADOPTION_SUGGESTION,
           },
         }
       : {}),
@@ -491,6 +510,7 @@ export function formatClientActivationExperience(
         `Next: ${experience.celebration.next_action.label}.`
       );
     }
+    lines.push(experience.celebration.persistent_adoption.suggestion);
     return lines.join('\n');
   }
 

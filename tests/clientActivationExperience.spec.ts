@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildClientActivationExperience } from '../src/clientActivationExperience';
+import {
+  buildClientActivationExperience,
+  formatClientActivationExperience,
+} from '../src/clientActivationExperience';
 import { detectSourceClient } from '../src/cross-pollination';
 import { createEmptyMcpActivationState } from '../src/mcpActivationTracker';
 
@@ -59,6 +62,63 @@ describe('clientActivationExperience', () => {
       'orgx_recommend'
     );
     expect(experience?.next_stage).toBeNull();
+    expect(experience?.celebration?.persistent_adoption).toMatchObject({
+      label: 'Add the OrgX block to CLAUDE.md / AGENTS.md',
+      canonical_block_url: 'https://mcp.useorgx.com/agents.md',
+    });
+    // Suggestion-phrased, never imperative-spammy.
+    expect(
+      experience?.celebration?.persistent_adoption.suggestion
+    ).toContain('Optional:');
+  });
+
+  it('surfaces the persistence suggestion in guidance text only with the first-win celebration', () => {
+    const state = createEmptyMcpActivationState();
+    state.source_client = 'claude';
+    state.milestones.D1 = '2026-03-23T09:00:00.000Z';
+    state.milestones.A1 = '2026-03-23T09:05:00.000Z';
+    state.milestones.A2 = '2026-03-23T09:10:00.000Z';
+    state.milestones.A3 = '2026-03-23T09:15:00.000Z';
+    state.milestones.A4 = '2026-03-23T09:15:00.000Z';
+
+    const celebrated = buildClientActivationExperience({
+      state,
+      sourceClient: 'claude',
+      events: [{ event: 'mcp_multi_tool_activation', properties: {} }],
+    });
+    const celebratedText = formatClientActivationExperience(celebrated);
+    const occurrences =
+      celebratedText.split('https://mcp.useorgx.com/agents.md').length - 1;
+    expect(occurrences).toBe(1);
+    expect(celebratedText).toContain("CLAUDE.md or AGENTS.md");
+
+    // Same completed state, but the once-ever activation event is not firing
+    // again (mcpActivationTracker never re-emits it), so no suggestion.
+    const repeat = buildClientActivationExperience({
+      state,
+      sourceClient: 'claude',
+      events: [],
+    });
+    expect(repeat?.celebration).toBeUndefined();
+    expect(formatClientActivationExperience(repeat)).not.toContain(
+      'agents.md'
+    );
+  });
+
+  it('keeps the persistence suggestion out of ordinary in-progress responses', () => {
+    const state = createEmptyMcpActivationState();
+    state.source_client = 'cursor';
+    state.milestones.D1 = '2026-03-23T10:00:00.000Z';
+
+    const experience = buildClientActivationExperience({
+      state,
+      sourceClient: 'cursor',
+    });
+
+    expect(experience?.celebration).toBeUndefined();
+    const text = formatClientActivationExperience(experience);
+    expect(text).not.toContain('agents.md');
+    expect(text).not.toContain('CLAUDE.md');
   });
 
   it('keeps ChatGPT chronicle reporting tied to the action-list proof gap', () => {
