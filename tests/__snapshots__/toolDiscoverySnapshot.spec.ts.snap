@@ -156,7 +156,7 @@ exports[`tool discovery snapshot > full tool catalog description hashes are lock
   "query_org_memory": "181cff1ac868",
   "queue_action": "a469db460ac6",
   "recall_memory": "44be260123e3",
-  "recommend_next_action": "de62b8d2aab4",
+  "recommend_next_action": "abb246819620",
   "record_outcome": "637f5c1c26a0",
   "record_plan_edit": "68ff5a8bb1e0",
   "record_quality_score": "3de8dc2db6c8",

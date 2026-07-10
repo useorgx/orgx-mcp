@@ -884,7 +884,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'recommend_next_action',
     title: 'Recommend Next Action',
     description:
-      'Recommend what should happen next based on progress gaps, blockers, and execution templates. Also known as: next best action, prioritize work, unblock project. USE WHEN: user asks what to do next, or needs help prioritizing. NEXT: Execute the recommended action (entity_action, spawn_agent_task, etc.). DO NOT USE: when user already knows what they want to do. Read-only.',
+      'Recommend what should happen next based on progress gaps, blockers, and execution templates. Pass agent_id or domain for an agent-owned runnable queue instead of the workspace-wide operator queue. Also known as: next best action, prioritize work, unblock project. USE WHEN: user asks what to do next, or needs help prioritizing. NEXT: Execute the recommended action (entity_action, spawn_agent_task, etc.). DO NOT USE: when user already knows what they want to do. Read-only.',
     inputSchema: {
       entity_type: z
         .enum(['workspace', 'initiative', 'workstream', 'milestone'])
@@ -906,12 +906,32 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         .string()
         .optional()
         .describe('Deprecated alias for workspace_id.'),
+      agent_id: z
+        .string()
+        .optional()
+        .describe(
+          'Optional canonical agent ID. When present, only return work assigned to that agent.'
+        ),
+      domain: z
+        .enum([
+          'engineering',
+          'product',
+          'design',
+          'marketing',
+          'sales',
+          'operations',
+          'orchestration',
+        ])
+        .optional()
+        .describe(
+          'Optional agent domain used to derive the canonical agent ID when agent_id is omitted.'
+        ),
       limit: z
         .number()
         .min(1)
-        .max(5)
+        .max(25)
         .optional()
-        .describe('Max recommendations to return (default 5, max 5)'),
+        .describe('Max recommendations to return (default 5, max 25)'),
       cascade: z
         .boolean()
         .optional()
