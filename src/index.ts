@@ -8468,7 +8468,7 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Scaffold an initiative hierarchy',
         description:
-          'Turn an objective, roadmap, launch, or feature plan into executable workstreams, milestones, and tasks. Also known as: Scaffold an initiative hierarchy, scaffold project, create roadmap, generate execution plan, build a workstream tree.\n\n' +
+          'Use when a goal, roadmap, or launch plan exists only as prose and must become owned, executable work. Turns an objective, roadmap, launch, or feature plan into executable workstreams, milestones, and tasks. Also known as: Scaffold an initiative hierarchy, scaffold project, create roadmap, generate execution plan, build a workstream tree.\n\n' +
           'Minimum required input: title.\n' +
           'Conditionally required:\n' +
           '  • workspace_id — REQUIRED unless the MCP session already carries workspace context (resolve via list_entities type=command_center or get_org_snapshot).\n' +
@@ -11454,7 +11454,7 @@ export class OrgXMcp extends McpAgent<
         {
           title: 'Review Artifact',
           description:
-            'Surface the next artifact awaiting review. Renders the artifact-review widget with a preview, version filmstrip, and hold-to-approve / request-changes actions. USE WHEN the user asks to review work, approve a deliverable, or handle pending artifact reviews. DO NOT USE for listing all artifacts — use list_entities type=artifact instead.',
+            'Use when the user asks to review work, sign off on a deliverable, or clear pending artifact reviews. Surfaces the next artifact awaiting review and renders the artifact-review widget with a preview, version filmstrip, and hold-to-approve / request-changes actions. USE WHEN the user asks to review work, approve a deliverable, or handle pending artifact reviews. DO NOT USE for listing all artifacts — use list_entities type=artifact instead.',
           inputSchema: this.withClientContext({
             artifact_id: z
               .string()
@@ -11567,7 +11567,7 @@ export class OrgXMcp extends McpAgent<
         {
           title: 'Get Morning Brief',
           description:
-            `Curated receipts, exceptions, ROI delta, and value signals from the most recent autonomous session. The brief IS curated receipts, not a separate data structure. ${preferredToolCallout(
+            `Use when the user asks 'what happened,' 'catch me up,' or starts a session after time away. Returns curated receipts, exceptions, ROI delta, and value signals from the most recent autonomous session. The brief IS curated receipts, not a separate data structure. ${preferredToolCallout(
               'outcomeAttribution'
             )}`,
           inputSchema: this.withClientContext({

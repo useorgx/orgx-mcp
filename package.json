@@ -25,6 +25,7 @@
     "widget:verify-rendering": "tsx scripts/verify-widget-rendering.ts",
     "prepare": "node scripts/setup-git-hooks.mjs",
     "precommit:og": "node scripts/precommit-og-render.mjs",
+    "docs:sync:public": "node scripts/sync-public-docs.mjs",
     "prebuild": "pnpm widget:build && pnpm widget:version",
     "predev": "pnpm widget:build && pnpm widget:version",
     "pretype-check": "pnpm widget:build && pnpm widget:version",

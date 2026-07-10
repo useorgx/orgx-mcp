@@ -394,6 +394,13 @@ button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:po
   transition:background .15s,border-color .15s;white-space:nowrap;
 }
 .footer-link:hover{background:rgba(var(--ox-primary-rgb),.12);border-color:rgba(var(--ox-primary-rgb),.3)}
+
+/* ── Quiet CTA (positioning spine: one unobtrusive line per proof card) ── */
+.quiet-cta{
+  margin-top:8px;
+  font-size:10px;color:var(--ox-text-dim);letter-spacing:.02em;
+}
+.quiet-cta[hidden]{display:none}
 </style>
 </head>
 <body>
@@ -420,6 +427,9 @@ button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:po
     <span class="footer-meta">LIVE FEED</span>
     ${safeLiveUrl ? `<button class="footer-link" data-oxhref="${safeLiveUrl}">Open Live View ↗</button>` : ''}
   </div>
+
+  <!-- Quiet CTA: shown only when the feed data carries proof_handoff.quiet_cta -->
+  <div class="quiet-cta" id="quietCta" hidden></div>
 </div>
 
 <script>
@@ -449,6 +459,7 @@ button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:po
   var connLabel  = document.getElementById('connLabel');
   var updatedRow = document.getElementById('updatedRow');
   var contentEl  = document.getElementById('content');
+  var quietCta   = document.getElementById('quietCta');
 
   var lastTs    = 0;
   var retryDelay = 1000;
@@ -718,6 +729,33 @@ button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:po
     contentEl.innerHTML = parts.join('');
   }
 
+  /* ── Quiet CTA (proof handoff) ──
+     Positioning spine: proof surfaces carry one quiet CTA, verbatim, rendered
+     exactly once per card as an unobtrusive footer line — only when the
+     handoff field is present in the feed data. */
+  function quietCtaFromHandoff(handoff) {
+    if (!handoff || typeof handoff !== 'object') return null;
+    var cta = handoff.quiet_cta;
+    return (typeof cta === 'string' && cta.trim()) ? cta.trim() : null;
+  }
+  function resolveQuietCta(data) {
+    var cta = quietCtaFromHandoff(data.proof_handoff);
+    if (cta) return cta;
+    var agents = Array.isArray(data.agents) ? data.agents : [];
+    for (var i = 0; i < agents.length; i++) {
+      cta = quietCtaFromHandoff(agents[i] && agents[i].proof_handoff);
+      if (cta) return cta;
+    }
+    var initiative = Array.isArray(data.initiatives) ? data.initiatives[0] : data.initiative;
+    return quietCtaFromHandoff(initiative && initiative.proof_handoff);
+  }
+  function applyQuietCta(data) {
+    if (!quietCta) return;
+    var cta = resolveQuietCta(data);
+    quietCta.textContent = cta || '';
+    quietCta.hidden = !cta;
+  }
+
   /* ── Event dispatcher ── */
   function handleData(event) {
     if (event.ts) lastTs = event.ts;
@@ -731,6 +769,7 @@ button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:po
     } else {
       renderInitiativePulse(data);
     }
+    applyQuietCta(data);
   }
 
   /* ── SSE connection with backoff ── */

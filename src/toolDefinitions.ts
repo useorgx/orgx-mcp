@@ -670,7 +670,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'approve_decision',
     title: 'Approve Decision',
     description:
-      'Approve a pending agent decision after explicit user confirmation. Also known as: sign off, approve AI work, unblock agent, accept decision. USE WHEN: user says to approve a decision returned from list_entities with type=decision and status=pending (or the legacy get_pending_decisions alias). NEXT: Confirm approval to user; agent is notified automatically. DO NOT USE: without showing the decision to the user first. Requires decisions:write.',
+      'Use when the user has reviewed a pending decision that is blocking agent work and gives explicit confirmation to approve it. Also known as: sign off, approve AI work, unblock agent, accept decision. USE WHEN: user says to approve a decision returned from list_entities with type=decision and status=pending (or the legacy get_pending_decisions alias). NEXT: Confirm approval to user; agent is notified automatically. DO NOT USE: without showing the decision to the user first. Requires decisions:write.',
     inputSchema: {
       decision_id: z.string().min(1).describe('Decision ID to approve'),
       note: z.string().optional().describe('Optional note recorded with the approval'),
@@ -694,7 +694,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'reject_decision',
     title: 'Reject Decision',
     description:
-      'Reject a pending agent decision with guidance after explicit user confirmation. Also known as: request revisions, send feedback, decline decision. USE WHEN: user wants to reject or request revisions on a decision. NEXT: Agent will revise their approach based on the reason. DO NOT USE: without a reason — always include why. Requires decisions:write.',
+      'Use when the user has reviewed a pending decision and wants to reject it or send the agent back with revisions. Also known as: request revisions, send feedback, decline decision. USE WHEN: user wants to reject or request revisions on a decision. NEXT: Agent will revise their approach based on the reason. DO NOT USE: without a reason — always include why. Requires decisions:write.',
     inputSchema: {
       decision_id: z.string().min(1).describe('Decision ID to reject'),
       reason: z.string().min(1).describe('Reason for rejecting the decision'),
@@ -718,7 +718,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'get_agent_status',
     title: 'Get Agent Status',
     description:
-      'Show current AI agent activity, blocked work, and execution state. Also known as: agent status, what agents are doing, active runs. USE WHEN: user asks about agent activity, progress, or what agents are working on. NEXT: If agents are stuck, suggest approve_decision or entity_action. DO NOT USE: to check initiative health — use get_initiative_pulse instead. Read-only.',
+      'Use when the user asks what agents are working on right now, whether delegated work is still running, or why nothing has landed yet. Also known as: agent status, what agents are doing, active runs. USE WHEN: user asks about agent activity, progress, or what agents are working on. NEXT: If agents are stuck, suggest approve_decision or entity_action. DO NOT USE: to check initiative health — use get_initiative_pulse instead. Read-only.',
     inputSchema: {
       agent_id: z.string().optional().describe('Optional agent ID to inspect'),
       workspace_id: z.string().optional().describe('Optional workspace UUID to scope agent status'),
@@ -743,7 +743,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'query_org_memory',
     title: 'Query Organizational Memory',
     description:
-      `Search team memory, organizational decisions, prior artifacts, and project context across agents. Also known as: search memory, recall decisions, find context, retrieve artifacts, project memory. USE WHEN: user asks about past decisions, context, or knowledge. NEXT: Present relevant results; suggest drill-down with list_entities. ${preferredToolCallout(
+      `Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Also known as: search memory, recall decisions, find context, retrieve artifacts, project memory. USE WHEN: user asks about past decisions, context, or knowledge. NEXT: Present relevant results; suggest drill-down with list_entities. ${preferredToolCallout(
         'decisionHistory'
       )} DO NOT USE: for listing current entities — use list_entities instead. Read-only.`,
     inputSchema: {
@@ -771,7 +771,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'get_initiative_pulse',
     title: 'Get Initiative Pulse',
     description:
-      'Get project health, blockers, milestones, owners, and recent activity for an initiative. Also known as: project status, roadmap progress, execution health, blockers. USE WHEN: user asks how an initiative is going, or wants a status update. NEXT: If blockers exist, suggest entity_action to resolve. For deeper drill-down, use list_entities with initiative_id. DO NOT USE: for org-wide overview — use get_org_snapshot instead. Read-only.',
+      'Use when the user asks how a project is going, what is blocked, or whether an initiative is on track. Also known as: project status, roadmap progress, execution health, blockers. USE WHEN: user asks how an initiative is going, or wants a status update. NEXT: If blockers exist, suggest entity_action to resolve. For deeper drill-down, use list_entities with initiative_id. DO NOT USE: for org-wide overview — use get_org_snapshot instead. Read-only.',
     inputSchema: {
       initiative_id: z
         .string()
@@ -798,7 +798,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'spawn_agent_task',
     title: 'Spawn Agent Task',
     description:
-      'Delegate work to a specialist AI agent and track the assigned task. Also known as: hand this off, assign task, spawn agent, have an agent do it, autonomous work. Automatically checks authorization, rate limits, quality gates, model routing, and budget policy before spawning. Omit model_tier/provider/model to let OrgX auto-route from task complexity; provide them only when the user or verification plan intentionally constrains routing. Returns modelTier, budget, and run details on success, or blockedReason if spawn is denied. USE WHEN: user explicitly wants to delegate work to an agent. NEXT: Use get_agent_status to monitor progress and record_quality_score after reviewing output. DO NOT USE: for creating tasks in the hierarchy — use create_entity type=task instead. Requires agents:write.',
+      'Use when the user says "delegate this and tell me when it\'s done" — assign work to a specialist AI agent that owns the task and reports back with results. Also known as: hand this off, assign task, spawn agent, have an agent do it, autonomous work. Automatically checks authorization, rate limits, quality gates, model routing, and budget policy before spawning. Omit model_tier/provider/model to let OrgX auto-route from task complexity; provide them only when the user or verification plan intentionally constrains routing. Returns modelTier, budget, and run details on success, or blockedReason if spawn is denied. USE WHEN: user explicitly wants to delegate work to an agent. NEXT: Use get_agent_status to monitor progress and record_quality_score after reviewing output. DO NOT USE: for creating tasks in the hierarchy — use create_entity type=task instead. Requires agents:write.',
     inputSchema: {
       agent: z.string().min(1).describe('Target agent identifier or alias'),
       task: z.string().min(1).describe('Task instructions for the target agent'),
@@ -908,7 +908,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'handoff_task',
     title: 'Handoff Task',
     description:
-      'Reassign work to another specialist AI agent and optionally spawn a new run. Also known as: handoff task, transfer work, change assignee. USE WHEN: a task needs to be reassigned to a different specialist agent. NEXT: Use get_agent_status to confirm the new agent picked up the task. DO NOT USE: for new tasks — use spawn_agent_task instead.',
+      'Use when in-flight work must move to a different specialist agent without losing its context or execution state. Also known as: handoff task, transfer work, change assignee. USE WHEN: a task needs to be reassigned to a different specialist agent. NEXT: Use get_agent_status to confirm the new agent picked up the task. DO NOT USE: for new tasks — use spawn_agent_task instead.',
     inputSchema: {
       task_id: z.string().uuid().describe('Task UUID to hand off'),
       agent: z
@@ -943,7 +943,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'recommend_next_action',
     title: 'Recommend Next Action',
     description:
-      'Recommend what should happen next based on progress gaps, blockers, and execution templates. Pass agent_id or domain for an agent-owned runnable queue instead of the workspace-wide operator queue. Also known as: next best action, prioritize work, unblock project. USE WHEN: user asks what to do next, or needs help prioritizing. NEXT: Execute the recommended action (entity_action, spawn_agent_task, etc.). DO NOT USE: when user already knows what they want to do. Read-only.',
+      'Use when the user asks what to do next, returns after time away, or needs help choosing the highest-priority work. Recommends from progress gaps, blockers, and execution templates. Pass agent_id or domain for an agent-owned runnable queue instead of the workspace-wide operator queue. Also known as: next best action, prioritize work, unblock project. NEXT: Execute the recommended action (entity_action, spawn_agent_task, etc.). DO NOT USE: when user already knows what they want to do. Read-only.',
     inputSchema: {
       entity_type: z
         .enum(['workspace', 'initiative', 'workstream', 'milestone'])
@@ -1503,7 +1503,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     id: 'get_operator_chronicle',
     title: 'Get Operator Chronicle',
     description:
-      'Read the operator chronicle: decision chronology, yesterday/week/30-day rollups, reportingNarrative.briefMarkdown, artifacts, PR receipts, active initiatives, goals, top priorities, velocity, and reporting gaps for a workspace. USE WHEN: user asks what changed yesterday, this week, or this month; asks for decision chronology, top priorities, PR velocity, artifacts, goals, or what OrgX is missing. NEXT: present reportingNarrative.briefMarkdown first, then use reportingNarrative.nextAction and topPriorities for drill-down. Read-only.',
+      'Use when the user asks what happened, wants to catch up after time away, or needs a reporting window summarized with decisions and proof. Read the operator chronicle: decision chronology, yesterday/week/30-day rollups, reportingNarrative.briefMarkdown, artifacts, PR receipts, active initiatives, goals, top priorities, velocity, and reporting gaps for a workspace. USE WHEN: user asks what changed yesterday, this week, or this month; asks for decision chronology, top priorities, PR velocity, artifacts, goals, or what OrgX is missing. NEXT: present reportingNarrative.briefMarkdown first, then use reportingNarrative.nextAction and topPriorities for drill-down. Read-only.',
     inputSchema: {
       workspace_id: z
         .string()
@@ -1549,7 +1549,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     id: 'orgx_emit_activity',
     title: 'Emit OrgX Activity',
     description:
-      'Emit append-only run telemetry for OrgX control-plane reporting. USE WHEN: agent is executing and needs to report progress. NEXT: Continue work; emit again at each phase change. DO NOT USE: for entity status changes — use entity_action instead. Setting phase="completed" records telemetry only and does not mark tasks, workstreams, or initiatives complete.',
+      'Use when an agent is mid-execution and its progress must stay visible to operators and to the next agent that resumes the run. Emit append-only run telemetry for OrgX control-plane reporting. USE WHEN: agent is executing and needs to report progress. NEXT: Continue work; emit again at each phase change. DO NOT USE: for entity status changes — use entity_action instead. Setting phase="completed" records telemetry only and does not mark tasks, workstreams, or initiatives complete.',
     inputSchema: {
       initiative_id: z.string().uuid().describe('Initiative UUID'),
       message: z.string().min(1).describe('Human-readable activity update'),
@@ -1999,7 +1999,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     id: 'consolidate_pr',
     title: 'Consolidate Pull Request',
     description:
-      'Generate and persist an orchestration.consolidation_pass receipt for a GitHub pull request. Requires OrgX server-side GitHub credentials; if the GitHub token is unavailable, use GitHub tools for PR facts and return a structured blocker instead of retrying. USE WHEN: Eli or another engineering agent needs a durable PR review receipt with reading order, existence evidence, deduped findings, verdict, and server-derived AQ score. NEXT: inspect the returned artifact_id or attach it to task completion proof. DO NOT USE WHEN: only asking for PR status; use GitHub tools instead.',
+      'Use when the user or an engineering agent must show a pull request actually shipped and needs durable review proof, not a status glance. Generate and persist an orchestration.consolidation_pass receipt for a GitHub pull request. Requires OrgX server-side GitHub credentials; if the GitHub token is unavailable, use GitHub tools for PR facts and return a structured blocker instead of retrying. USE WHEN: Eli or another engineering agent needs a durable PR review receipt with reading order, existence evidence, deduped findings, verdict, and server-derived AQ score. NEXT: inspect the returned artifact_id or attach it to task completion proof. DO NOT USE WHEN: only asking for PR status; use GitHub tools instead.',
     inputSchema: {
       pr_url: z
         .string()

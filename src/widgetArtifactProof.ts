@@ -174,6 +174,10 @@ export type WidgetContinuationPrompt = {
   prompt: string;
 };
 
+// Positioning spine: proof surfaces (receipts, proof cards, share cards) carry
+// one quiet CTA, verbatim. Renderers place it once, as an unobtrusive footer.
+export const PROOF_SURFACE_QUIET_CTA = 'Make your agent work resumable.';
+
 export type WidgetProofHandoff = {
   source: 'orgx-mcp-widget-proof-cards';
   preserve_tool_results: true;
@@ -184,6 +188,7 @@ export type WidgetProofHandoff = {
   visible_review_count: number;
   primary_prompt: string;
   surface_prompts: WidgetContinuationPrompt[];
+  quiet_cta: typeof PROOF_SURFACE_QUIET_CTA;
 };
 
 export const SUPPORTED_WIDGET_SURFACES: SupportedWidgetSurface[] = [
@@ -751,6 +756,7 @@ export function buildWidgetProofHandoff(options: {
       surface,
       prompt: `${basePrompt} Continue in ${surface} using the OrgX tools already configured there.`,
     })),
+    quiet_cta: PROOF_SURFACE_QUIET_CTA,
   };
 }
 

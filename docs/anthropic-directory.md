@@ -4,7 +4,10 @@ This checklist is the repository-side handoff for Anthropic MCP Directory submis
 
 ## Scope
 
-OrgX MCP is a remote MCP server for organizational memory and agent orchestration:
+OrgX MCP is a remote MCP server for organizational continuity for AI agents.
+Make AI work resumable, reviewable, and provable across agents. It delivers
+that continuity through mechanisms such as organizational memory and agent
+orchestration:
 
 - remembering and recalling decisions,
 - querying team memory and artifact context,

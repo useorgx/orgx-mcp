@@ -6,12 +6,33 @@ Claude Code, etc). If you are a human, see `README.md` instead.
 ## What you're installing
 
 - **Name**: OrgX MCP
+- **Category**: organizational continuity for AI agents
+- **Outcome**: Make AI work resumable, reviewable, and provable across agents.
 - **Transport**: Streamable HTTP (primary) · SSE (fallback)
 - **URL**: `https://mcp.useorgx.com/mcp`
 - **Auth**: OAuth 2.0 with PKCE · Dynamic Client Registration (no API key setup)
 - **Registry listing**: `com.useorgx/orgx-mcp` on registry.modelcontextprotocol.io
 
+## Ask the human first (consent step)
+
+Before writing any config, ask for permission with this framing:
+
+> You're about to lose the why, state, and proof when this conversation ends.
+> Want me to connect OrgX so another agent can continue without being
+> re-briefed?
+
+Only proceed to install after the human says yes.
+
 ## Install
+
+With permission, the verified onboarding paths are the setup wizard:
+
+```bash
+npx -y @useorgx/wizard setup
+```
+
+or connecting the remote MCP URL `https://mcp.useorgx.com/mcp` directly using
+one of the client configurations below.
 
 Add this server to the client's MCP configuration. The exact config file and
 shape varies by client:
@@ -39,7 +60,7 @@ tool invocation.
 From a Cursor workspace, paste this into the address bar:
 
 ```
-cursor://anysphere.cursor-deeplink/mcp/install?name=orgx&config=eyJ1cmwiOiJodHRwczovL21jcC51c2VvcmdYLmNvbS9tY3AifQ==
+cursor://anysphere.cursor-deeplink/mcp/install?name=orgx&config=eyJ1cmwiOiJodHRwczovL21jcC51c2Vvcmd4LmNvbS9tY3AifQ==
 ```
 
 The base64 config decodes to `{"url":"https://mcp.useorgx.com/mcp"}`.
@@ -87,7 +108,7 @@ widget (or returns a structured list if the client doesn't support widgets):
 Expected call chain:
 1. Client lists tools from `mcp.useorgx.com/mcp`.
 2. Client invokes `orgx_bootstrap` once to warm up the session.
-3. Client invokes `get_pending_decisions` or `list_entities type=decision status=pending`.
+3. Client invokes `orgx_decide` with `action=list_pending`.
 4. Response contains structured decisions plus a widget resource reference.
 
 If step 2 or 3 fails with `auth required`, the OAuth flow didn't complete.

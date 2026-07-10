@@ -141,7 +141,27 @@ describe('widget artifact proof helpers', () => {
       preserve_tool_results: true,
       live_url: 'https://useorgx.com/live/init-1',
       proof_count: 2,
+      quiet_cta: 'Make your agent work resumable.',
     });
+  });
+
+  it('carries the quiet CTA on proof handoffs exactly once, outside the prompts', () => {
+    const handoff = buildWidgetProofHandoff({
+      initiativeId: 'init-1',
+      initiativeTitle: 'Quality Gates V2',
+      proofCount: 2,
+    });
+
+    expect(handoff.quiet_cta).toBe('Make your agent work resumable.');
+    // The CTA is a single footer field — never repeated in the continuation
+    // prompts, so renderers show it at most once per card.
+    expect(handoff.primary_prompt).not.toContain(
+      'Make your agent work resumable.'
+    );
+    const occurrences = JSON.stringify(handoff).split(
+      'Make your agent work resumable.'
+    ).length - 1;
+    expect(occurrences).toBe(1);
   });
 
   it('preserves upstream full artifact counts when enrichment only has a display window', () => {
