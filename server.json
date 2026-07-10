@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "com.useorgx/orgx-mcp",
   "title": "OrgX MCP — Organizational Continuity for AI Agents",
-  "description": "Make AI work resumable, reviewable, and provable across agents. OrgX lets the next agent continue from the decisions, artifacts, approvals, owners, and proof the last agent left behind.",
+  "description": "Make AI work resumable, reviewable, and provable across agents.",
   "version": "1.1.0",
   "websiteUrl": "https://useorgx.com",
   "vendor": {
