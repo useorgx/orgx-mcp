@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-10T02:01:14.211Z",
-  "sourceHash": "1b451faf64a7fda6",
+  "generatedAt": "2026-07-10T03:07:06.262Z",
+  "sourceHash": "3259f878ea08db20",
   "version": "1.0.0",
   "totalTools": 76,
   "categories": [
@@ -168,6 +168,10 @@
               "orchestration"
             ],
             "description": "Optional agent domain used to derive the canonical agent ID when agent_id is omitted."
+          },
+          "canonical_only": {
+            "type": "boolean",
+            "description": "When true, return only the canonical next task linked to the active goal spine."
           },
           "limit": {
             "type": "number",
