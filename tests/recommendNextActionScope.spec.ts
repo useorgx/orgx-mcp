@@ -16,6 +16,7 @@ describe("recommend_next_action agent scope", () => {
       entity_id: "default",
       agent_id: "operations-agent",
       domain: "operations",
+      canonical_only: true,
       limit: 25,
     });
     expect(result.success).toBe(true);

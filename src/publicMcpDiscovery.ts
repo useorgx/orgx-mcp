@@ -458,6 +458,7 @@ const TOOL_EXAMPLES: Record<
       entity_id: 'default',
       agent_id: 'operations-agent',
       domain: 'operations',
+      canonical_only: true,
       limit: 3,
     },
     sample_response: { recommendations: [{ title: 'Resolve blocker' }] },

@@ -926,6 +926,12 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         .describe(
           'Optional agent domain used to derive the canonical agent ID when agent_id is omitted.'
         ),
+      canonical_only: z
+        .boolean()
+        .optional()
+        .describe(
+          'When true, return only the canonical next task linked to the active goal spine.'
+        ),
       limit: z
         .number()
         .min(1)
