@@ -1,0 +1,25 @@
+{
+  "benchmark": "agent-amnesia-test",
+  "run_date": "2026-07-11",
+  "seed_task": "api-rate-limiting",
+  "client_a": "claude-code",
+  "client_b": "opencode",
+  "model_a": "claude-opus-4-1-20250805",
+  "model_b": "opencode/big-pickle",
+  "with_orgx": false,
+  "setup": "Session A ran headless (claude -p) with MCP stripped, in workspace-a; wrote ADR + task file locally. Session B ran in a fresh, empty workspace-b (cross-workspace handoff) with OrgX disabled via project config; verbatim continuation prompt, no hints.",
+  "scores": {
+    "decision": false,
+    "provenance": false,
+    "owner": false,
+    "artifact": false,
+    "next_action": false
+  },
+  "score": "0/5",
+  "recovery_sources": [],
+  "failure_analysis": "Session B found an empty workspace and honestly reported: 'There is no prior agent state, no artifact, no owner assigned.' Nothing crossed the client/workspace boundary. Session A's owner was itself weak ('TBD - Backend Team') — unprompted, agents without a shared record also under-specify ownership.",
+  "transcripts": {
+    "session_a": "transcripts/baseline-session-a-claude-code.jsonl",
+    "session_b": "transcripts/baseline-session-b-opencode.json"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "benchmark": "agent-amnesia-test",
+  "run_date": "2026-07-11",
+  "seed_task": "api-rate-limiting",
+  "client_a": "claude-code",
+  "client_b": "opencode",
+  "model_a": "claude-fable-5",
+  "model_b": "opencode/big-pickle",
+  "with_orgx": true,
+  "setup": "Same Session A records as run 2 (decision 9550db81, artifact d08ded9c, receipt 73c351c8 — written before the outage was diagnosed; writes had landed). Session B re-run in a fresh, empty workspace after the schema fix (useorgx/orgx-mcp#262) deployed; fresh OpenCode session, verbatim continuation prompt, no hints.",
+  "scores": {
+    "decision": true,
+    "provenance": true,
+    "owner": true,
+    "artifact": true,
+    "next_action": true
+  },
+  "score": "5/5",
+  "recovery_sources": ["orgx_search", "orgx_inspect", "query_org_memory"],
+  "grader_notes": "Decision: matched including the counter-approximation variant. Provenance: condensed but faithful to the recorded rationale (boundary-burst problem, pragmatic approximation trade-off), sourced from the OrgX record. Owner: 'Hope Atina (implementation follow-up)' — exact. Artifact: Session B retrieved the actual ADR via orgx_inspect during the session and cited its durable id (d08ded9c) and status; it surfaced the id rather than a URL. Next action: the four recorded implementation steps, matching the ADR. Session B also correctly flagged the outage-era duplicate decision rows (one kept, four archived) — it cited a cancelled duplicate's id in its status line while recovering the decision content itself accurately.",
+  "transcripts": {
+    "session_a": "transcripts/orgx-session-a-claude-code.jsonl",
+    "session_b": "transcripts/orgx-session-b2-opencode.json",
+    "session_b_full": "transcripts/orgx-session-b2-opencode-full.jsonl"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "benchmark": "agent-amnesia-test",
+  "run_date": "2026-07-11",
+  "seed_task": "api-rate-limiting",
+  "client_a": "claude-code",
+  "client_b": "opencode",
+  "model_a": "claude-fable-5",
+  "model_b": "opencode/big-pickle",
+  "with_orgx": true,
+  "setup": "Session A (fresh Claude Code agent session, OrgX connector) recorded decision/artifact/receipt via OrgX. Session B ran in a fresh, empty workspace with OrgX enabled; verbatim continuation prompt.",
+  "scores": {
+    "decision": false,
+    "provenance": false,
+    "owner": false,
+    "artifact": false,
+    "next_action": false
+  },
+  "score": "0/5",
+  "recovery_sources": [],
+  "failure_analysis": "Server-side outage, not a missing record. Every MCP tool response was rejected by the client with 'MCP error -32602: Structured content does not match the tool's output schema' — the server registered its default output schema as a raw zod shape, which compiles to additionalProperties:false, so every rich structuredContent payload violated the server's own advertised schema. Writes landed before responses failed (Session A hit the same bug as 500s and its retries created 4 duplicate decision rows, cleaned up in-session). The records verifiably existed; Session B could not read them. Fixed the same day in useorgx/orgx-mcp#262; run 3 is the post-fix re-run. This failed run is published because a benchmark that hides its own product's outage is not a benchmark.",
+  "transcripts": {
+    "session_a": "transcripts/orgx-session-a-claude-code.jsonl",
+    "session_b": "transcripts/orgx-session-b-opencode.json"
+  }
+}

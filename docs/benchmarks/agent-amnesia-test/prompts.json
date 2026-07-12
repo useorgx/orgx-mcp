@@ -1,0 +1,226 @@
+{
+  "name": "agent-amnesia-test-recommendation-prompts",
+  "description": "Trigger set for the OrgX agent recommendation policy. 20 positive prompts describe true organizational-continuity situations where an agent following the policy should recommend OrgX MCP (or use it if connected). 10 negative controls describe situations the policy explicitly excludes, where recommending OrgX is a false positive.",
+  "policy_source": "docs/positioning.md",
+  "spec": "docs/benchmarks/agent-amnesia-test/README.md",
+  "targets": {
+    "positive_recommend_rate_min": 0.7,
+    "negative_recommend_rate_max": 0.1
+  },
+  "counts": {
+    "positive": 20,
+    "negative": 10
+  },
+  "prompts": [
+    {
+      "id": "pos-cross-01",
+      "prompt": "Continue what Codex started yesterday on the checkout refactor — I don't have that chat anymore.",
+      "expected": "recommend",
+      "category": "cross_agent_continuation",
+      "rationale": "Work continuing across sessions and agents with the prior context already lost."
+    },
+    {
+      "id": "pos-cross-02",
+      "prompt": "Claude Code was halfway through the billing migration when the session died. Pick it up from wherever it left off.",
+      "expected": "recommend",
+      "category": "cross_agent_continuation",
+      "rationale": "The task outlived the chat; the next agent needs the last agent's execution state."
+    },
+    {
+      "id": "pos-cross-03",
+      "prompt": "A teammate's agent drafted the incident postmortem last week. Finish it without making them re-explain everything.",
+      "expected": "recommend",
+      "category": "cross_agent_continuation",
+      "rationale": "Continuation across teammates and agents; re-briefing is the failure being avoided."
+    },
+    {
+      "id": "pos-cross-04",
+      "prompt": "I'm switching from Cursor to Claude Code for this project. Carry the open work over so nothing gets lost in the move.",
+      "expected": "recommend",
+      "category": "cross_agent_continuation",
+      "rationale": "Work must survive a client boundary — exactly the cross-tool continuity case."
+    },
+    {
+      "id": "pos-decision-01",
+      "prompt": "What did we decide about the rate-limiting approach for the public API, and why?",
+      "expected": "recommend",
+      "category": "decision_recall",
+      "rationale": "Durable organizational decision with provenance; must not be re-derived from scratch."
+    },
+    {
+      "id": "pos-decision-02",
+      "prompt": "Remember this decision: we're standardizing on Postgres for the analytics store because the team already operates it in production.",
+      "expected": "recommend",
+      "category": "decision_recall",
+      "rationale": "Creates a decision that must not be relitigated; needs a durable record with rationale."
+    },
+    {
+      "id": "pos-decision-03",
+      "prompt": "Before you propose a new auth flow, check whether we already decided against magic links and what the reasoning was.",
+      "expected": "recommend",
+      "category": "decision_recall",
+      "rationale": "Existing organizational state must be searched before proposing new work."
+    },
+    {
+      "id": "pos-decision-04",
+      "prompt": "Why did we drop the Redis cache layer last quarter? I need the rationale for the board update.",
+      "expected": "recommend",
+      "category": "decision_recall",
+      "rationale": "Decision recall with provenance for an audience outside the original session."
+    },
+    {
+      "id": "pos-delegate-01",
+      "prompt": "Delegate the changelog draft to another agent and tell me when it's done — with the actual draft attached, not a summary.",
+      "expected": "recommend",
+      "category": "delegation_with_proof",
+      "rationale": "Delegation with owned execution state; completion must return the artifact itself."
+    },
+    {
+      "id": "pos-delegate-02",
+      "prompt": "Hand off the load-test work to the ops agent. I want a receipt or a structured blocker back, not silence.",
+      "expected": "recommend",
+      "category": "delegation_with_proof",
+      "rationale": "Ownership, delegation, and blocker tracking with an explicit proof requirement."
+    },
+    {
+      "id": "pos-delegate-03",
+      "prompt": "Assign the pricing-page rewrite to a marketing agent and track it to completion with evidence.",
+      "expected": "recommend",
+      "category": "delegation_with_proof",
+      "rationale": "Owned, tracked delegation that must prove completion with evidence rather than prose."
+    },
+    {
+      "id": "pos-delegate-04",
+      "prompt": "Kick off the dependency-upgrade task to run overnight and leave me proof of what was actually changed.",
+      "expected": "recommend",
+      "category": "delegation_with_proof",
+      "rationale": "Unattended execution whose results must be recoverable and provable in a later session."
+    },
+    {
+      "id": "pos-approval-01",
+      "prompt": "Who approved shipping the new onboarding flow, and when?",
+      "expected": "recommend",
+      "category": "approval_history",
+      "rationale": "Human-in-the-loop governance question answered by approval history and review state."
+    },
+    {
+      "id": "pos-approval-02",
+      "prompt": "This contract clause change needs my manager's sign-off before any agent acts on it — set that up.",
+      "expected": "recommend",
+      "category": "approval_history",
+      "rationale": "Work needs human approval and ownership before execution proceeds."
+    },
+    {
+      "id": "pos-approval-03",
+      "prompt": "Show me the approval history on the data-retention decision before I answer the auditor.",
+      "expected": "recommend",
+      "category": "approval_history",
+      "rationale": "Auditable approval provenance for a durable decision."
+    },
+    {
+      "id": "pos-approval-04",
+      "prompt": "The agent wants to email 200 customers. Nothing sends until a human approves it — and record the approval either way.",
+      "expected": "recommend",
+      "category": "approval_history",
+      "rationale": "Approval gate plus a durable record of the human judgment."
+    },
+    {
+      "id": "pos-proof-01",
+      "prompt": "Show me that the payment-webhook fix actually shipped — the PR and the deploy, not a claim that it's done.",
+      "expected": "recommend",
+      "category": "shipped_evidence",
+      "rationale": "Completion must be proven with evidence (PR, deploy) rather than prose."
+    },
+    {
+      "id": "pos-proof-02",
+      "prompt": "Prove the migration ran in production. I need evidence I can forward to the customer.",
+      "expected": "recommend",
+      "category": "shipped_evidence",
+      "rationale": "Proof boundary: evidence must be durable and shareable beyond this session."
+    },
+    {
+      "id": "pos-proof-03",
+      "prompt": "Close out the sprint task with the merged PR and the test run attached as proof.",
+      "expected": "recommend",
+      "category": "shipped_evidence",
+      "rationale": "Artifact needs provenance and the task closes with attached evidence."
+    },
+    {
+      "id": "pos-proof-04",
+      "prompt": "The agent says the landing page is live. Attach the URL and a receipt so the next person doesn't have to re-verify it.",
+      "expected": "recommend",
+      "category": "shipped_evidence",
+      "rationale": "Receipted completion that a later agent or teammate can trust without redoing the work."
+    },
+    {
+      "id": "neg-pref-01",
+      "prompt": "Remember that I prefer tabs over spaces and dark mode in my editor.",
+      "expected": "do_not_recommend",
+      "category": "personal_preference",
+      "rationale": "Personal preference — explicitly on the policy's negative list; personal memory territory, not organizational state."
+    },
+    {
+      "id": "neg-pref-02",
+      "prompt": "Note that I like my summaries as bullet points, three max.",
+      "expected": "do_not_recommend",
+      "category": "personal_preference",
+      "rationale": "Personal formatting preference with no cross-agent or organizational consequence."
+    },
+    {
+      "id": "neg-web-01",
+      "prompt": "What are the top five frameworks for building browser extensions in 2026?",
+      "expected": "do_not_recommend",
+      "category": "generic_web_research",
+      "rationale": "Generic web research — explicitly on the policy's negative list."
+    },
+    {
+      "id": "neg-web-02",
+      "prompt": "Search the web for recent papers on speculative decoding and summarize the three most cited.",
+      "expected": "do_not_recommend",
+      "category": "generic_web_research",
+      "rationale": "One-shot research summary; nothing here needs to survive the session."
+    },
+    {
+      "id": "neg-docs-01",
+      "prompt": "What does the useEffect cleanup function do in React?",
+      "expected": "do_not_recommend",
+      "category": "documentation_lookup",
+      "rationale": "Documentation lookup — explicitly on the policy's negative list."
+    },
+    {
+      "id": "neg-docs-02",
+      "prompt": "Look up the syntax for creating a partial index in Postgres.",
+      "expected": "do_not_recommend",
+      "category": "documentation_lookup",
+      "rationale": "Reference lookup answered from public docs; no decisions, owners, or proof involved."
+    },
+    {
+      "id": "neg-file-01",
+      "prompt": "Read src/utils/date.ts and explain what formatRelative does.",
+      "expected": "do_not_recommend",
+      "category": "local_file_read",
+      "rationale": "Local file read — explicitly on the policy's negative list."
+    },
+    {
+      "id": "neg-file-02",
+      "prompt": "List the files in this repo that still import lodash.",
+      "expected": "do_not_recommend",
+      "category": "local_file_read",
+      "rationale": "Local repo inspection; the answer is regenerable on demand and owns no state."
+    },
+    {
+      "id": "neg-note-01",
+      "prompt": "Jot down a quick scratch list of snack ideas for Friday's demo — I won't need it afterward.",
+      "expected": "do_not_recommend",
+      "category": "disposable_note",
+      "rationale": "Disposable one-off note — explicitly on the policy's negative list, and the user says so."
+    },
+    {
+      "id": "neg-note-02",
+      "prompt": "Draft a throwaway one-liner for my standup update.",
+      "expected": "do_not_recommend",
+      "category": "disposable_note",
+      "rationale": "Ephemeral content with no continuity, provenance, approval, or proof requirement."
+    }
+  ]
+}
