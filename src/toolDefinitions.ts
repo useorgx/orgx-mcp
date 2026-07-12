@@ -377,6 +377,20 @@ export const STANDARD_TOOL_OUTPUT_SCHEMA = {
 } as const;
 
 /**
+ * Default schema for tools that expose heterogeneous structured content.
+ *
+ * The MCP SDK turns a raw Zod shape into a strict JSON Schema object with
+ * `additionalProperties: false`. Most OrgX tools already return richer
+ * top-level payloads (for example `profile` from `orgx_bootstrap` and
+ * `decisions` from the operator chronicle), so strict MCP clients reject those
+ * otherwise-valid results. Passing a passthrough object preserves the common
+ * envelope fields while explicitly allowing each tool's existing payload.
+ */
+export const STANDARD_TOOL_OUTPUT_OBJECT_SCHEMA = z
+  .object(STANDARD_TOOL_OUTPUT_SCHEMA)
+  .passthrough();
+
+/**
  * Ensure a CallToolResult carries `structuredContent` so the SDK output
  * schema validator (introduced when an outputSchema is declared) does not
  * reject otherwise-valid responses. Existing structured content is preserved

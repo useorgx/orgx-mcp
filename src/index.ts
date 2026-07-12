@@ -220,7 +220,7 @@ import {
   CLIENT_INTEGRATION_TOOL_DEFINITIONS,
   CHATGPT_TOOL_DEFINITIONS,
   CLIENT_CONTEXT_SCHEMA,
-  STANDARD_TOOL_OUTPUT_SCHEMA,
+  STANDARD_TOOL_OUTPUT_OBJECT_SCHEMA,
   ensureStructuredContent,
   STREAM_TOOL_DEFINITIONS,
   ENTITY_TYPES,
@@ -4685,7 +4685,7 @@ export class OrgXMcp extends McpAgent<
         ...config,
         outputSchema:
           config.outputSchema ??
-          (STANDARD_TOOL_OUTPUT_SCHEMA as unknown as Record<string, unknown>),
+          STANDARD_TOOL_OUTPUT_OBJECT_SCHEMA,
       };
       const wrappedHandler = async (...args: unknown[]) => {
         const result = await handler(...args);
