@@ -377,6 +377,21 @@ export const STANDARD_TOOL_OUTPUT_SCHEMA = {
 } as const;
 
 /**
+ * The registrable form of the standard envelope. This MUST be a constructed
+ * `.passthrough()` object, never the raw shape above: the SDK compiles a raw
+ * shape via plain `z.object()`, which advertises `additionalProperties: false`
+ * in tools/list. Tools that return rich `structuredContent` (e.g.
+ * `structuredContent: data` with payload keys like `results` or `session`)
+ * then violate their own advertised schema, and validating clients (Claude
+ * connector, OpenCode, Codex) reject the response with "Structured content
+ * does not match the tool's output schema" — after the server has already
+ * performed the write.
+ */
+export const STANDARD_TOOL_OUTPUT_SCHEMA_OBJECT = z
+  .object(STANDARD_TOOL_OUTPUT_SCHEMA)
+  .passthrough();
+
+/**
  * Ensure a CallToolResult carries `structuredContent` so the SDK output
  * schema validator (introduced when an outputSchema is declared) does not
  * reject otherwise-valid responses. Existing structured content is preserved

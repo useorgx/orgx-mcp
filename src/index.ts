@@ -220,7 +220,7 @@ import {
   CLIENT_INTEGRATION_TOOL_DEFINITIONS,
   CHATGPT_TOOL_DEFINITIONS,
   CLIENT_CONTEXT_SCHEMA,
-  STANDARD_TOOL_OUTPUT_SCHEMA,
+  STANDARD_TOOL_OUTPUT_SCHEMA_OBJECT,
   ensureStructuredContent,
   STREAM_TOOL_DEFINITIONS,
   ENTITY_TYPES,
@@ -4683,9 +4683,15 @@ export class OrgXMcp extends McpAgent<
     ) => {
       const enhancedConfig = {
         ...config,
+        // A constructed .passthrough() object, NOT the raw shape: a raw shape
+        // compiles to additionalProperties:false and rejects every tool that
+        // returns rich structuredContent (see STANDARD_TOOL_OUTPUT_SCHEMA_OBJECT).
         outputSchema:
           config.outputSchema ??
-          (STANDARD_TOOL_OUTPUT_SCHEMA as unknown as Record<string, unknown>),
+          (STANDARD_TOOL_OUTPUT_SCHEMA_OBJECT as unknown as Record<
+            string,
+            unknown
+          >),
       };
       const wrappedHandler = async (...args: unknown[]) => {
         const result = await handler(...args);
