@@ -107,13 +107,13 @@
     "orgx_spawn": {
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": false,
-        "destructiveHint": false
+        "openWorldHint": true,
+        "destructiveHint": true
       },
       "justifications": {
         "read_only_justification": "Can guard, classify, spawn, or hand off specialist agent work, so it may create private OrgX agent work.",
-        "open_world_justification": "Delegates work inside OrgX and does not publish to public internet state.",
-        "destructive_justification": "Creates or routes agent work but does not delete records or perform irreversible external actions."
+        "open_world_justification": "Spawn and handoff modes may initiate agent work that uses connected third-party systems.",
+        "destructive_justification": "Spawn and handoff modes can dispatch work that is not automatically reversible after execution begins."
       }
     },
     "orgx_decide": {
@@ -143,12 +143,12 @@
     "orgx_emit_activity": {
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": true,
+        "openWorldHint": false,
         "destructiveHint": false
       },
       "justifications": {
         "read_only_justification": "Emits append-only activity telemetry, so it writes execution state.",
-        "open_world_justification": "May surface activity to OrgX live views or connected runtime surfaces outside the immediate chat.",
+        "open_world_justification": "Writes only to private OrgX activity records and does not publish to third-party systems.",
         "destructive_justification": "Appends activity events but does not delete records or perform irreversible actions."
       }
     },
@@ -288,12 +288,12 @@
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": true,
-        "destructiveHint": false
+        "destructiveHint": true
       },
       "justifications": {
         "read_only_justification": "Delegates work to an agent and creates private OrgX task state.",
         "open_world_justification": "May initiate work that uses connected systems outside the immediate ChatGPT conversation.",
-        "destructive_justification": "Creates delegated work but does not delete records or perform irreversible external actions by itself."
+        "destructive_justification": "Can dispatch agent work that is not automatically reversible after execution begins."
       }
     },
     "track_project_progress": {
@@ -310,14 +310,14 @@
     },
     "review_artifact": {
       "annotations": {
-        "readOnlyHint": false,
+        "readOnlyHint": true,
         "openWorldHint": false,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Can record artifact review state or change requests, so it may write OrgX state.",
-        "open_world_justification": "Writes only to private OrgX artifact review records.",
-        "destructive_justification": "Records review status but does not delete records or perform irreversible external actions."
+        "read_only_justification": "Only retrieves the next matching artifact and renders it for review without changing review state.",
+        "open_world_justification": "Reads only private OrgX artifact records and does not publish to third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, approve, reject, or otherwise modify the artifact."
       }
     },
     "get_morning_brief": {
@@ -391,35 +391,11 @@
       "expected_output_url": null
     },
     {
-      "description": "Render the current agent status widget.",
-      "user_prompt": "Show me what the OrgX agents are doing right now.",
-      "file_attachment_urls": null,
-      "tools_triggered": "get_agent_status",
-      "expected_output": "Returns the seeded agent roster or active/idle agent state and the agent-status widget.",
-      "expected_output_url": null
-    },
-    {
-      "description": "Search organizational memory for the second seeded initiative.",
-      "user_prompt": "Search OrgX memory for workflow capture expansion.",
-      "file_attachment_urls": null,
-      "tools_triggered": "orgx_search",
-      "expected_output": "Returns memory results that reference the Workflow Capture Expansion initiative.",
-      "expected_output_url": null
-    },
-    {
       "description": "Create a bounded initiative hierarchy and show the widget result.",
       "user_prompt": "Scaffold a launch initiative with two workstreams, one milestone each, and two tasks per milestone.",
       "file_attachment_urls": null,
       "tools_triggered": "scaffold_initiative",
       "expected_output": "Creates one initiative hierarchy matching the requested counts and renders the scaffolded-initiative widget.",
-      "expected_output_url": null
-    },
-    {
-      "description": "Delegate a budget-constrained agent task or return a structured blocker.",
-      "user_prompt": "Delegate research on launch risks to the operations agent with a cheapest valid validation budget under five dollars.",
-      "file_attachment_urls": null,
-      "tools_triggered": "orgx_spawn",
-      "expected_output": "Either dispatches the operations task with the requested budget controls or returns a structured policy/auth blocker without spawning hidden work.",
       "expected_output_url": null
     }
   ],
@@ -438,14 +414,6 @@
       "file_attachment_urls": null,
       "tools_triggered": null,
       "expected_output": "The app should not be invoked because generic web search is outside OrgX workflows.",
-      "expected_output_url": null
-    },
-    {
-      "description": "Do not invoke OrgX for personal preference memory.",
-      "user_prompt": "Remember my personal coffee preference forever.",
-      "file_attachment_urls": null,
-      "tools_triggered": null,
-      "expected_output": "The app should not be invoked because personal preference memory is outside OrgX's organizational-memory scope.",
       "expected_output_url": null
     },
     {

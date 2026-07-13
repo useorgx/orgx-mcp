@@ -1533,7 +1533,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
           'Durable blocker/stall/error/approval to surface in /live when execution cannot proceed'
         ),
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.authRequired,
     _meta: {
       'openai/toolInvocation/invoking': 'Emitting activity...',

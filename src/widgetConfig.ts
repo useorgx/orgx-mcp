@@ -9,7 +9,13 @@ export const MCP_APPS_MIME_TYPE = 'text/html;profile=mcp-app';
 export const SKYBRIDGE_MIME_TYPE = 'text/html+skybridge';
 
 const DEFAULT_WIDGET_BASE_URL = 'https://mcp.useorgx.com/widgets/';
-const DEFAULT_WIDGET_DOMAIN = 'mcp.useorgx.com';
+const DEFAULT_WIDGET_DOMAIN = 'https://mcp.useorgx.com';
+const DEFAULT_REDIRECT_DOMAINS = [
+  'https://mcp.useorgx.com',
+  'https://useorgx.com',
+  'https://www.useorgx.com',
+  'https://github.com',
+];
 
 function normalizeUrl(value?: string | null): URL | null {
   if (!value) return null;
@@ -60,7 +66,7 @@ function rewriteAssetUrl(value: string, widgetBaseUrl: string): string {
 
 export function resolveWidgetDomain(env: WidgetEnv): string {
   const url = normalizeUrl(env.MCP_SERVER_URL);
-  return url?.host ?? DEFAULT_WIDGET_DOMAIN;
+  return url?.origin ?? DEFAULT_WIDGET_DOMAIN;
 }
 
 export function withWidgetResourceVersion(uri: string, version: string): string {
@@ -109,9 +115,13 @@ function buildWidgetCsp(env: WidgetEnv) {
     origins.add('https://useorgx.com');
     origins.add('https://www.useorgx.com');
   }
+  const redirectDomains = new Set(DEFAULT_REDIRECT_DOMAINS);
+  addOrigin(redirectDomains, env.MCP_SERVER_URL);
+  addOrigin(redirectDomains, env.ORGX_WEB_URL);
   return {
     connect_domains: Array.from(origins),
     resource_domains: Array.from(origins),
+    redirect_domains: Array.from(redirectDomains),
   };
 }
 
@@ -135,6 +145,7 @@ export function buildMcpAppsMeta(env: WidgetEnv) {
   const csp = buildWidgetCsp(env);
   return {
     ui: {
+      domain: resolveWidgetDomain(env),
       prefersBorder: true,
       csp: {
         // resourceDomains allows loading external scripts/styles/images

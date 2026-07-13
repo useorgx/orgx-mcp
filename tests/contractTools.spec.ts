@@ -144,6 +144,18 @@ describe('contract tool catalog', () => {
     expect(orgxPlanSchema.workspace_id.description).toContain('current session workspace');
   });
 
+  it('marks agent dispatch wrappers as open-world and destructive', () => {
+    for (const toolId of ['orgx_spawn', 'delegate_agent_task'] as const) {
+      const tool = CONTRACT_TOOL_DEFINITIONS.find((entry) => entry.id === toolId);
+      expect(tool, `${toolId} should be registered`).toBeDefined();
+      expect(tool!.annotations).toMatchObject({
+        readOnlyHint: false,
+        openWorldHint: true,
+        destructiveHint: true,
+      });
+    }
+  });
+
   it('allows decision listing wrappers to be scoped to a workspace', () => {
     for (const toolId of ['orgx_decide', 'approve_agent_work'] as const) {
       const tool = CONTRACT_TOOL_DEFINITIONS.find((t) => t.id === toolId);

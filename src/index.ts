@@ -10990,7 +10990,7 @@ export class OrgXMcp extends McpAgent<
               .describe('Workspace UUID. Defaults to the session workspace.'),
           }),
           annotations: {
-            readOnlyHint: false,
+            readOnlyHint: true,
             destructiveHint: false,
             openWorldHint: false,
           },
@@ -10999,7 +10999,7 @@ export class OrgXMcp extends McpAgent<
             'openai/toolInvocation/invoking': 'Loading artifact for review...',
             'openai/toolInvocation/invoked': 'Artifact ready to review',
             'openai/visibility': 'public',
-            'mcp/securitySchemes': SECURITY_SCHEMES.entityWriteRequiresAuth,
+            'mcp/securitySchemes': SECURITY_SCHEMES.entityReadRequiresAuth,
             ui: { resourceUri: WIDGET_URIS.artifactReview },
           },
         },
@@ -11007,7 +11007,7 @@ export class OrgXMcp extends McpAgent<
           this.withOrgx(async () => {
             const authResponse = buildAuthRequiredResponse({
               toolId: 'review_artifact',
-              securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
+              securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
               userId: this.resolveUserId() ?? undefined,
               serverUrl: this.env.MCP_SERVER_URL ?? undefined,
               featureDescription: 'review artifacts',

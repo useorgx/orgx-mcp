@@ -22,6 +22,14 @@ describe('MCP reporting tools', () => {
     expect(ids).toContain('orgx_apply_changeset');
   });
 
+  it('keeps private activity telemetry closed-world', () => {
+    expect(findTool('orgx_emit_activity').annotations).toMatchObject({
+      readOnlyHint: false,
+      openWorldHint: false,
+      destructiveHint: false,
+    });
+  });
+
   it('validates emit activity progress bounds', () => {
     const emitTool = findTool('orgx_emit_activity');
     const schema = z.object(emitTool.inputSchema);
