@@ -142,8 +142,8 @@
       "description": "Guard, classify, spawn, or hand off specialist OrgX agent work.",
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": false,
-        "destructiveHint": false
+        "openWorldHint": true,
+        "destructiveHint": true
       }
     },
     {
@@ -172,7 +172,7 @@
       "description": "Emit append-only execution telemetry without changing durable entity state.",
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": true,
+        "openWorldHint": false,
         "destructiveHint": false
       }
     },
@@ -293,7 +293,7 @@
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": true,
-        "destructiveHint": false
+        "destructiveHint": true
       }
     },
     {
@@ -311,7 +311,7 @@
       "title": "Review Artifact",
       "description": "Render the artifact-review widget for approval or change requests on deliverables.",
       "annotations": {
-        "readOnlyHint": false,
+        "readOnlyHint": true,
         "openWorldHint": false,
         "destructiveHint": false
       }

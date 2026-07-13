@@ -163,7 +163,7 @@ describe('Anthropic directory readiness', () => {
       destructive: boolean
     ) => {
       const registrationPattern =
-        toolId === 'scaffold_initiative'
+        toolId === 'scaffold_initiative' || toolId === 'review_artifact'
           ? new RegExp(
               `registerAppTool\\(\\s*this\\.server,\\s*'${toolId}'`,
               'm'
@@ -188,6 +188,7 @@ describe('Anthropic directory readiness', () => {
     expectSnippetAnnotations('verify_entity_completion', true, false);
     expectSnippetAnnotations('create_entity', false, false);
     expectSnippetAnnotations('batch_create_entities', false, false);
+    expectSnippetAnnotations('review_artifact', true, false);
     expectSnippetAnnotations('scaffold_initiative', false, false);
     expectSnippetAnnotations('get_task_with_context', true, false);
     expectSnippetAnnotations('batch_delete_entities', false, true);

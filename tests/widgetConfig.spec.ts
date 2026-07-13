@@ -3,6 +3,7 @@ import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import {
   buildMcpAppsMeta,
+  buildWidgetMeta,
   parseWidgetResourceUri,
   rewriteWidgetHtmlAssetUrls,
   sanitizeMcpAppsHtml,
@@ -98,6 +99,25 @@ describe('widgetConfig', () => {
     expect(meta.ui.csp.resourceDomains).toContain('https://mcp.useorgx.com');
     expect(meta.ui.csp.baseUriDomains).toContain('https://mcp.useorgx.com');
     expect(meta.ui.csp.baseUriDomains).toContain('https://www.useorgx.com');
+    expect(meta.ui.domain).toBe('https://mcp.useorgx.com');
+  });
+
+  it('publishes a dedicated widget origin and narrow external-link allowlist', () => {
+    const meta = buildWidgetMeta({
+      MCP_SERVER_URL: 'https://mcp.useorgx.com/mcp',
+      ORGX_WEB_URL: 'https://useorgx.com',
+    });
+
+    expect(meta['openai/widgetDomain']).toBe('https://mcp.useorgx.com');
+    expect(meta['openai/widgetCSP'].redirect_domains).toEqual(
+      expect.arrayContaining([
+        'https://mcp.useorgx.com',
+        'https://useorgx.com',
+        'https://www.useorgx.com',
+        'https://github.com',
+      ])
+    );
+    expect(meta['openai/widgetCSP'].redirect_domains).not.toContain('*');
   });
 
   it('preserves cache-busting query strings when converting to skybridge URIs', () => {

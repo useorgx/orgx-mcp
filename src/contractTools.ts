@@ -332,7 +332,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       idempotency_key: z.string().optional().describe('Optional client-supplied idempotency key for safe retries. Same key returns the same spawn result without re-running.'),
       session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.agentRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Preparing OrgX agent work...',
@@ -593,7 +593,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
         .optional()
         .describe('Optional voice, format, or style constraints'),
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.agentRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.taskSpawned,
