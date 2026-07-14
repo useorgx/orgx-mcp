@@ -184,8 +184,8 @@ need real traffic before per-tool SLO claims can be made.
 - Public live benchmark: 30/30 requests passed.
 - Production deployment: PR #266 merged as
   `aa85477fd4c7a16820aa29c53263a5c618bd4d1e` and PR #267 merged as
-  `f6f169a9454e00a4ef79a6972869f54b221f7e77`; the exact PR #267 revision is
-  running as Worker version `9a248e86-e518-47aa-94d9-0eaace568b18`.
+  `f6f169a9454e00a4ef79a6972869f54b221f7e77`; the exact PR #267 revision was
+  deployed as Worker version `9a248e86-e518-47aa-94d9-0eaace568b18`.
 - Live authenticated canaries: `query_org_memory` completed in 26 ms and
   `spawn_agent_task` completed in 56 ms. PostHog received canonical
   `mcp_tool_invocation` rows with `surface=mcp`,
