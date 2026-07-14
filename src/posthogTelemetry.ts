@@ -1,7 +1,10 @@
 export type PosthogTelemetryEnv = {
   POSTHOG_KEY?: string;
   POSTHOG_HOST?: string;
+  MCP_SERVER_URL?: string;
 };
+
+const TELEMETRY_SCHEMA_VERSION = '2026-07-14';
 
 type WaitUntilLike = {
   waitUntil?: (promise: Promise<unknown>) => unknown;
@@ -37,6 +40,12 @@ export function captureWorkerPosthogEvent(params: {
     const eventProperties: Record<string, unknown> = {
       ...(params.properties ?? {}),
       $lib: 'orgx-mcp',
+      telemetry_schema_version: TELEMETRY_SCHEMA_VERSION,
+      surface: 'mcp',
+      event_origin: 'cloudflare_worker',
+      environment: params.env.MCP_SERVER_URL?.includes('staging')
+        ? 'preview'
+        : 'production',
     };
 
     if (params.serverVersion) {
@@ -63,7 +72,14 @@ export function captureWorkerPosthogEvent(params: {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
-      .then(() => undefined)
+      .then((response) => {
+        if (!response.ok) {
+          console.warn('[telemetry] PostHog capture rejected', {
+            event: params.event,
+            status: response.status,
+          });
+        }
+      })
       .catch(() => undefined);
 
     params.ctx?.waitUntil?.(request);
