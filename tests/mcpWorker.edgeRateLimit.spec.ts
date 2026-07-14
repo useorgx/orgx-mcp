@@ -31,6 +31,13 @@ describe('edge rate limiting', () => {
       'X-RateLimit-Tier': 'free',
       'X-RateLimit-Limit': '100',
       'X-RateLimit-Source': 'memory',
+      'X-OrgX-RateLimit-Strategy': 'base_allowance',
+    });
+    expect(decision.headers['Server-Timing']).toContain('edge_rate_limit;dur=');
+    expect(decision.timing).toMatchObject({
+      identityMs: 0,
+      billingMs: 0,
+      strategy: 'base_allowance',
     });
     expect(Number(decision.headers['X-RateLimit-Remaining'])).toBeLessThan(100);
     expect(Number(decision.headers['X-RateLimit-Reset'])).toBeGreaterThan(0);
@@ -135,7 +142,7 @@ describe('edge rate limiting', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('caches OAuth token unwraps on the hot rate-limit path', async () => {
+  it('skips OAuth and billing I/O while requests remain inside the base allowance', async () => {
     const unwrapToken = vi.fn(async () => ({
       grant: { props: { userId: 'user-cache' } },
     }));
@@ -159,11 +166,13 @@ describe('edge rate limiting', () => {
 
     expect(first.allowed).toBe(true);
     expect(second.allowed).toBe(true);
-    expect(unwrapToken).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(first.timing?.strategy).toBe('base_allowance');
+    expect(second.timing?.strategy).toBe('base_allowance');
+    expect(unwrapToken).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('dedupes concurrent OAuth unwraps and billing plan lookups', async () => {
+  it('dedupes concurrent OAuth unwraps and billing lookups after the base allowance', async () => {
     let resolveToken!: (value: {
       grant: { props: { userId: string } };
     }) => void;
@@ -188,16 +197,27 @@ describe('edge rate limiting', () => {
         },
       });
 
+    for (let i = 0; i < 100; i += 1) {
+      const base = await checkEdgeRateLimit(request(), env);
+      expect(base.allowed).toBe(true);
+    }
+
     const first = checkEdgeRateLimit(request(), env);
     const second = checkEdgeRateLimit(request(), env);
 
-    await Promise.resolve();
-    expect(unwrapToken).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => {
+      expect(unwrapToken).toHaveBeenCalledTimes(1);
+    });
 
     resolveToken({ grant: { props: { userId: 'user-concurrent' } } });
     const results = await Promise.all([first, second]);
 
     expect(results.every((decision) => decision.allowed)).toBe(true);
+    expect(
+      results.every(
+        (decision) => decision.timing?.strategy === 'paid_allowance'
+      )
+    ).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
