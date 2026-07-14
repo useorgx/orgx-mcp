@@ -141,6 +141,21 @@ The detailed samples are in `docs/benchmarks/mcp-performance-latest.json`.
 These scenarios prove public edge health only; they do not replace authenticated
 per-tool measurements.
 
+## Post-deploy public verification
+
+After the production rollout, a 50-request-per-scenario run produced the
+following stabilized sample:
+
+| Scenario | p50 ms | p95 ms | max ms | success |
+| --- | ---: | ---: | ---: | ---: |
+| `/health` | 41 | 54 | 661 | 100% |
+| `/server.json` | 39 | 49 | 58 | 100% |
+| unauthenticated `tools/list` | 37 | 52 | 72 | 100% |
+
+The isolated 661 ms health maximum did not recur often enough to move the
+50-sample p95 above the 150 ms target. The server metadata and public tool-list
+paths remained below 75 ms at the maximum in this run.
+
 ## Transport observation
 
 Two connector calls made during the audit stalled for more than 70 seconds.
