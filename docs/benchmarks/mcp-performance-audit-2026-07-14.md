@@ -16,8 +16,9 @@ paths were slow:
 3. Every MCP request resolved OAuth identity and billing tier before applying a
    rate limit, even when the request was well inside the free allowance.
 
-The local patch removes those serial or redundant waits and adds stage timings
-to the durable invocation ledger. It has not been deployed by this audit.
+The patch removes those serial or redundant waits and adds stage timings to the
+durable invocation ledger. It was merged in PR #266 and deployed to the
+production Cloudflare Worker on 2026-07-14.
 
 ## Sources and method
 
@@ -30,10 +31,11 @@ to the durable invocation ledger. It has not been deployed by this audit.
 - Percentiles use nearest-rank over recorded `latency_ms` values. Small-sample
   percentiles should be read as individual observations, not stable estimates.
 
-PostHog did not contain MCP invocation events, and the production worker does
-not currently have `POSTHOG_KEY` configured. The durable invocation ledger was
-therefore the authoritative metric source. The patch keeps that source and adds
-the missing edge-stage fields.
+At the start of the audit, PostHog did not contain MCP invocation events and the
+production worker did not have `POSTHOG_KEY` configured. The durable invocation
+ledger was therefore the authoritative baseline source. The production secret
+is now configured, and PR #267 adds the canonical surface/origin/schema
+envelope while retaining the durable ledger and edge-stage fields.
 
 ## Seven-day production result
 
@@ -92,7 +94,7 @@ core `/api/entities` create route already performs initiative idempotency replay
 and scoped hierarchy deduplication, so the MCP search duplicated one or two
 origin reads before every create.
 
-## Fixes applied locally
+## Fixes deployed
 
 ### All 76 tools: lazy rate-limit plan resolution
 
@@ -173,12 +175,24 @@ need real traffic before per-tool SLO claims can be made.
 ## Verification and rollout boundary
 
 - Focused tests: 37 passed across edge rate limiting, MCP transport telemetry,
-  and batch-create retry contracts.
-- MCP contract suite: 152/152 tests passed.
-- Full test suite: 690 passed, 1 skipped.
+  and batch-create retry contracts; the follow-up telemetry-envelope suite also
+  passed all 24 focused tests.
+- MCP contract suite: 157/157 tests passed on the merged revision.
+- Full test suite: 679 passed, 1 skipped on the merged revision.
 - TypeScript: `pnpm exec tsc --noEmit` passed.
 - MCP Apps SDK production build passed.
 - Public live benchmark: 30/30 requests passed.
-- Production deployment: not performed. Production percentiles above describe
-  the pre-fix worker and should be re-measured after deployment with the new
-  edge-stage metadata.
+- Production deployment: PR #266 merged as
+  `aa85477fd4c7a16820aa29c53263a5c618bd4d1e` and PR #267 merged as
+  `f6f169a9454e00a4ef79a6972869f54b221f7e77`; the exact PR #267 revision is
+  running as Worker version `9a248e86-e518-47aa-94d9-0eaace568b18`.
+- Live authenticated canaries: `query_org_memory` completed in 26 ms and
+  `spawn_agent_task` completed in 56 ms. PostHog received canonical
+  `mcp_tool_invocation` rows with `surface=mcp`,
+  `event_origin=cloudflare_worker`, production environment, and the
+  2026-07-14 telemetry schema.
+
+The seven-day percentiles above remain the pre-fix baseline. Per-tool
+post-deploy percentiles require a larger production sample; the new telemetry
+now provides the fields needed for that comparison without conflating edge,
+rate-limit, and origin time.
