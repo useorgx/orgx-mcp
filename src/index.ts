@@ -1889,18 +1889,25 @@ export class OrgXMcp extends McpAgent<
 
       const artifactMap = new Map<string, Record<string, unknown>>();
       if (initiativeIds.size > 0) {
-        for (const initiativeId of initiativeIds) {
-          const records = await this.fetchEntityCollection({
-            type: 'artifact',
-            userId: params.userId,
-            initiativeId,
-            limit: params.toolId === 'get_agent_status' ? 24 : 8,
-          });
-          for (const record of records) {
-            const key =
-              (typeof record.id === 'string' && record.id.trim()) ||
-              `${record.title ?? record.name ?? 'artifact'}:${record.status ?? 'draft'}`;
-            artifactMap.set(String(key), record);
+        const initiativeIdList = Array.from(initiativeIds);
+        for (let offset = 0; offset < initiativeIdList.length; offset += 8) {
+          const artifactGroups = await Promise.all(
+            initiativeIdList.slice(offset, offset + 8).map((initiativeId) =>
+              this.fetchEntityCollection({
+                type: 'artifact',
+                userId: params.userId,
+                initiativeId,
+                limit: params.toolId === 'get_agent_status' ? 24 : 8,
+              })
+            )
+          );
+          for (const records of artifactGroups) {
+            for (const record of records) {
+              const key =
+                (typeof record.id === 'string' && record.id.trim()) ||
+                `${record.title ?? record.name ?? 'artifact'}:${record.status ?? 'draft'}`;
+              artifactMap.set(String(key), record);
+            }
           }
         }
       } else if (workspaceId && params.toolId === 'get_morning_brief') {
@@ -3525,11 +3532,17 @@ export class OrgXMcp extends McpAgent<
             );
           }
 
-          const entity = await this.fetchEntityRecord(
-            String(args.type),
-            String(args.id),
-            resolvedUserId
-          );
+          const [entity, context_pack] = await Promise.all([
+            this.fetchEntityRecord(
+              String(args.type),
+              String(args.id),
+              resolvedUserId
+            ),
+            fetchContextPack(this.env, resolvedUserId, {
+              type: String(args.type),
+              id: String(args.id),
+            }),
+          ]);
           if (!entity) {
             return this.toolError(`No ${String(args.type)} found for ${String(args.id)}`, {
               code: 'entity_not_found',
@@ -3541,13 +3554,6 @@ export class OrgXMcp extends McpAgent<
               },
             });
           }
-          // M backbone: attach the compiled AgentContextPack so any client —
-          // including hookless ones — starts briefed on first call. Additive and
-          // never-throws (null when unavailable).
-          const context_pack = await fetchContextPack(this.env, resolvedUserId, {
-            type: String(args.type),
-            id: String(args.id),
-          });
           const payload = {
             _v2_tool: 'orgx_inspect',
             type: args.type,
@@ -8654,12 +8660,6 @@ export class OrgXMcp extends McpAgent<
                 userId,
                 userEmail: this.resolveUserEmail(),
                 orgxUserId: this.resolveOrgxUserId(userId),
-              }),
-            findExistingEntity: ({ body }) =>
-              this.findExistingEntityByIdempotencyKey({
-                body,
-                idempotencyKey: readEntityIdempotencyKey(body),
-                userId: scaffoldOwnerId,
               }),
             entities: batch,
             ownerId: scaffoldOwnerId,

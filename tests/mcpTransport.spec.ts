@@ -4,6 +4,7 @@ import { normalizeAgentDispatchPayload } from '../src/agentDispatchPayload';
 import {
   buildMcpTransportExceptionResponse,
   handleMcpRequest,
+  withCorsAndHeaders,
 } from '../src/mcpTransport';
 import {
   DEPRECATION_SUNSET_AT_ISO,
@@ -408,7 +409,12 @@ describe('mcpTransport', () => {
       const handler = {
         fetch: vi.fn(async () =>
           new Response(JSON.stringify({ ok: true }), {
-            headers: { 'content-type': 'application/json' },
+            headers: {
+              'content-type': 'application/json',
+              'server-timing':
+                'edge_rate_limit;dur=1.25, rate_limit_backend;dur=0.2, rate_limit_identity;dur=0, rate_limit_billing;dur=0',
+              'x-orgx-rate-limit-strategy': 'base_allowance',
+            },
           })
         ),
       };
@@ -476,6 +482,11 @@ describe('mcpTransport', () => {
         has_conversation_id: true,
         has_working_directory: true,
         request_id: 'req-1',
+        edge_rate_limit_ms: 1.25,
+        edge_rate_limit_backend_ms: 0.2,
+        edge_rate_limit_identity_ms: 0,
+        edge_rate_limit_billing_ms: 0,
+        edge_rate_limit_strategy: 'base_allowance',
         $lib: 'orgx-mcp',
       });
 
@@ -501,12 +512,34 @@ describe('mcpTransport', () => {
           tool_family: 'entity_write',
           entity_type: 'task',
           action: 'create',
+          edge_rate_limit_ms: 1.25,
+          edge_rate_limit_backend_ms: 0.2,
+          edge_rate_limit_identity_ms: 0,
+          edge_rate_limit_billing_ms: 0,
+          edge_rate_limit_strategy: 'base_allowance',
         }),
       });
+      expect(backendPayload.metadata).not.toHaveProperty(
+        'response_size_header_bytes'
+      );
     } finally {
       vi.stubGlobal('fetch', originalFetch);
       vi.unstubAllGlobals();
     }
+  });
+
+  it('preserves existing Server-Timing entries when rate-limit timings are added', () => {
+    const response = withCorsAndHeaders(
+      new Response(null, {
+        headers: { 'server-timing': 'origin;dur=12' },
+      }),
+      { 'Server-Timing': 'edge_rate_limit;dur=1' }
+    );
+
+    expect(response.headers.get('server-timing')).toContain('origin;dur=12');
+    expect(response.headers.get('server-timing')).toContain(
+      'edge_rate_limit;dur=1'
+    );
   });
 
   it('captures failed MCP tool visibility when the handler throws', async () => {

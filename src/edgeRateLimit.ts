@@ -3,6 +3,11 @@ import {
   resetBillingPlanCacheForTests,
   resolveBillingPlanContext,
 } from './billingPlan';
+import {
+  durationMs,
+  finalizeRateLimitDecision,
+  type RateLimitTiming,
+} from './rateLimitTiming';
 
 type BillingTier = 'free' | 'pro' | 'enterprise';
 type LimitSource = 'upstash' | 'memory' | 'bypass';
@@ -21,6 +26,7 @@ export interface RateLimitDecision {
   headers: Record<string, string>;
   source: LimitSource;
   retryAfterSeconds?: number;
+  timing?: RateLimitTiming;
 }
 
 const WINDOW_MS = 60 * 60 * 1000; // 1 hour
@@ -28,6 +34,8 @@ const TIER_LIMITS: Record<Exclude<BillingTier, 'enterprise'>, number> = {
   free: 100,
   pro: 1000,
 };
+const BASE_ALLOWANCE = TIER_LIMITS.free;
+const PRO_EXTRA_ALLOWANCE = TIER_LIMITS.pro - BASE_ALLOWANCE;
 const TOKEN_USER_CACHE_TTL_MS = 60 * 1000; // 1 minute
 const UPSTASH_PIPELINE_TIMEOUT_MS = 750;
 
@@ -267,68 +275,30 @@ function checkWithMemory(params: {
   };
 }
 
-export async function checkEdgeRateLimit(
-  request: Request,
-  env: RateLimitEnv
-): Promise<RateLimitDecision> {
-  if (request.method === 'OPTIONS') {
-    return {
-      allowed: true,
-      tier: 'free',
-      source: 'bypass',
-      headers: {},
-    };
-  }
-
-  const token = extractBearerToken(request);
-  const userId = await resolveUserIdFromToken(token, env);
-  const { tier } = await resolveBillingPlanContext(env, userId);
-
-  if (tier === 'enterprise') {
-    return {
-      allowed: true,
-      tier,
-      source: 'bypass',
-      headers: buildRateHeaders({
-        tier,
-        limit: null,
-        remaining: null,
-        resetAtSeconds: Math.floor(Date.now() / 1000) + 3600,
-        source: 'bypass',
-      }),
-    };
-  }
-
-  const limit = TIER_LIMITS[tier];
-  const nowMs = Date.now();
-  const bucketKey = buildSubjectKey(request, token, userId);
-  const redisKey = `mcp:rate:${tier}:${bucketKey}`;
+async function checkLimitBucket(params: {
+  env: RateLimitEnv;
+  key: string;
+  limit: number;
+  nowMs: number;
+}): Promise<{
+  allowed: boolean;
+  remaining: number;
+  resetAtSeconds: number;
+  source: Exclude<LimitSource, 'bypass'>;
+  backendMs: number;
+}> {
+  const startedAt = performance.now();
   const hasUpstash =
-    Boolean(env.UPSTASH_REDIS_REST_URL?.trim()) &&
-    Boolean(env.UPSTASH_REDIS_REST_TOKEN?.trim());
+    Boolean(params.env.UPSTASH_REDIS_REST_URL?.trim()) &&
+    Boolean(params.env.UPSTASH_REDIS_REST_TOKEN?.trim());
 
   if (hasUpstash) {
     try {
-      const upstash = await checkWithUpstash({
-        env,
-        key: redisKey,
-        limit,
-        nowMs,
-      });
+      const result = await checkWithUpstash(params);
       return {
-        allowed: upstash.allowed,
-        tier,
+        ...result,
         source: 'upstash',
-        retryAfterSeconds: upstash.allowed
-          ? undefined
-          : Math.max(1, upstash.resetAtSeconds - Math.floor(nowMs / 1000)),
-        headers: buildRateHeaders({
-          tier,
-          limit,
-          remaining: upstash.remaining,
-          resetAtSeconds: upstash.resetAtSeconds,
-          source: 'upstash',
-        }),
+        backendMs: durationMs(startedAt),
       };
     } catch {
       // Fall back to local protection rather than making a slow/failed Redis
@@ -336,20 +306,159 @@ export async function checkEdgeRateLimit(
     }
   }
 
-  const memory = checkWithMemory({ key: redisKey, limit, nowMs });
   return {
-    allowed: memory.allowed,
-    tier,
+    ...checkWithMemory(params),
     source: 'memory',
-    retryAfterSeconds: memory.allowed
-      ? undefined
-      : Math.max(1, memory.resetAtSeconds - Math.floor(nowMs / 1000)),
-    headers: buildRateHeaders({
-      tier,
-      limit,
-      remaining: memory.remaining,
-      resetAtSeconds: memory.resetAtSeconds,
-      source: 'memory',
-    }),
+    backendMs: durationMs(startedAt),
   };
+}
+
+export async function checkEdgeRateLimit(
+  request: Request,
+  env: RateLimitEnv
+): Promise<RateLimitDecision> {
+  const startedAt = performance.now();
+  if (request.method === 'OPTIONS') {
+    return finalizeRateLimitDecision(
+      {
+        allowed: true,
+        tier: 'free',
+        source: 'bypass',
+        headers: {},
+      },
+      {
+        startedAt,
+        identityMs: 0,
+        billingMs: 0,
+        backendMs: 0,
+        strategy: 'preflight_bypass',
+      }
+    );
+  }
+
+  const token = extractBearerToken(request);
+  const nowMs = Date.now();
+  const bucketKey = buildSubjectKey(request, token, null);
+  const base = await checkLimitBucket({
+    env,
+    key: `mcp:rate:base:${bucketKey}`,
+    limit: BASE_ALLOWANCE,
+    nowMs,
+  });
+
+  // Most callers never approach the free allowance. Keep that hot path local:
+  // identity unwrap and billing-plan I/O are only needed after it is exhausted.
+  if (base.allowed) {
+    return finalizeRateLimitDecision(
+      {
+        allowed: true,
+        tier: 'free',
+        source: base.source,
+        headers: buildRateHeaders({
+          tier: 'free',
+          limit: BASE_ALLOWANCE,
+          remaining: base.remaining,
+          resetAtSeconds: base.resetAtSeconds,
+          source: base.source,
+        }),
+      },
+      {
+        startedAt,
+        identityMs: 0,
+        billingMs: 0,
+        backendMs: base.backendMs,
+        strategy: 'base_allowance',
+      }
+    );
+  }
+
+  const identityStartedAt = performance.now();
+  const userId = await resolveUserIdFromToken(token, env);
+  const identityMs = durationMs(identityStartedAt);
+  const billingStartedAt = performance.now();
+  const { tier } = await resolveBillingPlanContext(env, userId);
+  const billingMs = durationMs(billingStartedAt);
+
+  if (tier === 'enterprise') {
+    return finalizeRateLimitDecision(
+      {
+        allowed: true,
+        tier,
+        source: 'bypass',
+        headers: buildRateHeaders({
+          tier,
+          limit: null,
+          remaining: null,
+          resetAtSeconds: Math.floor(Date.now() / 1000) + 3600,
+          source: 'bypass',
+        }),
+      },
+      {
+        startedAt,
+        identityMs,
+        billingMs,
+        backendMs: base.backendMs,
+        strategy: 'enterprise_bypass',
+      }
+    );
+  }
+
+  if (tier === 'free') {
+    return finalizeRateLimitDecision(
+      {
+        allowed: false,
+        tier,
+        source: base.source,
+        retryAfterSeconds: Math.max(
+          1,
+          base.resetAtSeconds - Math.floor(nowMs / 1000)
+        ),
+        headers: buildRateHeaders({
+          tier,
+          limit: BASE_ALLOWANCE,
+          remaining: 0,
+          resetAtSeconds: base.resetAtSeconds,
+          source: base.source,
+        }),
+      },
+      {
+        startedAt,
+        identityMs,
+        billingMs,
+        backendMs: base.backendMs,
+        strategy: 'free_limit',
+      }
+    );
+  }
+
+  const paid = await checkLimitBucket({
+    env,
+    key: `mcp:rate:paid:${bucketKey}`,
+    limit: PRO_EXTRA_ALLOWANCE,
+    nowMs,
+  });
+  return finalizeRateLimitDecision(
+    {
+      allowed: paid.allowed,
+      tier: 'pro',
+      source: paid.source,
+      retryAfterSeconds: paid.allowed
+        ? undefined
+        : Math.max(1, paid.resetAtSeconds - Math.floor(nowMs / 1000)),
+      headers: buildRateHeaders({
+        tier: 'pro',
+        limit: TIER_LIMITS.pro,
+        remaining: paid.remaining,
+        resetAtSeconds: paid.resetAtSeconds,
+        source: paid.source,
+      }),
+    },
+    {
+      startedAt,
+      identityMs,
+      billingMs,
+      backendMs: base.backendMs + paid.backendMs,
+      strategy: 'paid_allowance',
+    }
+  );
 }
