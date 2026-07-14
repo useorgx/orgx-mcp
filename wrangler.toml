@@ -22,6 +22,11 @@ ORGX_API_FALLBACK_URL = "https://orgx-api-fallback-brain-buffet.vercel.app"
 MCP_SERVER_URL = "https://mcp.useorgx.com"
 AUTH_SERVER_URL = "https://mcp.useorgx.com"
 ORGX_WEB_URL = "https://useorgx.com"
+SENTRY_ENVIRONMENT = "development"
+SENTRY_TRACES_SAMPLE_RATE = "0.1"
+
+[version_metadata]
+binding = "CF_VERSION_METADATA"
 
 [durable_objects]
 bindings = [
@@ -98,6 +103,8 @@ ORGX_API_FALLBACK_URL = "https://orgx-api-fallback-brain-buffet.vercel.app"
 ORGX_WEB_URL = "https://useorgx.com"
 MCP_SERVER_URL = "https://mcp.useorgx.com"
 AUTH_SERVER_URL = "https://mcp.useorgx.com"
+SENTRY_ENVIRONMENT = "production"
+SENTRY_TRACES_SAMPLE_RATE = "0.1"
 
 # Staging/Preview environment  
 [env.preview]
@@ -125,3 +132,5 @@ ORGX_API_URL = "https://staging.useorgx.com"
 ORGX_WEB_URL = "https://staging.useorgx.com"
 MCP_SERVER_URL = "https://mcp-staging.useorgx.com"
 AUTH_SERVER_URL = "https://mcp-staging.useorgx.com"
+SENTRY_ENVIRONMENT = "preview"
+SENTRY_TRACES_SAMPLE_RATE = "0.25"

@@ -2,6 +2,7 @@
   "name": "orgx-mcp-worker",
   "version": "1.1.0",
   "private": true,
+  "packageManager": "pnpm@10.18.1",
   "homepage": "https://mcp.useorgx.com",
   "repository": {
     "type": "git",
@@ -15,7 +16,9 @@
     "build:sdk": "node scripts/build-mcp-sdk.js",
     "build": "pnpm build:sdk",
     "dev": "wrangler dev --port 8787",
-    "deploy": "pnpm build && wrangler deploy",
+    "deploy": "pnpm build && wrangler deploy --outdir dist --upload-source-maps --var SENTRY_RELEASE:$(sentry-cli releases propose-version)",
+    "postdeploy": "pnpm sentry:sourcemaps",
+    "sentry:sourcemaps": "node scripts/upload-sentry-sourcemaps.mjs",
     "og:render": "node scripts/render-social-preview.mjs",
     "widget:version": "node scripts/generate-widget-build-info.mjs",
     "widget:build": "node scripts/build-widgets.mjs",
@@ -48,11 +51,13 @@
     "@cloudflare/workers-oauth-provider": "0.2.4",
     "@modelcontextprotocol/ext-apps": "1.1.2",
     "@modelcontextprotocol/sdk": "1.26.0",
+    "@sentry/cloudflare": "10.65.0",
     "agents": "0.7.2",
     "zod": "^3.25.8"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260103.0",
+    "@sentry/cli": "3.6.0",
     "jsdom": "^29.1.1",
     "tsx": "^4.22.5",
     "typescript": "^5.6.3",
