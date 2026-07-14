@@ -328,13 +328,40 @@ function captureMcpToolCallVisibility<Env>(
   const { metadata, workspaceId, sourceClient } =
     sanitizeToolCallMetadata(toolCall);
   const toolFamily = classifyToolFamily(toolCall.toolName);
-  const responseSizeHeader = Number(response.headers.get('content-length'));
+  const contentLengthHeader = response.headers.get('content-length');
+  const responseSizeHeader =
+    contentLengthHeader === null ? null : Number(contentLengthHeader);
+  const serverTiming = response.headers.get('server-timing') ?? '';
+  const knownServerTimings = new Map(
+    serverTiming.split(',').flatMap((entry) => {
+      const match = entry
+        .trim()
+        .match(/^([a-z0-9_-]+)(?:;dur=([0-9]+(?:\.[0-9]+)?))?/i);
+      if (!match?.[1] || !match[2]) return [];
+      return [[match[1].toLowerCase(), Number(match[2])] as const];
+    })
+  );
+  const rateLimitStrategy = response.headers.get(
+    'x-orgx-rate-limit-strategy'
+  );
   const transportMetadata = {
     ...metadata,
     http_status: response.status,
-    response_size_header_bytes: Number.isFinite(responseSizeHeader)
-      ? responseSizeHeader
-      : undefined,
+    response_size_header_bytes:
+      responseSizeHeader !== null && Number.isFinite(responseSizeHeader)
+        ? responseSizeHeader
+        : undefined,
+    edge_rate_limit_ms: knownServerTimings.get('edge_rate_limit'),
+    edge_rate_limit_backend_ms:
+      knownServerTimings.get('rate_limit_backend'),
+    edge_rate_limit_identity_ms:
+      knownServerTimings.get('rate_limit_identity'),
+    edge_rate_limit_billing_ms:
+      knownServerTimings.get('rate_limit_billing'),
+    edge_rate_limit_strategy:
+      rateLimitStrategy && /^[a-z_]+$/.test(rateLimitStrategy)
+        ? rateLimitStrategy
+        : undefined,
   };
   const requestId =
     typeof toolCall.jsonrpcId === 'string' ||
@@ -694,7 +721,11 @@ export function withCorsAndHeaders(
 
   // Add extra headers (rate limit info)
   for (const [key, value] of Object.entries(extraHeaders)) {
-    headers.set(key, value);
+    if (key.toLowerCase() === 'server-timing' && headers.has(key)) {
+      headers.append(key, value);
+    } else {
+      headers.set(key, value);
+    }
   }
 
   return new Response(response.body, {
