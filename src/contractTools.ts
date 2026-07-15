@@ -134,7 +134,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       'Create or update one OrgX record (snake_case fields).\n\n' +
       'Operations: create (default) uses per-type fields; update REQUIRES id + fields.\n\n' +
       'Create requirements: workspace name/title; initiative title/name + workspace_id + goal_ids when the workspace enforces primary objectives; workstream title + initiative_id; milestone title + workstream_id; task title + workstream_id + milestone_id when the workspace requires backlog milestones; decision title; artifact target + artifact_type + artifact_url/external_url; blocker run_id + metadata.description; skill/studio records title.\n\n' +
-      'Retry behavior: pass idempotency_key on creates. If a persisted key matches, the worker returns that UUID as an idempotent replay instead of creating a duplicate.\n\n' +
+      'Retry behavior: pass idempotency_key on creates. A key match returns the same UUID as an idempotent replay, without creating a duplicate.\n\n' +
       'Initiative gotchas: priority only accepts low|medium|high|urgent, not portfolio labels such as active/critical/maintenance/hold; put portfolio urgency in metadata/priority_rank. due_date is not accepted on initiative create in current workspaces; put target dates in metadata until a typed initiative schedule field exists.\n\n' +
       'USE WHEN: adding/editing records. NEXT: orgx_act to launch/complete the record. DO NOT USE for lifecycle changes — use orgx_act or orgx_attach.',
     inputSchema: {
