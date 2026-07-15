@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import { buildWorkspaceCreateBody } from '../src/workspaceTool';
+import { validateWriteCreateContract } from '../src/writeContract';
 import { CHATGPT_TOOL_DEFINITIONS } from '../src/toolDefinitions';
 
 describe('workspace MCP create contract', () => {
@@ -49,5 +50,15 @@ describe('workspace MCP create contract', () => {
     expect(() => schema.action.parse('create')).not.toThrow();
     expect(schema.name).toBeDefined();
     expect(schema.set_active).toBeDefined();
+  });
+
+  it('validates workspace creation through the canonical orgx_write contract', () => {
+    expect(validateWriteCreateContract({ type: 'workspace' })).toEqual({
+      ok: false,
+      message: 'orgx_write type="workspace" requires name or title.',
+    });
+    expect(
+      validateWriteCreateContract({ type: 'workspace', name: 'StanBox' })
+    ).toEqual({ ok: true });
   });
 });

@@ -25,6 +25,13 @@ export function validateWriteCreateContract(
 ): WriteContractResult {
   const type = typeof args.type === 'string' ? args.type : '';
 
+  if (type === 'workspace' && !has(args.name) && !has(args.title)) {
+    return {
+      ok: false,
+      message: 'orgx_write type="workspace" requires name or title.',
+    };
+  }
+
   // type=workstream REQUIRES initiative_id (no auto-resolution caveat).
   if (type === 'workstream' && !has(args.initiative_id)) {
     return {

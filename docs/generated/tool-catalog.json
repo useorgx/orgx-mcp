@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-13T05:52:02.952Z",
-  "sourceHash": "23b337bebf09b2d1",
+  "generatedAt": "2026-07-15T19:05:49.962Z",
+  "sourceHash": "e362d77575449927",
   "version": "1.0.0",
   "totalTools": 76,
   "categories": [
@@ -1724,6 +1724,7 @@
           "type": {
             "type": "string",
             "enum": [
+              "workspace",
               "initiative",
               "milestone",
               "workstream",
@@ -2153,6 +2154,7 @@
           "type": {
             "type": "string",
             "enum": [
+              "workspace",
               "initiative",
               "milestone",
               "workstream",
@@ -2654,7 +2656,7 @@
     {
       "id": "orgx_act",
       "title": "Act On OrgX Entity",
-      "description": "Run a lifecycle, validation, completion, or proof action on one OrgX entity. Per-action required inputs:\n  • update → \"fields\" patch object.\n  • complete_with_proof, ship_batch → \"artifact\" (artifact_type + artifact_url/external_url; preview_markdown optional).\n  • validate (studio) → \"spec\" payload.\n  • block, flag_risk, decline, cancel, delete → \"note\" strongly recommended.\n  • dry_run=true previews update/delete and other supported lifecycle actions without mutating; update dry-runs must return would_update instead of delegating to orgx_write.\n\nAllowed (type → action) pairs (others return an error):\n  initiative: launch|pause|resume|complete|archive|update|delete\n  milestone: start|complete|flag_risk|cancel|ship_batch|update|delete\n  workstream: start|pause|resume|block|complete|reassign_streams|update|delete\n  task: start|complete|complete_with_proof|block|unblock|reopen|update|delete\n  objective, playbook, decision, studio: see field descriptions.\n\nUSE WHEN: changing entity state. NEXT: orgx_submit_receipt for durable proof. DO NOT USE for creating records — use orgx_write.",
+      "description": "Run a lifecycle, validation, completion, or proof action on one OrgX entity. Per-action required inputs:\n  • update → \"fields\" patch object.\n  • complete_with_proof, ship_batch → \"artifact\" (artifact_type + artifact_url/external_url; preview_markdown optional).\n  • validate (studio) → \"spec\" payload.\n  • block, flag_risk, decline, cancel, delete → \"note\" strongly recommended.\n  • dry_run=true previews update/delete and other supported lifecycle actions without mutating; update dry-runs must return would_update instead of delegating to orgx_write.\n\nAllowed (type → action) pairs (others return an error):\n  workspace: update|delete\n  initiative: launch|pause|resume|complete|archive|update|delete\n  milestone: start|complete|flag_risk|cancel|ship_batch|update|delete\n  workstream: start|pause|resume|block|complete|reassign_streams|update|delete\n  task: start|complete|complete_with_proof|block|unblock|reopen|update|delete\n  objective, playbook, decision, studio: see field descriptions.\n\nUSE WHEN: changing entity state. NEXT: orgx_submit_receipt for durable proof. DO NOT USE for creating records — use orgx_write.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -2662,6 +2664,7 @@
           "type": {
             "type": "string",
             "enum": [
+              "workspace",
               "initiative",
               "milestone",
               "workstream",
@@ -2672,7 +2675,7 @@
               "stream",
               "studio_content"
             ],
-            "description": "Target entity type (initiative, milestone, workstream, task, objective, playbook, decision, or studio)."
+            "description": "Target entity type (workspace, initiative, milestone, workstream, task, objective, playbook, decision, or studio)."
           },
           "id": {
             "type": "string",
@@ -2786,6 +2789,7 @@
           "type": {
             "type": "string",
             "enum": [
+              "workspace",
               "initiative",
               "milestone",
               "workstream",
@@ -3047,6 +3051,7 @@
           "type": {
             "type": "string",
             "enum": [
+              "workspace",
               "initiative",
               "workstream",
               "milestone",
@@ -3548,7 +3553,7 @@
     {
       "id": "orgx_write",
       "title": "Write OrgX Entity",
-      "description": "Create or update one OrgX record (snake_case fields).\n\nOperations: create (default) uses per-type fields; update REQUIRES id + fields.\n\nCreate requirements: initiative title/name + workspace_id + goal_ids when the workspace enforces primary objectives; workstream title + initiative_id; milestone title + workstream_id; task title + workstream_id + milestone_id when the workspace requires backlog milestones; decision title; artifact target + artifact_type + artifact_url/external_url; blocker run_id + metadata.description; skill/studio records title.\n\nRetry behavior: pass idempotency_key on creates. If a persisted key matches, the worker returns that UUID as an idempotent replay instead of creating a duplicate.\n\nInitiative gotchas: priority only accepts low|medium|high|urgent, not portfolio labels such as active/critical/maintenance/hold; put portfolio urgency in metadata/priority_rank. due_date is not accepted on initiative create in current workspaces; put target dates in metadata until a typed initiative schedule field exists.\n\nUSE WHEN: adding/editing records. NEXT: orgx_act to launch/complete the record. DO NOT USE for lifecycle changes — use orgx_act or orgx_attach.",
+      "description": "Create or update one OrgX record (snake_case fields).\n\nOperations: create (default) uses per-type fields; update REQUIRES id + fields.\n\nCreate requirements: workspace name/title; initiative title/name + workspace_id + goal_ids when the workspace enforces primary objectives; workstream title + initiative_id; milestone title + workstream_id; task title + workstream_id + milestone_id when the workspace requires backlog milestones; decision title; artifact target + artifact_type + artifact_url/external_url; blocker run_id + metadata.description; skill/studio records title.\n\nRetry behavior: pass idempotency_key on creates. A key match returns the same UUID as an idempotent replay, without creating a duplicate.\n\nInitiative gotchas: priority only accepts low|medium|high|urgent, not portfolio labels such as active/critical/maintenance/hold; put portfolio urgency in metadata/priority_rank. due_date is not accepted on initiative create in current workspaces; put target dates in metadata until a typed initiative schedule field exists.\n\nUSE WHEN: adding/editing records. NEXT: orgx_act to launch/complete the record. DO NOT USE for lifecycle changes — use orgx_act or orgx_attach.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -3564,7 +3569,7 @@
           "type": {
             "type": "string",
             "minLength": 1,
-            "description": "Entity type to write: task, milestone, decision, artifact, skill, blocker, studio_brand, studio_content, initiative, workstream, or objective. See top-level description for per-type required fields."
+            "description": "Entity type to write: workspace, task, milestone, decision, artifact, skill, blocker, studio_brand, studio_content, initiative, workstream, or objective. See top-level description for per-type required fields."
           },
           "id": {
             "type": "string",
@@ -3696,6 +3701,36 @@
             "type": "object",
             "additionalProperties": {},
             "description": "Free-form object for type-specific metadata. Schema varies per entity type (e.g. for skills: { capabilities, guardrails, channels }; for studio_brand: { tokens, voice, exemplars })."
+          },
+          "tagline": {
+            "type": "string",
+            "description": "Workspace tagline when type=\"workspace\"."
+          },
+          "narrative": {
+            "type": "string",
+            "description": "Workspace identity narrative when type=\"workspace\"."
+          },
+          "key_metrics": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Workspace identity metrics when type=\"workspace\"."
+          },
+          "roadmap_url": {
+            "type": "string",
+            "description": "Workspace roadmap URL when type=\"workspace\"."
+          },
+          "source_links": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Workspace source links when type=\"workspace\"."
+          },
+          "set_active": {
+            "type": "boolean",
+            "description": "For workspace create, make the new workspace active. Defaults true."
           },
           "idempotency_key": {
             "type": "string",
