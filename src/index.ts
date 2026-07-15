@@ -4,6 +4,7 @@ import {
   ResourceTemplate,
 } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import * as Sentry from '@sentry/cloudflare';
 import {
   registerAppTool,
   registerAppResource,
@@ -12,6 +13,7 @@ import {
 import { z } from 'zod';
 
 import OAuthProvider from '@cloudflare/workers-oauth-provider';
+import { createSentryOptions, type SentryWorkerEnv } from './sentryConfig';
 
 // Keep OAuthState DO export for wrangler migration compatibility
 import { OAuthState, type OAuthEnv } from './oauth';
@@ -325,7 +327,31 @@ function computeServerVersion(): string {
 
 const MCP_SERVER_VERSION = computeServerVersion();
 
-interface Env extends OAuthEnv {
+function createInstrumentedMcpServer(): McpServer {
+  return Sentry.wrapMcpServerWithSentry(
+    new McpServer({
+      name: 'orgx-mcp',
+      title: 'OrgX MCP',
+      version: MCP_SERVER_VERSION,
+      websiteUrl: 'https://useorgx.com',
+      icons: [
+        {
+          src: 'https://mcp.useorgx.com/orgx-logo.png',
+          mimeType: 'image/png',
+          sizes: ['64x64', '128x128', 'any'],
+        },
+      ],
+    }),
+    {
+      // MCP arguments and results can contain customer strategy, credentials,
+      // or generated artifacts. Keep spans useful without recording payloads.
+      recordInputs: false,
+      recordOutputs: false,
+    }
+  );
+}
+
+interface Env extends OAuthEnv, SentryWorkerEnv {
   ORGX_API_URL: string;
   ORGX_SERVICE_KEY: string;
   MCP_JWT_SECRET: string;
@@ -410,19 +436,7 @@ export class OrgXMcp extends McpAgent<
 > {
   // Initial McpServer — recreated in init() on each DO wake cycle
   // because MCP SDK 1.26+ prevents reconnecting an already-connected instance.
-  server = new McpServer({
-    name: 'orgx-mcp',
-    title: 'OrgX MCP',
-    version: MCP_SERVER_VERSION,
-    websiteUrl: 'https://useorgx.com',
-    icons: [
-      {
-        src: 'https://mcp.useorgx.com/orgx-logo.png',
-        mimeType: 'image/png',
-        sizes: ['64x64', '128x128', 'any'],
-      },
-    ],
-  });
+  server = createInstrumentedMcpServer();
 
   // SQLite storage for persistent session auth (survives DO resets/deployments)
   // Note: Named sessionSql to avoid shadowing the base class's sql() tagged template method
@@ -909,19 +923,7 @@ export class OrgXMcp extends McpAgent<
     // Recreate the McpServer on each DO wake cycle.
     // The MCP SDK 1.26+ guard prevents connecting an already-connected server
     // instance, so we must create a fresh one before onStart() calls connect().
-    this.server = new McpServer({
-      name: 'orgx-mcp',
-      title: 'OrgX MCP',
-      version: MCP_SERVER_VERSION,
-      websiteUrl: 'https://useorgx.com',
-      icons: [
-        {
-          src: 'https://mcp.useorgx.com/orgx-logo.png',
-          mimeType: 'image/png',
-          sizes: ['64x64', '128x128', 'any'],
-        },
-      ],
-    });
+    this.server = createInstrumentedMcpServer();
 
     // First, try to restore session auth from persistent storage
     // This handles DO resets after deployments
@@ -12229,6 +12231,9 @@ const rateLimitedHttpHandler = {
       const response = await httpHandler.fetch(request, env, ctx);
       return withCorsAndHeaders(response, rateLimit.headers);
     } catch (error) {
+      Sentry.captureException(error, {
+        tags: { subsystem: 'mcp_transport', stage: 'http_handler' },
+      });
       console.error('[mcp] HTTP handler failed before structured tool result', {
         error: error instanceof Error ? error.message : String(error),
       });
@@ -12285,6 +12290,9 @@ const rateLimitedSseHandler = {
         const response = await httpHandler.fetch(httpReq, env, ctx);
         return withCorsAndHeaders(response, rateLimit.headers);
       } catch (error) {
+        Sentry.captureException(error, {
+          tags: { subsystem: 'mcp_transport', stage: 'sse_post_rewrite' },
+        });
         console.error('[mcp] POST /sse rewrite failed before structured tool result', {
           error: error instanceof Error ? error.message : String(error),
         });
@@ -12366,7 +12374,7 @@ async function tryRunTokenAuth(
   return withSecurityHeaders(response);
 }
 
-export default {
+const worker = {
   async fetch(
     request: Request,
     env: Env,
@@ -12380,6 +12388,9 @@ export default {
       const response = await oauthProvider.fetch(request, env, ctx);
       return withSecurityHeaders(response);
     } catch (error) {
+      Sentry.captureException(error, {
+        tags: { subsystem: 'oauth', stage: 'provider_request' },
+      });
       console.error('[mcp] OAuth provider request failed', {
         path: new URL(diagnosticRequest.url).pathname,
         error: error instanceof Error ? error.message : String(error),
@@ -12393,3 +12404,8 @@ export default {
     }
   },
 };
+
+export default Sentry.withSentry<Env>(
+  (env) => createSentryOptions(env),
+  worker
+);

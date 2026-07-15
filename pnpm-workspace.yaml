@@ -1,5 +1,6 @@
 allowBuilds:
   '@modelcontextprotocol/ext-apps': true
+  '@sentry/cli': true
   core-js-pure: true
   esbuild: true
   sharp: true
