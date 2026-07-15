@@ -99,7 +99,7 @@ describe('widgetConfig', () => {
     expect(meta.ui.csp.resourceDomains).toContain('https://mcp.useorgx.com');
     expect(meta.ui.csp.baseUriDomains).toContain('https://mcp.useorgx.com');
     expect(meta.ui.csp.baseUriDomains).toContain('https://www.useorgx.com');
-    expect(meta.ui.domain).toBe('https://mcp.useorgx.com');
+    expect(meta.ui).not.toHaveProperty('domain');
   });
 
   it('publishes a dedicated widget origin and narrow external-link allowlist', () => {

@@ -145,7 +145,10 @@ export function buildMcpAppsMeta(env: WidgetEnv) {
   const csp = buildWidgetCsp(env);
   return {
     ui: {
-      domain: resolveWidgetDomain(env),
+      // `ui.domain` is host-specific. Claude requires a dedicated
+      // `{hash}.claudemcpcontent.com` origin, so do not send the MCP server
+      // URL here. Omitting it lets each MCP Apps host choose its sandbox
+      // origin. The ChatGPT-specific domain remains in buildWidgetMeta().
       prefersBorder: true,
       csp: {
         // resourceDomains allows loading external scripts/styles/images
