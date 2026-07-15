@@ -166,6 +166,21 @@ describe('contract tool catalog', () => {
     }
   });
 
+  it('exposes workspaces through the canonical inspect, write, and act tools', () => {
+    const inspect = CONTRACT_TOOL_DEFINITIONS.find((t) => t.id === 'orgx_inspect')!;
+    const write = CONTRACT_TOOL_DEFINITIONS.find((t) => t.id === 'orgx_write')!;
+    const act = CONTRACT_TOOL_DEFINITIONS.find((t) => t.id === 'orgx_act')!;
+    const inspectSchema = inspect.inputSchema as Record<string, z.ZodTypeAny>;
+    const writeSchema = write.inputSchema as Record<string, z.ZodTypeAny>;
+    const actSchema = act.inputSchema as Record<string, z.ZodTypeAny>;
+
+    expect(() => inspectSchema.type.parse('workspace')).not.toThrow();
+    expect(writeSchema.type.description).toContain('workspace');
+    expect(writeSchema.set_active).toBeDefined();
+    expect(() => actSchema.type.parse('workspace')).not.toThrow();
+    expect(act.description).toContain('workspace: update|delete');
+  });
+
   it('documents live initiative create requirements that prevent known write failures', () => {
     const tool = CONTRACT_TOOL_DEFINITIONS.find((t) => t.id === 'orgx_write');
     expect(tool, 'orgx_write should be registered').toBeDefined();

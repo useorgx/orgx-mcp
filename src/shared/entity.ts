@@ -31,6 +31,7 @@ export const ENTITY_TYPES = [
 export type EntityType = (typeof ENTITY_TYPES)[number];
 
 export const LIFECYCLE_ENTITY_TYPES = [
+  'workspace',
   'initiative',
   'milestone',
   'workstream',

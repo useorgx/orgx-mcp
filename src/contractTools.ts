@@ -61,7 +61,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       'Hydrate one OrgX entity with execution context. Also known as: Inspect OrgX Entity, inspect initiative, get full entity context. USE WHEN: the user names a specific task, milestone, initiative, decision, artifact, or plan session and needs details before acting. NEXT: use orgx_act, orgx_attach, or orgx_write if the user asks to change what you inspected. DO NOT USE WHEN: browsing or searching many records; use orgx_search. Read-only.',
     inputSchema: {
       type: z
-        .enum(['initiative', 'workstream', 'milestone', 'task', 'decision', 'artifact', 'plan_session'])
+        .enum(['workspace', 'initiative', 'workstream', 'milestone', 'task', 'decision', 'artifact', 'plan_session'])
         .describe('Entity type to inspect'),
       id: z.string().min(1).describe('Entity UUID or accepted short ID prefix'),
       hydrate_context: z.boolean().optional().describe('Include linked context where available; default true'),
@@ -133,13 +133,13 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     description:
       'Create or update one OrgX record (snake_case fields).\n\n' +
       'Operations: create (default) uses per-type fields; update REQUIRES id + fields.\n\n' +
-      'Create requirements: initiative title/name + workspace_id + goal_ids when the workspace enforces primary objectives; workstream title + initiative_id; milestone title + workstream_id; task title + workstream_id + milestone_id when the workspace requires backlog milestones; decision title; artifact target + artifact_type + artifact_url/external_url; blocker run_id + metadata.description; skill/studio records title.\n\n' +
+      'Create requirements: workspace name/title; initiative title/name + workspace_id + goal_ids when the workspace enforces primary objectives; workstream title + initiative_id; milestone title + workstream_id; task title + workstream_id + milestone_id when the workspace requires backlog milestones; decision title; artifact target + artifact_type + artifact_url/external_url; blocker run_id + metadata.description; skill/studio records title.\n\n' +
       'Retry behavior: pass idempotency_key on creates. If a persisted key matches, the worker returns that UUID as an idempotent replay instead of creating a duplicate.\n\n' +
       'Initiative gotchas: priority only accepts low|medium|high|urgent, not portfolio labels such as active/critical/maintenance/hold; put portfolio urgency in metadata/priority_rank. due_date is not accepted on initiative create in current workspaces; put target dates in metadata until a typed initiative schedule field exists.\n\n' +
       'USE WHEN: adding/editing records. NEXT: orgx_act to launch/complete the record. DO NOT USE for lifecycle changes — use orgx_act or orgx_attach.',
     inputSchema: {
       operation: z.enum(['create', 'update']).optional().describe('Write operation. Defaults to "create". Set "update" (with id + fields) to patch an existing entity.'),
-      type: z.string().min(1).describe('Entity type to write: task, milestone, decision, artifact, skill, blocker, studio_brand, studio_content, initiative, workstream, or objective. See top-level description for per-type required fields.'),
+      type: z.string().min(1).describe('Entity type to write: workspace, task, milestone, decision, artifact, skill, blocker, studio_brand, studio_content, initiative, workstream, or objective. See top-level description for per-type required fields.'),
       id: z.string().optional().describe('REQUIRED when operation="update". Target entity UUID to patch.'),
       title: z.string().optional().describe('REQUIRED on create (provide either "title" or "name" — they are aliases). Display title of the new entity.'),
       name: z.string().optional().describe('Alternative to "title" on create. REQUIRED on create when "title" is not provided.'),
@@ -169,6 +169,12 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       live_public: z.boolean().optional().describe('Shortcut to publish an initiative live link (sets live_visibility="public"). Only applies when type="initiative".'),
       live_reveal_title: z.boolean().optional().describe('When true, public live-link visitors see the initiative title. Only applies when type="initiative" with live_visibility="public".'),
       metadata: z.record(z.unknown()).optional().describe('Free-form object for type-specific metadata. Schema varies per entity type (e.g. for skills: { capabilities, guardrails, channels }; for studio_brand: { tokens, voice, exemplars }).'),
+      tagline: z.string().optional().describe('Workspace tagline when type="workspace".'),
+      narrative: z.string().optional().describe('Workspace identity narrative when type="workspace".'),
+      key_metrics: z.array(z.string()).optional().describe('Workspace identity metrics when type="workspace".'),
+      roadmap_url: z.string().optional().describe('Workspace roadmap URL when type="workspace".'),
+      source_links: z.array(z.string()).optional().describe('Workspace source links when type="workspace".'),
+      set_active: z.boolean().optional().describe('For workspace create, make the new workspace active. Defaults true.'),
       idempotency_key: z.string().optional().describe('Strongly recommended client-generated idempotency key for safe retries. Same key returns the same result without creating a duplicate.'),
       session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
     },
@@ -224,6 +230,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       '  • block, flag_risk, decline, cancel, delete → "note" strongly recommended.\n' +
       '  • dry_run=true previews update/delete and other supported lifecycle actions without mutating; update dry-runs must return would_update instead of delegating to orgx_write.\n\n' +
       'Allowed (type → action) pairs (others return an error):\n' +
+      '  workspace: update|delete\n' +
       '  initiative: launch|pause|resume|complete|archive|update|delete\n' +
       '  milestone: start|complete|flag_risk|cancel|ship_batch|update|delete\n' +
       '  workstream: start|pause|resume|block|complete|reassign_streams|update|delete\n' +
@@ -231,7 +238,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       '  objective, playbook, decision, studio: see field descriptions.\n\n' +
       'USE WHEN: changing entity state. NEXT: orgx_submit_receipt for durable proof. DO NOT USE for creating records — use orgx_write.',
     inputSchema: {
-      type: lifecycleEntityTypeEnum.describe('Target entity type (initiative, milestone, workstream, task, objective, playbook, decision, or studio).'),
+      type: lifecycleEntityTypeEnum.describe('Target entity type (workspace, initiative, milestone, workstream, task, objective, playbook, decision, or studio).'),
       id: z.string().min(1).describe('Target entity UUID or short ID prefix (8+ hex chars).'),
       action: z
         .enum([
@@ -1003,6 +1010,7 @@ export const INLINE_TOOL_CONTRACTS = {
       mode: z.enum(['draft', 'scaffold', 'launch']).optional().describe('Draft validates, scaffold creates records, launch creates and starts follow-up work.'),
       workstreams: z.array(z.record(z.unknown())).optional().describe('Nested workstream hierarchy.'),
       idempotency_key: z.string().optional().describe('Stable retry key.'),
+      source_evidence: z.record(z.unknown()).optional().describe('For initiatives based on a named external product/site: include { target_url, verification_state: "verified"|"partial"|"unverified", evidence_urls: string[], notes? }. Do not create or launch from search-result inference when the target could not be rendered; use mode="draft" until screenshots or browser evidence verify the source.'),
     },
   },
   get_task_with_context: {

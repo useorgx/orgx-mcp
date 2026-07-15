@@ -57,6 +57,41 @@ describe('buildScaffoldInitiativeBatch', () => {
       ],
     });
     expect(initiative).not.toHaveProperty('_context');
+
+    const workstream = result.batch.find(
+      (entity) => entity.type === 'workstream'
+    );
+    expect(workstream?.metadata).toMatchObject({
+      hierarchy_contract: {
+        mode: 'canonical',
+        source: 'scaffold_initiative',
+        milestone_count: 1,
+        task_count: 1,
+      },
+    });
+  });
+
+  it('persists normalized source evidence as initiative provenance', () => {
+    const result = buildScaffoldInitiativeBatch({
+      title: 'Sandbox go-to-market',
+      source_evidence: {
+        target_url: ' https://example.com/sandbox ',
+        verification_state: 'verified',
+        evidence_urls: [' https://example.com/sandbox ', '', 42],
+        notes: ' Verified against the supplied product page. ',
+      },
+      workstreams: [],
+    });
+
+    expect(result.batch[0]).not.toHaveProperty('source_evidence');
+    expect(result.batch[0]?.metadata).toMatchObject({
+      source_evidence: {
+        target_url: 'https://example.com/sandbox',
+        verification_state: 'verified',
+        evidence_urls: ['https://example.com/sandbox'],
+        notes: 'Verified against the supplied product page.',
+      },
+    });
   });
 
   it('maps primaryAgent shorthand onto assigned agents without leaking invalid fields', () => {

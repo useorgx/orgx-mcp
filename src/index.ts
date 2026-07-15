@@ -130,6 +130,7 @@ import { buildLiveFeedWidget } from './liveFeedWidget';
 import { signStreamToken } from './streamToken';
 import { hydrateTaskContext } from './taskContextHydrator';
 import { buildWorkspaceCreateBody } from './workspaceTool';
+import { buildEntityCollectionSearchParams } from './entityCollectionSearch';
 import {
   CONFIGURE_ORG_POLICY_TYPES,
   describeAppliedPolicy,
@@ -1721,14 +1722,7 @@ export class OrgXMcp extends McpAgent<
     query?: string | null;
     fields?: string[] | null;
   }): Promise<Array<Record<string, unknown>>> {
-    const search = new URLSearchParams();
-    search.set('type', params.type);
-    if (params.limit) search.set('limit', String(params.limit));
-    if (params.initiativeId) search.set('initiative_id', params.initiativeId);
-    if (params.workspaceId) search.set('workspace_id', params.workspaceId);
-    if (params.status) search.set('status', params.status);
-    if (params.query) search.set('query', params.query);
-    if (params.fields?.length) search.set('fields', params.fields.join(','));
+    const search = buildEntityCollectionSearchParams(params);
 
     const response = await callOrgxApiJson(
       this.env,
@@ -3659,6 +3653,45 @@ export class OrgXMcp extends McpAgent<
               });
             }
 
+            if (args.type === 'workspace') {
+              const response = await callOrgxApiJson(
+                this.env,
+                `/api/workspaces/${encodeURIComponent(String(args.id))}`,
+                {
+                  method: 'PATCH',
+                  body: JSON.stringify(fields),
+                },
+                { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
+              );
+              const result = (await response.json()) as Record<string, unknown>;
+              const workspace =
+                result.workspace && typeof result.workspace === 'object'
+                  ? (result.workspace as Record<string, unknown>)
+                  : result;
+              if (fields.is_default === true) {
+                this.sessionContext = {
+                  ...this.sessionContext,
+                  workspaceId: String(workspace.id ?? args.id),
+                  workspaceName:
+                    typeof workspace.name === 'string'
+                      ? workspace.name
+                      : this.sessionContext?.workspaceName,
+                };
+                await this.saveSessionContext();
+              }
+              const payload = {
+                ok: true,
+                type: 'workspace',
+                data: workspace,
+                _v2_tool: 'orgx_write',
+                operation: 'update',
+              };
+              return {
+                content: [{ type: 'text', text: formatForLLM('orgx_write', payload) }],
+                structuredContent: payload,
+              };
+            }
+
             const response = await callOrgxApiJson(
               this.env,
               '/api/entities',
@@ -3701,6 +3734,62 @@ export class OrgXMcp extends McpAgent<
               code: 'write_contract_violation',
               status: 422,
             });
+          }
+
+          if (args.type === 'workspace') {
+            const createBody = buildWorkspaceCreateBody(args);
+            if (!createBody.ok) {
+              return this.toolError(createBody.error, {
+                code: 'invalid_workspace_payload',
+                status: 400,
+              });
+            }
+            const response = await callOrgxApiJson(
+              this.env,
+              '/api/workspaces',
+              {
+                method: 'POST',
+                body: JSON.stringify(createBody.body),
+              },
+              { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
+            );
+            const result = (await response.json()) as Record<string, unknown>;
+            const workspace =
+              result.workspace && typeof result.workspace === 'object'
+                  ? (result.workspace as Record<string, unknown>)
+                  : result;
+            if (
+              typeof workspace.id !== 'string' ||
+              typeof workspace.name !== 'string'
+            ) {
+              return this.toolError(
+                'Workspace was created but the response did not include id/name',
+                { code: 'invalid_workspace_response', status: 502 }
+              );
+            }
+            if (createBody.setActive) {
+              this.sessionContext = {
+                ...this.sessionContext,
+                workspaceId: workspace.id,
+                workspaceName: workspace.name,
+              };
+              await this.saveSessionContext();
+            }
+            const payload = {
+              ok: true,
+              type: 'workspace',
+              data: workspace,
+              active_workspace_id:
+                createBody.setActive
+                  ? this.sessionContext?.workspaceId ?? null
+                  : null,
+              _v2_tool: 'orgx_write',
+              operation: 'create',
+            };
+            return {
+              content: [{ type: 'text', text: formatForLLM('orgx_write', payload) }],
+              structuredContent: payload,
+            };
           }
 
           const body = this.stripContractRuntimeFields(args);
@@ -3919,6 +4008,54 @@ export class OrgXMcp extends McpAgent<
               SECURITY_SCHEMES.entityWriteRequiresAuth,
               allowedTools
             );
+          }
+
+          if (args.type === 'workspace' && args.action === 'delete') {
+            if (args.dry_run === true) {
+              const payload = {
+                success: true,
+                dry_run: true,
+                type: 'workspace',
+                action: 'delete',
+                message: 'workspace would be deleted permanently',
+                data: { id: args.id, deleted: false, would_delete: true },
+                _v2_tool: 'orgx_act',
+                _action: 'delete',
+                entity_type: 'workspace',
+                entity_id: args.id,
+              };
+              return {
+                content: [{ type: 'text', text: formatForLLM('entity_action', payload) }],
+                structuredContent: payload,
+              };
+            }
+            const response = await callOrgxApiJson(
+              this.env,
+              `/api/workspaces/${encodeURIComponent(String(args.id))}`,
+              { method: 'DELETE' },
+              { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
+            );
+            const result = (await response.json()) as Record<string, unknown>;
+            if (this.sessionContext?.workspaceId === args.id) {
+              this.sessionContext = {
+                ...this.sessionContext,
+                workspaceId: undefined,
+                workspaceName: undefined,
+              };
+              await this.saveSessionContext();
+            }
+            const payload = {
+              ...result,
+              success: true,
+              _v2_tool: 'orgx_act',
+              _action: 'delete',
+              entity_type: 'workspace',
+              entity_id: args.id,
+            };
+            return {
+              content: [{ type: 'text', text: formatForLLM('entity_action', payload) }],
+              structuredContent: payload,
+            };
           }
 
           const resolvedAction =
@@ -8023,6 +8160,7 @@ export class OrgXMcp extends McpAgent<
           '  • All other workstream/milestone/task fields are optional and can be omitted — the scaffold builder auto-fills defaults for missing domain/duration/owner/agent/budget.\n' +
           '  • "ref" is a client-side label used inside this single call (in depends_on and ref_map). It is not persisted as an ID.\n\n' +
           'Agent-safe aliases that are accepted and normalized server-side: task priority "urgent" → "high"; task/milestone status "active" → "in_progress".\n\n' +
+          'Source verification gate: when the initiative is based on a named external product or URL, verify the actual target in a browser or from user-provided screenshots before creating records. Pass source_evidence. If the target cannot be rendered, do not infer the product from web-search results; use mode="draft" with verification_state="unverified" and ask for evidence.\n\n' +
           'USE WHEN: user wants to plan a new initiative from scratch. NEXT: use mode="launch" to create and start agents (default), mode="scaffold" to create without launching, or mode="draft" to validate the plan without writes. The result returns initiative_id, ref_map, and preferred_next_calls for orgx_inspect/orgx_search/orgx_write chaining. DO NOT USE: for adding a single task to an existing initiative — use create_entity instead.',
         annotations: {
           readOnlyHint: false,
@@ -8078,6 +8216,17 @@ export class OrgXMcp extends McpAgent<
               'Workspace/command center UUID to scope the initiative hierarchy. Required unless the MCP session already has workspace context; resolve with list_entities type=command_center or get_org_snapshot.'
             ),
           context: scaffoldContextSchema,
+          source_evidence: z
+            .object({
+              target_url: z.string().url().optional(),
+              verification_state: z.enum(['verified', 'partial', 'unverified']),
+              evidence_urls: z.array(z.string().url()).default([]),
+              notes: z.string().optional(),
+            })
+            .optional()
+            .describe(
+              'Evidence for a named external product/site. verified requires direct browser or user-supplied screenshot evidence; unverified must stay mode=draft.'
+            ),
           workstreams: z
             .array(scaffoldWorkstreamSchema)
             .optional()
@@ -8267,6 +8416,21 @@ export class OrgXMcp extends McpAgent<
               ...responseModeResolution.warnings,
             ];
             const scaffoldMode = modeResolution.mode;
+            const sourceEvidence =
+              normalizedArgs.source_evidence &&
+              typeof normalizedArgs.source_evidence === 'object' &&
+              !Array.isArray(normalizedArgs.source_evidence)
+                ? (normalizedArgs.source_evidence as Record<string, unknown>)
+                : null;
+            if (
+              scaffoldMode !== 'draft' &&
+              sourceEvidence?.verification_state === 'unverified'
+            ) {
+              return this.toolError(
+                'Named product source is unverified. Use mode="draft" until the target URL or user-provided screenshots have been verified.',
+                { code: 'source_evidence_required', status: 422 }
+              );
+            }
             const responseMode = responseModeResolution.responseMode;
             const explicitOwnerId =
               typeof normalizedArgs.owner_id === 'string'

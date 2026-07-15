@@ -586,6 +586,9 @@ export function buildScaffoldInitiativeBatch(
         'concurrency',
         'external_sync',
         'externalSync',
+        // Evidence is an initiative provenance contract, not a database
+        // column. Persist the normalized record under metadata below.
+        'source_evidence',
         '_context',
         // owner_id intentionally NOT omitted — it must propagate into the
         // batch so the POST handler can set it on the initiative row.
@@ -639,14 +642,49 @@ export function buildScaffoldInitiativeBatch(
   let nextMetadata: Record<string, unknown> | null = hasExplicitModelTier
     ? null
     : existingMetadata;
+  const rawSourceEvidence = safeRecord(args.source_evidence);
+  const sourceVerificationState =
+    rawSourceEvidence.verification_state === 'verified' ||
+    rawSourceEvidence.verification_state === 'partial' ||
+    rawSourceEvidence.verification_state === 'unverified'
+      ? rawSourceEvidence.verification_state
+      : null;
+  const sourceTargetUrl =
+    typeof rawSourceEvidence.target_url === 'string'
+      ? rawSourceEvidence.target_url.trim()
+      : '';
+  const sourceEvidenceUrls = Array.isArray(rawSourceEvidence.evidence_urls)
+    ? rawSourceEvidence.evidence_urls
+        .filter((value): value is string => typeof value === 'string')
+        .map((value) => value.trim())
+        .filter(Boolean)
+    : [];
+  const sourceNotes =
+    typeof rawSourceEvidence.notes === 'string'
+      ? rawSourceEvidence.notes.trim()
+      : '';
+  if (sourceVerificationState || sourceTargetUrl || sourceEvidenceUrls.length) {
+    nextMetadata = {
+      ...(nextMetadata ?? existingMetadata),
+      source_evidence: {
+        verification_state: sourceVerificationState ?? 'partial',
+        ...(sourceTargetUrl ? { target_url: sourceTargetUrl } : {}),
+        ...(sourceEvidenceUrls.length > 0
+          ? { evidence_urls: sourceEvidenceUrls }
+          : {}),
+        ...(sourceNotes ? { notes: sourceNotes } : {}),
+      },
+    };
+  }
   const scaffoldIdempotencyKey =
     typeof initiativeEntity.idempotency_key === 'string' &&
     initiativeEntity.idempotency_key.trim().length > 0
       ? initiativeEntity.idempotency_key.trim()
       : null;
   if (!existingLive.visibility) {
+    const base = nextMetadata ?? existingMetadata;
     nextMetadata = {
-      ...existingMetadata,
+      ...base,
       live: { ...existingLive, visibility: 'public' },
     };
   }
@@ -817,6 +855,18 @@ export function buildScaffoldInitiativeBatch(
     wsWithEstimates.metadata = {
       ...wsMetadata,
       ref: wsRef,
+      hierarchy_contract: {
+        mode: 'canonical',
+        source: 'scaffold_initiative',
+        milestone_count: wsMilestones.length,
+        task_count: wsMilestones.reduce<number>((count, milestoneInput) => {
+          const milestone = safeRecord(milestoneInput);
+          const explicitTasks = Array.isArray(milestone.tasks)
+            ? milestone.tasks.length
+            : 0;
+          return count + Math.max(1, explicitTasks);
+        }, 0),
+      },
       domain: normalizedDomain ?? wsMetadata.domain ?? null,
       agent_domain: normalizedDomain ?? wsMetadata.agent_domain ?? null,
       ...(wsMetadataAssignedIds.length > 0
