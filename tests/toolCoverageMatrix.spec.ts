@@ -300,6 +300,33 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     tier: 'contract_and_unit',
     evidence: ['tests/toolDiscoverySnapshot.spec.ts', 'tests/smitheryMetadata.spec.ts'],
   },
+  orgx_request_attention: {
+    tier: 'contract_and_unit',
+    evidence: [
+      'tests/reporting.mcp-tools.spec.ts',
+      'tests/mcpWorker.toolAccessGating.spec.ts',
+    ],
+    remaining:
+      'Deploy and live-verify typed question, permission, approval, and recovery requests from native clients.',
+  },
+  orgx_poll_attention: {
+    tier: 'contract_and_unit',
+    evidence: [
+      'tests/reporting.mcp-tools.spec.ts',
+      'tests/toolDiscoverySnapshot.spec.ts',
+    ],
+    remaining:
+      'Deploy and live-verify a durable owner answer against the production attention endpoint.',
+  },
+  orgx_ack_attention: {
+    tier: 'contract_and_unit',
+    evidence: [
+      'tests/reporting.mcp-tools.spec.ts',
+      'tests/mcpWorker.toolAccessGating.spec.ts',
+    ],
+    remaining:
+      'Deploy and live-verify resumed and resume_failed receipts from each supported client adapter.',
+  },
   orgx_poll_question: {
     tier: 'contract_and_unit',
     evidence: [

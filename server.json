@@ -177,6 +177,36 @@
       }
     },
     {
+      "name": "orgx_request_attention",
+      "title": "Request OrgX Attention",
+      "description": "Forward a typed question, permission, approval, or recovery request while preserving the native client session and continuation strategy. USE WHEN: a native client reaches a genuine human decision that prevents safe continuation. NEXT: poll the returned attention ID. DO NOT USE: for automatic retry boundaries.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "orgx_poll_attention",
+      "title": "Poll OrgX Attention",
+      "description": "Read the durable owner response and continuation state for a preserved attention request. USE WHEN: the client already has an attention ID. NEXT: apply a resolved answer and acknowledge continuation evidence. Read-only.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "orgx_ack_attention",
+      "title": "Acknowledge OrgX Continuation",
+      "description": "Record whether the native client received, resumed, failed, or cancelled after applying the owner response. USE WHEN: the source client observed the stated transition. NEXT: continue to a terminal continuation state. DO NOT USE: to infer resume from decision resolution alone.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
       "name": "orgx_request_question",
       "title": "Request OrgX Question",
       "description": "Pause at a safe checkpoint and forward a contextual Claude Code, Codex, Cursor, OpenClaw, or other client question to the initiative owner. OrgX preserves the source run and session so the originating client can resume with the exact answer.",

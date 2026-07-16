@@ -68,6 +68,9 @@ validation or when the user/workspace sets a budget constraint.
 | `orgx_decide` | Create, remember, approve, reject, or list decisions. |
 | `orgx_submit_receipt` | Submit durable proof, attribution, quality, or outcome receipts. |
 | `orgx_emit_activity` | Emit append-only execution telemetry. |
+| `orgx_request_attention` | Forward a typed question, permission, approval, or recovery request with native continuation context. |
+| `orgx_poll_attention` | Read the durable answer and client continuation state. |
+| `orgx_ack_attention` | Confirm that the source client received, resumed, failed, or cancelled continuation. |
 | `orgx_request_question` | Pause safely and forward a contextual client question to the initiative owner. |
 | `orgx_poll_question` | Read the durable answer receipt and explicit resume instruction. |
 | `get_agent_status` | Read active, blocked, and idle agent work. |

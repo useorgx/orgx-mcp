@@ -75,6 +75,9 @@ describe('worker tool access gating', () => {
     expect(checkSessionTokenToolAccess('orgx_submit_receipt', props)).toBeNull();
     expect(checkSessionTokenToolAccess('orgx_request_question', props)).toBeNull();
     expect(checkSessionTokenToolAccess('orgx_poll_question', props)).toBeNull();
+    expect(checkSessionTokenToolAccess('orgx_request_attention', props)).toBeNull();
+    expect(checkSessionTokenToolAccess('orgx_poll_attention', props)).toBeNull();
+    expect(checkSessionTokenToolAccess('orgx_ack_attention', props)).toBeNull();
   });
 
   it('allows verified agent session tokens to retrieve work context', () => {

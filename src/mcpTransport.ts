@@ -187,6 +187,9 @@ function buildMcpToolCallTelemetry(
 function classifyToolFamily(toolName: string): string {
   if (toolName === 'orgx_emit_activity') return 'activity';
   if (
+    toolName === 'orgx_request_attention' ||
+    toolName === 'orgx_poll_attention' ||
+    toolName === 'orgx_ack_attention' ||
     toolName === 'orgx_request_question' ||
     toolName === 'orgx_poll_question'
   ) {

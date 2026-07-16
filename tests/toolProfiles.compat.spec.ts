@@ -24,6 +24,9 @@ describe('toolProfiles backward compatibility', () => {
     expect(executorTools!.has('orgx_emit_activity')).toBe(true);
     expect(executorTools!.has('orgx_request_question')).toBe(true);
     expect(executorTools!.has('orgx_poll_question')).toBe(true);
+    expect(executorTools!.has('orgx_request_attention')).toBe(true);
+    expect(executorTools!.has('orgx_poll_attention')).toBe(true);
+    expect(executorTools!.has('orgx_ack_attention')).toBe(true);
   });
 
   it('resolveProfileToolSet defaults omitted profiles to the compact v2 surface', () => {
@@ -35,6 +38,9 @@ describe('toolProfiles backward compatibility', () => {
     expect(defaultTools!.has('orgx_write')).toBe(true);
     expect(defaultTools!.has('orgx_request_question')).toBe(true);
     expect(defaultTools!.has('orgx_poll_question')).toBe(true);
+    expect(defaultTools!.has('orgx_request_attention')).toBe(true);
+    expect(defaultTools!.has('orgx_poll_attention')).toBe(true);
+    expect(defaultTools!.has('orgx_ack_attention')).toBe(true);
     expect(undefinedTools).toEqual(defaultTools);
   });
 

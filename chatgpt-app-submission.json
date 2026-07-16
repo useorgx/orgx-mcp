@@ -128,6 +128,42 @@
         "destructive_justification": "Approval or rejection can irreversibly resolve a pending decision."
       }
     },
+    "orgx_request_attention": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Creates a typed private OrgX attention request that preserves an external client session.",
+        "open_world_justification": "Forwards the request to the authenticated OrgX application API outside the MCP worker.",
+        "destructive_justification": "Adds a reversible pending request and does not delete records or resolve work."
+      }
+    },
+    "orgx_poll_attention": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Reads the durable owner response and continuation state without mutation.",
+        "open_world_justification": "Reads from the authenticated OrgX application API outside the MCP worker.",
+        "destructive_justification": "Does not mutate the attention request or source session."
+      }
+    },
+    "orgx_ack_attention": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Writes a continuation receipt after the source client applies an owner response.",
+        "open_world_justification": "Posts the receipt to the authenticated OrgX application API outside the MCP worker.",
+        "destructive_justification": "Appends a status receipt and does not delete or irreversibly alter source work."
+      }
+    },
     "orgx_request_question": {
       "annotations": {
         "readOnlyHint": false,

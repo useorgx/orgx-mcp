@@ -106,6 +106,9 @@ describe('Smithery metadata coverage', () => {
       "'orgx_write'",
       "'orgx_submit_receipt'",
       "'orgx_emit_activity'",
+      "'orgx_request_attention'",
+      "'orgx_poll_attention'",
+      "'orgx_ack_attention'",
       "'orgx_request_question'",
       "'orgx_poll_question'",
     ]) {
