@@ -16,6 +16,8 @@ describe('toolProfiles backward compatibility', () => {
     expect(executorTools).toBeInstanceOf(Set);
     expect(executorTools!.size).toBeGreaterThan(0);
     expect(executorTools!.has('orgx_emit_activity')).toBe(true);
+    expect(executorTools!.has('orgx_request_question')).toBe(true);
+    expect(executorTools!.has('orgx_poll_question')).toBe(true);
   });
 
   it('resolveProfileToolSet defaults omitted profiles to the compact v2 surface', () => {
@@ -25,6 +27,8 @@ describe('toolProfiles backward compatibility', () => {
     expect(defaultTools).toBeInstanceOf(Set);
     expect(defaultTools!.has('orgx_bootstrap')).toBe(true);
     expect(defaultTools!.has('orgx_write')).toBe(true);
+    expect(defaultTools!.has('orgx_request_question')).toBe(true);
+    expect(defaultTools!.has('orgx_poll_question')).toBe(true);
     expect(undefinedTools).toEqual(defaultTools);
   });
 });

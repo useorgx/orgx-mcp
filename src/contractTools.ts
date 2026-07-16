@@ -26,6 +26,8 @@ export const V2_ORGX_TOOL_IDS = [
   'orgx_attach',
   'orgx_act',
   'orgx_emit_activity',
+  'orgx_request_question',
+  'orgx_poll_question',
   'orgx_plan',
   'orgx_spawn',
   'orgx_decide',

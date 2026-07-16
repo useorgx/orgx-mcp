@@ -68,6 +68,8 @@ validation or when the user/workspace sets a budget constraint.
 | `orgx_decide` | Create, remember, approve, reject, or list decisions. |
 | `orgx_submit_receipt` | Submit durable proof, attribution, quality, or outcome receipts. |
 | `orgx_emit_activity` | Emit append-only execution telemetry. |
+| `orgx_request_question` | Pause safely and forward a contextual client question to the initiative owner. |
+| `orgx_poll_question` | Read the durable answer receipt and explicit resume instruction. |
 | `get_agent_status` | Read active, blocked, and idle agent work. |
 | `get_initiative_pulse` | Read initiative health, blockers, milestones, and activity. |
 | `scaffold_initiative` | Create a complete initiative hierarchy in one call. |

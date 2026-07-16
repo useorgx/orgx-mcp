@@ -37,6 +37,8 @@ export const PRIMARY_AUTHENTICATED_TOOLS = [
   'orgx_decide',
   'orgx_submit_receipt',
   'orgx_emit_activity',
+  'orgx_request_question',
+  'orgx_poll_question',
   'orgx_emit_execution_graph',
   'approve_decision',
   'reject_decision',
@@ -348,6 +350,43 @@ const TOOL_EXAMPLES: Record<
     },
     sample_response: {
       ok: true,
+    },
+  },
+  orgx_request_question: {
+    prompt:
+      'Pause this Codex session and ask the initiative owner which launch direction to use.',
+    arguments: {
+      initiative_id: '00000000-0000-4000-8000-000000000000',
+      correlation_id: 'codex-launch-question-1',
+      source_client: 'codex',
+      source_tool: 'request_user_input',
+      source_session_id: 'codex-session-123',
+      idempotency_key: 'codex-launch-question-1',
+      question: 'Which launch direction should this session implement?',
+      context:
+        'The working tree and run are preserved. The selected option changes the implementation direction.',
+      response_mode: 'single_select',
+      options: [
+        { id: 'focused', label: 'Focused launch' },
+        { id: 'broad', label: 'Broad launch' },
+      ],
+    },
+    sample_response: {
+      decision_id: '00000000-0000-4000-8000-000000000001',
+      status: 'pending',
+    },
+  },
+  orgx_poll_question: {
+    prompt: 'Check whether the initiative owner answered the paused question.',
+    arguments: {
+      question_id: '00000000-0000-4000-8000-000000000001',
+    },
+    sample_response: {
+      question: {
+        resolved: true,
+        answer: 'Focused launch',
+        continuation: { should_resume: true },
+      },
     },
   },
   orgx_emit_execution_graph: {

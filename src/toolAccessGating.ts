@@ -22,6 +22,8 @@ export const SESSION_TOKEN_ALLOWED_TOOLS = new Set([
   'create_entity',
   'create_decision',
   'orgx_emit_activity',
+  'orgx_request_question',
+  'orgx_poll_question',
   'orgx_emit_execution_graph',
   'record_quality_score',
   'update_entity',

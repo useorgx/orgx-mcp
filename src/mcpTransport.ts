@@ -186,6 +186,12 @@ function buildMcpToolCallTelemetry(
 
 function classifyToolFamily(toolName: string): string {
   if (toolName === 'orgx_emit_activity') return 'activity';
+  if (
+    toolName === 'orgx_request_question' ||
+    toolName === 'orgx_poll_question'
+  ) {
+    return 'decision';
+  }
   if (toolName === 'orgx_write') return 'entity_write';
   if (toolName === 'orgx_act' || toolName === 'entity_action') {
     return 'entity_action';

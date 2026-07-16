@@ -300,6 +300,24 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     tier: 'contract_and_unit',
     evidence: ['tests/toolDiscoverySnapshot.spec.ts', 'tests/smitheryMetadata.spec.ts'],
   },
+  orgx_poll_question: {
+    tier: 'contract_and_unit',
+    evidence: [
+      'tests/reporting.mcp-tools.spec.ts',
+      'tests/mcpWorker.toolRegistration.spec.ts',
+    ],
+    remaining:
+      'Deploy and live-verify a resolved answer receipt resuming Claude Code, Codex, and Cursor sessions.',
+  },
+  orgx_request_question: {
+    tier: 'contract_and_unit',
+    evidence: [
+      'tests/reporting.mcp-tools.spec.ts',
+      'tests/mcpWorker.toolRegistration.spec.ts',
+    ],
+    remaining:
+      'Deploy and live-verify question creation from Claude Code, Codex, and Cursor against the production decision queue.',
+  },
   orgx_free_audit: {
     tier: 'contract_and_unit',
     evidence: ['tests/freeAudit.spec.ts'],

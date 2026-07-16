@@ -96,6 +96,8 @@ describe('Anthropic directory readiness', () => {
       'orgx_decide',
       'orgx_submit_receipt',
       'orgx_emit_activity',
+      'orgx_request_question',
+      'orgx_poll_question',
       'approve_decision',
       'reject_decision',
       'get_agent_status',

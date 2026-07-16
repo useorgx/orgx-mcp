@@ -1293,6 +1293,15 @@ const reportingChokepointSchema = z.object({
     .describe('Additional runtime evidence, never secrets'),
 });
 
+const externalQuestionOptionSchema = z.union([
+  z.string().min(1).max(500),
+  z.object({
+    id: z.string().min(1).max(120).optional(),
+    label: z.string().min(1).max(500),
+    description: z.string().max(2000).optional(),
+  }),
+]);
+
 const applyChangesetOperationSchema = z.union([
   z
     .object({
@@ -1538,6 +1547,120 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     _meta: {
       'openai/toolInvocation/invoking': 'Emitting activity...',
       'openai/toolInvocation/invoked': 'Activity emitted',
+    },
+  },
+  {
+    id: 'orgx_request_question',
+    title: 'Request OrgX Question',
+    description:
+      'Pause at a safe checkpoint and forward a contextual question to the initiative owner. OrgX renders the right single-select, multi-select, free-text, or confirmation control and preserves the source run/session so work can resume with the exact answer. USE WHEN: Claude Code AskUserQuestion, Codex request_user_input, Cursor, OpenClaw, or another client needs human judgment to continue. NEXT: poll orgx_poll_question with the returned question_id; continue only when continuation.should_resume is true. DO NOT USE: for runtime failures with an automatic retry path — report a chokepoint instead.',
+    inputSchema: {
+      initiative_id: z.string().uuid().describe('Initiative UUID'),
+      idempotency_key: z
+        .string()
+        .min(1)
+        .max(120)
+        .describe('Stable key for safe retries of the same question'),
+      question: z
+        .string()
+        .min(1)
+        .max(500)
+        .describe('The concrete question the owner must answer'),
+      context: z
+        .string()
+        .max(5000)
+        .optional()
+        .describe('What led here, what is preserved, and what the answer changes'),
+      options: z
+        .array(externalQuestionOptionSchema)
+        .max(10)
+        .optional()
+        .describe('Pre-allocated answers for single-select or multi-select questions'),
+      response_mode: z
+        .enum(['single_select', 'multi_select', 'free_text', 'confirmation'])
+        .optional()
+        .describe('Answer control; inferred from options when omitted'),
+      blocking: z
+        .boolean()
+        .optional()
+        .describe('Whether this answer gates the linked work; default true'),
+      urgency: z
+        .enum(['low', 'medium', 'high', 'urgent'])
+        .optional()
+        .describe('Owner attention urgency; default medium'),
+      workstream_id: z
+        .string()
+        .uuid()
+        .optional()
+        .describe('Affected workstream UUID'),
+      run_id: z.string().uuid().optional().describe('Existing run UUID'),
+      correlation_id: z
+        .string()
+        .max(120)
+        .optional()
+        .describe('Required with source_client when run_id is absent'),
+      source_client: reportingSourceClientSchema
+        .optional()
+        .describe('Originating client; required when run_id is absent'),
+      runtime: reportingRuntimeContextSchema
+        .optional()
+        .describe('Runtime/provider provenance for the paused execution'),
+      source_session_id: z
+        .string()
+        .max(255)
+        .optional()
+        .describe('Claude, Codex, Cursor, or other client session identifier'),
+      source_tool: z
+        .string()
+        .min(1)
+        .max(120)
+        .describe('Originating tool, e.g. AskUserQuestion or request_user_input'),
+      source_event_id: z
+        .string()
+        .max(255)
+        .optional()
+        .describe('Originating question/tool-call event identifier'),
+      source_ref: z
+        .record(z.unknown())
+        .optional()
+        .describe('Additional non-secret client continuation references'),
+      metadata: z
+        .record(z.unknown())
+        .optional()
+        .describe('Additional non-secret structured context'),
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
+    securitySchemes: SECURITY_SCHEMES.authRequired,
+    _meta: {
+      'openai/toolInvocation/invoking': 'Forwarding question to owner...',
+      'openai/toolInvocation/invoked': 'Question is waiting for an answer',
+    },
+  },
+  {
+    id: 'orgx_poll_question',
+    title: 'Poll OrgX Question',
+    description:
+      'Read the durable answer receipt for a question previously forwarded with orgx_request_question. USE WHEN: an external client is paused for human input. NEXT: when resolved=true and continuation.should_resume=true, resume the preserved source session with answer and resolution_context; when false, remain paused without creating another question. Read-only.',
+    inputSchema: {
+      question_id: z
+        .string()
+        .uuid()
+        .describe('Question/decision UUID returned by orgx_request_question'),
+    },
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
+    securitySchemes: SECURITY_SCHEMES.authRequired,
+    _meta: {
+      'openai/toolInvocation/invoking': 'Checking for an owner answer...',
+      'openai/toolInvocation/invoked': 'Question status checked',
+      'openai/readOnlyHint': true,
     },
   },
   {
