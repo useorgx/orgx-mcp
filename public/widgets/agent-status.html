@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
   <link rel="stylesheet" href="shared/components/domain-accent.css" />
+  <script src="shared/mcp-apps-sdk.umd.js"></script>
+  <script src="shared/widget-runtime.js"></script>
   <script src="shared/interaction-kit.js"></script>
   <script src="shared/components/domain-accent.js"></script>
   <script src="shared/components/liveness-indicator.js"></script>
@@ -1223,165 +1225,8 @@
       }
     }
 
-    function _detectProtocol() {
-      if (typeof window.openai !== 'undefined') return 'chatgpt';
-      if (window.parent && window.parent !== window) return 'mcp-apps';
-      return 'standalone';
-    }
-
-    function _extractData(out) {
-      if (out == null) return null;
-      if (typeof out === 'object' && out.structuredContent) return out.structuredContent;
-      if (typeof out === 'object' && Array.isArray(out.content)) {
-        for (var i = 0; i < out.content.length; i += 1) {
-          var item = out.content[i];
-          if (item && item.type === 'text' && item.text) {
-            try {
-              return JSON.parse(item.text);
-            } catch (error) {
-              continue;
-            }
-          }
-        }
-      }
-      if (typeof out === 'string') {
-        try {
-          return JSON.parse(out);
-        } catch (error) {
-          return { text: out };
-        }
-      }
-      return out;
-    }
-
-    var _lastW = 0;
-    var _lastH = 0;
     function _sendSize() {
-      var width = Math.ceil(
-        document.documentElement.getBoundingClientRect().width +
-          (window.innerWidth - document.documentElement.clientWidth)
-      );
-      var height = Math.ceil(document.documentElement.getBoundingClientRect().height);
-      if (width === _lastW && height === _lastH) return;
-      _lastW = width;
-      _lastH = height;
-      try {
-        window.parent.postMessage(
-          {
-            jsonrpc: '2.0',
-            method: 'ui/notifications/size-changed',
-            params: { width: width, height: height },
-          },
-          '*'
-        );
-      } catch (error) {}
-    }
-
-    function _observeSize() {
-      _sendSize();
-      if (typeof ResizeObserver !== 'undefined') {
-        var frame = 0;
-        var observer = new ResizeObserver(function () {
-          if (frame) cancelAnimationFrame(frame);
-          frame = requestAnimationFrame(_sendSize);
-        });
-        observer.observe(document.documentElement);
-        observer.observe(document.body);
-      }
-    }
-
-    var _mcpPending = {};
-    var _mcpNextId = 100;
-
-    // Route external link clicks through the MCP host when running inside
-    // mcp-apps. Triggers Claude Desktop's "open in new tab" prompt instead
-    // of a silent (often blocked) iframe navigation.
-    function openWidgetLink(url, event) {
-      if (!url) return false;
-      var protocol = _detectProtocol();
-      if (protocol === 'mcp-apps') {
-        if (event && typeof event.preventDefault === 'function') event.preventDefault();
-        try {
-          window.parent.postMessage(
-            {
-              jsonrpc: '2.0',
-              id: _mcpNextId++,
-              method: 'ui/open-link',
-              params: { url: url },
-            },
-            '*'
-          );
-        } catch (_) {}
-        return false;
-      }
-      return true;
-    }
-
-    function initWidget(opts) {
-      var render = opts.render;
-      var getData = opts.getData || _extractData;
-      var protocol = _detectProtocol();
-
-      if (protocol === 'chatgpt') {
-        render(getData(window.openai && window.openai.toolOutput));
-        window.addEventListener(
-          'openai:set_globals',
-          function (event) {
-            var globals = event.detail && event.detail.globals;
-            if (globals && globals.toolOutput) render(getData(globals.toolOutput));
-          },
-          { passive: true }
-        );
-        return;
-      }
-
-      if (protocol === 'mcp-apps') {
-        render(null);
-        var initId = 1;
-        window.parent.postMessage(
-          {
-            jsonrpc: '2.0',
-            id: initId,
-            method: 'ui/initialize',
-            params: {
-              appInfo: { name: 'Agent Status Widget', version: '1.0' },
-              appCapabilities: { tools: { listChanged: false } },
-              protocolVersion: '2026-01-26',
-            },
-          },
-          '*'
-        );
-        window.parent.postMessage({ jsonrpc: '2.0', method: 'notifications/initialized' }, '*');
-        window.addEventListener('message', function (event) {
-          var msg = event.data;
-          if (!msg || typeof msg !== 'object') return;
-          if (msg.id === initId && msg.result) {
-            window.parent.postMessage(
-              { jsonrpc: '2.0', method: 'ui/notifications/initialized' },
-              '*'
-            );
-            _observeSize();
-            return;
-          }
-          if (msg.id != null && _mcpPending[msg.id]) {
-            var pending = _mcpPending[msg.id];
-            delete _mcpPending[msg.id];
-            if (msg.error) pending.reject(new Error(msg.error.message || 'Tool call failed'));
-            else pending.resolve(msg.result);
-            return;
-          }
-          if (
-            (msg.method === 'ui/notifications/tool-result' || msg.method === 'notifications/message') &&
-            msg.params
-          ) {
-            var next = getData(msg.params);
-            if (next) render(next);
-          }
-        });
-        return;
-      }
-
-      render(null);
+      window.OrgXWidgetRuntime.reportSize();
     }
 
     function escapeHtml(value) {
@@ -1466,24 +1311,7 @@
       var originalLabel = button.textContent;
       button.textContent = 'Resuming…';
       var args = { run_id: runId, note: 'Resumed from agent-status widget' };
-      var protocol = _detectProtocol();
-      var call;
-      if (protocol === 'chatgpt' && window.openai && typeof window.openai.callTool === 'function') {
-        call = window.openai.callTool('resume_agent_run', args);
-      } else if (protocol === 'mcp-apps') {
-        try {
-          window.parent.postMessage({
-            jsonrpc: '2.0',
-            id: _mcpNextId++,
-            method: 'tools/call',
-            params: { name: 'resume_agent_run', arguments: args },
-          }, '*');
-        } catch (err) {}
-        // No response plumbing today; optimistic UI update is good enough.
-        call = Promise.resolve();
-      } else {
-        call = Promise.resolve();
-      }
+      var call = window.OrgXWidgetRuntime.callTool('resume_agent_run', args);
       Promise.resolve(call)
         .then(function () {
           button.textContent = 'Resumed ✓';

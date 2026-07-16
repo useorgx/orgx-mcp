@@ -258,6 +258,8 @@ export const MCP_APPS_SHARED_COMPONENT_PATHS: ReadonlyArray<string> = [
   'shared/components/domain-accent.css',
   'shared/components/domain-accent.js',
   'shared/components/liveness-indicator.js',
+  'shared/mcp-apps-sdk.umd.js',
+  'shared/widget-runtime.js',
 ];
 
 function inlineSharedAsset(

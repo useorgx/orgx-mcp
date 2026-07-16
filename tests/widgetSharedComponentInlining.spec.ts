@@ -55,6 +55,39 @@ describe('MCP Apps shared-component inlining', () => {
     expect(sanitized).toContain(jsBody);
   });
 
+  it('inlines the official MCP Apps SDK so the widget is self-contained', () => {
+    const html = `<script src="shared/mcp-apps-sdk.umd.js"></script>`;
+    const sdkBody = 'window.McpApps = { App: class App {} };';
+    const sanitized = sanitizeMcpAppsHtml(html, {
+      sharedComponents: { 'shared/mcp-apps-sdk.umd.js': sdkBody },
+    });
+    expect(sanitized).not.toMatch(
+      /<script[^>]*\bsrc=["'][^"']*mcp-apps-sdk\.umd\.js/
+    );
+    expect(sanitized).toMatch(
+      /<script data-inline-asset="shared\/mcp-apps-sdk\.umd\.js">/
+    );
+    expect(sanitized).toContain(sdkBody);
+  });
+
+  it('inlines the shared host runtime after the official SDK', () => {
+    const html = `<script src="shared/mcp-apps-sdk.umd.js"></script>
+      <script src="shared/widget-runtime.js"></script>`;
+    const sanitized = sanitizeMcpAppsHtml(html, {
+      sharedComponents: {
+        'shared/mcp-apps-sdk.umd.js': 'window.McpApps = {};',
+        'shared/widget-runtime.js': 'window.OrgXWidgetRuntime = {};',
+      },
+    });
+    expect(sanitized).not.toMatch(/<script[^>]*\bsrc=["'][^"']*widget-runtime\.js/);
+    expect(sanitized).toMatch(
+      /<script data-inline-asset="shared\/widget-runtime\.js">/
+    );
+    expect(sanitized.indexOf('window.McpApps')).toBeLessThan(
+      sanitized.indexOf('window.OrgXWidgetRuntime')
+    );
+  });
+
   it('survives versioned query strings on the reference', () => {
     const html = `<link rel="stylesheet" href="shared/components/domain-accent.css?v=abc123" />`;
     const sanitized = sanitizeMcpAppsHtml(html, {

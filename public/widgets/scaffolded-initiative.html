@@ -7,6 +7,8 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='18' fill='none' stroke='%236366f1' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='9' fill='none' stroke='%236366f1' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='3' fill='%236366f1'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
+  <script src="shared/mcp-apps-sdk.umd.js"></script>
+  <script src="shared/widget-runtime.js"></script>
   <script src="shared/interaction-kit.js"></script>
   <script>
     (function() {
@@ -2247,24 +2249,15 @@
       content.innerHTML = html + renderWidgetBuildMarker();
     };
 
-    function _detectProtocol(){if(typeof window.openai!=='undefined')return'chatgpt';if(window.parent&&window.parent!==window)return'mcp-apps';return'standalone';}
-    // openWidgetLink: route external link clicks through the host API so
-    // Claude Desktop / MCP hosts prompt the user to open externally instead
-    // of silently blocking the sandbox navigation.
-    var _openLinkMsgId=1000;
-    function openWidgetLink(url,event){if(!url)return false;var protocol=_detectProtocol();if(protocol==='chatgpt'&&window.openai&&typeof window.openai.openExternal==='function'){if(event&&typeof event.preventDefault==='function')event.preventDefault();window.openai.openExternal({url:url});return false;}if(protocol==='mcp-apps'){if(event&&typeof event.preventDefault==='function')event.preventDefault();try{window.parent.postMessage({jsonrpc:'2.0',id:_openLinkMsgId++,method:'ui/open-link',params:{url:url}},'*');}catch(_){}return false;}return true;}
+    function _detectProtocol(){return window.OrgXWidgetRuntime.detectProtocol();}
     function _extractData(out){return _extractDataDepth(out,0);}
     function _extractDataDepth(out,depth){if(out==null||depth>4)return null;if(typeof out==='object'&&out.structuredContent)return out.structuredContent;if(typeof out==='object'&&out.result)return _extractDataDepth(out.result,depth+1);if(typeof out==='object'&&out.toolOutput)return _extractDataDepth(out.toolOutput,depth+1);if(typeof out==='object'&&out.output)return _extractDataDepth(out.output,depth+1);if(typeof out==='object'&&Array.isArray(out.content)){for(var i=0;i<out.content.length;i++){var item=out.content[i];if(item&&item.type==='text'&&item.text){try{return JSON.parse(item.text);}catch(e){continue;}}}}if(typeof out==='string'){try{return JSON.parse(out);}catch(e){return{text:out};}}return out;}
-    function _measureContentSize(){var docEl=document.documentElement;var body=document.body;var docRect=docEl.getBoundingClientRect();var bodyRect=body?body.getBoundingClientRect():{width:0,height:0};var scrollbarWidth=Math.max(0,window.innerWidth-docEl.clientWidth);var width=Math.max(Math.ceil(docRect.width+scrollbarWidth),Math.ceil(bodyRect.width),body?body.scrollWidth:0,body?body.offsetWidth:0,body?body.clientWidth:0);var height=Math.max(Math.ceil(docRect.height),Math.ceil(bodyRect.height),body?body.scrollHeight:0,body?body.offsetHeight:0,body?body.clientHeight:0);return{width:width,height:height};}
-    function _sendSize(){var size=_measureContentSize();try{window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/size-changed',params:{width:size.width,height:size.height}},'*');}catch(e){}}
-    var _sizeObserver=null;
+    function _sendSize(){window.OrgXWidgetRuntime.reportSize();}
     var _sizeSyncTimers=[];
     var _sizeTransitionRaf=0;
     var _sizeTransitionUntil=0;
     function _scheduleSizeSync(extraDelays){if(_detectProtocol()==='standalone')return;var delays=[0,160,320,720];if(Array.isArray(extraDelays)){delays=delays.concat(extraDelays);}var seen={};_sizeSyncTimers.forEach(function(timer){window.clearTimeout(timer);});_sizeSyncTimers=[];delays.forEach(function(delay){var safeDelay=Math.max(0,Number(delay)||0);if(seen[safeDelay])return;seen[safeDelay]=true;_sizeSyncTimers.push(window.setTimeout(function(){window.requestAnimationFrame(_sendSize);},safeDelay));});}
     function _syncSizeDuringTransition(duration){if(_detectProtocol()==='standalone')return;var span=Math.max(280,Number(duration)||0);var now=(window.performance&&typeof window.performance.now==='function')?window.performance.now():Date.now();_sizeTransitionUntil=Math.max(_sizeTransitionUntil,now+span);if(_sizeTransitionRaf)return;var tick=function(ts){_sendSize();if(ts<_sizeTransitionUntil){_sizeTransitionRaf=window.requestAnimationFrame(tick);return;}_sizeTransitionRaf=0;_sizeTransitionUntil=0;_sendSize();};_sizeTransitionRaf=window.requestAnimationFrame(tick);}
-    function _observeSize(){if(_sizeObserver||typeof ResizeObserver==='undefined')return;_sizeObserver=new ResizeObserver(function(){window.requestAnimationFrame(_sendSize);});_sizeObserver.observe(document.documentElement);_sizeObserver.observe(document.body);_scheduleSizeSync([24]);}
-    function initWidget(opts){var render=opts.render,getData=opts.getData||_extractData;var protocol=_detectProtocol();document.documentElement.setAttribute('data-protocol',protocol);_observeSize();if(protocol==='chatgpt'){var d=getData(window.openai&&window.openai.toolOutput);render(d);_scheduleSizeSync([240,760]);window.addEventListener('openai:set_globals',function(e){var g=e.detail&&e.detail.globals;if(g&&g.toolOutput){render(getData(g.toolOutput));_scheduleSizeSync([240,760]);}},{passive:true});}else if(protocol==='mcp-apps'){render(null);_scheduleSizeSync([240]);var initId=1;window.parent.postMessage({jsonrpc:'2.0',id:initId,method:'ui/initialize',params:{appInfo:{name:'Widget',version:'1.0'},appCapabilities:{tools:{listChanged:false}},protocolVersion:'2026-01-26'}},'*');window.parent.postMessage({jsonrpc:'2.0',method:'notifications/initialized'},'*');window.addEventListener('message',function(event){var msg=event.data;if(!msg||typeof msg!=='object')return;if(msg.id===initId&&msg.result){window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized'},'*');_scheduleSizeSync([240,760]);return;}if((msg.method==='ui/notifications/tool-result'||msg.method==='notifications/message')&&msg.params){var data=getData(msg.params);if(data)render(data);_scheduleSizeSync([240,760]);}});}else{render(null);}}
     var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+c+'</svg>';};
     var icons = {
 
@@ -3488,13 +3481,11 @@
           cta.classList.remove('is-holding');
           transitionToLaunching();
           try {
-            if (window.openai && typeof window.openai.callTool === 'function') {
-              await window.openai.callTool('orgx_act', {
-                type: 'initiative',
-                id: scaffold.initiative.raw_id || scaffold.initiative.id,
-                action: 'launch',
-              });
-            }
+            await window.OrgXWidgetRuntime.callTool('orgx_act', {
+              type: 'initiative',
+              id: scaffold.initiative.raw_id || scaffold.initiative.id,
+              action: 'launch',
+            });
             transitionToLaunched();
           } catch (err) {
             console.warn('[scaffold:launch] failed', err);
@@ -3700,7 +3691,7 @@
     window.addEventListener('resize', function(){ queueTreeLayout(false); _scheduleSizeSync([24, 180]); });
 
     if(isDemo) applyBootPayload();
-    else initWidget({ render: d => { applyBootPayload(function(){ if(d) data = d; }); } });
+    else initWidget({ getData: _extractData, render: d => { applyBootPayload(function(){ if(d) data = d; }); } });
   </script>
 </body>
 </html>

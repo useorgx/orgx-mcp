@@ -4,6 +4,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Operation Prism: Real-Time MCP Widgets</title>
+<script src="shared/mcp-apps-sdk.umd.js"></script>
+<script src="shared/widget-runtime.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
@@ -534,24 +536,9 @@ button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:po
   var STREAM_URL = "https://mcp.useorgx.com/scaffold/demo-session/stream";
   var LIVE_URL   = "https://useorgx.com/live/07f49477-6807-449c-b46c-5bc71a1219da";
 
-  /* ── External link bridge (ui/open-link postMessage for Claude.ai sandbox) ── */
+  /* ── Host-owned external navigation ── */
   function openExtLink(url) {
-    if (!url) return;
-    /* Inside an mcp-apps host (Claude Desktop, etc.) we're in a sandboxed
-       iframe — window.open is silently blocked. Route via the ui/open-link
-       postMessage so the host can prompt the user to open externally. */
-    var inMcpApps = window.parent && window.parent !== window;
-    if (inMcpApps) {
-      try {
-        window.parent.postMessage(
-          { jsonrpc:'2.0', method:'ui/open-link', params:{ url:url }, id:Date.now() },
-          '*'
-        );
-      } catch(_) {}
-      return;
-    }
-    /* Standalone browser / gallery fallback */
-    try { window.open(url, '_blank', 'noopener,noreferrer'); } catch(_) {}
+    return window.OrgXWidgetRuntime.openWidgetLink(url);
   }
   document.addEventListener('click', function(e) {
     var el = e.target && e.target.closest ? e.target.closest('[data-oxhref]') : null;
