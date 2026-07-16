@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-07-16T00:18:51.870Z",
-  "sourceHash": "cbcaffb7b7beba62",
+  "generatedAt": "2026-07-16T01:56:07.274Z",
+  "sourceHash": "fe80029130b031f9",
   "version": "1.0.0",
-  "totalTools": 78,
+  "totalTools": 81,
   "categories": [
     "Agents",
     "Billing",
@@ -865,6 +865,13 @@
               "claude-code",
               "chatgpt",
               "cursor",
+              "copilot",
+              "gemini",
+              "opencode",
+              "cline",
+              "goose",
+              "qwen",
+              "kiro",
               "web-ui",
               "api"
             ],
@@ -964,6 +971,13 @@
               "claude-code",
               "chatgpt",
               "cursor",
+              "copilot",
+              "gemini",
+              "opencode",
+              "cline",
+              "goose",
+              "qwen",
+              "kiro",
               "web-ui",
               "api"
             ],
@@ -4185,6 +4199,79 @@
       "profiles": []
     },
     {
+      "id": "orgx_ack_attention",
+      "title": "Acknowledge OrgX Continuation",
+      "description": "Report what happened after an owner answered an attention request. Use answer_received when stored locally, resuming when native continuation begins, resumed only after work emits again, resume_failed with an actionable detail when it cannot restart, or cancelled when intentionally stopped. This receipt prevents Live from claiming work is moving before the source client confirms it.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "attention_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Attention/decision UUID"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "answer_received",
+              "resuming",
+              "resumed",
+              "resume_failed",
+              "cancelled"
+            ],
+            "description": "Native continuation state proven by this receipt"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 180,
+            "description": "Stable key for retrying the same receipt"
+          },
+          "session_handle": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Native session handle that processed the answer"
+          },
+          "client_event_id": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Client event proving the continuation transition"
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Actionable continuation result or failure detail"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO timestamp when this state was observed"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Additional non-secret receipt metadata"
+          }
+        },
+        "required": [
+          "attention_id",
+          "state",
+          "idempotency_key"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [],
+      "readOnly": false,
+      "source": "client_integration",
+      "profiles": [
+        "v2",
+        "commander",
+        "executor"
+      ]
+    },
+    {
       "id": "orgx_emit_execution_graph",
       "title": "Emit OrgX Execution Graph",
       "description": "Emit the deterministic execution graph + trust ledger for the active run: nodes (claimed status + verification evidence), depends_on edges, and trust events. OrgX derives false-completion, hallucinated-receipt, and dependency-violation signals from this and surfaces them on /live. USE WHEN: reporting the structured shape of multi-step work — NOT a single progress line (use orgx_emit_activity for that). NEXT: continue work; re-emit as the graph advances (idempotent per run + graph fingerprint). DO NOT USE to mark entities complete — telemetry only.",
@@ -4214,6 +4301,13 @@
               "claude-code",
               "chatgpt",
               "cursor",
+              "copilot",
+              "gemini",
+              "opencode",
+              "cline",
+              "goose",
+              "qwen",
+              "kiro",
               "web-ui",
               "api"
             ],
@@ -4541,6 +4635,37 @@
       "profiles": []
     },
     {
+      "id": "orgx_poll_attention",
+      "title": "Poll OrgX Attention",
+      "description": "Read the durable owner response and continuation state for orgx_request_attention. When resolved=true, apply the answer to the preserved session. NEXT: call orgx_ack_attention with state=resuming, then state=resumed only after native execution actually restarts. Read-only.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "attention_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Attention/decision UUID"
+          }
+        },
+        "required": [
+          "attention_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [],
+      "readOnly": true,
+      "source": "client_integration",
+      "profiles": [
+        "v2",
+        "commander",
+        "planner",
+        "executor",
+        "observer"
+      ]
+    },
+    {
       "id": "orgx_poll_question",
       "title": "Poll OrgX Question",
       "description": "Read the durable answer receipt for a question previously forwarded with orgx_request_question. USE WHEN: an external client is paused for human input. NEXT: when resolved=true and continuation.should_resume=true, resume the preserved source session with answer and resolution_context; when false, remain paused without creating another question. Read-only.",
@@ -4569,6 +4694,289 @@
         "planner",
         "executor",
         "observer"
+      ]
+    },
+    {
+      "id": "orgx_request_attention",
+      "title": "Request OrgX Attention",
+      "description": "Forward a typed human-interruption request while preserving the originating run and session. Use kind=question for missing context, permission for a scoped tool or file action, approval for owner sign-off, and recovery only when automatic retry cannot safely continue. NEXT: poll orgx_poll_attention; resume only after the answer is applied, then call orgx_ack_attention so Live can show that work actually restarted. DO NOT USE: for internal turn boundaries or retryable runtime events.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "initiative_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Initiative UUID"
+          },
+          "attention_kind": {
+            "type": "string",
+            "enum": [
+              "question",
+              "permission",
+              "approval",
+              "recovery"
+            ],
+            "description": "Why human attention is required"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "Stable key for safe retries of this request"
+          },
+          "question": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": "The concrete request the owner must answer"
+          },
+          "context": {
+            "type": "string",
+            "maxLength": 5000,
+            "description": "What led here, what is preserved, and what the answer changes"
+          },
+          "impact_if_delayed": {
+            "type": "string",
+            "maxLength": 1000,
+            "description": "What remains paused or at risk until the owner responds"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 120
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    },
+                    "description": {
+                      "type": "string",
+                      "maxLength": 2000
+                    }
+                  },
+                  "required": [
+                    "label"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "maxItems": 10,
+            "description": "Pre-allocated valid responses"
+          },
+          "response_mode": {
+            "type": "string",
+            "enum": [
+              "single_select",
+              "multi_select",
+              "free_text",
+              "confirmation"
+            ],
+            "description": "Answer control; inferred from options when omitted"
+          },
+          "recommended_option_id": {
+            "type": "string",
+            "maxLength": 120,
+            "description": "Recommended option when the agent can justify one"
+          },
+          "recommended_action": {
+            "type": "string",
+            "maxLength": 1000,
+            "description": "Concise recommendation and why it is safest or highest leverage"
+          },
+          "blocking": {
+            "type": "boolean",
+            "description": "Whether linked work is gated; default true"
+          },
+          "urgency": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "urgent"
+            ],
+            "description": "Owner attention urgency; default medium"
+          },
+          "workstream_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Affected workstream UUID"
+          },
+          "run_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Existing OrgX run UUID"
+          },
+          "correlation_id": {
+            "type": "string",
+            "maxLength": 120,
+            "description": "Stable client correlation when run_id is unavailable"
+          },
+          "source_client": {
+            "type": "string",
+            "enum": [
+              "openclaw",
+              "codex",
+              "claude-code",
+              "chatgpt",
+              "cursor",
+              "copilot",
+              "gemini",
+              "opencode",
+              "cline",
+              "goose",
+              "qwen",
+              "kiro",
+              "web-ui",
+              "api"
+            ],
+            "description": "Originating native client"
+          },
+          "runtime": {
+            "type": "object",
+            "properties": {
+              "source_runtime": {
+                "type": "string",
+                "enum": [
+                  "codex_cloud",
+                  "codex_local",
+                  "anthropic",
+                  "orgx_managed",
+                  "local_openclaw",
+                  "managed_agent",
+                  "unknown"
+                ],
+                "description": "Canonical runtime bucket that produced this activity"
+              },
+              "source_system": {
+                "type": "string",
+                "description": "Provider or system name, e.g. codex, anthropic, openai-managed"
+              },
+              "provider": {
+                "type": "string",
+                "description": "Model/provider identifier"
+              },
+              "execution_target": {
+                "type": "string",
+                "description": "Execution target such as cloud, local, local-openclaw"
+              },
+              "adapter": {
+                "type": "string",
+                "description": "Runtime adapter or bridge name"
+              },
+              "job_id": {
+                "type": "string",
+                "description": "Runtime job id for correlation"
+              }
+            },
+            "additionalProperties": false,
+            "description": "Runtime and provider provenance for the preserved execution"
+          },
+          "source_session_id": {
+            "type": "string",
+            "maxLength": 255,
+            "description": "Originating client session identifier"
+          },
+          "source_tool": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "Native hook or tool that requested attention"
+          },
+          "source_event_id": {
+            "type": "string",
+            "maxLength": 255,
+            "description": "Originating hook or tool-call event identifier"
+          },
+          "source_ref": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Additional non-secret source and continuation references"
+          },
+          "continuation": {
+            "type": "object",
+            "properties": {
+              "strategy": {
+                "type": "string",
+                "enum": [
+                  "reply_in_place",
+                  "resume_session",
+                  "followup_from_checkpoint",
+                  "poll",
+                  "none"
+                ]
+              },
+              "session_handle": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "thread_id": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "turn_id": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "tool_call_id": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "checkpoint_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "peer_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "capability_version": {
+                "type": "string",
+                "maxLength": 64
+              }
+            },
+            "additionalProperties": false,
+            "description": "How OrgX should return the answer to the preserved client session"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Additional non-secret request context"
+          }
+        },
+        "required": [
+          "initiative_id",
+          "attention_kind",
+          "idempotency_key",
+          "question",
+          "source_tool"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [],
+      "readOnly": false,
+      "source": "client_integration",
+      "profiles": [
+        "v2",
+        "commander",
+        "planner",
+        "executor"
       ]
     },
     {
@@ -4685,6 +5093,13 @@
               "claude-code",
               "chatgpt",
               "cursor",
+              "copilot",
+              "gemini",
+              "opencode",
+              "cline",
+              "goose",
+              "qwen",
+              "kiro",
               "web-ui",
               "api"
             ],

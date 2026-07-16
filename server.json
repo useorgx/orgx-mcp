@@ -177,6 +177,36 @@
       }
     },
     {
+      "name": "orgx_request_attention",
+      "title": "Request OrgX Attention",
+      "description": "Forward a typed question, permission, approval, or recovery request while preserving the native client session and continuation strategy.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "orgx_poll_attention",
+      "title": "Poll OrgX Attention",
+      "description": "Read the durable owner response and continuation state for a preserved attention request.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "orgx_ack_attention",
+      "title": "Acknowledge OrgX Continuation",
+      "description": "Record whether the native client received, resumed, failed, or cancelled after applying the owner response.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
       "name": "orgx_request_question",
       "title": "Request OrgX Question",
       "description": "Pause at a safe checkpoint and forward a contextual Claude Code, Codex, Cursor, OpenClaw, or other client question to the initiative owner. OrgX preserves the source run and session so the originating client can resume with the exact answer.",

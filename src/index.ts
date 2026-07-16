@@ -3010,6 +3010,18 @@ export class OrgXMcp extends McpAgent<
         path: '/api/client/live/activity',
         method: 'POST',
       },
+      orgx_request_attention: {
+        path: '/api/client/live/attention',
+        method: 'POST',
+      },
+      orgx_poll_attention: {
+        path: '/api/client/live/attention',
+        method: 'GET',
+      },
+      orgx_ack_attention: {
+        path: '/api/client/live/attention',
+        method: 'POST',
+      },
       orgx_request_question: {
         path: '/api/client/live/questions',
         method: 'POST',
@@ -3116,15 +3128,24 @@ export class OrgXMcp extends McpAgent<
 
               if (endpoint.method === 'GET') {
                 const endpointPath =
-                  tool.id === 'orgx_poll_question' &&
-                  typeof args.question_id === 'string'
-                    ? `${endpoint.path}/${encodeURIComponent(args.question_id)}`
+                  (tool.id === 'orgx_poll_question' &&
+                    typeof args.question_id === 'string') ||
+                  (tool.id === 'orgx_poll_attention' &&
+                    typeof args.attention_id === 'string')
+                    ? `${endpoint.path}/${encodeURIComponent(
+                        String(args.question_id ?? args.attention_id)
+                      )}`
                     : endpoint.path;
                 const params = new URLSearchParams();
                 for (const [k, v] of Object.entries(args)) {
                   if (
                     k !== '_context' &&
-                    !(tool.id === 'orgx_poll_question' && k === 'question_id') &&
+                    !(
+                      tool.id === 'orgx_poll_question' && k === 'question_id'
+                    ) &&
+                    !(
+                      tool.id === 'orgx_poll_attention' && k === 'attention_id'
+                    ) &&
                     v !== undefined
                   ) {
                     params.set(k, String(v));
@@ -3146,6 +3167,16 @@ export class OrgXMcp extends McpAgent<
                 // Strip _context before forwarding
                 const { _context, ...toolArgs } = args;
                 let normalizedToolArgs: Record<string, unknown> = toolArgs;
+                if (
+                  tool.id === 'orgx_ack_attention' &&
+                  typeof toolArgs.attention_id === 'string'
+                ) {
+                  url = `${endpoint.path}/${encodeURIComponent(
+                    toolArgs.attention_id
+                  )}`;
+                  const { attention_id: _attentionId, ...receipt } = toolArgs;
+                  normalizedToolArgs = receipt;
+                }
                 if (tool.id === 'record_quality_score') {
                   const normalized =
                     normalizeRecordQualityScoreArgs(toolArgs);
@@ -3278,6 +3309,37 @@ export class OrgXMcp extends McpAgent<
         return questionId
           ? `❓ Question forwarded · ${questionId.slice(0, 8)}... · poll orgx_poll_question`
           : '❓ Question forwarded to the initiative owner';
+      }
+      case 'orgx_request_attention': {
+        const attentionId = data.decision_id as string | undefined;
+        return attentionId
+          ? `Attention forwarded · ${attentionId.slice(0, 8)}... · poll orgx_poll_attention`
+          : 'Attention forwarded to the initiative owner';
+      }
+      case 'orgx_poll_attention': {
+        const attention =
+          data.question && typeof data.question === 'object'
+            ? (data.question as Record<string, unknown>)
+            : data;
+        if (attention.resolved !== true) return 'Still waiting for the owner';
+        const continuation =
+          attention.continuation && typeof attention.continuation === 'object'
+            ? (attention.continuation as Record<string, unknown>)
+            : {};
+        return continuation.should_resume === true
+          ? 'Answer received · apply it to the preserved session'
+          : 'Answer received · leave the source session stopped';
+      }
+      case 'orgx_ack_attention': {
+        const continuation =
+          data.continuation && typeof data.continuation === 'object'
+            ? (data.continuation as Record<string, unknown>)
+            : {};
+        return continuation.state === 'resumed'
+          ? 'Continuation confirmed · work is moving again'
+          : `Continuation receipt recorded · ${String(
+              continuation.state ?? 'received'
+            )}`;
       }
       case 'orgx_poll_question': {
         const question =

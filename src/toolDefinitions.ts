@@ -1231,6 +1231,13 @@ const reportingSourceClientSchema = z.enum([
   'claude-code',
   'chatgpt',
   'cursor',
+  'copilot',
+  'gemini',
+  'opencode',
+  'cline',
+  'goose',
+  'qwen',
+  'kiro',
   'web-ui',
   'api',
 ]);
@@ -1547,6 +1554,198 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     _meta: {
       'openai/toolInvocation/invoking': 'Emitting activity...',
       'openai/toolInvocation/invoked': 'Activity emitted',
+    },
+  },
+  {
+    id: 'orgx_request_attention',
+    title: 'Request OrgX Attention',
+    description:
+      'Forward a typed human-interruption request while preserving the originating run and session. Use kind=question for missing context, permission for a scoped tool or file action, approval for owner sign-off, and recovery only when automatic retry cannot safely continue. NEXT: poll orgx_poll_attention; resume only after the answer is applied, then call orgx_ack_attention so Live can show that work actually restarted. DO NOT USE: for internal turn boundaries or retryable runtime events.',
+    inputSchema: {
+      initiative_id: z.string().uuid().describe('Initiative UUID'),
+      attention_kind: z
+        .enum(['question', 'permission', 'approval', 'recovery'])
+        .describe('Why human attention is required'),
+      idempotency_key: z
+        .string()
+        .min(1)
+        .max(120)
+        .describe('Stable key for safe retries of this request'),
+      question: z
+        .string()
+        .min(1)
+        .max(500)
+        .describe('The concrete request the owner must answer'),
+      context: z
+        .string()
+        .max(5000)
+        .optional()
+        .describe('What led here, what is preserved, and what the answer changes'),
+      impact_if_delayed: z
+        .string()
+        .max(1000)
+        .optional()
+        .describe('What remains paused or at risk until the owner responds'),
+      options: z
+        .array(externalQuestionOptionSchema)
+        .max(10)
+        .optional()
+        .describe('Pre-allocated valid responses'),
+      response_mode: z
+        .enum(['single_select', 'multi_select', 'free_text', 'confirmation'])
+        .optional()
+        .describe('Answer control; inferred from options when omitted'),
+      recommended_option_id: z
+        .string()
+        .max(120)
+        .optional()
+        .describe('Recommended option when the agent can justify one'),
+      recommended_action: z
+        .string()
+        .max(1000)
+        .optional()
+        .describe('Concise recommendation and why it is safest or highest leverage'),
+      blocking: z.boolean().optional().describe('Whether linked work is gated; default true'),
+      urgency: z
+        .enum(['low', 'medium', 'high', 'urgent'])
+        .optional()
+        .describe('Owner attention urgency; default medium'),
+      workstream_id: z
+        .string()
+        .uuid()
+        .optional()
+        .describe('Affected workstream UUID'),
+      run_id: z.string().uuid().optional().describe('Existing OrgX run UUID'),
+      correlation_id: z
+        .string()
+        .max(120)
+        .optional()
+        .describe('Stable client correlation when run_id is unavailable'),
+      source_client: reportingSourceClientSchema
+        .optional()
+        .describe('Originating native client'),
+      runtime: reportingRuntimeContextSchema
+        .optional()
+        .describe('Runtime and provider provenance for the preserved execution'),
+      source_session_id: z
+        .string()
+        .max(255)
+        .optional()
+        .describe('Originating client session identifier'),
+      source_tool: z
+        .string()
+        .min(1)
+        .max(120)
+        .describe('Native hook or tool that requested attention'),
+      source_event_id: z
+        .string()
+        .max(255)
+        .optional()
+        .describe('Originating hook or tool-call event identifier'),
+      source_ref: z
+        .record(z.unknown())
+        .optional()
+        .describe('Additional non-secret source and continuation references'),
+      continuation: z
+        .object({
+          strategy: z
+            .enum([
+              'reply_in_place',
+              'resume_session',
+              'followup_from_checkpoint',
+              'poll',
+              'none',
+            ])
+            .optional(),
+          session_handle: z.string().max(500).optional(),
+          thread_id: z.string().max(500).optional(),
+          turn_id: z.string().max(500).optional(),
+          tool_call_id: z.string().max(500).optional(),
+          checkpoint_id: z.string().uuid().optional(),
+          peer_id: z.string().uuid().optional(),
+          capability_version: z.string().max(64).optional(),
+        })
+        .optional()
+        .describe('How OrgX should return the answer to the preserved client session'),
+      metadata: z
+        .record(z.unknown())
+        .optional()
+        .describe('Additional non-secret request context'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+    securitySchemes: SECURITY_SCHEMES.authRequired,
+    _meta: {
+      'openai/toolInvocation/invoking': 'Forwarding attention request...',
+      'openai/toolInvocation/invoked': 'Attention request is waiting',
+    },
+  },
+  {
+    id: 'orgx_poll_attention',
+    title: 'Poll OrgX Attention',
+    description:
+      'Read the durable owner response and continuation state for orgx_request_attention. When resolved=true, apply the answer to the preserved session. NEXT: call orgx_ack_attention with state=resuming, then state=resumed only after native execution actually restarts. Read-only.',
+    inputSchema: {
+      attention_id: z.string().uuid().describe('Attention/decision UUID'),
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
+    securitySchemes: SECURITY_SCHEMES.authRequired,
+    _meta: {
+      'openai/toolInvocation/invoking': 'Checking owner response...',
+      'openai/toolInvocation/invoked': 'Attention status checked',
+      'openai/readOnlyHint': true,
+    },
+  },
+  {
+    id: 'orgx_ack_attention',
+    title: 'Acknowledge OrgX Continuation',
+    description:
+      'Report what happened after an owner answered an attention request. Use answer_received when stored locally, resuming when native continuation begins, resumed only after work emits again, resume_failed with an actionable detail when it cannot restart, or cancelled when intentionally stopped. This receipt prevents Live from claiming work is moving before the source client confirms it.',
+    inputSchema: {
+      attention_id: z.string().uuid().describe('Attention/decision UUID'),
+      state: z
+        .enum([
+          'answer_received',
+          'resuming',
+          'resumed',
+          'resume_failed',
+          'cancelled',
+        ])
+        .describe('Native continuation state proven by this receipt'),
+      idempotency_key: z
+        .string()
+        .min(1)
+        .max(180)
+        .describe('Stable key for retrying the same receipt'),
+      session_handle: z
+        .string()
+        .max(500)
+        .optional()
+        .describe('Native session handle that processed the answer'),
+      client_event_id: z
+        .string()
+        .max(500)
+        .optional()
+        .describe('Client event proving the continuation transition'),
+      detail: z
+        .string()
+        .max(2000)
+        .optional()
+        .describe('Actionable continuation result or failure detail'),
+      occurred_at: z
+        .string()
+        .datetime()
+        .optional()
+        .describe('ISO timestamp when this state was observed'),
+      metadata: z
+        .record(z.unknown())
+        .optional()
+        .describe('Additional non-secret receipt metadata'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+    securitySchemes: SECURITY_SCHEMES.authRequired,
+    _meta: {
+      'openai/toolInvocation/invoking': 'Recording continuation receipt...',
+      'openai/toolInvocation/invoked': 'Continuation receipt recorded',
     },
   },
   {

@@ -37,6 +37,9 @@ export const PRIMARY_AUTHENTICATED_TOOLS = [
   'orgx_decide',
   'orgx_submit_receipt',
   'orgx_emit_activity',
+  'orgx_request_attention',
+  'orgx_poll_attention',
+  'orgx_ack_attention',
   'orgx_request_question',
   'orgx_poll_question',
   'orgx_emit_execution_graph',
@@ -350,6 +353,57 @@ const TOOL_EXAMPLES: Record<
     },
     sample_response: {
       ok: true,
+    },
+  },
+  orgx_request_attention: {
+    prompt:
+      'Ask the initiative owner for permission and preserve this Claude Code session.',
+    arguments: {
+      initiative_id: '00000000-0000-4000-8000-000000000000',
+      correlation_id: 'claude-permission-1',
+      source_client: 'claude-code',
+      source_tool: 'permission_prompt',
+      source_session_id: 'claude-session-123',
+      idempotency_key: 'claude-permission-1',
+      attention_kind: 'permission',
+      question: 'May this session update the deployment configuration?',
+      context: 'The scoped config diff is prepared but has not been applied.',
+      impact_if_delayed: 'Deployment work remains paused.',
+      response_mode: 'confirmation',
+      continuation: {
+        strategy: 'resume_session',
+        session_handle: 'claude-session-123',
+      },
+    },
+    sample_response: {
+      decision_id: '00000000-0000-4000-8000-000000000001',
+      status: 'pending',
+    },
+  },
+  orgx_poll_attention: {
+    prompt: 'Check whether the owner answered a preserved attention request.',
+    arguments: {
+      attention_id: '00000000-0000-4000-8000-000000000001',
+    },
+    sample_response: {
+      question: {
+        resolved: true,
+        answer: 'confirmed',
+        continuation: { should_resume: true },
+      },
+    },
+  },
+  orgx_ack_attention: {
+    prompt: 'Confirm that native execution resumed after applying the answer.',
+    arguments: {
+      attention_id: '00000000-0000-4000-8000-000000000001',
+      state: 'resumed',
+      idempotency_key: 'claude-permission-1-resumed',
+      session_handle: 'claude-session-123',
+    },
+    sample_response: {
+      ok: true,
+      continuation: { state: 'resumed' },
     },
   },
   orgx_request_question: {

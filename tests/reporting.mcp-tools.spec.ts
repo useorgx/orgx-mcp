@@ -20,6 +20,9 @@ describe('MCP reporting tools', () => {
     const ids = CLIENT_INTEGRATION_TOOL_DEFINITIONS.map((tool) => tool.id);
     expect(ids).toContain('orgx_emit_activity');
     expect(ids).toContain('orgx_apply_changeset');
+    expect(ids).toContain('orgx_request_attention');
+    expect(ids).toContain('orgx_poll_attention');
+    expect(ids).toContain('orgx_ack_attention');
     expect(ids).toContain('orgx_request_question');
     expect(ids).toContain('orgx_poll_question');
   });
@@ -73,6 +76,60 @@ describe('MCP reporting tools', () => {
 
     expect(schema.safeParse({ question_id: RUN_ID }).success).toBe(true);
     expect(schema.safeParse({ question_id: 'not-a-uuid' }).success).toBe(false);
+  });
+
+  it.each([
+    ['claude-code', 'permission', 'resume_session'],
+    ['codex', 'question', 'reply_in_place'],
+    ['cursor', 'recovery', 'followup_from_checkpoint'],
+    ['opencode', 'approval', 'poll'],
+  ] as const)(
+    'accepts typed %s %s attention with %s continuation',
+    (sourceClient, attentionKind, strategy) => {
+      const requestTool = findTool('orgx_request_attention');
+      const schema = z.object(requestTool.inputSchema);
+      expect(
+        schema.safeParse({
+          initiative_id: INITIATIVE_ID,
+          correlation_id: `${sourceClient}-${attentionKind}-1`,
+          source_client: sourceClient,
+          source_tool: 'native_attention_hook',
+          source_session_id: `${sourceClient}-session-1`,
+          idempotency_key: `${sourceClient}-${attentionKind}-1`,
+          attention_kind: attentionKind,
+          question: 'What should this native session do next?',
+          context: 'The current checkpoint is preserved.',
+          impact_if_delayed: 'This lane remains paused.',
+          response_mode: 'confirmation',
+          continuation: {
+            strategy,
+            session_handle: `${sourceClient}-session-1`,
+          },
+        }).success
+      ).toBe(true);
+    }
+  );
+
+  it('validates continuation acknowledgement receipts', () => {
+    const pollSchema = z.object(findTool('orgx_poll_attention').inputSchema);
+    const ackSchema = z.object(findTool('orgx_ack_attention').inputSchema);
+
+    expect(pollSchema.safeParse({ attention_id: RUN_ID }).success).toBe(true);
+    expect(
+      ackSchema.safeParse({
+        attention_id: RUN_ID,
+        state: 'resumed',
+        idempotency_key: 'resume-receipt-1',
+        occurred_at: '2026-07-16T01:00:00.000Z',
+      }).success
+    ).toBe(true);
+    expect(
+      ackSchema.safeParse({
+        attention_id: RUN_ID,
+        state: 'working',
+        idempotency_key: 'invalid-state',
+      }).success
+    ).toBe(false);
   });
 
   it('keeps private activity telemetry closed-world', () => {
