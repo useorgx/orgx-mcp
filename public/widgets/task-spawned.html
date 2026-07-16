@@ -7,6 +7,8 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='15' fill='none' stroke='%236366f1' stroke-width='6'/%3E%3Cpath d='M24 32h16' stroke='%236366f1' stroke-width='6' stroke-linecap='round'/%3E%3Cpath d='M32 24v16' stroke='%236366f1' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
+  <script src="shared/mcp-apps-sdk.umd.js"></script>
+  <script src="shared/widget-runtime.js"></script>
   <script src="shared/interaction-kit.js"></script>
   <style>
       :root, :root[data-theme="light"] {
@@ -338,47 +340,6 @@
       }
     };
 
-    
-      function _detectProtocol(){if(typeof window.openai!=='undefined')return'chatgpt';if(window.parent&&window.parent!==window)return'mcp-apps';return'standalone';}
-      function _extractData(out){if(out==null)return null;if(typeof out==='object'&&out.structuredContent)return out.structuredContent;if(typeof out==='object'&&Array.isArray(out.content)){for(var i=0;i<out.content.length;i++){var item=out.content[i];if(item&&item.type==='text'&&item.text){try{return JSON.parse(item.text);}catch(e){continue;}}}}if(typeof out==='string'){try{return JSON.parse(out);}catch(e){return{text:out};}}return out;}
-      var _lastW=0,_lastH=0;
-      function _sendSize(){var w=Math.ceil(document.documentElement.getBoundingClientRect().width+(window.innerWidth-document.documentElement.clientWidth));var h=Math.ceil(document.documentElement.getBoundingClientRect().height);if(w===_lastW&&h===_lastH)return;_lastW=w;_lastH=h;try{window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/size-changed',params:{width:w,height:h}},'*');}catch(e){}}
-      function _observeSize(){_sendSize();if(typeof ResizeObserver!=='undefined'){var _raf=0;var ro=new ResizeObserver(function(){if(_raf)cancelAnimationFrame(_raf);_raf=requestAnimationFrame(_sendSize);});ro.observe(document.documentElement);ro.observe(document.body);}}
-      var _mcpPending = {};
-      var _mcpNextId = 100;
-      function initWidget(opts){
-        var render=opts.render,getData=opts.getData||_extractData;
-        var protocol=_detectProtocol();
-        if(protocol==='chatgpt'){
-          var d=getData(window.openai&&window.openai.toolOutput);render(d);
-          window.addEventListener('openai:set_globals',function(e){var g=e.detail&&e.detail.globals;if(g&&g.toolOutput){render(getData(g.toolOutput));}},{passive:true});
-        }else if(protocol==='mcp-apps'){
-          render(null);
-          var initId=1;
-          window.parent.postMessage({jsonrpc:'2.0',id:initId,method:'ui/initialize',params:{appInfo:{name:'OrgX Widget',version:'1.0.0'},appCapabilities:{tools:{listChanged:false}},protocolVersion:'2026-01-26'}},'*');
-          window.parent.postMessage({jsonrpc:'2.0',method:'notifications/initialized'},'*');
-          window.addEventListener('message',function(event){
-            var msg=event.data;if(!msg||typeof msg!=='object')return;
-            if(msg.id===initId&&msg.result){window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized'},'*');_observeSize();return;}
-            if(msg.id!=null&&_mcpPending[msg.id]){var p=_mcpPending[msg.id];delete _mcpPending[msg.id];if(msg.error)p.reject(new Error(msg.error.message||'Tool call failed'));else p.resolve(msg.result);return;}
-            if((msg.method==='ui/notifications/tool-result'||msg.method==='notifications/message')&&msg.params){var data=getData(msg.params);if(data)render(data);}
-          });
-        }else{render(null);}
-      }
-      function callTool(name, args){
-        var protocol=_detectProtocol();
-        if(protocol==='chatgpt')return window.openai&&window.openai.callTool?window.openai.callTool(name,args):Promise.resolve(null);
-        if(protocol==='mcp-apps'){
-          return new Promise(function(resolve,reject){
-            var id=_mcpNextId++;
-            _mcpPending[id]={resolve:resolve,reject:reject};
-            window.parent.postMessage({jsonrpc:'2.0',id:id,method:'tools/call',params:{name:name,arguments:args}},'*');
-            setTimeout(function(){if(_mcpPending[id]){delete _mcpPending[id];reject(new Error('Tool call '+name+' timed out'));}},30000);
-          });
-        }
-        return Promise.resolve(null);
-      }
-
       var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true">'+c+'</svg>';};
       var icons = {
       external: function(s){return _svg('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>',s);},
@@ -396,7 +357,7 @@
     
     var entity = isDemo ? { id: 'TSK-942', type: 'task', title: 'Implement rate limiting middleware for public API', agent_name: 'Eli', status: 'In Progress', domain: 'Engineering', workspace_name: 'Core Platform', links: [{ platform: 'Linear', url: '#', label: 'ENG-142' }] } : null;
     var isLoading = !isDemo;
-    if (isLoadingOverride) { isLoading = true; isDemo = false; initWidget = () => { render(); }; }
+    if (isLoadingOverride) { isLoading = true; isDemo = false; }
     var bootStartedAt = Date.now();
     var MIN_LOADING_MS = 220;
     var loadingSettled = false;
@@ -414,8 +375,6 @@
       var delay = Math.max(0, MIN_LOADING_MS - (Date.now() - bootStartedAt));
       window.setTimeout(commit, delay);
     };
-    function openWidgetLink(url,event){if(!url)return false;var protocol=_detectProtocol();if(protocol==='mcp-apps'){if(event&&typeof event.preventDefault==='function')event.preventDefault();window.parent.postMessage({jsonrpc:'2.0',id:_mcpNextId++,method:'ui/open-link',params:{url:url}},'*');return false;}return true;}
-
     function resolveWidgetAsset(path){
         try {
             return new URL('shared/' + path, window.location.href).toString();
@@ -659,8 +618,8 @@
       `);
     };
 
-
-    if (isDemo) applyBootPayload();
+    if (isLoadingOverride) render();
+    else if (isDemo) applyBootPayload();
     else initWidget({ render: d => { applyBootPayload(function(){ if(d) entity = d; }); } });
 
   </script>

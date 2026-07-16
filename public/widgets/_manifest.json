@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "generatedAt": "2026-07-03T17:37:28.169Z",
+  "version": 2,
+  "generatedAt": "2026-07-16T05:20:26.595Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -13,7 +13,8 @@
     "shared/mcp-apps-sdk.umd.js",
     "shared/tokens.css",
     "shared/utils.js",
-    "shared/widget-foundation.css"
+    "shared/widget-foundation.css",
+    "shared/widget-runtime.js"
   ],
   "canonicalPrimaries": {
     "agent-status": "191,255,0",
@@ -32,8 +33,8 @@
   "widgets": {
     "agent-status": {
       "file": "public/widgets/agent-status.html",
-      "bytes": 81024,
-      "hash": "aaf6a15491c4",
+      "bytes": 75569,
+      "hash": "4e2d150f9c25",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/components/domain-accent.css",
@@ -41,43 +42,56 @@
         "shared/components/liveness-indicator.js",
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
+        "shared/mcp-apps-sdk.umd.js",
         "shared/tokens.css",
-        "shared/widget-foundation.css"
+        "shared/widget-foundation.css",
+        "shared/widget-runtime.js"
       ],
+      "protocolBridge": "official-sdk",
       "demoOnly": false
     },
     "artifact-review": {
       "file": "public/widgets/artifact-review.html",
-      "bytes": 29492,
-      "hash": "205e4e553176",
+      "bytes": 28645,
+      "hash": "6a281006260a",
       "primaryRgb": "251,191,36",
       "sharedRefs": [
         "shared/components/domain-accent.css",
         "shared/components/domain-accent.js",
         "shared/interaction-kit.css",
+        "shared/mcp-apps-sdk.umd.js",
         "shared/tokens.css",
-        "shared/widget-foundation.css"
+        "shared/widget-foundation.css",
+        "shared/widget-runtime.js"
       ],
+      "protocolBridge": "official-sdk",
       "demoOnly": false
     },
     "daily-brief": {
       "file": "public/widgets/daily-brief.html",
-      "bytes": 25935,
-      "hash": "241e612f8d59",
+      "bytes": 26037,
+      "hash": "24a8a9a96ea4",
       "primaryRgb": "99,102,241",
-      "sharedRefs": [],
+      "sharedRefs": [
+        "shared/mcp-apps-sdk.umd.js",
+        "shared/widget-runtime.js"
+      ],
+      "protocolBridge": "official-sdk",
       "demoOnly": false
     },
     "decisions": {
       "file": "public/widgets/decisions.html",
-      "bytes": 74765,
-      "hash": "03a61336f024",
+      "bytes": 73893,
+      "hash": "fa1ad5815133",
       "primaryRgb": "251,191,36",
       "sharedRefs": [
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
-        "shared/widget-foundation.css"
+        "shared/mcp-apps-sdk.umd.js",
+        "shared/widget-foundation.css",
+        "shared/widget-runtime.js"
       ],
+      "protocolBridge": "official-sdk",
       "demoOnly": false
     },
     "index": {
@@ -90,12 +104,13 @@
         "shared/interaction-kit.js",
         "shared/widget-foundation.css"
       ],
+      "protocolBridge": "standalone",
       "demoOnly": true
     },
     "initiative-pulse": {
       "file": "public/widgets/initiative-pulse.html",
-      "bytes": 108633,
-      "hash": "00eb126ca2e7",
+      "bytes": 103936,
+      "hash": "153038a40e7b",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/components/domain-accent.css",
@@ -103,78 +118,100 @@
         "shared/components/liveness-indicator.js",
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
-        "shared/widget-foundation.css"
+        "shared/mcp-apps-sdk.umd.js",
+        "shared/widget-foundation.css",
+        "shared/widget-runtime.js"
       ],
+      "protocolBridge": "official-sdk",
       "demoOnly": false
     },
     "morning-brief": {
       "file": "public/widgets/morning-brief.html",
-      "bytes": 63891,
-      "hash": "2a043680205f",
+      "bytes": 63567,
+      "hash": "af1d4afb29e8",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
+        "shared/mcp-apps-sdk.umd.js",
         "shared/tokens.css",
-        "shared/widget-foundation.css"
+        "shared/widget-foundation.css",
+        "shared/widget-runtime.js"
       ],
+      "protocolBridge": "official-sdk",
       "demoOnly": false
     },
     "plan-session-live": {
       "file": "public/widgets/plan-session-live.html",
-      "bytes": 21203,
-      "hash": "fd512e7cf28d",
+      "bytes": 20400,
+      "hash": "b59bbea4b13f",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/components/domain-accent.css",
         "shared/components/domain-accent.js",
         "shared/components/liveness-indicator.js",
         "shared/interaction-kit.css",
+        "shared/mcp-apps-sdk.umd.js",
         "shared/tokens.css",
-        "shared/widget-foundation.css"
+        "shared/widget-foundation.css",
+        "shared/widget-runtime.js"
       ],
+      "protocolBridge": "official-sdk",
       "demoOnly": false
     },
     "scaffold-streaming": {
       "file": "public/widgets/scaffold-streaming.html",
-      "bytes": 39503,
-      "hash": "d22eef276792",
+      "bytes": 38969,
+      "hash": "784d1bf66827",
       "primaryRgb": "99,102,241",
-      "sharedRefs": [],
+      "sharedRefs": [
+        "shared/mcp-apps-sdk.umd.js",
+        "shared/widget-runtime.js"
+      ],
+      "protocolBridge": "official-sdk",
       "demoOnly": true
     },
     "scaffolded-initiative": {
       "file": "public/widgets/scaffolded-initiative.html",
-      "bytes": 148058,
-      "hash": "3e4a511b8c12",
+      "bytes": 144822,
+      "hash": "a019e9e039b1",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
-        "shared/widget-foundation.css"
+        "shared/mcp-apps-sdk.umd.js",
+        "shared/widget-foundation.css",
+        "shared/widget-runtime.js"
       ],
+      "protocolBridge": "official-sdk",
       "demoOnly": false
     },
     "search-results": {
       "file": "public/widgets/search-results.html",
-      "bytes": 54394,
-      "hash": "9a9cd444643e",
+      "bytes": 50872,
+      "hash": "39843cd01a9c",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
-        "shared/widget-foundation.css"
+        "shared/mcp-apps-sdk.umd.js",
+        "shared/widget-foundation.css",
+        "shared/widget-runtime.js"
       ],
+      "protocolBridge": "official-sdk",
       "demoOnly": false
     },
     "task-spawned": {
       "file": "public/widgets/task-spawned.html",
-      "bytes": 35857,
-      "hash": "a17443c10e4a",
+      "bytes": 32013,
+      "hash": "9d91a5b477de",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
-        "shared/widget-foundation.css"
+        "shared/mcp-apps-sdk.umd.js",
+        "shared/widget-foundation.css",
+        "shared/widget-runtime.js"
       ],
+      "protocolBridge": "official-sdk",
       "demoOnly": false
     }
   }

@@ -305,6 +305,8 @@
     </div>
   </div>
 
+  <script src="shared/mcp-apps-sdk.umd.js"></script>
+  <script src="shared/widget-runtime.js"></script>
   <script src="shared/components/domain-accent.js"></script>
   <script src="shared/components/liveness-indicator.js"></script>
   <script>
@@ -312,44 +314,13 @@
       'use strict';
 
       function callTool(name, args) {
-        if (window.openai && typeof window.openai.callTool === 'function') {
-          return window.openai.callTool(name, args || {});
-        }
-        return Promise.reject(new Error('callTool unavailable outside MCP host'));
+        return window.OrgXWidgetRuntime.callTool(name, args || {});
       }
       function openWidgetLink(url) {
-        if (!url) return;
-        // ChatGPT host API
-        if (window.openai && typeof window.openai.openExternal === 'function') {
-          window.openai.openExternal({ url });
-          return;
-        }
-        // mcp-apps host (Claude Desktop): route through ui/open-link so the
-        // host can prompt the user. Plain window.location.href would navigate
-        // the sandboxed iframe itself and replace the widget.
-        if (window.parent && window.parent !== window) {
-          try {
-            window.parent.postMessage(
-              {
-                jsonrpc: '2.0',
-                id: Date.now(),
-                method: 'ui/open-link',
-                params: { url: url },
-              },
-              '*'
-            );
-            return;
-          } catch (_) {}
-        }
-        // Standalone browser / gallery fallback
-        try { window.open(url, '_blank', 'noopener,noreferrer'); } catch (_) {
-          window.location.href = url;
-        }
+        return window.OrgXWidgetRuntime.openWidgetLink(url);
       }
       function reportSize() {
-        if (window.openai && typeof window.openai.setWidgetHeight === 'function') {
-          window.openai.setWidgetHeight({ height: document.body.scrollHeight });
-        }
+        window.OrgXWidgetRuntime.reportSize();
       }
 
       function resolvePlan() {
@@ -560,7 +531,16 @@
       }
 
       document.addEventListener('DOMContentLoaded', function () {
-        render(resolvePlan());
+        if (window.OrgXWidgetRuntime.detectProtocol() === 'standalone') {
+          render(resolvePlan());
+          return;
+        }
+        window.OrgXWidgetRuntime.initWidget({
+          render: function (payload) {
+            if (!payload) return;
+            render(payload.plan_session || payload);
+          },
+        });
       });
       window.addEventListener('resize', reportSize);
     })();

@@ -128,445 +128,67 @@ export function debounce(fn, ms) {
 }
 
 // =============================================================================
-// DUAL-PROTOCOL BRIDGE (ChatGPT + MCP Apps)
+// SHARED HOST RUNTIME ADAPTERS
 // =============================================================================
 
-/**
- * Detects which host protocol the widget is running under.
- *
- * @returns {'chatgpt' | 'mcp-apps-sdk' | 'mcp-apps' | 'standalone'}
- */
+function widgetRuntime() {
+  const runtime =
+    typeof window !== 'undefined' ? window.OrgXWidgetRuntime : null;
+  if (!runtime) {
+    throw new Error(
+      'OrgXWidgetRuntime is unavailable. Load shared/widget-runtime.js before shared/utils.js.'
+    );
+  }
+  return runtime;
+}
+
 export function detectProtocol() {
-  if (typeof window !== 'undefined' && window.openai) return 'chatgpt';
-  // Check if official MCP Apps SDK is loaded (via UMD bundle)
-  if (typeof window !== 'undefined' && window.McpApps?.App)
-    return 'mcp-apps-sdk';
-  // Fallback to custom postMessage bridge if in iframe
-  if (
-    typeof window !== 'undefined' &&
-    window.parent &&
-    window.parent !== window
-  )
-    return 'mcp-apps';
-  return 'standalone';
+  return widgetRuntime().detectProtocol();
 }
 
-/** @type {'chatgpt' | 'mcp-apps' | 'standalone'} */
-let _protocol = null;
-
-/** Cached protocol getter */
-function getProtocol() {
-  if (!_protocol) _protocol = detectProtocol();
-  return _protocol;
-}
-
-/**
- * MCP Apps postMessage bridge implementing SEP-1865 protocol.
- * Communicates with MCP Apps host (Claude, VS Code, Goose) via postMessage.
- */
-class McpAppsBridge {
+export class McpAppsBridge {
   constructor() {
-    this._pending = new Map();
-    this._nextId = 1;
-    this._toolResultCallback = null;
-    this._handleMessage = this._handleMessage.bind(this);
-    window.addEventListener('message', this._handleMessage);
-  }
-
-  /** Send notifications/initialized to the host */
-  connect() {
-    window.parent.postMessage(
-      {
-        jsonrpc: '2.0',
-        method: 'notifications/initialized',
-      },
-      '*'
-    );
-  }
-
-  /** @param {Function} cb - callback for tool result data */
-  set ontoolresult(cb) {
-    this._toolResultCallback = cb;
-  }
-
-  /**
-   * Call a server-side MCP tool via the host.
-   * @param {{ name: string, arguments: object }} params
-   * @returns {Promise<object>}
-   */
-  callServerTool({ name, arguments: args }) {
-    return new Promise((resolve, reject) => {
-      const id = this._nextId++;
-      this._pending.set(id, { resolve, reject });
-      window.parent.postMessage(
-        {
-          jsonrpc: '2.0',
-          id,
-          method: 'tools/call',
-          params: { name, arguments: args },
-        },
-        '*'
-      );
-      // Timeout after 30s
-      setTimeout(() => {
-        if (this._pending.has(id)) {
-          this._pending.delete(id);
-          reject(new Error(`Tool call ${name} timed out`));
-        }
-      }, 30000);
-    });
-  }
-
-  /** @param {MessageEvent} event */
-  _handleMessage(event) {
-    const data = event.data;
-    if (!data || typeof data !== 'object') return;
-
-    // JSON-RPC response to a pending tool call
-    if (data.id != null && this._pending.has(data.id)) {
-      const { resolve, reject } = this._pending.get(data.id);
-      this._pending.delete(data.id);
-      if (data.error) {
-        reject(new Error(data.error.message || 'Tool call failed'));
-      } else {
-        resolve(data.result);
-      }
-      return;
-    }
-
-    // Notification with tool result data from host
-    // Support both MCP Apps spec (ui/notifications/tool-result) and legacy format (notifications/message)
-    if (
-      (data.method === 'ui/notifications/tool-result' ||
-        data.method === 'notifications/message') &&
-      data.params
-    ) {
-      if (this._toolResultCallback) {
-        // Try to extract structured data from params
-        const result = data.params;
-
-        // Priority 1: Check for structuredContent (ChatGPT Apps SDK)
-        if (result?.structuredContent) {
-          this._toolResultCallback(result.structuredContent);
-          return;
-        }
-
-        // Priority 2: Try to parse JSON from content array (MCP Apps standard)
-        if (result?.content && Array.isArray(result.content)) {
-          for (const item of result.content) {
-            if (item?.type === 'text' && item?.text) {
-              try {
-                const parsed = JSON.parse(item.text);
-                this._toolResultCallback(parsed);
-                return;
-              } catch {
-                continue;
-              }
-            }
-          }
-        }
-
-        // Priority 3: Pass the entire params object
-        this._toolResultCallback(result);
-      }
-    }
-  }
-
-  destroy() {
-    window.removeEventListener('message', this._handleMessage);
+    return new (widgetRuntime().LegacyBridge)();
   }
 }
 
-/**
- * MCP Apps SDK Bridge using official @modelcontextprotocol/ext-apps App class.
- * This provides spec-compliant communication with MCP Apps hosts (Claude, VS Code, Goose).
- */
-class McpAppsSDKBridge {
+export class McpAppsSDKBridge {
   constructor() {
-    this._app = null;
-    this._toolResultCallback = null;
-    this._connected = false;
-  }
-
-  /**
-   * Connect to the MCP Apps host using the official SDK.
-   * @returns {Promise<void>}
-   */
-  async connect() {
-    if (this._connected) return;
-
-    const { App, applyHostStyleVariables, applyHostFonts } = window.McpApps;
-
-    this._app = new App({
-      name: 'OrgX Widget',
-      version: '1.0.0',
-    });
-
-    // Use the official ontoolresult callback pattern from the SDK
-    // This receives tool results pushed by the host
-    this._app.ontoolresult = (result) => {
-      if (this._toolResultCallback) {
-        // Priority 1: Check for structuredContent (ChatGPT Apps SDK)
-        if (result?.structuredContent) {
-          this._toolResultCallback(result.structuredContent);
-          return;
-        }
-
-        // Priority 2: Try to parse JSON from content array (MCP Apps standard)
-        // Tools return JSON data in the first text content item
-        if (result?.content && Array.isArray(result.content)) {
-          for (const item of result.content) {
-            if (item?.type === 'text' && item?.text) {
-              try {
-                const data = JSON.parse(item.text);
-                // Found valid JSON data
-                this._toolResultCallback(data);
-                return;
-              } catch {
-                // Not JSON, try next content item
-                continue;
-              }
-            }
-          }
-        }
-
-        // Priority 3: Pass the entire result object
-        this._toolResultCallback(result);
-      }
-    };
-
-    // Connect to the host
-    await this._app.connect();
-    this._connected = true;
-
-    // Apply host styling if available
-    try {
-      const context = await this._app.getHostContext();
-      if (context?.styleVariables) {
-        applyHostStyleVariables(context.styleVariables);
-      }
-      if (context?.fonts) {
-        applyHostFonts(context.fonts);
-      }
-    } catch {
-      // Host may not support context, continue without styling
-    }
-  }
-
-  /** @param {Function} cb - callback for tool result data */
-  set ontoolresult(cb) {
-    this._toolResultCallback = cb;
-  }
-
-  /**
-   * Call a server-side MCP tool via the host.
-   * @param {{ name: string, arguments: object }} params
-   * @returns {Promise<object>}
-   */
-  async callServerTool({ name, arguments: args }) {
-    if (!this._app) {
-      throw new Error('SDK bridge not connected');
-    }
-
-    const result = await this._app.callTool({
-      name,
-      arguments: args,
-    });
-
-    // Parse result content
-    if (result?.content) {
-      const textContent = result.content.find((c) => c.type === 'text');
-      if (textContent?.text) {
-        try {
-          return JSON.parse(textContent.text);
-        } catch {
-          return { text: textContent.text };
-        }
-      }
-    }
-
-    return result;
-  }
-
-  destroy() {
-    if (this._app) {
-      this._app.close?.();
-      this._app = null;
-      this._connected = false;
-    }
+    return new (widgetRuntime().McpAppsSDKBridge)();
   }
 }
 
-/** @type {McpAppsBridge | McpAppsSDKBridge | null} */
-let _bridge = null;
-
-/**
- * Get or create the singleton MCP Apps bridge.
- * Prefers official SDK bridge if available, falls back to custom bridge.
- * @param {boolean} useSDK - Force SDK bridge if available
- */
-function getBridge(useSDK = false) {
-  if (!_bridge) {
-    // Use SDK bridge if loaded, otherwise fall back to custom
-    if (useSDK || (typeof window !== 'undefined' && window.McpApps?.App)) {
-      _bridge = new McpAppsSDKBridge();
-    } else {
-      _bridge = new McpAppsBridge();
-    }
-  }
-  return _bridge;
+export function extractStructuredWidgetData(result, plainTextObject = false) {
+  return widgetRuntime().extractStructuredWidgetData(result, plainTextObject);
 }
 
-/**
- * Widget initialization helper
- * Sets up event listening for ChatGPT, MCP Apps SDK, MCP Apps, or standalone mode.
- *
- * @param {object} options - Configuration options
- * @param {Function} options.render - Render function to call when data updates
- * @param {Function} options.getData - Function that extracts data from toolOutput
- * @returns {object} - Object with current data reference
- */
-export function initWidget({ render, getData }) {
-  const protocol = getProtocol();
-  let data;
-
-  if (protocol === 'chatgpt') {
-    // ChatGPT path: read window.openai.toolOutput, listen for openai:set_globals
-    data = getData(window.openai?.toolOutput);
-    render(data);
-
-    window.addEventListener(
-      'openai:set_globals',
-      (event) => {
-        const globals = event.detail?.globals;
-        if (globals?.toolOutput) {
-          data = getData(globals.toolOutput);
-          render(data);
-        }
-      },
-      { passive: true }
-    );
-  } else if (protocol === 'mcp-apps-sdk') {
-    // MCP Apps SDK path: use official SDK bridge
-    data = null;
-    render(data);
-
-    const bridge = getBridge(true);
-    bridge.ontoolresult = (params) => {
-      data = getData(params);
-      render(data);
-    };
-    bridge.connect().catch((err) => {
-      console.error('[OrgX Widget] Failed to connect SDK bridge:', err);
-    });
-  } else if (protocol === 'mcp-apps') {
-    // MCP Apps path: use custom postMessage bridge
-    data = null;
-    render(data);
-
-    const bridge = getBridge(false);
-    bridge.ontoolresult = (params) => {
-      data = getData(params);
-      render(data);
-    };
-    bridge.connect();
-  } else {
-    // Standalone path: demo mode, just render with null
-    data = null;
-    render(data);
-  }
-
-  return { getData: () => data };
+export function initWidget(options) {
+  return widgetRuntime().initWidget(options);
 }
 
-/**
- * Call an MCP tool from a widget (e.g., approve/reject decision).
- * Routes to the appropriate protocol.
- *
- * @param {string} name - Tool name
- * @param {object} args - Tool arguments
- * @returns {Promise<object|null>}
- */
 export function callTool(name, args) {
-  const protocol = getProtocol();
-
-  if (protocol === 'chatgpt') {
-    return window.openai?.callTool?.(name, args) ?? Promise.resolve(null);
-  }
-
-  if (protocol === 'mcp-apps-sdk') {
-    return getBridge(true).callServerTool({ name, arguments: args });
-  }
-
-  if (protocol === 'mcp-apps') {
-    return getBridge(false).callServerTool({ name, arguments: args });
-  }
-
-  // Standalone: no-op
-  console.warn('[OrgX Widget] callTool unavailable in standalone mode');
-  return Promise.resolve(null);
+  return widgetRuntime().callTool(name, args);
 }
 
-/**
- * Opens a URL from inside a widget, routing through the appropriate host
- * API so the click actually opens a new tab instead of silently navigating
- * the sandboxed iframe itself (which replaces the widget).
- *
- * Use this from an anchor's onclick handler:
- *
- *     <a href="..." target="_blank" rel="noreferrer"
- *        onclick="return openWidgetLink(this.href, event)">
- *
- * Or from a delegated click handler:
- *
- *     el.addEventListener('click', e => {
- *       e.preventDefault();
- *       openWidgetLink(el.href, e);
- *     });
- *
- * Returns true when the default anchor behaviour should proceed (standalone
- * browser only) and false otherwise, so it composes cleanly with `onclick`.
- *
- * @param {string} url
- * @param {Event} [event]
- * @returns {boolean}
- */
-let _openLinkMsgId = 1000;
 export function openWidgetLink(url, event) {
-  if (!url) return false;
-  const protocol = getProtocol();
-
-  if (protocol === 'chatgpt') {
-    if (window.openai?.openExternal) {
-      if (event && typeof event.preventDefault === 'function') event.preventDefault();
-      window.openai.openExternal({ url });
-      return false;
-    }
-  }
-
-  if (protocol === 'mcp-apps-sdk' || protocol === 'mcp-apps') {
-    if (event && typeof event.preventDefault === 'function') event.preventDefault();
-    try {
-      window.parent.postMessage(
-        {
-          jsonrpc: '2.0',
-          id: _openLinkMsgId++,
-          method: 'ui/open-link',
-          params: { url },
-        },
-        '*'
-      );
-    } catch (_) {
-      // Last-ditch fallback inside a broken sandbox
-      try { window.open(url, '_blank', 'noopener,noreferrer'); } catch (_) {}
-    }
-    return false;
-  }
-
-  // Standalone: let target="_blank" do its thing
-  return true;
+  return widgetRuntime().openWidgetLink(url, event);
 }
 
+export function updateModelContext(payload) {
+  return widgetRuntime().updateModelContext(payload);
+}
+
+export function persistWidgetState(state) {
+  return widgetRuntime().persistWidgetState(state);
+}
+
+export function sendFollowUpMessage(prompt) {
+  return widgetRuntime().sendFollowUpMessage(prompt);
+}
+
+export function requestDisplayMode(mode) {
+  return widgetRuntime().requestDisplayMode(mode);
+}
 /**
  * Creates a loading spinner element
  *

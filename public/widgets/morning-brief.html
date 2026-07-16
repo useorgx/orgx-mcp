@@ -9,6 +9,8 @@
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
   <script src="shared/interaction-kit.js"></script>
+  <script src="shared/mcp-apps-sdk.umd.js"></script>
+  <script src="shared/widget-runtime.js"></script>
   <style>
 
     :root,
@@ -898,7 +900,9 @@
   <div class="container" id="content"></div>
   <script type="module">
     import { icons } from './shared/icons.js';
-    import { detectProtocol, escapeHtml, initWidget } from './shared/utils.js';
+    import { escapeHtml } from './shared/utils.js';
+
+    const { detectProtocol, initWidget, openWidgetLink } = window.OrgXWidgetRuntime;
 
     const params = new URLSearchParams(window.location.search);
     const requestedTheme = params.get('theme');
@@ -1176,25 +1180,6 @@
         suffix: '',
         numeric: 0,
       };
-    }
-
-    function openWidgetLink(url, event) {
-      if (!url) return false;
-      const protocol = detectProtocol();
-      if ((protocol === 'mcp-apps' || protocol === 'mcp-apps-sdk') && event) {
-        event.preventDefault();
-        window.parent.postMessage(
-          {
-            jsonrpc: '2.0',
-            id: Date.now(),
-            method: 'ui/open-link',
-            params: { url },
-          },
-          '*'
-        );
-        return false;
-      }
-      return true;
     }
 
     function normalizeBrief(payload) {
