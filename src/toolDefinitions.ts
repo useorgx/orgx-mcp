@@ -1560,7 +1560,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     id: 'orgx_request_attention',
     title: 'Request OrgX Attention',
     description:
-      'Forward a typed human-interruption request while preserving the originating run and session. Use kind=question for missing context, permission for a scoped tool or file action, approval for owner sign-off, and recovery only when automatic retry cannot safely continue. NEXT: poll orgx_poll_attention; resume only after the answer is applied, then call orgx_ack_attention so Live can show that work actually restarted. DO NOT USE: for internal turn boundaries or retryable runtime events.',
+      'Forward a typed human-interruption request while preserving the originating run and session. Use kind=question for missing context, permission for a scoped tool or file action, approval for owner sign-off, and recovery only when automatic retry cannot safely continue. USE WHEN: a native client reaches a genuine human decision that prevents the preserved session from continuing safely. NEXT: poll orgx_poll_attention; resume only after the answer is applied, then call orgx_ack_attention so Live can show that work actually restarted. DO NOT USE: for internal turn boundaries or retryable runtime events.',
     inputSchema: {
       initiative_id: z.string().uuid().describe('Initiative UUID'),
       attention_kind: z
@@ -1683,7 +1683,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     id: 'orgx_poll_attention',
     title: 'Poll OrgX Attention',
     description:
-      'Read the durable owner response and continuation state for orgx_request_attention. When resolved=true, apply the answer to the preserved session. NEXT: call orgx_ack_attention with state=resuming, then state=resumed only after native execution actually restarts. Read-only.',
+      'Read the durable owner response and continuation state for orgx_request_attention. USE WHEN: the client has a preserved attention_id and must determine whether the owner answered without creating another request. When resolved=true, apply the answer to the preserved session. NEXT: call orgx_ack_attention with state=resuming, then state=resumed only after native execution actually restarts. Read-only.',
     inputSchema: {
       attention_id: z.string().uuid().describe('Attention/decision UUID'),
     },
@@ -1699,7 +1699,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     id: 'orgx_ack_attention',
     title: 'Acknowledge OrgX Continuation',
     description:
-      'Report what happened after an owner answered an attention request. Use answer_received when stored locally, resuming when native continuation begins, resumed only after work emits again, resume_failed with an actionable detail when it cannot restart, or cancelled when intentionally stopped. This receipt prevents Live from claiming work is moving before the source client confirms it.',
+      'Report what happened after an owner answered an attention request. Use answer_received when stored locally, resuming when native continuation begins, resumed only after work emits again, resume_failed with an actionable detail when it cannot restart, or cancelled when intentionally stopped. USE WHEN: the source client has objective evidence for a continuation state transition. NEXT: keep the same attention_id and idempotency key through terminal resumed, resume_failed, or cancelled state. DO NOT USE: to infer that work resumed merely because the decision was resolved; wait for native execution evidence. This receipt prevents Live from claiming work is moving before the source client confirms it.',
     inputSchema: {
       attention_id: z.string().uuid().describe('Attention/decision UUID'),
       state: z
