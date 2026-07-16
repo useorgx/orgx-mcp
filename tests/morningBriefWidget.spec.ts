@@ -22,7 +22,10 @@ describe('morning brief widget', () => {
     // inside a <style> block does not survive Claude's MCP Apps sandbox.
     expect(widgetSource).toMatch(/<link[^>]+href=("|')shared\/tokens\.css\1/);
     expect(widgetSource).not.toContain("@import url('./shared/tokens.css');");
-    expect(widgetSource).toContain("import { icons } from './shared/icons.js';");
+    expect(widgetSource).toContain('<script src="shared/icons.js"></script>');
+    expect(widgetSource).toContain('const icons = window.OrgXWidgetIcons;');
+    expect(widgetSource).not.toContain("from './shared/icons.js'");
+    expect(widgetSource).not.toContain("from './shared/utils.js'");
     expect(widgetSource).toContain('class="action-strip app-action-stack"');
     expect(widgetSource).toContain('class="metric-rail app-metric-rail"');
     expect(widgetSource).toContain('class="brief-section app-accordion-section');
@@ -37,6 +40,9 @@ describe('morning brief widget', () => {
     expect(widgetSource).not.toContain(
       'The team completed the mission and prepped the next one.'
     );
+    expect(widgetSource).toContain(
+      "protocol === 'chatgpt' && payload === null"
+    );
   });
 
   it('extends shared primitives for richer action and accordion treatments', () => {
@@ -47,5 +53,6 @@ describe('morning brief widget', () => {
     expect(tokenSource).toContain('.app-list-row');
     expect(iconSource).toContain('chevronDown');
     expect(iconSource).toContain('chevronRight');
+    expect(iconSource).toContain('global.OrgXWidgetIcons = icons;');
   });
 });

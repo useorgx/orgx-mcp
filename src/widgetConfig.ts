@@ -258,6 +258,7 @@ export const MCP_APPS_SHARED_COMPONENT_PATHS: ReadonlyArray<string> = [
   'shared/components/domain-accent.css',
   'shared/components/domain-accent.js',
   'shared/components/liveness-indicator.js',
+  'shared/icons.js',
   'shared/mcp-apps-sdk.umd.js',
   'shared/widget-runtime.js',
 ];
@@ -282,16 +283,25 @@ function inlineSharedAsset(
   if (path.endsWith('.css')) {
     return html.replace(
       stylePattern,
-      `<style data-inline-asset="${path}">\n${body}\n</style>\n`
+      () => `<style data-inline-asset="${path}">\n${body}\n</style>\n`
     );
   }
   if (path.endsWith('.js')) {
     return html.replace(
       scriptPattern,
-      `<script data-inline-asset="${path}">\n${body}\n</script>\n`
+      () =>
+        `<script data-inline-asset="${path}">\n${escapeInlineScriptBody(body)}\n</script>\n`
     );
   }
   return html;
+}
+
+function escapeInlineScriptBody(body: string) {
+  // Inline scripts must never contain a literal closing script tag, even in
+  // comments or strings, because the HTML parser terminates the element
+  // before JavaScript parsing begins. The escaped slash evaluates to the
+  // same string value inside JavaScript while remaining safe in HTML.
+  return body.replace(/<\/script/gi, '<\\/script');
 }
 
 export function sanitizeMcpAppsHtml(
@@ -311,14 +321,16 @@ export function sanitizeMcpAppsHtml(
   if (assets.interactionKitCss) {
     sanitized = sanitized.replace(
       /<link\b[^>]*\bhref=("|')[^"']*interaction-kit\.css[^"']*\1[^>]*>\s*/gi,
-      `<style data-inline-asset="interaction-kit.css">\n${assets.interactionKitCss}\n</style>\n`
+      () =>
+        `<style data-inline-asset="interaction-kit.css">\n${assets.interactionKitCss}\n</style>\n`
     );
   }
 
   if (assets.interactionKitJs) {
     sanitized = sanitized.replace(
       /<script\b[^>]*\bsrc=("|')[^"']*interaction-kit\.js[^"']*\1[^>]*><\/script>\s*/gi,
-      `<script data-inline-asset="interaction-kit.js">\n${assets.interactionKitJs}\n</script>\n`
+      () =>
+        `<script data-inline-asset="interaction-kit.js">\n${escapeInlineScriptBody(assets.interactionKitJs || '')}\n</script>\n`
     );
   }
 

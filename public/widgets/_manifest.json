@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-07-16T06:32:43.866Z",
+  "generatedAt": "2026-07-16T07:46:22.382Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -81,8 +81,8 @@
     },
     "decisions": {
       "file": "public/widgets/decisions.html",
-      "bytes": 73893,
-      "hash": "fa1ad5815133",
+      "bytes": 73836,
+      "hash": "f496a9df7575",
       "primaryRgb": "251,191,36",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -127,10 +127,11 @@
     },
     "morning-brief": {
       "file": "public/widgets/morning-brief.html",
-      "bytes": 63567,
-      "hash": "af1d4afb29e8",
+      "bytes": 64144,
+      "hash": "f3abac1b2952",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
+        "shared/icons.js",
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
         "shared/mcp-apps-sdk.umd.js",
