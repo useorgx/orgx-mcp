@@ -229,7 +229,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_act',
     title: 'Act On OrgX Entity',
     description:
-      'Run a lifecycle, validation, completion, or proof action on one OrgX entity. Per-action required inputs:\n' +
+      'Act on one OrgX entity. Required inputs:\n' +
       '  • update → "fields" patch object.\n' +
       '  • complete_with_proof, ship_batch → "artifact" (artifact_type + artifact_url/external_url; preview_markdown optional).\n' +
       '  • validate (studio) → "spec" payload.\n' +
@@ -242,7 +242,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       '  workstream: start|pause|resume|block|complete|reassign_streams|update|delete\n' +
       '  task: start|complete|complete_with_proof|block|unblock|reopen|update|delete\n' +
       '  objective, playbook, decision, studio: see field descriptions.\n\n' +
-      'USE WHEN: changing entity state. NEXT: orgx_submit_receipt for durable proof. DO NOT USE for creating records — use orgx_write.',
+      'USE WHEN: changing entity state. For pause, resume, retry, or cancel of running work, use manage_lifecycle so descendant tasks and active runs stay synchronized. NEXT: orgx_submit_receipt for durable proof. DO NOT USE for creating records — use orgx_write.',
     inputSchema: {
       type: lifecycleEntityTypeEnum.describe('Target entity type (workspace, initiative, milestone, workstream, task, objective, playbook, decision, or studio).'),
       id: z.string().min(1).describe('Target entity UUID or short ID prefix (8+ hex chars).'),
