@@ -118,12 +118,22 @@
     },
     {
       "name": "orgx_act",
-      "title": "Run OrgX Lifecycle Action",
-      "description": "Run lifecycle, validation, completion, delete, dry-run, and proof actions.",
+      "title": "Run OrgX Entity Action",
+      "description": "Run launch, validation, completion, delete, dry-run, and proof actions; use manage_lifecycle for synchronized runtime control.",
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": false,
         "destructiveHint": true
+      }
+    },
+    {
+      "name": "manage_lifecycle",
+      "title": "Control Running Work",
+      "description": "Atomically pause, resume, retry, or cancel an initiative, workstream, milestone, task, or run and synchronize descendant runtime state.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
       }
     },
     {

@@ -91,6 +91,7 @@ describe('Anthropic directory readiness', () => {
       'orgx_write',
       'orgx_attach',
       'orgx_act',
+      'manage_lifecycle',
       'orgx_plan',
       'orgx_spawn',
       'orgx_decide',
