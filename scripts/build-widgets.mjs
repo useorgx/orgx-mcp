@@ -87,6 +87,7 @@ const RUNTIME_INLINED_PATHS = new Set([
   'shared/components/domain-accent.css',
   'shared/components/domain-accent.js',
   'shared/components/liveness-indicator.js',
+  'shared/icons.js',
   'shared/mcp-apps-sdk.umd.js',
   'shared/widget-runtime.js',
 ]);

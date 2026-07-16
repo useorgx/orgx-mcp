@@ -22,6 +22,7 @@
     "og:render": "node scripts/render-social-preview.mjs",
     "widget:version": "node scripts/generate-widget-build-info.mjs",
     "widget:build": "node scripts/build-widgets.mjs",
+    "widget:verify-rendering": "tsx scripts/verify-widget-rendering.ts",
     "prepare": "node scripts/setup-git-hooks.mjs",
     "precommit:og": "node scripts/precommit-og-render.mjs",
     "prebuild": "pnpm widget:build && pnpm widget:version",

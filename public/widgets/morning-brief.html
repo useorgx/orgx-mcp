@@ -898,9 +898,15 @@
 </head>
 <body>
   <div class="container" id="content"></div>
-  <script type="module">
-    import { icons } from './shared/icons.js';
-    import { escapeHtml } from './shared/utils.js';
+  <script src="shared/icons.js"></script>
+  <script>
+    const icons = window.OrgXWidgetIcons;
+    const escapeHtml = (value) => {
+      if (value === null || value === undefined) return '';
+      const div = document.createElement('div');
+      div.textContent = String(value);
+      return div.innerHTML;
+    };
 
     const { detectProtocol, initWidget, openWidgetLink } = window.OrgXWidgetRuntime;
 
@@ -1938,7 +1944,14 @@
             settleBrief(payload);
             return;
           }
-          if (protocol === 'standalone') {
+          // ChatGPT supplies null when a completed tool call has no brief
+          // payload. Treat that as an empty state instead of leaving a
+          // permanent skeleton. MCP Apps hosts render null before their async
+          // tool-result notification, so they must remain in loading state.
+          if (
+            protocol === 'standalone' ||
+            (protocol === 'chatgpt' && payload === null)
+          ) {
             settleBrief(null);
           }
         },

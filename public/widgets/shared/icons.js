@@ -6,11 +6,11 @@
  * All icons use fill="currentColor" to inherit text color.
  * Default size is 1em (scales with font-size).
  *
- * Usage:
- *   import { icons } from './shared/icons.js';
- *   element.innerHTML = icons.check();  // Default size
- *   element.innerHTML = icons.check(24); // 24px size
+ * Usage: load this file as a classic shared script, then call
+ * window.OrgXWidgetIcons.check() or window.OrgXWidgetIcons.check(24).
  */
+
+(function installOrgXWidgetIcons(global) {
 
 /**
  * Creates an SVG wrapper with consistent attributes
@@ -27,7 +27,7 @@ const svg = (content, size = '1em', className = '') => {
 /**
  * OpenAI Apps SDK UI Icons
  */
-export const icons = {
+const icons = {
   /**
    * Check - Success/approval indicator
    */
@@ -220,7 +220,7 @@ export const icons = {
  * @param {number|string} size - Size in pixels or 'em'
  * @returns {string} - SVG HTML or empty string if not found
  */
-export const getIcon = (name, size) => {
+const getIcon = (name, size) => {
   const iconFn = icons[name];
   return iconFn ? iconFn(size) : '';
 };
@@ -228,6 +228,11 @@ export const getIcon = (name, size) => {
 /**
  * All available icon names
  */
-export const iconNames = Object.keys(icons);
+const iconNames = Object.keys(icons);
 
-export default icons;
+// A classic-script global keeps MCP resource documents self-contained. Static
+// ESM imports cannot resolve relative to a ui:// resource URI in every host.
+global.OrgXWidgetIcons = icons;
+global.OrgXGetWidgetIcon = getIcon;
+global.OrgXWidgetIconNames = iconNames;
+})(window);
