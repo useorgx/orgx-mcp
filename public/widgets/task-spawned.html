@@ -475,8 +475,13 @@
     };
     var normalizeEntityPayload = payload => {
       if (!payload) return null;
+      const action = String(payload._action || payload.action || 'spawn').toLowerCase();
+      const dispatched = action === 'spawn' || action === 'handoff';
+      const estimate = payload.estimate && typeof payload.estimate === 'object'
+        ? payload.estimate
+        : null;
       if (payload.title && payload.agent_name && payload.workspace_name) {
-        return { ...payload, agent_ready: true, workspace_ready: true, domain_ready: !!payload.domain, initiative_name: payload.initiative_name || null };
+        return { ...payload, action, dispatched, estimate, agent_ready: true, workspace_ready: true, domain_ready: !!payload.domain, initiative_name: payload.initiative_name || null };
       }
       var inferredAgentName = payload.agent_name || inferAgentName(payload);
       var inferredDomain = payload.domain || inferDomain(payload);
@@ -498,13 +503,23 @@
           agent_ready: !!(inferredAgentName || payload.entity.agent_name),
           workspace_ready: !!workspaceName,
           domain_ready: !!inferredDomain,
-          note: payload.message || null
+          note: payload.message || null,
+          allowed: typeof payload.allowed === 'boolean' ? payload.allowed : null,
+          action,
+          dispatched,
+          estimate
         };
       }
       return {
         id: payload.run_id || payload.task_id || null,
         type: payload.spawned_run_id ? 'handoff' : 'task',
-        title: payload.task_summary || payload.task_title || payload.task || payload.message || 'Execution dispatched',
+        title:
+          payload.title ||
+          payload.task_summary ||
+          payload.task_title ||
+          payload.task ||
+          payload.message ||
+          (dispatched ? 'Execution dispatched' : 'Agent work preflight'),
         agent_name: inferredAgentName,
         domain: inferredDomain,
         workspace_name: workspaceName,
@@ -519,7 +534,11 @@
         agent_ready: !!inferredAgentName,
         workspace_ready: !!workspaceName,
         domain_ready: !!inferredDomain,
-        note: payload.message || null
+        note: payload.message || null,
+        allowed: typeof payload.allowed === 'boolean' ? payload.allowed : null,
+        action,
+        dispatched,
+        estimate
       };
     };
 
@@ -558,6 +577,37 @@
 
       const typeDisplay = escapeHtml(entity.type || 'Entity').toUpperCase();
       const consoleUrl = entity.console_url || (entity.id ? buildEntityUrl(entity.type, entity.id, entity.initiative_id) : ORGX_BASE_URL);
+      const isDispatch = entity.dispatched !== false;
+      const route = entity.estimate || {};
+      const routeParts = [
+        route.recommended_tier || route.model_tier || route.tier,
+        route.recommended_model || route.model,
+        route.provider
+      ].filter(Boolean);
+      if (typeof route.estimated_cost_usd === 'number') {
+        routeParts.push('$' + route.estimated_cost_usd.toFixed(4));
+      }
+      const routeValue = routeParts.join(' · ') || (entity.action === 'guard'
+        ? entity.allowed === false
+          ? 'Dispatch blocked'
+          : entity.allowed === true
+          ? 'Dispatch allowed'
+          : 'Guard check complete'
+        : 'Automatic routing');
+      const kicker = isDispatch
+        ? 'Agent Dispatched'
+        : entity.action === 'estimate'
+        ? 'Route Estimate'
+        : entity.action === 'guard'
+        ? 'Dispatch Guard'
+        : 'Agent Route';
+      const heroSubtitle = isDispatch
+        ? (entity.note || 'OrgX accepted the dispatch and is handing the work to the assigned execution surface.')
+        : entity.action === 'estimate'
+        ? 'Routing and cost context only. No agent work was dispatched.'
+        : entity.action === 'guard'
+        ? 'OrgX checked whether this delegation can proceed. No agent work was dispatched.'
+        : 'OrgX classified the best execution route. No agent work was dispatched.';
 
       injectHtml(`
         <div class="widget-shell-card animate-in" style="--agent-accent-rgb:${agentProfile.accentRgb};">
@@ -565,20 +615,20 @@
             <div class="ox-card-inner">
               <div class="widget-hero">
                 <div class="widget-hero-copy">
-                  <div class="widget-kicker">Agent Dispatched</div>
+                  <div class="widget-kicker">${kicker}</div>
                   <div class="widget-title-lg">${escapeHtml(entity.title)}</div>
-                  <div class="widget-subtitle">${entity.note ? escapeHtml(entity.note) : 'OrgX accepted the dispatch and is handing the work to the assigned execution surface.'}${entity.initiative_name ? ' Initiative: ' + escapeHtml(entity.initiative_name) + '.' : ''}</div>
+                  <div class="widget-subtitle">${escapeHtml(heroSubtitle)}${entity.initiative_name ? ' Initiative: ' + escapeHtml(entity.initiative_name) + '.' : ''}</div>
                 </div>
                 <div class="widget-stack" style="align-items:flex-end; gap:10px;">
                   <div class="widget-icon-frame">${typeIcon}</div>
-                  <div class="radar-container" aria-label="Agent Active" title="Agent is executing">
+                  ${isDispatch ? `<div class="radar-container" aria-label="Agent Active" title="Agent is executing">
                     <div class="radar-ring"></div>
                     <div class="radar-dot"></div>
-                  </div>
+                  </div>` : ''}
                 </div>
               </div>
 
-              ${!entity.agent_ready || !entity.workspace_ready ? `<div class="dispatch-note">OrgX accepted the dispatch, but the canonical handoff context is still syncing. The card will update once the server returns the assigned agent and workspace.</div>` : ''}
+              ${isDispatch && (!entity.agent_ready || !entity.workspace_ready) ? `<div class="dispatch-note">OrgX accepted the dispatch, but the canonical handoff context is still syncing. The card will update once the server returns the assigned agent and workspace.</div>` : ''}
             
               <div class="widget-stack">
                 <div class="agent-row" style="display:flex; align-items:center; gap:16px; padding:16px; background:var(--ox-well-bg); border:1px solid var(--ox-border); border-radius:12px; box-shadow:var(--ox-well-shadow);">
@@ -586,8 +636,8 @@
                     ${renderAvatar(entity.agent_name || entity.domain || 'Pending')}
                   </div>
                   <div class="agent-meta" style="flex:1;">
-                    <div style="font-family:var(--ox-mono); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ox-text-muted); margin-bottom:4px; font-weight:600;">Assigned Agent</div>
-                    <div class="dispatch-value ${entity.agent_ready ? '' : 'dispatch-value--pending'}">${escapeHtml(entity.agent_name || 'Awaiting agent confirmation')}</div>
+                    <div style="font-family:var(--ox-mono); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ox-text-muted); margin-bottom:4px; font-weight:600;">${isDispatch ? 'Assigned Agent' : 'Requested Agent'}</div>
+                    <div class="dispatch-value ${entity.agent_ready ? '' : 'dispatch-value--pending'}">${escapeHtml(entity.agent_name || (isDispatch ? 'Awaiting agent confirmation' : 'Automatic assignment'))}</div>
                   </div>
                 </div>
                 
@@ -597,8 +647,8 @@
                     <div class="dispatch-value ${entity.domain_ready ? '' : 'dispatch-value--pending'}">${escapeHtml(entity.domain || 'Pending routing')}</div>
                   </div>
                   <div class="widget-panel">
-                    <div class="ox-eyebrow" style="margin-bottom:6px;">Workspace</div>
-                    <div class="dispatch-value ${entity.workspace_ready ? '' : 'dispatch-value--pending'}">${escapeHtml(entity.workspace_name || 'Pending context sync')}</div>
+                    <div class="ox-eyebrow" style="margin-bottom:6px;">${isDispatch ? 'Workspace' : 'Route'}</div>
+                    <div class="dispatch-value ${isDispatch && !entity.workspace_ready ? 'dispatch-value--pending' : ''}">${escapeHtml(isDispatch ? (entity.workspace_name || 'Pending context sync') : routeValue)}</div>
                   </div>
                 </div>
 
@@ -606,11 +656,11 @@
               </div>
             
               <div class="widget-footer">
-                <span class="widget-footer-meta">Live sync active</span>
-                <a href="${consoleUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(consoleUrl || ''))}, event)' class="deep-link ox-link-btn ox-link-btn--quiet" style="display: inline-flex; align-items: center; gap: 6px;">
+                <span class="widget-footer-meta">${isDispatch ? 'Live sync active' : 'Preflight only · no dispatch'}</span>
+                ${isDispatch ? `<a href="${consoleUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(consoleUrl || ''))}, event)' class="deep-link ox-link-btn ox-link-btn--quiet" style="display: inline-flex; align-items: center; gap: 6px;">
                   Open execution view
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                </a>
+                </a>` : ''}
               </div>
             </div>
           </div>

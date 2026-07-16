@@ -13,21 +13,28 @@ describe('agent status widget', () => {
     'utf8'
   );
 
-  it('adopts the shared widget token system for attention-first cards', () => {
+  it('adopts the shared widget token system for an attention-first command surface', () => {
     // Shared tokens must be pulled via a top-level <link> tag — `@import`
     // inside a <style> block does not survive Claude's MCP Apps sandbox.
     expect(widgetSource).toMatch(/<link[^>]+href=("|')shared\/tokens\.css\1/);
     expect(widgetSource).not.toContain("@import url('./shared/tokens.css');");
-    expect(widgetSource).toContain('class="agent-card app-flat-card"');
+    expect(widgetSource).toContain('class="agent-command-shell animate-in"');
+    expect(widgetSource).toContain('class="agent-switcher-row focusable"');
     expect(widgetSource).toContain('class="agent-attention app-attention-banner"');
-    expect(widgetSource).toContain('class="metric-row app-metric-rail"');
-    expect(widgetSource).toContain('class="app-disclosure-trigger focusable"');
+    expect(widgetSource).toContain('class="command-disclosure focusable"');
+    expect(widgetSource).toContain('min-height: 44px');
   });
 
-  it('renders the new drilldown interaction model instead of a timeline log', () => {
-    expect(widgetSource).toContain('data-action="toggle-section"');
+  it('compresses the agent switcher and keeps detail behind one disclosure', () => {
+    expect(widgetSource).toContain('role="tablist"');
+    expect(widgetSource).toContain('role="tab"');
+    expect(widgetSource).toContain('data-action="select-agent"');
+    expect(widgetSource).toContain('data-action="toggle-details"');
+    expect(widgetSource).toContain('data-action="toggle-idle"');
     expect(widgetSource).toContain('No agents need you right now');
-    expect(widgetSource).toContain("if (section === 'overview')");
+    expect(widgetSource).toContain("event.key !== 'ArrowDown'");
+    expect(widgetSource).not.toContain('data-action="toggle-section"');
+    expect(widgetSource).not.toContain('class="agent-card app-flat-card"');
     expect(widgetSource).not.toContain('class="timeline"');
     expect(widgetSource).not.toContain('Task Distribution');
   });

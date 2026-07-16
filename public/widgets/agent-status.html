@@ -244,7 +244,7 @@
 
     .agent-attention {
       margin: 0 12px 12px;
-      box-shadow: inset 3px 0 0 rgba(var(--agent-accent-rgb, var(--ox-card-color-rgb)), 0.58);
+      box-shadow: none;
     }
 
     .attention-copy {
@@ -1178,6 +1178,412 @@
     }
     .animate-in { opacity: 0; animation: fadeSlideUp var(--ox-dur-slower, 600ms) var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) forwards; }
 
+    /* Command-mode agent status: active work scans in two lines, while the
+       selected agent owns the only expanded detail surface. */
+    .surface-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .surface-bar .surface-label {
+      flex: 1;
+    }
+
+    .surface-summary {
+      flex-shrink: 0;
+      color: var(--ox-text-muted);
+      font-family: var(--ox-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.04em;
+    }
+
+    .agent-command-shell {
+      --selected-agent-rgb: 20, 184, 166;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--ox-border);
+      border-radius: 14px;
+      background: color-mix(in srgb, var(--ox-panel) 94%, transparent);
+      box-shadow: var(--ox-shadow);
+    }
+
+    .agent-command-shell::before {
+      content: '';
+      position: absolute;
+      z-index: 2;
+      top: -1px;
+      left: 12%;
+      right: 12%;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(var(--selected-agent-rgb), 0.82),
+        transparent
+      );
+      pointer-events: none;
+    }
+
+    .agent-switcher-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .agent-switcher-row {
+      --row-accent-rgb: 20, 184, 166;
+      appearance: none;
+      width: 100%;
+      min-height: 58px;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      border: 0;
+      border-bottom: 1px solid var(--ox-border);
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      font: inherit;
+      text-align: left;
+      transition:
+        background var(--widget-motion-fast) var(--widget-motion-curve),
+        box-shadow var(--widget-motion-fast) var(--widget-motion-curve);
+    }
+
+    .agent-switcher-row:hover {
+      background: rgba(var(--row-accent-rgb), 0.045);
+    }
+
+    .agent-switcher-row[aria-selected='true'] {
+      background: rgba(var(--row-accent-rgb), 0.075);
+      box-shadow: none;
+    }
+
+    .agent-switcher-row[aria-selected='true'] .agent-avatar {
+      box-shadow: 0 0 0 1px rgba(var(--row-accent-rgb), 0.42);
+    }
+
+    .agent-switcher-row .agent-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+    }
+
+    .switcher-copy {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .switcher-identity {
+      min-width: 0;
+      display: flex;
+      align-items: baseline;
+      gap: 7px;
+    }
+
+    .switcher-name {
+      color: var(--ox-text);
+      font-size: 0.9rem;
+      font-weight: 600;
+      line-height: 1.15;
+    }
+
+    .switcher-role {
+      overflow: hidden;
+      color: var(--ox-text-dim);
+      font-family: var(--ox-mono);
+      font-size: 0.62rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-overflow: ellipsis;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .switcher-focus {
+      overflow: hidden;
+      color: var(--ox-text-muted);
+      font-size: 0.78rem;
+      line-height: 1.25;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .switcher-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--ox-text-muted);
+      font-family: var(--ox-mono);
+      font-size: 0.64rem;
+      font-weight: 650;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .switcher-status::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      flex-shrink: 0;
+      border-radius: 999px;
+      background: currentColor;
+      opacity: 0.88;
+    }
+
+    .switcher-status[data-tone='running'] { color: var(--ox-primary); }
+    .switcher-status[data-tone='blocked'] { color: var(--ox-danger); }
+    .switcher-status[data-tone='review'] { color: var(--ox-warning); }
+    .switcher-status[data-tone='idle'] { color: var(--ox-text-dim); }
+
+    .idle-agent-toggle {
+      appearance: none;
+      width: 100%;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 0 14px;
+      border: 0;
+      border-bottom: 1px solid var(--ox-border);
+      background: rgba(255, 255, 255, 0.012);
+      color: var(--ox-text-muted);
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.78rem;
+      text-align: left;
+    }
+
+    .idle-agent-toggle:hover {
+      color: var(--ox-text);
+      background: rgba(var(--ox-primary-rgb), 0.035);
+    }
+
+    .idle-agent-toggle .chevron {
+      transform: rotate(0deg);
+    }
+
+    .idle-agent-toggle[aria-expanded='true'] .chevron {
+      transform: rotate(180deg);
+    }
+
+    .agent-command-panel {
+      position: relative;
+      padding: 16px;
+      background: rgba(0, 0, 0, 0.055);
+    }
+
+    .agent-command-panel .agent-attention {
+      margin: 0 0 14px;
+      padding: 10px 12px;
+      box-shadow: none;
+    }
+
+    .agent-command-panel .attention-action {
+      min-height: 44px;
+      padding-inline: 14px;
+    }
+
+    .command-focus-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+
+    .command-focus-title {
+      color: var(--ox-text);
+      font-size: 0.95rem;
+      font-weight: 540;
+      line-height: 1.4;
+    }
+
+    .command-meta {
+      margin-top: 6px;
+      color: var(--ox-text-muted);
+      font-size: 0.78rem;
+      line-height: 1.4;
+    }
+
+    .command-facts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 14px;
+      margin-top: 14px;
+      padding: 10px 0;
+      border-top: 1px solid var(--ox-border);
+      border-bottom: 1px solid var(--ox-border);
+    }
+
+    .command-fact {
+      color: var(--ox-text-muted);
+      font-family: var(--ox-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.02em;
+    }
+
+    .command-fact strong {
+      color: var(--ox-text);
+      font-weight: 650;
+    }
+
+    .command-fact[data-tone='blocked'] strong { color: var(--ox-danger); }
+    .command-fact[data-tone='review'] strong { color: var(--ox-warning); }
+
+    .command-panel-actions {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .command-disclosure,
+    .command-live-link {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 0;
+      background: transparent;
+      color: var(--ox-text-muted);
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 520;
+      text-decoration: none;
+    }
+
+    .command-disclosure:hover,
+    .command-live-link:hover {
+      color: var(--ox-text);
+    }
+
+    .command-disclosure[aria-expanded='true'] .chevron {
+      transform: rotate(180deg);
+    }
+
+    .command-details {
+      display: none;
+      border-top: 1px solid var(--ox-border);
+    }
+
+    .command-details.is-open {
+      display: block;
+      animation: sectionFadeIn var(--ox-dur-base, 250ms) var(--ox-ease-entry) forwards;
+    }
+
+    .command-detail-group {
+      padding: 12px 0 2px;
+    }
+
+    .command-detail-group + .command-detail-group {
+      border-top: 1px solid var(--ox-border);
+    }
+
+    .command-detail-label {
+      margin-bottom: 5px;
+      color: var(--ox-text-dim);
+      font-family: var(--ox-mono);
+      font-size: 0.62rem;
+      font-weight: 650;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .command-detail-row {
+      min-height: 38px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      padding: 7px 0;
+    }
+
+    .command-detail-row + .command-detail-row {
+      border-top: 1px solid rgba(255, 255, 255, 0.035);
+    }
+
+    .command-detail-title {
+      color: var(--ox-text);
+      font-size: 0.8rem;
+      line-height: 1.35;
+    }
+
+    .command-detail-state {
+      color: var(--ox-text-muted);
+      font-family: var(--ox-mono);
+      font-size: 0.62rem;
+      font-weight: 650;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .command-detail-state[data-tone='blocked'] { color: var(--ox-danger); }
+    .command-detail-state[data-tone='review'] { color: var(--ox-warning); }
+    .command-detail-state[data-tone='running'] { color: var(--ox-primary); }
+
+    .quiet-command-state {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px;
+      color: var(--ox-text-muted);
+      font-size: 0.82rem;
+      line-height: 1.4;
+    }
+
+    .quiet-command-state::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      flex-shrink: 0;
+      border-radius: 999px;
+      background: var(--ox-primary);
+      box-shadow: 0 0 10px rgba(var(--ox-primary-rgb), 0.55);
+    }
+
+    @media (max-width: 420px) {
+      .surface-bar {
+        align-items: baseline;
+      }
+
+      .agent-switcher-row {
+        min-height: 60px;
+        padding-inline: 11px;
+      }
+
+      .agent-switcher-row .agent-avatar {
+        width: 26px;
+        height: 26px;
+      }
+
+      .switcher-status {
+        font-size: 0.59rem;
+      }
+
+      .agent-command-panel {
+        padding: 14px 12px 12px;
+      }
+
+      .agent-command-panel .agent-attention {
+        align-items: flex-start;
+      }
+
+      .command-panel-actions {
+        align-items: stretch;
+      }
+    }
+
 </style>
 </head>
 <body>
@@ -1672,293 +2078,214 @@
       return days + 'd';
     }
 
-    function renderTasksSection(agent, isOpen) {
-      var rows = agent.tasks.map(function (task) {
-        return (
-          '<div class="section-row">' +
-            '<div class="section-copy">' +
-              '<div class="section-heading">' + escapeHtml(task.title) + '</div>' +
-            '</div>' +
-            '<div class="section-status" data-tone="' + statusToneForRow(task.status) + '">' + escapeHtml(getStatusLabel(task.status)) + '</div>' +
-          '</div>'
-        );
-      });
-      var blockedCount = agent.blockedCount;
-      var badge = blockedCount > 0 ? '<span class="section-badge blocked">' + blockedCount + ' Blocked</span>' : '';
+    var selectedAgentId = null;
+    var showIdleAgents = false;
+
+    function isIdleAgent(agent) {
+      return agent.status === 'idle' || agent.status === 'done';
+    }
+
+    function renderSwitcherRow(agent, selected) {
       return (
-        '<div class="agent-section' + (isOpen ? ' is-open' : '') + '" data-section="tasks">' +
-          '<button class="app-disclosure-trigger focusable" data-action="toggle-section" data-section="tasks" data-agent="' + escapeHtml(agent.id) + '" aria-expanded="' + String(isOpen) + '">' +
-            '<span class="disclosure-title">Tasks' + badge + '</span>' +
-            '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
-          '</button>' +
-          '<div class="app-disclosure-body ox-disclosure-body">' +
-            (rows.length ? rows.join('') : '<div style="padding: 12px 0; color: var(--ox-text-muted); font-size: 0.85rem;">No tasks.</div>') +
-          '</div>' +
-        '</div>'
+        '<button type="button" class="agent-switcher-row focusable" role="tab" data-action="select-agent" data-agent-tab="' + escapeHtml(agent.id) + '" aria-selected="' + String(selected) + '" tabindex="' + (selected ? '0' : '-1') + '" style="--row-accent-rgb:' + escapeHtml(agent.accentRgb) + ';">' +
+          '<span class="agent-avatar" aria-hidden="true">' + renderAvatar(agent) + '</span>' +
+          '<span class="switcher-copy">' +
+            '<span class="switcher-identity"><span class="switcher-name">' + escapeHtml(agent.name) + '</span><span class="switcher-role">' + escapeHtml(agent.role) + '</span></span>' +
+            '<span class="switcher-focus">' + escapeHtml(agent.currentTask) + (agent.currentMeta ? ' · ' + escapeHtml(agent.currentMeta) : '') + '</span>' +
+          '</span>' +
+          '<span class="switcher-status" data-tone="' + escapeHtml(agent.tone) + '">' + escapeHtml(agent.statusLabel) + '</span>' +
+        '</button>'
       );
     }
 
-    function renderBlockedSection(agent, isOpen) {
-      var blockerRows = agent.blockers.map(function (blocker, index) {
-        return (
-          '<div class="section-row">' +
-            '<div class="section-copy">' +
-              '<div class="section-heading">' + escapeHtml(String(blocker)) + '</div>' +
-              '<div class="ox-eyebrow" style="margin-top: 4px; color: var(--ox-text-dim);">Blocker ' + escapeHtml(String(index + 1)) + '</div>' +
-            '</div>' +
-            '<div class="section-status" data-tone="blocked">Blocked</div>' +
-          '</div>'
-        );
-      });
-
-      if (!blockerRows.length) {
-        blockerRows = agent.tasks
-          .filter(function (task) { return task.status === 'blocked'; })
-          .map(function (task) {
+    function renderCommandDetailGroup(label, rows) {
+      if (!rows.length) return '';
+      return (
+        '<section class="command-detail-group">' +
+          '<div class="command-detail-label">' + escapeHtml(label) + '</div>' +
+          rows.map(function (row) {
             return (
-              '<div class="section-row">' +
-                '<div class="section-copy">' +
-                  '<div class="section-heading">' + escapeHtml(task.title) + '</div>' +
-                  '<div class="ox-eyebrow" style="margin-top: 4px; color: var(--ox-text-dim);">Blocked task</div>' +
-                '</div>' +
-                '<div class="section-status" data-tone="blocked">Blocked</div>' +
+              '<div class="command-detail-row">' +
+                '<div class="command-detail-title">' + escapeHtml(row.title) + '</div>' +
+                '<div class="command-detail-state" data-tone="' + escapeHtml(row.tone) + '">' + escapeHtml(row.state) + '</div>' +
               '</div>'
             );
-          });
-      }
-
-      return (
-        '<div class="agent-section' + (isOpen ? ' is-open' : '') + '" data-section="blocked">' +
-          '<button class="app-disclosure-trigger focusable" data-action="toggle-section" data-section="blocked" data-agent="' + escapeHtml(agent.id) + '" aria-expanded="' + String(isOpen) + '">' +
-            '<span class="disclosure-title">Blocked<span class="section-badge blocked">' + escapeHtml(String(agent.blockedCount)) + ' Active</span></span>' +
-            '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
-          '</button>' +
-          '<div class="app-disclosure-body ox-disclosure-body">' +
-            (blockerRows.length ? blockerRows.join('') : '<div style="padding: 12px 0; color: var(--ox-text-muted); font-size: 0.85rem;">No blockers.</div>') +
-          '</div>' +
-        '</div>'
+          }).join('') +
+        '</section>'
       );
     }
 
-
-    function renderArtifactsSection(agent, isOpen) {
-      var rows = agent.artifacts.map(function (artifact) {
-        var status = getStatusLabel(artifact.status);
-        if (artifact.status === 'review') status = 'Review &rarr;';
-        
-        var isReview = artifact.status === 'review';
-        var statusHtml = isReview 
-          ? '<a class="section-status" data-tone="review" href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(this.href, event)" style="text-decoration:none;">' + status + '</a>'
-          : '<div class="section-status" data-tone="' + statusToneForRow(artifact.status) + '">' + escapeHtml(status) + '</div>';
-
-        return (
-          '<div class="section-row">' +
-            '<div class="section-copy">' +
-              '<div class="section-heading">' + escapeHtml(artifact.title) + '</div>' +
-              '<div class="ox-eyebrow" style="margin-top: 4px; color: var(--ox-text-dim);">' + escapeHtml(titleCase(artifact.type)) + '</div>' +
-            '</div>' +
-            statusHtml +
-          '</div>'
-        );
+    function renderCommandDetails(agent, isOpen) {
+      var blockerRows = agent.blockers.map(function (blocker) {
+        return { title: String(blocker), state: 'Blocked', tone: 'blocked' };
       });
-      var reviewCount = agent.reviewCount;
-      var badge = reviewCount > 0 ? '<span class="section-badge needs-review">' + reviewCount + ' Review</span>' : '';
+      var taskRows = agent.tasks.map(function (task) {
+        return {
+          title: task.title,
+          state: getStatusLabel(task.status),
+          tone: statusToneForRow(task.status)
+        };
+      });
+      var artifactRows = agent.artifacts.map(function (artifact) {
+        return {
+          title: artifact.title,
+          state: artifact.status === 'review' ? 'Review' : getStatusLabel(artifact.status),
+          tone: statusToneForRow(artifact.status)
+        };
+      });
+      var streamRows = agent.streams.map(function (stream) {
+        return { title: stream.name, state: stream.progress + '%', tone: 'running' };
+      });
+
       return (
-        '<div class="agent-section' + (isOpen ? ' is-open' : '') + '" data-section="artifacts">' +
-          '<button class="app-disclosure-trigger focusable" data-action="toggle-section" data-section="artifacts" data-agent="' + escapeHtml(agent.id) + '" aria-expanded="' + String(isOpen) + '">' +
-            '<span class="disclosure-title">Artifacts' + badge + '</span>' +
-            '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
-          '</button>' +
-          '<div class="app-disclosure-body ox-disclosure-body">' +
-            (rows.length ? rows.join('') : '<div style="padding: 12px 0; color: var(--ox-text-muted); font-size: 0.85rem;">No artifacts.</div>') +
-          '</div>' +
+        '<div class="command-details' + (isOpen ? ' is-open' : '') + '" id="agent-work-details" aria-hidden="' + String(!isOpen) + '">' +
+          renderCommandDetailGroup('Blockers', blockerRows) +
+          renderCommandDetailGroup('Tasks', taskRows) +
+          renderCommandDetailGroup('Artifacts', artifactRows) +
+          renderCommandDetailGroup('Streams', streamRows) +
+          (!blockerRows.length && !taskRows.length && !artifactRows.length && !streamRows.length
+            ? '<div class="quiet-command-state">No additional work details.</div>'
+            : '') +
         '</div>'
       );
     }
 
+    function renderCommandPanel(agent) {
+      var detailsOpen = widgetState[agent.id] === 'details';
+      var detailCount = agent.blockers.length + agent.tasks.length + agent.artifacts.length + agent.streams.length;
+      var focusMeta = [agent.currentMeta, summarizeOverview(agent)].filter(Boolean).join(' · ');
 
-    function renderProgressSection(agent, isOpen) {
-      var progressHtml = agent.progress == null ? '<div style="padding: 12px 0; color: var(--ox-text-muted); font-size: 0.85rem;">No progress data available.</div>' : (
-        '<div style="padding: 4px 0 8px;">' +
-          '<div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px;">' +
-            '<span style="font-size: 1.6rem; font-weight: 600; color: var(--ox-text); line-height: 1;">' + agent.progress + '%</span>' +
-            '<span class="ox-eyebrow" style="color: var(--ox-text-dim);">' + escapeHtml(agent.eta || '~2 days remaining') + '</span>' +
-          '</div>' +
-          '<div style="height: 4px; border-radius: 4px; background: rgba(255,255,255,0.06); overflow: hidden; margin-bottom: 16px;">' +
-            '<div style="height: 100%; width: ' + agent.progress + '%; background: rgb(var(--agent-accent-rgb, var(--ox-card-color-rgb))); border-radius: 4px; position: relative;">' +
-              '<div style="position: absolute; right: 0; top: -2px; bottom: -2px; width: 8px; background: rgb(var(--agent-accent-rgb, var(--ox-card-color-rgb))); border-radius: 4px; box-shadow: 0 0 10px rgba(var(--agent-accent-rgb, var(--ox-card-color-rgb)), 0.5);"></div>' +
-            '</div>' +
-          '</div>' +
-          '<div style="display: flex; flex-direction: column; gap: 8px;">' +
-            (agent.streams || []).map(function(s) {
-              return '<div style="display: flex; align-items: center; gap: 10px; font-size: 0.75rem;">' +
-                '<div style="width: 6px; height: 6px; border-radius: 50%; background: rgb(var(--agent-accent-rgb, var(--ox-card-color-rgb))); flex-shrink: 0;"></div>' +
-                '<span style="color: var(--ox-text-muted); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + escapeHtml(s.name) + '</span>' +
-                '<span style="color: var(--ox-text-dim); flex-shrink: 0;">' + escapeHtml(String(s.progress)) + '%</span>' +
-              '</div>';
-            }).join('') +
-          '</div>' +
-        '</div>'
-      );
-      
       return (
-        '<div class="agent-section' + (isOpen ? ' is-open' : '') + '" data-section="progress">' +
-          '<button class="app-disclosure-trigger focusable" data-action="toggle-section" data-section="progress" data-agent="' + escapeHtml(agent.id) + '" aria-expanded="' + String(isOpen) + '">' +
-            '<span class="disclosure-title">Progress</span>' +
-            '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
-          '</button>' +
-          '<div class="app-disclosure-body ox-disclosure-body">' +
-            progressHtml +
+        '<section class="agent-command-panel" role="tabpanel" aria-label="' + escapeHtml(agent.name) + ' agent details" style="--agent-accent-rgb:' + escapeHtml(agent.accentRgb) + ';">' +
+          renderAttention(agent) +
+          '<div class="command-focus-header"><span class="ox-eyebrow">Current focus</span><span class="switcher-status" data-tone="' + escapeHtml(agent.tone) + '">' + escapeHtml(agent.statusLabel) + '</span></div>' +
+          '<div class="command-focus-title">' + escapeHtml(agent.currentTask) + '</div>' +
+          '<div class="command-meta">' + escapeHtml(focusMeta || 'Available for the next assignment') + '</div>' +
+          '<div class="command-facts" aria-label="Agent work summary">' +
+            '<span class="command-fact"><strong>' + escapeHtml(String(agent.taskCount)) + '</strong> tasks</span>' +
+            '<span class="command-fact" data-tone="blocked"><strong>' + escapeHtml(String(agent.blockedCount)) + '</strong> blocked</span>' +
+            '<span class="command-fact" data-tone="review"><strong>' + escapeHtml(String(agent.artifacts.length)) + '</strong> artifacts</span>' +
+            '<span class="command-fact"><strong>' + escapeHtml(agent.progress == null ? '—' : String(agent.progress) + '%') + '</strong> progress</span>' +
           '</div>' +
-        '</div>'
+          '<div class="command-panel-actions">' +
+            '<button type="button" class="command-disclosure focusable" data-action="toggle-details" data-agent="' + escapeHtml(agent.id) + '" aria-expanded="' + String(detailsOpen) + '" aria-controls="agent-work-details">Work details <span style="color:var(--ox-text-dim);">' + escapeHtml(String(detailCount)) + '</span><svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>' +
+            '<a class="command-live-link focusable" href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(this.href, event)">Open live <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"></path><path d="M8 7h9v9"></path></svg></a>' +
+          '</div>' +
+          renderCommandDetails(agent, detailsOpen) +
+        '</section>'
       );
     }
 
-    function renderAgentSections(agent, openSection) {
-      return (
-        renderTasksSection(agent, openSection === 'tasks') +
-        renderBlockedSection(agent, openSection === 'blocked') +
-        renderArtifactsSection(agent, openSection === 'artifacts') +
-        renderProgressSection(agent, openSection === 'progress')
-      );
-    }
-
-    function syncAgentCard(cardId) {
-      var card = document.querySelector('[data-agent-card="' + cardId + '"]');
-      var agent = currentAgentsById[cardId];
-      if (!card || !agent) {
-        renderBoard({ agents: currentAgents });
+    function renderCurrentBoard() {
+      if (!currentAgents.length) {
+        injectHtml(
+          '<div class="surface-bar"><div class="surface-label">Agent Status</div><div class="surface-summary">All quiet</div></div>' +
+          '<div class="agent-command-shell animate-in"><div class="quiet-command-state"><span><strong style="color:var(--ox-text);font-weight:600;">No agents need you right now.</strong> Everything is available for the next assignment.</span></div></div>'
+        );
         return;
       }
 
-      var openSection = Object.prototype.hasOwnProperty.call(widgetState, cardId)
-        ? widgetState[cardId]
-        : 'tasks';
-      Array.prototype.forEach.call(
-        card.querySelectorAll('[data-action="toggle-section"]'),
-        function (button) {
-          var section = button.getAttribute('data-section');
-          if (button.classList.contains('ox-metric-button')) {
-            button.setAttribute('aria-pressed', String(openSection === section));
-            return;
-          }
-          button.setAttribute('aria-expanded', String(openSection === section));
+      var activeAgents = currentAgents.filter(function (agent) { return !isIdleAgent(agent); });
+      var idleAgents = currentAgents.filter(isIdleAgent);
+      var selectedAgent = currentAgentsById[selectedAgentId] || null;
+      if (!selectedAgent || (isIdleAgent(selectedAgent) && !showIdleAgents)) {
+        selectedAgent = activeAgents[0] || null;
+        selectedAgentId = selectedAgent ? selectedAgent.id : null;
+      }
+
+      var needsAttention = activeAgents.filter(function (agent) {
+        return agent.status === 'blocked' || agent.status === 'review' || agent.status === 'stalled';
+      }).length;
+      var moving = activeAgents.length - needsAttention;
+      var summary = needsAttention
+        ? needsAttention + ' need' + (needsAttention === 1 ? 's' : '') + ' you' + (moving ? ' · ' + moving + ' active' : '')
+        : activeAgents.length
+        ? activeAgents.length + ' active'
+        : 'All quiet';
+
+      var selectedAccent = selectedAgent ? selectedAgent.accentRgb : '20, 184, 166';
+      var html = '<div class="surface-bar"><div class="surface-label">Agent Status</div><div class="surface-summary">' + escapeHtml(summary) + '</div></div>';
+      html += '<div class="agent-command-shell animate-in" style="--selected-agent-rgb:' + escapeHtml(selectedAccent) + ';">';
+      if (activeAgents.length) {
+        html += '<div class="agent-switcher-list" role="tablist" aria-label="Active agents">';
+        activeAgents.forEach(function (agent) {
+          html += renderSwitcherRow(agent, selectedAgentId === agent.id);
+        });
+        if (showIdleAgents) {
+          idleAgents.forEach(function (agent) {
+            html += renderSwitcherRow(agent, selectedAgentId === agent.id);
+          });
         }
-      );
+        html += '</div>';
+      } else if (!showIdleAgents) {
+        html += '<div class="quiet-command-state"><span><strong style="color:var(--ox-text);font-weight:600;">No active work.</strong> All agents are available.</span></div>';
+      } else {
+        html += '<div class="agent-switcher-list" role="tablist" aria-label="Available agents">';
+        idleAgents.forEach(function (agent) {
+          html += renderSwitcherRow(agent, selectedAgentId === agent.id);
+        });
+        html += '</div>';
+      }
 
-      Array.prototype.forEach.call(
-        card.querySelectorAll('.agent-section[data-section]'),
-        function (sectionEl) {
-          sectionEl.classList.toggle(
-            'is-open',
-            openSection === sectionEl.getAttribute('data-section')
-          );
-        }
-      );
-    }
-
-    function renderCard(agent) {
-      var openSection = Object.prototype.hasOwnProperty.call(widgetState, agent.id)
-        ? widgetState[agent.id]
-        : 'tasks';
-      var chipTone = agent.tone === 'running' ? '' : ' data-tone="' + agent.tone + '"';
-      
-      return (
-        '<article class="agent-card app-flat-card" data-agent-card="' + escapeHtml(agent.id) + '" data-priority="' + escapeHtml(agent.status) + '" style="--agent-accent-rgb:' + escapeHtml(agent.accentRgb || '20, 184, 166') + ';">' +
-          '<div class="ox-card-inner" style="padding-bottom: 16px;">' +
-            '<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px;">' +
-              '<div style="display: flex; align-items: center; gap: 12px; min-width: 0;">' +
-                '<div class="agent-avatar">' +
-                  renderAvatar(agent) +
-                '</div>' +
-                '<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">' +
-                  '<div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">' +
-                    '<div class="ox-title" style="margin-bottom:0; font-size: 1.1rem;">' + escapeHtml(agent.name) + '</div>' +
-                    '<div class="ox-eyebrow">' + escapeHtml(agent.role) + '</div>' +
-                  '</div>' +
-                '</div>' +
-              '</div>' +
-              '<a class="ox-badge"' + chipTone + ' href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(this.href, event)" style="flex-shrink: 0; text-decoration: none;"><span class="chip-dot" style="width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor;"></span>' + escapeHtml(agent.statusLabel) + '</a>' +
-            '</div>' +
-            
-            renderAttention(agent) +
-            
-            '<div style="display: flex; flex-direction: column; gap: 6px;">' +
-              '<div class="ox-eyebrow">Current Focus</div>' +
-              '<div class="ox-text" style="color: var(--ox-text); font-weight: 500;">' + escapeHtml(agent.currentTask) + '</div>' +
-              '<div class="ox-text" style="font-size: 0.85rem;">' + 
-                '<span>' + escapeHtml(agent.currentMeta || 'Tracking background execution') + '</span>' +
-                '<span style="margin: 0 6px; color: var(--ox-text-dim);">·</span>' +
-                '<span>' + escapeHtml(summarizeOverview(agent)) + '</span>' +
-              '</div>' +
-            '</div>' +
-          '</div>' +
-          '<div class="metric-row app-metric-rail">' +
-            '<button class="ox-metric-button focusable" data-action="toggle-section" data-section="tasks" data-agent="' + escapeHtml(agent.id) + '" aria-pressed="' + String(openSection === 'tasks') + '">' +
-              '<div class="metric-value" style="font-size: 1.15rem; font-weight: 600; font-family: var(--ox-mono);">' + escapeHtml(String(agent.taskCount)) + '</div>' +
-              '<div class="ox-eyebrow" style="margin-top: 4px;">Tasks</div>' +
-            '</button>' +
-            '<button class="ox-metric-button focusable" data-action="toggle-section" data-section="blocked" data-agent="' + escapeHtml(agent.id) + '" data-tone="blocked" aria-pressed="' + String(openSection === 'blocked') + '">' +
-              '<div class="metric-value" style="font-size: 1.15rem; font-weight: 600; font-family: var(--ox-mono);">' + escapeHtml(String(agent.blockedCount)) + '</div>' +
-              '<div class="ox-eyebrow" style="margin-top: 4px;">Blocked</div>' +
-            '</button>' +
-            '<button class="ox-metric-button focusable" data-action="toggle-section" data-section="artifacts" data-agent="' + escapeHtml(agent.id) + '" data-tone="review" aria-pressed="' + String(openSection === 'artifacts') + '">' +
-              '<div class="metric-value" style="font-size: 1.15rem; font-weight: 600; font-family: var(--ox-mono);">' + escapeHtml(String(agent.artifacts.length)) + '</div>' +
-              '<div class="ox-eyebrow" style="margin-top: 4px;">Artifacts</div>' +
-            '</button>' +
-            '<button class="ox-metric-button focusable" data-action="toggle-section" data-section="progress" data-agent="' + escapeHtml(agent.id) + '" aria-pressed="' + String(openSection === 'progress') + '">' +
-              '<div class="metric-value" style="font-size: 1.15rem; font-weight: 600; font-family: var(--ox-mono);">' + escapeHtml(String(agent.progress == null ? 'n/a' : agent.progress + '%')) + '</div>' +
-              '<div class="ox-eyebrow" style="margin-top: 4px;">Progress</div>' +
-            '</button>' +
-          '</div>' +
-
-          '<div style="padding: 0 24px;" data-agent-sections>' +
-            renderAgentSections(agent, openSection) +
-          '</div>' +
-          
-          '<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 24px; border-top: 1px solid var(--ox-border);">' +
-            '<div class="ox-eyebrow">Synced just now</div>' +
-            '<a class="ox-text" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 500; text-decoration: none;" href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(this.href, event)">Open live view<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"></path><path d="M8 7h9v9"></path></svg></a>' +
-          '</div>' +
-        '</article>'
-      );
+      if (idleAgents.length) {
+        html += '<button type="button" class="idle-agent-toggle focusable" data-action="toggle-idle" aria-expanded="' + String(showIdleAgents) + '"><span>' + escapeHtml(String(idleAgents.length)) + ' available agent' + (idleAgents.length === 1 ? '' : 's') + '</span><svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>';
+      }
+      if (selectedAgent) html += renderCommandPanel(selectedAgent);
+      html += '</div>';
+      injectHtml(html);
     }
 
     function renderBoard(payload) {
       var normalized = normalizePayload(payload);
-      var agents = normalized.agents.sort(function (left, right) {
+      currentAgents = normalized.agents.sort(function (left, right) {
         return getPriority(left) - getPriority(right) || left.name.localeCompare(right.name);
       });
-      currentAgents = agents.slice();
       currentAgentsById = {};
-      agents.forEach(function (agent) {
+      currentAgents.forEach(function (agent) {
         currentAgentsById[agent.id] = agent;
       });
+      renderCurrentBoard();
+    }
 
-      if (!agents.length) {
-        injectHtml(
-          '<div class="surface-label">Agent Status</div>' +
-          '<div class="empty-state ox-card animate-in">' +
-            '<span class="empty-state__glyph" aria-hidden="true"></span>' +
-            '<strong>No agents need you right now</strong>' +
-            '<p>Everything is moving in the background. Expand a metric only when you need to act, then return to the quiet state.</p>' +
-          '</div>'
-        );
-        return;
-      }
-
-      var html = '<div class="surface-label">Agent Status</div>';
-      agents.forEach(function(a, i) {
-        var animStr = hasLoadedOnce ? '' : ' animate-in" style="animation-delay: ' + (i * 0.05) + 's"';
-        html += renderCard(a).replace('<article class="agent-card"', '<article class="agent-card' + animStr + '"');
+    function focusAgentTab(agentId) {
+      Array.prototype.some.call(document.querySelectorAll('[data-agent-tab]'), function (button) {
+        if (button.getAttribute('data-agent-tab') !== agentId) return false;
+        button.focus();
+        return true;
       });
-      injectHtml(html);
     }
 
     document.addEventListener('click', function (event) {
-      var trigger = event.target && event.target.closest('[data-action="toggle-section"]');
+      var trigger = event.target && event.target.closest('[data-action]');
       if (!trigger) return;
-      setCardSection(trigger.getAttribute('data-agent'), trigger.getAttribute('data-section'));
+      var action = trigger.getAttribute('data-action');
+      if (action === 'select-agent') {
+        selectedAgentId = trigger.getAttribute('data-agent-tab');
+        renderCurrentBoard();
+        window.setTimeout(function () { focusAgentTab(selectedAgentId); }, 0);
+      } else if (action === 'toggle-idle') {
+        showIdleAgents = !showIdleAgents;
+        renderCurrentBoard();
+      } else if (action === 'toggle-details') {
+        var agentId = trigger.getAttribute('data-agent');
+        widgetState[agentId] = widgetState[agentId] === 'details' ? null : 'details';
+        renderCurrentBoard();
+      }
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+      var current = event.target && event.target.closest('[data-agent-tab]');
+      if (!current) return;
+      var tabs = Array.prototype.slice.call(document.querySelectorAll('[data-agent-tab]'));
+      var index = tabs.indexOf(current);
+      if (index < 0 || tabs.length < 2) return;
+      event.preventDefault();
+      var direction = event.key === 'ArrowDown' ? 1 : -1;
+      var next = tabs[(index + direction + tabs.length) % tabs.length];
+      selectedAgentId = next.getAttribute('data-agent-tab');
+      renderCurrentBoard();
+      window.setTimeout(function () { focusAgentTab(selectedAgentId); }, 0);
     });
 
     var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';

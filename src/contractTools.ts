@@ -348,8 +348,10 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.agentRequiresAuth,
     _meta: {
+      'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.taskSpawned,
       'openai/toolInvocation/invoking': 'Preparing OrgX agent work...',
       'openai/toolInvocation/invoked': 'OrgX agent work ready',
+      ui: { resourceUri: WIDGET_URIS.taskSpawned },
     },
   },
   {
