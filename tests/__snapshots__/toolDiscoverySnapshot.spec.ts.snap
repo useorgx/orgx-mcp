@@ -196,6 +196,7 @@ exports[`tool discovery snapshot > full tool catalog description hashes are lock
 
 exports[`tool discovery snapshot > per-profile snapshots > profile "commander" exposes a locked tool set > profile-commander-tool-ids 1`] = `
 [
+  "check_execution_readiness",
   "consolidate_pr",
   "get_operator_chronicle",
   "orgx_ack_attention",
@@ -203,6 +204,7 @@ exports[`tool discovery snapshot > per-profile snapshots > profile "commander" e
   "orgx_attach",
   "orgx_bootstrap",
   "orgx_decide",
+  "orgx_emit_execution_graph",
   "orgx_inspect",
   "orgx_plan",
   "orgx_poll_attention",
@@ -220,12 +222,14 @@ exports[`tool discovery snapshot > per-profile snapshots > profile "commander" e
 
 exports[`tool discovery snapshot > per-profile snapshots > profile "executor" exposes a locked tool set > profile-executor-tool-ids 1`] = `
 [
+  "check_execution_readiness",
   "consolidate_pr",
   "orgx_ack_attention",
   "orgx_act",
   "orgx_attach",
   "orgx_bootstrap",
   "orgx_emit_activity",
+  "orgx_emit_execution_graph",
   "orgx_inspect",
   "orgx_plan",
   "orgx_poll_attention",
@@ -286,6 +290,7 @@ exports[`tool discovery snapshot > per-profile snapshots > profile "v2" exposes 
 [
   "approve_agent_work",
   "approve_decision",
+  "check_execution_readiness",
   "consolidate_pr",
   "delegate_agent_task",
   "get_agent_status",
@@ -299,6 +304,7 @@ exports[`tool discovery snapshot > per-profile snapshots > profile "v2" exposes 
   "orgx_bootstrap",
   "orgx_decide",
   "orgx_emit_activity",
+  "orgx_emit_execution_graph",
   "orgx_inspect",
   "orgx_plan",
   "orgx_poll_attention",

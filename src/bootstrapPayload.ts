@@ -1,3 +1,5 @@
+import { V2_PUBLIC_SURFACE } from './toolProfiles';
+
 export type BootstrapSafeFirstCall = {
   tool: string;
   args: Record<string, unknown>;
@@ -92,44 +94,7 @@ export function resolveBootstrapSessionContext(
   };
 }
 
-export const V2_PUBLIC_TOOL_IDS = [
-  'orgx_act',
-  'orgx_attach',
-  'orgx_bootstrap',
-  'orgx_decide',
-  'orgx_emit_activity',
-  'orgx_request_attention',
-  'orgx_poll_attention',
-  'orgx_ack_attention',
-  'orgx_request_question',
-  'orgx_poll_question',
-  'orgx_emit_execution_graph',
-  'orgx_inspect',
-  'orgx_plan',
-  'orgx_recommend',
-  'orgx_search',
-  'orgx_spawn',
-  'orgx_submit_receipt',
-  'orgx_write',
-  'approve_decision',
-  'reject_decision',
-  'get_agent_status',
-  'get_initiative_pulse',
-  'scaffold_initiative',
-  'spawn_agent_task',
-  'handoff_task',
-  'recommend_next_action',
-  'query_org_memory',
-  'recall_memory',
-  'approve_agent_work',
-  'delegate_agent_task',
-  'track_project_progress',
-  'review_artifact',
-  'get_morning_brief',
-  'get_operator_chronicle',
-  'check_execution_readiness',
-  'consolidate_pr',
-] as const;
+export const V2_PUBLIC_TOOL_IDS = V2_PUBLIC_SURFACE;
 
 export const BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE: Record<
   string,

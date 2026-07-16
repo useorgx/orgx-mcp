@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-16T01:56:07.274Z",
-  "sourceHash": "fe80029130b031f9",
+  "generatedAt": "2026-07-16T06:31:44.577Z",
+  "sourceHash": "c1e232200897cec8",
   "version": "1.0.0",
   "totalTools": 81,
   "categories": [
@@ -3066,13 +3066,25 @@
             "type": "string",
             "enum": [
               "workspace",
+              "project",
               "initiative",
-              "workstream",
               "milestone",
+              "workstream",
               "task",
+              "objective",
+              "playbook",
               "decision",
               "artifact",
-              "plan_session"
+              "run",
+              "blocker",
+              "workflow",
+              "agent",
+              "skill",
+              "plan_session",
+              "stream",
+              "studio_brand",
+              "studio_content",
+              "video_template"
             ],
             "description": "Entity type to inspect"
           },
@@ -4032,7 +4044,11 @@
       ],
       "readOnly": true,
       "source": "client_integration",
-      "profiles": []
+      "profiles": [
+        "v2",
+        "commander",
+        "executor"
+      ]
     },
     {
       "id": "configure_outcome_type",
@@ -4585,7 +4601,11 @@
       "securityScopes": [],
       "readOnly": false,
       "source": "client_integration",
-      "profiles": []
+      "profiles": [
+        "v2",
+        "commander",
+        "executor"
+      ]
     },
     {
       "id": "orgx_free_audit",

@@ -33,6 +33,7 @@ type WidgetManifest = {
     hash: string;
     primaryRgb: string | null;
     sharedRefs: string[];
+    protocolBridge: 'official-sdk' | 'legacy-inline' | 'standalone';
     demoOnly: boolean;
   }>;
 };
@@ -47,7 +48,7 @@ function loadManifest(): WidgetManifest {
 describe('widget manifest (Stage A)', () => {
   it('exists and parses', () => {
     const m = loadManifest();
-    expect(m.version).toBe(1);
+    expect(m.version).toBe(2);
     expect(Object.keys(m.widgets).length).toBeGreaterThan(0);
   });
 
@@ -97,4 +98,16 @@ describe('widget manifest (Stage A)', () => {
     }
     expect(drift).toEqual([]);
   });
+
+  it('ships every host widget on the official MCP Apps runtime', () => {
+    const m = loadManifest();
+    const bridges = Object.fromEntries(
+      Object.entries(m.widgets).map(([name, widget]) => [name, widget.protocolBridge])
+    );
+
+    expect(bridges.index).toBe('standalone');
+    delete bridges.index;
+    expect(new Set(Object.values(bridges))).toEqual(new Set(['official-sdk']));
+  });
+
 });

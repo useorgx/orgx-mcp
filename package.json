@@ -1,6 +1,6 @@
 {
   "name": "orgx-mcp-worker",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "packageManager": "pnpm@10.18.1",
   "homepage": "https://mcp.useorgx.com",
@@ -59,6 +59,7 @@
     "@cloudflare/workers-types": "^4.20260103.0",
     "@sentry/cli": "3.6.0",
     "jsdom": "^29.1.1",
+    "playwright": "^1.61.1",
     "tsx": "^4.22.5",
     "typescript": "^5.6.3",
     "vite": "^6.3.4",

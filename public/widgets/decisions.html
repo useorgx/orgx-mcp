@@ -7,6 +7,8 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='15' fill='none' stroke='%23FBBF24' stroke-width='6'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%23FBBF24'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
+  <script src="shared/mcp-apps-sdk.umd.js"></script>
+  <script src="shared/widget-runtime.js"></script>
   <script src="shared/interaction-kit.js"></script>
   <template id="structured-review-contract">
     <section class="review-step-panel" data-direction="neutral">
@@ -474,6 +476,7 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
+      min-height: 44px;
       padding: 6px 10px;
       border-radius: 999px;
       border: 1px solid rgba(var(--ox-card-color-rgb), 0.2);
@@ -872,7 +875,7 @@
     .page-btn {
       width: auto;
       min-width: 96px;
-      min-height: 38px;
+      min-height: 44px;
       padding-inline: 14px;
       font-size: 0.74rem;
       letter-spacing: 0;
@@ -910,6 +913,7 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
+      min-height: 44px;
       padding: 10px 14px;
       border-radius: 999px;
       text-decoration: none;
@@ -1142,57 +1146,6 @@
       }
     };
 
-
-      function _detectProtocol(){if(typeof window.openai!=='undefined')return'chatgpt';if(window.parent&&window.parent!==window)return'mcp-apps';return'standalone';}
-      function _extractData(out){if(out==null)return null;if(typeof out==='object'&&out.structuredContent)return out.structuredContent;if(typeof out==='object'&&Array.isArray(out.content)){for(var i=0;i<out.content.length;i++){var item=out.content[i];if(item&&item.type==='text'&&item.text){try{return JSON.parse(item.text);}catch(e){continue;}}}}if(typeof out==='string'){try{return JSON.parse(out);}catch(e){return{text:out};}}return out;}
-      var _lastW=0,_lastH=0;
-      function _sendSize(){var w=Math.ceil(document.documentElement.getBoundingClientRect().width+(window.innerWidth-document.documentElement.clientWidth));var h=Math.ceil(document.documentElement.getBoundingClientRect().height);if(w===_lastW&&h===_lastH)return;_lastW=w;_lastH=h;try{window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/size-changed',params:{width:w,height:h}},'*');}catch(e){}}
-      function _observeSize(){_sendSize();if(typeof ResizeObserver!=='undefined'){var _raf=0;var ro=new ResizeObserver(function(){if(_raf)cancelAnimationFrame(_raf);_raf=requestAnimationFrame(_sendSize);});ro.observe(document.documentElement);ro.observe(document.body);}}
-      var _mcpPending = {};
-      var _mcpNextId = 100;
-      function initWidget(opts){
-        var render=opts.render,getData=opts.getData||_extractData;
-        var protocol=_detectProtocol();
-        if(protocol==='chatgpt'){
-          var d=getData(window.openai&&window.openai.toolOutput);render(d);
-          window.addEventListener('openai:set_globals',function(e){var g=e.detail&&e.detail.globals;if(g&&g.toolOutput){render(getData(g.toolOutput));}},{passive:true});
-        }else if(protocol==='mcp-apps'){
-          render(null);
-          var initId=1;
-          window.parent.postMessage({jsonrpc:'2.0',id:initId,method:'ui/initialize',params:{appInfo:{name:'OrgX Widget',version:'1.0.0'},appCapabilities:{tools:{listChanged:false}},protocolVersion:'2026-01-26'}},'*');
-          window.parent.postMessage({jsonrpc:'2.0',method:'notifications/initialized'},'*');
-          window.addEventListener('message',function(event){
-            var msg=event.data;if(!msg||typeof msg!=='object')return;
-            if(msg.id===initId&&msg.result){window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized'},'*');_observeSize();return;}
-            if(msg.id!=null&&_mcpPending[msg.id]){var p=_mcpPending[msg.id];delete _mcpPending[msg.id];if(msg.error)p.reject(new Error(msg.error.message||'Tool call failed'));else p.resolve(msg.result);return;}
-            if((msg.method==='ui/notifications/tool-result'||msg.method==='notifications/message')&&msg.params){var data=getData(msg.params);if(data)render(data);}
-          });
-        }else{render(null);}
-      }
-      function callTool(name, args){
-        var protocol=_detectProtocol();
-        if(protocol==='chatgpt')return window.openai&&window.openai.callTool?window.openai.callTool(name,args):Promise.resolve(null);
-        if(protocol==='mcp-apps'){
-          return new Promise(function(resolve,reject){
-            var id=_mcpNextId++;
-            _mcpPending[id]={resolve:resolve,reject:reject};
-            window.parent.postMessage({jsonrpc:'2.0',id:id,method:'tools/call',params:{name:name,arguments:args}},'*');
-            setTimeout(function(){if(_mcpPending[id]){delete _mcpPending[id];reject(new Error('Tool call '+name+' timed out'));}},30000);
-          });
-        }
-        return Promise.resolve(null);
-      }
-      function openWidgetLink(url,event){
-        if(!url)return false;
-        var protocol=_detectProtocol();
-        if(protocol==='mcp-apps'){
-          if(event&&typeof event.preventDefault==='function')event.preventDefault();
-          window.parent.postMessage({jsonrpc:'2.0',id:_mcpNextId++,method:'ui/open-link',params:{url:url}},'*');
-          return false;
-        }
-        return true;
-      }
-
       var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true">'+c+'</svg>';};
       var icons = {
         check: function(s){return _svg('<polyline points="20 6 9 17 4 12"></polyline>',s);},
@@ -1303,6 +1256,70 @@
     var currentPage = 1;
     var itemsPerPage = isOgDecisionEmbed ? 1 : 3;
     var pageDirection = 'forward';
+    var decisionStateTimer = null;
+
+    var restoredDecisionState = window.openai && window.openai.widgetState;
+    if (restoredDecisionState && typeof restoredDecisionState === 'object') {
+      if (Number.isInteger(restoredDecisionState.currentPage) && restoredDecisionState.currentPage > 0) {
+        currentPage = restoredDecisionState.currentPage;
+      }
+      if (typeof restoredDecisionState.rejectComposerId === 'string') {
+        rejectComposerId = restoredDecisionState.rejectComposerId;
+      }
+      if (restoredDecisionState.rejectDrafts && typeof restoredDecisionState.rejectDrafts === 'object') {
+        rejectDrafts = restoredDecisionState.rejectDrafts;
+      }
+      if (restoredDecisionState.lastResolution && typeof restoredDecisionState.lastResolution === 'object') {
+        lastResolution = restoredDecisionState.lastResolution;
+      }
+    }
+
+    var persistDecisionState = () => {
+      if (!window.OrgXWidgetRuntime) return Promise.resolve(null);
+      return window.OrgXWidgetRuntime.persistWidgetState({
+        version: 1,
+        widgetSessionId: window.OrgXWidgetRuntime.getWidgetSessionId(),
+        currentPage,
+        rejectComposerId,
+        rejectDrafts,
+        lastResolution,
+      });
+    };
+
+    var scheduleDecisionStatePersistence = () => {
+      if (decisionStateTimer) window.clearTimeout(decisionStateTimer);
+      decisionStateTimer = window.setTimeout(() => {
+        decisionStateTimer = null;
+        void persistDecisionState();
+      }, 160);
+    };
+
+    var publishDecisionResolution = async (decision, resolution) => {
+      if (!window.OrgXWidgetRuntime || !resolution) return;
+      const verb = resolution.action === 'approved' ? 'approved' : 'sent back';
+      const owner = resolution.agent_name || 'the assigned agent';
+      const summary = resolution.summary || 'Decision';
+      const context = {
+        type: 'orgx.decision.resolved',
+        decision_id: decision && decision.id ? decision.id : null,
+        initiative_id: decision && decision.initiative_id ? decision.initiative_id : null,
+        action: resolution.action,
+        summary,
+        owner,
+        note: resolution.note || null,
+        widget_session_id: window.OrgXWidgetRuntime.getWidgetSessionId(),
+      };
+      await Promise.allSettled([
+        persistDecisionState(),
+        window.OrgXWidgetRuntime.updateModelContext({
+          content: [{ type: 'text', text: `${summary} was ${verb} in OrgX. ${owner} can continue from this operator decision.` }],
+          structuredContent: context,
+        }),
+        window.OrgXWidgetRuntime.sendFollowUpMessage(
+          `${summary} was ${verb} in the OrgX decision widget. Keep the conversation aligned with that operator action.`
+        ),
+      ]);
+    };
 
     var notify = (tone, title, message, duration) => {
       if (ux && ux.toast && typeof ux.toast.show === 'function') {
@@ -1546,11 +1563,13 @@
     window.toggleRejectComposer = (id) => {
       if (pendingDecisionId) return;
       rejectComposerId = rejectComposerId === id ? null : id;
+      scheduleDecisionStatePersistence();
       render();
     };
 
     window.syncRejectDraft = (id, textarea) => {
       rejectDrafts[id] = textarea.value;
+      scheduleDecisionStatePersistence();
       const submitButton = textarea.closest('.reject-composer')?.querySelector('.reject-submit');
       if (submitButton) submitButton.disabled = !textarea.value.trim();
     };
@@ -1571,6 +1590,7 @@
           summary: decision && decision.summary ? decision.summary : 'This decision',
           agent_name: decision && decision.agent_name ? decision.agent_name : 'the assigned agent'
         };
+        await publishDecisionResolution(decision, lastResolution);
         notify('success', 'Decision approved', 'Recorded and sent to ' + lastResolution.agent_name + ' so execution can continue.');
         if (card) card.classList.add('is-resolving');
         window.setTimeout(() => {
@@ -1607,6 +1627,7 @@
           agent_name: decision && decision.agent_name ? decision.agent_name : 'the assigned agent',
           note: reason
         };
+        await publishDecisionResolution(decision, lastResolution);
         notify(
           'success',
           'Decision rejected',
@@ -1635,6 +1656,7 @@
       if (nextPage === currentPage) return;
       pageDirection = delta > 0 ? 'forward' : 'backward';
       currentPage = nextPage;
+      scheduleDecisionStatePersistence();
       render();
     };
 
@@ -1859,7 +1881,6 @@
 
       injectHtml(`<div class="decision-shell animate-in" data-page-direction="${activeDirection}">${html}</div>`);
     };
-
 
     if(isDemo) applyBootPayload();
     else initWidget({ render: d => { applyBootPayload(function(){ if(d) data = d; }); } });

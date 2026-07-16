@@ -469,8 +469,10 @@
   </head>
   <body>
     <div id="root" class="ox-surface"></div>
+    <script src="shared/mcp-apps-sdk.umd.js"></script>
+    <script src="shared/widget-runtime.js"></script>
     <script type="module">
-      import { initWidget, callTool, openWidgetLink } from '/widgets/shared/utils.js';
+      const { initWidget, callTool, openWidgetLink } = window.OrgXWidgetRuntime;
 
       const root = document.getElementById('root');
       let data = null;

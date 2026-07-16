@@ -3,7 +3,7 @@
   "name": "com.useorgx/orgx-mcp",
   "title": "OrgX MCP — Organizational Memory for AI Agents",
   "description": "Organizational memory and agent orchestration for decisions, artifacts, tasks, and projects.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "websiteUrl": "https://useorgx.com",
   "vendor": {
     "name": "OrgX",
@@ -227,6 +227,16 @@
       }
     },
     {
+      "name": "orgx_emit_execution_graph",
+      "title": "Emit OrgX Execution Graph",
+      "description": "Emit append-only execution graph and trust-ledger telemetry without changing durable entity state.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
       "name": "approve_decision",
       "title": "Approve Decision",
       "description": "Approve a pending decision from the decisions widget after explicit confirmation.",
@@ -380,6 +390,16 @@
       "name": "get_operator_chronicle",
       "title": "Get Operator Chronicle",
       "description": "Read decision chronology, artifacts, PR receipts, priorities, goals, velocity, and reporting gaps for a workspace.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "check_execution_readiness",
+      "title": "Check Execution Readiness",
+      "description": "Check whether the current workspace can dispatch agent work before spawning it.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": false,

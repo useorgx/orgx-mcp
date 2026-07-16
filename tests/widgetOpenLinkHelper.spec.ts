@@ -13,7 +13,7 @@ import { describe, expect, it } from 'vitest';
  * Claude.ai iframe sandbox blocks. Every click produced no visible effect.
  *
  * To prevent this recurring: every widget that CALLS `openWidgetLink` must
- * also either (a) define it inline or (b) import it from `shared/utils.js`.
+ * load the shared OrgX host runtime, define the helper, or import it.
  * This test walks every widget and enforces the invariant.
  */
 
@@ -26,6 +26,7 @@ function listWidgetHtmlFiles(): string[] {
 }
 
 function widgetProvidesOpenLinkHelper(html: string): boolean {
+  if (/shared\/widget-runtime\.js/.test(html)) return true;
   // Inline definition — either `function openWidgetLink(...)` or `var/let/const openWidgetLink = function`
   if (/function\s+openWidgetLink\s*\(/.test(html)) return true;
   if (/(?:var|let|const)\s+openWidgetLink\s*=\s*function/.test(html)) return true;
@@ -54,7 +55,7 @@ describe('widget openWidgetLink invariant', () => {
     expect(
       offenders,
       `Widgets call openWidgetLink but do not define or import it. ` +
-        `Fix: inline a function openWidgetLink(url, event){...} helper, ` +
+        `Fix: load shared/widget-runtime.js, define a helper, ` +
         `or import it from shared/utils.js. Offenders:\n` +
         offenders.map((name) => `  - ${name}`).join('\n')
     ).toEqual([]);

@@ -11,9 +11,8 @@
  *
  *   1. Palette parity — widget's base :root --ox-primary-rgb must match
  *      the canonical per-widget palette.
- *   2. Shared-layer adherence — every <link>/<script src> ref into
- *      shared/components/ must point to a module on the inlining
- *      allowlist (MCP_APPS_SHARED_COMPONENT_PATHS).
+ *   2. Shared-layer + protocol adherence — shared refs must be allowlisted,
+ *      and widgets using shared/utils.js must load the official MCP Apps SDK.
  *   3. No reintroduced forks — any widget whose filename ends in
  *      `-stream.html` fails the build (they were collapsed into the
  *      main widgets via ?live=true data-source flags).
@@ -74,6 +73,7 @@ const SHARED_ALLOWLIST = new Set([
   'shared/utils.js',
   'shared/icons.js',
   'shared/mcp-apps-sdk.umd.js',
+  'shared/widget-runtime.js',
   'shared/demo-data.js',
 ]);
 
@@ -87,6 +87,8 @@ const RUNTIME_INLINED_PATHS = new Set([
   'shared/components/domain-accent.css',
   'shared/components/domain-accent.js',
   'shared/components/liveness-indicator.js',
+  'shared/mcp-apps-sdk.umd.js',
+  'shared/widget-runtime.js',
 ]);
 
 // ── Parse helpers ─────────────────────────────────────────────────
@@ -123,6 +125,27 @@ function extractSharedRefs(html) {
   return [...refs].sort();
 }
 
+
+function usesSharedUtils(html) {
+  return /(?:from\s*['"][^'"]*shared\/utils\.js|<script\b[^>]*\bsrc=['"][^'"]*shared\/utils\.js)/i.test(
+    html
+  );
+}
+
+function detectProtocolBridge(html, refs) {
+  if (
+    refs.includes('shared/mcp-apps-sdk.umd.js') &&
+    refs.includes('shared/widget-runtime.js')
+  ) return 'official-sdk';
+  if (refs.includes('shared/mcp-apps-sdk.umd.js')) return 'sdk-without-runtime';
+  if (refs.includes('shared/widget-runtime.js')) return 'runtime-without-sdk';
+  if (usesSharedUtils(html)) return 'shared-utils-without-sdk';
+  if (/window\.openai|window\.parent\.postMessage|ui\/open-link/i.test(html)) {
+    return 'legacy-inline';
+  }
+  return 'standalone';
+}
+
 function sha256(input) {
   return createHash('sha256').update(input).digest('hex').slice(0, 12);
 }
@@ -157,6 +180,33 @@ function validateSharedRefs(widgetName, refs, errors) {
           `         MCP_APPS_SHARED_COMPONENT_PATHS in src/widgetConfig.ts.`
       );
     }
+  }
+}
+
+
+function validateProtocolBridge(widgetName, html, refs, errors) {
+  const usesOfficialRuntime = refs.includes('shared/widget-runtime.js');
+  const loadsOfficialSdk = refs.includes('shared/mcp-apps-sdk.umd.js');
+  if (usesSharedUtils(html) && (!loadsOfficialSdk || !usesOfficialRuntime)) {
+    errors.push(
+      `[${widgetName}] imports shared/utils.js without the complete official widget runtime.\n` +
+        `         Load shared/mcp-apps-sdk.umd.js and shared/widget-runtime.js before\n` +
+        `         the widget module so host actions share one MCP Apps contract.`
+    );
+  }
+  if (usesOfficialRuntime !== loadsOfficialSdk) {
+    errors.push(
+      `[${widgetName}] must load shared/mcp-apps-sdk.umd.js and shared/widget-runtime.js together.`
+    );
+  }
+  if (
+    usesOfficialRuntime &&
+    /window\.parent\.postMessage|window\.openai\.(?:callTool|openExternal)/.test(html)
+  ) {
+    errors.push(
+      `[${widgetName}] bypasses shared/widget-runtime.js with a direct host bridge call.\n` +
+        `         Route tools, links, context, and sizing through OrgXWidgetRuntime.`
+    );
   }
 }
 
@@ -228,6 +278,7 @@ function main() {
 
     const sharedRefs = extractSharedRefs(html);
     validateSharedRefs(widgetName, sharedRefs, errors);
+    validateProtocolBridge(widgetName, html, sharedRefs, errors);
 
     entries[widgetName] = {
       file: relative(REPO_ROOT, full),
@@ -235,6 +286,7 @@ function main() {
       hash: sha256(html),
       primaryRgb: rgb,
       sharedRefs,
+      protocolBridge: detectProtocolBridge(html, sharedRefs),
       demoOnly: DEMO_ONLY_WIDGETS.has(widgetName),
     };
   }
@@ -279,7 +331,7 @@ function main() {
   }
 
   const manifest = {
-    version: 1,
+    version: 2,
     generatedAt: new Date().toISOString(),
     allowlist: [...SHARED_ALLOWLIST].sort(),
     canonicalPrimaries: CANONICAL_PRIMARIES,
