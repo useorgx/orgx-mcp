@@ -17,6 +17,8 @@
  * admin/debug compatibility sessions.
  */
 
+import serverManifest from '../server.json';
+
 export interface ToolProfile {
   /** Human-readable profile purpose */
   description: string;
@@ -26,19 +28,20 @@ export interface ToolProfile {
 
 export const V2_CORE_PUBLIC_SURFACE = [
   'orgx_bootstrap',
-  'orgx_inspect',
   'orgx_search',
+  'orgx_inspect',
   'orgx_recommend',
   'orgx_write',
   'orgx_attach',
   'orgx_act',
-  'orgx_emit_activity',
-  'orgx_request_question',
-  'orgx_poll_question',
   'orgx_plan',
   'orgx_spawn',
   'orgx_decide',
   'orgx_submit_receipt',
+  'orgx_emit_activity',
+  'orgx_request_question',
+  'orgx_poll_question',
+  'orgx_emit_execution_graph',
 ] as const;
 
 export const WIDGET_AFFORDANCE_SURFACE = [
@@ -59,17 +62,27 @@ export const WIDGET_AFFORDANCE_SURFACE = [
   'get_morning_brief',
 ] as const;
 
-export const CLIENT_INTEGRATION_PUBLIC_SURFACE = ['consolidate_pr'] as const;
+export const CLIENT_INTEGRATION_PUBLIC_SURFACE = [
+  'check_execution_readiness',
+  'consolidate_pr',
+] as const;
 export const CLIENT_REPORTING_PUBLIC_SURFACE = [
   'get_operator_chronicle',
 ] as const;
 
-const V2_PUBLIC_SURFACE = [
+export const GROUPED_V2_PUBLIC_SURFACE = [
   ...V2_CORE_PUBLIC_SURFACE,
   ...WIDGET_AFFORDANCE_SURFACE,
-  ...CLIENT_INTEGRATION_PUBLIC_SURFACE,
   ...CLIENT_REPORTING_PUBLIC_SURFACE,
+  ...CLIENT_INTEGRATION_PUBLIC_SURFACE,
 ] as const;
+
+/**
+ * `server.json` is the published, versioned client capability contract. Every
+ * default-client discovery surface derives from this list so source,
+ * deployment metadata, bootstrap, and client profiles cannot silently drift.
+ */
+export const V2_PUBLIC_SURFACE = serverManifest.tools.map((tool) => tool.name);
 
 export const TOOL_PROFILES: Record<string, ToolProfile> = {
   v2: {
@@ -106,7 +119,9 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
       'orgx_decide',
       'orgx_request_question',
       'orgx_poll_question',
+      'orgx_emit_execution_graph',
       'orgx_submit_receipt',
+      'check_execution_readiness',
       'scaffold_initiative',
       'consolidate_pr',
       'get_operator_chronicle',
@@ -135,6 +150,7 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
       'orgx_emit_activity',
       'orgx_request_question',
       'orgx_poll_question',
+      'orgx_emit_execution_graph',
       'orgx_search',
       'orgx_inspect',
       'orgx_write',
@@ -142,6 +158,7 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
       'orgx_act',
       'orgx_plan',
       'orgx_spawn',
+      'check_execution_readiness',
       'orgx_submit_receipt',
       'consolidate_pr',
     ],
@@ -179,6 +196,7 @@ export function resolveProfileToolSet(
   if (profileName === 'full') return null;
   if (!profileName) return new Set(TOOL_PROFILES.v2.tools ?? []);
   const profile = TOOL_PROFILES[profileName];
-  if (!profile || profile.tools === null) return null;
+  if (!profile) return new Set(TOOL_PROFILES.v2.tools ?? []);
+  if (profile.tools === null) return null;
   return new Set(profile.tools);
 }

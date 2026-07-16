@@ -1,3 +1,5 @@
+import { V2_PUBLIC_SURFACE } from './toolProfiles';
+
 type JsonRpcId = string | number | null;
 
 type JsonRpcRequest = {
@@ -24,40 +26,7 @@ type PublicTool = {
 const AUTHENTICATED_MCP_URL = 'https://mcp.useorgx.com/mcp';
 const PUBLIC_MCP_URL = 'https://mcp.useorgx.com/public';
 
-export const PRIMARY_AUTHENTICATED_TOOLS = [
-  'orgx_bootstrap',
-  'orgx_search',
-  'orgx_inspect',
-  'orgx_recommend',
-  'orgx_write',
-  'orgx_attach',
-  'orgx_act',
-  'orgx_plan',
-  'orgx_spawn',
-  'orgx_decide',
-  'orgx_submit_receipt',
-  'orgx_emit_activity',
-  'orgx_request_question',
-  'orgx_poll_question',
-  'orgx_emit_execution_graph',
-  'approve_decision',
-  'reject_decision',
-  'get_agent_status',
-  'get_initiative_pulse',
-  'scaffold_initiative',
-  'spawn_agent_task',
-  'handoff_task',
-  'recommend_next_action',
-  'query_org_memory',
-  'recall_memory',
-  'approve_agent_work',
-  'delegate_agent_task',
-  'track_project_progress',
-  'review_artifact',
-  'get_morning_brief',
-  'get_operator_chronicle',
-  'consolidate_pr',
-] as const;
+export const PRIMARY_AUTHENTICATED_TOOLS = V2_PUBLIC_SURFACE;
 
 const PUBLIC_DISCOVERY_TOOLS: PublicTool[] = [
   {
@@ -406,6 +375,14 @@ const TOOL_EXAMPLES: Record<
     },
     sample_response: {
       ok: true,
+    },
+  },
+  check_execution_readiness: {
+    prompt: 'Check whether this workspace is ready to dispatch agent work.',
+    arguments: {},
+    sample_response: {
+      ready: true,
+      missing: [],
     },
   },
   orgx_bootstrap: {

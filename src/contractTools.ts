@@ -13,6 +13,7 @@ import {
   SECURITY_SCHEMES,
   STREAM_TOOL_DEFINITIONS,
   WIDGET_URIS,
+  entityTypeEnum,
   lifecycleEntityTypeEnum,
 } from './toolDefinitions';
 import { FLYWHEEL_TOOL_DEFINITIONS } from './flywheelTools';
@@ -63,7 +64,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       'Hydrate one OrgX entity with execution context. Also known as: Inspect OrgX Entity, inspect initiative, get full entity context. USE WHEN: the user names a specific task, milestone, initiative, decision, artifact, or plan session and needs details before acting. NEXT: use orgx_act, orgx_attach, or orgx_write if the user asks to change what you inspected. DO NOT USE WHEN: browsing or searching many records; use orgx_search. Read-only.',
     inputSchema: {
       type: z
-        .enum(['workspace', 'initiative', 'workstream', 'milestone', 'task', 'decision', 'artifact', 'plan_session'])
+        .enum(entityTypeEnum.options)
         .describe('Entity type to inspect'),
       id: z.string().min(1).describe('Entity UUID or accepted short ID prefix'),
       hydrate_context: z.boolean().optional().describe('Include linked context where available; default true'),

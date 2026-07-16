@@ -98,6 +98,7 @@ describe('Anthropic directory readiness', () => {
       'orgx_emit_activity',
       'orgx_request_question',
       'orgx_poll_question',
+      'orgx_emit_execution_graph',
       'approve_decision',
       'reject_decision',
       'get_agent_status',
@@ -114,6 +115,7 @@ describe('Anthropic directory readiness', () => {
       'review_artifact',
       'get_morning_brief',
       'get_operator_chronicle',
+      'check_execution_readiness',
       'consolidate_pr',
     ]);
     expect(serverJson.tools?.find((tool) => tool.name === 'orgx_bootstrap')?.description).toContain(

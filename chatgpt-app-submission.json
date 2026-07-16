@@ -176,6 +176,18 @@
         "destructive_justification": "Appends activity events but does not delete records or perform irreversible actions."
       }
     },
+    "orgx_emit_execution_graph": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Appends structured execution graph and trust-ledger telemetry, so it writes private OrgX execution state.",
+        "open_world_justification": "Sends telemetry to the authenticated OrgX application API outside the MCP worker.",
+        "destructive_justification": "Appends evidence without completing, deleting, or irreversibly changing durable work entities."
+      }
+    },
     "approve_decision": {
       "annotations": {
         "readOnlyHint": false,
@@ -366,6 +378,18 @@
         "read_only_justification": "Retrieves decision chronology, artifacts, PR receipts, priorities, goals, velocity, and reporting gaps without modifying records.",
         "open_world_justification": "Operates only on private OrgX workspace data for the authenticated user.",
         "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "check_execution_readiness": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Checks configured execution credentials and readiness without dispatching work or modifying OrgX records.",
+        "open_world_justification": "Reads private OrgX workspace configuration and does not publish to external systems.",
+        "destructive_justification": "Does not dispatch, delete, overwrite, or irreversibly change workspace state."
       }
     },
     "consolidate_pr": {

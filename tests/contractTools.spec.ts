@@ -12,6 +12,7 @@ import {
 import {
   CLIENT_CONTEXT_SCHEMA,
   CLIENT_INTEGRATION_TOOL_DEFINITIONS,
+  ENTITY_TYPES,
 } from '../src/toolDefinitions';
 
 function collectInlineRegisteredToolIds(): string[] {
@@ -179,6 +180,20 @@ describe('contract tool catalog', () => {
     expect(writeSchema.set_active).toBeDefined();
     expect(() => actSchema.type.parse('workspace')).not.toThrow();
     expect(act.description).toContain('workspace: update|delete');
+  });
+
+  it('allows every visible canonical entity type to be inspected', () => {
+    const inspect = CONTRACT_TOOL_DEFINITIONS.find(
+      (tool) => tool.id === 'orgx_inspect'
+    )!;
+    const schema = inspect.inputSchema as Record<string, z.ZodTypeAny>;
+
+    for (const entityType of ENTITY_TYPES) {
+      expect(
+        () => schema.type.parse(entityType),
+        `${entityType} should be inspectable`
+      ).not.toThrow();
+    }
   });
 
   it('documents live initiative create requirements that prevent known write failures', () => {
