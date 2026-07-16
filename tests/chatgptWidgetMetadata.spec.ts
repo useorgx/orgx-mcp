@@ -9,6 +9,7 @@ import {
   OUTPUT_TEMPLATE_URIS,
   WIDGET_URIS,
 } from '../src/toolDefinitions';
+import { CONTRACT_TOOL_DEFINITIONS } from '../src/contractTools';
 import { toWidgetHtmlResourceUri } from '../src/widgetConfig';
 
 describe('MCP Apps widget metadata', () => {
@@ -139,5 +140,19 @@ describe('MCP Apps widget metadata', () => {
     expect(mcpSchema?.budget_mode).toBeDefined();
     expect(mcpSchema?.max_cost_usd).toBeDefined();
 
+  });
+
+  it('keeps the consolidated spawn surface on the task-spawned widget contract', () => {
+    const tool = CONTRACT_TOOL_DEFINITIONS.find(
+      (entry) => entry.id === 'orgx_spawn'
+    );
+    expect(tool).toBeDefined();
+    const meta = tool?._meta as Record<string, unknown> | undefined;
+    const ui = meta?.ui as { resourceUri?: string } | undefined;
+
+    expect(meta?.['openai/outputTemplate']).toBe(
+      OUTPUT_TEMPLATE_URIS.taskSpawned
+    );
+    expect(ui?.resourceUri).toBe(WIDGET_URIS.taskSpawned);
   });
 });

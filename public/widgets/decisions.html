@@ -1726,7 +1726,7 @@
                 </div>
                 <div class="decision-header-meta">
                   <div class="ox-eyebrow" style="color: var(--ox-card-color); display:flex; align-items:center; gap:6px;">
-                    <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor;"></span>
+                    <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;"></span>
                     ${escapeHtml(d.urgency)}
                   </div>
                   <a href="${escapeHtml(decisionUrl)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(decisionUrl || ''))}, event)' class="decision-open-link">
@@ -1739,7 +1739,7 @@
               ${isOgDecisionEmbed ? '' : `<div class="ox-text" style="margin-bottom: 4px;">${escapeHtml(d.urgency === 'critical' ? 'Needs a fast operator call to keep critical-path work moving.' : d.urgency === 'high' ? 'High-signal operator decision with downstream execution impact.' : 'Review and confirm the preferred execution path.')}</div>`}
 
               ${!isOgDecisionEmbed && (d.context || d.recommendation || d.impact) ? `
-              <div style="margin: 20px 0; display: flex; flex-direction: column; gap: 16px; border-left: 2px solid rgba(var(--ox-card-color-rgb), 0.4); padding-left: 14px;">
+              <div style="margin: 20px 0; padding: 14px 0; display: flex; flex-direction: column; gap: 16px; border-top: 1px solid var(--ox-border); border-bottom: 1px solid var(--ox-border);">
                 ${d.context ? `<div><div class="ox-eyebrow" style="margin-bottom:4px;">Why it matters</div><div class="ox-text" style="color:var(--ox-text);">${escapeHtml(d.context)}</div></div>` : ''}
                 ${d.recommendation ? `<div><div class="ox-eyebrow" style="margin-bottom:4px; color:var(--ox-teal);">Recommendation</div><div class="ox-text" style="color:var(--ox-text); font-weight:500;">${escapeHtml(d.recommendation)}</div></div>` : ''}
                 ${d.impact ? `<div><div class="ox-eyebrow" style="margin-bottom:4px; color:var(--ox-warning);">Impact if ignored</div><div class="ox-text">${escapeHtml(d.impact)}</div></div>` : ''}

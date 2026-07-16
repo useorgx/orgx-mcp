@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-07-16T07:46:22.382Z",
+  "generatedAt": "2026-07-16T14:26:04.847Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -33,8 +33,8 @@
   "widgets": {
     "agent-status": {
       "file": "public/widgets/agent-status.html",
-      "bytes": 75569,
-      "hash": "4e2d150f9c25",
+      "bytes": 79122,
+      "hash": "53264b079c70",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/components/domain-accent.css",
@@ -81,8 +81,8 @@
     },
     "decisions": {
       "file": "public/widgets/decisions.html",
-      "bytes": 73836,
-      "hash": "f496a9df7575",
+      "bytes": 73824,
+      "hash": "6237b7b2057a",
       "primaryRgb": "251,191,36",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -109,8 +109,8 @@
     },
     "initiative-pulse": {
       "file": "public/widgets/initiative-pulse.html",
-      "bytes": 103936,
-      "hash": "153038a40e7b",
+      "bytes": 103904,
+      "hash": "5421906d4d14",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/components/domain-accent.css",
@@ -144,8 +144,8 @@
     },
     "plan-session-live": {
       "file": "public/widgets/plan-session-live.html",
-      "bytes": 20400,
-      "hash": "b59bbea4b13f",
+      "bytes": 20388,
+      "hash": "d3971e02014e",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/components/domain-accent.css",
@@ -162,8 +162,8 @@
     },
     "scaffold-streaming": {
       "file": "public/widgets/scaffold-streaming.html",
-      "bytes": 38969,
-      "hash": "784d1bf66827",
+      "bytes": 38971,
+      "hash": "33c22676fee7",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/mcp-apps-sdk.umd.js",
@@ -202,8 +202,8 @@
     },
     "task-spawned": {
       "file": "public/widgets/task-spawned.html",
-      "bytes": 32013,
-      "hash": "9d91a5b477de",
+      "bytes": 34260,
+      "hash": "c8d951583cee",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/interaction-kit.css",
