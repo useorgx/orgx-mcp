@@ -92,6 +92,18 @@
         "destructive_justification": "Can run delete or irreversible lifecycle actions depending on the requested action."
       }
     },
+    "manage_lifecycle": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Pauses, resumes, retries, or cancels running OrgX work and therefore changes execution state.",
+        "open_world_justification": "Calls the authenticated OrgX lifecycle control plane outside the MCP worker to synchronize descendant runs.",
+        "destructive_justification": "Controls reversible runtime state and cancels active work without deleting durable OrgX records."
+      }
+    },
     "orgx_plan": {
       "annotations": {
         "readOnlyHint": false,

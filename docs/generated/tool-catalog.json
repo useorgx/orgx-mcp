@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-16T14:55:29.361Z",
-  "sourceHash": "4b956192372db2da",
+  "generatedAt": "2026-07-16T15:01:01.626Z",
+  "sourceHash": "99e747c90c77c52f",
   "version": "1.0.0",
   "totalTools": 81,
   "categories": [
@@ -2670,7 +2670,7 @@
     {
       "id": "orgx_act",
       "title": "Act On OrgX Entity",
-      "description": "Run a lifecycle, validation, completion, or proof action on one OrgX entity. Per-action required inputs:\n  • update → \"fields\" patch object.\n  • complete_with_proof, ship_batch → \"artifact\" (artifact_type + artifact_url/external_url; preview_markdown optional).\n  • validate (studio) → \"spec\" payload.\n  • block, flag_risk, decline, cancel, delete → \"note\" strongly recommended.\n  • dry_run=true previews update/delete and other supported lifecycle actions without mutating; update dry-runs must return would_update instead of delegating to orgx_write.\n\nAllowed (type → action) pairs (others return an error):\n  workspace: update|delete\n  initiative: launch|pause|resume|complete|archive|update|delete\n  milestone: start|complete|flag_risk|cancel|ship_batch|update|delete\n  workstream: start|pause|resume|block|complete|reassign_streams|update|delete\n  task: start|complete|complete_with_proof|block|unblock|reopen|update|delete\n  objective, playbook, decision, studio: see field descriptions.\n\nUSE WHEN: changing entity state. NEXT: orgx_submit_receipt for durable proof. DO NOT USE for creating records — use orgx_write.",
+      "description": "Act on one OrgX entity. Required inputs:\n  • update → \"fields\" patch object.\n  • complete_with_proof, ship_batch → \"artifact\" (artifact_type + artifact_url/external_url; preview_markdown optional).\n  • validate (studio) → \"spec\" payload.\n  • block, flag_risk, decline, cancel, delete → \"note\" strongly recommended.\n  • dry_run=true previews update/delete and other supported lifecycle actions without mutating; update dry-runs must return would_update instead of delegating to orgx_write.\n\nAllowed (type → action) pairs (others return an error):\n  workspace: update|delete\n  initiative: launch|pause|resume|complete|archive|update|delete\n  milestone: start|complete|flag_risk|cancel|ship_batch|update|delete\n  workstream: start|pause|resume|block|complete|reassign_streams|update|delete\n  task: start|complete|complete_with_proof|block|unblock|reopen|update|delete\n  objective, playbook, decision, studio: see field descriptions.\n\nUSE WHEN: changing entity state. For pause, resume, retry, or cancel of running work, use manage_lifecycle so descendant tasks and active runs stay synchronized. NEXT: orgx_submit_receipt for durable proof. DO NOT USE for creating records — use orgx_write.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -4212,7 +4212,9 @@
       ],
       "readOnly": false,
       "source": "stream",
-      "profiles": []
+      "profiles": [
+        "v2"
+      ]
     },
     {
       "id": "orgx_ack_attention",

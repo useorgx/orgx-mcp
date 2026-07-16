@@ -25,7 +25,8 @@ Primary v2 tools:
 - orgx_recommend: Get next-action recommendations or morning brief signals.
 - orgx_write: Create or update durable OrgX records.
 - orgx_attach: Attach proof, URLs, documents, screenshots, or artifacts.
-- orgx_act: Launch, pause, complete, validate, delete, or otherwise act on an entity.
+- orgx_act: Launch, complete, validate, delete, or otherwise act on an entity outside active runtime control.
+- manage_lifecycle: Atomically pause, resume, retry, or cancel an initiative, workstream, milestone, task, or run; use it for runtime recovery so entity and execution state stay synchronized.
 - orgx_plan: Start, resume, edit, improve, or complete a plan session.
 - orgx_spawn: Guard, classify, spawn, or hand off specialist agent work.
 - orgx_decide: Create, remember, approve, reject, or list decisions.
