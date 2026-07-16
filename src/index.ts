@@ -3010,6 +3010,14 @@ export class OrgXMcp extends McpAgent<
         path: '/api/client/live/activity',
         method: 'POST',
       },
+      orgx_request_question: {
+        path: '/api/client/live/questions',
+        method: 'POST',
+      },
+      orgx_poll_question: {
+        path: '/api/client/live/questions',
+        method: 'GET',
+      },
       orgx_emit_execution_graph: {
         path: '/api/client/live/execution-graph',
         method: 'POST',
@@ -3107,9 +3115,18 @@ export class OrgXMcp extends McpAgent<
               let fetchInit: RequestInit;
 
               if (endpoint.method === 'GET') {
+                const endpointPath =
+                  tool.id === 'orgx_poll_question' &&
+                  typeof args.question_id === 'string'
+                    ? `${endpoint.path}/${encodeURIComponent(args.question_id)}`
+                    : endpoint.path;
                 const params = new URLSearchParams();
                 for (const [k, v] of Object.entries(args)) {
-                  if (k !== '_context' && v !== undefined) {
+                  if (
+                    k !== '_context' &&
+                    !(tool.id === 'orgx_poll_question' && k === 'question_id') &&
+                    v !== undefined
+                  ) {
                     params.set(k, String(v));
                   }
                 }
@@ -3122,7 +3139,8 @@ export class OrgXMcp extends McpAgent<
                 ) {
                   params.set('workspace_id', this.sessionContext.workspaceId);
                 }
-                url = `${endpoint.path}?${params.toString()}`;
+                const query = params.toString();
+                url = query ? `${endpointPath}?${query}` : endpointPath;
                 fetchInit = { method: 'GET' };
               } else {
                 // Strip _context before forwarding
@@ -3254,6 +3272,26 @@ export class OrgXMcp extends McpAgent<
               reused ? ' (existing run)' : ''
             } · run ${runId.slice(0, 8)}...`
           : '📝 Activity emitted';
+      }
+      case 'orgx_request_question': {
+        const questionId = data.decision_id as string | undefined;
+        return questionId
+          ? `❓ Question forwarded · ${questionId.slice(0, 8)}... · poll orgx_poll_question`
+          : '❓ Question forwarded to the initiative owner';
+      }
+      case 'orgx_poll_question': {
+        const question =
+          data.question && typeof data.question === 'object'
+            ? (data.question as Record<string, unknown>)
+            : data;
+        if (question.resolved !== true) return '⏸️ Still waiting for the owner';
+        const continuation =
+          question.continuation && typeof question.continuation === 'object'
+            ? (question.continuation as Record<string, unknown>)
+            : {};
+        return continuation.should_resume === true
+          ? '▶️ Answer received · resume the preserved session'
+          : '⏹️ Answer received · do not resume this session';
       }
       case 'orgx_apply_changeset': {
         const replayed = data.replayed === true;

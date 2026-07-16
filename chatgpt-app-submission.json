@@ -128,6 +128,30 @@
         "destructive_justification": "Approval or rejection can irreversibly resolve a pending decision."
       }
     },
+    "orgx_request_question": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Creates a durable private OrgX decision so an external agent session can pause for owner input.",
+        "open_world_justification": "Forwards the contextual question to the authenticated OrgX application API outside the MCP worker.",
+        "destructive_justification": "Adds a reversible pending question and does not delete records or irreversibly resolve work."
+      }
+    },
+    "orgx_poll_question": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Reads the durable answer and continuation receipt without modifying the OrgX decision.",
+        "open_world_justification": "Reads the answer receipt from the authenticated OrgX application API outside the MCP worker.",
+        "destructive_justification": "Does not delete, overwrite, resolve, or otherwise mutate the underlying question or source session."
+      }
+    },
     "orgx_submit_receipt": {
       "annotations": {
         "readOnlyHint": false,

@@ -68,11 +68,13 @@ describe('worker tool access gating', () => {
     });
   });
 
-  it('allows verified agent session tokens to use v2 spawn and receipt tools', () => {
+  it('allows verified agent session tokens to spawn, report, and bridge questions', () => {
     const props = { type: 'session', sid: 'sess-123' };
 
     expect(checkSessionTokenToolAccess('orgx_spawn', props)).toBeNull();
     expect(checkSessionTokenToolAccess('orgx_submit_receipt', props)).toBeNull();
+    expect(checkSessionTokenToolAccess('orgx_request_question', props)).toBeNull();
+    expect(checkSessionTokenToolAccess('orgx_poll_question', props)).toBeNull();
   });
 
   it('allows verified agent session tokens to retrieve work context', () => {

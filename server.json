@@ -177,6 +177,26 @@
       }
     },
     {
+      "name": "orgx_request_question",
+      "title": "Request OrgX Question",
+      "description": "Pause at a safe checkpoint and forward a contextual Claude Code, Codex, Cursor, OpenClaw, or other client question to the initiative owner. OrgX preserves the source run and session so the originating client can resume with the exact answer.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "orgx_poll_question",
+      "title": "Poll OrgX Question",
+      "description": "Read the durable answer receipt for a contextual question forwarded to OrgX. Resume the preserved source session only when the receipt explicitly says continuation.should_resume is true.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
       "name": "approve_decision",
       "title": "Approve Decision",
       "description": "Approve a pending decision from the decisions widget after explicit confirmation.",

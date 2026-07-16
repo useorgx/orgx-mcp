@@ -106,6 +106,8 @@ describe('Smithery metadata coverage', () => {
       "'orgx_write'",
       "'orgx_submit_receipt'",
       "'orgx_emit_activity'",
+      "'orgx_request_question'",
+      "'orgx_poll_question'",
     ]) {
       expect(indexSource).toContain(canonical);
     }

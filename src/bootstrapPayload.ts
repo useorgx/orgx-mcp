@@ -98,6 +98,8 @@ export const V2_PUBLIC_TOOL_IDS = [
   'orgx_bootstrap',
   'orgx_decide',
   'orgx_emit_activity',
+  'orgx_request_question',
+  'orgx_poll_question',
   'orgx_emit_execution_graph',
   'orgx_inspect',
   'orgx_plan',

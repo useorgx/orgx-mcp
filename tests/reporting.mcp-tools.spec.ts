@@ -16,10 +16,63 @@ function findTool(id: string) {
 }
 
 describe('MCP reporting tools', () => {
-  it('registers the two control-plane write tools', () => {
+  it('registers reporting and external question bridge tools', () => {
     const ids = CLIENT_INTEGRATION_TOOL_DEFINITIONS.map((tool) => tool.id);
     expect(ids).toContain('orgx_emit_activity');
     expect(ids).toContain('orgx_apply_changeset');
+    expect(ids).toContain('orgx_request_question');
+    expect(ids).toContain('orgx_poll_question');
+  });
+
+  it.each([
+    ['claude-code', 'AskUserQuestion'],
+    ['codex', 'request_user_input'],
+    ['cursor', 'ask_question'],
+  ] as const)(
+    'accepts a contextual %s question and preserves its continuation handle',
+    (sourceClient, sourceTool) => {
+      const requestTool = findTool('orgx_request_question');
+      const schema = z.object(requestTool.inputSchema);
+
+      const parsed = schema.safeParse({
+        initiative_id: INITIATIVE_ID,
+        correlation_id: `${sourceClient}-question-1`,
+        source_client: sourceClient,
+        source_tool: sourceTool,
+        source_session_id: `${sourceClient}-session-1`,
+        source_event_id: `${sourceClient}-event-1`,
+        idempotency_key: `${sourceClient}-question-1`,
+        question: 'Which direction should this work take?',
+        context:
+          'The current files and run remain preserved while the owner answers.',
+        response_mode: 'single_select',
+        options: [
+          {
+            id: 'direction-a',
+            label: 'Direction A',
+            description: 'Continue with the current system.',
+          },
+          {
+            id: 'direction-b',
+            label: 'Direction B',
+            description: 'Switch to the alternate system.',
+          },
+        ],
+        source_ref: {
+          thread_id: `${sourceClient}-thread-1`,
+        },
+      });
+
+      expect(parsed.success).toBe(true);
+    }
+  );
+
+  it('validates durable question polling receipts', () => {
+    const pollTool = findTool('orgx_poll_question');
+    const schema = z.object(pollTool.inputSchema);
+
+    expect(schema.safeParse({ question_id: RUN_ID }).success).toBe(true);
+    expect(schema.safeParse({ question_id: 'not-a-uuid' }).success).toBe(false);
   });
 
   it('keeps private activity telemetry closed-world', () => {

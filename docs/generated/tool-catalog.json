@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-07-15T19:05:49.962Z",
-  "sourceHash": "e362d77575449927",
+  "generatedAt": "2026-07-16T00:18:51.870Z",
+  "sourceHash": "cbcaffb7b7beba62",
   "version": "1.0.0",
-  "totalTools": 76,
+  "totalTools": 78,
   "categories": [
     "Agents",
     "Billing",
@@ -4539,6 +4539,242 @@
       "readOnly": true,
       "source": "flywheel",
       "profiles": []
+    },
+    {
+      "id": "orgx_poll_question",
+      "title": "Poll OrgX Question",
+      "description": "Read the durable answer receipt for a question previously forwarded with orgx_request_question. USE WHEN: an external client is paused for human input. NEXT: when resolved=true and continuation.should_resume=true, resume the preserved source session with answer and resolution_context; when false, remain paused without creating another question. Read-only.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "question_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Question/decision UUID returned by orgx_request_question"
+          }
+        },
+        "required": [
+          "question_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [],
+      "readOnly": true,
+      "source": "client_integration",
+      "profiles": [
+        "v2",
+        "commander",
+        "planner",
+        "executor",
+        "observer"
+      ]
+    },
+    {
+      "id": "orgx_request_question",
+      "title": "Request OrgX Question",
+      "description": "Pause at a safe checkpoint and forward a contextual question to the initiative owner. OrgX renders the right single-select, multi-select, free-text, or confirmation control and preserves the source run/session so work can resume with the exact answer. USE WHEN: Claude Code AskUserQuestion, Codex request_user_input, Cursor, OpenClaw, or another client needs human judgment to continue. NEXT: poll orgx_poll_question with the returned question_id; continue only when continuation.should_resume is true. DO NOT USE: for runtime failures with an automatic retry path — report a chokepoint instead.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "initiative_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Initiative UUID"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "Stable key for safe retries of the same question"
+          },
+          "question": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": "The concrete question the owner must answer"
+          },
+          "context": {
+            "type": "string",
+            "maxLength": 5000,
+            "description": "What led here, what is preserved, and what the answer changes"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 120
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    },
+                    "description": {
+                      "type": "string",
+                      "maxLength": 2000
+                    }
+                  },
+                  "required": [
+                    "label"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "maxItems": 10,
+            "description": "Pre-allocated answers for single-select or multi-select questions"
+          },
+          "response_mode": {
+            "type": "string",
+            "enum": [
+              "single_select",
+              "multi_select",
+              "free_text",
+              "confirmation"
+            ],
+            "description": "Answer control; inferred from options when omitted"
+          },
+          "blocking": {
+            "type": "boolean",
+            "description": "Whether this answer gates the linked work; default true"
+          },
+          "urgency": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "urgent"
+            ],
+            "description": "Owner attention urgency; default medium"
+          },
+          "workstream_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Affected workstream UUID"
+          },
+          "run_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Existing run UUID"
+          },
+          "correlation_id": {
+            "type": "string",
+            "maxLength": 120,
+            "description": "Required with source_client when run_id is absent"
+          },
+          "source_client": {
+            "type": "string",
+            "enum": [
+              "openclaw",
+              "codex",
+              "claude-code",
+              "chatgpt",
+              "cursor",
+              "web-ui",
+              "api"
+            ],
+            "description": "Originating client; required when run_id is absent"
+          },
+          "runtime": {
+            "type": "object",
+            "properties": {
+              "source_runtime": {
+                "type": "string",
+                "enum": [
+                  "codex_cloud",
+                  "codex_local",
+                  "anthropic",
+                  "orgx_managed",
+                  "local_openclaw",
+                  "managed_agent",
+                  "unknown"
+                ],
+                "description": "Canonical runtime bucket that produced this activity"
+              },
+              "source_system": {
+                "type": "string",
+                "description": "Provider or system name, e.g. codex, anthropic, openai-managed"
+              },
+              "provider": {
+                "type": "string",
+                "description": "Model/provider identifier"
+              },
+              "execution_target": {
+                "type": "string",
+                "description": "Execution target such as cloud, local, local-openclaw"
+              },
+              "adapter": {
+                "type": "string",
+                "description": "Runtime adapter or bridge name"
+              },
+              "job_id": {
+                "type": "string",
+                "description": "Runtime job id for correlation"
+              }
+            },
+            "additionalProperties": false,
+            "description": "Runtime/provider provenance for the paused execution"
+          },
+          "source_session_id": {
+            "type": "string",
+            "maxLength": 255,
+            "description": "Claude, Codex, Cursor, or other client session identifier"
+          },
+          "source_tool": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "Originating tool, e.g. AskUserQuestion or request_user_input"
+          },
+          "source_event_id": {
+            "type": "string",
+            "maxLength": 255,
+            "description": "Originating question/tool-call event identifier"
+          },
+          "source_ref": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Additional non-secret client continuation references"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Additional non-secret structured context"
+          }
+        },
+        "required": [
+          "initiative_id",
+          "idempotency_key",
+          "question",
+          "source_tool"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [],
+      "readOnly": false,
+      "source": "client_integration",
+      "profiles": [
+        "v2",
+        "commander",
+        "planner",
+        "executor"
+      ]
     },
     {
       "id": "queue_action",
