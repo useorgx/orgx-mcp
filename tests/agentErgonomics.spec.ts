@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildClientAwareContentBlocks,
   buildJsonFirstContentBlocks,
   diagnoseToolFailure,
   normalizeEntityCreatePayloadForAgents,
@@ -19,6 +20,17 @@ describe('agent ergonomics helpers', () => {
     expect(blocks[0]?.text).toBe('{"ok":true,"id":"initiative-1"}');
     expect(blocks[1]?.text).toBe('Initiative ready.');
     expect(blocks[2]?.text).toContain('<!DOCTYPE html>');
+  });
+
+  it('returns a concise visible result for Claude Code widget tools', () => {
+    const blocks = buildClientAwareContentBlocks({
+      data: { ok: true, large: 'x'.repeat(10_000) },
+      summary: 'Initiative ready.',
+      sourceClient: 'claude',
+      widgetHtml: '<!DOCTYPE html><html></html>',
+    });
+
+    expect(blocks).toEqual([{ type: 'text', text: 'Initiative ready.' }]);
   });
 
   it('normalizes common entity create aliases without accepting arbitrary enums', () => {

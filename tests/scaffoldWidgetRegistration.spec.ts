@@ -30,10 +30,12 @@ describe('scaffold_initiative widget registration', () => {
     expect(registration).toContain("'openai/visibility': 'public'");
   });
 
-  it('returns scaffold widget payload as text content block with structuredContent for MCP app hosts', () => {
-    // The JSON-first helper keeps machine-readable payload before optional widget HTML.
-    expect(source).toMatch(/content:\s*buildJsonFirstContentBlocks\(\{/);
+  it('returns client-aware scaffold content with structuredContent for MCP app hosts', () => {
+    // MCP App hosts keep machine-readable structured content while Claude Code
+    // gets a concise visible text block instead of JSON and widget HTML.
+    expect(source).toMatch(/content:\s*buildClientAwareContentBlocks\(\{/);
     expect(source).toMatch(/data:\s*finalPayload/);
+    expect(source).toMatch(/sourceClient/);
     expect(source).toMatch(/structuredContent:\s*finalPayload/);
   });
 });

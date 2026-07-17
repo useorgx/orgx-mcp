@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildClientSkillOnboarding,
   resolveSourceClientFromContext,
+  resolveSourceClientFromUserAgent,
 } from '../src/clientSkillOnboarding';
 import { DEFAULT_SKILL_CATALOG } from '../src/skillCatalog';
 
@@ -13,6 +14,13 @@ describe('clientSkillOnboarding', () => {
         client: { name: 'Cursor', version: '1.0.0' },
       })
     ).toBe('cursor');
+  });
+
+  it('detects Claude Code from the transport user agent', () => {
+    expect(
+      resolveSourceClientFromUserAgent('claude-code/2.1.211 (sdk-cli)')
+    ).toBe('claude');
+    expect(resolveSourceClientFromUserAgent('unknown-client/1.0')).toBeNull();
   });
 
   it('recommends first-use skills for Cursor workflows', () => {

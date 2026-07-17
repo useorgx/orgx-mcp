@@ -63,6 +63,19 @@ export function buildJsonFirstContentBlocks(params: {
   return blocks;
 }
 
+export function buildClientAwareContentBlocks(params: {
+  data: Record<string, unknown>;
+  summary: string;
+  sourceClient?: string | null;
+  widgetHtml?: string | null;
+}): TextContent[] {
+  const sourceClient = params.sourceClient?.trim().toLowerCase() ?? '';
+  if (sourceClient === 'claude' || sourceClient === 'claude-code') {
+    return [{ type: 'text', text: params.summary }];
+  }
+  return buildJsonFirstContentBlocks(params);
+}
+
 export function normalizeEntityCreatePayloadForAgents(
   entity: Record<string, unknown>,
   pathPrefix: string

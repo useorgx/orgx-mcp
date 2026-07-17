@@ -136,6 +136,49 @@ function getRequestTimeoutMs(
   return parseTimeoutMs(env.ORGX_API_TIMEOUT_MS, DEFAULT_ORGX_API_TIMEOUT_MS);
 }
 
+async function readResponseTextWithTimeout(
+  response: Response,
+  timeoutMs: number,
+  upstreamUrl: string
+): Promise<string> {
+  if (!response.body) return '';
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let body = '';
+  let timedOut = false;
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_resolve, reject) => {
+    timeoutId = setTimeout(() => {
+      timedOut = true;
+      reject(
+        createApiError(
+          'The request took too long. Please try again.',
+          `Response body timed out after ${timeoutMs}ms for ${upstreamUrl}`
+        )
+      );
+    }, timeoutMs);
+  });
+
+  try {
+    while (true) {
+      const { done, value } = await Promise.race([reader.read(), timeout]);
+      if (done) break;
+      if (value) body += decoder.decode(value, { stream: true });
+    }
+    body += decoder.decode();
+    return body;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+    if (timedOut) {
+      void reader
+        .cancel('OrgX API response body timed out')
+        .catch(() => undefined);
+    }
+    reader.releaseLock();
+  }
+}
+
 function shouldTryFallbackForStatus(status: number): boolean {
   return (
     status === 502 ||
@@ -323,7 +366,14 @@ export async function callOrgxApiRaw(
 
     if (!response.ok) {
       const text = truncateForErrorBody(
-        await response.text().catch(() => 'Unable to read error body')
+        await readResponseTextWithTimeout(
+          response,
+          requestTimeoutMs,
+          url.toString()
+        ).catch((error) => {
+          if (error instanceof OrgXApiError) throw error;
+          return 'Unable to read error body';
+        })
       );
       let parsedMessage: string | null = null;
       try {
@@ -406,10 +456,13 @@ export async function callOrgxApiJson(
     orgxUserId: opts?.orgxUserId ?? undefined,
   });
   const contentType = response.headers.get('content-type') ?? '';
+  const responseBody = await readResponseTextWithTimeout(
+    response,
+    parseTimeoutMs(env.ORGX_API_TIMEOUT_MS, DEFAULT_ORGX_API_TIMEOUT_MS),
+    response.url || new URL(path, env.ORGX_API_URL).toString()
+  );
   if (!contentType.includes('application/json')) {
-    const text = truncateForErrorBody(
-      await response.text().catch(() => 'Unable to read non-JSON body')
-    );
+    const text = truncateForErrorBody(responseBody);
     throw createApiError(
       'Received an unexpected response from OrgX. Please try again.',
       `Non-JSON response (${contentType || 'unknown content-type'}) from ${
@@ -417,7 +470,11 @@ export async function callOrgxApiJson(
       }: ${text}`
     );
   }
-  return response;
+  return new Response(responseBody, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
 }
 
 /**

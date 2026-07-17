@@ -51,8 +51,8 @@ import {
   validateEntityCreatePayloadContract,
 } from './batchCreate';
 import {
+  buildClientAwareContentBlocks,
   buildFailureDetails,
-  buildJsonFirstContentBlocks,
   diagnoseToolFailure,
   normalizeEntityCreatePayloadForAgents,
   normalizeRecordOutcomeArgs,
@@ -104,6 +104,7 @@ import {
 import {
   buildFirstAgentWorkState,
   deriveScaffoldIdempotencyKey,
+  getScaffoldBillingDataGaps,
   normalizeExternalSyncRequest,
   normalizeScaffoldObjectiveAliases,
   resolveScaffoldMode,
@@ -146,6 +147,7 @@ import {
   buildClientSkillOnboarding,
   formatClientSkillOnboarding,
   resolveSourceClientFromContext,
+  resolveSourceClientFromUserAgent,
 } from './clientSkillOnboarding';
 import {
   buildClientActivationExperience,
@@ -406,6 +408,7 @@ interface OrgXMcpProps extends Record<string, unknown> {
   profile?: string;
   workspace_id?: string;
   initiative_id?: string;
+  sourceClient?: SourceClient;
 }
 
 // Canonical Supabase user UUID shape. Used to guard the orgx_user_id we forward
@@ -1047,6 +1050,12 @@ export class OrgXMcp extends McpAgent<
 
   private resolveUserEmail() {
     return this.props?.email ?? this.sessionAuth.email ?? null;
+  }
+
+  private resolveSourceClient(context?: unknown): SourceClient | null {
+    const contextClient = resolveSourceClientFromContext(context);
+    if (contextClient && contextClient !== 'other') return contextClient;
+    return this.props?.sourceClient ?? contextClient ?? null;
   }
 
   /**
@@ -2156,6 +2165,7 @@ export class OrgXMcp extends McpAgent<
       ? 'session'
       : 'none';
     const effectiveArgs = this.applySessionDefaults(toolId, args);
+    const sourceClient = this.resolveSourceClient(args._context);
     const toolDefinition = CHATGPT_TOOL_DEFINITIONS.find((tool) => tool.id === toolId);
     const outputTemplate = (toolDefinition?._meta as Record<string, unknown> | undefined)?.[
       'openai/outputTemplate'
@@ -2468,23 +2478,25 @@ export class OrgXMcp extends McpAgent<
         }
 
         if (isWidgetTool) {
+          const content = buildClientAwareContentBlocks({
+            data,
+            summary: finalMessage,
+            sourceClient,
+            widgetHtml: _liveFeedWidgetHtml,
+          });
           this.appendWidgetDebugEvent({
             phase: 'tool_result',
             toolId,
             outputTemplate:
               typeof outputTemplate === 'string' ? outputTemplate : undefined,
             details: {
-              contentBlocks: _liveFeedWidgetHtml ? 3 : 2,
+              contentBlocks: content.length,
               hasStructuredContent: true,
               dataKeys: Object.keys(data),
             },
           });
           return {
-            content: buildJsonFirstContentBlocks({
-              data,
-              summary: finalMessage,
-              widgetHtml: _liveFeedWidgetHtml,
-            }),
+            content,
             structuredContent: data,
           } as CallToolResult;
         }
@@ -5916,7 +5928,7 @@ export class OrgXMcp extends McpAgent<
             ...(skillOnboarding ? { skill_onboarding: skillOnboarding } : {}),
           };
 
-          const sourceClient = resolveSourceClientFromContext(args._context);
+          const sourceClient = this.resolveSourceClient(args._context);
           let activationText = '';
           let activationExperience:
             | ReturnType<typeof buildClientActivationExperience>
@@ -7605,7 +7617,7 @@ export class OrgXMcp extends McpAgent<
             normalization_warnings: normalizedPayload.warnings,
           };
 
-          const sourceClient = resolveSourceClientFromContext(args._context);
+          const sourceClient = this.resolveSourceClient(args._context);
           const activationEvents = await this.recordMcpActivationObservation({
             toolId: 'create_entity',
             args: args as Record<string, unknown>,
@@ -8405,11 +8417,7 @@ export class OrgXMcp extends McpAgent<
           });
           if (authResponse) return authResponse;
 
-          const sourceClient = resolveSourceClientFromContext(
-            (args._context ?? undefined) as
-              | Record<string, unknown>
-              | undefined
-          );
+          const sourceClient = this.resolveSourceClient(args._context);
           const telemetryTrace = createScaffoldTelemetryTrace();
           const recordScaffoldTelemetry = (params: {
             status: 'success' | 'error';
@@ -8613,6 +8621,15 @@ export class OrgXMcp extends McpAgent<
                     identity_warning: billingUsage.identityWarning,
                   },
                 };
+              }
+              const billingDataGaps = getScaffoldBillingDataGaps(billingUsage);
+              if (billingDataGaps.length > 0) {
+                contractWarnings.push({
+                  code: 'billing_usage_degraded',
+                  message:
+                    'OrgX could not verify scaffold usage during this request. Scaffolding continued because a degraded billing snapshot is not proof that the account quota is exhausted.',
+                });
+                billingUsage = null;
               }
               if (billingUsage && billingUsage.hasScaffolds === false) {
                 const billingUrl = buildBillingSettingsUrl(this.env.ORGX_WEB_URL, {
@@ -8917,9 +8934,10 @@ export class OrgXMcp extends McpAgent<
               },
             });
             return {
-              content: buildJsonFirstContentBlocks({
+              content: buildClientAwareContentBlocks({
                 data: draftPayload,
                 summary: draftPayload.summary,
+                sourceClient,
               }),
               structuredContent: draftPayload,
             };
@@ -9313,9 +9331,10 @@ export class OrgXMcp extends McpAgent<
               ].join('').trim();
 
               return {
-                content: buildJsonFirstContentBlocks({
+                content: buildClientAwareContentBlocks({
                   data: finalPayload,
                   summary: _cliFallback,
+                  sourceClient,
                 }),
                 structuredContent: finalPayload,
               };
@@ -11423,7 +11442,7 @@ export class OrgXMcp extends McpAgent<
               workspacePulse,
             });
 
-            const sourceClient = resolveSourceClientFromContext(args._context);
+            const sourceClient = this.resolveSourceClient(args._context);
             const activationEvents = await this.recordMcpActivationObservation({
               toolId: 'get_morning_brief',
               args: args as Record<string, unknown>,
@@ -12480,12 +12499,25 @@ Steps:
 const sseHandler = OrgXMcp.serveSSE('/sse');
 const httpHandler = OrgXMcp.serve('/mcp');
 
+function attachRequestSourceClient(
+  request: Request,
+  ctx: ExecutionContext
+): void {
+  const sourceClient = resolveSourceClientFromUserAgent(
+    request.headers.get('user-agent')
+  );
+  if (!sourceClient) return;
+  const context = ctx as unknown as { props?: OrgXMcpProps };
+  context.props = { ...(context.props ?? {}), sourceClient };
+}
+
 const rateLimitedHttpHandler = {
   async fetch(
     request: Request,
     env: Env,
     ctx: ExecutionContext
   ): Promise<Response> {
+    attachRequestSourceClient(request, ctx);
     const rateLimit = await checkEdgeRateLimit(request, env);
     if (!rateLimit.allowed) {
       return buildRateLimitedResponse(rateLimit, env.ORGX_WEB_URL);
@@ -12534,6 +12566,7 @@ const rateLimitedSseHandler = {
     env: Env,
     ctx: ExecutionContext
   ): Promise<Response> {
+    attachRequestSourceClient(request, ctx);
     const rateLimit = await checkEdgeRateLimit(request, env);
     if (!rateLimit.allowed) {
       return buildRateLimitedResponse(rateLimit, env.ORGX_WEB_URL);
@@ -12625,10 +12658,15 @@ async function tryRunTokenAuth(
   );
   if (!payload) return null;
 
+  const sourceClient = resolveSourceClientFromUserAgent(
+    request.headers.get('user-agent')
+  );
+
   (ctx as unknown as { props?: OrgXMcpProps }).props = {
     userId: payload.uid,
     scope: 'mcp:run',
     ...(payload.wid ? { workspace_id: payload.wid } : {}),
+    ...(sourceClient ? { sourceClient } : {}),
     authSource: 'run_token',
   };
 
