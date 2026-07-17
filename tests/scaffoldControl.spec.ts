@@ -4,6 +4,7 @@ import {
   buildFirstAgentWorkState,
   canLaunchWithCredentialStatus,
   deriveScaffoldIdempotencyKey,
+  getScaffoldBillingDataGaps,
   normalizeExternalSyncRequest,
   normalizeScaffoldObjectiveAliases,
   resolveScaffoldMode,
@@ -11,6 +12,24 @@ import {
 } from '../src/scaffoldControl';
 
 describe('scaffold control helpers', () => {
+  it('distinguishes degraded billing snapshots from real quota state', () => {
+    expect(
+      getScaffoldBillingDataGaps({
+        hasScaffolds: false,
+        scaffoldsIncluded: 0,
+        degraded: ['billing_usage_timeout'],
+        data_gaps: ['billing_usage_timeout'],
+      })
+    ).toEqual(['billing_usage_timeout']);
+    expect(
+      getScaffoldBillingDataGaps({
+        hasScaffolds: false,
+        scaffoldsIncluded: 3,
+        scaffoldsUsed: 3,
+      })
+    ).toEqual([]);
+  });
+
   it('resolves staged modes while preserving launch_after_create compatibility', () => {
     expect(resolveScaffoldMode({}).mode).toBe('launch');
     expect(resolveScaffoldMode({ launch_after_create: false })).toMatchObject({

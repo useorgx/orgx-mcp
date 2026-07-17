@@ -6,6 +6,17 @@ export type ScaffoldContractWarning = {
   message: string;
 };
 
+export function getScaffoldBillingDataGaps(value: unknown): string[] {
+  const record = asRecord(value);
+  if (!record) return [];
+  return [
+    ...new Set([
+      ...stringArray(record.degraded),
+      ...stringArray(record.data_gaps),
+    ]),
+  ];
+}
+
 export type MaterializedDependencyEdge = {
   type: 'workstream';
   name: string;

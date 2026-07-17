@@ -100,6 +100,14 @@ export function resolveSourceClientFromContext(
   return detectSourceClient(client);
 }
 
+export function resolveSourceClientFromUserAgent(
+  userAgent: string | null | undefined
+): SourceClient | null {
+  if (!userAgent?.trim()) return null;
+  const sourceClient = detectSourceClient({ name: userAgent.trim() });
+  return sourceClient === 'other' ? null : sourceClient;
+}
+
 export function buildClientSkillOnboarding(params: {
   context?: unknown;
   search?: string | null;
