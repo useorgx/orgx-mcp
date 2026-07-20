@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const SMITHERY_TOOL_PROFILES = [
+  'v2',
   'full',
   'memory',
   'commander',
@@ -13,9 +14,9 @@ export function buildSmitheryConfigSchema() {
   return z.object({
     profile: z
       .enum(SMITHERY_TOOL_PROFILES)
-      .default('full')
+      .default('v2')
       .describe(
-        'Optional tool profile to expose a narrower toolset at connection time. Defaults to full access.'
+        'Optional tool profile to expose at connection time. Defaults to the published v2 surface; full is explicit admin/debug compatibility.'
       ),
     workspace_id: z
       .string()

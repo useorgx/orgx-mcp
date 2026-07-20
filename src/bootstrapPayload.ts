@@ -1,4 +1,9 @@
-import { V2_PUBLIC_SURFACE } from './toolProfiles';
+import {
+  SERVER_MANIFEST_VERSION,
+  V2_CORE_PUBLIC_SURFACE,
+  V2_PUBLIC_SURFACE,
+  resolveToolProfile,
+} from './toolProfiles';
 
 export type BootstrapSafeFirstCall = {
   tool: string;
@@ -96,6 +101,8 @@ export function resolveBootstrapSessionContext(
 
 export const V2_PUBLIC_TOOL_IDS = V2_PUBLIC_SURFACE;
 
+const CANONICAL_GUIDANCE_TOOL_IDS = new Set<string>(V2_CORE_PUBLIC_SURFACE);
+
 export const BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE: Record<
   string,
   BootstrapSafeFirstCall[]
@@ -105,26 +112,30 @@ export const BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE: Record<
       tool: 'orgx_search',
       args: { query: 'recent decisions', type: 'decision', limit: 10 },
     },
-    { tool: 'get_operator_chronicle', args: { period: '30d' } },
+    { tool: 'orgx_recommend', args: { mode: 'morning_brief', period: '30d' } },
   ],
   commander: [
-    { tool: 'get_operator_chronicle', args: { period: '30d' } },
+    { tool: 'orgx_recommend', args: { mode: 'morning_brief', period: '30d' } },
     { tool: 'orgx_search', args: { type: 'initiative', limit: 10 } },
   ],
   planner: [
-    { tool: 'orgx_plan', args: { action: 'resume' } },
     { tool: 'orgx_search', args: { type: 'initiative', limit: 10 } },
+    { tool: 'orgx_search', args: { type: 'plan_session', status: 'active', limit: 10 } },
   ],
   executor: [
     { tool: 'orgx_search', args: { type: 'task', status: 'active', limit: 10 } },
     { tool: 'orgx_recommend', args: { mode: 'next_action', limit: 5 } },
   ],
   observer: [
-    { tool: 'get_operator_chronicle', args: { period: '30d' } },
+    { tool: 'orgx_recommend', args: { mode: 'morning_brief', period: '30d' } },
+    { tool: 'orgx_search', args: { type: 'initiative', limit: 10 } },
+  ],
+  v2: [
+    { tool: 'orgx_recommend', args: { mode: 'morning_brief', period: '30d' } },
     { tool: 'orgx_search', args: { type: 'initiative', limit: 10 } },
   ],
   full: [
-    { tool: 'get_operator_chronicle', args: { period: '30d' } },
+    { tool: 'orgx_recommend', args: { mode: 'morning_brief', period: '30d' } },
     { tool: 'orgx_search', args: { type: 'initiative', limit: 10 } },
   ],
 };
@@ -139,10 +150,10 @@ export const BOOTSTRAP_RECOMMENDED_WORKFLOWS = {
   ],
   scaffold_hierarchy: [
     'orgx_bootstrap',
-    'scaffold_initiative',
+    'orgx_plan',
+    'orgx_write',
     'orgx_inspect',
     'orgx_search',
-    'orgx_write',
     'orgx_spawn',
     'orgx_submit_receipt',
   ],
@@ -154,15 +165,67 @@ export const BOOTSTRAP_RECOMMENDED_WORKFLOWS = {
     'orgx_emit_activity',
     'orgx_emit_execution_graph',
     'orgx_attach',
-    'consolidate_pr',
     'orgx_act',
     'orgx_submit_receipt',
   ],
 } as const;
 
-export function getBootstrapSafeFirstCalls(profile: string) {
+function isVisibleCanonicalTool(
+  tool: string,
+  visibleTools: ReadonlySet<string> | null
+): boolean {
   return (
-    BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE[profile] ??
-    BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE.full
+    CANONICAL_GUIDANCE_TOOL_IDS.has(tool) &&
+    (visibleTools === null || visibleTools.has(tool))
   );
+}
+
+export function getBootstrapSafeFirstCalls(
+  profile: string,
+  visibleTools: ReadonlySet<string> | null = null
+): BootstrapSafeFirstCall[] {
+  const calls =
+    BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE[profile] ??
+    BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE.v2;
+  return calls.filter((call) => isVisibleCanonicalTool(call.tool, visibleTools));
+}
+
+export function getBootstrapRecommendedWorkflows(
+  visibleTools: ReadonlySet<string> | null = null
+): Record<string, string[]> {
+  return Object.fromEntries(
+    Object.entries(BOOTSTRAP_RECOMMENDED_WORKFLOWS).map(([name, tools]) => [
+      name,
+      tools.filter((tool) => isVisibleCanonicalTool(tool, visibleTools)),
+    ])
+  );
+}
+
+export function buildBootstrapToolRouting(params: {
+  requestedProfile?: string | null;
+  visibleTools: readonly string[];
+}) {
+  const resolved = resolveToolProfile(params.requestedProfile);
+  const visibleTools = [...new Set(params.visibleTools)].sort();
+  const visibleToolSet = new Set(visibleTools);
+
+  return {
+    profile: resolved.name,
+    ...(resolved.requestedName ? { requested_profile: resolved.requestedName } : {}),
+    profile_fallback: resolved.fellBack,
+    manifest: {
+      version: SERVER_MANIFEST_VERSION,
+      public_profile: 'v2',
+      public_tools_count: V2_PUBLIC_TOOL_IDS.length,
+      negotiated_profile: resolved.name,
+      visible_tools_count: visibleTools.length,
+    },
+    safe_first_calls: getBootstrapSafeFirstCalls(
+      resolved.name,
+      visibleToolSet
+    ),
+    recommended_workflows: getBootstrapRecommendedWorkflows(visibleToolSet),
+    visible_tools_count: visibleTools.length,
+    visible_tools: visibleTools,
+  };
 }

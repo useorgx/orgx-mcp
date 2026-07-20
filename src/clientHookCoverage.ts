@@ -175,6 +175,34 @@ const CLIENT_HOOK_COVERAGE: Record<SourceClient, ClientHookCoverage> = {
       'The activity/receipt reporting path remains explicit-call based; the execution-graph emitter covers the session-boundary graph snapshot.',
     ],
   },
+  opencode: {
+    source_client: 'opencode',
+    coverage_level: 'mcp_fallback',
+    surfaces: [
+      {
+        surface: 'OpenCode peer plugin MCP endpoint',
+        status: 'wired',
+        proof: 'The OpenCode plugin config points at the hosted OrgX MCP endpoint with an explicit executor profile.',
+        reporting_role:
+          'Exposes a bounded execution and proof surface without presenting the full compatibility catalog.',
+      },
+      {
+        surface: 'Passive Work Graph reconciliation',
+        status: 'partial',
+        proof: 'The peer plugin has reconciliation support, while live installed-client receipt proof remains a separate gate.',
+        reporting_role:
+          'Preserves execution continuity when the installed peer emits its reconciliation state.',
+      },
+    ],
+    reporting_entrypoints: REPORTING_ENTRYPOINTS,
+    required_proof: [
+      'List tools from a fresh OpenCode peer session and confirm the executor profile is active.',
+      'Submit an execution receipt and verify it appears in the operator chronicle.',
+    ],
+    gaps: [
+      'Installed-client reconciliation and receipt delivery still require live proof before seamless reporting can be claimed.',
+    ],
+  },
   claude: {
     source_client: 'claude',
     coverage_level: 'mcp_fallback',

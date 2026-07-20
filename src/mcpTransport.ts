@@ -13,6 +13,7 @@ import {
 import { recordDurableMcpToolInvocation } from './mcpInvocationTelemetry';
 import type { OrgxApiEnv } from './orgxApi';
 import type { SourceClient } from './cross-pollination';
+import { resolveToolProfile } from './toolProfiles';
 
 export type ExecutionContextWithProps<Props> = ExecutionContext & {
   props?: Props;
@@ -39,6 +40,34 @@ type McpToolCallTelemetry = {
   args: Record<string, unknown>;
   context?: unknown;
 };
+
+type McpJourneyTimings = {
+  requestStartedAt: number;
+  authMs: number;
+  normalizationMs: number;
+  handlerMs: number;
+  responseHeadersMs: number;
+  profile?: string;
+  sessionPresent: boolean;
+};
+
+type McpLogicalResult = {
+  isError: boolean;
+  errorCode?: string;
+  errorKind?: string;
+};
+
+type McpResponseObservation = McpLogicalResult & {
+  firstByteMs?: number;
+  fullResponseMs: number;
+  responseBytes?: number;
+  responseSizeSource: 'body_clone' | 'content_length' | 'unavailable';
+  responseReadError: boolean;
+  responseParseTruncated: boolean;
+};
+
+const MAX_TELEMETRY_RESPONSE_PARSE_BYTES = 2 * 1024 * 1024;
+const MAX_TELEMETRY_RESPONSE_READ_MS = 30_000;
 
 export type AuthenticateRequest<Env> = (
   request: Request,
@@ -225,17 +254,62 @@ function extractClientContext(context: unknown): {
   clientPlatform?: string;
   clientVersion?: string;
   conversationId?: string;
+  stepId?: string;
+  stepIndex?: number;
+  previousToolId?: string;
+  expectedNextToolId?: string;
+  previousExpectedNextToolId?: string;
   workingDirectoryPresent: boolean;
 } {
   const record = asRecord(context);
   const client = asRecord(record.client);
   const conversation = asRecord(record.conversation);
   const user = asRecord(record.user);
+  const request = asRecord(record.request);
+  const journey = asRecord(record.journey);
+  const session = asRecord(record.session);
+  const stepIndex = [
+    journey.stepIndex,
+    journey.step_index,
+    request.stepIndex,
+    request.step_index,
+    session.stepIndex,
+    session.step_index,
+  ].find((value) => typeof value === 'number' && Number.isFinite(value));
   return {
     clientName: pickString(client.name),
     clientPlatform: pickString(client.platform),
     clientVersion: pickString(client.version),
     conversationId: pickString(conversation.id),
+    stepId: pickString(
+      journey.stepId,
+      journey.step_id,
+      request.stepId,
+      request.step_id,
+      session.stepId,
+      session.step_id
+    ),
+    stepIndex: typeof stepIndex === 'number' ? stepIndex : undefined,
+    previousToolId: pickString(
+      journey.previousTool,
+      journey.previous_tool,
+      journey.previousToolId,
+      journey.previous_tool_id,
+      request.previousTool,
+      request.previous_tool
+    ),
+    expectedNextToolId: pickString(
+      journey.expectedNextTool,
+      journey.expected_next_tool,
+      journey.nextTool,
+      journey.next_tool
+    ),
+    previousExpectedNextToolId: pickString(
+      journey.previousExpectedNextTool,
+      journey.previous_expected_next_tool,
+      request.previousExpectedNextTool,
+      request.previous_expected_next_tool
+    ),
     workingDirectoryPresent: Boolean(pickString(user.workingDirectory)),
   };
 }
@@ -290,9 +364,227 @@ function sanitizeToolCallMetadata(toolCall: McpToolCallTelemetry): {
       client_name: context.clientName,
       client_platform: context.clientPlatform,
       client_version: context.clientVersion,
+      conversation_id: context.conversationId,
+      step_id: pickString(args.step_id, args.stepId, context.stepId),
+      step_index: context.stepIndex,
+      previous_tool_id: pickString(
+        args.previous_tool,
+        args.previousTool,
+        context.previousToolId
+      ),
+      expected_next_tool_id: pickString(
+        args.expected_next_tool,
+        args.expectedNextTool,
+        context.expectedNextToolId
+      ),
+      previous_expected_next_tool_id: context.previousExpectedNextToolId,
+      followed_expected_next_tool:
+        context.previousExpectedNextToolId === undefined
+          ? undefined
+          : context.previousExpectedNextToolId === toolCall.toolName,
       has_conversation_id: Boolean(context.conversationId),
       has_working_directory: context.workingDirectoryPresent,
     },
+  };
+}
+
+function normalizeTelemetryCode(value: unknown): string | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  if (typeof value !== 'string') return undefined;
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_:-]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 96);
+  return normalized || undefined;
+}
+
+function logicalResultFromRecord(value: unknown): McpLogicalResult {
+  const envelope = asRecord(value);
+  const jsonRpcError = asRecord(envelope.error);
+  const jsonRpcErrorData = asRecord(jsonRpcError.data);
+  const result = Object.keys(asRecord(envelope.result)).length
+    ? asRecord(envelope.result)
+    : envelope;
+  const structured = asRecord(result.structuredContent);
+  const structuredErrorValue = structured.error;
+  const structuredError = asRecord(structuredErrorValue);
+  const hasStructuredError =
+    (typeof structuredErrorValue === 'string' &&
+      structuredErrorValue.trim().length > 0) ||
+    Object.keys(structuredError).length > 0;
+  const meta = asRecord(structured.meta);
+  const isJsonRpcError = Object.keys(jsonRpcError).length > 0;
+  const isError =
+    isJsonRpcError ||
+    result.isError === true ||
+    result.is_error === true ||
+    structured.ok === false ||
+    (structured.ok !== true && hasStructuredError);
+
+  if (!isError) return { isError: false };
+
+  const errorCode = normalizeTelemetryCode(
+    jsonRpcErrorData.code ??
+      jsonRpcError.code ??
+      structuredError.code ??
+      structured.error_code ??
+      structured.code ??
+      meta.error_code
+  );
+  const errorKind = normalizeTelemetryCode(
+    jsonRpcErrorData.error_kind ??
+      jsonRpcErrorData.kind ??
+      structuredError.kind ??
+      structuredError.error_kind ??
+      structured.error_kind ??
+      meta.error_kind ??
+      errorCode
+  );
+
+  return {
+    isError: true,
+    errorCode: errorCode ?? (isJsonRpcError ? 'jsonrpc_error' : 'mcp_tool_error'),
+    errorKind: errorKind ?? (isJsonRpcError ? 'jsonrpc_error' : 'mcp_tool_error'),
+  };
+}
+
+function parseLogicalMcpResult(text: string): McpLogicalResult {
+  const candidates: unknown[] = [];
+  const trimmed = text.trim();
+  if (!trimmed) return { isError: false };
+
+  try {
+    candidates.push(JSON.parse(trimmed));
+  } catch {
+    for (const line of trimmed.split(/\r?\n/)) {
+      if (!line.startsWith('data:')) continue;
+      const data = line.slice(5).trim();
+      if (!data || data === '[DONE]') continue;
+      try {
+        candidates.push(JSON.parse(data));
+      } catch {
+        // Ignore keepalives and non-JSON SSE data.
+      }
+    }
+  }
+
+  for (const candidate of candidates) {
+    const logical = logicalResultFromRecord(candidate);
+    if (logical.isError) return logical;
+  }
+  return { isError: false };
+}
+
+async function observeMcpResponse(
+  response: Response,
+  requestStartedAt: number,
+  now: () => number = () => Date.now()
+): Promise<McpResponseObservation> {
+  const contentLengthValue = response.headers.get('content-length');
+  const contentLength = contentLengthValue === null
+    ? Number.NaN
+    : Number(contentLengthValue);
+  const headerBytes = Number.isFinite(contentLength) && contentLength >= 0
+    ? contentLength
+    : undefined;
+  let clone: Response;
+  try {
+    clone = response.clone();
+  } catch {
+    return {
+      ...logicalResultFromRecord({}),
+      fullResponseMs: Math.max(0, now() - requestStartedAt),
+      responseBytes: headerBytes,
+      responseSizeSource: headerBytes === undefined ? 'unavailable' : 'content_length',
+      responseReadError: true,
+      responseParseTruncated: false,
+    };
+  }
+
+  if (!clone.body) {
+    return {
+      isError: false,
+      fullResponseMs: Math.max(0, now() - requestStartedAt),
+      responseBytes: headerBytes ?? 0,
+      responseSizeSource: headerBytes === undefined ? 'body_clone' : 'content_length',
+      responseReadError: false,
+      responseParseTruncated: false,
+    };
+  }
+
+  const reader = clone.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let responseBytes = 0;
+  let capturedBytes = 0;
+  let firstByteMs: number | undefined;
+  let responseReadError = false;
+  const responseReadDeadline = Date.now() + MAX_TELEMETRY_RESPONSE_READ_MS;
+
+  try {
+    while (true) {
+      const remainingMs = responseReadDeadline - Date.now();
+      if (remainingMs <= 0) {
+        responseReadError = true;
+        await reader.cancel('telemetry response observation timed out');
+        break;
+      }
+      let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+      const read = await Promise.race([
+        reader.read(),
+        new Promise<null>((resolve) => {
+          timeoutHandle = setTimeout(() => resolve(null), remainingMs);
+        }),
+      ]).finally(() => {
+        if (timeoutHandle) clearTimeout(timeoutHandle);
+      });
+      if (read === null) {
+        responseReadError = true;
+        await reader.cancel('telemetry response observation timed out');
+        break;
+      }
+      const { done, value } = read;
+      if (done) break;
+      if (!value) continue;
+      if (firstByteMs === undefined) {
+        firstByteMs = Math.max(0, now() - requestStartedAt);
+      }
+      responseBytes += value.byteLength;
+      if (capturedBytes < MAX_TELEMETRY_RESPONSE_PARSE_BYTES) {
+        const remaining = MAX_TELEMETRY_RESPONSE_PARSE_BYTES - capturedBytes;
+        const captured = value.byteLength > remaining ? value.slice(0, remaining) : value;
+        chunks.push(captured);
+        capturedBytes += captured.byteLength;
+      }
+    }
+  } catch {
+    responseReadError = true;
+  } finally {
+    reader.releaseLock();
+  }
+
+  const parseBuffer = new Uint8Array(capturedBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    parseBuffer.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  const logical = parseLogicalMcpResult(new TextDecoder().decode(parseBuffer));
+
+  return {
+    ...logical,
+    firstByteMs,
+    fullResponseMs: Math.max(0, now() - requestStartedAt),
+    responseBytes: responseReadError && responseBytes === 0 ? headerBytes : responseBytes,
+    responseSizeSource:
+      responseReadError && responseBytes === 0
+        ? headerBytes === undefined
+          ? 'unavailable'
+          : 'content_length'
+        : 'body_clone',
+    responseReadError,
+    responseParseTruncated: responseBytes > capturedBytes,
   };
 }
 
@@ -305,6 +597,7 @@ function normalizeTelemetrySourceClient(
     return 'claude';
   if (normalized === 'chatgpt' || normalized === 'openai') return 'chatgpt';
   if (normalized === 'codex') return 'codex';
+  if (normalized === 'opencode' || normalized === 'open-code') return 'opencode';
   if (normalized === 'openclaw' || normalized === 'openclaw-plugin')
     return 'openclaw';
   if (normalized === 'cursor') return 'cursor';
@@ -321,18 +614,36 @@ function normalizeTelemetrySourceClient(
   return 'other';
 }
 
-function captureMcpToolCallVisibility<Env>(
+async function captureMcpToolCallVisibility<Env>(
   env: Env,
   ctx: ExecutionContextWithProps<unknown>,
   auth: AuthResult,
   toolCall: McpToolCallTelemetry | undefined,
   response: Response,
-  latencyMs: number,
+  journey: McpJourneyTimings,
   errorCode?: string | null
-): void {
+): Promise<void> {
   if (!toolCall) return;
 
-  const status = errorCode || response.status >= 400 ? 'error' : 'success';
+  const observation = await observeMcpResponse(
+    response,
+    journey.requestStartedAt
+  );
+  const headerErrorKind = normalizeTelemetryCode(
+    response.headers.get('x-orgx-mcp-error-kind')
+  );
+  const headerErrorCode = normalizeTelemetryCode(
+    response.headers.get('x-orgx-mcp-error-code')
+  );
+  const resolvedErrorCode = normalizeTelemetryCode(errorCode) ??
+    headerErrorCode ??
+    observation.errorCode;
+  const resolvedErrorKind = headerErrorKind ?? observation.errorKind ??
+    (response.status >= 400 ? `http_${response.status}` : undefined);
+  const status =
+    resolvedErrorCode || observation.isError || response.status >= 400
+      ? 'error'
+      : 'success';
   const distinctId = auth.userId ?? resolveAnonymousDistinctId(ctx);
   const { metadata, workspaceId, sourceClient } =
     sanitizeToolCallMetadata(toolCall);
@@ -356,6 +667,26 @@ function captureMcpToolCallVisibility<Env>(
   const transportMetadata = {
     ...metadata,
     http_status: response.status,
+    journey_phase: 'complete',
+    auth_ms: journey.authMs,
+    session_ms: knownServerTimings.get('session'),
+    request_normalization_ms: journey.normalizationMs,
+    handler_ms: journey.handlerMs,
+    response_headers_ms: journey.responseHeadersMs,
+    response_shaping_ms:
+      knownServerTimings.get('response_shaping') ??
+      knownServerTimings.get('response_build'),
+    first_response_byte_ms: observation.firstByteMs,
+    full_response_ms: observation.fullResponseMs,
+    response_size_bytes: observation.responseBytes,
+    response_size_source: observation.responseSizeSource,
+    response_read_error: observation.responseReadError,
+    response_parse_truncated: observation.responseParseTruncated,
+    mcp_logical_error: observation.isError,
+    error_kind: resolvedErrorKind,
+    profile: journey.profile,
+    session_present: journey.sessionPresent,
+    response_measurement_point: 'worker_response_clone',
     response_size_header_bytes:
       responseSizeHeader !== null && Number.isFinite(responseSizeHeader)
         ? responseSizeHeader
@@ -378,46 +709,52 @@ function captureMcpToolCallVisibility<Env>(
       ? String(toolCall.jsonrpcId)
       : undefined;
 
+  const deliveries: Promise<unknown>[] = [];
   captureWorkerPosthogEvent({
     env: env as PosthogTelemetryEnv,
-    ctx,
+    ctx: {
+      waitUntil(promise) {
+        deliveries.push(Promise.resolve(promise));
+      },
+    },
     event: 'mcp_tool_invocation',
     distinctId,
     properties: {
+      ...transportMetadata,
       tool_id: toolCall.toolName,
       status,
-      latency_ms: latencyMs,
+      latency_ms: observation.fullResponseMs,
       tool_family: toolFamily,
       auth_scope: auth.scope,
-      error_code: errorCode ?? undefined,
+      error_code: resolvedErrorCode,
+      error_kind: resolvedErrorKind,
       has_user_id: Boolean(auth.userId),
       workspace_id: workspaceId,
       source_client: sourceClient,
       request_id: requestId,
-      ...transportMetadata,
     },
   });
 
-  if (!isOrgxApiTelemetryConfigured(env)) return;
-
-  ctx.waitUntil?.(
-    recordDurableMcpToolInvocation({
+  if (isOrgxApiTelemetryConfigured(env)) {
+    deliveries.push(recordDurableMcpToolInvocation({
       env,
       toolId: toolCall.toolName,
       status,
-      latencyMs,
+      latencyMs: observation.fullResponseMs,
       metadata: transportMetadata,
       userId: auth.userId ?? null,
       workspaceId: workspaceId ?? null,
       sourceClient: sourceClient ?? null,
       context: toolCall.context,
-      errorCode:
-        errorCode ?? (status === 'error' ? `http_${response.status}` : null),
+      errorCode: resolvedErrorCode ??
+        (status === 'error' ? resolvedErrorKind ?? `http_${response.status}` : null),
       isWidgetTool: false,
       toolFamily,
       requestId,
-    })
-  );
+    }));
+  }
+
+  await Promise.allSettled(deliveries);
 }
 
 function captureDeprecatedToolTelemetry<Env>(
@@ -524,6 +861,11 @@ export async function handleMcpRequest<Env, Props>(
   handler: AgentHandler<Env, Props>,
   authenticateRequest: AuthenticateRequest<Env>
 ) {
+  const requestStartedAt = Date.now();
+  const connectionProfile = resolveToolProfile(
+    new URL(request.url).searchParams.get('profile') ??
+      pickString(asRecord(ctx.props).profile)
+  ).name;
   if (request.method === 'OPTIONS') {
     return withCors(
       new Response(null, {
@@ -537,17 +879,24 @@ export async function handleMcpRequest<Env, Props>(
       })
     );
   }
+  const authStartedAt = Date.now();
   const auth = await authenticateRequest(request, env);
+  const authMs = Math.max(0, Date.now() - authStartedAt);
   if ('response' in auth && auth.response) return withCors(auth.response);
+  const existingProps = asRecord(ctx.props);
   (ctx as ExecutionContextWithProps<Props>).props = {
+    ...existingProps,
     userId: auth.userId,
     scope: auth.scope,
     email: auth.email,
+    profile: connectionProfile,
   } as unknown as Props;
 
   // Normalize tool names in the request body (strips server prefixes like "Orgx:")
+  const normalizationStartedAt = Date.now();
   const { request: normalizedRequest, warning, toolCall } =
     await normalizeRequestBody(request);
+  const normalizationMs = Math.max(0, Date.now() - normalizationStartedAt);
   captureDeprecatedToolTelemetry(env, ctx as ExecutionContextWithProps<unknown>, auth, warning);
 
   const startedAt = Date.now();
@@ -555,25 +904,43 @@ export async function handleMcpRequest<Env, Props>(
   try {
     response = await handler.fetch(normalizedRequest, env, ctx);
   } catch (error) {
-    captureMcpToolCallVisibility(
+    const handlerMs = Math.max(0, Date.now() - startedAt);
+    ctx.waitUntil?.(captureMcpToolCallVisibility(
       env,
       ctx as ExecutionContextWithProps<unknown>,
       auth,
       toolCall,
       new Response(null, { status: 500 }),
-      Date.now() - startedAt,
+      {
+        requestStartedAt,
+        authMs,
+        normalizationMs,
+        handlerMs,
+        responseHeadersMs: Math.max(0, Date.now() - requestStartedAt),
+        profile: connectionProfile,
+        sessionPresent: Boolean(request.headers.get('mcp-session-id')),
+      },
       classifyMcpToolError(error)
-    );
+    ));
     throw error;
   }
-  captureMcpToolCallVisibility(
+  const handlerMs = Math.max(0, Date.now() - startedAt);
+  ctx.waitUntil?.(captureMcpToolCallVisibility(
     env,
     ctx as ExecutionContextWithProps<unknown>,
     auth,
     toolCall,
     response,
-    Date.now() - startedAt
-  );
+    {
+      requestStartedAt,
+      authMs,
+      normalizationMs,
+      handlerMs,
+      responseHeadersMs: Math.max(0, Date.now() - requestStartedAt),
+      profile: connectionProfile,
+      sessionPresent: Boolean(request.headers.get('mcp-session-id')),
+    }
+  ));
   return withCors(withDeprecatedToolWarningHeaders(response, warning));
 }
 

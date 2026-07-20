@@ -1,214 +1,224 @@
-# MCP Tool Telemetry Dashboard
+# MCP Agent-Journey Telemetry Dashboard
 
-Saved-query reference for the **Agent ↔ OrgX intersection verification**
-initiative ([live view](https://useorgx.com/live/96826b82-7ba6-45f4-9a55-b4891c58082d)),
-Pass 4. The orgx-mcp worker emits four PostHog event types — this doc names
-them, lists the properties each event carries, and gives the saved queries
-that compose into the production dashboard.
+Production dashboard contract for the canonical `mcp_tool_invocation` event.
+The dashboard intentionally does not depend on the older handler-local
+`mcp_tool_called`, `mcp_tool_succeeded`, `mcp_tool_failed`, or
+`mcp_tool_invalid_input` events. Those events may remain during migration, but
+they do not contain the transport, client, response, or logical MCP outcome
+needed to measure the agent/user experience end to end.
 
-All wiring already exists; this doc is the cookbook for setting up the
-PostHog board so the events become an actionable signal.
+## Canonical event
 
-## Events emitted by orgx-mcp
+One `mcp_tool_invocation` event is emitted for each completed `tools/call`
+request after a worker-side clone of the finite MCP response has been observed.
+The original response is returned without waiting for telemetry delivery.
 
-| Event | When it fires | Where in code |
-|---|---|---|
-| `mcp_tool_called` | Tool invocation enters our handler | `src/index.ts` `captureMcpToolEvent('mcp_tool_called', …)` |
-| `mcp_tool_succeeded` | Handler returned a non-error result | same |
-| `mcp_tool_failed` | Handler caught an error or returned `isError:true` | same |
-| `mcp_tool_invalid_input` | **Auto-emitted alongside `mcp_tool_failed`** when the error message matches Zod-flavored patterns or `errorKind:'invalid_input'` is set explicitly | `captureMcpToolEvent` auto-detects via `isZodFlavoredErrorMessage` |
+| Property | Meaning |
+|---|---|
+| `tool_id`, `tool_family` | Selected tool and stable functional family |
+| `status` | `success` or `error`, including HTTP-200 MCP logical failures |
+| `mcp_logical_error` | True for JSON-RPC errors, `CallToolResult.isError`, `structuredContent.ok=false`, or a non-empty structured error without an explicit success marker |
+| `error_code`, `error_kind` | Bounded machine-readable failure labels; no raw error prose |
+| `source_client`, `profile` | Normalized client (including OpenCode) and effective MCP tool profile after fail-closed negotiation |
+| `conversation_id`, `step_id`, `step_index` | Journey correlation fields when supplied by the client |
+| `previous_tool_id`, `expected_next_tool_id` | Declared chain edges for calls-to-outcome analysis |
+| `previous_expected_next_tool_id`, `followed_expected_next_tool` | Whether this call followed the prior response's guidance |
+| `auth_ms`, `session_ms`, `request_normalization_ms` | Request-entry stages |
+| `handler_ms`, `response_shaping_ms`, `response_headers_ms` | Execution and response-construction stages |
+| `first_response_byte_ms`, `full_response_ms` | Worker observation of first and complete response bytes |
+| `response_size_bytes`, `response_size_source` | Actual cloned-body bytes, or `Content-Length` fallback |
+| `response_read_error`, `response_parse_truncated` | Measurement-quality flags |
+| `argument_count`, `argument_keys`, `estimated_argument_bytes` | Input-shape and schema-cost indicators |
+| `http_status`, `auth_scope`, `session_present` | Transport and authorization context |
+| `edge_rate_limit_*` | Edge/rate-limit stages from `Server-Timing` |
 
-### Common properties (all four events)
+`first_response_byte_ms` and `full_response_ms` are measured at
+`response_measurement_point=worker_response_clone`; they include server work but
+not the final network hop or host widget-render time. Hosts should emit their
+own render/first-useful-paint receipt keyed by `request_id` when that signal is
+available.
 
-| Property | Type | Notes |
-|---|---|---|
-| `tool_id` | string | The MCP tool name, e.g. `scaffold_initiative` |
-| `tool_family` | enum | `chatgpt` \| `stream` \| `plan_session` \| `client_integration` |
-| `auth_source` | enum | `request` \| `session` \| `none` |
-| `has_user_id` | boolean | Whether the call was authenticated |
-| `is_widget_tool` | boolean | True when the tool returns a widget resource |
-| `$lib` | string | Always `orgx-mcp` |
-| `$lib_version` | string | Mirror of `MCP_SERVER_VERSION` (matches `package.json` version) |
+## Saved queries
 
-### Properties on `mcp_tool_succeeded` / `mcp_tool_failed`
+All examples use the single canonical event and `journey_phase='complete'` so
+legacy or future phase events cannot double-count invocations.
 
-| Property | Type | Notes |
-|---|---|---|
-| `latency_ms` | number | Wall-clock time inside the handler |
-| `ok` | boolean | Mirrors success; redundant with event name but useful in joined queries |
-| `error` | string | Failure message (failed only) |
-| `error_kind` | string | Optional structured tag: `invalid_input`, `spawn_guard_blocked`, `stream_creation_failed`, `launch_failed`, `auth_required`, `credential_missing`, etc. |
-
-### Extra properties on `mcp_tool_invalid_input`
-
-| Property | Type | Notes |
-|---|---|---|
-| `error` | string | The original Zod-flavored message |
-| `error_kind` | string | Always at least `'invalid_input'`; may be more specific |
-| `error_path` | string \| null | Field path extracted from the message (e.g. `"title"`, `"metadata.checklist[0].item"`); `null` when unrecognised so you can group "no_path" as its own bucket |
-
-`mcp_tool_invalid_input` is **additive** — `mcp_tool_failed` still fires.
-This lets the dashboard slice both ways: "all failures" via the parent
-event, "input-shape failures" via the dedicated event without
-substring-matching arbitrary error text.
-
-## Dashboard queries (HogQL / SQL form)
-
-Adapt to your PostHog project's query DSL. Property names are stable;
-event names are listed above.
-
-### 1. Per-tool call rate (last 7d)
+### 1. Per-tool call volume and logical success
 
 ```sql
 SELECT properties.tool_id AS tool_id,
-       count() AS calls
+       count() AS calls,
+       countIf(properties.status = 'success') AS successes,
+       countIf(properties.status = 'error') AS errors,
+       round(100.0 * successes / nullif(calls, 0), 1) AS success_pct
   FROM events
- WHERE event = 'mcp_tool_called'
+ WHERE event = 'mcp_tool_invocation'
+   AND properties.journey_phase = 'complete'
    AND timestamp >= now() - INTERVAL 7 DAY
  GROUP BY tool_id
  ORDER BY calls DESC
 ```
 
-### 2. Per-tool success rate
+### 2. Client and profile selection quality
 
 ```sql
-WITH base AS (
-  SELECT properties.tool_id AS tool_id,
-         countIf(event = 'mcp_tool_succeeded') AS ok,
-         countIf(event = 'mcp_tool_failed')   AS fail
-    FROM events
-   WHERE event IN ('mcp_tool_succeeded', 'mcp_tool_failed')
-     AND timestamp >= now() - INTERVAL 7 DAY
-   GROUP BY tool_id
-)
-SELECT tool_id,
-       ok + fail AS total,
-       round(100.0 * ok / nullif(ok + fail, 0), 1) AS success_pct,
-       fail
-  FROM base
- ORDER BY total DESC
-```
-
-### 3. Source-client breakdown for a single tool
-
-For tracking "Cursor agents have a 12% error rate on `entity_action`
-while Claude has 0.3%". Replace `<TOOL>` with the tool you're auditing.
-
-```sql
-SELECT properties.tool_id     AS tool_id,
-       properties.tool_family AS source_client,
-       countIf(event = 'mcp_tool_succeeded') AS ok,
-       countIf(event = 'mcp_tool_failed')   AS fail,
-       round(100.0 * countIf(event = 'mcp_tool_failed')
-                  / nullif(count(), 0), 1) AS fail_pct
+SELECT properties.source_client AS source_client,
+       properties.profile AS profile,
+       properties.tool_id AS tool_id,
+       count() AS calls,
+       countIf(properties.status = 'error') AS failures,
+       round(100.0 * failures / nullif(calls, 0), 1) AS failure_pct
   FROM events
- WHERE properties.tool_id = '<TOOL>'
-   AND event IN ('mcp_tool_called', 'mcp_tool_succeeded', 'mcp_tool_failed')
+ WHERE event = 'mcp_tool_invocation'
+   AND properties.journey_phase = 'complete'
    AND timestamp >= now() - INTERVAL 7 DAY
- GROUP BY tool_id, source_client
- ORDER BY fail DESC
+ GROUP BY source_client, profile, tool_id
+ ORDER BY failures DESC, calls DESC
 ```
 
-### 4. Latency p50 / p95 per tool
+Do not substitute `tool_family` for `source_client`: `tool_family` describes the
+operation, while `source_client` identifies ChatGPT, Claude, Codex, Cursor,
+OpenClaw, or another host.
+
+### 3. Full-response latency and stage attribution
 
 ```sql
 SELECT properties.tool_id AS tool_id,
-       quantile(0.5)(toFloat64(properties.latency_ms))  AS p50,
-       quantile(0.95)(toFloat64(properties.latency_ms)) AS p95,
-       max(toFloat64(properties.latency_ms))            AS max_ms
+       quantile(0.5)(toFloat64(properties.full_response_ms)) AS full_p50,
+       quantile(0.95)(toFloat64(properties.full_response_ms)) AS full_p95,
+       quantile(0.95)(toFloat64(properties.auth_ms)) AS auth_p95,
+       quantile(0.95)(toFloat64(properties.handler_ms)) AS handler_p95,
+       quantile(0.95)(toFloat64(properties.response_shaping_ms)) AS shaping_p95,
+       quantile(0.95)(toFloat64(properties.first_response_byte_ms)) AS first_byte_p95
   FROM events
- WHERE event = 'mcp_tool_succeeded'
+ WHERE event = 'mcp_tool_invocation'
+   AND properties.journey_phase = 'complete'
    AND timestamp >= now() - INTERVAL 7 DAY
  GROUP BY tool_id
-HAVING p95 > 0
- ORDER BY p95 DESC
+ ORDER BY full_p95 DESC
 ```
 
-Alert on this query when `p95` exceeds a threshold. A reasonable starting
-budget: 5 s for write-heavy tools, 1.5 s for read tools.
-
-### 5. Most common ways agents fail to call X (Zod failures by tool + path)
-
-The Pass 4 deliverable. Surfaces exactly which fields agents most often
-mis-shape, sliced by source client. Use this output to either fix the
-description or extend `agentErgonomics` to normalise the synonym.
+### 4. Payload cost by client and tool
 
 ```sql
-SELECT properties.tool_id     AS tool_id,
-       properties.tool_family AS source_client,
-       coalesce(properties.error_path, '<no_path>') AS error_path,
-       count() AS occurrences
+SELECT properties.source_client AS source_client,
+       properties.tool_id AS tool_id,
+       count() AS calls,
+       quantile(0.5)(toFloat64(properties.response_size_bytes)) AS bytes_p50,
+       quantile(0.95)(toFloat64(properties.response_size_bytes)) AS bytes_p95,
+       sum(toUInt64(properties.response_size_bytes)) AS bytes_total,
+       countIf(properties.response_read_error = true) AS measurement_errors
   FROM events
- WHERE event = 'mcp_tool_invalid_input'
+ WHERE event = 'mcp_tool_invocation'
+   AND properties.journey_phase = 'complete'
    AND timestamp >= now() - INTERVAL 7 DAY
- GROUP BY tool_id, source_client, error_path
- ORDER BY occurrences DESC
- LIMIT 50
+ GROUP BY source_client, tool_id
+ ORDER BY bytes_total DESC
 ```
 
-### 6. Weekly drift digest (saved alert)
+### 5. Most common logical and input failures
 
-Run weekly. Compare to last week. If any (tool_id, source_client,
-error_path) tuple jumps by more than 50%, fire a notification.
+```sql
+SELECT properties.source_client AS source_client,
+       properties.profile AS profile,
+       properties.tool_id AS tool_id,
+       coalesce(properties.error_kind, '<no_kind>') AS error_kind,
+       coalesce(properties.error_code, '<no_code>') AS error_code,
+       count() AS failures
+  FROM events
+ WHERE event = 'mcp_tool_invocation'
+   AND properties.journey_phase = 'complete'
+   AND properties.status = 'error'
+   AND timestamp >= now() - INTERVAL 7 DAY
+ GROUP BY source_client, profile, tool_id, error_kind, error_code
+ ORDER BY failures DESC
+ LIMIT 100
+```
+
+Use `error_kind='invalid_input'` for the schema-friction board. The canonical
+event classifies the final MCP result, so this query includes failures that
+arrive in HTTP-200 JSON-RPC responses rather than relying on HTTP status.
+
+### 6. Calls-to-outcome and next-call follow-through
+
+```sql
+SELECT properties.source_client AS source_client,
+       properties.previous_expected_next_tool_id AS recommended_tool,
+       properties.tool_id AS actual_next_tool,
+       count() AS observed_edges,
+       countIf(properties.followed_expected_next_tool = true) AS followed,
+       round(100.0 * followed / nullif(observed_edges, 0), 1) AS follow_pct
+  FROM events
+ WHERE event = 'mcp_tool_invocation'
+   AND properties.journey_phase = 'complete'
+   AND properties.previous_expected_next_tool_id IS NOT NULL
+   AND timestamp >= now() - INTERVAL 7 DAY
+ GROUP BY source_client, recommended_tool, actual_next_tool
+ ORDER BY observed_edges DESC
+```
+
+For clients that cannot send chain fields, reconstruct the sequence by
+`conversation_id`, ordered by `step_index` and timestamp. Join the final
+`orgx_submit_receipt` or runtime outcome by conversation/request IDs to compute:
+
+- median tool calls to first useful result;
+- median tool calls to evidence-bearing completion;
+- retry loops by repeated `(conversation_id, tool_id, error_kind)`;
+- abandonment after a truncated result or invalid next-call recommendation.
+
+### 7. Weekly drift alert
 
 ```sql
 WITH this_week AS (
-  SELECT properties.tool_id, properties.tool_family AS source_client,
-         coalesce(properties.error_path, '<no_path>') AS error_path,
+  SELECT properties.source_client AS source_client,
+         properties.profile AS profile,
+         properties.tool_id AS tool_id,
+         coalesce(properties.error_kind, '<no_kind>') AS error_kind,
          count() AS n
     FROM events
-   WHERE event = 'mcp_tool_invalid_input'
+   WHERE event = 'mcp_tool_invocation'
+     AND properties.journey_phase = 'complete'
+     AND properties.status = 'error'
      AND timestamp >= now() - INTERVAL 7 DAY
-   GROUP BY 1, 2, 3
+   GROUP BY 1, 2, 3, 4
 ), last_week AS (
-  SELECT properties.tool_id, properties.tool_family AS source_client,
-         coalesce(properties.error_path, '<no_path>') AS error_path,
+  SELECT properties.source_client AS source_client,
+         properties.profile AS profile,
+         properties.tool_id AS tool_id,
+         coalesce(properties.error_kind, '<no_kind>') AS error_kind,
          count() AS n
     FROM events
-   WHERE event = 'mcp_tool_invalid_input'
+   WHERE event = 'mcp_tool_invocation'
+     AND properties.journey_phase = 'complete'
+     AND properties.status = 'error'
      AND timestamp >= now() - INTERVAL 14 DAY
-     AND timestamp <  now() - INTERVAL 7 DAY
-   GROUP BY 1, 2, 3
+     AND timestamp < now() - INTERVAL 7 DAY
+   GROUP BY 1, 2, 3, 4
 )
-SELECT t.tool_id, t.source_client, t.error_path,
+SELECT t.source_client, t.profile, t.tool_id, t.error_kind,
        l.n AS last_week_count,
        t.n AS this_week_count,
        round(100.0 * (t.n - l.n) / nullif(l.n, 0), 1) AS pct_change
   FROM this_week t
-  LEFT JOIN last_week l USING (tool_id, source_client, error_path)
+  LEFT JOIN last_week l USING (source_client, profile, tool_id, error_kind)
  WHERE t.n >= 5
    AND (l.n IS NULL OR t.n > 1.5 * l.n)
  ORDER BY pct_change DESC NULLS LAST
 ```
 
-## Recommended dashboard layout
+## Dashboard layout
 
-Four boards, one row each:
+1. Outcome: calls, logical success, calls-to-receipt, abandonment.
+2. Selection: client × profile × tool, wrong-tool and invalid-input rates.
+3. Experience: first/full response p50/p95 and stage attribution.
+4. Payload: tools/list size, argument bytes, response bytes, widget-render joins.
+5. Recovery: retries, repeated errors, and recommended-next-call follow-through.
 
-1. **Headline** — overall MCP traffic. (1) call rate sparkline + (2) success
-   rate gauge across all tools.
-2. **Per-tool health** — tile for each tool with success rate + p95 latency.
-   Sort by call volume.
-3. **Source-client split** — same per-tool tiles, split by `tool_family`.
-   Pivot when investigating a client-specific regression.
-4. **Input-shape drift** — query 5 (most common Zod paths) and the weekly
-   drift digest from query 6.
+## Production wiring checklist
 
-## Wiring checklist
-
-- [ ] PostHog project receiving events from `https://us.i.posthog.com` (this
-      is the default `POSTHOG_HOST`)
-- [ ] `POSTHOG_KEY` set in worker env (or per-environment `.dev.vars`)
-- [ ] Verify ingestion: trigger a tool call locally and look for
-      `mcp_tool_called` in PostHog Live → Events
-- [ ] Pin queries 1-6 above as a saved insight set
-- [ ] Subscribe at least one engineer to the weekly drift digest
-
-## Cross-repo note
-
-orgx-web also emits PostHog events from agent runtimes (run start /
-complete, artifact promoted, decision created — see
-`lib/server/agentRuns/` and `lib/server/agentLifecycle.ts`). The agent
-runtime events compose with these MCP-side events to build the full
-"work the agent did via OrgX" picture. The dashboard should pull from
-both projects when correlating "agent invoked tool X → run completed".
+- [ ] Verify `mcp_tool_invocation` with `journey_phase=complete` in PostHog.
+- [ ] Confirm HTTP-200 `isError:true` canaries arrive as `status=error`.
+- [ ] Confirm `response_size_bytes` is populated when `Content-Length` is absent.
+- [ ] Pin queries 1–7 as saved insights and subscribe an owner to weekly drift.
+- [ ] Add host-render receipts keyed by `request_id` for true user-visible render time.
+- [ ] Join final OrgX receipts/outcomes to compute calls-to-evidence, not calls alone.

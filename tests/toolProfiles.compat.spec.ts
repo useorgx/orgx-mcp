@@ -10,6 +10,7 @@ import { PRIMARY_AUTHENTICATED_TOOLS } from '../src/publicMcpDiscovery';
 import {
   GROUPED_V2_PUBLIC_SURFACE,
   resolveProfileToolSet,
+  resolveToolProfile,
 } from '../src/toolProfiles';
 
 describe('toolProfiles backward compatibility', () => {
@@ -48,6 +49,25 @@ describe('toolProfiles backward compatibility', () => {
     expect(resolveProfileToolSet('typo-admin')).toEqual(
       resolveProfileToolSet('v2')
     );
+    expect(resolveToolProfile('typo-admin')).toMatchObject({
+      name: 'v2',
+      requestedName: 'typo-admin',
+      fellBack: true,
+    });
+  });
+
+  it('reports omitted profile negotiation as v2 rather than full', () => {
+    expect(resolveToolProfile(undefined)).toMatchObject({
+      name: 'v2',
+      requestedName: null,
+      fellBack: false,
+    });
+    expect(resolveToolProfile('full')).toMatchObject({
+      name: 'full',
+      requestedName: 'full',
+      fellBack: false,
+      tools: null,
+    });
   });
 
   it('keeps published, bootstrap, discovery, and grouped v2 tools identical', () => {

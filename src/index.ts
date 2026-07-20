@@ -37,7 +37,8 @@ import {
 import { buildEntityLink, entityLinkMarkdown, buildLiveUrl } from './deepLinks';
 import { formatInitiativeMarkdown, type OrgXInitiative } from './formatters';
 import { formatForLLM } from './responseSummarizer';
-import { resolveProfileToolSet } from './toolProfiles';
+import { resolveToolProfile } from './toolProfiles';
+import { sanitizeToolResultGuidance } from './toolGuidance';
 import {
   buildMcpTransportExceptionResponse,
   withCorsAndHeaders,
@@ -133,13 +134,18 @@ import { hydrateTaskContext } from './taskContextHydrator';
 import { buildWorkspaceCreateBody } from './workspaceTool';
 import { buildEntityCollectionSearchParams } from './entityCollectionSearch';
 import {
+  buildBroadSearchPagination,
+  buildOrgxSearchNextCall,
+  normalizeEntitySearchPage,
+  type EntitySearchPage,
+} from './orgxSearch';
+import {
   CONFIGURE_ORG_POLICY_TYPES,
   describeAppliedPolicy,
   resolveConfigureOrgWorkspaceId,
 } from './configureOrgPolicy';
 import {
-  BOOTSTRAP_RECOMMENDED_WORKFLOWS,
-  getBootstrapSafeFirstCalls,
+  buildBootstrapToolRouting,
   pickBootstrapWorkspaceFallback,
   resolveBootstrapSessionContext,
 } from './bootstrapPayload';
@@ -227,6 +233,7 @@ import {
   CLIENT_CONTEXT_SCHEMA,
   STANDARD_TOOL_OUTPUT_SCHEMA_OBJECT,
   ensureStructuredContent,
+  normalizeToolResultEnvelope,
   STREAM_TOOL_DEFINITIONS,
   ENTITY_TYPES,
   entityTypeEnum,
@@ -1142,6 +1149,7 @@ export class OrgXMcp extends McpAgent<
         { type: 'text', text: message },
       ],
       structuredContent: payload,
+      isError: true,
     };
   }
 
@@ -1725,12 +1733,30 @@ export class OrgXMcp extends McpAgent<
     type: string;
     userId: string | null;
     limit?: number;
+    offset?: number;
+    cursor?: string | null;
     initiativeId?: string | null;
     workspaceId?: string | null;
     status?: string | null;
     query?: string | null;
     fields?: string[] | null;
   }): Promise<Array<Record<string, unknown>>> {
+    const page = await this.fetchEntityCollectionPage(params);
+    return page.records;
+  }
+
+  private async fetchEntityCollectionPage(params: {
+    type: string;
+    userId: string | null;
+    limit?: number;
+    offset?: number;
+    cursor?: string | null;
+    initiativeId?: string | null;
+    workspaceId?: string | null;
+    status?: string | null;
+    query?: string | null;
+    fields?: string[] | null;
+  }): Promise<EntitySearchPage> {
     const search = buildEntityCollectionSearchParams(params);
 
     const response = await callOrgxApiJson(
@@ -1739,10 +1765,55 @@ export class OrgXMcp extends McpAgent<
       undefined,
       params.userId ? { userId: params.userId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(params.userId) } : undefined
     );
-    const payload = (await response.json()) as {
-      data?: Array<Record<string, unknown>>;
+    const payload = await response.json();
+    return normalizeEntitySearchPage(payload, {
+      limit: params.limit,
+      offset: params.offset,
+    });
+  }
+
+  private async fetchBroadOrgxSearch(params: {
+    query: string;
+    limit: number;
+    userId: string | null;
+  }): Promise<Array<Record<string, unknown>>> {
+    const response = await callOrgxApiJson(
+      this.env,
+      '/api/tools/execute',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          tool_id: 'query_org_memory',
+          args: {
+            query: params.query,
+            scope: 'all',
+            limit: Math.min(params.limit, 20),
+          },
+          user_id: params.userId,
+        }),
+      },
+      params.userId
+        ? {
+            userId: params.userId,
+            userEmail: this.resolveUserEmail(),
+            orgxUserId: this.resolveOrgxUserId(params.userId),
+          }
+        : undefined
+    );
+    const result = (await response.json()) as {
+      ok?: boolean;
+      data?: Record<string, unknown>;
+      error?: string;
     };
-    return Array.isArray(payload.data) ? payload.data : [];
+    if (result.ok === false) {
+      throw new Error(result.error ?? 'Broad OrgX search failed');
+    }
+    return Array.isArray(result.data?.results)
+      ? result.data.results.filter(
+          (record): record is Record<string, unknown> =>
+            Boolean(record && typeof record === 'object' && !Array.isArray(record))
+        )
+      : [];
   }
 
   private async findExistingEntityByIdempotencyKey(params: {
@@ -2900,8 +2971,10 @@ export class OrgXMcp extends McpAgent<
                   field: 'session_id',
                   accepted_id_forms: PLAN_SESSION_ACCEPTED_ID_FORMS,
                   suggested_next_calls: [
-                    { tool: 'get_active_sessions', args: {} },
-                    { tool: 'resume_plan_session', args: {} },
+                    {
+                      tool: 'orgx_search',
+                      args: { type: 'plan_session', status: 'active', limit: 10 },
+                    },
                   ],
                 },
               }
@@ -2977,8 +3050,10 @@ export class OrgXMcp extends McpAgent<
               entity_type: 'plan_session',
               accepted_id_forms: PLAN_SESSION_ACCEPTED_ID_FORMS,
               suggested_next_calls: [
-                { tool: 'get_active_sessions', args: {} },
-                { tool: 'resume_plan_session', args: {} },
+                {
+                  tool: 'orgx_search',
+                  args: { type: 'plan_session', status: 'active', limit: 10 },
+                },
               ],
             },
           });
@@ -3473,16 +3548,19 @@ export class OrgXMcp extends McpAgent<
   }
 
   private buildBootstrapPayload(allowedTools: Set<string> | null) {
-    const profile = this.props?.profile ?? 'full';
     const visibleTools = allowedTools
       ? Array.from(allowedTools).sort()
       : getKnownToolContracts()
           .map((tool) => tool.id)
           .sort();
+    const routing = buildBootstrapToolRouting({
+      requestedProfile: this.props?.profile,
+      visibleTools,
+    });
 
     return {
       server_version: MCP_SERVER_VERSION,
-      profile,
+      ...routing,
       workspace: this.sessionContext.workspaceId
         ? {
             id: this.sessionContext.workspaceId,
@@ -3493,15 +3571,11 @@ export class OrgXMcp extends McpAgent<
         ? { id: this.sessionContext.initiativeId }
         : null,
       granted_scopes: this.parseGrantedScopes(),
-      safe_first_calls: getBootstrapSafeFirstCalls(profile),
       accepted_id_forms: {
         plan_session: PLAN_SESSION_ACCEPTED_ID_FORMS,
         initiative: ['uuid'],
         task: ['uuid', '8+ char prefix'],
       },
-      recommended_workflows: BOOTSTRAP_RECOMMENDED_WORKFLOWS,
-      visible_tools_count: visibleTools.length,
-      visible_tools: allowedTools ? visibleTools : undefined,
     };
   }
 
@@ -3680,17 +3754,96 @@ export class OrgXMcp extends McpAgent<
             typeof args.query === 'string' && args.query.trim().length > 0
               ? args.query.trim()
               : null;
-          const type =
+          const explicitType =
             typeof args.type === 'string' && args.type.trim().length > 0
               ? args.type.trim()
-              : 'initiative';
+              : null;
           const fields = Array.isArray(args.fields)
             ? args.fields.filter((field): field is string => typeof field === 'string')
             : null;
-          const records = await this.fetchEntityCollection({
-            type,
+          const limit = typeof args.limit === 'number' ? args.limit : 20;
+          const offset = typeof args.offset === 'number' ? args.offset : 0;
+          const cursor =
+            typeof args.cursor === 'string' && args.cursor.trim().length > 0
+              ? args.cursor.trim()
+              : null;
+
+          if (cursor && offset > 0) {
+            return this.toolError(
+              'orgx_search accepts cursor or offset, not both',
+              {
+                code: 'invalid_input',
+                status: 400,
+                details: { fields: ['cursor', 'offset'] },
+              }
+            );
+          }
+
+          if (!explicitType && !query) {
+            return this.toolError(
+              'orgx_search requires type for browsing or query for mixed search',
+              {
+                code: 'invalid_input',
+                status: 400,
+                details: {
+                  fields: ['type', 'query'],
+                  suggested_next_calls: [
+                    { tool: 'orgx_search', args: { type: 'initiative', limit } },
+                    { tool: 'orgx_search', args: { type: 'task', status: 'active', limit } },
+                  ],
+                },
+              }
+            );
+          }
+
+          if (!explicitType) {
+            if (offset > 0 || cursor) {
+              return this.toolError(
+                'Mixed relevance search is not exhaustive and cannot be paged. Add type for cursor/offset pagination.',
+                {
+                  code: 'invalid_input',
+                  status: 400,
+                  details: {
+                    pagination_mode: 'relevance_window',
+                    suggested_next_calls: [
+                      { tool: 'orgx_search', args: { query, type: 'decision', limit } },
+                      { tool: 'orgx_search', args: { query, type: 'artifact', limit } },
+                      { tool: 'orgx_search', args: { query, type: 'initiative', limit } },
+                    ],
+                  },
+                }
+              );
+            }
+            const records = await this.fetchBroadOrgxSearch({
+              query: query!,
+              limit,
+              userId: resolvedUserId,
+            });
+            const payload = {
+              _v2_tool: 'orgx_search',
+              type: 'all',
+              search_mode: 'mixed_relevance',
+              query,
+              count: records.length,
+              results: records,
+              pagination: buildBroadSearchPagination(
+                Math.min(limit, 20),
+                records.length
+              ),
+              next_call: null,
+            };
+            return {
+              content: [{ type: 'text', text: formatForLLM('orgx_search', payload) }],
+              structuredContent: payload,
+            };
+          }
+
+          const page = await this.fetchEntityCollectionPage({
+            type: explicitType,
             userId: resolvedUserId,
-            limit: typeof args.limit === 'number' ? args.limit : undefined,
+            limit,
+            offset,
+            cursor,
             initiativeId:
               typeof args.initiative_id === 'string' ? args.initiative_id : null,
             workspaceId:
@@ -3701,12 +3854,25 @@ export class OrgXMcp extends McpAgent<
             query,
             fields,
           });
+          const normalizedArgs = {
+            ...args,
+            type: explicitType,
+            query: query ?? undefined,
+            limit,
+          };
+          const nextCall = buildOrgxSearchNextCall(
+            normalizedArgs,
+            page.pagination
+          );
           const payload = {
             _v2_tool: 'orgx_search',
-            type,
+            type: explicitType,
+            search_mode: 'typed_collection',
             query,
-            count: records.length,
-            results: records,
+            count: page.records.length,
+            results: page.records,
+            pagination: page.pagination,
+            next_call: nextCall,
           };
           return {
             content: [{ type: 'text', text: formatForLLM('orgx_search', payload) }],
@@ -4922,7 +5088,9 @@ export class OrgXMcp extends McpAgent<
    *
    * Idempotent: only patches once per worker instance.
    */
-  private installStandardOutputSchemaWrapper() {
+  private installStandardOutputSchemaWrapper(
+    allowedTools: ReadonlySet<string> | null
+  ) {
     if (this.standardOutputSchemaInstalled) return;
     this.standardOutputSchemaInstalled = true;
     const server = this.server as unknown as {
@@ -4952,13 +5120,15 @@ export class OrgXMcp extends McpAgent<
       };
       const wrappedHandler = async (...args: unknown[]) => {
         const result = await handler(...args);
-        return ensureStructuredContent(
+        const withStructuredContent = ensureStructuredContent(
           result as {
             structuredContent?: unknown;
             isError?: boolean;
             content?: ReadonlyArray<unknown>;
           }
         );
+        const withEnvelope = normalizeToolResultEnvelope(withStructuredContent);
+        return sanitizeToolResultGuidance(withEnvelope, allowedTools);
       };
       return original(name, enhancedConfig, wrappedHandler);
     }) as typeof server.registerTool;
@@ -4966,15 +5136,15 @@ export class OrgXMcp extends McpAgent<
 
   private registerTools() {
     // Resolve tool profile from connection props (e.g. ?profile=executor).
-    // null means register all tools (default / 'full' profile).
-    const allowedTools = resolveProfileToolSet(this.props?.profile);
+    // Missing/unknown names fail closed to v2; null is explicit full only.
+    const allowedTools = resolveToolProfile(this.props?.profile).tools;
 
     // Wrap server.registerTool so every subsequent registration (inline,
     // for-loop, or via registerAppTool which delegates to the same method)
     // gets a default outputSchema and an envelope-injected handler. This
     // boosts Smithery's "Output schemas" coverage without requiring each
     // handler to populate structuredContent manually.
-    this.installStandardOutputSchemaWrapper();
+    this.installStandardOutputSchemaWrapper(allowedTools);
 
     // Register ChatGPT App tools (data-driven)
     this.registerChatGPTTools(allowedTools);
@@ -10783,14 +10953,6 @@ export class OrgXMcp extends McpAgent<
             return this.toolError('key required', {
               code: 'invalid_input',
               status: 400,
-              details: {
-                suggested_next_calls: [
-                  {
-                    tool: 'orgx_describe_tool',
-                    args: { tool_id: 'configure_outcome_type' },
-                  },
-                ],
-              },
             });
           }
 
@@ -10924,11 +11086,6 @@ export class OrgXMcp extends McpAgent<
             return this.toolError('outcome_type_key required', {
               code: 'invalid_input',
               status: 400,
-              details: {
-                suggested_next_calls: [
-                  { tool: 'orgx_describe_tool', args: { tool_id: 'record_outcome' } },
-                ],
-              },
             });
           }
 

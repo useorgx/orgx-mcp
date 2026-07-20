@@ -4,7 +4,7 @@ export type PosthogTelemetryEnv = {
   MCP_SERVER_URL?: string;
 };
 
-const TELEMETRY_SCHEMA_VERSION = '2026-07-14';
+const TELEMETRY_SCHEMA_VERSION = '2026-07-20';
 
 type WaitUntilLike = {
   waitUntil?: (promise: Promise<unknown>) => unknown;

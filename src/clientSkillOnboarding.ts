@@ -33,11 +33,10 @@ export type ClientSkillOnboarding = {
   suggestions: SkillSuggestion[];
   message: string | null;
   next_action?: {
-    tool: 'list_entities';
+    tool: 'orgx_search';
     label: string;
     args: {
       type: 'skill';
-      seed_defaults: true;
     };
   };
 };
@@ -55,6 +54,11 @@ const CLIENT_STARTER_SKILLS: Record<SourceClient, string[]> = {
   ],
   chatgpt: ['initiative_breakdown', 'stakeholder_update', 'competitive_scan'],
   codex: [
+    'quality_gate_review',
+    'release_readiness_review',
+    'initiative_breakdown',
+  ],
+  opencode: [
     'quality_gate_review',
     'release_readiness_review',
     'initiative_breakdown',
@@ -80,6 +84,7 @@ const CLIENT_DOMAIN_WEIGHTS: Record<SourceClient, Record<string, number>> = {
   claude: { engineering: 2, product: 2, operations: 1 },
   chatgpt: { product: 3, marketing: 2, sales: 2, operations: 1 },
   codex: { engineering: 3, operations: 2, product: 1 },
+  opencode: { engineering: 3, operations: 2, product: 1 },
   openclaw: { engineering: 3, operations: 3, product: 1 },
   vscode: { engineering: 3, operations: 1 },
   goose: { operations: 3, engineering: 2 },
@@ -206,11 +211,10 @@ export function buildClientSkillOnboarding(params: {
     ...(firstUse && !params.seededDefaults
       ? {
           next_action: {
-            tool: 'list_entities' as const,
-            label: 'Seed the default skill catalog',
+            tool: 'orgx_search' as const,
+            label: 'Browse the default skill catalog',
             args: {
               type: 'skill' as const,
-              seed_defaults: true as const,
             },
           },
         }
@@ -233,7 +237,7 @@ export function formatClientSkillOnboarding(
       : onboarding.message,
     `Recommended skills: ${summary}.`,
     onboarding.first_use && !onboarding.seeded_defaults
-      ? 'Use `seed_defaults=true` to install the default catalog.'
+      ? 'Use `orgx_search type="skill"` to browse the default catalog.'
       : null,
   ];
 

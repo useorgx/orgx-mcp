@@ -242,14 +242,18 @@ function formatEntityList(
   entityType: string,
   opts: Required<FormatOptions>
 ): string {
-  const formatter = ROW_FORMATTERS[entityType] ?? formatGenericRow;
   const shown = items.slice(0, opts.maxItems);
-  const lines = shown.map((item, i) => formatter(item, i + 1, opts));
+  const lines = shown.map((item, i) => {
+    const itemType = entityType === 'all' ? str(item.type) : entityType;
+    const formatter = ROW_FORMATTERS[itemType] ?? formatGenericRow;
+    const line = formatter(item, i + 1, opts);
+    return entityType === 'all' && itemType
+      ? `${line} type:${itemType}`
+      : line;
+  });
   const remaining = items.length - shown.length;
   if (remaining > 0) {
-    lines.push(
-      `\n... and ${remaining} more. Use offset=${opts.maxItems} to page.`
-    );
+    lines.push(`\n... and ${remaining} more in structuredContent.`);
   }
   return lines.join('\n');
 }
@@ -264,7 +268,13 @@ function formatListEntities(
 ): string {
   const items = Array.isArray(data.data) ? data.data : [];
   const pagination = data.pagination as
-    | { total?: number; offset?: number; limit?: number; has_more?: boolean }
+    | {
+        total?: number;
+        offset?: number;
+        limit?: number;
+        has_more?: boolean;
+        next_offset?: number | null;
+      }
     | undefined;
   const entityType = opts.entityType || str(data.type);
 
@@ -281,7 +291,23 @@ function formatListEntities(
   if (items.length === 0) return header;
 
   const list = formatEntityList(items as EntityRow[], entityType, opts);
-  return `${header}\n\n${list}`;
+  const nextOffset =
+    typeof pagination?.next_offset === 'number'
+      ? pagination.next_offset
+      : pagination?.has_more &&
+        typeof pagination.offset === 'number' &&
+        typeof pagination.limit === 'number'
+      ? pagination.offset + pagination.limit
+      : null;
+  const next =
+    nextOffset !== null
+      ? `\n\nNext page: call orgx_search with ${JSON.stringify({
+          type: entityType,
+          limit: pagination?.limit,
+          offset: nextOffset,
+        })}.`
+      : '';
+  return `${header}\n\n${list}${next}`;
 }
 
 function formatListEntitiesHydrated(
@@ -428,7 +454,8 @@ function formatOrgxSearch(
   const query = str(data.query);
   const count =
     typeof data.count === 'number' ? data.count : results.length;
-  const header = `OrgX search: ${count} ${type}${count === 1 ? '' : 's'}${
+  const resultLabel = type === 'all' ? 'mixed result' : type;
+  const header = `OrgX search: ${count} ${resultLabel}${count === 1 ? '' : 's'}${
     query ? ` for "${truncateField(query, 80)}"` : ''
   }.`;
 
@@ -436,7 +463,12 @@ function formatOrgxSearch(
     return `${header}\nNext: adjust query/type or call orgx_bootstrap to confirm visible tools and workspace context.`;
   }
 
-  return `${header}\n\n${formatEntityList(results, type, opts)}\n\nNext: call orgx_inspect with the selected id for full context.`;
+  const nextCall = firstRecord(data.next_call);
+  const next =
+    nextCall?.tool === 'orgx_search' && firstRecord(nextCall.args)
+      ? `Next page: call orgx_search with ${JSON.stringify(nextCall.args)}.`
+      : 'Next: call orgx_inspect with the selected id for full context.';
+  return `${header}\n\n${formatEntityList(results, type, opts)}\n\n${next}`;
 }
 
 function formatOrgxInspect(

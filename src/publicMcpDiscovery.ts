@@ -443,7 +443,8 @@ const TOOL_EXAMPLES: Record<
     },
     sample_response: {
       profile: 'v2',
-      visible_tools_count: 28,
+      visible_tools_count: PRIMARY_AUTHENTICATED_TOOLS.length,
+      visible_tools: PRIMARY_AUTHENTICATED_TOOLS,
     },
   },
   approve_decision: {

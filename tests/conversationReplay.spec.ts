@@ -190,26 +190,26 @@ describe('conversation replay — scaffold breadcrumbs', () => {
 });
 
 describe('conversation replay — compaction breadcrumb', () => {
-  it('when omitted_task_count > 0, list_entities is in suggested_next_calls', () => {
+  it('when omitted_task_count > 0, orgx_search is in suggested_next_calls', () => {
     const result = makeScaffoldResult(50);
     expect(result.summary_stats.omitted_task_count).toBeGreaterThan(0);
     const tools = result.result_contract.suggested_next_calls.map((c) => c.tool);
     expect(
       tools,
-      'agent should be told to fetch full task list via list_entities'
-    ).toContain('list_entities');
+      'agent should be told to fetch the full task list via orgx_search'
+    ).toContain('orgx_search');
   });
 
-  it('the list_entities follow-up call carries type=task so the agent can paginate the omitted tail', () => {
+  it('the orgx_search follow-up call carries type=task so the agent can paginate the omitted tail', () => {
     const result = makeScaffoldResult(50);
     const taskCall = result.result_contract.suggested_next_calls.find(
       (c) =>
-        c.tool === 'list_entities' &&
+        c.tool === 'orgx_search' &&
         (c.args as Record<string, unknown>)?.type === 'task'
     );
     expect(
       taskCall,
-      'expected at least one suggested list_entities call with type=task'
+      'expected at least one suggested orgx_search call with type=task'
     ).toBeDefined();
     const args = taskCall!.args as Record<string, unknown>;
     expect(args.initiative_id).toBe('init-replay');

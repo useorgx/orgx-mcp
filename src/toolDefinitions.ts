@@ -429,6 +429,50 @@ export function ensureStructuredContent<
   return { ...result, structuredContent: envelope };
 }
 
+/**
+ * Normalize the logical MCP outcome after structured content exists. MCP
+ * handlers commonly return HTTP 200 even when a tool-level operation failed,
+ * so clients must be able to rely on both `isError` and `structuredContent.ok`.
+ */
+export function normalizeToolResultEnvelope<
+  T extends {
+    structuredContent?: unknown;
+    isError?: boolean;
+  } | null | undefined,
+>(result: T): T {
+  if (!result || typeof result !== 'object') return result;
+  const structured = result.structuredContent;
+  if (!structured || typeof structured !== 'object' || Array.isArray(structured)) {
+    return result;
+  }
+
+  const payload = structured as Record<string, unknown>;
+  const structuredError = payload.error;
+  const hasStructuredError =
+    (typeof structuredError === 'string' && structuredError.trim().length > 0) ||
+    Boolean(
+      structuredError &&
+        typeof structuredError === 'object' &&
+        !Array.isArray(structuredError) &&
+        Object.keys(structuredError).length > 0
+    );
+  const logicalError =
+    result.isError === true ||
+    payload.ok === false ||
+    typeof payload.error_kind === 'string' ||
+    (payload.ok !== true && hasStructuredError);
+  const normalizedPayload = {
+    ...payload,
+    ok: !logicalError,
+  };
+
+  return {
+    ...result,
+    structuredContent: normalizedPayload,
+    ...(logicalError ? { isError: true } : {}),
+  } as T;
+}
+
 // =============================================================================
 // PLAN SESSION TOOLS
 // =============================================================================

@@ -1,14 +1,12 @@
 /**
  * Tool Profiles — Subagent Isolation
  *
- * @deprecated Tool selection is now server-driven via `lib/server/toolManifest.ts`.
- * The server builds a per-assignment tool manifest from `agent_capabilities.tool_manifest`
- * in the database, falling back to the hard-coded capability registry. This file is
- * retained for backward compatibility during the cutover period. New code should use
- * `buildToolManifestForAssignment()` from `@/lib/server/toolManifest` instead.
+ * Defines the client-facing MCP discovery subsets negotiated through the
+ * connection URL. This is distinct from the OrgX app's internal per-assignment
+ * runtime manifest: one controls `tools/list`, the other controls what a
+ * dispatched agent may execute after assignment.
  *
- * Defines tool subsets so different agent types only see relevant tools.
- * This reduces schema tokens injected per connection by 50-72%.
+ * Narrow profiles reduce schema tokens injected per connection by 50-72%.
  *
  * Usage: pass ?profile=executor on the connection URL:
  *   wss://mcp.useorgx.com/sse?profile=executor
@@ -25,6 +23,16 @@ export interface ToolProfile {
   /** Tool IDs to register, or null for all tools */
   tools: string[] | null;
 }
+
+export const DEFAULT_TOOL_PROFILE = 'v2' as const;
+export const SERVER_MANIFEST_VERSION = serverManifest.version;
+
+/**
+ * The checked-in server manifest is the public discovery contract. Keep the
+ * exact order so tools/list, bootstrap, directory metadata, and public
+ * discovery all describe the same surface.
+ */
+export const V2_PUBLIC_SURFACE = serverManifest.tools.map((tool) => tool.name);
 
 export const V2_CORE_PUBLIC_SURFACE = [
   'orgx_bootstrap',
@@ -75,18 +83,8 @@ export const CLIENT_REPORTING_PUBLIC_SURFACE = [
 ] as const;
 
 export const GROUPED_V2_PUBLIC_SURFACE = [
-  ...V2_CORE_PUBLIC_SURFACE,
-  ...WIDGET_AFFORDANCE_SURFACE,
-  ...CLIENT_REPORTING_PUBLIC_SURFACE,
-  ...CLIENT_INTEGRATION_PUBLIC_SURFACE,
+  ...V2_PUBLIC_SURFACE,
 ] as const;
-
-/**
- * `server.json` is the published, versioned client capability contract. Every
- * default-client discovery surface derives from this list so source,
- * deployment metadata, bootstrap, and client profiles cannot silently drift.
- */
-export const V2_PUBLIC_SURFACE = serverManifest.tools.map((tool) => tool.name);
 
 export const TOOL_PROFILES: Record<string, ToolProfile> = {
   v2: {
@@ -196,20 +194,54 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
   },
 };
 
+export const TOOL_PROFILE_NAMES = Object.freeze(Object.keys(TOOL_PROFILES));
+
+export interface ResolvedToolProfile {
+  /** Effective profile after applying the fail-closed fallback. */
+  name: string;
+  /** Non-empty profile requested by the client, when one was supplied. */
+  requestedName: string | null;
+  /** True when an unknown profile was reduced to the public v2 surface. */
+  fellBack: boolean;
+  /** null is reserved for an explicit full/admin connection. */
+  tools: Set<string> | null;
+}
+
+/**
+ * Resolve profile negotiation once and retain the effective profile name.
+ * Missing and unknown names fail closed to v2. Only an explicit `full`
+ * request receives the compatibility/admin catalog.
+ */
+export function resolveToolProfile(
+  profileName: string | undefined | null
+): ResolvedToolProfile {
+  const requestedName =
+    typeof profileName === 'string' && profileName.trim().length > 0
+      ? profileName.trim()
+      : null;
+  const effectiveName =
+    requestedName && TOOL_PROFILES[requestedName]
+      ? requestedName
+      : DEFAULT_TOOL_PROFILE;
+  const profile = TOOL_PROFILES[effectiveName] ?? TOOL_PROFILES.v2;
+
+  return {
+    name: effectiveName,
+    requestedName,
+    fellBack: requestedName !== null && requestedName !== effectiveName,
+    tools: profile.tools === null ? null : new Set(profile.tools),
+  };
+}
+
 /**
  * Resolve a profile name to a Set of allowed tool IDs.
  * Returns null if the profile is "full" (all tools allowed).
  *
- * @deprecated Use server-side `buildToolManifestForAssignment()` instead.
- * This function is retained for backward compatibility during cutover.
+ * This compatibility helper remains the public resolver used by discovery
+ * snapshots and integrations that only need the allowed ID set.
  */
 export function resolveProfileToolSet(
   profileName: string | undefined | null
 ): Set<string> | null {
-  if (profileName === 'full') return null;
-  if (!profileName) return new Set(TOOL_PROFILES.v2.tools ?? []);
-  const profile = TOOL_PROFILES[profileName];
-  if (!profile) return new Set(TOOL_PROFILES.v2.tools ?? []);
-  if (profile.tools === null) return null;
-  return new Set(profile.tools);
+  return resolveToolProfile(profileName).tools;
 }

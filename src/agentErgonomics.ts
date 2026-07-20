@@ -148,7 +148,6 @@ export function normalizeRecordQualityScoreArgs(
           'record_quality_score needs task and domain identifiers. The MCP tool accepts snake_case and camelCase aliases, then forwards the backend camelCase contract.',
         safe_to_retry: true,
         corrected_payload: corrected,
-        suggested_next_calls: [{ tool: 'orgx_describe_tool', args: { tool_id: 'record_quality_score' } }],
       },
     };
   }
@@ -203,7 +202,6 @@ export function diagnoseToolFailure(params: {
         'Quality scoring uses the backend camelCase contract. The MCP layer accepts aliases and should retry with taskId, agentDomain, score, scoredBy, and notes.',
       safe_to_retry: true,
       corrected_payload: normalized.body,
-      suggested_next_calls: [{ tool: 'orgx_describe_tool', args: { tool_id: 'record_quality_score' } }],
       security_note: 'Diagnostic output redacts tokens and service keys.',
     };
   }
@@ -215,7 +213,6 @@ export function diagnoseToolFailure(params: {
         'The workspace outcome taxonomy does not contain the requested outcome_type_key yet. Capture the outcome as artifact metadata until that taxonomy is configured.',
       safe_to_retry: false,
       corrected_payload: params.args,
-      suggested_next_calls: [{ tool: 'orgx_describe_tool', args: { tool_id: 'record_outcome' } }],
     };
   }
 
@@ -229,7 +226,6 @@ export function diagnoseToolFailure(params: {
       reason:
         'A backend compatibility path rejected the transactional changeset before apply. Use workspace_id on new payloads and fall back to entity_action/update paths when transactional changesets fail.',
       safe_to_retry: false,
-      suggested_next_calls: [{ tool: 'entity_action', args: { action: 'update' } }],
     };
   }
 
@@ -239,16 +235,6 @@ export function diagnoseToolFailure(params: {
       reason:
         'The entity is otherwise ready but lacks proof metadata strong enough for completion.',
       safe_to_retry: true,
-      suggested_next_calls: [
-        {
-          tool: 'entity_action',
-          args: {
-            action: 'complete_with_proof',
-            quality_score: 5,
-            schema_validated: true,
-          },
-        },
-      ],
     };
   }
 
@@ -278,7 +264,9 @@ export function diagnoseToolFailure(params: {
       reason:
         'The requested write appears to require an approval record or explicit user confirmation before execution.',
       safe_to_retry: false,
-      suggested_next_calls: [{ tool: 'approve_agent_work', args: { action: 'list' } }],
+      suggested_next_calls: [
+        { tool: 'orgx_decide', args: { action: 'list_pending' } },
+      ],
     };
   }
 

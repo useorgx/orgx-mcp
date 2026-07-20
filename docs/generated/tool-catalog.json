@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-16T15:01:01.626Z",
-  "sourceHash": "99e747c90c77c52f",
+  "generatedAt": "2026-07-20T22:50:47.409Z",
+  "sourceHash": "ef7db8e313fd4075",
   "version": "1.0.0",
   "totalTools": 81,
   "categories": [
@@ -3277,7 +3277,7 @@
     {
       "id": "orgx_search",
       "title": "Search OrgX",
-      "description": "Find OrgX entities, decisions, artifacts, and memory. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use orgx_inspect for one selected result or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.",
+      "description": "Find OrgX entities, decisions, artifacts, and memory. A query without type runs a mixed relevance search; typed searches provide exhaustive cursor/offset pagination. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use structuredContent.next_call exactly when pagination.has_more=true, orgx_inspect for one selected result, or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -3288,7 +3288,29 @@
           },
           "type": {
             "type": "string",
-            "description": "Optional entity type filter, such as task, milestone, decision, artifact, or initiative"
+            "enum": [
+              "workspace",
+              "project",
+              "initiative",
+              "milestone",
+              "workstream",
+              "task",
+              "objective",
+              "playbook",
+              "decision",
+              "artifact",
+              "run",
+              "blocker",
+              "workflow",
+              "agent",
+              "skill",
+              "plan_session",
+              "stream",
+              "studio_brand",
+              "studio_content",
+              "video_template"
+            ],
+            "description": "Optional entity type filter, such as task, milestone, decision, artifact, or initiative. Omit with query for a mixed relevance search across memory-backed entity types."
           },
           "status": {
             "type": "string",
@@ -3307,6 +3329,16 @@
             "minimum": 1,
             "maximum": 100,
             "description": "Maximum records to return"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Typed-search pagination offset. Prefer cursor when next_call returns one."
+          },
+          "cursor": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Opaque typed-search cursor returned by pagination.next_cursor or next_call."
           },
           "fields": {
             "type": "array",
