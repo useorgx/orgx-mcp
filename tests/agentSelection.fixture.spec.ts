@@ -40,6 +40,7 @@ interface IntentFixture {
   expected_arguments?: Record<string, unknown>;
   forbidden_tool: string;
   rationale: string;
+  profiles?: string[];
 }
 
 interface FixtureFile {
@@ -121,6 +122,27 @@ describe('agent selection fixtures (validation, free)', () => {
     expect(dupes).toEqual([]);
   });
 
+  it('profile-specific fixtures declare known non-empty profiles', () => {
+    const knownProfiles = new Set([
+      'v2',
+      'memory',
+      'commander',
+      'planner',
+      'executor',
+      'observer',
+      'full',
+    ]);
+    const broken = fixtures.fixtures.flatMap((fixture) =>
+      fixture.profiles === undefined
+        ? []
+        : fixture.profiles.length === 0 ||
+          fixture.profiles.some((profile) => !knownProfiles.has(profile))
+        ? [fixture.id]
+        : []
+    );
+    expect(broken).toEqual([]);
+  });
+
   it('every fixture references a real registered tool for expected_tool', () => {
     const orphans = fixtures.fixtures
       .filter((f) => !allToolIds.has(f.expected_tool))
@@ -187,25 +209,36 @@ describe('agent selection fixtures (validation, free)', () => {
 describe.skipIf(process.env.RUN_AGENT_SELECTION_TESTS !== '1')(
   'agent selection fixtures (live, gated by RUN_AGENT_SELECTION_TESTS=1)',
   () => {
-    /**
-     * Live runs against Anthropic + OpenAI tool-use APIs are deferred to
-     * a separate runner script (scripts/run-agent-selection.mjs) so the
-     * test file stays a pure correctness check. The runner reads
-     * tests/fixtures/agentIntents.json and writes a JSON report; this
-     * skipped block exists so contributors can find the gate by
-     * searching the test file.
-     *
-     * To run:
-     *   ANTHROPIC_API_KEY=... OPENAI_API_KEY=... RUN_AGENT_SELECTION_TESTS=1 \
-     *     pnpm test --run tests/agentSelection.fixture.spec.ts
-     *
-     * Thresholds:
-     *   - dominant_tool >= 0.7 (default 70%)
-     *   - forbidden_tool < 0.1 (default 10%)
-     * across K=10 runs per fixture per provider.
-     */
-    it('placeholder — wire the live runner here', () => {
-      expect(true).toBe(true);
-    });
+    it(
+      'runs the provider-neutral harness against the active profile tools/list',
+      async () => {
+        const {
+          evaluateSelectionThresholds,
+          runLiveSelectionFromEnvironment,
+        } = await import('../scripts/agent-selection-runner.mjs');
+        const report = await runLiveSelectionFromEnvironment({
+          fixtures: loadFixtures().fixtures,
+        });
+        const evaluation = evaluateSelectionThresholds(report, {
+          expectedToolRate: Number(
+            process.env.AGENT_SELECTION_EXPECTED_RATE ?? 0.7
+          ),
+          forbiddenToolRate: Number(
+            process.env.AGENT_SELECTION_FORBIDDEN_RATE ?? 0.1
+          ),
+          argumentValidityRate: Number(
+            process.env.AGENT_SELECTION_ARGUMENT_VALIDITY_RATE ?? 0.9
+          ),
+        });
+
+        expect(
+          evaluation.failures,
+          evaluation.failures.join('\n')
+        ).toEqual([]);
+        expect(report.manifest.tool_count).toBeGreaterThan(0);
+        expect(report.metrics.completed_run_count).toBeGreaterThan(0);
+      },
+      30 * 60 * 1000
+    );
   }
 );

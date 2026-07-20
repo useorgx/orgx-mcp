@@ -104,7 +104,7 @@ describe('compact scaffold responses', () => {
       },
     });
     expect(result.result_contract.suggested_next_calls[2]?.tool).toBe(
-      'list_entities'
+      'orgx_search'
     );
 
     const serialized = JSON.stringify(result);
@@ -200,9 +200,9 @@ describe('compact scaffold responses', () => {
       expect(call.tool.length).toBeGreaterThan(0);
       expect(call.args).toBeTypeOf('object');
     }
-    // The three call types we depend on for follow-up reads.
+    // Compact follow-up reads use the canonical search surface.
     const tools = nextCalls.map((c) => c.tool);
-    expect(tools).toContain('list_entities');
+    expect(tools).toContain('orgx_search');
     const preferredTools = result.result_contract.preferred_next_calls.map(
       (c) => c.tool
     );

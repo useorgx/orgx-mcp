@@ -43,6 +43,8 @@ import {
   PRIMARY_AUTHENTICATED_TOOLS,
 } from './publicMcpDiscovery';
 import { buildExecutionGraphHookBundle } from './executionGraphHookBundle';
+import { DEFAULT_TOOL_PROFILE } from './toolProfiles';
+import { SMITHERY_TOOL_PROFILES } from './smitheryConfig';
 
 // Re-export type for use in index.ts
 export type { OAuthHelpers };
@@ -253,9 +255,9 @@ const SMITHERY_CONFIG_SCHEMA = {
     profile: {
       type: 'string',
       description:
-        'Optional tool profile to expose a narrower toolset at connection time. Defaults to full access.',
-      enum: ['full', 'memory', 'commander', 'planner', 'executor', 'observer'],
-      default: 'full',
+        'Optional tool profile to expose at connection time. Defaults to the published v2 surface; full is explicit admin/debug compatibility.',
+      enum: [...SMITHERY_TOOL_PROFILES],
+      default: DEFAULT_TOOL_PROFILE,
     },
     workspace_id: {
       type: 'string',

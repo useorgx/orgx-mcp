@@ -20,6 +20,7 @@ describe('clientSkillOnboarding', () => {
     expect(
       resolveSourceClientFromUserAgent('claude-code/2.1.211 (sdk-cli)')
     ).toBe('claude');
+    expect(resolveSourceClientFromUserAgent('OpenCode/1.0')).toBe('opencode');
     expect(resolveSourceClientFromUserAgent('unknown-client/1.0')).toBeNull();
   });
 
@@ -37,11 +38,10 @@ describe('clientSkillOnboarding', () => {
       'release_readiness_review'
     );
     expect(onboarding?.next_action).toEqual({
-      tool: 'list_entities',
-      label: 'Seed the default skill catalog',
+      tool: 'orgx_search',
+      label: 'Browse the default skill catalog',
       args: {
         type: 'skill',
-        seed_defaults: true,
       },
     });
   });

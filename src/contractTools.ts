@@ -88,14 +88,16 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_search',
     title: 'Search OrgX',
     description:
-      'Find OrgX entities, decisions, artifacts, and memory. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use orgx_inspect for one selected result or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.',
+      'Find OrgX entities, decisions, artifacts, and memory. A query without type runs a mixed relevance search; typed searches provide exhaustive cursor/offset pagination. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use structuredContent.next_call exactly when pagination.has_more=true, orgx_inspect for one selected result, or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.',
     inputSchema: {
       query: z.string().optional().describe('Search query for memory or title/text matching'),
-      type: z.string().optional().describe('Optional entity type filter, such as task, milestone, decision, artifact, or initiative'),
+      type: z.enum(entityTypeEnum.options).optional().describe('Optional entity type filter, such as task, milestone, decision, artifact, or initiative. Omit with query for a mixed relevance search across memory-backed entity types.'),
       status: z.string().optional().describe('Optional status filter'),
       initiative_id: z.string().optional().describe('Optional initiative UUID scope'),
       workspace_id: z.string().optional().describe('Optional workspace UUID scope'),
       limit: z.number().int().min(1).max(100).optional().describe('Maximum records to return'),
+      offset: z.number().int().min(0).optional().describe('Typed-search pagination offset. Prefer cursor when next_call returns one.'),
+      cursor: z.string().min(1).optional().describe('Opaque typed-search cursor returned by pagination.next_cursor or next_call.'),
       fields: z.array(z.string()).optional().describe('Optional compact field list'),
       session_id: z.string().optional().describe('Optional bootstrap/session identifier'),
     },

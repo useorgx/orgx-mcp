@@ -50,18 +50,18 @@ describe('bootstrap payload routing hints', () => {
   it('advertises the scaffold hierarchy workflow agents need for chaining', () => {
     expect(BOOTSTRAP_RECOMMENDED_WORKFLOWS.scaffold_hierarchy).toEqual([
       'orgx_bootstrap',
-      'scaffold_initiative',
+      'orgx_plan',
+      'orgx_write',
       'orgx_inspect',
       'orgx_search',
-      'orgx_write',
       'orgx_spawn',
       'orgx_submit_receipt',
     ]);
   });
 
-  it('falls back to full profile safe first calls', () => {
-    expect(getBootstrapSafeFirstCalls('unknown-profile')).toBe(
-      BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE.full
+  it('fails unknown profiles closed to canonical v2 guidance', () => {
+    expect(getBootstrapSafeFirstCalls('unknown-profile')).toEqual(
+      BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE.v2
     );
   });
 

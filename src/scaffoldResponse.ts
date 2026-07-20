@@ -289,7 +289,7 @@ function buildResultContract(params: {
       'first_agent_work',
     ],
     detail_policy:
-      'Fetch details through list_entities/get_task_with_context with pagination instead of asking scaffold_initiative to return a larger payload.',
+      'Fetch details through orgx_search/orgx_inspect with pagination instead of asking scaffold_initiative to return a larger payload.',
     preferred_next_calls: [
       ...(params.initiativeId
         ? [
@@ -326,7 +326,7 @@ function buildResultContract(params: {
     ],
     suggested_next_calls: [
       {
-        tool: 'list_entities',
+        tool: 'orgx_search',
         args: {
           type: 'workstream',
           ...listBase,
@@ -336,7 +336,7 @@ function buildResultContract(params: {
         },
       },
       {
-        tool: 'list_entities',
+        tool: 'orgx_search',
         args: {
           type: 'milestone',
           ...listBase,
@@ -346,7 +346,7 @@ function buildResultContract(params: {
         },
       },
       {
-        tool: 'list_entities',
+        tool: 'orgx_search',
         args: {
           type: 'task',
           ...listBase,

@@ -1,6 +1,8 @@
 export type EntityCollectionSearchInput = {
   type: string;
   limit?: number;
+  offset?: number;
+  cursor?: string | null;
   initiativeId?: string | null;
   workspaceId?: string | null;
   status?: string | null;
@@ -20,6 +22,10 @@ export function buildEntityCollectionSearchParams(
   const search = new URLSearchParams();
   search.set('type', input.type);
   if (input.limit) search.set('limit', String(input.limit));
+  if (typeof input.offset === 'number' && input.offset >= 0) {
+    search.set('offset', String(input.offset));
+  }
+  if (input.cursor) search.set('cursor', input.cursor);
   if (input.initiativeId) search.set('initiative_id', input.initiativeId);
   if (input.workspaceId) search.set('workspace_id', input.workspaceId);
   if (input.status) search.set('status', input.status);

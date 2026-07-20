@@ -6,6 +6,7 @@ import {
   STANDARD_TOOL_OUTPUT_SCHEMA,
   STANDARD_TOOL_OUTPUT_SCHEMA_OBJECT,
   ensureStructuredContent,
+  normalizeToolResultEnvelope,
 } from '../src/toolDefinitions';
 
 // Regression guard for the 2026-07-11 outage: the default output schema was
@@ -62,5 +63,27 @@ describe('standard tool output schema', () => {
       (result as { structuredContent?: unknown }).structuredContent
     );
     expect(parsed.success).toBe(true);
+  });
+
+  it('marks structured logical failures as MCP errors even on HTTP-200 paths', () => {
+    expect(
+      normalizeToolResultEnvelope({
+        content: [{ type: 'text', text: 'failed' }],
+        structuredContent: { error: { code: 'invalid_input' } },
+      })
+    ).toMatchObject({
+      isError: true,
+      structuredContent: { ok: false },
+    });
+  });
+
+  it('does not reinterpret an explicitly successful payload with diagnostic data', () => {
+    expect(
+      normalizeToolResultEnvelope({
+        structuredContent: { ok: true, error: 'historical warning' },
+      })
+    ).toEqual({
+      structuredContent: { ok: true, error: 'historical warning' },
+    });
   });
 });

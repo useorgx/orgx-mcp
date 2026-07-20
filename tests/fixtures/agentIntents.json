@@ -234,6 +234,7 @@
       "prompt": "How does orgx_plan work — what fields does it accept?",
       "expected_tool": "orgx_describe_tool",
       "forbidden_tool": "orgx_plan",
+      "profiles": ["full"],
       "rationale": "Self-describe lookup is the right path; calling the tool would actually start planning."
     },
     {

@@ -36,7 +36,7 @@ describe('worker PostHog telemetry', () => {
     expect(body.batch[0]?.properties).toMatchObject({
       $lib: 'orgx-mcp',
       $lib_version: '0.3.0-test',
-      telemetry_schema_version: '2026-07-14',
+      telemetry_schema_version: '2026-07-20',
       surface: 'mcp',
       event_origin: 'cloudflare_worker',
       environment: 'production',

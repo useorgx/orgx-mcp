@@ -46,7 +46,7 @@ describe('Smithery metadata coverage', () => {
 
   it('exports a Smithery config schema with optional connection defaults', () => {
     const parsed = smitheryConfigSchema.parse({});
-    expect(parsed.profile).toBe('full');
+    expect(parsed.profile).toBe('v2');
 
     const shape = smitheryConfigSchema.shape;
     expect(shape.profile.description).toContain('tool profile');

@@ -18,6 +18,22 @@ function createCtx() {
   return { waitUntil: vi.fn() } as any;
 }
 
+function createTrackedCtx() {
+  const pending: Promise<unknown>[] = [];
+  const waitUntil = vi.fn((promise: Promise<unknown>) => {
+    pending.push(Promise.resolve(promise));
+  });
+  return {
+    ctx: { waitUntil } as any,
+    waitUntil,
+    async drain() {
+      while (pending.length > 0) {
+        await Promise.allSettled(pending.splice(0));
+      }
+    },
+  };
+}
+
 describe('mcpTransport', () => {
   it.each([
     'orgx-mcp:spawn_agent_task',
@@ -63,10 +79,44 @@ describe('mcpTransport', () => {
     );
 
     expect(received?.params?.name).toBe('spawn_agent_task');
-    expect(ctx.props).toEqual({ userId: 'user-123', scope: 'mcp:all' });
+    expect(ctx.props).toEqual({
+      userId: 'user-123',
+      scope: 'mcp:all',
+      email: undefined,
+      profile: 'v2',
+    });
     expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
     }
   );
+
+  it('preserves request context and fails unknown profiles closed before dispatch', async () => {
+    const ctx = {
+      waitUntil: vi.fn(),
+      props: { sourceClient: 'codex', workspace_id: 'ws-1' },
+    } as any;
+    const handler = {
+      fetch: vi.fn(async () => Response.json({ ok: true })),
+    };
+
+    await handleMcpRequest(
+      new Request('http://localhost/mcp?profile=typo-admin', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ method: 'tools/call', params: { name: 'orgx_search' } }),
+      }),
+      env,
+      ctx,
+      handler,
+      vi.fn(async () => ({ userId: 'user-123', scope: 'mcp:all' }))
+    );
+
+    expect(ctx.props).toMatchObject({
+      sourceClient: 'codex',
+      workspace_id: 'ws-1',
+      userId: 'user-123',
+      profile: 'v2',
+    });
+  });
 
   it('routes get_pending_decisions to the decisions widget affordance and adds deprecation headers', async () => {
     let received: any = null;
@@ -309,8 +359,8 @@ describe('mcpTransport', () => {
   });
 
   it('captures telemetry for deprecated tool usage when PostHog is configured', async () => {
-    const waitUntil = vi.fn();
-    const ctx = { waitUntil } as any;
+    const tracked = createTrackedCtx();
+    const { ctx, waitUntil } = tracked;
     const telemetryFetch = vi.fn(async () => new Response(null, { status: 200 }));
     const originalFetch = globalThis.fetch;
     vi.stubGlobal('fetch', telemetryFetch);
@@ -344,6 +394,7 @@ describe('mcpTransport', () => {
         },
         vi.fn(async () => ({ userId: 'user-123', scope: 'mcp:all' }))
       );
+      await tracked.drain();
 
       expect(waitUntil).toHaveBeenCalledTimes(2);
       expect(telemetryFetch).toHaveBeenCalledTimes(2);
@@ -391,8 +442,8 @@ describe('mcpTransport', () => {
   });
 
   it('captures generic MCP tool invocation visibility in PostHog and backend telemetry', async () => {
-    const waitUntil = vi.fn();
-    const ctx = { waitUntil } as any;
+    const tracked = createTrackedCtx();
+    const { ctx, waitUntil } = tracked;
     const telemetryFetch = vi.fn(async (url: string) => {
       if (url.includes('/api/internal/mcp/tool-invocations')) {
         return new Response(JSON.stringify({ ok: true, id: 'inv-1' }), {
@@ -458,8 +509,9 @@ describe('mcpTransport', () => {
         handler,
         vi.fn(async () => ({ userId: 'user-123', scope: 'mcp:all' }))
       );
+      await tracked.drain();
 
-      expect(waitUntil).toHaveBeenCalledTimes(2);
+      expect(waitUntil).toHaveBeenCalledTimes(1);
       const posthogCall = telemetryFetch.mock.calls.find(
         ([url]) => url === 'https://app.posthog.com/batch/'
       );
@@ -528,6 +580,159 @@ describe('mcpTransport', () => {
     }
   });
 
+  it('classifies HTTP-200 structured tool errors and records response journey telemetry', async () => {
+    const tracked = createTrackedCtx();
+    const telemetryFetch = vi.fn(async (url: string) => {
+      if (url.includes('/api/internal/mcp/tool-invocations')) {
+        return Response.json({ ok: true, id: 'inv-logical-error' });
+      }
+      return new Response(null, { status: 200 });
+    });
+    const originalFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', telemetryFetch);
+
+    const payload = {
+      jsonrpc: '2.0',
+      id: 'req-logical-error',
+      result: {
+        content: [
+          { type: 'text', text: 'The requested scope is unavailable.' },
+        ],
+        structuredContent: {
+          error: { code: 'invalid_scope', kind: 'authorization' },
+        },
+      },
+    };
+    const serializedPayload = JSON.stringify(payload);
+
+    try {
+      const request = new Request('http://localhost/mcp?profile=executor', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'mcp-session-id': 'session-redacted',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 'req-logical-error',
+          method: 'tools/call',
+          params: {
+            name: 'orgx_write',
+            arguments: {
+              type: 'task',
+              operation: 'create',
+              _context: {
+                client: { name: 'codex', platform: 'macos' },
+                conversation: { id: 'conv-journey' },
+                journey: {
+                  step_id: 'step-2',
+                  step_index: 2,
+                  previous_tool: 'orgx_search',
+                  expected_next_tool: 'orgx_attach',
+                  previous_expected_next_tool: 'orgx_write',
+                },
+              },
+            },
+          },
+        }),
+      });
+
+      await handleMcpRequest(
+        request,
+        {
+          POSTHOG_KEY: 'phc_test_key',
+          POSTHOG_HOST: 'https://app.posthog.com',
+          ORGX_API_URL: 'https://useorgx.test',
+          ORGX_SERVICE_KEY: 'oxk-service-test',
+        } as any,
+        tracked.ctx,
+        {
+          fetch: vi.fn(async () =>
+            new Response(serializedPayload, {
+              status: 200,
+              headers: {
+                'content-type': 'application/json',
+                'server-timing':
+                  'session;dur=2, response_build;dur=3.5',
+              },
+            })
+          ),
+        },
+        vi.fn(async () => ({ userId: 'user-123', scope: 'mcp:all' }))
+      );
+      await tracked.drain();
+
+      const posthogCall = telemetryFetch.mock.calls.find(
+        ([url]) => url === 'https://app.posthog.com/batch/'
+      );
+      const posthogPayload = JSON.parse(posthogCall?.[1].body as string) as {
+        batch: Array<{ event: string; properties: Record<string, unknown> }>;
+      };
+      expect(posthogPayload.batch[0]?.properties).toMatchObject({
+        tool_id: 'orgx_write',
+        status: 'error',
+        error_code: 'invalid_scope',
+        error_kind: 'authorization',
+        mcp_logical_error: true,
+        source_client: 'codex',
+        profile: 'executor',
+        session_present: true,
+        conversation_id: 'conv-journey',
+        step_id: 'step-2',
+        step_index: 2,
+        previous_tool_id: 'orgx_search',
+        expected_next_tool_id: 'orgx_attach',
+        previous_expected_next_tool_id: 'orgx_write',
+        followed_expected_next_tool: true,
+        session_ms: 2,
+        response_shaping_ms: 3.5,
+        response_size_bytes: new TextEncoder().encode(serializedPayload)
+          .byteLength,
+        response_size_source: 'body_clone',
+        response_read_error: false,
+        response_parse_truncated: false,
+        response_measurement_point: 'worker_response_clone',
+        journey_phase: 'complete',
+      });
+      expect(posthogPayload.batch[0]?.properties).not.toHaveProperty(
+        'response_size_header_bytes'
+      );
+      for (const field of [
+        'auth_ms',
+        'handler_ms',
+        'response_headers_ms',
+        'first_response_byte_ms',
+        'full_response_ms',
+      ]) {
+        expect(posthogPayload.batch[0]?.properties[field]).toEqual(
+          expect.any(Number)
+        );
+      }
+
+      const backendCall = telemetryFetch.mock.calls.find(([url]) =>
+        String(url).includes('/api/internal/mcp/tool-invocations')
+      );
+      const backendPayload = JSON.parse(backendCall?.[1].body as string);
+      expect(backendPayload).toMatchObject({
+        tool_id: 'orgx_write',
+        status: 'error',
+        error_code: 'invalid_scope',
+        conversation_id: 'conv-journey',
+        metadata: expect.objectContaining({
+          error_kind: 'authorization',
+          mcp_logical_error: true,
+          response_size_bytes: new TextEncoder().encode(serializedPayload)
+            .byteLength,
+          step_id: 'step-2',
+          previous_tool_id: 'orgx_search',
+        }),
+      });
+    } finally {
+      vi.stubGlobal('fetch', originalFetch);
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('preserves existing Server-Timing entries when rate-limit timings are added', () => {
     const response = withCorsAndHeaders(
       new Response(null, {
@@ -543,8 +748,8 @@ describe('mcpTransport', () => {
   });
 
   it('captures failed MCP tool visibility when the handler throws', async () => {
-    const waitUntil = vi.fn();
-    const ctx = { waitUntil } as any;
+    const tracked = createTrackedCtx();
+    const { ctx } = tracked;
     const telemetryFetch = vi.fn(async (url: string) => {
       if (url.includes('/api/internal/mcp/tool-invocations')) {
         return new Response(JSON.stringify({ ok: true, id: 'inv-1' }), {
@@ -593,6 +798,7 @@ describe('mcpTransport', () => {
           vi.fn(async () => ({ userId: 'user-123', scope: 'mcp:all' }))
         )
       ).rejects.toThrow('boom');
+      await tracked.drain();
 
       const posthogCall = telemetryFetch.mock.calls.find(
         ([url]) => url === 'https://app.posthog.com/batch/'

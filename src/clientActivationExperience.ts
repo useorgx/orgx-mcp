@@ -64,8 +64,8 @@ const CLIENT_PLAYBOOKS: Record<SourceClient, ClientPlaybook> = {
         tool: 'orgx_search',
         label: 'Seed and browse the skill catalog',
         prompt:
-          'Run orgx_search type=skill with seed_defaults=true so Cursor can recommend skills inline.',
-        args: { type: 'skill', seed_defaults: true },
+          'Run orgx_search type=skill so Cursor can recommend skills inline.',
+        args: { type: 'skill' },
       },
       A1: {
         tool: 'orgx_plan',
@@ -102,7 +102,7 @@ const CLIENT_PLAYBOOKS: Record<SourceClient, ClientPlaybook> = {
         label: 'Inspect the skill catalog',
         prompt:
           'Run orgx_search type=skill to see the default CLI-friendly skills before you start scaffolding.',
-        args: { type: 'skill', seed_defaults: true },
+        args: { type: 'skill' },
       },
       A1: {
         tool: 'orgx_plan',
@@ -138,8 +138,8 @@ const CLIENT_PLAYBOOKS: Record<SourceClient, ClientPlaybook> = {
         tool: 'orgx_search',
         label: 'Seed the default skill catalog',
         prompt:
-          'Run orgx_search type=skill with seed_defaults=true so ChatGPT can recommend skills by name in-thread.',
-        args: { type: 'skill', seed_defaults: true },
+          'Run orgx_search type=skill so ChatGPT can recommend skills by name in-thread.',
+        args: { type: 'skill' },
       },
       A1: {
         tool: 'orgx_plan',
@@ -203,6 +203,43 @@ const CLIENT_PLAYBOOKS: Record<SourceClient, ClientPlaybook> = {
     },
     celebrationNextAction: DEFAULT_RECOMMEND_NEXT_ACTION,
   },
+  opencode: {
+    playbook: 'OpenCode peer execution proof loop',
+    optimizationHint:
+      'Optimize for a narrow executor surface: bootstrap once, bind to active work, submit proof during execution, then checkpoint with the morning brief.',
+    nextActions: {
+      D1: {
+        tool: 'orgx_bootstrap',
+        label: 'Bootstrap OpenCode against OrgX',
+        prompt:
+          'Run orgx_bootstrap so OpenCode can discover its negotiated executor profile and exact reporting contract.',
+        args: {},
+      },
+      A1: {
+        tool: 'orgx_search',
+        args: { type: 'task', status: 'active', limit: 10 },
+        label: 'Find active executable work',
+        prompt:
+          'Run orgx_search type=task status=active to bind OpenCode to a concrete unit of work.',
+      },
+      A2: {
+        tool: 'orgx_submit_receipt',
+        args: { receipt_type: 'execution_checkpoint' },
+        label: 'Submit the first execution receipt',
+        prompt:
+          'Run orgx_submit_receipt after the first meaningful result so the peer loop records durable proof.',
+      },
+      A3: {
+        tool: 'orgx_recommend',
+        args: { mode: 'morning_brief', period: '30d' },
+        label: 'Read the morning brief',
+        prompt:
+          'Run orgx_recommend mode=morning_brief period=30d to verify decisions, artifacts, delivery, and remaining gaps.',
+      },
+      A4: DEFAULT_RECOMMEND_NEXT_ACTION,
+    },
+    celebrationNextAction: DEFAULT_RECOMMEND_NEXT_ACTION,
+  },
   openclaw: {
     playbook: 'OpenClaw gateway proof loop',
     optimizationHint:
@@ -250,7 +287,7 @@ const CLIENT_PLAYBOOKS: Record<SourceClient, ClientPlaybook> = {
         label: 'Browse the skill catalog',
         prompt:
           'Run orgx_search type=skill to expose the default skills inside VS Code.',
-        args: { type: 'skill', seed_defaults: true },
+        args: { type: 'skill' },
       },
       A1: {
         tool: 'orgx_plan',
@@ -287,7 +324,7 @@ const CLIENT_PLAYBOOKS: Record<SourceClient, ClientPlaybook> = {
         label: 'Inspect the ops skill catalog',
         prompt:
           'Run orgx_search type=skill so Goose can start from the operations-heavy default catalog.',
-        args: { type: 'skill', seed_defaults: true },
+        args: { type: 'skill' },
       },
       A1: {
         tool: 'orgx_plan',
@@ -323,8 +360,8 @@ const CLIENT_PLAYBOOKS: Record<SourceClient, ClientPlaybook> = {
         tool: 'orgx_search',
         label: 'Seed the skill catalog for API callers',
         prompt:
-          'Run orgx_search type=skill with seed_defaults=true to establish the default automation catalog.',
-        args: { type: 'skill', seed_defaults: true },
+          'Run orgx_search type=skill to browse the default automation catalog.',
+        args: { type: 'skill' },
       },
       A1: {
         tool: 'orgx_plan',
@@ -361,7 +398,7 @@ const CLIENT_PLAYBOOKS: Record<SourceClient, ClientPlaybook> = {
         label: 'Browse the default skill catalog',
         prompt:
           'Run orgx_search type=skill to expose the seeded catalog inside the webapp flow.',
-        args: { type: 'skill', seed_defaults: true },
+        args: { type: 'skill' },
       },
       A1: {
         tool: 'orgx_plan',
@@ -398,7 +435,7 @@ const CLIENT_PLAYBOOKS: Record<SourceClient, ClientPlaybook> = {
         label: 'Inspect the skill catalog',
         prompt:
           'Run orgx_search type=skill to see the default catalog before choosing a workflow.',
-        args: { type: 'skill', seed_defaults: true },
+        args: { type: 'skill' },
       },
       A1: {
         tool: 'orgx_plan',
