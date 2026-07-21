@@ -37,6 +37,8 @@ import {
 import { buildEntityLink, entityLinkMarkdown, buildLiveUrl } from './deepLinks';
 import { formatInitiativeMarkdown, type OrgXInitiative } from './formatters';
 import { formatForLLM } from './responseSummarizer';
+import { canonicalizeOrgxWriteResponse } from './writeResponse';
+import { buildCompletionProofMetadata } from './completeWithProof';
 import { resolveToolProfile } from './toolProfiles';
 import { sanitizeToolResultGuidance } from './toolGuidance';
 import {
@@ -3957,13 +3959,13 @@ export class OrgXMcp extends McpAgent<
                 };
                 await this.saveSessionContext();
               }
-              const payload = {
+              const payload = canonicalizeOrgxWriteResponse({
                 ok: true,
                 type: 'workspace',
                 data: workspace,
                 _v2_tool: 'orgx_write',
                 operation: 'update',
-              };
+              }, 'workspace');
               return {
                 content: [{ type: 'text', text: formatForLLM('orgx_write', payload) }],
                 structuredContent: payload,
@@ -4053,7 +4055,7 @@ export class OrgXMcp extends McpAgent<
               };
               await this.saveSessionContext();
             }
-            const payload = {
+            const payload = canonicalizeOrgxWriteResponse({
               ok: true,
               type: 'workspace',
               data: workspace,
@@ -4063,7 +4065,7 @@ export class OrgXMcp extends McpAgent<
                   : null,
               _v2_tool: 'orgx_write',
               operation: 'create',
-            };
+            }, 'workspace');
             return {
               content: [{ type: 'text', text: formatForLLM('orgx_write', payload) }],
               structuredContent: payload,
@@ -4127,7 +4129,7 @@ export class OrgXMcp extends McpAgent<
             userId: resolvedUserId,
           });
           if (existingEntity) {
-            const payload = {
+            const payload = canonicalizeOrgxWriteResponse({
               ok: true,
               type: body.type,
               data: existingEntity,
@@ -4138,7 +4140,7 @@ export class OrgXMcp extends McpAgent<
               operation: 'create',
               normalization_warnings: normalizedPayload.warnings,
               replay_source: 'metadata.idempotency_key',
-            };
+            }, body.type);
             return {
               content: [
                 {
@@ -4159,24 +4161,23 @@ export class OrgXMcp extends McpAgent<
             { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
           );
           const result = (await response.json()) as Record<string, unknown>;
-          return {
-            content: [
-              {
-                type: 'text',
-                text: formatForLLM('orgx_write', {
-                  ...result,
-                  _v2_tool: 'orgx_write',
-                  operation: 'create',
-                  normalization_warnings: normalizedPayload.warnings,
-                }),
-              },
-            ],
-            structuredContent: {
+          const payload = canonicalizeOrgxWriteResponse(
+            {
               ...result,
               _v2_tool: 'orgx_write',
               operation: 'create',
               normalization_warnings: normalizedPayload.warnings,
             },
+            body.type
+          );
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatForLLM('orgx_write', payload),
+              },
+            ],
+            structuredContent: payload,
           };
         }
 
@@ -6610,39 +6611,6 @@ export class OrgXMcp extends McpAgent<
                 (value): value is string =>
                   typeof value === 'string' && value.trim().length > 0
               )?.trim();
-            const proofVerification = Array.isArray(args.verification)
-              ? args.verification.filter(
-                  (entry): entry is string =>
-                    typeof entry === 'string' && entry.trim().length > 0
-                )
-              : [];
-            const proofMetadata = {
-              ...(args.metadata &&
-              typeof args.metadata === 'object' &&
-              !Array.isArray(args.metadata)
-                ? (args.metadata as Record<string, unknown>)
-                : {}),
-              atomic_unit_type:
-                firstString(args.atomic_unit_type, artifactInput.atomic_unit_type) ??
-                'completion_proof',
-              artifact_hash:
-                firstString(args.artifact_hash, artifactInput.artifact_hash) ??
-                undefined,
-              schema_validated: args.schema_validated ?? true,
-              schema_validated_artifact:
-                args.schema_validated_artifact ?? args.schema_validated ?? true,
-              completion_state: 'completed',
-              quality_score:
-                typeof args.quality_score === 'number'
-                  ? args.quality_score
-                  : undefined,
-              verification:
-                proofVerification.length > 0 ? proofVerification : undefined,
-              entity_type: args.type,
-              entity_id: args.id,
-              ...(args.type === 'task' ? { task_id: args.id } : {}),
-            };
-
             const artifactUrl = firstString(
               args.artifact_url,
               artifactInput.artifact_url
@@ -6652,6 +6620,29 @@ export class OrgXMcp extends McpAgent<
               artifactInput.external_url
             );
             const artifactId = firstString(args.artifact_id);
+            const proofMetadata = buildCompletionProofMetadata({
+              metadata:
+                args.metadata &&
+                typeof args.metadata === 'object' &&
+                !Array.isArray(args.metadata)
+                  ? (args.metadata as Record<string, unknown>)
+                  : null,
+              artifact: artifactInput,
+              entityType: args.type,
+              entityId: args.id,
+              artifactId,
+              artifactUrl,
+              externalUrl,
+              atomicUnitType: args.atomic_unit_type,
+              artifactHash: args.artifact_hash,
+              qualityScore: args.quality_score,
+              verification: args.verification,
+              schemaValidated: args.schema_validated,
+              schemaValidatedArtifact: args.schema_validated_artifact,
+              createdByType: args.created_by_type,
+              createdById: args.created_by_id ?? resolvedUserId,
+              runOrSessionRef: crypto.randomUUID(),
+            });
             const shouldAttachProof = Boolean(
               artifactId || artifactUrl || externalUrl
             );
