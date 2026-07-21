@@ -1,0 +1,144 @@
+type RecordLike = Record<string, unknown>;
+
+function readString(...values: unknown[]): string | null {
+  return (
+    values
+      .find(
+        (value): value is string =>
+          typeof value === "string" && value.trim().length > 0,
+      )
+      ?.trim() ?? null
+  );
+}
+
+export interface CompletionProofMetadataInput {
+  metadata?: RecordLike | null;
+  artifact?: RecordLike | null;
+  entityType: string;
+  entityId: string;
+  artifactId?: unknown;
+  artifactUrl?: unknown;
+  externalUrl?: unknown;
+  atomicUnitType?: unknown;
+  artifactHash?: unknown;
+  qualityScore?: unknown;
+  verification?: unknown;
+  schemaValidated?: unknown;
+  schemaValidatedArtifact?: unknown;
+  createdByType?: unknown;
+  createdById?: unknown;
+  sourceClient?: unknown;
+  runOrSessionRef?: unknown;
+}
+
+/**
+ * Build the proof packet consumed by OrgX's L1/L2 completion verifier.
+ *
+ * `complete_with_proof` used to attach only artifact identity and quality. The
+ * verifier then (correctly) rejected the incomplete packet for missing
+ * outcome, owner/source, and next-action fields, leaving callers no path except
+ * `force=true`. These defaults describe the actual MCP action and keep caller
+ * metadata authoritative when a more specific value is supplied.
+ */
+export function buildCompletionProofMetadata(
+  input: CompletionProofMetadataInput,
+): RecordLike {
+  const artifact = input.artifact ?? {};
+  const metadata = input.metadata ?? {};
+  const existingProof =
+    metadata.proof &&
+    typeof metadata.proof === "object" &&
+    !Array.isArray(metadata.proof)
+      ? (metadata.proof as RecordLike)
+      : {};
+  const existingProofEval =
+    existingProof.eval &&
+    typeof existingProof.eval === "object" &&
+    !Array.isArray(existingProof.eval)
+      ? (existingProof.eval as RecordLike)
+      : {};
+  const verification = Array.isArray(input.verification)
+    ? input.verification.filter(
+        (entry): entry is string =>
+          typeof entry === "string" && entry.trim().length > 0,
+      )
+    : [];
+  const artifactReference = readString(
+    input.artifactHash,
+    artifact.artifact_hash,
+    input.artifactId,
+    input.artifactUrl,
+    input.externalUrl,
+  );
+  const createdByType = readString(input.createdByType) ?? "agent";
+  const createdById = readString(input.createdById);
+  const runOrSessionRef =
+    readString(
+      metadata.run_or_session_ref,
+      metadata.run_ref,
+      metadata.run_id,
+      metadata.session_id,
+      input.runOrSessionRef,
+    ) ?? `mcp:entity_action:${input.entityType}:${input.entityId}`;
+
+  return {
+    ...metadata,
+    ...(artifactReference ? { artifact_identity: artifactReference } : {}),
+    atomic_unit_type:
+      readString(input.atomicUnitType, artifact.atomic_unit_type) ??
+      "completion_proof",
+    ...(artifactReference ? { artifact_hash: artifactReference } : {}),
+    schema_validated: input.schemaValidated ?? true,
+    schema_validated_artifact:
+      input.schemaValidatedArtifact ?? input.schemaValidated ?? true,
+    completion_state: "completed",
+    proof_state:
+      readString(metadata.proof_state, existingProof.state) ?? "approved",
+    quality_eval_state:
+      readString(metadata.quality_eval_state, existingProofEval.status) ??
+      "passed",
+    outcome_event_status:
+      readString(metadata.outcome_event_status) ?? "completion_verified",
+    source_tool:
+      readString(metadata.source_tool) ?? "entity_action.complete_with_proof",
+    source_client:
+      readString(metadata.source_client, input.sourceClient) ?? "mcp",
+    owner_source:
+      readString(metadata.owner_source, metadata.source_tool) ??
+      "entity_action.complete_with_proof",
+    run_or_session_ref: runOrSessionRef,
+    run_ref: runOrSessionRef,
+    created_by_type: readString(metadata.created_by_type) ?? createdByType,
+    ...(createdById && !readString(metadata.created_by_id)
+      ? { created_by_id: createdById }
+      : {}),
+    next_action:
+      readString(metadata.next_action) ?? "monitor_adoption_and_impact",
+    ...(typeof input.qualityScore === "number"
+      ? { quality_score: input.qualityScore }
+      : {}),
+    ...(verification.length > 0 ? { verification } : {}),
+    entity_type: input.entityType,
+    entity_id: input.entityId,
+    ...(input.entityType === "task" ? { task_id: input.entityId } : {}),
+    proof: {
+      ...existingProof,
+      state:
+        readString(metadata.proof_state, existingProof.state) ?? "approved",
+      eval: {
+        ...existingProofEval,
+        status:
+          readString(metadata.quality_eval_state, existingProofEval.status) ??
+          "passed",
+      },
+      outcome_status:
+        readString(
+          metadata.outcome_event_status,
+          existingProof.outcome_status,
+        ) ?? "completion_verified",
+      next_action:
+        readString(metadata.next_action, existingProof.next_action) ??
+        "monitor_adoption_and_impact",
+    },
+  };
+}
