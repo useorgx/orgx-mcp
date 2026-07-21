@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildOrgxSpawnForwardArgs,
+  buildSpawnGuardForwardArgs,
   validateSpawnContract,
 } from '../src/spawnContract';
 
@@ -101,6 +102,43 @@ describe('buildOrgxSpawnForwardArgs', () => {
       task_id: 'task-1',
       agent: 'operations-agent',
       note: 'Take over the incident runbook.',
+    });
+  });
+});
+
+describe('buildSpawnGuardForwardArgs', () => {
+  it('maps task_id to the app SpawnRequest taskId contract', () => {
+    expect(
+      buildSpawnGuardForwardArgs({
+        action: 'guard',
+        task_id: 'task-1',
+        domain: 'engineering',
+        workspace_id: 'workspace-1',
+        model_tier: 'standard',
+      })
+    ).toEqual({
+      action: 'guard',
+      taskId: 'task-1',
+      domain: 'engineering',
+      workspace_id: 'workspace-1',
+      model_tier: 'standard',
+    });
+  });
+
+  it('preserves a canonical taskId and all unrelated guard fields', () => {
+    expect(
+      buildSpawnGuardForwardArgs({
+        task_id: 'legacy-task',
+        taskId: 'canonical-task',
+        domain: 'product',
+        taskTitle: 'Existing title',
+        user_id: 'user-1',
+      })
+    ).toEqual({
+      taskId: 'canonical-task',
+      domain: 'product',
+      taskTitle: 'Existing title',
+      user_id: 'user-1',
     });
   });
 });

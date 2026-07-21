@@ -130,6 +130,7 @@ import { extractRunCostTelemetry } from './runCostTelemetry';
 import { detectProviderPinning } from './providerPinning';
 import {
   buildOrgxSpawnForwardArgs,
+  buildSpawnGuardForwardArgs,
   validateSpawnContract,
 } from './spawnContract';
 import { validateWriteCreateContract } from './writeContract';
@@ -3286,6 +3287,9 @@ export class OrgXMcp extends McpAgent<
                   }
                   normalizedToolArgs = normalized.body;
                 }
+                if (tool.id === 'check_spawn_guard') {
+                  normalizedToolArgs = buildSpawnGuardForwardArgs(toolArgs);
+                }
                 fetchInit = {
                   method: 'POST',
                   body: JSON.stringify(normalizedToolArgs),
@@ -4697,6 +4701,8 @@ export class OrgXMcp extends McpAgent<
           const forwardedSpawnArgs =
             targetTool === 'spawn_agent_task' || targetTool === 'handoff_task'
               ? buildOrgxSpawnForwardArgs(targetTool, spawnArgs)
+              : targetTool === 'check_spawn_guard'
+              ? buildSpawnGuardForwardArgs(spawnArgs)
               : spawnArgs;
           const body =
             targetTool === 'spawn_agent_task' || targetTool === 'handoff_task'

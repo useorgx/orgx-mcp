@@ -102,6 +102,22 @@ export function buildOrgxSpawnForwardArgs(
   return out;
 }
 
+/**
+ * Translate the MCP guard contract into the app's SpawnRequest shape.
+ *
+ * The MCP tools expose `task_id`, while POST /api/client/spawn consumes
+ * `taskId`. Keep every other field unchanged so workspace and routing context
+ * continue to pass through without affecting the actual spawn path.
+ */
+export function buildSpawnGuardForwardArgs(
+  args: Record<string, unknown>
+): Record<string, unknown> {
+  const { task_id: _taskId, ...out } = args;
+  const taskId = readString(args.taskId) ?? readString(args.task_id);
+  if (taskId) out.taskId = taskId;
+  return out;
+}
+
 export function validateSpawnContract(
   action: string,
   args: Record<string, unknown>
