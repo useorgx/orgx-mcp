@@ -302,6 +302,31 @@ describe('MCP Worker tool registration integrity', () => {
     );
   });
 
+  it('routes both complete_with_proof surfaces through the shared composite flow', () => {
+    const src = readWorkerSource();
+    const sharedCalls =
+      src.match(/return this\.executeCompleteWithProof\(/g) ?? [];
+    expect(sharedCalls).toHaveLength(2);
+
+    const compactStart = src.indexOf("case 'orgx_act':");
+    const compactEnd = src.indexOf("case 'orgx_plan':", compactStart);
+    const compactHandler = src.slice(compactStart, compactEnd);
+    const specialBranch = compactHandler.indexOf(
+      "resolvedAction === 'complete_with_proof'"
+    );
+    const genericForward = compactHandler.indexOf(
+      '`/api/entities/${args.type}/${args.id}/${resolvedAction}`'
+    );
+
+    expect(compactStart).toBeGreaterThanOrEqual(0);
+    expect(compactEnd).toBeGreaterThan(compactStart);
+    expect(specialBranch).toBeGreaterThanOrEqual(0);
+    expect(compactHandler).toContain(
+      "return this.executeCompleteWithProof("
+    );
+    expect(genericForward).toBeGreaterThan(specialBranch);
+  });
+
   it('start_plan_session defaults workspace_id from session context when omitted', () => {
     const src = readWorkerSource();
     const startPlanBranch = src.match(

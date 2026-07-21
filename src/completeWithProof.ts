@@ -1,5 +1,26 @@
 type RecordLike = Record<string, unknown>;
 
+export type CompleteWithProofApiCall = (
+  path: string,
+  init?: RequestInit,
+) => Promise<RecordLike>;
+
+export interface CompleteWithProofFlowInput {
+  entityType: string;
+  entityId: string;
+  attachPayload?: RecordLike | null;
+  completeBody?: RecordLike;
+  callApi: CompleteWithProofApiCall;
+}
+
+export interface CompleteWithProofFlowResult {
+  completed: boolean;
+  attachResult: RecordLike | null;
+  verifyResult: RecordLike;
+  verification: RecordLike | null;
+  completeResult: RecordLike | null;
+}
+
 function readString(...values: unknown[]): string | null {
   return (
     values
@@ -140,5 +161,64 @@ export function buildCompletionProofMetadata(
         readString(metadata.next_action, existingProof.next_action) ??
         "monitor_adoption_and_impact",
     },
+  };
+}
+
+/**
+ * Execute the virtual complete_with_proof action against canonical OrgX APIs.
+ *
+ * complete_with_proof is intentionally not a backend lifecycle action. It is an
+ * MCP composition that attaches proof, checks the proof gate, and only then
+ * calls the canonical /complete endpoint. Keeping this sequence in one helper
+ * prevents the compact and compatibility tool surfaces from drifting apart.
+ */
+export async function executeCompleteWithProofFlow(
+  input: CompleteWithProofFlowInput,
+): Promise<CompleteWithProofFlowResult> {
+  const attachResult = input.attachPayload
+    ? await input.callApi("/api/client/artifacts", {
+        method: "POST",
+        body: JSON.stringify(input.attachPayload),
+      })
+    : null;
+
+  const verifyParams = new URLSearchParams({
+    type: input.entityType,
+    id: input.entityId,
+  });
+  const verifyResult = await input.callApi(
+    `/api/entities/verify?${verifyParams.toString()}`,
+  );
+  const verification =
+    verifyResult.verification &&
+    typeof verifyResult.verification === "object" &&
+    !Array.isArray(verifyResult.verification)
+      ? (verifyResult.verification as RecordLike)
+      : null;
+
+  if (verification?.verified !== true) {
+    return {
+      completed: false,
+      attachResult,
+      verifyResult,
+      verification,
+      completeResult: null,
+    };
+  }
+
+  const completeResult = await input.callApi(
+    `/api/entities/${input.entityType}/${input.entityId}/complete`,
+    {
+      method: "POST",
+      body: JSON.stringify(input.completeBody ?? {}),
+    },
+  );
+
+  return {
+    completed: true,
+    attachResult,
+    verifyResult,
+    verification,
+    completeResult,
   };
 }
