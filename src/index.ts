@@ -38,7 +38,10 @@ import { buildEntityLink, entityLinkMarkdown, buildLiveUrl } from './deepLinks';
 import { formatInitiativeMarkdown, type OrgXInitiative } from './formatters';
 import { formatForLLM } from './responseSummarizer';
 import { canonicalizeOrgxWriteResponse } from './writeResponse';
-import { buildCompletionProofMetadata } from './completeWithProof';
+import {
+  buildCompletionProofMetadata,
+  executeCompleteWithProofFlow,
+} from './completeWithProof';
 import { resolveToolProfile } from './toolProfiles';
 import { sanitizeToolResultGuidance } from './toolGuidance';
 import {
@@ -3607,6 +3610,216 @@ export class OrgXMcp extends McpAgent<
     };
   }
 
+  private async executeCompleteWithProof(
+    args: Record<string, unknown>,
+    resolvedUserId: string | null | undefined,
+    surface: 'orgx_act' | 'entity_action'
+  ): Promise<CallToolResult> {
+    const entityType = String(args.type);
+    const entityId = String(args.id);
+    if (
+      !VERIFIABLE_COMPLETION_ENTITY_TYPES.includes(
+        entityType as (typeof VERIFIABLE_COMPLETION_ENTITY_TYPES)[number]
+      )
+    ) {
+      return this.toolError(
+        'action=complete_with_proof is only supported for initiative, workstream, milestone, and task entities',
+        { code: 'invalid_input', status: 400 }
+      );
+    }
+
+    const artifactInput =
+      args.artifact &&
+      typeof args.artifact === 'object' &&
+      !Array.isArray(args.artifact)
+        ? (args.artifact as Record<string, unknown>)
+        : {};
+    const firstString = (...values: unknown[]) =>
+      values.find(
+        (value): value is string =>
+          typeof value === 'string' && value.trim().length > 0
+      )?.trim();
+    const artifactUrl = firstString(
+      args.artifact_url,
+      artifactInput.artifact_url
+    );
+    const externalUrl = firstString(
+      args.external_url,
+      artifactInput.external_url
+    );
+    const artifactId = firstString(
+      args.artifact_id,
+      artifactInput.artifact_id
+    );
+    const artifactMetadata =
+      artifactInput.metadata &&
+      typeof artifactInput.metadata === 'object' &&
+      !Array.isArray(artifactInput.metadata)
+        ? (artifactInput.metadata as Record<string, unknown>)
+        : {};
+    const directMetadata =
+      args.metadata &&
+      typeof args.metadata === 'object' &&
+      !Array.isArray(args.metadata)
+        ? (args.metadata as Record<string, unknown>)
+        : {};
+    const proofMetadata = buildCompletionProofMetadata({
+      metadata: { ...artifactMetadata, ...directMetadata },
+      artifact: artifactInput,
+      entityType,
+      entityId,
+      artifactId,
+      artifactUrl,
+      externalUrl,
+      atomicUnitType: args.atomic_unit_type,
+      artifactHash: args.artifact_hash,
+      qualityScore: args.quality_score,
+      verification: args.verification,
+      schemaValidated: args.schema_validated,
+      schemaValidatedArtifact: args.schema_validated_artifact,
+      createdByType: args.created_by_type ?? artifactInput.created_by_type,
+      createdById:
+        args.created_by_id ?? artifactInput.created_by_id ?? resolvedUserId,
+      sourceClient: resolveSourceClientFromContext(args._context),
+      runOrSessionRef: crypto.randomUUID(),
+    });
+    const shouldAttachProof = Boolean(
+      artifactId || artifactUrl || externalUrl
+    );
+    let attachPayload: ReturnType<typeof buildEntityActionAttachPayload> | null =
+      null;
+
+    if (shouldAttachProof) {
+      try {
+        attachPayload = buildEntityActionAttachPayload({
+          type: entityType as any,
+          id: entityId,
+          artifact_id: artifactId,
+          initiative_id: args.initiative_id,
+          name:
+            firstString(args.name, artifactInput.name) ??
+            `Completion proof for ${entityType} ${entityId}`,
+          artifact_type:
+            firstString(args.artifact_type, artifactInput.artifact_type) ??
+            'eng.release_evidence',
+          description:
+            firstString(args.description, artifactInput.description) ??
+            args.note,
+          artifact_url: artifactUrl,
+          external_url: externalUrl,
+          preview_markdown:
+            firstString(
+              args.preview_markdown,
+              artifactInput.preview_markdown
+            ) ?? undefined,
+          status: (args.status ?? artifactInput.status ?? 'approved') as any,
+          metadata: proofMetadata,
+          created_by_type:
+            (args.created_by_type ??
+              artifactInput.created_by_type ??
+              'agent') as any,
+          created_by_id:
+            args.created_by_id ?? artifactInput.created_by_id ?? resolvedUserId,
+        });
+      } catch (error) {
+        return this.toolError(
+          error instanceof Error
+            ? error.message
+            : 'Invalid complete_with_proof artifact payload',
+          {
+            code: 'invalid_input',
+            status: 400,
+            details: buildFailureDetails({
+              toolId: surface,
+              error,
+              args,
+            }),
+          }
+        );
+      }
+    }
+
+    const flow = await executeCompleteWithProofFlow({
+      entityType,
+      entityId,
+      attachPayload,
+      completeBody: {
+        note: args.note,
+        reason: args.note,
+        force: args.force,
+        user_id: resolvedUserId,
+      },
+      callApi: async (path, init) => {
+        const response = await callOrgxApiJson(this.env, path, init, {
+          userId: resolvedUserId ?? null,
+          userEmail: this.resolveUserEmail(),
+          orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? null),
+        });
+        return (await response.json()) as Record<string, unknown>;
+      },
+    });
+
+    if (!flow.completed) {
+      const rawBlockers = flow.verification?.blockers;
+      const blockers = Array.isArray(rawBlockers)
+        ? rawBlockers.filter(
+            (blocker): blocker is string => typeof blocker === 'string'
+          )
+        : ['Completion verifier did not return ready=true'];
+      const payload = {
+        ok: false,
+        ...(surface === 'orgx_act' ? { _v2_tool: 'orgx_act' } : {}),
+        _action: 'complete_with_proof',
+        entity_type: entityType,
+        entity_id: entityId,
+        proof_attached: Boolean(flow.attachResult),
+        attach_result: flow.attachResult,
+        verification: flow.verification,
+        diagnostic: diagnoseToolFailure({
+          toolId: surface,
+          error: blockers.join('; '),
+          args,
+        }),
+      };
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Proof ${
+              flow.attachResult
+                ? 'attached, but completion is still blocked'
+                : 'not attached and completion is blocked'
+            }.\n\nBlockers:\n${blockers
+              .map((blocker) => `• ${blocker}`)
+              .join('\n')}`,
+          },
+        ],
+        structuredContent: payload,
+      };
+    }
+
+    const payload = {
+      ...(flow.completeResult ?? {}),
+      ...(surface === 'orgx_act' ? { _v2_tool: 'orgx_act' } : {}),
+      _action: 'complete_with_proof',
+      entity_type: entityType,
+      entity_id: entityId,
+      proof_attached: Boolean(flow.attachResult),
+      attach_result: flow.attachResult,
+      verification: flow.verification,
+      message: `Completed ${entityType} ${entityId} with proof`,
+    };
+    return {
+      content: [
+        {
+          type: 'text',
+          text: formatForLLM('entity_action', payload),
+        },
+      ],
+      structuredContent: payload,
+    };
+  }
+
   private async executeContractTool(
     toolId: string,
     args: Record<string, unknown>,
@@ -4340,6 +4553,13 @@ export class OrgXMcp extends McpAgent<
           const resolvedAction =
             resolveLifecycleActionAlias(String(args.type), String(args.action)) ??
             String(args.action);
+          if (resolvedAction === 'complete_with_proof') {
+            return this.executeCompleteWithProof(
+              args,
+              resolvedUserId,
+              'orgx_act'
+            );
+          }
           if (resolvedAction === 'delete' && args.dry_run === true) {
             const payload = {
               success: true,
@@ -6589,214 +6809,11 @@ export class OrgXMcp extends McpAgent<
           }
 
           if (resolvedAction === 'complete_with_proof') {
-            if (
-              !VERIFIABLE_COMPLETION_ENTITY_TYPES.includes(
-                args.type as (typeof VERIFIABLE_COMPLETION_ENTITY_TYPES)[number]
-              )
-            ) {
-              return this.toolError(
-                'action=complete_with_proof is only supported for initiative, workstream, milestone, and task entities',
-                { code: 'invalid_input', status: 400 }
-              );
-            }
-
-            const artifactInput =
-              args.artifact &&
-              typeof args.artifact === 'object' &&
-              !Array.isArray(args.artifact)
-                ? (args.artifact as Record<string, unknown>)
-                : {};
-            const firstString = (...values: unknown[]) =>
-              values.find(
-                (value): value is string =>
-                  typeof value === 'string' && value.trim().length > 0
-              )?.trim();
-            const artifactUrl = firstString(
-              args.artifact_url,
-              artifactInput.artifact_url
+            return this.executeCompleteWithProof(
+              args as Record<string, unknown>,
+              resolvedUserId ?? null,
+              'entity_action'
             );
-            const externalUrl = firstString(
-              args.external_url,
-              artifactInput.external_url
-            );
-            const artifactId = firstString(args.artifact_id);
-            const proofMetadata = buildCompletionProofMetadata({
-              metadata:
-                args.metadata &&
-                typeof args.metadata === 'object' &&
-                !Array.isArray(args.metadata)
-                  ? (args.metadata as Record<string, unknown>)
-                  : null,
-              artifact: artifactInput,
-              entityType: args.type,
-              entityId: args.id,
-              artifactId,
-              artifactUrl,
-              externalUrl,
-              atomicUnitType: args.atomic_unit_type,
-              artifactHash: args.artifact_hash,
-              qualityScore: args.quality_score,
-              verification: args.verification,
-              schemaValidated: args.schema_validated,
-              schemaValidatedArtifact: args.schema_validated_artifact,
-              createdByType: args.created_by_type,
-              createdById: args.created_by_id ?? resolvedUserId,
-              runOrSessionRef: crypto.randomUUID(),
-            });
-            const shouldAttachProof = Boolean(
-              artifactId || artifactUrl || externalUrl
-            );
-            let attachResult: Record<string, unknown> | null = null;
-
-            if (shouldAttachProof) {
-              let attachPayload: ReturnType<typeof buildEntityActionAttachPayload>;
-              try {
-                attachPayload = buildEntityActionAttachPayload({
-                  type: args.type,
-                  id: args.id,
-                  artifact_id: artifactId,
-                  initiative_id: args.initiative_id,
-                  name:
-                    firstString(args.name, artifactInput.name) ??
-                    `Completion proof for ${args.type} ${args.id}`,
-                  artifact_type:
-                    firstString(args.artifact_type, artifactInput.artifact_type) ??
-                    'eng.release_evidence',
-                  description:
-                    firstString(args.description, artifactInput.description) ??
-                    args.note,
-                  artifact_url: artifactUrl,
-                  external_url: externalUrl,
-                  preview_markdown:
-                    firstString(
-                      args.preview_markdown,
-                      artifactInput.preview_markdown
-                    ) ?? undefined,
-                  status: (args.status as any) ?? 'approved',
-                  metadata: proofMetadata,
-                  created_by_type: args.created_by_type ?? 'agent',
-                  created_by_id: args.created_by_id ?? resolvedUserId ?? undefined,
-                });
-              } catch (error) {
-                return this.toolError(
-                  error instanceof Error
-                    ? error.message
-                    : 'Invalid complete_with_proof artifact payload',
-                  {
-                    code: 'invalid_input',
-                    status: 400,
-                    details: buildFailureDetails({
-                      toolId: 'entity_action',
-                      error,
-                      args: args as Record<string, unknown>,
-                    }),
-                  }
-                );
-              }
-
-              const attachResponse = await callOrgxApiJson(
-                this.env,
-                '/api/client/artifacts',
-                {
-                  method: 'POST',
-                  body: JSON.stringify(attachPayload),
-                },
-                { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? null) }
-              );
-              attachResult = (await attachResponse.json()) as Record<
-                string,
-                unknown
-              >;
-            }
-
-            const verifyParams = new URLSearchParams({
-              type: String(args.type),
-              id: String(args.id),
-            });
-            const verifyResponse = await callOrgxApiJson(
-              this.env,
-              `/api/entities/verify?${verifyParams.toString()}`,
-              undefined,
-              { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? null) }
-            );
-            const verifyResult = (await verifyResponse.json()) as {
-              verification?: {
-                verified: boolean;
-                progress_pct: number;
-                blockers?: string[];
-              };
-            };
-            const verification = verifyResult.verification;
-            if (!verification?.verified) {
-              const blockers = verification?.blockers ?? [
-                'Completion verifier did not return ready=true',
-              ];
-              const payload = {
-                ok: false,
-                _action: 'complete_with_proof',
-                entity_type: args.type,
-                entity_id: args.id,
-                proof_attached: Boolean(attachResult),
-                attach_result: attachResult,
-                verification: verifyResult.verification ?? null,
-                diagnostic: diagnoseToolFailure({
-                  toolId: 'entity_action',
-                  error: blockers.join('; '),
-                  args: args as Record<string, unknown>,
-                }),
-              };
-              return {
-                content: [
-                  {
-                    type: 'text',
-                    text: `Proof ${
-                      attachResult ? 'attached, but completion is still blocked' : 'not attached and completion is blocked'
-                    }.\n\nBlockers:\n${blockers
-                      .map((blocker) => `• ${blocker}`)
-                      .join('\n')}`,
-                  },
-                ],
-                structuredContent: payload,
-              };
-            }
-
-            const completeResponse = await callOrgxApiJson(
-              this.env,
-              `/api/entities/${args.type}/${args.id}/complete`,
-              {
-                method: 'POST',
-                body: JSON.stringify({
-                  note: args.note,
-                  reason: args.note,
-                  force: args.force,
-                  user_id: resolvedUserId,
-                }),
-              },
-              { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? null) }
-            );
-            const completeResult = (await completeResponse.json()) as Record<
-              string,
-              unknown
-            >;
-            const payload = {
-              ...completeResult,
-              _action: 'complete_with_proof',
-              entity_type: args.type,
-              entity_id: args.id,
-              proof_attached: Boolean(attachResult),
-              attach_result: attachResult,
-              verification: verifyResult.verification,
-              message: `Completed ${args.type} ${args.id} with proof`,
-            };
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: formatForLLM('entity_action', payload),
-                },
-              ],
-              structuredContent: payload,
-            };
           }
 
           if (resolvedAction === 'ship_batch') {
