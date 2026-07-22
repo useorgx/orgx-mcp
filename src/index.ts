@@ -138,6 +138,7 @@ import { buildLiveFeedWidget } from './liveFeedWidget';
 import { signStreamToken } from './streamToken';
 import { hydrateTaskContext } from './taskContextHydrator';
 import { buildWorkspaceCreateBody } from './workspaceTool';
+import { buildEntityUpdateRequest } from './entityUpdateRequest';
 import { buildEntityCollectionSearchParams } from './entityCollectionSearch';
 import {
   buildBroadSearchPagination,
@@ -4168,13 +4169,16 @@ export class OrgXMcp extends McpAgent<
             }
 
             if (args.type === 'workspace') {
+              const updateRequest = buildEntityUpdateRequest({
+                type: 'workspace',
+                id: String(args.id),
+                fields,
+                idempotencyKey: args.idempotency_key,
+              });
               const response = await callOrgxApiJson(
                 this.env,
-                `/api/workspaces/${encodeURIComponent(String(args.id))}`,
-                {
-                  method: 'PATCH',
-                  body: JSON.stringify(fields),
-                },
+                updateRequest.path,
+                updateRequest.init,
                 { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
               );
               const result = (await response.json()) as Record<string, unknown>;
@@ -4206,18 +4210,16 @@ export class OrgXMcp extends McpAgent<
               };
             }
 
+            const updateRequest = buildEntityUpdateRequest({
+              type: String(args.type),
+              id: String(args.id),
+              fields,
+              idempotencyKey: args.idempotency_key,
+            });
             const response = await callOrgxApiJson(
               this.env,
-              '/api/entities',
-              {
-                method: 'PATCH',
-                body: JSON.stringify({
-                  type: args.type,
-                  id: args.id,
-                  ...fields,
-                  idempotency_key: args.idempotency_key,
-                }),
-              },
+              updateRequest.path,
+              updateRequest.init,
               { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
             );
             const result = (await response.json()) as Record<string, unknown>;
@@ -6734,17 +6736,15 @@ export class OrgXMcp extends McpAgent<
               };
             }
 
+            const updateRequest = buildEntityUpdateRequest({
+              type: String(args.type),
+              id: String(args.id),
+              fields,
+            });
             const response = await callOrgxApiJson(
               this.env,
-              '/api/entities',
-              {
-                method: 'PATCH',
-                body: JSON.stringify({
-                  type: args.type,
-                  id: args.id,
-                  ...fields,
-                }),
-              },
+              updateRequest.path,
+              updateRequest.init,
               { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? null) }
             );
             const result = (await response.json()) as {
