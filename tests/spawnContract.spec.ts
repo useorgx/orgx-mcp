@@ -57,6 +57,7 @@ describe('buildOrgxSpawnForwardArgs', () => {
         title: 'Draft migration runbook',
         instructions: 'Use the existing rollback checklist.',
         initiative_id: 'init-1',
+        expected_artifacts: ['Migration runbook', 'Rollback checklist'],
         model_tier: 'standard',
         budget_mode: 'cheapest_valid',
       })
@@ -65,6 +66,7 @@ describe('buildOrgxSpawnForwardArgs', () => {
       task: 'Draft migration runbook',
       context: 'Use the existing rollback checklist.',
       initiative_id: 'init-1',
+      expected_artifacts: ['Migration runbook', 'Rollback checklist'],
       model_tier: 'standard',
       budget_mode: 'cheapest_valid',
     });
