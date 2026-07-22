@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/cloudflare';
 import type { CloudflareOptions } from '@sentry/cloudflare';
+import { EXPECTED_DURABLE_OBJECT_DEPLOY_RESET } from './durableObjectTransportRecovery';
 
 export interface SentryWorkerEnv {
   SENTRY_DSN?: string;
@@ -49,6 +50,17 @@ function parseSampleRate(value: string | undefined): number {
   return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1 ? parsed : 0.1;
 }
 
+function isExpectedDurableObjectDeployReset(
+  event: Parameters<NonNullable<CloudflareOptions['beforeSend']>>[0]
+): boolean {
+  const exceptions = event.exception?.values ?? [];
+  const terminalException = exceptions[exceptions.length - 1];
+  return (
+    event.message === EXPECTED_DURABLE_OBJECT_DEPLOY_RESET ||
+    terminalException?.value === EXPECTED_DURABLE_OBJECT_DEPLOY_RESET
+  );
+}
+
 export function createSentryOptions(
   env: SentryWorkerEnv
 ): CloudflareOptions | undefined {
@@ -79,6 +91,8 @@ export function createSentryOptions(
         ? null
         : (sanitize(breadcrumb) as typeof breadcrumb),
     beforeSend(event) {
+      if (isExpectedDurableObjectDeployReset(event)) return null;
+
       const sanitized = sanitize(event) as typeof event;
       sanitized.user = undefined;
       if (sanitized.request) {
