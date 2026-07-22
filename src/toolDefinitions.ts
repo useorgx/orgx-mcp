@@ -2305,6 +2305,25 @@ export function summarizeStreamToolResult(
   }
 }
 
+/**
+ * Resolve the canonical payload returned by a stream coordination endpoint.
+ *
+ * Most legacy stream endpoints wrap their payload in `data`. The lifecycle
+ * endpoint intentionally returns its receipt fields (`action`, `level`,
+ * `affected`, and `message`) at the top level. Keeping that distinction here
+ * prevents a successful lifecycle call from being flattened to an empty `{}`.
+ */
+export function resolveStreamToolPayload(
+  toolId: string,
+  result: Record<string, unknown>
+): Record<string, unknown> {
+  if (toolId === 'manage_lifecycle') return result;
+  const data = result.data;
+  return data && typeof data === 'object' && !Array.isArray(data)
+    ? (data as Record<string, unknown>)
+    : {};
+}
+
 // =============================================================================
 // ENTITY TYPES
 // =============================================================================

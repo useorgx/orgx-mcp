@@ -230,6 +230,12 @@ export async function callOrgxApiRaw(
     userId?: string | null;
     userEmail?: string | null;
     orgxUserId?: string | null;
+    /**
+     * Retry a configured secondary API origin when the primary is unavailable.
+     * Disable this for non-idempotent operations that must fail closed rather
+     * than risk executing against a different release or data plane.
+     */
+    allowFallback?: boolean;
   }
 ) {
   if (
@@ -275,7 +281,11 @@ export async function callOrgxApiRaw(
     headers.set('Content-Type', 'application/json');
   }
 
-  const baseUrls = getOrgxApiBaseUrls(env);
+  const configuredBaseUrls = getOrgxApiBaseUrls(env);
+  const baseUrls =
+    opts?.allowFallback === false
+      ? configuredBaseUrls.slice(0, 1)
+      : configuredBaseUrls;
   let lastRetryableFailure: string | null = null;
 
   for (const [index, baseUrl] of baseUrls.entries()) {
@@ -447,6 +457,7 @@ export async function callOrgxApiJson(
     userId?: string | null;
     userEmail?: string | null;
     orgxUserId?: string | null;
+    allowFallback?: boolean;
   }
 ) {
   const response = await callOrgxApiRaw(env, path, init, {
@@ -454,6 +465,7 @@ export async function callOrgxApiJson(
     userId: opts?.userId ?? undefined,
     userEmail: opts?.userEmail ?? undefined,
     orgxUserId: opts?.orgxUserId ?? undefined,
+    allowFallback: opts?.allowFallback,
   });
   const contentType = response.headers.get('content-type') ?? '';
   const responseBody = await readResponseTextWithTimeout(

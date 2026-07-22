@@ -211,6 +211,38 @@ describe('callOrgxApiRaw actor token propagation', () => {
     );
   });
 
+  it('fails closed without calling the fallback when fallback is disabled', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: 'primary unavailable' }), {
+        status: 503,
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      callOrgxApiRaw(
+        {
+          ORGX_API_URL: 'https://primary.useorgx.test',
+          ORGX_API_FALLBACK_URL: 'https://fallback.useorgx.test',
+          ORGX_SERVICE_KEY: 'oxk-test',
+        },
+        '/api/internal/lifecycle',
+        { method: 'POST', body: '{}' },
+        { allowFallback: false }
+      )
+    ).rejects.toMatchObject({
+      name: 'OrgXApiError',
+      statusCode: 503,
+      message: 'primary unavailable',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      'https://primary.useorgx.test/api/internal/lifecycle'
+    );
+  });
+
   it('uses the primary fallback timeout before trying ORGX_API_FALLBACK_URL', async () => {
     vi.useFakeTimers();
     const fetchMock = vi.fn(
