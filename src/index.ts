@@ -14,6 +14,7 @@ import { z } from 'zod';
 
 import OAuthProvider from '@cloudflare/workers-oauth-provider';
 import { createSentryOptions, type SentryWorkerEnv } from './sentryConfig';
+import { recoverDurableObjectTransportRequest } from './durableObjectTransportRecovery';
 
 // Keep OAuthState DO export for wrangler migration compatibility
 import { OAuthState, type OAuthEnv } from './oauth';
@@ -12715,15 +12716,37 @@ const rateLimitedHttpHandler = {
       const response = await httpHandler.fetch(request, env, ctx);
       return withCorsAndHeaders(response, rateLimit.headers);
     } catch (error) {
-      Sentry.captureException(error, {
-        tags: { subsystem: 'mcp_transport', stage: 'http_handler' },
+      const recovery = await recoverDurableObjectTransportRequest(
+        request,
+        error,
+        (retryRequest) => httpHandler.fetch(retryRequest, env, ctx)
+      );
+      if (recovery.response) {
+        console.warn(
+          '[mcp] recovered transient Durable Object transport failure',
+          { method: request.method }
+        );
+        return withCorsAndHeaders(recovery.response, rateLimit.headers);
+      }
+
+      Sentry.captureException(recovery.error, {
+        tags: {
+          subsystem: 'mcp_transport',
+          stage: 'http_handler',
+          durable_object_retry: recovery.retried ? 'failed' : 'not_attempted',
+        },
       });
       console.error('[mcp] HTTP handler failed before structured tool result', {
-        error: error instanceof Error ? error.message : String(error),
+        error:
+          recovery.error instanceof Error
+            ? recovery.error.message
+            : String(recovery.error),
       });
-      const response = await buildMcpTransportExceptionResponse(request, error, {
-        stage: 'mcp_http_handler',
-      });
+      const response = await buildMcpTransportExceptionResponse(
+        request,
+        recovery.error,
+        { stage: 'mcp_http_handler' }
+      );
       return withCorsAndHeaders(response, rateLimit.headers);
     }
   },
