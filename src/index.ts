@@ -246,6 +246,7 @@ import {
   LIFECYCLE_ENTITY_TYPES,
   lifecycleEntityTypeEnum,
   resolveLifecycleActionAlias,
+  resolveStreamToolPayload,
   summarizeChatGPTToolResult,
   summarizePlanSessionResult,
   summarizeStreamToolResult,
@@ -2826,13 +2827,27 @@ export class OrgXMcp extends McpAgent<
                 userId: resolvedUserId,
               }
             : { ...args, user_id: resolvedUserId };
-          response = await callOrgxApiJson(this.env, endpoint, {
-            method: 'POST',
-            body: JSON.stringify(body),
-          });
+          response = await callOrgxApiJson(
+            this.env,
+            endpoint,
+            {
+              method: 'POST',
+              body: JSON.stringify(body),
+            },
+            isLifecycle
+              ? {
+                  userId: resolvedUserId,
+                  userEmail: this.resolveUserEmail(),
+                  orgxUserId: this.resolveOrgxUserId(resolvedUserId),
+                  // Lifecycle transitions are not safe to replay against a
+                  // second release/data plane. Surface primary failure instead.
+                  allowFallback: false,
+                }
+              : undefined
+          );
         }
 
-        const result = (await response.json()) as {
+        const result = (await response.json()) as Record<string, unknown> & {
           ok: boolean;
           data?: Record<string, unknown>;
           error?: string;
@@ -2862,10 +2877,12 @@ export class OrgXMcp extends McpAgent<
           latencyMs,
         });
 
-        const summary = summarizeStreamToolResult(toolId, result.data || {});
+        const payload = resolveStreamToolPayload(toolId, result);
+        const summary = summarizeStreamToolResult(toolId, payload);
         return {
           content: [{ type: 'text', text: summary }],
-        };
+          structuredContent: payload,
+        } as CallToolResult;
       } catch (error) {
         const latencyMs = Date.now() - startTime;
         this.captureMcpToolEvent('mcp_tool_failed', {
