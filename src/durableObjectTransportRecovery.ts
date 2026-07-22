@@ -4,6 +4,12 @@ export const EXPECTED_DURABLE_OBJECT_DEPLOY_RESET =
 const DURABLE_OBJECT_STORAGE_TIMEOUT =
   'Durable Object storage operation exceeded timeout which caused object to be reset.';
 
+const CLOUDFLARE_INTERNAL_ERROR_REFERENCE =
+  /^internal error; reference = [a-z0-9]+$/;
+
+const DURABLE_OBJECT_INTERNAL_STORAGE_RESET =
+  /^Internal error in Durable Object storage caused object to be reset; reference = [a-z0-9]+$/;
+
 const RETRYABLE_METHODS = new Set(['GET', 'HEAD', 'DELETE']);
 
 type DurableObjectError = {
@@ -42,7 +48,9 @@ export function shouldRetryDurableObjectTransportRequest(
   const message = errorMessage(error);
   return (
     message === EXPECTED_DURABLE_OBJECT_DEPLOY_RESET ||
-    message === DURABLE_OBJECT_STORAGE_TIMEOUT
+    message === DURABLE_OBJECT_STORAGE_TIMEOUT ||
+    CLOUDFLARE_INTERNAL_ERROR_REFERENCE.test(message) ||
+    DURABLE_OBJECT_INTERNAL_STORAGE_RESET.test(message)
   );
 }
 
