@@ -339,6 +339,12 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       workspace_id: z.string().optional().describe('Optional workspace UUID to scope the spawned task. Defaults to the MCP session\'s workspace.'),
       agent_type: z.string().optional().describe('Target agent type/domain (e.g. "engineering", "marketing", "design"). REQUIRED for action=guard or action=handoff. Strongly recommended for action=spawn so the work routes to the right specialist.'),
       instructions: z.string().optional().describe('Delegation instructions for the agent. REQUIRED for action=spawn when spawning ad-hoc (without task_id). Used to override the task description for action=handoff.'),
+      expected_artifacts: z
+        .array(z.string())
+        .optional()
+        .describe(
+          'Optional expected final-output labels for action=spawn. Declaring at least one adds an artifact contract to the run; when the agent returns final text without a selectable artifact, OrgX persists that response as a document using the first label.'
+        ),
       model_tier: z.enum(['standard', 'balanced', 'precision', 'local', 'sonnet', 'opus']).optional().describe('Optional model tier override. Omit to let OrgX auto-route from task complexity. Legacy local/sonnet/opus are accepted for older clients.'),
       model: z.string().optional().describe('Optional exact model identifier when the user explicitly selects one. Otherwise OrgX resolves the model from task, tier, provider, policy, and budget.'),
       provider: z.enum(['auto', 'openai', 'anthropic', 'openrouter', 'groq', 'local']).optional().describe('Optional provider preference. Use auto unless the user asks for a specific provider or a cost comparison selects one.'),

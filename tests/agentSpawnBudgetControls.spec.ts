@@ -76,6 +76,20 @@ describe('agent spawn budget and model controls', () => {
     expect(parsed.success).toBe(true);
   });
 
+  it('exposes expected artifact declarations on the v2 orgx_spawn contract', () => {
+    const tool = findContractTool('orgx_spawn');
+    const schema = z.object(tool.inputSchema);
+
+    const parsed = schema.safeParse({
+      action: 'spawn',
+      task_id: 'task-1',
+      expected_artifacts: ['Post-run retro', 'Accounting verification'],
+    });
+
+    expect(parsed.success).toBe(true);
+    expect(tool.inputSchema.expected_artifacts).toBeDefined();
+  });
+
   it('accepts estimate-only routing checks on the v2 orgx_spawn contract', () => {
     const tool = findContractTool('orgx_spawn');
     const schema = z.object(tool.inputSchema);

@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-20T22:50:47.409Z",
-  "sourceHash": "ef7db8e313fd4075",
+  "generatedAt": "2026-07-22T00:01:48.765Z",
+  "sourceHash": "7c273da92c8a9a2d",
   "version": "1.0.0",
   "totalTools": 81,
   "categories": [
@@ -3411,6 +3411,13 @@
           "instructions": {
             "type": "string",
             "description": "Delegation instructions for the agent. REQUIRED for action=spawn when spawning ad-hoc (without task_id). Used to override the task description for action=handoff."
+          },
+          "expected_artifacts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional expected final-output labels for action=spawn. Declaring at least one adds an artifact contract to the run; when the agent returns final text without a selectable artifact, OrgX persists that response as a document using the first label."
           },
           "model_tier": {
             "type": "string",
