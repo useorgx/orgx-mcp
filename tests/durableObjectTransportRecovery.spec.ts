@@ -37,6 +37,8 @@ describe('Durable Object transport recovery', () => {
   it.each([
     EXPECTED_DURABLE_OBJECT_DEPLOY_RESET,
     'Durable Object storage operation exceeded timeout which caused object to be reset.',
+    'internal error; reference = 8nh1jobu9hnkcgi2v22uqe58',
+    'Internal error in Durable Object storage caused object to be reset; reference = daa1kaheu5iq2ojl2fgquadg',
   ])('retries the exact Cloudflare transient message: %s', (message) => {
     const request = new Request('https://mcp.useorgx.com/mcp', {
       method: 'GET',
@@ -45,6 +47,22 @@ describe('Durable Object transport recovery', () => {
     expect(
       shouldRetryDurableObjectTransportRequest(request, new Error(message)),
     ).toBe(true);
+  });
+
+  it.each([
+    'internal error',
+    'internal error; reference =',
+    'internal error; reference = abc with trailing context',
+    'Internal error in Durable Object storage caused object to be reset.',
+    'application internal error; reference = abc123',
+  ])('does not retry a non-matching application error: %s', (message) => {
+    const request = new Request('https://mcp.useorgx.com/mcp', {
+      method: 'GET',
+    });
+
+    expect(
+      shouldRetryDurableObjectTransportRequest(request, new Error(message)),
+    ).toBe(false);
   });
 
   it('does not retry overloaded Durable Objects', () => {
