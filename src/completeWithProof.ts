@@ -56,20 +56,32 @@ const EVAL_STATES = new Set([
 ]);
 
 /**
- * NOTE ON PLACEMENT — this is preflight, not the security boundary.
+ * NOTE ON PLACEMENT — this is preflight, not the security boundary, and the
+ * boundary it defers to is INCOMPLETE today.
  *
- * Authority is enforced in the private monorepo at the write boundary. It has
- * to be: this worker is a CLIENT of that API (it calls /api/client/artifacts,
- * /api/entities/verify, /api/entities/:type/:id/complete), so a caller with an
- * API key reaches those endpoints without passing through here at all.
+ * This worker is a CLIENT of the OrgX API (it calls /api/client/artifacts,
+ * /api/entities/verify, /api/entities/:type/:id/complete), so a caller holding
+ * an API key reaches those endpoints without passing through this file at all.
+ * Nothing here can be relied on for authorization.
  *
- * What this file does is refuse to CONSTRUCT a claim the caller did not make,
- * and refuse to pass through a value the contract does not define. That is
- * useful as defense in depth and as an honest-client guarantee. It is NOT
- * security, and must not be relied on as such — notably `created_by_type` is
- * caller-supplied, so any check keyed on it can be defeated by sending a
- * different string. Publishing these rules costs nothing; authorization has to
- * hold when its rules are known.
+ * What the private monorepo enforces TODAY is narrower than "authority":
+ * `updateArtifactReview` refuses to let an automated reviewer write `approved`
+ * or `rejected`, routing machines to `eval_passed` instead. That is one
+ * chokepoint, not a complete model. Known gaps at the time of writing:
+ *   - `orgx_act.force` skips completion verification and proof hard blocks, and
+ *     no policy governs who may set it;
+ *   - `created_by_type` is CALLER-SUPPLIED, so any check keyed on it is
+ *     defeated by sending a different string;
+ *   - other private write paths have not been audited for the same claims.
+ *
+ * Stating this accurately matters more than it looks: a comment asserting the
+ * boundary is covered is the kind of thing a future reader trusts instead of
+ * checking, and this file's entire subject is claims made without evidence.
+ *
+ * So this module's job is deliberately small — never CONSTRUCT a claim the
+ * caller did not make, and never pass through a value the contract does not
+ * define. Publishing these rules costs nothing; authorization has to hold when
+ * its rules are known.
  */
 function contractValue(
   claimed: string | null,
