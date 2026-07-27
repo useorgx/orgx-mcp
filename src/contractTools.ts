@@ -429,6 +429,13 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       model_tier: z.enum(['standard', 'balanced', 'precision', 'local', 'sonnet', 'opus']).optional().describe('Model tier used for the run being receipted. For validation rungs before calibrated expansion, use standard.'),
       budget_mode: z.enum(['cheapest_valid', 'balanced', 'highest_quality']).optional().describe('Budget posture used for the run being receipted. For validation rungs before calibrated expansion, use cheapest_valid.'),
       max_cost_usd: z.number().nonnegative().optional().describe('Per-task or canary spend cap used during the validation run, when known.'),
+      // Without these two, a receipt could only ever say "completed". The API
+      // write path defaulted status to 'completed' on every insert and stamped
+      // started_at = completed_at = now(), so failure was unrepresentable and
+      // every receipt claimed a zero-duration run. Fixing the API alone left
+      // the fix unreachable — this tool is how agents actually submit.
+      status: z.enum(['in_progress', 'completed', 'failed', 'cancelled']).optional().describe('Terminal state of the work being receipted. Pass failed or cancelled when that is what happened — omitting it records completed, and a receipt that can only say "completed" makes every reliability number a survivorship filter.'),
+      started_at: z.string().optional().describe('ISO-8601 timestamp of when the work actually started. Omit if unknown rather than guessing: the record leaves duration unknown instead of claiming zero. Must not be in the future.'),
       idempotency_key: z.string().optional().describe('Strongly recommended client-supplied idempotency key. Submitting the same key twice will not create a duplicate receipt.'),
       session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
     },

@@ -32,6 +32,21 @@ function readString(...values: unknown[]): string | null {
   );
 }
 
+/**
+ * NOTE ON PLACEMENT — authority is deliberately NOT enforced here.
+ *
+ * This worker is a PUBLIC repository and a CLIENT of the OrgX API: the flow
+ * below calls /api/client/artifacts, /api/entities/verify and
+ * /api/entities/:type/:id/complete. Any rule enforced only in this file is
+ * advisory — a caller with an API key can hit those endpoints directly and skip
+ * it — and stating the rule here would publish the bypass.
+ *
+ * So this module's job is narrow: never CONSTRUCT a claim the caller did not
+ * make. Deciding whether an asserted claim is PERMITTED belongs to the private
+ * monorepo at the write boundary, where the trust boundary actually is.
+ *
+ * "Do not invent a claim" is not a secret. "Who may approve what" is.
+ */
 export interface CompletionProofMetadataInput {
   metadata?: RecordLike | null;
   artifact?: RecordLike | null;
@@ -135,18 +150,22 @@ export function buildCompletionProofMetadata(
     //
     // in_review = evidence attached, awaiting a ruling.
     // missing   = no eval ran. ("pending" would imply one is queued.)
+    //
+    // Whether a caller is PERMITTED to assert "approved" or "passed" is decided
+    // in the private monorepo at the write boundary, not here — see the
+    // placement note above.
     proof_state:
       readString(metadata.proof_state, existingProof.state) ?? "in_review",
     quality_eval_state:
       readString(metadata.quality_eval_state, existingProofEval.status) ??
       "missing",
-    // NOTE: outcome_event_status is consumed by a PRESENCE check
-    // (lib/server/proof/status.ts IMPACT_SIGNAL_PATHS via hasNonEmptyValue), so
-    // any non-empty string here counts as impact evidence. Making the word
-    // honest does not make the signal honest — that requires the impact check to
-    // stop treating a self-asserted string as evidence, which is Phase 3's
-    // authority boundary, not this change. Left explicit so the next reader does
-    // not mistake this for solved.
+    // Consumed by a PRESENCE check (lib/server/proof/status.ts
+    // IMPACT_SIGNAL_PATHS via hasNonEmptyValue), so ANY non-empty string here
+    // counts as impact evidence. The producer is therefore barred from writing
+    // the privileged value, but note this only narrows the hole: the presence
+    // check still treats "completion_claimed" as impact. Closing that properly
+    // means status.ts must stop reading a self-asserted string as evidence,
+    // which is a monorepo change and is NOT done here.
     outcome_event_status:
       readString(metadata.outcome_event_status) ?? "completion_claimed",
     source_tool:

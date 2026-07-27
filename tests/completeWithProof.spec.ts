@@ -47,6 +47,10 @@ describe("buildCompletionProofMetadata", () => {
   it("passes a caller's real assertions through untouched", () => {
     // The fix must not punish honest callers. Someone who genuinely ran schema
     // validation and holds an approval still gets exactly what they asserted.
+    //
+    // Whether they were ALLOWED to assert it is not decided here — this worker
+    // is public and is a client of the API. Permission is enforced in the
+    // private monorepo at the write boundary.
     const metadata = buildCompletionProofMetadata({
       entityType: "task",
       entityId: "task-1",
