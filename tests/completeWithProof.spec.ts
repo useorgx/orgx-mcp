@@ -28,8 +28,8 @@ describe("buildCompletionProofMetadata", () => {
       schema_validated: false,
       schema_validated_artifact: false,
       completion_state: "completed",
-      proof_state: "pending",
-      quality_eval_state: "not_run",
+      proof_state: "in_review",
+      quality_eval_state: "missing",
       outcome_event_status: "completion_claimed",
       source_tool: "entity_action.complete_with_proof",
       source_client: "codex",
@@ -89,6 +89,55 @@ describe("buildCompletionProofMetadata", () => {
         `${field} must not default to ${String(forbidden)}`
       ).not.toBe(forbidden);
     }
+  });
+
+  it("keeps the nested proof packet consistent with the top level", () => {
+    // proofPacketMigrationPlan reads proof.* as canonical with the top level
+    // only as fallback, so a nested packet that still says "completion_verified"
+    // silently wins over an honest top level. An earlier pass fixed only the top
+    // level and shipped exactly that contradiction.
+    const metadata = buildCompletionProofMetadata({
+      entityType: "task",
+      entityId: "task-1",
+      externalUrl: "https://example.com/evidence",
+      createdByType: "agent",
+    }) as Record<string, any>;
+
+    expect(metadata.proof.state).toBe(metadata.proof_state);
+    expect(metadata.proof.eval.status).toBe(metadata.quality_eval_state);
+    expect(metadata.proof.outcome_status).toBe(metadata.outcome_event_status);
+    expect(metadata.proof.next_action).toBe(metadata.next_action);
+
+    expect(metadata.proof.state).not.toBe("approved");
+    expect(metadata.proof.eval.status).not.toBe("passed");
+    expect(metadata.proof.outcome_status).not.toBe("completion_verified");
+  });
+
+  it("only emits values the canonical proof-packet contract allows", () => {
+    // lib/server/proof/proofPacketContract.ts defines these enums. Inventing a
+    // value that reads as honest but is not in the contract is the same class of
+    // error as inventing a claim about it — and validateProofPacketV0 checks
+    // presence, not enum membership, so nothing downstream would catch it.
+    const PROOF_STATES = [
+      "draft",
+      "in_review",
+      "approved",
+      "changes_requested",
+      "superseded",
+    ];
+    const EVAL_STATES = ["missing", "pending", "passed", "failed", "skipped"];
+
+    const metadata = buildCompletionProofMetadata({
+      entityType: "task",
+      entityId: "task-1",
+      externalUrl: "https://example.com/evidence",
+      createdByType: "agent",
+    }) as Record<string, any>;
+
+    expect(PROOF_STATES).toContain(metadata.proof_state);
+    expect(EVAL_STATES).toContain(metadata.quality_eval_state);
+    expect(PROOF_STATES).toContain(metadata.proof.state);
+    expect(EVAL_STATES).toContain(metadata.proof.eval.status);
   });
 
   it("preserves caller-authored proof state and next action", () => {

@@ -125,12 +125,28 @@ export function buildCompletionProofMetadata(
     schema_validated_artifact:
       input.schemaValidatedArtifact ?? input.schemaValidated ?? false,
     completion_state: "completed",
-    // "the executor says it is done", not "someone agreed that it is done".
+    // Values come from the canonical proof-packet contract in the monorepo
+    // (lib/server/proof/proofPacketContract.ts), NOT invented here:
+    //   proof_state       draft | in_review | approved | changes_requested | superseded
+    //   quality_eval_state missing | pending | passed | failed | skipped
+    // An earlier pass used "pending"/"not_run", which read as honest but are not
+    // in either enum — inventing vocabulary to describe a contract is the same
+    // error as inventing a claim about it.
+    //
+    // in_review = evidence attached, awaiting a ruling.
+    // missing   = no eval ran. ("pending" would imply one is queued.)
     proof_state:
-      readString(metadata.proof_state, existingProof.state) ?? "pending",
+      readString(metadata.proof_state, existingProof.state) ?? "in_review",
     quality_eval_state:
       readString(metadata.quality_eval_state, existingProofEval.status) ??
-      "not_run",
+      "missing",
+    // NOTE: outcome_event_status is consumed by a PRESENCE check
+    // (lib/server/proof/status.ts IMPACT_SIGNAL_PATHS via hasNonEmptyValue), so
+    // any non-empty string here counts as impact evidence. Making the word
+    // honest does not make the signal honest — that requires the impact check to
+    // stop treating a self-asserted string as evidence, which is Phase 3's
+    // authority boundary, not this change. Left explicit so the next reader does
+    // not mistake this for solved.
     outcome_event_status:
       readString(metadata.outcome_event_status) ?? "completion_claimed",
     source_tool:
@@ -158,23 +174,32 @@ export function buildCompletionProofMetadata(
     entity_type: input.entityType,
     entity_id: input.entityId,
     ...(input.entityType === "task" ? { task_id: input.entityId } : {}),
+    // The nested packet MUST agree with the top-level fields above. A previous
+    // pass fixed only the top level and left these defaulting to
+    // "completion_verified" / "monitor_adoption_and_impact", producing a record
+    // that contradicted itself — and the nested values win, because
+    // lib/server/proof/proofPacketMigrationPlan.ts reads proof.* as the
+    // canonical source with the top level only as fallback. A half-fixed packet
+    // is worse than an unfixed one: it looks corrected while still asserting
+    // verification.
     proof: {
       ...existingProof,
-      state: readString(metadata.proof_state, existingProof.state) ?? "pending",
+      state:
+        readString(metadata.proof_state, existingProof.state) ?? "in_review",
       eval: {
         ...existingProofEval,
         status:
           readString(metadata.quality_eval_state, existingProofEval.status) ??
-          "not_run",
+          "missing",
       },
       outcome_status:
         readString(
           metadata.outcome_event_status,
           existingProof.outcome_status,
-        ) ?? "completion_verified",
+        ) ?? "completion_claimed",
       next_action:
         readString(metadata.next_action, existingProof.next_action) ??
-        "monitor_adoption_and_impact",
+        "verify_before_claiming_outcome",
     },
   };
 }
