@@ -3735,7 +3735,12 @@ export class OrgXMcp extends McpAgent<
               args.preview_markdown,
               artifactInput.preview_markdown
             ) ?? undefined,
-          status: (args.status ?? artifactInput.status ?? 'approved') as any,
+          // Attaching completion proof is not approving it. Defaulting to
+          // 'approved' meant every agent-attached artifact entered the record
+          // pre-approved by nobody, and the proof widget then rendered it as
+          // approved work. 'in_review' is the honest state: evidence attached,
+          // awaiting a ruling. A caller with real approval still passes it.
+          status: (args.status ?? artifactInput.status ?? 'in_review') as any,
           metadata: proofMetadata,
           created_by_type:
             (args.created_by_type ??

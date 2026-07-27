@@ -109,17 +109,30 @@ export function buildCompletionProofMetadata(
       readString(input.atomicUnitType, artifact.atomic_unit_type) ??
       "completion_proof",
     ...(artifactReference ? { artifact_hash: artifactReference } : {}),
-    schema_validated: input.schemaValidated ?? true,
+    // Absence of evidence is not evidence. Every default below used to assert
+    // something the caller never claimed: an agent calling complete_with_proof
+    // with no flags received schema_validated:true, proof_state:"approved",
+    // quality_eval_state:"passed" and outcome_event_status:"completion_verified"
+    // — six unearned assertions manufactured by `??`.
+    //
+    // The whole product claim is that OrgX can tell you what was actually
+    // verified and accepted. A default that fabricates approval is not a
+    // cosmetic bug; it is the product asserting the one thing it sells.
+    //
+    // A caller that HAS validated or HAS been approved still passes those
+    // values through untouched. Only silence changed meaning.
+    schema_validated: input.schemaValidated ?? false,
     schema_validated_artifact:
-      input.schemaValidatedArtifact ?? input.schemaValidated ?? true,
+      input.schemaValidatedArtifact ?? input.schemaValidated ?? false,
     completion_state: "completed",
+    // "the executor says it is done", not "someone agreed that it is done".
     proof_state:
-      readString(metadata.proof_state, existingProof.state) ?? "approved",
+      readString(metadata.proof_state, existingProof.state) ?? "pending",
     quality_eval_state:
       readString(metadata.quality_eval_state, existingProofEval.status) ??
-      "passed",
+      "not_run",
     outcome_event_status:
-      readString(metadata.outcome_event_status) ?? "completion_verified",
+      readString(metadata.outcome_event_status) ?? "completion_claimed",
     source_tool:
       readString(metadata.source_tool) ?? "entity_action.complete_with_proof",
     source_client:
@@ -133,8 +146,11 @@ export function buildCompletionProofMetadata(
     ...(createdById && !readString(metadata.created_by_id)
       ? { created_by_id: createdById }
       : {}),
+    // "monitor adoption and impact" told the caller to go watch the outcome of
+    // work nobody had verified yet. The honest next step after a claim is the
+    // verification that has not happened.
     next_action:
-      readString(metadata.next_action) ?? "monitor_adoption_and_impact",
+      readString(metadata.next_action) ?? "verify_before_claiming_outcome",
     ...(typeof input.qualityScore === "number"
       ? { quality_score: input.qualityScore }
       : {}),
@@ -144,13 +160,12 @@ export function buildCompletionProofMetadata(
     ...(input.entityType === "task" ? { task_id: input.entityId } : {}),
     proof: {
       ...existingProof,
-      state:
-        readString(metadata.proof_state, existingProof.state) ?? "approved",
+      state: readString(metadata.proof_state, existingProof.state) ?? "pending",
       eval: {
         ...existingProofEval,
         status:
           readString(metadata.quality_eval_state, existingProofEval.status) ??
-          "passed",
+          "not_run",
       },
       outcome_status:
         readString(

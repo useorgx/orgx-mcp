@@ -6,7 +6,7 @@ import {
 } from "../src/completeWithProof";
 
 describe("buildCompletionProofMetadata", () => {
-  it("fills the verifier packet so proof-backed completion does not need force", () => {
+  it("claims nothing the caller did not assert", () => {
     const metadata = buildCompletionProofMetadata({
       entityType: "task",
       entityId: "task-1",
@@ -22,12 +22,15 @@ describe("buildCompletionProofMetadata", () => {
     expect(metadata).toMatchObject({
       atomic_unit_type: "completion_proof",
       artifact_hash: "https://github.com/hope/orgx/pull/42",
-      schema_validated: true,
-      schema_validated_artifact: true,
+      // The caller passed evidence and a score, but asserted NOTHING about
+      // validation, approval, evals or verification. None of those may be
+      // manufactured on its behalf.
+      schema_validated: false,
+      schema_validated_artifact: false,
       completion_state: "completed",
-      proof_state: "approved",
-      quality_eval_state: "passed",
-      outcome_event_status: "completion_verified",
+      proof_state: "pending",
+      quality_eval_state: "not_run",
+      outcome_event_status: "completion_claimed",
       source_tool: "entity_action.complete_with_proof",
       source_client: "codex",
       owner_source: "entity_action.complete_with_proof",
@@ -35,10 +38,57 @@ describe("buildCompletionProofMetadata", () => {
       run_ref: "run-123",
       created_by_type: "agent",
       created_by_id: "engineering-agent",
-      next_action: "monitor_adoption_and_impact",
+      next_action: "verify_before_claiming_outcome",
       quality_score: 4.7,
       task_id: "task-1",
     });
+  });
+
+  it("passes a caller's real assertions through untouched", () => {
+    // The fix must not punish honest callers. Someone who genuinely ran schema
+    // validation and holds an approval still gets exactly what they asserted.
+    const metadata = buildCompletionProofMetadata({
+      entityType: "task",
+      entityId: "task-1",
+      externalUrl: "https://github.com/hope/orgx/pull/42",
+      schemaValidated: true,
+      createdByType: "agent",
+      metadata: {
+        proof_state: "approved",
+        quality_eval_state: "passed",
+        outcome_event_status: "completion_verified",
+      },
+    });
+
+    expect(metadata).toMatchObject({
+      schema_validated: true,
+      schema_validated_artifact: true,
+      proof_state: "approved",
+      quality_eval_state: "passed",
+      outcome_event_status: "completion_verified",
+    });
+  });
+
+  it("never upgrades a claim when the caller is silent", () => {
+    const metadata = buildCompletionProofMetadata({
+      entityType: "task",
+      entityId: "task-1",
+      externalUrl: "https://example.com/evidence",
+      createdByType: "agent",
+    });
+
+    for (const [field, forbidden] of [
+      ["schema_validated", true],
+      ["schema_validated_artifact", true],
+      ["proof_state", "approved"],
+      ["quality_eval_state", "passed"],
+      ["outcome_event_status", "completion_verified"],
+    ] as const) {
+      expect(
+        (metadata as Record<string, unknown>)[field],
+        `${field} must not default to ${String(forbidden)}`
+      ).not.toBe(forbidden);
+    }
   });
 
   it("preserves caller-authored proof state and next action", () => {
