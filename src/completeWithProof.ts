@@ -32,6 +32,66 @@ function readString(...values: unknown[]): string | null {
   );
 }
 
+/**
+ * Canonical vocabularies from lib/server/proof/proofPacketContract.ts.
+ *
+ * These are validated at RUNTIME, not just typed. TypeScript casts do not
+ * protect an API boundary: a probe with proof_state:"bogus" previously emitted
+ * "bogus" verbatim into the packet at both levels, because nothing checked
+ * membership on the way through.
+ */
+const PROOF_STATES = new Set([
+  "draft",
+  "in_review",
+  "approved",
+  "changes_requested",
+  "superseded",
+]);
+const EVAL_STATES = new Set([
+  "missing",
+  "pending",
+  "passed",
+  "failed",
+  "skipped",
+]);
+
+/**
+ * NOTE ON PLACEMENT — this is preflight, not the security boundary, and the
+ * boundary it defers to is INCOMPLETE today.
+ *
+ * This worker is a CLIENT of the OrgX API (it calls /api/client/artifacts,
+ * /api/entities/verify, /api/entities/:type/:id/complete), so a caller holding
+ * an API key reaches those endpoints without passing through this file at all.
+ * Nothing here can be relied on for authorization.
+ *
+ * What the private monorepo enforces TODAY is narrower than "authority":
+ * `updateArtifactReview` refuses to let an automated reviewer write `approved`
+ * or `rejected`, routing machines to `eval_passed` instead. That is one
+ * chokepoint, not a complete model. Known gaps at the time of writing:
+ *   - `orgx_act.force` skips completion verification and proof hard blocks, and
+ *     no policy governs who may set it;
+ *   - `created_by_type` is CALLER-SUPPLIED, so any check keyed on it is
+ *     defeated by sending a different string;
+ *   - other private write paths have not been audited for the same claims.
+ *
+ * Stating this accurately matters more than it looks: a comment asserting the
+ * boundary is covered is the kind of thing a future reader trusts instead of
+ * checking, and this file's entire subject is claims made without evidence.
+ *
+ * So this module's job is deliberately small — never CONSTRUCT a claim the
+ * caller did not make, and never pass through a value the contract does not
+ * define. Publishing these rules costs nothing; authorization has to hold when
+ * its rules are known.
+ */
+function contractValue(
+  claimed: string | null,
+  allowed: Set<string>,
+  fallback: string,
+): string {
+  if (!claimed) return fallback;
+  return allowed.has(claimed) ? claimed : fallback;
+}
+
 export interface CompletionProofMetadataInput {
   metadata?: RecordLike | null;
   artifact?: RecordLike | null;
@@ -109,17 +169,61 @@ export function buildCompletionProofMetadata(
       readString(input.atomicUnitType, artifact.atomic_unit_type) ??
       "completion_proof",
     ...(artifactReference ? { artifact_hash: artifactReference } : {}),
-    schema_validated: input.schemaValidated ?? true,
+    // Absence of evidence is not evidence. Every default below used to assert
+    // something the caller never claimed: an agent calling complete_with_proof
+    // with no flags received schema_validated:true, proof_state:"approved",
+    // quality_eval_state:"passed" and outcome_event_status:"completion_verified"
+    // — six unearned assertions manufactured by `??`.
+    //
+    // The whole product claim is that OrgX can tell you what was actually
+    // verified and accepted. A default that fabricates approval is not a
+    // cosmetic bug; it is the product asserting the one thing it sells.
+    //
+    // A caller that HAS validated or HAS been approved still passes those
+    // values through untouched. Only silence changed meaning.
+    schema_validated: input.schemaValidated ?? false,
     schema_validated_artifact:
-      input.schemaValidatedArtifact ?? input.schemaValidated ?? true,
+      input.schemaValidatedArtifact ?? input.schemaValidated ?? false,
     completion_state: "completed",
-    proof_state:
-      readString(metadata.proof_state, existingProof.state) ?? "approved",
-    quality_eval_state:
-      readString(metadata.quality_eval_state, existingProofEval.status) ??
-      "passed",
+    // Values come from the canonical proof-packet contract in the monorepo
+    // (lib/server/proof/proofPacketContract.ts), NOT invented here:
+    //   proof_state       draft | in_review | approved | changes_requested | superseded
+    //   quality_eval_state missing | pending | passed | failed | skipped
+    // An earlier pass used "pending"/"not_run", which read as honest but are not
+    // in either enum — inventing vocabulary to describe a contract is the same
+    // error as inventing a claim about it.
+    //
+    // in_review = evidence attached, awaiting a ruling.
+    // missing   = no eval ran. ("pending" would imply one is queued.)
+    //
+    // Whether a caller is PERMITTED to assert "approved" or "passed" is decided
+    // in the private monorepo at the write boundary, not here — see the
+    // placement note above.
+    proof_state: contractValue(
+      readString(metadata.proof_state, existingProof.state),
+      PROOF_STATES,
+      "in_review",
+    ),
+    quality_eval_state: contractValue(
+      readString(metadata.quality_eval_state, existingProofEval.status),
+      EVAL_STATES,
+      "missing",
+    ),
+    // Consumed by a PRESENCE check (lib/server/proof/status.ts
+    // IMPACT_SIGNAL_PATHS via hasNonEmptyValue), so ANY non-empty string here
+    // counts as impact evidence. The producer is therefore barred from writing
+    // the privileged value, but note this only narrows the hole: the presence
+    // check still treats "completion_claimed" as impact. Closing that properly
+    // means status.ts must stop reading a self-asserted string as evidence,
+    // which is a monorepo change and is NOT done here.
+    // Reads the nested value too. Previously the top level ignored
+    // metadata.proof.outcome_status while the nested packet accepted it, so a
+    // nested-only caller produced a packet whose two halves disagreed.
     outcome_event_status:
-      readString(metadata.outcome_event_status) ?? "completion_verified",
+      readString(
+        metadata.outcome_event_status,
+        existingProof.outcome_status,
+      ) ?? "completion_claimed",
     source_tool:
       readString(metadata.source_tool) ?? "entity_action.complete_with_proof",
     source_client:
@@ -133,8 +237,12 @@ export function buildCompletionProofMetadata(
     ...(createdById && !readString(metadata.created_by_id)
       ? { created_by_id: createdById }
       : {}),
+    // "monitor adoption and impact" told the caller to go watch the outcome of
+    // work nobody had verified yet. The honest next step after a claim is the
+    // verification that has not happened.
     next_action:
-      readString(metadata.next_action) ?? "monitor_adoption_and_impact",
+      readString(metadata.next_action, existingProof.next_action) ??
+      "verify_before_claiming_outcome",
     ...(typeof input.qualityScore === "number"
       ? { quality_score: input.qualityScore }
       : {}),
@@ -142,24 +250,37 @@ export function buildCompletionProofMetadata(
     entity_type: input.entityType,
     entity_id: input.entityId,
     ...(input.entityType === "task" ? { task_id: input.entityId } : {}),
+    // The nested packet MUST agree with the top-level fields above. A previous
+    // pass fixed only the top level and left these defaulting to
+    // "completion_verified" / "monitor_adoption_and_impact", producing a record
+    // that contradicted itself — and the nested values win, because
+    // lib/server/proof/proofPacketMigrationPlan.ts reads proof.* as the
+    // canonical source with the top level only as fallback. A half-fixed packet
+    // is worse than an unfixed one: it looks corrected while still asserting
+    // verification.
     proof: {
       ...existingProof,
-      state:
-        readString(metadata.proof_state, existingProof.state) ?? "approved",
+      state: contractValue(
+        readString(metadata.proof_state, existingProof.state),
+        PROOF_STATES,
+        "in_review",
+      ),
       eval: {
         ...existingProofEval,
-        status:
-          readString(metadata.quality_eval_state, existingProofEval.status) ??
-          "passed",
+        status: contractValue(
+          readString(metadata.quality_eval_state, existingProofEval.status),
+          EVAL_STATES,
+          "missing",
+        ),
       },
       outcome_status:
         readString(
           metadata.outcome_event_status,
           existingProof.outcome_status,
-        ) ?? "completion_verified",
+        ) ?? "completion_claimed",
       next_action:
         readString(metadata.next_action, existingProof.next_action) ??
-        "monitor_adoption_and_impact",
+        "verify_before_claiming_outcome",
     },
   };
 }
