@@ -163,6 +163,41 @@ describe("buildCompletionProofMetadata", () => {
       source_tool: "github.pull_request",
     });
   });
+  it("refuses a value the contract does not define, at both levels", () => {
+    // TypeScript casts do not protect an API boundary. A probe with
+    // proof_state:"bogus" previously emitted "bogus" verbatim.
+    const metadata = buildCompletionProofMetadata({
+      entityType: "task",
+      entityId: "task-1",
+      externalUrl: "https://example.com/e",
+      createdByType: "agent",
+      metadata: { proof_state: "bogus", quality_eval_state: "not_run" },
+    }) as Record<string, any>;
+
+    expect(metadata.proof_state).toBe("in_review");
+    expect(metadata.quality_eval_state).toBe("missing");
+    expect(metadata.proof.state).toBe("in_review");
+    expect(metadata.proof.eval.status).toBe("missing");
+  });
+
+  it("keeps top level and nested consistent for a nested-only caller", () => {
+    // The top level used to ignore metadata.proof.*, so a nested-only caller
+    // produced a packet whose two halves disagreed.
+    const metadata = buildCompletionProofMetadata({
+      entityType: "task",
+      entityId: "task-1",
+      externalUrl: "https://example.com/e",
+      createdByType: "agent",
+      metadata: {
+        proof: { outcome_status: "merged", next_action: "watch rollout" },
+      },
+    }) as Record<string, any>;
+
+    expect(metadata.outcome_event_status).toBe("merged");
+    expect(metadata.proof.outcome_status).toBe("merged");
+    expect(metadata.next_action).toBe("watch rollout");
+    expect(metadata.proof.next_action).toBe("watch rollout");
+  });
 });
 
 describe("executeCompleteWithProofFlow", () => {

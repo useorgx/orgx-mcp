@@ -33,20 +33,53 @@ function readString(...values: unknown[]): string | null {
 }
 
 /**
- * NOTE ON PLACEMENT — authority is deliberately NOT enforced here.
+ * Canonical vocabularies from lib/server/proof/proofPacketContract.ts.
  *
- * This worker is a PUBLIC repository and a CLIENT of the OrgX API: the flow
- * below calls /api/client/artifacts, /api/entities/verify and
- * /api/entities/:type/:id/complete. Any rule enforced only in this file is
- * advisory — a caller with an API key can hit those endpoints directly and skip
- * it — and stating the rule here would publish the bypass.
- *
- * So this module's job is narrow: never CONSTRUCT a claim the caller did not
- * make. Deciding whether an asserted claim is PERMITTED belongs to the private
- * monorepo at the write boundary, where the trust boundary actually is.
- *
- * "Do not invent a claim" is not a secret. "Who may approve what" is.
+ * These are validated at RUNTIME, not just typed. TypeScript casts do not
+ * protect an API boundary: a probe with proof_state:"bogus" previously emitted
+ * "bogus" verbatim into the packet at both levels, because nothing checked
+ * membership on the way through.
  */
+const PROOF_STATES = new Set([
+  "draft",
+  "in_review",
+  "approved",
+  "changes_requested",
+  "superseded",
+]);
+const EVAL_STATES = new Set([
+  "missing",
+  "pending",
+  "passed",
+  "failed",
+  "skipped",
+]);
+
+/**
+ * NOTE ON PLACEMENT — this is preflight, not the security boundary.
+ *
+ * Authority is enforced in the private monorepo at the write boundary. It has
+ * to be: this worker is a CLIENT of that API (it calls /api/client/artifacts,
+ * /api/entities/verify, /api/entities/:type/:id/complete), so a caller with an
+ * API key reaches those endpoints without passing through here at all.
+ *
+ * What this file does is refuse to CONSTRUCT a claim the caller did not make,
+ * and refuse to pass through a value the contract does not define. That is
+ * useful as defense in depth and as an honest-client guarantee. It is NOT
+ * security, and must not be relied on as such — notably `created_by_type` is
+ * caller-supplied, so any check keyed on it can be defeated by sending a
+ * different string. Publishing these rules costs nothing; authorization has to
+ * hold when its rules are known.
+ */
+function contractValue(
+  claimed: string | null,
+  allowed: Set<string>,
+  fallback: string,
+): string {
+  if (!claimed) return fallback;
+  return allowed.has(claimed) ? claimed : fallback;
+}
+
 export interface CompletionProofMetadataInput {
   metadata?: RecordLike | null;
   artifact?: RecordLike | null;
@@ -154,11 +187,16 @@ export function buildCompletionProofMetadata(
     // Whether a caller is PERMITTED to assert "approved" or "passed" is decided
     // in the private monorepo at the write boundary, not here — see the
     // placement note above.
-    proof_state:
-      readString(metadata.proof_state, existingProof.state) ?? "in_review",
-    quality_eval_state:
-      readString(metadata.quality_eval_state, existingProofEval.status) ??
+    proof_state: contractValue(
+      readString(metadata.proof_state, existingProof.state),
+      PROOF_STATES,
+      "in_review",
+    ),
+    quality_eval_state: contractValue(
+      readString(metadata.quality_eval_state, existingProofEval.status),
+      EVAL_STATES,
       "missing",
+    ),
     // Consumed by a PRESENCE check (lib/server/proof/status.ts
     // IMPACT_SIGNAL_PATHS via hasNonEmptyValue), so ANY non-empty string here
     // counts as impact evidence. The producer is therefore barred from writing
@@ -166,8 +204,14 @@ export function buildCompletionProofMetadata(
     // check still treats "completion_claimed" as impact. Closing that properly
     // means status.ts must stop reading a self-asserted string as evidence,
     // which is a monorepo change and is NOT done here.
+    // Reads the nested value too. Previously the top level ignored
+    // metadata.proof.outcome_status while the nested packet accepted it, so a
+    // nested-only caller produced a packet whose two halves disagreed.
     outcome_event_status:
-      readString(metadata.outcome_event_status) ?? "completion_claimed",
+      readString(
+        metadata.outcome_event_status,
+        existingProof.outcome_status,
+      ) ?? "completion_claimed",
     source_tool:
       readString(metadata.source_tool) ?? "entity_action.complete_with_proof",
     source_client:
@@ -185,7 +229,8 @@ export function buildCompletionProofMetadata(
     // work nobody had verified yet. The honest next step after a claim is the
     // verification that has not happened.
     next_action:
-      readString(metadata.next_action) ?? "verify_before_claiming_outcome",
+      readString(metadata.next_action, existingProof.next_action) ??
+      "verify_before_claiming_outcome",
     ...(typeof input.qualityScore === "number"
       ? { quality_score: input.qualityScore }
       : {}),
@@ -203,13 +248,18 @@ export function buildCompletionProofMetadata(
     // verification.
     proof: {
       ...existingProof,
-      state:
-        readString(metadata.proof_state, existingProof.state) ?? "in_review",
+      state: contractValue(
+        readString(metadata.proof_state, existingProof.state),
+        PROOF_STATES,
+        "in_review",
+      ),
       eval: {
         ...existingProofEval,
-        status:
-          readString(metadata.quality_eval_state, existingProofEval.status) ??
+        status: contractValue(
+          readString(metadata.quality_eval_state, existingProofEval.status),
+          EVAL_STATES,
           "missing",
+        ),
       },
       outcome_status:
         readString(
