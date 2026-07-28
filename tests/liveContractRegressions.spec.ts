@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import { CONTRACT_TOOL_DEFINITIONS } from '../src/contractTools';
+import { mapMorningBriefApiError } from '../src/morningBriefError';
+import { OrgXApiError } from '../src/orgxApi';
 import {
   CHATGPT_TOOL_DEFINITIONS,
   SECURITY_SCHEMES,
@@ -113,8 +115,32 @@ describe('live MCP contract regressions', () => {
 
     expect(start).toBeGreaterThanOrEqual(0);
     expect(handler).toMatch(/workspace_id:\s*z\s*\.string\(\)\s*\.uuid\(\)/);
-    expect(handler).toContain('if (!response.ok)');
-    expect(handler).toContain("'workspace_not_found'");
-    expect(handler).toContain('Workspace not found or not accessible');
+
+    const workspaceId = '00000000-0000-4000-8000-000000000000';
+    const result = mapMorningBriefApiError(
+      new OrgXApiError('not_found', 'upstream returned 404', 404),
+      workspaceId
+    );
+
+    expect(result).toEqual({
+      content: [
+        { type: 'text', text: 'Workspace not found or not accessible' },
+      ],
+      structuredContent: {
+        error: {
+          code: 'workspace_not_found',
+          status: 404,
+          message: 'Workspace not found or not accessible',
+          details: { workspace_id: workspaceId },
+        },
+      },
+      isError: true,
+    });
+    expect(
+      mapMorningBriefApiError(
+        new OrgXApiError('unavailable', 'upstream returned 503', 503),
+        workspaceId
+      )
+    ).toBeNull();
   });
 });
