@@ -14,7 +14,10 @@ Use this runbook before each OpenAI app submission or resubmission. It verifies 
 
 ## Public MCP Endpoint
 
-- MCP server URL: `https://mcp.useorgx.com/mcp`
+- MCP server URL: `https://mcp.useorgx.com/mcp?profile=chatgpt`
+- The `chatgpt` profile exposes only the reviewer-facing canonical workflows
+  and widgets. Internal coordination transports, redundant compatibility
+  aliases, and `consolidate_pr` are intentionally excluded.
 - Product URL: `https://useorgx.com`
 - Privacy policy URL: `https://github.com/useorgx/orgx-mcp/blob/main/docs/privacy-policy.md`
 - Support URL: `https://github.com/useorgx/orgx-mcp/issues`

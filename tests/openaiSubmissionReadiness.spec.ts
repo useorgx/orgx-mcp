@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import { CHATGPT_PUBLIC_SURFACE } from '../src/toolProfiles';
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const submission = JSON.parse(
@@ -72,9 +74,9 @@ describe('OpenAI ChatGPT app submission readiness', () => {
     expect(submission.app_info.category).toBe('PRODUCTIVITY');
   });
 
-  it('covers every server.json tool with matching explicit annotations', () => {
+  it('covers every ChatGPT profile tool with matching explicit annotations', () => {
     expect(Object.keys(submission.tools).sort()).toEqual(
-      serverJson.tools.map((tool) => tool.name).sort()
+      [...CHATGPT_PUBLIC_SURFACE].sort()
     );
 
     for (const [toolName, submitted] of Object.entries(submission.tools)) {
@@ -90,6 +92,32 @@ describe('OpenAI ChatGPT app submission readiness', () => {
         );
         expect(justification.trim().length).toBeGreaterThan(20);
       }
+    }
+  });
+
+  it('does not submit internal transports, redundant aliases, or PR consolidation', () => {
+    const submittedTools = new Set(Object.keys(submission.tools));
+    const excludedTools = [
+      'orgx_emit_activity',
+      'orgx_request_attention',
+      'orgx_poll_attention',
+      'orgx_ack_attention',
+      'orgx_request_question',
+      'orgx_poll_question',
+      'orgx_emit_execution_graph',
+      'query_org_memory',
+      'recall_memory',
+      'recommend_next_action',
+      'track_project_progress',
+      'delegate_agent_task',
+      'spawn_agent_task',
+      'consolidate_pr',
+    ];
+
+    for (const toolName of excludedTools) {
+      expect(submittedTools.has(toolName), `${toolName} should be excluded`).toBe(
+        false
+      );
     }
   });
 
