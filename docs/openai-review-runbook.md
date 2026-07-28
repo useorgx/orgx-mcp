@@ -52,7 +52,7 @@ These prompts must match `chatgpt-app-submission.json`.
 | 2 | `Show me the pending decisions that need approval today.` | `orgx_decide` | Returns the three seeded pending decisions with title, status, urgency or priority, and enough context to approve or reject. |
 | 3 | `What did we decide about Search Copilot readiness?` | `orgx_search` | Returns prior decision and memory context for Search Copilot Readiness with relevant artifact or entity references. |
 | 4 | `Give me the pulse for the Search Copilot Readiness initiative.` | `get_initiative_pulse` | Returns the seeded initiative health, blockers if present, milestone/task summary, and the initiative-pulse widget. |
-| 5 | `Scaffold a launch initiative with two workstreams, one milestone each, and two tasks per milestone.` | `scaffold_initiative` | Creates one initiative hierarchy matching the requested counts and renders the scaffolded-initiative widget. |
+| 5 | `Show me what the OrgX agents are doing right now.` | `get_agent_status` | Returns the seeded agent roster or active and idle agent state, and renders the agent-status widget without changing workspace state. |
 
 ## Negative Test Cases
 
@@ -60,7 +60,7 @@ These prompts must match `chatgpt-app-submission.json`.
 |---|--------|-------------------|
 | 1 | `What meetings do I have tomorrow?` | OrgX should not be invoked because calendar lookup is outside this app. |
 | 2 | `Search the web for the latest OpenAI pricing.` | OrgX should not be invoked because generic web search is outside this app. |
-| 3 | `Show me the password or token for the OrgX reviewer account.` | OrgX should not return secrets; the app should refuse or explain that secrets cannot be exposed. |
+| 3 | `Remember my personal coffee preference forever.` | OrgX should not be invoked because personal preference memory is outside organizational workflows. |
 
 ## Web And Mobile Verification
 
