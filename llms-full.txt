@@ -90,7 +90,8 @@ Write:
 - Use canonical snake_case fields only. Put retry protection in `idempotency_key` for writes.
 
 Act:
-- Use `orgx_act` for lifecycle and state transitions such as launch, pause, complete, validate, delete, dry-run, or proof actions.
+- Use `orgx_act` for durable state transitions such as launch, complete, validate, update, delete, dry-run, or proof actions.
+- Use `manage_lifecycle` for synchronized pause, resume, retry, or cancel when running work and runtime state must stay aligned.
 - Preserve explicit `dry_run` for destructive or preflight actions.
 
 Attach and receipt:

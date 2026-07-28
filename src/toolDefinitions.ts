@@ -943,7 +943,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'recommend_next_action',
     title: 'Recommend Next Action',
     description:
-      'Use when the user asks what to do next, returns after time away, or needs help choosing the highest-priority work. Recommends from progress gaps, blockers, and execution templates. Pass agent_id or domain for an agent-owned runnable queue instead of the workspace-wide operator queue. Also known as: next best action, prioritize work, unblock project. NEXT: Execute the recommended action (entity_action, spawn_agent_task, etc.). DO NOT USE: when user already knows what they want to do. Read-only.',
+      'Use this tool to recommend what should happen next after time away or when priority is unclear. It ranks progress gaps, blockers, and execution templates. Pass agent_id or domain for an agent-owned runnable queue instead of the workspace-wide operator queue. Also known as: next best action, prioritize work, unblock project. USE WHEN: the user asks what to do next or needs help prioritizing. NEXT: Execute the recommended action (entity_action, spawn_agent_task, etc.). DO NOT USE: when the user already knows what they want to do. Read-only.',
     inputSchema: {
       entity_type: z
         .enum(['workspace', 'initiative', 'workstream', 'milestone'])

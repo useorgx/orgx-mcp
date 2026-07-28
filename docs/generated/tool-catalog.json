@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-28T03:57:20.474Z",
-  "sourceHash": "b01a3aa9b52efc2e",
+  "generatedAt": "2026-07-28T13:43:58.620Z",
+  "sourceHash": "c09b73502fa710db",
   "version": "1.0.0",
   "totalTools": 81,
   "categories": [
@@ -127,7 +127,7 @@
     {
       "id": "recommend_next_action",
       "title": "Recommend Next Action",
-      "description": "Use when the user asks what to do next, returns after time away, or needs help choosing the highest-priority work. Recommends from progress gaps, blockers, and execution templates. Pass agent_id or domain for an agent-owned runnable queue instead of the workspace-wide operator queue. Also known as: next best action, prioritize work, unblock project. NEXT: Execute the recommended action (entity_action, spawn_agent_task, etc.). DO NOT USE WHEN: user already knows what they want to do. Read-only.",
+      "description": "Use this tool to recommend what should happen next after time away or when priority is unclear. It ranks progress gaps, blockers, and execution templates. Pass agent_id or domain for an agent-owned runnable queue instead of the workspace-wide operator queue. Also known as: next best action, prioritize work, unblock project. USE WHEN: the user asks what to do next or needs help prioritizing. NEXT: Execute the recommended action (entity_action, spawn_agent_task, etc.). DO NOT USE: when the user already knows what they want to do. Read-only.",
       "category": "Agents",
       "inputSchema": {
         "type": "object",
@@ -3291,7 +3291,7 @@
     {
       "id": "orgx_search",
       "title": "Search OrgX",
-      "description": "Find OrgX entities, decisions, artifacts, and memory. A query without type runs a mixed relevance search; typed searches provide exhaustive cursor/offset pagination. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use structuredContent.next_call exactly when pagination.has_more=true, orgx_inspect for one selected result, or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.",
+      "description": "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Finds OrgX entities, decisions, artifacts, and memory. A query without type runs a mixed relevance search; typed searches provide exhaustive cursor/offset pagination. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use structuredContent.next_call exactly when pagination.has_more=true, orgx_inspect for one selected result, or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",

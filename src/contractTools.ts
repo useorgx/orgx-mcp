@@ -139,7 +139,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_write',
     title: 'Write OrgX Entity',
     description:
-      'Use when work, decisions, or artifacts must outlive this chat. Creates or updates one OrgX record (snake_case fields).\n\n' +
+      'Create or update one OrgX record (snake_case fields).\n\n' +
       'Operations: create (default) uses per-type fields; update REQUIRES id + fields.\n\n' +
       'Create requirements: workspace name/title; initiative title/name + workspace_id + goal_ids when the workspace enforces primary objectives; workstream title + initiative_id; milestone title + workstream_id; task title + workstream_id + milestone_id when the workspace requires backlog milestones; decision title; artifact target + artifact_type + artifact_url/external_url; blocker run_id + metadata.description; skill/studio records title.\n\n' +
       'Retry behavior: pass idempotency_key on creates. A key match returns the same UUID as an idempotent replay, without creating a duplicate.\n\n' +
@@ -231,7 +231,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_act',
     title: 'Act On OrgX Entity',
     description:
-      'Use when durable entity state must change outside synchronized runtime control so the next agent resumes from real status. Act on one OrgX entity. Per-action required inputs:\n' +
+      'Act on one OrgX entity. Required inputs:\n' +
       '  • update → "fields" patch object.\n' +
       '  • complete_with_proof, ship_batch → "artifact" (artifact_type + artifact_url/external_url; preview_markdown optional).\n' +
       '  • validate (studio) → "spec" payload.\n' +
