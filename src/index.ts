@@ -53,6 +53,7 @@ import {
 import { withPathScopedResourceChallenge } from './oauthResourceChallenge';
 import { withSecurityHeaders } from './securityHeaders';
 import { callOrgxApiJson, callOrgxApiRaw, OrgXApiError } from './orgxApi';
+import { mapMorningBriefApiError } from './morningBriefError';
 import { fetchContextPack } from './contextPack';
 import {
   batchCreateEntities as runBatchCreateEntities,
@@ -11646,30 +11647,26 @@ export class OrgXMcp extends McpAgent<
             if (typeof args.session_id === 'string' && args.session_id) {
               briefParams.set('session_id', args.session_id);
             }
-            const response = await callOrgxApiJson(
-              this.env,
-              `/api/flywheel/briefs?${briefParams.toString()}`,
-              undefined,
-              { userId: resolvedUserId ?? undefined, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? undefined) }
-            );
-            const result = (await response.json()) as Record<string, unknown>;
-            if (!response.ok) {
-              const notFound = response.status === 404;
-              return this.toolError(
-                notFound
-                  ? 'Workspace not found or not accessible'
-                  : typeof result.error === 'string'
-                  ? result.error
-                  : 'Unable to load morning brief',
+            let response: Response;
+            try {
+              response = await callOrgxApiJson(
+                this.env,
+                `/api/flywheel/briefs?${briefParams.toString()}`,
+                undefined,
                 {
-                  code: notFound
-                    ? 'workspace_not_found'
-                    : 'morning_brief_failed',
-                  status: response.status,
-                  details: { workspace_id: wsId },
+                  userId: resolvedUserId ?? undefined,
+                  userEmail: this.resolveUserEmail(),
+                  orgxUserId: this.resolveOrgxUserId(
+                    resolvedUserId ?? undefined
+                  ),
                 }
               );
+            } catch (error) {
+              const mappedError = mapMorningBriefApiError(error, wsId);
+              if (mappedError) return mappedError;
+              throw error;
             }
+            const result = (await response.json()) as Record<string, unknown>;
             const [outcomeAttribution, workspacePulse] = await Promise.all([
               this.fetchOrgxJsonOrNull<Record<string, unknown>>(
                 `/api/flywheel/attribution?workspace_id=${wsId}&period=30d`,
