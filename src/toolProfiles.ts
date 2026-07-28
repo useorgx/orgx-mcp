@@ -82,6 +82,40 @@ export const CLIENT_REPORTING_PUBLIC_SURFACE = [
   'get_operator_chronicle',
 ] as const;
 
+/**
+ * Reviewer-facing ChatGPT App surface.
+ *
+ * Keep this intentionally smaller than the general v2 catalog. ChatGPT should
+ * see the canonical OrgX workflow plus user-facing widgets, not internal
+ * activity/attention transports, duplicate compatibility aliases, or
+ * client-specific GitHub orchestration such as consolidate_pr.
+ */
+export const CHATGPT_PUBLIC_SURFACE = [
+  'orgx_bootstrap',
+  'orgx_search',
+  'orgx_inspect',
+  'orgx_recommend',
+  'orgx_write',
+  'orgx_attach',
+  'orgx_act',
+  'manage_lifecycle',
+  'orgx_plan',
+  'orgx_spawn',
+  'orgx_decide',
+  'orgx_submit_receipt',
+  'approve_decision',
+  'reject_decision',
+  'get_agent_status',
+  'get_initiative_pulse',
+  'scaffold_initiative',
+  'handoff_task',
+  'approve_agent_work',
+  'review_artifact',
+  'get_morning_brief',
+  'get_operator_chronicle',
+  'check_execution_readiness',
+] as const;
+
 export const GROUPED_V2_PUBLIC_SURFACE = [
   ...V2_PUBLIC_SURFACE,
 ] as const;
@@ -91,6 +125,11 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
     description:
       'OrgX MCP v2 public surface plus direct widget affordances for decisions, agent status, initiative pulse, scaffold, artifacts, memory search, morning brief, and task delegation',
     tools: [...V2_PUBLIC_SURFACE],
+  },
+  chatgpt: {
+    description:
+      'Reviewer-ready ChatGPT App surface: canonical OrgX workflows and user-facing widgets without internal coordination transports, redundant aliases, or client-specific PR consolidation',
+    tools: [...CHATGPT_PUBLIC_SURFACE],
   },
   memory: {
     description:

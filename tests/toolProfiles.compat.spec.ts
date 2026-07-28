@@ -8,6 +8,7 @@ import serverManifest from '../server.json';
 import { V2_PUBLIC_TOOL_IDS } from '../src/bootstrapPayload';
 import { PRIMARY_AUTHENTICATED_TOOLS } from '../src/publicMcpDiscovery';
 import {
+  CHATGPT_PUBLIC_SURFACE,
   GROUPED_V2_PUBLIC_SURFACE,
   resolveProfileToolSet,
   resolveToolProfile,
@@ -28,6 +29,24 @@ describe('toolProfiles backward compatibility', () => {
     expect(executorTools!.has('orgx_request_attention')).toBe(true);
     expect(executorTools!.has('orgx_poll_attention')).toBe(true);
     expect(executorTools!.has('orgx_ack_attention')).toBe(true);
+  });
+
+  it('keeps the ChatGPT review surface focused and excludes internal aliases', () => {
+    const chatgptTools = resolveProfileToolSet('chatgpt');
+
+    expect([...(chatgptTools ?? [])]).toEqual([...CHATGPT_PUBLIC_SURFACE]);
+    expect(chatgptTools!.size).toBe(23);
+    expect(chatgptTools!.has('orgx_bootstrap')).toBe(true);
+    expect(chatgptTools!.has('get_initiative_pulse')).toBe(true);
+    expect(chatgptTools!.has('consolidate_pr')).toBe(false);
+    expect(chatgptTools!.has('delegate_agent_task')).toBe(false);
+    expect(chatgptTools!.has('spawn_agent_task')).toBe(false);
+    expect(chatgptTools!.has('orgx_emit_activity')).toBe(false);
+    expect(chatgptTools!.has('orgx_request_attention')).toBe(false);
+    expect(chatgptTools!.has('query_org_memory')).toBe(false);
+    expect(chatgptTools!.has('recall_memory')).toBe(false);
+    expect(chatgptTools!.has('recommend_next_action')).toBe(false);
+    expect(chatgptTools!.has('track_project_progress')).toBe(false);
   });
 
   it('resolveProfileToolSet defaults omitted profiles to the compact v2 surface', () => {

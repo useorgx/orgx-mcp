@@ -140,66 +140,6 @@
         "destructive_justification": "Approval or rejection can irreversibly resolve a pending decision."
       }
     },
-    "orgx_request_attention": {
-      "annotations": {
-        "readOnlyHint": false,
-        "openWorldHint": true,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Creates a typed private OrgX attention request that preserves an external client session.",
-        "open_world_justification": "Forwards the request to the authenticated OrgX application API outside the MCP worker.",
-        "destructive_justification": "Adds a reversible pending request and does not delete records or resolve work."
-      }
-    },
-    "orgx_poll_attention": {
-      "annotations": {
-        "readOnlyHint": true,
-        "openWorldHint": true,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Reads the durable owner response and continuation state without mutation.",
-        "open_world_justification": "Reads from the authenticated OrgX application API outside the MCP worker.",
-        "destructive_justification": "Does not mutate the attention request or source session."
-      }
-    },
-    "orgx_ack_attention": {
-      "annotations": {
-        "readOnlyHint": false,
-        "openWorldHint": true,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Writes a continuation receipt after the source client applies an owner response.",
-        "open_world_justification": "Posts the receipt to the authenticated OrgX application API outside the MCP worker.",
-        "destructive_justification": "Appends a status receipt and does not delete or irreversibly alter source work."
-      }
-    },
-    "orgx_request_question": {
-      "annotations": {
-        "readOnlyHint": false,
-        "openWorldHint": true,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Creates a durable private OrgX decision so an external agent session can pause for owner input.",
-        "open_world_justification": "Forwards the contextual question to the authenticated OrgX application API outside the MCP worker.",
-        "destructive_justification": "Adds a reversible pending question and does not delete records or irreversibly resolve work."
-      }
-    },
-    "orgx_poll_question": {
-      "annotations": {
-        "readOnlyHint": true,
-        "openWorldHint": true,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Reads the durable answer and continuation receipt without modifying the OrgX decision.",
-        "open_world_justification": "Reads the answer receipt from the authenticated OrgX application API outside the MCP worker.",
-        "destructive_justification": "Does not delete, overwrite, resolve, or otherwise mutate the underlying question or source session."
-      }
-    },
     "orgx_submit_receipt": {
       "annotations": {
         "readOnlyHint": false,
@@ -210,30 +150,6 @@
         "read_only_justification": "Submits durable proof, attribution, quality, or outcome receipts, so it writes OrgX state.",
         "open_world_justification": "Writes only to private OrgX workspace records.",
         "destructive_justification": "Adds receipt records but does not delete records or perform irreversible external actions."
-      }
-    },
-    "orgx_emit_activity": {
-      "annotations": {
-        "readOnlyHint": false,
-        "openWorldHint": false,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Emits append-only activity telemetry, so it writes execution state.",
-        "open_world_justification": "Writes only to private OrgX activity records and does not publish to third-party systems.",
-        "destructive_justification": "Appends activity events but does not delete records or perform irreversible actions."
-      }
-    },
-    "orgx_emit_execution_graph": {
-      "annotations": {
-        "readOnlyHint": false,
-        "openWorldHint": true,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Appends structured execution graph and trust-ledger telemetry, so it writes private OrgX execution state.",
-        "open_world_justification": "Sends telemetry to the authenticated OrgX application API outside the MCP worker.",
-        "destructive_justification": "Appends evidence without completing, deleting, or irreversibly changing durable work entities."
       }
     },
     "approve_decision": {
@@ -296,18 +212,6 @@
         "destructive_justification": "Creates records but does not delete records or perform irreversible external actions."
       }
     },
-    "spawn_agent_task": {
-      "annotations": {
-        "readOnlyHint": false,
-        "openWorldHint": true,
-        "destructiveHint": true
-      },
-      "justifications": {
-        "read_only_justification": "Delegates work to an agent and can start a run, so it changes state.",
-        "open_world_justification": "May initiate work that uses connected systems outside the immediate ChatGPT conversation.",
-        "destructive_justification": "Can dispatch agent work that is not automatically reversible after execution begins."
-      }
-    },
     "handoff_task": {
       "annotations": {
         "readOnlyHint": false,
@@ -320,42 +224,6 @@
         "destructive_justification": "Can dispatch or reassign work in a way that is not automatically reversible after execution begins."
       }
     },
-    "recommend_next_action": {
-      "annotations": {
-        "readOnlyHint": true,
-        "openWorldHint": false,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Computes next-action recommendations from existing OrgX data without writing records.",
-        "open_world_justification": "Operates only on private OrgX workspace data.",
-        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
-      }
-    },
-    "query_org_memory": {
-      "annotations": {
-        "readOnlyHint": true,
-        "openWorldHint": false,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Searches organizational memory and returns matching results without modifying records.",
-        "open_world_justification": "Operates only on private OrgX workspace data.",
-        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
-      }
-    },
-    "recall_memory": {
-      "annotations": {
-        "readOnlyHint": true,
-        "openWorldHint": false,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Retrieves recalled memory and prior context without modifying records.",
-        "open_world_justification": "Operates only on private OrgX workspace data.",
-        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
-      }
-    },
     "approve_agent_work": {
       "annotations": {
         "readOnlyHint": false,
@@ -366,30 +234,6 @@
         "read_only_justification": "Can approve or reject agent approval items, so it changes approval state.",
         "open_world_justification": "Writes only to private OrgX approval records.",
         "destructive_justification": "Approval or rejection can irreversibly resolve agent work."
-      }
-    },
-    "delegate_agent_task": {
-      "annotations": {
-        "readOnlyHint": false,
-        "openWorldHint": true,
-        "destructiveHint": true
-      },
-      "justifications": {
-        "read_only_justification": "Delegates work to an agent and creates private OrgX task state.",
-        "open_world_justification": "May initiate work that uses connected systems outside the immediate ChatGPT conversation.",
-        "destructive_justification": "Can dispatch agent work that is not automatically reversible after execution begins."
-      }
-    },
-    "track_project_progress": {
-      "annotations": {
-        "readOnlyHint": true,
-        "openWorldHint": false,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Retrieves project progress and renders a status widget without modifying records.",
-        "open_world_justification": "Operates only on private OrgX workspace data.",
-        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
       }
     },
     "review_artifact": {
@@ -438,18 +282,6 @@
         "read_only_justification": "Checks configured execution credentials and readiness without dispatching work or modifying OrgX records.",
         "open_world_justification": "Reads private OrgX workspace configuration and does not publish to external systems.",
         "destructive_justification": "Does not dispatch, delete, overwrite, or irreversibly change workspace state."
-      }
-    },
-    "consolidate_pr": {
-      "annotations": {
-        "readOnlyHint": false,
-        "openWorldHint": true,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Generates and persists a private OrgX consolidation receipt for a pull request.",
-        "open_world_justification": "Can inspect GitHub pull request data when OrgX server-side GitHub credentials are configured.",
-        "destructive_justification": "Creates a receipt but does not delete records or perform irreversible external actions."
       }
     }
   },
