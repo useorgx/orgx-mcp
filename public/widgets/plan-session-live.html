@@ -3,546 +3,1804 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Plan Session — Live</title>
+  <title>Plan Session — OrgX</title>
 
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2302040a'/%3E%3Cpath d='M18 20h28M18 30h28M18 40h20' stroke='%236366f1' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
-
   <link rel="stylesheet" href="shared/tokens.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
-  <link rel="stylesheet" href="shared/components/domain-accent.css" />
+
+  <script>
+    (function syncPreviewContext() {
+      var params = new URLSearchParams(window.location.search);
+      var theme = params.get('theme');
+      if (theme) document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
 
   <style>
-    /*
-     * plan-session-live — Creation mode.
-     * Primary = iris (99,102,241). Shares the mode with scaffolded-initiative.
-     *
-     * The agent's reasoning trail rendered live. User is a peer, not an
-     * observer: hovering a plan step reveals a + affordance that opens
-     * an inline comment input. Submitting creates a plan_edit entity
-     * which the agent ingests on its next turn.
-     *
-     * No widget before this has treated agent reasoning as a first-class,
-     * co-authored surface.
-     */
-    :root { --ox-primary: #6366f1; --ox-primary-rgb: 99, 102, 241; }
-    @media (prefers-color-scheme: dark) {
-      :root { --ox-primary: #818cf8; --ox-primary-rgb: 129, 140, 248; }
+    :root,
+    :root[data-theme="light"] {
+      --ox-bg: #f8fafc;
+      --ox-panel: rgba(255, 255, 255, 0.97);
+      --ox-border: rgba(15, 23, 42, 0.08);
+      --ox-border-strong: rgba(15, 23, 42, 0.15);
+      --ox-text: #0f172a;
+      --ox-text-muted: #64748b;
+      --ox-text-dim: #94a3b8;
+      --ox-well-bg: rgba(241, 245, 249, 0.84);
+      --ox-well-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+      --ox-grid: rgba(15, 23, 42, 0.03);
+      --ox-shadow:
+        0 24px 54px -36px rgba(15, 23, 42, 0.24),
+        0 8px 24px -22px rgba(15, 23, 42, 0.2);
     }
-    [data-theme="dark"] {
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --ox-bg: #02040a;
+        --ox-panel: rgba(10, 15, 22, 0.96);
+        --ox-border: rgba(255, 255, 255, 0.075);
+        --ox-border-strong: rgba(255, 255, 255, 0.16);
+        --ox-text: #f8fafc;
+        --ox-text-muted: rgba(255, 255, 255, 0.52);
+        --ox-text-dim: rgba(255, 255, 255, 0.3);
+        --ox-well-bg: rgba(0, 0, 0, 0.26);
+        --ox-well-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+        --ox-grid: rgba(255, 255, 255, 0.018);
+        --ox-shadow:
+          0 24px 56px -20px rgba(0, 0, 0, 0.64),
+          inset 0 1px 0 rgba(255, 255, 255, 0.045);
+      }
+    }
+
+    :root[data-theme="dark"] {
+      --ox-bg: #02040a;
+      --ox-panel: rgba(10, 15, 22, 0.96);
+      --ox-border: rgba(255, 255, 255, 0.075);
+      --ox-border-strong: rgba(255, 255, 255, 0.16);
+      --ox-text: #f8fafc;
+      --ox-text-muted: rgba(255, 255, 255, 0.52);
+      --ox-text-dim: rgba(255, 255, 255, 0.3);
+      --ox-well-bg: rgba(0, 0, 0, 0.26);
+      --ox-well-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+      --ox-grid: rgba(255, 255, 255, 0.018);
+      --ox-shadow:
+        0 24px 56px -20px rgba(0, 0, 0, 0.64),
+        inset 0 1px 0 rgba(255, 255, 255, 0.045);
+    }
+
+    :root {
+      --ox-primary: #6366f1;
+      --ox-primary-rgb: 99, 102, 241;
+      --ox-primary-contrast: #ffffff;
+      --ox-lime: #84cc16;
+      --ox-warning: #d97706;
+      --ox-danger: #e11d48;
+      --plan-shell-max: 760px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --ox-primary: #818cf8;
+        --ox-primary-rgb: 129, 140, 248;
+        --ox-lime: #d4ed31;
+        --ox-warning: #fbbf24;
+        --ox-danger: #f43f5e;
+      }
+    }
+
+    :root[data-theme="dark"] {
       --ox-primary: #818cf8;
       --ox-primary-rgb: 129, 140, 248;
+      --ox-lime: #d4ed31;
+      --ox-warning: #fbbf24;
+      --ox-danger: #f43f5e;
     }
 
-    .stage {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
+    * {
+      box-sizing: border-box;
     }
 
-    .plan-meta {
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 28px 16px;
+      overflow-x: hidden;
+      background: var(--ox-bg);
+      color: var(--ox-text);
+      font-family: var(--ox-font);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background:
+        radial-gradient(
+          ellipse 72% 48% at 50% -10%,
+          rgba(var(--ox-primary-rgb), 0.085),
+          transparent 68%
+        ),
+        linear-gradient(var(--ox-grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px);
+      background-size: 100% 100%, 20px 20px, 20px 20px;
+    }
+
+    button,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    .container {
+      width: 100%;
+      max-width: var(--plan-shell-max);
+      margin: 0 auto;
+    }
+
+    .plan-shell {
+      margin: 0;
+    }
+
+    .plan-shell .ox-card {
+      margin: 0;
+    }
+
+    .plan-shell .ox-card-inner {
+      padding: 24px;
+    }
+
+    .plan-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: start;
+      gap: 20px;
+    }
+
+    .plan-kicker {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 10px;
-      padding: 10px 14px;
-      border: 1px solid var(--ox-border);
-      border-radius: 12px;
-      background: var(--ox-well-bg);
+      gap: 8px;
+      min-height: 20px;
+      color: var(--ox-text-muted);
+      font-family: var(--ox-mono);
+      font-size: 0.64rem;
+      font-weight: 700;
+      letter-spacing: 0.13em;
+      line-height: 1;
+      text-transform: uppercase;
     }
-    .plan-meta__kicker {
+
+    .plan-live-dot {
+      width: 7px;
+      height: 7px;
+      flex: 0 0 auto;
+      border-radius: 999px;
+      background: var(--ox-primary);
+      box-shadow: 0 0 12px rgba(var(--ox-primary-rgb), 0.48);
+    }
+
+    [data-plan-status="active"] .plan-live-dot {
+      animation: plan-breathe 2.2s var(--ox-ease-standard) infinite;
+    }
+
+    [data-plan-status="complete"] .plan-live-dot {
+      background: var(--ox-lime);
+      box-shadow: none;
+    }
+
+    .plan-title {
+      max-width: 22ch;
+      margin: 10px 0 0;
+      color: var(--ox-text);
+      font-size: clamp(1.45rem, 4vw, 2.15rem);
+      font-weight: 700;
+      letter-spacing: -0.05em;
+      line-height: 1.04;
+      overflow-wrap: anywhere;
+    }
+
+    .plan-summary {
+      margin: 10px 0 0;
+      color: var(--ox-text-muted);
+      font-size: 0.88rem;
+      line-height: 1.55;
+    }
+
+    .plan-version {
+      display: grid;
+      min-width: 64px;
+      min-height: 64px;
+      place-items: center;
+      align-content: center;
+      border: 1px solid rgba(var(--ox-primary-rgb), 0.2);
+      border-radius: 14px;
+      background: rgba(var(--ox-primary-rgb), 0.075);
+      color: var(--ox-primary);
+    }
+
+    .plan-version__value {
+      font-family: var(--ox-mono);
+      font-size: 1.08rem;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      line-height: 1;
+    }
+
+    .plan-version__label {
+      margin-top: 5px;
+      font-family: var(--ox-mono);
+      font-size: 0.52rem;
+      font-weight: 700;
+      letter-spacing: 0.11em;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+
+    .plan-signal {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 16px;
+      margin-top: 22px;
+      padding: 14px 0 16px;
+      border-top: 1px solid var(--ox-border);
+      border-bottom: 1px solid var(--ox-border);
+    }
+
+    .plan-signal__copy {
+      min-width: 0;
+    }
+
+    .plan-signal__question {
+      color: var(--ox-text);
+      font-size: 0.9rem;
+      font-weight: 650;
+      line-height: 1.35;
+    }
+
+    .plan-signal__meta {
+      margin-top: 4px;
+      color: var(--ox-text-muted);
       font-family: var(--ox-mono);
       font-size: 0.62rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--ox-text-muted);
-    }
-    .plan-meta__feature { font-weight: 600; font-size: 0.92rem; color: var(--ox-text); }
-
-    /* ─── plan outline ─────────────────────────────────────────
-     * Ambient motion: steps fade in sequentially. Each step is a
-     * card with a gradient rail on the left colored by step state
-     * (pending / active / done).
-     */
-    .plan-list { display: flex; flex-direction: column; gap: 10px; position: relative; }
-
-    /* The connector line between steps */
-    .plan-list::before {
-      content: '';
-      position: absolute;
-      left: 16px;
-      top: 8px;
-      bottom: 8px;
-      width: 2px;
-      background: linear-gradient(180deg,
-        rgba(var(--ox-primary-rgb), 0.08),
-        rgba(var(--ox-primary-rgb), 0.3),
-        rgba(var(--ox-primary-rgb), 0.08));
-      border-radius: 999px;
-      pointer-events: none;
-    }
-
-    .plan-step {
-      position: relative;
-      padding: 14px 16px 14px 48px;
-      border-radius: 12px;
-      border: 1px solid var(--ox-border);
-      background: var(--ox-panel);
-      /* Plan steps arrive on the entry curve, calm staggered (see --delay below). */
-      animation: planStepReveal var(--ox-dur-slow, 400ms) var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) backwards;
-      transition: border-color var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
-                  background var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
-    }
-    .plan-step:hover {
-      border-color: rgba(var(--ox-primary-rgb), 0.35);
-      background: rgba(var(--ox-primary-rgb), 0.03);
-    }
-    @keyframes planStepReveal {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .plan-step__marker {
-      position: absolute;
-      left: 10px;
-      top: 16px;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: var(--ox-panel);
-      border: 2px solid rgba(var(--ox-primary-rgb), 0.3);
-      z-index: 1;
-      transition: all var(--ox-dur-base, 250ms) var(--ox-ease-morph, cubic-bezier(0.4, 0, 0.2, 1));
-    }
-    .plan-step[data-state="done"] .plan-step__marker {
-      background: var(--ox-primary);
-      border-color: var(--ox-primary);
-      box-shadow: 0 0 10px rgba(var(--ox-primary-rgb), 0.55);
-    }
-    .plan-step[data-state="active"] .plan-step__marker {
-      background: rgba(var(--ox-primary-rgb), 0.3);
-      border-color: var(--ox-primary);
-      animation: planMarkerPulse 1800ms ease-in-out infinite;
-    }
-    @keyframes planMarkerPulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(var(--ox-primary-rgb), 0.45); }
-      50% { box-shadow: 0 0 0 6px rgba(var(--ox-primary-rgb), 0); }
-    }
-
-    .plan-step__title {
-      font-weight: 600;
-      font-size: 0.92rem;
-      color: var(--ox-text);
+      letter-spacing: 0.065em;
       line-height: 1.4;
-    }
-    .plan-step__detail {
-      margin-top: 4px;
-      font-size: 0.82rem;
-      color: var(--ox-text-muted);
-      line-height: 1.5;
+      text-transform: uppercase;
     }
 
-    .plan-step__comment-trigger {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      width: 22px;
-      height: 22px;
-      border-radius: 6px;
-      border: 1px solid var(--ox-border);
-      background: var(--ox-well-bg);
-      color: var(--ox-text-muted);
+    .plan-progress {
       display: flex;
       align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      opacity: 0;
-      transition: opacity var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
-                  background var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
-    }
-    .plan-step:hover .plan-step__comment-trigger,
-    .plan-step:focus-within .plan-step__comment-trigger {
-      opacity: 1;
-    }
-    .plan-step__comment-trigger:hover {
-      background: rgba(var(--ox-primary-rgb), 0.1);
-      color: var(--ox-primary);
-      border-color: rgba(var(--ox-primary-rgb), 0.35);
+      gap: 4px;
+      width: min(180px, 30vw);
     }
 
-    .plan-step__composer {
-      display: none;
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px dashed var(--ox-border);
+    .plan-progress__segment {
+      height: 5px;
+      flex: 1 1 0;
+      overflow: hidden;
+      border-radius: 999px;
+      background: var(--ox-border);
     }
-    .plan-step__composer.is-open { display: block; }
 
-    .plan-step__textarea {
+    .plan-progress__segment::after {
+      content: "";
+      display: block;
       width: 100%;
-      min-height: 60px;
-      padding: 8px 10px;
-      border-radius: 8px;
-      border: 1px solid var(--ox-border);
-      background: var(--ox-well-bg);
-      color: var(--ox-text);
-      font: inherit;
-      font-size: 0.84rem;
-      resize: vertical;
+      height: 100%;
+      border-radius: inherit;
+      background: rgba(var(--ox-primary-rgb), 0.34);
     }
-    .plan-step__textarea:focus-visible {
-      outline: 2px solid rgba(var(--ox-primary-rgb), 0.5);
+
+    .plan-progress__segment:first-child::after,
+    [data-plan-status="complete"] .plan-progress__segment::after {
+      background: var(--ox-primary);
+    }
+
+    .plan-progress__segment[data-empty="true"]::after {
+      background: var(--ox-border);
+    }
+
+    .plan-lenses {
+      display: inline-grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px;
+      margin-top: 16px;
+      padding: 3px;
+      border-radius: 12px;
+      background: var(--ox-well-bg);
+      box-shadow: var(--ox-well-shadow);
+    }
+
+    .plan-lens {
+      min-height: 44px;
+      padding: 0 16px;
+      border: 0;
+      border-radius: 9px;
+      background: transparent;
+      color: var(--ox-text-muted);
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-weight: 650;
+      transition:
+        background var(--ox-dur-fast) var(--ox-ease-standard),
+        color var(--ox-dur-fast) var(--ox-ease-standard);
+    }
+
+    .plan-lens[aria-selected="true"] {
+      background: var(--ox-panel);
+      color: var(--ox-text);
+      box-shadow: 0 8px 18px -16px rgba(0, 0, 0, 0.5);
+    }
+
+    .plan-lens:focus-visible,
+    .plan-map__button:focus-visible,
+    .plan-section-select:focus-visible,
+    .plan-expand:focus-visible,
+    .plan-textarea:focus-visible {
+      outline: 2px solid rgba(var(--ox-primary-rgb), 0.72);
       outline-offset: 2px;
     }
 
-    .plan-step__composer-actions {
-      display: flex;
-      gap: 6px;
-      margin-top: 6px;
-      justify-content: flex-end;
-    }
-    .plan-step__composer-btn {
-      padding: 4px 10px;
-      border-radius: 6px;
-      border: 1px solid var(--ox-border);
-      background: var(--ox-panel);
-      color: var(--ox-text);
-      font-size: 0.75rem;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .plan-step__composer-btn--primary {
-      background: var(--ox-primary);
-      color: var(--ox-bg);
-      border-color: var(--ox-primary);
+    .plan-panel {
+      margin-top: 18px;
     }
 
-    .plan-step__comments {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      margin-top: 10px;
+    .plan-workbench {
+      display: grid;
+      grid-template-columns: minmax(148px, 0.32fr) minmax(0, 1fr);
+      gap: 24px;
+      min-width: 0;
     }
-    .plan-step__comment {
-      padding: 7px 10px;
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
-      background: rgba(var(--ox-primary-rgb), 0.05);
-      border-radius: 8px;
-      font-size: 0.82rem;
-      color: var(--ox-text);
+
+    .plan-map {
+      min-width: 0;
     }
-    .plan-step__comment-meta {
-      font-family: var(--ox-mono);
-      font-size: 0.58rem;
+
+    .plan-map__label,
+    .plan-section__kicker,
+    .plan-composer__label,
+    .plan-activity__meta {
       color: var(--ox-text-muted);
+      font-family: var(--ox-mono);
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.11em;
+      line-height: 1.3;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      margin-bottom: 2px;
     }
 
-    /* ─── empty / connecting state ─────────────────────────────
-     * Composed waiting surface. The pulse uses the widget's OWN iris
-     * primary — never gray or a foreign accent.
-     */
-    .plan-empty {
+    .plan-map__list {
       display: flex;
       flex-direction: column;
+      gap: 2px;
+      margin-top: 8px;
+    }
+
+    .plan-map__button {
+      position: relative;
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr);
       align-items: center;
-      text-align: center;
       gap: 8px;
-      padding: 36px 24px;
-      border: 1px dashed var(--ox-border);
+      width: 100%;
+      min-height: 46px;
+      padding: 7px 8px;
+      overflow: hidden;
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--ox-text-muted);
+      cursor: pointer;
+      text-align: left;
+      transition:
+        background var(--ox-dur-fast) var(--ox-ease-standard),
+        color var(--ox-dur-fast) var(--ox-ease-standard);
+    }
+
+    .plan-map__button::before {
+      content: "";
+      position: absolute;
+      top: 9px;
+      bottom: 9px;
+      left: 0;
+      width: 2px;
+      border-radius: 999px;
+      background: var(--ox-primary);
+      opacity: 0;
+      transform: scaleY(0.45);
+      transition:
+        opacity var(--ox-dur-fast) var(--ox-ease-standard),
+        transform var(--ox-dur-fast) var(--ox-ease-standard);
+    }
+
+    .plan-map__button:hover {
+      background: rgba(var(--ox-primary-rgb), 0.06);
+      color: var(--ox-text);
+    }
+
+    .plan-map__button[aria-current="true"] {
+      background: rgba(var(--ox-primary-rgb), 0.085);
+      color: var(--ox-text);
+    }
+
+    .plan-map__button[aria-current="true"]::before {
+      opacity: 1;
+      transform: scaleY(1);
+    }
+
+    .plan-map__index {
+      color: var(--ox-text-dim);
+      font-family: var(--ox-mono);
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-align: center;
+    }
+
+    .plan-map__button[aria-current="true"] .plan-map__index {
+      color: var(--ox-primary);
+    }
+
+    .plan-map__title {
+      min-width: 0;
+      overflow: hidden;
+      font-size: 0.76rem;
+      font-weight: 620;
+      line-height: 1.25;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .plan-section-select-wrap {
+      display: none;
+    }
+
+    .plan-section-select {
+      width: 100%;
+      min-height: 46px;
+      padding: 0 38px 0 12px;
+      border: 1px solid var(--ox-border);
       border-radius: 12px;
       background: var(--ox-well-bg);
+      color: var(--ox-text);
     }
-    .plan-empty__pulse {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: var(--ox-primary);
-      box-shadow: 0 0 0 0 rgba(var(--ox-primary-rgb), 0.45);
-      animation: planThinkPulse 1800ms ease-in-out infinite;
-      margin-bottom: 4px;
-    }
-    @keyframes planThinkPulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(var(--ox-primary-rgb), 0.45); opacity: 1; }
-      50% { box-shadow: 0 0 0 7px rgba(var(--ox-primary-rgb), 0); opacity: 0.6; }
-    }
-    .plan-empty__title { font-weight: 600; font-size: 0.92rem; color: var(--ox-text); }
-    .plan-empty__detail { font-size: 0.82rem; color: var(--ox-text-muted); line-height: 1.5; max-width: 320px; }
 
-    /* ─── footer ───────────────────────────────────────────── */
-    .widget-foot {
+    .plan-section {
+      position: relative;
+      min-width: 0;
+      padding-left: 24px;
+    }
+
+    .plan-section::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 1px;
+      background: var(--ox-border);
+    }
+
+    .plan-section__title {
+      max-width: 26ch;
+      margin: 8px 0 0;
+      color: var(--ox-text);
+      font-size: clamp(1.15rem, 3vw, 1.55rem);
+      font-weight: 700;
+      letter-spacing: -0.035em;
+      line-height: 1.15;
+      overflow-wrap: anywhere;
+    }
+
+    .plan-section__body-wrap {
+      position: relative;
+      max-height: 280px;
+      margin-top: 14px;
+      overflow: hidden;
+    }
+
+    .plan-section__body-wrap.is-expanded {
+      max-height: none;
+    }
+
+    .plan-section__body-wrap[data-clamped="true"]:not(.is-expanded)::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      height: 72px;
+      pointer-events: none;
+      background: linear-gradient(transparent, var(--ox-panel));
+    }
+
+    .plan-section__body {
+      color: var(--ox-text-muted);
+      font-size: 0.87rem;
+      line-height: 1.65;
+      overflow-wrap: anywhere;
+    }
+
+    .plan-section__body p + p,
+    .plan-section__body p + ul,
+    .plan-section__body p + ol,
+    .plan-section__body ul + p,
+    .plan-section__body ol + p,
+    .plan-section__body ul + ul,
+    .plan-section__body ol + ol {
+      margin-top: 10px;
+    }
+
+    .plan-section__body ul,
+    .plan-section__body ol {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .plan-section__body li + li {
+      margin-top: 7px;
+    }
+
+    .plan-section__body strong {
+      color: var(--ox-text);
+      font-weight: 650;
+    }
+
+    .plan-section__body code {
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: var(--ox-well-bg);
+      color: var(--ox-text);
+      font-family: var(--ox-mono);
+      font-size: 0.82em;
+    }
+
+    .plan-expand {
+      display: none;
+      min-height: 44px;
+      margin-top: 6px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: var(--ox-primary);
+      cursor: pointer;
+      font-size: 0.76rem;
+      font-weight: 650;
+    }
+
+    .plan-expand.is-visible {
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .plan-primary-zone {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid var(--ox-border);
+    }
+
+    .plan-primary-copy {
+      max-width: 42ch;
+      color: var(--ox-text-muted);
+      font-size: 0.78rem;
+      line-height: 1.5;
+    }
+
+    .plan-primary-zone .ox-action-btn {
+      flex: 0 0 auto;
+    }
+
+    .plan-complete-readout {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-top: 18px;
+      padding: 16px 0;
+    }
+
+    .plan-complete-readout__copy {
+      color: var(--ox-text-muted);
+      font-size: 0.8rem;
+      line-height: 1.5;
+    }
+
+    .plan-complete-readout__copy strong {
+      display: block;
+      margin-bottom: 3px;
+      color: var(--ox-text);
+      font-size: 0.88rem;
+      font-weight: 650;
+    }
+
+    .plan-composer {
+      display: none;
+      margin-top: 20px;
+      padding: 18px;
+      border-radius: 14px;
+      background: var(--ox-well-bg);
+      box-shadow: var(--ox-well-shadow);
+    }
+
+    .plan-composer.is-open {
+      display: block;
+      animation: plan-composer-in var(--ox-dur-base) var(--ox-ease-entry) both;
+    }
+
+    .plan-composer__title {
+      margin: 7px 0 0;
+      color: var(--ox-text);
+      font-size: 0.95rem;
+      font-weight: 650;
+      line-height: 1.35;
+    }
+
+    .plan-textarea {
+      display: block;
+      width: 100%;
+      min-height: 104px;
+      margin-top: 14px;
+      padding: 12px 14px;
+      resize: vertical;
+      border: 1px solid var(--ox-border);
+      border-radius: 12px;
+      background: var(--ox-panel);
+      color: var(--ox-text);
+      line-height: 1.5;
+    }
+
+    .plan-textarea::placeholder {
+      color: var(--ox-text-muted);
+    }
+
+    .plan-composer__toolbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      padding-top: 12px;
-      margin-top: 4px;
+      margin-top: 12px;
+    }
+
+    .plan-composer__hint,
+    .plan-feedback {
+      color: var(--ox-text-muted);
+      font-size: 0.72rem;
+      line-height: 1.45;
+    }
+
+    .plan-composer__actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+
+    .plan-feedback {
+      min-height: 20px;
+      margin-top: 10px;
+    }
+
+    .plan-feedback[data-tone="success"] {
+      color: var(--ox-lime);
+    }
+
+    .plan-feedback[data-tone="error"] {
+      color: var(--ox-danger);
+    }
+
+    .plan-activity {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .plan-activity__item {
+      display: grid;
+      grid-template-columns: 8px minmax(0, 1fr);
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--ox-border);
+    }
+
+    .plan-activity__item:last-child {
+      border-bottom: 0;
+    }
+
+    .plan-activity__dot {
+      width: 7px;
+      height: 7px;
+      margin-top: 5px;
+      border-radius: 999px;
+      background: var(--ox-primary);
+      box-shadow: 0 0 10px rgba(var(--ox-primary-rgb), 0.38);
+    }
+
+    .plan-activity__note {
+      margin-top: 5px;
+      color: var(--ox-text);
+      font-size: 0.84rem;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .plan-empty-activity {
+      padding: 36px 0;
+      color: var(--ox-text-muted);
+      text-align: center;
+    }
+
+    .plan-state-panel {
+      padding: 46px 20px;
+      text-align: center;
+    }
+
+    .plan-state-panel__signal {
+      display: grid;
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 16px;
+      place-items: center;
+      border-radius: 14px;
+      background: rgba(var(--ox-primary-rgb), 0.09);
+      color: var(--ox-primary);
+    }
+
+    .plan-state-panel[data-tone="error"] .plan-state-panel__signal {
+      background: rgba(244, 63, 94, 0.09);
+      color: var(--ox-danger);
+    }
+
+    .plan-state-panel__title {
+      margin: 0;
+      color: var(--ox-text);
+      font-size: 1.05rem;
+      font-weight: 650;
+      line-height: 1.3;
+    }
+
+    .plan-state-panel__copy {
+      max-width: 420px;
+      margin: 8px auto 0;
+      color: var(--ox-text-muted);
+      font-size: 0.84rem;
+      line-height: 1.55;
+    }
+
+    .plan-skeleton {
+      display: grid;
+      gap: 16px;
+      padding: 6px 0 10px;
+    }
+
+    .plan-skeleton__header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 64px;
+      gap: 20px;
+    }
+
+    .plan-skeleton__stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .plan-skeleton__line {
+      height: 14px;
+    }
+
+    .plan-skeleton__line--title {
+      width: 64%;
+      height: 30px;
+    }
+
+    .plan-skeleton__line--short {
+      width: 38%;
+    }
+
+    .plan-skeleton__version {
+      width: 64px;
+      height: 64px;
+      border-radius: 14px;
+    }
+
+    .plan-skeleton__workbench {
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr);
+      gap: 24px;
+      margin-top: 18px;
+      padding-top: 18px;
       border-top: 1px solid var(--ox-border);
+    }
+
+    .plan-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid var(--ox-border);
+    }
+
+    .plan-footer__meta {
+      color: var(--ox-text-muted);
+      font-family: var(--ox-mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.07em;
+      line-height: 1.45;
+      text-transform: uppercase;
+    }
+
+    .plan-footer .ox-link-btn {
+      flex: 0 0 auto;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    @keyframes plan-breathe {
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.44;
+        transform: scale(0.78);
+      }
+    }
+
+    @keyframes plan-composer-in {
+      from {
+        opacity: 0;
+        transform: translateY(7px) scale(0.99);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @media (max-width: 720px) {
+      body {
+        padding: 18px 12px;
+      }
+
+      .plan-shell .ox-card-inner {
+        padding: 20px;
+      }
+
+      .plan-workbench {
+        display: block;
+      }
+
+      .plan-map {
+        display: none;
+      }
+
+      .plan-section-select-wrap {
+        display: block;
+        margin-bottom: 18px;
+      }
+
+      .plan-section {
+        padding-left: 0;
+      }
+
+      .plan-section::before {
+        display: none;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .plan-hero {
+        grid-template-columns: minmax(0, 1fr) 56px;
+        gap: 12px;
+      }
+
+      .plan-version {
+        min-width: 56px;
+        min-height: 56px;
+      }
+
+      .plan-signal {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 10px;
+      }
+
+      .plan-progress {
+        width: 100%;
+      }
+
+      .plan-lenses {
+        display: grid;
+        width: 100%;
+      }
+
+      .plan-primary-zone,
+      .plan-complete-readout,
+      .plan-composer__toolbar,
+      .plan-footer {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .plan-primary-zone .ox-action-btn,
+      .plan-composer__actions,
+      .plan-composer__actions .ox-action-btn,
+      .plan-footer .ox-link-btn {
+        width: 100%;
+      }
+
+      .plan-composer__actions {
+        display: grid;
+        grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr);
+      }
+
+      .plan-footer__meta {
+        text-align: center;
+      }
+
+      .plan-skeleton__workbench {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="widget-shell-card animate-in">
-    <div class="ox-card">
-      <div class="ox-card-inner">
-        <div class="widget-hero">
-          <div class="widget-hero-copy">
-            <div class="widget-kicker">Plan Session · Live</div>
-            <div class="widget-title-lg" data-plan-title>Planning in progress</div>
-            <div class="widget-subtitle" data-plan-subtitle>The agent is thinking out loud. Hover any step to add a note — your comments shape the next iteration.</div>
+  <main class="container" aria-live="polite">
+    <div class="widget-shell-card plan-shell animate-in">
+      <div class="ox-card">
+        <div class="ox-card-inner" data-widget-root>
+          <div class="plan-skeleton" data-loading>
+            <div class="plan-skeleton__header">
+              <div class="plan-skeleton__stack">
+                <div class="ox-skeleton plan-skeleton__line plan-skeleton__line--short"></div>
+                <div class="ox-skeleton plan-skeleton__line plan-skeleton__line--title"></div>
+                <div class="ox-skeleton plan-skeleton__line"></div>
+              </div>
+              <div class="ox-skeleton plan-skeleton__version"></div>
+            </div>
+            <div class="plan-skeleton__workbench">
+              <div class="plan-skeleton__stack">
+                <div class="ox-skeleton plan-skeleton__line"></div>
+                <div class="ox-skeleton plan-skeleton__line"></div>
+                <div class="ox-skeleton plan-skeleton__line"></div>
+              </div>
+              <div class="plan-skeleton__stack">
+                <div class="ox-skeleton plan-skeleton__line plan-skeleton__line--short"></div>
+                <div class="ox-skeleton plan-skeleton__line plan-skeleton__line--title"></div>
+                <div class="ox-skeleton plan-skeleton__line"></div>
+                <div class="ox-skeleton plan-skeleton__line"></div>
+              </div>
+            </div>
           </div>
-          <div class="widget-icon-frame">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h16"/></svg>
-          </div>
+          <div data-content hidden></div>
         </div>
-
-        <div class="stage" data-stage></div>
       </div>
     </div>
-  </div>
+  </main>
 
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
-  <script src="shared/components/domain-accent.js"></script>
-  <script src="shared/components/liveness-indicator.js"></script>
   <script>
-    (function () {
+    (function installPlanWidget() {
       'use strict';
 
-      function callTool(name, args) {
-        return window.OrgXWidgetRuntime.callTool(name, args || {});
-      }
-      function openWidgetLink(url) {
-        return window.OrgXWidgetRuntime.openWidgetLink(url);
-      }
-      function reportSize() {
-        window.OrgXWidgetRuntime.reportSize();
+      var state = {
+        plan: null,
+        selectedSection: 0,
+        lens: 'plan',
+        composerOpen: false,
+        completeExpanded: false,
+        trigger: null,
+      };
+
+      function firstString(values) {
+        for (var index = 0; index < values.length; index += 1) {
+          var value = values[index];
+          if (typeof value === 'string' && value.trim()) return value.trim();
+        }
+        return '';
       }
 
-      function resolvePlan() {
-        const toolOutput = (window.openai && window.openai.toolOutput) || null;
-        if (toolOutput && toolOutput.plan_session) return toolOutput.plan_session;
-        if (toolOutput && Array.isArray(toolOutput.steps)) return toolOutput;
+      function firstNumber(values, fallback) {
+        for (var index = 0; index < values.length; index += 1) {
+          var value = Number(values[index]);
+          if (Number.isFinite(value)) return value;
+        }
+        return fallback;
+      }
 
-        // Demo payload for gallery / dev.
+      function escapeHtml(value) {
+        var node = document.createElement('div');
+        node.textContent = value == null ? '' : String(value);
+        return node.innerHTML;
+      }
+
+      function normalizeStatus(value) {
+        var slug = String(value || 'active').toLowerCase().replace(/[^a-z0-9]+/g, '_');
+        if (['complete', 'completed', 'done', 'accepted', 'approved'].indexOf(slug) >= 0) {
+          return 'complete';
+        }
+        if (['error', 'failed', 'degraded', 'disconnected'].indexOf(slug) >= 0) {
+          return 'error';
+        }
+        return 'active';
+      }
+
+      function parsePlanDocument(markdown, fallbackTitle) {
+        var source = String(markdown || '').replace(/\r\n?/g, '\n').trim();
+        if (!source) return { title: fallbackTitle || 'Untitled plan', sections: [] };
+
+        var lines = source.split('\n');
+        var title = fallbackTitle || 'Untitled plan';
+        var sections = [];
+        var current = null;
+        var intro = [];
+
+        lines.forEach(function parseLine(line) {
+          var heading = line.match(/^(#{1,6})\s+(.+?)\s*$/);
+          if (heading) {
+            if (heading[1].length === 1 && title === (fallbackTitle || 'Untitled plan')) {
+              title = heading[2].trim();
+              return;
+            }
+            if (heading[1].length >= 2) {
+              if (current) sections.push(current);
+              current = { heading: heading[2].trim(), bodyLines: [] };
+              return;
+            }
+          }
+
+          if (current) current.bodyLines.push(line);
+          else if (line.trim()) intro.push(line);
+        });
+
+        if (current) sections.push(current);
+        if (intro.length) {
+          sections.unshift({ heading: 'Brief', bodyLines: intro });
+        }
+        if (!sections.length && source) {
+          sections.push({ heading: 'Plan', bodyLines: lines.filter(function keep(line) {
+            return !/^#\s+/.test(line);
+          }) });
+        }
+
         return {
-          id: 'PLAN-DEMO',
-          feature_name: 'Amplify conversion playbook',
-          status: 'active',
-          started_at: new Date(Date.now() - 6 * 60_000).toISOString(),
-          domains_detected: ['sales', 'marketing'],
-          steps: [
-            {
-              id: 'S1',
-              title: 'Calibrate the founder sales rep volume target',
-              detail: '20 discovery calls in 6 weeks — non-negotiable feedback floor before tooling decisions.',
-              state: 'done',
-              edits: [
-                { author: 'Hope', note: 'Raise to 25 if Week 2 conversion > 15%.', at: new Date(Date.now() - 4 * 60_000).toISOString() },
-              ],
-            },
-            {
-              id: 'S2',
-              title: 'Score inbound lead list by reply-propensity',
-              detail: 'Run list through trust context + posthog persona filters before manual triage.',
-              state: 'active',
-            },
-            {
-              id: 'S3',
-              title: 'Draft Loom+follow-up sequence per persona',
-              detail: 'One variant per ICP: operator, founder, RevOps. Ship before discovery calls start.',
-              state: 'pending',
-            },
-            {
-              id: 'S4',
-              title: 'Instrument call transcript scoring',
-              detail: 'Only after 5+ calls manually reviewed — no premature automation.',
-              state: 'pending',
-            },
-          ],
+          title: title,
+          sections: sections.map(function finalize(section, index) {
+            return {
+              id: 'section-' + (index + 1),
+              heading: section.heading || 'Section ' + (index + 1),
+              body: section.bodyLines.join('\n').trim(),
+              index: index,
+            };
+          }),
         };
       }
 
-      function escapeHtml(str) {
-        if (!str) return '';
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-      }
-      function formatRelative(iso) {
-        if (!iso) return '';
-        const min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
-        if (min < 1) return 'just now';
-        if (min < 60) return min + 'm ago';
-        return Math.round(min / 60) + 'h ago';
+      function normalizeEdits(value) {
+        if (!Array.isArray(value)) return [];
+        return value.map(function normalizeEdit(edit, index) {
+          var source = edit && typeof edit === 'object' ? edit : { note: edit };
+          return {
+            id: firstString([source.id, source.edit_id]) || 'edit-' + index,
+            author: firstString([source.author, source.user_name, source.actor_name]) || 'Plan guidance',
+            note: firstString([
+              source.edit_summary,
+              source.note,
+              source.summary,
+              source.user_reason,
+              source.after_content,
+            ]) || 'Plan updated',
+            at: firstString([source.at, source.created_at, source.updated_at]),
+          };
+        });
       }
 
-      function renderStep(step) {
-        const state = step.state || 'pending';
-        const edits = Array.isArray(step.edits) ? step.edits : [];
-        const editsHtml = edits.length
-          ? '<div class="plan-step__comments">' + edits.map(function (e) {
-              return '<div class="plan-step__comment">' +
-                '<div class="plan-step__comment-meta">' + escapeHtml(e.author || 'You') + ' · ' + escapeHtml(formatRelative(e.at)) + '</div>' +
-                '<div>' + escapeHtml(e.note || '') + '</div>' +
-                '</div>';
-            }).join('') + '</div>'
-          : '';
+      function normalizeLegacySteps(steps) {
+        if (!Array.isArray(steps)) return [];
+        return steps.map(function normalizeStep(step, index) {
+          var source = step && typeof step === 'object' ? step : { title: step };
+          return {
+            id: firstString([source.id]) || 'legacy-' + index,
+            heading: firstString([source.title, source.name]) || 'Step ' + (index + 1),
+            body: firstString([source.detail, source.description, source.content]),
+            index: index,
+          };
+        });
+      }
 
+      function selectPayload(payload) {
+        var source = payload && typeof payload === 'object' ? payload : {};
+        if (source.structuredContent && typeof source.structuredContent === 'object') {
+          source = source.structuredContent;
+        }
+        if (source.plan_session && typeof source.plan_session === 'object') {
+          source = source.plan_session;
+        } else if (source.selected_session && typeof source.selected_session === 'object') {
+          source = source.selected_session;
+        } else if (Array.isArray(source.sessions) && source.sessions.length) {
+          source = source.sessions[0];
+        } else if (Array.isArray(source.results) && source.results.length) {
+          source = source.results[0];
+        }
+        return source && typeof source === 'object' ? source : {};
+      }
+
+      function normalizePlanPayload(payload) {
+        var source = selectPayload(payload);
+        var errorMessage = firstString([
+          source.error && source.error.message,
+          source.error,
+          source.message,
+        ]);
+        if (source.ok === false || source.isError === true || normalizeStatus(source.status) === 'error') {
+          return {
+            error: errorMessage || 'The plan session could not be loaded.',
+            title: firstString([source.feature_name, source.title, source.name]) || 'Plan unavailable',
+          };
+        }
+
+        var fallbackTitle = firstString([source.feature_name, source.title, source.name]) || 'Untitled plan';
+        var markdown = firstString([
+          source.current_plan,
+          source.currentPlan,
+          source.plan_content,
+          source.planContent,
+          source.initial_plan,
+        ]);
+        var documentModel = parsePlanDocument(markdown, fallbackTitle);
+        var legacySections = normalizeLegacySteps(source.steps);
+        var sections = documentModel.sections.length ? documentModel.sections : legacySections;
+        var legacyEdits = [];
+        if (Array.isArray(source.steps)) {
+          source.steps.forEach(function collectStepEdits(step) {
+            if (step && Array.isArray(step.edits)) legacyEdits = legacyEdits.concat(step.edits);
+          });
+        }
+
+        return {
+          id: firstString([source.session_id, source.id, source.uuid]),
+          uri: firstString([source.uri]),
+          title: documentModel.title || fallbackTitle,
+          status: normalizeStatus(source.status),
+          version: Math.max(1, firstNumber([source.plan_version, source.version], 1)),
+          sections: sections,
+          edits: normalizeEdits(
+            Array.isArray(source.edits) && source.edits.length ? source.edits : legacyEdits
+          ),
+          startedAt: firstString([source.started_at, source.created_at]),
+          updatedAt: firstString([source.last_edit_at, source.updated_at, source.started_at]),
+          domains: Array.isArray(source.domains_detected) ? source.domains_detected : [],
+          demo: source.__demo === true,
+        };
+      }
+
+      function formatRelative(value) {
+        if (!value) return 'not yet updated';
+        var time = new Date(value).getTime();
+        if (!Number.isFinite(time)) return 'recently updated';
+        var minutes = Math.max(0, Math.round((Date.now() - time) / 60000));
+        if (minutes < 1) return 'updated just now';
+        if (minutes < 60) return 'updated ' + minutes + 'm ago';
+        var hours = Math.round(minutes / 60);
+        if (hours < 24) return 'updated ' + hours + 'h ago';
+        var days = Math.round(hours / 24);
+        return 'updated ' + days + 'd ago';
+      }
+
+      function renderInline(value) {
+        return escapeHtml(value)
+          .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+          .replace(/`([^`]+)`/g, '<code>$1</code>');
+      }
+
+      function renderMarkdownBody(value) {
+        var lines = String(value || '').split('\n');
+        var html = [];
+        var paragraph = [];
+        var listType = '';
+        var listItems = [];
+
+        function flushParagraph() {
+          if (!paragraph.length) return;
+          html.push('<p>' + renderInline(paragraph.join(' ')) + '</p>');
+          paragraph = [];
+        }
+
+        function flushList() {
+          if (!listItems.length) return;
+          html.push('<' + listType + '>' + listItems.map(function renderItem(item) {
+            return '<li>' + renderInline(item) + '</li>';
+          }).join('') + '</' + listType + '>');
+          listItems = [];
+          listType = '';
+        }
+
+        lines.forEach(function renderLine(line) {
+          var unordered = line.match(/^\s*[-*]\s+(.+)$/);
+          var ordered = line.match(/^\s*\d+[.)]\s+(.+)$/);
+          if (unordered || ordered) {
+            flushParagraph();
+            var nextType = unordered ? 'ul' : 'ol';
+            if (listType && listType !== nextType) flushList();
+            listType = nextType;
+            listItems.push((unordered || ordered)[1]);
+            return;
+          }
+          if (!line.trim()) {
+            flushParagraph();
+            flushList();
+            return;
+          }
+          flushList();
+          paragraph.push(line.trim());
+        });
+
+        flushParagraph();
+        flushList();
+        return html.join('') || '<p>Plan details are still being shaped.</p>';
+      }
+
+      function icon(name, size) {
+        var paths = {
+          plan: '<path d="M4 6h16M4 12h10M4 18h16"/>',
+          arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+          edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/>',
+          refresh: '<path d="M20 11a8.1 8.1 0 1 0 .2 4M20 4v7h-7"/>',
+          warning: '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.7 2.5 17.2A2 2 0 0 0 4.2 20h15.6a2 2 0 0 0 1.7-2.8L13.7 3.7a2 2 0 0 0-3.4 0Z"/>',
+        };
+        return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths[name] + '</svg>';
+      }
+
+      function renderLoading() {
+        document.querySelector('[data-loading]').hidden = false;
+        document.querySelector('[data-content]').hidden = true;
+        window.OrgXWidgetRuntime.reportSize();
+      }
+
+      function renderError(plan) {
+        var content = document.querySelector('[data-content]');
+        document.querySelector('[data-loading]').hidden = true;
+        content.hidden = false;
+        content.innerHTML =
+          '<section class="plan-state-panel" data-tone="error">' +
+            '<div class="plan-state-panel__signal">' + icon('warning', 22) + '</div>' +
+            '<h1 class="plan-state-panel__title">' + escapeHtml(plan.title || 'Plan unavailable') + '</h1>' +
+            '<p class="plan-state-panel__copy">The plan data could not be read. No edits were sent. Retry the current tool call.</p>' +
+            '<button type="button" class="ox-action-btn ox-action-btn--ghost" data-retry style="margin-top:18px;">' +
+              icon('refresh', 16) + ' Retry render' +
+            '</button>' +
+          '</section>';
+        content.querySelector('[data-retry]').addEventListener('click', function retry() {
+          window.location.reload();
+        });
+        window.OrgXWidgetRuntime.reportSize();
+      }
+
+      function renderProgress(plan) {
+        var count = Math.max(plan.sections.length, 1);
+        var segments = [];
+        for (var index = 0; index < count; index += 1) {
+          segments.push(
+            '<span class="plan-progress__segment"' +
+              (plan.sections.length ? '' : ' data-empty="true"') +
+            '></span>'
+          );
+        }
+        return '<div class="plan-progress" aria-hidden="true">' + segments.join('') + '</div>';
+      }
+
+      function renderMap(plan) {
+        var options = plan.sections.map(function option(section, index) {
+          return '<option value="' + index + '"' + (index === state.selectedSection ? ' selected' : '') + '>' +
+            String(index + 1).padStart(2, '0') + ' · ' + escapeHtml(section.heading) +
+          '</option>';
+        }).join('');
+        var buttons = plan.sections.map(function button(section, index) {
+          return (
+            '<button type="button" class="plan-map__button" data-section-index="' + index + '" aria-current="' + (index === state.selectedSection ? 'true' : 'false') + '">' +
+              '<span class="plan-map__index">' + String(index + 1).padStart(2, '0') + '</span>' +
+              '<span class="plan-map__title">' + escapeHtml(section.heading) + '</span>' +
+            '</button>'
+          );
+        }).join('');
         return (
-          '<div class="plan-step" data-state="' + state + '" data-step-id="' + escapeHtml(step.id || '') + '" style="animation-delay: ' + Math.min((step.index || 0) * 80, 640) + 'ms;">' +
-          '<div class="plan-step__marker" aria-hidden="true"></div>' +
-          '<button class="plan-step__comment-trigger" type="button" aria-label="Add note" data-open-composer>' +
-          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>' +
-          '</button>' +
-          '<div class="plan-step__title">' + escapeHtml(step.title || 'Untitled step') + '</div>' +
-          (step.detail ? '<div class="plan-step__detail">' + escapeHtml(step.detail) + '</div>' : '') +
-          editsHtml +
-          '<div class="plan-step__composer" data-composer>' +
-          '<textarea class="plan-step__textarea" data-composer-input placeholder="Add a note, correction, or constraint — the agent reads these before its next iteration."></textarea>' +
-          '<div class="plan-step__composer-actions">' +
-          '<button class="plan-step__composer-btn" type="button" data-composer-cancel>Cancel</button>' +
-          '<button class="plan-step__composer-btn plan-step__composer-btn--primary" type="button" data-composer-submit>File note</button>' +
-          '</div>' +
-          '</div>' +
+          '<nav class="plan-map" aria-label="Plan sections">' +
+            '<div class="plan-map__label">Plan map</div>' +
+            '<div class="plan-map__list">' + buttons + '</div>' +
+          '</nav>' +
+          '<div class="plan-section-select-wrap">' +
+            '<label class="plan-map__label" for="plan-section-select">Plan section</label>' +
+            '<select class="plan-section-select" id="plan-section-select" data-section-select>' + options + '</select>' +
           '</div>'
         );
       }
 
-      async function submitPlanEdit(planId, stepId, note) {
-        try {
-          await callTool('record_plan_edit', {
-            plan_session_id: planId,
-            step_id: stepId,
-            note: note,
-          });
-        } catch (err) {
-          console.warn('[plan-session] record_plan_edit failed', err);
+      function renderSelectedSection(plan) {
+        var section = plan.sections[state.selectedSection] || plan.sections[0];
+        if (!section) {
+          return (
+            '<section class="plan-state-panel">' +
+              '<div class="plan-state-panel__signal">' + icon('plan', 22) + '</div>' +
+              '<h2 class="plan-state-panel__title">Plan shell ready</h2>' +
+              '<p class="plan-state-panel__copy">This session exists, but its plan content has not been written yet. Add one concrete outcome, constraint, or next move to shape the first iteration.</p>' +
+            '</section>'
+          );
         }
+        return (
+          '<section class="plan-section" aria-labelledby="selected-section-title">' +
+            '<div class="plan-section__kicker">' + (state.selectedSection === 0 ? 'Plan anchor' : 'Section ' + (state.selectedSection + 1)) + '</div>' +
+            '<h2 class="plan-section__title" id="selected-section-title">' + escapeHtml(section.heading) + '</h2>' +
+            '<div class="plan-section__body-wrap" data-section-body-wrap>' +
+              '<div class="plan-section__body" data-section-body>' + renderMarkdownBody(section.body) + '</div>' +
+            '</div>' +
+            '<button type="button" class="plan-expand" data-expand-section aria-expanded="false">Show full section</button>' +
+          '</section>'
+        );
       }
 
-      function bindStepComposer(stepEl, planId) {
-        const trigger = stepEl.querySelector('[data-open-composer]');
-        const composer = stepEl.querySelector('[data-composer]');
-        const input = stepEl.querySelector('[data-composer-input]');
-        const cancel = stepEl.querySelector('[data-composer-cancel]');
-        const submit = stepEl.querySelector('[data-composer-submit]');
-        const stepId = stepEl.dataset.stepId;
-
-        trigger.addEventListener('click', function () {
-          composer.classList.add('is-open');
-          input.focus();
-          reportSize();
-        });
-        cancel.addEventListener('click', function () {
-          composer.classList.remove('is-open');
-          input.value = '';
-          reportSize();
-        });
-        submit.addEventListener('click', async function () {
-          const note = (input.value || '').trim();
-          if (!note) { input.focus(); return; }
-          submit.disabled = true;
-          submit.textContent = 'Filing…';
-          await submitPlanEdit(planId, stepId, note);
-          submit.disabled = false;
-          submit.textContent = 'File note';
-          input.value = '';
-          composer.classList.remove('is-open');
-          reportSize();
-        });
-      }
-
-      function render(plan) {
-        const stage = document.querySelector('[data-stage]');
-        const title = document.querySelector('[data-plan-title]');
-        const subtitle = document.querySelector('[data-plan-subtitle]');
-
-        if (!plan || !Array.isArray(plan.steps) || plan.steps.length === 0) {
-          stage.innerHTML = (
-            '<div class="plan-empty">' +
-            '<span class="plan-empty__pulse" aria-hidden="true"></span>' +
-            '<div class="plan-empty__title">Waiting for the agent to think</div>' +
-            '<div class="plan-empty__detail">Plan steps will stream in here as the agent reasons. Hover any step to add a note.</div>' +
+      function renderActivity(plan) {
+        if (!plan.edits.length) {
+          return '<div class="plan-empty-activity">No guidance recorded yet. The plan is still on its first visible pass.</div>';
+        }
+        return '<div class="plan-activity">' + plan.edits.map(function activity(edit) {
+          return (
+            '<div class="plan-activity__item">' +
+              '<span class="plan-activity__dot" aria-hidden="true"></span>' +
+              '<div>' +
+                '<div class="plan-activity__meta">' + escapeHtml(edit.author) + ' · ' + escapeHtml(formatRelative(edit.at)) + '</div>' +
+                '<div class="plan-activity__note">' + escapeHtml(edit.note) + '</div>' +
+              '</div>' +
             '</div>'
           );
-          reportSize();
+        }).join('') + '</div>';
+      }
+
+      function buildPlanUrl(plan) {
+        return plan.id
+          ? 'https://useorgx.com/planning/sessions/' + encodeURIComponent(plan.id)
+          : 'https://useorgx.com/planning';
+      }
+
+      function renderFooter(plan) {
+        var meta = [
+          plan.sections.length + (plan.sections.length === 1 ? ' section' : ' sections'),
+          plan.edits.length + (plan.edits.length === 1 ? ' edit' : ' edits'),
+          formatRelative(plan.updatedAt),
+        ].join(' · ');
+        return (
+          '<footer class="plan-footer">' +
+            '<div class="plan-footer__meta">' + escapeHtml(meta) + '</div>' +
+            '<a class="ox-link-btn ox-link-btn--ghost" data-open-plan href="' + escapeHtml(buildPlanUrl(plan)) + '">' +
+              'Open plan ' + icon('arrow', 16) +
+            '</a>' +
+          '</footer>'
+        );
+      }
+
+      function renderComposer(plan) {
+        var section = plan.sections[state.selectedSection] || null;
+        var context = section ? 'Guide “' + section.heading + '”' : 'Guide this plan';
+        return (
+          '<section class="plan-composer' + (state.composerOpen ? ' is-open' : '') + '" data-composer aria-label="Plan guidance">' +
+            '<div class="plan-composer__label">Human guidance</div>' +
+            '<div class="plan-composer__title">' + escapeHtml(context) + '</div>' +
+            '<textarea class="plan-textarea" data-guidance-input placeholder="Add one specific change, constraint, or correction. Your words become durable context for the next iteration."></textarea>' +
+            '<div class="plan-composer__toolbar">' +
+              '<div class="plan-composer__hint">Your note stays in place if sending fails.</div>' +
+              '<div class="plan-composer__actions">' +
+                '<button type="button" class="ox-action-btn ox-action-btn--quiet" data-cancel-guidance>Cancel</button>' +
+                '<button type="button" class="ox-action-btn ox-action-btn--primary" data-send-guidance>Send guidance</button>' +
+              '</div>' +
+            '</div>' +
+            '<div class="plan-feedback" data-feedback role="status"></div>' +
+          '</section>'
+        );
+      }
+
+      function renderPrimaryZone(plan) {
+        return (
+          '<div class="plan-primary-zone" data-primary-zone' + (state.composerOpen ? ' hidden' : '') + '>' +
+            '<div class="plan-primary-copy">Add a correction or constraint without leaving the plan. OrgX preserves it for the next agent turn.</div>' +
+            '<button type="button" class="ox-action-btn ox-action-btn--primary" data-open-guidance data-primary-action="true">' +
+              icon('edit', 16) + ' Guide this plan' +
+            '</button>' +
+          '</div>'
+        );
+      }
+
+      function renderCompleteReadout(plan) {
+        return (
+          '<div class="plan-complete-readout">' +
+            '<div class="plan-complete-readout__copy">' +
+              '<strong>Ready for work</strong>' +
+              'Accepted v' + plan.version + ' · ' + plan.sections.length +
+              (plan.sections.length === 1 ? ' section' : ' sections') +
+              ' · ' + plan.edits.length + (plan.edits.length === 1 ? ' edit' : ' edits') +
+            '</div>' +
+            '<button type="button" class="ox-action-btn ox-action-btn--quiet" data-toggle-complete aria-expanded="' + state.completeExpanded + '">' +
+              (state.completeExpanded ? 'Collapse accepted plan' : 'Review accepted plan') +
+            '</button>' +
+          '</div>'
+        );
+      }
+
+      function renderPlan(plan) {
+        state.plan = plan;
+        if (state.selectedSection >= plan.sections.length) state.selectedSection = 0;
+        var content = document.querySelector('[data-content]');
+        document.querySelector('[data-loading]').hidden = true;
+        content.hidden = false;
+
+        var isComplete = plan.status === 'complete';
+        var isEmpty = plan.sections.length === 0;
+        var stateLabel = isComplete ? 'Plan accepted' : 'Plan session · live';
+        var signalQuestion = plan.sections.length
+          ? (isComplete ? 'Accepted context for execution' : 'Current shape · ready for your guidance')
+          : 'Plan shell · waiting for its first concrete shape';
+
+        content.innerHTML =
+          '<article data-plan-status="' + plan.status + '">' +
+            '<header class="plan-hero">' +
+              '<div>' +
+                '<div class="plan-kicker"><span class="plan-live-dot" aria-hidden="true"></span>' + stateLabel + '</div>' +
+                '<h1 class="plan-title">' + escapeHtml(plan.title) + '</h1>' +
+                '<p class="plan-summary">' +
+                  (isEmpty
+                    ? 'Start with one outcome, constraint, or next move. OrgX will keep the planning context durable.'
+                    : isComplete
+                    ? 'The planning loop is closed. This version is the durable handoff.'
+                    : 'Review the outcome, move through the plan map, or add one precise correction.') +
+                '</p>' +
+              '</div>' +
+              '<div class="plan-version" aria-label="Plan version ' + plan.version + '">' +
+                '<span class="plan-version__value">v' + plan.version + '</span>' +
+                '<span class="plan-version__label">Plan</span>' +
+              '</div>' +
+            '</header>' +
+            '<div class="plan-signal">' +
+              '<div class="plan-signal__copy">' +
+                '<div class="plan-signal__question">' + escapeHtml(signalQuestion) + '</div>' +
+                '<div class="plan-signal__meta">' +
+                  plan.sections.length + (plan.sections.length === 1 ? ' section' : ' sections') +
+                  (plan.domains.length ? ' · ' + escapeHtml(plan.domains.slice(0, 3).join(' · ')) : '') +
+                '</div>' +
+              '</div>' +
+              renderProgress(plan) +
+            '</div>' +
+            (isComplete && !state.completeExpanded
+              ? ''
+              : '<div class="plan-lenses" role="tablist" aria-label="Plan views">' +
+                  '<button type="button" class="plan-lens" role="tab" data-lens="plan" aria-selected="' + (state.lens === 'plan') + '">Plan</button>' +
+                  '<button type="button" class="plan-lens" role="tab" data-lens="activity" aria-selected="' + (state.lens === 'activity') + '">Guidance · ' + plan.edits.length + '</button>' +
+                '</div>' +
+                '<div class="plan-panel" role="tabpanel">' +
+                  (state.lens === 'plan'
+                    ? (plan.sections.length
+                        ? '<div class="plan-workbench">' + renderMap(plan) + renderSelectedSection(plan) + '</div>'
+                        : renderSelectedSection(plan))
+                    : renderActivity(plan)) +
+                '</div>') +
+            (isComplete ? renderCompleteReadout(plan) : renderPrimaryZone(plan) + renderComposer(plan)) +
+            renderFooter(plan) +
+          '</article>';
+
+        bindInteractions();
+        window.OrgXWidgetRuntime.reportSize();
+      }
+
+      function updateSectionClamp() {
+        var wrap = document.querySelector('[data-section-body-wrap]');
+        var body = document.querySelector('[data-section-body]');
+        var button = document.querySelector('[data-expand-section]');
+        if (!wrap || !body || !button) return;
+        var clamped = body.scrollHeight > 282;
+        wrap.dataset.clamped = String(clamped);
+        button.classList.toggle('is-visible', clamped);
+      }
+
+      function openComposer(trigger) {
+        state.composerOpen = true;
+        state.trigger = trigger;
+        renderPlan(state.plan);
+        var input = document.querySelector('[data-guidance-input]');
+        if (input) input.focus();
+      }
+
+      function closeComposer(options) {
+        var restoreFocus = !options || options.restoreFocus !== false;
+        var trigger = state.trigger;
+        state.composerOpen = false;
+        renderPlan(state.plan);
+        if (restoreFocus) {
+          var nextTrigger = document.querySelector('[data-open-guidance]');
+          (nextTrigger || trigger)?.focus();
+        }
+      }
+
+      async function submitGuidance() {
+        var input = document.querySelector('[data-guidance-input]');
+        var submit = document.querySelector('[data-send-guidance]');
+        var feedback = document.querySelector('[data-feedback]');
+        var note = input ? input.value.trim() : '';
+        if (!note) {
+          feedback.textContent = 'Add a specific correction or constraint first.';
+          feedback.dataset.tone = 'error';
+          input.focus();
+          return;
+        }
+        if (!state.plan.id && !state.plan.demo) {
+          feedback.textContent = 'This plan has no session ID, so guidance cannot be recorded yet.';
+          feedback.dataset.tone = 'error';
           return;
         }
 
-        title.textContent = plan.feature_name || 'Plan session';
-        subtitle.textContent = 'Hover any step to add a note — your comments shape the next iteration.';
+        var section = state.plan.sections[state.selectedSection] || null;
+        var summary = (section ? section.heading + ': ' : '') + note.replace(/\s+/g, ' ');
+        submit.disabled = true;
+        submit.setAttribute('aria-busy', 'true');
+        submit.textContent = 'Sending guidance…';
+        feedback.textContent = 'Recording durable plan context…';
+        feedback.dataset.tone = '';
 
-        const stepsHtml = plan.steps.map(function (s, i) {
-          s.index = i;
-          return renderStep(s);
-        }).join('');
+        try {
+          if (!state.plan.demo) {
+            var result = await window.OrgXWidgetRuntime.callTool('orgx_plan', {
+              action: 'record_edit',
+              session_id: state.plan.id,
+              edit_summary: summary,
+            });
+            if (
+              result == null ||
+              (result && typeof result === 'object' &&
+                (result.isError === true || result.ok === false))
+            ) {
+              throw new Error('guidance_not_recorded');
+            }
+          }
+          state.plan.edits.unshift({
+            id: 'local-' + Date.now(),
+            author: state.plan.demo ? 'Preview' : 'You',
+            note: note,
+            at: new Date().toISOString(),
+          });
+          state.composerOpen = false;
+          state.lens = 'activity';
+          renderPlan(state.plan);
+          var liveFeedback = document.createElement('div');
+          liveFeedback.className = 'plan-feedback';
+          liveFeedback.dataset.tone = 'success';
+          liveFeedback.setAttribute('role', 'status');
+          liveFeedback.textContent = state.plan.demo
+            ? 'Preview recorded locally — no production plan changed.'
+            : 'Guidance recorded — the next iteration has context.';
+          var primaryZone = document.querySelector('[data-primary-zone]');
+          if (primaryZone) primaryZone.insertAdjacentElement('afterend', liveFeedback);
+          window.OrgXWidgetRuntime.reportSize();
+        } catch (_) {
+          submit.disabled = false;
+          submit.removeAttribute('aria-busy');
+          submit.textContent = 'Retry guidance';
+          feedback.textContent = 'Guidance was not recorded. Your note is still here.';
+          feedback.dataset.tone = 'error';
+          input.focus();
+        }
+      }
 
-        stage.innerHTML = (
-          '<div class="plan-meta">' +
-          '<div>' +
-          '<div class="plan-meta__kicker">Feature</div>' +
-          '<div class="plan-meta__feature">' + escapeHtml(plan.feature_name || 'Untitled') + '</div>' +
-          '</div>' +
-          '<span data-liveness></span>' +
-          '</div>' +
-          '<div class="plan-list">' + stepsHtml + '</div>' +
-          '<div class="widget-foot">' +
-          '<span style="font-family:var(--ox-mono);font-size:0.62rem;color:var(--ox-text-muted);text-transform:uppercase;letter-spacing:0.08em;">' +
-          plan.steps.filter(function (s) { return s.state === 'done'; }).length + ' / ' + plan.steps.length + ' steps complete' +
-          '</span>' +
-          (plan.id ? '<a data-deeplink href="/plan-sessions/' + plan.id + '" style="font-family:var(--ox-mono);font-size:0.68rem;color:var(--ox-primary);text-decoration:none;">Open in OrgX →</a>' : '') +
-          '</div>'
-        );
-
-        // Wire composers
-        stage.querySelectorAll('.plan-step').forEach(function (stepEl) {
-          bindStepComposer(stepEl, plan.id);
+      function bindInteractions() {
+        document.querySelectorAll('[data-lens]').forEach(function bindLens(button) {
+          button.addEventListener('click', function changeLens() {
+            state.lens = button.dataset.lens;
+            state.composerOpen = false;
+            renderPlan(state.plan);
+          });
         });
 
-        // Wire deep link
-        const deepLink = stage.querySelector('[data-deeplink]');
-        if (deepLink) {
-          deepLink.addEventListener('click', function (e) {
-            e.preventDefault();
-            openWidgetLink(deepLink.getAttribute('href'));
+        document.querySelectorAll('[data-section-index]').forEach(function bindSection(button) {
+          button.addEventListener('click', function selectSection() {
+            state.selectedSection = Number(button.dataset.sectionIndex) || 0;
+            renderPlan(state.plan);
+          });
+        });
+
+        var select = document.querySelector('[data-section-select]');
+        if (select) {
+          select.addEventListener('change', function selectSection() {
+            state.selectedSection = Number(select.value) || 0;
+            renderPlan(state.plan);
           });
         }
 
-        // Attach liveness
-        const livenessHost = stage.querySelector('[data-liveness]');
-        if (livenessHost && window.OrgxLiveness) {
-          const live = window.OrgxLiveness.attach(livenessHost);
-          // Initial pulse to indicate fresh data
-          setTimeout(function () { live.pulse(); }, 120);
-
-          // In a real wiring, an SSE feed would call live.pulse() on each
-          // incoming plan_edit event. For demo/offline we simulate one.
-          if (!window.openai) {
-            setInterval(function () { live.pulse(); }, 4500);
-          }
+        var expand = document.querySelector('[data-expand-section]');
+        if (expand) {
+          expand.addEventListener('click', function toggleSection() {
+            var wrap = document.querySelector('[data-section-body-wrap]');
+            var expanded = expand.getAttribute('aria-expanded') === 'true';
+            wrap.classList.toggle('is-expanded', !expanded);
+            expand.setAttribute('aria-expanded', String(!expanded));
+            expand.textContent = expanded ? 'Show full section' : 'Collapse section';
+            window.OrgXWidgetRuntime.reportSize();
+          });
         }
 
-        reportSize();
+        var open = document.querySelector('[data-open-guidance]');
+        if (open) open.addEventListener('click', function () { openComposer(open); });
+
+        var cancel = document.querySelector('[data-cancel-guidance]');
+        if (cancel) cancel.addEventListener('click', function () { closeComposer(); });
+
+        var send = document.querySelector('[data-send-guidance]');
+        if (send) send.addEventListener('click', submitGuidance);
+
+        var completeToggle = document.querySelector('[data-toggle-complete]');
+        if (completeToggle) {
+          completeToggle.addEventListener('click', function toggleComplete() {
+            state.completeExpanded = !state.completeExpanded;
+            renderPlan(state.plan);
+            document.querySelector('[data-toggle-complete]')?.focus();
+          });
+        }
+
+        var input = document.querySelector('[data-guidance-input]');
+        if (input) {
+          input.addEventListener('keydown', function handleComposerKey(event) {
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              closeComposer();
+            }
+          });
+        }
+
+        var link = document.querySelector('[data-open-plan]');
+        if (link) {
+          link.addEventListener('click', function openPlan(event) {
+            window.OrgXWidgetRuntime.openWidgetLink(link.href, event);
+          });
+        }
+
+        window.requestAnimationFrame(updateSectionClamp);
       }
 
-      document.addEventListener('DOMContentLoaded', function () {
-        if (window.OrgXWidgetRuntime.detectProtocol() === 'standalone') {
-          render(resolvePlan());
+      function renderPayload(payload) {
+        if (!payload) {
+          renderLoading();
           return;
         }
+        var plan = normalizePlanPayload(payload);
+        if (plan.error) {
+          renderError(plan);
+          return;
+        }
+        if (
+          state.plan &&
+          plan.id &&
+          plan.id === state.plan.id &&
+          plan.sections.length === 0 &&
+          state.plan.sections.length > 0
+        ) {
+          plan = {
+            ...state.plan,
+            ...plan,
+            title: plan.title === 'Untitled plan' ? state.plan.title : plan.title,
+            sections: state.plan.sections,
+            domains: plan.domains.length ? plan.domains : state.plan.domains,
+            edits: plan.edits.length ? plan.edits : state.plan.edits,
+          };
+        }
+        state.selectedSection = Math.max(
+          0,
+          plan.sections.findIndex(function findOutcome(section) {
+            return /^outcome$/i.test(section.heading);
+          })
+        );
+        state.lens = 'plan';
+        state.composerOpen = false;
+        state.completeExpanded = false;
+        renderPlan(plan);
+      }
+
+      function fixture(name) {
+        var base = {
+          __demo: true,
+          id: '06bc7c7d-2778-4e2f-ab10-28f4b3e16554',
+          feature_name: 'Own the Agent Work Answer Layer',
+          status: name === 'complete' || name === 'resolved' ? 'completed' : 'active',
+          plan_version: name === 'complete' || name === 'resolved' ? 3 : 1,
+          updated_at: new Date(Date.now() - 6 * 60000).toISOString(),
+          domains_detected: ['product', 'engineering'],
+          current_plan:
+            '# Own the Agent Work Answer Layer\n\n' +
+            '## Outcome\n' +
+            'Make OrgX the canonical, proof-backed answer source for agent work continuity, authority, receipts, and infrastructure choices.\n\n' +
+            '## Workstreams\n' +
+            '1. Answer Room platform with durable routes, proof UI, accessibility, and crawler-visible HTML.\n' +
+            '2. Buyer-answer corpus with 20 proof-backed launch answers before expansion.\n' +
+            '3. Measurement with provider, run, citation, accuracy, and outcome provenance.\n\n' +
+            '## Release discipline\n' +
+            'Ship incremental slices. Keep code, tests, merge, deploy, and live proof as separate states.\n\n' +
+            '## Gates\n' +
+            '- Every public claim links to evidence or is labeled partial.\n' +
+            '- Human approval remains explicit for recommendations.\n' +
+            '- Each slice passes its focused contract and rendered-state checks.\n\n' +
+            '## Non-goals\n' +
+            'No invented customer proof, duplicate evidence ledgers, or claim that merged equals deployed.',
+          edits: [
+            {
+              author: 'Hope',
+              edit_summary: 'Gates: keep live proof separate from deployment status.',
+              created_at: new Date(Date.now() - 4 * 60000).toISOString(),
+            },
+          ],
+        };
+
+        if (name === 'empty') {
+          base.feature_name = 'New governed workflow';
+          base.current_plan = '';
+          base.edits = [];
+        }
+        if (name === 'error' || name === 'degraded') {
+          return {
+            __demo: true,
+            status: 'error',
+            title: 'Plan data unavailable',
+            error: { message: 'fixture error' },
+            ok: false,
+          };
+        }
+        if (name === 'long') {
+          base.current_plan +=
+            '\n\n## Verification matrix\n' +
+            Array.from({ length: 14 }, function (_, index) {
+              return (index + 1) + '. Verify evidence boundary ' + (index + 1) + ' across local, CI, merge, deploy, and production usage without collapsing states.';
+            }).join('\n');
+        }
+        return base;
+      }
+
+      window.OrgXPlanWidgetModel = {
+        normalizePlanPayload: normalizePlanPayload,
+        parsePlanDocument: parsePlanDocument,
+        renderMarkdownBody: renderMarkdownBody,
+      };
+
+      document.addEventListener('DOMContentLoaded', function boot() {
+        var params = new URLSearchParams(window.location.search);
+        var previewState = params.get('state') || '';
+        var loading = params.get('loading') === 'true' || previewState === 'loading';
+        var demo = params.get('demo') === 'true';
+        var protocol = window.OrgXWidgetRuntime.detectProtocol();
+
+        if (protocol === 'standalone') {
+          if (loading) renderLoading();
+          else if (demo || ['long', 'complete', 'resolved', 'error', 'degraded'].indexOf(previewState) >= 0) {
+            renderPayload(fixture(previewState || 'populated'));
+          } else {
+            renderPayload(fixture('empty'));
+          }
+          return;
+        }
+
         window.OrgXWidgetRuntime.initWidget({
-          render: function (payload) {
-            if (!payload) return;
-            render(payload.plan_session || payload);
-          },
+          render: renderPayload,
         });
       });
-      window.addEventListener('resize', reportSize);
+
+      window.addEventListener('resize', function resize() {
+        updateSectionClamp();
+        window.OrgXWidgetRuntime.reportSize();
+      });
     })();
   </script>
 </body>
