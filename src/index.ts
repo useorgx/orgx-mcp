@@ -50,6 +50,7 @@ import {
   withCorsAndHeaders,
   withSseKeepAlive,
 } from './mcpTransport';
+import { withPathScopedResourceChallenge } from './oauthResourceChallenge';
 import { withSecurityHeaders } from './securityHeaders';
 import { callOrgxApiJson, callOrgxApiRaw, OrgXApiError } from './orgxApi';
 import { fetchContextPack } from './contextPack';
@@ -12904,7 +12905,9 @@ const worker = {
     const diagnosticRequest = request.clone();
     try {
       const response = await oauthProvider.fetch(request, env, ctx);
-      return withSecurityHeaders(response);
+      return withSecurityHeaders(
+        withPathScopedResourceChallenge(diagnosticRequest, response)
+      );
     } catch (error) {
       Sentry.captureException(error, {
         tags: { subsystem: 'oauth', stage: 'provider_request' },
