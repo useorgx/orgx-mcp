@@ -68,7 +68,7 @@ describe('OpenAI ChatGPT app submission readiness', () => {
   it('keeps app info concise and review-facing', () => {
     expect(submission.app_info.display_name).toBe('OrgX');
     expect(submission.app_info.subtitle.length).toBeLessThanOrEqual(30);
-    expect(submission.app_info.description).toContain('organizational memory');
+    expect(submission.app_info.description).toContain('shared memory');
     expect(submission.app_info.category).toBe('PRODUCTIVITY');
   });
 
