@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-07-28T13:42:56.800Z",
+  "generatedAt": "2026-07-28T20:37:15.124Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -144,13 +144,10 @@
     },
     "plan-session-live": {
       "file": "public/widgets/plan-session-live.html",
-      "bytes": 20388,
-      "hash": "d3971e02014e",
+      "bytes": 58449,
+      "hash": "d2ac7c4112e2",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
-        "shared/components/domain-accent.css",
-        "shared/components/domain-accent.js",
-        "shared/components/liveness-indicator.js",
         "shared/interaction-kit.css",
         "shared/mcp-apps-sdk.umd.js",
         "shared/tokens.css",
