@@ -145,6 +145,19 @@ describe('contract tool catalog', () => {
     expect(orgxPlanSchema.workspace_id.description).toContain('current session workspace');
   });
 
+  it('documents session-less resume as the workspace-scoped fallback', () => {
+    const orgxPlan = CONTRACT_TOOL_DEFINITIONS.find((t) => t.id === 'orgx_plan');
+    expect(orgxPlan, 'orgx_plan should be registered').toBeDefined();
+    const schema = orgxPlan!.inputSchema as Record<string, z.ZodTypeAny>;
+
+    expect(orgxPlan!.description).toContain(
+      'Optional session_id; when omitted, resumes the most recent active session'
+    );
+    expect(schema.session_id.description).toContain(
+      'Optional for action=resume'
+    );
+  });
+
   it('marks agent dispatch wrappers as open-world and destructive', () => {
     for (const toolId of ['orgx_spawn', 'delegate_agent_task'] as const) {
       const tool = CONTRACT_TOOL_DEFINITIONS.find((entry) => entry.id === toolId);

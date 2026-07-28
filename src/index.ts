@@ -2380,7 +2380,11 @@ export class OrgXMcp extends McpAgent<
         // Use resolvedToolId/expandedArgs from expandConsolidatedTool
         const { endpoint, body } = this.getToolEndpoint(resolvedToolId, expandedArgs);
         if (resolvedUserId) {
-          body.user_id = resolvedUserId;
+          // Prefer the login-verified Supabase UUID in the body when the call
+          // acts as the current session owner. The external identity remains
+          // in signed/legacy gateway headers for provenance and fallback.
+          body.user_id =
+            this.resolveOrgxUserId(resolvedUserId) ?? resolvedUserId;
         }
 
         const response = await callOrgxApiJson(
@@ -4012,6 +4016,27 @@ export class OrgXMcp extends McpAgent<
               ? args.cursor.trim()
               : null;
 
+          if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+            return this.toolError(
+              'orgx_search limit must be an integer between 1 and 100',
+              {
+                code: 'invalid_input',
+                status: 400,
+                details: { field: 'limit', minimum: 1, maximum: 100 },
+              }
+            );
+          }
+          if (!Number.isInteger(offset) || offset < 0) {
+            return this.toolError(
+              'orgx_search offset must be a non-negative integer',
+              {
+                code: 'invalid_input',
+                status: 400,
+                details: { field: 'offset', minimum: 0 },
+              }
+            );
+          }
+
           if (cursor && offset > 0) {
             return this.toolError(
               'orgx_search accepts cursor or offset, not both',
@@ -4156,7 +4181,7 @@ export class OrgXMcp extends McpAgent<
               workspace_id: args.workspace_id,
               limit: args.limit,
             },
-            SECURITY_SCHEMES.readOptionalAuth
+            SECURITY_SCHEMES.entityReadRequiresAuth
           );
         }
 
@@ -11573,6 +11598,7 @@ export class OrgXMcp extends McpAgent<
           inputSchema: this.withClientContext({
             workspace_id: z
               .string()
+              .uuid()
               .describe('Workspace UUID to load the morning brief for'),
             session_id: z
               .string()
@@ -11614,13 +11640,36 @@ export class OrgXMcp extends McpAgent<
             if (!wsId) return this.toolError('workspace_id required');
             const resolvedUserId = this.resolveUserId();
 
+            const briefParams = new URLSearchParams({
+              workspace_id: wsId,
+            });
+            if (typeof args.session_id === 'string' && args.session_id) {
+              briefParams.set('session_id', args.session_id);
+            }
             const response = await callOrgxApiJson(
               this.env,
-              `/api/flywheel/briefs?workspace_id=${wsId}${args.session_id ? `&session_id=${args.session_id}` : ''}`,
+              `/api/flywheel/briefs?${briefParams.toString()}`,
               undefined,
               { userId: resolvedUserId ?? undefined, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? undefined) }
             );
             const result = (await response.json()) as Record<string, unknown>;
+            if (!response.ok) {
+              const notFound = response.status === 404;
+              return this.toolError(
+                notFound
+                  ? 'Workspace not found or not accessible'
+                  : typeof result.error === 'string'
+                  ? result.error
+                  : 'Unable to load morning brief',
+                {
+                  code: notFound
+                    ? 'workspace_not_found'
+                    : 'morning_brief_failed',
+                  status: response.status,
+                  details: { workspace_id: wsId },
+                }
+              );
+            }
             const [outcomeAttribution, workspacePulse] = await Promise.all([
               this.fetchOrgxJsonOrNull<Record<string, unknown>>(
                 `/api/flywheel/attribution?workspace_id=${wsId}&period=30d`,
