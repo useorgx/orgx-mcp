@@ -126,7 +126,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       session_id: z.string().optional().describe('Optional bootstrap/session identifier'),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
+    securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.morningBrief,
       'openai/toolInvocation/invoking': 'Building OrgX recommendation...',
@@ -298,14 +298,14 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       'Use when planning should survive the session and become executable context instead of a lost chat draft. Starts, resumes, edits, improves, or completes a tracked OrgX planning session.\n\n' +
       'Per-action input requirements:\n' +
       '  • action="start"       → REQUIRES feature_name. Optional: initial_plan (markdown to seed the session).\n' +
-      '  • action="resume"      → REQUIRES session_id.\n' +
+      '  • action="resume"      → Optional session_id; when omitted, resumes the most recent active session in the authenticated workspace.\n' +
       '  • action="improve"     → REQUIRES session_id AND plan_content (the current draft to critique).\n' +
       '  • action="record_edit" → REQUIRES session_id AND edit_summary (one-line description of the change).\n' +
       '  • action="complete"    → REQUIRES session_id AND plan_content (the final accepted plan). Optional: attach_to (target entity to link the completed plan to).\n\n' +
       'USE WHEN: work is still in planning or should become executable context. NEXT: use orgx_write or orgx_act after the plan is accepted and needs durable execution state. DO NOT USE WHEN: directly scaffolding a full initiative hierarchy; use scaffold_initiative for that compatibility path.',
     inputSchema: {
       action: z.enum(['start', 'resume', 'improve', 'record_edit', 'complete']).describe('Planning action to perform. See top-level description for per-action required fields.'),
-      session_id: z.string().optional().describe('Plan session UUID or orgx://plan_session/<uuid> URI. REQUIRED for action=resume | improve | record_edit | complete. Omit for action=start.'),
+      session_id: z.string().optional().describe('Plan session UUID or orgx://plan_session/<uuid> URI. Optional for action=resume, which defaults to the most recent active session in the authenticated workspace. REQUIRED for action=improve | record_edit | complete. Omit for action=start.'),
       feature_name: z.string().optional().describe('Feature or plan name. REQUIRED when action=start.'),
       initial_plan: z.string().optional().describe('Markdown plan content to seed the new session. Optional on action=start; the session can also be started empty and filled via improve/record_edit.'),
       plan_content: z.string().optional().describe('Current/final plan markdown. REQUIRED when action=improve (the draft to critique) or action=complete (the final accepted plan).'),

@@ -1,6 +1,6 @@
 {
   "name": "orgx-mcp-worker",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "private": true,
   "packageManager": "pnpm@10.18.1",
   "homepage": "https://mcp.useorgx.com",
@@ -36,7 +36,7 @@
     "test:openai-review": "vitest run tests/openaiSubmissionReadiness.spec.ts",
     "test:agent-selection": "node scripts/run-agent-selection.mjs",
     "test:description-ab": "node scripts/description-ab.mjs",
-    "test:mcp-contract": "vitest run tests/promptTemplatePolicy.spec.ts tests/securityHeaders.spec.ts tests/mcpTransport.spec.ts tests/mcp.sessionStorage.spec.ts tests/mcpLifecycleActionAliases.spec.ts tests/reporting.mcp-tools.spec.ts tests/operatorChronicleFallback.spec.ts tests/mcpWorker.toolRegistration.spec.ts tests/entityUpdateRequest.spec.ts tests/standardOutputSchema.spec.ts tests/mcpWorker.contextAccessTier.spec.ts tests/mcpWorker.edgeRateLimit.spec.ts tests/mcpWorker.entityActionAttach.spec.ts tests/mcpWorker.entityActionShipBatch.spec.ts tests/mcpWorker.taskContextHydrator.spec.ts tests/mcpWorker.toolAccessGating.spec.ts tests/mcpWorker.accountTools.spec.ts tests/planSessionContract.spec.ts tests/schemaIntrospection.spec.ts tests/contractTools.spec.ts tests/listEntitiesWorkspaceScope.spec.ts tests/loopReliabilityValidation.spec.ts tests/artifactContracts.spec.ts tests/founderTeamArtifactCatalog.spec.ts tests/toolCoverageMatrix.spec.ts tests/toolProfiles.compat.spec.ts tests/orgxSearch.spec.ts tests/toolGuidance.spec.ts tests/agentSelection.fixture.spec.ts tests/agentSelectionRunner.spec.ts",
+    "test:mcp-contract": "vitest run tests/promptTemplatePolicy.spec.ts tests/securityHeaders.spec.ts tests/mcpTransport.spec.ts tests/mcp.sessionStorage.spec.ts tests/mcpLifecycleActionAliases.spec.ts tests/reporting.mcp-tools.spec.ts tests/operatorChronicleFallback.spec.ts tests/mcpWorker.toolRegistration.spec.ts tests/entityUpdateRequest.spec.ts tests/standardOutputSchema.spec.ts tests/mcpWorker.contextAccessTier.spec.ts tests/mcpWorker.edgeRateLimit.spec.ts tests/mcpWorker.entityActionAttach.spec.ts tests/mcpWorker.entityActionShipBatch.spec.ts tests/mcpWorker.taskContextHydrator.spec.ts tests/mcpWorker.toolAccessGating.spec.ts tests/mcpWorker.accountTools.spec.ts tests/planSessionContract.spec.ts tests/schemaIntrospection.spec.ts tests/contractTools.spec.ts tests/listEntitiesWorkspaceScope.spec.ts tests/loopReliabilityValidation.spec.ts tests/artifactContracts.spec.ts tests/founderTeamArtifactCatalog.spec.ts tests/toolCoverageMatrix.spec.ts tests/toolProfiles.compat.spec.ts tests/orgxSearch.spec.ts tests/liveContractRegressions.spec.ts tests/toolGuidance.spec.ts tests/agentSelection.fixture.spec.ts tests/agentSelectionRunner.spec.ts",
     "benchmark:mcp": "node scripts/benchmark-mcp-performance.mjs",
     "verify": "pnpm type-check && pnpm test:mcp-contract && pnpm build",
     "directory:preflight": "node scripts/directory-preflight.mjs",

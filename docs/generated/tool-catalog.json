@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-28T13:43:58.620Z",
-  "sourceHash": "c09b73502fa710db",
+  "generatedAt": "2026-07-28T17:26:45.857Z",
+  "sourceHash": "a7abb12ee803bbf4",
   "version": "1.0.0",
   "totalTools": 81,
   "categories": [
@@ -38,14 +38,17 @@
           },
           "workspace_id": {
             "type": "string",
+            "format": "uuid",
             "description": "Optional workspace UUID to scope agent status"
           },
           "command_center_id": {
             "type": "string",
+            "format": "uuid",
             "description": "Deprecated alias for workspace_id"
           },
           "initiative_id": {
             "type": "string",
+            "format": "uuid",
             "description": "Optional initiative UUID to scope agent status"
           },
           "include_idle": {
@@ -3144,7 +3147,7 @@
     {
       "id": "orgx_plan",
       "title": "Manage OrgX Plan Session",
-      "description": "Use when planning should survive the session and become executable context instead of a lost chat draft. Starts, resumes, edits, improves, or completes a tracked OrgX planning session.\n\nPer-action input requirements:\n  • action=\"start\"       → REQUIRES feature_name. Optional: initial_plan (markdown to seed the session).\n  • action=\"resume\"      → REQUIRES session_id.\n  • action=\"improve\"     → REQUIRES session_id AND plan_content (the current draft to critique).\n  • action=\"record_edit\" → REQUIRES session_id AND edit_summary (one-line description of the change).\n  • action=\"complete\"    → REQUIRES session_id AND plan_content (the final accepted plan). Optional: attach_to (target entity to link the completed plan to).\n\nUSE WHEN: work is still in planning or should become executable context. NEXT: use orgx_write or orgx_act after the plan is accepted and needs durable execution state. DO NOT USE WHEN: directly scaffolding a full initiative hierarchy; use scaffold_initiative for that compatibility path.",
+      "description": "Use when planning should survive the session and become executable context instead of a lost chat draft. Starts, resumes, edits, improves, or completes a tracked OrgX planning session.\n\nPer-action input requirements:\n  • action=\"start\"       → REQUIRES feature_name. Optional: initial_plan (markdown to seed the session).\n  • action=\"resume\"      → Optional session_id; when omitted, resumes the most recent active session in the authenticated workspace.\n  • action=\"improve\"     → REQUIRES session_id AND plan_content (the current draft to critique).\n  • action=\"record_edit\" → REQUIRES session_id AND edit_summary (one-line description of the change).\n  • action=\"complete\"    → REQUIRES session_id AND plan_content (the final accepted plan). Optional: attach_to (target entity to link the completed plan to).\n\nUSE WHEN: work is still in planning or should become executable context. NEXT: use orgx_write or orgx_act after the plan is accepted and needs durable execution state. DO NOT USE WHEN: directly scaffolding a full initiative hierarchy; use scaffold_initiative for that compatibility path.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -3162,7 +3165,7 @@
           },
           "session_id": {
             "type": "string",
-            "description": "Plan session UUID or orgx://plan_session/<uuid> URI. REQUIRED for action=resume | improve | record_edit | complete. Omit for action=start."
+            "description": "Plan session UUID or orgx://plan_session/<uuid> URI. Optional for action=resume, which defaults to the most recent active session in the authenticated workspace. REQUIRED for action=improve | record_edit | complete. Omit for action=start."
           },
           "feature_name": {
             "type": "string",
@@ -3273,10 +3276,7 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "securityScopes": [
-        "decisions:read",
-        "agents:read",
-        "initiatives:read",
-        "memory:read"
+        "initiatives:read"
       ],
       "readOnly": true,
       "source": "contract",
