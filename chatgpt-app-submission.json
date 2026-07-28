@@ -3,8 +3,8 @@
   "schema_version": 1,
   "app_info": {
     "display_name": "OrgX",
-    "subtitle": "Run AI agents with memory",
-    "description": "OrgX gives you a team of specialist AI agents — for work like engineering, sales, and marketing — that stay grounded in your organization's shared memory, so work builds on past decisions instead of starting from scratch every time. Right from ChatGPT, delegate a task to the right agent, scaffold a new initiative into a concrete plan, and check in on work already in motion. Search every decision and artifact your team has produced, see how an initiative is progressing, and clear pending approvals without leaving the conversation. Each completed task is logged as a durable proof receipt, so there's always a record of what was done and why.",
+    "subtitle": "Continuity for AI agents",
+    "description": "Organizational continuity for AI agents. Make AI work resumable, reviewable, and provable across agents. The task outlives the chat: OrgX lets the next agent continue from the decisions, artifacts, approvals, owners, and proof the last agent left behind. Users can search company context, inspect initiatives, review pending decisions, scaffold work, delegate agent tasks, and view interactive widgets for status and follow-up actions.",
     "category": "PRODUCTIVITY"
   },
   "tools": {

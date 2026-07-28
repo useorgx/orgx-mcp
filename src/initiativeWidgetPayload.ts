@@ -43,5 +43,9 @@ export function buildInitiativeListWidgetPayload(
     agent_assignment:
       payload.agent_assignment ?? initiative.agent_assignment ?? undefined,
     streams: payload.streams ?? initiative.streams ?? undefined,
+    // Positioning spine: hoist the proof handoff so the widget can render its
+    // quiet_cta as one unobtrusive footer line when the field is present.
+    proof_handoff:
+      payload.proof_handoff ?? initiative.proof_handoff ?? undefined,
   };
 }

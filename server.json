@@ -1,9 +1,9 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "com.useorgx/orgx-mcp",
-  "title": "OrgX MCP — Organizational Memory for AI Agents",
-  "description": "Organizational memory and agent orchestration for decisions, artifacts, tasks, and projects.",
-  "version": "1.1.1",
+  "title": "OrgX MCP — Organizational Continuity for AI Agents",
+  "description": "Make AI work resumable, reviewable, and provable across agents.",
+  "version": "1.1.2",
   "websiteUrl": "https://useorgx.com",
   "vendor": {
     "name": "OrgX",
@@ -59,7 +59,7 @@
     {
       "name": "orgx_bootstrap",
       "title": "Bootstrap OrgX Session",
-      "description": "Establish OrgX session context, granted scopes, and v2 routing guidance.",
+      "description": "Use at the start of a fresh session or before continuing work another agent left behind. Establishes OrgX session context, granted scopes, and v2 routing guidance.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": false,
@@ -69,7 +69,7 @@
     {
       "name": "orgx_search",
       "title": "Search OrgX Memory",
-      "description": "Search OrgX memory and entities; replaces list_entities and query_org_memory for public guidance.",
+      "description": "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Searches OrgX memory and entities; replaces list_entities and query_org_memory for public guidance.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": false,
@@ -79,7 +79,7 @@
     {
       "name": "orgx_inspect",
       "title": "Inspect OrgX Entity",
-      "description": "Hydrate one OrgX entity with context; replaces get_task_with_context for public guidance.",
+      "description": "Use when the user names a specific entity and its full context is needed before acting. Hydrates one OrgX entity with context; replaces get_task_with_context for public guidance.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": false,
@@ -89,7 +89,7 @@
     {
       "name": "orgx_recommend",
       "title": "Recommend Next Action",
-      "description": "Recommend next actions, morning-brief signals, queue priority, pulses, and snapshots.",
+      "description": "Use when the user asks what to do next, wants a brief, or returns after time away. Recommends next actions, morning-brief signals, queue priority, pulses, and snapshots.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": false,
@@ -99,7 +99,7 @@
     {
       "name": "orgx_write",
       "title": "Write OrgX Entity",
-      "description": "Create or update OrgX entities with canonical snake_case fields.",
+      "description": "Use when new work, a decision record, or an artifact must outlive the chat as durable organizational state. Creates or updates OrgX entities with canonical snake_case fields.",
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": false,
@@ -109,7 +109,7 @@
     {
       "name": "orgx_attach",
       "title": "Attach OrgX Proof",
-      "description": "Attach durable artifacts and proof to existing OrgX entities.",
+      "description": "Use when work produced a deliverable that needs provenance and review. Attaches durable artifacts and proof to existing OrgX entities.",
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": false,
@@ -119,7 +119,7 @@
     {
       "name": "orgx_act",
       "title": "Run OrgX Entity Action",
-      "description": "Run launch, validation, completion, delete, dry-run, and proof actions; use manage_lifecycle for synchronized runtime control.",
+      "description": "Use when durable entity state must change so the next agent resumes from real status. Runs launch, validation, completion, delete, dry-run, and proof actions; use manage_lifecycle for synchronized runtime control.",
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": false,
@@ -139,7 +139,7 @@
     {
       "name": "orgx_plan",
       "title": "Manage OrgX Plan",
-      "description": "Start, resume, improve, edit, or complete tracked OrgX planning sessions.",
+      "description": "Use when planning should survive the session and become executable context. Starts, resumes, improves, edits, or completes tracked OrgX planning sessions.",
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": false,
@@ -149,7 +149,7 @@
     {
       "name": "orgx_spawn",
       "title": "Spawn OrgX Agent Work",
-      "description": "Guard, classify, spawn, or hand off specialist OrgX agent work.",
+      "description": "Use when the user says \"delegate this and tell me when it's done.\" Guards, estimates, classifies, spawns, or hands off specialist OrgX agent work.",
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": true,
@@ -159,7 +159,7 @@
     {
       "name": "orgx_decide",
       "title": "Manage OrgX Decision",
-      "description": "Create, remember, list, approve, or reject durable OrgX decisions.",
+      "description": "Use when the user says \"remember this decision,\" asks \"what did we decide about X,\" or agent work needs human approval. Creates, remembers, lists, approves, or rejects durable OrgX decisions.",
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": false,
@@ -169,7 +169,7 @@
     {
       "name": "orgx_submit_receipt",
       "title": "Submit OrgX Receipt",
-      "description": "Submit durable proof, attribution, quality, or outcome receipts.",
+      "description": "Use when the user says \"show me it actually shipped\" — completion must be proven with evidence, not prose. Submits durable proof, attribution, quality, or outcome receipts.",
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": false,
@@ -179,7 +179,7 @@
     {
       "name": "orgx_emit_activity",
       "title": "Emit OrgX Activity",
-      "description": "Emit append-only execution telemetry without changing durable entity state.",
+      "description": "Use when an agent is mid-execution and its progress must stay visible to operators and to the next agent that resumes the run. Emit append-only run telemetry for OrgX control-plane reporting. USE WHEN: agent is executing and needs to report progress. NEXT: Continue work; emit again at each phase change. DO NOT USE: for entity status changes — use entity_action instead. Setting phase=\"completed\" records telemetry only and does not mark tasks, workstreams, or initiatives complete.",
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": false,
@@ -249,7 +249,7 @@
     {
       "name": "approve_decision",
       "title": "Approve Decision",
-      "description": "Approve a pending decision from the decisions widget after explicit confirmation.",
+      "description": "Use when the user has reviewed a pending decision that is blocking agent work and gives explicit confirmation to approve it. Also known as: sign off, approve AI work, unblock agent, accept decision. USE WHEN: user says to approve a decision returned from list_entities with type=decision and status=pending (or the legacy get_pending_decisions alias). NEXT: Confirm approval to user; agent is notified automatically. DO NOT USE: without showing the decision to the user first. Requires decisions:write.",
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": false,
@@ -259,7 +259,7 @@
     {
       "name": "reject_decision",
       "title": "Reject Decision",
-      "description": "Reject or request changes on a pending decision from the decisions widget.",
+      "description": "Use when the user has reviewed a pending decision and wants to reject it or send the agent back with revisions. Also known as: request revisions, send feedback, decline decision. USE WHEN: user wants to reject or request revisions on a decision. NEXT: Agent will revise their approach based on the reason. DO NOT USE: without a reason — always include why. Requires decisions:write.",
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": false,
@@ -269,7 +269,7 @@
     {
       "name": "get_agent_status",
       "title": "Get Agent Status",
-      "description": "Render the agent-status widget with active, blocked, and idle agent work.",
+      "description": "Use when the user asks what agents are working on right now, whether delegated work is still running, or why nothing has landed yet. Also known as: agent status, what agents are doing, active runs. USE WHEN: user asks about agent activity, progress, or what agents are working on. NEXT: If agents are stuck, suggest approve_decision or entity_action. DO NOT USE: to check initiative health — use get_initiative_pulse instead. Read-only.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": false,
@@ -279,7 +279,7 @@
     {
       "name": "get_initiative_pulse",
       "title": "Get Initiative Pulse",
-      "description": "Render the initiative-pulse widget for health, blockers, milestones, and activity.",
+      "description": "Use when the user asks how a project is going, what is blocked, or whether an initiative is on track. Also known as: project status, roadmap progress, execution health, blockers. USE WHEN: user asks how an initiative is going, or wants a status update. NEXT: If blockers exist, suggest entity_action to resolve. For deeper drill-down, use list_entities with initiative_id. DO NOT USE: for org-wide overview — use get_org_snapshot instead. Read-only.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": false,
@@ -289,7 +289,7 @@
     {
       "name": "scaffold_initiative",
       "title": "Scaffold Initiative",
-      "description": "Create a full initiative hierarchy and render the scaffolded-initiative widget.",
+      "description": "Use when a goal or plan exists only as prose and must become owned, executable work. Creates a full initiative hierarchy and renders the scaffolded-initiative widget.",
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": false,
@@ -299,7 +299,7 @@
     {
       "name": "spawn_agent_task",
       "title": "Spawn Agent Task",
-      "description": "Delegate work to an agent and render the task-spawned widget. Supports optional model_tier, provider/model hints, budget_mode, and max_cost_usd controls; omit them for normal OrgX auto-routing.",
+      "description": "Use when the user says \"delegate this and tell me when it's done\" — assign work to a specialist AI agent that owns the task and reports back with results. Also known as: hand this off, assign task, spawn agent, have an agent do it, autonomous work. Automatically checks authorization, rate limits, quality gates, model routing, and budget policy before spawning. Omit model_tier/provider/model to let OrgX auto-route from task complexity; provide them only when the user or verification plan intentionally constrains routing. Returns modelTier, budget, and run details on success, or blockedReason if spawn is denied. USE WHEN: user explicitly wants to delegate work to an agent. NEXT: Use get_agent_status to monitor progress and record_quality_score after reviewing output. DO NOT USE: for creating tasks in the hierarchy — use create_entity type=task instead. Requires agents:write.",
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": true,
@@ -309,7 +309,7 @@
     {
       "name": "handoff_task",
       "title": "Handoff Task",
-      "description": "Hand off an existing task and render the task-spawned widget for the new assignment.",
+      "description": "Use when in-flight work must move to a different specialist agent without losing its context or execution state. Also known as: handoff task, transfer work, change assignee. USE WHEN: a task needs to be reassigned to a different specialist agent. NEXT: Use get_agent_status to confirm the new agent picked up the task. DO NOT USE: for new tasks — use spawn_agent_task instead.",
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": true,
@@ -319,7 +319,7 @@
     {
       "name": "recommend_next_action",
       "title": "Recommend Next Action",
-      "description": "Render search-results style next-action recommendations for prioritization.",
+      "description": "Use when the user asks what to do next, returns after time away, or needs help choosing the highest-priority work. Also known as: next best action, prioritize work, unblock project. USE WHEN: user asks what to do next, or needs help prioritizing. NEXT: Execute the recommended action (entity_action, spawn_agent_task, etc.). DO NOT USE: when user already knows what they want to do. Read-only.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": false,
@@ -329,7 +329,7 @@
     {
       "name": "query_org_memory",
       "title": "Query Org Memory",
-      "description": "Render organizational memory search results in the search-results widget.",
+      "description": "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Also known as: search memory, recall decisions, find context, retrieve artifacts, project memory. USE WHEN: user asks about past decisions, context, or knowledge. NEXT: Present relevant results; suggest drill-down with list_entities. Prefer `query_org_memory` with scope=decisions with a topic query for new prompts, skills, and examples. DO NOT USE: for listing current entities — use list_entities instead. Read-only.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": false,
@@ -339,7 +339,7 @@
     {
       "name": "recall_memory",
       "title": "Recall Memory",
-      "description": "Render recalled memory and prior context in the search-results widget.",
+      "description": "Use when the user asks \"what did we decide about X\" or prior context must be recovered from team memory. Renders recalled memory and prior context in the search-results widget.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": false,
@@ -349,7 +349,7 @@
     {
       "name": "approve_agent_work",
       "title": "Approve Agent Work",
-      "description": "List, approve, or reject agent approval items through the decisions widget.",
+      "description": "Use when agent work is paused waiting for a human yes. Lists, approves, or rejects agent approval items through the decisions widget.",
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": false,
@@ -359,7 +359,7 @@
     {
       "name": "delegate_agent_task",
       "title": "Delegate Agent Task",
-      "description": "Delegate work through the task-spawned widget using agent-friendly fields.",
+      "description": "Use when the user says \"delegate this and tell me when it's done.\" Delegates work through the task-spawned widget using agent-friendly fields.",
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": true,
@@ -369,7 +369,7 @@
     {
       "name": "track_project_progress",
       "title": "Track Project Progress",
-      "description": "Render project progress through the initiative-pulse widget.",
+      "description": "Use when the user asks how a project is going or what is blocked. Renders project progress through the initiative-pulse widget.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": false,
@@ -379,7 +379,7 @@
     {
       "name": "review_artifact",
       "title": "Review Artifact",
-      "description": "Render the artifact-review widget for approval or change requests on deliverables.",
+      "description": "Use when the user asks to review work or sign off on a deliverable. Renders the artifact-review widget for approval or change requests.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": false,
@@ -389,7 +389,7 @@
     {
       "name": "get_morning_brief",
       "title": "Get Morning Brief",
-      "description": "Render the morning-brief widget with receipts, exceptions, ROI, and value signals.",
+      "description": "Use when the user asks \"what happened,\" \"catch me up,\" or starts a session after time away. Renders the morning-brief widget with receipts, exceptions, ROI, and value signals.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": false,
@@ -399,7 +399,7 @@
     {
       "name": "get_operator_chronicle",
       "title": "Get Operator Chronicle",
-      "description": "Read decision chronology, artifacts, PR receipts, priorities, goals, velocity, and reporting gaps for a workspace.",
+      "description": "Use when the user asks what happened, wants to catch up after time away, or needs a reporting window summarized with decisions and proof. Read the operator chronicle: decision chronology, yesterday/week/30-day rollups, reportingNarrative.briefMarkdown, artifacts, PR receipts, active initiatives, goals, top priorities, velocity, and reporting gaps for a workspace. USE WHEN: user asks what changed yesterday, this week, or this month; asks for decision chronology, top priorities, PR velocity, artifacts, goals, or what OrgX is missing. NEXT: present reportingNarrative.briefMarkdown first, then use reportingNarrative.nextAction and topPriorities for drill-down. Read-only.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": false,
@@ -419,7 +419,7 @@
     {
       "name": "consolidate_pr",
       "title": "Consolidate Pull Request",
-      "description": "Generate and persist an orchestration.consolidation_pass receipt for a GitHub pull request.",
+      "description": "Use when the user or an engineering agent must show a pull request actually shipped and needs durable review proof, not a status glance. Generate and persist an orchestration.consolidation_pass receipt for a GitHub pull request. Requires OrgX server-side GitHub credentials; if the GitHub token is unavailable, use GitHub tools for PR facts and return a structured blocker instead of retrying. USE WHEN: Eli or another engineering agent needs a durable PR review receipt with reading order, existence evidence, deduped findings, verdict, and server-derived AQ score. NEXT: inspect the returned artifact_id or attach it to task completion proof. DO NOT USE WHEN: only asking for PR status; use GitHub tools instead.",
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": true,

@@ -727,6 +727,9 @@ describe('mcpTransport', () => {
           previous_tool_id: 'orgx_search',
         }),
       });
+      expect(backendPayload.metadata).not.toHaveProperty(
+        'response_size_header_bytes'
+      );
     } finally {
       vi.stubGlobal('fetch', originalFetch);
       vi.unstubAllGlobals();

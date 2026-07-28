@@ -27,7 +27,7 @@ export const FLYWHEEL_TOOL_DEFINITIONS = [
     description:
       compatibilityAliasDescription(
         'outcomeAttribution',
-        'ROI summary from the economic ledger. Human: "3.2x ROI this month." Agent: "My outreach_draft receipts average $0.26 attributed value." Returns cost/value/ROI breakdowns by agent, capability, and time period.'
+        'Use when the user asks what agent work is actually worth — ROI summary from the economic ledger. Human: "3.2x ROI this month." Agent: "My outreach_draft receipts average $0.26 attributed value." Returns cost/value/ROI breakdowns by agent, capability, and time period.'
       ),
     inputSchema: z.object({
       workspace_id: z.string().describe('Workspace ID'),
@@ -48,7 +48,7 @@ export const FLYWHEEL_TOOL_DEFINITIONS = [
     id: 'configure_outcome_type',
     title: 'Configure Outcome Type',
     description:
-      'Create or approve a workspace outcome type before recording custom baseline, audit, or quality-gate outcomes. Use this when record_outcome returns an unknown outcome type recovery hint.',
+      'Use when record_outcome returns an unknown outcome type recovery hint, or a custom result must become measurable. Creates or approves a workspace outcome type before recording custom baseline, audit, or quality-gate outcomes.',
     inputSchema: z.object({
       workspace_id: z.string().optional().describe('Workspace ID'),
       workspaceId: z.string().optional().describe('CamelCase alias for workspace_id'),
@@ -85,7 +85,7 @@ export const FLYWHEEL_TOOL_DEFINITIONS = [
     id: 'record_outcome',
     title: 'Record Outcome',
     description:
-      'Record a business outcome (deal closed, meeting booked, cycle time reduced). Agents can self-report outcomes they detect. Triggers attribution inference to connect outcomes to receipts. If the outcome type is unknown, call configure_outcome_type first.',
+      'Use when a business outcome lands — deal closed, meeting booked, cycle time reduced — and it must be credited to the work that produced it. Agents can self-report outcomes they detect. Triggers attribution inference to connect outcomes to receipts. If the outcome type is unknown, call configure_outcome_type first.',
     inputSchema: z.object({
       workspace_id: z.string().optional().describe('Workspace ID'),
       workspaceId: z.string().optional().describe('CamelCase alias for workspace_id'),
@@ -114,7 +114,7 @@ export const FLYWHEEL_TOOL_DEFINITIONS = [
     id: 'get_my_trust_context',
     title: 'Get My Trust Context',
     description:
-      'Agent-facing: "What\'s my trust level per capability? What do I need for promotion? Which receipts are helping/hurting?" Returns the full trust context for an agent including levels, scores, thresholds, and recent trust events.',
+      'Use when an agent asks "what am I trusted to do, what do I need for promotion, and which receipts are helping or hurting?" Returns the full trust context for an agent including per-capability levels, scores, thresholds, and recent trust events.',
     inputSchema: z.object({
       workspace_id: z.string().describe('Workspace ID'),
       agent_type: z.string().describe('Agent type to query trust for'),
@@ -129,7 +129,7 @@ export const FLYWHEEL_TOOL_DEFINITIONS = [
     id: 'orgx_free_audit',
     title: 'OrgX Free Audit',
     description:
-      'Run a free autonomy benchmark from trust, proof, ROI, and workspace signals. Returns Proof Score, Context Debt, Autonomy Maturity, ROI Visibility, and next recommendations without starting an autonomous session or consuming agent credits.',
+      'Use when a workspace wants to know how ready it is for autonomous agent work before spending anything. Runs a free autonomy benchmark from trust, proof, ROI, and workspace signals. Returns Proof Score, Context Debt, Autonomy Maturity, ROI Visibility, and next recommendations without starting an autonomous session or consuming agent credits.',
     inputSchema: z.object({
       workspace_id: z.string().describe('Workspace ID to audit'),
       agent_type: z
@@ -157,7 +157,7 @@ export const FLYWHEEL_TOOL_DEFINITIONS = [
     id: 'start_autonomous_session',
     title: 'Start Autonomous Session',
     description:
-      'Start an autonomous execution session with budget guardrails. Human: "Run overnight with $5 budget." Creates a session that produces receipts while executing eligible work items.',
+      'Use when the user says "run overnight with $5 budget" or wants eligible work executed unattended within guardrails. Starts an autonomous execution session that produces receipts while executing eligible work items.',
     inputSchema: z.object(autonomousSessionInputShape),
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     securitySchemes: [
@@ -168,7 +168,7 @@ export const FLYWHEEL_TOOL_DEFINITIONS = [
     id: 'get_morning_brief',
     title: 'Get Morning Brief',
     description:
-      `Returns the morning brief: curated receipts, exceptions, ROI delta, and value signals from the most recent autonomous session. Defaults to the most recent session if no session ID is provided. ${preferredToolCallout(
+      `Use when the user asks 'what happened,' 'catch me up,' or starts a session after time away. Returns the morning brief: curated receipts, exceptions, ROI delta, and value signals from the most recent autonomous session. Defaults to the most recent session if no session ID is provided. ${preferredToolCallout(
         'outcomeAttribution'
       )}`,
     inputSchema: z.object({
@@ -187,7 +187,7 @@ export const FLYWHEEL_TOOL_DEFINITIONS = [
     id: 'get_relevant_learnings',
     title: 'Get Relevant Learnings',
     description:
-      'Agent-facing: "What has the org learned about my capability?" Returns ranked org learnings relevant to a specific capability or task context.',
+      'Use when an agent is about to attempt work the org may already have learned something about. Answers "what has the org learned about my capability?" Returns ranked org learnings relevant to a specific capability or task context.',
     inputSchema: z.object({
       workspace_id: z.string().describe('Workspace ID'),
       capability_key: z.string().optional().describe('Capability key to filter learnings'),
@@ -210,7 +210,7 @@ export const FLYWHEEL_TOOL_DEFINITIONS = [
     id: 'submit_learning',
     title: 'Submit Learning',
     description:
-      'Agent-facing: Submit a discovery or insight as an org learning. Enters org_learnings after confidence validation. One agent\'s discovery benefits all agents.',
+      'Use when an agent discovers a pattern worth teaching the whole org — a failure mode, success pattern, cost optimization, or quality heuristic. Submits it as an org learning; enters org_learnings after confidence validation. One agent\'s discovery benefits all agents.',
     inputSchema: z.object({
       workspace_id: z.string().describe('Workspace ID'),
       learning_type: z

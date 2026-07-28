@@ -9,7 +9,7 @@ either changes, update this doc the same day.
 | Field | Value |
 |-------|-------|
 | Server name | OrgX MCP |
-| Tagline (≤80 chars) | Organizational memory and agent orchestration for every MCP client. |
+| Tagline (≤80 chars) | Organizational continuity for AI agents. |
 | Server URL | `https://mcp.useorgx.com/mcp` |
 | Transport | Streamable HTTP (primary) · SSE (fallback) |
 | Auth | OAuth 2.0 + PKCE · Dynamic Client Registration |
@@ -34,10 +34,14 @@ either changes, update this doc the same day.
 
 ## Description (long-form)
 
-OrgX MCP gives AI agents organizational memory. It lets any MCP client —
-Claude, Cursor, ChatGPT, Cline — remember decisions, retrieve artifacts, review
-pending approvals, scaffold initiative hierarchies, assign work to specialist
-agents, query organizational memory, and watch initiative health in real time.
+The task outlives the chat. OrgX lets the next agent continue from the
+decisions, artifacts, approvals, owners, and proof the last agent left behind.
+Make AI work resumable, reviewable, and provable across agents.
+
+From any MCP client — Claude, Cursor, ChatGPT, Cline — agents can remember
+decisions, retrieve artifacts, review pending approvals, scaffold initiative
+hierarchies, assign work to specialist agents, query organizational memory,
+and watch initiative health in real time.
 
 Unlike a project-management CRUD surface, OrgX is built around urgency-driven
 hierarchy and surveillance calm: healthy state collapses to near-silence, the

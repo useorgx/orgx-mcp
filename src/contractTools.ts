@@ -45,7 +45,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_bootstrap',
     title: 'Bootstrap OrgX Contract',
     description:
-      'Establish OrgX session context, discover granted scopes, and get the v2 tool routing map. Also known as: bootstrap, setup, tool routing. USE WHEN: first call in a fresh session, after reconnecting, or before performing a multi-step workflow. NEXT: use orgx_search, orgx_inspect, or orgx_recommend based on the returned routing map. DO NOT USE WHEN: you already have session context and need to read or mutate work. Read-only.',
+      'Use at the start of a fresh session, after reconnecting, or before continuing work another agent left behind. Establishes OrgX session context, discovers granted scopes, and returns the v2 tool routing map. Also known as: bootstrap, setup, tool routing. USE WHEN: first call in a fresh session, after reconnecting, or before performing a multi-step workflow. NEXT: use orgx_search, orgx_inspect, or orgx_recommend based on the returned routing map. DO NOT USE WHEN: you already have session context and need to read or mutate work. Read-only.',
     inputSchema: {
       workspace_id: z.string().optional().describe('Canonical workspace UUID to bind as the active session workspace'),
       conversation_id: z.string().optional().describe('Optional client conversation/session identifier for continuity'),
@@ -64,7 +64,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_inspect',
     title: 'Inspect OrgX Entity',
     description:
-      'Hydrate one OrgX entity with execution context. Also known as: Inspect OrgX Entity, inspect initiative, get full entity context. USE WHEN: the user names a specific task, milestone, initiative, decision, artifact, or plan session and needs details before acting. NEXT: use orgx_act, orgx_attach, or orgx_write if the user asks to change what you inspected. DO NOT USE WHEN: browsing or searching many records; use orgx_search. Read-only.',
+      'Use when the user names a specific task, milestone, initiative, decision, artifact, or plan session and you need its real state — decisions, owners, linked proof — before acting. Hydrates one OrgX entity with execution context. Also known as: Inspect OrgX Entity, inspect initiative, get full entity context. USE WHEN: continuing work on a named entity or verifying state before a lifecycle change. NEXT: use orgx_act, orgx_attach, or orgx_write if the user asks to change what you inspected. DO NOT USE WHEN: browsing or searching many records; use orgx_search. Read-only.',
     inputSchema: {
       type: z
         .enum(entityTypeEnum.options)
@@ -88,7 +88,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_search',
     title: 'Search OrgX',
     description:
-      'Find OrgX entities, decisions, artifacts, and memory. A query without type runs a mixed relevance search; typed searches provide exhaustive cursor/offset pagination. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use structuredContent.next_call exactly when pagination.has_more=true, orgx_inspect for one selected result, or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.',
+      "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Finds OrgX entities, decisions, artifacts, and memory. A query without type runs a mixed relevance search; typed searches provide exhaustive cursor/offset pagination. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use structuredContent.next_call exactly when pagination.has_more=true, orgx_inspect for one selected result, or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.",
     inputSchema: {
       query: z.string().optional().describe('Search query for memory or title/text matching'),
       type: z.enum(entityTypeEnum.options).optional().describe('Optional entity type filter, such as task, milestone, decision, artifact, or initiative. Omit with query for a mixed relevance search across memory-backed entity types.'),
@@ -115,7 +115,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_recommend',
     title: 'Recommend Next OrgX Action',
     description:
-      'Recommend next work, summarize operator-chronicle/morning-brief signals, or read prioritization context. USE WHEN: user asks what to do next, wants a brief, asks what changed yesterday/week/30 days, or needs priority guidance. mode=morning_brief returns the operator chronicle when available. NEXT: present the recommendation, then use orgx_act, orgx_write, or orgx_spawn only after the user confirms an action. DO NOT USE WHEN: the user already specified the action; use orgx_act or orgx_write.',
+      'Use when the user asks what to do next, wants a brief, or returns after time away and needs priorities. Recommends next work, summarizes operator-chronicle/morning-brief signals, and reads prioritization context. USE WHEN: user asks what to do next, wants a brief, asks what changed yesterday/week/30 days, or needs priority guidance. mode=morning_brief returns the operator chronicle when available. NEXT: present the recommendation, then use orgx_act, orgx_write, or orgx_spawn only after the user confirms an action. DO NOT USE WHEN: the user already specified the action; use orgx_act or orgx_write.',
     inputSchema: {
       mode: z.enum(['next_action', 'morning_brief']).optional().describe('Recommendation mode; default next_action'),
       period: z.enum(['day', 'week', '30d']).optional().describe('Reporting period for mode=morning_brief; default 30d'),
@@ -197,7 +197,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_attach',
     title: 'Attach OrgX Artifact',
     description:
-      'Attach a durable artifact or proof URL to an existing OrgX entity. Requires artifact_url or external_url; preview_markdown is supporting context only. USE WHEN: saving evidence, PRs, documents, reports, screenshots, or external artifacts. For founder/team work, prefer practical artifact_type codes such as ' +
+      'Use when work produced a deliverable that needs provenance and review — attach the artifact or proof URL to an OrgX entity. Requires artifact_url or external_url; preview_markdown is supporting context only. USE WHEN: saving evidence, PRs, documents, reports, screenshots, or external artifacts. For founder/team work, prefer practical artifact_type codes such as ' +
       FOUNDER_TEAM_ARTIFACT_TYPE_SUMMARY +
       '. Include business_outcome, owner/review_date, and verification when the artifact should close agent work. NEXT: use orgx_submit_receipt to close attribution/quality loops or orgx_act to complete with proof. DO NOT USE WHEN: creating generic entities; use orgx_write.',
     inputSchema: {
@@ -295,7 +295,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_plan',
     title: 'Manage OrgX Plan Session',
     description:
-      'Start, resume, edit, improve, or complete a tracked OrgX planning session.\n\n' +
+      'Use when planning should survive the session and become executable context instead of a lost chat draft. Starts, resumes, edits, improves, or completes a tracked OrgX planning session.\n\n' +
       'Per-action input requirements:\n' +
       '  • action="start"       → REQUIRES feature_name. Optional: initial_plan (markdown to seed the session).\n' +
       '  • action="resume"      → REQUIRES session_id.\n' +
@@ -327,7 +327,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_spawn',
     title: 'Spawn OrgX Agent Work',
     description:
-      'Guard, estimate, classify, spawn, or hand off specialist agent work.\n\n' +
+      'Use when the user says "delegate this and tell me when it\'s done," or when you must check whether delegation is allowed before dispatching. Guards, estimates, classifies, spawns, or hands off specialist agent work.\n\n' +
       'Per-action requirements: spawn from an existing task REQUIRES task_id; ad-hoc spawn REQUIRES title + instructions and should include agent_type. handoff REQUIRES task_id + agent_type. guard REQUIRES agent_type. classify REQUIRES title or task_id. action="estimate" REQUIRES title or task_id, returns candidate routes/cost context, and runs without dispatching work.\n\n' +
       'Routing policy: omit model_tier/provider/model for OrgX auto-routing. Set model_tier, provider, model, budget_mode, or max_cost_usd only when the user, policy, or verification plan constrains routing. For controlled reliability validation, use model_tier="standard" and budget_mode="cheapest_valid".\n\n' +
       'USE WHEN: explicitly delegating work to an OrgX agent or checking if delegation is allowed. NEXT: use orgx_inspect or orgx_search to monitor the delegated work, then orgx_submit_receipt for proof. DO NOT USE WHEN: only creating a task row; use orgx_write.',
@@ -366,7 +366,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_decide',
     title: 'Manage OrgX Decision',
     description:
-      'Create, approve, reject, remember, or list durable OrgX decisions.\n\n' +
+      'Use when the user says "remember this decision," asks "what did we decide about X," or agent work needs human approval before it proceeds. Creates, approves, rejects, remembers, or lists durable OrgX decisions.\n\n' +
       'Per-action input requirements:\n' +
       '  • action="list_pending" → No required fields. Optional: initiative_id, workspace_id (scope filters).\n' +
       '  • action="create"       → REQUIRES title AND decision (the resolved decision text). Recommended: context, initiative_id.\n' +
@@ -401,9 +401,9 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_submit_receipt',
     title: 'Submit OrgX Receipt',
     description:
-      'Submit a durable receipt (proof, outcome, quality, attribution, or learning) anchored to an OrgX entity or artifact.\n\n' +
-      'Required: receipt_type + summary. Strongly recommended: one anchor (entity_type+entity_id OR artifact_id), artifact_type, business_outcome, agent_type, AND at least one verifiable URL inside evidence.\n\n' +
-      'Recognized receipt_type: "proof" (completion proof), "outcome" (measurable result), "quality" (review/score), "attribution" (credit link to revenue/value), "learning" (distilled lesson). Custom keys also accepted.\n\n' +
+      'Use when the user says "show me it actually shipped" — completion must be proven with evidence, not prose. Submits a durable receipt anchored to an OrgX entity or artifact.\n\n' +
+      'Required: receipt_type + summary. Strongly recommended: one anchor (entity_type+entity_id OR artifact_id), artifact_type, business_outcome, agent_type, and a verifiable URL in evidence.\n\n' +
+      'Recognized receipt_type: "proof", "outcome" (measurable result), "quality" (review/score), "attribution" (credit link to revenue/value), "learning" (distilled lesson). Custom keys also accepted.\n\n' +
       'Recognized evidence shapes (mix and match):\n' +
       '  { prs: string[] } — GitHub PR URLs.\n' +
       '  { deploys: string[] } — deployment URLs.\n' +
@@ -411,7 +411,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       '  { metrics: { name, value, unit? }[] } — quantitative outcomes.\n' +
       '  { links: string[] }, { notes: string } — supporting URLs/text.\n\n' +
       'Pass idempotency_key when retrying — server deduplicates.\n\n' +
-      'USE WHEN: closing the loop on agent work with provenance. For founder/team work, receipts should prove the practical artifact and its business outcome, not just say the agent finished. NEXT: orgx_recommend or orgx_search to find the next priority. DO NOT USE for telemetry — use orgx_emit_activity.',
+      'USE WHEN: closing the loop on agent work with provenance. Receipts should prove the practical artifact and its business outcome, not just say the agent finished. NEXT: orgx_recommend or orgx_search to find the next priority. DO NOT USE for telemetry — use orgx_emit_activity.',
     inputSchema: {
       workspace_id: z.string().optional().describe('Workspace UUID. Defaults to the MCP session\'s workspace when omitted.'),
       entity_type: z.string().optional().describe('Related entity type (initiative, workstream, milestone, task, decision). Required if no artifact_id is provided — pair with entity_id.'),
@@ -450,7 +450,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_describe_tool',
     title: 'Describe OrgX Tool',
     description:
-      'Return the live input contract, auth expectations, and workflow guidance for an OrgX tool. Also known as: tool schema, tool help, contract. USE WHEN: you need exact field names, accepted enums, or next-step guidance before calling a tool. Read-only.',
+      'Use when you are unsure of a tool\'s exact fields or enums and a wrong guess would waste a call. Returns the live input contract, auth expectations, and workflow guidance for an OrgX tool. Also known as: tool schema, tool help, contract. USE WHEN: you need exact field names, accepted enums, or next-step guidance before calling a tool. Read-only.',
     inputSchema: {
       tool_id: z.string().min(1).describe('Tool ID to inspect'),
     },
@@ -466,7 +466,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_describe_action',
     title: 'Describe Entity Action',
     description:
-      'Describe lifecycle actions, aliases, and special payload requirements for entity_action. USE WHEN: you need the exact action name or payload shape before calling entity_action. Read-only.',
+      'Use when you are about to change entity state and need the exact action name or payload shape first. Describes lifecycle actions, aliases, and special payload requirements for entity_action. USE WHEN: you need the exact action name or payload shape before calling entity_action. Read-only.',
     inputSchema: {
       type: lifecycleEntityTypeEnum.describe('Entity type'),
       action: z.string().optional().describe('Specific action to inspect'),
@@ -487,7 +487,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'remember_decision',
     title: 'Remember Decision',
     description:
-      'Save a decision to organizational memory so agents and teammates can recall it later. Also known as: decision log, team memory, agent memory, record decision, remember what we decided.',
+      'Use when the user says "remember this decision" or a judgment call must not be relitigated next session. Saves the decision to organizational memory so agents and teammates can recall it later. Also known as: decision log, team memory, agent memory, record decision, remember what we decided.',
     inputSchema: {
       decision: z
         .string()
@@ -522,7 +522,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'recall_memory',
     title: 'Recall Memory',
     description:
-      'Search organizational memory for prior decisions, artifacts, project context, and team knowledge. Also known as: search memory, recall decisions, find context, retrieve artifacts, what did we decide.',
+      'Use when the user asks "what did we decide about X" or prior context must be recovered from team memory. Searches organizational memory for prior decisions, artifacts, project context, and team knowledge. Also known as: search memory, recall decisions, find context, retrieve artifacts, what did we decide.',
     inputSchema: {
       query: z.string().min(1).describe('Search query for organizational memory'),
       scope: z
@@ -548,7 +548,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'approve_agent_work',
     title: 'Approve Agent Work',
     description:
-      'Review or act on agent decisions awaiting human approval. Also known as: pending approvals, agent blocked, sign off, review decisions, approve AI work.\n\n' +
+      'Use when agent work is paused waiting for a human yes — review pending decisions, then approve or reject them. Also known as: pending approvals, agent blocked, sign off, review decisions, approve AI work.\n\n' +
       'Per-action input requirements:\n' +
       '  • action="list" (default when action omitted) → No required fields. Optional filters: limit, urgency_filter, initiative_id.\n' +
       '  • action="approve" → REQUIRES decision_id. Optional: note (free-text approver rationale).\n' +
@@ -594,7 +594,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'delegate_agent_task',
     title: 'Delegate Agent Task',
     description:
-      'Assign work to a specialist AI agent and track the result. Also known as: hand this off, spawn agent, assign task, delegate to agent, have an AI agent do it.',
+      'Use when the user says "delegate this and tell me when it\'s done" — assign work to a specialist AI agent that owns the task and reports back with results. Also known as: hand this off, spawn agent, assign task, delegate to agent, have an AI agent do it.',
     inputSchema: {
       agent: z.string().min(1).describe('Target agent identifier or alias'),
       task: z.string().min(1).describe('Task instructions for the target agent'),
@@ -636,7 +636,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'track_project_progress',
     title: 'Track Project Progress',
     description:
-      'Get health, blockers, milestones, owners, and recent activity for a project or initiative. Also known as: project status, initiative pulse, blockers, roadmap progress, execution health.',
+      'Use when the user asks how a project is going, what is blocked, or whether an initiative is on track. Returns health, blockers, milestones, owners, and recent activity. Also known as: project status, initiative pulse, blockers, roadmap progress, execution health.',
     inputSchema: {
       initiative_id: z
         .string()
@@ -661,7 +661,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'resume_plan_session',
     title: 'Resume Plan Session',
     description:
-      'Resume a planning session by UUID, orgx:// URI, or most recent active session. Also known as: continue plan, reload planning context. USE WHEN: continuing a planning workflow without guessing IDs.',
+      'Use when a planning session from an earlier conversation must continue without re-briefing. Resumes a planning session by UUID, orgx:// URI, or most recent active session. Also known as: continue plan, reload planning context. USE WHEN: continuing a planning workflow without guessing IDs.',
     inputSchema: {
       session_id: z
         .string()
@@ -680,7 +680,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'create_task',
     title: 'Create Task',
     description:
-      'Create an actionable task in organizational memory for a project, milestone, or agent. Also known as: add task, create work item. USE WHEN: adding a single actionable task to a workstream, milestone, or initiative. NEXT: use entity_action action=start when execution should begin.',
+      'Use when a piece of work must be tracked beyond this conversation as an owned, actionable task. Creates the task in organizational memory for a project, milestone, or agent. Also known as: add task, create work item. USE WHEN: adding a single actionable task to a workstream, milestone, or initiative. NEXT: use entity_action action=start when execution should begin.',
     inputSchema: {
       title: z.string().min(1).describe('Task title'),
       summary: z.string().optional().describe('Task summary'),
@@ -725,7 +725,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'create_milestone',
     title: 'Create Milestone',
     description:
-      'Create a project milestone or phase checkpoint with durable context. Also known as: add milestone, create checkpoint. USE WHEN: adding a phase checkpoint under an initiative or workstream.',
+      'Use when a delivery phase or checkpoint needs durable tracking under an initiative. Creates a project milestone with durable context. Also known as: add milestone, create checkpoint. USE WHEN: adding a phase checkpoint under an initiative or workstream.',
     inputSchema: {
       title: z.string().min(1).describe('Milestone title'),
       summary: z.string().optional().describe('Milestone summary'),
@@ -764,7 +764,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'create_decision',
     title: 'Create Decision',
     description:
-      'Record a decision in organizational memory so agents can recall it later. Also known as: remember decision, decision log, team memory. USE WHEN: surfacing a new approval or judgment point for a workspace or initiative.',
+      'Use when a judgment or approval point must be recorded so it is not relitigated later. Records the decision in organizational memory so agents can recall it. Also known as: remember decision, decision log, team memory. USE WHEN: surfacing a new approval or judgment point for a workspace or initiative.',
     inputSchema: {
       title: z.string().min(1).describe('Decision title'),
       summary: z.string().optional().describe('Decision summary'),
@@ -792,7 +792,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'validate_studio_content',
     title: 'Validate Studio Content',
     description:
-      'Validate a studio_content entity without composing entity_action manually. USE WHEN: checking a studio content spec before rendering or publication.',
+      'Use when a studio content spec must pass validation before rendering or publication. Validates the studio_content entity without composing entity_action manually. USE WHEN: checking a studio content spec before rendering or publication.',
     inputSchema: {
       id: z.string().uuid().describe('studio_content entity UUID'),
       spec: z
@@ -812,7 +812,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'pin_workstream',
     title: 'Pin Workstream',
     description:
-      'Pin a workstream to the top of the Next Up queue without composing queue_action manually. USE WHEN: forcing a workstream to the top of the recommendation queue.',
+      'Use when a workstream must jump the priority queue and stay at the top of Next Up. Pins the workstream without composing queue_action manually. USE WHEN: forcing a workstream to the top of the recommendation queue.',
     inputSchema: {
       initiative_id: z.string().min(1).describe('Initiative UUID'),
       workstream_id: z.string().min(1).describe('Workstream UUID'),
