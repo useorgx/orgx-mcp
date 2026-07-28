@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-27T05:46:48.271Z",
-  "sourceHash": "9db7c2606cd89856",
+  "generatedAt": "2026-07-28T03:57:20.474Z",
+  "sourceHash": "b01a3aa9b52efc2e",
   "version": "1.0.0",
   "totalTools": 81,
   "categories": [
@@ -69,7 +69,8 @@
       "readOnly": true,
       "source": "chatgpt",
       "profiles": [
-        "v2"
+        "v2",
+        "chatgpt"
       ]
     },
     {
@@ -119,7 +120,8 @@
       "readOnly": false,
       "source": "chatgpt",
       "profiles": [
-        "v2"
+        "v2",
+        "chatgpt"
       ]
     },
     {
@@ -1318,7 +1320,8 @@
       "readOnly": false,
       "source": "chatgpt",
       "profiles": [
-        "v2"
+        "v2",
+        "chatgpt"
       ]
     },
     {
@@ -1468,7 +1471,8 @@
       "readOnly": false,
       "source": "chatgpt",
       "profiles": [
-        "v2"
+        "v2",
+        "chatgpt"
       ]
     },
     {
@@ -2081,6 +2085,7 @@
       "source": "inline",
       "profiles": [
         "v2",
+        "chatgpt",
         "commander",
         "planner"
       ]
@@ -2250,7 +2255,8 @@
       "readOnly": true,
       "source": "chatgpt",
       "profiles": [
-        "v2"
+        "v2",
+        "chatgpt"
       ]
     },
     {
@@ -2293,7 +2299,8 @@
       "readOnly": true,
       "source": "flywheel",
       "profiles": [
-        "v2"
+        "v2",
+        "chatgpt"
       ]
     },
     {
@@ -2787,6 +2794,7 @@
       "source": "contract",
       "profiles": [
         "v2",
+        "chatgpt",
         "commander",
         "planner",
         "executor"
@@ -2921,6 +2929,7 @@
       "source": "contract",
       "profiles": [
         "v2",
+        "chatgpt",
         "memory",
         "commander",
         "executor"
@@ -2964,6 +2973,7 @@
       "source": "contract",
       "profiles": [
         "v2",
+        "chatgpt",
         "memory",
         "commander",
         "planner",
@@ -3048,6 +3058,7 @@
       "source": "contract",
       "profiles": [
         "v2",
+        "chatgpt",
         "memory",
         "commander",
         "planner",
@@ -3122,6 +3133,7 @@
       "source": "contract",
       "profiles": [
         "v2",
+        "chatgpt",
         "memory",
         "commander",
         "planner",
@@ -3195,6 +3207,7 @@
       "source": "contract",
       "profiles": [
         "v2",
+        "chatgpt",
         "commander",
         "planner",
         "executor",
@@ -3269,6 +3282,7 @@
       "source": "contract",
       "profiles": [
         "v2",
+        "chatgpt",
         "memory",
         "commander",
         "observer"
@@ -3362,6 +3376,7 @@
       "source": "contract",
       "profiles": [
         "v2",
+        "chatgpt",
         "memory",
         "commander",
         "planner",
@@ -3480,6 +3495,7 @@
       "source": "contract",
       "profiles": [
         "v2",
+        "chatgpt",
         "commander",
         "executor"
       ]
@@ -3624,6 +3640,7 @@
       "source": "contract",
       "profiles": [
         "v2",
+        "chatgpt",
         "memory",
         "commander",
         "executor"
@@ -3833,6 +3850,7 @@
       "source": "contract",
       "profiles": [
         "v2",
+        "chatgpt",
         "commander",
         "planner",
         "executor"
@@ -4099,6 +4117,7 @@
       "source": "client_integration",
       "profiles": [
         "v2",
+        "chatgpt",
         "commander",
         "executor"
       ]
@@ -4213,6 +4232,7 @@
       "source": "client_integration",
       "profiles": [
         "v2",
+        "chatgpt",
         "commander",
         "observer"
       ]
@@ -4266,7 +4286,8 @@
       "readOnly": false,
       "source": "stream",
       "profiles": [
-        "v2"
+        "v2",
+        "chatgpt"
       ]
     },
     {
