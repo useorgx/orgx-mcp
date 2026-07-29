@@ -70,6 +70,14 @@ describe('buildLiveFeedWidget quiet CTA footer', () => {
     }
   });
 
+  it('ships the self-contained host theme contract and touch-safe footer action', () => {
+    const html = buildWidget('agent-status');
+    expect(html).toContain('data-accent="teal"');
+    expect(html).toContain('openai:set_globals');
+    expect(html).toContain('data-theme-source');
+    expect(html).toContain('min-height:44px');
+  });
+
   it('renders proof_handoff.quiet_cta exactly once on the initiative pulse card', () => {
     const source = mountWidget(buildWidget('initiative-pulse'));
 

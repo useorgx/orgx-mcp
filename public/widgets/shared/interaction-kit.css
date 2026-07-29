@@ -24,6 +24,10 @@
     --ox-primary-rgb,
     var(--ox-primary-rgb-fallback)
   );
+  --ox-primary-fill-rgb-effective: var(
+    --ox-primary-fill-rgb,
+    var(--ox-primary-rgb-effective)
+  );
 }
 
 .ox-action-btn,
@@ -43,8 +47,8 @@
   background:
     linear-gradient(
       180deg,
-      rgba(255, 255, 255, 0.03) 0%,
-      rgba(255, 255, 255, 0.015) 100%
+      var(--ox-control-glint-start, rgba(255, 255, 255, 0.03)) 0%,
+      var(--ox-control-glint-end, rgba(255, 255, 255, 0.015)) 100%
     ),
     var(--ox-control-surface);
   color: var(--ox-control-text);
@@ -75,9 +79,9 @@
   border-radius: calc(var(--ox-control-radius) - 1px);
   background: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.14),
-    rgba(255, 255, 255, 0.02) 38%,
-    rgba(255, 255, 255, 0.05) 100%
+    var(--ox-control-glint-start, rgba(255, 255, 255, 0.14)),
+    transparent 38%,
+    var(--ox-control-glint-end, rgba(255, 255, 255, 0.05)) 100%
   );
   opacity: 0;
   transition: opacity var(--ox-motion-fast);
@@ -109,9 +113,15 @@
 .ox-link-btn:focus-visible,
 .ox-icon-btn:focus-visible {
   outline: none;
-  border-color: rgba(var(--ox-primary-rgb-effective), 0.45);
+  border-color: var(
+    --ox-focus-border,
+    rgba(var(--ox-primary-rgb-effective), 0.45)
+  );
   box-shadow:
-    0 0 0 3px rgba(var(--ox-primary-rgb-effective), 0.18),
+    0 0 0 3px var(
+      --ox-focus-ring,
+      rgba(var(--ox-primary-rgb-effective), 0.18)
+    ),
     var(--ox-control-shadow-active);
 }
 
@@ -131,21 +141,21 @@
   background:
     linear-gradient(
       180deg,
-      rgba(var(--ox-primary-rgb-effective), 1) 0%,
-      rgba(var(--ox-primary-rgb-effective), 0.88) 100%
+      rgba(var(--ox-primary-fill-rgb-effective), 1) 0%,
+      rgba(var(--ox-primary-fill-rgb-effective), 0.88) 100%
     );
-  border-color: rgba(var(--ox-primary-rgb-effective), 0.3);
+  border-color: rgba(var(--ox-primary-fill-rgb-effective), 0.34);
   color: var(--ox-primary-contrast, #02040a);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.18) inset,
-    0 18px 36px -24px rgba(var(--ox-primary-rgb-effective), 0.8);
+    0 18px 36px -24px rgba(var(--ox-primary-fill-rgb-effective), 0.8);
 }
 
 .ox-action-btn--primary:hover:not(:disabled):not([aria-busy='true']),
 .ox-link-btn--primary:hover:not([aria-disabled='true']) {
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.22) inset,
-    0 20px 42px -22px rgba(var(--ox-primary-rgb-effective), 0.92);
+    0 20px 42px -22px rgba(var(--ox-primary-fill-rgb-effective), 0.92);
 }
 
 .ox-action-btn--danger,
@@ -154,7 +164,7 @@
     linear-gradient(180deg, rgba(244, 63, 94, 0.18) 0%, rgba(244, 63, 94, 0.12) 100%),
     var(--ox-control-surface);
   border-color: rgba(244, 63, 94, 0.28);
-  color: #ffe2e8;
+  color: var(--ox-danger-text, #ffe2e8);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.05) inset,
     0 16px 28px -24px rgba(244, 63, 94, 0.6);
@@ -165,8 +175,8 @@
   background:
     linear-gradient(
       180deg,
-      rgba(255, 255, 255, 0.02) 0%,
-      rgba(255, 255, 255, 0.01) 100%
+      var(--ox-control-glint-start, rgba(255, 255, 255, 0.02)) 0%,
+      var(--ox-control-glint-end, rgba(255, 255, 255, 0.01)) 100%
     ),
     var(--ox-control-surface);
   color: var(--ox-control-text);
@@ -175,9 +185,14 @@
 .ox-action-btn--quiet,
 .ox-link-btn--quiet {
   background: transparent;
-  border-color: transparent;
+  border: 0;
   box-shadow: none;
   color: var(--ox-control-text-muted);
+}
+
+.ox-action-btn--quiet::before,
+.ox-link-btn--quiet::before {
+  display: none;
 }
 
 .ox-action-btn--quiet:hover:not(:disabled):not([aria-busy='true']),
@@ -195,7 +210,7 @@
 .ox-action-btn--sm,
 .ox-link-btn--sm,
 .ox-icon-btn--sm {
-  min-height: 38px;
+  min-height: 44px;
   padding-inline: 13px;
   border-radius: 10px;
   font-size: 0.82rem;
@@ -208,14 +223,14 @@
 
 .ox-icon-btn,
 .ox-icon-btn--sm {
-  width: 40px;
-  min-width: 40px;
+  width: 44px;
+  min-width: 44px;
   padding: 0;
 }
 
 .ox-icon-btn--sm {
-  width: 34px;
-  min-width: 34px;
+  width: 44px;
+  min-width: 44px;
 }
 
 .ox-action-btn__spinner {
@@ -484,8 +499,12 @@
   .ox-inline-spinner {
     animation: none !important;
     transition-duration: 0ms !important;
-    /* A frozen quarter-cut arc reads as broken. Close the ring and dim
-       it so a non-spinning spinner still reads as an honest "busy" mark. */
+  }
+
+  /* A frozen quarter-cut arc reads as broken. Close the ring and dim only
+     spinner marks; reduced motion must never reduce control contrast. */
+  .ox-action-btn__spinner,
+  .ox-inline-spinner {
     border-right-color: currentColor;
     opacity: 0.65;
   }

@@ -6,8 +6,10 @@ import '../public/widgets/shared/widget-runtime.js';
 
 interface WidgetRuntime {
   __resetForTests(): void;
+  applyTheme(value: string, source?: string): string | null;
   callTool(name: string, args: Record<string, unknown>): Promise<unknown>;
   detectProtocol(): string;
+  getTheme(): string | null;
   getWidgetSessionId(): string | null;
   initWidget(options: { render(value: unknown): void }): unknown;
   openWidgetLink(url: string, event?: Event): boolean;
@@ -111,5 +113,36 @@ describe('shared OrgX widget runtime', () => {
     expect(sendFollowUpMessage).toHaveBeenCalledWith({
       prompt: 'Decision approved.',
     });
+  });
+
+  it('applies ChatGPT theme changes without requiring a new tool payload', () => {
+    const rendered: unknown[] = [];
+    (window as unknown as { openai: unknown }).openai = {
+      theme: 'dark',
+      toolOutput: { status: 'ready' },
+      setWidgetHeight: vi.fn(),
+    };
+
+    runtime.initWidget({ render: (value) => rendered.push(value) });
+    expect(runtime.getTheme()).toBe('dark');
+    expect(document.documentElement.dataset.themeSource).toBe('host');
+    expect(document.documentElement.style.colorScheme).toBe('dark');
+
+    window.dispatchEvent(
+      new CustomEvent('openai:set_globals', {
+        detail: { globals: { theme: 'light' } },
+      })
+    );
+
+    expect(runtime.getTheme()).toBe('light');
+    expect(rendered).toEqual([{ status: 'ready' }]);
+  });
+
+  it('exposes one normalized theme setter for non-host integrations', () => {
+    expect(runtime.applyTheme('dark', 'test')).toBe('dark');
+    expect(runtime.getTheme()).toBe('dark');
+    expect(document.documentElement.dataset.themeSource).toBe('test');
+    expect(runtime.applyTheme('sepia', 'test')).toBeNull();
+    expect(runtime.getTheme()).toBe('dark');
   });
 });

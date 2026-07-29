@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-accent="iris">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -790,7 +790,7 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      min-height: 32px;
+      min-height: 44px;
       padding: 0 12px;
       border-radius: 999px;
       border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
@@ -890,7 +890,11 @@
     
     
     .node-item.ws { background: rgba(255,255,255,0.02); font-weight: 600; color: var(--ox-text); }
-    @media (prefers-color-scheme: light) { .node-item.ws { background: rgba(0,0,0,0.03); } }
+    @media (prefers-color-scheme: light) {
+      :root:not([data-theme='dark']) .node-item.ws {
+        background: rgba(0,0,0,0.03);
+      }
+    }
 
     .node-item.ws {
       --ws-rgb: var(--ox-primary-rgb);
@@ -1027,8 +1031,8 @@
 
     .agent-presence {
       position: relative;
-      width: 34px;
-      height: 34px;
+      width: 44px;
+      height: 44px;
       flex: none;
       display: inline-flex;
       align-items: center;
@@ -1479,9 +1483,9 @@
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
   
     .node-toggle {
-      width: 30px;
-      min-width: 30px;
-      height: 30px;
+      width: 44px;
+      min-width: 44px;
+      height: 44px;
       margin-right: 0;
       color: var(--ox-text-muted);
       transition:
@@ -1927,7 +1931,7 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      min-height: 40px;
+      min-height: 44px;
       padding-inline: 14px;
       font-size: 0.8rem;
       font-weight: 600;
@@ -2110,8 +2114,8 @@
       }
 
       .agent-presence {
-        width: 30px;
-        height: 30px;
+        width: 44px;
+        height: 44px;
       }
 
       .agent-presence__tooltip {
@@ -2226,6 +2230,7 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="shared/widget-theme.css" />
 </head>
 <body>
   <div class="container" id="content"></div>

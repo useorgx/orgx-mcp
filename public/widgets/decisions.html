@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-accent="amber">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -508,6 +508,8 @@
     }
 
     .decision-title-link {
+      display: block;
+      min-height: 44px;
       color: inherit;
       text-decoration: none;
       transition:
@@ -714,12 +716,12 @@
     }
 
     @media (prefers-color-scheme: light) {
-      .reject-textarea {
+      :root:not([data-theme='dark']) .reject-textarea {
         background: rgba(255, 255, 255, 0.86);
       }
 
-      .reject-textarea::placeholder {
-        color: rgba(15, 23, 42, 0.32);
+      :root:not([data-theme='dark']) .reject-textarea::placeholder {
+        color: var(--ox-placeholder);
       }
     }
 
@@ -1064,7 +1066,165 @@
         justify-content: center;
       }
     }
+
+    /* One decision owns the surface; evidence and the remaining queue compress. */
+    .container > .widget-shell-card .ox-card-inner {
+      padding-block: 14px;
+    }
+    .container > .widget-shell-card .widget-hero {
+      margin-bottom: 0;
+    }
+    .container > .widget-shell-card .widget-title-lg {
+      font-size: clamp(1.18rem, 2.5vw, 1.48rem);
+    }
+    .queue-subtitle {
+      max-width: 68ch;
+      font-size: .78rem;
+      line-height: 1.45;
+    }
+    .queue-header-actions { display: none; }
+    .decision-shell { gap: 10px; }
+    .decision-card { margin: 0; }
+    .decision-card .ox-card-inner { padding: 18px; }
+    .decision-header { margin-bottom: 8px; }
+    .decision-header-copy { gap: 5px; }
+    .decision-header .ox-title {
+      font-size: clamp(.98rem, 2vw, 1.14rem);
+      line-height: 1.3;
+    }
+    .decision-open-link {
+      min-height: 44px;
+      border-radius: 10px;
+    }
+    .decision-brief {
+      margin-top: 8px;
+      color: var(--ox-text-muted);
+      font-size: .78rem;
+      line-height: 1.45;
+    }
+    .decision-evidence {
+      margin-top: 12px;
+      border-top: 1px solid var(--ox-border);
+      border-bottom: 1px solid var(--ox-border);
+    }
+    .decision-evidence summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 44px;
+      color: var(--ox-text);
+      font: 700 .64rem var(--ox-mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      list-style: none;
+    }
+    .decision-evidence summary::-webkit-details-marker { display: none; }
+    .decision-evidence summary::after {
+      content: '+';
+      color: var(--ox-card-color);
+      font-size: 1rem;
+      transition: transform 160ms cubic-bezier(0.16,1,.3,1);
+    }
+    .decision-evidence[open] summary::after { transform: rotate(45deg); }
+    .decision-evidence__body {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      padding: 0 0 14px;
+    }
+    .decision-evidence__item { min-width: 0; }
+    .decision-evidence__copy {
+      margin-top: 4px;
+      color: var(--ox-text);
+      font-size: .76rem;
+      line-height: 1.45;
+    }
+    .decision-tradeoffs {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .decision-tradeoff {
+      position: relative;
+      padding-left: 10px;
+      font-size: .74rem;
+      line-height: 1.4;
+      color: var(--ox-text-muted);
+    }
+    .decision-tradeoff::before {
+      content: '';
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 2px;
+      background: rgba(var(--ox-card-color-rgb), .28);
+    }
+    .decision-tradeoff strong {
+      display: block;
+      color: var(--ox-text);
+    }
+    .params-well {
+      margin-top: 10px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+    .actions-grid { margin-top: 14px; }
+    .pagination {
+      grid-template-columns: minmax(0, 1fr) auto;
+      margin-top: 0;
+      padding: 8px 0 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+    .pagination .page-info { gap: 5px; }
+    .pagination .page-summary { display: none; }
+    .pagination .page-count {
+      padding: 0;
+      border: 0;
+      background: transparent;
+    }
+    .pagination .page-controls { gap: 4px; }
+    .pagination .page-btn {
+      min-width: 68px;
+      border-color: transparent;
+      background: transparent;
+    }
+    .decision-skeleton-card + .decision-skeleton-card { display: none; }
+    .resolution-banner {
+      margin: 0;
+      padding: 10px 0;
+      border-width: 1px 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+    @media (max-width: 620px) {
+      .decision-evidence__body { grid-template-columns: 1fr; }
+      .decision-tradeoffs { grid-column: auto; grid-template-columns: 1fr; }
+      .decision-header-meta { width: auto; }
+      .pagination { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .decision-evidence summary::after,
+      .decision-card,
+      .decision-shell[data-page-direction] .decision-card {
+        animation: none;
+        transition: none;
+      }
+      .decision-card.animate-in {
+        opacity: 1;
+        transform: none;
+        filter: none;
+      }
+    }
   </style>
+  <link rel="stylesheet" href="shared/widget-theme.css" />
 </head>
 <body>
   <div class="container">
@@ -1166,7 +1326,8 @@
       };
       var ORGX_BASE_URL = 'https://useorgx.com';
 
-    var isDemo = queryParams.get('demo') === 'true';
+    var fixtureState = queryParams.get('state') || (queryParams.get('loading') === 'true' ? 'loading' : queryParams.get('demo') === 'true' ? 'urgent' : 'empty');
+    var isDemo = ['urgent', 'populated', 'long', 'resolved'].includes(fixtureState);
     var data = isDemo ? {
       summary: { critical: 1, high: 2 },
       decisions: [
@@ -1221,9 +1382,20 @@
         }
       ]
     } : null;
+    if (fixtureState === 'long' && data) {
+      data.decisions[0].summary = 'Approve the founder continuity launch story, linked artifact evidence, decision provenance language, responsive social preview, CTA hierarchy, and cross-agent continuation receipt before the scheduled release window';
+      data.decisions[0].context += ' This long-content fixture verifies wrapping and disclosure behavior across compact hosts.';
+    }
+    if (fixtureState === 'resolved') {
+      data = { summary: {}, decisions: [] };
+    }
+    if (fixtureState === 'error' || fixtureState === 'degraded') {
+      data = { error: 'Decision queue could not be refreshed. No approval or rejection was sent.' };
+      isDemo = true;
+    }
     var isLoading = !isDemo;
 
-    var isLoadingOverride = queryParams.get('loading') === 'true';
+    var isLoadingOverride = fixtureState === 'loading';
     if (isLoadingOverride) {
       isLoading = true;
       isDemo = false;
@@ -1254,7 +1426,7 @@
     var pendingDecisionId = null;
     var lastResolution = null;
     var currentPage = 1;
-    var itemsPerPage = isOgDecisionEmbed ? 1 : 3;
+    var itemsPerPage = 1;
     var pageDirection = 'forward';
     var decisionStateTimer = null;
 
@@ -1662,6 +1834,12 @@
 
     var render = () => {
       if(isLoading) return;
+      if (data && data.error) {
+        var queueSubtitleError = document.getElementById('queueSubtitle');
+        if (queueSubtitleError) queueSubtitleError.textContent = 'The queue is unavailable. No action was taken.';
+        injectHtml(`<div class="empty-state error-state animate-in"><div class="empty-icon">${icons.error(24)}</div><div class="empty-title">Decision queue unavailable</div><div class="empty-desc">${escapeHtml(data.error)}</div><div class="resolution-actions"><button type="button" class="resolution-link resolution-link--secondary" onclick="location.reload()">Retry queue</button></div></div>`);
+        return;
+      }
       data = normalizeDecisionQueue(data);
       var queueSubtitle = document.getElementById('queueSubtitle');
       var queueDecisionsLink = document.getElementById('queueDecisionsLink');
@@ -1736,29 +1914,19 @@
                 </div>
               </div>
 
-              ${isOgDecisionEmbed ? '' : `<div class="ox-text" style="margin-bottom: 4px;">${escapeHtml(d.urgency === 'critical' ? 'Needs a fast operator call to keep critical-path work moving.' : d.urgency === 'high' ? 'High-signal operator decision with downstream execution impact.' : 'Review and confirm the preferred execution path.')}</div>`}
-
-              ${!isOgDecisionEmbed && (d.context || d.recommendation || d.impact) ? `
-              <div style="margin: 20px 0; padding: 14px 0; display: flex; flex-direction: column; gap: 16px; border-top: 1px solid var(--ox-border); border-bottom: 1px solid var(--ox-border);">
-                ${d.context ? `<div><div class="ox-eyebrow" style="margin-bottom:4px;">Why it matters</div><div class="ox-text" style="color:var(--ox-text);">${escapeHtml(d.context)}</div></div>` : ''}
-                ${d.recommendation ? `<div><div class="ox-eyebrow" style="margin-bottom:4px; color:var(--ox-teal);">Recommendation</div><div class="ox-text" style="color:var(--ox-text); font-weight:500;">${escapeHtml(d.recommendation)}</div></div>` : ''}
-                ${d.impact ? `<div><div class="ox-eyebrow" style="margin-bottom:4px; color:var(--ox-warning);">Impact if ignored</div><div class="ox-text">${escapeHtml(d.impact)}</div></div>` : ''}
-              </div>
-              ` : ''}
-
-              ${!isOgDecisionEmbed && d.tradeoffs && d.tradeoffs.length > 0 ? `
-              <div style="margin-bottom: 20px;">
-                <div class="ox-eyebrow" style="margin-bottom: 8px;">Tradeoffs</div>
-                <div style="display:flex; flex-direction:column; gap:8px;">
-                  ${d.tradeoffs.map(t => `
-                    <div style="background:var(--ox-well-bg); padding:10px 12px; border-radius:8px; border:1px solid var(--ox-border); font-size:0.85rem;">
-                      <strong style="color:var(--ox-text); display:block; margin-bottom:2px;">${escapeHtml(t.option)}</strong>
-                      <span style="color:var(--ox-text-muted);">${escapeHtml(t.detail)}</span>
-                    </div>
-                  `).join('')}
-                </div>
-              </div>
-              ` : ''}
+              ${isOgDecisionEmbed ? '' : `
+                <div class="decision-brief">${escapeHtml(d.recommendation || (d.urgency === 'critical' ? 'A fast operator call keeps critical-path work moving.' : 'Review the recommended path and its downstream consequence.'))}</div>
+                ${(d.context || d.recommendation || d.impact || (d.tradeoffs && d.tradeoffs.length)) ? `
+                <details class="decision-evidence">
+                  <summary>Evidence and consequence</summary>
+                  <div class="decision-evidence__body">
+                    ${d.context ? `<div class="decision-evidence__item"><div class="ox-eyebrow">Why it matters</div><div class="decision-evidence__copy">${escapeHtml(d.context)}</div></div>` : ''}
+                    ${d.recommendation ? `<div class="decision-evidence__item"><div class="ox-eyebrow" style="color:var(--ox-teal)">Recommended path</div><div class="decision-evidence__copy">${escapeHtml(d.recommendation)}</div></div>` : ''}
+                    ${d.impact ? `<div class="decision-evidence__item"><div class="ox-eyebrow" style="color:var(--ox-warning)">If ignored</div><div class="decision-evidence__copy">${escapeHtml(d.impact)}</div></div>` : ''}
+                    ${d.tradeoffs && d.tradeoffs.length ? `<div class="decision-tradeoffs">${d.tradeoffs.map(t => `<div class="decision-tradeoff"><strong>${escapeHtml(t.option)}</strong>${escapeHtml(t.detail)}</div>`).join('')}</div>` : ''}
+                  </div>
+                </details>` : ''}
+              `}
 
               ${isOgDecisionEmbed ? '' : `<div class="params-well">
                 <div class="param-chip">Type <strong>${escapeHtml(d.type)}</strong></div>
@@ -1786,6 +1954,7 @@
                 <button
                   type="button"
                   class="ox-btn ox-action-btn ox-action-btn--ghost ox-btn-ghost decision-action-btn"
+                  data-reject-id="${escapeHtml(d.id)}"
                   onclick="toggleRejectComposer('${escapeHtml(d.id)}')"
                   aria-expanded="${isRejecting ? 'true' : 'false'}"
                 >
@@ -1880,6 +2049,18 @@
 
       injectHtml(`<div class="decision-shell animate-in" data-page-direction="${activeDirection}">${html}</div>`);
     };
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape' || !rejectComposerId || pendingDecisionId) return;
+      const decisionId = rejectComposerId;
+      rejectComposerId = null;
+      scheduleDecisionStatePersistence();
+      render();
+      window.requestAnimationFrame(() => {
+        const trigger = document.querySelector(`[data-reject-id="${CSS.escape(decisionId)}"]`);
+        if (trigger) trigger.focus();
+      });
+    });
 
     if(isDemo) applyBootPayload();
     else initWidget({ render: d => { applyBootPayload(function(){ if(d) data = d; }); } });

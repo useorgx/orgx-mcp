@@ -62,7 +62,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: rgba(var(--domain-rgb, 20, 184, 166), 0.9);
+  color: var(--ox-text-muted);
 }
 
 /* Size variants */

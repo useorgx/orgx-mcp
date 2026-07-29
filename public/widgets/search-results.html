@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-accent="teal">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -169,7 +169,6 @@
     .search-box { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--ox-border); }
     .search-icon { color: var(--ox-primary); filter: drop-shadow(0 0 10px rgba(var(--ox-primary-rgb), 0.4)); }
     .search-query { font-family: var(--ox-mono); font-size: 1rem; color: var(--ox-text); font-weight: 500; letter-spacing: -0.02em; }
-    @media (prefers-color-scheme: dark) { .search-query { color: #fff; } }
     .search-meta { display: flex; flex-direction: column; gap: 8px; }
     .search-subtitle { font-size: 0.82rem; line-height: 1.45; color: var(--ox-text-muted); }
     .search-helper {
@@ -411,7 +410,7 @@
 
     .page-btn {
       min-width: 96px;
-      min-height: 38px;
+      min-height: 44px;
       padding: 0 14px;
       border-radius: 10px;
       border: 1px solid var(--ox-border);
@@ -466,17 +465,161 @@
       background-size: 200% 100%; animation: shimmer 2s infinite linear; border-radius: 4px;
     }
     @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+    /* Compact memory stack: one leading answer, quiet continuation rows. */
+    .result-list {
+      gap: 0;
+      border-top: 1px solid var(--ox-border);
+      border-bottom: 1px solid var(--ox-border);
+    }
+    .result-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      column-gap: 14px;
+      padding: 14px 0;
+      border: 0;
+      border-bottom: 1px solid var(--ox-border);
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+      overflow: visible;
+    }
+    .result-card:first-child {
+      padding: 16px 14px;
+      margin: 0 -14px;
+      border: 1px solid rgba(var(--ox-primary-rgb), .24);
+      border-radius: 12px;
+      background: rgba(var(--ox-primary-rgb), .07);
+    }
+    .result-card:last-child { border-bottom: 0; }
+    .result-card:hover,
+    .result-card:focus-visible {
+      transform: none;
+      background: rgba(var(--ox-primary-rgb), .06);
+      box-shadow: none;
+      border-color: rgba(var(--ox-primary-rgb), .32);
+    }
+    .r-header {
+      grid-column: 1 / -1;
+      margin-bottom: 6px;
+      gap: 10px;
+    }
+    .r-title {
+      gap: 8px;
+      font-size: .9rem;
+    }
+    .r-title-copy { gap: 4px; }
+    .r-kicker { font-size: .56rem; }
+    .r-snippet {
+      grid-column: 1;
+      font-size: .78rem;
+      line-height: 1.45;
+      -webkit-line-clamp: 2;
+    }
+    .r-footer {
+      grid-column: 1 / -1;
+      margin: 8px 0 0;
+      padding: 0;
+      border: 0;
+      min-width: 0;
+    }
+    .r-chip {
+      padding: 0;
+      border: 0;
+      background: transparent;
+    }
+    .r-chip + .r-chip::before {
+      content: '·';
+      margin-right: 8px;
+    }
+    .r-open-hint {
+      min-height: 44px;
+      padding: 0 10px;
+      border: 0;
+      background: transparent;
+      color: var(--ox-primary);
+    }
+    .r-open-hint small { display: none; }
+    .score-pill,
+    .history-status {
+      flex-shrink: 0;
+      padding: 3px 6px;
+      background: transparent;
+    }
+    .r-rank {
+      width: 24px;
+      min-width: 24px;
+      height: 24px;
+      border-radius: 8px;
+    }
+    .r-body {
+      grid-column: 1 / -1;
+      gap: 6px;
+    }
+    .r-reason {
+      padding: 6px 0 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      font-size: .76rem;
+    }
+    .pagination {
+      grid-template-columns: minmax(0, 1fr) auto;
+      margin-top: 10px;
+      padding: 8px 0 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+    .page-info { gap: 5px; }
+    .page-count {
+      padding: 0;
+      border: 0;
+      background: transparent;
+    }
+    .page-summary { display: none; }
+    .page-controls { gap: 4px; }
+    .page-btn {
+      min-width: 64px;
+      padding-inline: 10px;
+      border-color: transparent;
+      background: transparent;
+    }
+    .search-skeleton {
+      gap: 0 !important;
+      padding: 20px !important;
+    }
+    .search-skeleton__row {
+      display: grid;
+      gap: 8px;
+      padding: 14px 0;
+      border-top: 1px solid var(--ox-border);
+    }
+    @media (max-width: 560px) {
+      .r-header,
+      .r-footer { flex-direction: row; align-items: center; }
+      .r-header { flex-wrap: wrap; }
+      .r-title { flex-basis: 100%; }
+      .r-open-hint { padding-inline: 4px; }
+      .pagination { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .skeleton-line { animation: none; }
+      .result-card { transition: none; }
+    }
   </style>
+  <link rel="stylesheet" href="shared/widget-theme.css" />
 </head>
 <body>
   <div class="container" id="content">
     <!-- Skeleton shown during loading -->
-    <div class="skeleton-wrapper" style="display:flex; flex-direction:column; gap:16px; padding:24px;">
+    <div class="skeleton-wrapper search-skeleton" style="display:flex; flex-direction:column; gap:16px; padding:24px;" aria-label="Searching organizational memory">
       <div style="display:flex; align-items:center; gap:12px; padding-bottom:16px; border-bottom:1px solid var(--ox-border);">
         <div class="skeleton-line" style="width:18px; height:18px; border-radius:5px;"></div>
         <div class="skeleton-line" style="width:200px; height:18px;"></div>
       </div>
-      <div style="background:var(--ox-well-bg); border:1px solid var(--ox-border); border-radius:14px; padding:18px;">
+      <div class="search-skeleton__row">
         <div style="display:flex; justify-content:space-between; gap:14px; margin-bottom:12px;">
           <div class="skeleton-line" style="width:62%; height:16px;"></div>
           <div class="skeleton-line" style="width:64px; height:16px; border-radius:6px;"></div>
@@ -484,7 +627,7 @@
         <div class="skeleton-line" style="width:92%; height:12px; margin-bottom:6px;"></div>
         <div class="skeleton-line" style="width:78%; height:12px;"></div>
       </div>
-      <div style="background:var(--ox-well-bg); border:1px solid var(--ox-border); border-radius:14px; padding:18px;">
+      <div class="search-skeleton__row">
         <div style="display:flex; justify-content:space-between; gap:14px; margin-bottom:12px;">
           <div class="skeleton-line" style="width:54%; height:16px;"></div>
           <div class="skeleton-line" style="width:64px; height:16px; border-radius:6px;"></div>
@@ -492,7 +635,7 @@
         <div class="skeleton-line" style="width:88%; height:12px; margin-bottom:6px;"></div>
         <div class="skeleton-line" style="width:70%; height:12px;"></div>
       </div>
-      <div style="background:var(--ox-well-bg); border:1px solid var(--ox-border); border-radius:14px; padding:18px;">
+      <div class="search-skeleton__row">
         <div style="display:flex; justify-content:space-between; gap:14px; margin-bottom:12px;">
           <div class="skeleton-line" style="width:58%; height:16px;"></div>
           <div class="skeleton-line" style="width:64px; height:16px; border-radius:6px;"></div>
@@ -771,7 +914,8 @@
         return '';
       };
 
-    var isDemo = queryParams.get('demo') === 'true';
+    var fixtureState = queryParams.get('state') || (queryParams.get('loading') === 'true' ? 'loading' : queryParams.get('demo') === 'true' ? 'populated' : 'empty');
+    var isDemo = ['populated', 'urgent', 'long', 'resolved'].includes(fixtureState);
     var data = isDemo ? {
       query: "founder continuity launch",
       results: [
@@ -817,11 +961,26 @@
         }
       ]
     } : null;
+    if (fixtureState === 'long' && data) {
+      data.query = 'founder continuity launch proof and organizational decision provenance across every connected agent execution surface';
+      data.results[0].title = 'Founder continuity launch, approval provenance, evidence chain, and cross-agent continuation operating record';
+    }
+    if (fixtureState === 'resolved' && data) {
+      data.query = 'completed launch proof';
+      data.results = data.results.slice(0, 1);
+      data.results[0].title = 'Launch proof accepted and linked to the founder continuity initiative';
+      data.results[0].snippet = 'The accepted artifact, decision receipt, and execution record are connected.';
+      data.results[0].score = 1;
+    }
+    if (fixtureState === 'error' || fixtureState === 'degraded') {
+      data = { error: 'Organizational memory is temporarily unavailable. Your query was not changed; retry when the connection returns.' };
+      isDemo = true;
+    }
     var isLoading = !isDemo;
     var currentPage = 1;
     var itemsPerPage = 3;
 
-    var isLoadingOverride = queryParams.get('loading') === 'true';
+    var isLoadingOverride = fixtureState === 'loading';
     if (isLoadingOverride) {
       isLoading = true;
       isDemo = false;

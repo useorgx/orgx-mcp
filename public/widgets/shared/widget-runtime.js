@@ -5,6 +5,69 @@
 
   var protocol = null;
   var bridge = null;
+  var explicitTheme = null;
+  var themeSource = 'system';
+
+  function normalizeTheme(value) {
+    return value === 'dark' || value === 'light' ? value : null;
+  }
+
+  function getUrlTheme() {
+    try {
+      return normalizeTheme(new URLSearchParams(global.location.search).get('theme'));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function applyTheme(value, source) {
+    var theme = normalizeTheme(value);
+    if (!theme) return null;
+    if (explicitTheme && source !== 'url') {
+      theme = explicitTheme;
+      source = 'url';
+    }
+    document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.setAttribute('data-theme-source', source || 'system');
+    document.documentElement.style.colorScheme = theme;
+    themeSource = source || 'system';
+    return theme;
+  }
+
+  function getTheme() {
+    return normalizeTheme(document.documentElement.getAttribute('data-theme'));
+  }
+
+  function resolveInitialTheme() {
+    explicitTheme = getUrlTheme();
+    if (explicitTheme) return applyTheme(explicitTheme, 'url');
+
+    var chatGptTheme = normalizeTheme(global.openai && global.openai.theme);
+    if (chatGptTheme) return applyTheme(chatGptTheme, 'host');
+
+    var declaredTheme = getTheme();
+    if (declaredTheme) return applyTheme(declaredTheme, 'document');
+
+    var prefersDark =
+      typeof global.matchMedia === 'function' &&
+      global.matchMedia('(prefers-color-scheme: dark)').matches;
+    return applyTheme(prefersDark ? 'dark' : 'light', 'system');
+  }
+
+  resolveInitialTheme();
+
+  if (typeof global.matchMedia === 'function') {
+    var colorSchemeQuery = global.matchMedia('(prefers-color-scheme: dark)');
+    var onColorSchemeChange = function onColorSchemeChange(event) {
+      if (explicitTheme || themeSource === 'host') return;
+      applyTheme(event.matches ? 'dark' : 'light', 'system');
+    };
+    if (colorSchemeQuery.addEventListener) {
+      colorSchemeQuery.addEventListener('change', onColorSchemeChange);
+    } else if (colorSchemeQuery.addListener) {
+      colorSchemeQuery.addListener(onColorSchemeChange);
+    }
+  }
 
   function detectProtocol() {
     if (global.openai) return 'chatgpt';
@@ -46,10 +109,12 @@
   }
 
   function applyHostContext(context) {
-    if (!context || !global.McpApps) return;
-    if (context.theme && global.McpApps.applyDocumentTheme) {
+    if (!context) return;
+    if (context.theme && global.McpApps && global.McpApps.applyDocumentTheme) {
       global.McpApps.applyDocumentTheme(context.theme);
     }
+    if (context.theme) applyTheme(context.theme, 'host');
+    if (!global.McpApps) return;
     if (context.styles && context.styles.variables && global.McpApps.applyHostStyleVariables) {
       global.McpApps.applyHostStyleVariables(context.styles.variables);
     }
@@ -247,6 +312,7 @@
     document.documentElement.setAttribute('data-protocol', activeProtocol);
 
     if (activeProtocol === 'chatgpt') {
+      applyTheme(global.openai && global.openai.theme, 'host');
       currentData = getData(global.openai && global.openai.toolOutput);
       render(currentData);
       observeChatGPTSize();
@@ -254,7 +320,9 @@
         'openai:set_globals',
         function onOpenAIGlobals(event) {
           var globals = event.detail && event.detail.globals;
-          if (!globals || globals.toolOutput === undefined) return;
+          if (!globals) return;
+          if (globals.theme !== undefined) applyTheme(globals.theme, 'host');
+          if (globals.toolOutput === undefined) return;
           currentData = getData(globals.toolOutput);
           render(currentData);
           reportSize();
@@ -378,7 +446,9 @@
     McpAppsSDKBridge: McpAppsSDKBridge,
     callTool: callTool,
     detectProtocol: detectProtocol,
+    applyTheme: applyTheme,
     extractStructuredWidgetData: extractStructuredWidgetData,
+    getTheme: getTheme,
     getWidgetSessionId: getWidgetSessionId,
     initWidget: initWidget,
     openWidgetLink: openWidgetLink,

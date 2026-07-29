@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-accent="teal">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -499,7 +499,7 @@
       line-height: 1;
       letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: var(--priority-color, var(--ox-primary));
+      color: var(--ox-text-muted);
       margin-bottom: 5px;
     }
 
@@ -508,8 +508,8 @@
       width: 5px;
       height: 5px;
       border-radius: 999px;
-      background: currentColor;
-      opacity: 0.72;
+      background: var(--priority-color, var(--ox-primary));
+      opacity: 1;
     }
 
     .priority-title {
@@ -592,7 +592,7 @@
 
     .output-link {
       flex-shrink: 0;
-      min-height: 30px;
+      min-height: 44px;
       padding: 0 10px;
       border-radius: 8px;
       border: 1px solid rgba(var(--ox-warning-rgb), 0.18);
@@ -697,6 +697,7 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      min-height: 44px;
       color: var(--ox-text-muted);
       text-decoration: none;
       font-size: 0.6rem;
@@ -895,6 +896,7 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="shared/widget-theme.css" />
 </head>
 <body>
   <div class="container" id="content"></div>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-widget-mode="creation">
+<html lang="en" data-widget-mode="creation" data-accent="iris">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -955,13 +955,15 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="shared/widget-theme.css" />
 </head>
 <body>
   <main class="container" aria-live="polite">
     <div class="widget-shell-card plan-shell animate-in">
       <div class="ox-card">
         <div class="ox-card-inner" data-widget-root>
-          <div class="plan-skeleton" data-loading>
+          <div class="plan-skeleton" data-loading role="status" aria-live="polite">
+            <span class="sr-only">Loading plan session…</span>
             <div class="plan-skeleton__header">
               <div class="plan-skeleton__stack">
                 <div class="ox-skeleton plan-skeleton__line plan-skeleton__line--short"></div>
