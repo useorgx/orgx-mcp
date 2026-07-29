@@ -1,0 +1,352 @@
+/*
+ * OrgX widget theme system
+ *
+ * One semantic light/dark contract for every public widget. Widget-specific
+ * CSS owns layout and domain color; this file owns surface, text, control,
+ * focus, status, and contrast behavior.
+ */
+
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --ox-bg: #f8fafc;
+  --ox-panel: #ffffff;
+  --ox-panel-solid: #ffffff;
+  --ox-well-bg: #f1f5f9;
+  --ox-well: var(--ox-well-bg);
+  --ox-card: #f1f5f9;
+  --ox-surface-raised: #ffffff;
+  --ox-surface-subtle: #eef2f7;
+  --ox-surface-inset: #e8edf4;
+  --ox-overlay: rgba(255, 255, 255, 0.96);
+
+  --ox-border: rgba(15, 23, 42, 0.1);
+  --ox-border-strong: rgba(15, 23, 42, 0.2);
+  --ox-divider: rgba(15, 23, 42, 0.09);
+  --ox-grid: rgba(15, 23, 42, 0.035);
+
+  --ox-text: #0f172a;
+  --ox-text-muted: #526078;
+  --ox-text-dim: #657188;
+  --ox-text-sub: var(--ox-text-muted);
+  --ox-text-secondary: var(--ox-text-muted);
+  --ox-text-inverse: #f8fafc;
+  --ox-placeholder: #6b778c;
+
+  --ox-lime: #4d7c0f;
+  --ox-teal: #0f766e;
+  --ox-iris: #4f46e5;
+  --ox-warning: #a16207;
+  --ox-warn: var(--ox-warning);
+  --ox-danger: #be123c;
+  --ox-success: #15803d;
+
+  --ox-good-surface: rgba(21, 128, 61, 0.09);
+  --ox-warning-surface: rgba(161, 98, 7, 0.09);
+  --ox-danger-surface: rgba(190, 18, 60, 0.08);
+  --ox-info-surface: rgba(79, 70, 229, 0.08);
+  --ox-danger-text: #9f1239;
+  --ox-warning-text: #854d0e;
+
+  --ox-shadow:
+    0 18px 42px -24px rgba(15, 23, 42, 0.24), 0 2px 8px rgba(15, 23, 42, 0.05);
+  --ox-well-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.04);
+  --ox-control-shadow:
+    0 14px 30px -24px rgba(15, 23, 42, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --ox-control-shadow-active:
+    0 18px 32px -22px rgba(15, 23, 42, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.96);
+  --ox-control-glint-start: rgba(255, 255, 255, 0.72);
+  --ox-control-glint-end: rgba(255, 255, 255, 0.08);
+
+  --ox-focus-ring: rgba(var(--ox-primary-rgb), 0.24);
+  --ox-focus-border: rgba(var(--ox-primary-rgb), 0.58);
+  --ox-skeleton-low: rgba(100, 116, 139, 0.1);
+  --ox-skeleton-high: rgba(100, 116, 139, 0.2);
+
+  /* ChatGPT-style shared components use the app token namespace. Keep it as
+   * an alias layer so explicit MCP host themes always outrank OS preference. */
+  --app-color-bg: var(--ox-bg);
+  --app-color-surface: var(--ox-panel-solid);
+  --app-color-surface-elevated: var(--ox-surface-raised);
+  --app-color-surface-soft: var(--ox-surface-subtle);
+  --app-color-text: var(--ox-text);
+  --app-color-text-secondary: var(--ox-text-muted);
+  --app-color-text-tertiary: var(--ox-text-muted);
+  --app-color-border: var(--ox-border);
+  --app-color-border-light: var(--ox-border);
+  --app-color-divider: var(--ox-divider);
+  --app-color-primary: var(--ox-primary);
+  --app-color-primary-hover: var(--ox-primary-hover, var(--ox-primary));
+  --app-color-primary-text: var(--ox-primary-contrast);
+  --app-color-success: var(--ox-success);
+  --app-color-success-bg: var(--ox-good-surface);
+  --app-color-success-text: var(--ox-success);
+  --app-color-warning: var(--ox-warning);
+  --app-color-warning-bg: var(--ox-warning-surface);
+  --app-color-warning-text: var(--ox-warning-text);
+  --app-color-review: var(--ox-warning);
+  --app-color-review-bg: var(--ox-warning-surface);
+  --app-color-danger: var(--ox-danger);
+  --app-color-danger-bg: var(--ox-danger-surface);
+  --app-color-danger-text: var(--ox-danger-text);
+  --app-color-attention: var(--ox-danger);
+  --app-color-attention-bg: var(--ox-danger-surface);
+  --app-color-info: var(--ox-iris);
+  --app-color-info-bg: var(--ox-info-surface);
+  --app-color-info-text: var(--ox-iris);
+  --app-color-accent-soft: rgba(var(--ox-primary-rgb), 0.1);
+  --app-color-neutral-bg: var(--ox-surface-subtle);
+  --app-color-neutral-text: var(--ox-text-muted);
+}
+
+/* Accent RGB remains stable for identity and translucent fills. The visible
+ * foreground changes by theme so signal text stays legible. */
+:root[data-accent="lime"] {
+  --ox-primary: #4d7c0f;
+  --ox-primary-rgb: 191, 255, 0;
+  --ox-primary-fill-rgb: 191, 255, 0;
+  --ox-primary-contrast: #172000;
+}
+
+:root[data-accent="teal"] {
+  --ox-primary: #0f766e;
+  --ox-primary-rgb: 0, 201, 167;
+  --ox-primary-fill-rgb: 0, 201, 167;
+  --ox-primary-contrast: #031712;
+}
+
+:root[data-accent="iris"] {
+  --ox-primary: #4f46e5;
+  --ox-primary-rgb: 99, 102, 241;
+  --ox-primary-fill-rgb: 79, 70, 229;
+  --ox-primary-contrast: #ffffff;
+}
+
+:root[data-accent="amber"] {
+  --ox-primary: #a16207;
+  --ox-primary-rgb: 251, 191, 36;
+  --ox-primary-fill-rgb: 251, 191, 36;
+  --ox-primary-contrast: #211500;
+}
+
+:root[data-accent="neutral"] {
+  --ox-primary: #111827;
+  --ox-primary-hover: #020617;
+  --ox-primary-rgb: 17, 24, 39;
+  --ox-primary-fill-rgb: 17, 24, 39;
+  --ox-primary-contrast: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --ox-bg: #02040a;
+    --ox-panel: rgba(10, 15, 22, 0.96);
+    --ox-panel-solid: #0a0f16;
+    --ox-well-bg: rgba(0, 0, 0, 0.32);
+    --ox-well: var(--ox-well-bg);
+    --ox-card: rgba(14, 19, 30, 0.92);
+    --ox-surface-raised: #111824;
+    --ox-surface-subtle: rgba(255, 255, 255, 0.045);
+    --ox-surface-inset: rgba(0, 0, 0, 0.38);
+    --ox-overlay: rgba(7, 11, 18, 0.97);
+
+    --ox-border: rgba(255, 255, 255, 0.09);
+    --ox-border-strong: rgba(255, 255, 255, 0.18);
+    --ox-divider: rgba(255, 255, 255, 0.085);
+    --ox-grid: rgba(255, 255, 255, 0.025);
+
+    --ox-text: #f2f7ff;
+    --ox-text-muted: #aab4c4;
+    --ox-text-dim: #8792a3;
+    --ox-text-inverse: #071018;
+    --ox-placeholder: #8792a3;
+
+    --ox-lime: #d4ed31;
+    --ox-teal: #2dd4bf;
+    --ox-iris: #818cf8;
+    --ox-warning: #fbbf24;
+    --ox-warn: var(--ox-warning);
+    --ox-danger: #fb7185;
+    --ox-success: #4ade80;
+
+    --ox-good-surface: rgba(74, 222, 128, 0.1);
+    --ox-warning-surface: rgba(251, 191, 36, 0.1);
+    --ox-danger-surface: rgba(251, 113, 133, 0.1);
+    --ox-info-surface: rgba(129, 140, 248, 0.1);
+    --ox-danger-text: #ffe4e9;
+    --ox-warning-text: #fde68a;
+
+    --ox-shadow:
+      0 24px 52px -22px rgba(0, 0, 0, 0.68),
+      inset 0 1px 0 rgba(255, 255, 255, 0.045);
+    --ox-well-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.42);
+    --ox-control-shadow:
+      0 14px 30px -24px rgba(0, 0, 0, 0.72),
+      inset 0 1px 0 rgba(255, 255, 255, 0.065);
+    --ox-control-shadow-active:
+      0 18px 30px -22px rgba(0, 0, 0, 0.64),
+      inset 0 1px 0 rgba(255, 255, 255, 0.09);
+    --ox-control-glint-start: rgba(255, 255, 255, 0.14);
+    --ox-control-glint-end: rgba(255, 255, 255, 0.02);
+
+    --ox-focus-ring: rgba(var(--ox-primary-rgb), 0.22);
+    --ox-focus-border: rgba(var(--ox-primary-rgb), 0.62);
+    --ox-skeleton-low: rgba(148, 163, 184, 0.08);
+    --ox-skeleton-high: rgba(148, 163, 184, 0.18);
+  }
+
+  :root:not([data-theme="light"])[data-accent="lime"] {
+    --ox-primary: #d4ed31;
+  }
+
+  :root:not([data-theme="light"])[data-accent="teal"] {
+    --ox-primary: #2dd4bf;
+  }
+
+  :root:not([data-theme="light"])[data-accent="iris"] {
+    --ox-primary: #818cf8;
+  }
+
+  :root:not([data-theme="light"])[data-accent="amber"] {
+    --ox-primary: #fbbf24;
+  }
+
+  :root:not([data-theme="light"])[data-accent="neutral"] {
+    --ox-primary: #f2f7ff;
+    --ox-primary-hover: #ffffff;
+    --ox-primary-rgb: 242, 247, 255;
+    --ox-primary-fill-rgb: 242, 247, 255;
+    --ox-primary-contrast: #02040a;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --ox-bg: #02040a;
+  --ox-panel: rgba(10, 15, 22, 0.96);
+  --ox-panel-solid: #0a0f16;
+  --ox-well-bg: rgba(0, 0, 0, 0.32);
+  --ox-well: var(--ox-well-bg);
+  --ox-card: rgba(14, 19, 30, 0.92);
+  --ox-surface-raised: #111824;
+  --ox-surface-subtle: rgba(255, 255, 255, 0.045);
+  --ox-surface-inset: rgba(0, 0, 0, 0.38);
+  --ox-overlay: rgba(7, 11, 18, 0.97);
+
+  --ox-border: rgba(255, 255, 255, 0.09);
+  --ox-border-strong: rgba(255, 255, 255, 0.18);
+  --ox-divider: rgba(255, 255, 255, 0.085);
+  --ox-grid: rgba(255, 255, 255, 0.025);
+
+  --ox-text: #f2f7ff;
+  --ox-text-muted: #aab4c4;
+  --ox-text-dim: #8792a3;
+  --ox-text-inverse: #071018;
+  --ox-placeholder: #8792a3;
+
+  --ox-lime: #d4ed31;
+  --ox-teal: #2dd4bf;
+  --ox-iris: #818cf8;
+  --ox-warning: #fbbf24;
+  --ox-warn: var(--ox-warning);
+  --ox-danger: #fb7185;
+  --ox-success: #4ade80;
+
+  --ox-good-surface: rgba(74, 222, 128, 0.1);
+  --ox-warning-surface: rgba(251, 191, 36, 0.1);
+  --ox-danger-surface: rgba(251, 113, 133, 0.1);
+  --ox-info-surface: rgba(129, 140, 248, 0.1);
+  --ox-danger-text: #ffe4e9;
+  --ox-warning-text: #fde68a;
+
+  --ox-shadow:
+    0 24px 52px -22px rgba(0, 0, 0, 0.68),
+    inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  --ox-well-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.42);
+  --ox-control-shadow:
+    0 14px 30px -24px rgba(0, 0, 0, 0.72),
+    inset 0 1px 0 rgba(255, 255, 255, 0.065);
+  --ox-control-shadow-active:
+    0 18px 30px -22px rgba(0, 0, 0, 0.64),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  --ox-control-glint-start: rgba(255, 255, 255, 0.14);
+  --ox-control-glint-end: rgba(255, 255, 255, 0.02);
+
+  --ox-focus-ring: rgba(var(--ox-primary-rgb), 0.22);
+  --ox-focus-border: rgba(var(--ox-primary-rgb), 0.62);
+  --ox-skeleton-low: rgba(148, 163, 184, 0.08);
+  --ox-skeleton-high: rgba(148, 163, 184, 0.18);
+}
+
+:root[data-theme="dark"][data-accent="lime"] {
+  --ox-primary: #d4ed31;
+}
+
+:root[data-theme="dark"][data-accent="teal"] {
+  --ox-primary: #2dd4bf;
+}
+
+:root[data-theme="dark"][data-accent="iris"] {
+  --ox-primary: #818cf8;
+}
+
+:root[data-theme="dark"][data-accent="amber"] {
+  --ox-primary: #fbbf24;
+}
+
+:root[data-theme="dark"][data-accent="neutral"] {
+  --ox-primary: #f2f7ff;
+  --ox-primary-hover: #ffffff;
+  --ox-primary-rgb: 242, 247, 255;
+  --ox-primary-fill-rgb: 242, 247, 255;
+  --ox-primary-contrast: #02040a;
+}
+
+html {
+  background: var(--ox-bg);
+}
+
+body {
+  background-color: var(--ox-bg);
+  color: var(--ox-text);
+}
+
+input,
+select,
+textarea {
+  color-scheme: inherit;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--ox-placeholder);
+  opacity: 1;
+}
+
+::selection {
+  color: var(--ox-text);
+  background: rgba(var(--ox-primary-rgb), 0.2);
+}
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--ox-focus-border);
+  outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid CanvasText;
+  }
+
+  .ox-card::after,
+  .shell::after,
+  .card::after {
+    background: CanvasText;
+  }
+}

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-accent="iris">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -295,7 +295,179 @@
         width: 100%;
       }
     }
+
+    /* Dispatch receipt: one execution spine, no nested metadata cards. */
+    .dispatch-receipt {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .dispatch-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: start;
+      padding-bottom: 16px;
+    }
+    .dispatch-state {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 44px;
+      color: var(--ox-primary);
+      font: 700 0.64rem var(--ox-mono);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .dispatch-state__dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: currentColor;
+      box-shadow: 0 0 0 5px rgba(var(--ox-primary-rgb), 0.1);
+      animation: receiptPulse 2.2s ease-in-out infinite;
+    }
+    .dispatch-state--complete {
+      color: var(--ox-teal);
+    }
+    .dispatch-state--complete .dispatch-state__dot { animation: none; }
+    @keyframes receiptPulse { 50% { opacity: .45; } }
+    .dispatch-spine {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+      border-top: 1px solid var(--ox-border);
+      border-bottom: 1px solid var(--ox-border);
+    }
+    .dispatch-spine::before {
+      content: '';
+      position: absolute;
+      left: 16.66%;
+      right: 16.66%;
+      top: 31px;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(var(--ox-primary-rgb), .2), rgba(var(--ox-primary-rgb), .65), rgba(var(--ox-primary-rgb), .2));
+      pointer-events: none;
+    }
+    .dispatch-node {
+      position: relative;
+      z-index: 1;
+      min-width: 0;
+      padding: 14px 12px;
+    }
+    .dispatch-node:first-child { padding-left: 0; }
+    .dispatch-node:last-child { padding-right: 0; }
+    .dispatch-node__signal {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      margin-bottom: 8px;
+      border-radius: 10px;
+      border: 1px solid rgba(var(--ox-primary-rgb), .26);
+      background: var(--ox-panel);
+      color: var(--ox-primary);
+    }
+    .dispatch-node__label {
+      color: var(--ox-text-muted);
+      font: 700 .58rem var(--ox-mono);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    .dispatch-node__value {
+      margin-top: 4px;
+      color: var(--ox-text);
+      font-size: .82rem;
+      font-weight: 650;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+    .dispatch-proof {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-top: 14px;
+    }
+    .dispatch-proof__meta {
+      color: var(--ox-text-muted);
+      font: 600 .62rem var(--ox-mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .dispatch-links {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .dispatch-links .ox-link-btn { min-height: 44px; }
+    .dispatch-links .ox-link-btn--primary {
+      color: var(--ox-primary-contrast);
+    }
+    .dispatch-degraded {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      margin: 0 0 14px;
+      padding: 10px 0;
+      border-top: 1px solid rgba(217,119,6,.25);
+      border-bottom: 1px solid rgba(217,119,6,.25);
+      color: var(--ox-warning);
+      font-size: .78rem;
+      line-height: 1.45;
+    }
+    .dispatch-empty {
+      padding: 20px 0;
+      text-align: left;
+      align-items: flex-start;
+    }
+    .dispatch-skeleton {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 20px;
+    }
+    .dispatch-skeleton__spine {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      padding: 14px 0;
+      border-top: 1px solid var(--ox-border);
+      border-bottom: 1px solid var(--ox-border);
+    }
+    @media (max-width: 560px) {
+      .dispatch-hero { grid-template-columns: 1fr; }
+      .dispatch-state { justify-self: start; }
+      .dispatch-spine { grid-template-columns: 1fr; }
+      .dispatch-spine::before {
+        left: 16px;
+        right: auto;
+        top: 34px;
+        bottom: 34px;
+        width: 1px;
+        height: auto;
+        background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), .2), rgba(var(--ox-primary-rgb), .65), rgba(var(--ox-primary-rgb), .2));
+      }
+      .dispatch-node,
+      .dispatch-node:first-child,
+      .dispatch-node:last-child {
+        display: grid;
+        grid-template-columns: 34px minmax(0, 1fr);
+        column-gap: 12px;
+        padding: 10px 0;
+      }
+      .dispatch-node__signal { grid-row: 1 / span 2; margin: 0; }
+      .dispatch-proof { align-items: stretch; flex-direction: column; }
+      .dispatch-links { width: 100%; }
+      .dispatch-links .ox-link-btn { flex: 1 1 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .dispatch-state__dot { animation: none; }
+    }
   </style>
+  <link rel="stylesheet" href="shared/widget-theme.css" />
 </head>
 <body>
   <div class="container" id="content">
@@ -352,10 +524,21 @@
     var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
 
 
-    var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
-    var isLoadingOverride = new URLSearchParams(window.location.search).get('loading') === 'true';
+    var stateParams = new URLSearchParams(window.location.search);
+    var fixtureState = stateParams.get('state') || (stateParams.get('loading') === 'true' ? 'loading' : stateParams.get('demo') === 'true' ? 'progressing' : 'empty');
+    var isDemo = ['populated', 'progressing', 'urgent', 'long', 'error', 'degraded', 'resolved'].includes(fixtureState);
+    var isLoadingOverride = fixtureState === 'loading';
     
     var entity = isDemo ? { id: 'TSK-942', type: 'task', title: 'Implement rate limiting middleware for public API', agent_name: 'Eli', status: 'In Progress', domain: 'Engineering', workspace_name: 'Core Platform', links: [{ platform: 'Linear', url: '#', label: 'ENG-142' }] } : null;
+    if (fixtureState === 'long' && entity) {
+      entity.title = 'Implement tenant-aware rate limiting middleware, observability receipts, rollback controls, and adversarial load verification for the public API';
+      entity.workspace_name = 'Core Platform and Reliability Operations';
+    }
+    if ((fixtureState === 'error' || fixtureState === 'degraded') && entity) {
+      entity.workspace_name = null;
+      entity.note = 'Dispatch accepted; canonical workspace context is still syncing.';
+    }
+    if (fixtureState === 'resolved' && entity) entity.status = 'completed';
     var isLoading = !isDemo;
     if (isLoadingOverride) { isLoading = true; isDemo = false; }
     var bootStartedAt = Date.now();
@@ -545,27 +728,25 @@
     var render = () => {
       if (isLoading) {
         injectHtml(`
-          <div class="skeleton-wrapper"><div class="ox-card"><div class="ox-card-inner">
-            <div style="display:flex; justify-content:space-between; margin-bottom:24px;">
-              <div><div class="skeleton-line" style="width:100px; height:12px; margin-bottom:8px;"></div><div class="skeleton-line" style="width:140px; height:16px;"></div></div>
-              <div class="skeleton-line" style="width:32px; height:32px; border-radius:50%;"></div>
+          <div class="widget-shell-card"><div class="ox-card"><div class="dispatch-skeleton" aria-label="Loading dispatch receipt">
+            <div class="skeleton-line" style="width:26%;height:10px"></div>
+            <div class="skeleton-line" style="width:78%;height:28px"></div>
+            <div class="dispatch-skeleton__spine">
+              <div class="skeleton-line" style="height:58px"></div>
+              <div class="skeleton-line" style="height:58px"></div>
+              <div class="skeleton-line" style="height:58px"></div>
             </div>
-            <div class="skeleton-line" style="width:100%; height:28px; margin-bottom:24px;"></div>
-            <div class="skeleton-line" style="width:100%; height:64px; border-radius:12px; margin-bottom:16px;"></div>
-            <div style="display:flex; gap:12px;"><div class="skeleton-line" style="width:100px; height:32px; border-radius:6px;"></div></div>
+            <div class="skeleton-line" style="width:42%;height:12px"></div>
           </div></div></div>`);
         return;
       }
       entity = normalizeEntityPayload(entity);
-      if (!entity) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.check(24)}</div><div class="empty-title">Entity unverified</div><div class="empty-desc">The dispatched entity payload is empty.</div></div>`); return; }
+      if (!entity) { injectHtml(`<div class="widget-shell-card animate-in"><div class="ox-card"><div class="ox-card-inner"><div class="empty-state dispatch-empty"><div class="empty-icon">${icons.check(24)}</div><div class="empty-title">No dispatch receipt</div><div class="empty-desc">No agent handoff was returned. Nothing is presented as running until OrgX supplies a task or run receipt.</div></div></div></div></div>`); return; }
       const agentProfile = resolveAgentProfile(entity.agent_name || entity.domain || '');
 
       const linksHtml = (entity.links || []).map(l => `
-        <a href="${escapeHtml(l.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(l.url || ''))}, event)' class="platform-link ox-link-btn ox-link-btn--ghost">
-          <span style="display:flex; align-items:center; gap:6px;">
-            ${icons.external(12)} Open ${escapeHtml(l.platform)}
-          </span>
-          <span class="platform-link__meta">${escapeHtml(l.label)} · new tab</span>
+        <a href="${escapeHtml(l.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(l.url || ''))}, event)' class="ox-link-btn ox-link-btn--ghost">
+          ${icons.external(13)} <span>Open ${escapeHtml(l.platform)}</span><span class="platform-link__meta">${escapeHtml(l.label)}</span>
         </a>
       `).join('');
       
@@ -608,59 +789,55 @@
         : entity.action === 'guard'
         ? 'OrgX checked whether this delegation can proceed. No agent work was dispatched.'
         : 'OrgX classified the best execution route. No agent work was dispatched.';
+      const statusSlug = String(entity.status || '').toLowerCase();
+      const isComplete = ['done', 'complete', 'completed', 'shipped'].includes(statusSlug);
+      const statusLabel = isComplete ? 'Execution complete' : isDispatch ? 'Execution live' : 'Preflight complete';
 
       injectHtml(`
         <div class="widget-shell-card animate-in" style="--agent-accent-rgb:${agentProfile.accentRgb};">
           <div class="ox-card">
             <div class="ox-card-inner">
-              <div class="widget-hero">
-                <div class="widget-hero-copy">
+              <div class="dispatch-receipt">
+              <div class="dispatch-hero">
+                <div class="widget-hero-copy" style="min-width:0">
                   <div class="widget-kicker">${kicker}</div>
                   <div class="widget-title-lg">${escapeHtml(entity.title)}</div>
-                  <div class="widget-subtitle">${escapeHtml(heroSubtitle)}${entity.initiative_name ? ' Initiative: ' + escapeHtml(entity.initiative_name) + '.' : ''}</div>
+                  <div class="widget-subtitle">${escapeHtml(entity.initiative_name ? entity.initiative_name + ' · ' + heroSubtitle : heroSubtitle)}</div>
                 </div>
-                <div class="widget-stack" style="align-items:flex-end; gap:10px;">
-                  <div class="widget-icon-frame">${typeIcon}</div>
-                  ${isDispatch ? `<div class="radar-container" aria-label="Agent Active" title="Agent is executing">
-                    <div class="radar-ring"></div>
-                    <div class="radar-dot"></div>
-                  </div>` : ''}
+                <div class="dispatch-state ${isComplete ? 'dispatch-state--complete' : ''}" role="status">
+                  <span class="dispatch-state__dot"></span>${statusLabel}
                 </div>
               </div>
 
-              ${isDispatch && (!entity.agent_ready || !entity.workspace_ready) ? `<div class="dispatch-note">OrgX accepted the dispatch, but the canonical handoff context is still syncing. The card will update once the server returns the assigned agent and workspace.</div>` : ''}
-            
-              <div class="widget-stack">
-                <div class="agent-row" style="display:flex; align-items:center; gap:16px; padding:16px; background:var(--ox-well-bg); border:1px solid var(--ox-border); border-radius:12px; box-shadow:var(--ox-well-shadow);">
-                  <div class="spawn-avatar">
-                    ${renderAvatar(entity.agent_name || entity.domain || 'Pending')}
-                  </div>
-                  <div class="agent-meta" style="flex:1;">
-                    <div style="font-family:var(--ox-mono); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ox-text-muted); margin-bottom:4px; font-weight:600;">${isDispatch ? 'Assigned Agent' : 'Requested Agent'}</div>
-                    <div class="dispatch-value ${entity.agent_ready ? '' : 'dispatch-value--pending'}">${escapeHtml(entity.agent_name || (isDispatch ? 'Awaiting agent confirmation' : 'Automatic assignment'))}</div>
-                  </div>
-                </div>
-                
-                <div class="meta-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
-                  <div class="widget-panel">
-                    <div class="ox-eyebrow" style="margin-bottom:6px;">Domain</div>
-                    <div class="dispatch-value ${entity.domain_ready ? '' : 'dispatch-value--pending'}">${escapeHtml(entity.domain || 'Pending routing')}</div>
-                  </div>
-                  <div class="widget-panel">
-                    <div class="ox-eyebrow" style="margin-bottom:6px;">${isDispatch ? 'Workspace' : 'Route'}</div>
-                    <div class="dispatch-value ${isDispatch && !entity.workspace_ready ? 'dispatch-value--pending' : ''}">${escapeHtml(isDispatch ? (entity.workspace_name || 'Pending context sync') : routeValue)}</div>
-                  </div>
-                </div>
+              ${isDispatch && (!entity.agent_ready || !entity.workspace_ready) ? `<div class="dispatch-degraded">${icons.external(16)}<span>Dispatch accepted, but canonical handoff context is still syncing. The execution link remains the proof boundary.</span></div>` : ''}
 
-                ${linksHtml ? `<div class="platform-links" style="display:flex; gap:8px;">${linksHtml}</div>` : ''}
+              <div class="dispatch-spine" aria-label="Dispatch route">
+                <div class="dispatch-node">
+                  <div class="dispatch-node__signal" style="overflow:hidden">${renderAvatar(entity.agent_name || entity.domain || 'Pending')}</div>
+                  <div class="dispatch-node__label">${isDispatch ? 'Owner' : 'Requested owner'}</div>
+                  <div class="dispatch-node__value">${escapeHtml(entity.agent_name || (isDispatch ? 'Confirming agent' : 'Automatic'))}</div>
+                </div>
+                <div class="dispatch-node">
+                  <div class="dispatch-node__signal">${typeIcon}</div>
+                  <div class="dispatch-node__label">${isDispatch ? 'Execution surface' : 'Route'}</div>
+                  <div class="dispatch-node__value">${escapeHtml(isDispatch ? (entity.workspace_name || 'Context syncing') : routeValue)}</div>
+                </div>
+                <div class="dispatch-node">
+                  <div class="dispatch-node__signal">${icons.check(16)}</div>
+                  <div class="dispatch-node__label">${isDispatch ? 'Receipt' : 'Result'}</div>
+                  <div class="dispatch-node__value">${escapeHtml(entity.id || (isDispatch ? 'Awaiting receipt ID' : 'No mutation'))}</div>
+                </div>
               </div>
-            
-              <div class="widget-footer">
-                <span class="widget-footer-meta">${isDispatch ? 'Live sync active' : 'Preflight only · no dispatch'}</span>
-                ${isDispatch ? `<a href="${consoleUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(consoleUrl || ''))}, event)' class="deep-link ox-link-btn ox-link-btn--quiet" style="display: inline-flex; align-items: center; gap: 6px;">
-                  Open execution view
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                </a>` : ''}
+
+              <div class="dispatch-proof">
+                <div class="dispatch-proof__meta">${escapeHtml(entity.domain || 'Routing pending')} · ${isComplete ? 'proof recorded' : isDispatch ? 'live sync active' : 'Preflight only · no dispatch'}</div>
+                <div class="dispatch-links">
+                  ${linksHtml}
+                  ${isDispatch ? `<a href="${consoleUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(consoleUrl || ''))}, event)' class="deep-link ox-link-btn ox-link-btn--primary">
+                    Open execution ${icons.external(14)}
+                  </a>` : ''}
+                </div>
+              </div>
               </div>
             </div>
           </div>

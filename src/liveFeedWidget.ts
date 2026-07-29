@@ -10,6 +10,8 @@
  * Design: aligned with OrgX --ox-* token system (teal primary, domain-colored avatars)
  */
 
+import { INLINE_WIDGET_THEME_BOOTSTRAP } from './widgetTheme';
+
 export interface LiveFeedWidgetOptions {
   feedType: 'agent-status' | 'initiative-pulse';
   feedId: string; // initiativeId
@@ -33,11 +35,12 @@ export function buildLiveFeedWidget(opts: LiveFeedWidgetOptions): string {
   const eyebrowLabel = feedType === 'agent-status' ? 'LIVE · AGENTS' : 'LIVE · INITIATIVE';
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-accent="teal">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>${displayTitle} — Live</title>
+<script>${INLINE_WIDGET_THEME_BOOTSTRAP}</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
@@ -48,12 +51,13 @@ export function buildLiveFeedWidget(opts: LiveFeedWidgetOptions): string {
   --ox-border:rgba(0,0,0,.08);
   --ox-border-strong:rgba(0,0,0,.15);
   --ox-text:#0f172a;
-  --ox-text-muted:#64748b;
-  --ox-text-dim:#94a3b8;
+  --ox-text-muted:#526078;
+  --ox-text-dim:#657188;
   --ox-well:#f1f5f9;
   --ox-well-shadow:inset 0 2px 4px rgba(0,0,0,.02);
   --ox-shadow:0 12px 32px -12px rgba(0,0,0,.1),0 2px 6px rgba(0,0,0,.04);
   --ox-grid:rgba(0,0,0,.03);
+  --ox-primary:#0f766e;
 }
 @media(prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
@@ -62,12 +66,13 @@ export function buildLiveFeedWidget(opts: LiveFeedWidgetOptions): string {
     --ox-border:rgba(255,255,255,.08);
     --ox-border-strong:rgba(255,255,255,.15);
     --ox-text:#f8fafc;
-    --ox-text-muted:rgba(255,255,255,.48);
-    --ox-text-dim:rgba(255,255,255,.32);
+    --ox-text-muted:#aab4c4;
+    --ox-text-dim:#8792a3;
     --ox-well:rgba(0,0,0,.28);
     --ox-well-shadow:inset 0 2px 10px rgba(0,0,0,.4);
     --ox-shadow:0 24px 48px -20px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05);
     --ox-grid:rgba(255,255,255,.02);
+    --ox-primary:#2dd4bf;
   }
 }
 :root[data-theme="dark"]{
@@ -76,16 +81,17 @@ export function buildLiveFeedWidget(opts: LiveFeedWidgetOptions): string {
   --ox-border:rgba(255,255,255,.08);
   --ox-border-strong:rgba(255,255,255,.15);
   --ox-text:#f8fafc;
-  --ox-text-muted:rgba(255,255,255,.48);
-  --ox-text-dim:rgba(255,255,255,.32);
+  --ox-text-muted:#aab4c4;
+  --ox-text-dim:#8792a3;
   --ox-well:rgba(0,0,0,.28);
   --ox-well-shadow:inset 0 2px 10px rgba(0,0,0,.4);
   --ox-shadow:0 24px 48px -20px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05);
   --ox-grid:rgba(255,255,255,.02);
+  --ox-primary:#2dd4bf;
 }
 /* Invariant tokens */
 :root{
-  --ox-primary:#00c9a7;--ox-primary-rgb:0,201,167;
+  --ox-primary-rgb:0,201,167;
   --ox-success:#22c55e;--ox-success-rgb:34,197,94;
   --ox-danger:#f43f5e;
   --ox-warn:#fbbf24;--ox-warn-rgb:251,191,36;
@@ -372,7 +378,7 @@ body{padding:14px 16px 20px;max-width:560px;margin:0 auto}
 .ws-mini-fill{height:100%;border-radius:2px;transition:width .3s ease}
 
 /* ── Link bridge ── */
-button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:pointer;text-align:left}
+button[data-oxhref]:not(.footer-link){background:none;border:none;padding:0;font:inherit;cursor:pointer;text-align:left}
 
 /* ── Footer ── */
 .footer{
@@ -388,6 +394,7 @@ button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:po
   font-family:var(--ox-mono);font-size:.65rem;letter-spacing:.04em;
   color:var(--ox-primary);text-decoration:none;
   display:inline-flex;align-items:center;gap:4px;
+  min-height:44px;
   padding:4px 10px;border-radius:6px;
   border:1px solid rgba(var(--ox-primary-rgb),.2);
   background:rgba(var(--ox-primary-rgb),.06);

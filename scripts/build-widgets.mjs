@@ -63,6 +63,7 @@ const DEMO_ONLY_WIDGETS = new Set(['index', 'scaffold-streaming']);
 // Must match MCP_APPS_SHARED_COMPONENT_PATHS in src/widgetConfig.ts.
 const SHARED_ALLOWLIST = new Set([
   'shared/tokens.css',
+  'shared/widget-theme.css',
   'shared/widget-foundation.css',
   'shared/interaction-kit.css',
   'shared/interaction-kit.js',
@@ -84,6 +85,7 @@ const SHARED_ALLOWLIST = new Set([
 // be referenced by at least one widget somewhere.
 const RUNTIME_INLINED_PATHS = new Set([
   'shared/tokens.css',
+  'shared/widget-theme.css',
   'shared/components/domain-accent.css',
   'shared/components/domain-accent.js',
   'shared/components/liveness-indicator.js',

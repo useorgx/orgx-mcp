@@ -66,6 +66,14 @@ describe('buildScaffoldWidget quiet CTA footer', () => {
     expect(html).not.toContain(PROOF_SURFACE_QUIET_CTA);
   });
 
+  it('ships the self-contained host theme contract and touch-safe footer action', () => {
+    const html = buildWidget();
+    expect(html).toContain('data-accent="teal"');
+    expect(html).toContain('openai:set_globals');
+    expect(html).toContain('data-theme-source');
+    expect(html).toContain('min-height:44px');
+  });
+
   it('renders proof_handoff.quiet_cta exactly once on scaffold completion', () => {
     const source = mountWidget(buildWidget());
 

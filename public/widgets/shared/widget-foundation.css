@@ -129,7 +129,7 @@
   padding: 0 10px;
   border-radius: 999px;
   border: 1px solid var(--ox-border);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--ox-surface-subtle, rgba(255, 255, 255, 0.03));
   font-family: var(--ox-mono);
   font-size: 0.66rem;
   line-height: 1;
@@ -367,7 +367,11 @@
         padding: 0 16px;
         border-radius: 12px;
         border: 1px solid var(--ox-border);
-        background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015)), var(--ox-well-bg);
+        background: linear-gradient(
+          180deg,
+          var(--ox-control-glint-start, rgba(255,255,255,0.03)),
+          var(--ox-control-glint-end, rgba(255,255,255,0.015))
+        ), var(--ox-well-bg);
         color: var(--ox-text);
         box-shadow: 0 14px 30px -24px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255,255,255,0.06);
         cursor: pointer;
@@ -395,8 +399,8 @@
         background:
           linear-gradient(
             180deg,
-            rgba(255, 255, 255, 0.03) 0%,
-            rgba(255, 255, 255, 0.01) 100%
+          var(--ox-control-glint-start, rgba(255, 255, 255, 0.03)) 0%,
+          var(--ox-control-glint-end, rgba(255, 255, 255, 0.01)) 100%
           ),
           var(--ox-well-bg);
         color: var(--ox-text);
@@ -458,9 +462,9 @@
   border-radius: 8px;
   background: linear-gradient(
     90deg,
-    rgba(148, 163, 184, 0.08) 25%,
-    rgba(148, 163, 184, 0.16) 37%,
-    rgba(148, 163, 184, 0.08) 63%
+    var(--ox-skeleton-low, rgba(148, 163, 184, 0.08)) 25%,
+    var(--ox-skeleton-high, rgba(148, 163, 184, 0.16)) 37%,
+    var(--ox-skeleton-low, rgba(148, 163, 184, 0.08)) 63%
   );
   background-size: 200% 100%;
   animation: ox-shimmer 1.6s linear infinite;

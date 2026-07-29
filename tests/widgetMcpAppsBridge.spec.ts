@@ -75,9 +75,12 @@ describe("official MCP Apps widget bridge", () => {
       "@font-face { font-family: Host; }"
     );
     expect(applyDocumentTheme).toHaveBeenCalledWith("dark");
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(document.documentElement.dataset.themeSource).toBe("host");
 
     app!.onhostcontextchanged?.({ theme: "light" });
     expect(applyDocumentTheme).toHaveBeenLastCalledWith("light");
+    expect(document.documentElement.dataset.theme).toBe("light");
 
     await expect(
       bridge.callServerTool({

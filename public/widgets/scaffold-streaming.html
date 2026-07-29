@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-accent="iris">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -411,6 +411,7 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
   font-family:var(--ox-mono);font-size:.62rem;font-weight:600;
   letter-spacing:.03em;color:var(--ox-primary);text-decoration:none;
   display:inline-flex;align-items:center;gap:4px;
+  min-height:44px;
   padding:5px 11px;border-radius:7px;
   border:1px solid rgba(var(--ox-primary-rgb),.22);
   background:rgba(var(--ox-primary-rgb),.07);
@@ -419,7 +420,7 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
 .foot-link:hover{background:rgba(var(--ox-primary-rgb),.14);border-color:rgba(var(--ox-primary-rgb),.32)}
 
 /* ── Link bridge: button resets so data-oxhref buttons look like links ── */
-button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:pointer;text-align:left}
+button[data-oxhref]:not(.foot-link){background:none;border:none;padding:0;font:inherit;cursor:pointer;text-align:left}
 
 /* ── Error state ───────────────────────────────────────── */
 .err-banner{
@@ -470,6 +471,7 @@ button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:po
   }
 }
 </style>
+<link rel="stylesheet" href="shared/widget-theme.css" />
 </head>
 <body>
 <div class="shell">

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-accent="teal">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -659,19 +659,35 @@
 
       .pulse-signal {
         flex: 1 1 0;
-        height: 7px;
-        border-radius: 999px;
-        background: rgba(148, 163, 184, 0.14);
-        overflow: hidden;
+        position: relative;
+        height: 44px;
+        border-radius: 10px;
+        background: transparent;
+        overflow: visible;
         cursor: pointer;
         border: none;
       }
 
+      .pulse-signal::before {
+        content: "";
+        position: absolute;
+        inset: 50% 0 auto;
+        height: 7px;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.14);
+        transform: translateY(-50%);
+      }
+
       .pulse-signal__fill {
+        position: absolute;
+        z-index: 1;
+        left: 0;
+        top: 50%;
         display: block;
-        height: 100%;
-        border-radius: inherit;
+        height: 7px;
+        border-radius: 999px;
         background: var(--ox-primary);
+        transform: translateY(-50%);
         transition:
           width var(--ox-dur-base, 250ms) var(--ox-ease-morph, cubic-bezier(0.4, 0, 0.2, 1)),
           background var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
@@ -1020,7 +1036,7 @@
         line-height: 1;
         letter-spacing: 0.1em;
         text-transform: uppercase;
-        color: rgba(15, 23, 42, 0.35);
+        color: var(--ox-text-muted);
         font-weight: 700;
       }
 
@@ -1277,7 +1293,8 @@
       }
 
 </style>
-  </head>
+  <link rel="stylesheet" href="shared/widget-theme.css" />
+</head>
   <body>
     <div class="container" role="region" aria-label="Initiative Status">
       <div id="content" aria-live="polite">
@@ -2150,6 +2167,8 @@ external: function (size) {
               return (
                 '<button class="pulse-signal" type="button" title="' +
                 escapeHtml(item.title + ": " + Math.round(progress || 0) + "%") +
+                '" aria-label="' +
+                escapeHtml("View " + item.title + ", " + Math.round(progress || 0) + "% complete") +
                 '" onclick="togglePulsePanel(\'streams\')">' +
                 '<span class="pulse-signal__fill tone-' +
                 escapeHtml(tone) +

@@ -13,6 +13,8 @@
  *  - Celebration state on scaffold.complete
  */
 
+import { INLINE_WIDGET_THEME_BOOTSTRAP } from './widgetTheme';
+
 export interface ScaffoldWidgetOptions {
   sessionId: string;
   streamBaseUrl: string; // e.g. https://mcp.useorgx.com
@@ -27,11 +29,12 @@ export function buildScaffoldWidget(opts: ScaffoldWidgetOptions): string {
   const safeLiveUrl = liveUrl ? escapeHtml(liveUrl) : '';
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-accent="teal">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>${title}</title>
+<script>${INLINE_WIDGET_THEME_BOOTSTRAP}</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
@@ -44,11 +47,12 @@ export function buildScaffoldWidget(opts: ScaffoldWidgetOptions): string {
   --ox-border:rgba(0,0,0,.08);
   --ox-border-strong:rgba(0,0,0,.15);
   --ox-text:#0f172a;
-  --ox-text-muted:#64748b;
-  --ox-text-sub:#94a3b8;
+  --ox-text-muted:#526078;
+  --ox-text-sub:#657188;
   --ox-well:#f1f5f9;
   --ox-shadow:0 12px 32px -12px rgba(0,0,0,.1),0 2px 6px rgba(0,0,0,.04);
   --ox-grid:rgba(0,0,0,.03);
+  --ox-primary:#0f766e;
 }
 /* Dark mode via media query */
 @media(prefers-color-scheme:dark){
@@ -59,11 +63,12 @@ export function buildScaffoldWidget(opts: ScaffoldWidgetOptions): string {
     --ox-border:rgba(255,255,255,.07);
     --ox-border-strong:rgba(255,255,255,.14);
     --ox-text:#f2f7ff;
-    --ox-text-muted:rgba(255,255,255,.46);
-    --ox-text-sub:rgba(255,255,255,.28);
+    --ox-text-muted:#aab4c4;
+    --ox-text-sub:#8792a3;
     --ox-well:rgba(0,0,0,.3);
     --ox-shadow:0 28px 56px -24px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.04);
     --ox-grid:rgba(255,255,255,.02);
+    --ox-primary:#2dd4bf;
   }
 }
 /* Explicit dark theme override */
@@ -74,15 +79,16 @@ export function buildScaffoldWidget(opts: ScaffoldWidgetOptions): string {
   --ox-border:rgba(255,255,255,.07);
   --ox-border-strong:rgba(255,255,255,.14);
   --ox-text:#f2f7ff;
-  --ox-text-muted:rgba(255,255,255,.46);
-  --ox-text-sub:rgba(255,255,255,.28);
+  --ox-text-muted:#aab4c4;
+  --ox-text-sub:#8792a3;
   --ox-well:rgba(0,0,0,.3);
   --ox-shadow:0 28px 56px -24px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.04);
   --ox-grid:rgba(255,255,255,.02);
+  --ox-primary:#2dd4bf;
 }
 /* Invariant tokens */
 :root{
-  --ox-primary:#00c9a7;--ox-primary-rgb:0,201,167;
+  --ox-primary-rgb:0,201,167;
   --ox-success:#22c55e;--ox-success-rgb:34,197,94;
   --ox-danger:#f43f5e;
   --ox-warn:#fbbf24;--ox-warn-rgb:251,191,36;
@@ -426,6 +432,7 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
   font-family:var(--ox-mono);font-size:.62rem;font-weight:600;
   letter-spacing:.03em;color:var(--ox-primary);text-decoration:none;
   display:inline-flex;align-items:center;gap:4px;
+  min-height:44px;
   padding:5px 11px;border-radius:7px;
   border:1px solid rgba(var(--ox-primary-rgb),.22);
   background:rgba(var(--ox-primary-rgb),.07);
@@ -441,7 +448,7 @@ body{padding:14px 14px 20px;max-width:580px;margin:0 auto}
 .quiet-cta[hidden]{display:none}
 
 /* ── Link bridge: button resets so data-oxhref buttons look like links ── */
-button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:pointer;text-align:left}
+button[data-oxhref]:not(.foot-link){background:none;border:none;padding:0;font:inherit;cursor:pointer;text-align:left}
 
 /* ── Error state ───────────────────────────────────────── */
 .err-banner{

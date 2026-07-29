@@ -23,6 +23,8 @@
     "widget:version": "node scripts/generate-widget-build-info.mjs",
     "widget:build": "node scripts/build-widgets.mjs",
     "widget:verify-rendering": "tsx scripts/verify-widget-rendering.ts",
+    "widget:audit-redesign": "node scripts/audit-widget-redesign.mjs",
+    "widget:audit-themes": "node scripts/audit-widget-themes.mjs",
     "prepare": "node scripts/setup-git-hooks.mjs",
     "precommit:og": "node scripts/precommit-og-render.mjs",
     "docs:sync:public": "node scripts/sync-public-docs.mjs",

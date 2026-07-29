@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-widget-mode="escalation">
+<html lang="en" data-widget-mode="escalation" data-accent="amber">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -144,6 +144,7 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      min-height: 44px;
       padding: 4px 10px;
       border-radius: 999px;
       border: 1px solid var(--ox-border);
@@ -311,10 +312,10 @@
       right: 12px;
       font-family: var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
       font-size: 0.56rem;
-      color: rgb(var(--card-color-rgb));
+      color: var(--ox-text-muted);
       text-transform: uppercase;
       letter-spacing: 0.1em;
-      opacity: 0.6;
+      opacity: 1;
     }
 
     /* ─── composer (changes-requested) ─────────────────────────── */
@@ -393,6 +394,9 @@
       letter-spacing: 0.08em;
     }
     .widget-foot a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
       color: var(--ox-primary);
       text-decoration: none;
     }
@@ -419,7 +423,459 @@
       justify-content: center;
       margin-bottom: 14px;
     }
+
+    /* 2026 review-desk composition: evidence and consequence share first paint. */
+    .review-desk {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+      gap: 20px;
+      align-items: start;
+    }
+    .review-evidence,
+    .review-control {
+      min-width: 0;
+    }
+    .review-control {
+      position: sticky;
+      top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding-left: 4px;
+    }
+    .review-status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 44px;
+      font-family: var(--ox-mono);
+      font-size: 0.64rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ox-text-muted);
+    }
+    .review-status__signal {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--ox-primary);
+      font-weight: 700;
+    }
+    .review-status__signal::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: currentColor;
+      box-shadow: 0 0 0 5px rgba(var(--ox-primary-rgb), 0.1);
+    }
+    .review-question {
+      margin: 0;
+      color: var(--ox-text);
+      font-size: clamp(1rem, 2vw, 1.22rem);
+      line-height: 1.3;
+      letter-spacing: -0.025em;
+    }
+    .review-consequence {
+      margin: 0;
+      color: var(--ox-text-muted);
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+    .artifact-preview {
+      border-radius: 12px;
+    }
+    .artifact-preview__body {
+      min-height: 180px;
+      max-height: 260px;
+      padding: 12px;
+      cursor: zoom-in;
+      transition: max-height 220ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .artifact-preview.is-expanded .artifact-preview__body {
+      max-height: 560px;
+      cursor: zoom-out;
+    }
+    .artifact-preview__body img,
+    .artifact-preview__body iframe {
+      max-height: 236px;
+      box-shadow: none;
+    }
+    .artifact-preview.is-expanded .artifact-preview__body img,
+    .artifact-preview.is-expanded .artifact-preview__body iframe {
+      max-height: 536px;
+    }
+    .preview-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 12px;
+      border-top: 1px solid var(--ox-border);
+      background: var(--ox-panel);
+    }
+    .preview-toggle {
+      min-height: 44px;
+      border: 0;
+      background: transparent;
+      color: var(--ox-text);
+      font: 600 0.72rem var(--ox-font);
+      cursor: pointer;
+    }
+    .viewer-tabs {
+      display: flex;
+      overflow-x: auto;
+      scrollbar-width: thin;
+      padding: 4px;
+      border-bottom: 1px solid var(--ox-border);
+      background: var(--ox-panel);
+    }
+    .viewer-tab {
+      position: relative;
+      min-width: 0;
+      min-height: 44px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--ox-text-muted);
+      font: 700 0.62rem var(--ox-mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      flex: 1 0 88px;
+      transition:
+        color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
+        background var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
+    }
+    .viewer-tab:hover { color: var(--ox-text); }
+    .viewer-tab[aria-selected="true"] {
+      color: var(--ox-primary);
+      background: rgba(var(--ox-primary-rgb), 0.08);
+    }
+    .viewer-tab[aria-selected="true"]::after {
+      content: '';
+      position: absolute;
+      inset: auto 20% 2px;
+      height: 2px;
+      border-radius: 999px;
+      background: currentColor;
+    }
+    .viewer-panel[hidden] { display: none; }
+    .viewer-panel--readout {
+      min-height: 180px;
+      padding: 16px;
+      background: var(--ox-well-bg);
+    }
+    .evidence-readout {
+      display: grid;
+      gap: 16px;
+      align-content: start;
+    }
+    .evidence-verdict {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px 14px;
+      align-items: end;
+    }
+    .evidence-verdict__label {
+      color: var(--ox-text);
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .evidence-verdict__score {
+      color: var(--ox-text);
+      font: 700 0.78rem var(--ox-mono);
+    }
+    .evidence-verdict__detail {
+      grid-column: 1 / -1;
+      margin: 0;
+      color: var(--ox-text-muted);
+      font-size: 0.78rem;
+      line-height: 1.5;
+    }
+    .evidence-meter {
+      position: relative;
+      height: 6px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: var(--ox-border);
+    }
+    .evidence-meter__fill {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--ox-primary);
+    }
+    .evidence-meter__threshold {
+      position: absolute;
+      inset-block: -2px;
+      width: 2px;
+      border-radius: 999px;
+      background: var(--ox-text);
+      opacity: 0.7;
+    }
+    .evidence-facts {
+      display: grid;
+      grid-template-columns: minmax(92px, 0.34fr) minmax(0, 1fr);
+      gap: 8px 12px;
+      margin: 0;
+      padding-top: 12px;
+      border-top: 1px solid var(--ox-border);
+      font-size: 0.74rem;
+      line-height: 1.45;
+    }
+    .evidence-facts dt {
+      color: var(--ox-text-muted);
+      font: 700 0.58rem var(--ox-mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .evidence-facts dd {
+      min-width: 0;
+      margin: 0;
+      color: var(--ox-text);
+      overflow-wrap: anywhere;
+    }
+    .evidence-facts a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      color: var(--ox-primary);
+      text-decoration: none;
+    }
+    .evidence-facts a:hover { text-decoration: underline; }
+    .version-history {
+      display: grid;
+      gap: 0;
+    }
+    .version-row {
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      min-height: 52px;
+      border-bottom: 1px solid var(--ox-border);
+      color: var(--ox-text-muted);
+      font-size: 0.74rem;
+    }
+    .version-row:last-child { border-bottom: 0; }
+    .version-row__number {
+      color: var(--ox-text);
+      font: 700 0.72rem var(--ox-mono);
+    }
+    .version-row__state {
+      color: var(--ox-primary);
+      font: 700 0.56rem var(--ox-mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .structured-preview {
+      width: 100%;
+      display: grid;
+      grid-template-columns: minmax(100px, 0.34fr) minmax(0, 1fr);
+      gap: 8px 14px;
+      margin: 0;
+      font-size: 0.78rem;
+      line-height: 1.5;
+    }
+    .structured-preview dt {
+      color: var(--ox-text-muted);
+      font: 700 0.6rem var(--ox-mono);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .structured-preview dd {
+      min-width: 0;
+      margin: 0;
+      color: var(--ox-text);
+      overflow-wrap: anywhere;
+    }
+    .diff-preview {
+      width: 100%;
+      max-height: 380px;
+      overflow: auto;
+      margin: 0;
+      padding: 12px 0;
+      border: 1px solid var(--ox-border);
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.22);
+      font: 0.72rem/1.55 var(--ox-mono);
+    }
+    .diff-preview span {
+      display: block;
+      min-height: 1.55em;
+      padding: 0 12px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    .diff-preview .is-add { color: var(--ox-teal); background: rgba(13, 148, 136, 0.08); }
+    .diff-preview .is-remove { color: var(--ox-danger); background: rgba(225, 29, 72, 0.08); }
+    .artifact-preview__body video {
+      width: 100%;
+      max-height: 380px;
+      border-radius: 10px;
+      background: #000;
+    }
+    .decision-card:disabled {
+      cursor: not-allowed;
+      opacity: 0.62;
+      transform: none;
+    }
+    .verification-block {
+      padding: 10px 12px;
+      color: var(--ox-text-muted);
+      background: rgba(217, 119, 6, 0.06);
+      font-size: 0.74rem;
+      line-height: 1.45;
+    }
+    .verification-block strong {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 2px;
+      color: var(--ox-warning);
+    }
+    .verification-block strong::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      flex: 0 0 7px;
+      border-radius: 999px;
+      background: currentColor;
+    }
+    .filmstrip {
+      min-width: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+    }
+    .filmstrip__label { display: none; }
+    .filmstrip__item {
+      min-width: 44px;
+      justify-content: center;
+      padding-inline: 8px;
+    }
+    .attribution-row {
+      padding: 10px 0 0;
+    }
+    .decision-row {
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+    .decision-card {
+      min-height: 72px;
+      padding: 12px;
+      align-items: center;
+    }
+    .decision-card--approve {
+      border-color: rgba(var(--ox-primary-rgb), 0.38);
+      background: rgba(var(--ox-primary-rgb), 0.1);
+    }
+    .decision-card__hint {
+      top: 8px;
+      right: 10px;
+    }
+    .composer {
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .composer__actions {
+      flex-wrap: wrap;
+    }
+    .composer-btn {
+      min-height: 44px;
+    }
+    .review-feedback {
+      min-height: 20px;
+      color: var(--ox-text-muted);
+      font-size: 0.74rem;
+      line-height: 1.4;
+    }
+    .review-feedback[data-tone="error"] { color: var(--ox-danger); }
+    .review-feedback[data-tone="success"] { color: var(--ox-teal); }
+    .review-receipt {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 12px;
+      align-items: center;
+      padding: 14px 0;
+    }
+    .review-receipt__icon {
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      color: var(--ox-teal);
+      background: rgba(13, 148, 136, 0.1);
+    }
+    .review-receipt__title {
+      color: var(--ox-text);
+      font-weight: 700;
+    }
+    .review-receipt__detail {
+      margin-top: 3px;
+      color: var(--ox-text-muted);
+      font-size: 0.78rem;
+    }
+    .review-skeleton {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr);
+      gap: 20px;
+    }
+    .review-skeleton__preview {
+      height: 250px;
+      border-radius: 12px;
+    }
+    .review-skeleton__control {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-left: 4px;
+    }
+    .skeleton-line {
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb), 0.12) 50%, var(--ox-border) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 2s linear infinite;
+    }
+    @keyframes shimmer {
+      from { background-position: 200% 0; }
+      to { background-position: -200% 0; }
+    }
+    @media (max-width: 760px) {
+      .review-desk,
+      .review-skeleton { grid-template-columns: 1fr; }
+      .review-control,
+      .review-skeleton__control {
+        position: static;
+        padding: 16px 0 0;
+        border-top: 1px solid var(--ox-border);
+      }
+    }
+    @media (max-width: 520px) {
+      .artifact-preview__body { min-height: 150px; max-height: 210px; }
+      .artifact-preview__body img,
+      .artifact-preview__body iframe { max-height: 186px; }
+      .viewer-panel--readout { min-height: 150px; padding: 12px; }
+      .evidence-facts,
+      .structured-preview { grid-template-columns: 1fr; gap: 4px; }
+      .version-row { grid-template-columns: 40px minmax(0, 1fr); }
+      .version-row__state { grid-column: 2; }
+      .widget-foot { align-items: flex-start; flex-direction: column; }
+      .widget-foot a { width: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .skeleton-line { animation: none; }
+      .artifact-preview__body,
+      .decision-card,
+      .stage.is-resolving { animation: none; transition: none; }
+    }
   </style>
+  <link rel="stylesheet" href="shared/widget-theme.css" />
 </head>
 <body>
   <div class="widget-shell-card animate-in">
@@ -467,8 +923,16 @@
         if (toolOutput && toolOutput.artifact) return toolOutput;
         if (toolOutput && toolOutput.id) return { artifact: toolOutput };
 
-        // Demo payload for gallery / dev.
-        return {
+        const params = new URLSearchParams(window.location.search);
+        const fixtureState = params.get('state') || (params.get('loading') === 'true' ? 'loading' : params.get('demo') === 'true' ? 'urgent' : 'empty');
+        if (fixtureState === 'loading') return { state: 'loading' };
+        if (fixtureState === 'empty') return { artifact: null };
+        if (fixtureState === 'error' || fixtureState === 'degraded') {
+          return { artifact: { __error: 'Artifact evidence could not be loaded. The review remains open and no action was taken.' } };
+        }
+
+        // Deterministic fixture payload for gallery / dev.
+        const payload = {
           artifact: {
             id: 'ART-DEMO',
             name: 'Amplify launch landing — v3',
@@ -478,6 +942,18 @@
             version: 3,
             summary: 'Marketing hero revised for the founder-led narrative. Awaiting design review before the Amplify launch window.',
             author: { name: 'Mark', domain: 'marketing', role: 'Marketing' },
+            source_url: 'https://useorgx.com/live/INI-AMPLIFY?artifactId=ART-DEMO',
+            verification: {
+              eval: {
+                status: 'passed',
+                score: 0.92,
+                threshold: 0.85,
+                blocks_completion: false,
+              },
+              human_review: {
+                status: 'in_review',
+              },
+            },
             versions: [
               { version: 1, updated_at: '2026-04-10T12:00:00Z' },
               { version: 2, updated_at: '2026-04-12T15:30:00Z' },
@@ -487,6 +963,50 @@
             entity_id: 'INI-AMPLIFY',
           },
         };
+        if (fixtureState === 'long') {
+          payload.artifact.name = 'Amplify launch landing — founder continuity narrative, proof sequencing, accessibility pass, and responsive release candidate v3';
+          payload.artifact.summary = 'A long-form review fixture verifying that the reviewer can still understand the evidence, consequence, owner, version, and next action without horizontal overflow or buried controls.';
+        }
+        if (fixtureState === 'urgent') {
+          payload.artifact.verification.eval.status = 'failed';
+          payload.artifact.verification.eval.score = 0.78;
+          payload.artifact.verification.eval.blocks_completion = true;
+          payload.artifact.verification.eval.proof_impact = 'Required evaluation evidence is below the release bar. Inspect the findings in the live initiative before approval.';
+        }
+        const artifactKind = params.get('artifactKind');
+        if (artifactKind === 'diff') {
+          payload.artifact.artifact_type = 'eng.diff_pack';
+          payload.artifact.artifact_url = '';
+          payload.artifact.content = '';
+          payload.artifact.summary = '';
+          payload.artifact.code = 'diff --git a/viewer.ts b/viewer.ts\n-old behavior\n+portable viewer contract';
+        } else if (artifactKind === 'structured') {
+          payload.artifact.artifact_type = 'ops.playbook';
+          payload.artifact.artifact_url = '';
+          payload.artifact.content = '';
+          payload.artifact.summary = '';
+          payload.artifact.payload = {
+            owner: 'Operations',
+            proof_boundary: 'Merged PR and live verification',
+            next_action: 'Inspect the rollout receipt',
+          };
+        } else if (artifactKind === 'video') {
+          payload.artifact.artifact_type = 'video';
+          payload.artifact.artifact_url = 'https://cdn.useorgx.com/fixtures/artifact-review.mp4';
+          payload.artifact.content = '';
+          payload.artifact.summary = '';
+        } else if (artifactKind === 'not-scored') {
+          payload.artifact.verification.eval = {};
+        } else if (artifactKind === 'policy-review') {
+          payload.artifact.verification.human_review = {
+            status: 'approved',
+            reviewer_kind: 'system',
+            reviewed_by: 'system:autonomy-eval-pass',
+            auto_approved: true,
+          };
+        }
+        if (fixtureState === 'resolved') payload.artifact.status = 'approved';
+        return payload;
       }
 
       // ─── helpers ─────────────────────────────────────────────────
@@ -495,6 +1015,10 @@
         const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML;
+      }
+
+      function escapeAttribute(str) {
+        return escapeHtml(String(str || '')).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
       }
 
       function formatRelative(iso) {
@@ -511,22 +1035,218 @@
         return d + 'd ago';
       }
 
+      function asRecord(value) {
+        return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+      }
+
+      function firstString(values) {
+        for (let i = 0; i < values.length; i += 1) {
+          if (typeof values[i] === 'string' && values[i].trim()) return values[i].trim();
+        }
+        return '';
+      }
+
+      function firstNumber(values) {
+        for (let i = 0; i < values.length; i += 1) {
+          if (typeof values[i] === 'number' && Number.isFinite(values[i])) return values[i];
+        }
+        return null;
+      }
+
+      function normalizeRatio(value) {
+        if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+        return Math.max(0, Math.min(1, value > 1 ? value / 100 : value));
+      }
+
+      function isSafeMediaUrl(value, allowImageData) {
+        return /^https?:\/\//i.test(value) || (allowImageData && /^data:image\//i.test(value));
+      }
+
+      function normalizeArtifact(artifact) {
+        if (!artifact || typeof artifact !== 'object') return artifact;
+        const metadata = asRecord(artifact.metadata);
+        const author = asRecord(artifact.author || artifact.producer || metadata.producer);
+        const versions = Array.isArray(artifact.versions)
+          ? artifact.versions
+          : Array.isArray(artifact.version_history)
+            ? artifact.version_history
+            : [];
+        return Object.assign({}, artifact, {
+          id: firstString([artifact.id, artifact.artifact_id, artifact.artifactId]),
+          name: firstString([artifact.name, artifact.title, artifact.label]) || 'Artifact review',
+          artifact_type: firstString([artifact.artifact_type, artifact.artifactType, artifact.type, artifact.kind]) || 'document',
+          artifact_url: firstString([artifact.artifact_url, artifact.artifactUrl, artifact.preview_url, artifact.previewUrl, artifact.url]),
+          summary: firstString([artifact.summary, artifact.description, metadata.summary]),
+          content: firstString([artifact.content, artifact.body, artifact.markdown, metadata.content, metadata.body]),
+          code: firstString([artifact.code, artifact.diff, metadata.code, metadata.diff]),
+          status: firstString([artifact.status, artifact.review_status, artifact.reviewStatus]) || 'in_review',
+          version: firstNumber([artifact.version, artifact.version_number, artifact.versionNumber]) || 1,
+          versions: versions,
+          author: Object.assign({}, author, {
+            name: firstString([author.name, author.label, artifact.producer_name, artifact.producerName]) || 'OrgX agent',
+            role: firstString([author.role, author.type, artifact.producer_role, artifact.producerRole]),
+            domain: firstString([author.domain, author.agent_type, author.agentType]) || 'orchestrator',
+          }),
+        });
+      }
+
+      function resolveIncomingArtifact(payload) {
+        if (!payload || typeof payload !== 'object') return payload;
+        const data = asRecord(payload.data);
+        const result = asRecord(payload.result);
+        const candidate = payload.artifact || data.artifact || result.artifact || payload;
+        const error = payload.error || data.error || result.error;
+        if (error && !(candidate && (candidate.id || candidate.artifact_id || candidate.artifactId))) {
+          const detail = typeof error === 'string'
+            ? error
+            : firstString([error.message, error.detail, error.code]) || 'Artifact evidence could not be loaded.';
+          return {
+            __error: detail + ' The review remains open and no action was taken.',
+            __errorCode: typeof error === 'object' ? firstString([error.code, error.kind]) : '',
+          };
+        }
+        return normalizeArtifact(candidate);
+      }
+
+      function resolveReviewerSignal(review) {
+        const reviewedBy = firstString([review.reviewed_by, review.reviewedBy]);
+        const kind = firstString([review.reviewer_kind, review.reviewerKind]).toLowerCase();
+        if (review.auto_approved === true || review.autoApproved === true || kind === 'system' || reviewedBy.toLowerCase().startsWith('system:')) {
+          return 'Auto-approved by policy';
+        }
+        const named = firstString([review.reviewer_name, review.reviewerName, review.reviewer_display_name, review.reviewerDisplayName]);
+        if (named && !/^user_|^[0-9a-f-]{32,}$/i.test(named)) return 'Reviewed by ' + named;
+        if (reviewedBy || review.reviewer || review.reviewer_id || review.reviewerId) return 'Review recorded';
+        return 'Awaiting human decision';
+      }
+
+      function resolveEvidence(artifact) {
+        const metadata = asRecord(artifact.metadata);
+        const verification = asRecord(artifact.verification || metadata.verification);
+        const evalData = asRecord(verification.eval || metadata.eval || artifact.eval);
+        const review = asRecord(metadata.review || verification.human_review || verification.humanReview || artifact.review);
+        const score = normalizeRatio(firstNumber([
+          evalData.score,
+          evalData.quality_score,
+          evalData.qualityScore,
+          verification.score,
+          artifact.quality_score,
+          artifact.qualityScore,
+        ]));
+        const threshold = normalizeRatio(firstNumber([
+          evalData.threshold,
+          evalData.quality_threshold,
+          evalData.qualityThreshold,
+          verification.threshold,
+          artifact.quality_threshold,
+          artifact.qualityThreshold,
+        ]));
+        const evalStatus = firstString([
+          evalData.status,
+          evalData.eval_status,
+          evalData.evalStatus,
+          verification.status,
+          artifact.eval_status,
+          artifact.evalStatus,
+        ]).toLowerCase();
+        const blocksApproval = [
+          evalData.blocks_completion,
+          evalData.blocksCompletion,
+          verification.blocks_completion,
+          verification.blocksCompletion,
+          artifact.blocks_completion,
+          artifact.blocksCompletion,
+        ].some(function (value) { return value === true; });
+        let state = 'not_scored';
+        if (blocksApproval || ['failed', 'blocked', 'stale', 'held'].includes(evalStatus)) state = 'held';
+        else if (['queued', 'running', 'pending', 'scoring'].includes(evalStatus)) state = 'pending';
+        else if (evalStatus === 'passed' || (score !== null && threshold !== null && score >= threshold)) state = 'cleared';
+        const labels = {
+          cleared: 'Verification cleared',
+          held: 'Verification held',
+          pending: 'Verification pending',
+          not_scored: 'Not scored yet',
+        };
+        const details = {
+          cleared: 'Recorded evidence meets the current quality bar.',
+          held: firstString([evalData.proof_impact, evalData.proofImpact, verification.proof_impact, verification.proofImpact]) || 'Required evidence has not cleared the current quality bar.',
+          pending: 'The evaluation is still running. Approval stays available only when policy allows it.',
+          not_scored: 'No evaluation result is attached. Review the provenance before signing off.',
+        };
+        return {
+          state: state,
+          label: labels[state],
+          detail: details[state],
+          score: score,
+          threshold: threshold,
+          evalStatus: evalStatus || 'not attached',
+          blocksApproval: blocksApproval,
+          reviewer: resolveReviewerSignal(review),
+          reviewStatus: firstString([review.status, artifact.review_status, artifact.reviewStatus]) || artifact.status,
+          sourceUrl: firstString([artifact.source_url, artifact.sourceUrl, artifact.artifact_url, artifact.artifactUrl, metadata.source_url, metadata.sourceUrl]),
+        };
+      }
+
+      function readablePayload(artifact) {
+        const metadata = asRecord(artifact.metadata);
+        const candidates = [artifact.payload, artifact.data, metadata.payload, metadata.data];
+        for (let i = 0; i < candidates.length; i += 1) {
+          const value = candidates[i];
+          if (value && typeof value === 'object') return value;
+        }
+        return null;
+      }
+
+      function renderStructured(value) {
+        const entries = Object.entries(asRecord(value)).slice(0, 12);
+        if (!entries.length) return '';
+        return '<dl class="structured-preview">' + entries.map(function (entry) {
+          const raw = entry[1];
+          const serialized = raw && typeof raw === 'object' ? JSON.stringify(raw) : String(raw ?? '—');
+          const display = serialized.length > 260 ? serialized.slice(0, 257) + '…' : serialized;
+          return '<dt>' + escapeHtml(entry[0].replace(/[_-]+/g, ' ')) + '</dt><dd>' + escapeHtml(display) + '</dd>';
+        }).join('') + '</dl>';
+      }
+
+      function renderDiff(text) {
+        return '<pre class="diff-preview" aria-label="Artifact diff">' + String(text || '').split('\n').map(function (line) {
+          const cls = line.startsWith('+') && !line.startsWith('+++')
+            ? ' class="is-add"'
+            : line.startsWith('-') && !line.startsWith('---')
+              ? ' class="is-remove"'
+              : '';
+          return '<span' + cls + '>' + escapeHtml(line || ' ') + '</span>';
+        }).join('') + '</pre>';
+      }
+
       function renderPreview(artifact) {
         const type = (artifact.artifact_type || '').toLowerCase();
         const url = artifact.artifact_url || '';
+        const content = artifact.content || artifact.summary || '';
+        const code = artifact.code || '';
+        const payload = readablePayload(artifact);
 
-        if (url && (type.startsWith('image') || type.includes('mockup') || type.includes('screenshot') || type.includes('design'))) {
-          return '<img src="' + escapeHtml(url) + '" alt="' + escapeHtml(artifact.name || 'artifact') + '" />';
+        if (isSafeMediaUrl(url, true) && (type.startsWith('image') || type.includes('mockup') || type.includes('screenshot') || type.includes('design'))) {
+          return '<img src="' + escapeAttribute(url) + '" alt="' + escapeAttribute(artifact.name || 'artifact') + '" />';
         }
 
-        if (type.includes('markdown') || type.includes('doc') || artifact.content) {
-          const content = artifact.content || artifact.summary || '';
+        if (isSafeMediaUrl(url, false) && (type.includes('video') || /\.(mp4|webm|mov)(?:$|[?#])/i.test(url))) {
+          return '<video controls preload="metadata" aria-label="' + escapeAttribute(artifact.name || 'Artifact video') + '"><source src="' + escapeAttribute(url) + '" /></video>';
+        }
+
+        if (type.includes('diff') || (/^(?:diff --git|@@ |\+\+\+ |--- )/m.test(code))) {
+          return renderDiff(code || content);
+        }
+
+        if (type.includes('code') || type.includes('pull_request') || type.includes('tech_spec') || code) {
+          return '<pre>' + escapeHtml(code || content) + '</pre>';
+        }
+
+        if (type.includes('markdown') || type.includes('doc') || type.includes('report') || type.includes('brief') || content) {
           return '<div class="artifact-preview__markdown">' + escapeHtml(content).replace(/\n\n/g, '</p><p>').replace(/^(.+)$/, '<p>$1</p>') + '</div>';
         }
 
-        if (type.includes('code') || artifact.code) {
-          return '<pre>' + escapeHtml(artifact.code || artifact.summary || '') + '</pre>';
-        }
+        if (payload) return renderStructured(payload);
 
         // Fallback: placeholder with summary
         return (
@@ -537,21 +1257,51 @@
         );
       }
 
-      function renderFilmstrip(artifact) {
+      function renderHistory(artifact) {
         const versions = Array.isArray(artifact.versions) && artifact.versions.length ? artifact.versions : [{ version: artifact.version || 1 }];
         const current = artifact.version || versions[versions.length - 1].version;
         return (
-          '<div class="filmstrip" role="tablist" aria-label="Artifact version history">' +
-          '<span class="filmstrip__label">Versions</span>' +
-          versions.map(function (v) {
+          '<div class="version-history" aria-label="Artifact version history">' +
+          versions.slice().reverse().map(function (v) {
             const isCurrent = v.version === current;
             return (
-              '<button class="filmstrip__item' + (isCurrent ? ' is-current' : '') + '" type="button" role="tab" aria-selected="' + isCurrent + '" data-version="' + v.version + '">' +
-              '<span class="filmstrip__dot"></span>' +
-              '<span>v' + v.version + '</span>' +
-              '</button>'
+              '<div class="version-row">' +
+              '<span class="version-row__number">v' + escapeHtml(String(v.version || 1)) + '</span>' +
+              '<span>' + escapeHtml(v.updated_at ? formatRelative(v.updated_at) : (isCurrent ? 'Current revision' : 'Prior revision')) + '</span>' +
+              '<span class="version-row__state">' + (isCurrent ? 'Current' : 'Recorded') + '</span>' +
+              '</div>'
             );
           }).join('') +
+          '</div>'
+        );
+      }
+
+      function renderEvidence(artifact, evidence) {
+        const scoreLabel = evidence.score === null ? '—' : Math.round(evidence.score * 100) + ' / 100';
+        const thresholdLabel = evidence.threshold === null ? 'Not set' : Math.round(evidence.threshold * 100) + ' / 100';
+        const scoreWidth = evidence.score === null ? 0 : Math.round(evidence.score * 100);
+        const thresholdLeft = evidence.threshold === null ? null : Math.round(evidence.threshold * 100);
+        const producer = artifact.author || {};
+        const source = evidence.sourceUrl && /^https?:\/\//i.test(evidence.sourceUrl)
+          ? '<a href="' + escapeAttribute(evidence.sourceUrl) + '" data-source-link>' + escapeHtml(evidence.sourceUrl.replace(/^https?:\/\//i, '').slice(0, 52)) + (evidence.sourceUrl.length > 60 ? '…' : '') + '</a>'
+          : 'Attached artifact record';
+        return (
+          '<div class="evidence-readout">' +
+          '<div class="evidence-verdict">' +
+          '<span class="evidence-verdict__label">' + escapeHtml(evidence.label) + '</span>' +
+          '<span class="evidence-verdict__score">' + scoreLabel + '</span>' +
+          '<p class="evidence-verdict__detail">' + escapeHtml(evidence.detail) + '</p>' +
+          '</div>' +
+          '<div class="evidence-meter" role="meter" aria-label="Artifact quality score" aria-valuemin="0" aria-valuemax="100"' + (evidence.score === null ? '' : ' aria-valuenow="' + scoreWidth + '"') + '>' +
+          '<span class="evidence-meter__fill" style="width:' + scoreWidth + '%"></span>' +
+          (thresholdLeft === null ? '' : '<span class="evidence-meter__threshold" style="left:' + thresholdLeft + '%" title="Quality threshold"></span>') +
+          '</div>' +
+          '<dl class="evidence-facts">' +
+          '<dt>Quality bar</dt><dd>' + thresholdLabel + ' · ' + escapeHtml(evidence.evalStatus.replace(/_/g, ' ')) + '</dd>' +
+          '<dt>Produced by</dt><dd>' + escapeHtml(producer.name || 'OrgX agent') + (producer.role ? ' · ' + escapeHtml(producer.role) : '') + '</dd>' +
+          '<dt>Manual review</dt><dd>' + escapeHtml(evidence.reviewer) + ' · ' + escapeHtml(String(evidence.reviewStatus || 'in review').replace(/_/g, ' ')) + '</dd>' +
+          '<dt>Source</dt><dd>' + source + '</dd>' +
+          '</dl>' +
           '</div>'
         );
       }
@@ -569,21 +1319,22 @@
         );
       }
 
-      function renderDecisionRow() {
+      function renderDecisionRow(evidence) {
+        const approvalDisabled = Boolean(evidence && evidence.blocksApproval);
         return (
-          '<div class="decision-row">' +
-          '<button class="decision-card decision-card--approve" data-action="approve" type="button">' +
+          '<div class="decision-row" aria-label="Review actions">' +
+          '<button class="decision-card decision-card--approve" data-action="approve" type="button"' + (approvalDisabled ? ' disabled aria-describedby="verification-block"' : '') + '>' +
           '<div class="decision-card__hold" aria-hidden="true"></div>' +
-          '<span class="decision-card__hint">hold to approve</span>' +
+          '<span class="decision-card__hint">' + (approvalDisabled ? 'evidence held' : 'hold to approve') + '</span>' +
           '<div class="decision-card__icon">' +
           '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>' +
           '</div>' +
           '<div class="decision-card__body">' +
-          '<div class="decision-card__title">Approve</div>' +
-          '<div class="decision-card__detail">Sign off and advance to production.</div>' +
+          '<div class="decision-card__title">' + (approvalDisabled ? 'Verification blocked' : 'Approve') + '</div>' +
+          '<div class="decision-card__detail">' + (approvalDisabled ? 'Inspect the held evidence before signing off.' : 'Sign off and advance to production.') + '</div>' +
           '</div>' +
           '</button>' +
-          '<button class="decision-card decision-card--changes" data-action="request-changes" type="button">' +
+          '<button class="decision-card decision-card--changes" data-action="request-changes" type="button" aria-expanded="false" aria-controls="artifact-change-composer">' +
           '<div class="decision-card__icon">' +
           '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3l7 7-11 11H3v-7z"/></svg>' +
           '</div>' +
@@ -593,15 +1344,27 @@
           '</div>' +
           '</button>' +
           '</div>' +
-          '<div class="composer" data-composer>' +
+          '<div class="composer" id="artifact-change-composer" data-composer>' +
           '<label for="composer-input">What needs to change?</label>' +
           '<textarea id="composer-input" data-composer-input placeholder="Be specific — this creates a decision entity linked to the artifact."></textarea>' +
           '<div class="composer__actions">' +
           '<button class="composer-btn" type="button" data-composer-cancel>Cancel</button>' +
           '<button class="composer-btn composer-btn--primary" type="button" data-composer-submit>File decision</button>' +
           '</div>' +
-          '</div>'
+          '</div>' +
+          (approvalDisabled
+            ? '<div class="verification-block" id="verification-block"><strong>Approval is held by policy</strong>' + escapeHtml(evidence.detail) + '</div>'
+            : '') +
+          '<div class="review-feedback" role="status" aria-live="polite" data-review-feedback></div>'
         );
+      }
+
+      function buildArtifactLink(artifact) {
+        const artifactId = encodeURIComponent(artifact.id);
+        if (artifact.entity_type === 'initiative' && artifact.entity_id) {
+          return 'https://useorgx.com/live/' + encodeURIComponent(artifact.entity_id) + '?artifactId=' + artifactId;
+        }
+        return 'https://useorgx.com/artifacts/' + artifactId;
       }
 
       function renderFoot(artifact) {
@@ -611,7 +1374,7 @@
         const lastLabel = lastVersion && lastVersion.updated_at
           ? 'Updated ' + formatRelative(lastVersion.updated_at)
           : '';
-        const deepLink = artifact.id ? '/artifacts/' + artifact.id : null;
+        const deepLink = artifact.id ? buildArtifactLink(artifact) : null;
         return (
           '<div class="widget-foot">' +
           '<span>' + escapeHtml(lastLabel || 'Fresh artifact') + '</span>' +
@@ -626,7 +1389,7 @@
         let committed = false;
 
         function start(e) {
-          if (committed) return;
+          if (committed || card.disabled) return;
           e.preventDefault();
           card.classList.add('is-holding');
           timer = setTimeout(function () {
@@ -669,6 +1432,26 @@
       }
 
       async function approveArtifact(artifact) {
+        const button = document.querySelector('[data-action="approve"]');
+        const feedback = document.querySelector('[data-review-feedback]');
+        const evidence = resolveEvidence(artifact);
+        if (evidence.blocksApproval) {
+          if (feedback) {
+            feedback.dataset.tone = 'error';
+            feedback.textContent = 'Approval is blocked until required verification evidence clears.';
+          }
+          return;
+        }
+        if (button) {
+          button.disabled = true;
+          button.setAttribute('aria-busy', 'true');
+          const label = button.querySelector('.decision-card__title');
+          if (label) label.textContent = 'Approving…';
+        }
+        if (feedback) {
+          feedback.dataset.tone = '';
+          feedback.textContent = 'Recording approval and advancing the artifact…';
+        }
         try {
           await callTool('orgx_act', {
             type: 'artifact',
@@ -678,10 +1461,33 @@
           resolveStage(function () { render(Object.assign({}, artifact, { status: 'approved' })); });
         } catch (err) {
           console.warn('[artifact-review] approve failed', err);
+          if (button) {
+            button.disabled = false;
+            button.removeAttribute('aria-busy');
+            const label = button.querySelector('.decision-card__title');
+            if (label) label.textContent = 'Approve';
+          }
+          if (feedback) {
+            feedback.dataset.tone = 'error';
+            feedback.textContent = 'Approval failed. Your review is still open; try again.';
+          }
         }
       }
 
       async function submitChangeRequest(artifact, notes) {
+        const button = document.querySelector('[data-composer-submit]');
+        const input = document.querySelector('[data-composer-input]');
+        const feedback = document.querySelector('[data-review-feedback]');
+        if (button) {
+          button.disabled = true;
+          button.setAttribute('aria-busy', 'true');
+          button.textContent = 'Filing…';
+        }
+        if (input) input.disabled = true;
+        if (feedback) {
+          feedback.dataset.tone = '';
+          feedback.textContent = 'Linking guidance to the artifact…';
+        }
         try {
           await callTool('orgx_decide', {
             action: 'create',
@@ -700,14 +1506,59 @@
           resolveStage(function () { render(Object.assign({}, artifact, { status: 'changes_requested' })); });
         } catch (err) {
           console.warn('[artifact-review] change request failed', err);
+          if (button) {
+            button.disabled = false;
+            button.removeAttribute('aria-busy');
+            button.textContent = 'File decision';
+          }
+          if (input) input.disabled = false;
+          if (feedback) {
+            feedback.dataset.tone = 'error';
+            feedback.textContent = 'Change request failed. Your note is preserved; try again.';
+          }
         }
       }
 
       // ─── render ─────────────────────────────────────────────────
       function render(artifact) {
+        artifact = normalizeArtifact(artifact);
         const stage = document.querySelector('[data-stage]');
         const title = document.querySelector('[data-artifact-title]');
         const subtitle = document.querySelector('[data-artifact-subtitle]');
+
+        if (artifact && artifact.__loading) {
+          title.textContent = 'Loading review evidence';
+          subtitle.textContent = 'Holding the action surface until the artifact and provenance arrive.';
+          stage.innerHTML = (
+            '<div class="review-skeleton" aria-label="Loading artifact review">' +
+            '<div class="skeleton-line review-skeleton__preview"></div>' +
+            '<div class="review-skeleton__control">' +
+            '<div class="skeleton-line" style="width:42%;height:10px"></div>' +
+            '<div class="skeleton-line" style="width:94%;height:24px"></div>' +
+            '<div class="skeleton-line" style="width:82%;height:14px"></div>' +
+            '<div class="skeleton-line" style="width:100%;height:72px"></div>' +
+            '<div class="skeleton-line" style="width:100%;height:72px"></div>' +
+            '</div></div>'
+          );
+          reportSize();
+          return;
+        }
+
+        if (artifact && artifact.__error) {
+          title.textContent = 'Review evidence unavailable';
+          subtitle.textContent = 'No action was taken. Restore the evidence before signing off.';
+          stage.innerHTML = (
+            '<div class="empty-state animate-in">' +
+            '<div class="empty-icon" style="color:var(--ox-danger);background:rgba(225,29,72,.08)">' +
+            '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 17h.01"/></svg>' +
+            '</div><strong style="color:var(--ox-text)">Evidence disconnected</strong>' +
+            '<div style="max-width:38ch;margin-top:6px">' + escapeHtml(artifact.__error) + '</div>' +
+            '<button type="button" class="composer-btn" style="margin-top:14px" onclick="location.reload()">Retry evidence</button>' +
+            '</div>'
+          );
+          reportSize();
+          return;
+        }
 
         if (!artifact || !artifact.id) {
           stage.classList.remove('is-resolving');
@@ -726,16 +1577,53 @@
         }
 
         title.textContent = artifact.name || 'Artifact review';
-        subtitle.textContent = artifact.summary || 'Production artifact awaiting approval.';
+        const isResolved = artifact.status === 'approved' || artifact.status === 'changes_requested';
+        const evidence = resolveEvidence(artifact);
+        subtitle.textContent = isResolved
+          ? (artifact.status === 'approved' ? 'Signed off. Execution can continue from this version.' : 'Guidance filed. The author owns the next revision.')
+          : (artifact.summary || 'Production artifact awaiting approval.');
 
         stage.classList.remove('is-resolving');
+        if (isResolved) {
+          stage.innerHTML = (
+            '<div class="review-receipt animate-in">' +
+            '<div class="review-receipt__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 4 4L19 6"/></svg></div>' +
+            '<div><div class="review-receipt__title">' + (artifact.status === 'approved' ? 'Approval recorded' : 'Revision requested') + '</div>' +
+            '<div class="review-receipt__detail">v' + escapeHtml(String(artifact.version || 1)) + ' · ' + (artifact.status === 'approved' ? 'artifact advanced' : 'author notified') + '</div></div>' +
+            '</div>' +
+            renderAttribution(artifact) +
+            renderFoot(artifact)
+          );
+          reportSize();
+          return;
+        }
+
         stage.innerHTML = (
-          '<div class="artifact-preview animate-in">' +
-          '<div class="artifact-preview__body">' + renderPreview(artifact) + '</div>' +
-          renderFilmstrip(artifact) +
+          '<div class="review-desk animate-in">' +
+          '<div class="review-evidence">' +
+          '<div class="artifact-preview" data-preview>' +
+          '<div class="viewer-tabs" role="tablist" aria-label="Artifact viewer">' +
+          '<button class="viewer-tab" type="button" role="tab" aria-selected="true" aria-controls="artifact-preview-panel" data-view-tab="preview">Preview</button>' +
+          '<button class="viewer-tab" type="button" role="tab" aria-selected="false" aria-controls="artifact-evidence-panel" data-view-tab="evidence" tabindex="-1">Evidence</button>' +
+          '<button class="viewer-tab" type="button" role="tab" aria-selected="false" aria-controls="artifact-history-panel" data-view-tab="history" tabindex="-1">History</button>' +
+          '</div>' +
+          '<div class="viewer-panel" id="artifact-preview-panel" role="tabpanel" data-view-panel="preview">' +
+          '<div class="artifact-preview__body" data-preview-body>' + renderPreview(artifact) + '</div>' +
+          '<div class="preview-toolbar">' +
+          '<span style="color:var(--ox-text-muted);font:700 .58rem var(--ox-mono);letter-spacing:.08em;text-transform:uppercase">' + escapeHtml(artifact.artifact_type.replace(/[_.-]+/g, ' ')) + ' · v' + escapeHtml(String(artifact.version)) + '</span>' +
+          '<button class="preview-toggle" type="button" data-preview-toggle aria-expanded="false">Expand evidence</button>' +
+          '</div></div>' +
+          '<div class="viewer-panel viewer-panel--readout" id="artifact-evidence-panel" role="tabpanel" data-view-panel="evidence" hidden>' + renderEvidence(artifact, evidence) + '</div>' +
+          '<div class="viewer-panel viewer-panel--readout" id="artifact-history-panel" role="tabpanel" data-view-panel="history" hidden>' + renderHistory(artifact) + '</div>' +
           '</div>' +
           renderAttribution(artifact) +
-          renderDecisionRow() +
+          '</div>' +
+          '<div class="review-control">' +
+          '<div class="review-status"><span class="review-status__signal">' + (evidence.blocksApproval ? 'Verification held' : 'Needs your signature') + '</span><span>v' + escapeHtml(String(artifact.version || 1)) + '</span></div>' +
+          '<h2 class="review-question">Does this evidence meet the bar to advance?</h2>' +
+          '<p class="review-consequence">Approval releases this version to the next execution step. A change request returns precise guidance to ' + escapeHtml((artifact.author && artifact.author.name) || 'the author') + '.</p>' +
+          renderDecisionRow(evidence) +
+          '</div></div>' +
           renderFoot(artifact)
         );
 
@@ -752,6 +1640,7 @@
         if (changesCard && composer) {
           changesCard.addEventListener('click', function () {
             composer.classList.add('is-open');
+            changesCard.setAttribute('aria-expanded', 'true');
             if (composerInput) composerInput.focus();
             reportSize();
           });
@@ -759,6 +1648,8 @@
         if (composerCancel) {
           composerCancel.addEventListener('click', function () {
             composer.classList.remove('is-open');
+            if (changesCard) changesCard.setAttribute('aria-expanded', 'false');
+            if (changesCard) changesCard.focus();
             reportSize();
           });
         }
@@ -773,6 +1664,57 @@
           });
         }
 
+        const preview = stage.querySelector('[data-preview]');
+        const previewToggle = stage.querySelector('[data-preview-toggle]');
+        function togglePreview() {
+          if (!preview || !previewToggle) return;
+          const expanded = preview.classList.toggle('is-expanded');
+          previewToggle.setAttribute('aria-expanded', String(expanded));
+          previewToggle.textContent = expanded ? 'Compress evidence' : 'Expand evidence';
+          reportSize();
+        }
+        if (previewToggle) previewToggle.addEventListener('click', togglePreview);
+        const viewTabs = Array.from(stage.querySelectorAll('[data-view-tab]'));
+        const viewPanels = Array.from(stage.querySelectorAll('[data-view-panel]'));
+        function selectView(name, focus) {
+          viewTabs.forEach(function (tab) {
+            const selected = tab.getAttribute('data-view-tab') === name;
+            tab.setAttribute('aria-selected', String(selected));
+            tab.tabIndex = selected ? 0 : -1;
+            if (selected && focus) tab.focus();
+          });
+          viewPanels.forEach(function (panel) {
+            panel.hidden = panel.getAttribute('data-view-panel') !== name;
+          });
+          if (previewToggle) previewToggle.hidden = name !== 'preview';
+          reportSize();
+        }
+        viewTabs.forEach(function (tab, index) {
+          tab.addEventListener('click', function () {
+            selectView(tab.getAttribute('data-view-tab'), false);
+          });
+          tab.addEventListener('keydown', function (event) {
+            let nextIndex = index;
+            if (event.key === 'ArrowRight') nextIndex = (index + 1) % viewTabs.length;
+            else if (event.key === 'ArrowLeft') nextIndex = (index - 1 + viewTabs.length) % viewTabs.length;
+            else if (event.key === 'Home') nextIndex = 0;
+            else if (event.key === 'End') nextIndex = viewTabs.length - 1;
+            else return;
+            event.preventDefault();
+            selectView(viewTabs[nextIndex].getAttribute('data-view-tab'), true);
+          });
+        });
+        stage.onkeydown = function (event) {
+          if (event.key !== 'Escape' || !composer || !composer.classList.contains('is-open')) return;
+          event.preventDefault();
+          composer.classList.remove('is-open');
+          if (changesCard) {
+            changesCard.setAttribute('aria-expanded', 'false');
+            changesCard.focus();
+          }
+          reportSize();
+        };
+
         // Wire deep link
         const deepLink = stage.querySelector('[data-deeplink]');
         if (deepLink) {
@@ -781,21 +1723,37 @@
             openWidgetLink(deepLink.getAttribute('href'));
           });
         }
+        const sourceLink = stage.querySelector('[data-source-link]');
+        if (sourceLink) {
+          sourceLink.addEventListener('click', function (event) {
+            event.preventDefault();
+            openWidgetLink(sourceLink.getAttribute('href'));
+          });
+        }
 
         reportSize();
       }
 
       // Bootstrap
       function bootstrap() {
-        if (window.OrgXWidgetRuntime.detectProtocol() === 'standalone') {
+        const fixtureParams = new URLSearchParams(window.location.search);
+        const hasFixture = fixtureParams.has('state') || fixtureParams.get('demo') === 'true' || fixtureParams.get('loading') === 'true';
+        if (hasFixture || window.OrgXWidgetRuntime.detectProtocol() === 'standalone') {
           const payload = resolveArtifact();
-          render(payload && payload.artifact ? payload.artifact : payload);
+          if (payload && payload.state === 'loading') {
+            render({ __loading: true });
+            return;
+          }
+          render(resolveIncomingArtifact(payload));
           return;
         }
         window.OrgXWidgetRuntime.initWidget({
           render: function (payload) {
-            if (!payload) return;
-            render(payload.artifact ? payload.artifact : payload);
+            if (!payload) {
+              render({ __loading: true });
+              return;
+            }
+            render(resolveIncomingArtifact(payload));
           },
         });
       }
