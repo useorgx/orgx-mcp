@@ -248,6 +248,18 @@
         "destructive_justification": "Does not delete, overwrite, approve, reject, or otherwise modify the artifact."
       }
     },
+    "submit_artifact_review": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Records an authorized human approval or change request, so it changes artifact review state.",
+        "open_world_justification": "A changes-requested ruling may dispatch the artifact's governed rework loop through configured agent providers.",
+        "destructive_justification": "A ruling can advance work or start rework and must therefore be treated as a consequential operator action."
+      }
+    },
     "get_morning_brief": {
       "annotations": {
         "readOnlyHint": true,

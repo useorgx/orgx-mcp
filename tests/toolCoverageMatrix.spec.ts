@@ -435,7 +435,12 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
   review_artifact: {
     tier: 'live_read_verified',
     evidence: ['live review_artifact 785cb123-9168-46c2-8262-95e8d007f66a, 2026-05-27', 'tests/toolDiscoverySnapshot.spec.ts', 'tests/contractTools.spec.ts'],
-    remaining: 'Exercise approve/reject mutation flow against a disposable draft artifact only when explicitly safe.',
+    remaining: 'Refresh live read proof after the canonical reviewContract API ships.',
+  },
+  submit_artifact_review: {
+    tier: 'contract_and_unit',
+    evidence: ['tests/artifactReviewToolContract.spec.ts', 'tests/artifactReviewWidget.spec.ts'],
+    remaining: 'Exercise approved and changes_requested against an explicitly disposable deliverable after deployment.',
   },
   save_artifact: {
     tier: 'local_registered_not_installed_public',

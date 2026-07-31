@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-07-28T17:26:45.857Z",
-  "sourceHash": "a7abb12ee803bbf4",
+  "generatedAt": "2026-07-31T20:42:11.102Z",
+  "sourceHash": "ad938c306cecc5fe",
   "version": "1.0.0",
-  "totalTools": 81,
+  "totalTools": 82,
   "categories": [
     "Agents",
     "Billing",
@@ -1223,7 +1223,7 @@
     {
       "id": "review_artifact",
       "title": "Review Artifact",
-      "description": "Surface the next artifact awaiting review. Renders the artifact-review widget with a preview, version filmstrip, and hold-to-approve / request-changes actions. USE WHEN the user asks to review work, approve a deliverable, or handle pending artifact reviews. DO NOT USE for listing all artifacts — use list_entities type=artifact instead.",
+      "description": "Hydrate the canonical verification contract for one artifact and render the compact artifact-review widget. Non-deliverables are evidence-only. USE WHEN the user asks to verify or review one artifact. DO NOT USE for listing all artifacts — use orgx_search type=artifact instead.",
       "category": "Client Integration",
       "inputSchema": {
         "type": "object",
@@ -1241,6 +1241,49 @@
             "description": "Workspace UUID. Defaults to the session workspace."
           }
         },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "initiatives:read"
+      ],
+      "readOnly": true,
+      "source": "inline",
+      "profiles": [
+        "memory"
+      ]
+    },
+    {
+      "id": "submit_artifact_review",
+      "title": "Submit Artifact Ruling",
+      "description": "Record an authorized human artifact ruling through the canonical artifact review endpoint. Supports approved or changes_requested; change requests require specific feedback. DO NOT USE generic orgx_act for artifact review and do not create a separate decision first.",
+      "category": "Client Integration",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "artifact_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Artifact UUID to review."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "changes_requested"
+            ],
+            "description": "Human artifact ruling to record."
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 4000,
+            "description": "Reviewer rationale. Required when requesting changes."
+          }
+        },
+        "required": [
+          "artifact_id",
+          "status"
+        ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
       },

@@ -11468,11 +11468,11 @@ export class OrgXMcp extends McpAgent<
     );
     }
 
-    // --- review_artifact ---
-    // Action widget for approving/rejecting production artifacts.
-    // Fetches the next in-review artifact for the caller's workspace
-    // (optionally filtered by entity_id) and attaches the artifact-review
-    // widget with the artifact as structuredContent.artifact.
+    // --- review_artifact / submit_artifact_review ---
+    // The read tool always hydrates the canonical app response. The write tool
+    // records the artifact ruling through the purpose-built artifact endpoint;
+    // generic lifecycle actions and separate decision records are intentionally
+    // not part of this review path.
     if (shouldRegister('review_artifact'))
       registerAppTool(
         this.server,
@@ -11480,7 +11480,7 @@ export class OrgXMcp extends McpAgent<
         {
           title: 'Review Artifact',
           description:
-            'Use when the user asks to review work, sign off on a deliverable, or clear pending artifact reviews. Surfaces the next artifact awaiting review and renders the artifact-review widget with a preview, version filmstrip, and hold-to-approve / request-changes actions. USE WHEN the user asks to review work, approve a deliverable, or handle pending artifact reviews. DO NOT USE for listing all artifacts — use list_entities type=artifact instead.',
+            'Use when the user asks to verify work, review a deliverable, or inspect artifact evidence. Hydrates the canonical artifact review contract and renders one authoritative ruling with machine quality, human ruling, outcome, purpose, and the next valid action. Non-deliverables are evidence-only. USE WHEN the user asks to review or verify one artifact. DO NOT USE for listing all artifacts — use orgx_search type=artifact instead.',
           inputSchema: this.withClientContext({
             artifact_id: z
               .string()
@@ -11530,31 +11530,40 @@ export class OrgXMcp extends McpAgent<
               this.sessionContext?.workspaceId ??
               null;
 
-            const params = new URLSearchParams();
-            params.set('type', 'artifact');
-            params.set('limit', '1');
-            if (explicitArtifactId) {
-              params.set('id', explicitArtifactId);
-            } else {
+            let artifactId = explicitArtifactId;
+            if (!artifactId) {
+              const params = new URLSearchParams();
+              params.set('type', 'artifact');
+              params.set('limit', '1');
               params.set('status', 'in_review');
-            }
-            if (typeof args.entity_id === 'string' && args.entity_id.trim()) {
-              params.set('entity_id', args.entity_id.trim());
-            }
-            if (wsId) params.set('workspace_id', wsId);
+              if (typeof args.entity_id === 'string' && args.entity_id.trim()) {
+                params.set('entity_id', args.entity_id.trim());
+              }
+              if (wsId) params.set('workspace_id', wsId);
 
-            const response = await callOrgxApiJson(
-              this.env,
-              `/api/entities?${params.toString()}`,
-              undefined,
-              { userId: this.resolveUserId(), userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(this.resolveUserId()) }
-            );
-            const result = (await response.json()) as {
-              data?: Array<Record<string, unknown>>;
-            };
-            const artifact = Array.isArray(result.data) ? result.data[0] : null;
+              const selectionResponse = await callOrgxApiJson(
+                this.env,
+                `/api/entities?${params.toString()}`,
+                undefined,
+                {
+                  userId: this.resolveUserId(),
+                  userEmail: this.resolveUserEmail(),
+                  orgxUserId: this.resolveOrgxUserId(this.resolveUserId()),
+                }
+              );
+              const selection = (await selectionResponse.json()) as {
+                data?: Array<Record<string, unknown>>;
+              };
+              const selected = Array.isArray(selection.data)
+                ? selection.data[0]
+                : null;
+              artifactId =
+                selected && typeof selected.id === 'string'
+                  ? selected.id
+                  : null;
+            }
 
-            if (!artifact) {
+            if (!artifactId) {
               return {
                 content: [
                   {
@@ -11562,8 +11571,30 @@ export class OrgXMcp extends McpAgent<
                     text: 'No artifacts currently awaiting review.',
                   },
                 ],
-                structuredContent: { artifact: null },
+                structuredContent: { artifact: null, reviewContract: null },
               };
+            }
+
+            const response = await callOrgxApiJson(
+              this.env,
+              `/api/artifacts/${encodeURIComponent(artifactId)}`,
+              undefined,
+              {
+                userId: this.resolveUserId(),
+                userEmail: this.resolveUserEmail(),
+                orgxUserId: this.resolveOrgxUserId(this.resolveUserId()),
+              }
+            );
+            const result = (await response.json()) as Record<string, unknown>;
+            const artifact =
+              result.artifact && typeof result.artifact === 'object'
+                ? (result.artifact as Record<string, unknown>)
+                : null;
+
+            if (!artifact) {
+              return this.toolError(
+                'Artifact response was missing the artifact record.'
+              );
             }
 
             const name =
@@ -11573,14 +11604,128 @@ export class OrgXMcp extends McpAgent<
                 ? (artifact.title as string)
                 : 'artifact';
 
+            const reviewContract =
+              result.reviewContract && typeof result.reviewContract === 'object'
+                ? (result.reviewContract as Record<string, unknown>)
+                : null;
+            const workflow =
+              reviewContract?.workflow &&
+              typeof reviewContract.workflow === 'object'
+                ? (reviewContract.workflow as Record<string, unknown>)
+                : null;
+            const headline =
+              typeof workflow?.headline === 'string'
+                ? workflow.headline
+                : 'Verification evidence loaded';
+
             return {
               content: [
                 {
                   type: 'text' as const,
-                  text: `Artifact ready for review: **${name}** (status: ${artifact.status ?? 'in_review'}). Approve or request changes inline.`,
+                  text: `Artifact verification ready: **${name}** — ${headline}.`,
                 },
               ],
-              structuredContent: { artifact },
+              structuredContent: result,
+            };
+          })
+      );
+
+    if (shouldRegister('submit_artifact_review'))
+      registerAppTool(
+        this.server,
+        'submit_artifact_review',
+        {
+          title: 'Submit Artifact Ruling',
+          description:
+            'Record the authorized human ruling for one deliverable artifact. PATCHes the canonical artifact review endpoint with approved or changes_requested and returns the refreshed server contract. USE WHEN the artifact-review widget submits a ruling. A changes_requested ruling requires a specific note. DO NOT USE generic orgx_act for artifacts and do not create a separate decision record first.',
+          inputSchema: this.withClientContext({
+            artifact_id: z.string().min(1).describe('Artifact UUID to review.'),
+            status: z
+              .enum(['approved', 'changes_requested'])
+              .describe('Human artifact ruling to record.'),
+            note: z
+              .string()
+              .max(4000)
+              .optional()
+              .describe('Reviewer rationale. Required when requesting changes.'),
+          }),
+          annotations: {
+            readOnlyHint: false,
+            destructiveHint: true,
+            openWorldHint: true,
+          },
+          _meta: {
+            'openai/toolInvocation/invoking': 'Recording artifact ruling...',
+            'openai/toolInvocation/invoked': 'Artifact ruling recorded',
+            'openai/visibility': 'public',
+            'mcp/securitySchemes': SECURITY_SCHEMES.entityWriteRequiresAuth,
+          },
+        },
+        async (args: Record<string, unknown>) =>
+          this.withOrgx(async () => {
+            const authResponse = buildAuthRequiredResponse({
+              toolId: 'submit_artifact_review',
+              securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
+              userId: this.resolveUserId() ?? undefined,
+              serverUrl: this.env.MCP_SERVER_URL ?? undefined,
+              featureDescription: 'submit artifact rulings',
+            });
+            if (authResponse) return authResponse;
+
+            const artifactId =
+              typeof args.artifact_id === 'string'
+                ? args.artifact_id.trim()
+                : '';
+            const status =
+              args.status === 'approved' || args.status === 'changes_requested'
+                ? args.status
+                : null;
+            const note =
+              typeof args.note === 'string' && args.note.trim()
+                ? args.note.trim()
+                : undefined;
+
+            if (!artifactId || !status) {
+              return this.toolError(
+                'artifact_id and status (approved or changes_requested) are required.'
+              );
+            }
+            if (status === 'changes_requested' && !note) {
+              return this.toolError(
+                'A specific reviewer note is required when requesting changes.'
+              );
+            }
+
+            const response = await callOrgxApiJson(
+              this.env,
+              `/api/artifacts/${encodeURIComponent(artifactId)}`,
+              {
+                method: 'PATCH',
+                body: JSON.stringify({ status, ...(note ? { note } : {}) }),
+              },
+              {
+                userId: this.resolveUserId(),
+                userEmail: this.resolveUserEmail(),
+                orgxUserId: this.resolveOrgxUserId(this.resolveUserId()),
+                // A review write must fail closed on the primary data plane;
+                // retrying a non-idempotent ruling against a fallback can
+                // dispatch duplicate rework.
+                allowFallback: false,
+              }
+            );
+            const result = (await response.json()) as Record<string, unknown>;
+
+            return {
+              content: [
+                {
+                  type: 'text' as const,
+                  text:
+                    status === 'approved'
+                      ? 'Artifact approval recorded.'
+                      : 'Artifact changes requested with reviewer feedback.',
+                },
+              ],
+              structuredContent: result,
             };
           })
       );

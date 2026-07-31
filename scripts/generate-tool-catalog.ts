@@ -141,6 +141,7 @@ const TOOL_CATEGORY_MAP: Record<string, string> = {
   record_quality_score: 'Client Integration',
   classify_task_model: 'Client Integration',
   review_artifact: 'Client Integration',
+  submit_artifact_review: 'Client Integration',
 
   // Streams
   update_stream_progress: 'Streams',
@@ -410,7 +411,7 @@ const INLINE_TOOL_METADATA: Array<{
     id: 'review_artifact',
     title: 'Review Artifact',
     description:
-      'Surface the next artifact awaiting review. Renders the artifact-review widget with a preview, version filmstrip, and hold-to-approve / request-changes actions. USE WHEN the user asks to review work, approve a deliverable, or handle pending artifact reviews. DO NOT USE for listing all artifacts — use list_entities type=artifact instead.',
+      'Hydrate the canonical verification contract for one artifact and render the compact artifact-review widget. Non-deliverables are evidence-only. USE WHEN the user asks to verify or review one artifact. DO NOT USE for listing all artifacts — use orgx_search type=artifact instead.',
     inputSchema: z.object({
       artifact_id: z
         .string()
@@ -428,6 +429,26 @@ const INLINE_TOOL_METADATA: Array<{
         .string()
         .optional()
         .describe('Workspace UUID. Defaults to the session workspace.'),
+    }),
+    securityScopes: ['initiatives:read'],
+    readOnly: true,
+    profiles: ['memory'],
+  },
+  {
+    id: 'submit_artifact_review',
+    title: 'Submit Artifact Ruling',
+    description:
+      'Record an authorized human artifact ruling through the canonical artifact review endpoint. Supports approved or changes_requested; change requests require specific feedback. DO NOT USE generic orgx_act for artifact review and do not create a separate decision first.',
+    inputSchema: z.object({
+      artifact_id: z.string().min(1).describe('Artifact UUID to review.'),
+      status: z
+        .enum(['approved', 'changes_requested'])
+        .describe('Human artifact ruling to record.'),
+      note: z
+        .string()
+        .max(4000)
+        .optional()
+        .describe('Reviewer rationale. Required when requesting changes.'),
     }),
     securityScopes: ['initiatives:write'],
     readOnly: false,

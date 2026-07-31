@@ -119,6 +119,7 @@ describe('Anthropic directory readiness', () => {
       'delegate_agent_task',
       'track_project_progress',
       'review_artifact',
+      'submit_artifact_review',
       'get_morning_brief',
       'get_operator_chronicle',
       'check_execution_readiness',
@@ -170,10 +171,13 @@ describe('Anthropic directory readiness', () => {
     const expectSnippetAnnotations = (
       toolId: string,
       readOnly: boolean,
-      destructive: boolean
+      destructive: boolean,
+      openWorld = false
     ) => {
       const registrationPattern =
-        toolId === 'scaffold_initiative' || toolId === 'review_artifact'
+        toolId === 'scaffold_initiative' ||
+        toolId === 'review_artifact' ||
+        toolId === 'submit_artifact_review'
           ? new RegExp(
               `registerAppTool\\(\\s*this\\.server,\\s*'${toolId}'`,
               'm'
@@ -186,7 +190,7 @@ describe('Anthropic directory readiness', () => {
       expect(snippet).toContain('annotations: {');
       expect(snippet).toContain(`readOnlyHint: ${readOnly}`);
       expect(snippet).toContain(`destructiveHint: ${destructive}`);
-      expect(snippet).toContain('openWorldHint: false');
+      expect(snippet).toContain(`openWorldHint: ${openWorld}`);
     };
 
     expectSnippetAnnotations('get_org_snapshot', true, false);
@@ -199,6 +203,7 @@ describe('Anthropic directory readiness', () => {
     expectSnippetAnnotations('create_entity', false, false);
     expectSnippetAnnotations('batch_create_entities', false, false);
     expectSnippetAnnotations('review_artifact', true, false);
+    expectSnippetAnnotations('submit_artifact_review', false, true, true);
     expectSnippetAnnotations('scaffold_initiative', false, false);
     expectSnippetAnnotations('get_task_with_context', true, false);
     expectSnippetAnnotations('batch_delete_entities', false, true);

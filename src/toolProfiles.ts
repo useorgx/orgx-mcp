@@ -71,6 +71,7 @@ export const WIDGET_AFFORDANCE_SURFACE = [
   'delegate_agent_task',
   'track_project_progress',
   'review_artifact',
+  'submit_artifact_review',
   'get_morning_brief',
 ] as const;
 
@@ -111,6 +112,7 @@ export const CHATGPT_PUBLIC_SURFACE = [
   'handoff_task',
   'approve_agent_work',
   'review_artifact',
+  'submit_artifact_review',
   'get_morning_brief',
   'get_operator_chronicle',
   'check_execution_readiness',

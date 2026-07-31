@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-07-28T20:37:15.124Z",
+  "generatedAt": "2026-07-31T20:44:03.521Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -52,13 +52,10 @@
     },
     "artifact-review": {
       "file": "public/widgets/artifact-review.html",
-      "bytes": 28645,
-      "hash": "6a281006260a",
+      "bytes": 26843,
+      "hash": "d0f2ca9b5722",
       "primaryRgb": "251,191,36",
       "sharedRefs": [
-        "shared/components/domain-accent.css",
-        "shared/components/domain-accent.js",
-        "shared/interaction-kit.css",
         "shared/mcp-apps-sdk.umd.js",
         "shared/tokens.css",
         "shared/widget-foundation.css",

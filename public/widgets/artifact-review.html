@@ -3,805 +3,669 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Artifact Review — OrgX</title>
+  <title>Artifact verification — OrgX</title>
 
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2302040a'/%3E%3Cpath d='M20 18h18l8 8v22H20z' fill='none' stroke='%23fbbf24' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M38 18v8h8' fill='none' stroke='%23fbbf24' stroke-width='4' stroke-linejoin='round'/%3E%3C/svg%3E" />
-
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2302040a'/%3E%3Cpath d='M20 18h18l8 8v22H20z' fill='none' stroke='%23fbbf24' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M38 18v8h8' fill='none' stroke='%23fbbf24' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='m26 36 4 4 8-10' fill='none' stroke='%2300c9a7' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="shared/tokens.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
-  <link rel="stylesheet" href="shared/interaction-kit.css" />
-  <link rel="stylesheet" href="shared/components/domain-accent.css" />
 
   <style>
-    /*
-     * artifact-review — Action widget, Escalation mode.
-     * Primary = amber (shares the attention palette with decisions).
-     * Spec: orgx-design skill, Widget Types › Action Widgets.
-     *
-     * Layout:
-     *   widget-shell (kicker + title + icon)
-     *   → artifact-preview (filmstrip + main preview)
-     *   → author attribution (agent-chip) + version badge
-     *   → decision block (approve | request changes)
-     *   → footer (deep link + last-version meta)
-     */
-
-    :root { --ox-primary: #fbbf24; --ox-primary-rgb: 251, 191, 36; }
-    @media (prefers-color-scheme: dark) {
-      :root { --ox-primary: #fbbf24; --ox-primary-rgb: 251, 191, 36; }
+    :root {
+      --ox-primary: #fbbf24;
+      --ox-primary-rgb: 251, 191, 36;
+      --verification-signal: #fbbf24;
+      --verification-signal-rgb: 251, 191, 36;
     }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --ox-primary: #fbbf24;
+        --ox-primary-rgb: 251, 191, 36;
+      }
+    }
+
     [data-theme="dark"] {
       --ox-primary: #fbbf24;
       --ox-primary-rgb: 251, 191, 36;
     }
 
-    .stage {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
+    body { min-width: 0; }
 
-    /* ─── artifact-preview ──────────────────────────────────────── */
-    .artifact-preview {
-      border: 1px solid var(--ox-border);
-      border-radius: 14px;
-      background: var(--ox-well-bg);
-      box-shadow: var(--ox-well-shadow);
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .artifact-preview__body {
+    .verification-card {
       position: relative;
-      min-height: 200px;
-      max-height: 420px;
       overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      background:
-        radial-gradient(circle at 50% 0%, rgba(var(--ox-primary-rgb), 0.06), transparent 60%),
-        var(--ox-well-bg);
-    }
-
-    .artifact-preview__body img,
-    .artifact-preview__body iframe {
-      max-width: 100%;
-      max-height: 380px;
-      border-radius: 10px;
-      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
-    }
-
-    .artifact-preview__body pre {
-      width: 100%;
-      max-height: 380px;
-      overflow: auto;
-      margin: 0;
-      padding: 16px;
-      border-radius: 10px;
-      background: rgba(0, 0, 0, 0.22);
-      font-family: var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-      font-size: 0.78rem;
-      color: var(--ox-text);
-      line-height: 1.55;
       border: 1px solid var(--ox-border);
+      border-radius: 16px;
+      background:
+        radial-gradient(circle at 92% -10%, rgba(var(--verification-signal-rgb), 0.12), transparent 42%),
+        var(--ox-panel);
+      box-shadow: var(--ox-well-shadow);
     }
 
-    .artifact-preview__markdown {
-      width: 100%;
-      max-height: 380px;
-      overflow: auto;
-      font-size: 0.88rem;
-      line-height: 1.6;
-      color: var(--ox-text);
-      padding: 4px 8px;
+    .verification-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--verification-signal), transparent 82%);
+      box-shadow: 0 0 22px rgba(var(--verification-signal-rgb), 0.55);
     }
-    .artifact-preview__markdown h1,
-    .artifact-preview__markdown h2,
-    .artifact-preview__markdown h3 {
-      margin: 18px 0 8px;
-      line-height: 1.3;
-    }
-    .artifact-preview__markdown p { margin: 0 0 10px; }
 
-    .artifact-preview__placeholder {
-      text-align: center;
-      color: var(--ox-text-muted);
-      font-size: 0.84rem;
+    .verification-card[data-tone="positive"] {
+      --verification-signal: #00c9a7;
+      --verification-signal-rgb: 0, 201, 167;
+    }
+    .verification-card[data-tone="critical"] {
+      --verification-signal: #fb7185;
+      --verification-signal-rgb: 251, 113, 133;
+    }
+    .verification-card[data-tone="active"] {
+      --verification-signal: #6366f1;
+      --verification-signal-rgb: 99, 102, 241;
+    }
+    .verification-card[data-tone="neutral"] {
+      --verification-signal: #94a3b8;
+      --verification-signal-rgb: 148, 163, 184;
+    }
+
+    .verification-inner {
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      align-items: center;
+      gap: 18px;
+      padding: 20px 20px 18px 22px;
     }
-    .artifact-preview__placeholder svg { opacity: 0.55; }
 
-    /* ─── version filmstrip ─────────────────────────────────────── */
-    .filmstrip {
+    .artifact-heading {
       display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 14px;
-      border-top: 1px solid var(--ox-border);
-      background: var(--ox-panel);
-      overflow-x: auto;
-      scrollbar-width: thin;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
     }
 
-    .filmstrip__label {
-      font-family: var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+    .artifact-copy { min-width: 0; }
+
+    .eyebrow {
+      font-family: var(--ox-mono, ui-monospace, monospace);
+      color: var(--ox-text-muted);
       font-size: 0.62rem;
       font-weight: 700;
+      letter-spacing: 0.13em;
+      line-height: 1;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--ox-text-muted);
-      margin-right: 4px;
-      flex-shrink: 0;
     }
 
-    .filmstrip__item {
+    .artifact-title {
+      margin: 7px 0 0;
+      overflow-wrap: anywhere;
+      color: var(--ox-text);
+      font-size: 0.94rem;
+      font-weight: 650;
+      line-height: 1.35;
+    }
+
+    .purpose-badge {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
+      flex: 0 0 auto;
+      min-height: 28px;
+      max-width: 48%;
+      padding: 0 9px;
+      border: 1px solid rgba(var(--verification-signal-rgb), 0.28);
       border-radius: 999px;
-      border: 1px solid var(--ox-border);
-      background: var(--ox-well-bg);
-      color: var(--ox-text-muted);
-      font-family: var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-      font-size: 0.68rem;
-      font-weight: 600;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
-        border-color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
-        background var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
-      flex-shrink: 0;
-    }
-    .filmstrip__item:hover {
-      border-color: rgba(var(--ox-primary-rgb), 0.35);
-      color: var(--ox-text);
-    }
-    .filmstrip__item.is-current {
-      color: var(--ox-primary);
-      border-color: rgba(var(--ox-primary-rgb), 0.45);
-      background: rgba(var(--ox-primary-rgb), 0.1);
-    }
-    .filmstrip__dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: currentColor;
-      opacity: 0.6;
+      background: rgba(var(--verification-signal-rgb), 0.09);
+      color: var(--verification-signal);
+      font-family: var(--ox-mono, ui-monospace, monospace);
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      line-height: 1.2;
+      text-align: right;
+      text-transform: uppercase;
     }
 
-    /* ─── attribution + version badge row ──────────────────────── */
-    .attribution-row {
+    .verdict {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr);
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .verdict-mark {
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border: 1px solid rgba(var(--verification-signal-rgb), 0.32);
+      border-radius: 11px;
+      background: rgba(var(--verification-signal-rgb), 0.11);
+      color: var(--verification-signal);
+    }
+
+    .verdict h1 {
+      margin: 0;
+      color: var(--ox-text);
+      font-size: clamp(1.28rem, 4.4vw, 1.72rem);
+      font-weight: 720;
+      letter-spacing: -0.035em;
+      line-height: 1.08;
+    }
+
+    .verdict p {
+      margin: 7px 0 0;
+      max-width: 68ch;
+      color: var(--ox-text-muted);
+      font-size: 0.84rem;
+      line-height: 1.5;
+    }
+
+    .signals {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      border: 1px solid var(--ox-border);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.025);
+      overflow: hidden;
+    }
+
+    .signal {
+      min-width: 0;
+      padding: 11px 12px;
+    }
+    .signal + .signal { border-inline-start: 1px solid var(--ox-border); }
+
+    .signal-label {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--ox-text-muted);
+      font-family: var(--ox-mono, ui-monospace, monospace);
+      font-size: 0.57rem;
+      font-weight: 700;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+    }
+
+    .signal-value {
+      display: block;
+      overflow: hidden;
+      color: var(--ox-text);
+      font-size: 0.75rem;
+      font-weight: 620;
+      line-height: 1.35;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .signal-detail {
+      display: block;
+      margin-top: 2px;
+      color: var(--ox-text-muted);
+      font-family: var(--ox-mono, ui-monospace, monospace);
+      font-size: 0.6rem;
+      line-height: 1.35;
+    }
+
+    .action-region {
       display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .primary-action {
+      position: relative;
+      display: inline-flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      padding: 0 4px;
-      flex-wrap: wrap;
-    }
-
-    .version-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.3);
-      background: rgba(var(--ox-primary-rgb), 0.1);
-      color: var(--ox-primary);
-      font-family: var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-      font-size: 0.64rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    /* ─── decision block ───────────────────────────────────────── */
-    .decision-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    @media (max-width: 520px) {
-      .decision-row { grid-template-columns: 1fr; }
-    }
-
-    .decision-card {
-      position: relative;
-      min-height: 88px;
-      padding: 16px;
-      border-radius: 12px;
-      border: 1px solid var(--ox-border);
-      background: var(--ox-well-bg);
-      display: flex;
-      gap: 12px;
-      align-items: flex-start;
-      cursor: pointer;
-      text-align: left;
-      font: inherit;
-      color: var(--ox-text);
-      overflow: hidden;
-      transition: transform var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
-        border-color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
-        background var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
-    }
-
-    .decision-card:hover {
-      transform: translateY(-1px);
-      border-color: rgba(var(--card-color-rgb), 0.45);
-    }
-
-    .decision-card--approve {
-      --card-color-rgb: var(--ox-primary-rgb);
-    }
-
-    .decision-card--changes {
-      --card-color-rgb: 148, 163, 184; /* slate */
-    }
-
-    .decision-card__icon {
-      flex-shrink: 0;
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
-      background: rgba(var(--card-color-rgb), 0.15);
-      color: rgb(var(--card-color-rgb));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .decision-card__body {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      min-width: 0;
-      flex: 1;
-    }
-
-    .decision-card__title {
-      font-weight: 600;
-      font-size: 0.92rem;
-    }
-
-    .decision-card__detail {
-      font-size: 0.76rem;
-      color: var(--ox-text-muted);
-    }
-
-    /* Hold-to-approve — the approve card fills from left-to-right
-       while the user holds. Release early → resets. 100% → commits.
-       The visual affordance doubles as the weight-of-decision signal. */
-    .decision-card__hold {
-      position: absolute;
-      top: 0;
-      left: 0;
-      bottom: 0;
-      width: 0%;
-      background: rgba(var(--card-color-rgb), 0.15);
-      border-right: 1px solid rgba(var(--card-color-rgb), 0.45);
-      pointer-events: none;
-      transition: width var(--ox-dur-instant, 50ms) linear;
-    }
-    .decision-card.is-holding .decision-card__hold {
-      transition: width 800ms linear;
       width: 100%;
+      min-height: 46px;
+      padding: 0 14px;
+      overflow: hidden;
+      border: 1px solid rgba(var(--verification-signal-rgb), 0.42);
+      border-radius: 11px;
+      background: rgba(var(--verification-signal-rgb), 0.12);
+      color: var(--ox-text);
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.84rem;
+      font-weight: 700;
+      text-align: left;
+      transition: border-color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, ease),
+        background var(--ox-dur-fast, 150ms) var(--ox-ease-standard, ease),
+        transform var(--ox-dur-fast, 150ms) var(--ox-ease-standard, ease);
     }
 
-    /* Resolve — when a decision commits, the stage leaves decisively.
-       Approve / request-changes both accelerate out (exit curve). */
-    .stage.is-resolving {
-      animation: resolve-out var(--ox-dur-base, 250ms) var(--ox-ease-exit, cubic-bezier(0.4, 0, 1, 1)) forwards;
-      pointer-events: none;
+    .primary-action:hover {
+      border-color: rgba(var(--verification-signal-rgb), 0.7);
+      background: rgba(var(--verification-signal-rgb), 0.17);
+      transform: translateY(-1px);
     }
-    @keyframes resolve-out {
-      to { opacity: 0; transform: translateY(-6px) scale(0.99); filter: blur(4px); }
+    .primary-action:focus-visible,
+    .composer textarea:focus-visible,
+    .composer button:focus-visible {
+      outline: 2px solid var(--verification-signal);
+      outline-offset: 2px;
     }
+    .primary-action:disabled { cursor: wait; opacity: 0.7; transform: none; }
 
-    .decision-card__hint {
+    .primary-action__progress {
       position: absolute;
-      top: 10px;
-      right: 12px;
-      font-family: var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-      font-size: 0.56rem;
-      color: rgb(var(--card-color-rgb));
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      opacity: 0.6;
+      inset: 0 auto 0 0;
+      width: 0;
+      pointer-events: none;
+      background: rgba(var(--verification-signal-rgb), 0.18);
+    }
+    .primary-action.is-holding .primary-action__progress {
+      width: 100%;
+      transition: width 820ms linear;
     }
 
-    /* ─── composer (changes-requested) ─────────────────────────── */
-    .composer {
-      display: none;
-      flex-direction: column;
-      gap: 10px;
-      padding: 14px;
-      border: 1px solid rgba(148, 163, 184, 0.35);
-      border-radius: 12px;
-      background: rgba(148, 163, 184, 0.06);
+    .primary-action > span,
+    .primary-action > svg { position: relative; z-index: 1; }
+
+    .action-hint {
+      color: var(--ox-text-muted);
+      font-family: var(--ox-mono, ui-monospace, monospace);
+      font-size: 0.59rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
     }
-    .composer.is-open { display: flex; }
+
+    .composer {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      padding: 12px;
+      border: 1px solid rgba(var(--verification-signal-rgb), 0.28);
+      border-radius: 11px;
+      background: rgba(var(--verification-signal-rgb), 0.06);
+    }
 
     .composer label {
-      font-family: var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-      font-size: 0.62rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
       color: var(--ox-text-muted);
+      font-family: var(--ox-mono, ui-monospace, monospace);
+      font-size: 0.61rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
 
     .composer textarea {
       width: 100%;
-      min-height: 80px;
+      min-height: 82px;
+      padding: 10px 11px;
       resize: vertical;
-      padding: 10px 12px;
       border: 1px solid var(--ox-border);
-      border-radius: 10px;
+      border-radius: 9px;
       background: var(--ox-panel);
       color: var(--ox-text);
       font: inherit;
-      font-size: 0.9rem;
-      line-height: 1.5;
-    }
-    .composer textarea:focus-visible {
-      outline: 2px solid rgba(148, 163, 184, 0.5);
-      outline-offset: 2px;
+      font-size: 0.84rem;
+      line-height: 1.45;
     }
 
-    .composer__actions {
-      display: flex;
-      gap: 8px;
-      justify-content: flex-end;
-    }
-
-    .composer-btn {
-      padding: 8px 16px;
-      border-radius: 10px;
+    .composer-actions { display: flex; justify-content: flex-end; gap: 8px; }
+    .composer button {
+      min-height: 40px;
+      padding: 0 12px;
       border: 1px solid var(--ox-border);
+      border-radius: 9px;
       background: var(--ox-panel);
       color: var(--ox-text);
-      font-weight: 600;
-      font-size: 0.82rem;
       cursor: pointer;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 650;
     }
-    .composer-btn--primary {
-      background: rgb(148, 163, 184);
-      color: var(--ox-bg);
-      border-color: rgb(148, 163, 184);
+    .composer button[data-submit] {
+      border-color: rgba(var(--verification-signal-rgb), 0.5);
+      background: rgba(var(--verification-signal-rgb), 0.16);
     }
 
-    /* ─── footer ───────────────────────────────────────────────── */
-    .widget-foot {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding-top: 12px;
-      border-top: 1px solid var(--ox-border);
-      font-family: var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-      font-size: 0.65rem;
+    .action-status {
+      min-height: 18px;
       color: var(--ox-text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
+      font-size: 0.72rem;
+      line-height: 1.4;
     }
-    .widget-foot a {
-      color: var(--ox-primary);
-      text-decoration: none;
-    }
-    .widget-foot a:hover { text-decoration: underline; }
+    .action-status[data-error="true"] { color: #fb7185; }
 
-    /* ─── empty + error states ─────────────────────────────────── */
     .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 48px 24px;
-      text-align: center;
+      padding: 34px 22px;
       color: var(--ox-text-muted);
+      font-size: 0.88rem;
+      line-height: 1.5;
+      text-align: center;
     }
-    .empty-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: rgba(var(--ox-primary-rgb), 0.1);
-      color: var(--ox-primary);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 14px;
+
+    @media (max-width: 520px) {
+      .verification-inner { padding: 17px 15px 15px 18px; }
+      .artifact-heading { align-items: flex-start; }
+      .purpose-badge { max-width: 46%; }
+      .signals { grid-template-columns: 1fr; }
+      .signal + .signal { border-top: 1px solid var(--ox-border); border-inline-start: 0; }
+      .signal-value { white-space: normal; }
+      .verdict { grid-template-columns: 32px minmax(0, 1fr); gap: 10px; }
+      .verdict-mark { width: 32px; height: 32px; border-radius: 9px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 1ms !important; animation-duration: 1ms !important; }
     }
   </style>
 </head>
 <body>
-  <div class="widget-shell-card animate-in">
-    <div class="ox-card">
-      <div class="ox-card-inner">
-        <div class="widget-hero">
-          <div class="widget-hero-copy">
-            <div class="widget-kicker">Artifact Review</div>
-            <div class="widget-title-lg" data-artifact-title>Ready when you are</div>
-            <div class="widget-subtitle" data-artifact-subtitle>Approve or request changes — production artifacts need a human signature.</div>
-          </div>
-          <div class="widget-icon-frame">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg>
-          </div>
-        </div>
-
-        <div class="stage" data-stage></div>
-      </div>
-    </div>
-  </div>
+  <main class="widget-shell-card animate-in" aria-live="polite">
+    <section data-stage></section>
+  </main>
 
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
-  <script src="shared/components/domain-accent.js"></script>
   <script>
-    (function () {
+    (function installArtifactVerificationWidget() {
       'use strict';
 
-      // ─── SDK shim ────────────────────────────────────────────────
-      function callTool(name, args) {
-        return window.OrgXWidgetRuntime.callTool(name, args || {});
+      var APP_BASE_URL = 'https://useorgx.com';
+      var currentResponse = null;
+
+      function asObject(value) {
+        return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
       }
 
-      function openWidgetLink(url) {
-        return window.OrgXWidgetRuntime.openWidgetLink(url);
+      function cleanText(value, fallback) {
+        return typeof value === 'string' && value.trim() ? value.trim() : fallback;
       }
 
-      function reportSize() {
-        window.OrgXWidgetRuntime.reportSize();
+      function escapeHtml(value) {
+        var node = document.createElement('div');
+        node.textContent = cleanText(value, '');
+        return node.innerHTML;
       }
 
-      // ─── data resolution ─────────────────────────────────────────
-      function resolveArtifact() {
-        const toolOutput = (window.openai && window.openai.toolOutput) || null;
-        if (toolOutput && toolOutput.artifact) return toolOutput;
-        if (toolOutput && toolOutput.id) return { artifact: toolOutput };
+      function normalizeReviewResponse(value) {
+        var payload = asObject(value);
+        if (payload.structuredContent) payload = asObject(payload.structuredContent);
+        if (payload.data && !payload.artifact) payload = asObject(payload.data);
+        return {
+          raw: payload,
+          artifact: asObject(payload.artifact),
+          contract: asObject(payload.reviewContract),
+        };
+      }
 
-        // Demo payload for gallery / dev.
+      function scoreText(quality) {
+        var state = cleanText(quality.state, 'unavailable').replace(/_/g, ' ');
+        var score = typeof quality.score === 'number' ? quality.score.toFixed(2) : null;
+        var threshold = typeof quality.threshold === 'number' ? quality.threshold.toFixed(2) : null;
+        return {
+          value: state,
+          detail: score && threshold ? score + ' / ' + threshold + ' bar' : cleanText(quality.reason, 'No current score'),
+        };
+      }
+
+      function choosePrimaryAction(model) {
+        var contract = model.contract;
+        var purpose = asObject(contract.purpose);
+        var authority = asObject(contract.authority);
+        var quality = asObject(contract.quality);
+        var ruling = asObject(contract.ruling);
+        var artifactId = cleanText(model.artifact.id, '');
+        var href = APP_BASE_URL + '/artifacts/' + encodeURIComponent(artifactId);
+
+        if (!artifactId) return { kind: 'none', label: '', href: '' };
+        if (purpose.reviewRequired !== true || authority.canReview !== true) {
+          return { kind: 'open', label: purpose.reviewRequired === false ? 'Inspect evidence in OrgX' : 'Open verification in OrgX', href: href };
+        }
+        if (['accepted', 'changes_requested', 'rejected'].indexOf(ruling.state) >= 0) {
+          return { kind: 'open', label: 'Open ruling in OrgX', href: href };
+        }
+        if (quality.state === 'failed') {
+          return { kind: 'changes_requested', label: 'Request a stronger iteration', href: href };
+        }
+        if (quality.state === 'cleared') {
+          return { kind: 'approved', label: 'Hold to record approval', href: href };
+        }
+        return { kind: 'open', label: 'Inspect quality evidence', href: href };
+      }
+
+      function demoResponse() {
+        var mode = new URLSearchParams(window.location.search).get('state') || 'ready';
+        var evidenceOnly = mode === 'evidence';
+        var failed = mode === 'failed';
+        var approved = mode === 'approved';
         return {
           artifact: {
-            id: 'ART-DEMO',
-            name: 'Amplify launch landing — v3',
-            artifact_type: 'design.mockup',
-            artifact_url: 'https://picsum.photos/seed/orgx-art/900/500',
-            status: 'in_review',
+            id: 'artifact-demo-verified',
+            name: evidenceOnly ? 'Browser verification receipt' : 'Launch narrative v3',
+            artifact_type: evidenceOnly ? 'proof.link' : 'marketing.launch_asset',
+            status: approved ? 'approved' : 'in_review',
             version: 3,
-            summary: 'Marketing hero revised for the founder-led narrative. Awaiting design review before the Amplify launch window.',
-            author: { name: 'Mark', domain: 'marketing', role: 'Marketing' },
-            versions: [
-              { version: 1, updated_at: '2026-04-10T12:00:00Z' },
-              { version: 2, updated_at: '2026-04-12T15:30:00Z' },
-              { version: 3, updated_at: '2026-04-16T09:15:00Z' },
-            ],
-            entity_type: 'initiative',
-            entity_id: 'INI-AMPLIFY',
+          },
+          reviewContract: {
+            schemaVersion: 'artifact_review_contract.v1',
+            purpose: { kind: evidenceOnly ? 'evidence' : 'deliverable', label: evidenceOnly ? 'Evidence' : 'Deliverable', reviewRequired: !evidenceOnly },
+            modality: { kind: evidenceOnly ? 'web' : 'document', label: evidenceOnly ? 'Web experience' : 'Document' },
+            quality: {
+              state: evidenceOnly ? 'skipped' : failed ? 'failed' : 'cleared',
+              score: evidenceOnly ? null : failed ? 0.71 : 0.91,
+              threshold: 0.85,
+              reason: evidenceOnly ? 'Evidence records are inspected, never passed.' : failed ? 'The current run found unsupported outcome claims.' : 'Current evaluation cleared the configured quality bar.',
+            },
+            ruling: {
+              state: approved ? 'accepted' : 'pending',
+              label: approved ? 'Accepted' : 'Pending human ruling',
+              actorKind: approved ? 'human' : 'unknown',
+              note: null,
+            },
+            outcome: { state: approved ? 'validated' : 'unobserved', label: approved ? 'Outcome validated' : 'No outcome observed', count: approved ? 1 : 0 },
+            workflow: {
+              headline: evidenceOnly ? 'Inspect evidence' : failed ? 'Below the quality bar' : approved ? 'Cleared to advance' : 'Ready for a decision',
+              reason: evidenceOnly ? 'This record supports another artifact; it is not an approval target.' : failed ? 'Machine evidence is current and the measured quality is below the configured bar.' : approved ? 'Current quality evidence cleared the bar and an authorized reviewer accepted the work.' : 'Quality cleared; an authorized human must now rule.',
+              tone: evidenceOnly ? 'neutral' : failed ? 'critical' : approved ? 'positive' : 'attention',
+              canAdvance: approved,
+            },
+            authority: { canReview: !evidenceOnly, canRerun: false, canOverride: false, canEditPolicy: false },
+            lineage: { version: 3, state: 'current' },
           },
         };
       }
 
-      // ─── helpers ─────────────────────────────────────────────────
-      function escapeHtml(str) {
-        if (!str) return '';
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
+      function iconForTone(tone) {
+        if (tone === 'positive') return '<path d="M5 12.5 9.2 17 19 7"/>';
+        if (tone === 'critical') return '<path d="M12 8v5"/><path d="M12 17h.01"/><path d="M10.3 3.7 2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 3.7a2 2 0 0 0-3.4 0Z"/>';
+        if (tone === 'active') return '<path d="M12 2v4m0 12v4M4.9 4.9l2.8 2.8m8.6 8.6 2.8 2.8M2 12h4m12 0h4M4.9 19.1l2.8-2.8m8.6-8.6 2.8-2.8"/>';
+        return '<path d="M12 9v4"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="9"/>';
       }
 
-      function formatRelative(iso) {
-        if (!iso) return '';
-        const then = new Date(iso).getTime();
-        const now = Date.now();
-        const delta = Math.max(0, now - then);
-        const min = Math.round(delta / 60000);
-        if (min < 1) return 'just now';
-        if (min < 60) return min + 'm ago';
-        const hr = Math.round(min / 60);
-        if (hr < 24) return hr + 'h ago';
-        const d = Math.round(hr / 24);
-        return d + 'd ago';
+      function renderAction(model, action) {
+        if (action.kind === 'none') return '';
+        var icon = action.kind === 'open'
+          ? '<path d="M14 3h7v7"/><path d="m10 14 11-11"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/>'
+          : action.kind === 'approved'
+            ? '<path d="m5 12 4 4L19 6"/>'
+            : '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/>';
+        return (
+          '<div class="action-region" data-action-region>' +
+            '<button class="primary-action" type="button" data-primary-action="' + action.kind + '" data-href="' + escapeHtml(action.href) + '">' +
+              '<span class="primary-action__progress" aria-hidden="true"></span>' +
+              '<span>' + escapeHtml(action.label) + '</span>' +
+              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + icon + '</svg>' +
+            '</button>' +
+            (action.kind === 'approved' ? '<div class="action-hint">Release early to cancel · current server state renders after submit</div>' : '') +
+            '<div class="action-status" data-action-status></div>' +
+          '</div>'
+        );
       }
 
-      function renderPreview(artifact) {
-        const type = (artifact.artifact_type || '').toLowerCase();
-        const url = artifact.artifact_url || '';
+      function render(value) {
+        var model = normalizeReviewResponse(value);
+        currentResponse = model.raw;
+        var stage = document.querySelector('[data-stage]');
+        if (!stage) return;
 
-        if (url && (type.startsWith('image') || type.includes('mockup') || type.includes('screenshot') || type.includes('design'))) {
-          return '<img src="' + escapeHtml(url) + '" alt="' + escapeHtml(artifact.name || 'artifact') + '" />';
+        if (!model.artifact.id) {
+          stage.innerHTML = '<div class="verification-card"><div class="empty-state">No artifact verification is waiting for you.</div></div>';
+          window.OrgXWidgetRuntime.reportSize();
+          return;
         }
 
-        if (type.includes('markdown') || type.includes('doc') || artifact.content) {
-          const content = artifact.content || artifact.summary || '';
-          return '<div class="artifact-preview__markdown">' + escapeHtml(content).replace(/\n\n/g, '</p><p>').replace(/^(.+)$/, '<p>$1</p>') + '</div>';
+        var contract = model.contract;
+        var purpose = asObject(contract.purpose);
+        var modality = asObject(contract.modality);
+        var workflow = asObject(contract.workflow);
+        var quality = asObject(contract.quality);
+        var ruling = asObject(contract.ruling);
+        var outcome = asObject(contract.outcome);
+        var lineage = asObject(contract.lineage);
+        var tone = cleanText(workflow.tone, 'neutral');
+        var hasCanonicalContract = cleanText(contract.schemaVersion, '') === 'artifact_review_contract.v1';
+        if (!hasCanonicalContract) {
+          workflow = { headline: 'Verification unavailable', reason: 'Open the artifact to inspect its source. No pass or approval is inferred from legacy fields.', tone: 'attention' };
+          tone = 'attention';
         }
+        var machine = scoreText(quality);
+        var action = choosePrimaryAction(model);
+        if (!hasCanonicalContract) action = { kind: 'open', label: 'Open artifact in OrgX', href: APP_BASE_URL + '/artifacts/' + encodeURIComponent(cleanText(model.artifact.id, '')) };
+        var title = cleanText(model.artifact.name, cleanText(model.artifact.title, 'Artifact verification'));
+        var version = typeof lineage.version === 'number' ? lineage.version : typeof model.artifact.version === 'number' ? model.artifact.version : 1;
 
-        if (type.includes('code') || artifact.code) {
-          return '<pre>' + escapeHtml(artifact.code || artifact.summary || '') + '</pre>';
+        stage.innerHTML = (
+          '<article class="verification-card" data-tone="' + escapeHtml(tone) + '">' +
+            '<div class="verification-inner">' +
+              '<header class="artifact-heading">' +
+                '<div class="artifact-copy"><div class="eyebrow">Artifact verification</div><div class="artifact-title">' + escapeHtml(title) + '</div></div>' +
+                '<div class="purpose-badge">' + escapeHtml(cleanText(purpose.label, 'Artifact')) + ' · ' + escapeHtml(cleanText(modality.label, 'Unknown')) + ' · v' + version + '</div>' +
+              '</header>' +
+              '<section class="verdict">' +
+                '<div class="verdict-mark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + iconForTone(tone) + '</svg></div>' +
+                '<div><h1>' + escapeHtml(cleanText(workflow.headline, 'Verification unavailable')) + '</h1><p>' + escapeHtml(cleanText(workflow.reason, 'No canonical verification reason was returned.')) + '</p></div>' +
+              '</section>' +
+              '<section class="signals" aria-label="Verification signals">' +
+                '<div class="signal"><span class="signal-label">Machine quality</span><span class="signal-value">' + escapeHtml(machine.value) + '</span><span class="signal-detail">' + escapeHtml(machine.detail) + '</span></div>' +
+                '<div class="signal"><span class="signal-label">Human ruling</span><span class="signal-value">' + escapeHtml(cleanText(ruling.label, 'Not recorded')) + '</span><span class="signal-detail">' + escapeHtml(cleanText(ruling.actorKind, 'No authority')) + '</span></div>' +
+                '<div class="signal"><span class="signal-label">Outcome</span><span class="signal-value">' + escapeHtml(cleanText(outcome.label, 'Not observed')) + '</span><span class="signal-detail">' + (typeof outcome.count === 'number' ? outcome.count : 0) + ' observation' + (outcome.count === 1 ? '' : 's') + '</span></div>' +
+              '</section>' +
+              renderAction(model, action) +
+            '</div>' +
+          '</article>'
+        );
+
+        bindAction(model, action);
+        window.OrgXWidgetRuntime.reportSize();
+      }
+
+      function setStatus(message, isError) {
+        var status = document.querySelector('[data-action-status]');
+        if (!status) return;
+        status.textContent = message || '';
+        status.setAttribute('data-error', isError ? 'true' : 'false');
+        window.OrgXWidgetRuntime.reportSize();
+      }
+
+      async function submitRuling(model, status, note) {
+        var button = document.querySelector('[data-primary-action]');
+        if (button) button.disabled = true;
+        setStatus('Recording against the canonical artifact state…', false);
+        try {
+          var result = await window.OrgXWidgetRuntime.callTool('submit_artifact_review', {
+            artifact_id: model.artifact.id,
+            status: status,
+            note: note || undefined,
+          });
+          var refreshed = normalizeReviewResponse(result);
+          if (!refreshed.artifact.id || !refreshed.contract.schemaVersion) {
+            throw new Error('The server did not return refreshed verification state.');
+          }
+          render(refreshed.raw);
+        } catch (error) {
+          if (button) button.disabled = false;
+          setStatus(error instanceof Error ? error.message : 'Artifact ruling could not be recorded.', true);
         }
-
-        // Fallback: placeholder with summary
-        return (
-          '<div class="artifact-preview__placeholder">' +
-          '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h7M7 16h10"/></svg>' +
-          '<div>' + escapeHtml(artifact.summary || 'Preview unavailable for this artifact type.') + '</div>' +
-          '</div>'
-        );
       }
 
-      function renderFilmstrip(artifact) {
-        const versions = Array.isArray(artifact.versions) && artifact.versions.length ? artifact.versions : [{ version: artifact.version || 1 }];
-        const current = artifact.version || versions[versions.length - 1].version;
-        return (
-          '<div class="filmstrip" role="tablist" aria-label="Artifact version history">' +
-          '<span class="filmstrip__label">Versions</span>' +
-          versions.map(function (v) {
-            const isCurrent = v.version === current;
-            return (
-              '<button class="filmstrip__item' + (isCurrent ? ' is-current' : '') + '" type="button" role="tab" aria-selected="' + isCurrent + '" data-version="' + v.version + '">' +
-              '<span class="filmstrip__dot"></span>' +
-              '<span>v' + v.version + '</span>' +
-              '</button>'
-            );
-          }).join('') +
+      function openChangesComposer(model) {
+        var region = document.querySelector('[data-action-region]');
+        if (!region) return;
+        region.innerHTML = (
+          '<div class="composer">' +
+            '<label for="artifact-review-note">What must improve?</label>' +
+            '<textarea id="artifact-review-note" maxlength="4000" placeholder="Name the gap and the evidence that would clear it." data-note></textarea>' +
+            '<div class="composer-actions"><button type="button" data-cancel>Cancel</button><button type="button" data-submit>Request changes</button></div>' +
+            '<div class="action-status" data-action-status></div>' +
           '</div>'
         );
+        var note = region.querySelector('[data-note]');
+        var cancel = region.querySelector('[data-cancel]');
+        var submit = region.querySelector('[data-submit]');
+        if (note) note.focus();
+        if (cancel) cancel.addEventListener('click', function () { render(currentResponse); });
+        if (submit) submit.addEventListener('click', function () {
+          var text = cleanText(note && note.value, '');
+          if (!text) { setStatus('Specific feedback is required before rework can start.', true); if (note) note.focus(); return; }
+          submitRuling(model, 'changes_requested', text);
+        });
+        window.OrgXWidgetRuntime.reportSize();
       }
 
-      function renderAttribution(artifact) {
-        const authorChip = window.OrgxDomain
-          ? window.OrgxDomain.renderAgentChip(artifact.author || { name: 'Unassigned', domain: 'orchestrator' }, { size: 'sm' })
-          : '';
-        const version = artifact.version || 1;
-        return (
-          '<div class="attribution-row">' +
-          authorChip +
-          '<span class="version-badge">v' + version + ' · ' + (artifact.status || 'in_review').replace('_', ' ') + '</span>' +
-          '</div>'
-        );
-      }
-
-      function renderDecisionRow() {
-        return (
-          '<div class="decision-row">' +
-          '<button class="decision-card decision-card--approve" data-action="approve" type="button">' +
-          '<div class="decision-card__hold" aria-hidden="true"></div>' +
-          '<span class="decision-card__hint">hold to approve</span>' +
-          '<div class="decision-card__icon">' +
-          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>' +
-          '</div>' +
-          '<div class="decision-card__body">' +
-          '<div class="decision-card__title">Approve</div>' +
-          '<div class="decision-card__detail">Sign off and advance to production.</div>' +
-          '</div>' +
-          '</button>' +
-          '<button class="decision-card decision-card--changes" data-action="request-changes" type="button">' +
-          '<div class="decision-card__icon">' +
-          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3l7 7-11 11H3v-7z"/></svg>' +
-          '</div>' +
-          '<div class="decision-card__body">' +
-          '<div class="decision-card__title">Request changes</div>' +
-          '<div class="decision-card__detail">File a change request — author is notified.</div>' +
-          '</div>' +
-          '</button>' +
-          '</div>' +
-          '<div class="composer" data-composer>' +
-          '<label for="composer-input">What needs to change?</label>' +
-          '<textarea id="composer-input" data-composer-input placeholder="Be specific — this creates a decision entity linked to the artifact."></textarea>' +
-          '<div class="composer__actions">' +
-          '<button class="composer-btn" type="button" data-composer-cancel>Cancel</button>' +
-          '<button class="composer-btn composer-btn--primary" type="button" data-composer-submit>File decision</button>' +
-          '</div>' +
-          '</div>'
-        );
-      }
-
-      function renderFoot(artifact) {
-        const lastVersion = Array.isArray(artifact.versions) && artifact.versions.length
-          ? artifact.versions[artifact.versions.length - 1]
-          : null;
-        const lastLabel = lastVersion && lastVersion.updated_at
-          ? 'Updated ' + formatRelative(lastVersion.updated_at)
-          : '';
-        const deepLink = artifact.id ? '/artifacts/' + artifact.id : null;
-        return (
-          '<div class="widget-foot">' +
-          '<span>' + escapeHtml(lastLabel || 'Fresh artifact') + '</span>' +
-          (deepLink ? '<a data-deeplink href="' + deepLink + '">Open in OrgX →</a>' : '') +
-          '</div>'
-        );
-      }
-
-      // ─── interactions ────────────────────────────────────────────
-      function bindHoldToApprove(card, onCommit) {
-        let timer = null;
-        let committed = false;
-
-        function start(e) {
-          if (committed) return;
-          e.preventDefault();
-          card.classList.add('is-holding');
-          timer = setTimeout(function () {
+      function bindHoldToApprove(button, model) {
+        var timer = null;
+        var committed = false;
+        function start(event) {
+          if (committed || timer || button.disabled) return;
+          event.preventDefault();
+          button.classList.add('is-holding');
+          timer = window.setTimeout(function () {
             committed = true;
-            card.classList.remove('is-holding');
-            onCommit();
-          }, 820);
+            button.classList.remove('is-holding');
+            submitRuling(model, 'approved');
+          }, 840);
         }
         function cancel() {
-          if (timer) {
-            clearTimeout(timer);
-            timer = null;
-          }
-          card.classList.remove('is-holding');
+          if (timer) window.clearTimeout(timer);
+          timer = null;
+          if (!committed) button.classList.remove('is-holding');
         }
-
-        card.addEventListener('pointerdown', start);
-        card.addEventListener('pointerup', cancel);
-        card.addEventListener('pointerleave', cancel);
-        card.addEventListener('pointercancel', cancel);
-        card.addEventListener('keydown', function (e) {
-          if ((e.key === 'Enter' || e.key === ' ') && !committed) {
-            e.preventDefault();
-            start(e);
-          }
+        button.addEventListener('pointerdown', start);
+        button.addEventListener('pointerup', cancel);
+        button.addEventListener('pointerleave', cancel);
+        button.addEventListener('pointercancel', cancel);
+        button.addEventListener('keydown', function (event) {
+          if (event.key === 'Enter' || event.key === ' ') start(event);
         });
-        card.addEventListener('keyup', cancel);
+        button.addEventListener('keyup', cancel);
       }
 
-      // Play the decisive exit on the live stage, then re-render the
-      // resolved state. Exit curve = the decision is leaving the surface.
-      function resolveStage(next) {
-        const stage = document.querySelector('[data-stage]');
-        if (!stage || !stage.animate) { next(); return; }
-        stage.classList.add('is-resolving');
-        let done = false;
-        const finish = function () { if (done) return; done = true; next(); };
-        stage.addEventListener('animationend', finish, { once: true });
-        setTimeout(finish, 320);
-      }
-
-      async function approveArtifact(artifact) {
-        try {
-          await callTool('orgx_act', {
-            type: 'artifact',
-            id: artifact.id,
-            action: 'approve',
+      function bindAction(model, action) {
+        var button = document.querySelector('[data-primary-action]');
+        if (!button) return;
+        if (action.kind === 'open') {
+          button.addEventListener('click', function (event) {
+            event.preventDefault();
+            window.OrgXWidgetRuntime.openWidgetLink(action.href, event);
           });
-          resolveStage(function () { render(Object.assign({}, artifact, { status: 'approved' })); });
-        } catch (err) {
-          console.warn('[artifact-review] approve failed', err);
+        } else if (action.kind === 'changes_requested') {
+          button.addEventListener('click', function () { openChangesComposer(model); });
+        } else if (action.kind === 'approved') {
+          bindHoldToApprove(button, model);
         }
       }
 
-      async function submitChangeRequest(artifact, notes) {
-        try {
-          await callTool('orgx_decide', {
-            action: 'create',
-            title: 'Changes requested on ' + (artifact.name || 'artifact'),
-            summary: notes,
-            context: 'Artifact review change request',
-            entity_type: 'artifact',
-            entity_id: artifact.id,
-            initiative_id: artifact.entity_type === 'initiative' ? artifact.entity_id : undefined,
-          });
-          await callTool('orgx_act', {
-            type: 'artifact',
-            id: artifact.id,
-            action: 'request_changes',
-          });
-          resolveStage(function () { render(Object.assign({}, artifact, { status: 'changes_requested' })); });
-        } catch (err) {
-          console.warn('[artifact-review] change request failed', err);
-        }
-      }
+      window.OrgXArtifactReviewWidgetModel = {
+        normalizeReviewResponse: normalizeReviewResponse,
+        choosePrimaryAction: choosePrimaryAction,
+        scoreText: scoreText,
+      };
 
-      // ─── render ─────────────────────────────────────────────────
-      function render(artifact) {
-        const stage = document.querySelector('[data-stage]');
-        const title = document.querySelector('[data-artifact-title]');
-        const subtitle = document.querySelector('[data-artifact-subtitle]');
-
-        if (!artifact || !artifact.id) {
-          stage.classList.remove('is-resolving');
-          stage.innerHTML = (
-            '<div class="empty-state animate-in">' +
-            '<div class="empty-icon">' +
-            '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
-            '</div>' +
-            '<div>No artifacts waiting for review.</div>' +
-            '</div>'
-          );
-          title.textContent = 'Inbox clear';
-          subtitle.textContent = 'Nothing to sign off on right now.';
-          reportSize();
-          return;
-        }
-
-        title.textContent = artifact.name || 'Artifact review';
-        subtitle.textContent = artifact.summary || 'Production artifact awaiting approval.';
-
-        stage.classList.remove('is-resolving');
-        stage.innerHTML = (
-          '<div class="artifact-preview animate-in">' +
-          '<div class="artifact-preview__body">' + renderPreview(artifact) + '</div>' +
-          renderFilmstrip(artifact) +
-          '</div>' +
-          renderAttribution(artifact) +
-          renderDecisionRow() +
-          renderFoot(artifact)
-        );
-
-        // Wire decisions
-        const approveCard = stage.querySelector('[data-action="approve"]');
-        if (approveCard) bindHoldToApprove(approveCard, function () { approveArtifact(artifact); });
-
-        const changesCard = stage.querySelector('[data-action="request-changes"]');
-        const composer = stage.querySelector('[data-composer]');
-        const composerInput = stage.querySelector('[data-composer-input]');
-        const composerCancel = stage.querySelector('[data-composer-cancel]');
-        const composerSubmit = stage.querySelector('[data-composer-submit]');
-
-        if (changesCard && composer) {
-          changesCard.addEventListener('click', function () {
-            composer.classList.add('is-open');
-            if (composerInput) composerInput.focus();
-            reportSize();
-          });
-        }
-        if (composerCancel) {
-          composerCancel.addEventListener('click', function () {
-            composer.classList.remove('is-open');
-            reportSize();
-          });
-        }
-        if (composerSubmit) {
-          composerSubmit.addEventListener('click', function () {
-            const notes = (composerInput.value || '').trim();
-            if (!notes) {
-              composerInput.focus();
-              return;
-            }
-            submitChangeRequest(artifact, notes);
-          });
-        }
-
-        // Wire deep link
-        const deepLink = stage.querySelector('[data-deeplink]');
-        if (deepLink) {
-          deepLink.addEventListener('click', function (e) {
-            e.preventDefault();
-            openWidgetLink(deepLink.getAttribute('href'));
-          });
-        }
-
-        reportSize();
-      }
-
-      // Bootstrap
       function bootstrap() {
         if (window.OrgXWidgetRuntime.detectProtocol() === 'standalone') {
-          const payload = resolveArtifact();
-          render(payload && payload.artifact ? payload.artifact : payload);
+          render(demoResponse());
           return;
         }
-        window.OrgXWidgetRuntime.initWidget({
-          render: function (payload) {
-            if (!payload) return;
-            render(payload.artifact ? payload.artifact : payload);
-          },
-        });
+        window.OrgXWidgetRuntime.initWidget({ render: render });
       }
 
       document.addEventListener('DOMContentLoaded', bootstrap);
-      window.addEventListener('resize', reportSize);
+      window.addEventListener('resize', window.OrgXWidgetRuntime.reportSize);
     })();
   </script>
 </body>

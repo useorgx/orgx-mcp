@@ -557,9 +557,26 @@ const TOOL_EXAMPLES: Record<
     sample_response: { health: 'on_track', progress: 62 },
   },
   review_artifact: {
-    prompt: 'Review the next artifact awaiting approval.',
+    prompt: 'Verify the next artifact awaiting review.',
     arguments: { workspace_id: 'workspace_123' },
-    sample_response: { artifact: { id: 'artifact_123', status: 'in_review' } },
+    sample_response: {
+      artifact: { id: 'artifact_123', status: 'in_review' },
+      reviewContract: {
+        purpose: { kind: 'deliverable', reviewRequired: true },
+        workflow: { headline: 'Ready for a decision' },
+      },
+    },
+  },
+  submit_artifact_review: {
+    prompt: 'Approve this reviewed artifact.',
+    arguments: { artifact_id: 'artifact_123', status: 'approved' },
+    sample_response: {
+      artifact: { id: 'artifact_123', status: 'approved' },
+      reviewContract: {
+        ruling: { state: 'accepted', actorKind: 'human' },
+        workflow: { headline: 'Cleared to advance' },
+      },
+    },
   },
   get_morning_brief: {
     prompt: 'Show today’s OrgX morning brief.',

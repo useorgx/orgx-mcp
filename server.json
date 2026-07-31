@@ -379,11 +379,21 @@
     {
       "name": "review_artifact",
       "title": "Review Artifact",
-      "description": "Use when the user asks to review work or sign off on a deliverable. Renders the artifact-review widget for approval or change requests.",
+      "description": "Use when the user asks to verify work, review a deliverable, or inspect artifact evidence. Hydrates the canonical artifact review contract and renders the compact verification widget.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": false,
         "destructiveHint": false
+      }
+    },
+    {
+      "name": "submit_artifact_review",
+      "title": "Submit Artifact Ruling",
+      "description": "Record an authorized human artifact ruling through the canonical artifact review endpoint. Supports approved or changes_requested; change requests require specific reviewer feedback.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
       }
     },
     {

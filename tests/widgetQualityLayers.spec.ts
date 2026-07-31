@@ -78,4 +78,17 @@ describe('quality layers widget card', () => {
     // Read-only viewers get no review actions.
     expect(card.actions.map((a) => a.kind)).toEqual(['open_artifact']);
   });
+
+  it('never wires the read-only artifact loader as an eval mutation', () => {
+    const card = buildQualityLayersWidgetCard({
+      payload: PAYLOAD,
+      appBaseUrl: 'https://useorgx.com',
+      canReview: true,
+    });
+    expect(card.actions.map((action) => action.kind)).toEqual([
+      'open_artifact',
+      'adjust_bar',
+    ]);
+    expect(JSON.stringify(card.actions)).not.toContain('review_artifact');
+  });
 });

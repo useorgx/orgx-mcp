@@ -4,8 +4,8 @@
  * Given the response of GET /api/artifacts/:id/layer-verdict (the public-safe
  * verdict endpoint), builds the widget payload an MCP client renders inside
  * ChatGPT/Claude/editors: the never-averaged layer table, score-vs-bar tones,
- * the provisional badge for agent-minted types, and reviewer-gated actions
- * (adjust deep-link, re-run layer eval).
+ * the provisional badge for agent-minted types, and reviewer-gated policy
+ * deep-links. A read tool is never mislabeled as an evaluation mutation.
  *
  * Same honesty rules as the in-app readout: a layer never judged renders
  * neutral ("not judged"), never a fabricated pass/fail; evidence rides with
@@ -60,10 +60,9 @@ export interface QualityLayersWidgetCard {
   rows: QualityLayersWidgetRow[];
   /** Reviewer-gated; clients hide these for read-only viewers. */
   actions: Array<{
-    kind: 'open_artifact' | 'adjust_bar' | 'rerun_layer_eval';
+    kind: 'open_artifact' | 'adjust_bar';
     label: string;
     href?: string;
-    tool?: string;
   }>;
 }
 
@@ -73,7 +72,7 @@ export const WIDGET_QUALITY_LAYERS_CONTRACT = {
   states: {
     full: 'Show the layer table with tones; evidence expands per row.',
     empty:
-      'No layer has been judged yet — say so plainly and offer the re-run action; never fabricate a grade.',
+      'No layer has been judged yet — say so plainly and open the full artifact for the governed recovery path; never fabricate a grade.',
     error:
       'Keep the raw tool result visible with a one-line recovery message.',
   },
@@ -144,20 +143,13 @@ export function buildQualityLayersWidgetCard(input: {
     },
   ];
   if (input.canReview) {
-    actions.push(
-      {
-        kind: 'adjust_bar',
-        label: 'Adjust bar',
-        href: `${base}/settings/quality?type=${encodeURIComponent(
-          p.artifactType ?? ''
-        )}`,
-      },
-      {
-        kind: 'rerun_layer_eval',
-        label: 'Re-run layer eval',
-        tool: 'review_artifact',
-      }
-    );
+    actions.push({
+      kind: 'adjust_bar',
+      label: 'Adjust bar',
+      href: `${base}/settings/quality?type=${encodeURIComponent(
+        p.artifactType ?? ''
+      )}`,
+    });
   }
 
   return {

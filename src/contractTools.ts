@@ -1072,11 +1072,22 @@ export const INLINE_TOOL_CONTRACTS = {
     id: 'review_artifact',
     title: 'Review Artifact',
     description:
-      'Inline app tool for loading the next artifact awaiting review into the artifact-review widget.',
+      'Inline app tool for hydrating the canonical verification contract for one artifact.',
     inputSchema: {
       artifact_id: z.string().optional().describe('Specific artifact ID to review.'),
       entity_id: z.string().optional().describe('Optional entity scope for artifacts.'),
       workspace_id: z.string().optional().describe('Workspace UUID. Defaults to session workspace.'),
+    },
+  },
+  submit_artifact_review: {
+    id: 'submit_artifact_review',
+    title: 'Submit Artifact Ruling',
+    description:
+      'Inline widget action for recording approved or changes_requested through the canonical artifact review endpoint.',
+    inputSchema: {
+      artifact_id: z.string().min(1).describe('Artifact UUID to review.'),
+      status: z.enum(['approved', 'changes_requested']).describe('Human artifact ruling.'),
+      note: z.string().max(4000).optional().describe('Required when requesting changes.'),
     },
   },
   save_artifact: {
