@@ -48,6 +48,60 @@ function createWidget(
   return dom;
 }
 
+function canonicalToolOutput(options: {
+  reviewRequired?: boolean;
+  canReview?: boolean;
+  omitAuthority?: boolean;
+  qualityState?: string;
+  qualityBlocksAdvance?: boolean;
+  modalityBlocksAdvance?: boolean;
+} = {}) {
+  const authority = options.omitAuthority
+    ? undefined
+    : { canReview: options.canReview ?? true };
+  return {
+    artifact: {
+      id: 'artifact-canonical-actions',
+      name: 'Canonical action fixture',
+      version: 2,
+      status: 'in_review',
+    },
+    reviewContractSource: 'canonical',
+    reviewContract: {
+      schemaVersion: 'artifact_review_contract.v1',
+      purpose: { reviewRequired: options.reviewRequired ?? true },
+      quality: {
+        state: options.qualityState ?? 'unscored',
+        score: null,
+        previousScore: null,
+        threshold: 0.85,
+        blocksAdvance: options.qualityBlocksAdvance ?? false,
+        reason: 'Canonical quality policy.',
+        thresholdSource: { kind: 'system_default' },
+        anatomy: null,
+      },
+      ruling: { state: 'pending' },
+      modalityGate: {
+        state: 'not_required',
+        blocksAdvance: options.modalityBlocksAdvance ?? false,
+      },
+      ...(authority ? { authority } : {}),
+      workflow: {
+        headline: 'Awaiting decision',
+        reason: 'Canonical evidence is ready for review.',
+      },
+      lineage: { version: 2 },
+      counts: { evidenceRefs: 0 },
+      evidence: {
+        relationships: [],
+        layers: [],
+        measured: [],
+        observations: [],
+      },
+    },
+  };
+}
+
 describe('artifact review quality anatomy', () => {
   it('keeps the quality bar visible and the ready anatomy compact by default', () => {
     const dom = createWidget('state=ready&theme=dark');
@@ -282,6 +336,58 @@ describe('artifact review quality anatomy', () => {
     expect(
       dom.window.document.querySelector('[data-action="request-changes"]'),
     ).toBeNull();
+  });
+
+  it('keeps canonical non-review targets evidence-only even when authority is present', () => {
+    const dom = createWidget(
+      'theme=dark',
+      canonicalToolOutput({ reviewRequired: false, canReview: true }),
+    );
+
+    expect(dom.window.document.querySelector('[data-action="approve"]')).toBeNull();
+    expect(
+      dom.window.document.querySelector('[data-action="request-changes"]'),
+    ).toBeNull();
+    expect(dom.window.document.body.textContent).toContain(
+      'Review controls unavailable',
+    );
+    expect(
+      (dom.window as unknown as {
+        OrgXWidgetRuntime: { callTool: ReturnType<typeof vi.fn> };
+      }).OrgXWidgetRuntime.callTool,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('fails canonical review authority closed when the envelope omits authority', () => {
+    const dom = createWidget(
+      'theme=dark',
+      canonicalToolOutput({ omitAuthority: true }),
+    );
+
+    expect(dom.window.document.querySelector('[data-action="approve"]')).toBeNull();
+    expect(
+      dom.window.document.querySelector('[data-action="request-changes"]'),
+    ).toBeNull();
+  });
+
+  it('honors canonical optional-quality policy instead of re-blocking unscored state', () => {
+    const dom = createWidget(
+      'theme=dark',
+      canonicalToolOutput({
+        qualityState: 'unscored',
+        qualityBlocksAdvance: false,
+        modalityBlocksAdvance: false,
+      }),
+    );
+
+    expect(
+      dom.window.document.querySelector<HTMLButtonElement>(
+        '[data-action="approve"]',
+      )?.disabled,
+    ).toBe(false);
+    expect(
+      dom.window.document.querySelector('[data-action="request-changes"]'),
+    ).not.toBeNull();
   });
 
   it('preserves the shared theme architecture and responsive evidence geometry', () => {

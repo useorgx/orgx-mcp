@@ -1529,14 +1529,37 @@
           thresholdSource.profileScope,
           thresholdSource.profile_scope,
         ]);
+        const qualityBlocksValue =
+          typeof quality.blocksAdvance === 'boolean'
+            ? quality.blocksAdvance
+            : typeof quality.blocks_advance === 'boolean'
+              ? quality.blocks_advance
+              : null;
+        const modalityBlocksValue =
+          typeof modalityGate.blocksAdvance === 'boolean'
+            ? modalityGate.blocksAdvance
+            : typeof modalityGate.blocks_advance === 'boolean'
+              ? modalityGate.blocks_advance
+              : null;
+        const reviewRequiredValue =
+          typeof purpose.reviewRequired === 'boolean'
+            ? purpose.reviewRequired
+            : typeof purpose.review_required === 'boolean'
+              ? purpose.review_required
+              : null;
+        const canReviewValue =
+          typeof authority.canReview === 'boolean'
+            ? authority.canReview
+            : typeof authority.can_review === 'boolean'
+              ? authority.can_review
+              : null;
         const blocksApproval =
-          quality.blocksAdvance === true ||
-          quality.blocks_advance === true ||
-          modalityGate.blocksAdvance === true ||
-          modalityGate.blocks_advance === true ||
-          purpose.reviewRequired === false ||
-          purpose.review_required === false ||
-          ['failed', 'error', 'stale', 'scoring', 'unscored'].includes(qualityState);
+          qualityBlocksValue === true || modalityBlocksValue === true;
+        const hasCanonicalActionContract =
+          qualityBlocksValue !== null &&
+          modalityBlocksValue !== null &&
+          reviewRequiredValue !== null &&
+          canReviewValue !== null;
         const labels = {
           cleared: 'Verification cleared',
           held: 'Verification held',
@@ -1561,7 +1584,9 @@
             : firstString([thresholdSource.kind]).replace(/_/g, ' ') || 'Quality policy source unavailable',
           blocksApproval: blocksApproval,
           canReview:
-            authority.canReview !== false &&
+            hasCanonicalActionContract &&
+            canReviewValue === true &&
+            reviewRequiredValue === true &&
             !['accepted', 'changes_requested', 'rejected'].includes(rulingState),
           reviewControlsLabel: ['accepted', 'changes_requested', 'rejected'].includes(rulingState)
             ? 'Ruling recorded'

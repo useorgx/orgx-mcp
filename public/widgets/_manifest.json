@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-08-02T16:40:13.510Z",
+  "generatedAt": "2026-08-02T22:15:24.644Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -54,8 +54,8 @@
     },
     "artifact-review": {
       "file": "public/widgets/artifact-review.html",
-      "bytes": 106649,
-      "hash": "4884deea2c82",
+      "bytes": 107622,
+      "hash": "060734d8d032",
       "primaryRgb": "251,191,36",
       "sharedRefs": [
         "shared/components/domain-accent.css",
