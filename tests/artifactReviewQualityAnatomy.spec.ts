@@ -48,6 +48,60 @@ function createWidget(
   return dom;
 }
 
+function canonicalToolOutput(options: {
+  reviewRequired?: boolean;
+  canReview?: boolean;
+  omitAuthority?: boolean;
+  qualityState?: string;
+  qualityBlocksAdvance?: boolean;
+  modalityBlocksAdvance?: boolean;
+} = {}) {
+  const authority = options.omitAuthority
+    ? undefined
+    : { canReview: options.canReview ?? true };
+  return {
+    artifact: {
+      id: 'artifact-canonical-actions',
+      name: 'Canonical action fixture',
+      version: 2,
+      status: 'in_review',
+    },
+    reviewContractSource: 'canonical',
+    reviewContract: {
+      schemaVersion: 'artifact_review_contract.v1',
+      purpose: { reviewRequired: options.reviewRequired ?? true },
+      quality: {
+        state: options.qualityState ?? 'unscored',
+        score: null,
+        previousScore: null,
+        threshold: 0.85,
+        blocksAdvance: options.qualityBlocksAdvance ?? false,
+        reason: 'Canonical quality policy.',
+        thresholdSource: { kind: 'system_default' },
+        anatomy: null,
+      },
+      ruling: { state: 'pending' },
+      modalityGate: {
+        state: 'not_required',
+        blocksAdvance: options.modalityBlocksAdvance ?? false,
+      },
+      ...(authority ? { authority } : {}),
+      workflow: {
+        headline: 'Awaiting decision',
+        reason: 'Canonical evidence is ready for review.',
+      },
+      lineage: { version: 2 },
+      counts: { evidenceRefs: 0 },
+      evidence: {
+        relationships: [],
+        layers: [],
+        measured: [],
+        observations: [],
+      },
+    },
+  };
+}
+
 describe('artifact review quality anatomy', () => {
   it('keeps the quality bar visible and the ready anatomy compact by default', () => {
     const dom = createWidget('state=ready&theme=dark');
@@ -122,6 +176,218 @@ describe('artifact review quality anatomy', () => {
     expect(anatomy?.textContent).toContain('No judged criteria');
     expect(anatomy?.textContent).toContain('No measured checks');
     expect(anatomy?.textContent).toContain('No direct observations');
+  });
+
+  it('uses the canonical current-run anatomy over contradictory artifact metadata', () => {
+    const dom = createWidget('anatomy=expanded', {
+      artifact: {
+        id: 'artifact-canonical-held',
+        name: 'Canonical held artifact',
+        version: 4,
+        status: 'in_review',
+        verification: {
+          eval: { status: 'passed', score: 0.99, threshold: 0.85 },
+        },
+      },
+      reviewContractSource: 'canonical',
+      reviewContract: {
+        schemaVersion: 'artifact_review_contract.v1',
+        purpose: { reviewRequired: true },
+        quality: {
+          state: 'failed',
+          score: 0.74,
+          previousScore: 0.94,
+          threshold: 0.85,
+          blocksAdvance: true,
+          reason: 'The current quality evaluation failed.',
+          thresholdSource: {
+            kind: 'eval_profile',
+            profileName: 'Sequel chapter quality',
+            profileVersion: 1,
+            profileScope: 'workspace',
+          },
+          anatomy: {
+            schemaVersion: 'artifact_evaluation_anatomy.v1',
+            source: 'recorded_snapshot',
+            runId: 'eval-current-v4',
+            artifactVersion: 4,
+            profile: {
+              id: 'profile-1',
+              name: 'Sequel chapter quality',
+              version: 1,
+              scope: 'workspace',
+            },
+            threshold: 0.85,
+            runner: { key: 'openai_eval', label: 'Managed eval' },
+            inputSummary: {
+              artifactType: 'document.chapter',
+              modality: 'document',
+              referenceCount: 2,
+              contentDigest: 'sha256:fixture',
+            },
+            criteria: [
+              { label: 'Theoretical contribution', score: 0.59, passed: false },
+              { label: 'Source support', score: 0.63, passed: false },
+              { label: 'Narrative coherence', score: 0.88, passed: true },
+              { label: 'Reader relevance', score: 0.86, passed: true },
+            ],
+            aggregation: { method: 'mean', count: 4 },
+            decision: { score: 0.74, status: 'failed' },
+          },
+        },
+        ruling: { state: 'pending' },
+        modalityGate: { state: 'not_required', blocksAdvance: false },
+        authority: { canReview: true },
+        workflow: {
+          headline: 'Held below bar',
+          reason: 'Two judged inputs remain below the configured bar.',
+        },
+        lineage: { version: 4 },
+        counts: { evidenceRefs: 6 },
+        evidence: {
+          relationships: [{ label: 'Sequel positioning brief' }],
+          layers: [],
+          measured: [
+            { label: 'Citation coverage', passed: false },
+            { label: 'Required sections', passed: true },
+          ],
+          observations: [{ label: 'Mobile proof inspected' }],
+        },
+      },
+    });
+    const gauge = dom.window.document.querySelector('[data-quality-gauge]');
+    const anatomy = dom.window.document.querySelector('[data-quality-anatomy]');
+
+    expect(gauge?.textContent).toContain('Current 74');
+    expect(gauge?.innerHTML).not.toContain('width:99%');
+    expect(anatomy?.textContent).toContain('(59 + 63 + 88 + 86) ÷ 4 = 74');
+    expect(anatomy?.textContent).toContain('4 criteria · 2 below bar');
+    expect(anatomy?.textContent).toContain('2 checks · 1 clear · 1 held');
+    expect(anatomy?.textContent).toContain('1 inspection');
+    expect(
+      dom.window.document.querySelector<HTMLButtonElement>('[data-action="approve"]')
+        ?.disabled,
+    ).toBe(true);
+  });
+
+  it('keeps accepted lifecycle, unscored quality, blocked visual proof, and authority separate', () => {
+    const dom = createWidget('anatomy=expanded', {
+      artifact: {
+        id: 'artifact-approved-unscored',
+        name: 'Approved visual asset',
+        version: 1,
+        status: 'approved',
+      },
+      reviewContractSource: 'canonical',
+      reviewContract: {
+        schemaVersion: 'artifact_review_contract.v1',
+        purpose: { reviewRequired: true },
+        quality: {
+          state: 'unscored',
+          score: null,
+          previousScore: null,
+          threshold: 0.85,
+          blocksAdvance: true,
+          reason: 'No current scored quality evaluation is recorded.',
+          thresholdSource: { kind: 'system_default' },
+          anatomy: null,
+        },
+        ruling: {
+          state: 'accepted',
+          actorKind: 'human',
+          actorLabel: 'Editorial owner',
+        },
+        modalityGate: {
+          state: 'blocked',
+          blocksAdvance: true,
+        },
+        authority: { canReview: true },
+        workflow: {
+          headline: 'Visual proof incomplete',
+          reason: 'Human acceptance is recorded, but visual proof is incomplete.',
+        },
+        lineage: { version: 1 },
+        counts: { evidenceRefs: 1 },
+        evidence: {
+          relationships: [],
+          layers: [
+            { label: 'Visual composition', score: 0.88, passed: true },
+          ],
+          measured: [],
+          observations: [],
+        },
+      },
+    });
+    const anatomy = dom.window.document.querySelector('[data-quality-anatomy]');
+
+    expect(dom.window.document.querySelector('[data-quality-gauge]')?.textContent)
+      .toContain('No current score');
+    expect(dom.window.document.body.textContent).toContain('Ruling recorded');
+    expect(dom.window.document.body.textContent).toContain(
+      'accepted · Editorial owner',
+    );
+    expect(anatomy?.textContent).toContain(
+      'No scored inputs · 1 supporting layer',
+    );
+    expect(anatomy?.textContent).toContain('not score formula');
+    expect(anatomy?.textContent).toContain(
+      'Recorded score · formula unavailable',
+    );
+    expect(
+      dom.window.document.querySelector('[data-action="request-changes"]'),
+    ).toBeNull();
+  });
+
+  it('keeps canonical non-review targets evidence-only even when authority is present', () => {
+    const dom = createWidget(
+      'theme=dark',
+      canonicalToolOutput({ reviewRequired: false, canReview: true }),
+    );
+
+    expect(dom.window.document.querySelector('[data-action="approve"]')).toBeNull();
+    expect(
+      dom.window.document.querySelector('[data-action="request-changes"]'),
+    ).toBeNull();
+    expect(dom.window.document.body.textContent).toContain(
+      'Review controls unavailable',
+    );
+    expect(
+      (dom.window as unknown as {
+        OrgXWidgetRuntime: { callTool: ReturnType<typeof vi.fn> };
+      }).OrgXWidgetRuntime.callTool,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('fails canonical review authority closed when the envelope omits authority', () => {
+    const dom = createWidget(
+      'theme=dark',
+      canonicalToolOutput({ omitAuthority: true }),
+    );
+
+    expect(dom.window.document.querySelector('[data-action="approve"]')).toBeNull();
+    expect(
+      dom.window.document.querySelector('[data-action="request-changes"]'),
+    ).toBeNull();
+  });
+
+  it('honors canonical optional-quality policy instead of re-blocking unscored state', () => {
+    const dom = createWidget(
+      'theme=dark',
+      canonicalToolOutput({
+        qualityState: 'unscored',
+        qualityBlocksAdvance: false,
+        modalityBlocksAdvance: false,
+      }),
+    );
+
+    expect(
+      dom.window.document.querySelector<HTMLButtonElement>(
+        '[data-action="approve"]',
+      )?.disabled,
+    ).toBe(false);
+    expect(
+      dom.window.document.querySelector('[data-action="request-changes"]'),
+    ).not.toBeNull();
   });
 
   it('preserves the shared theme architecture and responsive evidence geometry', () => {

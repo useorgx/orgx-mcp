@@ -22,7 +22,7 @@ describe("OrgX compact widget redesign", () => {
     expect(html).toContain('role="tablist" aria-label="Artifact viewer"');
     expect(html).toContain('data-view-panel="evidence"');
     expect(html).toContain('data-view-panel="history"');
-    expect(html).toContain("function resolveEvidence(artifact)");
+    expect(html).toContain("function resolveEvidence(artifact, reviewContract)");
     expect(html).toContain("Approval is blocked until required verification evidence clears.");
     expect(html).toContain("function resolveReviewerSignal(review)");
     expect(html).toContain("Auto-approved by policy");
