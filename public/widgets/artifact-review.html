@@ -625,6 +625,21 @@
       inset-inline-start: -9px;
       color: var(--ox-text-dim);
     }
+    .quality-anatomy__calculation {
+      padding: 9px 10px;
+      border-top: 1px solid var(--ox-border);
+      color: var(--ox-text);
+      background: rgba(var(--ox-primary-rgb), 0.035);
+      font: 700 0.64rem/1.45 var(--ox-mono);
+      overflow-wrap: anywhere;
+    }
+    .quality-anatomy__calculation span {
+      margin-inline-end: 8px;
+      color: var(--ox-text-muted);
+      font-size: 0.54rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
     .quality-anatomy__grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1124,6 +1139,8 @@
       }
 
       // ─── data resolution ─────────────────────────────────────────
+      let activeReviewContract = null;
+
       function resolveArtifact() {
         const toolOutput = (window.openai && window.openai.toolOutput) || null;
         if (toolOutput && toolOutput.artifact) return toolOutput;
@@ -1427,6 +1444,13 @@
         if (!payload || typeof payload !== 'object') return payload;
         const data = asRecord(payload.data);
         const result = asRecord(payload.result);
+        const reviewContract =
+          payload.reviewContract || data.reviewContract || result.reviewContract;
+        activeReviewContract =
+          reviewContract &&
+          asRecord(reviewContract).schemaVersion === 'artifact_review_contract.v1'
+            ? reviewContract
+            : null;
         const candidate = payload.artifact || data.artifact || result.artifact || payload;
         const error = payload.error || data.error || result.error;
         if (error && !(candidate && (candidate.id || candidate.artifact_id || candidate.artifactId))) {
@@ -1453,7 +1477,107 @@
         return 'Awaiting human decision';
       }
 
-      function resolveEvidence(artifact) {
+      function resolveContractReviewer(ruling) {
+        const state = firstString([ruling.state]).replace(/_/g, ' ');
+        const actorLabel = firstString([ruling.actorLabel, ruling.actor_label]);
+        const actorKind = firstString([ruling.actorKind, ruling.actor_kind]);
+        if (state === 'pending' || state === 'none' || !state) {
+          return 'Awaiting human decision';
+        }
+        return compactLabel(
+          state + (actorLabel ? ' · ' + actorLabel : actorKind ? ' · ' + actorKind : ''),
+          'Review recorded',
+        );
+      }
+
+      function resolveContractEvidence(artifact, reviewContract) {
+        const contract = asRecord(reviewContract);
+        if (contract.schemaVersion !== 'artifact_review_contract.v1') return null;
+        const quality = asRecord(contract.quality);
+        const thresholdSource = asRecord(quality.thresholdSource || quality.threshold_source);
+        const ruling = asRecord(contract.ruling);
+        const authority = asRecord(contract.authority);
+        const purpose = asRecord(contract.purpose);
+        const modalityGate = asRecord(contract.modalityGate || contract.modality_gate);
+        const stateMap = {
+          cleared: 'cleared',
+          failed: 'held',
+          error: 'error',
+          stale: 'stale',
+          scoring: 'pending',
+          unscored: 'not_scored',
+          skipped: 'not_scored',
+        };
+        const qualityState = firstString([quality.state]).toLowerCase();
+        const rulingState = firstString([ruling.state]).toLowerCase();
+        const state = stateMap[qualityState] || 'not_scored';
+        const score = normalizeRatio(firstNumber([quality.score]));
+        const previousScore = normalizeRatio(firstNumber([
+          quality.previousScore,
+          quality.previous_score,
+        ]));
+        const threshold = normalizeRatio(firstNumber([quality.threshold]));
+        const profileName = firstString([
+          thresholdSource.profileName,
+          thresholdSource.profile_name,
+        ]);
+        const profileVersion = firstNumber([
+          thresholdSource.profileVersion,
+          thresholdSource.profile_version,
+        ]);
+        const profileScope = firstString([
+          thresholdSource.profileScope,
+          thresholdSource.profile_scope,
+        ]);
+        const blocksApproval =
+          quality.blocksAdvance === true ||
+          quality.blocks_advance === true ||
+          modalityGate.blocksAdvance === true ||
+          modalityGate.blocks_advance === true ||
+          purpose.reviewRequired === false ||
+          purpose.review_required === false ||
+          ['failed', 'error', 'stale', 'scoring', 'unscored'].includes(qualityState);
+        const labels = {
+          cleared: 'Verification cleared',
+          held: 'Verification held',
+          stale: 'Verification stale',
+          error: 'Verification needs attention',
+          pending: 'Verification pending',
+          not_scored: qualityState === 'skipped' ? 'Verification not required' : 'Not scored yet',
+        };
+        const metadata = asRecord(artifact.metadata);
+
+        return {
+          state: state,
+          label: labels[state],
+          detail: firstString([quality.reason, asRecord(contract.workflow).reason]) ||
+            'Canonical review evidence is attached to this artifact.',
+          score: score,
+          previousScore: previousScore,
+          threshold: threshold,
+          evalStatus: qualityState || 'unscored',
+          profileLabel: profileName
+            ? profileName + (profileVersion === null ? '' : ' v' + profileVersion) + (profileScope ? ' · ' + profileScope : '')
+            : firstString([thresholdSource.kind]).replace(/_/g, ' ') || 'Quality policy source unavailable',
+          blocksApproval: blocksApproval,
+          canReview:
+            authority.canReview !== false &&
+            !['accepted', 'changes_requested', 'rejected'].includes(rulingState),
+          reviewControlsLabel: ['accepted', 'changes_requested', 'rejected'].includes(rulingState)
+            ? 'Ruling recorded'
+            : 'Review controls unavailable',
+          reviewControlsDetail: ['accepted', 'changes_requested', 'rejected'].includes(rulingState)
+            ? resolveContractReviewer(ruling)
+            : 'This evidence is readable, but your current authority cannot record a ruling.',
+          reviewer: resolveContractReviewer(ruling),
+          reviewStatus: firstString([ruling.state]) || 'none',
+          sourceUrl: firstString([artifact.source_url, artifact.sourceUrl, artifact.artifact_url, artifact.artifactUrl, metadata.source_url, metadata.sourceUrl]),
+        };
+      }
+
+      function resolveEvidence(artifact, reviewContract) {
+        const contractEvidence = resolveContractEvidence(artifact, reviewContract);
+        if (contractEvidence) return contractEvidence;
         const metadata = asRecord(artifact.metadata);
         const verification = asRecord(artifact.verification || metadata.verification);
         const evalData = asRecord(verification.eval || metadata.eval || artifact.eval);
@@ -1548,6 +1672,9 @@
             ? profileName + (profileVersion === null ? '' : ' v' + profileVersion) + (profileScope ? ' · ' + profileScope : '')
             : 'Quality policy source unavailable',
           blocksApproval: blocksApproval,
+          canReview: true,
+          reviewControlsLabel: '',
+          reviewControlsDetail: '',
           reviewer: resolveReviewerSignal(review),
           reviewStatus: firstString([review.status, artifact.review_status, artifact.reviewStatus]) || artifact.status,
           sourceUrl: firstString([artifact.source_url, artifact.sourceUrl, artifact.artifact_url, artifact.artifactUrl, metadata.source_url, metadata.sourceUrl]),
@@ -1682,18 +1809,27 @@
         );
       }
 
-      function buildQualityAnatomy(artifact, evidence) {
+      function buildQualityAnatomy(artifact, evidence, reviewContract) {
         const metadata = asRecord(artifact.metadata);
         const verification = asRecord(artifact.verification || metadata.verification);
         const evalData = asRecord(verification.eval || metadata.eval || artifact.eval);
         const report = asRecord(evalData.report);
-        const snapshot = asRecord(
-          evalData.evaluation_anatomy ||
-          evalData.evaluationAnatomy ||
-          report.evaluation_anatomy ||
-          report.evaluationAnatomy
-        );
-        const snapshotInput = asRecord(snapshot.input);
+        const contract = asRecord(reviewContract);
+        const hasCanonicalContract = contract.schemaVersion === 'artifact_review_contract.v1';
+        const contractQuality = asRecord(contract.quality);
+        const contractEvidence = asRecord(contract.evidence);
+        const contractCounts = asRecord(contract.counts);
+        const contractLineage = asRecord(contract.lineage);
+        const canonicalAnatomy = asRecord(contractQuality.anatomy);
+        const snapshot = hasCanonicalContract
+          ? canonicalAnatomy
+          : asRecord(
+              evalData.evaluation_anatomy ||
+              evalData.evaluationAnatomy ||
+              report.evaluation_anatomy ||
+              report.evaluationAnatomy
+            );
+        const snapshotInput = asRecord(snapshot.inputSummary || snapshot.input_summary || snapshot.input);
         const snapshotEvidence = asRecord(snapshot.evidence);
 
         function firstRecords(values) {
@@ -1705,6 +1841,7 @@
         }
 
         const relationships = firstRecords([
+          contractEvidence.relationships,
           snapshotInput.references,
           snapshotInput.relationships,
           snapshot.relationships,
@@ -1714,16 +1851,20 @@
           metadata.relationships,
           artifact.relationships,
         ]);
-        const criteria = firstRecords([
-          snapshot.criteria,
-          snapshot.judged,
-          evalData.criteria,
-          evalData.per_criteria,
-          evalData.perCriteria,
-          evalData.layers,
-          verification.layers,
-        ]);
+        const criteria = firstRecords(hasCanonicalContract
+          ? [snapshot.criteria]
+          : [
+              snapshot.criteria,
+              snapshot.judged,
+              evalData.criteria,
+              evalData.per_criteria,
+              evalData.perCriteria,
+              evalData.layers,
+              verification.layers,
+            ]);
+        const supportingLayers = firstRecords([contractEvidence.layers]);
         const measured = firstRecords([
+          contractEvidence.measured,
           snapshotEvidence.measured,
           snapshot.measured,
           evalData.measured,
@@ -1731,6 +1872,7 @@
           verification.measured,
         ]);
         const observations = firstRecords([
+          contractEvidence.observations,
           snapshotEvidence.observed,
           snapshot.observed,
           snapshot.observations,
@@ -1746,15 +1888,7 @@
           evalData.referenceCount,
         ]));
         const linkedReferenceCount = Math.max(referenceCount === null ? 0 : referenceCount, relationships.length);
-        const judgedCount = Math.max(
-          criteria.length,
-          nonNegativeInteger(firstNumber([
-            snapshot.gradedLayers,
-            snapshot.graded_layers,
-            evalData.gradedLayers,
-            evalData.graded_layers,
-          ])) || 0
-        );
+        const judgedCount = criteria.length;
         const observedCount = Math.max(
           observations.length,
           nonNegativeInteger(firstNumber([
@@ -1765,6 +1899,8 @@
           ])) || 0
         );
         const evidenceRefs = nonNegativeInteger(firstNumber([
+          contractCounts.evidenceRefs,
+          contractCounts.evidence_refs,
           snapshotInput.evidenceRefs,
           snapshotInput.evidence_refs,
           evalData.evidenceRefs,
@@ -1773,6 +1909,7 @@
         const version = nonNegativeInteger(firstNumber([
           snapshotInput.artifactVersion,
           snapshotInput.artifact_version,
+          contractLineage.version,
           artifact.version,
         ])) || 1;
         const criteriaByPriority = criteria.slice().sort(function (left, right) {
@@ -1824,6 +1961,28 @@
           : measured.length + ' checks · ' + measuredClear + ' clear' +
             (measuredHeld ? ' · ' + measuredHeld + ' held' : '') +
             (measuredUnknown ? ' · ' + measuredUnknown + ' unreported' : '');
+        const aggregation = asRecord(snapshot.aggregation);
+        const aggregationMethod = firstString([aggregation.method]);
+        const criterionScores = criteria.map(evidenceRecordScore);
+        const allCriteriaScored =
+          criteria.length > 0 && criterionScores.every(function (score) { return score !== null; });
+        const criterionWeights = criteria.map(function (criterion) {
+          return normalizeRatio(firstNumber([criterion.weight]));
+        });
+        const allCriteriaWeighted =
+          allCriteriaScored && criterionWeights.every(function (weight) { return weight !== null; });
+        let calculation = 'Recorded score · formula unavailable';
+        if (aggregationMethod === 'mean' && allCriteriaScored) {
+          calculation = '(' + criterionScores.map(function (score) {
+            return Math.round(score * 100);
+          }).join(' + ') + ') ÷ ' + criteria.length + ' = ' + scoreLabel;
+        } else if (aggregationMethod === 'weighted_mean' && allCriteriaWeighted) {
+          calculation = criterionScores.map(function (score, index) {
+            return Math.round(score * 100) + '×' + Math.round(criterionWeights[index] * 100) + '%';
+          }).join(' + ') + ' = ' + scoreLabel;
+        } else if (aggregationMethod === 'holistic') {
+          calculation = 'Holistic judgment = ' + scoreLabel;
+        }
 
         return {
           inputCount: inputCount,
@@ -1832,6 +1991,8 @@
           observedCount: observedCount,
           evidenceIsCurrent: evidenceIsCurrent,
           summaryTitle: summaryTitle,
+          calculation: calculation,
+          hasScoredCriteria: criteria.length > 0,
           equation: [
             'v' + version + ' + ' + linkedReferenceCount + ' refs',
             judgedCount + ' criteria',
@@ -1849,9 +2010,15 @@
               lens: 'judged',
               label: 'Judged',
               value: judgedCount === 0
-                ? 'No judged criteria'
+                ? supportingLayers.length
+                  ? 'No scored inputs · ' + supportingLayers.length + ' supporting layer' + (supportingLayers.length === 1 ? '' : 's')
+                  : 'No judged criteria'
                 : judgedCount + ' criteria' + (criteriaHeld ? ' · ' + criteriaHeld + ' below bar' : ''),
-              detail: topEvidenceLabels(criteriaByPriority, judgedCount ? 'Criterion labels not returned' : 'No qualitative judgments returned', true),
+              detail: judgedCount
+                ? topEvidenceLabels(criteriaByPriority, 'Criterion labels not returned', true)
+                : supportingLayers.length
+                  ? topEvidenceLabels(supportingLayers, 'Supporting layers returned', true) + ' · not score formula'
+                  : 'No qualitative judgments returned',
             },
             {
               lens: 'measured',
@@ -1871,8 +2038,8 @@
         };
       }
 
-      function renderQualityAnatomy(artifact, evidence) {
-        const anatomy = buildQualityAnatomy(artifact, evidence);
+      function renderQualityAnatomy(artifact, evidence, reviewContract) {
+        const anatomy = buildQualityAnatomy(artifact, evidence, reviewContract);
         const expanded = new URLSearchParams(window.location.search).get('anatomy') === 'expanded';
         const summaryLabel = anatomy.summaryTitle + ': ' + anatomy.inputCount + ' inputs, ' + anatomy.judgedCount + ' judged, ' + anatomy.measuredCount + ' measured, and ' + anatomy.observedCount + ' observed.' + (anatomy.evidenceIsCurrent ? '' : ' Evidence is context only.');
         const flow = [
@@ -1906,6 +2073,7 @@
           '<span class="quality-anatomy__flow" aria-hidden="true">' + flow + '</span>' +
           '</summary>' +
           '<div class="quality-anatomy__equation" aria-label="Quality decision path">' + equation + '</div>' +
+          '<div class="quality-anatomy__calculation"><span>Calculation</span>' + escapeHtml(anatomy.calculation) + '</div>' +
           '<div class="quality-anatomy__grid" role="list" aria-label="Quality evidence lenses">' + stages + '</div>' +
           '<p class="quality-anatomy__note">' + escapeHtml(note) + '</p>' +
           '</details>'
@@ -1956,6 +2124,15 @@
       }
 
       function renderDecisionRow(evidence) {
+        if (evidence && evidence.canReview === false) {
+          return (
+            '<div class="decision-row" aria-label="Read-only review">' +
+            '<div class="composer" style="display:flex">' +
+            '<strong>' + escapeHtml(evidence.reviewControlsLabel || 'Review controls unavailable') + '</strong>' +
+            '<span>' + escapeHtml(evidence.reviewControlsDetail || 'This evidence is readable, but no ruling can be recorded here.') + '</span>' +
+            '</div></div>'
+          );
+        }
         const approvalDisabled = Boolean(evidence && evidence.blocksApproval);
         return (
           '<div class="decision-row" aria-label="Review actions">' +
@@ -2070,7 +2247,7 @@
       async function approveArtifact(artifact) {
         const button = document.querySelector('[data-action="approve"]');
         const feedback = document.querySelector('[data-review-feedback]');
-        const evidence = resolveEvidence(artifact);
+        const evidence = resolveEvidence(artifact, activeReviewContract);
         if (evidence.blocksApproval) {
           if (feedback) {
             feedback.dataset.tone = 'error';
@@ -2094,7 +2271,10 @@
             id: artifact.id,
             action: 'approve',
           });
-          resolveStage(function () { render(Object.assign({}, artifact, { status: 'approved' })); });
+          resolveStage(function () {
+            activeReviewContract = null;
+            render(Object.assign({}, artifact, { status: 'approved' }));
+          });
         } catch (err) {
           console.warn('[artifact-review] approve failed', err);
           if (button) {
@@ -2139,7 +2319,10 @@
             id: artifact.id,
             action: 'request_changes',
           });
-          resolveStage(function () { render(Object.assign({}, artifact, { status: 'changes_requested' })); });
+          resolveStage(function () {
+            activeReviewContract = null;
+            render(Object.assign({}, artifact, { status: 'changes_requested' }));
+          });
         } catch (err) {
           console.warn('[artifact-review] change request failed', err);
           if (button) {
@@ -2213,11 +2396,19 @@
         }
 
         title.textContent = artifact.name || 'Artifact review';
-        const isResolved = artifact.status === 'approved' || artifact.status === 'changes_requested';
-        const evidence = resolveEvidence(artifact);
-        subtitle.textContent = isResolved
-          ? (artifact.status === 'approved' ? 'Signed off. Execution can continue from this version.' : 'Guidance filed. The author owns the next revision.')
-          : (artifact.summary || 'Production artifact awaiting approval.');
+        const isResolved =
+          !activeReviewContract &&
+          (artifact.status === 'approved' || artifact.status === 'changes_requested');
+        const evidence = resolveEvidence(artifact, activeReviewContract);
+        const canonicalWorkflow = asRecord(asRecord(activeReviewContract).workflow);
+        const rulingRecorded = ['accepted', 'changes_requested', 'rejected'].includes(
+          firstString([evidence.reviewStatus]).toLowerCase(),
+        );
+        subtitle.textContent = activeReviewContract
+          ? firstString([canonicalWorkflow.reason, canonicalWorkflow.headline]) || artifact.summary || 'Canonical review evidence attached.'
+          : isResolved
+            ? (artifact.status === 'approved' ? 'Signed off. Execution can continue from this version.' : 'Guidance filed. The author owns the next revision.')
+            : (artifact.summary || 'Production artifact awaiting approval.');
 
         stage.classList.remove('is-resolving');
         if (isResolved) {
@@ -2255,12 +2446,16 @@
           renderAttribution(artifact) +
           '</div>' +
           '<div class="review-control">' +
-          '<div class="review-status"><span class="review-status__signal">' + (evidence.blocksApproval ? 'Verification held' : 'Needs your signature') + '</span><span>v' + escapeHtml(String(artifact.version || 1)) + '</span></div>' +
-          '<h2 class="review-question">Does this evidence meet the bar to advance?</h2>' +
+          '<div class="review-status"><span class="review-status__signal">' + (rulingRecorded ? 'Human ruling recorded' : evidence.blocksApproval ? 'Verification held' : 'Needs your signature') + '</span><span>v' + escapeHtml(String(artifact.version || 1)) + '</span></div>' +
+          '<h2 class="review-question">' + (rulingRecorded ? 'What remains unresolved after the ruling?' : evidence.canReview === false ? 'What does the current evidence establish?' : 'Does this evidence meet the bar to advance?') + '</h2>' +
           renderQualityGauge(evidence) +
-          '<p class="review-consequence">Approval releases this version to the next execution step. A change request returns precise guidance to ' + escapeHtml((artifact.author && artifact.author.name) || 'the author') + '.</p>' +
+          '<p class="review-consequence">' + (rulingRecorded
+            ? 'The ruling stays recorded. Quality, modality proof, and later outcome receipts remain separate evidence states.'
+            : evidence.canReview === false
+              ? 'This view is evidence-only for your current authority; no ruling will be written.'
+              : 'Approval releases this version to the next execution step. A change request returns precise guidance to ' + escapeHtml((artifact.author && artifact.author.name) || 'the author') + '.') + '</p>' +
           renderDecisionRow(evidence) +
-          renderQualityAnatomy(artifact, evidence) +
+          renderQualityAnatomy(artifact, evidence, activeReviewContract) +
           '</div></div>' +
           renderFoot(artifact)
         );

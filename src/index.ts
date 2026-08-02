@@ -140,6 +140,10 @@ import { validateWriteCreateContract } from './writeContract';
 import { buildLiveFeedWidget } from './liveFeedWidget';
 import { signStreamToken } from './streamToken';
 import { hydrateTaskContext } from './taskContextHydrator';
+import {
+  loadArtifactReviewEnvelope,
+  summarizeArtifactReviewEnvelope,
+} from './artifactReview';
 import { buildWorkspaceCreateBody } from './workspaceTool';
 import { buildEntityUpdateRequest } from './entityUpdateRequest';
 import { buildEntityCollectionSearchParams } from './entityCollectionSearch';
@@ -9182,7 +9186,7 @@ export class OrgXMcp extends McpAgent<
             callApi: ({ env, path, init, userId }) =>
               callOrgxApiJson(env, path, init, {
                 userId,
-                userEmail: this.resolveUserEmail(),
+                userEmail: this.resolveUserEmail() ?? undefined,
                 orgxUserId: this.resolveOrgxUserId(userId),
               }),
             entities: batch,
@@ -11566,21 +11570,25 @@ export class OrgXMcp extends McpAgent<
               };
             }
 
-            const name =
-              typeof artifact.name === 'string'
-                ? artifact.name
-                : typeof artifact.title === 'string'
-                ? (artifact.title as string)
-                : 'artifact';
+            const resolvedUserId = this.resolveUserId();
+            const envelope = await loadArtifactReviewEnvelope({
+              env: this.env,
+              artifact,
+              actor: {
+                userId: resolvedUserId ?? undefined,
+                userEmail: this.resolveUserEmail() ?? undefined,
+                orgxUserId: this.resolveOrgxUserId(resolvedUserId) ?? undefined,
+              },
+            });
 
             return {
               content: [
                 {
                   type: 'text' as const,
-                  text: `Artifact ready for review: **${name}** (status: ${artifact.status ?? 'in_review'}). Approve or request changes inline.`,
+                  text: summarizeArtifactReviewEnvelope(envelope),
                 },
               ],
-              structuredContent: { artifact },
+              structuredContent: envelope,
             };
           })
       );
