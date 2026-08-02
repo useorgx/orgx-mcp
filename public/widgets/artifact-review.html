@@ -483,6 +483,205 @@
       font-size: 0.82rem;
       line-height: 1.5;
     }
+    .quality-gauge {
+      --quality-signal: var(--ox-text-muted);
+      display: grid;
+      gap: 7px;
+      padding-block: 2px;
+    }
+    .quality-gauge[data-quality-state="cleared"] { --quality-signal: var(--ox-teal); }
+    .quality-gauge[data-quality-state="held"],
+    .quality-gauge[data-quality-state="stale"] { --quality-signal: var(--ox-warning); }
+    .quality-gauge[data-quality-state="error"] { --quality-signal: var(--ox-danger); }
+    .quality-gauge[data-quality-state="pending"] { --quality-signal: var(--ox-iris); }
+    .quality-gauge__track {
+      position: relative;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--ox-surface-inset);
+      box-shadow: inset 0 0 0 1px var(--ox-border);
+    }
+    .quality-gauge__fill {
+      position: absolute;
+      inset: 0 auto 0 0;
+      min-width: 2px;
+      border-radius: inherit;
+      background: var(--quality-signal);
+    }
+    .quality-gauge__threshold,
+    .quality-gauge__historical {
+      position: absolute;
+      z-index: 2;
+      top: -4px;
+      width: 2px;
+      height: 15px;
+      border-radius: 2px;
+    }
+    .quality-gauge__threshold {
+      background: var(--ox-text);
+      box-shadow: 0 0 0 3px var(--ox-surface-subtle);
+    }
+    .quality-gauge__historical {
+      z-index: 1;
+      width: 1px;
+      background: repeating-linear-gradient(
+        to bottom,
+        var(--ox-text-muted) 0 3px,
+        transparent 3px 5px
+      );
+    }
+    .quality-gauge__legend {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--ox-text-muted);
+      font: 700 0.58rem/1.3 var(--ox-mono);
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+    .quality-gauge__profile {
+      overflow: hidden;
+      color: var(--ox-text-muted);
+      font: 0.65rem/1.4 var(--ox-mono);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .quality-anatomy {
+      border-block: 1px solid var(--ox-border);
+    }
+    .quality-anatomy > summary {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 18px;
+      align-items: center;
+      gap: 8px;
+      min-height: 48px;
+      padding-block: 9px;
+      color: var(--ox-text);
+      cursor: pointer;
+      list-style: none;
+    }
+    .quality-anatomy > summary::-webkit-details-marker { display: none; }
+    .quality-anatomy__title {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 7px;
+      min-width: 0;
+      font-size: 0.78rem;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+    .quality-anatomy__freshness {
+      color: var(--ox-warning);
+      font: 700 0.52rem/1.2 var(--ox-mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .quality-anatomy__flow {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      min-width: 0;
+    }
+    .quality-anatomy__flow-step {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+      color: var(--ox-text-muted);
+      font: 700 0.5rem/1.2 var(--ox-mono);
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+    .quality-anatomy__flow-step b {
+      color: var(--ox-text);
+      font-size: 0.66rem;
+      letter-spacing: 0;
+    }
+    .quality-anatomy__chevron {
+      color: var(--ox-text-muted);
+      transition: transform var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
+    }
+    .quality-anatomy[open] .quality-anatomy__chevron { transform: rotate(180deg); }
+    .quality-anatomy__equation {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      padding-block: 10px;
+      border-top: 1px solid var(--ox-border);
+      color: var(--ox-text-muted);
+      font: 700 0.54rem/1.3 var(--ox-mono);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .quality-anatomy__equation span {
+      position: relative;
+      min-width: 0;
+      padding-inline-end: 9px;
+      overflow-wrap: anywhere;
+    }
+    .quality-anatomy__equation span + span::before {
+      content: "\2192";
+      position: absolute;
+      inset-inline-start: -9px;
+      color: var(--ox-text-dim);
+    }
+    .quality-anatomy__grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      border-top: 1px solid var(--ox-border);
+    }
+    .quality-anatomy__stage {
+      --lens-signal: var(--ox-text-muted);
+      min-width: 0;
+      padding: 11px 10px 12px;
+    }
+    .quality-anatomy__stage:nth-child(even) { border-inline-start: 1px solid var(--ox-border); }
+    .quality-anatomy__stage:nth-child(n + 3) { border-top: 1px solid var(--ox-border); }
+    .quality-anatomy__stage[data-lens="judged"] { --lens-signal: var(--ox-iris); }
+    .quality-anatomy__stage[data-lens="measured"] { --lens-signal: var(--ox-teal); }
+    .quality-anatomy__stage[data-lens="observed"] { --lens-signal: var(--ox-warning); }
+    .quality-anatomy__stage-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--ox-text-muted);
+      font: 700 0.54rem/1.2 var(--ox-mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .quality-anatomy__stage-label::before {
+      content: "";
+      width: 5px;
+      height: 5px;
+      flex: 0 0 5px;
+      border-radius: 999px;
+      background: var(--lens-signal);
+    }
+    .quality-anatomy__stage-value {
+      margin-top: 7px;
+      color: var(--ox-text);
+      font-size: 0.72rem;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+    .quality-anatomy__stage-detail {
+      display: -webkit-box;
+      margin-top: 3px;
+      overflow: hidden;
+      color: var(--ox-text-muted);
+      font-size: 0.66rem;
+      line-height: 1.4;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+    }
+    .quality-anatomy__note {
+      margin: 0;
+      padding: 10px 2px 11px;
+      border-top: 1px solid var(--ox-border);
+      color: var(--ox-text-muted);
+      font-size: 0.68rem;
+      line-height: 1.45;
+    }
     .artifact-preview {
       border-radius: 12px;
     }
@@ -855,6 +1054,9 @@
         padding: 16px 0 0;
         border-top: 1px solid var(--ox-border);
       }
+      .quality-anatomy__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .quality-anatomy__stage:nth-child(n) { border-top: 0; }
+      .quality-anatomy__stage + .quality-anatomy__stage { border-inline-start: 1px solid var(--ox-border); }
     }
     @media (max-width: 520px) {
       .artifact-preview__body { min-height: 150px; max-height: 210px; }
@@ -867,6 +1069,10 @@
       .version-row__state { grid-column: 2; }
       .widget-foot { align-items: flex-start; flex-direction: column; }
       .widget-foot a { width: 100%; }
+      .quality-anatomy__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .quality-anatomy__stage:nth-child(even) { border-inline-start: 1px solid var(--ox-border); }
+      .quality-anatomy__stage:nth-child(odd) { border-inline-start: 0; }
+      .quality-anatomy__stage:nth-child(n + 3) { border-top: 1px solid var(--ox-border); }
     }
     @media (prefers-reduced-motion: reduce) {
       .skeleton-line { animation: none; }
@@ -931,34 +1137,69 @@
           return { artifact: { __error: 'Artifact evidence could not be loaded. The review remains open and no action was taken.' } };
         }
 
+        const failedFixture = fixtureState === 'urgent' || fixtureState === 'failed';
+
         // Deterministic fixture payload for gallery / dev.
         const payload = {
           artifact: {
             id: 'ART-DEMO',
-            name: 'Amplify launch landing — v3',
-            artifact_type: 'design.mockup',
-            artifact_url: 'https://picsum.photos/seed/orgx-art/900/500',
+            name: failedFixture ? 'Launch narrative — v4' : 'Launch narrative — v5',
+            artifact_type: 'marketing.launch_narrative',
+            artifact_url: '',
             status: 'in_review',
-            version: 3,
-            summary: 'Marketing hero revised for the founder-led narrative. Awaiting design review before the Amplify launch window.',
+            version: failedFixture ? 4 : 5,
+            summary: failedFixture
+              ? 'The narrative is strategically promising, but theory and source support remain below the release bar.'
+              : 'The revised narrative resolves the theory and source gaps and is ready for an authorized ruling.',
+            content: failedFixture
+              ? 'The sequel positions reliable collaboration as a capability teams can practice.\n\nThe current draft has a strong market frame, but two central claims still need direct source support and a sharper theoretical contribution.'
+              : 'The sequel positions reliable collaboration as a capability teams can practice.\n\nEach claim now connects the theoretical frame, source record, and practical implication for leaders evaluating agent-enabled work.',
             author: { name: 'Mark', domain: 'marketing', role: 'Marketing' },
             source_url: 'https://useorgx.com/live/INI-AMPLIFY?artifactId=ART-DEMO',
             verification: {
               eval: {
                 status: 'passed',
-                score: 0.92,
+                score: 0.94,
                 threshold: 0.85,
                 blocks_completion: false,
+                profile_name: 'Enterprise launch package',
+                profile_version: 4,
+                profile_scope: 'workspace',
+                criteria: [
+                  { label: 'Theoretical contribution', score: 0.92, passed: true },
+                  { label: 'Source support', score: 0.9, passed: true },
+                  { label: 'Narrative coherence', score: 0.97, passed: true },
+                  { label: 'Market relevance', score: 0.97, passed: true },
+                ],
+                measured: [
+                  { label: 'Citation coverage', passed: true },
+                  { label: 'Required sections', passed: true },
+                  { label: 'Claim traceability', passed: true },
+                ],
+                observations: [
+                  { label: 'Rendered desktop and mobile output inspected' },
+                ],
+                relationships: [
+                  { label: 'Sequel positioning brief' },
+                  { label: 'Pinned quality rubric' },
+                ],
+                evidence_refs: 8,
               },
               human_review: {
                 status: 'in_review',
               },
             },
-            versions: [
-              { version: 1, updated_at: '2026-04-10T12:00:00Z' },
-              { version: 2, updated_at: '2026-04-12T15:30:00Z' },
-              { version: 3, updated_at: '2026-04-16T09:15:00Z' },
-            ],
+            versions: failedFixture
+              ? [
+                  { version: 2, updated_at: '2026-07-28T12:00:00Z' },
+                  { version: 3, updated_at: '2026-07-31T15:30:00Z' },
+                  { version: 4, updated_at: '2026-08-02T08:15:00Z' },
+                ]
+              : [
+                  { version: 3, updated_at: '2026-07-31T15:30:00Z' },
+                  { version: 4, updated_at: '2026-08-01T09:15:00Z' },
+                  { version: 5, updated_at: '2026-08-02T11:20:00Z' },
+                ],
             entity_type: 'initiative',
             entity_id: 'INI-AMPLIFY',
           },
@@ -967,11 +1208,23 @@
           payload.artifact.name = 'Amplify launch landing — founder continuity narrative, proof sequencing, accessibility pass, and responsive release candidate v3';
           payload.artifact.summary = 'A long-form review fixture verifying that the reviewer can still understand the evidence, consequence, owner, version, and next action without horizontal overflow or buried controls.';
         }
-        if (fixtureState === 'urgent') {
+        if (failedFixture) {
           payload.artifact.verification.eval.status = 'failed';
-          payload.artifact.verification.eval.score = 0.78;
+          payload.artifact.verification.eval.score = 0.74;
+          payload.artifact.verification.eval.previous_score = 0.94;
           payload.artifact.verification.eval.blocks_completion = true;
-          payload.artifact.verification.eval.proof_impact = 'Required evaluation evidence is below the release bar. Inspect the findings in the live initiative before approval.';
+          payload.artifact.verification.eval.proof_impact = 'Theory and source support are below the configured bar. Approval stays held until a stronger version is evaluated.';
+          payload.artifact.verification.eval.criteria = [
+            { label: 'Theoretical contribution', score: 0.59, passed: false },
+            { label: 'Source support', score: 0.63, passed: false },
+            { label: 'Narrative coherence', score: 0.88, passed: true },
+            { label: 'Market relevance', score: 0.86, passed: true },
+          ];
+          payload.artifact.verification.eval.measured = [
+            { label: 'Citation coverage', passed: false },
+            { label: 'Required sections', passed: true },
+            { label: 'Claim traceability', passed: true },
+          ];
         }
         const artifactKind = params.get('artifactKind');
         if (artifactKind === 'diff') {
@@ -1058,6 +1311,86 @@
         return Math.max(0, Math.min(1, value > 1 ? value / 100 : value));
       }
 
+      function nonNegativeInteger(value) {
+        return typeof value === 'number' && Number.isFinite(value) && value >= 0
+          ? Math.floor(value)
+          : null;
+      }
+
+      function compactLabel(value, fallback) {
+        const label = firstString([value, fallback]).replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+        return label.length > 72 ? label.slice(0, 69).trimEnd() + '…' : label;
+      }
+
+      function asEvidenceRecords(value) {
+        if (Array.isArray(value)) {
+          return value.map(asRecord).filter(function (item) { return Object.keys(item).length > 0; });
+        }
+        const record = asRecord(value);
+        return Object.entries(record).map(function (entry) {
+          const nested = asRecord(entry[1]);
+          if (Object.keys(nested).length) {
+            return Object.assign({ label: entry[0] }, nested);
+          }
+          return {
+            label: entry[0],
+            score: typeof entry[1] === 'number' ? entry[1] : undefined,
+            value: entry[1],
+          };
+        });
+      }
+
+      function evidenceRecordLabel(item, fallback) {
+        const record = asRecord(item);
+        return compactLabel(firstString([
+          record.label,
+          record.name,
+          record.title,
+          record.criterion,
+          record.criterion_id,
+          record.criterionId,
+          record.check,
+          record.metric,
+          record.key,
+          record.kind,
+          record.summary,
+        ]), fallback);
+      }
+
+      function evidenceRecordVerdict(item, threshold) {
+        const record = asRecord(item);
+        const booleans = [record.passed, record.pass, record.result, record.value];
+        for (let i = 0; i < booleans.length; i += 1) {
+          if (typeof booleans[i] === 'boolean') return booleans[i];
+        }
+        const state = firstString([record.status, record.state, record.verdict]).toLowerCase();
+        if (['pass', 'passed', 'clear', 'cleared', 'success'].includes(state)) return true;
+        if (['fail', 'failed', 'blocked', 'held', 'error', 'invalid'].includes(state)) return false;
+        const score = normalizeRatio(firstNumber([record.score, record.value]));
+        const bar = normalizeRatio(firstNumber([record.threshold, threshold]));
+        return score !== null && bar !== null ? score >= bar : null;
+      }
+
+      function evidenceRecordScore(item) {
+        const record = asRecord(item);
+        return normalizeRatio(firstNumber([record.score, record.value, record.rating]));
+      }
+
+      function topEvidenceLabels(items, fallback, includeScores) {
+        const seen = new Set();
+        const labels = [];
+        items.forEach(function (item) {
+          if (labels.length >= 2) return;
+          const label = evidenceRecordLabel(item, '');
+          const key = label.toLowerCase();
+          if (!label || seen.has(key)) return;
+          seen.add(key);
+          const score = includeScores ? evidenceRecordScore(item) : null;
+          labels.push(label + (score === null ? '' : ' ' + Math.round(score * 100)));
+        });
+        return labels.length ? labels.join(' · ') : fallback;
+      }
+
       function isSafeMediaUrl(value, allowImageData) {
         return /^https?:\/\//i.test(value) || (allowImageData && /^data:image\//i.test(value));
       }
@@ -1133,6 +1466,14 @@
           artifact.quality_score,
           artifact.qualityScore,
         ]));
+        const previousScore = normalizeRatio(firstNumber([
+          evalData.previous_score,
+          evalData.previousScore,
+          evalData.prior_score,
+          evalData.priorScore,
+          verification.previous_score,
+          verification.previousScore,
+        ]));
         const threshold = normalizeRatio(firstNumber([
           evalData.threshold,
           evalData.quality_threshold,
@@ -1158,28 +1499,54 @@
           artifact.blocksCompletion,
         ].some(function (value) { return value === true; });
         let state = 'not_scored';
-        if (blocksApproval || ['failed', 'blocked', 'stale', 'held'].includes(evalStatus)) state = 'held';
+        if (['error', 'errored', 'invalid'].includes(evalStatus)) state = 'error';
+        else if (blocksApproval || ['failed', 'blocked', 'held'].includes(evalStatus)) state = 'held';
+        else if (evalStatus === 'stale') state = 'stale';
         else if (['queued', 'running', 'pending', 'scoring'].includes(evalStatus)) state = 'pending';
         else if (evalStatus === 'passed' || (score !== null && threshold !== null && score >= threshold)) state = 'cleared';
         const labels = {
           cleared: 'Verification cleared',
           held: 'Verification held',
+          stale: 'Verification stale',
+          error: 'Verification needs attention',
           pending: 'Verification pending',
           not_scored: 'Not scored yet',
         };
         const details = {
           cleared: 'Recorded evidence meets the current quality bar.',
           held: firstString([evalData.proof_impact, evalData.proofImpact, verification.proof_impact, verification.proofImpact]) || 'Required evidence has not cleared the current quality bar.',
+          stale: 'The attached score belongs to an older artifact version and cannot clear this one.',
+          error: 'The current evaluation did not produce a usable score. Prior scores remain historical context only.',
           pending: 'The evaluation is still running. Approval stays available only when policy allows it.',
           not_scored: 'No evaluation result is attached. Review the provenance before signing off.',
         };
+        const profileName = firstString([
+          evalData.profile_name,
+          evalData.profileName,
+          asRecord(evalData.profile).name,
+          asRecord(evalData.profile).label,
+        ]);
+        const profileVersion = firstNumber([
+          evalData.profile_version,
+          evalData.profileVersion,
+          asRecord(evalData.profile).version,
+        ]);
+        const profileScope = firstString([
+          evalData.profile_scope,
+          evalData.profileScope,
+          asRecord(evalData.profile).scope,
+        ]);
         return {
           state: state,
           label: labels[state],
           detail: details[state],
           score: score,
+          previousScore: previousScore,
           threshold: threshold,
           evalStatus: evalStatus || 'not attached',
+          profileLabel: profileName
+            ? profileName + (profileVersion === null ? '' : ' v' + profileVersion) + (profileScope ? ' · ' + profileScope : '')
+            : 'Quality policy source unavailable',
           blocksApproval: blocksApproval,
           reviewer: resolveReviewerSignal(review),
           reviewStatus: firstString([review.status, artifact.review_status, artifact.reviewStatus]) || artifact.status,
@@ -1273,6 +1640,275 @@
             );
           }).join('') +
           '</div>'
+        );
+      }
+
+      function renderQualityGauge(evidence) {
+        if (evidence.threshold === null) return '';
+        const scoreIsCurrent = evidence.state === 'cleared' || evidence.state === 'held';
+        const score = scoreIsCurrent && evidence.score !== null
+          ? Math.round(evidence.score * 100)
+          : null;
+        const previousScore = evidence.previousScore === null
+          ? null
+          : Math.round(evidence.previousScore * 100);
+        const threshold = Math.round(evidence.threshold * 100);
+        const currentLabel = score !== null
+          ? 'Current ' + score
+          : previousScore !== null
+            ? 'Prior ' + previousScore + ' · historical'
+            : evidence.state === 'pending'
+              ? 'Checking now'
+              : 'No current score';
+        const ariaParts = [
+          score === null
+            ? 'No current quality score.'
+            : 'Current quality score ' + score + ' out of 100.',
+        ];
+        if (previousScore !== null) ariaParts.push('Historical score ' + previousScore + '.');
+        ariaParts.push('Quality bar ' + threshold + '.');
+        return (
+          '<section class="quality-gauge" data-quality-gauge data-quality-state="' + escapeAttribute(evidence.state) + '" role="img" aria-label="' + escapeAttribute(ariaParts.join(' ')) + '">' +
+          '<div class="quality-gauge__track">' +
+          (score === null ? '' : '<span class="quality-gauge__fill" style="width:' + score + '%"></span>') +
+          (previousScore === null ? '' : '<span class="quality-gauge__historical" style="left:calc(' + previousScore + '% - 1px)" title="Historical score ' + previousScore + '"></span>') +
+          '<span class="quality-gauge__threshold" style="left:calc(' + threshold + '% - 1px)" title="Quality bar ' + threshold + '"></span>' +
+          '</div>' +
+          '<div class="quality-gauge__legend"><span>' + escapeHtml(currentLabel) + '</span>' +
+          (score !== null && previousScore !== null ? '<span>Prior ' + previousScore + '</span>' : '') +
+          '<span>Quality bar ' + threshold + '</span></div>' +
+          '<div class="quality-gauge__profile" title="' + escapeAttribute(evidence.profileLabel) + '">' + escapeHtml(evidence.profileLabel) + '</div>' +
+          '</section>'
+        );
+      }
+
+      function buildQualityAnatomy(artifact, evidence) {
+        const metadata = asRecord(artifact.metadata);
+        const verification = asRecord(artifact.verification || metadata.verification);
+        const evalData = asRecord(verification.eval || metadata.eval || artifact.eval);
+        const report = asRecord(evalData.report);
+        const snapshot = asRecord(
+          evalData.evaluation_anatomy ||
+          evalData.evaluationAnatomy ||
+          report.evaluation_anatomy ||
+          report.evaluationAnatomy
+        );
+        const snapshotInput = asRecord(snapshot.input);
+        const snapshotEvidence = asRecord(snapshot.evidence);
+
+        function firstRecords(values) {
+          for (let i = 0; i < values.length; i += 1) {
+            const records = asEvidenceRecords(values[i]);
+            if (records.length) return records;
+          }
+          return [];
+        }
+
+        const relationships = firstRecords([
+          snapshotInput.references,
+          snapshotInput.relationships,
+          snapshot.relationships,
+          evalData.relationships,
+          evalData.inputs,
+          verification.relationships,
+          metadata.relationships,
+          artifact.relationships,
+        ]);
+        const criteria = firstRecords([
+          snapshot.criteria,
+          snapshot.judged,
+          evalData.criteria,
+          evalData.per_criteria,
+          evalData.perCriteria,
+          evalData.layers,
+          verification.layers,
+        ]);
+        const measured = firstRecords([
+          snapshotEvidence.measured,
+          snapshot.measured,
+          evalData.measured,
+          evalData.checks,
+          verification.measured,
+        ]);
+        const observations = firstRecords([
+          snapshotEvidence.observed,
+          snapshot.observed,
+          snapshot.observations,
+          evalData.observations,
+          evalData.observed,
+          verification.observations,
+        ]);
+
+        const referenceCount = nonNegativeInteger(firstNumber([
+          snapshotInput.referenceCount,
+          snapshotInput.reference_count,
+          evalData.reference_count,
+          evalData.referenceCount,
+        ]));
+        const linkedReferenceCount = Math.max(referenceCount === null ? 0 : referenceCount, relationships.length);
+        const judgedCount = Math.max(
+          criteria.length,
+          nonNegativeInteger(firstNumber([
+            snapshot.gradedLayers,
+            snapshot.graded_layers,
+            evalData.gradedLayers,
+            evalData.graded_layers,
+          ])) || 0
+        );
+        const observedCount = Math.max(
+          observations.length,
+          nonNegativeInteger(firstNumber([
+            snapshot.observedCount,
+            snapshot.observed_count,
+            evalData.observedCount,
+            evalData.observed_count,
+          ])) || 0
+        );
+        const evidenceRefs = nonNegativeInteger(firstNumber([
+          snapshotInput.evidenceRefs,
+          snapshotInput.evidence_refs,
+          evalData.evidenceRefs,
+          evalData.evidence_refs,
+        ]));
+        const version = nonNegativeInteger(firstNumber([
+          snapshotInput.artifactVersion,
+          snapshotInput.artifact_version,
+          artifact.version,
+        ])) || 1;
+        const criteriaByPriority = criteria.slice().sort(function (left, right) {
+          const leftVerdict = evidenceRecordVerdict(left, evidence.threshold);
+          const rightVerdict = evidenceRecordVerdict(right, evidence.threshold);
+          if (leftVerdict === false && rightVerdict !== false) return -1;
+          if (rightVerdict === false && leftVerdict !== false) return 1;
+          const leftScore = evidenceRecordScore(left);
+          const rightScore = evidenceRecordScore(right);
+          if (leftScore === null || rightScore === null) return 0;
+          return leftScore - rightScore;
+        });
+        const criteriaHeld = criteria.filter(function (item) {
+          return evidenceRecordVerdict(item, evidence.threshold) === false;
+        }).length;
+        let measuredClear = 0;
+        let measuredHeld = 0;
+        let measuredUnknown = 0;
+        measured.forEach(function (item) {
+          const verdict = evidenceRecordVerdict(item, null);
+          if (verdict === true) measuredClear += 1;
+          else if (verdict === false) measuredHeld += 1;
+          else measuredUnknown += 1;
+        });
+        const inputCount = 1 + linkedReferenceCount;
+        const evidenceIsCurrent = evidence.state === 'cleared' || evidence.state === 'held';
+        const scoreLabel = !evidenceIsCurrent || evidence.score === null
+          ? 'No current score'
+          : Math.round(evidence.score * 100);
+        const thresholdLabel = evidence.threshold === null ? 'No bar' : Math.round(evidence.threshold * 100);
+        const decisionLabel = evidence.state === 'cleared'
+          ? 'cleared'
+          : evidence.state === 'held'
+            ? 'held'
+            : evidence.state.replace(/_/g, ' ');
+        const summaryTitle = evidence.score !== null && evidence.state === 'held'
+          ? 'How ' + Math.round(evidence.score * 100) + ' became held'
+          : evidence.score !== null && evidence.state === 'cleared'
+            ? 'How ' + Math.round(evidence.score * 100) + ' cleared the bar'
+            : evidence.state === 'pending'
+              ? 'How this check will decide'
+              : evidence.state === 'stale'
+                ? 'Why this evidence is stale'
+                : evidence.state === 'error'
+                  ? 'Why verification has no current score'
+                  : 'What will be evaluated';
+        const measuredValue = measured.length === 0
+          ? 'No measured checks'
+          : measured.length + ' checks · ' + measuredClear + ' clear' +
+            (measuredHeld ? ' · ' + measuredHeld + ' held' : '') +
+            (measuredUnknown ? ' · ' + measuredUnknown + ' unreported' : '');
+
+        return {
+          inputCount: inputCount,
+          judgedCount: judgedCount,
+          measuredCount: measured.length,
+          observedCount: observedCount,
+          evidenceIsCurrent: evidenceIsCurrent,
+          summaryTitle: summaryTitle,
+          equation: [
+            'v' + version + ' + ' + linkedReferenceCount + ' refs',
+            judgedCount + ' criteria',
+            scoreLabel + ' vs ' + thresholdLabel,
+            decisionLabel,
+          ],
+          stages: [
+            {
+              lens: 'inputs',
+              label: 'Inputs',
+              value: '1 artifact · ' + linkedReferenceCount + ' linked ref' + (linkedReferenceCount === 1 ? '' : 's'),
+              detail: 'Current v' + version + (evidenceRefs === null ? '' : ' · ' + evidenceRefs + ' evidence record' + (evidenceRefs === 1 ? '' : 's')) + ' · ' + topEvidenceLabels(relationships, 'No linked inputs returned', false),
+            },
+            {
+              lens: 'judged',
+              label: 'Judged',
+              value: judgedCount === 0
+                ? 'No judged criteria'
+                : judgedCount + ' criteria' + (criteriaHeld ? ' · ' + criteriaHeld + ' below bar' : ''),
+              detail: topEvidenceLabels(criteriaByPriority, judgedCount ? 'Criterion labels not returned' : 'No qualitative judgments returned', true),
+            },
+            {
+              lens: 'measured',
+              label: 'Measured',
+              value: measuredValue,
+              detail: topEvidenceLabels(measured, 'No deterministic check records returned', false),
+            },
+            {
+              lens: 'observed',
+              label: 'Observed',
+              value: observedCount === 0
+                ? 'No direct observations'
+                : observedCount + ' inspection' + (observedCount === 1 ? '' : 's'),
+              detail: topEvidenceLabels(observations, 'No direct observation records returned', false),
+            },
+          ],
+        };
+      }
+
+      function renderQualityAnatomy(artifact, evidence) {
+        const anatomy = buildQualityAnatomy(artifact, evidence);
+        const expanded = new URLSearchParams(window.location.search).get('anatomy') === 'expanded';
+        const summaryLabel = anatomy.summaryTitle + ': ' + anatomy.inputCount + ' inputs, ' + anatomy.judgedCount + ' judged, ' + anatomy.measuredCount + ' measured, and ' + anatomy.observedCount + ' observed.' + (anatomy.evidenceIsCurrent ? '' : ' Evidence is context only.');
+        const flow = [
+          ['Inputs', anatomy.inputCount],
+          ['Judged', anatomy.judgedCount],
+          ['Measured', anatomy.measuredCount],
+          ['Observed', anatomy.observedCount],
+        ].map(function (item) {
+          return '<span class="quality-anatomy__flow-step"><span>' + item[0] + '</span><b>' + item[1] + '</b></span>';
+        }).join('');
+        const stages = anatomy.stages.map(function (stage) {
+          return (
+            '<div class="quality-anatomy__stage" data-lens="' + stage.lens + '" role="listitem">' +
+            '<div class="quality-anatomy__stage-label">' + escapeHtml(stage.label) + '</div>' +
+            '<div class="quality-anatomy__stage-value">' + escapeHtml(stage.value) + '</div>' +
+            '<div class="quality-anatomy__stage-detail">' + escapeHtml(stage.detail) + '</div>' +
+            '</div>'
+          );
+        }).join('');
+        const equation = anatomy.equation.map(function (step) {
+          return '<span>' + escapeHtml(String(step)) + '</span>';
+        }).join('');
+        const note = anatomy.evidenceIsCurrent
+          ? 'Judged criteria produce the quality score. Measured checks and observations support confidence; neither substitutes for the human ruling or later outcome receipts.'
+          : 'This quality evidence is context only and cannot clear the current version. A fresh judgment is required; later outcome receipts remain separate.';
+        return (
+          '<details class="quality-anatomy" data-quality-anatomy' + (expanded ? ' open' : '') + '>' +
+          '<summary aria-label="' + escapeAttribute(summaryLabel) + '">' +
+          '<span class="quality-anatomy__title">' + escapeHtml(anatomy.summaryTitle) + (anatomy.evidenceIsCurrent ? '' : '<span class="quality-anatomy__freshness">Context only</span>') + '</span>' +
+          '<svg class="quality-anatomy__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>' +
+          '<span class="quality-anatomy__flow" aria-hidden="true">' + flow + '</span>' +
+          '</summary>' +
+          '<div class="quality-anatomy__equation" aria-label="Quality decision path">' + equation + '</div>' +
+          '<div class="quality-anatomy__grid" role="list" aria-label="Quality evidence lenses">' + stages + '</div>' +
+          '<p class="quality-anatomy__note">' + escapeHtml(note) + '</p>' +
+          '</details>'
         );
       }
 
@@ -1621,8 +2257,10 @@
           '<div class="review-control">' +
           '<div class="review-status"><span class="review-status__signal">' + (evidence.blocksApproval ? 'Verification held' : 'Needs your signature') + '</span><span>v' + escapeHtml(String(artifact.version || 1)) + '</span></div>' +
           '<h2 class="review-question">Does this evidence meet the bar to advance?</h2>' +
+          renderQualityGauge(evidence) +
           '<p class="review-consequence">Approval releases this version to the next execution step. A change request returns precise guidance to ' + escapeHtml((artifact.author && artifact.author.name) || 'the author') + '.</p>' +
           renderDecisionRow(evidence) +
+          renderQualityAnatomy(artifact, evidence) +
           '</div></div>' +
           renderFoot(artifact)
         );
