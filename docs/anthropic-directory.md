@@ -21,9 +21,8 @@ Submit this scoped endpoint to Anthropic:
 
 `https://mcp.useorgx.com/mcp?profile=claude-directory`
 
-The `claude-directory` profile exposes eight focused read-only tools:
+The `claude-directory` profile exposes seven focused read-only tools:
 
-- `orgx_bootstrap`
 - `orgx_search`
 - `orgx_inspect`
 - `orgx_recommend`
@@ -73,8 +72,9 @@ Before submission, prepare all of the following:
    - `POST https://useorgx.com/api/review/sessions/<token>/bootstrap`
    - `POST https://useorgx.com/api/review/sessions/<token>/reset`
 9. Reviewer runbook and release-manager checklist included in this repository.
-10. Four response-only PNGs generated from the actual widget HTML, each at
-    least 1000 px on both axes and paired to the exact prompt shown below.
+10. Authenticated response screenshots captured after deployment from real
+    Claude runs against the dedicated reviewer workspace. Synthetic or local
+    fixture renders are excluded from submission evidence.
 
 ## Pre-submission checks
 
@@ -91,45 +91,33 @@ pnpm directory:preflight
 
 Reviewers should be able to perform all of these on the provided account:
 
-1. Bootstrap flow: `orgx_bootstrap` returns the connected workspace and safe
-   next steps without changing OrgX state.
-2. Memory flow: `orgx_search` and `orgx_inspect` retrieve seeded decisions and
+1. Memory flow: `orgx_search` and `orgx_inspect` retrieve seeded decisions and
    artifacts.
-3. Status flow: `get_agent_status` and `get_initiative_pulse` report current
+2. Status flow: `get_agent_status` and `get_initiative_pulse` report current
    execution state.
-4. Briefing flow: `orgx_recommend`, `get_morning_brief`, and
+3. Briefing flow: `orgx_recommend`, `get_morning_brief`, and
    `get_operator_chronicle` return decision support and proof context.
-5. Tool scan: only the eight documented read-only tools are advertised.
-6. Prompt/resource scan: no prompts or skill packs are advertised, and only
+4. Tool scan: only the seven documented read-only tools are advertised.
+5. Prompt/resource scan: no prompts or skill packs are advertised, and only
    the four documented read-only widget families are visible.
-7. Origin check: a POST with `Origin: https://attacker.example` returns `403`,
+6. Origin check: a POST with `Origin: https://attacker.example` returns `403`,
    while the same unauthenticated request without `Origin` reaches the normal
    OAuth challenge instead of the origin guard.
 
 ## Example prompts to include in the submission
 
-1. "Start OrgX and show my workspace context."
-2. "What did we decide about Search Copilot readiness?"
-3. "Give me the pulse for the Search Copilot Readiness initiative."
-4. "Show me what the OrgX agents are doing right now."
-5. "Give me today's morning brief."
+1. "What did we decide about Search Copilot readiness?"
+2. "Give me the pulse for the Search Copilot Readiness initiative."
+3. "Show me what the OrgX agents are doing right now."
+4. "Give me today's morning brief."
 
-## Response screenshot pack
+## Response screenshot evidence
 
-The directory submission intentionally exposes four MCP Apps widget resource
-families. Submit these four response screenshots, not the older landing-page
-or generic demo images:
-
-| Prompt | Production asset |
-|--------|------------------|
-| `What did we decide about Search Copilot readiness?` | <https://mcp.useorgx.com/screenshots/anthropic-memory-search-response.png> |
-| `Show me what the OrgX agents are doing right now.` | <https://mcp.useorgx.com/screenshots/anthropic-agent-status-response.png> |
-| `Give me the pulse for the Search Copilot Readiness initiative.` | <https://mcp.useorgx.com/screenshots/anthropic-initiative-pulse-response.png> |
-| `Give me today's morning brief.` | <https://mcp.useorgx.com/screenshots/anthropic-morning-brief-response.png> |
-
-Run `pnpm screenshots:anthropic` to regenerate the deterministic assets before
-the release gates. The fixtures demonstrate read-only responses only; they do
-not demonstrate writes, approvals, delegation, or initiative scaffolding.
+Screenshot evidence is pending authenticated post-deploy capture. Run the
+exact prompts above in Claude against the deployed directory profile and
+capture the resulting search, agent-status, initiative-pulse, and
+morning-brief responses. Do not use generated fixtures, local widget renders,
+landing-page images, or generic demos as provider evidence.
 
 ## Manual operational checklist
 

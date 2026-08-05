@@ -14,41 +14,28 @@ either changes, update this doc the same day.
 | Server URL | `https://mcp.useorgx.com/mcp?profile=claude-directory` |
 | Transport | Streamable HTTP (primary) · SSE (fallback) |
 | Auth | OAuth 2.0 + PKCE · Dynamic Client Registration |
-| Directory surface | 8 focused read-only tools; no writes, approvals, delegation, or lifecycle mutation |
+| Directory surface | 7 focused read-only tools; no session-state writes, approvals, delegation, or lifecycle mutation |
 | Read scopes used | `decisions:read` · `agents:read` · `initiatives:read` · `memory:read` |
-| Capabilities | 8 read-only tools and 4 read-only widget families; no prompts, skill packs, or generic initiative resource on this profile |
+| Capabilities | 7 read-only tools and 4 read-only widget families; no prompts, skill packs, or generic initiative resource on this profile |
 | HTTPS Origin validation | Yes — every present MCP transport `Origin` is exact-allowlisted before auth/dispatch; invalid origins return `403`; no-`Origin` CLI traffic remains supported |
 | Publisher | OrgX (`com.useorgx/orgx-mcp` in the official MCP Registry) |
 | Support email | reviewers@useorgx.com |
 | Privacy policy | <https://github.com/useorgx/orgx-mcp/blob/main/docs/privacy-policy.md> |
 | Security docs | <https://github.com/useorgx/orgx-mcp/blob/main/docs/security-data-handling.md> |
 
-## Branding assets (all 200 OK as of submission day)
+## Branding assets (verify 200 on submission day)
 
 | Purpose | URL |
 |---------|-----|
 | Square logo (1024 × 1024) | <https://mcp.useorgx.com/orgx-logo.png> |
 | Favicon (multi-res .ico) | <https://mcp.useorgx.com/favicon.ico> |
-| Response screenshot — memory search | <https://mcp.useorgx.com/screenshots/anthropic-memory-search-response.png> |
-| Response screenshot — agent status | <https://mcp.useorgx.com/screenshots/anthropic-agent-status-response.png> |
-| Response screenshot — initiative pulse | <https://mcp.useorgx.com/screenshots/anthropic-initiative-pulse-response.png> |
-| Response screenshot — morning brief | <https://mcp.useorgx.com/screenshots/anthropic-morning-brief-response.png> |
 | Open Graph preview | <https://mcp.useorgx.com/screenshots/orgx-mcp-og.png> |
 
-The four response screenshots are the directory submission set. They are
-captured from the actual MCP Apps widget HTML with read-only seeded tool
-results, are each at least 1000 px on both axes, and map to these exact prompts:
-
-| Screenshot | Paired prompt |
-|------------|---------------|
-| `anthropic-memory-search-response.png` | `What did we decide about Search Copilot readiness?` |
-| `anthropic-agent-status-response.png` | `Show me what the OrgX agents are doing right now.` |
-| `anthropic-initiative-pulse-response.png` | `Give me the pulse for the Search Copilot Readiness initiative.` |
-| `anthropic-morning-brief-response.png` | `Give me today's morning brief.` |
-
-Regenerate the deterministic set with `pnpm screenshots:anthropic`. Do not
-substitute the older landing-page/demo images in `public/screenshots/`; those
-are not response evidence for this submission.
+Response screenshots are **pending authenticated post-deploy capture**. Capture
+them only from real Claude responses against the deployed
+`?profile=claude-directory` endpoint and dedicated reviewer workspace. Local
+fixtures, synthetic renders, and generic demo images are not submission
+evidence and must not be uploaded.
 
 ## Description (long-form)
 
@@ -77,15 +64,13 @@ wherever they think.
 
 These match the reviewer runbook and the seeded reviewer workspace baseline.
 
-1. *"Start OrgX and show my workspace context."*
-   Expected: connected workspace context and safe read-only next steps.
-2. *"What did we decide about Search Copilot readiness?"*
+1. *"What did we decide about Search Copilot readiness?"*
    Expected: memory search results with prior decision context and linked artifacts.
-3. *"Give me the pulse for the Search Copilot Readiness initiative."*
+2. *"Give me the pulse for the Search Copilot Readiness initiative."*
    Expected: initiative-pulse widget with health + milestones + recent activity.
-4. *"Show me what the OrgX agents are doing right now."*
+3. *"Show me what the OrgX agents are doing right now."*
    Expected: agent-status widget with the seeded roster.
-5. *"Give me today's morning brief."*
+4. *"Give me today's morning brief."*
    Expected: morning-brief widget with current decisions, risks, and initiative context.
 
 ## OAuth callback support
@@ -125,11 +110,11 @@ See `docs/reviewer-invite-template.md` for the full email copy.
 
 - [ ] `pnpm type-check && pnpm test:anthropic-review && pnpm build && pnpm directory:preflight` green locally.
 - [ ] `MCP_BASE_URL=https://mcp.useorgx.com pnpm directory:preflight` green against production.
-- [ ] An authenticated `tools/list` for `?profile=claude-directory` returns exactly the documented eight read-only tools.
+- [ ] An authenticated `tools/list` for `?profile=claude-directory` returns exactly the documented seven read-only tools.
 - [ ] `prompts/list` is empty and `resources/list` contains only the four documented read-only widget families (including their version/host compatibility variants).
 - [ ] Invalid-Origin POST returns `403`; trusted Claude Origin is echoed (not `*`); a no-Origin CLI request reaches the normal OAuth flow.
-- [ ] Every asset URL in the table above returns 200 (curl -I).
-- [ ] The four response screenshots match their paired prompts and remain at least 1000 px on both axes.
+- [ ] Every branding asset URL in the table above returns 200 (curl -I).
+- [ ] Authenticated response screenshots were captured after deployment from real Claude runs, matched to their exact prompts, and stored as private provider-upload evidence; no local fixture is used.
 - [ ] Reviewer session minted via `tsx scripts/review-session.ts mint` and tested end-to-end.
 - [ ] Reviewer URL + password delivered out of band and confirmation captured.
 - [ ] server.json version matches the latest deployed worker version.

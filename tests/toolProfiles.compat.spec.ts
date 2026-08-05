@@ -56,7 +56,7 @@ describe('toolProfiles backward compatibility', () => {
     expect([...(claudeDirectoryTools ?? [])]).toEqual([
       ...CLAUDE_DIRECTORY_SURFACE,
     ]);
-    expect(claudeDirectoryTools?.size).toBe(8);
+    expect(claudeDirectoryTools?.size).toBe(7);
 
     for (const toolName of claudeDirectoryTools ?? []) {
       const manifestTool = serverManifest.tools.find(
@@ -77,6 +77,7 @@ describe('toolProfiles backward compatibility', () => {
     }
 
     for (const excludedTool of [
+      'orgx_bootstrap',
       'orgx_write',
       'orgx_attach',
       'orgx_act',

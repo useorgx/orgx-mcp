@@ -124,7 +124,6 @@ export const CHATGPT_PUBLIC_SURFACE = [
  * operations on the general-purpose profiles instead of this review endpoint.
  */
 export const CLAUDE_DIRECTORY_SURFACE = [
-  'orgx_bootstrap',
   'orgx_search',
   'orgx_inspect',
   'orgx_recommend',

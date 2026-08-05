@@ -53,7 +53,8 @@ import {
   validateMcpRequestOrigin,
   type McpOriginValidationEnv,
 } from './mcpOriginValidation';
-import { installStandardToolRegistrationWrapper } from './standardToolRegistration';
+import { installToolResultGuidanceWrapper } from './toolResultRegistration';
+import { withRequestToolProfile } from './requestToolProfile';
 import {
   buildMcpTransportExceptionResponse,
   withCorsAndHeaders,
@@ -5345,9 +5346,15 @@ export class OrgXMcp extends McpAgent<
       // hidden tools won't be usable"). Visibility only controls ChatGPT
       // rendering — the tool stays protected by its OAuth securitySchemes.
       const hasOutputTemplate = Boolean(metaObj?.['openai/outputTemplate']);
+      const configuredVisibility = metaObj?.['openai/visibility'];
       const meta = {
         ...tool._meta,
-        'openai/visibility': isReadOnly || hasOutputTemplate ? 'public' : 'private',
+        'openai/visibility':
+          configuredVisibility === 'public' || configuredVisibility === 'private'
+            ? configuredVisibility
+            : isReadOnly || hasOutputTemplate
+            ? 'public'
+            : 'private',
         'mcp/securitySchemes': tool.securitySchemes,
       };
 
@@ -5371,22 +5378,21 @@ export class OrgXMcp extends McpAgent<
     }
   }
 
-  private standardOutputSchemaInstalled = false;
+  private toolResultGuidanceInstalled = false;
 
   /**
-   * Monkey-patches `this.server.registerTool` so every tool registered after
-   * this call automatically gets a default outputSchema (when none is
-   * provided) and a handler wrapper that synthesises a minimal
-   * `structuredContent` envelope from the existing `content` blocks.
+   * Monkey-patches `this.server.registerTool` so profile-invisible tool
+   * breadcrumbs are removed from result guidance. Tool schemas and result
+   * envelopes remain untouched; output schemas must be exact and per-tool.
    *
    * Idempotent: only patches once per worker instance.
    */
-  private installStandardOutputSchemaWrapper(
+  private installToolResultGuidanceWrapper(
     allowedTools: ReadonlySet<string> | null
   ) {
-    if (this.standardOutputSchemaInstalled) return;
-    this.standardOutputSchemaInstalled = true;
-    installStandardToolRegistrationWrapper(this.server, allowedTools);
+    if (this.toolResultGuidanceInstalled) return;
+    this.toolResultGuidanceInstalled = true;
+    installToolResultGuidanceWrapper(this.server, allowedTools);
   }
 
   private registerTools() {
@@ -5394,12 +5400,9 @@ export class OrgXMcp extends McpAgent<
     // Missing/unknown names fail closed to v2; null is explicit full only.
     const allowedTools = resolveToolProfile(this.props?.profile).tools;
 
-    // Wrap server.registerTool so every subsequent registration (inline,
-    // for-loop, or via registerAppTool which delegates to the same method)
-    // gets a default outputSchema and an envelope-injected handler. This
-    // boosts Smithery's "Output schemas" coverage without requiring each
-    // handler to populate structuredContent manually.
-    this.installStandardOutputSchemaWrapper(allowedTools);
+    // Apply profile-aware result-guidance filtering to every subsequent
+    // registration without changing tool schemas or result envelopes.
+    this.installToolResultGuidanceWrapper(allowedTools);
 
     // Register ChatGPT App tools (data-driven)
     this.registerChatGPTTools(allowedTools);
@@ -12797,18 +12800,20 @@ const rateLimitedHttpHandler = {
   },
 };
 
+const profileAwareHttpHandler = withRequestToolProfile(rateLimitedHttpHandler);
+
 /**
  * Expose httpHandler for use by authHandler.ts (WebSocket + root URL routing)
  */
 export function getHttpHandler() {
-  return rateLimitedHttpHandler;
+  return profileAwareHttpHandler;
 }
 
 /**
  * Expose sseHandler for use by authHandler.ts (root URL SSE routing)
  */
 export function getSseHandler() {
-  return rateLimitedSseHandler;
+  return profileAwareSseHandler;
 }
 
 // =============================================================================
@@ -12866,6 +12871,8 @@ const rateLimitedSseHandler = {
   },
 };
 
+const profileAwareSseHandler = withRequestToolProfile(rateLimitedSseHandler);
+
 // =============================================================================
 // OAUTH PROVIDER (DEFAULT EXPORT)
 //
@@ -12878,8 +12885,8 @@ const rateLimitedSseHandler = {
 
 const oauthProvider = new OAuthProvider({
   apiHandlers: {
-    '/mcp': rateLimitedHttpHandler,
-    '/sse': rateLimitedSseHandler,
+    '/mcp': profileAwareHttpHandler,
+    '/sse': profileAwareSseHandler,
   },
   defaultHandler: authHandler,
   authorizeEndpoint: '/authorize',

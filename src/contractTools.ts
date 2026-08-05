@@ -45,19 +45,20 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_bootstrap',
     title: 'Bootstrap OrgX Contract',
     description:
-      'Use at the start of a fresh session, after reconnecting, or before continuing work another agent left behind. Establishes OrgX session context, discovers granted scopes, and returns the v2 tool routing map. Also known as: bootstrap, setup, tool routing. USE WHEN: first call in a fresh session, after reconnecting, or before performing a multi-step workflow. NEXT: use orgx_search, orgx_inspect, or orgx_recommend based on the returned routing map. DO NOT USE WHEN: you already have session context and need to read or mutate work. Read-only.',
+      'Use at the start of a fresh session, after reconnecting, or before continuing work another agent left behind. Establishes OrgX session context, discovers granted scopes, returns the v2 tool routing map, and persists workspace/session continuity when the selected context changes. Also known as: bootstrap, setup, tool routing. USE WHEN: first call in a fresh session, after reconnecting, or before performing a multi-step workflow. NEXT: use orgx_search, orgx_inspect, or orgx_recommend based on the returned routing map. DO NOT USE WHEN: you already have session context and need to read or mutate work. Updates private session state; it does not change business records.',
     inputSchema: {
       workspace_id: z.string().optional().describe('Canonical workspace UUID to bind as the active session workspace'),
       conversation_id: z.string().optional().describe('Optional client conversation/session identifier for continuity'),
       client_name: z.string().optional().describe('Optional MCP client name, such as codex, chatgpt, cursor, or claude'),
       timezone: z.string().optional().describe('Optional user timezone for date-sensitive readouts'),
     },
-    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Bootstrapping OrgX contract...',
       'openai/toolInvocation/invoked': 'OrgX contract ready',
-      'openai/readOnlyHint': true,
+      'openai/readOnlyHint': false,
+      'openai/visibility': 'public',
     },
   },
   {

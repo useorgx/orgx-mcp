@@ -64,7 +64,7 @@ validation or when the user/workspace sets a budget constraint.
 
 | Tool | Purpose |
 |------|---------|
-| `orgx_bootstrap` | Establish session context, scopes, and routing guidance. |
+| `orgx_bootstrap` | Establish session context, scopes, and routing guidance; persists workspace/session continuity when context changes. |
 | `orgx_search` | Find entities, decisions, artifacts, and memory. |
 | `orgx_inspect` | Hydrate one entity with execution context. |
 | `orgx_recommend` | Get next-action recommendations or morning brief signals. |

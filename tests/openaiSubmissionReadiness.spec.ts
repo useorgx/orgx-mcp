@@ -65,6 +65,14 @@ const contractToolsSource = readFileSync(
   resolve(root, 'src/contractTools.ts'),
   'utf8'
 );
+const toolDefinitionsSource = readFileSync(
+  resolve(root, 'src/toolDefinitions.ts'),
+  'utf8'
+);
+const toolResultRegistrationSource = readFileSync(
+  resolve(root, 'src/toolResultRegistration.ts'),
+  'utf8'
+);
 const workerSource = readFileSync(resolve(root, 'src/index.ts'), 'utf8');
 const scaffoldControlSource = readFileSync(
   resolve(root, 'src/scaffoldControl.ts'),
@@ -78,7 +86,7 @@ type ToolHints = {
 };
 
 const expectedChatGptHints = {
-  orgx_bootstrap: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+  orgx_bootstrap: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
   orgx_search: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
   orgx_inspect: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
   orgx_recommend: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
@@ -158,7 +166,32 @@ describe('OpenAI ChatGPT app submission readiness', () => {
     }
   });
 
+  it('omits false catch-all output schemas and keeps the exact-schema submission gate explicit', () => {
+    expect(workerSource).not.toContain('STANDARD_TOOL_OUTPUT_SCHEMA');
+    expect(toolDefinitionsSource).not.toContain('STANDARD_TOOL_OUTPUT_SCHEMA');
+    expect(toolResultRegistrationSource).toContain(
+      'this wrapper never invents an outputSchema'
+    );
+    expect(openaiRunbook).toContain('OpenAI submission remains blocked');
+    expect(openaiRunbook).toContain('exact tool-specific `outputSchema`');
+    expect(openaiRunbook).toContain('A permissive catch-all schema');
+    expect(openaiRunbook).toMatch(
+      /Do not submit or resubmit the app while this gate is\s+open\./
+    );
+  });
+
   it('ties elevated hints to implemented overwrite, dispatch, approval, and external-sync modes', () => {
+    expect(contractToolsSource).toMatch(
+      /id: 'orgx_bootstrap',[\s\S]*?annotations: \{ readOnlyHint: false, destructiveHint: false, openWorldHint: false \}/
+    );
+    expect(contractToolsSource).toMatch(
+      /id: 'orgx_bootstrap',[\s\S]*?'openai\/visibility': 'public'/
+    );
+    const bootstrapBranch = workerSource.match(
+      /case 'orgx_bootstrap': \{[\s\S]*?case 'orgx_inspect':/
+    )?.[0];
+    expect(bootstrapBranch).toContain('resolvedContext.changed');
+    expect(bootstrapBranch).toContain('await this.saveSessionContext()');
     expect(contractToolsSource).toContain(
       "live_visibility: z.enum(['private', 'public'])"
     );

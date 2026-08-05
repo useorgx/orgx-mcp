@@ -18,7 +18,7 @@ Use this when you need to:
 - The directory connection uses
   `https://mcp.useorgx.com/mcp?profile=claude-directory`.
 - The connection advertises no prompts or skill packs, and only the four
-  widget families needed by the eight read-only tools.
+  widget families needed by the seven read-only tools.
 - The reviewer account has a dedicated workspace named `Anthropic Review Workspace`.
 
 Before review, request `https://mcp.useorgx.com/healthz?check=upstream` and
@@ -104,18 +104,11 @@ Use these exact prompts during reviewer QA:
 
 ## Response screenshot evidence
 
-The submitted endpoint intentionally exposes the four MCP Apps widget families
-used by its selected read-only tools. The directory screenshot pack is:
-
-| Exact prompt | Response screenshot |
-|--------------|---------------------|
-| `What did we decide about Search Copilot readiness?` | <https://mcp.useorgx.com/screenshots/anthropic-memory-search-response.png> |
-| `Show me what the OrgX agents are doing right now.` | <https://mcp.useorgx.com/screenshots/anthropic-agent-status-response.png> |
-| `Give me the pulse for the Search Copilot Readiness initiative.` | <https://mcp.useorgx.com/screenshots/anthropic-initiative-pulse-response.png> |
-| `Give me today's morning brief.` | <https://mcp.useorgx.com/screenshots/anthropic-morning-brief-response.png> |
-
-These are response-only captures from the actual widget HTML. Do not use a
-write, approval, delegation, or scaffold flow as directory screenshot evidence.
+Response screenshots are pending authenticated post-deploy capture. Use the
+exact prompt matrix above in Claude after connecting the deployed directory
+profile, then capture the real search, agent-status, initiative-pulse, and
+morning-brief responses. Do not use synthetic fixtures, local renders, or a
+write, approval, delegation, or scaffold flow as directory evidence.
 
 ## Support notes
 

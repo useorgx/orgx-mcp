@@ -45,7 +45,6 @@ const staleOrgPattern =
 const claudeDirectoryEndpoint =
   'https://mcp.useorgx.com/mcp?profile=claude-directory';
 const claudeDirectoryTools = [
-  'orgx_bootstrap',
   'orgx_search',
   'orgx_inspect',
   'orgx_recommend',

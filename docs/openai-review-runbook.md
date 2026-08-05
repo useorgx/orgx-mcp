@@ -125,6 +125,26 @@ Allowed when needed for the user request:
 - workspace or entity references needed for follow-up actions,
 - policy/auth blockers stated without exposing secrets.
 
+## Output Schema Submission Gate
+
+OpenAI submission remains blocked until every submitted ChatGPT tool that
+returns `structuredContent` declares an exact tool-specific `outputSchema` and
+representative success, empty, auth-error, validation-error, and provider-error
+handler results have been validated against it. A permissive catch-all schema
+is not an acceptable substitute because it does not describe the object the
+tool actually returns.
+
+Contract references: [OpenAI MCP server guide](https://developers.openai.com/plugins/build/mcp-server),
+[OpenAI Plugins reference](https://developers.openai.com/plugins/reference),
+and the [MCP tools specification](https://modelcontextprotocol.io/specification/2025-11-25/server/tools).
+
+The worker currently omits a blanket output schema rather than advertising a
+false contract. Add schemas incrementally at each tool definition, keep
+`additionalProperties: false` where the returned object is closed, and rerun
+`pnpm test:openai-review` plus the authenticated ChatGPT web/mobile cases after
+the final schema lands. Do not submit or resubmit the app while this gate is
+open.
+
 ## Resubmission Notes
 
 In the OpenAI dashboard release notes, summarize:

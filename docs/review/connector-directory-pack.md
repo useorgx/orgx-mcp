@@ -22,7 +22,6 @@ submission.
 
 ## Read actions
 
-- orgx_bootstrap
 - orgx_search
 - orgx_inspect
 - orgx_recommend
@@ -57,14 +56,6 @@ OrgX stores organizational execution context: decisions, tasks, initiatives, art
 - morning brief widget
 
 These four MCP Apps widget resource families are intentionally exposed by the
-directory profile. Pair the response evidence exactly as follows:
-
-| Prompt | Screenshot |
-|--------|------------|
-| `What did we decide about Search Copilot readiness?` | <https://mcp.useorgx.com/screenshots/anthropic-memory-search-response.png> |
-| `Show me what the OrgX agents are doing right now.` | <https://mcp.useorgx.com/screenshots/anthropic-agent-status-response.png> |
-| `Give me the pulse for the Search Copilot Readiness initiative.` | <https://mcp.useorgx.com/screenshots/anthropic-initiative-pulse-response.png> |
-| `Give me today's morning brief.` | <https://mcp.useorgx.com/screenshots/anthropic-morning-brief-response.png> |
-
-All four are read-only response captures from the actual widget HTML and must
-remain at least 1000 px on both axes. They contain no write or scaffold example.
+directory profile. Response screenshots remain pending until they are captured
+from authenticated post-deploy Claude runs using the exact reviewer prompts.
+Synthetic fixtures and local widget renders are not submission evidence.

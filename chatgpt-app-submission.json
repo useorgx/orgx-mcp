@@ -10,12 +10,12 @@
   "tools": {
     "orgx_bootstrap": {
       "annotations": {
-        "readOnlyHint": true,
+        "readOnlyHint": false,
         "openWorldHint": false,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Retrieves session context, scopes, and routing guidance without creating or updating OrgX records.",
+        "read_only_justification": "Not read-only: it persists the selected workspace and session continuity when context changes, while leaving business records unchanged.",
         "open_world_justification": "Does not publish to public internet state or third-party systems.",
         "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
       }

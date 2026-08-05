@@ -170,6 +170,8 @@ describe('Anthropic directory readiness', () => {
     expect([...(selectedTools ?? [])]).toEqual([
       ...CLAUDE_DIRECTORY_SURFACE,
     ]);
+    expect(selectedTools?.size).toBe(7);
+    expect(selectedTools?.has('orgx_bootstrap')).toBe(false);
     expect(anthropicDirectoryDoc).toContain(endpoint);
     expect(anthropicSubmissionForm).toContain(endpoint);
     expect(anthropicDirectoryDoc).toContain('read-only');
@@ -211,6 +213,30 @@ describe('Anthropic directory readiness', () => {
         ).not.toMatch(unavailableGuidance);
       }
     }
+  });
+
+  it('excludes synthetic screenshot artifacts from submission evidence', () => {
+    const removedEvidence = [
+      'public/screenshots/anthropic-memory-search-response.png',
+      'public/screenshots/anthropic-agent-status-response.png',
+      'public/screenshots/anthropic-initiative-pulse-response.png',
+      'public/screenshots/anthropic-morning-brief-response.png',
+      'scripts/render-anthropic-review-screenshots.mjs',
+    ];
+
+    for (const path of removedEvidence) {
+      expect(existsSync(resolve(root, path)), path).toBe(false);
+    }
+    expect(packageJson.scripts?.['screenshots:anthropic']).toBeUndefined();
+    expect(anthropicSubmissionForm).toContain(
+      'pending authenticated post-deploy capture'
+    );
+    expect(anthropicSubmissionForm).toMatch(
+      /Local\s+fixtures, synthetic renders, and generic demo images are not submission\s+evidence/
+    );
+    expect(anthropicSubmissionForm).not.toContain(
+      'anthropic-memory-search-response.png'
+    );
   });
 
   it('applies profile-aware prompt and resource discovery in the worker', () => {
