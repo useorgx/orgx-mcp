@@ -2267,10 +2267,20 @@
       } else if (action === 'toggle-idle') {
         showIdleAgents = !showIdleAgents;
         renderCurrentBoard();
+        window.setTimeout(function () {
+          var nextTrigger = document.querySelector('[data-action="toggle-idle"]');
+          if (nextTrigger) nextTrigger.focus();
+        }, 0);
       } else if (action === 'toggle-details') {
         var agentId = trigger.getAttribute('data-agent');
         widgetState[agentId] = widgetState[agentId] === 'details' ? null : 'details';
         renderCurrentBoard();
+        window.setTimeout(function () {
+          var nextTrigger = document.querySelector(
+            '[data-action="toggle-details"][data-agent="' + CSS.escape(agentId) + '"]'
+          );
+          if (nextTrigger) nextTrigger.focus();
+        }, 0);
       }
     });
 

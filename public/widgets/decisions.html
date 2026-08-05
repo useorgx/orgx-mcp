@@ -1732,11 +1732,17 @@
     var formatUsd = v => Number.isFinite(Number(v)) ? '$'+Number(v).toFixed(2) : null;
     var timeAgo = d => { const m = Math.floor((new Date() - new Date(d))/60000); return m<1?'Just now':m<60?m+'m ago':Math.floor(m/60)+'h ago'; };
 
-    window.toggleRejectComposer = (id) => {
+    window.toggleRejectComposer = (id, trigger) => {
       if (pendingDecisionId) return;
       rejectComposerId = rejectComposerId === id ? null : id;
       scheduleDecisionStatePersistence();
       render();
+      window.requestAnimationFrame(() => {
+        const nextTrigger = document.querySelector(
+          `[data-reject-id="${CSS.escape(id)}"]`
+        );
+        (nextTrigger || trigger)?.focus();
+      });
     };
 
     window.syncRejectDraft = (id, textarea) => {
@@ -1955,8 +1961,10 @@
                   type="button"
                   class="ox-btn ox-action-btn ox-action-btn--ghost ox-btn-ghost decision-action-btn"
                   data-reject-id="${escapeHtml(d.id)}"
-                  onclick="toggleRejectComposer('${escapeHtml(d.id)}')"
+                  data-action="toggle-reject"
+                  onclick="toggleRejectComposer('${escapeHtml(d.id)}', this)"
                   aria-expanded="${isRejecting ? 'true' : 'false'}"
+                  aria-controls="reject-composer-${escapeHtml(d.id)}"
                 >
                   <span class="decision-action-copy">
                     <span class="decision-action-icon">${isRejecting ? icons.check(18) : icons.error(18)}</span>
@@ -1969,7 +1977,7 @@
               </div>
 
               ${isRejecting ? `
-                <div class="reject-composer">
+                <div class="reject-composer" id="reject-composer-${escapeHtml(d.id)}">
                   <div class="reject-heading">
                     <h4>Send a rejection note</h4>
                     <span class="reject-meta">Visible to ${escapeHtml(owner.label)}</span>

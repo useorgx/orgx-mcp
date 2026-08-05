@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-08-02T22:15:24.644Z",
+  "generatedAt": "2026-08-05T04:01:55.891Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -34,8 +34,8 @@
   "widgets": {
     "agent-status": {
       "file": "public/widgets/agent-status.html",
-      "bytes": 79202,
-      "hash": "de83cde7e7b2",
+      "bytes": 79643,
+      "hash": "b573e0686e68",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/components/domain-accent.css",
@@ -85,8 +85,8 @@
     },
     "decisions": {
       "file": "public/widgets/decisions.html",
-      "bytes": 79836,
-      "hash": "2733a4c04a2b",
+      "bytes": 80216,
+      "hash": "082ca6830777",
       "primaryRgb": "251,191,36",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -115,8 +115,8 @@
     },
     "initiative-pulse": {
       "file": "public/widgets/initiative-pulse.html",
-      "bytes": 104496,
-      "hash": "31b61099df43",
+      "bytes": 104626,
+      "hash": "d660e0614dbe",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/components/domain-accent.css",
@@ -134,8 +134,8 @@
     },
     "morning-brief": {
       "file": "public/widgets/morning-brief.html",
-      "bytes": 64251,
-      "hash": "2f0cce465a5a",
+      "bytes": 66571,
+      "hash": "ed8423204614",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/icons.js",
@@ -168,8 +168,8 @@
     },
     "scaffold-streaming": {
       "file": "public/widgets/scaffold-streaming.html",
-      "bytes": 39082,
-      "hash": "9657febf93ea",
+      "bytes": 40223,
+      "hash": "c72608cc5e98",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/mcp-apps-sdk.umd.js",
@@ -181,8 +181,8 @@
     },
     "scaffolded-initiative": {
       "file": "public/widgets/scaffolded-initiative.html",
-      "bytes": 144955,
-      "hash": "5a131ec87422",
+      "bytes": 145213,
+      "hash": "b531026c641a",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/interaction-kit.css",

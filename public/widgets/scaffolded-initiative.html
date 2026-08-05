@@ -676,16 +676,27 @@
       .scaffold-state__dots {
         display: flex;
         justify-content: center;
-        gap: 6px;
+        gap: 0;
       }
 
       .scaffold-state__dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 999px;
+        width: 44px;
+        min-width: 44px;
+        height: 44px;
+        flex: 0 0 44px;
         border: 0;
         padding: 0;
         cursor: pointer;
+        display: grid;
+        place-items: center;
+        background: transparent;
+      }
+
+      .scaffold-state__dot::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
         background: var(--scaffold-dot-surface);
         transition:
           width 0.32s var(--scaffold-ease),
@@ -693,14 +704,14 @@
           box-shadow 0.32s var(--scaffold-ease);
       }
 
-      .scaffold-state__dot.active {
+      .scaffold-state__dot.active::before {
         width: 20px;
         border-radius: 4px;
         background: rgb(var(--ox-primary-rgb));
         box-shadow: 0 0 12px rgba(var(--ox-primary-rgb), 0.38);
       }
 
-      .scaffold-state__dot.done {
+      .scaffold-state__dot.done::before {
         background: rgba(var(--ox-primary-rgb), 0.36);
       }
 

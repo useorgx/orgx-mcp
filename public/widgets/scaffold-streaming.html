@@ -470,6 +470,24 @@ button[data-oxhref]:not(.foot-link){background:none;border:none;padding:0;font:i
     transition-duration:0.01ms !important;
   }
 }
+
+.stream-empty {
+  display: grid;
+  gap: 6px;
+  padding: 22px 20px 24px;
+  border-top: 1px solid var(--ox-border);
+  color: var(--ox-text-muted);
+}
+.stream-empty strong {
+  color: var(--ox-text);
+  font-size: .92rem;
+  font-weight: 600;
+}
+.stream-empty span {
+  max-width: 46ch;
+  font-size: .82rem;
+  line-height: 1.55;
+}
 </style>
 <link rel="stylesheet" href="shared/widget-theme.css" />
 </head>
@@ -963,8 +981,31 @@ button[data-oxhref]:not(.foot-link){background:none;border:none;padding:0;font:i
     setTimeout(fireNext, 700);
   }
 
-  var _demo = new URLSearchParams(location.search).get('demo') === 'true';
-  if (_demo) { runDemo(); } else { connect(); }
+  function showIdleState() {
+    ldot.className = 'live-dot';
+    etext.textContent = 'SCAFFOLD STREAM';
+    heroTitle.textContent = 'No scaffold stream attached';
+    statusText.textContent = 'IDLE';
+    footMeta.textContent = 'NOT CONNECTED';
+    skeleton.style.display = 'none';
+    wsStack.style.display = 'block';
+    wsStack.innerHTML = '<div class="stream-empty"><strong>Start a scaffold to watch it build here.</strong><span>Live updates connect only when this widget receives an explicit live session.</span></div>';
+  }
+
+  var _params = new URLSearchParams(location.search);
+  var _demo = _params.get('demo') === 'true';
+  var _live = _params.get('live') === 'true';
+  var _loading = _params.get('loading') === 'true';
+  if (_demo) {
+    runDemo();
+  } else if (_live) {
+    connect();
+  } else if (_loading) {
+    statusText.textContent = 'WAITING…';
+    footMeta.textContent = 'NOT ATTACHED';
+  } else {
+    showIdleState();
+  }
 })();
 </script>
 </body>
