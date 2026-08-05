@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-05T21:31:27.480Z",
-  "sourceHash": "0b4831c6710e598e",
+  "generatedAt": "2026-08-05T22:20:02.523Z",
+  "sourceHash": "da2f105f2c267398",
   "version": "1.0.0",
   "totalTools": 81,
   "categories": [
@@ -27,7 +27,7 @@
     {
       "id": "get_agent_status",
       "title": "Get Agent Status",
-      "description": "Use when the user asks what agents are working on right now, whether delegated work is still running, or why nothing has landed yet. Also known as: agent status, what agents are doing, active runs. USE WHEN: user asks about agent activity, progress, or what agents are working on. NEXT: If agents are stuck, use orgx_search or orgx_inspect to read the related blocker context. DO NOT USE: to check initiative health — use get_initiative_pulse instead. Read-only.",
+      "description": "Use when the user asks what agents are working on right now, whether delegated work is still running, or why nothing has landed yet. Successful calls record metered MCP allowance usage but do not change business records. Also known as: agent status, what agents are doing, active runs. USE WHEN: user asks about agent activity, progress, or what agents are working on. NEXT: If agents are stuck, use orgx_search or orgx_inspect to read the related blocker context. DO NOT USE: to check initiative health — use get_initiative_pulse instead.",
       "category": "Agents",
       "inputSchema": {
         "type": "object",
@@ -69,7 +69,7 @@
       "securityScopes": [
         "initiatives:read"
       ],
-      "readOnly": true,
+      "readOnly": false,
       "source": "chatgpt",
       "profiles": [
         "v2",
@@ -2224,7 +2224,7 @@
     {
       "id": "get_initiative_pulse",
       "title": "Get Initiative Pulse",
-      "description": "Use when the user asks how a project is going, what is blocked, or whether an initiative is on track. Also known as: project status, roadmap progress, execution health, blockers. USE WHEN: user asks how an initiative is going, or wants a status update. NEXT: If blockers exist, use orgx_inspect for one blocker or orgx_search for related records. DO NOT USE: for an org-wide brief — use orgx_recommend with mode=morning_brief instead. Read-only.",
+      "description": "Use when the user asks how a project is going, what is blocked, or whether an initiative is on track. Successful calls record metered MCP allowance usage but do not change business records. Also known as: project status, roadmap progress, execution health, blockers. USE WHEN: user asks how an initiative is going, or wants a status update. NEXT: If blockers exist, use orgx_inspect for one blocker or orgx_search for related records. DO NOT USE: for an org-wide brief — use orgx_recommend with mode=morning_brief instead.",
       "category": "Initiative Monitoring",
       "inputSchema": {
         "type": "object",
@@ -2256,7 +2256,7 @@
         "initiatives:read",
         "memory:read"
       ],
-      "readOnly": true,
+      "readOnly": false,
       "source": "chatgpt",
       "profiles": [
         "v2",
@@ -3224,7 +3224,7 @@
     {
       "id": "orgx_recommend",
       "title": "Recommend Next OrgX Action",
-      "description": "Use when the user asks what to do next, wants a brief, or returns after time away and needs priorities. Recommends next work, summarizes operator-chronicle/morning-brief signals, and reads prioritization context. USE WHEN: user asks what to do next, wants a brief, asks what changed yesterday/week/30 days, or needs priority guidance. mode=morning_brief returns the operator chronicle when available. NEXT: present the recommendation and ask for explicit confirmation before any separate action. DO NOT USE WHEN: the user already specified a concrete action.",
+      "description": "Use when the user asks what to do next, wants a brief, or returns after time away and needs priorities. Recommends next work, summarizes operator-chronicle/morning-brief signals, and reads prioritization context. The default next_action mode records metered MCP allowance usage; it does not change business records. USE WHEN: user asks what to do next, wants a brief, asks what changed yesterday/week/30 days, or needs priority guidance. mode=morning_brief returns the operator chronicle when available. NEXT: present the recommendation and ask for explicit confirmation before any separate action. DO NOT USE WHEN: the user already specified a concrete action.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -3282,7 +3282,7 @@
       "securityScopes": [
         "initiatives:read"
       ],
-      "readOnly": true,
+      "readOnly": false,
       "source": "contract",
       "profiles": [
         "v2",
@@ -3296,7 +3296,7 @@
     {
       "id": "orgx_search",
       "title": "Search OrgX",
-      "description": "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Finds OrgX entities, decisions, artifacts, and memory. A query without type runs a mixed relevance search; typed searches provide exhaustive cursor/offset pagination. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use structuredContent.next_call exactly when pagination.has_more=true, orgx_inspect for one selected result, or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.",
+      "description": "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Finds OrgX entities, decisions, artifacts, and memory. A query without type runs a mixed relevance search and records metered MCP allowance usage; typed searches provide exhaustive cursor/offset pagination without changing business records. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use structuredContent.next_call exactly when pagination.has_more=true, orgx_inspect for one selected result, or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -3377,7 +3377,7 @@
       "securityScopes": [
         "initiatives:read"
       ],
-      "readOnly": true,
+      "readOnly": false,
       "source": "contract",
       "profiles": [
         "v2",

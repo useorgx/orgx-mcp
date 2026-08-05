@@ -785,8 +785,9 @@ pnpm directory:preflight
 ```
 
 Directory review endpoint:
-`https://mcp.useorgx.com/mcp?profile=claude-directory` (focused read-only
-surface). The general MCP endpoint retains the broader OrgX capabilities.
+`https://mcp.useorgx.com/mcp?profile=claude-directory` (focused,
+non-destructive, closed-world surface). The general MCP endpoint retains the
+broader OrgX capabilities.
 
 Operational reviewer check:
 

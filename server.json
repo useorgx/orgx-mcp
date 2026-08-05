@@ -69,9 +69,9 @@
     {
       "name": "orgx_search",
       "title": "Search OrgX Memory",
-      "description": "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Searches OrgX memory, decisions, artifacts, and entities with read-only filters and pagination.",
+      "description": "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Typed searches do not change business records; mixed relevance search records metered MCP allowance usage.",
       "annotations": {
-        "readOnlyHint": true,
+        "readOnlyHint": false,
         "openWorldHint": false,
         "destructiveHint": false
       }
@@ -89,9 +89,9 @@
     {
       "name": "orgx_recommend",
       "title": "Recommend Next Action",
-      "description": "Use when the user asks what to do next, wants a brief, or returns after time away. Recommends next actions, morning-brief signals, queue priority, pulses, and snapshots.",
+      "description": "Use when the user asks what to do next, wants a brief, or returns after time away. The default next-action mode records metered MCP allowance usage but does not change business records.",
       "annotations": {
-        "readOnlyHint": true,
+        "readOnlyHint": false,
         "openWorldHint": false,
         "destructiveHint": false
       }
@@ -269,9 +269,9 @@
     {
       "name": "get_agent_status",
       "title": "Get Agent Status",
-      "description": "Use when the user asks what agents are working on right now, whether delegated work is still running, or why nothing has landed yet. Also known as: agent status, what agents are doing, active runs. USE WHEN: user asks about agent activity, progress, or what agents are working on. NEXT: If agents are stuck, use orgx_search or orgx_inspect to read the related blocker context. DO NOT USE: to check initiative health — use get_initiative_pulse instead. Read-only.",
+      "description": "Use when the user asks what agents are working on right now, whether delegated work is still running, or why nothing has landed yet. Successful calls record metered MCP allowance usage but do not change business records. NEXT: If agents are stuck, use orgx_search or orgx_inspect to read related blocker context.",
       "annotations": {
-        "readOnlyHint": true,
+        "readOnlyHint": false,
         "openWorldHint": false,
         "destructiveHint": false
       }
@@ -279,9 +279,9 @@
     {
       "name": "get_initiative_pulse",
       "title": "Get Initiative Pulse",
-      "description": "Use when the user asks how a project is going, what is blocked, or whether an initiative is on track. Also known as: project status, roadmap progress, execution health, blockers. USE WHEN: user asks how an initiative is going, or wants a status update. NEXT: If blockers exist, use orgx_inspect for one blocker or orgx_search for related records. DO NOT USE: for an org-wide brief — use orgx_recommend with mode=morning_brief instead. Read-only.",
+      "description": "Use when the user asks how a project is going, what is blocked, or whether an initiative is on track. Successful calls record metered MCP allowance usage but do not change business records. NEXT: If blockers exist, use orgx_inspect or orgx_search for related context.",
       "annotations": {
-        "readOnlyHint": true,
+        "readOnlyHint": false,
         "openWorldHint": false,
         "destructiveHint": false
       }

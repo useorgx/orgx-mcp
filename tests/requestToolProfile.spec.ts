@@ -99,7 +99,7 @@ describe('request URL tool-profile propagation', () => {
     ]);
   });
 
-  it('serves the seven-tool read-only directory profile for /mcp?profile=claude-directory', async () => {
+  it('serves the seven-tool non-destructive directory profile with truthful read-only hints', async () => {
     const handler = createInMemoryMcpHandler();
     const ctx: TestContext = { props: { userId: 'reviewer-1' } };
     const request = new Request(
@@ -141,9 +141,18 @@ describe('request URL tool-profile propagation', () => {
       'orgx_bootstrap'
     );
     expect(body.result.tools.map((tool) => tool.name)).not.toContain('orgx_write');
+    const readOnlyByTool = new Map<string, boolean>([
+      ['orgx_search', false],
+      ['orgx_inspect', true],
+      ['orgx_recommend', false],
+      ['get_agent_status', false],
+      ['get_initiative_pulse', false],
+      ['get_morning_brief', true],
+      ['get_operator_chronicle', true],
+    ]);
     for (const tool of body.result.tools) {
       expect(tool.annotations, tool.name).toEqual({
-        readOnlyHint: true,
+        readOnlyHint: readOnlyByTool.get(tool.name),
         destructiveHint: false,
         openWorldHint: false,
       });

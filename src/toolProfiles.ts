@@ -119,8 +119,9 @@ export const CHATGPT_PUBLIC_SURFACE = [
 /**
  * Anthropic Connector Directory review surface.
  *
- * Each exposed operation is independently read-only. Keep write actions,
- * mixed-mode catch-all tools, lifecycle mutations, delegation, and approval
+ * Each exposed operation is non-destructive and closed-world. Three tools are
+ * strictly read-only; four read data while recording metered MCP allowance
+ * usage. Keep business-record writes, lifecycle mutations, delegation, and approval
  * operations on the general-purpose profiles instead of this review endpoint.
  */
 export const CLAUDE_DIRECTORY_SURFACE = [
@@ -150,7 +151,7 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
   },
   'claude-directory': {
     description:
-      'Anthropic Connector Directory review surface: focused read-only organizational memory, agent status, initiative health, briefs, and operator chronicle tools',
+      'Anthropic Connector Directory review surface: seven focused, non-destructive, closed-world tools; three are read-only and four record metered MCP allowance usage',
     tools: [...CLAUDE_DIRECTORY_SURFACE],
   },
   memory: {

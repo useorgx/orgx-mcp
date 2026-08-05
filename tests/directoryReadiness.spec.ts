@@ -162,7 +162,7 @@ describe('Anthropic directory readiness', () => {
     }
   });
 
-  it('documents and locks the focused read-only Anthropic review endpoint', () => {
+  it('documents and locks the focused non-destructive Anthropic review endpoint', () => {
     const endpoint =
       'https://mcp.useorgx.com/mcp?profile=claude-directory';
     const selectedTools = resolveProfileToolSet('claude-directory');
@@ -174,8 +174,19 @@ describe('Anthropic directory readiness', () => {
     expect(selectedTools?.has('orgx_bootstrap')).toBe(false);
     expect(anthropicDirectoryDoc).toContain(endpoint);
     expect(anthropicSubmissionForm).toContain(endpoint);
-    expect(anthropicDirectoryDoc).toContain('read-only');
-    expect(anthropicSubmissionForm).toContain('read-only');
+    expect(anthropicDirectoryDoc).toContain(
+      'Three tools are\nstrictly read-only'
+    );
+    expect(anthropicDirectoryDoc).toContain(
+      'Four tools advertise `readOnlyHint: false`'
+    );
+    expect(anthropicDirectoryDoc).toContain(
+      'usage accounting is still a state change'
+    );
+    expect(anthropicDirectoryDoc).toContain('the endpoint is not stateless');
+    expect(anthropicSubmissionForm).toContain(
+      '3 strictly read-only and 4 that record metered MCP allowance usage'
+    );
     expect(anthropicSubmissionForm).not.toContain(
       '[ fill before submitting:'
     );
@@ -193,10 +204,20 @@ describe('Anthropic directory readiness', () => {
     const unavailableGuidance =
       /\b(?:entity_action|list_entities|get_org_snapshot|approve_decision|orgx_act|orgx_write|orgx_spawn)\b/;
 
+    const readOnlyByTool = new Map<string, boolean>([
+      ['orgx_search', false],
+      ['orgx_inspect', true],
+      ['orgx_recommend', false],
+      ['get_agent_status', false],
+      ['get_initiative_pulse', false],
+      ['get_morning_brief', true],
+      ['get_operator_chronicle', true],
+    ]);
+
     for (const toolName of selectedTools ?? []) {
       const manifestTool = manifestTools.get(toolName);
       expect(manifestTool?.annotations).toEqual({
-        readOnlyHint: true,
+        readOnlyHint: readOnlyByTool.get(toolName),
         destructiveHint: false,
         openWorldHint: false,
       });

@@ -22,6 +22,20 @@ Use this runbook before each OpenAI app submission or resubmission. It verifies 
 - Privacy policy URL: `https://github.com/useorgx/orgx-mcp/blob/main/docs/privacy-policy.md`
 - Support URL: `https://github.com/useorgx/orgx-mcp/issues`
 
+Five submitted tools are strictly read-only: `orgx_inspect`,
+`review_artifact`, `get_morning_brief`, `get_operator_chronicle`, and
+`check_execution_readiness`. Four informational tools use
+`readOnlyHint: false` because a successful mode records metered MCP allowance
+usage: mixed `orgx_search`, default `orgx_recommend`, `get_agent_status`, and
+`get_initiative_pulse`. All nine are non-destructive and closed-world.
+
+The worker suppresses local session-context, activation/reentry, analytics,
+diagnostic, and success-log writes for these informational tool executions as
+defense in depth. That does not suppress documented upstream MCP allowance records
+for the four non-read-only tools. The MCP framework may also persist protocol
+initialization and connection/session lifecycle state outside a tool
+invocation; this is not an endpoint-wide stateless guarantee.
+
 Before review, request `https://mcp.useorgx.com/healthz?check=upstream` and
 confirm the primary upstream is healthy at `https://useorgx.com`. A
 `fallback_healthy` result proves failover, not reviewer-ready primary latency;
@@ -125,25 +139,26 @@ Allowed when needed for the user request:
 - workspace or entity references needed for follow-up actions,
 - policy/auth blockers stated without exposing secrets.
 
-## Output Schema Submission Gate
+## Output Schema Reliability Warning
 
-OpenAI submission remains blocked until every submitted ChatGPT tool that
-returns `structuredContent` declares an exact tool-specific `outputSchema` and
-representative success, empty, auth-error, validation-error, and provider-error
-handler results have been validated against it. A permissive catch-all schema
-is not an acceptable substitute because it does not describe the object the
-tool actually returns.
+Missing `outputSchema` is a nonblocking submission warning. It does not block
+generating, importing, or submitting the ChatGPT app submission JSON. Exact
+tool-specific `outputSchema` declarations are still recommended because they
+make structured results more reliable for clients and reviewers. A permissive
+catch-all schema is not an acceptable substitute because it does not describe
+the object the tool actually returns.
 
 Contract references: [OpenAI MCP server guide](https://developers.openai.com/plugins/build/mcp-server),
 [OpenAI Plugins reference](https://developers.openai.com/plugins/reference),
 and the [MCP tools specification](https://modelcontextprotocol.io/specification/2025-11-25/server/tools).
 
 The worker currently omits a blanket output schema rather than advertising a
-false contract. Add schemas incrementally at each tool definition, keep
-`additionalProperties: false` where the returned object is closed, and rerun
-`pnpm test:openai-review` plus the authenticated ChatGPT web/mobile cases after
-the final schema lands. Do not submit or resubmit the app while this gate is
-open.
+false contract. Add exact schemas incrementally at each tool definition, keep
+`additionalProperties: false` where the returned object is closed, and validate
+representative success, empty, auth-error, validation-error, and provider-error
+results as each schema lands. Rerun `pnpm test:openai-review` plus the
+authenticated ChatGPT web/mobile cases after each schema change; do not invent
+a schema merely to silence the warning.
 
 ## Resubmission Notes
 

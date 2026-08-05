@@ -87,9 +87,9 @@ type ToolHints = {
 
 const expectedChatGptHints = {
   orgx_bootstrap: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
-  orgx_search: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+  orgx_search: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
   orgx_inspect: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
-  orgx_recommend: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+  orgx_recommend: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
   orgx_write: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
   orgx_attach: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
   orgx_act: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
@@ -100,8 +100,8 @@ const expectedChatGptHints = {
   orgx_submit_receipt: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
   approve_decision: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
   reject_decision: { readOnlyHint: false, openWorldHint: false, destructiveHint: true },
-  get_agent_status: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
-  get_initiative_pulse: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+  get_agent_status: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
+  get_initiative_pulse: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
   scaffold_initiative: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
   handoff_task: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
   approve_agent_work: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
@@ -166,18 +166,45 @@ describe('OpenAI ChatGPT app submission readiness', () => {
     }
   });
 
-  it('omits false catch-all output schemas and keeps the exact-schema submission gate explicit', () => {
+  it('documents the exact read-only and metered informational hint boundary', () => {
+    expect(openaiRunbook).toContain(
+      'Five submitted tools are strictly read-only'
+    );
+    expect(openaiRunbook).toContain(
+      'Four informational tools use\n' +
+        '`readOnlyHint: false` because a successful mode records metered MCP allowance'
+    );
+    expect(openaiRunbook).toContain(
+      'this is not an endpoint-wide stateless guarantee'
+    );
+    for (const toolName of [
+      'orgx_search',
+      'orgx_recommend',
+      'get_agent_status',
+      'get_initiative_pulse',
+    ]) {
+      expect(
+        submission.tools[toolName]?.justifications.read_only_justification,
+        toolName
+      ).toContain('metered MCP allowance usage');
+    }
+  });
+
+  it('omits false catch-all output schemas and documents the nonblocking warning', () => {
     expect(workerSource).not.toContain('STANDARD_TOOL_OUTPUT_SCHEMA');
     expect(toolDefinitionsSource).not.toContain('STANDARD_TOOL_OUTPUT_SCHEMA');
     expect(toolResultRegistrationSource).toContain(
       'this wrapper never invents an outputSchema'
     );
-    expect(openaiRunbook).toContain('OpenAI submission remains blocked');
-    expect(openaiRunbook).toContain('exact tool-specific `outputSchema`');
-    expect(openaiRunbook).toContain('A permissive catch-all schema');
-    expect(openaiRunbook).toMatch(
-      /Do not submit or resubmit the app while this gate is\s+open\./
+    expect(openaiRunbook).toContain('nonblocking submission warning');
+    expect(openaiRunbook).toContain(
+      'does not block\n' +
+        'generating, importing, or submitting the ChatGPT app submission JSON'
     );
+    expect(openaiRunbook).toMatch(/Exact\s+tool-specific `outputSchema`/);
+    expect(openaiRunbook).toMatch(/A permissive\s+catch-all schema/);
+    expect(openaiRunbook).not.toContain('OpenAI submission remains blocked');
+    expect(openaiRunbook).not.toMatch(/Do not submit or resubmit/);
   });
 
   it('ties elevated hints to implemented overwrite, dispatch, approval, and external-sync modes', () => {

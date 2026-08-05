@@ -444,6 +444,28 @@ interface OrgXMcpProps extends Record<string, unknown> {
   sourceClient?: SourceClient;
 }
 
+/**
+ * Submitted informational tools whose worker-local session, telemetry, and
+ * diagnostic effects are suppressed as defense in depth. This does not imply
+ * that every tool is read-only: some upstream execution paths record metered
+ * MCP allowance usage and are annotated accordingly. The two internal
+ * delegate IDs preserve local suppression when a contract tool calls its
+ * narrower implementation.
+ */
+const SUBMITTED_INFORMATIONAL_TOOL_EXECUTIONS = new Set([
+  'orgx_search',
+  'orgx_inspect',
+  'orgx_recommend',
+  'get_agent_status',
+  'get_initiative_pulse',
+  'review_artifact',
+  'get_morning_brief',
+  'get_operator_chronicle',
+  'check_execution_readiness',
+  'recommend_next_action',
+  'resume_plan_session',
+]);
+
 // Canonical Supabase user UUID shape. Used to guard the orgx_user_id we forward
 // to the API so a malformed persisted value never becomes an identity hint.
 const ORGX_UUID_RE =
@@ -518,9 +540,32 @@ export class OrgXMcp extends McpAgent<
   private widgetDebugEvents: WidgetDebugEvent[] = [];
   private readonly maxWidgetDebugEvents = 300;
 
+  /**
+   * The Anthropic directory profile is a focused, non-destructive review
+   * surface. Worker-local execution must not update session, activation,
+   * reentry, diagnostic, or analytics state as a side effect of an
+   * informational call. Upstream MCP usage accounting remains authoritative.
+   */
+  private isDirectoryReviewProfile(): boolean {
+    return resolveToolProfile(this.props?.profile).name === 'claude-directory';
+  }
+
+  private isSubmittedInformationalToolExecution(
+    toolId?: string | null
+  ): boolean {
+    return Boolean(toolId && SUBMITTED_INFORMATIONAL_TOOL_EXECUTIONS.has(toolId));
+  }
+
   private appendWidgetDebugEvent(
     event: Omit<WidgetDebugEvent, 'timestamp'>
   ): void {
+    if (
+      this.isDirectoryReviewProfile() ||
+      this.isSubmittedInformationalToolExecution(event.toolId)
+    ) {
+      return;
+    }
+
     const entry: WidgetDebugEvent = {
       timestamp: new Date().toISOString(),
       ...event,
@@ -547,6 +592,7 @@ export class OrgXMcp extends McpAgent<
    * This is called lazily on first use to avoid issues with DO initialization.
    */
   private initSessionSql() {
+    if (this.isDirectoryReviewProfile()) return;
     if (this.sessionSqlInitialized) return;
     try {
       // Check if SQLite storage is available on this Durable Object
@@ -631,8 +677,10 @@ export class OrgXMcp extends McpAgent<
    */
   private async loadSessionAuth() {
     try {
-      this.initSessionSql();
-      if (this.sessionSqlInitialized) {
+      if (!this.isDirectoryReviewProfile()) {
+        this.initSessionSql();
+      }
+      if (!this.isDirectoryReviewProfile() && this.sessionSqlInitialized) {
         const result = this.sessionSql.exec(
           `SELECT * FROM session_auth WHERE id = 1`
         );
@@ -649,11 +697,13 @@ export class OrgXMcp extends McpAgent<
             email: row.email as string | undefined,
             authenticatedAt: row.authenticated_at as number,
           };
-          console.info('[mcp:session] Restored session auth from SQLite', {
-            userId: this.sessionAuth.userId,
-            hasOrgxUserId: Boolean(this.sessionAuth.orgxUserId),
-            authenticatedAt: this.sessionAuth.authenticatedAt,
-          });
+          if (!this.isDirectoryReviewProfile()) {
+            console.info('[mcp:session] Restored session auth from SQLite', {
+              userId: this.sessionAuth.userId,
+              hasOrgxUserId: Boolean(this.sessionAuth.orgxUserId),
+              authenticatedAt: this.sessionAuth.authenticatedAt,
+            });
+          }
 
           // Mirror to DO storage so future loads work even if SQLite is unavailable.
           try {
@@ -692,10 +742,12 @@ export class OrgXMcp extends McpAgent<
       if (!parsed) return;
 
       this.sessionAuth = parsed;
-      console.info('[mcp:session] Restored session auth from DO storage', {
-        userId: this.sessionAuth.userId,
-        authenticatedAt: this.sessionAuth.authenticatedAt ?? null,
-      });
+      if (!this.isDirectoryReviewProfile()) {
+        console.info('[mcp:session] Restored session auth from DO storage', {
+          userId: this.sessionAuth.userId,
+          authenticatedAt: this.sessionAuth.authenticatedAt ?? null,
+        });
+      }
     } catch (error) {
       console.warn('[mcp:session] Failed to load session auth', { error });
     }
@@ -706,6 +758,8 @@ export class OrgXMcp extends McpAgent<
    * Called when user authenticates to persist across DO resets.
    */
   private async saveSessionAuth() {
+    if (this.isDirectoryReviewProfile()) return;
+
     try {
       this.initSessionSql();
       if (!this.sessionAuth.userId) return;
@@ -755,8 +809,10 @@ export class OrgXMcp extends McpAgent<
    */
   private async loadSessionContext() {
     try {
-      this.initSessionSql();
-      if (this.sessionSqlInitialized) {
+      if (!this.isDirectoryReviewProfile()) {
+        this.initSessionSql();
+      }
+      if (!this.isDirectoryReviewProfile() && this.sessionSqlInitialized) {
         const result = this.sessionSql.exec(
           `SELECT * FROM session_context WHERE id = 1`
         );
@@ -779,10 +835,12 @@ export class OrgXMcp extends McpAgent<
             initiativeId: initiativeId ?? this.sessionContext.initiativeId,
           };
 
-          console.info('[mcp:session] Restored session context from SQLite', {
-            workspaceId: this.sessionContext.workspaceId ?? null,
-            initiativeId: this.sessionContext.initiativeId ?? null,
-          });
+          if (!this.isDirectoryReviewProfile()) {
+            console.info('[mcp:session] Restored session context from SQLite', {
+              workspaceId: this.sessionContext.workspaceId ?? null,
+              initiativeId: this.sessionContext.initiativeId ?? null,
+            });
+          }
 
           // Mirror to DO storage.
           try {
@@ -815,10 +873,12 @@ export class OrgXMcp extends McpAgent<
 
       this.sessionContext = { ...this.sessionContext, ...parsed };
 
-      console.info('[mcp:session] Restored session context from DO storage', {
-        workspaceId: this.sessionContext.workspaceId ?? null,
-        initiativeId: this.sessionContext.initiativeId ?? null,
-      });
+      if (!this.isDirectoryReviewProfile()) {
+        console.info('[mcp:session] Restored session context from DO storage', {
+          workspaceId: this.sessionContext.workspaceId ?? null,
+          initiativeId: this.sessionContext.initiativeId ?? null,
+        });
+      }
     } catch (error) {
       console.warn('[mcp:session] Failed to load session context', { error });
     }
@@ -829,6 +889,8 @@ export class OrgXMcp extends McpAgent<
    * Called when the session context changes.
    */
   private async saveSessionContext() {
+    if (this.isDirectoryReviewProfile()) return;
+
     try {
       this.initSessionSql();
       const now = Date.now();
@@ -868,6 +930,8 @@ export class OrgXMcp extends McpAgent<
   }
 
   private async saveMcpActivationState() {
+    if (this.isDirectoryReviewProfile()) return;
+
     try {
       await this.ctx.storage.put(
         MCP_ACTIVATION_STORAGE_KEY,
@@ -894,6 +958,8 @@ export class OrgXMcp extends McpAgent<
   }
 
   private async saveMcpSessionReentryState() {
+    if (this.isDirectoryReviewProfile()) return;
+
     try {
       await this.ctx.storage.put(
         MCP_SESSION_REENTRY_STORAGE_KEY,
@@ -905,6 +971,8 @@ export class OrgXMcp extends McpAgent<
   }
 
   private async shouldShowNewSessionWelcome(userId: string): Promise<boolean> {
+    if (this.isDirectoryReviewProfile()) return false;
+
     const key = buildNewSessionWelcomeStorageKey(userId);
     if (!key) return false;
 
@@ -972,14 +1040,16 @@ export class OrgXMcp extends McpAgent<
     ]);
 
     // Diagnostic: log what the DO received from the provider
-    console.info('[mcp:init] DO initialized', {
-      hasProps: !!this.props,
-      propsUserId: this.props?.userId ?? null,
-      propsScope: this.props?.scope ?? null,
-      propsWorkspaceId: this.props?.workspace_id ?? null,
-      propsInitiativeId: this.props?.initiative_id ?? null,
-      sessionUserId: this.sessionAuth.userId ?? null,
-    });
+    if (!this.isDirectoryReviewProfile()) {
+      console.info('[mcp:init] DO initialized', {
+        hasProps: !!this.props,
+        propsUserId: this.props?.userId ?? null,
+        propsScope: this.props?.scope ?? null,
+        propsWorkspaceId: this.props?.workspace_id ?? null,
+        propsInitiativeId: this.props?.initiative_id ?? null,
+        sessionUserId: this.sessionAuth.userId ?? null,
+      });
+    }
 
     const propsWorkspaceId =
       typeof this.props?.workspace_id === 'string'
@@ -1033,11 +1103,13 @@ export class OrgXMcp extends McpAgent<
           authenticatedAt: Date.now(),
         };
         await this.saveSessionAuth();
-        console.info('[mcp:session] User authenticated, stored in session', {
-          userId: this.props.userId,
-          hasOrgxUserId: Boolean(this.sessionAuth.orgxUserId),
-          scope: this.props.scope,
-        });
+        if (!this.isDirectoryReviewProfile()) {
+          console.info('[mcp:session] User authenticated, stored in session', {
+            userId: this.props.userId,
+            hasOrgxUserId: Boolean(this.sessionAuth.orgxUserId),
+            scope: this.props.scope,
+          });
+        }
       }
     }
 
@@ -1190,6 +1262,8 @@ export class OrgXMcp extends McpAgent<
       properties,
     }: { distinctId: string; properties?: Record<string, unknown> }
   ): void {
+    if (this.isDirectoryReviewProfile()) return;
+
     captureWorkerPosthogEvent({
       env: this.env,
       ctx: this.ctx as any,
@@ -1237,6 +1311,8 @@ export class OrgXMcp extends McpAgent<
       providerMismatch?: boolean;
     }
   ): void {
+    if (this.isSubmittedInformationalToolExecution(params.toolId)) return;
+
     const distinctId = params.userId ?? this.resolveAnonymousDistinctId();
     // When the caller didn't tag errorKind explicitly, classify from the
     // error message so the dashboard always has a coarse category to
@@ -1389,6 +1465,13 @@ export class OrgXMcp extends McpAgent<
     workspaceId?: string | null;
     initiativeId?: string | null;
   }): Promise<McpActivationTelemetryEvent[]> {
+    if (
+      this.isDirectoryReviewProfile() ||
+      this.isSubmittedInformationalToolExecution(params.toolId)
+    ) {
+      return [];
+    }
+
     try {
       const { state, events } = applyMcpActivationObservation(
         this.mcpActivationState,
@@ -1551,10 +1634,18 @@ export class OrgXMcp extends McpAgent<
   }
 
   private async withOrgx(
-    runner: () => Promise<CallToolResult>
+    runner: () => Promise<CallToolResult>,
+    toolId?: string
   ): Promise<CallToolResult> {
     try {
       const result = await runner();
+      if (
+        this.isDirectoryReviewProfile() ||
+        this.isSubmittedInformationalToolExecution(toolId)
+      ) {
+        return result;
+      }
+
       const now = new Date().toISOString();
       const shouldShowReentry = shouldShowWelcomeBack({
         state: this.mcpSessionReentryState,
@@ -2141,6 +2232,13 @@ export class OrgXMcp extends McpAgent<
     args: Record<string, unknown>;
     data: Record<string, unknown>;
   }) {
+    if (
+      this.isDirectoryReviewProfile() ||
+      this.isSubmittedInformationalToolExecution(params.toolId)
+    ) {
+      return;
+    }
+
     try {
       const initiativeId =
         (typeof params.data.initiative_id === 'string' &&
@@ -2348,11 +2446,13 @@ export class OrgXMcp extends McpAgent<
       });
     }
 
-    console.info('[mcp] Executing tool', {
-      toolId,
-      hasUserId: !!resolvedUserId,
-      authSource,
-    });
+    if (!this.isSubmittedInformationalToolExecution(toolId)) {
+      console.info('[mcp] Executing tool', {
+        toolId,
+        hasUserId: !!resolvedUserId,
+        authSource,
+      });
+    }
 
     // Expand consolidated tools (scoring_config, queue_action, stats)
     // into their legacy backend tool_id before dispatching
@@ -2451,7 +2551,12 @@ export class OrgXMcp extends McpAgent<
           return this.toolError(errorMessage);
         }
 
-        console.info('[mcp] Tool executed successfully', { toolId, latencyMs });
+        if (!this.isSubmittedInformationalToolExecution(toolId)) {
+          console.info('[mcp] Tool executed successfully', {
+            toolId,
+            latencyMs,
+          });
+        }
 
         // Extract message if present, otherwise use imported summarizer
         let data = result.data ?? {};
@@ -2628,7 +2733,7 @@ export class OrgXMcp extends McpAgent<
         }
         throw error;
       }
-    });
+    }, toolId);
   }
 
   /**
@@ -3417,7 +3522,7 @@ export class OrgXMcp extends McpAgent<
                 }),
               });
             }
-          });
+          }, tool.id);
         }
       );
     }
@@ -5214,7 +5319,7 @@ export class OrgXMcp extends McpAgent<
         default:
           return this.toolError(`Unknown contract tool: ${toolId}`);
       }
-    });
+    }, toolId);
   }
 
   private async executeCreateEntityWrapper(
@@ -11565,7 +11670,7 @@ export class OrgXMcp extends McpAgent<
               ],
               structuredContent: envelope,
             };
-          })
+          }, 'review_artifact')
       );
 
     // --- get_morning_brief ---
@@ -11715,7 +11820,7 @@ export class OrgXMcp extends McpAgent<
               ],
               structuredContent: payload,
             };
-          })
+          }, 'get_morning_brief')
       );
 
     // --- get_relevant_learnings ---

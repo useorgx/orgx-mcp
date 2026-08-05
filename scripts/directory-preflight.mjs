@@ -53,6 +53,15 @@ const claudeDirectoryTools = [
   'get_morning_brief',
   'get_operator_chronicle',
 ].sort();
+const claudeDirectoryReadOnlyHints = new Map([
+  ['orgx_search', false],
+  ['orgx_inspect', true],
+  ['orgx_recommend', false],
+  ['get_agent_status', false],
+  ['get_initiative_pulse', false],
+  ['get_morning_brief', true],
+  ['get_operator_chronicle', true],
+]);
 
 function assert(condition, message) {
   if (!condition) {
@@ -161,8 +170,8 @@ async function main() {
   for (const tool of toolCatalog.tools ?? []) {
     if (!tool?.profiles?.includes('claude-directory')) continue;
     assert(
-      tool.readOnly === true,
-      `claude-directory tool must be read-only: ${tool.id}`
+      tool.readOnly === claudeDirectoryReadOnlyHints.get(tool.id),
+      `claude-directory readOnlyHint drift for ${tool.id}: expected ${claudeDirectoryReadOnlyHints.get(tool.id)}, found ${tool.readOnly}`
     );
   }
 

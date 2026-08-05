@@ -16,11 +16,14 @@ Organizational memory for AI agents / AI team control plane
 
 `https://mcp.useorgx.com/mcp?profile=claude-directory`
 
-This review surface is intentionally read-only. The general OrgX profiles
-retain write and delegation capabilities, but they are outside this directory
+This review surface is intentionally non-destructive and closed-world. Three
+tools are strictly read-only; mixed `orgx_search`, default `orgx_recommend`,
+`get_agent_status`, and `get_initiative_pulse` record metered MCP allowance usage and are
+therefore annotated non-read-only. The general OrgX profiles retain business
+record writes and delegation capabilities, but they are outside this directory
 submission.
 
-## Read actions
+## Informational actions
 
 - orgx_search
 - orgx_inspect
@@ -32,8 +35,9 @@ submission.
 
 ## Excluded actions
 
-All write, approval, rejection, delegation, hierarchy mutation, lifecycle, and
-mixed-mode tools are excluded from the Anthropic directory profile.
+All business-record writes, approval, rejection, delegation, hierarchy
+mutation, lifecycle, external-action, and destructive tools are excluded from
+the Anthropic directory profile.
 
 ## OAuth
 

@@ -255,7 +255,7 @@ const SMITHERY_CONFIG_SCHEMA = {
     profile: {
       type: 'string',
       description:
-        'Optional tool profile to expose at connection time. Use chatgpt for OpenAI review or claude-directory for Anthropic read-only review. Defaults to the published v2 surface; full is explicit admin/debug compatibility.',
+        'Optional tool profile to expose at connection time. Use chatgpt for OpenAI review or claude-directory for Anthropic non-destructive review. Defaults to the published v2 surface; full is explicit admin/debug compatibility.',
       enum: [...SMITHERY_TOOL_PROFILES],
       default: DEFAULT_TOOL_PROFILE,
     },

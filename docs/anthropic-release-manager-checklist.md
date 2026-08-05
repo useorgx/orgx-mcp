@@ -34,7 +34,8 @@ Then verify the reviewer environment:
 3. Confirm `workspaceIsClean === true`
 4. Confirm the seeded counts still match the expected baseline
 5. Connect to `https://mcp.useorgx.com/mcp?profile=claude-directory`
-6. Confirm `tools/list` exposes exactly the seven documented read-only tools
+6. Confirm `tools/list` exposes exactly the seven documented tools, with three
+   `readOnlyHint: true` and four `readOnlyHint: false`
 7. Confirm `prompts/list` is empty and `resources/list` exposes only the four
    selected read-only widget families
 8. Confirm an invalid-Origin POST returns `403`, trusted Claude Origin receives
@@ -43,7 +44,7 @@ Then verify the reviewer environment:
 
 ## Claude smoke
 
-Use the reviewer account in Claude and run the read-only prompt matrix from
+Use the reviewer account in Claude and run the informational prompt matrix from
 [docs/anthropic-reviewer-runbook.md](./anthropic-reviewer-runbook.md).
 
 Capture authenticated post-deploy evidence for:
@@ -68,7 +69,9 @@ Confirm all of the following are ready:
 - privacy, support, and security docs reachable
 - reviewer runbook linked in the internal handoff
 - one support owner assigned during the review window
-- directory scan contains no write-capable or mixed-mode tools
+- directory scan contains no business-record mutation, dispatch, external-action,
+  or destructive tools; the four documented usage-recording tools remain
+  `readOnlyHint: false`
 - directory scan contains no mutation prompts, skill packs, or unrelated widgets
 - HTTPS Origin validation receipt captured for invalid, trusted, and no-Origin requests
 - authenticated post-deploy response screenshots have been captured from real

@@ -153,9 +153,9 @@ describe('tool discovery snapshot', () => {
     expect(resolveProfileToolSet(null)).toEqual(expected);
   });
 
-  it('keeps bootstrap on stateful profiles and off the read-only directory profile', () => {
+  it('keeps bootstrap on stateful profiles and off the directory review profile', () => {
     // Bootstrap persists workspace/session continuity, so the independently
-    // read-only Anthropic review profile must exclude it.
+    // focused Anthropic review profile must exclude it.
     const REQUIRED = ['orgx_bootstrap'];
     const profileNames = Object.keys(TOOL_PROFILES).filter((n) => n !== 'full');
     for (const profileName of profileNames) {

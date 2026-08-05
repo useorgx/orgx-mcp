@@ -50,13 +50,23 @@ describe('toolProfiles backward compatibility', () => {
     expect(chatgptTools!.has('track_project_progress')).toBe(false);
   });
 
-  it('keeps the Anthropic directory profile focused and independently read-only', () => {
+  it('keeps the Anthropic directory profile focused, non-destructive, and truthfully annotated', () => {
     const claudeDirectoryTools = resolveProfileToolSet('claude-directory');
 
     expect([...(claudeDirectoryTools ?? [])]).toEqual([
       ...CLAUDE_DIRECTORY_SURFACE,
     ]);
     expect(claudeDirectoryTools?.size).toBe(7);
+
+    const readOnlyByTool = new Map<string, boolean>([
+      ['orgx_search', false],
+      ['orgx_inspect', true],
+      ['orgx_recommend', false],
+      ['get_agent_status', false],
+      ['get_initiative_pulse', false],
+      ['get_morning_brief', true],
+      ['get_operator_chronicle', true],
+    ]);
 
     for (const toolName of claudeDirectoryTools ?? []) {
       const manifestTool = serverManifest.tools.find(
@@ -69,8 +79,8 @@ describe('toolProfiles backward compatibility', () => {
       expect(toolName.length, `${toolName} exceeds Anthropic's name limit`).toBeLessThanOrEqual(
         64
       );
-      expect(manifestTool?.annotations, `${toolName} must be read-only`).toEqual({
-        readOnlyHint: true,
+      expect(manifestTool?.annotations, `${toolName} annotation drift`).toEqual({
+        readOnlyHint: readOnlyByTool.get(toolName),
         openWorldHint: false,
         destructiveHint: false,
       });
@@ -93,7 +103,7 @@ describe('toolProfiles backward compatibility', () => {
     ]) {
       expect(
         claudeDirectoryTools?.has(excludedTool),
-        `${excludedTool} must stay off the read-only directory profile`
+        `${excludedTool} must stay off the directory review profile`
       ).toBe(false);
     }
   });

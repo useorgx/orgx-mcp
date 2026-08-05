@@ -71,7 +71,7 @@ describe('mcpTransport', () => {
     expect(handler.fetch).not.toHaveBeenCalled();
   });
 
-  it('accepts the trusted Claude Origin for the read-only directory profile and echoes narrow CORS', async () => {
+  it('accepts the trusted Claude Origin for the non-destructive directory profile and echoes narrow CORS', async () => {
     const handler = { fetch: vi.fn(async () => Response.json({ ok: true })) };
     const request = new Request(
       'https://mcp.useorgx.com/mcp?profile=claude-directory',

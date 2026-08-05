@@ -18,7 +18,7 @@ Use this when you need to:
 - The directory connection uses
   `https://mcp.useorgx.com/mcp?profile=claude-directory`.
 - The connection advertises no prompts or skill packs, and only the four
-  widget families needed by the seven read-only tools.
+  widget families needed by the seven informational tools.
 - The reviewer account has a dedicated workspace named `Anthropic Review Workspace`.
 
 Before review, request `https://mcp.useorgx.com/healthz?check=upstream` and
@@ -86,7 +86,7 @@ Key seeded pending decisions:
 Use these exact prompts during reviewer QA:
 
 1. `Show me the pending decisions that need approval today.`
-   - Expected: read-only recommendation or search results; no approval action
+   - Expected: informational recommendation or search results; no approval action
 2. `What did we decide about Search Copilot readiness?`
    - Expected: memory search results with prior decision context
 3. `Give me the pulse for the Search Copilot Readiness initiative.`
@@ -114,8 +114,12 @@ write, approval, delegation, or scaffold flow as directory evidence.
 
 - `bootstrap` is safe to run repeatedly. If the workspace is already clean, it should be a no-op.
 - `reset` is destructive for the dedicated reviewer workspace. It will wipe review data in that workspace before reseeding.
-- The submitted connector profile is read-only. If a mutation tool appears in
-  `tools/list`, stop review and treat the deployment as not ready.
+- The submitted connector profile is non-destructive and closed-world. Three
+  tools are strictly read-only; mixed `orgx_search`, default
+  `orgx_recommend`, `get_agent_status`, and `get_initiative_pulse` record
+  metered MCP allowance usage and therefore advertise `readOnlyHint: false`. If a tool can
+  mutate business records, dispatch work, act externally, or perform a
+  destructive action, stop review and treat the deployment as not ready.
 - MCP transport requests with a present browser `Origin` are exact-allowlisted
   before auth or dispatch. An invalid origin must return `403`; Claude Code and
   other CLI clients that omit `Origin` remain supported.

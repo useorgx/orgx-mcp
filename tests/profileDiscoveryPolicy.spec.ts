@@ -6,7 +6,7 @@ import {
 } from '../src/profileDiscoveryPolicy';
 
 describe('profile auxiliary discovery policy', () => {
-  it('limits the Anthropic directory profile to coherent read-only widgets', () => {
+  it('limits the Anthropic directory profile to coherent informational widgets', () => {
     const policy = resolveProfileDiscoveryPolicy('claude-directory');
 
     expect(policy).toMatchObject({

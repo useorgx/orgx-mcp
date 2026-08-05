@@ -18,7 +18,7 @@ export function buildSmitheryConfigSchema() {
       .enum(SMITHERY_TOOL_PROFILES)
       .default('v2')
       .describe(
-        'Optional tool profile to expose at connection time. Use chatgpt for the streamlined ChatGPT App review surface or claude-directory for the focused read-only Anthropic Connector Directory surface. Defaults to the published v2 surface; full is explicit admin/debug compatibility.'
+        'Optional tool profile to expose at connection time. Use chatgpt for the streamlined ChatGPT App review surface or claude-directory for the focused, non-destructive Anthropic Connector Directory surface. Defaults to the published v2 surface; full is explicit admin/debug compatibility.'
       ),
     workspace_id: z
       .string()

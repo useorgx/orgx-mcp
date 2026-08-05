@@ -572,7 +572,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'get_agent_status',
     title: 'Get Agent Status',
     description:
-      'Use when the user asks what agents are working on right now, whether delegated work is still running, or why nothing has landed yet. Also known as: agent status, what agents are doing, active runs. USE WHEN: user asks about agent activity, progress, or what agents are working on. NEXT: If agents are stuck, use orgx_search or orgx_inspect to read the related blocker context. DO NOT USE: to check initiative health — use get_initiative_pulse instead. Read-only.',
+      'Use when the user asks what agents are working on right now, whether delegated work is still running, or why nothing has landed yet. Successful calls record metered MCP allowance usage but do not change business records. Also known as: agent status, what agents are doing, active runs. USE WHEN: user asks about agent activity, progress, or what agents are working on. NEXT: If agents are stuck, use orgx_search or orgx_inspect to read the related blocker context. DO NOT USE: to check initiative health — use get_initiative_pulse instead.',
     inputSchema: {
       agent_id: z.string().optional().describe('Optional agent ID to inspect'),
       workspace_id: z.string().uuid().optional().describe('Optional workspace UUID to scope agent status'),
@@ -583,13 +583,13 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         .optional()
         .describe('Include idle agents in the response'),
     },
-    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.agentStatus,
       'openai/toolInvocation/invoking': 'Checking agent status...',
       'openai/toolInvocation/invoked': "Here's what your agents are doing",
-      'openai/readOnlyHint': true,
+      'openai/readOnlyHint': false,
       ui: { resourceUri: WIDGET_URIS.agentStatus },
     },
   },
@@ -625,7 +625,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'get_initiative_pulse',
     title: 'Get Initiative Pulse',
     description:
-      'Use when the user asks how a project is going, what is blocked, or whether an initiative is on track. Also known as: project status, roadmap progress, execution health, blockers. USE WHEN: user asks how an initiative is going, or wants a status update. NEXT: If blockers exist, use orgx_inspect for one blocker or orgx_search for related records. DO NOT USE: for an org-wide brief — use orgx_recommend with mode=morning_brief instead. Read-only.',
+      'Use when the user asks how a project is going, what is blocked, or whether an initiative is on track. Successful calls record metered MCP allowance usage but do not change business records. Also known as: project status, roadmap progress, execution health, blockers. USE WHEN: user asks how an initiative is going, or wants a status update. NEXT: If blockers exist, use orgx_inspect for one blocker or orgx_search for related records. DO NOT USE: for an org-wide brief — use orgx_recommend with mode=morning_brief instead.',
     inputSchema: {
       initiative_id: z
         .string()
@@ -638,13 +638,13 @@ export const CHATGPT_TOOL_DEFINITIONS = [
           'Optional: Initiative title to resolve automatically if ID is unknown.'
         ),
     },
-    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.initiativePulse,
       'openai/toolInvocation/invoking': 'Getting initiative health...',
       'openai/toolInvocation/invoked': "Here's the initiative status",
-      'openai/readOnlyHint': true,
+      'openai/readOnlyHint': false,
       ui: { resourceUri: WIDGET_URIS.initiativePulse },
     },
   },

@@ -89,7 +89,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_search',
     title: 'Search OrgX',
     description:
-      "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Finds OrgX entities, decisions, artifacts, and memory. A query without type runs a mixed relevance search; typed searches provide exhaustive cursor/offset pagination. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use structuredContent.next_call exactly when pagination.has_more=true, orgx_inspect for one selected result, or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.",
+      "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Finds OrgX entities, decisions, artifacts, and memory. A query without type runs a mixed relevance search and records metered MCP allowance usage; typed searches provide exhaustive cursor/offset pagination without changing business records. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use structuredContent.next_call exactly when pagination.has_more=true, orgx_inspect for one selected result, or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.",
     inputSchema: {
       query: z.string().optional().describe('Search query for memory or title/text matching'),
       type: z.enum(entityTypeEnum.options).optional().describe('Optional entity type filter, such as task, milestone, decision, artifact, or initiative. Omit with query for a mixed relevance search across memory-backed entity types.'),
@@ -102,13 +102,13 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       fields: z.array(z.string()).optional().describe('Optional compact field list'),
       session_id: z.string().optional().describe('Optional bootstrap/session identifier'),
     },
-    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.searchResults,
       'openai/toolInvocation/invoking': 'Searching OrgX...',
       'openai/toolInvocation/invoked': 'OrgX search complete',
-      'openai/readOnlyHint': true,
+      'openai/readOnlyHint': false,
       ui: { resourceUri: WIDGET_URIS.searchResults },
     },
   },
@@ -116,7 +116,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_recommend',
     title: 'Recommend Next OrgX Action',
     description:
-      'Use when the user asks what to do next, wants a brief, or returns after time away and needs priorities. Recommends next work, summarizes operator-chronicle/morning-brief signals, and reads prioritization context. USE WHEN: user asks what to do next, wants a brief, asks what changed yesterday/week/30 days, or needs priority guidance. mode=morning_brief returns the operator chronicle when available. NEXT: present the recommendation and ask for explicit confirmation before any separate action. DO NOT USE WHEN: the user already specified a concrete action.',
+      'Use when the user asks what to do next, wants a brief, or returns after time away and needs priorities. Recommends next work, summarizes operator-chronicle/morning-brief signals, and reads prioritization context. The default next_action mode records metered MCP allowance usage; it does not change business records. USE WHEN: user asks what to do next, wants a brief, asks what changed yesterday/week/30 days, or needs priority guidance. mode=morning_brief returns the operator chronicle when available. NEXT: present the recommendation and ask for explicit confirmation before any separate action. DO NOT USE WHEN: the user already specified a concrete action.',
     inputSchema: {
       mode: z.enum(['next_action', 'morning_brief']).optional().describe('Recommendation mode; default next_action'),
       period: z.enum(['day', 'week', '30d']).optional().describe('Reporting period for mode=morning_brief; default 30d'),
@@ -126,13 +126,13 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       limit: z.number().int().min(1).max(20).optional().describe('Maximum recommendations'),
       session_id: z.string().optional().describe('Optional bootstrap/session identifier'),
     },
-    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.morningBrief,
       'openai/toolInvocation/invoking': 'Building OrgX recommendation...',
       'openai/toolInvocation/invoked': 'OrgX recommendation ready',
-      'openai/readOnlyHint': true,
+      'openai/readOnlyHint': false,
       ui: { resourceUri: WIDGET_URIS.morningBrief },
     },
   },

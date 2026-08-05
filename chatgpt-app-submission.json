@@ -22,12 +22,12 @@
     },
     "orgx_search": {
       "annotations": {
-        "readOnlyHint": true,
+        "readOnlyHint": false,
         "openWorldHint": false,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Searches OrgX memory and entities and returns matching results without modifying records.",
+        "read_only_justification": "Not strictly read-only: mixed relevance search records metered MCP allowance usage, although it does not change business records.",
         "open_world_justification": "Operates only on private OrgX workspace data.",
         "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
       }
@@ -46,12 +46,12 @@
     },
     "orgx_recommend": {
       "annotations": {
-        "readOnlyHint": true,
+        "readOnlyHint": false,
         "openWorldHint": false,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Computes recommendations and brief signals from existing OrgX data without writing records.",
+        "read_only_justification": "Not strictly read-only: the default next-action mode records metered MCP allowance usage, although it does not change business records.",
         "open_world_justification": "Operates only on private OrgX workspace data.",
         "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
       }
@@ -178,24 +178,24 @@
     },
     "get_agent_status": {
       "annotations": {
-        "readOnlyHint": true,
+        "readOnlyHint": false,
         "openWorldHint": false,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Retrieves agent activity and status without modifying OrgX records.",
+        "read_only_justification": "Not strictly read-only: successful calls record metered MCP allowance usage, although they do not change agent or business records.",
         "open_world_justification": "Operates only on private OrgX workspace data.",
         "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
       }
     },
     "get_initiative_pulse": {
       "annotations": {
-        "readOnlyHint": true,
+        "readOnlyHint": false,
         "openWorldHint": false,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Retrieves initiative health, blockers, milestones, and activity without modifying records.",
+        "read_only_justification": "Not strictly read-only: successful calls record metered MCP allowance usage, although they do not change initiative or business records.",
         "open_world_justification": "Operates only on private OrgX workspace data.",
         "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
       }
