@@ -153,15 +153,19 @@ describe('tool discovery snapshot', () => {
     expect(resolveProfileToolSet(null)).toEqual(expected);
   });
 
-  it('every profile includes the bootstrap/describe entry points', () => {
-    // Bootstrap is the v2 session handshake and routing entrypoint. Catches
-    // accidental removal from filtered profiles.
+  it('keeps bootstrap on stateful profiles and off the directory review profile', () => {
+    // Bootstrap persists workspace/session continuity, so the independently
+    // focused Anthropic review profile must exclude it.
     const REQUIRED = ['orgx_bootstrap'];
     const profileNames = Object.keys(TOOL_PROFILES).filter((n) => n !== 'full');
     for (const profileName of profileNames) {
       const allowed = resolveProfileToolSet(profileName);
       if (!allowed) continue;
       for (const required of REQUIRED) {
+        if (profileName === 'claude-directory') {
+          expect(allowed.has(required)).toBe(false);
+          continue;
+        }
         expect(
           allowed.has(required),
           `profile "${profileName}" must include ${required}`

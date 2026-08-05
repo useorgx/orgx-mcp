@@ -6,16 +6,62 @@ This checklist is the repository-side handoff for Anthropic MCP Directory submis
 
 OrgX MCP is a remote MCP server for organizational continuity for AI agents.
 Make AI work resumable, reviewable, and provable across agents. It delivers
-that continuity through mechanisms such as organizational memory and agent
-orchestration:
+that continuity through a deliberately non-destructive, closed-world directory
+surface:
 
 - remembering and recalling decisions,
 - querying team memory and artifact context,
-- reviewing pending agent approvals,
 - checking initiative health and blockers,
-- scaffolding initiative hierarchies,
-- assigning work to OrgX agents,
+- viewing current agent status,
+- reading morning briefs and operator proof context,
 - rendering OrgX widgets in MCP Apps-compatible hosts.
+
+## Directory Review Endpoint
+
+Submit this scoped endpoint to Anthropic:
+
+`https://mcp.useorgx.com/mcp?profile=claude-directory`
+
+The `claude-directory` profile exposes seven focused informational tools:
+
+- `orgx_search`
+- `orgx_inspect`
+- `orgx_recommend`
+- `get_agent_status`
+- `get_initiative_pulse`
+- `get_morning_brief`
+- `get_operator_chronicle`
+
+The general-purpose endpoint and other profiles continue to support writes,
+approvals, delegation, and lifecycle operations. Those capabilities are not
+part of this directory submission and must not appear during its tool scan.
+
+Every directory tool is non-destructive and closed-world. Three tools are
+strictly read-only: `orgx_inspect`, `get_morning_brief`, and
+`get_operator_chronicle`. Four tools advertise `readOnlyHint: false` because a
+successful mode records metered MCP allowance usage: mixed `orgx_search`, default
+`orgx_recommend`, `get_agent_status`, and `get_initiative_pulse`. Those four do
+not change OrgX business records, but usage accounting is still a state change.
+
+As defense in depth, the worker suppresses its own session-context,
+activation/reentry, analytics, diagnostic, and success-log writes during all
+seven directory tool executions. This does not suppress the documented
+upstream MCP allowance records for the four non-read-only tools. The underlying MCP
+framework may also persist protocol initialization and connection/session
+lifecycle state outside a tool invocation, so the endpoint is not stateless.
+
+Auxiliary discovery is scoped too: this profile advertises no prompts, no
+downloadable skill packs, and no generic initiative resource. It publishes
+only the search-results, agent-status, initiative-pulse, and morning-brief
+widget resources used by the selected tools.
+
+OAuth discovery metadata is origin-wide because all profiles share one issuer
+and well-known metadata can be cached independently of the MCP query string.
+It therefore advertises the server's full supported scope vocabulary. The
+directory profile reduces effective capability through its tool/resource/
+prompt surface, and each selected tool uses a read-scoped OAuth security
+scheme.
+Do not claim that `?profile=claude-directory` narrows the issuer metadata itself.
 
 ## Reviewer package
 
@@ -24,18 +70,27 @@ Before submission, prepare all of the following:
 1. A clean release commit and deployed production worker.
 2. A provisioned reviewer account with representative sample data.
 3. Secure delivery of reviewer credentials outside the repository.
-4. Confirmed OAuth callback allowlists:
-   - `http://localhost:6274/oauth/callback`
-   - `http://localhost:6274/oauth/callback/debug`
-   - `https://claude.ai/api/mcp/auth_callback`
-   - `https://claude.com/api/mcp/auth_callback`
+4. Current OAuth compatibility evidence captured for both hosted Claude and
+   Claude Code clients:
+   - a protected MCP request returns `401` with `WWW-Authenticate`,
+   - Dynamic Client Registration accepts the client-supplied redirect URI,
+   - PKCE uses `S256`,
+   - hosted Claude completes its current callback flow,
+   - Claude Code completes callbacks on random loopback ports for both
+     `localhost` and `127.0.0.1` (do not pin only port `6274`).
 5. If a firewall or IP allowlist is enabled, Claude IP ranges allowlisted per Anthropic guidance.
-6. Support, privacy, and security docs linked from the README.
-7. Authenticated OrgX review routes available for the reviewer account:
+6. Present HTTPS `Origin` headers are validated before MCP auth or dispatch;
+   an invalid origin returns `403`, while no-`Origin` Claude Code/CLI traffic
+   remains compatible.
+7. Support, privacy, and security docs linked from the README.
+8. Authenticated OrgX review routes available for the reviewer account:
    - `GET https://useorgx.com/api/review/sessions/<token>/status`
    - `POST https://useorgx.com/api/review/sessions/<token>/bootstrap`
    - `POST https://useorgx.com/api/review/sessions/<token>/reset`
-8. Reviewer runbook and release-manager checklist included in this repository.
+9. Reviewer runbook and release-manager checklist included in this repository.
+10. Authenticated response screenshots captured after deployment from real
+    Claude runs against the dedicated reviewer workspace. Synthetic or local
+    fixture renders are excluded from submission evidence.
 
 ## Pre-submission checks
 
@@ -43,7 +98,7 @@ Run:
 
 ```bash
 pnpm type-check
-pnpm vitest run
+pnpm test:anthropic-review
 pnpm build
 pnpm directory:preflight
 ```
@@ -52,26 +107,44 @@ pnpm directory:preflight
 
 Reviewers should be able to perform all of these on the provided account:
 
-1. Read-only flow: `approve_agent_work action=list`, `get_agent_status`, `recall_memory`, `track_project_progress`.
-2. Scoped write flow: approve or reject a seeded pending decision.
-3. Hierarchy flow: scaffold a test initiative with workstreams, milestones, and tasks.
-4. Widget flow: verify the corresponding widget renders for at least decisions, initiative pulse, agent status, and scaffolded initiative.
+1. Memory flow: `orgx_search` and `orgx_inspect` retrieve seeded decisions and
+   artifacts.
+2. Status flow: `get_agent_status` and `get_initiative_pulse` report current
+   execution state.
+3. Briefing flow: `orgx_recommend`, `get_morning_brief`, and
+   `get_operator_chronicle` return decision support and proof context.
+4. Tool scan: only the seven documented non-destructive, closed-world tools are
+   advertised, with three `readOnlyHint: true` and four `readOnlyHint: false`.
+5. Prompt/resource scan: no prompts or skill packs are advertised, and only
+   the four documented read-only widget families are visible.
+6. Origin check: a POST with `Origin: https://attacker.example` returns `403`,
+   while the same unauthenticated request without `Origin` reaches the normal
+   OAuth challenge instead of the origin guard.
 
 ## Example prompts to include in the submission
 
-1. "Show me the pending decisions that need approval today."
+1. "What did we decide about Search Copilot readiness?"
 2. "Give me the pulse for the Search Copilot Readiness initiative."
-3. "Scaffold a launch initiative with two workstreams, one milestone each, and two tasks per milestone."
-4. "Assign the engineering agent a task to audit the onboarding funnel."
+3. "Show me what the OrgX agents are doing right now."
+4. "Give me today's morning brief."
+
+## Response screenshot evidence
+
+Screenshot evidence is pending authenticated post-deploy capture. Run the
+exact prompts above in Claude against the deployed directory profile and
+capture the resulting search, agent-status, initiative-pulse, and
+morning-brief responses. Do not use generated fixtures, local widget renders,
+landing-page images, or generic demos as provider evidence.
 
 ## Manual operational checklist
 
 - Keep the reviewer account active throughout review and post-admission spot checks.
-- Keep sample data seeded so the read-only tools and widgets are meaningful.
+- Keep sample data seeded so the informational tools and widgets are meaningful.
 - Use the OrgX review routes to confirm the dedicated reviewer workspace is baseline-ready before any Claude smoke test.
 - Use `bootstrap` when the workspace is missing or partially seeded; use `reset` when the reviewer changed data and you need to restore the clean baseline.
 - Re-run the preflight script after auth, manifest, or tool-surface changes.
-- Re-verify write tool annotations if new tools are added to the public directory surface.
+- Fail the review handoff if any tool can mutate business records, dispatch
+  work, act in an external system, or perform a destructive action.
 
 ## Public links
 

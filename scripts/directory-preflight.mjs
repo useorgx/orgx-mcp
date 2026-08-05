@@ -9,7 +9,14 @@ const serverJson = JSON.parse(
   readFileSync(resolve(root, 'server.json'), 'utf8')
 );
 const glamaJson = JSON.parse(readFileSync(resolve(root, 'glama.json'), 'utf8'));
+const toolCatalog = JSON.parse(
+  readFileSync(resolve(root, 'docs/generated/tool-catalog.json'), 'utf8')
+);
 const readme = readFileSync(resolve(root, 'README.md'), 'utf8');
+const anthropicSubmissionForm = readFileSync(
+  resolve(root, 'docs/anthropic-submission-form.md'),
+  'utf8'
+);
 
 const requiredDocs = [
   'docs/privacy-policy.md',
@@ -18,6 +25,7 @@ const requiredDocs = [
   'docs/openai-review-runbook.md',
   'docs/support.md',
   'docs/anthropic-directory.md',
+  'docs/anthropic-submission-form.md',
   'docs/anthropic-reviewer-runbook.md',
   'docs/anthropic-release-manager-checklist.md',
 ];
@@ -34,6 +42,26 @@ const requiredReadmeSections = [
 
 const staleOrgPattern =
   /github\.com\/(?:OrgX-ai|orgx-ai)\/|https?:\/\/(?:[^/]+\.)?orgx\.ai/i;
+const claudeDirectoryEndpoint =
+  'https://mcp.useorgx.com/mcp?profile=claude-directory';
+const claudeDirectoryTools = [
+  'orgx_search',
+  'orgx_inspect',
+  'orgx_recommend',
+  'get_agent_status',
+  'get_initiative_pulse',
+  'get_morning_brief',
+  'get_operator_chronicle',
+].sort();
+const claudeDirectoryReadOnlyHints = new Map([
+  ['orgx_search', false],
+  ['orgx_inspect', true],
+  ['orgx_recommend', false],
+  ['get_agent_status', false],
+  ['get_initiative_pulse', false],
+  ['get_morning_brief', true],
+  ['get_operator_chronicle', true],
+]);
 
 function assert(condition, message) {
   if (!condition) {
@@ -111,11 +139,41 @@ async function main() {
     JSON.stringify(glamaJson),
     readFileSync(resolve(root, 'docs/github-presence.md'), 'utf8'),
     readFileSync(resolve(root, 'docs/anthropic-directory.md'), 'utf8'),
+    anthropicSubmissionForm,
   ].join('\n');
   assert(
     !staleOrgPattern.test(listingText),
     'External listing sources must not link to legacy OrgX-ai/orgx-ai surfaces'
   );
+  assert(
+    anthropicSubmissionForm.includes(claudeDirectoryEndpoint),
+    `Anthropic submission form must use ${claudeDirectoryEndpoint}`
+  );
+  assert(
+    !anthropicSubmissionForm.includes('[ fill before submitting:'),
+    'Anthropic submission form must not contain a reviewer credential placeholder'
+  );
+  assert(
+    anthropicSubmissionForm.includes('HTTPS Origin validation'),
+    'Anthropic submission form must confirm HTTPS Origin validation'
+  );
+
+  const catalogClaudeTools = (toolCatalog.tools ?? [])
+    .filter((tool) => tool?.profiles?.includes('claude-directory'))
+    .map((tool) => tool.id)
+    .sort();
+  assert(
+    JSON.stringify(catalogClaudeTools) ===
+      JSON.stringify(claudeDirectoryTools),
+    `claude-directory profile drift: expected ${claudeDirectoryTools.join(', ')}, found ${catalogClaudeTools.join(', ')}`
+  );
+  for (const tool of toolCatalog.tools ?? []) {
+    if (!tool?.profiles?.includes('claude-directory')) continue;
+    assert(
+      tool.readOnly === claudeDirectoryReadOnlyHints.get(tool.id),
+      `claude-directory readOnlyHint drift for ${tool.id}: expected ${claudeDirectoryReadOnlyHints.get(tool.id)}, found ${tool.readOnly}`
+    );
+  }
 
   const configuredBaseUrl =
     process.env.MCP_BASE_URL ||
@@ -141,15 +199,16 @@ async function main() {
 
   console.log('Directory preflight passed.');
   console.log(`Verified base URL: ${normalizedBase}`);
-  console.log('Remember to manually verify reviewer credentials and callback allowlists:');
-  console.log('- http://localhost:6274/oauth/callback');
-  console.log('- http://localhost:6274/oauth/callback/debug');
-  console.log('- https://claude.ai/api/mcp/auth_callback');
-  console.log('- https://claude.com/api/mcp/auth_callback');
+  console.log('Remember to manually verify reviewer credentials and current OAuth callbacks:');
+  console.log('- hosted Claude callback supplied by the current client');
+  console.log('- http://localhost:<random-port>/...');
+  console.log('- http://127.0.0.1:<random-port>/...');
+  console.log('- PKCE S256 and protected-resource 401 with WWW-Authenticate');
+  console.log('- invalid Origin -> 403; trusted Claude Origin echoed; no-Origin CLI reaches OAuth');
   console.log('Remember to verify the dedicated review workspace via the authenticated OrgX routes:');
-  console.log('- GET https://useorgx.com/api/review/anthropic/status');
-  console.log('- POST https://useorgx.com/api/review/anthropic/bootstrap');
-  console.log('- POST https://useorgx.com/api/review/anthropic/reset');
+  console.log('- GET https://useorgx.com/api/review/sessions/<token>/status');
+  console.log('- POST https://useorgx.com/api/review/sessions/<token>/bootstrap');
+  console.log('- POST https://useorgx.com/api/review/sessions/<token>/reset');
 }
 
 main().catch((error) => {

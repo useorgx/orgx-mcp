@@ -7,43 +7,46 @@ Organizational memory for AI agents / AI team control plane
 ## Primary use cases
 
 - Remember and recall decisions
-- Review agent decisions awaiting approval
+- Read decisions awaiting approval
 - Search team memory and artifacts
-- Delegate work to specialist agents
 - Track project/initiative health
-- Render decision, memory, task, and status widgets
+- Render memory, brief, initiative, and status widgets
 
-## Read actions
+## Anthropic directory endpoint
 
-- recall_memory
-- track_project_progress
-- query_org_memory
-- get_decision_history
-- get_pending_decisions
+`https://mcp.useorgx.com/mcp?profile=claude-directory`
+
+This review surface is intentionally non-destructive and closed-world. Three
+tools are strictly read-only; mixed `orgx_search`, default `orgx_recommend`,
+`get_agent_status`, and `get_initiative_pulse` record metered MCP allowance usage and are
+therefore annotated non-read-only. The general OrgX profiles retain business
+record writes and delegation capabilities, but they are outside this directory
+submission.
+
+## Informational actions
+
+- orgx_search
+- orgx_inspect
+- orgx_recommend
 - get_agent_status
 - get_initiative_pulse
-- get_org_snapshot
+- get_morning_brief
+- get_operator_chronicle
 
-## Write actions
+## Excluded actions
 
-- remember_decision
-- approve_agent_work
-- delegate_agent_task
-- approve_decision
-- reject_decision
-- create_decision
-- spawn_agent_task
-- scaffold_initiative
-- create_task
-- update_entity
-
-## Human confirmation model
-
-Write actions require explicit user confirmation where appropriate. Approval and rejection tools must only run after the user confirms.
+All business-record writes, approval, rejection, delegation, hierarchy
+mutation, lifecycle, external-action, and destructive tools are excluded from
+the Anthropic directory profile.
 
 ## OAuth
 
 OAuth 2.x with PKCE and dynamic client registration.
+
+Every present MCP transport `Origin` is checked against an exact HTTPS
+allowlist before auth or tool dispatch. Invalid origins return `403`; hosted
+Claude is trusted explicitly, and no-`Origin` Claude Code/CLI traffic remains
+supported.
 
 ## Data handling
 
@@ -51,9 +54,12 @@ OrgX stores organizational execution context: decisions, tasks, initiatives, art
 
 ## Widgets
 
-- decisions widget
 - memory search results widget
 - initiative pulse widget
 - agent status widget
-- task spawned widget
 - morning brief widget
+
+These four MCP Apps widget resource families are intentionally exposed by the
+directory profile. Response screenshots remain pending until they are captured
+from authenticated post-deploy Claude runs using the exact reviewer prompts.
+Synthetic fixtures and local widget renders are not submission evidence.

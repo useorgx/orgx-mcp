@@ -94,11 +94,21 @@ describe('widgetConfig', () => {
     const meta = buildMcpAppsMeta({
       MCP_SERVER_URL: 'https://mcp.useorgx.com',
       ORGX_WEB_URL: 'https://www.useorgx.com',
+      ORGX_API_URL: 'https://next.useorgx.com',
     });
 
-    expect(meta.ui.csp.resourceDomains).toContain('https://mcp.useorgx.com');
-    expect(meta.ui.csp.baseUriDomains).toContain('https://mcp.useorgx.com');
-    expect(meta.ui.csp.baseUriDomains).toContain('https://www.useorgx.com');
+    expect(meta.ui.csp.connectDomains).toEqual(['https://mcp.useorgx.com']);
+    expect(meta.ui.csp.resourceDomains).toEqual(['https://mcp.useorgx.com']);
+    expect(meta.ui.csp.baseUriDomains).toEqual(['https://mcp.useorgx.com']);
+    expect(meta.ui.csp.connectDomains).not.toContain(
+      'https://next.useorgx.com'
+    );
+    expect(meta.ui.csp.resourceDomains).not.toContain(
+      'https://next.useorgx.com'
+    );
+    expect(meta.ui.csp.resourceDomains).not.toContain(
+      'https://www.useorgx.com'
+    );
     expect(meta.ui).not.toHaveProperty('domain');
   });
 

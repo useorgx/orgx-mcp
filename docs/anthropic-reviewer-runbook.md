@@ -15,7 +15,16 @@ Use this when you need to:
 
 - The reviewer is signed in to the OrgX web app with the dedicated Anthropic review account.
 - Production `orgx-mcp` is already deployed at `https://mcp.useorgx.com/mcp`.
+- The directory connection uses
+  `https://mcp.useorgx.com/mcp?profile=claude-directory`.
+- The connection advertises no prompts or skill packs, and only the four
+  widget families needed by the seven informational tools.
 - The reviewer account has a dedicated workspace named `Anthropic Review Workspace`.
+
+Before review, request `https://mcp.useorgx.com/healthz?check=upstream` and
+confirm the primary upstream is healthy at `https://useorgx.com`. A
+`fallback_healthy` result proves failover, not reviewer-ready primary latency;
+fix or deploy the primary configuration before submitting.
 
 ## Authenticated OrgX review routes
 
@@ -77,7 +86,7 @@ Key seeded pending decisions:
 Use these exact prompts during reviewer QA:
 
 1. `Show me the pending decisions that need approval today.`
-   - Expected: pending decisions list and the pending decisions widget
+   - Expected: informational recommendation or search results; no approval action
 2. `What did we decide about Search Copilot readiness?`
    - Expected: memory search results with prior decision context
 3. `Give me the pulse for the Search Copilot Readiness initiative.`
@@ -86,13 +95,34 @@ Use these exact prompts during reviewer QA:
    - Expected: current agent roster and the agent status widget
 5. `Search OrgX memory for workflow capture expansion.`
    - Expected: query results referencing the seeded workflow initiative
-6. `Scaffold a launch initiative with two workstreams, one milestone each, and two tasks per milestone.`
-   - Expected: created hierarchy and the scaffolded initiative widget
+6. `Give me today's morning brief.`
+   - Expected: morning brief with current decisions, risks, and initiatives
+7. `Show me the operator chronicle for Search Copilot Readiness.`
+   - Expected: read-only proof context across decisions, artifacts, and activity
+8. `Inspect the Search Copilot Readiness initiative.`
+   - Expected: current entity details without changing state
+
+## Response screenshot evidence
+
+Response screenshots are pending authenticated post-deploy capture. Use the
+exact prompt matrix above in Claude after connecting the deployed directory
+profile, then capture the real search, agent-status, initiative-pulse, and
+morning-brief responses. Do not use synthetic fixtures, local renders, or a
+write, approval, delegation, or scaffold flow as directory evidence.
 
 ## Support notes
 
 - `bootstrap` is safe to run repeatedly. If the workspace is already clean, it should be a no-op.
 - `reset` is destructive for the dedicated reviewer workspace. It will wipe review data in that workspace before reseeding.
+- The submitted connector profile is non-destructive and closed-world. Three
+  tools are strictly read-only; mixed `orgx_search`, default
+  `orgx_recommend`, `get_agent_status`, and `get_initiative_pulse` record
+  metered MCP allowance usage and therefore advertise `readOnlyHint: false`. If a tool can
+  mutate business records, dispatch work, act externally, or perform a
+  destructive action, stop review and treat the deployment as not ready.
+- MCP transport requests with a present browser `Origin` are exact-allowlisted
+  before auth or dispatch. An invalid origin must return `403`; Claude Code and
+  other CLI clients that omit `Origin` remain supported.
 - If the reviewer can authenticate but widgets fail to mount, capture:
   - the exact prompt used
   - the browser console error

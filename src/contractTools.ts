@@ -45,26 +45,27 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_bootstrap',
     title: 'Bootstrap OrgX Contract',
     description:
-      'Use at the start of a fresh session, after reconnecting, or before continuing work another agent left behind. Establishes OrgX session context, discovers granted scopes, and returns the v2 tool routing map. Also known as: bootstrap, setup, tool routing. USE WHEN: first call in a fresh session, after reconnecting, or before performing a multi-step workflow. NEXT: use orgx_search, orgx_inspect, or orgx_recommend based on the returned routing map. DO NOT USE WHEN: you already have session context and need to read or mutate work. Read-only.',
+      'Use at the start of a fresh session, after reconnecting, or before continuing work another agent left behind. Establishes OrgX session context, discovers granted scopes, returns the v2 tool routing map, and persists workspace/session continuity when the selected context changes. Also known as: bootstrap, setup, tool routing. USE WHEN: first call in a fresh session, after reconnecting, or before performing a multi-step workflow. NEXT: use orgx_search, orgx_inspect, or orgx_recommend based on the returned routing map. DO NOT USE WHEN: you already have session context and need to read or mutate work. Updates private session state; it does not change business records.',
     inputSchema: {
       workspace_id: z.string().optional().describe('Canonical workspace UUID to bind as the active session workspace'),
       conversation_id: z.string().optional().describe('Optional client conversation/session identifier for continuity'),
       client_name: z.string().optional().describe('Optional MCP client name, such as codex, chatgpt, cursor, or claude'),
       timezone: z.string().optional().describe('Optional user timezone for date-sensitive readouts'),
     },
-    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Bootstrapping OrgX contract...',
       'openai/toolInvocation/invoked': 'OrgX contract ready',
-      'openai/readOnlyHint': true,
+      'openai/readOnlyHint': false,
+      'openai/visibility': 'public',
     },
   },
   {
     id: 'orgx_inspect',
     title: 'Inspect OrgX Entity',
     description:
-      'Use when the user names a specific task, milestone, initiative, decision, artifact, or plan session and you need its real state — decisions, owners, linked proof — before acting. Hydrates one OrgX entity with execution context. Also known as: Inspect OrgX Entity, inspect initiative, get full entity context. USE WHEN: continuing work on a named entity or verifying state before a lifecycle change. NEXT: use orgx_act, orgx_attach, or orgx_write if the user asks to change what you inspected. DO NOT USE WHEN: browsing or searching many records; use orgx_search. Read-only.',
+      'Use when the user names a specific task, milestone, initiative, decision, artifact, or plan session and you need its real state — decisions, owners, linked proof — before acting. Hydrates one OrgX entity with execution context. Also known as: Inspect OrgX Entity, inspect initiative, get full entity context. USE WHEN: continuing work on a named entity or verifying state before a lifecycle change. NEXT: use orgx_search for related records or orgx_recommend for a read-only next-step assessment. DO NOT USE WHEN: browsing or searching many records; use orgx_search. Read-only.',
     inputSchema: {
       type: z
         .enum(entityTypeEnum.options)
@@ -88,7 +89,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_search',
     title: 'Search OrgX',
     description:
-      "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Finds OrgX entities, decisions, artifacts, and memory. A query without type runs a mixed relevance search; typed searches provide exhaustive cursor/offset pagination. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use structuredContent.next_call exactly when pagination.has_more=true, orgx_inspect for one selected result, or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.",
+      "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Finds OrgX entities, decisions, artifacts, and memory. A query without type runs a mixed relevance search and records metered MCP allowance usage; typed searches provide exhaustive cursor/offset pagination without changing business records. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use structuredContent.next_call exactly when pagination.has_more=true, orgx_inspect for one selected result, or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.",
     inputSchema: {
       query: z.string().optional().describe('Search query for memory or title/text matching'),
       type: z.enum(entityTypeEnum.options).optional().describe('Optional entity type filter, such as task, milestone, decision, artifact, or initiative. Omit with query for a mixed relevance search across memory-backed entity types.'),
@@ -101,13 +102,13 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       fields: z.array(z.string()).optional().describe('Optional compact field list'),
       session_id: z.string().optional().describe('Optional bootstrap/session identifier'),
     },
-    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.searchResults,
       'openai/toolInvocation/invoking': 'Searching OrgX...',
       'openai/toolInvocation/invoked': 'OrgX search complete',
-      'openai/readOnlyHint': true,
+      'openai/readOnlyHint': false,
       ui: { resourceUri: WIDGET_URIS.searchResults },
     },
   },
@@ -115,7 +116,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_recommend',
     title: 'Recommend Next OrgX Action',
     description:
-      'Use when the user asks what to do next, wants a brief, or returns after time away and needs priorities. Recommends next work, summarizes operator-chronicle/morning-brief signals, and reads prioritization context. USE WHEN: user asks what to do next, wants a brief, asks what changed yesterday/week/30 days, or needs priority guidance. mode=morning_brief returns the operator chronicle when available. NEXT: present the recommendation, then use orgx_act, orgx_write, or orgx_spawn only after the user confirms an action. DO NOT USE WHEN: the user already specified the action; use orgx_act or orgx_write.',
+      'Use when the user asks what to do next, wants a brief, or returns after time away and needs priorities. Recommends next work, summarizes operator-chronicle/morning-brief signals, and reads prioritization context. The default next_action mode records metered MCP allowance usage; it does not change business records. USE WHEN: user asks what to do next, wants a brief, asks what changed yesterday/week/30 days, or needs priority guidance. mode=morning_brief returns the operator chronicle when available. NEXT: present the recommendation and ask for explicit confirmation before any separate action. DO NOT USE WHEN: the user already specified a concrete action.',
     inputSchema: {
       mode: z.enum(['next_action', 'morning_brief']).optional().describe('Recommendation mode; default next_action'),
       period: z.enum(['day', 'week', '30d']).optional().describe('Reporting period for mode=morning_brief; default 30d'),
@@ -125,13 +126,13 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       limit: z.number().int().min(1).max(20).optional().describe('Maximum recommendations'),
       session_id: z.string().optional().describe('Optional bootstrap/session identifier'),
     },
-    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.morningBrief,
       'openai/toolInvocation/invoking': 'Building OrgX recommendation...',
       'openai/toolInvocation/invoked': 'OrgX recommendation ready',
-      'openai/readOnlyHint': true,
+      'openai/readOnlyHint': false,
       ui: { resourceUri: WIDGET_URIS.morningBrief },
     },
   },
@@ -143,8 +144,8 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       'Operations: create (default) uses per-type fields; update REQUIRES id + fields.\n\n' +
       'Create requirements: workspace name/title; initiative title/name + workspace_id + goal_ids when the workspace enforces primary objectives; workstream title + initiative_id; milestone title + workstream_id; task title + workstream_id + milestone_id when the workspace requires backlog milestones; decision title; artifact target + artifact_type + artifact_url/external_url; blocker run_id + metadata.description; skill/studio records title.\n\n' +
       'Retry behavior: pass idempotency_key on creates. A key match returns the same UUID as an idempotent replay, without creating a duplicate.\n\n' +
-      'Initiative gotchas: priority only accepts low|medium|high|urgent, not portfolio labels such as active/critical/maintenance/hold; put portfolio urgency in metadata/priority_rank. due_date is not accepted on initiative create in current workspaces; put target dates in metadata until a typed initiative schedule field exists.\n\n' +
-      'USE WHEN: adding/editing records. NEXT: orgx_act to launch/complete the record. DO NOT USE for lifecycle changes — use orgx_act or orgx_attach.',
+      'Initiative constraints: priority accepts low|medium|high|urgent, not portfolio labels such as active/critical/maintenance/hold. due_date is not accepted on initiative create; store portfolio urgency and target dates in metadata.\n\n' +
+      'USE WHEN: adding/editing records. Initiative writes can publish a public live link, and update patches overwrite the supplied fields. NEXT: orgx_act to launch/complete the record. DO NOT USE for lifecycle changes — use orgx_act or orgx_attach.',
     inputSchema: {
       operation: z.enum(['create', 'update']).optional().describe('Write operation. Defaults to "create". Set "update" (with id + fields) to patch an existing entity.'),
       type: z.string().min(1).describe('Entity type to write: workspace, task, milestone, decision, artifact, skill, blocker, studio_brand, studio_content, initiative, workstream, or objective. See top-level description for per-type required fields.'),
@@ -186,7 +187,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       idempotency_key: z.string().optional().describe('Client-generated retry key. Creates deduplicate by key; updates transport the key outside validated entity fields.'),
       session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Writing OrgX entity...',
@@ -236,7 +237,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       '  • complete_with_proof, ship_batch → "artifact" (artifact_type + artifact_url/external_url; preview_markdown optional).\n' +
       '  • validate (studio) → "spec" payload.\n' +
       '  • block, flag_risk, decline, cancel, delete → "note" strongly recommended.\n' +
-      '  • dry_run=true previews update/delete and other supported lifecycle actions without mutating; update dry-runs must return would_update instead of delegating to orgx_write.\n\n' +
+      '  • dry_run=true previews supported actions; update dry-runs must return would_update.\n\n' +
       'Allowed (type → action) pairs (others return an error):\n' +
       '  workspace: update|delete\n' +
       '  initiative: launch|pause|resume|complete|archive|update|delete\n' +
@@ -244,7 +245,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       '  workstream: start|pause|resume|block|complete|reassign_streams|update|delete\n' +
       '  task: start|complete|complete_with_proof|block|unblock|reopen|update|delete\n' +
       '  objective, playbook, decision, studio: see field descriptions.\n\n' +
-      'USE WHEN: changing entity state. For pause, resume, retry, or cancel of running work, use manage_lifecycle so descendant tasks and active runs stay synchronized. NEXT: orgx_submit_receipt for durable proof. DO NOT USE for creating records — use orgx_write.',
+      'USE WHEN: changing entity state. Launch and resume can dispatch connected agent work. For pause, resume, retry, or cancel of running work, use manage_lifecycle so descendant tasks and active runs stay synchronized. NEXT: orgx_submit_receipt for durable proof. DO NOT USE for creating records — use orgx_write.',
     inputSchema: {
       type: lifecycleEntityTypeEnum.describe('Target entity type (workspace, initiative, milestone, workstream, task, objective, playbook, decision, or studio).'),
       id: z.string().min(1).describe('Target entity UUID or short ID prefix (8+ hex chars).'),
@@ -284,7 +285,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       idempotency_key: z.string().optional().describe('Optional client-supplied retry key. Update requests transport it outside validated entity fields; lifecycle endpoints deduplicate where supported.'),
       session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
     },
-    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Running OrgX action...',
@@ -373,7 +374,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       '  • action="remember"     → REQUIRES decision (the text to capture as a remembered decision). Optional: title, context.\n' +
       '  • action="approve"      → REQUIRES decision_id. Optional: note (free-text approver rationale).\n' +
       '  • action="reject"       → REQUIRES decision_id AND reason (explanation shown to the assigned agent).\n\n' +
-      'USE WHEN: capturing judgment, approval, rejection, or pending decision review. NEXT: use orgx_act, orgx_write, or orgx_spawn only after the decision resolves the next action. DO NOT USE WHEN: writing non-decision entities; use orgx_write.',
+      'USE WHEN: capturing judgment, approval, rejection, or pending decision review. Approval can resume or continue agent execution, including work in connected systems. NEXT: use orgx_act, orgx_write, or orgx_spawn only after the decision resolves the next action. DO NOT USE WHEN: writing non-decision entities; use orgx_write.',
     inputSchema: {
       action: z.enum(['create', 'remember', 'list_pending', 'approve', 'reject']).describe('Decision operation. See top-level description for per-action required fields.'),
       decision_id: z.string().optional().describe('Decision UUID. REQUIRED for action=approve or action=reject. Returned by action=list_pending or action=create.'),
@@ -388,7 +389,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       idempotency_key: z.string().optional().describe('Strongly recommended client-supplied idempotency key for writes (action=create, remember, approve, reject). Same key returns the same result without duplicating state.'),
       session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
     },
-    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.decisions,
@@ -551,7 +552,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       'Use when agent work is paused waiting for a human yes — review pending decisions, then approve or reject them. Also known as: pending approvals, agent blocked, sign off, review decisions, approve AI work.\n\n' +
       'Per-action input requirements:\n' +
       '  • action="list" (default when action omitted) → No required fields. Optional filters: limit, urgency_filter, initiative_id.\n' +
-      '  • action="approve" → REQUIRES decision_id. Optional: note (free-text approver rationale).\n' +
+      '  • action="approve" → REQUIRES decision_id. Optional: note (free-text approver rationale). Approval can resume or continue connected agent execution.\n' +
       '  • action="reject"  → REQUIRES decision_id AND reason (explanation shown to the assigned agent so it can adjust its next attempt).',
     inputSchema: {
       decision_id: z
@@ -581,7 +582,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
         .optional()
         .describe('Used only when action="list". Scopes pending decisions to a specific workspace UUID. Defaults to the MCP session workspace when omitted.'),
     },
-    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.decisions,
@@ -1072,12 +1073,31 @@ export const INLINE_TOOL_CONTRACTS = {
     id: 'review_artifact',
     title: 'Review Artifact',
     description:
-      'Inline app tool for loading the next artifact awaiting review into the artifact-review widget.',
+      'Use when the user asks to review work, sign off on a deliverable, or clear pending artifact reviews. Surfaces the next artifact awaiting review and renders the artifact-review widget with a preview, version filmstrip, and hold-to-approve / request-changes actions. USE WHEN the user asks to review work, approve a deliverable, or handle pending artifact reviews. DO NOT USE for listing all artifacts — use list_entities type=artifact instead.',
     inputSchema: {
-      artifact_id: z.string().optional().describe('Specific artifact ID to review.'),
-      entity_id: z.string().optional().describe('Optional entity scope for artifacts.'),
-      workspace_id: z.string().optional().describe('Workspace UUID. Defaults to session workspace.'),
+      artifact_id: z
+        .string()
+        .optional()
+        .describe(
+          'Specific artifact ID to review. Defaults to the next in_review artifact.'
+        ),
+      entity_id: z
+        .string()
+        .optional()
+        .describe(
+          'Scope to artifacts attached to this entity (initiative, workstream, milestone, or task).'
+        ),
+      workspace_id: z
+        .string()
+        .optional()
+        .describe('Workspace UUID. Defaults to the session workspace.'),
     },
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: false,
+    },
+    securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
   },
   save_artifact: {
     id: 'save_artifact',

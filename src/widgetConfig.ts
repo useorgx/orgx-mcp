@@ -106,21 +106,25 @@ function addOrigin(origins: Set<string>, value?: string | null) {
 }
 
 function buildWidgetCsp(env: WidgetEnv) {
-  const origins = new Set<string>();
-  addOrigin(origins, env.MCP_SERVER_URL);
-  addOrigin(origins, env.ORGX_WEB_URL);
-  addOrigin(origins, env.ORGX_API_URL);
-  if (origins.size === 0) {
-    origins.add('https://mcp.useorgx.com');
-    origins.add('https://useorgx.com');
-    origins.add('https://www.useorgx.com');
+  const connectOrigins = new Set<string>();
+  const resourceOrigins = new Set<string>();
+  addOrigin(connectOrigins, env.MCP_SERVER_URL);
+  addOrigin(resourceOrigins, env.MCP_SERVER_URL);
+  if (connectOrigins.size === 0) {
+    connectOrigins.add('https://mcp.useorgx.com');
+  }
+  if (resourceOrigins.size === 0) {
+    resourceOrigins.add('https://mcp.useorgx.com');
   }
   const redirectDomains = new Set(DEFAULT_REDIRECT_DOMAINS);
   addOrigin(redirectDomains, env.MCP_SERVER_URL);
   addOrigin(redirectDomains, env.ORGX_WEB_URL);
   return {
-    connect_domains: Array.from(origins),
-    resource_domains: Array.from(origins),
+    // Widgets communicate with the MCP origin (including the streaming demo)
+    // and load their rewritten static assets from that same origin. ORGX_API_URL
+    // is server-side only; web-app URLs are outbound links covered separately.
+    connect_domains: Array.from(connectOrigins),
+    resource_domains: Array.from(resourceOrigins),
     redirect_domains: Array.from(redirectDomains),
   };
 }

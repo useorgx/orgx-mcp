@@ -10,24 +10,24 @@
   "tools": {
     "orgx_bootstrap": {
       "annotations": {
-        "readOnlyHint": true,
+        "readOnlyHint": false,
         "openWorldHint": false,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Retrieves session context, scopes, and routing guidance without creating or updating OrgX records.",
+        "read_only_justification": "Not read-only: it persists the selected workspace and session continuity when context changes, while leaving business records unchanged.",
         "open_world_justification": "Does not publish to public internet state or third-party systems.",
         "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
       }
     },
     "orgx_search": {
       "annotations": {
-        "readOnlyHint": true,
+        "readOnlyHint": false,
         "openWorldHint": false,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Searches OrgX memory and entities and returns matching results without modifying records.",
+        "read_only_justification": "Not strictly read-only: mixed relevance search records metered MCP allowance usage, although it does not change business records.",
         "open_world_justification": "Operates only on private OrgX workspace data.",
         "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
       }
@@ -46,12 +46,12 @@
     },
     "orgx_recommend": {
       "annotations": {
-        "readOnlyHint": true,
+        "readOnlyHint": false,
         "openWorldHint": false,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Computes recommendations and brief signals from existing OrgX data without writing records.",
+        "read_only_justification": "Not strictly read-only: the default next-action mode records metered MCP allowance usage, although it does not change business records.",
         "open_world_justification": "Operates only on private OrgX workspace data.",
         "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
       }
@@ -59,13 +59,13 @@
     "orgx_write": {
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": false,
-        "destructiveHint": false
+        "openWorldHint": true,
+        "destructiveHint": true
       },
       "justifications": {
         "read_only_justification": "Creates or updates private OrgX entities, so it changes workspace state.",
-        "open_world_justification": "Writes only to private OrgX workspace records.",
-        "destructive_justification": "Creates or updates records but does not delete records or perform irreversible external actions."
+        "open_world_justification": "Initiative writes can publish a publicly visible live link outside the private OrgX workspace.",
+        "destructive_justification": "Update mode overwrites supplied fields and those changes may not be automatically recoverable."
       }
     },
     "orgx_attach": {
@@ -83,12 +83,12 @@
     "orgx_act": {
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": false,
+        "openWorldHint": true,
         "destructiveHint": true
       },
       "justifications": {
         "read_only_justification": "Runs lifecycle actions such as validation, completion, pause, or delete, so it can change OrgX state.",
-        "open_world_justification": "Acts on private OrgX workspace records rather than public internet state.",
+        "open_world_justification": "Launch and resume actions can dispatch agent work that operates in connected systems.",
         "destructive_justification": "Can run delete or irreversible lifecycle actions depending on the requested action."
       }
     },
@@ -100,7 +100,7 @@
       },
       "justifications": {
         "read_only_justification": "Pauses, resumes, retries, or cancels running OrgX work and therefore changes execution state.",
-        "open_world_justification": "Calls the authenticated OrgX lifecycle control plane outside the MCP worker to synchronize descendant runs.",
+        "open_world_justification": "Resume and retry can redispatch descendant agents that may act in connected third-party systems.",
         "destructive_justification": "Controls reversible runtime state and cancels active work without deleting durable OrgX records."
       }
     },
@@ -131,13 +131,13 @@
     "orgx_decide": {
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": false,
+        "openWorldHint": true,
         "destructiveHint": true
       },
       "justifications": {
         "read_only_justification": "Can create, approve, reject, or remember decisions, so it changes decision state.",
-        "open_world_justification": "Writes only to private OrgX decision records.",
-        "destructive_justification": "Approval or rejection can irreversibly resolve a pending decision."
+        "open_world_justification": "Approve mode can resume or continue agent work that operates in connected systems.",
+        "destructive_justification": "Approval or rejection can irreversibly resolve a pending decision; approval may also resume execution."
       }
     },
     "orgx_submit_receipt": {
@@ -155,13 +155,13 @@
     "approve_decision": {
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": false,
+        "openWorldHint": true,
         "destructiveHint": true
       },
       "justifications": {
         "read_only_justification": "Approves a pending decision and changes its state.",
-        "open_world_justification": "Writes only to private OrgX decision records.",
-        "destructive_justification": "Approval can irreversibly resolve a pending decision."
+        "open_world_justification": "Approval can resume or continue agent work that operates in connected systems.",
+        "destructive_justification": "Approval irreversibly resolves a pending decision and may resume execution."
       }
     },
     "reject_decision": {
@@ -178,24 +178,24 @@
     },
     "get_agent_status": {
       "annotations": {
-        "readOnlyHint": true,
+        "readOnlyHint": false,
         "openWorldHint": false,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Retrieves agent activity and status without modifying OrgX records.",
+        "read_only_justification": "Not strictly read-only: successful calls record metered MCP allowance usage, although they do not change agent or business records.",
         "open_world_justification": "Operates only on private OrgX workspace data.",
         "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
       }
     },
     "get_initiative_pulse": {
       "annotations": {
-        "readOnlyHint": true,
+        "readOnlyHint": false,
         "openWorldHint": false,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Retrieves initiative health, blockers, milestones, and activity without modifying records.",
+        "read_only_justification": "Not strictly read-only: successful calls record metered MCP allowance usage, although they do not change initiative or business records.",
         "open_world_justification": "Operates only on private OrgX workspace data.",
         "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
       }
@@ -203,13 +203,13 @@
     "scaffold_initiative": {
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": false,
-        "destructiveHint": false
+        "openWorldHint": true,
+        "destructiveHint": true
       },
       "justifications": {
-        "read_only_justification": "Creates a private OrgX initiative hierarchy when the user asks for one.",
-        "open_world_justification": "Writes only to private OrgX workspace records.",
-        "destructive_justification": "Creates records but does not delete records or perform irreversible external actions."
+        "read_only_justification": "Default launch mode creates an OrgX initiative hierarchy and starts assigned agents.",
+        "open_world_justification": "Launch mode dispatches agent work, and external_sync can create projects or tasks in connected work trackers such as Linear.",
+        "destructive_justification": "Default launch mode starts agent execution and optional external synchronization may not be automatically reversible."
       }
     },
     "handoff_task": {
@@ -227,13 +227,13 @@
     "approve_agent_work": {
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": false,
+        "openWorldHint": true,
         "destructiveHint": true
       },
       "justifications": {
         "read_only_justification": "Can approve or reject agent approval items, so it changes approval state.",
-        "open_world_justification": "Writes only to private OrgX approval records.",
-        "destructive_justification": "Approval or rejection can irreversibly resolve agent work."
+        "open_world_justification": "Approve mode can resume or continue agent work that operates in connected systems.",
+        "destructive_justification": "Approval or rejection can irreversibly resolve agent work; approval may also resume execution."
       }
     },
     "review_artifact": {

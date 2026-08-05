@@ -116,6 +116,24 @@ export const CHATGPT_PUBLIC_SURFACE = [
   'check_execution_readiness',
 ] as const;
 
+/**
+ * Anthropic Connector Directory review surface.
+ *
+ * Each exposed operation is non-destructive and closed-world. Three tools are
+ * strictly read-only; four read data while recording metered MCP allowance
+ * usage. Keep business-record writes, lifecycle mutations, delegation, and approval
+ * operations on the general-purpose profiles instead of this review endpoint.
+ */
+export const CLAUDE_DIRECTORY_SURFACE = [
+  'orgx_search',
+  'orgx_inspect',
+  'orgx_recommend',
+  'get_agent_status',
+  'get_initiative_pulse',
+  'get_morning_brief',
+  'get_operator_chronicle',
+] as const;
+
 export const GROUPED_V2_PUBLIC_SURFACE = [
   ...V2_PUBLIC_SURFACE,
 ] as const;
@@ -130,6 +148,11 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
     description:
       'Reviewer-ready ChatGPT App surface: canonical OrgX workflows and user-facing widgets without internal coordination transports, redundant aliases, or client-specific PR consolidation',
     tools: [...CHATGPT_PUBLIC_SURFACE],
+  },
+  'claude-directory': {
+    description:
+      'Anthropic Connector Directory review surface: seven focused, non-destructive, closed-world tools; three are read-only and four record metered MCP allowance usage',
+    tools: [...CLAUDE_DIRECTORY_SURFACE],
   },
   memory: {
     description:

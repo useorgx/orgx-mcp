@@ -44,7 +44,17 @@ import {
   executeCompleteWithProofFlow,
 } from './completeWithProof';
 import { resolveToolProfile } from './toolProfiles';
-import { sanitizeToolResultGuidance } from './toolGuidance';
+import {
+  handleOpenAiAppsChallenge,
+  type OpenAiAppsChallengeEnv,
+} from './openaiAppsChallenge';
+import { resolveProfileDiscoveryPolicy } from './profileDiscoveryPolicy';
+import {
+  validateMcpRequestOrigin,
+  type McpOriginValidationEnv,
+} from './mcpOriginValidation';
+import { installToolResultGuidanceWrapper } from './toolResultRegistration';
+import { withRequestToolProfile } from './requestToolProfile';
 import {
   buildMcpTransportExceptionResponse,
   withCorsAndHeaders,
@@ -245,9 +255,6 @@ import {
   CLIENT_INTEGRATION_TOOL_DEFINITIONS,
   CHATGPT_TOOL_DEFINITIONS,
   CLIENT_CONTEXT_SCHEMA,
-  STANDARD_TOOL_OUTPUT_SCHEMA_OBJECT,
-  ensureStructuredContent,
-  normalizeToolResultEnvelope,
   STREAM_TOOL_DEFINITIONS,
   ENTITY_TYPES,
   entityTypeEnum,
@@ -302,6 +309,7 @@ import { ensureSqliteColumn } from './sqliteSchema';
 import { checkToolPlanAccess } from './toolAccessGating';
 import {
   CONTRACT_TOOL_DEFINITIONS,
+  INLINE_TOOL_CONTRACTS,
   V2_ORGX_TOOL_ID_SET,
   getKnownToolContract,
   getKnownToolContracts,
@@ -376,7 +384,11 @@ function createInstrumentedMcpServer(): McpServer {
   );
 }
 
-interface Env extends OAuthEnv, SentryWorkerEnv {
+interface Env
+  extends OAuthEnv,
+    SentryWorkerEnv,
+    OpenAiAppsChallengeEnv,
+    McpOriginValidationEnv {
   ORGX_API_URL: string;
   ORGX_SERVICE_KEY: string;
   MCP_JWT_SECRET: string;
@@ -432,6 +444,28 @@ interface OrgXMcpProps extends Record<string, unknown> {
   initiative_id?: string;
   sourceClient?: SourceClient;
 }
+
+/**
+ * Submitted informational tools whose worker-local session, telemetry, and
+ * diagnostic effects are suppressed as defense in depth. This does not imply
+ * that every tool is read-only: some upstream execution paths record metered
+ * MCP allowance usage and are annotated accordingly. The two internal
+ * delegate IDs preserve local suppression when a contract tool calls its
+ * narrower implementation.
+ */
+const SUBMITTED_INFORMATIONAL_TOOL_EXECUTIONS = new Set([
+  'orgx_search',
+  'orgx_inspect',
+  'orgx_recommend',
+  'get_agent_status',
+  'get_initiative_pulse',
+  'review_artifact',
+  'get_morning_brief',
+  'get_operator_chronicle',
+  'check_execution_readiness',
+  'recommend_next_action',
+  'resume_plan_session',
+]);
 
 // Canonical Supabase user UUID shape. Used to guard the orgx_user_id we forward
 // to the API so a malformed persisted value never becomes an identity hint.
@@ -507,9 +541,32 @@ export class OrgXMcp extends McpAgent<
   private widgetDebugEvents: WidgetDebugEvent[] = [];
   private readonly maxWidgetDebugEvents = 300;
 
+  /**
+   * The Anthropic directory profile is a focused, non-destructive review
+   * surface. Worker-local execution must not update session, activation,
+   * reentry, diagnostic, or analytics state as a side effect of an
+   * informational call. Upstream MCP usage accounting remains authoritative.
+   */
+  private isDirectoryReviewProfile(): boolean {
+    return resolveToolProfile(this.props?.profile).name === 'claude-directory';
+  }
+
+  private isSubmittedInformationalToolExecution(
+    toolId?: string | null
+  ): boolean {
+    return Boolean(toolId && SUBMITTED_INFORMATIONAL_TOOL_EXECUTIONS.has(toolId));
+  }
+
   private appendWidgetDebugEvent(
     event: Omit<WidgetDebugEvent, 'timestamp'>
   ): void {
+    if (
+      this.isDirectoryReviewProfile() ||
+      this.isSubmittedInformationalToolExecution(event.toolId)
+    ) {
+      return;
+    }
+
     const entry: WidgetDebugEvent = {
       timestamp: new Date().toISOString(),
       ...event,
@@ -536,6 +593,7 @@ export class OrgXMcp extends McpAgent<
    * This is called lazily on first use to avoid issues with DO initialization.
    */
   private initSessionSql() {
+    if (this.isDirectoryReviewProfile()) return;
     if (this.sessionSqlInitialized) return;
     try {
       // Check if SQLite storage is available on this Durable Object
@@ -620,8 +678,10 @@ export class OrgXMcp extends McpAgent<
    */
   private async loadSessionAuth() {
     try {
-      this.initSessionSql();
-      if (this.sessionSqlInitialized) {
+      if (!this.isDirectoryReviewProfile()) {
+        this.initSessionSql();
+      }
+      if (!this.isDirectoryReviewProfile() && this.sessionSqlInitialized) {
         const result = this.sessionSql.exec(
           `SELECT * FROM session_auth WHERE id = 1`
         );
@@ -638,11 +698,13 @@ export class OrgXMcp extends McpAgent<
             email: row.email as string | undefined,
             authenticatedAt: row.authenticated_at as number,
           };
-          console.info('[mcp:session] Restored session auth from SQLite', {
-            userId: this.sessionAuth.userId,
-            hasOrgxUserId: Boolean(this.sessionAuth.orgxUserId),
-            authenticatedAt: this.sessionAuth.authenticatedAt,
-          });
+          if (!this.isDirectoryReviewProfile()) {
+            console.info('[mcp:session] Restored session auth from SQLite', {
+              userId: this.sessionAuth.userId,
+              hasOrgxUserId: Boolean(this.sessionAuth.orgxUserId),
+              authenticatedAt: this.sessionAuth.authenticatedAt,
+            });
+          }
 
           // Mirror to DO storage so future loads work even if SQLite is unavailable.
           try {
@@ -681,10 +743,12 @@ export class OrgXMcp extends McpAgent<
       if (!parsed) return;
 
       this.sessionAuth = parsed;
-      console.info('[mcp:session] Restored session auth from DO storage', {
-        userId: this.sessionAuth.userId,
-        authenticatedAt: this.sessionAuth.authenticatedAt ?? null,
-      });
+      if (!this.isDirectoryReviewProfile()) {
+        console.info('[mcp:session] Restored session auth from DO storage', {
+          userId: this.sessionAuth.userId,
+          authenticatedAt: this.sessionAuth.authenticatedAt ?? null,
+        });
+      }
     } catch (error) {
       console.warn('[mcp:session] Failed to load session auth', { error });
     }
@@ -695,6 +759,8 @@ export class OrgXMcp extends McpAgent<
    * Called when user authenticates to persist across DO resets.
    */
   private async saveSessionAuth() {
+    if (this.isDirectoryReviewProfile()) return;
+
     try {
       this.initSessionSql();
       if (!this.sessionAuth.userId) return;
@@ -744,8 +810,10 @@ export class OrgXMcp extends McpAgent<
    */
   private async loadSessionContext() {
     try {
-      this.initSessionSql();
-      if (this.sessionSqlInitialized) {
+      if (!this.isDirectoryReviewProfile()) {
+        this.initSessionSql();
+      }
+      if (!this.isDirectoryReviewProfile() && this.sessionSqlInitialized) {
         const result = this.sessionSql.exec(
           `SELECT * FROM session_context WHERE id = 1`
         );
@@ -768,10 +836,12 @@ export class OrgXMcp extends McpAgent<
             initiativeId: initiativeId ?? this.sessionContext.initiativeId,
           };
 
-          console.info('[mcp:session] Restored session context from SQLite', {
-            workspaceId: this.sessionContext.workspaceId ?? null,
-            initiativeId: this.sessionContext.initiativeId ?? null,
-          });
+          if (!this.isDirectoryReviewProfile()) {
+            console.info('[mcp:session] Restored session context from SQLite', {
+              workspaceId: this.sessionContext.workspaceId ?? null,
+              initiativeId: this.sessionContext.initiativeId ?? null,
+            });
+          }
 
           // Mirror to DO storage.
           try {
@@ -804,10 +874,12 @@ export class OrgXMcp extends McpAgent<
 
       this.sessionContext = { ...this.sessionContext, ...parsed };
 
-      console.info('[mcp:session] Restored session context from DO storage', {
-        workspaceId: this.sessionContext.workspaceId ?? null,
-        initiativeId: this.sessionContext.initiativeId ?? null,
-      });
+      if (!this.isDirectoryReviewProfile()) {
+        console.info('[mcp:session] Restored session context from DO storage', {
+          workspaceId: this.sessionContext.workspaceId ?? null,
+          initiativeId: this.sessionContext.initiativeId ?? null,
+        });
+      }
     } catch (error) {
       console.warn('[mcp:session] Failed to load session context', { error });
     }
@@ -818,6 +890,8 @@ export class OrgXMcp extends McpAgent<
    * Called when the session context changes.
    */
   private async saveSessionContext() {
+    if (this.isDirectoryReviewProfile()) return;
+
     try {
       this.initSessionSql();
       const now = Date.now();
@@ -857,6 +931,8 @@ export class OrgXMcp extends McpAgent<
   }
 
   private async saveMcpActivationState() {
+    if (this.isDirectoryReviewProfile()) return;
+
     try {
       await this.ctx.storage.put(
         MCP_ACTIVATION_STORAGE_KEY,
@@ -883,6 +959,8 @@ export class OrgXMcp extends McpAgent<
   }
 
   private async saveMcpSessionReentryState() {
+    if (this.isDirectoryReviewProfile()) return;
+
     try {
       await this.ctx.storage.put(
         MCP_SESSION_REENTRY_STORAGE_KEY,
@@ -894,6 +972,8 @@ export class OrgXMcp extends McpAgent<
   }
 
   private async shouldShowNewSessionWelcome(userId: string): Promise<boolean> {
+    if (this.isDirectoryReviewProfile()) return false;
+
     const key = buildNewSessionWelcomeStorageKey(userId);
     if (!key) return false;
 
@@ -961,14 +1041,16 @@ export class OrgXMcp extends McpAgent<
     ]);
 
     // Diagnostic: log what the DO received from the provider
-    console.info('[mcp:init] DO initialized', {
-      hasProps: !!this.props,
-      propsUserId: this.props?.userId ?? null,
-      propsScope: this.props?.scope ?? null,
-      propsWorkspaceId: this.props?.workspace_id ?? null,
-      propsInitiativeId: this.props?.initiative_id ?? null,
-      sessionUserId: this.sessionAuth.userId ?? null,
-    });
+    if (!this.isDirectoryReviewProfile()) {
+      console.info('[mcp:init] DO initialized', {
+        hasProps: !!this.props,
+        propsUserId: this.props?.userId ?? null,
+        propsScope: this.props?.scope ?? null,
+        propsWorkspaceId: this.props?.workspace_id ?? null,
+        propsInitiativeId: this.props?.initiative_id ?? null,
+        sessionUserId: this.sessionAuth.userId ?? null,
+      });
+    }
 
     const propsWorkspaceId =
       typeof this.props?.workspace_id === 'string'
@@ -1022,11 +1104,13 @@ export class OrgXMcp extends McpAgent<
           authenticatedAt: Date.now(),
         };
         await this.saveSessionAuth();
-        console.info('[mcp:session] User authenticated, stored in session', {
-          userId: this.props.userId,
-          hasOrgxUserId: Boolean(this.sessionAuth.orgxUserId),
-          scope: this.props.scope,
-        });
+        if (!this.isDirectoryReviewProfile()) {
+          console.info('[mcp:session] User authenticated, stored in session', {
+            userId: this.props.userId,
+            hasOrgxUserId: Boolean(this.sessionAuth.orgxUserId),
+            scope: this.props.scope,
+          });
+        }
       }
     }
 
@@ -1179,6 +1263,8 @@ export class OrgXMcp extends McpAgent<
       properties,
     }: { distinctId: string; properties?: Record<string, unknown> }
   ): void {
+    if (this.isDirectoryReviewProfile()) return;
+
     captureWorkerPosthogEvent({
       env: this.env,
       ctx: this.ctx as any,
@@ -1226,6 +1312,8 @@ export class OrgXMcp extends McpAgent<
       providerMismatch?: boolean;
     }
   ): void {
+    if (this.isSubmittedInformationalToolExecution(params.toolId)) return;
+
     const distinctId = params.userId ?? this.resolveAnonymousDistinctId();
     // When the caller didn't tag errorKind explicitly, classify from the
     // error message so the dashboard always has a coarse category to
@@ -1378,6 +1466,13 @@ export class OrgXMcp extends McpAgent<
     workspaceId?: string | null;
     initiativeId?: string | null;
   }): Promise<McpActivationTelemetryEvent[]> {
+    if (
+      this.isDirectoryReviewProfile() ||
+      this.isSubmittedInformationalToolExecution(params.toolId)
+    ) {
+      return [];
+    }
+
     try {
       const { state, events } = applyMcpActivationObservation(
         this.mcpActivationState,
@@ -1540,10 +1635,18 @@ export class OrgXMcp extends McpAgent<
   }
 
   private async withOrgx(
-    runner: () => Promise<CallToolResult>
+    runner: () => Promise<CallToolResult>,
+    toolId?: string
   ): Promise<CallToolResult> {
     try {
       const result = await runner();
+      if (
+        this.isDirectoryReviewProfile() ||
+        this.isSubmittedInformationalToolExecution(toolId)
+      ) {
+        return result;
+      }
+
       const now = new Date().toISOString();
       const shouldShowReentry = shouldShowWelcomeBack({
         state: this.mcpSessionReentryState,
@@ -2130,6 +2233,13 @@ export class OrgXMcp extends McpAgent<
     args: Record<string, unknown>;
     data: Record<string, unknown>;
   }) {
+    if (
+      this.isDirectoryReviewProfile() ||
+      this.isSubmittedInformationalToolExecution(params.toolId)
+    ) {
+      return;
+    }
+
     try {
       const initiativeId =
         (typeof params.data.initiative_id === 'string' &&
@@ -2337,11 +2447,13 @@ export class OrgXMcp extends McpAgent<
       });
     }
 
-    console.info('[mcp] Executing tool', {
-      toolId,
-      hasUserId: !!resolvedUserId,
-      authSource,
-    });
+    if (!this.isSubmittedInformationalToolExecution(toolId)) {
+      console.info('[mcp] Executing tool', {
+        toolId,
+        hasUserId: !!resolvedUserId,
+        authSource,
+      });
+    }
 
     // Expand consolidated tools (scoring_config, queue_action, stats)
     // into their legacy backend tool_id before dispatching
@@ -2440,7 +2552,12 @@ export class OrgXMcp extends McpAgent<
           return this.toolError(errorMessage);
         }
 
-        console.info('[mcp] Tool executed successfully', { toolId, latencyMs });
+        if (!this.isSubmittedInformationalToolExecution(toolId)) {
+          console.info('[mcp] Tool executed successfully', {
+            toolId,
+            latencyMs,
+          });
+        }
 
         // Extract message if present, otherwise use imported summarizer
         let data = result.data ?? {};
@@ -2617,7 +2734,7 @@ export class OrgXMcp extends McpAgent<
         }
         throw error;
       }
-    });
+    }, toolId);
   }
 
   /**
@@ -3406,7 +3523,7 @@ export class OrgXMcp extends McpAgent<
                 }),
               });
             }
-          });
+          }, tool.id);
         }
       );
     }
@@ -5203,7 +5320,7 @@ export class OrgXMcp extends McpAgent<
         default:
           return this.toolError(`Unknown contract tool: ${toolId}`);
       }
-    });
+    }, toolId);
   }
 
   private async executeCreateEntityWrapper(
@@ -5335,9 +5452,15 @@ export class OrgXMcp extends McpAgent<
       // hidden tools won't be usable"). Visibility only controls ChatGPT
       // rendering — the tool stays protected by its OAuth securitySchemes.
       const hasOutputTemplate = Boolean(metaObj?.['openai/outputTemplate']);
+      const configuredVisibility = metaObj?.['openai/visibility'];
       const meta = {
         ...tool._meta,
-        'openai/visibility': isReadOnly || hasOutputTemplate ? 'public' : 'private',
+        'openai/visibility':
+          configuredVisibility === 'public' || configuredVisibility === 'private'
+            ? configuredVisibility
+            : isReadOnly || hasOutputTemplate
+            ? 'public'
+            : 'private',
         'mcp/securitySchemes': tool.securitySchemes,
       };
 
@@ -5361,60 +5484,21 @@ export class OrgXMcp extends McpAgent<
     }
   }
 
-  private standardOutputSchemaInstalled = false;
+  private toolResultGuidanceInstalled = false;
 
   /**
-   * Monkey-patches `this.server.registerTool` so every tool registered after
-   * this call automatically gets a default outputSchema (when none is
-   * provided) and a handler wrapper that synthesises a minimal
-   * `structuredContent` envelope from the existing `content` blocks.
+   * Monkey-patches `this.server.registerTool` so profile-invisible tool
+   * breadcrumbs are removed from result guidance. Tool schemas and result
+   * envelopes remain untouched; output schemas must be exact and per-tool.
    *
    * Idempotent: only patches once per worker instance.
    */
-  private installStandardOutputSchemaWrapper(
+  private installToolResultGuidanceWrapper(
     allowedTools: ReadonlySet<string> | null
   ) {
-    if (this.standardOutputSchemaInstalled) return;
-    this.standardOutputSchemaInstalled = true;
-    const server = this.server as unknown as {
-      registerTool: (
-        name: string,
-        config: Record<string, unknown> & { outputSchema?: unknown },
-        handler: (...args: unknown[]) => unknown
-      ) => unknown;
-    };
-    const original = server.registerTool.bind(server);
-    server.registerTool = ((
-      name: string,
-      config: Record<string, unknown> & { outputSchema?: unknown },
-      handler: (...args: unknown[]) => unknown
-    ) => {
-      const enhancedConfig = {
-        ...config,
-        // A constructed .passthrough() object, NOT the raw shape: a raw shape
-        // compiles to additionalProperties:false and rejects every tool that
-        // returns rich structuredContent (see STANDARD_TOOL_OUTPUT_SCHEMA_OBJECT).
-        outputSchema:
-          config.outputSchema ??
-          (STANDARD_TOOL_OUTPUT_SCHEMA_OBJECT as unknown as Record<
-            string,
-            unknown
-          >),
-      };
-      const wrappedHandler = async (...args: unknown[]) => {
-        const result = await handler(...args);
-        const withStructuredContent = ensureStructuredContent(
-          result as {
-            structuredContent?: unknown;
-            isError?: boolean;
-            content?: ReadonlyArray<unknown>;
-          }
-        );
-        const withEnvelope = normalizeToolResultEnvelope(withStructuredContent);
-        return sanitizeToolResultGuidance(withEnvelope, allowedTools);
-      };
-      return original(name, enhancedConfig, wrappedHandler);
-    }) as typeof server.registerTool;
+    if (this.toolResultGuidanceInstalled) return;
+    this.toolResultGuidanceInstalled = true;
+    installToolResultGuidanceWrapper(this.server, allowedTools);
   }
 
   private registerTools() {
@@ -5422,12 +5506,9 @@ export class OrgXMcp extends McpAgent<
     // Missing/unknown names fail closed to v2; null is explicit full only.
     const allowedTools = resolveToolProfile(this.props?.profile).tools;
 
-    // Wrap server.registerTool so every subsequent registration (inline,
-    // for-loop, or via registerAppTool which delegates to the same method)
-    // gets a default outputSchema and an envelope-injected handler. This
-    // boosts Smithery's "Output schemas" coverage without requiring each
-    // handler to populate structuredContent manually.
-    this.installStandardOutputSchemaWrapper(allowedTools);
+    // Apply profile-aware result-guidance filtering to every subsequent
+    // registration without changing tool schemas or result envelopes.
+    this.installToolResultGuidanceWrapper(allowedTools);
 
     // Register ChatGPT App tools (data-driven)
     this.registerChatGPTTools(allowedTools);
@@ -8511,11 +8592,11 @@ export class OrgXMcp extends McpAgent<
           '  • "ref" is a client-side label used inside this single call (in depends_on and ref_map). It is not persisted as an ID.\n\n' +
           'Agent-safe aliases that are accepted and normalized server-side: task priority "urgent" → "high"; task/milestone status "active" → "in_progress".\n\n' +
           'Source verification gate: when the initiative is based on a named external product or URL, verify the actual target in a browser or from user-provided screenshots before creating records. Pass source_evidence. If the target cannot be rendered, do not infer the product from web-search results; use mode="draft" with verification_state="unverified" and ask for evidence.\n\n' +
-          'USE WHEN: user wants to plan a new initiative from scratch. NEXT: use mode="launch" to create and start agents (default), mode="scaffold" to create without launching, or mode="draft" to validate the plan without writes. The result returns initiative_id, ref_map, and preferred_next_calls for orgx_inspect/orgx_search/orgx_write chaining. DO NOT USE: for adding a single task to an existing initiative — use create_entity instead.',
+          'USE WHEN: user wants to plan a new initiative from scratch. NEXT: use mode="launch" to create and start agents (default), mode="scaffold" to create without launching, or mode="draft" to validate the plan without writes. Launch dispatches agent work; external_sync can mirror the hierarchy into connected work trackers such as Linear. The result returns initiative_id, ref_map, and preferred_next_calls for orgx_inspect/orgx_search/orgx_write chaining. DO NOT USE: for adding a single task to an existing initiative — use create_entity instead.',
         annotations: {
           readOnlyHint: false,
-          destructiveHint: false,
-          openWorldHint: false,
+          destructiveHint: true,
+          openWorldHint: true,
         },
         inputSchema: this.withClientContext({
           mode: z
@@ -11477,39 +11558,22 @@ export class OrgXMcp extends McpAgent<
     // Fetches the next in-review artifact for the caller's workspace
     // (optionally filtered by entity_id) and attaches the artifact-review
     // widget with the artifact as structuredContent.artifact.
-    if (shouldRegister('review_artifact'))
+    if (shouldRegister('review_artifact')) {
+      const reviewArtifactContract = INLINE_TOOL_CONTRACTS.review_artifact;
       registerAppTool(
         this.server,
         'review_artifact',
         {
-          title: 'Review Artifact',
-          description:
-            'Use when the user asks to review work, sign off on a deliverable, or clear pending artifact reviews. Surfaces the next artifact awaiting review and renders the artifact-review widget with a preview, version filmstrip, and hold-to-approve / request-changes actions. USE WHEN the user asks to review work, approve a deliverable, or handle pending artifact reviews. DO NOT USE for listing all artifacts — use list_entities type=artifact instead.',
-          inputSchema: this.withClientContext({
-            artifact_id: z
-              .string()
-              .optional()
-              .describe('Specific artifact ID to review. Defaults to the next in_review artifact.'),
-            entity_id: z
-              .string()
-              .optional()
-              .describe('Scope to artifacts attached to this entity (initiative, workstream, milestone, or task).'),
-            workspace_id: z
-              .string()
-              .optional()
-              .describe('Workspace UUID. Defaults to the session workspace.'),
-          }),
-          annotations: {
-            readOnlyHint: true,
-            destructiveHint: false,
-            openWorldHint: false,
-          },
+          title: reviewArtifactContract.title,
+          description: reviewArtifactContract.description,
+          inputSchema: this.withClientContext(reviewArtifactContract.inputSchema),
+          annotations: reviewArtifactContract.annotations,
           _meta: {
             'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.artifactReview,
             'openai/toolInvocation/invoking': 'Loading artifact for review...',
             'openai/toolInvocation/invoked': 'Artifact ready to review',
             'openai/visibility': 'public',
-            'mcp/securitySchemes': SECURITY_SCHEMES.entityReadRequiresAuth,
+            'mcp/securitySchemes': reviewArtifactContract.securitySchemes,
             ui: { resourceUri: WIDGET_URIS.artifactReview },
           },
         },
@@ -11517,7 +11581,7 @@ export class OrgXMcp extends McpAgent<
           this.withOrgx(async () => {
             const authResponse = buildAuthRequiredResponse({
               toolId: 'review_artifact',
-              securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
+              securitySchemes: reviewArtifactContract.securitySchemes,
               userId: this.resolveUserId() ?? undefined,
               serverUrl: this.env.MCP_SERVER_URL ?? undefined,
               featureDescription: 'review artifacts',
@@ -11590,8 +11654,9 @@ export class OrgXMcp extends McpAgent<
               ],
               structuredContent: envelope,
             };
-          })
+          }, 'review_artifact')
       );
+    }
 
     // --- get_morning_brief ---
     if (shouldRegister('get_morning_brief'))
@@ -11740,7 +11805,7 @@ export class OrgXMcp extends McpAgent<
               ],
               structuredContent: payload,
             };
-          })
+          }, 'get_morning_brief')
       );
 
     // --- get_relevant_learnings ---
@@ -12033,33 +12098,39 @@ export class OrgXMcp extends McpAgent<
   }
 
   private registerResources() {
+    const discoveryPolicy = resolveProfileDiscoveryPolicy(this.props?.profile);
+
     // Register initiative resource (existing)
-    const template = new ResourceTemplate('orgx://initiative/{id}', {
-      list: undefined,
-    });
-    this.server.resource('initiative', template, async (_uri, variables) => {
-      const response = await callOrgxApiJson(
-        this.env,
-        `/api/initiatives/${variables.id}`
-      );
-      const initiative = (await response.json()) as OrgXInitiative;
-      const markdown = formatInitiativeMarkdown(initiative);
-      return {
-        contents: [
-          {
-            uri: `orgx://initiative/${initiative.id}`,
-            mimeType: 'text/markdown',
-            text: markdown,
-          },
-        ],
-      };
-    });
+    if (discoveryPolicy.includeInitiativeResource) {
+      const template = new ResourceTemplate('orgx://initiative/{id}', {
+        list: undefined,
+      });
+      this.server.resource('initiative', template, async (_uri, variables) => {
+        const response = await callOrgxApiJson(
+          this.env,
+          `/api/initiatives/${variables.id}`
+        );
+        const initiative = (await response.json()) as OrgXInitiative;
+        const markdown = formatInitiativeMarkdown(initiative);
+        return {
+          contents: [
+            {
+              uri: `orgx://initiative/${initiative.id}`,
+              mimeType: 'text/markdown',
+              text: markdown,
+            },
+          ],
+        };
+      });
+    }
 
     // Register widget HTML resources (text/html;profile=mcp-app) for all MCP Apps hosts
-    this.registerWidgetResources();
+    this.registerWidgetResources(discoveryPolicy.widgetUris);
 
     // Register downloadable skill pack resources
-    this.registerSkillResources();
+    if (discoveryPolicy.includeSkillResources) {
+      this.registerSkillResources();
+    }
   }
 
   /**
@@ -12201,12 +12272,16 @@ export class OrgXMcp extends McpAgent<
    * Register widget HTML resources for ChatGPT App rendering.
    * Widgets receive data via structuredContent and window.openai.toolOutput.
    */
-  private registerWidgetResources() {
+  private registerWidgetResources(
+    allowedWidgetUris: ReadonlySet<string> | null = null
+  ) {
     const widgetMeta = buildWidgetMeta(this.env);
     const mcpAppsMeta = buildMcpAppsMeta(this.env);
     const mcpAppsContentMeta = { ...widgetMeta, ...mcpAppsMeta };
 
     for (const widget of WIDGET_RESOURCES) {
+      if (allowedWidgetUris && !allowedWidgetUris.has(widget.uri)) continue;
+
       registerAppResource(
         this.server,
         widget.name,
@@ -12572,6 +12647,9 @@ export class OrgXMcp extends McpAgent<
   }
 
   private registerPrompts() {
+    const discoveryPolicy = resolveProfileDiscoveryPolicy(this.props?.profile);
+    if (!discoveryPolicy.includePrompts) return;
+
     const argsSchema = {
       initiative_name: z.string().min(1),
     };
@@ -12769,12 +12847,12 @@ const rateLimitedHttpHandler = {
     attachRequestSourceClient(request, ctx);
     const rateLimit = await checkEdgeRateLimit(request, env);
     if (!rateLimit.allowed) {
-      return buildRateLimitedResponse(rateLimit, env.ORGX_WEB_URL);
+      return buildRateLimitedResponse(rateLimit, env.ORGX_WEB_URL, request);
     }
 
     try {
       const response = await httpHandler.fetch(request, env, ctx);
-      return withCorsAndHeaders(response, rateLimit.headers);
+      return withCorsAndHeaders(response, rateLimit.headers, request);
     } catch (error) {
       const recovery = await recoverDurableObjectTransportRequest(
         request,
@@ -12786,7 +12864,7 @@ const rateLimitedHttpHandler = {
           '[mcp] recovered transient Durable Object transport failure',
           { method: request.method }
         );
-        return withCorsAndHeaders(recovery.response, rateLimit.headers);
+        return withCorsAndHeaders(recovery.response, rateLimit.headers, request);
       }
 
       Sentry.captureException(recovery.error, {
@@ -12807,23 +12885,25 @@ const rateLimitedHttpHandler = {
         recovery.error,
         { stage: 'mcp_http_handler' }
       );
-      return withCorsAndHeaders(response, rateLimit.headers);
+      return withCorsAndHeaders(response, rateLimit.headers, request);
     }
   },
 };
+
+const profileAwareHttpHandler = withRequestToolProfile(rateLimitedHttpHandler);
 
 /**
  * Expose httpHandler for use by authHandler.ts (WebSocket + root URL routing)
  */
 export function getHttpHandler() {
-  return rateLimitedHttpHandler;
+  return profileAwareHttpHandler;
 }
 
 /**
  * Expose sseHandler for use by authHandler.ts (root URL SSE routing)
  */
 export function getSseHandler() {
-  return rateLimitedSseHandler;
+  return profileAwareSseHandler;
 }
 
 // =============================================================================
@@ -12840,7 +12920,7 @@ const rateLimitedSseHandler = {
     attachRequestSourceClient(request, ctx);
     const rateLimit = await checkEdgeRateLimit(request, env);
     if (!rateLimit.allowed) {
-      return buildRateLimitedResponse(rateLimit, env.ORGX_WEB_URL);
+      return buildRateLimitedResponse(rateLimit, env.ORGX_WEB_URL, request);
     }
 
     // POST /sse → rewrite to /mcp (OpenAI client sends JSON-RPC to /sse)
@@ -12856,7 +12936,7 @@ const rateLimitedSseHandler = {
       });
       try {
         const response = await httpHandler.fetch(httpReq, env, ctx);
-        return withCorsAndHeaders(response, rateLimit.headers);
+        return withCorsAndHeaders(response, rateLimit.headers, httpReq);
       } catch (error) {
         Sentry.captureException(error, {
           tags: { subsystem: 'mcp_transport', stage: 'sse_post_rewrite' },
@@ -12867,15 +12947,21 @@ const rateLimitedSseHandler = {
         const response = await buildMcpTransportExceptionResponse(httpReq, error, {
           stage: 'mcp_sse_post_rewrite',
         });
-        return withCorsAndHeaders(response, rateLimit.headers);
+        return withCorsAndHeaders(response, rateLimit.headers, httpReq);
       }
     }
 
     // GET /sse → SSE transport (default behavior)
     const resp = await sseHandler.fetch(request, env, ctx);
-    return withCorsAndHeaders(withSseKeepAlive(resp), rateLimit.headers);
+    return withCorsAndHeaders(
+      withSseKeepAlive(resp),
+      rateLimit.headers,
+      request
+    );
   },
 };
+
+const profileAwareSseHandler = withRequestToolProfile(rateLimitedSseHandler);
 
 // =============================================================================
 // OAUTH PROVIDER (DEFAULT EXPORT)
@@ -12889,8 +12975,8 @@ const rateLimitedSseHandler = {
 
 const oauthProvider = new OAuthProvider({
   apiHandlers: {
-    '/mcp': rateLimitedHttpHandler,
-    '/sse': rateLimitedSseHandler,
+    '/mcp': profileAwareHttpHandler,
+    '/sse': profileAwareSseHandler,
   },
   defaultHandler: authHandler,
   authorizeEndpoint: '/authorize',
@@ -12953,6 +13039,29 @@ const worker = {
     env: Env,
     ctx: ExecutionContext
   ): Promise<Response> {
+    // OpenAI verifies domain control through an exact, unauthenticated
+    // plaintext challenge. Handle it before OAuthProvider so no discovery or
+    // authorization routing can rewrite the response.
+    const openAiChallengeResponse = handleOpenAiAppsChallenge(request, env);
+    if (openAiChallengeResponse) {
+      return withSecurityHeaders(openAiChallengeResponse);
+    }
+
+    const requestUrl = new URL(request.url);
+    const isMcpTransportRoute =
+      requestUrl.pathname === '/mcp' ||
+      requestUrl.pathname === '/sse' ||
+      /^\/v1\/[^/]+\/servers\/[^/]+\/?$/.test(requestUrl.pathname) ||
+      (requestUrl.pathname === '/' &&
+        (request.method === 'POST' ||
+          request.method === 'DELETE' ||
+          request.headers.get('accept')?.includes('text/event-stream') ||
+          Boolean(request.headers.get('mcp-session-id'))));
+    if (isMcpTransportRoute) {
+      const invalidOrigin = validateMcpRequestOrigin(request, env);
+      if (invalidOrigin) return withSecurityHeaders(invalidOrigin);
+    }
+
     const runTokenResponse = await tryRunTokenAuth(request, env, ctx);
     if (runTokenResponse) return runTokenResponse;
 

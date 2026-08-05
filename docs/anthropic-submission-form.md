@@ -1,6 +1,7 @@
 # Anthropic MCP Directory — Submission Form Copy
 
-Paste-ready answers for the submission form at <https://clau.de/mcp-directory-submission>.
+Paste-ready answers for the submission form at
+<https://claude.ai/admin-settings/directory/submissions/new>.
 Keep this file in sync with `server.json` and `docs/anthropic-reviewer-runbook.md` — if
 either changes, update this doc the same day.
 
@@ -10,27 +11,31 @@ either changes, update this doc the same day.
 |-------|-------|
 | Server name | OrgX MCP |
 | Tagline (≤80 chars) | Organizational continuity for AI agents. |
-| Server URL | `https://mcp.useorgx.com/mcp` |
+| Server URL | `https://mcp.useorgx.com/mcp?profile=claude-directory` |
 | Transport | Streamable HTTP (primary) · SSE (fallback) |
 | Auth | OAuth 2.0 + PKCE · Dynamic Client Registration |
-| Required scopes | `decisions:read` · `decisions:write` · `agents:read` · `agents:write` · `initiatives:read` · `initiatives:write` · `memory:read` · `offline_access` |
-| Capabilities | tools, resources, prompts, apps (widgets) |
+| Directory surface | 7 focused, non-destructive, closed-world tools; 3 strictly read-only and 4 that record metered MCP allowance usage |
+| Read scopes used | `decisions:read` · `agents:read` · `initiatives:read` · `memory:read` |
+| Capabilities | 7 informational tools and 4 read-only widget families; no prompts, skill packs, or generic initiative resource on this profile |
+| HTTPS Origin validation | Yes — every present MCP transport `Origin` is exact-allowlisted before auth/dispatch; invalid origins return `403`; no-`Origin` CLI traffic remains supported |
 | Publisher | OrgX (`com.useorgx/orgx-mcp` in the official MCP Registry) |
 | Support email | reviewers@useorgx.com |
 | Privacy policy | <https://github.com/useorgx/orgx-mcp/blob/main/docs/privacy-policy.md> |
 | Security docs | <https://github.com/useorgx/orgx-mcp/blob/main/docs/security-data-handling.md> |
 
-## Branding assets (all 200 OK as of submission day)
+## Branding assets (verify 200 on submission day)
 
 | Purpose | URL |
 |---------|-----|
 | Square logo (1024 × 1024) | <https://mcp.useorgx.com/orgx-logo.png> |
 | Favicon (multi-res .ico) | <https://mcp.useorgx.com/favicon.ico> |
-| Screenshot — command center | <https://mcp.useorgx.com/screenshots/command-center.png> |
-| Screenshot — morning brief | <https://mcp.useorgx.com/screenshots/morning-brief.png> |
-| Screenshot — canvas | <https://mcp.useorgx.com/screenshots/canvas.png> |
-| Screenshot — agent demo | <https://mcp.useorgx.com/screenshots/agent-demo.png> |
 | Open Graph preview | <https://mcp.useorgx.com/screenshots/orgx-mcp-og.png> |
+
+Response screenshots are **pending authenticated post-deploy capture**. Capture
+them only from real Claude responses against the deployed
+`?profile=claude-directory` endpoint and dedicated reviewer workspace. Local
+fixtures, synthetic renders, and generic demo images are not submission
+evidence and must not be uploaded.
 
 ## Description (long-form)
 
@@ -38,16 +43,20 @@ The task outlives the chat. OrgX lets the next agent continue from the
 decisions, artifacts, approvals, owners, and proof the last agent left behind.
 Make AI work resumable, reviewable, and provable across agents.
 
-From any MCP client — Claude, Cursor, ChatGPT, Cline — agents can remember
-decisions, retrieve artifacts, review pending approvals, scaffold initiative
-hierarchies, assign work to specialist agents, query organizational memory,
-and watch initiative health in real time.
+From any MCP client — Claude, Cursor, ChatGPT, Cline — agents can retrieve
+decisions and artifacts, query organizational memory, read operator proof,
+and watch initiative health in real time. The scoped Anthropic Directory
+endpoint intentionally exposes only non-destructive, closed-world capabilities;
+the broader OrgX service supports separately reviewed write workflows on other
+profiles. Three directory tools are strictly read-only. Four record metered
+MCP allowance usage on a successful mode but do not change business records.
 
 Unlike a project-management CRUD surface, OrgX is built around urgency-driven
 hierarchy and surveillance calm: healthy state collapses to near-silence, the
 blocker reshapes the interface when it matters. Every write is observable in
-the user's live view at `useorgx.com/live/<initiative_id>`, and every widget
-can drill down to act without leaving the chat.
+the user's live view at `useorgx.com/live/<initiative_id>`. On the submitted
+profile, widgets render read-only results and may deep-link to OrgX; they do
+not expose an in-chat mutation or scaffold example.
 
 Target user: a founder or operator delegating to autonomous agents, who wants
 organizational memory, decision queues, artifact recall, and initiative pulses available
@@ -57,36 +66,41 @@ wherever they think.
 
 These match the reviewer runbook and the seeded reviewer workspace baseline.
 
-1. *"Show me the pending decisions that need approval today."*
-   Expected: decisions widget with three seeded pending decisions.
-2. *"What did we decide about Search Copilot readiness?"*
+1. *"What did we decide about Search Copilot readiness?"*
    Expected: memory search results with prior decision context and linked artifacts.
-3. *"Give me the pulse for the Search Copilot Readiness initiative."*
+2. *"Give me the pulse for the Search Copilot Readiness initiative."*
    Expected: initiative-pulse widget with health + milestones + recent activity.
-4. *"Show me what the OrgX agents are doing right now."*
+3. *"Show me what the OrgX agents are doing right now."*
    Expected: agent-status widget with the seeded roster.
-5. *"Scaffold a launch initiative with two workstreams, one milestone each, and two tasks per milestone."*
-   Expected: scaffolded-initiative widget with the newly-created hierarchy.
+4. *"Give me today's morning brief."*
+   Expected: morning-brief widget with current decisions, risks, and initiative context.
 
 ## OAuth callback support
 
-OAuth is handled through Dynamic Client Registration. We verified against
-`POST /register` that these callback URIs accept registration without errors:
+OAuth is handled through Dynamic Client Registration. Before submission,
+capture a fresh hosted-Claude and Claude Code login receipt proving that the
+client-supplied redirect URI is accepted, PKCE uses `S256`, and an
+unauthenticated protected request returns `401` with `WWW-Authenticate`.
 
-- `http://localhost:6274/oauth/callback` (MCP Inspector debug)
-- `http://localhost:6274/oauth/callback/debug`
-- `https://claude.ai/api/mcp/auth_callback`
-- `https://claude.com/api/mcp/auth_callback`
+Claude Code uses random loopback ports. Validate both
+`http://localhost:<random-port>/...` and
+`http://127.0.0.1:<random-port>/...`; do not treat fixed port `6274` as the
+complete callback contract. Use the exact hosted callback supplied by the
+current Claude client rather than copying a stale URL from this document.
 
-No static allowlist is required. Each Anthropic review run registers its own
-client via DCR.
+The authorization server's well-known metadata is shared across profiles and
+advertises the full server scope vocabulary. The directory endpoint itself
+exposes only informational tools with read-scoped security schemes.
+Profile-specific
+well-known scope reduction is not claimed because query-scoped issuer metadata
+would be unsafe with a shared, cacheable OAuth issuer.
 
 ## Reviewer credential delivery
 
 The reviewer URL and password are delivered **out of band** — never in this
-form, never in the repo. Delivery channel for this submission:
-
-> **[ fill before submitting: 1Password shared link, secure email, or Anthropic's reviewer portal ]**
+file or the public repository. At submission time, use Anthropic's designated
+private reviewer-credential field or another approved secure channel, then
+retain the delivery confirmation in private operational evidence.
 
 The URL template the reviewer receives:
 `https://useorgx.com/review/anthropic/<token>` (password-gated landing page
@@ -97,14 +111,19 @@ See `docs/reviewer-invite-template.md` for the full email copy.
 
 ## Submission checklist (run before hitting submit)
 
-- [ ] `pnpm type-check && pnpm vitest run && pnpm build && pnpm directory:preflight` green locally.
+- [ ] `pnpm type-check && pnpm test:anthropic-review && pnpm build && pnpm directory:preflight` green locally.
 - [ ] `MCP_BASE_URL=https://mcp.useorgx.com pnpm directory:preflight` green against production.
-- [ ] Every asset URL in the table above returns 200 (curl -I).
+- [ ] An authenticated `tools/list` for `?profile=claude-directory` returns exactly the documented seven tools, with three `readOnlyHint: true` and four `readOnlyHint: false`.
+- [ ] `prompts/list` is empty and `resources/list` contains only the four documented read-only widget families (including their version/host compatibility variants).
+- [ ] Invalid-Origin POST returns `403`; trusted Claude Origin is echoed (not `*`); a no-Origin CLI request reaches the normal OAuth flow.
+- [ ] Every branding asset URL in the table above returns 200 (curl -I).
+- [ ] Authenticated response screenshots were captured after deployment from real Claude runs, matched to their exact prompts, and stored as private provider-upload evidence; no local fixture is used.
 - [ ] Reviewer session minted via `tsx scripts/review-session.ts mint` and tested end-to-end.
 - [ ] Reviewer URL + password delivered out of band and confirmation captured.
 - [ ] server.json version matches the latest deployed worker version.
 
 ## After submission
 
-Save confirmation screenshot to `docs/evidence/anthropic-submission.png` and
-update the initiative `t_submit_anthropic` task with the submission ID.
+Retain the provider confirmation screenshot and submission ID in private
+operational evidence. Do not mark the connector approved or published until a
+separate provider receipt proves that state.

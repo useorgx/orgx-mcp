@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-28T17:26:45.857Z",
-  "sourceHash": "a7abb12ee803bbf4",
+  "generatedAt": "2026-08-05T22:34:12.616Z",
+  "sourceHash": "9c98d5cedbadd50a",
   "version": "1.0.0",
   "totalTools": 81,
   "categories": [
@@ -27,7 +27,7 @@
     {
       "id": "get_agent_status",
       "title": "Get Agent Status",
-      "description": "Use when the user asks what agents are working on right now, whether delegated work is still running, or why nothing has landed yet. Also known as: agent status, what agents are doing, active runs. USE WHEN: user asks about agent activity, progress, or what agents are working on. NEXT: If agents are stuck, suggest approve_decision or entity_action. DO NOT USE: to check initiative health — use get_initiative_pulse instead. Read-only.",
+      "description": "Use when the user asks what agents are working on right now, whether delegated work is still running, or why nothing has landed yet. Successful calls record metered MCP allowance usage but do not change business records. Also known as: agent status, what agents are doing, active runs. USE WHEN: user asks about agent activity, progress, or what agents are working on. NEXT: If agents are stuck, use orgx_search or orgx_inspect to read the related blocker context. DO NOT USE: to check initiative health — use get_initiative_pulse instead.",
       "category": "Agents",
       "inputSchema": {
         "type": "object",
@@ -69,11 +69,12 @@
       "securityScopes": [
         "initiatives:read"
       ],
-      "readOnly": true,
+      "readOnly": false,
       "source": "chatgpt",
       "profiles": [
         "v2",
-        "chatgpt"
+        "chatgpt",
+        "claude-directory"
       ]
     },
     {
@@ -1223,7 +1224,7 @@
     {
       "id": "review_artifact",
       "title": "Review Artifact",
-      "description": "Surface the next artifact awaiting review. Renders the artifact-review widget with a preview, version filmstrip, and hold-to-approve / request-changes actions. USE WHEN the user asks to review work, approve a deliverable, or handle pending artifact reviews. DO NOT USE for listing all artifacts — use list_entities type=artifact instead.",
+      "description": "Use when the user asks to review work, sign off on a deliverable, or clear pending artifact reviews. Surfaces the next artifact awaiting review and renders the artifact-review widget with a preview, version filmstrip, and hold-to-approve / request-changes actions. USE WHEN the user asks to review work, approve a deliverable, or handle pending artifact reviews. DO NOT USE for listing all artifacts — use list_entities type=artifact instead.",
       "category": "Client Integration",
       "inputSchema": {
         "type": "object",
@@ -1245,12 +1246,13 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "securityScopes": [
-        "initiatives:write"
+        "initiatives:read"
       ],
-      "readOnly": false,
+      "readOnly": true,
       "source": "inline",
       "profiles": [
-        "memory"
+        "v2",
+        "chatgpt"
       ]
     },
     {
@@ -1286,7 +1288,7 @@
     {
       "id": "approve_decision",
       "title": "Approve Decision",
-      "description": "Use when the user has reviewed a pending decision that is blocking agent work and gives explicit confirmation to approve it. Also known as: sign off, approve AI work, unblock agent, accept decision. USE WHEN: user says to approve a decision returned from list_entities with type=decision and status=pending (or the legacy get_pending_decisions alias). NEXT: Confirm approval to user; agent is notified automatically. DO NOT USE: without showing the decision to the user first. Requires decisions:write.",
+      "description": "Use when the user has reviewed a pending decision that is blocking agent work and gives explicit confirmation to approve it. Also known as: sign off, approve AI work, unblock agent, accept decision. USE WHEN: user says to approve a decision returned from list_entities with type=decision and status=pending (or the legacy get_pending_decisions alias). Approval can resume or continue connected agent execution. NEXT: Confirm approval to user; agent is notified automatically. DO NOT USE: without showing the decision to the user first. Requires decisions:write.",
       "category": "Decisions",
       "inputSchema": {
         "type": "object",
@@ -2223,7 +2225,7 @@
     {
       "id": "get_initiative_pulse",
       "title": "Get Initiative Pulse",
-      "description": "Use when the user asks how a project is going, what is blocked, or whether an initiative is on track. Also known as: project status, roadmap progress, execution health, blockers. USE WHEN: user asks how an initiative is going, or wants a status update. NEXT: If blockers exist, suggest entity_action to resolve. For deeper drill-down, use list_entities with initiative_id. DO NOT USE: for org-wide overview — use get_org_snapshot instead. Read-only.",
+      "description": "Use when the user asks how a project is going, what is blocked, or whether an initiative is on track. Successful calls record metered MCP allowance usage but do not change business records. Also known as: project status, roadmap progress, execution health, blockers. USE WHEN: user asks how an initiative is going, or wants a status update. NEXT: If blockers exist, use orgx_inspect for one blocker or orgx_search for related records. DO NOT USE: for an org-wide brief — use orgx_recommend with mode=morning_brief instead.",
       "category": "Initiative Monitoring",
       "inputSchema": {
         "type": "object",
@@ -2255,11 +2257,12 @@
         "initiatives:read",
         "memory:read"
       ],
-      "readOnly": true,
+      "readOnly": false,
       "source": "chatgpt",
       "profiles": [
         "v2",
-        "chatgpt"
+        "chatgpt",
+        "claude-directory"
       ]
     },
     {
@@ -2303,7 +2306,8 @@
       "source": "flywheel",
       "profiles": [
         "v2",
-        "chatgpt"
+        "chatgpt",
+        "claude-directory"
       ]
     },
     {
@@ -2680,7 +2684,7 @@
     {
       "id": "orgx_act",
       "title": "Act On OrgX Entity",
-      "description": "Act on one OrgX entity. Required inputs:\n  • update → \"fields\" patch object.\n  • complete_with_proof, ship_batch → \"artifact\" (artifact_type + artifact_url/external_url; preview_markdown optional).\n  • validate (studio) → \"spec\" payload.\n  • block, flag_risk, decline, cancel, delete → \"note\" strongly recommended.\n  • dry_run=true previews update/delete and other supported lifecycle actions without mutating; update dry-runs must return would_update instead of delegating to orgx_write.\n\nAllowed (type → action) pairs (others return an error):\n  workspace: update|delete\n  initiative: launch|pause|resume|complete|archive|update|delete\n  milestone: start|complete|flag_risk|cancel|ship_batch|update|delete\n  workstream: start|pause|resume|block|complete|reassign_streams|update|delete\n  task: start|complete|complete_with_proof|block|unblock|reopen|update|delete\n  objective, playbook, decision, studio: see field descriptions.\n\nUSE WHEN: changing entity state. For pause, resume, retry, or cancel of running work, use manage_lifecycle so descendant tasks and active runs stay synchronized. NEXT: orgx_submit_receipt for durable proof. DO NOT USE for creating records — use orgx_write.",
+      "description": "Act on one OrgX entity. Required inputs:\n  • update → \"fields\" patch object.\n  • complete_with_proof, ship_batch → \"artifact\" (artifact_type + artifact_url/external_url; preview_markdown optional).\n  • validate (studio) → \"spec\" payload.\n  • block, flag_risk, decline, cancel, delete → \"note\" strongly recommended.\n  • dry_run=true previews supported actions; update dry-runs must return would_update.\n\nAllowed (type → action) pairs (others return an error):\n  workspace: update|delete\n  initiative: launch|pause|resume|complete|archive|update|delete\n  milestone: start|complete|flag_risk|cancel|ship_batch|update|delete\n  workstream: start|pause|resume|block|complete|reassign_streams|update|delete\n  task: start|complete|complete_with_proof|block|unblock|reopen|update|delete\n  objective, playbook, decision, studio: see field descriptions.\n\nUSE WHEN: changing entity state. Launch and resume can dispatch connected agent work. For pause, resume, retry, or cancel of running work, use manage_lifecycle so descendant tasks and active runs stay synchronized. NEXT: orgx_submit_receipt for durable proof. DO NOT USE for creating records — use orgx_write.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -2941,7 +2945,7 @@
     {
       "id": "orgx_bootstrap",
       "title": "Bootstrap OrgX Contract",
-      "description": "Use at the start of a fresh session, after reconnecting, or before continuing work another agent left behind. Establishes OrgX session context, discovers granted scopes, and returns the v2 tool routing map. Also known as: bootstrap, setup, tool routing. USE WHEN: first call in a fresh session, after reconnecting, or before performing a multi-step workflow. NEXT: use orgx_search, orgx_inspect, or orgx_recommend based on the returned routing map. DO NOT USE WHEN: you already have session context and need to read or mutate work. Read-only.",
+      "description": "Use at the start of a fresh session, after reconnecting, or before continuing work another agent left behind. Establishes OrgX session context, discovers granted scopes, returns the v2 tool routing map, and persists workspace/session continuity when the selected context changes. Also known as: bootstrap, setup, tool routing. USE WHEN: first call in a fresh session, after reconnecting, or before performing a multi-step workflow. NEXT: use orgx_search, orgx_inspect, or orgx_recommend based on the returned routing map. DO NOT USE WHEN: you already have session context and need to read or mutate work. Updates private session state; it does not change business records.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -2972,7 +2976,7 @@
         "initiatives:read",
         "memory:read"
       ],
-      "readOnly": true,
+      "readOnly": false,
       "source": "contract",
       "profiles": [
         "v2",
@@ -2987,7 +2991,7 @@
     {
       "id": "orgx_decide",
       "title": "Manage OrgX Decision",
-      "description": "Use when the user says \"remember this decision,\" asks \"what did we decide about X,\" or agent work needs human approval before it proceeds. Creates, approves, rejects, remembers, or lists durable OrgX decisions.\n\nPer-action input requirements:\n  • action=\"list_pending\" → No required fields. Optional: initiative_id, workspace_id (scope filters).\n  • action=\"create\"       → REQUIRES title AND decision (the resolved decision text). Recommended: context, initiative_id.\n  • action=\"remember\"     → REQUIRES decision (the text to capture as a remembered decision). Optional: title, context.\n  • action=\"approve\"      → REQUIRES decision_id. Optional: note (free-text approver rationale).\n  • action=\"reject\"       → REQUIRES decision_id AND reason (explanation shown to the assigned agent).\n\nUSE WHEN: capturing judgment, approval, rejection, or pending decision review. NEXT: use orgx_act, orgx_write, or orgx_spawn only after the decision resolves the next action. DO NOT USE WHEN: writing non-decision entities; use orgx_write.",
+      "description": "Use when the user says \"remember this decision,\" asks \"what did we decide about X,\" or agent work needs human approval before it proceeds. Creates, approves, rejects, remembers, or lists durable OrgX decisions.\n\nPer-action input requirements:\n  • action=\"list_pending\" → No required fields. Optional: initiative_id, workspace_id (scope filters).\n  • action=\"create\"       → REQUIRES title AND decision (the resolved decision text). Recommended: context, initiative_id.\n  • action=\"remember\"     → REQUIRES decision (the text to capture as a remembered decision). Optional: title, context.\n  • action=\"approve\"      → REQUIRES decision_id. Optional: note (free-text approver rationale).\n  • action=\"reject\"       → REQUIRES decision_id AND reason (explanation shown to the assigned agent).\n\nUSE WHEN: capturing judgment, approval, rejection, or pending decision review. Approval can resume or continue agent execution, including work in connected systems. NEXT: use orgx_act, orgx_write, or orgx_spawn only after the decision resolves the next action. DO NOT USE WHEN: writing non-decision entities; use orgx_write.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -3071,7 +3075,7 @@
     {
       "id": "orgx_inspect",
       "title": "Inspect OrgX Entity",
-      "description": "Use when the user names a specific task, milestone, initiative, decision, artifact, or plan session and you need its real state — decisions, owners, linked proof — before acting. Hydrates one OrgX entity with execution context. Also known as: Inspect OrgX Entity, inspect initiative, get full entity context. USE WHEN: continuing work on a named entity or verifying state before a lifecycle change. NEXT: use orgx_act, orgx_attach, or orgx_write if the user asks to change what you inspected. DO NOT USE WHEN: browsing or searching many records; use orgx_search. Read-only.",
+      "description": "Use when the user names a specific task, milestone, initiative, decision, artifact, or plan session and you need its real state — decisions, owners, linked proof — before acting. Hydrates one OrgX entity with execution context. Also known as: Inspect OrgX Entity, inspect initiative, get full entity context. USE WHEN: continuing work on a named entity or verifying state before a lifecycle change. NEXT: use orgx_search for related records or orgx_recommend for a read-only next-step assessment. DO NOT USE WHEN: browsing or searching many records; use orgx_search. Read-only.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -3137,6 +3141,7 @@
       "profiles": [
         "v2",
         "chatgpt",
+        "claude-directory",
         "memory",
         "commander",
         "planner",
@@ -3220,7 +3225,7 @@
     {
       "id": "orgx_recommend",
       "title": "Recommend Next OrgX Action",
-      "description": "Use when the user asks what to do next, wants a brief, or returns after time away and needs priorities. Recommends next work, summarizes operator-chronicle/morning-brief signals, and reads prioritization context. USE WHEN: user asks what to do next, wants a brief, asks what changed yesterday/week/30 days, or needs priority guidance. mode=morning_brief returns the operator chronicle when available. NEXT: present the recommendation, then use orgx_act, orgx_write, or orgx_spawn only after the user confirms an action. DO NOT USE WHEN: the user already specified the action; use orgx_act or orgx_write.",
+      "description": "Use when the user asks what to do next, wants a brief, or returns after time away and needs priorities. Recommends next work, summarizes operator-chronicle/morning-brief signals, and reads prioritization context. The default next_action mode records metered MCP allowance usage; it does not change business records. USE WHEN: user asks what to do next, wants a brief, asks what changed yesterday/week/30 days, or needs priority guidance. mode=morning_brief returns the operator chronicle when available. NEXT: present the recommendation and ask for explicit confirmation before any separate action. DO NOT USE WHEN: the user already specified a concrete action.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -3278,11 +3283,12 @@
       "securityScopes": [
         "initiatives:read"
       ],
-      "readOnly": true,
+      "readOnly": false,
       "source": "contract",
       "profiles": [
         "v2",
         "chatgpt",
+        "claude-directory",
         "memory",
         "commander",
         "observer"
@@ -3291,7 +3297,7 @@
     {
       "id": "orgx_search",
       "title": "Search OrgX",
-      "description": "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Finds OrgX entities, decisions, artifacts, and memory. A query without type runs a mixed relevance search; typed searches provide exhaustive cursor/offset pagination. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use structuredContent.next_call exactly when pagination.has_more=true, orgx_inspect for one selected result, or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.",
+      "description": "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Finds OrgX entities, decisions, artifacts, and memory. A query without type runs a mixed relevance search and records metered MCP allowance usage; typed searches provide exhaustive cursor/offset pagination without changing business records. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use structuredContent.next_call exactly when pagination.has_more=true, orgx_inspect for one selected result, or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -3372,11 +3378,12 @@
       "securityScopes": [
         "initiatives:read"
       ],
-      "readOnly": true,
+      "readOnly": false,
       "source": "contract",
       "profiles": [
         "v2",
         "chatgpt",
+        "claude-directory",
         "memory",
         "commander",
         "planner",
@@ -3649,7 +3656,7 @@
     {
       "id": "orgx_write",
       "title": "Write OrgX Entity",
-      "description": "Create or update one OrgX record (snake_case fields).\n\nOperations: create (default) uses per-type fields; update REQUIRES id + fields.\n\nCreate requirements: workspace name/title; initiative title/name + workspace_id + goal_ids when the workspace enforces primary objectives; workstream title + initiative_id; milestone title + workstream_id; task title + workstream_id + milestone_id when the workspace requires backlog milestones; decision title; artifact target + artifact_type + artifact_url/external_url; blocker run_id + metadata.description; skill/studio records title.\n\nRetry behavior: pass idempotency_key on creates. A key match returns the same UUID as an idempotent replay, without creating a duplicate.\n\nInitiative gotchas: priority only accepts low|medium|high|urgent, not portfolio labels such as active/critical/maintenance/hold; put portfolio urgency in metadata/priority_rank. due_date is not accepted on initiative create in current workspaces; put target dates in metadata until a typed initiative schedule field exists.\n\nUSE WHEN: adding/editing records. NEXT: orgx_act to launch/complete the record. DO NOT USE for lifecycle changes — use orgx_act or orgx_attach.",
+      "description": "Create or update one OrgX record (snake_case fields).\n\nOperations: create (default) uses per-type fields; update REQUIRES id + fields.\n\nCreate requirements: workspace name/title; initiative title/name + workspace_id + goal_ids when the workspace enforces primary objectives; workstream title + initiative_id; milestone title + workstream_id; task title + workstream_id + milestone_id when the workspace requires backlog milestones; decision title; artifact target + artifact_type + artifact_url/external_url; blocker run_id + metadata.description; skill/studio records title.\n\nRetry behavior: pass idempotency_key on creates. A key match returns the same UUID as an idempotent replay, without creating a duplicate.\n\nInitiative constraints: priority accepts low|medium|high|urgent, not portfolio labels such as active/critical/maintenance/hold. due_date is not accepted on initiative create; store portfolio urgency and target dates in metadata.\n\nUSE WHEN: adding/editing records. Initiative writes can publish a public live link, and update patches overwrite the supplied fields. NEXT: orgx_act to launch/complete the record. DO NOT USE for lifecycle changes — use orgx_act or orgx_attach.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -4233,6 +4240,7 @@
       "profiles": [
         "v2",
         "chatgpt",
+        "claude-directory",
         "commander",
         "observer"
       ]

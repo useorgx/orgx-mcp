@@ -328,152 +328,6 @@ export function withClientContext<T extends z.ZodRawShape>(
 }
 
 // =============================================================================
-// STANDARD TOOL OUTPUT SCHEMA
-// =============================================================================
-
-/**
- * Generic, permissive output envelope applied to every MCP tool registration
- * unless the tool defines its own outputSchema. All fields are optional and
- * loosely typed (`z.unknown()`) on purpose: many existing tools already place
- * natural payload fields like `data`, `warnings`, `summary`, etc. directly on
- * `structuredContent` (e.g. `list_entities` puts an array of entities under
- * `data`; `batch_create_entities` puts an array of objects under `warnings`).
- * The schema is here to declare an envelope for Smithery / Apps SDK output-
- * schema coverage, NOT to validate per-field shapes — doing so would reject
- * legitimate payloads with Zod errors like
- * "Expected object, received array on data path."
- */
-export const STANDARD_TOOL_OUTPUT_SCHEMA = {
-  ok: z
-    .unknown()
-    .optional()
-    .describe(
-      'Whether the tool call succeeded. Mirrors the inverse of CallToolResult.isError.'
-    ),
-  summary: z
-    .unknown()
-    .optional()
-    .describe(
-      'Short human-readable summary of the tool result, suitable for inline display.'
-    ),
-  data: z
-    .unknown()
-    .optional()
-    .describe(
-      'Tool-specific structured payload. Shape varies per tool (object, array, or scalar); consult the tool description.'
-    ),
-  warnings: z
-    .unknown()
-    .optional()
-    .describe(
-      'Non-fatal warnings emitted during tool execution. Shape varies per tool (string array, object array, etc.).'
-    ),
-  meta: z
-    .unknown()
-    .optional()
-    .describe(
-      'Optional execution metadata (latency, request id, source, etc.).'
-    ),
-} as const;
-
-/**
- * The registrable form of the standard envelope. This MUST be a constructed
- * `.passthrough()` object, never the raw shape above: the SDK compiles a raw
- * shape via plain `z.object()`, which advertises `additionalProperties: false`
- * in tools/list. Tools that return rich `structuredContent` (e.g.
- * `structuredContent: data` with payload keys like `results` or `session`)
- * then violate their own advertised schema, and validating clients (Claude
- * connector, OpenCode, Codex) reject the response with "Structured content
- * does not match the tool's output schema" — after the server has already
- * performed the write.
- */
-export const STANDARD_TOOL_OUTPUT_SCHEMA_OBJECT = z
-  .object(STANDARD_TOOL_OUTPUT_SCHEMA)
-  .passthrough();
-
-/**
- * Ensure a CallToolResult carries `structuredContent` so the SDK output
- * schema validator (introduced when an outputSchema is declared) does not
- * reject otherwise-valid responses. Existing structured content is preserved
- * verbatim; if missing, we synthesize a minimal envelope from the result.
- */
-export function ensureStructuredContent<
-  T extends {
-    structuredContent?: unknown;
-    isError?: boolean;
-    content?: ReadonlyArray<unknown>;
-  } | null | undefined,
->(result: T): T {
-  if (!result || typeof result !== 'object') return result;
-  if ((result as { structuredContent?: unknown }).structuredContent !== undefined) {
-    return result;
-  }
-  const isError = Boolean((result as { isError?: boolean }).isError);
-  let summary: string | undefined;
-  const content = (result as { content?: ReadonlyArray<unknown> }).content;
-  if (Array.isArray(content)) {
-    for (const block of content) {
-      if (
-        block &&
-        typeof block === 'object' &&
-        (block as { type?: unknown }).type === 'text' &&
-        typeof (block as { text?: unknown }).text === 'string'
-      ) {
-        summary = ((block as { text: string }).text || '').slice(0, 4000);
-        break;
-      }
-    }
-  }
-  const envelope: Record<string, unknown> = { ok: !isError };
-  if (summary !== undefined) envelope.summary = summary;
-  return { ...result, structuredContent: envelope };
-}
-
-/**
- * Normalize the logical MCP outcome after structured content exists. MCP
- * handlers commonly return HTTP 200 even when a tool-level operation failed,
- * so clients must be able to rely on both `isError` and `structuredContent.ok`.
- */
-export function normalizeToolResultEnvelope<
-  T extends {
-    structuredContent?: unknown;
-    isError?: boolean;
-  } | null | undefined,
->(result: T): T {
-  if (!result || typeof result !== 'object') return result;
-  const structured = result.structuredContent;
-  if (!structured || typeof structured !== 'object' || Array.isArray(structured)) {
-    return result;
-  }
-
-  const payload = structured as Record<string, unknown>;
-  const structuredError = payload.error;
-  const hasStructuredError =
-    (typeof structuredError === 'string' && structuredError.trim().length > 0) ||
-    Boolean(
-      structuredError &&
-        typeof structuredError === 'object' &&
-        !Array.isArray(structuredError) &&
-        Object.keys(structuredError).length > 0
-    );
-  const logicalError =
-    result.isError === true ||
-    payload.ok === false ||
-    typeof payload.error_kind === 'string' ||
-    (payload.ok !== true && hasStructuredError);
-  const normalizedPayload = {
-    ...payload,
-    ok: !logicalError,
-  };
-
-  return {
-    ...result,
-    structuredContent: normalizedPayload,
-    ...(logicalError ? { isError: true } : {}),
-  } as T;
-}
-
-// =============================================================================
 // PLAN SESSION TOOLS
 // =============================================================================
 
@@ -670,7 +524,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'approve_decision',
     title: 'Approve Decision',
     description:
-      'Use when the user has reviewed a pending decision that is blocking agent work and gives explicit confirmation to approve it. Also known as: sign off, approve AI work, unblock agent, accept decision. USE WHEN: user says to approve a decision returned from list_entities with type=decision and status=pending (or the legacy get_pending_decisions alias). NEXT: Confirm approval to user; agent is notified automatically. DO NOT USE: without showing the decision to the user first. Requires decisions:write.',
+      'Use when the user has reviewed a pending decision that is blocking agent work and gives explicit confirmation to approve it. Also known as: sign off, approve AI work, unblock agent, accept decision. USE WHEN: user says to approve a decision returned from list_entities with type=decision and status=pending (or the legacy get_pending_decisions alias). Approval can resume or continue connected agent execution. NEXT: Confirm approval to user; agent is notified automatically. DO NOT USE: without showing the decision to the user first. Requires decisions:write.',
     inputSchema: {
       decision_id: z.string().min(1).describe('Decision ID to approve'),
       note: z.string().optional().describe('Optional note recorded with the approval'),
@@ -681,7 +535,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
           'Optional decision option id when the decision includes selectable options.'
         ),
     },
-    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.decisions,
@@ -718,7 +572,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'get_agent_status',
     title: 'Get Agent Status',
     description:
-      'Use when the user asks what agents are working on right now, whether delegated work is still running, or why nothing has landed yet. Also known as: agent status, what agents are doing, active runs. USE WHEN: user asks about agent activity, progress, or what agents are working on. NEXT: If agents are stuck, suggest approve_decision or entity_action. DO NOT USE: to check initiative health — use get_initiative_pulse instead. Read-only.',
+      'Use when the user asks what agents are working on right now, whether delegated work is still running, or why nothing has landed yet. Successful calls record metered MCP allowance usage but do not change business records. Also known as: agent status, what agents are doing, active runs. USE WHEN: user asks about agent activity, progress, or what agents are working on. NEXT: If agents are stuck, use orgx_search or orgx_inspect to read the related blocker context. DO NOT USE: to check initiative health — use get_initiative_pulse instead.',
     inputSchema: {
       agent_id: z.string().optional().describe('Optional agent ID to inspect'),
       workspace_id: z.string().uuid().optional().describe('Optional workspace UUID to scope agent status'),
@@ -729,13 +583,13 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         .optional()
         .describe('Include idle agents in the response'),
     },
-    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.agentStatus,
       'openai/toolInvocation/invoking': 'Checking agent status...',
       'openai/toolInvocation/invoked': "Here's what your agents are doing",
-      'openai/readOnlyHint': true,
+      'openai/readOnlyHint': false,
       ui: { resourceUri: WIDGET_URIS.agentStatus },
     },
   },
@@ -771,7 +625,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'get_initiative_pulse',
     title: 'Get Initiative Pulse',
     description:
-      'Use when the user asks how a project is going, what is blocked, or whether an initiative is on track. Also known as: project status, roadmap progress, execution health, blockers. USE WHEN: user asks how an initiative is going, or wants a status update. NEXT: If blockers exist, suggest entity_action to resolve. For deeper drill-down, use list_entities with initiative_id. DO NOT USE: for org-wide overview — use get_org_snapshot instead. Read-only.',
+      'Use when the user asks how a project is going, what is blocked, or whether an initiative is on track. Successful calls record metered MCP allowance usage but do not change business records. Also known as: project status, roadmap progress, execution health, blockers. USE WHEN: user asks how an initiative is going, or wants a status update. NEXT: If blockers exist, use orgx_inspect for one blocker or orgx_search for related records. DO NOT USE: for an org-wide brief — use orgx_recommend with mode=morning_brief instead.',
     inputSchema: {
       initiative_id: z
         .string()
@@ -784,13 +638,13 @@ export const CHATGPT_TOOL_DEFINITIONS = [
           'Optional: Initiative title to resolve automatically if ID is unknown.'
         ),
     },
-    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.initiativePulse,
       'openai/toolInvocation/invoking': 'Getting initiative health...',
       'openai/toolInvocation/invoked': "Here's the initiative status",
-      'openai/readOnlyHint': true,
+      'openai/readOnlyHint': false,
       ui: { resourceUri: WIDGET_URIS.initiativePulse },
     },
   },

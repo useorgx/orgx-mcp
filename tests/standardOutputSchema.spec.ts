@@ -1,89 +1,112 @@
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { toJsonSchemaCompat } from '@modelcontextprotocol/sdk/server/zod-json-schema-compat.js';
 
-import {
-  STANDARD_TOOL_OUTPUT_SCHEMA,
-  STANDARD_TOOL_OUTPUT_SCHEMA_OBJECT,
-  ensureStructuredContent,
-  normalizeToolResultEnvelope,
-} from '../src/toolDefinitions';
+import { installToolResultGuidanceWrapper } from '../src/toolResultRegistration';
 
-// Regression guard for the 2026-07-11 outage: the default output schema was
-// registered as a raw shape, which the SDK compiles with
-// additionalProperties:false. Every tool returning rich structuredContent
-// (orgx_search, orgx_bootstrap, orgx_inspect, ...) then violated its own
-// advertised schema, and validating clients rejected the response with
-// "Structured content does not match the tool's output schema" — after the
-// server had already performed the write (500s from the Claude connector,
-// -32602 from OpenCode, duplicate rows from client retries).
+async function connect(server: McpServer) {
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  const client = new Client({
+    name: 'orgx-output-schema-truth-client',
+    version: '1.0.0',
+  });
+  await server.connect(serverTransport);
+  await client.connect(clientTransport);
+  return client;
+}
 
-describe('standard tool output schema', () => {
-  it('advertises an open envelope (additionalProperties: true)', () => {
-    const compiled = toJsonSchemaCompat(STANDARD_TOOL_OUTPUT_SCHEMA_OBJECT, {
-      strictUnions: true,
-    }) as { additionalProperties?: unknown; properties?: Record<string, unknown> };
-    expect(compiled.additionalProperties).toBe(true);
-    // The declared envelope fields survive for Smithery / Apps SDK coverage.
-    for (const key of ['ok', 'summary', 'data', 'warnings', 'meta']) {
-      expect(compiled.properties, `missing envelope field ${key}`).toHaveProperty(
-        key
-      );
+describe('truthful tool output schemas', () => {
+  it('does not invent an outputSchema for a tool without an exact contract', async () => {
+    const server = new McpServer({
+      name: 'orgx-no-catch-all-output-schema',
+      version: '1.0.0',
+    });
+    installToolResultGuidanceWrapper(server, null);
+    server.registerTool(
+      'rich_result_without_exact_schema',
+      { description: 'Representative rich result', inputSchema: {} },
+      async () => ({
+        content: [{ type: 'text' as const, text: 'one result' }],
+        structuredContent: {
+          results: [{ id: 'decision-1', title: 'Rate limiting' }],
+          total: 1,
+        },
+      })
+    );
+
+    const client = await connect(server);
+    try {
+      const descriptor = await client.listTools();
+      expect(descriptor.tools).toHaveLength(1);
+      expect(descriptor.tools[0]?.outputSchema).toBeUndefined();
+
+      const result = await client.callTool({
+        name: 'rich_result_without_exact_schema',
+        arguments: {},
+      });
+      expect(result.structuredContent).toEqual({
+        results: [{ id: 'decision-1', title: 'Rate limiting' }],
+        total: 1,
+      });
+    } finally {
+      await Promise.allSettled([client.close(), server.close()]);
     }
   });
 
-  it('documents why the raw shape must not be registered directly', () => {
-    // The raw shape compiles closed — this is the exact failure mode the
-    // passthrough object exists to prevent. If the SDK ever changes this
-    // default, the passthrough registration remains correct.
-    const compiled = toJsonSchemaCompat(z.object(STANDARD_TOOL_OUTPUT_SCHEMA), {
-      strictUnions: true,
-    }) as { additionalProperties?: unknown };
-    expect(compiled.additionalProperties).toBe(false);
-  });
-
-  it('accepts rich structuredContent payloads with tool-specific keys', () => {
-    const richPayload = {
-      results: [{ id: 'dec-1', title: 'API rate limiting' }],
-      session: { id: 'sess-1' },
-      workspace_id: 'ws-1',
-      total: 1,
-    };
-    const parsed = STANDARD_TOOL_OUTPUT_SCHEMA_OBJECT.safeParse(richPayload);
-    expect(parsed.success).toBe(true);
-    // Passthrough must preserve, not strip, the tool-specific keys.
-    expect(parsed.success && parsed.data).toEqual(richPayload);
-  });
-
-  it('synthesized envelopes for text-only results also validate', () => {
-    const result = ensureStructuredContent({
-      content: [{ type: 'text', text: 'done' }],
+  it('preserves an exact per-tool outputSchema and validates its representative handler result', async () => {
+    const server = new McpServer({
+      name: 'orgx-exact-output-schema',
+      version: '1.0.0',
     });
-    const parsed = STANDARD_TOOL_OUTPUT_SCHEMA_OBJECT.safeParse(
-      (result as { structuredContent?: unknown }).structuredContent
+    installToolResultGuidanceWrapper(server, null);
+    server.registerTool(
+      'exact_result',
+      {
+        description: 'Representative exact result',
+        inputSchema: {},
+        outputSchema: {
+          ok: z.literal(true),
+          decision: z.object({ id: z.string(), title: z.string() }),
+        },
+      },
+      async () => ({
+        content: [{ type: 'text' as const, text: 'decision found' }],
+        structuredContent: {
+          ok: true as const,
+          decision: { id: 'decision-1', title: 'Rate limiting' },
+        },
+      })
     );
-    expect(parsed.success).toBe(true);
-  });
 
-  it('marks structured logical failures as MCP errors even on HTTP-200 paths', () => {
-    expect(
-      normalizeToolResultEnvelope({
-        content: [{ type: 'text', text: 'failed' }],
-        structuredContent: { error: { code: 'invalid_input' } },
-      })
-    ).toMatchObject({
-      isError: true,
-      structuredContent: { ok: false },
-    });
-  });
+    const client = await connect(server);
+    try {
+      const descriptor = await client.listTools();
+      expect(descriptor.tools[0]?.outputSchema).toMatchObject({
+        type: 'object',
+        additionalProperties: false,
+        required: ['ok', 'decision'],
+        properties: {
+          ok: { const: true },
+          decision: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['id', 'title'],
+          },
+        },
+      });
 
-  it('does not reinterpret an explicitly successful payload with diagnostic data', () => {
-    expect(
-      normalizeToolResultEnvelope({
-        structuredContent: { ok: true, error: 'historical warning' },
-      })
-    ).toEqual({
-      structuredContent: { ok: true, error: 'historical warning' },
-    });
+      const result = await client.callTool({
+        name: 'exact_result',
+        arguments: {},
+      });
+      expect(result.structuredContent).toEqual({
+        ok: true,
+        decision: { id: 'decision-1', title: 'Rate limiting' },
+      });
+    } finally {
+      await Promise.allSettled([client.close(), server.close()]);
+    }
   });
 });

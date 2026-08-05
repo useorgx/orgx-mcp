@@ -39,7 +39,8 @@ export function buildRateLimitExceededPayload(
 
 export function buildRateLimitedResponse(
   rateLimit: RateLimitDecision,
-  orgxWebUrl?: string
+  orgxWebUrl?: string,
+  request?: Request
 ): Response {
   const response = new Response(
     JSON.stringify(buildRateLimitExceededPayload(rateLimit, orgxWebUrl)),
@@ -51,5 +52,5 @@ export function buildRateLimitedResponse(
       },
     }
   );
-  return withCorsAndHeaders(response, rateLimit.headers);
+  return withCorsAndHeaders(response, rateLimit.headers, request);
 }

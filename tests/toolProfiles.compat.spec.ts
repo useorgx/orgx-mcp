@@ -9,6 +9,7 @@ import { V2_PUBLIC_TOOL_IDS } from '../src/bootstrapPayload';
 import { PRIMARY_AUTHENTICATED_TOOLS } from '../src/publicMcpDiscovery';
 import {
   CHATGPT_PUBLIC_SURFACE,
+  CLAUDE_DIRECTORY_SURFACE,
   GROUPED_V2_PUBLIC_SURFACE,
   resolveProfileToolSet,
   resolveToolProfile,
@@ -47,6 +48,64 @@ describe('toolProfiles backward compatibility', () => {
     expect(chatgptTools!.has('recall_memory')).toBe(false);
     expect(chatgptTools!.has('recommend_next_action')).toBe(false);
     expect(chatgptTools!.has('track_project_progress')).toBe(false);
+  });
+
+  it('keeps the Anthropic directory profile focused, non-destructive, and truthfully annotated', () => {
+    const claudeDirectoryTools = resolveProfileToolSet('claude-directory');
+
+    expect([...(claudeDirectoryTools ?? [])]).toEqual([
+      ...CLAUDE_DIRECTORY_SURFACE,
+    ]);
+    expect(claudeDirectoryTools?.size).toBe(7);
+
+    const readOnlyByTool = new Map<string, boolean>([
+      ['orgx_search', false],
+      ['orgx_inspect', true],
+      ['orgx_recommend', false],
+      ['get_agent_status', false],
+      ['get_initiative_pulse', false],
+      ['get_morning_brief', true],
+      ['get_operator_chronicle', true],
+    ]);
+
+    for (const toolName of claudeDirectoryTools ?? []) {
+      const manifestTool = serverManifest.tools.find(
+        (tool) => tool.name === toolName
+      );
+      expect(manifestTool, `${toolName} must be published`).toBeDefined();
+      expect(manifestTool?.title, `${toolName} must have a title`).toEqual(
+        expect.any(String)
+      );
+      expect(toolName.length, `${toolName} exceeds Anthropic's name limit`).toBeLessThanOrEqual(
+        64
+      );
+      expect(manifestTool?.annotations, `${toolName} annotation drift`).toEqual({
+        readOnlyHint: readOnlyByTool.get(toolName),
+        openWorldHint: false,
+        destructiveHint: false,
+      });
+    }
+
+    for (const excludedTool of [
+      'orgx_bootstrap',
+      'orgx_write',
+      'orgx_attach',
+      'orgx_act',
+      'manage_lifecycle',
+      'orgx_plan',
+      'orgx_spawn',
+      'orgx_decide',
+      'orgx_submit_receipt',
+      'approve_decision',
+      'reject_decision',
+      'handoff_task',
+      'scaffold_initiative',
+    ]) {
+      expect(
+        claudeDirectoryTools?.has(excludedTool),
+        `${excludedTool} must stay off the directory review profile`
+      ).toBe(false);
+    }
   });
 
   it('resolveProfileToolSet defaults omitted profiles to the compact v2 surface', () => {

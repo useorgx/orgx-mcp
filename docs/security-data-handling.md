@@ -7,17 +7,25 @@ This document summarizes the practical security posture of the `orgx-mcp` worker
 - Authenticated access uses OAuth 2.0 authorization code flow with PKCE.
 - Dynamic client registration is supported through `POST /register`.
 - OAuth discovery metadata is served from the worker’s well-known endpoints.
-- Callback allowlists must include:
-  - `http://localhost:6274/oauth/callback`
-  - `http://localhost:6274/oauth/callback/debug`
-  - `https://claude.ai/api/mcp/auth_callback`
-  - `https://claude.com/api/mcp/auth_callback`
+- OAuth clients register their current callback URI through Dynamic Client
+  Registration. Hosted callbacks must match the URI supplied by the client.
+- Local clients such as Claude Code use random loopback ports; validate both
+  `localhost` and `127.0.0.1` rather than pinning only port `6274`.
+- Production verification must cover PKCE `S256` and the protected-resource
+  `401` response with `WWW-Authenticate`.
 
 ## Access control
 
 - Tool access is constrained by OAuth scopes.
 - Write-capable tools are explicitly annotated as destructive and require auth.
 - Read-only tools are annotated accordingly to preserve safe client behavior.
+- MCP HTTP and WebSocket routes validate every present `Origin` header against
+  an exact allowlist before OAuth, session state, or tool dispatch. Invalid or
+  opaque origins receive `403`; allowed origins are echoed in CORS with
+  `Vary: Origin` rather than a wildcard.
+- CLI and server-to-server clients that omit `Origin` remain supported. Exact
+  Claude, ChatGPT, OrgX web, and MCP origins are built in; operators can add a
+  reviewed origin through `MCP_ALLOWED_ORIGINS` without widening to `*`.
 
 ## Token and session handling
 

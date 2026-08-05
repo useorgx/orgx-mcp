@@ -35,6 +35,80 @@ function createTrackedCtx() {
 }
 
 describe('mcpTransport', () => {
+  it('rejects an untrusted browser Origin before a mutating tool reaches auth or dispatch', async () => {
+    const handler = { fetch: vi.fn(async () => Response.json({ ok: true })) };
+    const authenticateRequest = vi.fn(async () => ({ userId: 'user-123' }));
+    const request = new Request('https://mcp.useorgx.com/mcp', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        Origin: 'https://attacker.example',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: { name: 'orgx_write', arguments: { type: 'task' } },
+      }),
+    });
+
+    const response = await handleMcpRequest(
+      request,
+      {
+        MCP_SERVER_URL: 'https://mcp.useorgx.com',
+        ORGX_WEB_URL: 'https://useorgx.com',
+      },
+      createCtx(),
+      handler,
+      authenticateRequest
+    );
+
+    expect(response.status).toBe(403);
+    expect(response.headers.get('x-orgx-mcp-error-code')).toBe(
+      'invalid_origin'
+    );
+    expect(authenticateRequest).not.toHaveBeenCalled();
+    expect(handler.fetch).not.toHaveBeenCalled();
+  });
+
+  it('accepts the trusted Claude Origin for the non-destructive directory profile and echoes narrow CORS', async () => {
+    const handler = { fetch: vi.fn(async () => Response.json({ ok: true })) };
+    const request = new Request(
+      'https://mcp.useorgx.com/mcp?profile=claude-directory',
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          Origin: 'https://claude.ai',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/call',
+          params: { name: 'orgx_search', arguments: { query: 'status' } },
+        }),
+      }
+    );
+
+    const response = await handleMcpRequest(
+      request,
+      {
+        MCP_SERVER_URL: 'https://mcp.useorgx.com',
+        ORGX_WEB_URL: 'https://useorgx.com',
+      },
+      createCtx(),
+      handler,
+      vi.fn(async () => ({ userId: 'reviewer-123' }))
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe(
+      'https://claude.ai'
+    );
+    expect(response.headers.get('Vary')).toContain('Origin');
+    expect(handler.fetch).toHaveBeenCalledOnce();
+  });
+
   it.each([
     'orgx-mcp:spawn_agent_task',
     'OrgX:spawn_agent_task',

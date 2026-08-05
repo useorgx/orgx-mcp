@@ -22,6 +22,45 @@ Use this runbook before each OpenAI app submission or resubmission. It verifies 
 - Privacy policy URL: `https://github.com/useorgx/orgx-mcp/blob/main/docs/privacy-policy.md`
 - Support URL: `https://github.com/useorgx/orgx-mcp/issues`
 
+Five submitted tools are strictly read-only: `orgx_inspect`,
+`review_artifact`, `get_morning_brief`, `get_operator_chronicle`, and
+`check_execution_readiness`. Four informational tools use
+`readOnlyHint: false` because a successful mode records metered MCP allowance
+usage: mixed `orgx_search`, default `orgx_recommend`, `get_agent_status`, and
+`get_initiative_pulse`. All nine are non-destructive and closed-world.
+
+The worker suppresses local session-context, activation/reentry, analytics,
+diagnostic, and success-log writes for these informational tool executions as
+defense in depth. That does not suppress documented upstream MCP allowance records
+for the four non-read-only tools. The MCP framework may also persist protocol
+initialization and connection/session lifecycle state outside a tool
+invocation; this is not an endpoint-wide stateless guarantee.
+
+Before review, request `https://mcp.useorgx.com/healthz?check=upstream` and
+confirm the primary upstream is healthy at `https://useorgx.com`. A
+`fallback_healthy` result proves failover, not reviewer-ready primary latency;
+fix or deploy the primary configuration before submitting.
+
+## Optional Domain Challenge Route
+
+The worker reserves `GET /.well-known/openai-apps-challenge` for OpenAI domain
+verification. Configure `OPENAI_APPS_CHALLENGE_TOKEN` only if the submission
+portal issues a new challenge. When configured, the route returns that exact
+value as `text/plain` with `Cache-Control: no-store`; when unset, it fails
+closed with `404`.
+
+Do not commit the issued value. Enter it through Wrangler's interactive secret
+prompt, deploy the worker, and compare the live response to the portal value
+before asking the portal to verify the domain:
+
+```bash
+pnpm wrangler secret put OPENAI_APPS_CHALLENGE_TOKEN --env production
+```
+
+An already-verified domain does not require this binding. Removing or rotating
+the binding is a separate production operation and should not be inferred from
+local route tests.
+
 ## Reviewer Workspace Baseline
 
 Run the submitted prompts only against a dedicated OpenAI review workspace. Before each web or mobile run, reset or bootstrap that workspace so the baseline is stable.
@@ -99,6 +138,27 @@ Allowed when needed for the user request:
 - OrgX entity titles, statuses, types, priorities, summaries, owner or agent labels, artifact metadata, and deep links,
 - workspace or entity references needed for follow-up actions,
 - policy/auth blockers stated without exposing secrets.
+
+## Output Schema Reliability Warning
+
+Missing `outputSchema` is a nonblocking submission warning. It does not block
+generating, importing, or submitting the ChatGPT app submission JSON. Exact
+tool-specific `outputSchema` declarations are still recommended because they
+make structured results more reliable for clients and reviewers. A permissive
+catch-all schema is not an acceptable substitute because it does not describe
+the object the tool actually returns.
+
+Contract references: [OpenAI MCP server guide](https://developers.openai.com/plugins/build/mcp-server),
+[OpenAI Plugins reference](https://developers.openai.com/plugins/reference),
+and the [MCP tools specification](https://modelcontextprotocol.io/specification/2025-11-25/server/tools).
+
+The worker currently omits a blanket output schema rather than advertising a
+false contract. Add exact schemas incrementally at each tool definition, keep
+`additionalProperties: false` where the returned object is closed, and validate
+representative success, empty, auth-error, validation-error, and provider-error
+results as each schema lands. Rerun `pnpm test:openai-review` plus the
+authenticated ChatGPT web/mobile cases after each schema change; do not invent
+a schema merely to silence the warning.
 
 ## Resubmission Notes
 
