@@ -359,6 +359,19 @@ async function expectNoWorkerLocalSideEffects(params: {
     expect(listed.tools.map((tool) => tool.name).sort()).toEqual(
       [...params.expectedSurface].sort()
     );
+    if (params.profile === 'chatgpt') {
+      const reviewArtifact = listed.tools.find(
+        (tool) => tool.name === 'review_artifact'
+      );
+      expect(reviewArtifact?.annotations).toEqual({
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      });
+      expect(reviewArtifact?._meta?.['mcp/securitySchemes']).toEqual([
+        { type: 'oauth2', scopes: ['initiatives:read'] },
+      ]);
+    }
 
     // The MCP framework can persist transport lifecycle state before tool
     // execution. Reset here so every assertion below is scoped to one tool

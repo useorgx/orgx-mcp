@@ -1073,12 +1073,31 @@ export const INLINE_TOOL_CONTRACTS = {
     id: 'review_artifact',
     title: 'Review Artifact',
     description:
-      'Inline app tool for loading the next artifact awaiting review into the artifact-review widget.',
+      'Use when the user asks to review work, sign off on a deliverable, or clear pending artifact reviews. Surfaces the next artifact awaiting review and renders the artifact-review widget with a preview, version filmstrip, and hold-to-approve / request-changes actions. USE WHEN the user asks to review work, approve a deliverable, or handle pending artifact reviews. DO NOT USE for listing all artifacts — use list_entities type=artifact instead.',
     inputSchema: {
-      artifact_id: z.string().optional().describe('Specific artifact ID to review.'),
-      entity_id: z.string().optional().describe('Optional entity scope for artifacts.'),
-      workspace_id: z.string().optional().describe('Workspace UUID. Defaults to session workspace.'),
+      artifact_id: z
+        .string()
+        .optional()
+        .describe(
+          'Specific artifact ID to review. Defaults to the next in_review artifact.'
+        ),
+      entity_id: z
+        .string()
+        .optional()
+        .describe(
+          'Scope to artifacts attached to this entity (initiative, workstream, milestone, or task).'
+        ),
+      workspace_id: z
+        .string()
+        .optional()
+        .describe('Workspace UUID. Defaults to the session workspace.'),
     },
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: false,
+    },
+    securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
   },
   save_artifact: {
     id: 'save_artifact',

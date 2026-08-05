@@ -309,6 +309,7 @@ import { ensureSqliteColumn } from './sqliteSchema';
 import { checkToolPlanAccess } from './toolAccessGating';
 import {
   CONTRACT_TOOL_DEFINITIONS,
+  INLINE_TOOL_CONTRACTS,
   V2_ORGX_TOOL_ID_SET,
   getKnownToolContract,
   getKnownToolContracts,
@@ -11557,39 +11558,22 @@ export class OrgXMcp extends McpAgent<
     // Fetches the next in-review artifact for the caller's workspace
     // (optionally filtered by entity_id) and attaches the artifact-review
     // widget with the artifact as structuredContent.artifact.
-    if (shouldRegister('review_artifact'))
+    if (shouldRegister('review_artifact')) {
+      const reviewArtifactContract = INLINE_TOOL_CONTRACTS.review_artifact;
       registerAppTool(
         this.server,
         'review_artifact',
         {
-          title: 'Review Artifact',
-          description:
-            'Use when the user asks to review work, sign off on a deliverable, or clear pending artifact reviews. Surfaces the next artifact awaiting review and renders the artifact-review widget with a preview, version filmstrip, and hold-to-approve / request-changes actions. USE WHEN the user asks to review work, approve a deliverable, or handle pending artifact reviews. DO NOT USE for listing all artifacts — use list_entities type=artifact instead.',
-          inputSchema: this.withClientContext({
-            artifact_id: z
-              .string()
-              .optional()
-              .describe('Specific artifact ID to review. Defaults to the next in_review artifact.'),
-            entity_id: z
-              .string()
-              .optional()
-              .describe('Scope to artifacts attached to this entity (initiative, workstream, milestone, or task).'),
-            workspace_id: z
-              .string()
-              .optional()
-              .describe('Workspace UUID. Defaults to the session workspace.'),
-          }),
-          annotations: {
-            readOnlyHint: true,
-            destructiveHint: false,
-            openWorldHint: false,
-          },
+          title: reviewArtifactContract.title,
+          description: reviewArtifactContract.description,
+          inputSchema: this.withClientContext(reviewArtifactContract.inputSchema),
+          annotations: reviewArtifactContract.annotations,
           _meta: {
             'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.artifactReview,
             'openai/toolInvocation/invoking': 'Loading artifact for review...',
             'openai/toolInvocation/invoked': 'Artifact ready to review',
             'openai/visibility': 'public',
-            'mcp/securitySchemes': SECURITY_SCHEMES.entityReadRequiresAuth,
+            'mcp/securitySchemes': reviewArtifactContract.securitySchemes,
             ui: { resourceUri: WIDGET_URIS.artifactReview },
           },
         },
@@ -11597,7 +11581,7 @@ export class OrgXMcp extends McpAgent<
           this.withOrgx(async () => {
             const authResponse = buildAuthRequiredResponse({
               toolId: 'review_artifact',
-              securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
+              securitySchemes: reviewArtifactContract.securitySchemes,
               userId: this.resolveUserId() ?? undefined,
               serverUrl: this.env.MCP_SERVER_URL ?? undefined,
               featureDescription: 'review artifacts',
@@ -11672,6 +11656,7 @@ export class OrgXMcp extends McpAgent<
             };
           }, 'review_artifact')
       );
+    }
 
     // --- get_morning_brief ---
     if (shouldRegister('get_morning_brief'))

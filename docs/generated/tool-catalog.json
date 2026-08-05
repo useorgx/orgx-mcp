@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-05T22:20:02.523Z",
-  "sourceHash": "da2f105f2c267398",
+  "generatedAt": "2026-08-05T22:34:12.616Z",
+  "sourceHash": "9c98d5cedbadd50a",
   "version": "1.0.0",
   "totalTools": 81,
   "categories": [
@@ -1224,7 +1224,7 @@
     {
       "id": "review_artifact",
       "title": "Review Artifact",
-      "description": "Surface the next artifact awaiting review. Renders the artifact-review widget with a preview, version filmstrip, and hold-to-approve / request-changes actions. USE WHEN the user asks to review work, approve a deliverable, or handle pending artifact reviews. DO NOT USE for listing all artifacts — use list_entities type=artifact instead.",
+      "description": "Use when the user asks to review work, sign off on a deliverable, or clear pending artifact reviews. Surfaces the next artifact awaiting review and renders the artifact-review widget with a preview, version filmstrip, and hold-to-approve / request-changes actions. USE WHEN the user asks to review work, approve a deliverable, or handle pending artifact reviews. DO NOT USE for listing all artifacts — use list_entities type=artifact instead.",
       "category": "Client Integration",
       "inputSchema": {
         "type": "object",
@@ -1246,12 +1246,13 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "securityScopes": [
-        "initiatives:write"
+        "initiatives:read"
       ],
-      "readOnly": false,
+      "readOnly": true,
       "source": "inline",
       "profiles": [
-        "memory"
+        "v2",
+        "chatgpt"
       ]
     },
     {

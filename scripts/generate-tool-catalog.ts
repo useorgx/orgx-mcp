@@ -33,6 +33,7 @@ import { FLYWHEEL_TOOL_DEFINITIONS } from '../src/flywheelTools';
 import { TOOL_PROFILES } from '../src/toolProfiles';
 import {
   CONTRACT_TOOL_DEFINITIONS,
+  INLINE_TOOL_CONTRACTS,
   V2_ORGX_TOOL_ID_SET,
 } from '../src/contractTools';
 
@@ -242,6 +243,22 @@ const lifecycleTypeEnum = z.enum(
   LIFECYCLE_ENTITY_TYPES as unknown as [string, ...string[]]
 );
 
+function extractScopes(securitySchemes: unknown): string[] {
+  if (!Array.isArray(securitySchemes)) return [];
+  const scopes: string[] = [];
+  for (const scheme of securitySchemes) {
+    if (
+      scheme &&
+      typeof scheme === 'object' &&
+      'scopes' in scheme &&
+      Array.isArray(scheme.scopes)
+    ) {
+      scopes.push(...scheme.scopes);
+    }
+  }
+  return scopes;
+}
+
 const INLINE_TOOL_METADATA: Array<{
   id: string;
   title: string;
@@ -407,31 +424,15 @@ const INLINE_TOOL_METADATA: Array<{
     readOnly: true,
   },
   {
-    id: 'review_artifact',
-    title: 'Review Artifact',
-    description:
-      'Surface the next artifact awaiting review. Renders the artifact-review widget with a preview, version filmstrip, and hold-to-approve / request-changes actions. USE WHEN the user asks to review work, approve a deliverable, or handle pending artifact reviews. DO NOT USE for listing all artifacts — use list_entities type=artifact instead.',
-    inputSchema: z.object({
-      artifact_id: z
-        .string()
-        .optional()
-        .describe(
-          'Specific artifact ID to review. Defaults to the next in_review artifact.'
-        ),
-      entity_id: z
-        .string()
-        .optional()
-        .describe(
-          'Scope to artifacts attached to this entity (initiative, workstream, milestone, or task).'
-        ),
-      workspace_id: z
-        .string()
-        .optional()
-        .describe('Workspace UUID. Defaults to the session workspace.'),
-    }),
-    securityScopes: ['initiatives:write'],
-    readOnly: false,
-    profiles: ['memory'],
+    id: INLINE_TOOL_CONTRACTS.review_artifact.id,
+    title: INLINE_TOOL_CONTRACTS.review_artifact.title,
+    description: INLINE_TOOL_CONTRACTS.review_artifact.description,
+    inputSchema: z.object(INLINE_TOOL_CONTRACTS.review_artifact.inputSchema),
+    securityScopes: extractScopes(
+      INLINE_TOOL_CONTRACTS.review_artifact.securitySchemes
+    ),
+    readOnly:
+      INLINE_TOOL_CONTRACTS.review_artifact.annotations.readOnlyHint,
   },
   {
     id: 'account_status',
@@ -718,22 +719,6 @@ const INLINE_TOOL_METADATA: Array<{
 // Helpers
 // ---------------------------------------------------------------------------
 
-function extractScopes(securitySchemes: unknown): string[] {
-  if (!Array.isArray(securitySchemes)) return [];
-  const scopes: string[] = [];
-  for (const scheme of securitySchemes) {
-    if (
-      scheme &&
-      typeof scheme === 'object' &&
-      'scopes' in scheme &&
-      Array.isArray(scheme.scopes)
-    ) {
-      scopes.push(...scheme.scopes);
-    }
-  }
-  return scopes;
-}
-
 function isReadOnly(meta: unknown, annotations?: unknown): boolean {
   if (
     annotations &&
@@ -819,31 +804,12 @@ function computeSourceHash(): string {
     path.join(rootDir, 'src/flywheelTools.ts'),
     path.join(rootDir, 'src/toolProfiles.ts'),
     path.join(rootDir, 'src/contractTools.ts'),
+    path.join(rootDir, 'scripts/generate-tool-catalog.ts'),
   ];
   const hash = createHash('sha256');
   for (const file of files) {
     hash.update(readFileSync(file, 'utf-8'));
   }
-  // Keep this list in sync with check-tool-catalog-freshness.ts.
-  const catalogInlineToolIds = [
-    'orgx_bootstrap',
-    'orgx_inspect',
-    'orgx_search',
-    'orgx_recommend',
-    'orgx_write',
-    'orgx_attach',
-    'orgx_act',
-    'orgx_emit_activity',
-    'orgx_plan',
-    'orgx_spawn',
-    'orgx_decide',
-    'orgx_submit_receipt',
-    'approve_agent_work',
-    'account_status',
-    'account_upgrade',
-    'account_usage_report',
-  ];
-  hash.update(catalogInlineToolIds.join(','));
   return hash.digest('hex').slice(0, 16);
 }
 
