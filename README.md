@@ -311,7 +311,9 @@ The worker implements the full MCP OAuth 2.1 spec with PKCE:
 - **Token Exchange**: `POST /token` - exchanges authorization codes for JWT access tokens
 - **Refresh Tokens**: Supported when `offline_access` scope is requested
 
-OAuth client credentials are stored in the **OAuthState Durable Object** (not environment variables).
+OAuth client credentials are stored in the OAuth provider's `OAUTH_KV`
+binding (not environment variables). The legacy `OAuthState` Durable Object is
+retained only for migration compatibility.
 
 Durable Objects (`OrgXMcp` class) keep each MCP session isolated so both transports can run simultaneously.
 
@@ -320,15 +322,14 @@ Durable Objects (`OrgXMcp` class) keep each MCP session isolated so both transpo
 Reviewers need:
 
 - a provisioned OrgX test account with representative sample data,
-- OAuth callbacks allowlisted for Claude and localhost MCP clients,
+- current hosted-Claude and localhost callback behavior verified through
+  Dynamic Client Registration,
 - active credentials shared through a secure submission channel outside this repository.
 
-Required callback URLs:
-
-- `http://localhost:6274/oauth/callback`
-- `http://localhost:6274/oauth/callback/debug`
-- `https://claude.ai/api/mcp/auth_callback`
-- `https://claude.com/api/mcp/auth_callback`
+Callback verification must use the exact URI supplied by the current hosted
+Claude client. Claude Code uses random loopback ports, so validate both
+`http://localhost:<random-port>/...` and
+`http://127.0.0.1:<random-port>/...`; do not pin only port `6274`.
 
 ## Reviewer Operations
 
@@ -779,8 +780,13 @@ Release manager checklist: [docs/anthropic-release-manager-checklist.md](./docs/
 Pre-submit repo check:
 
 ```bash
+pnpm test:anthropic-review
 pnpm directory:preflight
 ```
+
+Directory review endpoint:
+`https://mcp.useorgx.com/mcp?profile=claude-directory` (focused read-only
+surface). The general MCP endpoint retains the broader OrgX capabilities.
 
 Operational reviewer check:
 

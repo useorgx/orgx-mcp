@@ -14,10 +14,12 @@ html_handling = "none"
 binding = "ASSETS"
 
 # Non-secret variables (secrets like ORGX_SERVICE_KEY, MCP_JWT_SECRET,
-# ORGX_INTERNAL_SECRET should be set via `wrangler secret put`)
-# Note: www.useorgx.com 301-redirects to useorgx.com — use next.useorgx.com for direct VPS access
+# ORGX_INTERNAL_SECRET, OPENAI_APPS_CHALLENGE_TOKEN should be set via
+# `wrangler secret put`)
+# Canonical production API origin. Keep the fallback configured separately;
+# reviewer traffic must not wait on the retired API origin.
 [vars]
-ORGX_API_URL = "https://next.useorgx.com"
+ORGX_API_URL = "https://useorgx.com"
 ORGX_API_FALLBACK_URL = "https://orgx-api-fallback-brain-buffet.vercel.app"
 MCP_SERVER_URL = "https://mcp.useorgx.com"
 AUTH_SERVER_URL = "https://mcp.useorgx.com"
@@ -96,9 +98,10 @@ id = "5bff02959fa74d43ba6708d9746121e4"
 # Non-secret vars only; secrets (ORGX_SERVICE_KEY, MCP_JWT_SECRET,
 # ORGX_INTERNAL_SECRET, COOKIE_ENCRYPTION_KEY) set via dashboard or
 # `wrangler secret put --env production`
-# Note: www.useorgx.com 301-redirects to useorgx.com — use next.useorgx.com for direct VPS access
+# Canonical production API origin. Keep the fallback configured separately;
+# reviewer traffic must not wait on the retired API origin.
 [env.production.vars]
-ORGX_API_URL = "https://next.useorgx.com"
+ORGX_API_URL = "https://useorgx.com"
 ORGX_API_FALLBACK_URL = "https://orgx-api-fallback-brain-buffet.vercel.app"
 ORGX_WEB_URL = "https://useorgx.com"
 MCP_SERVER_URL = "https://mcp.useorgx.com"

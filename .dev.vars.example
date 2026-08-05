@@ -22,11 +22,18 @@ DEV_USER_ID=5c52c8ca-c1d0-48cc-a177-9cf1ac2c5b06
 # ORGX_API_URL=http://localhost:3000
 # MCP_SERVER_URL=http://127.0.0.1:8787
 # AUTH_SERVER_URL=http://127.0.0.1:8787
+# Additional trusted browser origins for MCP transport requests. The production
+# worker already trusts exact Claude, ChatGPT, OrgX web, and MCP origins.
+# MCP_ALLOWED_ORIGINS=https://review.example.com
 
 # Optional: MCP Registry public key for domain verification
 # Generate with: ./scripts/generate-registry-keys.sh
 # Set in production with: wrangler secret put MCP_REGISTRY_PUBKEY
 # MCP_REGISTRY_PUBKEY=your-base64-pubkey-here
+
+# Optional: OpenAI Apps domain challenge issued by the submission portal.
+# Configure the issued production value with Wrangler; do not commit it here.
+# OPENAI_APPS_CHALLENGE_TOKEN=portal-issued-token
 
 # Optional: PostHog telemetry (MCP tool call instrumentation)
 # POSTHOG_KEY=phc_your_project_api_key

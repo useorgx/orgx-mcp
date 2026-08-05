@@ -69,7 +69,7 @@
     {
       "name": "orgx_search",
       "title": "Search OrgX Memory",
-      "description": "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Searches OrgX memory and entities; replaces list_entities and query_org_memory for public guidance.",
+      "description": "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Searches OrgX memory, decisions, artifacts, and entities with read-only filters and pagination.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": false,
@@ -79,7 +79,7 @@
     {
       "name": "orgx_inspect",
       "title": "Inspect OrgX Entity",
-      "description": "Use when the user names a specific entity and its full context is needed before acting. Hydrates one OrgX entity with context; replaces get_task_with_context for public guidance.",
+      "description": "Use when the user names a specific entity and its full context is needed before acting. Hydrates one OrgX entity with linked execution context and proof.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": false,
@@ -99,11 +99,11 @@
     {
       "name": "orgx_write",
       "title": "Write OrgX Entity",
-      "description": "Use when new work, a decision record, or an artifact must outlive the chat as durable organizational state. Creates or updates OrgX entities with canonical snake_case fields.",
+      "description": "Use when new work, a decision record, or an artifact must outlive the chat as durable organizational state. Creates or updates OrgX entities, can overwrite supplied fields, and can publish an initiative live link.",
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": false,
-        "destructiveHint": false
+        "openWorldHint": true,
+        "destructiveHint": true
       }
     },
     {
@@ -119,10 +119,10 @@
     {
       "name": "orgx_act",
       "title": "Run OrgX Entity Action",
-      "description": "Use when durable entity state must change so the next agent resumes from real status. Runs launch, validation, completion, delete, dry-run, and proof actions; use manage_lifecycle for synchronized runtime control.",
+      "description": "Use when durable entity state must change so the next agent resumes from real status. Runs launch, resume, validation, completion, delete, dry-run, and proof actions; launch or resume can dispatch connected agent work.",
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": false,
+        "openWorldHint": true,
         "destructiveHint": true
       }
     },
@@ -159,10 +159,10 @@
     {
       "name": "orgx_decide",
       "title": "Manage OrgX Decision",
-      "description": "Use when the user says \"remember this decision,\" asks \"what did we decide about X,\" or agent work needs human approval. Creates, remembers, lists, approves, or rejects durable OrgX decisions.",
+      "description": "Use when the user says \"remember this decision,\" asks \"what did we decide about X,\" or agent work needs human approval. Creates, remembers, lists, approves, or rejects durable OrgX decisions; approval can resume connected agent execution.",
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": false,
+        "openWorldHint": true,
         "destructiveHint": true
       }
     },
@@ -249,10 +249,10 @@
     {
       "name": "approve_decision",
       "title": "Approve Decision",
-      "description": "Use when the user has reviewed a pending decision that is blocking agent work and gives explicit confirmation to approve it. Also known as: sign off, approve AI work, unblock agent, accept decision. USE WHEN: user says to approve a decision returned from list_entities with type=decision and status=pending (or the legacy get_pending_decisions alias). NEXT: Confirm approval to user; agent is notified automatically. DO NOT USE: without showing the decision to the user first. Requires decisions:write.",
+      "description": "Use when the user has reviewed a pending decision that is blocking agent work and gives explicit confirmation to approve it. Approval can resume or continue connected agent execution. USE WHEN: user says to approve a decision returned from list_entities with type=decision and status=pending. NEXT: Confirm approval to user; agent is notified automatically. DO NOT USE: without showing the decision to the user first. Requires decisions:write.",
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": false,
+        "openWorldHint": true,
         "destructiveHint": true
       }
     },
@@ -269,7 +269,7 @@
     {
       "name": "get_agent_status",
       "title": "Get Agent Status",
-      "description": "Use when the user asks what agents are working on right now, whether delegated work is still running, or why nothing has landed yet. Also known as: agent status, what agents are doing, active runs. USE WHEN: user asks about agent activity, progress, or what agents are working on. NEXT: If agents are stuck, suggest approve_decision or entity_action. DO NOT USE: to check initiative health — use get_initiative_pulse instead. Read-only.",
+      "description": "Use when the user asks what agents are working on right now, whether delegated work is still running, or why nothing has landed yet. Also known as: agent status, what agents are doing, active runs. USE WHEN: user asks about agent activity, progress, or what agents are working on. NEXT: If agents are stuck, use orgx_search or orgx_inspect to read the related blocker context. DO NOT USE: to check initiative health — use get_initiative_pulse instead. Read-only.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": false,
@@ -279,7 +279,7 @@
     {
       "name": "get_initiative_pulse",
       "title": "Get Initiative Pulse",
-      "description": "Use when the user asks how a project is going, what is blocked, or whether an initiative is on track. Also known as: project status, roadmap progress, execution health, blockers. USE WHEN: user asks how an initiative is going, or wants a status update. NEXT: If blockers exist, suggest entity_action to resolve. For deeper drill-down, use list_entities with initiative_id. DO NOT USE: for org-wide overview — use get_org_snapshot instead. Read-only.",
+      "description": "Use when the user asks how a project is going, what is blocked, or whether an initiative is on track. Also known as: project status, roadmap progress, execution health, blockers. USE WHEN: user asks how an initiative is going, or wants a status update. NEXT: If blockers exist, use orgx_inspect for one blocker or orgx_search for related records. DO NOT USE: for an org-wide brief — use orgx_recommend with mode=morning_brief instead. Read-only.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": false,
@@ -289,11 +289,11 @@
     {
       "name": "scaffold_initiative",
       "title": "Scaffold Initiative",
-      "description": "Use when a goal or plan exists only as prose and must become owned, executable work. Creates a full initiative hierarchy and renders the scaffolded-initiative widget.",
+      "description": "Use when a goal or plan exists only as prose and must become owned, executable work. By default creates a full hierarchy and starts agents; optional external_sync can mirror it into Linear.",
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": false,
-        "destructiveHint": false
+        "openWorldHint": true,
+        "destructiveHint": true
       }
     },
     {
@@ -349,10 +349,10 @@
     {
       "name": "approve_agent_work",
       "title": "Approve Agent Work",
-      "description": "Use when agent work is paused waiting for a human yes. Lists, approves, or rejects agent approval items through the decisions widget.",
+      "description": "Use when agent work is paused waiting for a human yes. Lists, approves, or rejects agent approval items; approval can resume connected agent execution.",
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": false,
+        "openWorldHint": true,
         "destructiveHint": true
       }
     },

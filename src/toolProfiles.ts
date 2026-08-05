@@ -116,6 +116,24 @@ export const CHATGPT_PUBLIC_SURFACE = [
   'check_execution_readiness',
 ] as const;
 
+/**
+ * Anthropic Connector Directory review surface.
+ *
+ * Each exposed operation is independently read-only. Keep write actions,
+ * mixed-mode catch-all tools, lifecycle mutations, delegation, and approval
+ * operations on the general-purpose profiles instead of this review endpoint.
+ */
+export const CLAUDE_DIRECTORY_SURFACE = [
+  'orgx_bootstrap',
+  'orgx_search',
+  'orgx_inspect',
+  'orgx_recommend',
+  'get_agent_status',
+  'get_initiative_pulse',
+  'get_morning_brief',
+  'get_operator_chronicle',
+] as const;
+
 export const GROUPED_V2_PUBLIC_SURFACE = [
   ...V2_PUBLIC_SURFACE,
 ] as const;
@@ -130,6 +148,11 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
     description:
       'Reviewer-ready ChatGPT App surface: canonical OrgX workflows and user-facing widgets without internal coordination transports, redundant aliases, or client-specific PR consolidation',
     tools: [...CHATGPT_PUBLIC_SURFACE],
+  },
+  'claude-directory': {
+    description:
+      'Anthropic Connector Directory review surface: focused read-only organizational memory, agent status, initiative health, briefs, and operator chronicle tools',
+    tools: [...CLAUDE_DIRECTORY_SURFACE],
   },
   memory: {
     description:

@@ -130,6 +130,10 @@ export const BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE: Record<
     { tool: 'orgx_recommend', args: { mode: 'morning_brief', period: '30d' } },
     { tool: 'orgx_search', args: { type: 'initiative', limit: 10 } },
   ],
+  'claude-directory': [
+    { tool: 'orgx_recommend', args: { mode: 'morning_brief', period: '30d' } },
+    { tool: 'orgx_search', args: { type: 'initiative', limit: 10 } },
+  ],
   v2: [
     { tool: 'orgx_recommend', args: { mode: 'morning_brief', period: '30d' } },
     { tool: 'orgx_search', args: { type: 'initiative', limit: 10 } },

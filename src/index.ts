@@ -44,7 +44,16 @@ import {
   executeCompleteWithProofFlow,
 } from './completeWithProof';
 import { resolveToolProfile } from './toolProfiles';
-import { sanitizeToolResultGuidance } from './toolGuidance';
+import {
+  handleOpenAiAppsChallenge,
+  type OpenAiAppsChallengeEnv,
+} from './openaiAppsChallenge';
+import { resolveProfileDiscoveryPolicy } from './profileDiscoveryPolicy';
+import {
+  validateMcpRequestOrigin,
+  type McpOriginValidationEnv,
+} from './mcpOriginValidation';
+import { installStandardToolRegistrationWrapper } from './standardToolRegistration';
 import {
   buildMcpTransportExceptionResponse,
   withCorsAndHeaders,
@@ -245,9 +254,6 @@ import {
   CLIENT_INTEGRATION_TOOL_DEFINITIONS,
   CHATGPT_TOOL_DEFINITIONS,
   CLIENT_CONTEXT_SCHEMA,
-  STANDARD_TOOL_OUTPUT_SCHEMA_OBJECT,
-  ensureStructuredContent,
-  normalizeToolResultEnvelope,
   STREAM_TOOL_DEFINITIONS,
   ENTITY_TYPES,
   entityTypeEnum,
@@ -376,7 +382,11 @@ function createInstrumentedMcpServer(): McpServer {
   );
 }
 
-interface Env extends OAuthEnv, SentryWorkerEnv {
+interface Env
+  extends OAuthEnv,
+    SentryWorkerEnv,
+    OpenAiAppsChallengeEnv,
+    McpOriginValidationEnv {
   ORGX_API_URL: string;
   ORGX_SERVICE_KEY: string;
   MCP_JWT_SECRET: string;
@@ -5376,45 +5386,7 @@ export class OrgXMcp extends McpAgent<
   ) {
     if (this.standardOutputSchemaInstalled) return;
     this.standardOutputSchemaInstalled = true;
-    const server = this.server as unknown as {
-      registerTool: (
-        name: string,
-        config: Record<string, unknown> & { outputSchema?: unknown },
-        handler: (...args: unknown[]) => unknown
-      ) => unknown;
-    };
-    const original = server.registerTool.bind(server);
-    server.registerTool = ((
-      name: string,
-      config: Record<string, unknown> & { outputSchema?: unknown },
-      handler: (...args: unknown[]) => unknown
-    ) => {
-      const enhancedConfig = {
-        ...config,
-        // A constructed .passthrough() object, NOT the raw shape: a raw shape
-        // compiles to additionalProperties:false and rejects every tool that
-        // returns rich structuredContent (see STANDARD_TOOL_OUTPUT_SCHEMA_OBJECT).
-        outputSchema:
-          config.outputSchema ??
-          (STANDARD_TOOL_OUTPUT_SCHEMA_OBJECT as unknown as Record<
-            string,
-            unknown
-          >),
-      };
-      const wrappedHandler = async (...args: unknown[]) => {
-        const result = await handler(...args);
-        const withStructuredContent = ensureStructuredContent(
-          result as {
-            structuredContent?: unknown;
-            isError?: boolean;
-            content?: ReadonlyArray<unknown>;
-          }
-        );
-        const withEnvelope = normalizeToolResultEnvelope(withStructuredContent);
-        return sanitizeToolResultGuidance(withEnvelope, allowedTools);
-      };
-      return original(name, enhancedConfig, wrappedHandler);
-    }) as typeof server.registerTool;
+    installStandardToolRegistrationWrapper(this.server, allowedTools);
   }
 
   private registerTools() {
@@ -8511,11 +8483,11 @@ export class OrgXMcp extends McpAgent<
           '  • "ref" is a client-side label used inside this single call (in depends_on and ref_map). It is not persisted as an ID.\n\n' +
           'Agent-safe aliases that are accepted and normalized server-side: task priority "urgent" → "high"; task/milestone status "active" → "in_progress".\n\n' +
           'Source verification gate: when the initiative is based on a named external product or URL, verify the actual target in a browser or from user-provided screenshots before creating records. Pass source_evidence. If the target cannot be rendered, do not infer the product from web-search results; use mode="draft" with verification_state="unverified" and ask for evidence.\n\n' +
-          'USE WHEN: user wants to plan a new initiative from scratch. NEXT: use mode="launch" to create and start agents (default), mode="scaffold" to create without launching, or mode="draft" to validate the plan without writes. The result returns initiative_id, ref_map, and preferred_next_calls for orgx_inspect/orgx_search/orgx_write chaining. DO NOT USE: for adding a single task to an existing initiative — use create_entity instead.',
+          'USE WHEN: user wants to plan a new initiative from scratch. NEXT: use mode="launch" to create and start agents (default), mode="scaffold" to create without launching, or mode="draft" to validate the plan without writes. Launch dispatches agent work; external_sync can mirror the hierarchy into connected work trackers such as Linear. The result returns initiative_id, ref_map, and preferred_next_calls for orgx_inspect/orgx_search/orgx_write chaining. DO NOT USE: for adding a single task to an existing initiative — use create_entity instead.',
         annotations: {
           readOnlyHint: false,
-          destructiveHint: false,
-          openWorldHint: false,
+          destructiveHint: true,
+          openWorldHint: true,
         },
         inputSchema: this.withClientContext({
           mode: z
@@ -12033,33 +12005,39 @@ export class OrgXMcp extends McpAgent<
   }
 
   private registerResources() {
+    const discoveryPolicy = resolveProfileDiscoveryPolicy(this.props?.profile);
+
     // Register initiative resource (existing)
-    const template = new ResourceTemplate('orgx://initiative/{id}', {
-      list: undefined,
-    });
-    this.server.resource('initiative', template, async (_uri, variables) => {
-      const response = await callOrgxApiJson(
-        this.env,
-        `/api/initiatives/${variables.id}`
-      );
-      const initiative = (await response.json()) as OrgXInitiative;
-      const markdown = formatInitiativeMarkdown(initiative);
-      return {
-        contents: [
-          {
-            uri: `orgx://initiative/${initiative.id}`,
-            mimeType: 'text/markdown',
-            text: markdown,
-          },
-        ],
-      };
-    });
+    if (discoveryPolicy.includeInitiativeResource) {
+      const template = new ResourceTemplate('orgx://initiative/{id}', {
+        list: undefined,
+      });
+      this.server.resource('initiative', template, async (_uri, variables) => {
+        const response = await callOrgxApiJson(
+          this.env,
+          `/api/initiatives/${variables.id}`
+        );
+        const initiative = (await response.json()) as OrgXInitiative;
+        const markdown = formatInitiativeMarkdown(initiative);
+        return {
+          contents: [
+            {
+              uri: `orgx://initiative/${initiative.id}`,
+              mimeType: 'text/markdown',
+              text: markdown,
+            },
+          ],
+        };
+      });
+    }
 
     // Register widget HTML resources (text/html;profile=mcp-app) for all MCP Apps hosts
-    this.registerWidgetResources();
+    this.registerWidgetResources(discoveryPolicy.widgetUris);
 
     // Register downloadable skill pack resources
-    this.registerSkillResources();
+    if (discoveryPolicy.includeSkillResources) {
+      this.registerSkillResources();
+    }
   }
 
   /**
@@ -12201,12 +12179,16 @@ export class OrgXMcp extends McpAgent<
    * Register widget HTML resources for ChatGPT App rendering.
    * Widgets receive data via structuredContent and window.openai.toolOutput.
    */
-  private registerWidgetResources() {
+  private registerWidgetResources(
+    allowedWidgetUris: ReadonlySet<string> | null = null
+  ) {
     const widgetMeta = buildWidgetMeta(this.env);
     const mcpAppsMeta = buildMcpAppsMeta(this.env);
     const mcpAppsContentMeta = { ...widgetMeta, ...mcpAppsMeta };
 
     for (const widget of WIDGET_RESOURCES) {
+      if (allowedWidgetUris && !allowedWidgetUris.has(widget.uri)) continue;
+
       registerAppResource(
         this.server,
         widget.name,
@@ -12572,6 +12554,9 @@ export class OrgXMcp extends McpAgent<
   }
 
   private registerPrompts() {
+    const discoveryPolicy = resolveProfileDiscoveryPolicy(this.props?.profile);
+    if (!discoveryPolicy.includePrompts) return;
+
     const argsSchema = {
       initiative_name: z.string().min(1),
     };
@@ -12769,12 +12754,12 @@ const rateLimitedHttpHandler = {
     attachRequestSourceClient(request, ctx);
     const rateLimit = await checkEdgeRateLimit(request, env);
     if (!rateLimit.allowed) {
-      return buildRateLimitedResponse(rateLimit, env.ORGX_WEB_URL);
+      return buildRateLimitedResponse(rateLimit, env.ORGX_WEB_URL, request);
     }
 
     try {
       const response = await httpHandler.fetch(request, env, ctx);
-      return withCorsAndHeaders(response, rateLimit.headers);
+      return withCorsAndHeaders(response, rateLimit.headers, request);
     } catch (error) {
       const recovery = await recoverDurableObjectTransportRequest(
         request,
@@ -12786,7 +12771,7 @@ const rateLimitedHttpHandler = {
           '[mcp] recovered transient Durable Object transport failure',
           { method: request.method }
         );
-        return withCorsAndHeaders(recovery.response, rateLimit.headers);
+        return withCorsAndHeaders(recovery.response, rateLimit.headers, request);
       }
 
       Sentry.captureException(recovery.error, {
@@ -12807,7 +12792,7 @@ const rateLimitedHttpHandler = {
         recovery.error,
         { stage: 'mcp_http_handler' }
       );
-      return withCorsAndHeaders(response, rateLimit.headers);
+      return withCorsAndHeaders(response, rateLimit.headers, request);
     }
   },
 };
@@ -12840,7 +12825,7 @@ const rateLimitedSseHandler = {
     attachRequestSourceClient(request, ctx);
     const rateLimit = await checkEdgeRateLimit(request, env);
     if (!rateLimit.allowed) {
-      return buildRateLimitedResponse(rateLimit, env.ORGX_WEB_URL);
+      return buildRateLimitedResponse(rateLimit, env.ORGX_WEB_URL, request);
     }
 
     // POST /sse → rewrite to /mcp (OpenAI client sends JSON-RPC to /sse)
@@ -12856,7 +12841,7 @@ const rateLimitedSseHandler = {
       });
       try {
         const response = await httpHandler.fetch(httpReq, env, ctx);
-        return withCorsAndHeaders(response, rateLimit.headers);
+        return withCorsAndHeaders(response, rateLimit.headers, httpReq);
       } catch (error) {
         Sentry.captureException(error, {
           tags: { subsystem: 'mcp_transport', stage: 'sse_post_rewrite' },
@@ -12867,13 +12852,17 @@ const rateLimitedSseHandler = {
         const response = await buildMcpTransportExceptionResponse(httpReq, error, {
           stage: 'mcp_sse_post_rewrite',
         });
-        return withCorsAndHeaders(response, rateLimit.headers);
+        return withCorsAndHeaders(response, rateLimit.headers, httpReq);
       }
     }
 
     // GET /sse → SSE transport (default behavior)
     const resp = await sseHandler.fetch(request, env, ctx);
-    return withCorsAndHeaders(withSseKeepAlive(resp), rateLimit.headers);
+    return withCorsAndHeaders(
+      withSseKeepAlive(resp),
+      rateLimit.headers,
+      request
+    );
   },
 };
 
@@ -12953,6 +12942,29 @@ const worker = {
     env: Env,
     ctx: ExecutionContext
   ): Promise<Response> {
+    // OpenAI verifies domain control through an exact, unauthenticated
+    // plaintext challenge. Handle it before OAuthProvider so no discovery or
+    // authorization routing can rewrite the response.
+    const openAiChallengeResponse = handleOpenAiAppsChallenge(request, env);
+    if (openAiChallengeResponse) {
+      return withSecurityHeaders(openAiChallengeResponse);
+    }
+
+    const requestUrl = new URL(request.url);
+    const isMcpTransportRoute =
+      requestUrl.pathname === '/mcp' ||
+      requestUrl.pathname === '/sse' ||
+      /^\/v1\/[^/]+\/servers\/[^/]+\/?$/.test(requestUrl.pathname) ||
+      (requestUrl.pathname === '/' &&
+        (request.method === 'POST' ||
+          request.method === 'DELETE' ||
+          request.headers.get('accept')?.includes('text/event-stream') ||
+          Boolean(request.headers.get('mcp-session-id'))));
+    if (isMcpTransportRoute) {
+      const invalidOrigin = validateMcpRequestOrigin(request, env);
+      if (invalidOrigin) return withSecurityHeaders(invalidOrigin);
+    }
+
     const runTokenResponse = await tryRunTokenAuth(request, env, ctx);
     if (runTokenResponse) return runTokenResponse;
 

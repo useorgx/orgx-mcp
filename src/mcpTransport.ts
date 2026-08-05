@@ -14,6 +14,10 @@ import { recordDurableMcpToolInvocation } from './mcpInvocationTelemetry';
 import type { OrgxApiEnv } from './orgxApi';
 import type { SourceClient } from './cross-pollination';
 import { resolveToolProfile } from './toolProfiles';
+import {
+  validateMcpRequestOrigin,
+  type McpOriginValidationEnv,
+} from './mcpOriginValidation';
 
 export type ExecutionContextWithProps<Props> = ExecutionContext & {
   props?: Props;
@@ -861,6 +865,12 @@ export async function handleMcpRequest<Env, Props>(
   handler: AgentHandler<Env, Props>,
   authenticateRequest: AuthenticateRequest<Env>
 ) {
+  const invalidOrigin = validateMcpRequestOrigin(
+    request,
+    env as McpOriginValidationEnv
+  );
+  if (invalidOrigin) return invalidOrigin;
+
   const requestStartedAt = Date.now();
   const connectionProfile = resolveToolProfile(
     new URL(request.url).searchParams.get('profile') ??
@@ -876,13 +886,14 @@ export async function handleMcpRequest<Env, Props>(
           'Access-Control-Allow-Headers':
             'Content-Type, Authorization, X-Access-Token, Mcp-Session-Id',
         },
-      })
+      }),
+      request
     );
   }
   const authStartedAt = Date.now();
   const auth = await authenticateRequest(request, env);
   const authMs = Math.max(0, Date.now() - authStartedAt);
-  if ('response' in auth && auth.response) return withCors(auth.response);
+  if ('response' in auth && auth.response) return withCors(auth.response, request);
   const existingProps = asRecord(ctx.props);
   (ctx as ExecutionContextWithProps<Props>).props = {
     ...existingProps,
@@ -941,7 +952,10 @@ export async function handleMcpRequest<Env, Props>(
       sessionPresent: Boolean(request.headers.get('mcp-session-id')),
     }
   ));
-  return withCors(withDeprecatedToolWarningHeaders(response, warning));
+  return withCors(
+    withDeprecatedToolWarningHeaders(response, warning),
+    request
+  );
 }
 
 export function withSseKeepAlive(
@@ -1001,13 +1015,19 @@ export async function handleMcpWebSocket<Env, Props>(
   handler: AgentHandler<Env, Props>,
   authenticateRequest: AuthenticateRequest<Env>
 ) {
+  const invalidOrigin = validateMcpRequestOrigin(
+    request,
+    env as McpOriginValidationEnv
+  );
+  if (invalidOrigin) return invalidOrigin;
+
   if (request.headers.get('upgrade')?.toLowerCase() !== 'websocket') {
     return new Response('Upgrade Required', { status: 426 });
   }
 
   const auth = await authenticateRequest(request, env);
   if ('response' in auth && auth.response) {
-    return withCors(auth.response);
+    return withCors(auth.response, request);
   }
 
   const pair = new WebSocketPair();
@@ -1065,9 +1085,33 @@ export async function handleMcpWebSocket<Env, Props>(
   return new Response(null, { status: 101, webSocket: client });
 }
 
-function withCors(response: Response) {
+function setCorsOrigin(headers: Headers, request?: Request) {
+  const rawOrigin = request?.headers.get('origin');
+  let allowOrigin = '*';
+  if (rawOrigin) {
+    try {
+      allowOrigin = new URL(rawOrigin).origin;
+    } catch {
+      allowOrigin = 'null';
+    }
+  }
+  headers.set('Access-Control-Allow-Origin', allowOrigin);
+  if (rawOrigin) {
+    const vary = headers.get('Vary');
+    const values = (vary ?? '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
+    if (!values.some((value) => value.toLowerCase() === 'origin')) {
+      values.push('Origin');
+    }
+    headers.set('Vary', values.join(', '));
+  }
+}
+
+function withCors(response: Response, request?: Request) {
   const headers = new Headers(response.headers);
-  headers.set('Access-Control-Allow-Origin', '*');
+  setCorsOrigin(headers, request);
   headers.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,DELETE');
   headers.set(
     'Access-Control-Allow-Headers',
@@ -1085,10 +1129,11 @@ function withCors(response: Response) {
  */
 export function withCorsAndHeaders(
   response: Response,
-  extraHeaders: Record<string, string>
+  extraHeaders: Record<string, string>,
+  request?: Request
 ) {
   const headers = new Headers(response.headers);
-  headers.set('Access-Control-Allow-Origin', '*');
+  setCorsOrigin(headers, request);
   headers.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,DELETE');
   headers.set(
     'Access-Control-Allow-Headers',

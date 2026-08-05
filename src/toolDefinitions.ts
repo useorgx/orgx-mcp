@@ -670,7 +670,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'approve_decision',
     title: 'Approve Decision',
     description:
-      'Use when the user has reviewed a pending decision that is blocking agent work and gives explicit confirmation to approve it. Also known as: sign off, approve AI work, unblock agent, accept decision. USE WHEN: user says to approve a decision returned from list_entities with type=decision and status=pending (or the legacy get_pending_decisions alias). NEXT: Confirm approval to user; agent is notified automatically. DO NOT USE: without showing the decision to the user first. Requires decisions:write.',
+      'Use when the user has reviewed a pending decision that is blocking agent work and gives explicit confirmation to approve it. Also known as: sign off, approve AI work, unblock agent, accept decision. USE WHEN: user says to approve a decision returned from list_entities with type=decision and status=pending (or the legacy get_pending_decisions alias). Approval can resume or continue connected agent execution. NEXT: Confirm approval to user; agent is notified automatically. DO NOT USE: without showing the decision to the user first. Requires decisions:write.',
     inputSchema: {
       decision_id: z.string().min(1).describe('Decision ID to approve'),
       note: z.string().optional().describe('Optional note recorded with the approval'),
@@ -681,7 +681,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
           'Optional decision option id when the decision includes selectable options.'
         ),
     },
-    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.decisions,
@@ -718,7 +718,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'get_agent_status',
     title: 'Get Agent Status',
     description:
-      'Use when the user asks what agents are working on right now, whether delegated work is still running, or why nothing has landed yet. Also known as: agent status, what agents are doing, active runs. USE WHEN: user asks about agent activity, progress, or what agents are working on. NEXT: If agents are stuck, suggest approve_decision or entity_action. DO NOT USE: to check initiative health — use get_initiative_pulse instead. Read-only.',
+      'Use when the user asks what agents are working on right now, whether delegated work is still running, or why nothing has landed yet. Also known as: agent status, what agents are doing, active runs. USE WHEN: user asks about agent activity, progress, or what agents are working on. NEXT: If agents are stuck, use orgx_search or orgx_inspect to read the related blocker context. DO NOT USE: to check initiative health — use get_initiative_pulse instead. Read-only.',
     inputSchema: {
       agent_id: z.string().optional().describe('Optional agent ID to inspect'),
       workspace_id: z.string().uuid().optional().describe('Optional workspace UUID to scope agent status'),
@@ -771,7 +771,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'get_initiative_pulse',
     title: 'Get Initiative Pulse',
     description:
-      'Use when the user asks how a project is going, what is blocked, or whether an initiative is on track. Also known as: project status, roadmap progress, execution health, blockers. USE WHEN: user asks how an initiative is going, or wants a status update. NEXT: If blockers exist, suggest entity_action to resolve. For deeper drill-down, use list_entities with initiative_id. DO NOT USE: for org-wide overview — use get_org_snapshot instead. Read-only.',
+      'Use when the user asks how a project is going, what is blocked, or whether an initiative is on track. Also known as: project status, roadmap progress, execution health, blockers. USE WHEN: user asks how an initiative is going, or wants a status update. NEXT: If blockers exist, use orgx_inspect for one blocker or orgx_search for related records. DO NOT USE: for an org-wide brief — use orgx_recommend with mode=morning_brief instead. Read-only.',
     inputSchema: {
       initiative_id: z
         .string()

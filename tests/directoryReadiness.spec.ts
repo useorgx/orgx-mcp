@@ -4,6 +4,16 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import { CONTRACT_TOOL_DEFINITIONS } from '../src/contractTools';
+import {
+  CLAUDE_DIRECTORY_SURFACE,
+  resolveProfileToolSet,
+} from '../src/toolProfiles';
+import {
+  CHATGPT_TOOL_DEFINITIONS,
+  CLIENT_INTEGRATION_TOOL_DEFINITIONS,
+} from '../src/toolDefinitions';
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const readme = readFileSync(resolve(root, 'README.md'), 'utf8');
 const serverJson = JSON.parse(
@@ -32,6 +42,14 @@ const packageJson = JSON.parse(
 const indexSource = readFileSync(resolve(root, 'src/index.ts'), 'utf8');
 const toolDefinitionsSource = readFileSync(
   resolve(root, 'src/toolDefinitions.ts'),
+  'utf8'
+);
+const anthropicDirectoryDoc = readFileSync(
+  resolve(root, 'docs/anthropic-directory.md'),
+  'utf8'
+);
+const anthropicSubmissionForm = readFileSync(
+  resolve(root, 'docs/anthropic-submission-form.md'),
   'utf8'
 );
 
@@ -144,6 +162,69 @@ describe('Anthropic directory readiness', () => {
     }
   });
 
+  it('documents and locks the focused read-only Anthropic review endpoint', () => {
+    const endpoint =
+      'https://mcp.useorgx.com/mcp?profile=claude-directory';
+    const selectedTools = resolveProfileToolSet('claude-directory');
+
+    expect([...(selectedTools ?? [])]).toEqual([
+      ...CLAUDE_DIRECTORY_SURFACE,
+    ]);
+    expect(anthropicDirectoryDoc).toContain(endpoint);
+    expect(anthropicSubmissionForm).toContain(endpoint);
+    expect(anthropicDirectoryDoc).toContain('read-only');
+    expect(anthropicSubmissionForm).toContain('read-only');
+    expect(anthropicSubmissionForm).not.toContain(
+      '[ fill before submitting:'
+    );
+
+    const manifestTools = new Map(
+      (serverJson.tools ?? []).map((tool) => [tool.name, tool])
+    );
+    const registeredDefinitions = new Map(
+      [
+        ...CONTRACT_TOOL_DEFINITIONS,
+        ...CHATGPT_TOOL_DEFINITIONS,
+        ...CLIENT_INTEGRATION_TOOL_DEFINITIONS,
+      ].map((tool) => [tool.id, tool])
+    );
+    const unavailableGuidance =
+      /\b(?:entity_action|list_entities|get_org_snapshot|approve_decision|orgx_act|orgx_write|orgx_spawn)\b/;
+
+    for (const toolName of selectedTools ?? []) {
+      const manifestTool = manifestTools.get(toolName);
+      expect(manifestTool?.annotations).toEqual({
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      });
+      expect(
+        manifestTool?.description,
+        `${toolName} manifest points at an unavailable directory tool`
+      ).not.toMatch(unavailableGuidance);
+
+      const registeredDefinition = registeredDefinitions.get(toolName);
+      if (registeredDefinition) {
+        expect(
+          registeredDefinition.description,
+          `${toolName} live description points at an unavailable directory tool`
+        ).not.toMatch(unavailableGuidance);
+      }
+    }
+  });
+
+  it('applies profile-aware prompt and resource discovery in the worker', () => {
+    expect(indexSource).toContain(
+      'resolveProfileDiscoveryPolicy(this.props?.profile)'
+    );
+    expect(indexSource).toContain(
+      'this.registerWidgetResources(discoveryPolicy.widgetUris)'
+    );
+    expect(indexSource).toContain(
+      'if (!discoveryPolicy.includePrompts) return;'
+    );
+  });
+
   it('marks high-risk shared tool definitions as destructive where appropriate', () => {
     const destructiveTools = [
       'approve_decision',
@@ -170,7 +251,8 @@ describe('Anthropic directory readiness', () => {
     const expectSnippetAnnotations = (
       toolId: string,
       readOnly: boolean,
-      destructive: boolean
+      destructive: boolean,
+      openWorld = false
     ) => {
       const registrationPattern =
         toolId === 'scaffold_initiative' || toolId === 'review_artifact'
@@ -186,7 +268,7 @@ describe('Anthropic directory readiness', () => {
       expect(snippet).toContain('annotations: {');
       expect(snippet).toContain(`readOnlyHint: ${readOnly}`);
       expect(snippet).toContain(`destructiveHint: ${destructive}`);
-      expect(snippet).toContain('openWorldHint: false');
+      expect(snippet).toContain(`openWorldHint: ${openWorld}`);
     };
 
     expectSnippetAnnotations('get_org_snapshot', true, false);
@@ -199,7 +281,7 @@ describe('Anthropic directory readiness', () => {
     expectSnippetAnnotations('create_entity', false, false);
     expectSnippetAnnotations('batch_create_entities', false, false);
     expectSnippetAnnotations('review_artifact', true, false);
-    expectSnippetAnnotations('scaffold_initiative', false, false);
+    expectSnippetAnnotations('scaffold_initiative', false, true, true);
     expectSnippetAnnotations('get_task_with_context', true, false);
     expectSnippetAnnotations('batch_delete_entities', false, true);
     expectSnippetAnnotations('update_entity', false, true);

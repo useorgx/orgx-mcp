@@ -61,6 +61,47 @@ const openaiRunbook = readFileSync(
   resolve(root, 'docs/openai-review-runbook.md'),
   'utf8'
 );
+const contractToolsSource = readFileSync(
+  resolve(root, 'src/contractTools.ts'),
+  'utf8'
+);
+const workerSource = readFileSync(resolve(root, 'src/index.ts'), 'utf8');
+const scaffoldControlSource = readFileSync(
+  resolve(root, 'src/scaffoldControl.ts'),
+  'utf8'
+);
+
+type ToolHints = {
+  readOnlyHint: boolean;
+  openWorldHint: boolean;
+  destructiveHint: boolean;
+};
+
+const expectedChatGptHints = {
+  orgx_bootstrap: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+  orgx_search: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+  orgx_inspect: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+  orgx_recommend: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+  orgx_write: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
+  orgx_attach: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
+  orgx_act: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
+  manage_lifecycle: { readOnlyHint: false, openWorldHint: true, destructiveHint: false },
+  orgx_plan: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
+  orgx_spawn: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
+  orgx_decide: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
+  orgx_submit_receipt: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
+  approve_decision: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
+  reject_decision: { readOnlyHint: false, openWorldHint: false, destructiveHint: true },
+  get_agent_status: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+  get_initiative_pulse: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+  scaffold_initiative: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
+  handoff_task: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
+  approve_agent_work: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
+  review_artifact: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+  get_morning_brief: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+  get_operator_chronicle: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+  check_execution_readiness: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+} satisfies Record<(typeof CHATGPT_PUBLIC_SURFACE)[number], ToolHints>;
 
 const serverToolsByName = new Map(
   serverJson.tools.map((tool) => [tool.name, tool])
@@ -98,6 +139,43 @@ describe('OpenAI ChatGPT app submission readiness', () => {
         expect(justification.trim().length).toBeGreaterThan(20);
       }
     }
+  });
+
+  it('keeps the reviewed 23-tool risk matrix explicit and fail-closed', () => {
+    expect(Object.keys(expectedChatGptHints).sort()).toEqual(
+      [...CHATGPT_PUBLIC_SURFACE].sort()
+    );
+
+    for (const [toolName, expectedHints] of Object.entries(
+      expectedChatGptHints
+    )) {
+      expect(submission.tools[toolName]?.annotations, toolName).toEqual(
+        expectedHints
+      );
+      expect(serverToolsByName.get(toolName)?.annotations, toolName).toEqual(
+        expectedHints
+      );
+    }
+  });
+
+  it('ties elevated hints to implemented overwrite, dispatch, approval, and external-sync modes', () => {
+    expect(contractToolsSource).toContain(
+      "live_visibility: z.enum(['private', 'public'])"
+    );
+    expect(workerSource).toContain("if (operation === 'update')");
+    expect(workerSource).toContain('buildEntityUpdateRequest({');
+    expect(workerSource).toContain(
+      "`/api/entities/${args.type}/${args.id}/${resolvedAction}`"
+    );
+    expect(workerSource).toContain("case 'approve_agent_work':");
+    expect(workerSource).toContain("'approve_decision'");
+    expect(workerSource).toContain(
+      'which handles MCP context, stream continuation, and agent resumption.'
+    );
+    expect(scaffoldControlSource).toContain(
+      "const mode = legacyLaunch === false ? 'scaffold' : 'launch';"
+    );
+    expect(workerSource).toContain("'/api/integrations/work-graph/mirror'");
   });
 
   it('does not submit internal transports, redundant aliases, or PR consolidation', () => {
@@ -160,6 +238,20 @@ describe('OpenAI ChatGPT app submission readiness', () => {
       'raw access tokens',
       'internal request IDs',
       'Do not mark the app ready for resubmission',
+    ];
+
+    for (const phrase of requiredRunbookPhrases) {
+      expect(openaiRunbook).toContain(phrase);
+    }
+  });
+
+  it('documents the optional fail-closed OpenAI domain challenge binding', () => {
+    const requiredRunbookPhrases = [
+      '/.well-known/openai-apps-challenge',
+      'OPENAI_APPS_CHALLENGE_TOKEN',
+      '404',
+      'no-store',
+      'portal issues a new challenge',
     ];
 
     for (const phrase of requiredRunbookPhrases) {

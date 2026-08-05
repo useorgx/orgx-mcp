@@ -7,43 +7,43 @@ Organizational memory for AI agents / AI team control plane
 ## Primary use cases
 
 - Remember and recall decisions
-- Review agent decisions awaiting approval
+- Read decisions awaiting approval
 - Search team memory and artifacts
-- Delegate work to specialist agents
 - Track project/initiative health
-- Render decision, memory, task, and status widgets
+- Render memory, brief, initiative, and status widgets
+
+## Anthropic directory endpoint
+
+`https://mcp.useorgx.com/mcp?profile=claude-directory`
+
+This review surface is intentionally read-only. The general OrgX profiles
+retain write and delegation capabilities, but they are outside this directory
+submission.
 
 ## Read actions
 
-- recall_memory
-- track_project_progress
-- query_org_memory
-- get_decision_history
-- get_pending_decisions
+- orgx_bootstrap
+- orgx_search
+- orgx_inspect
+- orgx_recommend
 - get_agent_status
 - get_initiative_pulse
-- get_org_snapshot
+- get_morning_brief
+- get_operator_chronicle
 
-## Write actions
+## Excluded actions
 
-- remember_decision
-- approve_agent_work
-- delegate_agent_task
-- approve_decision
-- reject_decision
-- create_decision
-- spawn_agent_task
-- scaffold_initiative
-- create_task
-- update_entity
-
-## Human confirmation model
-
-Write actions require explicit user confirmation where appropriate. Approval and rejection tools must only run after the user confirms.
+All write, approval, rejection, delegation, hierarchy mutation, lifecycle, and
+mixed-mode tools are excluded from the Anthropic directory profile.
 
 ## OAuth
 
 OAuth 2.x with PKCE and dynamic client registration.
+
+Every present MCP transport `Origin` is checked against an exact HTTPS
+allowlist before auth or tool dispatch. Invalid origins return `403`; hosted
+Claude is trusted explicitly, and no-`Origin` Claude Code/CLI traffic remains
+supported.
 
 ## Data handling
 
@@ -51,9 +51,20 @@ OrgX stores organizational execution context: decisions, tasks, initiatives, art
 
 ## Widgets
 
-- decisions widget
 - memory search results widget
 - initiative pulse widget
 - agent status widget
-- task spawned widget
 - morning brief widget
+
+These four MCP Apps widget resource families are intentionally exposed by the
+directory profile. Pair the response evidence exactly as follows:
+
+| Prompt | Screenshot |
+|--------|------------|
+| `What did we decide about Search Copilot readiness?` | <https://mcp.useorgx.com/screenshots/anthropic-memory-search-response.png> |
+| `Show me what the OrgX agents are doing right now.` | <https://mcp.useorgx.com/screenshots/anthropic-agent-status-response.png> |
+| `Give me the pulse for the Search Copilot Readiness initiative.` | <https://mcp.useorgx.com/screenshots/anthropic-initiative-pulse-response.png> |
+| `Give me today's morning brief.` | <https://mcp.useorgx.com/screenshots/anthropic-morning-brief-response.png> |
+
+All four are read-only response captures from the actual widget HTML and must
+remain at least 1000 px on both axes. They contain no write or scaffold example.

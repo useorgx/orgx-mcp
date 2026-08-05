@@ -22,6 +22,31 @@ Use this runbook before each OpenAI app submission or resubmission. It verifies 
 - Privacy policy URL: `https://github.com/useorgx/orgx-mcp/blob/main/docs/privacy-policy.md`
 - Support URL: `https://github.com/useorgx/orgx-mcp/issues`
 
+Before review, request `https://mcp.useorgx.com/healthz?check=upstream` and
+confirm the primary upstream is healthy at `https://useorgx.com`. A
+`fallback_healthy` result proves failover, not reviewer-ready primary latency;
+fix or deploy the primary configuration before submitting.
+
+## Optional Domain Challenge Route
+
+The worker reserves `GET /.well-known/openai-apps-challenge` for OpenAI domain
+verification. Configure `OPENAI_APPS_CHALLENGE_TOKEN` only if the submission
+portal issues a new challenge. When configured, the route returns that exact
+value as `text/plain` with `Cache-Control: no-store`; when unset, it fails
+closed with `404`.
+
+Do not commit the issued value. Enter it through Wrangler's interactive secret
+prompt, deploy the worker, and compare the live response to the portal value
+before asking the portal to verify the domain:
+
+```bash
+pnpm wrangler secret put OPENAI_APPS_CHALLENGE_TOKEN --env production
+```
+
+An already-verified domain does not require this binding. Removing or rotating
+the binding is a separate production operation and should not be inferred from
+local route tests.
+
 ## Reviewer Workspace Baseline
 
 Run the submitted prompts only against a dedicated OpenAI review workspace. Before each web or mobile run, reset or bootstrap that workspace so the baseline is stable.
