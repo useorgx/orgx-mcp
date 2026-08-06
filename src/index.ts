@@ -77,7 +77,10 @@ import {
   normalizeRecordOutcomeArgs,
   normalizeRecordQualityScoreArgs,
 } from './agentErgonomics';
-import { evaluateLoopReliabilityReceipt } from './loopReliabilityValidation';
+import {
+  evaluateLoopReliabilityReceipt,
+  withReceiptEvidenceSourceClient,
+} from './loopReliabilityValidation';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
 import {
   buildRouteTaskEstimateSummary,
@@ -5318,24 +5321,31 @@ export class OrgXMcp extends McpAgent<
 
         case 'orgx_submit_receipt': {
           const loopValidation = evaluateLoopReliabilityReceipt(args);
-          // Default source_client from session attribution when the agent
-          // omitted it (explicit values pass through untouched).
+          // Default attribution when the agent omitted it (explicit values
+          // pass through untouched). The app's receipts route derives
+          // agent_type from evidence-level fields only, so the resolved
+          // client lands in evidence.source_client; the top-level reporting
+          // value stays for forward compatibility.
           const receiptSourceClient =
             typeof args.source_client === 'string'
               ? null
               : this.resolveReportingSourceClient(args._context);
+          const receiptBody = withReceiptEvidenceSourceClient(
+            {
+              ...args,
+              ...(receiptSourceClient
+                ? { source_client: receiptSourceClient }
+                : {}),
+              user_id: resolvedUserId,
+            },
+            this.resolveSourceClient(args._context)
+          );
           const response = await callOrgxApiJson(
             this.env,
             '/api/flywheel/receipts',
             {
               method: 'POST',
-              body: JSON.stringify({
-                ...args,
-                ...(receiptSourceClient
-                  ? { source_client: receiptSourceClient }
-                  : {}),
-                user_id: resolvedUserId,
-              }),
+              body: JSON.stringify(receiptBody),
             },
             { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
           );

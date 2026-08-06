@@ -50,6 +50,44 @@ export function normalizeLoopValidationRung(value: unknown): LoopValidationRung 
     : null;
 }
 
+/**
+ * Default the receipt's evidence-level attribution.
+ *
+ * The app's receipts route derives agent_type from `evidence.agent_type ??
+ * evidence.source_client ?? evidence.source` — it never reads a top-level
+ * source_client — so the server-resolved client identity must land inside
+ * the evidence object. Applies only when the agent set none of those three
+ * fields; agent-supplied attribution always wins. The value is the worker's
+ * normalized client name (a free string on the app side), not the reporting
+ * enum. String/array evidence shapes (URL evidence) are left untouched.
+ */
+export function withReceiptEvidenceSourceClient(
+  receipt: Record<string, unknown>,
+  sourceClient: string | null | undefined
+): Record<string, unknown> {
+  if (!nonEmptyString(sourceClient)) return receipt;
+
+  const evidence = readRecord(receipt.evidence);
+  if (!evidence && receipt.evidence !== undefined) {
+    // Present but not an object (e.g. a URL string or list) — keep the
+    // agent's shape rather than clobbering it.
+    return receipt;
+  }
+  if (
+    evidence &&
+    (nonEmptyString(evidence.agent_type) ||
+      nonEmptyString(evidence.source_client) ||
+      nonEmptyString(evidence.source))
+  ) {
+    return receipt;
+  }
+
+  return {
+    ...receipt,
+    evidence: { ...(evidence ?? {}), source_client: sourceClient },
+  };
+}
+
 export function evaluateLoopReliabilityReceipt(
   receipt: Record<string, unknown>
 ): LoopReliabilityValidationResult {
