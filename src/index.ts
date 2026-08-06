@@ -186,8 +186,11 @@ import {
 import { buildSkillCatalogView } from './skillCatalogView';
 import {
   INJECTION_TRIGGERS,
+  detectSourceClient,
   enrichResultWithContext,
   inferDomainFromTool,
+  toReportingSourceClient,
+  type ReportingSourceClient,
   type SourceClient,
   type RelatedContext,
 } from './cross-pollination';
@@ -305,6 +308,20 @@ import {
   toStoredSessionAuth,
   toStoredSessionContext,
 } from './sessionStorage';
+import {
+  applySessionToolObservation,
+  buildSessionSummary,
+  buildSessionSummaryActivityBody,
+  createEmptySessionToolStats,
+  installSessionToolObservationWrapper,
+  parseStoredSessionToolStats,
+  SESSION_FLUSH_SCHEDULE_STORAGE_KEY,
+  SESSION_SUMMARY_FLUSH_CALLBACK,
+  SESSION_SUMMARY_IDLE_FLUSH_SECONDS,
+  SESSION_TOOL_STATS_STORAGE_KEY,
+  totalSessionToolCalls,
+  type SessionToolStats,
+} from './sessionSummary';
 import { ensureSqliteColumn } from './sqliteSchema';
 import { checkToolPlanAccess } from './toolAccessGating';
 import {
@@ -472,6 +489,20 @@ const SUBMITTED_INFORMATIONAL_TOOL_EXECUTIONS = new Set([
 const ORGX_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * Client-integration tools whose input schemas (and app endpoints) accept a
+ * source_client value — the worker defaults it from session attribution when
+ * the agent omitted it. Keep aligned with reportingSourceClientSchema usage
+ * in toolDefinitions.ts.
+ */
+const CLIENT_REPORTING_SOURCE_TOOL_IDS = new Set([
+  'orgx_emit_activity',
+  'orgx_request_attention',
+  'orgx_request_question',
+  'orgx_emit_execution_graph',
+  'orgx_apply_changeset',
+]);
+
 type WidgetDebugEventPhase =
   | 'tool_call'
   | 'tool_result'
@@ -503,11 +534,14 @@ export class OrgXMcp extends McpAgent<
   private sessionSql!: SqlStorage;
   private sessionSqlInitialized = false;
 
-  // Session context for workspace scoping
+  // Session context for workspace scoping plus the MCP initialize handshake
+  // identity (clientInfo) used for server-side attribution.
   sessionContext: {
     workspaceId?: string;
     workspaceName?: string;
     initiativeId?: string;
+    clientName?: string;
+    clientVersion?: string;
   } = {};
 
   // Persisted auth from OAuth flow - stored in DO SQLite
@@ -525,6 +559,12 @@ export class OrgXMcp extends McpAgent<
     createEmptyMcpActivationState();
   private mcpSessionReentryState: McpSessionReentryState =
     createEmptyMcpSessionReentryState();
+
+  // Per-session tool-call stats flushed as a compact summary once the
+  // session goes idle (best-effort session-end signal).
+  private sessionToolStats: SessionToolStats = createEmptySessionToolStats();
+  private sessionFlushScheduleId: string | null = null;
+  private sessionToolObservationInstalled = false;
 
   // Set to true when a user authenticates for the first time in this session.
   // Used to prepend a welcome message to the first tool call response.
@@ -634,6 +674,11 @@ export class OrgXMcp extends McpAgent<
           updated_at INTEGER NOT NULL
         );
       `);
+      // Schema evolution for long-lived DOs (see ensureSessionAuthColumn):
+      // the MCP initialize handshake identity is persisted alongside the
+      // workspace scoping so attribution survives DO resets and deploys.
+      this.ensureSessionContextColumn('client_name', 'TEXT');
+      this.ensureSessionContextColumn('client_version', 'TEXT');
       this.sessionSqlInitialized = true;
     } catch (error) {
       console.error('[mcp:session] Failed to initialize SQLite', { error });
@@ -669,6 +714,31 @@ export class OrgXMcp extends McpAgent<
         column,
         error: error instanceof Error ? error.message : String(error),
       });
+    }
+  }
+
+  /** session_context twin of ensureSessionAuthColumn — same rationale. */
+  private ensureSessionContextColumn(column: string, type: string): void {
+    try {
+      const { added } = ensureSqliteColumn(
+        (query, ...bindings) => this.sessionSql.exec(query, ...bindings),
+        'session_context',
+        column,
+        type
+      );
+      if (added) {
+        console.info('[mcp:session] Migrated session_context: added column', {
+          column,
+        });
+      }
+    } catch (error) {
+      console.error(
+        '[mcp:session:migrate] Failed to add session_context column',
+        {
+          column,
+          error: error instanceof Error ? error.message : String(error),
+        }
+      );
     }
   }
 
@@ -828,12 +898,20 @@ export class OrgXMcp extends McpAgent<
               : undefined;
           const initiativeId =
             typeof row.initiative_id === 'string' ? row.initiative_id : undefined;
+          const clientName =
+            typeof row.client_name === 'string' ? row.client_name : undefined;
+          const clientVersion =
+            typeof row.client_version === 'string'
+              ? row.client_version
+              : undefined;
 
           this.sessionContext = {
             ...this.sessionContext,
             workspaceId: workspaceId ?? this.sessionContext.workspaceId,
             workspaceName: workspaceName ?? this.sessionContext.workspaceName,
             initiativeId: initiativeId ?? this.sessionContext.initiativeId,
+            clientName: clientName ?? this.sessionContext.clientName,
+            clientVersion: clientVersion ?? this.sessionContext.clientVersion,
           };
 
           if (!this.isDirectoryReviewProfile()) {
@@ -902,11 +980,13 @@ export class OrgXMcp extends McpAgent<
 
       if (this.sessionSqlInitialized) {
         this.sessionSql.exec(
-          `INSERT OR REPLACE INTO session_context (id, workspace_id, workspace_name, initiative_id, updated_at)
-           VALUES (1, ?, ?, ?, ?)`,
+          `INSERT OR REPLACE INTO session_context (id, workspace_id, workspace_name, initiative_id, client_name, client_version, updated_at)
+           VALUES (1, ?, ?, ?, ?, ?, ?)`,
           this.sessionContext.workspaceId ?? null,
           this.sessionContext.workspaceName ?? null,
           this.sessionContext.initiativeId ?? null,
+          this.sessionContext.clientName ?? null,
+          this.sessionContext.clientVersion ?? null,
           now
         );
       }
@@ -971,6 +1051,175 @@ export class OrgXMcp extends McpAgent<
     }
   }
 
+  private async loadSessionToolStats() {
+    try {
+      const [storedStats, storedScheduleId] = await Promise.all([
+        this.ctx.storage.get<Record<string, unknown>>(
+          SESSION_TOOL_STATS_STORAGE_KEY
+        ),
+        this.ctx.storage.get<string>(SESSION_FLUSH_SCHEDULE_STORAGE_KEY),
+      ]);
+      const parsed = parseStoredSessionToolStats(storedStats);
+      if (parsed) this.sessionToolStats = parsed;
+      if (typeof storedScheduleId === 'string' && storedScheduleId) {
+        this.sessionFlushScheduleId = storedScheduleId;
+      }
+    } catch (error) {
+      console.warn('[mcp:session-summary] Failed to load tool stats', {
+        error,
+      });
+    }
+  }
+
+  private async persistSessionToolStats() {
+    try {
+      await this.ctx.storage.put(
+        SESSION_TOOL_STATS_STORAGE_KEY,
+        this.sessionToolStats
+      );
+    } catch (error) {
+      console.warn('[mcp:session-summary] Failed to persist tool stats', {
+        error,
+      });
+    }
+  }
+
+  /**
+   * Called for every tool invocation via the registerTool observation
+   * wrapper. Updates session stats, opportunistically captures the handshake
+   * clientInfo, and re-arms the idle flush alarm. Must never throw.
+   *
+   * Honors the submission side-effect contract: directory review sessions and
+   * submitted informational tools produce zero worker-local state changes,
+   * so their calls are excluded from session summaries by design.
+   */
+  private observeSessionToolCall(toolName: string): void {
+    if (
+      this.isDirectoryReviewProfile() ||
+      this.isSubmittedInformationalToolExecution(toolName)
+    ) {
+      return;
+    }
+    this.captureHandshakeClientInfo();
+    this.sessionToolStats = applySessionToolObservation(
+      this.sessionToolStats ?? createEmptySessionToolStats(),
+      toolName
+    );
+    try {
+      this.ctx.waitUntil(this.persistSessionToolStats());
+      this.ctx.waitUntil(this.armSessionSummaryFlush());
+    } catch {
+      void this.persistSessionToolStats();
+      void this.armSessionSummaryFlush();
+    }
+  }
+
+  /**
+   * Debounced idle alarm via the agents SDK schedule API (the only real
+   * lifecycle seam for streamable-HTTP sessions: there is no close event,
+   * and the schedule survives DO hibernation as a storage alarm).
+   */
+  private async armSessionSummaryFlush(): Promise<void> {
+    try {
+      if (this.sessionFlushScheduleId) {
+        await this.cancelSchedule(this.sessionFlushScheduleId);
+      }
+      const schedule = await this.schedule(
+        SESSION_SUMMARY_IDLE_FLUSH_SECONDS,
+        SESSION_SUMMARY_FLUSH_CALLBACK,
+        {}
+      );
+      this.sessionFlushScheduleId = schedule.id;
+      await this.ctx.storage.put(
+        SESSION_FLUSH_SCHEDULE_STORAGE_KEY,
+        schedule.id
+      );
+    } catch (error) {
+      console.warn('[mcp:session-summary] Failed to arm idle flush', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * Idle-flush callback (schedule target — must stay public and keep this
+   * name; see SESSION_SUMMARY_FLUSH_CALLBACK). Best-effort: posts a compact
+   * session summary to the activity endpoint when an initiative binding
+   * exists, otherwise records it through the durable telemetry path with a
+   * session_summary marker. Never throws.
+   */
+  async flushSessionSummary(): Promise<void> {
+    try {
+      this.sessionFlushScheduleId = null;
+      await this.ctx.storage.delete(SESSION_FLUSH_SCHEDULE_STORAGE_KEY);
+
+      const stats = this.sessionToolStats;
+      if (totalSessionToolCalls(stats) === 0) return;
+
+      const summary = buildSessionSummary({
+        sessionId: this.name || this.ctx.id.toString(),
+        clientName: this.sessionContext.clientName ?? null,
+        clientVersion: this.sessionContext.clientVersion ?? null,
+        stats,
+        workspaceId: this.sessionContext.workspaceId ?? null,
+        initiativeId: this.sessionContext.initiativeId ?? null,
+      });
+      const sourceClient = this.resolveSourceClient();
+      const userId = this.resolveUserId();
+
+      if (summary.initiative_id) {
+        const body = buildSessionSummaryActivityBody(
+          summary,
+          toReportingSourceClient(sourceClient)
+        );
+        await callOrgxApiJson(
+          this.env,
+          '/api/client/live/activity',
+          { method: 'POST', body: JSON.stringify(body) },
+          {
+            userId,
+            userEmail: this.resolveUserEmail(),
+            orgxUserId: this.resolveOrgxUserId(userId),
+          }
+        );
+      } else {
+        await recordDurableMcpToolInvocation({
+          env: this.env,
+          toolId: 'session_summary',
+          status: 'success',
+          latencyMs: 0,
+          metadata: { ...summary },
+          userId,
+          workspaceId: summary.workspace_id,
+          sourceClient,
+          fallbackClient: this.sessionContext.clientName
+            ? {
+                name: this.sessionContext.clientName,
+                version: this.sessionContext.clientVersion,
+              }
+            : null,
+          serverVersion: MCP_SERVER_VERSION,
+          isWidgetTool: false,
+          toolFamily: 'session',
+        });
+      }
+
+      console.info('[mcp:session-summary] Flushed session summary', {
+        sessionId: summary.session_id,
+        toolCallCount: summary.tool_call_count,
+        clientName: summary.client_name,
+        boundInitiative: Boolean(summary.initiative_id),
+      });
+
+      this.sessionToolStats = createEmptySessionToolStats();
+      await this.ctx.storage.delete(SESSION_TOOL_STATS_STORAGE_KEY);
+    } catch (error) {
+      console.warn('[mcp:session-summary] Flush failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   private async shouldShowNewSessionWelcome(userId: string): Promise<boolean> {
     if (this.isDirectoryReviewProfile()) return false;
 
@@ -1031,6 +1280,14 @@ export class OrgXMcp extends McpAgent<
     // instance, so we must create a fresh one before onStart() calls connect().
     this.server = createInstrumentedMcpServer();
 
+    // Capture the MCP initialize handshake identity (clientInfo.name/version)
+    // the moment the client confirms initialization. This is the one place
+    // clients self-identify; persisting it makes attribution survive agents
+    // that never send the optional _context param on tool calls.
+    this.server.server.oninitialized = () => {
+      this.captureHandshakeClientInfo();
+    };
+
     // First, try to restore session auth from persistent storage
     // This handles DO resets after deployments
     await Promise.all([
@@ -1038,6 +1295,7 @@ export class OrgXMcp extends McpAgent<
       this.loadSessionContext(),
       this.loadMcpActivationState(),
       this.loadMcpSessionReentryState(),
+      this.loadSessionToolStats(),
     ]);
 
     // Diagnostic: log what the DO received from the provider
@@ -1158,10 +1416,92 @@ export class OrgXMcp extends McpAgent<
     return this.props?.email ?? this.sessionAuth.email ?? null;
   }
 
+  /**
+   * Read clientInfo from the connected MCP server, when available. The
+   * transport replays the persisted initialize request on DO wake, so this is
+   * populated for the lifetime of an initialized session.
+   */
+  private readHandshakeClientInfo(): { name: string; version?: string } | null {
+    try {
+      const info = this.server?.server?.getClientVersion?.();
+      const name = typeof info?.name === 'string' ? info.name.trim() : '';
+      if (!name) return null;
+      const version =
+        typeof info?.version === 'string' && info.version.trim()
+          ? info.version.trim()
+          : undefined;
+      return { name, ...(version ? { version } : {}) };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Persist the initialize handshake identity into the session context when
+   * it is new or changed. Safe to call opportunistically — it no-ops when
+   * nothing changed and never throws.
+   */
+  private captureHandshakeClientInfo(): void {
+    if (this.isDirectoryReviewProfile()) return;
+    const info = this.readHandshakeClientInfo();
+    if (!info) return;
+    if (
+      this.sessionContext.clientName === info.name &&
+      this.sessionContext.clientVersion === info.version
+    ) {
+      return;
+    }
+    this.sessionContext = {
+      ...this.sessionContext,
+      clientName: info.name,
+      clientVersion: info.version,
+    };
+    console.info('[mcp:session] Captured initialize handshake clientInfo', {
+      clientName: info.name,
+      clientVersion: info.version ?? null,
+    });
+    try {
+      this.ctx.waitUntil(this.saveSessionContext());
+    } catch {
+      void this.saveSessionContext();
+    }
+  }
+
+  /**
+   * Source client derived from the initialize handshake (live server state
+   * first, persisted session context as backup). Null when the handshake is
+   * unknown or maps to no recognized client.
+   */
+  private resolveHandshakeSourceClient(): SourceClient | null {
+    this.captureHandshakeClientInfo();
+    const name =
+      this.readHandshakeClientInfo()?.name ?? this.sessionContext.clientName;
+    if (!name) return null;
+    const detected = detectSourceClient({ name });
+    return detected === 'other' ? null : detected;
+  }
+
+  /**
+   * Attribution ladder: explicit agent-supplied _context wins, then the MCP
+   * initialize handshake clientInfo, then the request user-agent heuristic.
+   */
   private resolveSourceClient(context?: unknown): SourceClient | null {
     const contextClient = resolveSourceClientFromContext(context);
     if (contextClient && contextClient !== 'other') return contextClient;
+    const handshakeClient = this.resolveHandshakeSourceClient();
+    if (handshakeClient) return handshakeClient;
     return this.props?.sourceClient ?? contextClient ?? null;
+  }
+
+  /**
+   * The app-facing source_client value for outbound API bodies (activity,
+   * receipts, execution-graph, artifact attach). Null when no accepted
+   * reporting value exists — callers then omit the field entirely.
+   */
+  private resolveReportingSourceClient(
+    context?: unknown
+  ): ReportingSourceClient | null {
+    return toReportingSourceClient(this.resolveSourceClient(context));
   }
 
   /**
@@ -3436,6 +3776,24 @@ export class OrgXMcp extends McpAgent<
                 if (tool.id === 'check_spawn_guard') {
                   normalizedToolArgs = buildSpawnGuardForwardArgs(toolArgs);
                 }
+                // Server-side attribution: these endpoints accept
+                // source_client but agents almost never pass it. Default it
+                // from the session (initialize handshake → user-agent) when
+                // absent; an explicit agent-supplied value always wins.
+                if (
+                  CLIENT_REPORTING_SOURCE_TOOL_IDS.has(tool.id) &&
+                  typeof normalizedToolArgs.source_client !== 'string'
+                ) {
+                  const reportingClient = this.resolveReportingSourceClient(
+                    args._context
+                  );
+                  if (reportingClient) {
+                    normalizedToolArgs = {
+                      ...normalizedToolArgs,
+                      source_client: reportingClient,
+                    };
+                  }
+                }
                 fetchInit = {
                   method: 'POST',
                   body: JSON.stringify(normalizedToolArgs),
@@ -3830,7 +4188,7 @@ export class OrgXMcp extends McpAgent<
       createdByType: args.created_by_type ?? artifactInput.created_by_type,
       createdById:
         args.created_by_id ?? artifactInput.created_by_id ?? resolvedUserId,
-      sourceClient: resolveSourceClientFromContext(args._context),
+      sourceClient: this.resolveSourceClient(args._context),
       runOrSessionRef: crypto.randomUUID(),
     });
     const shouldAttachProof = Boolean(
@@ -4597,12 +4955,22 @@ export class OrgXMcp extends McpAgent<
               idempotency_key: args.idempotency_key,
             },
           });
+          // Default source_client from session attribution (the payload
+          // builder's strict schema covers agent args; the posted body may
+          // carry the server-resolved attribution field).
+          const attachSourceClient = this.resolveReportingSourceClient(
+            args._context
+          );
           const response = await callOrgxApiJson(
             this.env,
             '/api/client/artifacts',
             {
               method: 'POST',
-              body: JSON.stringify(attachPayload),
+              body: JSON.stringify(
+                attachSourceClient
+                  ? { ...attachPayload, source_client: attachSourceClient }
+                  : attachPayload
+              ),
             },
             { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
           );
@@ -4950,6 +5318,12 @@ export class OrgXMcp extends McpAgent<
 
         case 'orgx_submit_receipt': {
           const loopValidation = evaluateLoopReliabilityReceipt(args);
+          // Default source_client from session attribution when the agent
+          // omitted it (explicit values pass through untouched).
+          const receiptSourceClient =
+            typeof args.source_client === 'string'
+              ? null
+              : this.resolveReportingSourceClient(args._context);
           const response = await callOrgxApiJson(
             this.env,
             '/api/flywheel/receipts',
@@ -4957,6 +5331,9 @@ export class OrgXMcp extends McpAgent<
               method: 'POST',
               body: JSON.stringify({
                 ...args,
+                ...(receiptSourceClient
+                  ? { source_client: receiptSourceClient }
+                  : {}),
                 user_id: resolvedUserId,
               }),
             },
@@ -5510,6 +5887,16 @@ export class OrgXMcp extends McpAgent<
     // Apply profile-aware result-guidance filtering to every subsequent
     // registration without changing tool schemas or result envelopes.
     this.installToolResultGuidanceWrapper(allowedTools);
+
+    // Observe every tool invocation (session summary stats + idle flush).
+    // Installed before any registration so registerAppTool widget tools are
+    // covered too; idempotent per in-memory DO lifetime.
+    if (!this.sessionToolObservationInstalled) {
+      this.sessionToolObservationInstalled = true;
+      installSessionToolObservationWrapper(this.server, (toolName) =>
+        this.observeSessionToolCall(toolName)
+      );
+    }
 
     // Register ChatGPT App tools (data-driven)
     this.registerChatGPTTools(allowedTools);
@@ -6904,13 +7291,20 @@ export class OrgXMcp extends McpAgent<
               created_by_type: args.created_by_type,
               created_by_id: args.created_by_id,
             });
+            const attachSourceClient = this.resolveReportingSourceClient(
+              (args as { _context?: unknown })._context
+            );
 
             const response = await callOrgxApiJson(
               this.env,
               '/api/client/artifacts',
               {
                 method: 'POST',
-                body: JSON.stringify(attachPayload),
+                body: JSON.stringify(
+                  attachSourceClient
+                    ? { ...attachPayload, source_client: attachSourceClient }
+                    : attachPayload
+                ),
               },
               { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? null) }
             );
@@ -12061,13 +12455,20 @@ export class OrgXMcp extends McpAgent<
             preview_markdown: previewMarkdown,
             metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
           });
+          const attachSourceClient = this.resolveReportingSourceClient(
+            (args as { _context?: unknown })._context
+          );
 
           const response = await callOrgxApiJson(
             this.env,
             '/api/client/artifacts',
             {
               method: 'POST',
-              body: JSON.stringify(attachPayload),
+              body: JSON.stringify(
+                attachSourceClient
+                  ? { ...attachPayload, source_client: attachSourceClient }
+                  : attachPayload
+              ),
             },
             resolvedUserId ? { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) } : undefined
           );
