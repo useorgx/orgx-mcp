@@ -8,7 +8,8 @@ Use this runbook before each OpenAI app submission or resubmission. It verifies 
 
 - submitted ChatGPT test prompts map to exact MCP tools,
 - expected outputs are deterministic and reviewable,
-- web and mobile ChatGPT runs use the same seeded workspace baseline,
+- every enabled ChatGPT and Codex review surface uses the same seeded
+  workspace baseline,
 - tool responses do not return unnecessary personal identifiers, secrets, raw logs, request IDs, or trace IDs,
 - the published privacy policy covers current tool inputs, outputs, recipients, retention, and user controls.
 
@@ -21,6 +22,44 @@ Use this runbook before each OpenAI app submission or resubmission. It verifies 
 - Product URL: `https://useorgx.com`
 - Privacy policy URL: `https://github.com/useorgx/orgx-mcp/blob/main/docs/privacy-policy.md`
 - Support URL: `https://github.com/useorgx/orgx-mcp/issues`
+- Terms URL: `https://useorgx.com/terms`
+
+## Current Plugin Portal Checklist
+
+Submit through the OpenAI Platform plugin portal at
+<https://platform.openai.com/plugins>. Use submission type **With MCP** and
+enter the production Universal URL directly. Do not reference an older
+integration ID. `chatgpt-app-submission.json` remains the checked-in source of
+truth for listing copy, annotations, and tests, but it is not proof that the
+current portal supports JSON import.
+
+Before opening review, confirm all of the following in the portal:
+
+- the submitting organization has verified OrgX business identity and the
+  operator has Apps Management read/write access, including `api.apps.write`;
+- the selected project uses global, not EU-only, data residency;
+- website, support, privacy, terms, category, short and long descriptions,
+  starter prompts, country/region availability, localization, and release
+  notes are populated with one consistent OrgX publisher identity;
+- each positive test includes the dedicated seeded-workspace fixture and
+  access instructions required to reproduce its expected result;
+- the reviewer login is already populated and works without signup, MFA, SMS,
+  email confirmation, or private-network access;
+- a fresh **Scan Tools** result matches the deployed tool names,
+  descriptions, schemas, security schemes, annotations, `_meta`, UI resources,
+  CSP, and verified domains;
+- no other version of this MCP-backed plugin is already under review.
+
+There is no general first-party requirement for a demo MP4 in the current
+published review documentation. If the live portal marks media as required,
+follow that field's current contract. For a plugin with UI, use authentic
+captures from enabled review surfaces; do not substitute local fixtures or
+synthetic renders.
+
+Current first-party references: [plugin submission](https://developers.openai.com/plugins/deploy/submission),
+[app review requirements](https://developers.openai.com/plugins/deploy/app-review),
+[plugin guidelines](https://developers.openai.com/plugins/app-guidelines), and
+[ChatGPT/Codex testing](https://developers.openai.com/plugins/deploy/connect-chatgpt).
 
 Five submitted tools are strictly read-only: `orgx_inspect`,
 `review_artifact`, `get_morning_brief`, `get_operator_chronicle`, and
@@ -63,7 +102,9 @@ local route tests.
 
 ## Reviewer Workspace Baseline
 
-Run the submitted prompts only against a dedicated OpenAI review workspace. Before each web or mobile run, reset or bootstrap that workspace so the baseline is stable.
+Run the submitted prompts only against a dedicated OpenAI review workspace.
+Before each supported-surface run, reset or bootstrap that workspace so the
+baseline is stable.
 
 Expected seeded data:
 
@@ -104,12 +145,17 @@ These prompts must match `chatgpt-app-submission.json`.
 | 2 | `Search the web for the latest OpenAI pricing.` | OrgX should not be invoked because generic web search is outside this app. |
 | 3 | `Remember my personal coffee preference forever.` | OrgX should not be invoked because personal preference memory is outside organizational workflows. |
 
-## Web And Mobile Verification
+## Supported-Surface Verification
 
-Run all submitted test cases twice:
+Run every submitted positive and negative test on every surface enabled in the
+portal. At minimum, cover the current ChatGPT and Codex surfaces selected for
+publication:
 
-1. ChatGPT web with the OpenAI review account connected to the dedicated workspace.
-2. ChatGPT mobile with the same account and same workspace after resetting the seed state.
+1. ChatGPT web/desktop with the OpenAI review account connected to the
+   dedicated workspace.
+2. Codex with the same OrgX account and reset workspace when Codex is enabled.
+3. Any additional portal-selected surface, including mobile if the portal
+   offers and enables it for this release.
 
 For each run, capture:
 
@@ -120,7 +166,8 @@ For each run, capture:
 - any UI loading, image, or console error,
 - pass/fail against the expected result.
 
-Do not mark the app ready for resubmission until every positive and negative case passes on both web and mobile.
+Do not mark the plugin ready for resubmission until every positive and negative
+case passes on every enabled surface.
 
 ## Output Privacy Audit
 
@@ -157,14 +204,18 @@ false contract. Add exact schemas incrementally at each tool definition, keep
 `additionalProperties: false` where the returned object is closed, and validate
 representative success, empty, auth-error, validation-error, and provider-error
 results as each schema lands. Rerun `pnpm test:openai-review` plus the
-authenticated ChatGPT web/mobile cases after each schema change; do not invent
-a schema merely to silence the warning.
+authenticated enabled-surface cases after each schema change; do not invent a
+schema merely to silence the warning.
 
 ## Resubmission Notes
 
-In the OpenAI dashboard release notes, summarize:
+In the OpenAI plugin portal release notes, summarize:
 
 - privacy policy expanded to cover collected data, tool inputs, tool outputs, recipients, retention, and user controls,
 - submitted test cases rewritten with exact expected tool names and deterministic seeded outputs,
-- web and mobile verification rerun against the dedicated review workspace,
+- enabled ChatGPT/Codex surface verification rerun against the dedicated
+  review workspace,
 - output audit completed to remove unnecessary identifiers and secrets.
+
+Approval and publication are separate states. After approval, publish the
+approved version explicitly in the portal and retain that publication receipt.

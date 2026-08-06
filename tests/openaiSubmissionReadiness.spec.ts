@@ -288,16 +288,17 @@ describe('OpenAI ChatGPT app submission readiness', () => {
     }
   });
 
-  it('documents web, mobile, and output privacy verification for reviewers', () => {
+  it('documents enabled-surface and output privacy verification for reviewers', () => {
     const requiredRunbookPhrases = [
-      'ChatGPT web',
-      'ChatGPT mobile',
-      'same seeded workspace baseline',
+      'ChatGPT web/desktop',
+      'Codex',
+      'every enabled ChatGPT and Codex review surface',
+      'including mobile if the portal',
       'tool responses',
       'nested widget payloads',
       'raw access tokens',
       'internal request IDs',
-      'Do not mark the app ready for resubmission',
+      'Do not mark the plugin ready for resubmission',
     ];
 
     for (const phrase of requiredRunbookPhrases) {

@@ -106,9 +106,10 @@ Use these exact prompts during reviewer QA:
 
 Response screenshots are pending authenticated post-deploy capture. Use the
 exact prompt matrix above in Claude after connecting the deployed directory
-profile, then capture the real search, agent-status, initiative-pulse, and
-morning-brief responses. Do not use synthetic fixtures, local renders, or a
-write, approval, delegation, or scaffold flow as directory evidence.
+profile, then capture 3–5 real PNG responses that are at least 1000 px wide,
+cropped to the Claude app response only, and paired with the exact prompt text.
+Do not use synthetic fixtures, local renders, video, GIF, or a write, approval,
+delegation, or scaffold flow as directory evidence.
 
 ## Support notes
 

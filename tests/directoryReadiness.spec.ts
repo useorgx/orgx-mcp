@@ -255,6 +255,10 @@ describe('Anthropic directory readiness', () => {
     expect(anthropicSubmissionForm).toMatch(
       /Local\s+fixtures, synthetic renders, and generic demo images are not submission\s+evidence/
     );
+    expect(anthropicSubmissionForm).toContain('3–5 PNG files');
+    expect(anthropicSubmissionForm).toContain('at least 1000 px wide');
+    expect(anthropicSubmissionForm).toMatch(/Claude app\s+response only/);
+    expect(anthropicSubmissionForm).toContain('Video and GIF files');
     expect(anthropicSubmissionForm).not.toContain(
       'anthropic-memory-search-response.png'
     );

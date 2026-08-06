@@ -88,9 +88,11 @@ Before submission, prepare all of the following:
    - `POST https://useorgx.com/api/review/sessions/<token>/bootstrap`
    - `POST https://useorgx.com/api/review/sessions/<token>/reset`
 9. Reviewer runbook and release-manager checklist included in this repository.
-10. Authenticated response screenshots captured after deployment from real
-    Claude runs against the dedicated reviewer workspace. Synthetic or local
-    fixture renders are excluded from submission evidence.
+10. Three to five authenticated response PNGs captured after deployment from
+    real Claude runs against the dedicated reviewer workspace, each at least
+    1000 px wide, cropped to the Claude app response only, and paired with the
+    exact prompt. Synthetic/local fixtures, video, and GIF are excluded from
+    submission evidence.
 
 ## Pre-submission checks
 
@@ -132,9 +134,11 @@ Reviewers should be able to perform all of these on the provided account:
 
 Screenshot evidence is pending authenticated post-deploy capture. Run the
 exact prompts above in Claude against the deployed directory profile and
-capture the resulting search, agent-status, initiative-pulse, and
-morning-brief responses. Do not use generated fixtures, local widget renders,
-landing-page images, or generic demos as provider evidence.
+capture 3–5 PNG search, agent-status, initiative-pulse, and morning-brief
+responses. Each image must be at least 1000 px wide, cropped to the Claude app
+response only, and paired with the exact prompt. Do not use generated
+fixtures, local widget renders, landing-page images, generic demos, video, or
+GIF as provider evidence.
 
 ## Manual operational checklist
 

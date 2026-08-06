@@ -54,9 +54,10 @@ Capture authenticated post-deploy evidence for:
 - agent status widget mounted
 - morning brief widget mounted
 - operator chronicle returned proof context
-- real response screenshots for the exact search, agent-status,
-  initiative-pulse, and morning-brief prompts; generated fixtures and local
-  renders are not acceptable submission evidence
+- 3–5 real response PNGs, each at least 1000 px wide and cropped to the Claude
+  app response only, for the exact search, agent-status, initiative-pulse, and
+  morning-brief prompts; generated fixtures, local renders, video, and GIF are
+  not acceptable submission evidence
 
 ## Submission package
 
@@ -74,8 +75,14 @@ Confirm all of the following are ready:
   `readOnlyHint: false`
 - directory scan contains no mutation prompts, skill packs, or unrelated widgets
 - HTTPS Origin validation receipt captured for invalid, trusted, and no-Origin requests
-- authenticated post-deploy response screenshots have been captured from real
-  Claude runs and retained for the provider upload
+- 3–5 authenticated post-deploy response PNGs have been captured from real
+  Claude runs, are at least 1000 px wide, are cropped to the app response only,
+  are paired with exact prompts, and are retained for the provider upload
+- permanent slug, 1–5 categories, documentation URL, company website, primary
+  review contact, and allowed owned link origins match the current portal
+- API ownership, PHI, sponsored-content, and other data-handling answers are
+  complete, all seven portal acknowledgements are checked, and the submission
+  receipt is retained
 
 ## During review
 
