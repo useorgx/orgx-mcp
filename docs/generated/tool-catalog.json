@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-05T22:34:12.616Z",
-  "sourceHash": "9c98d5cedbadd50a",
+  "generatedAt": "2026-08-06T20:11:28.325Z",
+  "sourceHash": "144436b86a93f210",
   "version": "1.0.0",
   "totalTools": 81,
   "categories": [
@@ -74,7 +74,9 @@
       "profiles": [
         "v2",
         "chatgpt",
-        "claude-directory"
+        "claude-directory",
+        "claude-plugin",
+        "read-only"
       ]
     },
     {
@@ -1138,6 +1140,7 @@
       "source": "client_integration",
       "profiles": [
         "v2",
+        "claude-plugin",
         "executor"
       ]
     },
@@ -2262,7 +2265,9 @@
       "profiles": [
         "v2",
         "chatgpt",
-        "claude-directory"
+        "claude-directory",
+        "claude-plugin",
+        "read-only"
       ]
     },
     {
@@ -2307,7 +2312,9 @@
       "profiles": [
         "v2",
         "chatgpt",
-        "claude-directory"
+        "claude-directory",
+        "claude-plugin",
+        "read-only"
       ]
     },
     {
@@ -2937,6 +2944,7 @@
       "profiles": [
         "v2",
         "chatgpt",
+        "claude-plugin",
         "memory",
         "commander",
         "executor"
@@ -2981,6 +2989,7 @@
       "profiles": [
         "v2",
         "chatgpt",
+        "claude-plugin",
         "memory",
         "commander",
         "planner",
@@ -3066,6 +3075,7 @@
       "profiles": [
         "v2",
         "chatgpt",
+        "claude-plugin",
         "memory",
         "commander",
         "planner",
@@ -3142,6 +3152,8 @@
         "v2",
         "chatgpt",
         "claude-directory",
+        "claude-plugin",
+        "read-only",
         "memory",
         "commander",
         "planner",
@@ -3289,6 +3301,8 @@
         "v2",
         "chatgpt",
         "claude-directory",
+        "claude-plugin",
+        "read-only",
         "memory",
         "commander",
         "observer"
@@ -3384,6 +3398,8 @@
         "v2",
         "chatgpt",
         "claude-directory",
+        "claude-plugin",
+        "read-only",
         "memory",
         "commander",
         "planner",
@@ -3648,6 +3664,7 @@
       "profiles": [
         "v2",
         "chatgpt",
+        "claude-plugin",
         "memory",
         "commander",
         "executor"
@@ -4241,6 +4258,8 @@
         "v2",
         "chatgpt",
         "claude-directory",
+        "claude-plugin",
+        "read-only",
         "commander",
         "observer"
       ]

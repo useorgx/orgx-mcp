@@ -159,7 +159,7 @@ describe('request URL tool-profile propagation', () => {
     }
   });
 
-  it('fails an unknown URL profile closed to v2 instead of the directory profile', async () => {
+  it('fails an unknown URL profile closed to the read-only fallback, not v2 or the directory profile', async () => {
     const handler = createInMemoryMcpHandler();
     const ctx: TestContext = {};
     const response = await handler.fetch(
@@ -175,12 +175,15 @@ describe('request URL tool-profile propagation', () => {
       result: { tools: Array<{ name: string }> };
     };
 
-    expect(ctx.props?.profile).toBe('v2');
-    expect(body.result.tools.map((tool) => tool.name)).toEqual(
-      serverManifest.tools.map((tool) => tool.name)
-    );
-    expect(body.result.tools.map((tool) => tool.name)).not.toEqual([
+    // Unknown names resolve to the dedicated read-only fallback: the same
+    // seven read tools as claude-directory, but under a distinct name so the
+    // directory profile's review-mode suppression semantics do not apply.
+    expect(ctx.props?.profile).toBe('read-only');
+    expect(body.result.tools.map((tool) => tool.name)).toEqual([
       ...CLAUDE_DIRECTORY_SURFACE,
     ]);
+    expect(body.result.tools.map((tool) => tool.name)).not.toEqual(
+      serverManifest.tools.map((tool) => tool.name)
+    );
   });
 });

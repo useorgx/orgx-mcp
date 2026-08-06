@@ -18,7 +18,8 @@ export type RequestHandler<Environment, Context> = {
  * OAuthProvider replaces `ctx.props` with the decrypted access-token props
  * before dispatching to `/mcp` or `/sse`, so this must run inside the handler
  * supplied to OAuthProvider rather than in the outer Worker fetch method.
- * Missing and unknown profiles fail closed to the public v2 surface.
+ * Missing profiles default to v2; unknown profiles fail closed to the
+ * read-only fallback surface.
  */
 export function attachRequestToolProfile(
   request: Request,

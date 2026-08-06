@@ -2,7 +2,7 @@
 // vendored worker copy at orgx/workers/orgx-mcp was removed. toolProfiles is
 // deprecated in favor of the web repo's lib/server/toolManifest, but dispatch
 // still resolves profiles through it — keep the compat surface pinned.
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import serverManifest from '../server.json';
 import { V2_PUBLIC_TOOL_IDS } from '../src/bootstrapPayload';
@@ -10,6 +10,7 @@ import { PRIMARY_AUTHENTICATED_TOOLS } from '../src/publicMcpDiscovery';
 import {
   CHATGPT_PUBLIC_SURFACE,
   CLAUDE_DIRECTORY_SURFACE,
+  CLAUDE_PLUGIN_SURFACE,
   GROUPED_V2_PUBLIC_SURFACE,
   resolveProfileToolSet,
   resolveToolProfile,
@@ -123,15 +124,83 @@ describe('toolProfiles backward compatibility', () => {
     expect(undefinedTools).toEqual(defaultTools);
   });
 
-  it('fails unknown profiles closed to the default v2 surface', () => {
-    expect(resolveProfileToolSet('typo-admin')).toEqual(
-      resolveProfileToolSet('v2')
-    );
+  it('fails unknown profiles closed to the read-only fallback surface', () => {
+    const fallbackTools = resolveProfileToolSet('typo-admin');
+    expect(fallbackTools).toEqual(resolveProfileToolSet('read-only'));
+    expect([...(fallbackTools ?? [])]).toEqual([...CLAUDE_DIRECTORY_SURFACE]);
     expect(resolveToolProfile('typo-admin')).toMatchObject({
-      name: 'v2',
+      name: 'read-only',
       requestedName: 'typo-admin',
       fellBack: true,
     });
+    // Every tool on the fallback surface is a read.
+    for (const excludedTool of [
+      'orgx_write',
+      'orgx_act',
+      'orgx_spawn',
+      'orgx_attach',
+      'orgx_submit_receipt',
+      'orgx_emit_activity',
+      'scaffold_initiative',
+      'spawn_agent_task',
+    ]) {
+      expect(
+        fallbackTools?.has(excludedTool),
+        `${excludedTool} must stay off the read-only fallback`
+      ).toBe(false);
+    }
+  });
+
+  it('logs a warning when an unknown profile falls back', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      resolveToolProfile('typo-admin');
+      expect(warn).toHaveBeenCalledWith(
+        '[mcp:profiles] Unknown tool profile; failing closed to read-only surface',
+        { requested: 'typo-admin', effective: 'read-only' }
+      );
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('gives the claude-plugin profile the directory reads plus the lean write set', () => {
+    const pluginTools = resolveProfileToolSet('claude-plugin');
+
+    expect([...(pluginTools ?? [])]).toEqual([...CLAUDE_PLUGIN_SURFACE]);
+    for (const readTool of CLAUDE_DIRECTORY_SURFACE) {
+      expect(
+        pluginTools?.has(readTool),
+        `${readTool} must stay on the claude-plugin profile`
+      ).toBe(true);
+    }
+    for (const writeTool of [
+      'orgx_emit_activity',
+      'orgx_submit_receipt',
+      'orgx_attach',
+      'orgx_decide',
+      'orgx_bootstrap',
+    ]) {
+      expect(
+        pluginTools?.has(writeTool),
+        `${writeTool} must be on the claude-plugin profile`
+      ).toBe(true);
+    }
+    // The plugin surface stays lean: no broad writes or delegation.
+    for (const excludedTool of [
+      'orgx_write',
+      'orgx_act',
+      'orgx_spawn',
+      'orgx_plan',
+      'scaffold_initiative',
+      'spawn_agent_task',
+      'manage_lifecycle',
+    ]) {
+      expect(
+        pluginTools?.has(excludedTool),
+        `${excludedTool} must stay off the claude-plugin profile`
+      ).toBe(false);
+    }
   });
 
   it('reports omitted profile negotiation as v2 rather than full', () => {

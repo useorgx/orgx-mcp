@@ -5503,7 +5503,8 @@ export class OrgXMcp extends McpAgent<
 
   private registerTools() {
     // Resolve tool profile from connection props (e.g. ?profile=executor).
-    // Missing/unknown names fail closed to v2; null is explicit full only.
+    // Missing names default to v2; unknown names fail closed to the
+    // read-only fallback; null is explicit full only.
     const allowedTools = resolveToolProfile(this.props?.profile).tools;
 
     // Apply profile-aware result-guidance filtering to every subsequent
