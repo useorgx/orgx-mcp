@@ -188,7 +188,7 @@ describe('mcpTransport', () => {
       sourceClient: 'codex',
       workspace_id: 'ws-1',
       userId: 'user-123',
-      profile: 'v2',
+      profile: 'read-only',
     });
   });
 

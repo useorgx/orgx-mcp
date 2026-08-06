@@ -120,7 +120,35 @@ describe('MCP session storage (DO persistence)', () => {
       workspace_id: 'ws_2',
       workspace_name: null,
       initiative_id: 'init_2',
+      client_name: null,
+      client_version: null,
       updated_at: 999,
     });
+  });
+
+  it('round-trips the initialize handshake clientInfo through store + parse', () => {
+    const stored = toStoredSessionContext(
+      {
+        workspaceId: 'ws_3',
+        clientName: 'claude-code',
+        clientVersion: '2.1.0',
+      },
+      999
+    );
+    expect(stored.client_name).toBe('claude-code');
+    expect(stored.client_version).toBe('2.1.0');
+
+    expect(parseStoredSessionContext(stored)).toEqual({
+      workspaceId: 'ws_3',
+      clientName: 'claude-code',
+      clientVersion: '2.1.0',
+    });
+  });
+
+  it('keeps a context row alive when only the handshake identity is present', () => {
+    expect(
+      parseStoredSessionContext({ client_name: 'codex', updated_at: 1 })
+    ).toEqual({ clientName: 'codex' });
+    expect(parseStoredSessionContext({ updated_at: 1 })).toBeNull();
   });
 });

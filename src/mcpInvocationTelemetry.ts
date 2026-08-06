@@ -95,6 +95,12 @@ export function recordDurableMcpToolInvocation(params: {
   workspaceId?: string | null;
   sourceClient?: SourceClient | null;
   context?: unknown;
+  /**
+   * Session-scoped clientInfo captured from the MCP initialize handshake.
+   * Used only when the agent supplied no _context.client — explicit agent
+   * context always wins.
+   */
+  fallbackClient?: { name?: string; version?: string } | null;
   errorCode?: string | null;
   serverVersion?: string;
   isWidgetTool?: boolean;
@@ -112,9 +118,14 @@ export function recordDurableMcpToolInvocation(params: {
         status: params.status,
         latency_ms: params.latencyMs,
         source: 'mcp_worker',
-        client_name: clientInfo.clientName ?? params.sourceClient ?? undefined,
+        client_name:
+          clientInfo.clientName ??
+          params.fallbackClient?.name ??
+          params.sourceClient ??
+          undefined,
         client_platform: params.sourceClient ?? undefined,
-        client_version: clientInfo.clientVersion,
+        client_version:
+          clientInfo.clientVersion ?? params.fallbackClient?.version,
         tool_family: params.toolFamily ?? 'mcp_tool',
         auth_source: params.userId ? 'session' : 'none',
         error_code: params.errorCode ?? undefined,
