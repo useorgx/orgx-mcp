@@ -13,6 +13,13 @@ import {
 import { recordDurableMcpToolInvocation } from './mcpInvocationTelemetry';
 import type { OrgxApiEnv } from './orgxApi';
 import type { SourceClient } from './cross-pollination';
+import {
+  getSessionClientInfo,
+  parseInitializeClientInfo,
+  putSessionClientInfo,
+  resolveSessionClientInfoKv,
+  type McpHandshakeClientInfo,
+} from './sessionClientInfo';
 import { resolveToolProfile } from './toolProfiles';
 import {
   validateMcpRequestOrigin,
@@ -125,6 +132,7 @@ async function normalizeRequestBody(request: Request): Promise<{
   request: Request;
   warning?: DeprecatedToolWarning;
   toolCall?: McpToolCallTelemetry;
+  initializeClientInfo?: McpHandshakeClientInfo;
 }> {
   // Only process POST requests with JSON body
   if (request.method !== 'POST') return { request };
@@ -138,6 +146,13 @@ async function normalizeRequestBody(request: Request): Promise<{
       method?: string;
       params?: { name?: string; arguments?: Record<string, unknown> };
     };
+
+    // The initialize handshake is the one place MCP clients self-identify.
+    // Surface clientInfo so the transport can persist it per session.
+    const initializeClientInfo = parseInitializeClientInfo(body) ?? undefined;
+    if (initializeClientInfo) {
+      return { request, initializeClientInfo };
+    }
 
     // Only normalize tools/call requests
     if (body.method !== 'tools/call' || !body.params?.name) {
@@ -625,7 +640,8 @@ async function captureMcpToolCallVisibility<Env>(
   toolCall: McpToolCallTelemetry | undefined,
   response: Response,
   journey: McpJourneyTimings,
-  errorCode?: string | null
+  errorCode?: string | null,
+  sessionId?: string | null
 ): Promise<void> {
   if (!toolCall) return;
 
@@ -651,6 +667,28 @@ async function captureMcpToolCallVisibility<Env>(
   const distinctId = auth.userId ?? resolveAnonymousDistinctId(ctx);
   const { metadata, workspaceId, sourceClient } =
     sanitizeToolCallMetadata(toolCall);
+
+  // Agents rarely repeat their identity in _context, so fall back to the
+  // clientInfo captured from this session's initialize handshake. Explicit
+  // agent-supplied context always wins.
+  let handshakeClientInfo: McpHandshakeClientInfo | null = null;
+  if ((!sourceClient || !metadata.client_name) && sessionId) {
+    const kv = resolveSessionClientInfoKv(env);
+    if (kv) {
+      handshakeClientInfo = await getSessionClientInfo(kv, sessionId);
+    }
+  }
+  const handshakeSourceClient = handshakeClientInfo
+    ? normalizeTelemetrySourceClient(handshakeClientInfo.name)
+    : undefined;
+  const effectiveSourceClient = sourceClient ?? handshakeSourceClient;
+  if (handshakeClientInfo && !metadata.client_name) {
+    metadata.client_name = handshakeClientInfo.name;
+    metadata.client_version =
+      metadata.client_version ?? handshakeClientInfo.version;
+    metadata.client_name_source = 'initialize_handshake';
+  }
+
   const toolFamily = classifyToolFamily(toolCall.toolName);
   const contentLengthHeader = response.headers.get('content-length');
   const responseSizeHeader =
@@ -734,7 +772,7 @@ async function captureMcpToolCallVisibility<Env>(
       error_kind: resolvedErrorKind,
       has_user_id: Boolean(auth.userId),
       workspace_id: workspaceId,
-      source_client: sourceClient,
+      source_client: effectiveSourceClient,
       request_id: requestId,
     },
   });
@@ -748,8 +786,9 @@ async function captureMcpToolCallVisibility<Env>(
       metadata: transportMetadata,
       userId: auth.userId ?? null,
       workspaceId: workspaceId ?? null,
-      sourceClient: sourceClient ?? null,
+      sourceClient: effectiveSourceClient ?? null,
       context: toolCall.context,
+      fallbackClient: handshakeClientInfo,
       errorCode: resolvedErrorCode ??
         (status === 'error' ? resolvedErrorKind ?? `http_${response.status}` : null),
       isWidgetTool: false,
@@ -905,11 +944,12 @@ export async function handleMcpRequest<Env, Props>(
 
   // Normalize tool names in the request body (strips server prefixes like "Orgx:")
   const normalizationStartedAt = Date.now();
-  const { request: normalizedRequest, warning, toolCall } =
+  const { request: normalizedRequest, warning, toolCall, initializeClientInfo } =
     await normalizeRequestBody(request);
   const normalizationMs = Math.max(0, Date.now() - normalizationStartedAt);
   captureDeprecatedToolTelemetry(env, ctx as ExecutionContextWithProps<unknown>, auth, warning);
 
+  const requestSessionId = request.headers.get('mcp-session-id')?.trim() || null;
   const startedAt = Date.now();
   let response: Response;
   try {
@@ -929,13 +969,28 @@ export async function handleMcpRequest<Env, Props>(
         handlerMs,
         responseHeadersMs: Math.max(0, Date.now() - requestStartedAt),
         profile: connectionProfile,
-        sessionPresent: Boolean(request.headers.get('mcp-session-id')),
+        sessionPresent: Boolean(requestSessionId),
       },
-      classifyMcpToolError(error)
+      classifyMcpToolError(error),
+      requestSessionId
     ));
     throw error;
   }
   const handlerMs = Math.max(0, Date.now() - startedAt);
+
+  // Persist the handshake identity per MCP session. The server assigns the
+  // session id on the initialize response, so prefer the response header.
+  if (initializeClientInfo) {
+    const kv = resolveSessionClientInfoKv(env);
+    const sessionId =
+      response.headers.get('mcp-session-id')?.trim() || requestSessionId;
+    if (kv && sessionId) {
+      ctx.waitUntil?.(
+        putSessionClientInfo(kv, sessionId, initializeClientInfo)
+      );
+    }
+  }
+
   ctx.waitUntil?.(captureMcpToolCallVisibility(
     env,
     ctx as ExecutionContextWithProps<unknown>,
@@ -949,8 +1004,10 @@ export async function handleMcpRequest<Env, Props>(
       handlerMs,
       responseHeadersMs: Math.max(0, Date.now() - requestStartedAt),
       profile: connectionProfile,
-      sessionPresent: Boolean(request.headers.get('mcp-session-id')),
-    }
+      sessionPresent: Boolean(requestSessionId),
+    },
+    undefined,
+    requestSessionId
   ));
   return withCors(
     withDeprecatedToolWarningHeaders(response, warning),

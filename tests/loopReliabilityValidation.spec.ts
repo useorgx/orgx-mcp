@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   evaluateLoopReliabilityReceipt,
   normalizeLoopValidationRung,
+  withReceiptEvidenceSourceClient,
 } from '../src/loopReliabilityValidation';
 
 describe('loop reliability receipt validation', () => {
@@ -76,5 +77,62 @@ describe('loop reliability receipt validation', () => {
       'overnight_canary'
     );
     expect(normalizeLoopValidationRung('unknown')).toBeNull();
+  });
+});
+
+describe('withReceiptEvidenceSourceClient', () => {
+  it('defaults evidence.source_client into an evidence object without attribution', () => {
+    const receipt = {
+      artifact_id: 'artifact_123',
+      evidence: { links: ['https://useorgx.com/artifacts/a'] },
+    };
+    expect(withReceiptEvidenceSourceClient(receipt, 'claude')).toEqual({
+      artifact_id: 'artifact_123',
+      evidence: {
+        links: ['https://useorgx.com/artifacts/a'],
+        source_client: 'claude',
+      },
+    });
+    // The input receipt is not mutated.
+    expect(receipt.evidence).toEqual({
+      links: ['https://useorgx.com/artifacts/a'],
+    });
+  });
+
+  it('creates the evidence object when the receipt carried none', () => {
+    expect(
+      withReceiptEvidenceSourceClient({ artifact_id: 'artifact_123' }, 'codex')
+    ).toEqual({
+      artifact_id: 'artifact_123',
+      evidence: { source_client: 'codex' },
+    });
+  });
+
+  it('keeps agent-supplied evidence attribution authoritative', () => {
+    for (const attributed of [
+      { agent_type: 'sales' },
+      { source_client: 'cursor' },
+      { source: 'ci' },
+    ]) {
+      const receipt = { evidence: attributed };
+      expect(withReceiptEvidenceSourceClient(receipt, 'claude')).toBe(receipt);
+    }
+  });
+
+  it('leaves non-object evidence shapes untouched', () => {
+    const urlEvidence = { evidence: 'https://useorgx.com/artifacts/a' };
+    expect(withReceiptEvidenceSourceClient(urlEvidence, 'claude')).toBe(
+      urlEvidence
+    );
+    const listEvidence = { evidence: ['https://useorgx.com/artifacts/a'] };
+    expect(withReceiptEvidenceSourceClient(listEvidence, 'claude')).toBe(
+      listEvidence
+    );
+  });
+
+  it('no-ops when no client could be resolved', () => {
+    const receipt = { artifact_id: 'artifact_123' };
+    expect(withReceiptEvidenceSourceClient(receipt, null)).toBe(receipt);
+    expect(withReceiptEvidenceSourceClient(receipt, '  ')).toBe(receipt);
   });
 });

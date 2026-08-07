@@ -1,5 +1,5 @@
 import { WIDGET_URIS } from './toolDefinitions';
-import { resolveToolProfile } from './toolProfiles';
+import { READ_ONLY_FALLBACK_PROFILE, resolveToolProfile } from './toolProfiles';
 
 export const CLAUDE_DIRECTORY_WIDGET_URIS = [
   WIDGET_URIS.agentStatus,
@@ -20,12 +20,15 @@ export interface ProfileDiscoveryPolicy {
  * Keep auxiliary MCP discovery coherent with the negotiated tool profile.
  * The Anthropic directory endpoint is intentionally smaller than the general
  * OrgX surface, so it does not advertise mutation prompts, skill packs that
- * require unavailable tools, or unrelated action widgets.
+ * require unavailable tools, or unrelated action widgets. The read-only
+ * fallback (unknown profile names) shares that restricted discovery because
+ * it exposes the same seven read tools.
  */
 export function resolveProfileDiscoveryPolicy(
   profileName: string | undefined | null
 ): ProfileDiscoveryPolicy {
-  if (resolveToolProfile(profileName).name === 'claude-directory') {
+  const resolved = resolveToolProfile(profileName).name;
+  if (resolved === 'claude-directory' || resolved === READ_ONLY_FALLBACK_PROFILE) {
     return {
       includeInitiativeResource: false,
       includeSkillResources: false,

@@ -234,6 +234,23 @@ exports[`tool discovery snapshot > per-profile snapshots > profile "claude-direc
 ]
 `;
 
+exports[`tool discovery snapshot > per-profile snapshots > profile "claude-plugin" exposes a locked tool set > profile-claude-plugin-tool-ids 1`] = `
+[
+  "get_agent_status",
+  "get_initiative_pulse",
+  "get_morning_brief",
+  "get_operator_chronicle",
+  "orgx_attach",
+  "orgx_bootstrap",
+  "orgx_decide",
+  "orgx_emit_activity",
+  "orgx_inspect",
+  "orgx_recommend",
+  "orgx_search",
+  "orgx_submit_receipt",
+]
+`;
+
 exports[`tool discovery snapshot > per-profile snapshots > profile "commander" exposes a locked tool set > profile-commander-tool-ids 1`] = `
 [
   "check_execution_readiness",
@@ -323,6 +340,18 @@ exports[`tool discovery snapshot > per-profile snapshots > profile "planner" exp
   "orgx_search",
   "orgx_write",
   "scaffold_initiative",
+]
+`;
+
+exports[`tool discovery snapshot > per-profile snapshots > profile "read-only" exposes a locked tool set > profile-read-only-tool-ids 1`] = `
+[
+  "get_agent_status",
+  "get_initiative_pulse",
+  "get_morning_brief",
+  "get_operator_chronicle",
+  "orgx_inspect",
+  "orgx_recommend",
+  "orgx_search",
 ]
 `;
 

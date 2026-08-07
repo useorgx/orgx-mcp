@@ -153,16 +153,18 @@ describe('tool discovery snapshot', () => {
     expect(resolveProfileToolSet(null)).toEqual(expected);
   });
 
-  it('keeps bootstrap on stateful profiles and off the directory review profile', () => {
+  it('keeps bootstrap on stateful profiles and off the read-only surfaces', () => {
     // Bootstrap persists workspace/session continuity, so the independently
-    // focused Anthropic review profile must exclude it.
+    // focused Anthropic review profile and the fail-closed read-only fallback
+    // must both exclude it.
     const REQUIRED = ['orgx_bootstrap'];
+    const READ_ONLY_PROFILES = new Set(['claude-directory', 'read-only']);
     const profileNames = Object.keys(TOOL_PROFILES).filter((n) => n !== 'full');
     for (const profileName of profileNames) {
       const allowed = resolveProfileToolSet(profileName);
       if (!allowed) continue;
       for (const required of REQUIRED) {
-        if (profileName === 'claude-directory') {
+        if (READ_ONLY_PROFILES.has(profileName)) {
           expect(allowed.has(required)).toBe(false);
           continue;
         }

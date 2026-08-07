@@ -16,6 +16,10 @@ export type SessionContext = {
   workspaceId?: string;
   workspaceName?: string;
   initiativeId?: string;
+  // MCP initialize handshake identity (clientInfo.name/version). Captured
+  // server-side so attribution survives agents that never send _context.
+  clientName?: string;
+  clientVersion?: string;
 };
 
 type StoredAuth = {
@@ -38,6 +42,10 @@ type StoredContext = {
   workspaceName?: unknown;
   initiative_id?: unknown;
   initiativeId?: unknown;
+  client_name?: unknown;
+  clientName?: unknown;
+  client_version?: unknown;
+  clientVersion?: unknown;
   updated_at?: unknown;
   updatedAt?: unknown;
 };
@@ -105,9 +113,23 @@ export function parseStoredSessionContext(stored: unknown): SessionContext | nul
       : typeof record.initiativeId === 'string'
       ? record.initiativeId
       : undefined;
+  const clientName =
+    typeof record.client_name === 'string'
+      ? record.client_name
+      : typeof record.clientName === 'string'
+      ? record.clientName
+      : undefined;
+  const clientVersion =
+    typeof record.client_version === 'string'
+      ? record.client_version
+      : typeof record.clientVersion === 'string'
+      ? record.clientVersion
+      : undefined;
 
-  if (!workspaceId && !workspaceName && !initiativeId) return null;
-  return { workspaceId, workspaceName, initiativeId };
+  if (!workspaceId && !workspaceName && !initiativeId && !clientName) {
+    return null;
+  }
+  return { workspaceId, workspaceName, initiativeId, clientName, clientVersion };
 }
 
 export function toStoredSessionContext(
@@ -118,6 +140,8 @@ export function toStoredSessionContext(
     workspace_id: context.workspaceId ?? null,
     workspace_name: context.workspaceName ?? null,
     initiative_id: context.initiativeId ?? null,
+    client_name: context.clientName ?? null,
+    client_version: context.clientVersion ?? null,
     updated_at: now,
   };
 }

@@ -33,6 +33,60 @@ export type SourceClient =
   | 'webapp'
   | 'other';
 
+/**
+ * The source_client enum the app's client APIs accept (activity, receipts,
+ * execution-graph, artifact attach). Distinct from the worker-internal
+ * SourceClient: the app records 'claude-code' where the worker says 'claude'.
+ * Mirrors reportingSourceClientSchema in toolDefinitions.ts.
+ */
+export type ReportingSourceClient =
+  | 'openclaw'
+  | 'codex'
+  | 'claude-code'
+  | 'chatgpt'
+  | 'cursor'
+  | 'copilot'
+  | 'gemini'
+  | 'opencode'
+  | 'cline'
+  | 'goose'
+  | 'qwen'
+  | 'kiro'
+  | 'web-ui'
+  | 'api';
+
+/**
+ * Map the worker-internal SourceClient onto the app-facing reporting enum.
+ * Returns null when there is no accepted reporting value (vscode, other) so
+ * callers omit source_client instead of sending a value the API rejects.
+ */
+export function toReportingSourceClient(
+  sourceClient: SourceClient | null | undefined
+): ReportingSourceClient | null {
+  switch (sourceClient) {
+    case 'claude':
+      return 'claude-code';
+    case 'chatgpt':
+      return 'chatgpt';
+    case 'codex':
+      return 'codex';
+    case 'cursor':
+      return 'cursor';
+    case 'opencode':
+      return 'opencode';
+    case 'openclaw':
+      return 'openclaw';
+    case 'goose':
+      return 'goose';
+    case 'api':
+      return 'api';
+    case 'webapp':
+      return 'web-ui';
+    default:
+      return null;
+  }
+}
+
 export type Domain =
   | 'product'
   | 'engineering'

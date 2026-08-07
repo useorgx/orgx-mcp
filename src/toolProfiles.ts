@@ -134,6 +134,29 @@ export const CLAUDE_DIRECTORY_SURFACE = [
   'get_operator_chronicle',
 ] as const;
 
+/**
+ * Claude Code plugin surface: the directory read set plus the lean write set
+ * the plugin needs to report real work (activity, receipts, artifacts,
+ * decisions) and bind a session via bootstrap. Unlike `claude-directory`,
+ * this profile keeps normal session persistence and telemetry.
+ */
+export const CLAUDE_PLUGIN_SURFACE = [
+  ...CLAUDE_DIRECTORY_SURFACE,
+  'orgx_emit_activity',
+  'orgx_submit_receipt',
+  'orgx_attach',
+  'orgx_decide',
+  'orgx_bootstrap',
+] as const;
+
+/**
+ * Fail-closed fallback for unknown profile names. Same seven read tools as
+ * the Anthropic directory surface, but WITHOUT the directory profile's
+ * review-mode side effects (suppressed session persistence and telemetry),
+ * so misconfigured clients stay attributable while gaining no write access.
+ */
+export const READ_ONLY_FALLBACK_PROFILE = 'read-only' as const;
+
 export const GROUPED_V2_PUBLIC_SURFACE = [
   ...V2_PUBLIC_SURFACE,
 ] as const;
@@ -152,6 +175,16 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
   'claude-directory': {
     description:
       'Anthropic Connector Directory review surface: seven focused, non-destructive, closed-world tools; three are read-only and four record metered MCP allowance usage',
+    tools: [...CLAUDE_DIRECTORY_SURFACE],
+  },
+  'claude-plugin': {
+    description:
+      'Claude Code plugin surface: the directory read set plus lean writes for activity, receipts, artifact attach, decisions, and session bootstrap',
+    tools: [...CLAUDE_PLUGIN_SURFACE],
+  },
+  [READ_ONLY_FALLBACK_PROFILE]: {
+    description:
+      'Most restrictive read-only surface. Unknown profile names fail closed here so a typo never widens tool access',
     tools: [...CLAUDE_DIRECTORY_SURFACE],
   },
   memory: {
@@ -263,7 +296,7 @@ export interface ResolvedToolProfile {
   name: string;
   /** Non-empty profile requested by the client, when one was supplied. */
   requestedName: string | null;
-  /** True when an unknown profile was reduced to the public v2 surface. */
+  /** True when an unknown profile was reduced to the read-only fallback. */
   fellBack: boolean;
   /** null is reserved for an explicit full/admin connection. */
   tools: Set<string> | null;
@@ -271,8 +304,10 @@ export interface ResolvedToolProfile {
 
 /**
  * Resolve profile negotiation once and retain the effective profile name.
- * Missing and unknown names fail closed to v2. Only an explicit `full`
- * request receives the compatibility/admin catalog.
+ * Missing names default to the compact v2 surface; UNKNOWN names fail closed
+ * to the most restrictive read-only fallback so a typo never grants write
+ * access. Only an explicit `full` request receives the compatibility/admin
+ * catalog.
  */
 export function resolveToolProfile(
   profileName: string | undefined | null
@@ -281,11 +316,19 @@ export function resolveToolProfile(
     typeof profileName === 'string' && profileName.trim().length > 0
       ? profileName.trim()
       : null;
-  const effectiveName =
-    requestedName && TOOL_PROFILES[requestedName]
+  const effectiveName = !requestedName
+    ? DEFAULT_TOOL_PROFILE
+    : TOOL_PROFILES[requestedName]
       ? requestedName
-      : DEFAULT_TOOL_PROFILE;
+      : READ_ONLY_FALLBACK_PROFILE;
   const profile = TOOL_PROFILES[effectiveName] ?? TOOL_PROFILES.v2;
+
+  if (requestedName && requestedName !== effectiveName) {
+    console.warn(
+      '[mcp:profiles] Unknown tool profile; failing closed to read-only surface',
+      { requested: requestedName, effective: effectiveName }
+    );
+  }
 
   return {
     name: effectiveName,
