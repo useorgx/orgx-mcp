@@ -122,6 +122,7 @@ id = "8570c22420cf4cc1b287416cbe6bb7c6"
 # `wrangler secret put --env preview`
 [env.preview.vars]
 ORGX_API_URL = "https://staging.useorgx.com"
+ORGX_API_FALLBACK_URL = "https://staging.useorgx.com"
 ORGX_WEB_URL = "https://staging.useorgx.com"
 MCP_SERVER_URL = "https://mcp-staging.useorgx.com"
 AUTH_SERVER_URL = "https://mcp-staging.useorgx.com"
