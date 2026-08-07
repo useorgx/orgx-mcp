@@ -80,6 +80,28 @@ export type EntityActionAttachPayload = {
   created_by_id?: string;
 };
 
+/**
+ * Fold server-resolved client attribution into the attach payload.
+ *
+ * `/api/client/artifacts` validates its body with a `.strict()` schema that has
+ * no `source_client` key, and `work_artifacts` has no such column — so sending
+ * it at the top level makes the server reject its own injected field
+ * ("Unrecognized key: source_client"). `metadata` is an open record on both the
+ * contract and the table, and is where the builder already parks the other
+ * derived attribution fields (agent_type, owner, ...), so attribution lands
+ * there instead.
+ */
+export function withAttachSourceClient(
+  payload: EntityActionAttachPayload,
+  sourceClient: string | null | undefined
+): EntityActionAttachPayload {
+  if (!sourceClient) return payload;
+  return {
+    ...payload,
+    metadata: { ...(payload.metadata ?? {}), source_client: sourceClient },
+  };
+}
+
 export function buildEntityActionAttachPayload(
   args: unknown
 ): EntityActionAttachPayload {
