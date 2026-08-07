@@ -32,6 +32,9 @@
     "test:openai-review": "vitest run tests/openaiSubmissionReadiness.spec.ts",
     "test:mcp-contract": "vitest run tests/promptTemplatePolicy.spec.ts tests/securityHeaders.spec.ts tests/mcpTransport.spec.ts tests/mcp.sessionStorage.spec.ts tests/mcpLifecycleActionAliases.spec.ts tests/reporting.mcp-tools.spec.ts tests/operatorChronicleFallback.spec.ts tests/mcpWorker.toolRegistration.spec.ts tests/mcpWorker.contextAccessTier.spec.ts tests/mcpWorker.edgeRateLimit.spec.ts tests/mcpWorker.entityActionAttach.spec.ts tests/mcpWorker.entityActionShipBatch.spec.ts tests/mcpWorker.taskContextHydrator.spec.ts tests/mcpWorker.toolAccessGating.spec.ts tests/mcpWorker.accountTools.spec.ts tests/planSessionContract.spec.ts tests/schemaIntrospection.spec.ts tests/contractTools.spec.ts tests/listEntitiesWorkspaceScope.spec.ts tests/loopReliabilityValidation.spec.ts tests/artifactContracts.spec.ts tests/founderTeamArtifactCatalog.spec.ts tests/toolCoverageMatrix.spec.ts",
     "benchmark:mcp": "node scripts/benchmark-mcp-performance.mjs",
+    "audit:widgets": "node scripts/audit-widgets.mjs",
+    "audit:widget-gallery": "node scripts/audit-widget-gallery.mjs",
+    "outreach:rank-mcp-owners": "node scripts/build-mcp-owner-outreach.mjs",
     "verify": "pnpm type-check && pnpm test:mcp-contract && pnpm build",
     "directory:preflight": "node scripts/directory-preflight.mjs",
     "registry:keys": "./scripts/generate-registry-keys.sh",
@@ -47,19 +50,26 @@
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "0.2.4",
-    "@modelcontextprotocol/ext-apps": "1.1.2",
-    "@modelcontextprotocol/sdk": "1.26.0",
+    "@modelcontextprotocol/ext-apps": "1.7.4",
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "@useorgx/agent-work-receipt": "0.1.0",
     "agents": "0.7.2",
     "zod": "^3.25.8"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260103.0",
     "jsdom": "^29.1.1",
+    "playwright": "1.61.1",
     "tsx": "^4.22.5",
     "typescript": "^5.6.3",
     "vite": "^6.3.4",
     "vitest": "^3.2.4",
     "wrangler": "^4.54.0",
     "zod-to-json-schema": "^3.25.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "agents>@modelcontextprotocol/sdk": "1.29.0"
+    }
   }
 }

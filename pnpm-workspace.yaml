@@ -1,3 +1,6 @@
+packages:
+  - '.'
+
 allowBuilds:
   '@modelcontextprotocol/ext-apps': true
   core-js-pure: true
