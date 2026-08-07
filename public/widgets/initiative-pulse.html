@@ -292,6 +292,16 @@
         stroke: var(--ox-danger);
       }
 
+      /* Health unknown: no arc drawn and a muted dash, so the ring never
+         reads as a score the payload did not actually carry. */
+      .pulse-health.tone-unknown .pulse-health__bar {
+        stroke: transparent;
+      }
+
+      .pulse-health.tone-unknown .pulse-health__number {
+        color: var(--ox-text-tertiary, var(--ox-text-secondary));
+      }
+
       .pulse-health__value {
         position: absolute;
         inset: 0;
@@ -1845,17 +1855,27 @@ external: function (size) {
       };
 
       var renderHealthRing = function (score) {
-        var safeScore = Math.max(0, Math.min(100, Math.round(Number(score) || 0)));
-        var tone = safeScore >= 85 ? "good" : safeScore >= 70 ? "warning" : "danger";
+        // An unknown score must not be drawn as a number. Rendering "100" for a
+        // payload that never carried health is the difference between "we don't
+        // know" and "everything is fine".
+        var known = typeof score === "number" && isFinite(score);
+        var safeScore = known
+          ? Math.max(0, Math.min(100, Math.round(score)))
+          : 0;
+        var tone = !known
+          ? "unknown"
+          : safeScore >= 85 ? "good" : safeScore >= 70 ? "warning" : "danger";
         var radius = 50;
         var circumference = 2 * Math.PI * radius;
         var offset = circumference - (safeScore / 100) * circumference;
         return (
           '<div class="pulse-health tone-' +
           tone +
-          '" aria-label="Health score ' +
-          escapeHtml(String(safeScore)) +
-          ' percent">' +
+          '" aria-label="' +
+          (known
+            ? "Health score " + escapeHtml(String(safeScore)) + " percent"
+            : "Health score unavailable") +
+          '">' +
           '<svg viewBox="0 0 120 120">' +
           '<circle class="pulse-health__track" cx="60" cy="60" r="' +
           radius +
@@ -1870,7 +1890,7 @@ external: function (size) {
           "</svg>" +
           '<div class="pulse-health__value">' +
           '<span class="pulse-health__number">' +
-          escapeHtml(String(safeScore)) +
+          (known ? escapeHtml(String(safeScore)) : "&mdash;") +
           "</span>" +
           '<span class="pulse-health__label">Health</span>' +
           "</div>" +
@@ -2011,9 +2031,62 @@ external: function (size) {
           });
       };
 
+      // Hosts do not always hand us the flat pulse record. Descend through the
+      // common envelopes so a wrapped payload renders its real data instead of
+      // silently falling through to defaults.
+      var unwrapPulseRecord = function (payload) {
+        var record = asObject(payload);
+        if (!record) return null;
+        for (var depth = 0; depth < 3; depth += 1) {
+          if (hasPulseSignal(record)) return record;
+          var inner = null;
+          var keys = ["pulse", "initiative", "data", "result"];
+          for (var i = 0; i < keys.length; i += 1) {
+            var candidate = asObject(record[keys[i]]);
+            if (candidate) { inner = candidate; break; }
+          }
+          if (!inner) return record;
+          record = inner;
+        }
+        return record;
+      };
+
+      // Does this record carry any real pulse evidence? Used to decide between
+      // rendering a card and admitting we have nothing. Deliberately excludes
+      // fields the widget defaults (health/status), because those are exactly
+      // the ones that would manufacture false confidence.
+      var hasPulseSignal = function (record) {
+        if (!record) return false;
+        if (readString(record, ["name", "title"])) return true;
+        if (typeof record.health_score === "number") return true;
+        var numericKeys = [
+          "progress_pct",
+          "pending_decisions",
+          "active_workstreams",
+          "total_workstreams",
+          "blocked_workstreams",
+          "current_cost",
+        ];
+        for (var i = 0; i < numericKeys.length; i += 1) {
+          if (typeof record[numericKeys[i]] === "number") return true;
+        }
+        var listKeys = ["blockers", "next_steps", "workstreams", "milestones"];
+        for (var j = 0; j < listKeys.length; j += 1) {
+          if (Array.isArray(record[listKeys[j]]) && record[listKeys[j]].length) return true;
+        }
+        if (asObject(record.workstream_summary) || asObject(record.workstreamSummary)) return true;
+        if (asObject(record.roi_summary) || asObject(record.artifact_summary)) return true;
+        if (normalizeArtifacts(record).length) return true;
+        if (normalizeMilestones(record).length) return true;
+        return false;
+      };
+
       var normalizePulse = function (payload) {
         if (!payload) return null;
-        var record = asObject(payload) || {};
+        var record = unwrapPulseRecord(payload);
+        // No recognizable pulse data: report that honestly rather than
+        // rendering a confident card built entirely from defaults.
+        if (!record || !hasPulseSignal(record)) return null;
         var workstreamSummary =
           asObject(record.workstream_summary) || asObject(record.workstreamSummary) || {};
         var artifacts = normalizeArtifacts(record);
@@ -2045,7 +2118,7 @@ external: function (size) {
               ? workstreamSummary.blocked
               : 0,
           health_score:
-            typeof record.health_score === "number" ? record.health_score : 100,
+            typeof record.health_score === "number" ? record.health_score : null,
           blockers: Array.isArray(record.blockers) ? record.blockers : [],
           next_steps: Array.isArray(record.next_steps) ? record.next_steps : [],
           roi_summary: asObject(record.roi_summary),
@@ -2062,6 +2135,13 @@ external: function (size) {
           recent_artifacts: artifacts,
           artifact_summary: asObject(record.artifact_summary),
         };
+      };
+
+      // Test surface (mirrors OrgXPlanWidgetModel in plan-session-live.html).
+      window.OrgXPulseWidgetModel = {
+        normalizePulse: normalizePulse,
+        hasPulseSignal: hasPulseSignal,
+        unwrapPulseRecord: unwrapPulseRecord,
       };
 
       var buildAttentionItems = function (pulseData, dashboardUrl) {
