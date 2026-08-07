@@ -294,7 +294,10 @@ import {
   SKILL_PROMPT_TEMPLATE_SAFETY_DESCRIPTION,
   validateSkillPromptTemplate,
 } from './promptTemplatePolicy';
-import { buildEntityActionAttachPayload } from './entityActionAttach';
+import {
+  buildEntityActionAttachPayload,
+  withAttachSourceClient,
+} from './entityActionAttach';
 import { buildEntityActionShipBatchPayload } from './entityActionShipBatch';
 import { buildSmitheryConfigSchema } from './smitheryConfig';
 import {
@@ -4958,9 +4961,8 @@ export class OrgXMcp extends McpAgent<
               idempotency_key: args.idempotency_key,
             },
           });
-          // Default source_client from session attribution (the payload
-          // builder's strict schema covers agent args; the posted body may
-          // carry the server-resolved attribution field).
+          // Default source_client from session attribution. It rides in
+          // metadata, not at the top level — see withAttachSourceClient.
           const attachSourceClient = this.resolveReportingSourceClient(
             args._context
           );
@@ -4970,9 +4972,7 @@ export class OrgXMcp extends McpAgent<
             {
               method: 'POST',
               body: JSON.stringify(
-                attachSourceClient
-                  ? { ...attachPayload, source_client: attachSourceClient }
-                  : attachPayload
+                withAttachSourceClient(attachPayload, attachSourceClient)
               ),
             },
             { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
@@ -7311,9 +7311,7 @@ export class OrgXMcp extends McpAgent<
               {
                 method: 'POST',
                 body: JSON.stringify(
-                  attachSourceClient
-                    ? { ...attachPayload, source_client: attachSourceClient }
-                    : attachPayload
+                  withAttachSourceClient(attachPayload, attachSourceClient)
                 ),
               },
               { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? null) }
@@ -12475,9 +12473,7 @@ export class OrgXMcp extends McpAgent<
             {
               method: 'POST',
               body: JSON.stringify(
-                attachSourceClient
-                  ? { ...attachPayload, source_client: attachSourceClient }
-                  : attachPayload
+                withAttachSourceClient(attachPayload, attachSourceClient)
               ),
             },
             resolvedUserId ? { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) } : undefined
