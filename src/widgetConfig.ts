@@ -241,6 +241,7 @@ export const MCP_APPS_SHARED_COMPONENT_PATHS: ReadonlyArray<string> = [
   // rendered unstyled in Claude's sandbox. Inline it so the served
   // document is fully self-contained regardless of how it's referenced.
   'shared/tokens.css',
+  'shared/widget-quality.css',
   'shared/components/domain-accent.css',
   'shared/components/domain-accent.js',
   'shared/components/liveness-indicator.js',

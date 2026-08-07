@@ -54,6 +54,18 @@
     return prefix.replace(/\/+$/, '') + '/' + filename;
   }
 
+  function escapeHtml(value) {
+    return String(value == null ? '' : value).replace(/[&<>'"]/g, function (character) {
+      return {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#039;',
+        '"': '&quot;',
+      }[character];
+    });
+  }
+
   /**
    * Render an agent-attribution chip — avatar + name + domain role.
    * The chip's accent is driven by the agent's domain via --domain-rgb.
@@ -67,17 +79,18 @@
   function renderAgentChip(agent, opts) {
     const size = (opts && opts.size) || 'sm';
     const baseUrl = opts && opts.assetBaseUrl;
-    const rgb = getDomainRgb(agent.domain);
-    const avatarSrc = agent.avatarUrl || getAgentAvatar(agent.domain, baseUrl);
-    const name = agent.name || 'Unassigned';
-    const role = agent.role || normalizeDomain(agent.domain) || 'team';
+    const safeAgent = agent && typeof agent === 'object' ? agent : {};
+    const rgb = getDomainRgb(safeAgent.domain);
+    const avatarSrc = safeAgent.avatarUrl || getAgentAvatar(safeAgent.domain, baseUrl);
+    const name = safeAgent.name || 'OrgX routing';
+    const role = safeAgent.role || normalizeDomain(safeAgent.domain) || 'owner pending';
 
     return (
       '<span class="agent-chip agent-chip--' + size + '" style="--domain-rgb:' + rgb + ';">' +
-      '<span class="agent-chip__avatar"><img src="' + avatarSrc + '" alt="" onerror="this.style.display=\'none\'"/></span>' +
+      '<span class="agent-chip__avatar"><img src="' + escapeHtml(avatarSrc) + '" alt="" onerror="this.style.display=\'none\'"/></span>' +
       '<span class="agent-chip__identity">' +
-      '<span class="agent-chip__name">' + name + '</span>' +
-      '<span class="agent-chip__role">' + role + '</span>' +
+      '<span class="agent-chip__name">' + escapeHtml(name) + '</span>' +
+      '<span class="agent-chip__role">' + escapeHtml(role) + '</span>' +
       '</span>' +
       '</span>'
     );

@@ -420,6 +420,7 @@
       margin-bottom: 14px;
     }
   </style>
+  <link rel="stylesheet" href="shared/widget-quality.css" />
 </head>
 <body>
   <div class="widget-shell-card animate-in">
@@ -588,7 +589,7 @@
 
       function renderAttribution(artifact) {
         const authorChip = window.OrgxDomain
-          ? window.OrgxDomain.renderAgentChip(artifact.author || { name: 'Unassigned', domain: 'orchestrator' }, { size: 'sm' })
+          ? window.OrgxDomain.renderAgentChip(artifact.author || { name: 'OrgX review queue', domain: 'orchestrator' }, { size: 'sm' })
           : '';
         const version = artifact.version || 1;
         return (

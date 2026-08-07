@@ -1275,7 +1275,8 @@
       }
 
 </style>
-  </head>
+  <link rel="stylesheet" href="shared/widget-quality.css" />
+</head>
   <body>
     <div class="container" role="region" aria-label="Initiative Status">
       <div id="content" aria-live="polite">
@@ -2299,7 +2300,7 @@ external: function (size) {
               return (
                 '<button class="pulse-signal" type="button" title="' +
                 escapeHtml(item.title + ": " + Math.round(progress || 0) + "%") +
-                '" onclick="togglePulsePanel(\'streams\')">' +
+                '" onclick="togglePulsePanel(\'streams\', this)">' +
                 '<span class="pulse-signal__fill tone-' +
                 escapeHtml(tone) +
                 '" style="width:' +
@@ -2326,7 +2327,7 @@ external: function (size) {
                 (section.warn ? " is-warn" : "") +
                 '" onclick="togglePulsePanel(\'' +
                 escapeHtml(section.key) +
-                '\')" data-panel-key="' +
+                '\', this)" data-panel-key="' +
                 escapeHtml(section.key) +
                 '" aria-controls="pulse-panel-host" aria-expanded="' +
                 escapeHtml(String(activePanel === section.key)) +
@@ -2790,10 +2791,11 @@ external: function (size) {
         );
       };
 
-      window.togglePulsePanel = function (panel) {
+      window.togglePulsePanel = function (panel, trigger) {
         panelHydrated = true;
         uiState.panel = uiState.panel === panel ? null : panel;
         syncPulsePanel();
+        if (trigger && typeof trigger.focus === "function") trigger.focus();
       };
 
       var render = function () {
@@ -3089,7 +3091,7 @@ external: function (size) {
                   (attentionBanner
                     ? '<button type="button" class="pulse-attention' +
                       (uiState.panel === "actions" ? " is-open" : "") +
-                      '" onclick="togglePulsePanel(\'actions\')" aria-controls="pulse-panel-host" aria-expanded="' + String(uiState.panel === "actions") + '">' +
+                      '" onclick="togglePulsePanel(\'actions\', this)" aria-controls="pulse-panel-host" aria-expanded="' + String(uiState.panel === "actions") + '">' +
                         '<span class="pulse-attention__icon">' +
                           icons.warning(16) +
                         "</span>" +

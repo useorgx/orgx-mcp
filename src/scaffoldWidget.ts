@@ -631,8 +631,39 @@ button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:po
     orchestration:ASSET_BASE + 'xandy_orchestrator.png',
   };
 
+  function normalizeAgentDomain(value) {
+    var key = String(value || '').trim().toLowerCase().replace(/-agent$/, '');
+    var aliases = {
+      eng: 'engineering',
+      dev: 'engineering',
+      ux: 'design',
+      ui: 'design',
+      brand: 'marketing',
+      content: 'marketing',
+      growth: 'marketing',
+      gtm: 'marketing',
+      prod: 'product',
+      research: 'product',
+      discovery: 'product',
+      ops: 'operations',
+      operation: 'operations',
+      xandy: 'orchestration',
+      orchestrator: 'orchestration',
+    };
+    if (aliases[key]) return aliases[key];
+    if (['engineering', 'product', 'marketing', 'design', 'sales', 'operations', 'orchestration'].indexOf(key) >= 0) return key;
+    if (key.indexOf('engineer') >= 0) return 'engineering';
+    if (key.indexOf('design') >= 0 || key.indexOf('visual') >= 0) return 'design';
+    if (key.indexOf('market') >= 0 || key.indexOf('brand') >= 0) return 'marketing';
+    if (key.indexOf('product') >= 0) return 'product';
+    if (key.indexOf('sale') >= 0 || key.indexOf('revenue') >= 0) return 'sales';
+    if (key.indexOf('op') >= 0) return 'operations';
+    if (key.indexOf('orchestr') >= 0) return 'orchestration';
+    return '';
+  }
+
   function domainRgb(d) {
-    return DOMAIN_RGB[(d||'').toLowerCase()] || '0,201,167';
+    return DOMAIN_RGB[normalizeAgentDomain(d)] || '0,201,167';
   }
 
   /* ── SVG icon helpers ── */
@@ -722,7 +753,11 @@ button[data-oxhref]{background:none;border:none;padding:0;font:inherit;cursor:po
 
   function addWorkstream(entity) {
     wsCount++;
-    var domain = ((entity.metadata && (entity.metadata.domain || entity.metadata.agent_domain)) || entity.domain || '').toLowerCase();
+    var metadata = entity && entity.metadata && typeof entity.metadata === 'object' ? entity.metadata : {};
+    var rawDomain = (metadata.domain || metadata.agent_domain || entity.agent_domain || entity.domain || entity.persona ||
+      (Array.isArray(entity.assigned_agent_ids) ? entity.assigned_agent_ids[0] : '') ||
+      (Array.isArray(metadata.assigned_agent_ids) ? metadata.assigned_agent_ids[0] : '') || entity.agent_name || '');
+    var domain = normalizeAgentDomain(rawDomain);
     var rgb    = domainRgb(domain);
     var label  = entity.title || entity.name || 'Workstream';
 

@@ -2224,6 +2224,7 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="shared/widget-quality.css" />
 </head>
 <body>
   <div class="container" id="content"></div>
@@ -2528,9 +2529,38 @@
       return '<span class="badge-id"' + title + '>' + escapeHtml(displayId) + '</span>';
     };
     var WIDGET_ASSET_BASE = 'https://mcp.useorgx.com/widgets/shared/';
+    var normalizeAgentDomain = (value) => {
+      var key = normalizeTextKey(value).replace(/-agent$/, '');
+      var aliases = {
+        eng: 'engineering',
+        dev: 'engineering',
+        ux: 'design',
+        ui: 'design',
+        brand: 'marketing',
+        content: 'marketing',
+        growth: 'marketing',
+        gtm: 'marketing',
+        prod: 'product',
+        research: 'product',
+        discovery: 'product',
+        ops: 'operations',
+        operation: 'operations',
+        xandy: 'orchestrator'
+      };
+      if (aliases[key]) return aliases[key];
+      if (['engineering', 'design', 'product', 'marketing', 'sales', 'operations', 'orchestrator'].includes(key)) return key;
+      if (key.includes('engineer')) return 'engineering';
+      if (key.includes('design') || key.includes('visual')) return 'design';
+      if (key.includes('market') || key.includes('brand')) return 'marketing';
+      if (key.includes('product')) return 'product';
+      if (key.includes('sale') || key.includes('revenue')) return 'sales';
+      if (key.includes('op')) return 'operations';
+      if (key.includes('orchestr')) return 'orchestrator';
+      return '';
+    };
     var getAvatarUrl = (name, domain) => {
       var n = normalizeTextKey(name);
-      var d = normalizeTextKey(domain);
+      var d = normalizeAgentDomain(domain) || normalizeAgentDomain(name);
       if (n.includes('pace') || n.includes('product') || d === 'product') return WIDGET_ASSET_BASE + 'product_orchestrator.png';
       if (n.includes('eli') || n.includes('engineer') || d === 'engineering') return WIDGET_ASSET_BASE + 'engineering_autopilot.png';
       if (n.includes('mark') || n.includes('market') || d === 'marketing') return WIDGET_ASSET_BASE + 'launch_captain.png';
@@ -2547,7 +2577,7 @@
       return escapeHtml(label.charAt(0).toUpperCase() || '?');
     };
     var getDomainTone = (domain) => {
-      var key = normalizeTextKey(domain);
+      var key = normalizeAgentDomain(domain);
       if (['engineering', 'design', 'product', 'marketing', 'sales', 'operations', 'orchestrator'].includes(key)) return key;
       return 'orchestrator';
     };
@@ -2567,14 +2597,15 @@
       return '<span class="domain-badge" style="--agent-domain-rgb:' + escapeHtml(rgb) + ';" aria-hidden="true">' + icon + '</span>';
     };
     var renderAgentPresence = (execution) => {
-      var name = execution && execution.agent_name ? execution.agent_name : 'Unassigned';
+      var hasOwner = Boolean(execution && execution.agent_name);
+      var name = hasOwner ? execution.agent_name : 'OrgX routing';
       var domain = execution && execution.domain ? execution.domain : 'orchestrator';
       return '<span class="agent-presence" style="--agent-domain-rgb:' + escapeHtml(getDomainRgb(domain)) + ';" tabindex="0" aria-label="' + escapeHtml(name + ' · ' + titleCase(domain)) + '">' +
         '<span class="agent-avatar">' + renderAvatar(name, domain) + '</span>' +
         renderDomainIcon(domain) +
         '<span class="agent-presence__tooltip" role="tooltip">' +
           '<span class="agent-presence__tooltip-name">' + escapeHtml(name) + '</span>' +
-          '<span class="agent-presence__tooltip-meta">' + escapeHtml(titleCase(domain)) + ' lead</span>' +
+          '<span class="agent-presence__tooltip-meta">' + escapeHtml(hasOwner ? titleCase(domain) + ' lead' : 'Owner pending') + '</span>' +
         '</span>' +
         '</span>';
     };
@@ -2631,25 +2662,59 @@
         if (!item || item.type !== 'workstream') return item;
         var assignment = item.id ? assignmentsByWorkstream.get(item.id) : null;
         var stream = item.id ? streamsByWorkstream.get(item.id) : null;
-        var domain = assignment && typeof assignment.domain === 'string' && assignment.domain.trim()
+        var metadata = item && item.metadata && typeof item.metadata === 'object' ? item.metadata : {};
+        var assignedId = assignment && typeof assignment.agent_id === 'string' && assignment.agent_id.trim()
+          ? assignment.agent_id.trim()
+          : item && typeof item.agent_id === 'string' && item.agent_id.trim()
+          ? item.agent_id.trim()
+          : item && Array.isArray(item.assigned_agent_ids) && typeof item.assigned_agent_ids[0] === 'string'
+          ? item.assigned_agent_ids[0]
+          : metadata && typeof metadata.agent_id === 'string' && metadata.agent_id.trim()
+          ? metadata.agent_id.trim()
+          : metadata && Array.isArray(metadata.assigned_agent_ids) && typeof metadata.assigned_agent_ids[0] === 'string'
+          ? metadata.assigned_agent_ids[0]
+          : null;
+        var assignedName = assignment && typeof assignment.agent_name === 'string' && assignment.agent_name.trim()
+          ? assignment.agent_name.trim()
+          : item && typeof item.agent_name === 'string' && item.agent_name.trim()
+          ? item.agent_name.trim()
+          : item && Array.isArray(item.assigned_agent_names) && typeof item.assigned_agent_names[0] === 'string'
+          ? item.assigned_agent_names[0]
+          : metadata && typeof metadata.agent_name === 'string' && metadata.agent_name.trim()
+          ? metadata.agent_name.trim()
+          : metadata && Array.isArray(metadata.assigned_agent_names) && typeof metadata.assigned_agent_names[0] === 'string'
+          ? metadata.assigned_agent_names[0]
+          : null;
+        var rawDomain = assignment && typeof assignment.domain === 'string' && assignment.domain.trim()
           ? assignment.domain.trim()
           : stream && typeof stream.agent_domain === 'string' && stream.agent_domain.trim()
           ? stream.agent_domain.trim()
+          : item && typeof item.agent_domain === 'string' && item.agent_domain.trim()
+          ? item.agent_domain.trim()
           : item && typeof item.domain === 'string' && item.domain.trim()
           ? item.domain.trim()
           : item && typeof item.persona === 'string' && item.persona.trim()
           ? item.persona.trim()
+          : metadata && typeof metadata.agent_domain === 'string' && metadata.agent_domain.trim()
+          ? metadata.agent_domain.trim()
+          : metadata && typeof metadata.domain === 'string' && metadata.domain.trim()
+          ? metadata.domain.trim()
           : null;
+        var domain = normalizeAgentDomain(rawDomain) || normalizeAgentDomain(assignedId) || normalizeAgentDomain(assignedName) || null;
         var agentName = assignment && typeof assignment.agent_name === 'string' && assignment.agent_name.trim()
           ? assignment.agent_name.trim()
+          : assignedName
+          ? assignedName
+          : assignedId
+          ? titleCase(assignedId.replace(/-agent$/i, ''))
           : domain
           ? titleCase(domain)
-          : 'Unassigned';
+          : 'OrgX routing';
         var status = classifyStatus(stream && typeof stream.status === 'string' ? stream.status : 'not_started');
         return Object.assign({}, item, {
           execution: {
             domain: domain,
-            agent_id: assignment && typeof assignment.agent_id === 'string' ? assignment.agent_id : null,
+            agent_id: assignedId,
             agent_name: agentName,
             progress_pct: readProgress(stream),
             status: status,

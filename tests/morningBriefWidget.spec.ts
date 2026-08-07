@@ -33,10 +33,24 @@ describe('morning brief widget', () => {
     expect(widgetSource).toContain('data-action="open-section"');
     expect(widgetSource).toContain('data-action="toggle-section"');
     expect(widgetSource).toContain('data-action="open-link"');
-    expect(widgetSource).toContain('state.activeSection = trigger.dataset.section || state.activeSection;');
+    expect(widgetSource).toContain('function setActiveSection(section, options = {})');
+    expect(widgetSource).toContain('aria-expanded="${');
+    expect(widgetSource).toContain('aria-controls="panel-priorities"');
+    expect(widgetSource).toContain('role="region"');
+    expect(widgetSource).toContain(
+      "setActiveSection(trigger.dataset.section || state.activeSection, { scroll: true });"
+    );
     expect(widgetSource).not.toContain(
       'The team completed the mission and prepped the next one.'
     );
+  });
+
+  it('contains a syntactically valid widget module', () => {
+    const moduleSource = widgetSource.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
+    expect(moduleSource).toBeTruthy();
+
+    const executableSource = moduleSource?.replace(/^\s*import\s+.+?;\s*$/gm, '') || '';
+    expect(() => new Function(executableSource)).not.toThrow();
   });
 
   it('extends shared primitives for richer action and accordion treatments', () => {

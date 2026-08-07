@@ -3,444 +3,1227 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>OrgX Widget Gallery</title>
+    <title>OrgX MCP Widget Gallery</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='15' fill='none' stroke='%236366f1' stroke-width='6'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%236366f1'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="shared/interaction-kit.css" />
     <link rel="stylesheet" href="shared/widget-foundation.css" />
+    <link rel="stylesheet" href="shared/widget-quality.css" />
     <script src="shared/interaction-kit.js"></script>
     <style>
-      
-
-      
-
-
-      :root, :root[data-theme="light"] {
+      :root,
+      :root[data-theme='light'] {
+        color-scheme: light;
         --ox-bg: #f8fafc;
-        --ox-panel: rgba(255, 255, 255, 0.95);
-        --ox-border: rgba(0, 0, 0, 0.08);
-        --ox-border-strong: rgba(0, 0, 0, 0.15);
-        --ox-text: #111827;
-        --ox-text-muted: #6b7280;
-        --ox-primary: #111827;
-        --ox-primary-hover: #000;
+        --ox-panel: #ffffff;
+        --ox-well-bg: #f1f5f9;
+        --ox-border: rgba(15, 23, 42, 0.09);
+        --ox-border-strong: rgba(15, 23, 42, 0.16);
+        --ox-text: #0f172a;
+        --ox-text-muted: #64748b;
+        --ox-grid: rgba(15, 23, 42, 0.035);
+        --ox-primary: rgb(var(--ox-primary-rgb));
         --ox-primary-rgb: 17, 24, 39;
-        --ox-shadow: 0 10px 40px -10px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04);
+        --ox-primary-contrast: #ffffff;
+        --ox-shadow: 0 20px 56px -32px rgba(15, 23, 42, 0.24), 0 2px 8px rgba(15, 23, 42, 0.04);
       }
 
       @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) {
+        :root:not([data-theme='light']) {
+          color-scheme: dark;
           --ox-bg: #02040a;
-          --ox-panel: rgba(10, 15, 22, 0.95);
+          --ox-panel: #0a0f16;
+          --ox-well-bg: rgba(0, 0, 0, 0.26);
           --ox-border: rgba(255, 255, 255, 0.08);
           --ox-border-strong: rgba(255, 255, 255, 0.15);
-          --ox-text: #f2f7ff;
-          --ox-text-muted: rgba(255, 255, 255, 0.5);
-          --ox-primary: rgba(255,255,255,0.9);
-          --ox-primary-hover: #fff;
-          --ox-primary-rgb: 242, 247, 255;
-          --ox-shadow: 0 10px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+          --ox-text: #f8fafc;
+          --ox-text-muted: rgba(255, 255, 255, 0.54);
+          --ox-grid: rgba(255, 255, 255, 0.028);
+          --ox-primary: rgb(var(--ox-primary-rgb));
+          --ox-primary-contrast: #02040a;
+          --ox-shadow: 0 24px 64px -28px rgba(0, 0, 0, 0.76), inset 0 1px 0 rgba(255, 255, 255, 0.04);
         }
       }
 
-      :root[data-theme="dark"] {
-          --ox-bg: #02040a;
-          --ox-panel: rgba(10, 15, 22, 0.95);
-          --ox-border: rgba(255, 255, 255, 0.08);
-          --ox-border-strong: rgba(255, 255, 255, 0.15);
-          --ox-text: #f2f7ff;
-          --ox-text-muted: rgba(255, 255, 255, 0.5);
-          --ox-primary: rgba(255,255,255,0.9);
-          --ox-primary-hover: #fff;
-          --ox-primary-rgb: 242, 247, 255;
-          --ox-shadow: 0 10px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+      :root[data-theme='dark'] {
+        color-scheme: dark;
+        --ox-bg: #02040a;
+        --ox-panel: #0a0f16;
+        --ox-well-bg: rgba(0, 0, 0, 0.26);
+        --ox-border: rgba(255, 255, 255, 0.08);
+        --ox-border-strong: rgba(255, 255, 255, 0.15);
+        --ox-text: #f8fafc;
+        --ox-text-muted: rgba(255, 255, 255, 0.54);
+        --ox-grid: rgba(255, 255, 255, 0.028);
+        --ox-primary: rgb(var(--ox-primary-rgb));
+        --ox-primary-contrast: #02040a;
+        --ox-shadow: 0 24px 64px -28px rgba(0, 0, 0, 0.76), inset 0 1px 0 rgba(255, 255, 255, 0.04);
       }
-      
-      .theme-toggle {
-        width: 40px;
-        height: 40px;
-        color: var(--ox-text);
-      }
-      .theme-toggle svg { width: 18px; height: 18px; }
 
-      * { box-sizing: border-box; margin: 0; padding: 0; }
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        min-width: 0;
+        background: var(--ox-bg);
+      }
 
       body {
-        font-family: var(--ox-font);
-        background: var(--ox-bg);
-        color: var(--ox-text);
-        padding: 40px 24px;
+        min-width: 0;
         min-height: 100vh;
+        margin: 0;
+        padding: 44px 24px 64px;
+        overflow-x: hidden;
+        background:
+          radial-gradient(circle at 50% -10%, rgba(var(--ox-primary-rgb), 0.08), transparent 38%),
+          linear-gradient(var(--ox-grid) 1px, transparent 1px),
+          linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px),
+          var(--ox-bg);
+        background-size: 100% 100%, 24px 24px, 24px 24px, auto;
+        color: var(--ox-text);
+        font-family: var(--ox-font);
         -webkit-font-smoothing: antialiased;
       }
 
-      .container { max-width: 1000px; margin: 0 auto; }
+      button,
+      input,
+      a {
+        font: inherit;
+      }
 
-      .widget-grid {
+      .gallery-page {
+        width: min(1280px, 100%);
+        margin: 0 auto;
+      }
+
+      .gallery-header {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 20px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 24px;
+        align-items: end;
+        margin-bottom: 24px;
       }
 
-      .widget-card {
-        background: var(--ox-panel);
-        border-radius: 16px;
-        padding: 24px;
-        box-shadow: var(--ox-shadow);
-        border: 1px solid var(--ox-border);
-        /* Calm staggered entrance on the entry curve (delay set inline via --i). */
-        opacity: 0;
-        animation: cardArrive var(--ox-dur-slow, 400ms) var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) forwards;
-        animation-delay: calc(var(--i, 0) * 55ms);
-        transition: transform var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
-                    border-color var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
-      }
-      @keyframes cardArrive {
-        from { opacity: 0; transform: translateY(8px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-
-      /* Crisp hover lift, primary-tinted border — cohesive with the system. */
-      .widget-card:hover { transform: translateY(-1px); border-color: rgba(var(--ox-primary-rgb), 0.4); }
-
-      .widget-name { font-size: 1.1rem; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
-      .widget-description { font-size: 0.9rem; color: var(--ox-text-muted); line-height: 1.6; margin-bottom: 24px; min-height: 44px; }
-
-      .widget-links { display: flex; gap: 12px; }
-
-      .btn {
-        flex: 1;
-        font-size: 0.85rem;
-        text-decoration: none;
-        font-family: var(--ox-font);
-      }
-
-      .btn-primary { color: var(--ox-bg); }
-
-      .badge {
-        font-family: var(--ox-mono); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em;
-        padding: 4px 8px; border-radius: 4px;
-        background: rgba(var(--ox-primary-rgb), 0.08); color: var(--ox-text-muted); border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
-      }
-
-      .gallery-shell {
-        margin-bottom: 28px;
-      }
-
-      .gallery-toolbar {
-        display: flex;
-        justify-content: space-between;
-        gap: 16px;
-        align-items: flex-start;
-      }
-
-      .quick-links {
-        margin-top: 40px;
-      }
-
-      .preview-shell {
-        background: var(--ox-panel);
-        border-radius: 18px;
-        border: 1px solid var(--ox-border);
-        box-shadow: var(--ox-shadow);
-        padding: 24px;
-      }
-
-      .iframe-preview { width: 100%; height: 500px; border: 1px solid var(--ox-border); border-radius: 16px; margin-top: 24px; background: transparent; }
-
-      .preview-controls { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
-
-      .preview-btn {
-        min-height: 40px;
-        padding-inline: 14px;
-        border-radius: 10px;
-        font-size: 0.78rem;
-        font-weight: 700;
+      .gallery-kicker,
+      .control-label,
+      .registry-count,
+      .meta-label,
+      .preview-status,
+      .registry-row__mode {
         font-family: var(--ox-mono);
         text-transform: uppercase;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.11em;
+        font-weight: 700;
+      }
+
+      .gallery-kicker {
+        color: var(--ox-primary);
+        font-size: 0.64rem;
+      }
+
+      h1 {
+        margin: 10px 0 0;
+        font-size: clamp(2rem, 5vw, 3.65rem);
+        line-height: 0.96;
+        letter-spacing: -0.065em;
+        font-weight: 720;
+      }
+
+      .gallery-summary {
+        max-width: 720px;
+        margin: 14px 0 0;
+        color: var(--ox-text-muted);
+        font-size: 0.95rem;
+        line-height: 1.62;
+      }
+
+      .coverage-signal {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 44px;
+        color: var(--ox-text-muted);
+        font-family: var(--ox-mono);
+        font-size: 0.7rem;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+      }
+
+      .coverage-signal__dot {
+        width: 8px;
+        height: 8px;
+        flex: 0 0 auto;
+        border-radius: 999px;
+        background: var(--ox-primary);
+        box-shadow: 0 0 0 4px rgba(var(--ox-primary-rgb), 0.12);
+      }
+
+      .gallery-workbench {
+        position: relative;
+        display: grid;
+        grid-template-columns: 320px minmax(0, 1fr);
+        min-width: 0;
+        overflow: hidden;
+        border: 1px solid var(--ox-border);
+        border-radius: 18px;
+        background: var(--ox-panel);
+        box-shadow: var(--ox-shadow);
+      }
+
+      .gallery-workbench::before {
+        content: '';
+        position: absolute;
+        z-index: 3;
+        top: 0;
+        right: 0;
+        left: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(var(--ox-primary-rgb), 0.72), transparent);
+        pointer-events: none;
+      }
+
+      .registry-pane {
+        min-width: 0;
+        padding: 20px 0;
+        border-right: 1px solid var(--ox-border);
+        background: color-mix(in srgb, var(--ox-panel) 94%, var(--ox-well-bg));
+      }
+
+      .registry-header {
+        padding: 0 18px 16px;
+      }
+
+      .registry-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .registry-heading h2 {
+        margin: 0;
+        font-size: 0.95rem;
+        letter-spacing: -0.02em;
+      }
+
+      .registry-count {
+        color: var(--ox-text-muted);
+        font-size: 0.58rem;
+      }
+
+      .filter-wrap {
+        position: relative;
+        margin-top: 14px;
+      }
+
+      .filter-icon {
+        position: absolute;
+        top: 50%;
+        left: 13px;
+        width: 17px;
+        height: 17px;
+        color: var(--ox-text-muted);
+        transform: translateY(-50%);
+        pointer-events: none;
+      }
+
+      .widget-filter {
+        width: 100%;
+        min-height: 44px;
+        padding: 0 12px 0 40px;
+        border: 1px solid var(--ox-border);
+        border-radius: 12px;
+        outline: none;
+        background: var(--ox-well-bg);
+        color: var(--ox-text);
+        font-size: 0.82rem;
+        transition: border-color 160ms var(--ox-ease-standard), box-shadow 160ms var(--ox-ease-standard);
+      }
+
+      .widget-filter::placeholder {
         color: var(--ox-text-muted);
       }
 
-      .preview-btn.active {
-        background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 1) 0%, rgba(var(--ox-primary-rgb), 0.84) 100%);
-        color: var(--ox-bg);
-        border-color: rgba(var(--ox-primary-rgb), 0.4);
+      .widget-filter:focus-visible {
+        border-color: rgba(var(--ox-primary-rgb), 0.5);
+        box-shadow: 0 0 0 3px rgba(var(--ox-primary-rgb), 0.14);
       }
 
-      .state-switcher {
-        margin-top: 16px;
-        padding-top: 16px;
+      .registry-list {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+
+      .registry-row {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px 12px;
+        width: 100%;
+        min-height: 72px;
+        padding: 12px 18px;
+        border: 0;
+        border-top: 1px solid transparent;
+        border-bottom: 1px solid var(--ox-border);
+        border-radius: 0;
+        outline: none;
+        background: transparent;
+        color: var(--ox-text);
+        text-align: left;
+        cursor: pointer;
+        transition: background 160ms var(--ox-ease-standard), color 160ms var(--ox-ease-standard);
+      }
+
+      .registry-row:first-child {
+        border-top-color: var(--ox-border);
+      }
+
+      .registry-row::before {
+        content: '';
+        position: absolute;
+        top: 10px;
+        bottom: 10px;
+        left: 0;
+        width: 2px;
+        border-radius: 0 999px 999px 0;
+        background: var(--ox-primary);
+        opacity: 0;
+        transform: scaleY(0.4);
+        transition: opacity 160ms var(--ox-ease-standard), transform 160ms var(--ox-ease-standard);
+      }
+
+      .registry-row:hover {
+        background: rgba(var(--ox-primary-rgb), 0.055);
+      }
+
+      .registry-row:focus-visible {
+        z-index: 1;
+        box-shadow: inset 0 0 0 2px rgba(var(--ox-primary-rgb), 0.45);
+      }
+
+      .registry-row.is-active {
+        background: rgba(var(--ox-primary-rgb), 0.09);
+      }
+
+      .registry-row.is-active::before {
+        opacity: 1;
+        transform: scaleY(1);
+      }
+
+      .registry-row__name {
+        min-width: 0;
+        overflow: hidden;
+        font-size: 0.84rem;
+        font-weight: 680;
+        line-height: 1.3;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .registry-row__question {
+        grid-column: 1 / -1;
+        min-width: 0;
+        overflow: hidden;
+        color: var(--ox-text-muted);
+        font-size: 0.72rem;
+        line-height: 1.35;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .registry-row__mode {
+        align-self: center;
+        color: var(--ox-text-muted);
+        font-size: 0.52rem;
+      }
+
+      .registry-empty {
+        padding: 32px 18px;
+        color: var(--ox-text-muted);
+        font-size: 0.82rem;
+        line-height: 1.5;
+        text-align: center;
+      }
+
+      .preview-pane {
+        min-width: 0;
+      }
+
+      .preview-header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 20px;
+        align-items: start;
+        padding: 22px 24px 18px;
+        border-bottom: 1px solid var(--ox-border);
+      }
+
+      .preview-identity {
+        min-width: 0;
+      }
+
+      .preview-status {
+        color: var(--ox-primary);
+        font-size: 0.58rem;
+      }
+
+      .preview-title {
+        margin: 7px 0 0;
+        font-size: clamp(1.32rem, 3vw, 1.9rem);
+        line-height: 1.06;
+        letter-spacing: -0.045em;
+      }
+
+      .preview-description {
+        max-width: 680px;
+        margin: 8px 0 0;
+        color: var(--ox-text-muted);
+        font-size: 0.82rem;
+        line-height: 1.55;
+      }
+
+      .preview-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .theme-toggle {
+        min-width: 116px;
+      }
+
+      .preview-controls {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px 28px;
+        padding: 14px 24px;
+        border-bottom: 1px solid var(--ox-border);
+      }
+
+      .control-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .control-group:first-child {
+        flex: 1 1 auto;
+      }
+
+      .control-label {
+        flex: 0 0 auto;
+        color: var(--ox-text-muted);
+        font-size: 0.56rem;
+      }
+
+      .state-options,
+      .viewport-options {
+        display: flex;
+        gap: 6px;
+        min-width: 0;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+
+      .state-options::-webkit-scrollbar,
+      .viewport-options::-webkit-scrollbar {
+        display: none;
+      }
+
+      .control-btn {
+        min-width: 44px;
+        min-height: 44px;
+        padding: 0 13px;
+        border: 1px solid transparent;
+        border-radius: 10px;
+        outline: none;
+        background: transparent;
+        color: var(--ox-text-muted);
+        font-family: var(--ox-mono);
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: background 160ms var(--ox-ease-standard), border-color 160ms var(--ox-ease-standard), color 160ms var(--ox-ease-standard), transform 160ms var(--ox-ease-standard);
+      }
+
+      .control-btn:hover {
+        border-color: var(--ox-border);
+        color: var(--ox-text);
+      }
+
+      .control-btn:active {
+        transform: scale(0.98);
+      }
+
+      .control-btn:focus-visible {
+        border-color: rgba(var(--ox-primary-rgb), 0.5);
+        box-shadow: 0 0 0 3px rgba(var(--ox-primary-rgb), 0.14);
+      }
+
+      .control-btn.is-active {
+        border-color: rgba(var(--ox-primary-rgb), 0.22);
+        background: rgba(var(--ox-primary-rgb), 0.1);
+        color: var(--ox-primary);
+      }
+
+      .viewport-btn {
+        width: 44px;
+        padding: 0;
+      }
+
+      .viewport-btn svg {
+        width: 17px;
+        height: 17px;
+      }
+
+      .preview-stage {
+        min-width: 0;
+        padding: 18px;
+        background:
+          linear-gradient(var(--ox-grid) 1px, transparent 1px),
+          linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px),
+          var(--ox-well-bg);
+        background-size: 20px 20px, 20px 20px, auto;
+      }
+
+      .preview-canvas {
+        display: flex;
+        width: 100%;
+        min-width: 0;
+        min-height: 640px;
+        overflow: auto;
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--ox-bg) 88%, transparent);
+        box-shadow: inset 0 0 0 1px var(--ox-border);
+        scrollbar-color: var(--ox-border-strong) transparent;
+      }
+
+      .preview-frame {
+        display: block;
+        width: 100%;
+        min-width: 0;
+        height: 720px;
+        margin: 0 auto;
+        border: 0;
+        background: transparent;
+        transition: width 240ms var(--ox-ease-standard), opacity 160ms var(--ox-ease-standard);
+      }
+
+      .preview-canvas[data-viewport='tablet'] .preview-frame {
+        width: 768px;
+        min-width: 768px;
+      }
+
+      .preview-canvas[data-viewport='phone'] .preview-frame {
+        width: 375px;
+        min-width: 375px;
+      }
+
+      .preview-frame.is-loading {
+        opacity: 0.42;
+      }
+
+      .preview-meta {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         border-top: 1px solid var(--ox-border);
       }
 
-      .state-label {
-        font-family: var(--ox-mono);
-        font-size: 0.7rem;
-        color: var(--ox-text-muted);
-        text-transform: uppercase;
-        align-self: center;
-        margin-right: 8px;
-        letter-spacing: 0.08em;
+      .meta-item {
+        min-width: 0;
+        padding: 14px 18px 16px;
       }
 
-      @media (max-width: 720px) {
-        .gallery-toolbar {
-          flex-direction: column;
+      .meta-item + .meta-item {
+        border-left: 1px solid var(--ox-border);
+      }
+
+      .meta-label {
+        color: var(--ox-text-muted);
+        font-size: 0.54rem;
+      }
+
+      .meta-value {
+        display: block;
+        min-width: 0;
+        margin-top: 6px;
+        overflow: hidden;
+        color: var(--ox-text);
+        font-family: var(--ox-mono);
+        font-size: 0.68rem;
+        line-height: 1.45;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .manifest-warning {
+        display: none;
+        margin: 0;
+        padding: 12px 24px;
+        border-bottom: 1px solid rgba(251, 191, 36, 0.18);
+        background: rgba(251, 191, 36, 0.07);
+        color: var(--ox-text-muted);
+        font-size: 0.76rem;
+        line-height: 1.5;
+      }
+
+      .manifest-warning.is-visible {
+        display: block;
+      }
+
+      @media (max-width: 960px) {
+        body {
+          padding: 32px 18px 48px;
+        }
+
+        .gallery-workbench {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .registry-pane {
+          border-right: 0;
+          border-bottom: 1px solid var(--ox-border);
+        }
+
+        .registry-list {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          padding: 0 18px;
+        }
+
+        .registry-row {
+          border: 1px solid var(--ox-border);
+        }
+
+        .registry-row:nth-child(even) {
+          border-left: 0;
+        }
+
+        .preview-controls {
           align-items: stretch;
+          flex-direction: column;
+        }
+      }
+
+      @media (max-width: 640px) {
+        body {
+          padding: 24px 12px 36px;
+        }
+
+        .gallery-header,
+        .preview-header {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .coverage-signal {
+          white-space: normal;
+        }
+
+        .registry-list {
+          grid-template-columns: minmax(0, 1fr);
+          max-height: 288px;
+          overflow-y: auto;
+          overscroll-behavior: contain;
+          scrollbar-color: var(--ox-border-strong) transparent;
+        }
+
+        .registry-row:nth-child(even) {
+          border-left: 1px solid var(--ox-border);
+        }
+
+        .registry-row + .registry-row {
+          border-top: 0;
+        }
+
+        .preview-actions {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        }
+
+        .theme-toggle {
+          min-width: 0;
+        }
+
+        .preview-controls,
+        .preview-header {
+          padding-right: 16px;
+          padding-left: 16px;
+        }
+
+        .control-group {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .preview-stage {
+          padding: 10px;
+        }
+
+        .preview-canvas {
+          min-height: 590px;
+        }
+
+        .preview-frame {
+          height: 680px;
+        }
+
+        .preview-meta {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .meta-item + .meta-item {
+          border-top: 1px solid var(--ox-border);
+          border-left: 0;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
         }
       }
     </style>
   </head>
   <body>
-    <div class="container">
-      <div class="gallery-shell widget-shell-card">
-        <div class="preview-shell">
-          <div class="gallery-toolbar">
-            <div class="widget-hero-copy">
-              <div class="widget-kicker">OrgX Widgets</div>
-              <div class="widget-title-lg">Widget gallery</div>
-              <div class="widget-subtitle">Preview and QA the production widget set across demo, loading, and empty states without changing the widget URIs or host behavior.</div>
+    <main class="gallery-page">
+      <header class="gallery-header">
+        <div>
+          <div class="gallery-kicker">MCP Apps · QA workbench</div>
+          <h1>Widget gallery</h1>
+          <p class="gallery-summary">Inspect every OrgX widget in its useful states, at the viewport where it must hold up. The manifest is coverage truth; the live frame is rendered proof.</p>
+        </div>
+        <div class="coverage-signal" id="coverage-signal" aria-live="polite">
+          <span class="coverage-signal__dot" aria-hidden="true"></span>
+          <span id="coverage-copy">Loading widget manifest…</span>
+        </div>
+      </header>
+
+      <section class="gallery-workbench" aria-label="Widget inspection workbench">
+        <aside class="registry-pane" aria-label="Widget registry">
+          <div class="registry-header">
+            <div class="registry-heading">
+              <h2>Surface registry</h2>
+              <span class="registry-count" id="registry-count">0 surfaces</span>
             </div>
-            <button class="theme-toggle ox-icon-btn" type="button" onclick="toggleTheme()" aria-label="Toggle theme" id="theme-btn">
-              <svg id="icon-sun" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-              <svg id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-            </button>
+            <div class="filter-wrap">
+              <svg class="filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+              <input class="widget-filter" id="widget-filter" type="search" placeholder="Filter surfaces" autocomplete="off" aria-label="Filter widget surfaces" />
+            </div>
           </div>
-        </div>
-      </div>
+          <div class="registry-list" id="registry-list" role="listbox" aria-label="All widget surfaces"></div>
+        </aside>
 
-
-      <div class="widget-grid">
-        <div class="widget-card">
-          <div class="widget-name">Scaffolded Initiative</div>
-          <p class="widget-description">
-            Visualizes the newly created hierarchical tree (Initiative > Workstream > Milestone > Task).
-          </p>
-          <div class="widget-links">
-            <a href="scaffolded-initiative.html?demo=true" class="btn btn-primary ox-link-btn ox-link-btn--primary">Demo Mode</a>
-            <a href="scaffolded-initiative.html?loading=true" class="btn btn-secondary ox-link-btn ox-link-btn--ghost" style="opacity:0.8">Loading</a> <a href="scaffolded-initiative.html" class="btn btn-secondary ox-link-btn ox-link-btn--ghost">Empty</a>
+        <div class="preview-pane">
+          <div class="preview-header">
+            <div class="preview-identity" aria-live="polite">
+              <div class="preview-status" id="preview-status">Bound MCP resource</div>
+              <h2 class="preview-title" id="preview-title">Pending decisions</h2>
+              <p class="preview-description" id="preview-description"></p>
+            </div>
+            <div class="preview-actions">
+              <button class="theme-toggle ox-action-btn ox-action-btn--ghost" id="theme-toggle" type="button">Theme · Dark</button>
+              <a class="ox-link-btn ox-link-btn--primary" id="open-preview" href="decisions.html?demo=true" target="_blank" rel="noopener">Open preview ↗</a>
+            </div>
           </div>
-        </div>
 
-        <div class="widget-card">
-          <div class="widget-name">
-            Pending Decisions <span class="badge">Interactive</span>
-          </div>
-          <p class="widget-description">
-            Shows decisions awaiting user approval with approve/reject actions
-            and toast notifications.
-          </p>
-          <div class="widget-links">
-            <a href="decisions.html?demo=true" class="btn btn-primary ox-link-btn ox-link-btn--primary"
-              >Demo Mode</a
-            >
-            <a href="decisions.html?loading=true" class="btn btn-secondary ox-link-btn ox-link-btn--ghost" style="opacity:0.8">Loading</a> <a href="decisions.html" class="btn btn-secondary ox-link-btn ox-link-btn--ghost">Empty</a>
-          </div>
-        </div>
-
-        <div class="widget-card">
-          <div class="widget-name">Agent Status</div>
-          <p class="widget-description">
-            Displays the current status of all active agents including running
-            tasks and blockers.
-          </p>
-          <div class="widget-links">
-            <a href="agent-status.html?demo=true" class="btn btn-primary ox-link-btn ox-link-btn--primary"
-              >Demo Mode</a
-            >
-            <a href="agent-status.html?loading=true" class="btn btn-secondary ox-link-btn ox-link-btn--ghost" style="opacity:0.8"
-              >Loading</a
-            >
-            <a href="agent-status.html" class="btn btn-secondary ox-link-btn ox-link-btn--ghost"
-              >Empty State</a
-            >
-          </div>
-        </div>
-
-        <div class="widget-card">
-          <div class="widget-name">Search Results</div>
-          <p class="widget-description">
-            Shows search results across artifacts, decisions, and initiatives
-            with relevance scores.
-          </p>
-          <div class="widget-links">
-            <a href="search-results.html?demo=true" class="btn btn-primary ox-link-btn ox-link-btn--primary"
-              >Demo Mode</a
-            >
-            <a href="search-results.html?loading=true" class="btn btn-secondary ox-link-btn ox-link-btn--ghost" style="opacity:0.8"
-              >Loading</a
-            >
-            <a href="search-results.html" class="btn btn-secondary ox-link-btn ox-link-btn--ghost"
-              >Empty State</a
-            >
-          </div>
-        </div>
-
-        <div class="widget-card">
-          <div class="widget-name">Morning Brief</div>
-          <p class="widget-description">
-            Daily summary of blocked tasks, pending approvals, and top priorities across domains.
-          </p>
-          <div class="widget-links">
-            <a href="morning-brief.html?demo=true" class="btn btn-primary ox-link-btn ox-link-btn--primary">Demo Mode</a>
-            <a href="morning-brief.html?loading=true" class="btn btn-secondary ox-link-btn ox-link-btn--ghost" style="opacity:0.8">Loading</a>
-            <a href="morning-brief.html" class="btn btn-secondary ox-link-btn ox-link-btn--ghost">Empty State</a>
-          </div>
-        </div>
-
-
-        <div class="widget-card">
-          <div class="widget-name">Initiative Pulse</div>
-          <p class="widget-description">
-            Displays initiative health, progress metrics, and any blockers in a
-            conversational card.
-          </p>
-          <div class="widget-links">
-            <a href="initiative-pulse.html?demo=true" class="btn btn-primary ox-link-btn ox-link-btn--primary"
-              >Demo Mode</a
-            >
-            <a href="initiative-pulse.html?loading=true" class="btn btn-secondary ox-link-btn ox-link-btn--ghost" style="opacity:0.8"
-              >Loading</a
-            >
-            <a href="initiative-pulse.html" class="btn btn-secondary ox-link-btn ox-link-btn--ghost"
-              >Empty State</a
-            >
-          </div>
-        </div>
-
-        <div class="widget-card">
-          <div class="widget-name">Entity Spawned</div>
-          <p class="widget-description">
-            Confirmation card shown when a Workstream, Milestone, or Task is assigned to an agent.
-          </p>
-          <div class="widget-links">
-            <a href="task-spawned.html?demo=true" class="btn btn-primary ox-link-btn ox-link-btn--primary"
-              >Demo Mode</a
-            >
-            <a href="task-spawned.html?loading=true" class="btn btn-secondary ox-link-btn ox-link-btn--ghost"
-              >Loading State</a
-            >
-            <a href="task-spawned.html" class="btn btn-secondary ox-link-btn ox-link-btn--ghost"
-              >Empty State</a
-            >
-          </div>
-        </div>
-
-        <div class="widget-card">
-          <div class="widget-name">
-            Scaffold Stream <span class="badge">Live</span>
-          </div>
-          <p class="widget-description">
-            Real-time SSE widget that animates entity creation as a scaffold builds — workstreams, milestones, tasks appearing card by card.
-          </p>
-          <div class="widget-links">
-            <a href="scaffold-streaming.html?demo=true" class="btn btn-primary ox-link-btn ox-link-btn--primary">Demo Mode</a>
-            <a href="scaffold-streaming.html" class="btn btn-secondary ox-link-btn ox-link-btn--ghost">Live Stream</a>
-          </div>
-        </div>
-
-      </div>
-
-      <div class="quick-links">
-        <div class="preview-shell">
-          <div class="widget-section-header">
-            <span class="widget-section-icon">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"></rect><path d="M8 20h8"></path></svg>
-            </span>
-            <div class="widget-section-title">Live preview</div>
-            <div class="widget-section-rule"></div>
-          </div>
+          <p class="manifest-warning" id="manifest-warning" role="status"></p>
 
           <div class="preview-controls">
-          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost active" onclick="loadPreview('decisions.html?demo=true')">Decisions</button>
-          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="loadPreview('agent-status.html?demo=true')">Agent Status</button>
-          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="loadPreview('search-results.html?demo=true')">Search Results</button>
-          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="loadPreview('morning-brief.html?demo=true')">Morning Brief</button>
-          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="loadPreview('initiative-pulse.html?demo=true')">Initiative Pulse</button>
-          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="loadPreview('task-spawned.html?demo=true')">Entity Spawned</button>
-          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="loadPreview('scaffolded-initiative.html?demo=true')">Scaffolded</button>
-          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="loadPreview('scaffold-streaming.html?demo=true')">Scaffold Stream</button>
-          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="loadPreview('agent-status.html?demo=true&live=true')">Agent Status · Live</button>
-          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="loadPreview('initiative-pulse.html?demo=true&live=true')">Initiative Pulse · Live</button>
-          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="loadPreview('artifact-review.html?demo=true')">Artifact Review</button>
-          <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="loadPreview('plan-session-live.html?demo=true')">Plan Session · Live</button>
-          </div>
-          <div class="preview-controls state-switcher">
-            <span class="state-label">View state</span>
-            <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="testState('demo')" style="border-color: var(--ox-lime); color: var(--ox-text);">Data Rendered</button>
-            <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="testState('loading')" style="border-style: dashed; opacity: 0.8">Loading Skeleton</button>
-            <button type="button" class="preview-btn ox-action-btn ox-action-btn--ghost" onclick="testState('empty')" style="border-style: dotted; opacity: 0.8">Empty State</button>
+            <div class="control-group">
+              <span class="control-label">State</span>
+              <div class="state-options" id="state-options" aria-label="Preview state"></div>
+            </div>
+            <div class="control-group">
+              <span class="control-label">Viewport</span>
+              <div class="viewport-options" id="viewport-options" aria-label="Preview viewport">
+                <button class="control-btn viewport-btn" type="button" data-viewport="wide" aria-label="Wide preview" title="Wide preview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="2"></rect><path d="M8 20h8"></path></svg></button>
+                <button class="control-btn viewport-btn" type="button" data-viewport="tablet" aria-label="Tablet 768 pixel preview" title="Tablet · 768px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2"></rect><path d="M12 18h.01"></path></svg></button>
+                <button class="control-btn viewport-btn" type="button" data-viewport="phone" aria-label="Phone 375 pixel preview" title="Phone · 375px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"></rect><path d="M11 18h2"></path></svg></button>
+              </div>
+            </div>
           </div>
 
-          <iframe
-            id="preview-frame"
-            class="iframe-preview"
-            src="decisions.html?demo=true"
-          ></iframe>
+          <div class="preview-stage">
+            <div class="preview-canvas" id="preview-canvas" data-viewport="wide">
+              <iframe class="preview-frame is-loading" id="preview-frame" title="Pending decisions widget preview" src="decisions.html?demo=true"></iframe>
+            </div>
+          </div>
+
+          <div class="preview-meta" aria-label="Selected widget metadata">
+            <div class="meta-item">
+              <span class="meta-label">Tool binding</span>
+              <span class="meta-value" id="meta-binding">orgx_decide · approve_agent_work</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Resource</span>
+              <span class="meta-value" id="meta-resource">ui://widget/decisions.html</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Build proof</span>
+              <span class="meta-value" id="meta-build">Loading manifest…</span>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
 
     <script>
-      
-      let currentTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      
-      function updateThemeUI() {
-        document.documentElement.setAttribute('data-theme', currentTheme);
-        document.getElementById('icon-sun').style.display = currentTheme === 'dark' ? 'block' : 'none';
-        document.getElementById('icon-moon').style.display = currentTheme === 'light' ? 'block' : 'none';
-        
-        // Update active iframe
-        const frame = document.getElementById('preview-frame');
-        if (frame && frame.src) {
-           const url = new URL(frame.src);
-           url.searchParams.set('theme', currentTheme);
-           frame.src = url.toString();
+      var BASE_WIDGETS = [
+        {
+          id: 'decisions',
+          name: 'Pending decisions',
+          question: 'What needs my judgment now?',
+          description: 'Operator decisions with consequence-first approve and reject actions.',
+          mode: 'Escalation',
+          status: 'Bound MCP resource',
+          binding: 'orgx_decide · approve_agent_work',
+          resource: 'ui://widget/decisions.html',
+          primaryRgb: '251, 191, 36',
+          states: [
+            { id: 'populated', label: 'Populated', query: 'demo=true' },
+            { id: 'loading', label: 'Loading', query: 'loading=true' },
+            { id: 'empty', label: 'Empty', query: '' }
+          ]
+        },
+        {
+          id: 'agent-status',
+          name: 'Agent status',
+          question: 'Which agent needs me?',
+          description: 'Truthful active, assigned, blocked, and idle execution states.',
+          mode: 'Command',
+          status: 'Bound MCP resource',
+          binding: 'get_agent_status',
+          resource: 'ui://widget/agent-status.html',
+          primaryRgb: '191, 255, 0',
+          states: [
+            { id: 'populated', label: 'Populated', query: 'demo=true' },
+            { id: 'loading', label: 'Loading', query: 'loading=true' },
+            { id: 'empty', label: 'Empty', query: '' }
+          ]
+        },
+        {
+          id: 'search-results',
+          name: 'Search results',
+          question: 'What prior context answers this?',
+          description: 'Ranked organizational memory, artifacts, decisions, and initiative context.',
+          mode: 'Readout',
+          status: 'Bound MCP resource',
+          binding: 'orgx_search · query_org_memory · recall_memory',
+          resource: 'ui://widget/search-results.html',
+          primaryRgb: '0, 201, 167',
+          states: [
+            { id: 'populated', label: 'Populated', query: 'demo=true' },
+            { id: 'loading', label: 'Loading', query: 'loading=true' },
+            { id: 'empty', label: 'Empty', query: 'demo=true&state=empty' },
+            { id: 'error', label: 'Error', query: 'demo=true&state=error' }
+          ]
+        },
+        {
+          id: 'scaffolded-initiative',
+          name: 'Scaffolded initiative',
+          question: 'What was created, and who owns it?',
+          description: 'Initiative hierarchy with workstream, milestone, task, owner, and urgency proof.',
+          mode: 'Creation',
+          status: 'Bound MCP resource',
+          binding: 'scaffold_initiative',
+          resource: 'ui://widget/scaffolded-initiative.html',
+          primaryRgb: '99, 102, 241',
+          states: [
+            { id: 'populated', label: 'Populated', query: 'demo=true' },
+            { id: 'long', label: 'Long', query: 'demo=true&scenario=branchy' },
+            { id: 'urgent', label: 'Urgent', query: 'demo=true&status=blocked' },
+            { id: 'resolved', label: 'Resolved', query: 'demo=true&status=completed' },
+            { id: 'loading', label: 'Loading', query: 'loading=true' },
+            { id: 'empty', label: 'Empty', query: '' }
+          ]
+        },
+        {
+          id: 'initiative-pulse',
+          name: 'Initiative pulse',
+          question: 'Is this initiative healthy?',
+          description: 'Health, blockers, ownership, workstream signals, and the next useful drill-down.',
+          mode: 'Command',
+          status: 'Bound MCP resource',
+          binding: 'get_initiative_pulse · track_project_progress',
+          resource: 'ui://widget/initiative-pulse.html',
+          primaryRgb: '0, 201, 167',
+          states: [
+            { id: 'populated', label: 'Populated', query: 'demo=true' },
+            { id: 'loading', label: 'Loading', query: 'loading=true' },
+            { id: 'empty', label: 'Empty', query: '' }
+          ]
+        },
+        {
+          id: 'task-spawned',
+          name: 'Task spawned',
+          question: 'Who took the work, and what happens next?',
+          description: 'Delegation receipt with agent, task, routing, and execution next step.',
+          mode: 'Creation',
+          status: 'Bound MCP resource',
+          binding: 'orgx_spawn · spawn_agent_task · delegate_agent_task',
+          resource: 'ui://widget/task-spawned.html',
+          primaryRgb: '99, 102, 241',
+          states: [
+            { id: 'populated', label: 'Populated', query: 'demo=true' },
+            { id: 'loading', label: 'Loading', query: 'loading=true' },
+            { id: 'empty', label: 'Empty', query: '' }
+          ]
+        },
+        {
+          id: 'morning-brief',
+          name: 'Morning brief',
+          question: 'What changed, needs attention, or is proven?',
+          description: 'Exception-first executive readout of receipts, value signals, and priorities.',
+          mode: 'Readout',
+          status: 'Bound MCP resource',
+          binding: 'get_morning_brief · orgx_recommend',
+          resource: 'ui://widget/morning-brief.html',
+          primaryRgb: '0, 201, 167',
+          states: [
+            { id: 'populated', label: 'Populated', query: 'demo=true' },
+            { id: 'loading', label: 'Loading', query: 'loading=true' },
+            { id: 'empty', label: 'Empty', query: '' }
+          ]
+        },
+        {
+          id: 'artifact-review',
+          name: 'Artifact review',
+          question: 'Is this artifact ready to approve?',
+          description: 'Production artifact preview with version context and explicit review consequence.',
+          mode: 'Escalation',
+          status: 'Bound MCP resource',
+          binding: 'review_artifact',
+          resource: 'ui://widget/artifact-review.html',
+          primaryRgb: '251, 191, 36',
+          states: [
+            { id: 'populated', label: 'Populated', query: 'demo=true' },
+            { id: 'loading', label: 'Loading', query: 'loading=true' },
+            { id: 'empty', label: 'Empty', query: '' }
+          ]
+        },
+        {
+          id: 'plan-session-live',
+          name: 'Plan session live',
+          question: 'What is the plan becoming now?',
+          description: 'Live co-authored planning state with progress, edits, and durable completion context.',
+          mode: 'Creation',
+          status: 'Bound MCP resource',
+          binding: 'orgx_plan',
+          resource: 'ui://widget/plan-session-live.html',
+          primaryRgb: '99, 102, 241',
+          states: [
+            { id: 'populated', label: 'Populated', query: 'demo=true' },
+            { id: 'loading', label: 'Loading', query: 'loading=true' },
+            { id: 'empty', label: 'Empty', query: '' }
+          ]
+        },
+        {
+          id: 'daily-brief',
+          name: 'Daily brief + trust loop',
+          question: 'What should ascend, be watched, or be proven?',
+          description: 'Skill and agent trust readout prepared for a future tool output-template binding.',
+          mode: 'Readout',
+          status: 'Registered · binding pending',
+          binding: 'No tool output-template yet',
+          resource: 'ui://widget/daily-brief.html',
+          primaryRgb: '99, 102, 241',
+          states: [
+            { id: 'populated', label: 'Populated', query: 'demo=true' },
+            { id: 'agents', label: 'Agents lens', query: 'demo=true&lens=agents' },
+            { id: 'loading', label: 'Loading', query: 'loading=true' },
+            { id: 'empty', label: 'Empty', query: '' }
+          ]
+        },
+        {
+          id: 'scaffold-streaming',
+          name: 'Scaffold stream harness',
+          question: 'Is a scaffold event stream attached?',
+          description: 'Development-only SSE harness with explicit demo, loading, and unattached states.',
+          mode: 'Creation',
+          status: 'Development harness',
+          binding: 'Demo or explicit ?live=true stream',
+          resource: '/widgets/scaffold-streaming.html',
+          primaryRgb: '99, 102, 241',
+          states: [
+            { id: 'demo', label: 'Demo', query: 'demo=true' },
+            { id: 'loading', label: 'Loading', query: 'loading=true' },
+            { id: 'idle', label: 'Unattached', query: '' }
+          ]
+        }
+      ];
+
+      var galleryState = {
+        widgets: BASE_WIDGETS.slice(),
+        manifest: null,
+        widgetId: 'decisions',
+        stateId: 'populated',
+        viewport: 'wide',
+        theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+      };
+
+      var elements = {
+        coverageCopy: document.getElementById('coverage-copy'),
+        registryCount: document.getElementById('registry-count'),
+        registryList: document.getElementById('registry-list'),
+        filter: document.getElementById('widget-filter'),
+        previewStatus: document.getElementById('preview-status'),
+        previewTitle: document.getElementById('preview-title'),
+        previewDescription: document.getElementById('preview-description'),
+        themeToggle: document.getElementById('theme-toggle'),
+        openPreview: document.getElementById('open-preview'),
+        stateOptions: document.getElementById('state-options'),
+        viewportOptions: document.getElementById('viewport-options'),
+        previewCanvas: document.getElementById('preview-canvas'),
+        previewFrame: document.getElementById('preview-frame'),
+        manifestWarning: document.getElementById('manifest-warning'),
+        metaBinding: document.getElementById('meta-binding'),
+        metaResource: document.getElementById('meta-resource'),
+        metaBuild: document.getElementById('meta-build')
+      };
+
+      function titleFromId(id) {
+        return String(id || '')
+          .split('-')
+          .map(function (part) { return part ? part.charAt(0).toUpperCase() + part.slice(1) : ''; })
+          .join(' ');
+      }
+
+      function fallbackWidget(id, manifestEntry) {
+        return {
+          id: id,
+          name: titleFromId(id),
+          question: 'What does this surface prove?',
+          description: 'Manifest-discovered widget awaiting gallery metadata.',
+          mode: manifestEntry && manifestEntry.demoOnly ? 'Development' : 'Readout',
+          status: manifestEntry && manifestEntry.demoOnly ? 'Development harness' : 'Manifest resource',
+          binding: 'Binding metadata pending',
+          resource: '/widgets/' + id + '.html',
+          primaryRgb: manifestEntry && manifestEntry.primaryRgb ? manifestEntry.primaryRgb.split(',').join(', ') : '99, 102, 241',
+          states: [
+            { id: 'populated', label: 'Populated', query: 'demo=true' },
+            { id: 'loading', label: 'Loading', query: 'loading=true' },
+            { id: 'empty', label: 'Empty', query: '' }
+          ]
+        };
+      }
+
+      function reconcileManifest(manifest) {
+        var entries = manifest && manifest.widgets ? manifest.widgets : {};
+        var manifestIds = Object.keys(entries).filter(function (id) { return id !== 'index'; });
+        var known = new Set(galleryState.widgets.map(function (widget) { return widget.id; }));
+        manifestIds.forEach(function (id) {
+          if (!known.has(id)) galleryState.widgets.push(fallbackWidget(id, entries[id]));
+        });
+        var missingFiles = galleryState.widgets.filter(function (widget) { return !entries[widget.id]; });
+        var surfacedCount = galleryState.widgets.filter(function (widget) { return entries[widget.id]; }).length;
+        elements.coverageCopy.textContent = surfacedCount + '/' + manifestIds.length + ' manifest surfaces · all states addressable';
+        if (missingFiles.length || surfacedCount !== manifestIds.length) {
+          elements.manifestWarning.textContent = 'Coverage mismatch: ' + missingFiles.map(function (widget) { return widget.name; }).join(', ') + ' is not present in the generated manifest.';
+          elements.manifestWarning.classList.add('is-visible');
+        } else {
+          elements.manifestWarning.classList.remove('is-visible');
         }
       }
 
-      function toggleTheme() {
-        currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        updateThemeUI();
+      function readUrlState() {
+        var params = new URLSearchParams(window.location.search);
+        var widget = params.get('widget');
+        var viewport = params.get('viewport');
+        var theme = params.get('theme');
+        var state = params.get('state');
+        if (galleryState.widgets.some(function (item) { return item.id === widget; })) galleryState.widgetId = widget;
+        if (['wide', 'tablet', 'phone'].includes(viewport)) galleryState.viewport = viewport;
+        if (['light', 'dark'].includes(theme)) galleryState.theme = theme;
+        var selected = getSelectedWidget();
+        if (selected.states.some(function (item) { return item.id === state; })) galleryState.stateId = state;
+        else galleryState.stateId = selected.states[0].id;
       }
-      
-      // Initialize
-      updateThemeUI();
 
-      // Calm staggered card entrance: assign --i per card in DOM order.
-      document.querySelectorAll('.widget-grid .widget-card').forEach(function (card, i) {
-        card.style.setProperty('--i', i);
-      });
+      function writeUrlState(push) {
+        var url = new URL(window.location.href);
+        url.searchParams.set('widget', galleryState.widgetId);
+        url.searchParams.set('state', galleryState.stateId);
+        url.searchParams.set('viewport', galleryState.viewport);
+        url.searchParams.set('theme', galleryState.theme);
+        window.history[push ? 'pushState' : 'replaceState']({}, '', url.toString());
+      }
 
-      
-      let currentUrlBase = 'decisions.html';
+      function getSelectedWidget() {
+        return galleryState.widgets.find(function (widget) { return widget.id === galleryState.widgetId; }) || galleryState.widgets[0];
+      }
 
-      function loadPreview(urlStr) {
-        // Only update current base if it's a structural change, not just a state toggle
-        const base = urlStr.split('?')[0];
-        if (base && base.endsWith('.html')) {
-           currentUrlBase = base;
+      function getSelectedState(widget) {
+        return widget.states.find(function (state) { return state.id === galleryState.stateId; }) || widget.states[0];
+      }
+
+      function buildPreviewUrl(widget, state) {
+        var query = new URLSearchParams(state.query || '');
+        query.set('theme', galleryState.theme);
+        return widget.id + '.html?' + query.toString();
+      }
+
+      function renderRegistry() {
+        var filter = elements.filter.value.trim().toLowerCase();
+        var visibleWidgets = galleryState.widgets.filter(function (widget) {
+          return !filter || [widget.name, widget.question, widget.mode, widget.binding].join(' ').toLowerCase().includes(filter);
+        });
+        elements.registryCount.textContent = visibleWidgets.length + (visibleWidgets.length === 1 ? ' surface' : ' surfaces');
+        elements.registryList.innerHTML = '';
+        if (!visibleWidgets.length) {
+          var empty = document.createElement('div');
+          empty.className = 'registry-empty';
+          empty.textContent = 'No surface matches that filter.';
+          elements.registryList.appendChild(empty);
+          return;
         }
-
-        const url = new URL(urlStr, window.location.href);
-        url.searchParams.set('theme', currentTheme);
-        document.getElementById('preview-frame').src = url.toString();
-
-        // Update active button state for the top row
-        if (urlStr.includes('?demo=true')) {
-          document.querySelectorAll('.preview-controls:first-child .preview-btn').forEach((btn) => {
-            const btnUrl = btn.getAttribute('onclick').match(/'([^']+)'/)[1];
-            btn.classList.toggle('active', btnUrl === urlStr);
+        visibleWidgets.forEach(function (widget) {
+          var button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'registry-row' + (widget.id === galleryState.widgetId ? ' is-active' : '');
+          button.setAttribute('role', 'option');
+          button.setAttribute('aria-selected', widget.id === galleryState.widgetId ? 'true' : 'false');
+          button.dataset.widgetId = widget.id;
+          button.innerHTML = '<span class="registry-row__name"></span><span class="registry-row__mode"></span><span class="registry-row__question"></span>';
+          button.querySelector('.registry-row__name').textContent = widget.name;
+          button.querySelector('.registry-row__mode').textContent = widget.mode;
+          button.querySelector('.registry-row__question').textContent = widget.question;
+          button.addEventListener('click', function () { selectWidget(widget.id, true); });
+          elements.registryList.appendChild(button);
+        });
+        var activeRow = elements.registryList.querySelector('.registry-row.is-active');
+        if (activeRow && window.matchMedia('(max-width: 640px)').matches) {
+          window.requestAnimationFrame(function () {
+            activeRow.scrollIntoView({ block: 'nearest' });
           });
         }
       }
 
-      function testState(state) {
-         if (state === 'demo') loadPreview(currentUrlBase + '?demo=true');
-         if (state === 'loading') loadPreview(currentUrlBase + '?loading=true');
-         if (state === 'empty') loadPreview(currentUrlBase);
+      function renderStateOptions(widget) {
+        elements.stateOptions.innerHTML = '';
+        widget.states.forEach(function (state) {
+          var button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'control-btn' + (state.id === galleryState.stateId ? ' is-active' : '');
+          button.textContent = state.label;
+          button.setAttribute('aria-pressed', state.id === galleryState.stateId ? 'true' : 'false');
+          button.addEventListener('click', function () {
+            galleryState.stateId = state.id;
+            writeUrlState(false);
+            renderSelection();
+          });
+          elements.stateOptions.appendChild(button);
+        });
       }
 
+      function renderViewportOptions() {
+        elements.viewportOptions.querySelectorAll('[data-viewport]').forEach(function (button) {
+          var active = button.dataset.viewport === galleryState.viewport;
+          button.classList.toggle('is-active', active);
+          button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        elements.previewCanvas.dataset.viewport = galleryState.viewport;
+      }
+
+      function renderSelection() {
+        var widget = getSelectedWidget();
+        var state = getSelectedState(widget);
+        var manifestEntry = galleryState.manifest && galleryState.manifest.widgets ? galleryState.manifest.widgets[widget.id] : null;
+        document.documentElement.setAttribute('data-theme', galleryState.theme);
+        document.documentElement.style.setProperty('--ox-primary-rgb', widget.primaryRgb);
+        elements.previewStatus.textContent = widget.status;
+        elements.previewTitle.textContent = widget.name;
+        elements.previewDescription.textContent = widget.description;
+        elements.themeToggle.textContent = 'Theme · ' + titleFromId(galleryState.theme);
+        elements.metaBinding.textContent = widget.binding;
+        elements.metaResource.textContent = widget.resource;
+        elements.metaBuild.textContent = manifestEntry ? manifestEntry.hash + ' · ' + Math.round(manifestEntry.bytes / 1024) + ' KB' : 'Not present in manifest';
+        var previewUrl = buildPreviewUrl(widget, state);
+        elements.openPreview.href = previewUrl;
+        elements.previewFrame.title = widget.name + ' · ' + state.label + ' preview';
+        elements.previewFrame.classList.add('is-loading');
+        elements.previewFrame.src = previewUrl;
+        renderRegistry();
+        renderStateOptions(widget);
+        renderViewportOptions();
+      }
+
+      function selectWidget(widgetId, push) {
+        var widget = galleryState.widgets.find(function (item) { return item.id === widgetId; });
+        if (!widget) return;
+        galleryState.widgetId = widget.id;
+        galleryState.stateId = widget.states[0].id;
+        writeUrlState(Boolean(push));
+        renderSelection();
+      }
+
+      elements.filter.addEventListener('input', renderRegistry);
+
+      elements.themeToggle.addEventListener('click', function () {
+        galleryState.theme = galleryState.theme === 'dark' ? 'light' : 'dark';
+        writeUrlState(false);
+        renderSelection();
+      });
+
+      elements.viewportOptions.addEventListener('click', function (event) {
+        var button = event.target.closest('[data-viewport]');
+        if (!button) return;
+        galleryState.viewport = button.dataset.viewport;
+        writeUrlState(false);
+        renderViewportOptions();
+      });
+
+      elements.registryList.addEventListener('keydown', function (event) {
+        if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+        var buttons = Array.from(elements.registryList.querySelectorAll('.registry-row'));
+        if (!buttons.length) return;
+        event.preventDefault();
+        var index = buttons.indexOf(document.activeElement);
+        if (event.key === 'Home') index = 0;
+        else if (event.key === 'End') index = buttons.length - 1;
+        else if (event.key === 'ArrowDown') index = Math.min(buttons.length - 1, Math.max(0, index + 1));
+        else index = Math.max(0, index < 0 ? 0 : index - 1);
+        buttons[index].focus();
+      });
+
+      elements.previewFrame.addEventListener('load', function () {
+        elements.previewFrame.classList.remove('is-loading');
+      });
+
+      window.addEventListener('popstate', function () {
+        readUrlState();
+        renderSelection();
+      });
+
+      readUrlState();
+      writeUrlState(false);
+      renderSelection();
+
+      fetch('_manifest.json', { cache: 'no-store' })
+        .then(function (response) {
+          if (!response.ok) throw new Error('Manifest returned ' + response.status);
+          return response.json();
+        })
+        .then(function (manifest) {
+          galleryState.manifest = manifest;
+          reconcileManifest(manifest);
+          renderSelection();
+        })
+        .catch(function () {
+          elements.coverageCopy.textContent = galleryState.widgets.length + ' static surfaces · manifest unavailable';
+          elements.manifestWarning.textContent = 'The generated manifest could not be loaded. Static gallery metadata is shown so the preview remains usable.';
+          elements.manifestWarning.classList.add('is-visible');
+          renderRegistry();
+        });
     </script>
   </body>
 </html>

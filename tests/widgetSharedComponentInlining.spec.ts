@@ -40,6 +40,19 @@ describe('MCP Apps shared-component inlining', () => {
     expect(sanitized).toContain(cssBody);
   });
 
+  it('inlines the final widget quality layer for Claude sandbox parity', () => {
+    const html = `<link rel="stylesheet" href="shared/widget-quality.css?v=build123" />`;
+    const cssBody = ':root { --ox-quality-target: 44px; }';
+    const sanitized = sanitizeMcpAppsHtml(html, {
+      sharedComponents: { 'shared/widget-quality.css': cssBody },
+    });
+    expect(sanitized).not.toMatch(/<link/);
+    expect(sanitized).toMatch(
+      /data-inline-asset="shared\/widget-quality\.css"/
+    );
+    expect(sanitized).toContain(cssBody);
+  });
+
   it('inlines a referenced shared component JS as a <script> block', () => {
     const html = `<!DOCTYPE html><html><head>
       <script src="shared/components/liveness-indicator.js"></script>

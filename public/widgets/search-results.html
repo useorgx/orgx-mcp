@@ -86,30 +86,24 @@
       }
 
       /* Smooth UX Transitions */
-      .skeleton-wrapper { transition: opacity var(--ox-dur-slow, 400ms) var(--ox-ease-exit, cubic-bezier(0.4, 0, 1, 1)); }
+      .skeleton-wrapper { transition: opacity 300ms cubic-bezier(0.16, 1, 0.3, 1); }
       @keyframes fadeSlideUp {
         from { opacity: 0; transform: translateY(16px) scale(0.98); filter: blur(4px); }
         to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
       }
       /* Arrivals decelerate in (entry curve). */
-      .animate-in { opacity: 0; animation: fadeSlideUp var(--ox-dur-slower, 600ms) var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) forwards; }
+      .animate-in { opacity: 0; animation: fadeSlideUp 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
       .delay-1 { animation-delay: 0.1s; }
       .delay-2 { animation-delay: 0.2s; }
       .delay-3 { animation-delay: 0.3s; }
 
-      /* Result rows arrive in a calm stagger after the card settles. */
-      .result-list > .result-card,
-      .result-list--recommendations > .result-card {
-        opacity: 0;
-        animation: fadeSlideUp var(--ox-dur-slow, 400ms) var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) forwards;
-        animation-delay: calc(120ms + var(--i, 0) * 60ms);
-      }
-      
-      .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 24px; text-align: center; background: var(--ox-well-bg); border: 1px dashed var(--ox-border-strong); border-radius: 16px; margin: 16px 0; }
-      .empty-icon { width: 48px; height: 48px; border-radius: 50%; background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
-      .empty-icon svg { width: 24px; height: 24px; }
-      .empty-title { font-size: 1.1rem; font-weight: 600; color: var(--ox-text); margin-bottom: 8px; }
-      .empty-desc { font-size: 0.9rem; color: var(--ox-text-muted); line-height: 1.5; max-width: 280px; }
+      .search-state { display: grid; align-content: center; min-height: 220px; gap: 18px; }
+      .search-state__header { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 18px; align-items: start; }
+      .search-state__icon { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; color: var(--ox-primary); background: rgba(var(--ox-primary-rgb), 0.08); border: 1px solid rgba(var(--ox-primary-rgb), 0.18); }
+      .search-state__title { margin-top: 8px; color: var(--ox-text); font-size: clamp(1.4rem, 3.2vw, 1.92rem); line-height: 1.08; letter-spacing: -0.05em; font-weight: 700; }
+      .search-state__desc { max-width: 48ch; margin-top: 10px; color: var(--ox-text-muted); font-size: 0.88rem; line-height: 1.58; }
+      .search-state__guidance { display: flex; flex-wrap: wrap; gap: 8px 16px; padding-top: 16px; border-top: 1px solid var(--ox-border); color: var(--ox-text-muted); font-family: var(--ox-mono); font-size: 0.66rem; letter-spacing: 0.04em; }
+      .search-state--error .search-state__icon { color: var(--ox-danger); background: rgba(225, 29, 72, 0.06); border-color: rgba(225, 29, 72, 0.18); }
 
       * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -191,37 +185,34 @@
       color: inherit;
       text-decoration: none;
       padding: 18px;
-      background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.04), transparent 45%), var(--ox-well-bg);
-      border: 1px solid var(--ox-border);
-      border-radius: 14px;
-      transition: border-color var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
-        background var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
-        transform var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
-        box-shadow var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
+      background: transparent;
+      border: 0;
+      border-top: 1px solid var(--ox-border);
+      border-radius: 0;
+      transition: background-color 160ms cubic-bezier(0.16, 1, 0.3, 1);
       position: relative;
-      overflow: hidden;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+      box-shadow: none;
     }
+    .result-card:first-child { border-top: 0; }
     .result-card:hover,
     .result-card:focus-visible {
-      border-color: rgba(var(--ox-primary-rgb), 0.38);
       background: rgba(var(--ox-primary-rgb), 0.06);
-      transform: translateY(-1px);
-      box-shadow: 0 16px 28px -24px rgba(0, 0, 0, 0.45);
       outline: none;
     }
     
     .r-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 10px; }
     .r-title { font-size: 1rem; font-weight: 600; color: var(--ox-text); display: flex; align-items: flex-start; gap: 10px; flex: 1; line-height: 1.35; }
-    .r-title-copy { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+    .r-title-copy { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+    .r-title-line { display: flex; align-items: flex-start; gap: 8px; }
+    .r-title-icon { display: flex; align-items: center; margin-top: 2px; color: var(--ox-text-muted); }
     .r-kicker { font-family: var(--ox-mono); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ox-text-muted); font-weight: 700; }
     .r-rank { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 28px; border-radius: 999px; border: 1px solid rgba(var(--ox-primary-rgb), 0.22); background: rgba(var(--ox-primary-rgb), 0.09); color: var(--ox-primary); font-family: var(--ox-mono); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.03em; flex-shrink: 0; }
     
     
-    .score-pill { font-family: var(--ox-mono); font-size: 0.65rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; border: 1px solid currentColor; }
-    .score-high { color: var(--ox-lime); background: rgba(212,237,49,0.1); }
-    .score-med { color: var(--ox-primary); background: rgba(var(--ox-primary-rgb), 0.1); }
-    .score-low { color: var(--ox-warning); background: rgba(251,191,36,0.1); }
+    .score-pill { flex-shrink: 0; color: var(--ox-text-muted); font-family: var(--ox-mono); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+    .score-high { color: var(--ox-primary); }
+    .score-med,
+    .score-low { color: var(--ox-text-muted); }
 
     
     .r-snippet { font-size: 0.88rem; color: var(--ox-text-muted); line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
@@ -272,9 +263,6 @@
       background: rgba(var(--ox-primary-rgb), 0.1);
       border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
     }
-    .r-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--ox-border); }
-    .r-open-hint { display: inline-flex; align-items: center; gap: 8px; color: var(--ox-primary); font-size: 0.82rem; font-weight: 600; letter-spacing: -0.01em; }
-    .r-open-hint small { color: var(--ox-text-muted); font-size: 0.68rem; font-weight: 500; letter-spacing: 0; }
     .history-status { padding: 4px 8px; border-radius: 999px; border: 1px solid rgba(var(--ox-primary-rgb), 0.18); background: rgba(var(--ox-primary-rgb), 0.08); color: var(--ox-primary); font-family: var(--ox-mono); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
     
     .highlight { color: var(--ox-primary); font-weight: 600; background: rgba(var(--ox-primary-rgb), 0.1); padding: 0 2px; border-radius: 2px; }
@@ -284,17 +272,14 @@
       justify-content: space-between;
       gap: 12px;
       margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--ox-border);
     }
     .r-open-hint {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      min-height: 38px;
-      padding: 0 12px;
-      border-radius: 10px;
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
-      background: rgba(var(--ox-primary-rgb), 0.08);
-      color: var(--ox-text);
+      color: var(--ox-primary);
       font-size: 0.78rem;
       font-weight: 600;
       white-space: nowrap;
@@ -305,21 +290,14 @@
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
-    .error-state { border-style: solid; border-color: rgba(225,29,72,0.2); background: rgba(225,29,72,0.04); }
-    .error-state .empty-icon { color: var(--ox-danger); background: rgba(225,29,72,0.08); box-shadow: none; }
-    .error-state .empty-title { color: var(--ox-text); }
-    .error-state .empty-desc { max-width: 360px; }
-
     .pagination {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: 14px 18px;
+      gap: 12px 18px;
       margin-top: 16px;
-      padding: 14px 16px;
-      border: 1px solid var(--ox-border);
-      border-radius: 14px;
-      background: var(--ox-panel);
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
+      padding: 14px 0 0;
+      border-top: 1px solid var(--ox-border);
+      background: transparent;
     }
 
     .page-info {
@@ -409,7 +387,7 @@
 
     .page-btn {
       min-width: 96px;
-      min-height: 38px;
+      min-height: 44px;
       padding: 0 14px;
       border-radius: 10px;
       border: 1px solid var(--ox-border);
@@ -435,10 +413,13 @@
 
     @media (max-width: 560px) {
       .r-header,
-      .r-footer {
+      .r-footer,
+      .search-state__header {
         flex-direction: column;
         align-items: flex-start;
       }
+
+      .search-state__header { display: flex; }
 
       .score-pill {
         align-self: flex-start;
@@ -465,6 +446,7 @@
     }
     @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
   </style>
+  <link rel="stylesheet" href="shared/widget-quality.css" />
 </head>
 <body>
   <div class="container" id="content">
@@ -577,6 +559,21 @@
         if (num > 1) num = 1;
         return num;
       };
+      var relevanceLabel = (score) => {
+        if (score === null) return '';
+        if (score >= 0.85) return 'Strong match';
+        if (score >= 0.7) return 'Relevant';
+        return 'Related';
+      };
+      var formatSearchError = (value) => {
+        var error = decodeEscapedText(typeof value === 'string' ? value : '');
+        if (/resolve user_id|supabase uuid|database client|user_id/i.test(error)) {
+          return 'OrgX could not verify this connected account. Reconnect OrgX, then retry the search.';
+        }
+        return error && error.length <= 240
+          ? error
+          : 'OrgX could not complete this search. Retry in a moment; reconnect OrgX if it repeats.';
+      };
       var ORGX_BASE_URL = 'https://useorgx.com';
       var decodeEscapedText = (value) => {
         if (typeof value !== 'string' || !value) return '';
@@ -655,7 +652,7 @@
           snippet: item && typeof item.snippet === 'string' ? decodeEscapedText(item.snippet) : item && typeof item.summary === 'string' ? decodeEscapedText(item.summary) : item && typeof item.description === 'string' ? decodeEscapedText(item.description) : 'No excerpt available yet.',
           score: score,
           url: buildEntityUrl(item || {}),
-          date: formatRelativeDate(item && (item.date || item.created_at || item.updated_at)) || 'Recently updated'
+          date: formatRelativeDate(item && (item.date || item.created_at || item.updated_at))
         };
       };
       var normalizeDecisionHistoryItem = (item) => {
@@ -780,51 +777,58 @@
       };
 
     var isDemo = queryParams.get('demo') === 'true';
-    var data = isDemo ? {
-      query: "founder continuity launch",
-      results: [
-        {
-          title: 'Founder Continuity Launch',
-          type: 'initiative',
-          snippet: 'Cross-domain launch that ties <span class="highlight">founder continuity</span> to live search, scaffolded execution, and approvals in one operator loop.',
-          score: 0.98,
-          url: '#',
-          date: 'Just now'
-        },
-        {
-          title: 'Approve founder continuity launch story',
-          type: 'decision',
-          snippet: '<span class="highlight">Pace - Product</span> is waiting on founder approval to lock the hero narrative, proof order, and CTA before launch.',
-          score: 0.93,
-          url: '#',
-          date: '6 minutes ago'
-        },
-        {
-          title: 'Capture scaffold, search, and decisions stack',
-          type: 'task',
-          snippet: 'Marketing and engineering need the final <span class="highlight">continuity launch</span> proof image once the widgets are visually aligned.',
-          score: 0.88,
-          url: '#',
-          date: '18 minutes ago'
-        },
-        {
-          title: 'Founder continuity evidence pack',
-          type: 'document',
-          snippet: 'Reusable launch proof showing the same initiative, search query, and decision chain across ChatGPT, Claude, and Cursor surfaces.',
-          score: 0.84,
-          url: '#',
-          date: '32 minutes ago'
-        },
-        {
-          title: 'Search relevance threshold locked at 0.82',
-          type: 'document',
-          snippet: 'Engineering note explaining why the <span class="highlight">founder continuity</span> query should keep the linked decision and initiative above the fold.',
-          score: 0.78,
-          url: '#',
-          date: '1 hour ago'
-        }
-      ]
-    } : null;
+    var demoState = queryParams.get('state') || 'populated';
+    var demoResults = [
+      {
+        id: '4ee3a61e-09f5-48f4-a33d-05b46b72fa05',
+        title: 'Founder Continuity Launch',
+        type: 'initiative',
+        summary: 'Cross-domain launch that ties founder continuity to live search, scaffolded execution, and approvals in one operator loop.',
+        relevance_score: 0.99,
+        created_at: '2026-07-17T13:42:00.000Z'
+      },
+      {
+        id: 'ad4121c7-c8eb-44ce-98ea-fc377dcb8b19',
+        title: 'Approve founder continuity launch story',
+        type: 'decision',
+        summary: 'Pace is waiting on founder approval to lock the narrative, proof order, and launch call to action.',
+        relevance_score: 0.83,
+        created_at: '2026-07-17T13:21:00.000Z'
+      },
+      {
+        id: 'ac73ca29-f2e6-4acc-a044-b06e46981bea',
+        title: 'Founder continuity evidence pack',
+        type: 'artifact',
+        summary: 'Reusable launch proof connecting the same initiative, search query, and decision chain across agent clients.',
+        relevance_score: 0.76,
+        created_at: '2026-07-17T12:58:00.000Z'
+      }
+    ];
+    var data = isDemo
+      ? demoState === 'error'
+        ? { error: 'Unable to resolve user_id to a Supabase UUID for ChatGPT tools' }
+        : {
+            query: 'founder continuity launch',
+            scope: 'all',
+            plan: 'starter',
+            retention_window_days: 90,
+            retention_applied: true,
+            results: demoState === 'empty' ? [] : demoResults,
+            total_found: demoState === 'empty' ? 0 : demoResults.length,
+            results_by_type:
+              demoState === 'empty'
+                ? {}
+                : { initiative: 1, decision: 1, artifact: 1 },
+            message:
+              demoState === 'empty'
+                ? 'No organizational memory found for "founder continuity launch" in the last 90 days.'
+                : 'Found 3 relevant items from the last 90 days.',
+            suggested_followups:
+              demoState === 'empty'
+                ? ['Try a broader phrase', 'Search a different scope']
+                : ['Open a specific item with get_memory_item']
+          }
+      : null;
     var isLoading = !isDemo;
     var currentPage = 1;
     var itemsPerPage = 3;
@@ -864,13 +868,48 @@
       render();
     };
 
+    var renderSearchState = (options) => {
+      var guidance = Array.isArray(options.guidance) ? options.guidance : [];
+      injectHtml(`
+        <div class="widget-shell-card animate-in">
+          <div class="ox-card">
+            <div class="ox-card-inner">
+              <div class="search-state ${options.error ? 'search-state--error' : ''}">
+                <div class="search-state__header">
+                  <div>
+                    <div class="widget-kicker">Org Memory Search</div>
+                    <div class="search-state__title">${escapeHtml(options.title)}</div>
+                    <div class="search-state__desc">${escapeHtml(options.description)}</div>
+                  </div>
+                  <div class="search-state__icon">${options.error ? icons.error(20) : icons.search(20)}</div>
+                </div>
+                ${guidance.length ? `<div class="search-state__guidance">${guidance.map(item => `<span>${escapeHtml(item)}</span>`).join('')}</div>` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+      `);
+    };
+
     var render = () => {
       if(isLoading) return;
       if(data && data.error) {
-        injectHtml(`<div class="empty-state error-state animate-in"><div class="empty-icon">${icons.error(24)}</div><div class="empty-title">Search unavailable</div><div class="empty-desc">${escapeHtml(data.error)}</div></div>`);
+        renderSearchState({
+          title: 'Search paused',
+          description: formatSearchError(data.error),
+          guidance: ['Retry the search', 'Reconnect OrgX if it repeats'],
+          error: true
+        });
         return;
       }
-      if(!data) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.search(24)}</div><div class="empty-title">No results found</div><div class="empty-desc">Try adjusting your query or expanding your search scope.</div></div>`); return; }
+      if(!data) {
+        renderSearchState({
+          title: 'No search received',
+          description: 'Run an OrgX memory search to surface prior initiatives, decisions, and artifacts.',
+          guidance: ['query_org_memory', 'Scope to the work you need']
+        });
+        return;
+      }
       var recommendationMode = Array.isArray(data.recommendations) || !!data.next_action;
       var historyMode = Array.isArray(data.decisions) || data.scope === 'decisions' || !!data.topic;
 
@@ -981,7 +1020,14 @@
 
       var normalizedResults = Array.isArray(data.results) ? data.results.map(normalizeResult) : [];
       if (!normalizedResults.length) {
-        injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.search(24)}</div><div class="empty-title">No results found</div><div class="empty-desc">${escapeHtml(data.query ? 'OrgX could not find a strong match for \"' + data.query + '\". Try a broader phrase or a different scope.' : 'Try adjusting your query or expanding your search scope.')}</div></div>`);
+        var emptyGuidance = Array.isArray(data.suggested_followups)
+          ? data.suggested_followups
+          : ['Try a broader phrase', 'Search a different scope'];
+        renderSearchState({
+          title: 'No strong match',
+          description: data.message || (data.query ? 'OrgX found no organizational memory for "' + data.query + '".' : 'OrgX found no matching organizational memory.'),
+          guidance: emptyGuidance
+        });
         return;
       }
 
@@ -989,7 +1035,9 @@
       currentPage = Math.min(currentPage, totalPages);
       const startIdx = (currentPage - 1) * itemsPerPage;
       const paginatedResults = normalizedResults.slice(startIdx, startIdx + itemsPerPage);
-      const progress = Math.max(14, Math.round((currentPage / totalPages) * 100));
+      const resultCount = Number.isFinite(Number(data.total_found))
+        ? Number(data.total_found)
+        : normalizedResults.length;
 
       const resultsHtml = paginatedResults.map((r, index) => `
         <a href="${escapeHtml(r.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${serializeJsString(r.url)}, event)' class="result-card" style="--i:${index}">
@@ -998,19 +1046,16 @@
             <div class="r-title">
               <div class="r-title-copy">
                 <div class="r-kicker">${escapeHtml(r.type)}</div>
-                <div style="display:flex; align-items:flex-start; gap:8px;"><span style="color:var(--ox-text-muted); display:flex; align-items:center; margin-top:2px;">${r.type === 'document' ? icons.file(16) : r.type === 'decision' ? icons.check(16) : r.type === 'initiative' ? icons.initiative(16) : icons.external(16)}</span><span>${escapeHtml(r.title)}</span></div>
+                <div class="r-title-line"><span class="r-title-icon">${r.type === 'artifact' || r.type === 'document' ? icons.file(16) : r.type === 'decision' ? icons.check(16) : r.type === 'initiative' ? icons.initiative(16) : icons.external(16)}</span><span>${escapeHtml(r.title)}</span></div>
               </div>
             </div>
-            ${r.score !== null ? `<div class="score-pill ${r.score >= 0.9 ? 'score-high' : r.score >= 0.7 ? 'score-med' : 'score-low'}">${Math.round(r.score * 100)}% Match</div>` : ''}
+            ${r.score !== null ? `<div class="score-pill ${r.score >= 0.85 ? 'score-high' : r.score >= 0.7 ? 'score-med' : 'score-low'}">${relevanceLabel(r.score)}</div>` : ''}
           </div>
 
           <div class="r-snippet">${renderSnippet(r.snippet)}</div>
           <div class="r-footer">
-            <div class="r-meta">
-              <span class="r-chip">${escapeHtml(titleCase(r.type))}</span>
-              <span class="r-chip">${escapeHtml(r.date)}</span>
-            </div>
-            <div class="r-open-hint">${icons.external(14)} Open in OrgX <small>new tab</small></div>
+            <div class="r-meta">${r.date ? `<span>${escapeHtml(r.date)}</span>` : '<span>Date unavailable</span>'}</div>
+            <div class="r-open-hint">Open ${icons.external(14)}<span class="sr-only"> in OrgX</span></div>
           </div>
         </a>
       `).join('');
@@ -1022,7 +1067,7 @@
               <div class="widget-hero">
                 <div class="widget-hero-copy">
                   <div class="widget-kicker">Org Memory Search</div>
-                  <div class="widget-title-lg">Search results</div>
+                  <div class="widget-title-lg">${resultCount} ${resultCount === 1 ? 'match' : 'matches'}</div>
                   <div class="widget-subtitle">Matching artifacts, initiatives, and decisions from organizational memory${data.query ? ' for “' + escapeHtml(data.query) + '”' : ''}.</div>
                 </div>
                 <div class="widget-icon-frame">${icons.search(20)}</div>
@@ -1033,16 +1078,9 @@
               ${totalPages > 1 ? `
                 <div class="pagination">
                   <div class="page-info">
-                    <div class="page-kicker">
-                      <span class="page-label">Search results</span>
-                      <span class="page-count">${currentPage}<span>/</span>${totalPages}</span>
-                    </div>
                     <div class="page-summary">
-                      <span class="page-range">Showing ${startIdx + 1}-${Math.min(startIdx + paginatedResults.length, normalizedResults.length)}</span>
-                      <span class="page-total">${normalizedResults.length} results total</span>
-                    </div>
-                    <div class="page-progress" aria-hidden="true">
-                      <span class="page-progress-bar" style="width:${progress}%"></span>
+                      <span class="page-range">${startIdx + 1}–${Math.min(startIdx + paginatedResults.length, normalizedResults.length)} of ${normalizedResults.length}</span>
+                      <span class="page-total">Ranked by relevance</span>
                     </div>
                   </div>
                   <div class="page-controls">

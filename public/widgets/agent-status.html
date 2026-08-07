@@ -152,7 +152,9 @@
     .agent-card[data-priority='blocked'] { --ox-card-color-rgb: 244, 63, 94; }
     .agent-card[data-priority='review'],
     .agent-card[data-priority='stalled']   { --ox-card-color-rgb: 251, 191, 36; }
-    .agent-card[data-priority='idle'], .agent-card[data-priority='queued'] { --ox-card-color-rgb: 100, 116, 139; }
+    .agent-card[data-priority='idle'],
+    .agent-card[data-priority='queued'],
+    .agent-card[data-priority='assigned'] { --ox-card-color-rgb: 100, 116, 139; }
     
     .agent-card.app-flat-card::after {
       background: linear-gradient(90deg, transparent, rgba(var(--ox-card-color-rgb), 0.6), transparent);
@@ -1177,6 +1179,7 @@
     .animate-in { opacity: 0; animation: fadeSlideUp var(--ox-dur-slower, 600ms) var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) forwards; }
 
 </style>
+  <link rel="stylesheet" href="shared/widget-quality.css" />
 </head>
 <body>
   <main class="agent-board" id="content" aria-live="polite">
@@ -1437,7 +1440,7 @@
       if (status === 'blocked') return 'blocked';
       if (status === 'review') return 'review';
       if (status === 'stalled') return 'review';
-      if (status === 'queued' || status === 'idle') return 'idle';
+      if (status === 'queued' || status === 'idle' || status === 'assigned') return 'idle';
       return 'running';
     }
 
@@ -1447,6 +1450,7 @@
       if (status === 'approved') return 'Approved';
       if (status === 'done') return 'Done';
       if (status === 'queued') return 'Queued';
+      if (status === 'assigned') return 'Assigned';
       if (status === 'idle') return 'Idle';
       if (status === 'stalled') return 'Stalled';
       return 'Running';
@@ -1651,6 +1655,13 @@
       var status = normalizeStatus(raw.status);
       if (blockers.length > 0) status = 'blocked';
       else if (artifacts.some(function (artifact) { return artifact.status === 'review'; })) status = 'review';
+      else if (
+        status === 'idle' &&
+        currentTask &&
+        tasks.some(function (task) {
+          return task.status === 'running' || task.status === 'queued';
+        })
+      ) status = 'assigned';
 
       var progress = asNumber(raw.progress || raw.progress_pct || raw.percent_complete);
       if (progress == null && tasks.length > 0) {
@@ -1691,7 +1702,7 @@
     function mergeAgentAliases(agents) {
       // Stalled outranks running so an auto-closed run stays visible even
       // if a stale duplicate claims 'running'. Blocked still wins overall.
-      var statusWeight = { idle: 1, queued: 2, running: 3, stalled: 4, review: 4, blocked: 5 };
+      var statusWeight = { idle: 1, queued: 2, assigned: 2, running: 3, stalled: 4, review: 4, blocked: 5 };
       var merged = {};
       agents.forEach(function (agent) {
         var key = (agent.name + '|' + agent.role).toLowerCase();
@@ -1745,6 +1756,7 @@
       if (agent.status === 'stalled') return 1;
       if (agent.status === 'running') return 2;
       if (agent.status === 'queued') return 3;
+      if (agent.status === 'assigned') return 3;
       return 4;
     }
 
@@ -1753,6 +1765,7 @@
       if (status === 'review') return 'review';
       if (status === 'done' || status === 'approved' || status === 'running') return 'running';
       if (status === 'queued') return 'queued';
+      if (status === 'assigned') return 'queued';
       return 'idle';
     }
 
@@ -1775,7 +1788,10 @@
         syncAgentCard(cardId);
         return;
       }
-      widgetState[cardId] = widgetState[cardId] === section ? null : section;
+      var currentSection = Object.prototype.hasOwnProperty.call(widgetState, cardId)
+        ? widgetState[cardId]
+        : 'tasks';
+      widgetState[cardId] = currentSection === section ? null : section;
       syncAgentCard(cardId);
     }
     function renderAttention(agent) {
@@ -2130,7 +2146,9 @@
     document.addEventListener('click', function (event) {
       var trigger = event.target && event.target.closest('[data-action="toggle-section"]');
       if (!trigger) return;
+      event.preventDefault();
       setCardSection(trigger.getAttribute('data-agent'), trigger.getAttribute('data-section'));
+      trigger.focus();
     });
 
     var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';

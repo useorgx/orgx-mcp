@@ -57,6 +57,23 @@
       --ox-shadow: 0 20px 50px -14px rgba(0, 0, 0, 0.6),
         inset 0 1px 0 rgba(255, 255, 255, 0.04);
       --ox-grid: rgba(255, 255, 255, 0.018);
+      --app-color-surface: #0a0f16;
+      --app-color-surface-elevated: #111827;
+      --app-color-text: #f1f5f9;
+      --app-color-text-secondary: rgba(255, 255, 255, 0.62);
+      --app-color-text-tertiary: rgba(255, 255, 255, 0.46);
+      --app-color-divider: rgba(255, 255, 255, 0.07);
+      --app-color-accent-soft: rgba(0, 201, 167, 0.12);
+    }
+
+    :root[data-theme='light'] {
+      --app-color-surface: #ffffff;
+      --app-color-surface-elevated: #f7f7f8;
+      --app-color-text: #0f172a;
+      --app-color-text-secondary: #64748b;
+      --app-color-text-tertiary: #94a3b8;
+      --app-color-divider: rgba(15, 23, 42, 0.08);
+      --app-color-accent-soft: rgba(0, 201, 167, 0.1);
     }
 
     :root {
@@ -893,6 +910,7 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="shared/widget-quality.css" />
 </head>
 <body>
   <div class="container" id="content"></div>
@@ -1740,28 +1758,28 @@
             <div class="metric-rail app-metric-rail">
               <button type="button" class="app-metric-button focusable" data-action="open-section" data-section="priorities" aria-pressed="${
                 state.activeSection === 'priorities'
-              }">
+              }" aria-controls="panel-priorities">
                 <span class="metric-icon">${icons.flag(15)}</span>
                 <span class="metric-value">${escapeHtml(brief.metricDisplays.priorities)}</span>
                 <span class="metric-label">Priorities</span>
               </button>
               <button type="button" class="app-metric-button focusable" data-action="open-section" data-section="output" aria-pressed="${
                 state.activeSection === 'output'
-              }">
+              }" aria-controls="panel-output">
                 <span class="metric-icon">${icons.document(15)}</span>
                 <span class="metric-value">${escapeHtml(brief.metricDisplays.output)}</span>
                 <span class="metric-label">Output</span>
               </button>
               <button type="button" class="app-metric-button focusable" data-action="open-section" data-section="receipts" aria-pressed="${
                 state.activeSection === 'receipts'
-              }">
+              }" aria-controls="panel-receipts">
                 <span class="metric-icon">${icons.chart(15)}</span>
                 <span class="metric-value">${escapeHtml(brief.metricDisplays.receipts)}</span>
                 <span class="metric-label">Receipts</span>
               </button>
               <button type="button" class="app-metric-button focusable" data-action="open-section" data-section="attention" aria-pressed="${
                 state.activeSection === 'attention'
-              }">
+              }" aria-controls="panel-attention">
                 <span class="metric-icon">${icons.warning(15)}</span>
                 <span class="metric-value">${escapeHtml(brief.metricDisplays.attention)}</span>
                 <span class="metric-label">Attention</span>
@@ -1771,7 +1789,9 @@
             <section class="brief-section app-accordion-section ${
               state.activeSection === 'priorities' ? 'is-open' : ''
             }" id="section-priorities">
-              <button type="button" class="app-accordion-trigger focusable" data-action="toggle-section" data-section="priorities">
+              <button type="button" class="app-accordion-trigger focusable" id="trigger-priorities" data-action="toggle-section" data-section="priorities" aria-expanded="${
+                state.activeSection === 'priorities'
+              }" aria-controls="panel-priorities">
                 <span class="app-accordion-trigger-left">
                   <span class="brief-section-icon">${icons.flag(12)}</span>
                   <span class="app-accordion-trigger-title">Top Priorities</span>
@@ -1781,7 +1801,9 @@
                 </span>
                 <span class="app-accordion-chevron">${icons.chevronDown(14)}</span>
               </button>
-              <div class="app-accordion-body">
+              <div class="app-accordion-body" id="panel-priorities" role="region" aria-labelledby="trigger-priorities" aria-hidden="${
+                state.activeSection !== 'priorities'
+              }">
                 <div class="priority-list">${renderPriorityRows(brief)}</div>
               </div>
             </section>
@@ -1789,7 +1811,9 @@
             <section class="brief-section app-accordion-section ${
               state.activeSection === 'output' ? 'is-open' : ''
             }" id="section-output">
-              <button type="button" class="app-accordion-trigger focusable" data-action="toggle-section" data-section="output">
+              <button type="button" class="app-accordion-trigger focusable" id="trigger-output" data-action="toggle-section" data-section="output" aria-expanded="${
+                state.activeSection === 'output'
+              }" aria-controls="panel-output">
                 <span class="app-accordion-trigger-left">
                   <span class="brief-section-icon">${icons.document(12)}</span>
                   <span class="app-accordion-trigger-title">Overnight Output</span>
@@ -1799,7 +1823,9 @@
                 </span>
                 <span class="app-accordion-chevron">${icons.chevronDown(14)}</span>
               </button>
-              <div class="app-accordion-body">
+              <div class="app-accordion-body" id="panel-output" role="region" aria-labelledby="trigger-output" aria-hidden="${
+                state.activeSection !== 'output'
+              }">
                 <div class="output-list app-list-stack">${renderOutputRows(brief)}</div>
               </div>
             </section>
@@ -1807,7 +1833,9 @@
             <section class="brief-section app-accordion-section ${
               state.activeSection === 'receipts' ? 'is-open' : ''
             }" id="section-receipts">
-              <button type="button" class="app-accordion-trigger focusable" data-action="toggle-section" data-section="receipts">
+              <button type="button" class="app-accordion-trigger focusable" id="trigger-receipts" data-action="toggle-section" data-section="receipts" aria-expanded="${
+                state.activeSection === 'receipts'
+              }" aria-controls="panel-receipts">
                 <span class="app-accordion-trigger-left">
                   <span class="brief-section-icon">${icons.chart(12)}</span>
                   <span class="app-accordion-trigger-title">Value Receipts</span>
@@ -1817,7 +1845,9 @@
                 </span>
                 <span class="app-accordion-chevron">${icons.chevronDown(14)}</span>
               </button>
-              <div class="app-accordion-body">
+              <div class="app-accordion-body" id="panel-receipts" role="region" aria-labelledby="trigger-receipts" aria-hidden="${
+                state.activeSection !== 'receipts'
+              }">
                 <div class="receipt-list app-list-stack">${renderReceiptRows(brief)}</div>
               </div>
             </section>
@@ -1825,7 +1855,9 @@
             <section class="brief-section app-accordion-section ${
               state.activeSection === 'attention' ? 'is-open' : ''
             }" id="section-attention">
-              <button type="button" class="app-accordion-trigger focusable" data-action="toggle-section" data-section="attention">
+              <button type="button" class="app-accordion-trigger focusable" id="trigger-attention" data-action="toggle-section" data-section="attention" aria-expanded="${
+                state.activeSection === 'attention'
+              }" aria-controls="panel-attention">
                 <span class="app-accordion-trigger-left">
                   <span class="brief-section-icon">${icons.warning(12)}</span>
                   <span class="app-accordion-trigger-title">Needs Attention</span>
@@ -1835,7 +1867,9 @@
                 </span>
                 <span class="app-accordion-chevron">${icons.chevronDown(14)}</span>
               </button>
-              <div class="app-accordion-body">
+              <div class="app-accordion-body" id="panel-attention" role="region" aria-labelledby="trigger-attention" aria-hidden="${
+                state.activeSection !== 'attention'
+              }">
                 <div class="attention-list app-list-stack">${renderAttentionRows(brief)}</div>
               </div>
             </section>
@@ -1903,6 +1937,31 @@
       renderBrief(brief);
     }
 
+    function setActiveSection(section, options = {}) {
+      state.activeSection = section;
+
+      content.querySelectorAll('.app-accordion-section').forEach((sectionElement) => {
+        const sectionId = sectionElement.id.replace('section-', '');
+        const isOpen = sectionId === section;
+        sectionElement.classList.toggle('is-open', isOpen);
+
+        const trigger = sectionElement.querySelector('.app-accordion-trigger');
+        const panel = sectionElement.querySelector('.app-accordion-body');
+        if (trigger) trigger.setAttribute('aria-expanded', String(isOpen));
+        if (panel) panel.setAttribute('aria-hidden', String(!isOpen));
+      });
+
+      content.querySelectorAll('.app-metric-button[data-section]').forEach((button) => {
+        button.setAttribute('aria-pressed', String(button.dataset.section === section));
+      });
+
+      if (section && options.scroll) {
+        document
+          .getElementById(`section-${section}`)
+          ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+
     function handleActionClick(event) {
       const trigger = event.target.closest('[data-action]');
       if (!trigger) return;
@@ -1910,16 +1969,14 @@
       const action = trigger.dataset.action;
       if (action === 'open-section') {
         event.preventDefault();
-        state.activeSection = trigger.dataset.section || state.activeSection;
-        render();
+        setActiveSection(trigger.dataset.section || state.activeSection, { scroll: true });
         return;
       }
 
       if (action === 'toggle-section') {
         event.preventDefault();
         const section = trigger.dataset.section;
-        state.activeSection = state.activeSection === section ? null : section;
-        render();
+        setActiveSection(state.activeSection === section ? null : section);
         return;
       }
 

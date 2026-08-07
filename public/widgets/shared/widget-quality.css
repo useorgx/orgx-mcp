@@ -1,0 +1,395 @@
+/*
+ * OrgX widget quality layer
+ *
+ * A small, final cascade shared by every MCP widget. It keeps the family
+ * feeling like one calm instrument: one shell, flat information rows, one
+ * semantic accent at a time, 44px interaction targets, and consistent
+ * focus/press/pending behavior.
+ */
+
+:root {
+  --ox-quality-radius-shell: 18px;
+  --ox-quality-radius-row: 10px;
+  --ox-quality-target: 44px;
+  --ox-quality-focus: rgba(var(--ox-primary-rgb, 99, 102, 241), 0.24);
+  --ox-quality-hover: rgba(var(--ox-primary-rgb, 99, 102, 241), 0.06);
+  --ox-quality-pressed: rgba(var(--ox-primary-rgb, 99, 102, 241), 0.1);
+  --ox-quality-rule: var(--ox-border, rgba(255, 255, 255, 0.08));
+  --ox-control-min-height: var(--ox-quality-target);
+  --ox-control-radius: 10px;
+  --widget-panel-radius: var(--ox-quality-radius-row);
+}
+
+html {
+  color-scheme: light dark;
+}
+
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+body {
+  text-rendering: optimizeLegibility;
+}
+
+/* One outer instrument. Inner content earns hierarchy through spacing and
+   rules rather than a stack of bordered, shadowed containers. */
+.ox-card,
+.shell,
+.db-card {
+  border-radius: var(--ox-quality-radius-shell) !important;
+  box-shadow: none !important;
+}
+
+.widget-panel,
+.result-card,
+.app-flat-card,
+.agent-card,
+.decision-card,
+.action-card,
+.pulse-list-row,
+.pulse-workstream-row,
+.pulse-milestone-row,
+.pulse-output-row,
+.ws-block > .node-item.ws,
+.db-ledger-row,
+.db-cross-prompt,
+.stream-card,
+.sk-card {
+  box-shadow: none !important;
+}
+
+/* Compact controls are still comfortably tappable. Visual glyphs can stay
+   small; their actual hit area may not. */
+.ox-action-btn--sm,
+.ox-link-btn--sm,
+.ox-icon-btn,
+.ox-icon-btn--sm,
+.page-btn,
+.resolution-link,
+.decision-open-link,
+.attention-action,
+.section-status,
+.section-toggle-all,
+.node-toggle,
+.deep-link,
+.platform-link,
+.output-link,
+.footer-link,
+.foot-link,
+.widget-foot a,
+.filmstrip__item,
+.composer-btn,
+.plan-step__composer-btn,
+.plan-step__comment-trigger,
+.db-lens-btn,
+.db-cross-prompt-btn,
+.db-footer-link,
+.db-attention[role='button'],
+.ox-badge[href],
+.ox-text[href],
+.pulse-attention,
+.pulse-action-row,
+.pulse-rail-button {
+  min-height: var(--ox-quality-target) !important;
+}
+
+.ox-icon-btn,
+.ox-icon-btn--sm,
+.node-toggle,
+.plan-step__comment-trigger {
+  width: var(--ox-quality-target) !important;
+  min-width: var(--ox-quality-target) !important;
+  padding-inline: 0 !important;
+}
+
+.widget-foot a,
+.footer-link,
+.db-footer-link,
+.deep-link,
+.foot-link,
+.ox-text[href],
+.ox-badge[href],
+.decision-open-link,
+.section-status,
+.attention-action,
+.output-link {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 12px;
+  border-radius: 9px;
+  text-decoration: none;
+}
+
+/* Pulse signals are miniature charts, but they are also controls. Preserve
+   the 7px visual bar inside a real 44px button. */
+.pulse-signal {
+  position: relative;
+  min-height: var(--ox-quality-target) !important;
+  padding-block: 18px !important;
+  background: transparent !important;
+}
+
+.pulse-signal::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  height: 7px;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  background: var(--ox-quality-rule);
+  pointer-events: none;
+}
+
+.pulse-signal__fill {
+  position: absolute !important;
+  z-index: 1;
+  left: 0;
+  top: 50%;
+  height: 7px !important;
+  transform: translateY(-50%);
+}
+
+.stream-empty {
+  display: grid;
+  gap: 6px;
+  padding: 22px 20px 24px;
+  border-top: 1px solid var(--ox-quality-rule);
+  color: var(--ox-text-muted, rgba(255, 255, 255, 0.56));
+}
+
+.stream-empty strong {
+  color: var(--ox-text, #f2f7ff);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.stream-empty span {
+  max-width: 46ch;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.db-loading-line {
+  width: 78%;
+  height: 12px;
+  margin-top: 12px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.12);
+  animation: ox-quality-pulse 1.6s ease-in-out infinite;
+}
+
+.db-loading-line.is-kicker {
+  width: 32%;
+  height: 8px;
+  margin-top: 0;
+}
+
+.db-loading-line.is-title {
+  width: 58%;
+  height: 24px;
+  margin-top: 20px;
+}
+
+.db-loading-line.is-row {
+  width: 100%;
+  height: 56px;
+  margin-top: 18px;
+  border-radius: 10px;
+}
+
+@keyframes ox-quality-pulse {
+  0%, 100% { opacity: 0.52; }
+  50% { opacity: 1; }
+}
+
+/* Structural lists read as one continuous information surface. */
+.node-list,
+.result-list,
+.pulse-list {
+  gap: 0 !important;
+}
+
+.node-list {
+  border-top: 1px solid var(--ox-quality-rule);
+}
+
+.ws-block {
+  padding-block: 0 !important;
+  border-bottom: 1px solid var(--ox-quality-rule);
+}
+
+.node-item.ws {
+  padding: 16px 4px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.node-item.ws:hover {
+  background: var(--ox-quality-hover) !important;
+  transform: none !important;
+}
+
+.result-card,
+.pulse-list-row {
+  border: 0 !important;
+  border-top: 1px solid var(--ox-quality-rule) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.result-card:first-child,
+.pulse-list-row:first-child {
+  border-top: 0 !important;
+}
+
+.result-card:hover,
+.pulse-list-row:hover {
+  background: var(--ox-quality-hover) !important;
+  transform: none !important;
+}
+
+.result-list + .pagination,
+.pagination {
+  border-inline: 0 !important;
+  border-bottom: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Scaffold scene dots use a visible rail inside a full-size target. */
+.scaffold-state__dot {
+  position: relative;
+  width: var(--ox-quality-target) !important;
+  min-width: var(--ox-quality-target) !important;
+  height: var(--ox-quality-target) !important;
+  min-height: var(--ox-quality-target) !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+.scaffold-state__dot::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.34;
+  transition:
+    width var(--ox-dur-base, 250ms) var(--ox-ease-morph, ease),
+    opacity var(--ox-dur-fast, 150ms) var(--ox-ease-standard, ease);
+}
+
+.scaffold-state__dot.is-active::after,
+.scaffold-state__dot[aria-pressed='true']::after {
+  width: 20px;
+  opacity: 1;
+}
+
+/* Buttons are matte and stateful, never glossy. */
+.ox-action-btn,
+.ox-link-btn,
+.ox-icon-btn {
+  background: var(--ox-control-surface) !important;
+  box-shadow: none !important;
+}
+
+.ox-action-btn::before,
+.ox-link-btn::before,
+.ox-icon-btn::before {
+  display: none !important;
+}
+
+.ox-action-btn--primary,
+.ox-link-btn--primary {
+  background: rgb(var(--ox-primary-rgb, 99, 102, 241)) !important;
+  border-color: transparent !important;
+  color: var(--ox-primary-contrast, #02040a) !important;
+}
+
+:where(button, a[href], [role='button'], input, select, textarea) {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+:where(button, a[href], [role='button']):not(:disabled):not([aria-disabled='true']) {
+  transition:
+    background-color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, ease),
+    border-color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, ease),
+    color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, ease),
+    opacity var(--ox-dur-fast, 150ms) var(--ox-ease-standard, ease),
+    transform var(--ox-dur-fast, 150ms) var(--ox-ease-standard, ease) !important;
+}
+
+:where(button, a[href], [role='button']):hover:not(:disabled):not([aria-disabled='true']) {
+  border-color: var(--ox-border-strong, rgba(255, 255, 255, 0.16));
+}
+
+:where(button, a[href], [role='button']):active:not(:disabled):not([aria-disabled='true']) {
+  transform: scale(0.985) !important;
+}
+
+:where(button, a[href], [role='button'], input, select, textarea):focus-visible {
+  outline: 2px solid rgb(var(--ox-primary-rgb, 99, 102, 241)) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px var(--ox-quality-focus) !important;
+}
+
+:where(button, [role='button'])[aria-busy='true'],
+:where(button, [role='button']).is-pending {
+  cursor: progress !important;
+  opacity: 0.68;
+  pointer-events: none;
+}
+
+:where(button, a[href], [role='button']):disabled,
+:where(button, a[href], [role='button'])[aria-disabled='true'] {
+  cursor: not-allowed !important;
+  opacity: 0.42;
+}
+
+/* Consistent compact mobile geometry. */
+@media (max-width: 560px) {
+  .widget-shell-card .ox-card-inner,
+  .ox-card > .ox-card-inner,
+  .db-card {
+    padding-inline: 18px !important;
+  }
+
+  .widget-footer,
+  .widget-foot,
+  .foot {
+    align-items: stretch !important;
+  }
+
+  .widget-footer a,
+  .widget-foot a,
+  .foot-link,
+  .db-footer-link {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

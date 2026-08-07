@@ -98,4 +98,21 @@ describe('buildScaffoldWidget quiet CTA footer', () => {
     expect(quietCtaEl().textContent).toBe('');
     expect(ctaOccurrences()).toBe(0);
   });
+
+  it('resolves a brand workstream to the marketing avatar', () => {
+    const source = mountWidget(buildWidget());
+
+    emit(source, { type: 'session.start', title: 'Operation Prism' });
+    emit(source, {
+      type: 'entity.created',
+      entityType: 'workstream',
+      entity: {
+        title: 'Positioning and Brand System',
+        metadata: { domain: 'brand' },
+      },
+    });
+
+    const avatar = document.querySelector('.ws-avatar img');
+    expect(avatar?.getAttribute('src')).toContain('launch_captain.png');
+  });
 });
