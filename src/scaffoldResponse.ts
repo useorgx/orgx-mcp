@@ -25,6 +25,16 @@ function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
+function firstStringArray(...values: unknown[]): string[] {
+  for (const value of values) {
+    const entries = asArray(value).filter(
+      (entry): entry is string => typeof entry === 'string' && entry.trim().length > 0
+    );
+    if (entries.length > 0) return entries;
+  }
+  return [];
+}
+
 function pickDefined(record: JsonRecord, keys: readonly string[]): JsonRecord {
   const out: JsonRecord = {};
   for (const key of keys) {
@@ -115,6 +125,7 @@ function compactWorkstream(
   taskBudget: { remaining: number }
 ): JsonRecord {
   const record = asRecord(node) ?? {};
+  const metadata = asRecord(record.metadata) ?? {};
   const milestones = asArray(record.milestones);
   const compactMilestones = milestones.map((milestone) =>
     compactMilestone(milestone, taskBudget)
@@ -125,6 +136,31 @@ function compactWorkstream(
       (typeof milestone.task_count === 'number' ? milestone.task_count : 0),
     0
   );
+  const assignedAgentIds = firstStringArray(
+    record.assigned_agent_ids,
+    record.assignedAgentIds,
+    metadata.assigned_agent_ids,
+    metadata.assignedAgentIds
+  );
+  const assignedAgentNames = firstStringArray(
+    record.assigned_agent_names,
+    record.assignedAgentNames,
+    metadata.assigned_agent_names,
+    metadata.assignedAgentNames
+  );
+  const agentId =
+    (typeof record.agent_id === 'string' && record.agent_id) ||
+    (typeof metadata.agent_id === 'string' && metadata.agent_id) ||
+    assignedAgentIds[0];
+  const agentName =
+    (typeof record.agent_name === 'string' && record.agent_name) ||
+    (typeof metadata.agent_name === 'string' && metadata.agent_name) ||
+    assignedAgentNames[0];
+  const agentDomain =
+    (typeof record.agent_domain === 'string' && record.agent_domain) ||
+    (typeof metadata.agent_domain === 'string' && metadata.agent_domain) ||
+    (typeof record.domain === 'string' && record.domain) ||
+    (typeof metadata.domain === 'string' && metadata.domain);
 
   return {
     ...pickDefined(record, [
@@ -134,12 +170,25 @@ function compactWorkstream(
       'name',
       'status',
       'domain',
+      'agent_domain',
       'persona',
       'ownerAgent',
       'primaryAgent',
+      'agent_id',
+      'agent_name',
+      'assigned_agent_ids',
+      'assigned_agent_names',
       'success',
       'error',
     ]),
+    ...(agentDomain ? { agent_domain: agentDomain } : {}),
+    ...(agentId ? { agent_id: agentId } : {}),
+    ...(agentName ? { agent_name: agentName } : {}),
+    ...(assignedAgentIds.length > 0 ? { assigned_agent_ids: assignedAgentIds } : {}),
+    ...(assignedAgentNames.length > 0
+      ? { assigned_agent_names: assignedAgentNames }
+      : {}),
+    ...(!record.domain && agentDomain ? { domain: agentDomain } : {}),
     milestone_count: milestones.length,
     task_count: taskCount,
     milestones: compactMilestones,

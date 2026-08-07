@@ -6,6 +6,56 @@ import {
 } from '../src/scaffoldResponse';
 
 describe('compact scaffold responses', () => {
+  it('preserves workstream avatar identity from assignment metadata', () => {
+    const result = buildCompactScaffoldResult({
+      initiativeId: 'init-avatar',
+      workspaceId: 'workspace-avatar',
+      liveUrl: 'https://useorgx.com/live/init-avatar',
+      result: {
+        summary: 'Created 2/2 entities',
+        total: 2,
+        created_count: 2,
+        failed_count: 0,
+        warnings: [],
+        failed: [],
+        ref_map: { initiative: 'init-avatar', 'ws-1': 'ws-avatar' },
+        created: [
+          { index: 0, type: 'initiative', id: 'init-avatar' },
+          { index: 1, type: 'workstream', id: 'ws-avatar' },
+        ],
+        results: [],
+      },
+      hierarchy: {
+        initiative: { id: 'init-avatar', title: 'StanBox Redesign and GTM' },
+        workstreams: [
+          {
+            id: 'ws-avatar',
+            ref: 'ws-1',
+            title: 'Positioning and Brand System',
+            assigned_agent_ids: [],
+            assigned_agent_names: [],
+            metadata: {
+              domain: 'marketing',
+              agent_domain: 'marketing',
+              assigned_agent_ids: ['marketing-agent'],
+              assigned_agent_names: ['Mark'],
+            },
+            milestones: [],
+          },
+        ],
+      },
+    });
+
+    expect(result.hierarchy.workstreams[0]).toMatchObject({
+      domain: 'marketing',
+      agent_domain: 'marketing',
+      agent_id: 'marketing-agent',
+      agent_name: 'Mark',
+      assigned_agent_ids: ['marketing-agent'],
+      assigned_agent_names: ['Mark'],
+    });
+  });
+
   it('keeps scaffold tool results small and gives agents retrieval hints', () => {
     const tasks = Array.from({ length: 260 }, (_, index) => ({
       id: `task-${index}`,

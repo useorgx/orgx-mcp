@@ -109,6 +109,50 @@ describe('buildScaffoldInitiativeBatch', () => {
     expect(task).not.toHaveProperty('ownerAgent');
   });
 
+  it('keeps explicit workstream owners and canonicalizes workstream domains', () => {
+    const result = buildScaffoldInitiativeBatch({
+      title: 'StanBox Redesign and GTM',
+      workstreams: [
+        {
+          title: 'Positioning and Brand System',
+          domain: 'brand',
+          ownerAgent: 'marketing-agent',
+          milestones: [{ title: 'Positioning locked', tasks: [{ title: 'Audit' }] }],
+        },
+        {
+          title: 'Product Experience',
+          primaryAgent: 'product',
+          milestones: [{ title: 'Flow mapped', tasks: [{ title: 'Map flow' }] }],
+        },
+        {
+          title: 'Visual Identity',
+          primaryAgent: 'design-agent',
+          milestones: [{ title: 'System ready', tasks: [{ title: 'Build system' }] }],
+        },
+      ],
+    });
+
+    const workstreams = result.batch.filter((entity) => entity.type === 'workstream');
+
+    expect(workstreams[0]).toMatchObject({
+      domain: 'brand',
+      persona: 'marketing',
+      assigned_agent_ids: ['marketing-agent'],
+      assigned_agent_names: ['Mark'],
+      metadata: { domain: 'marketing', agent_domain: 'marketing' },
+    });
+    expect(workstreams[1]).toMatchObject({
+      assigned_agent_ids: ['product-agent'],
+      assigned_agent_names: ['Pace'],
+      metadata: { domain: 'product', agent_domain: 'product' },
+    });
+    expect(workstreams[2]).toMatchObject({
+      assigned_agent_ids: ['design-agent'],
+      assigned_agent_names: ['Dana'],
+      metadata: { domain: 'design', agent_domain: 'design' },
+    });
+  });
+
   it('folds coordination_dependency into initiative metadata instead of leaking to top level', () => {
     // Regression guard: the MCP schema exposes coordination_dependency as a
     // top-level field. Previously it was spread into the initiative entity
