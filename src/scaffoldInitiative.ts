@@ -96,6 +96,8 @@ const DOMAIN_ALIASES: Record<string, string> = {
   growth: 'marketing',
   gtm: 'marketing',
   mark: 'marketing',
+  brand: 'marketing',
+  content: 'marketing',
   sales: 'sales',
   revenue: 'sales',
   sage: 'sales',
@@ -103,6 +105,9 @@ const DOMAIN_ALIASES: Record<string, string> = {
   operation: 'operations',
   operations: 'operations',
   pace: 'product',
+  research: 'product',
+  discovery: 'product',
+  analytics: 'product',
   eli: 'engineering',
   orion: 'operations',
   dana: 'design',
@@ -786,13 +791,28 @@ export function buildScaffoldInitiativeBatch(
       ),
       wsIdx + 1
     );
-    const normalizedDomain = normalizeDomain(
-      wsEntity.domain ?? wsEntity.persona ?? null
-    );
     const wsMetadata =
       wsEntity.metadata && typeof wsEntity.metadata === 'object'
         ? (wsEntity.metadata as Record<string, unknown>)
         : {};
+
+    // Resolve identity from the original input node. ownerAgent/primaryAgent
+    // are intentionally omitted from the API entity payload, but they still
+    // need to drive the canonical assignment and avatar returned to clients.
+    const wsAssignedAgentIds = resolveAssignedAgentIds(ws, wsMetadata);
+    const wsAssignedAgentNames = resolveAssignedAgentNames(ws, wsMetadata);
+    const wsExplicitDomain = normalizeDomain(
+      ws.domain ??
+        ws.agent_domain ??
+        ws.persona ??
+        wsMetadata.domain ??
+        wsMetadata.agent_domain ??
+        null
+    );
+    const wsAssignedDomain = normalizeDomain(
+      wsAssignedAgentIds[0] ?? wsAssignedAgentNames[0] ?? null
+    );
+    const normalizedDomain = wsAssignedDomain ?? wsExplicitDomain;
 
     const wsExpectedTokens = Math.max(18_000, wsMilestones.length * 12_000);
     const wsExpectedHours = wsExpectedTokens / TOKENS_PER_HOUR;
@@ -815,11 +835,6 @@ export function buildScaffoldInitiativeBatch(
         to_ref: coordinationToRef,
       });
     }
-    const wsAssignedAgentIds = resolveAssignedAgentIds(wsWithEstimates, wsMetadata);
-    const wsAssignedAgentNames = resolveAssignedAgentNames(
-      wsWithEstimates,
-      wsMetadata
-    );
     const wsDefaultAgentId =
       wsAssignedAgentIds[0] ?? defaultAgentIdForDomain(normalizedDomain);
     const wsDefaultAgentName =
@@ -918,8 +933,20 @@ export function buildScaffoldInitiativeBatch(
         msEntity.metadata && typeof msEntity.metadata === 'object'
           ? (msEntity.metadata as Record<string, unknown>)
           : {};
-      const msAssignedAgentIds = resolveAssignedAgentIds(msEntity, msMetadata);
-      const msAssignedAgentNames = resolveAssignedAgentNames(msEntity, msMetadata);
+      const msAssignedAgentIds = resolveAssignedAgentIds(ms, msMetadata);
+      const msAssignedAgentNames = resolveAssignedAgentNames(ms, msMetadata);
+      const msExplicitDomain = normalizeDomain(
+        ms.domain ??
+          ms.agent_domain ??
+          ms.persona ??
+          msMetadata.domain ??
+          msMetadata.agent_domain ??
+          null
+      );
+      const msAssignedDomain = normalizeDomain(
+        msAssignedAgentIds[0] ?? msAssignedAgentNames[0] ?? null
+      );
+      const msDomain = msAssignedDomain ?? msExplicitDomain ?? normalizedDomain;
       const msDefaultAgentId = msAssignedAgentIds[0] ?? wsDefaultAgentId;
       const msDefaultAgentName =
         msAssignedAgentNames[0] ??
@@ -940,10 +967,10 @@ export function buildScaffoldInitiativeBatch(
       msEntity.metadata = {
         ...msMetadata,
         domain:
-          normalizedDomain ??
+          msDomain ??
           (typeof msMetadata.domain === 'string' ? msMetadata.domain : null),
         agent_domain:
-          normalizedDomain ??
+          msDomain ??
           (typeof msMetadata.agent_domain === 'string'
             ? msMetadata.agent_domain
             : null),
@@ -1006,11 +1033,24 @@ export function buildScaffoldInitiativeBatch(
             ? (taskEntity.metadata as Record<string, unknown>)
             : {};
         const taskExecutionType = taskTypeHint(task);
-        const taskAssignedAgentIds = resolveAssignedAgentIds(taskEntity, taskMetadata);
+        const taskAssignedAgentIds = resolveAssignedAgentIds(task, taskMetadata);
         const taskAssignedAgentNames = resolveAssignedAgentNames(
-          taskEntity,
+          task,
           taskMetadata
         );
+        const taskExplicitDomain = normalizeDomain(
+          task.domain ??
+            task.agent_domain ??
+            task.persona ??
+            taskMetadata.domain ??
+            taskMetadata.agent_domain ??
+            null
+        );
+        const taskAssignedDomain = normalizeDomain(
+          taskAssignedAgentIds[0] ?? taskAssignedAgentNames[0] ?? null
+        );
+        const taskDomain =
+          taskAssignedDomain ?? taskExplicitDomain ?? msDomain ?? normalizedDomain;
         const taskDefaultAgentId = taskAssignedAgentIds[0] ?? msDefaultAgentId;
         const taskDefaultAgentName =
           taskAssignedAgentNames[0] ??
@@ -1032,10 +1072,10 @@ export function buildScaffoldInitiativeBatch(
           ...taskMetadata,
           ...(taskExecutionType ? { task_type: taskExecutionType } : {}),
           domain:
-            normalizedDomain ??
+            taskDomain ??
             (typeof taskMetadata.domain === 'string' ? taskMetadata.domain : null),
           agent_domain:
-            normalizedDomain ??
+            taskDomain ??
             (typeof taskMetadata.agent_domain === 'string'
               ? taskMetadata.agent_domain
               : null),
