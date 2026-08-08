@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-08-07T23:11:53.031Z",
+  "generatedAt": "2026-08-08T00:14:28.405Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -72,8 +72,8 @@
     },
     "daily-brief": {
       "file": "public/widgets/daily-brief.html",
-      "bytes": 26117,
-      "hash": "cf2bf35ae658",
+      "bytes": 26535,
+      "hash": "702974abf2a0",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/mcp-apps-sdk.umd.js",

@@ -645,26 +645,38 @@
         `;
       }
 
-      function render() {
-        if (!data) {
-          root.innerHTML = `
+      function renderEmptyState() {
+        root.innerHTML = `
             <div class="db-card db-stagger" style="--i:0;">
               <div class="db-empty">
                 <div class="db-empty-title">Nothing needs you yet</div>
                 <div class="db-empty-desc">The ledger fills in as skills and agents run. Complete your first task in an editor and the daily readout will appear here.</div>
               </div>
             </div>`;
+      }
+
+      function render() {
+        if (!data) {
+          renderEmptyState();
           return;
         }
 
         const activeLens =
           lens === 'skills' ? data.skillsLens : data.agentsLens;
+        // A non-null payload is not the same as a usable one. Without this the
+        // widget reached data.skillsLens.skills on a payload that had no lens,
+        // threw, and rendered nothing at all — a blank surface rather than an
+        // honest empty state.
+        if (!activeLens) {
+          renderEmptyState();
+          return;
+        }
         const rows =
           lens === 'skills'
-            ? (data.skillsLens.skills || [])
+            ? (activeLens.skills || [])
                 .map((row, i) => renderSkillRow(row, i))
                 .join('')
-            : (data.agentsLens.agents || [])
+            : (activeLens.agents || [])
                 .map((row, i) => renderAgentRow(row, i))
                 .join('');
 
