@@ -419,6 +419,7 @@ export function buildCompactScaffoldResult(params: {
   idempotencyKey?: string | null;
   contractWarnings?: ScaffoldContractWarning[];
   dependencyEdges?: MaterializedDependencyEdge[];
+  coordinationDependency?: Record<string, unknown> | null;
   firstAgentWork?: FirstAgentWorkState;
   externalSync?: (ExternalSyncRequest & { status: 'queued' }) | null;
   benchmarkMetrics?: Record<string, unknown>;
@@ -462,6 +463,7 @@ export function buildCompactScaffoldResult(params: {
       dependency_edge_count: params.dependencyEdges?.length ?? 0,
     },
     dependency_edges: params.dependencyEdges ?? [],
+    coordination_dependency: params.coordinationDependency ?? undefined,
     first_agent_work: params.firstAgentWork,
     external_sync: params.externalSync ?? undefined,
     benchmark_metrics: params.benchmarkMetrics,
@@ -502,6 +504,7 @@ export function buildScaffoldDraftResult(params: {
   idempotencyKey?: string | null;
   contractWarnings?: ScaffoldContractWarning[];
   dependencyEdges?: MaterializedDependencyEdge[];
+  coordinationDependency?: Record<string, unknown> | null;
 }) {
   const createdLike = params.batch.map((entity, index) => ({
     index,
@@ -547,6 +550,7 @@ export function buildScaffoldDraftResult(params: {
       dependency_edge_count: params.dependencyEdges?.length ?? 0,
     },
     dependency_edges: params.dependencyEdges ?? [],
+    coordination_dependency: params.coordinationDependency ?? undefined,
     entity_plan_preview: preview,
     entity_plan_count: params.batch.length,
     entity_plan_preview_count: preview.length,

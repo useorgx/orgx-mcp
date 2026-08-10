@@ -18,7 +18,7 @@ export function getScaffoldBillingDataGaps(value: unknown): string[] {
 }
 
 export type MaterializedDependencyEdge = {
-  type: 'workstream';
+  type: 'workstream' | 'milestone' | 'task';
   name: string;
   from_ref: string;
   to_ref: string;
