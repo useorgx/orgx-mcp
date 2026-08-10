@@ -3521,6 +3521,9 @@ export class OrgXMcp extends McpAgent<
           userId: resolvedUserId,
           userEmail: this.resolveUserEmail(),
           orgxUserId: this.resolveOrgxUserId(resolvedUserId),
+          // Plan-session POSTs mutate state and may invoke a paid model. Never
+          // replay them against a fallback origin after an ambiguous failure.
+          allowFallback: mapping.method === 'GET',
         });
         const rawResult = (await response.json()) as Record<string, unknown>;
         const result = enrichPlanSessionResult(toolId, rawResult);
@@ -3559,6 +3562,23 @@ export class OrgXMcp extends McpAgent<
                   args: { type: 'plan_session', status: 'active', limit: 10 },
                 },
               ],
+            },
+          });
+        }
+        if (
+          toolId === 'improve_plan' &&
+          error instanceof OrgXApiError &&
+          (error.statusCode === 502 || error.statusCode === 503)
+        ) {
+          return this.toolError(error.message, {
+            code:
+              error.statusCode === 503
+                ? 'plan_improvement_model_unavailable'
+                : 'plan_improvement_model_invalid',
+            status: error.statusCode,
+            details: {
+              retryable: error.statusCode === 503,
+              deterministic_fallback_used: false,
             },
           });
         }

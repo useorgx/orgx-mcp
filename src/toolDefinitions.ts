@@ -2447,20 +2447,83 @@ export function summarizePlanSessionResult(
 
     case 'improve_plan': {
       const suggestions = data.suggestions as
-        | Array<{ type: string; suggestion: string; source?: string }>
+        | Array<{
+            type: string;
+            section?: string;
+            suggestion: string;
+            rationale?: string;
+            evidence?: string;
+            confidence?: number;
+            source?: string;
+          }>
         | undefined;
       const domains = data.domains_detected as string[] | undefined;
       const learned = data.learned_from_past as number | undefined;
+      const analysisSummary =
+        typeof data.analysis_summary === 'string'
+          ? data.analysis_summary.trim()
+          : '';
+      const generation =
+        data.generation &&
+        typeof data.generation === 'object' &&
+        !Array.isArray(data.generation)
+          ? (data.generation as Record<string, unknown>)
+          : null;
+      const modelReceipt =
+        generation?.source === 'model' &&
+        typeof generation.model === 'string' &&
+        typeof generation.provider === 'string'
+          ? {
+              model: generation.model,
+              provider: generation.provider,
+              inputTokens:
+                typeof generation.input_tokens === 'number'
+                  ? generation.input_tokens
+                  : null,
+              outputTokens:
+                typeof generation.output_tokens === 'number'
+                  ? generation.output_tokens
+                  : null,
+            }
+          : null;
 
-      if (!suggestions || suggestions.length === 0) {
-        return '✅ Your plan looks good! No specific improvements suggested.';
+      let response = modelReceipt
+        ? `🤖 LLM receipt: ${modelReceipt.provider}/${modelReceipt.model}`
+        : '';
+      if (
+        modelReceipt &&
+        modelReceipt.inputTokens !== null &&
+        modelReceipt.outputTokens !== null
+      ) {
+        response += ` (${modelReceipt.inputTokens.toLocaleString()} input / ${modelReceipt.outputTokens.toLocaleString()} output tokens)`;
+      }
+      if (analysisSummary) {
+        response += `${response ? '\n\n' : ''}🧭 ${analysisSummary}`;
       }
 
-      let response = `💡 Suggestions for your plan:\n\n`;
+      if (!suggestions || suggestions.length === 0) {
+        const noSuggestionsMessage = modelReceipt
+          ? '✅ The model found no material improvements to suggest.'
+          : '✅ No material improvements were returned.';
+        return `${response ? `${response}\n\n` : ''}${noSuggestionsMessage}`;
+      }
+
+      response += `${response ? '\n\n' : ''}💡 Suggestions for your plan:\n\n`;
       for (const s of suggestions.slice(0, 5)) {
         const icon = s.type === 'missing' ? '⚠️' : '💡';
-        response += `${icon} ${s.suggestion}`;
-        if (s.source) response += ` _(${s.source})_`;
+        const section = s.section?.trim() ? `**${s.section.trim()}** — ` : '';
+        response += `${icon} ${section}${s.suggestion}`;
+        if (s.rationale) response += `\n   Why: ${s.rationale}`;
+        if (s.evidence) response += `\n   Evidence: ${s.evidence}`;
+        const provenance = [
+          s.source,
+          typeof s.confidence === 'number'
+            ? `${Math.round(s.confidence * 100)}% confidence`
+            : undefined,
+        ].filter((value): value is string => Boolean(value));
+        if (provenance.length > 0) {
+          response += `\n   _${provenance.join(' · ')}_`;
+        }
         response += '\n';
       }
       if (domains && domains.length > 0) {

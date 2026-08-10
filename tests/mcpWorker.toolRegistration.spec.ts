@@ -360,5 +360,14 @@ describe('MCP Worker tool registration integrity', () => {
     expect(planSessionHandler).toContain(
       'orgxUserId: this.resolveOrgxUserId(resolvedUserId)'
     );
+    expect(planSessionHandler).toContain(
+      "allowFallback: mapping.method === 'GET'"
+    );
+    expect(planSessionHandler).toContain(
+      "'plan_improvement_model_unavailable'"
+    );
+    expect(planSessionHandler).toContain(
+      'deterministic_fallback_used: false'
+    );
   });
 });
