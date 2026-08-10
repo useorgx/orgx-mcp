@@ -43,6 +43,24 @@ export function normalizePlanSessionId(value: unknown): string | null {
   return null;
 }
 
+export function normalizePlanSessionRequestArgs(
+  toolId: string,
+  args: Record<string, unknown>
+): Record<string, unknown> {
+  const normalized = { ...args };
+
+  if (
+    toolId === 'record_plan_edit' &&
+    typeof normalized.edit_summary === 'string'
+  ) {
+    normalized.edit_type = 'other';
+    normalized.after_content = normalized.edit_summary;
+    delete normalized.edit_summary;
+  }
+
+  return normalized;
+}
+
 export function buildCanonicalPlanSessionRef(
   value: unknown
 ): CanonicalPlanSessionRef | null {

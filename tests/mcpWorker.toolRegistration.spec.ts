@@ -340,4 +340,25 @@ describe('MCP Worker tool registration integrity', () => {
       startPlanBranch!.indexOf('init.body = JSON.stringify(body);')
     );
   });
+
+  it('forwards verified planning identity hints to plan-session APIs', () => {
+    const src = readWorkerSource();
+    const planSessionStart = src.indexOf(
+      'private async executePlanSessionTool('
+    );
+    const planSessionEnd = src.indexOf(
+      '/**\n   * Register client integration tools.',
+      planSessionStart
+    );
+    const planSessionHandler = src.slice(planSessionStart, planSessionEnd);
+
+    expect(planSessionStart).toBeGreaterThanOrEqual(0);
+    expect(planSessionEnd).toBeGreaterThan(planSessionStart);
+    expect(planSessionHandler).toContain(
+      'userEmail: this.resolveUserEmail()'
+    );
+    expect(planSessionHandler).toContain(
+      'orgxUserId: this.resolveOrgxUserId(resolvedUserId)'
+    );
+  });
 });
