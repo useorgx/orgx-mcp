@@ -40,6 +40,14 @@ export const V2_ORGX_TOOL_IDS = [
 
 export const V2_ORGX_TOOL_ID_SET = new Set<string>(V2_ORGX_TOOL_IDS);
 
+const planAttachmentTargetSchema = z.object({
+  entity_type: z.enum(['initiative', 'workstream', 'milestone', 'task']),
+  entity_id: z.string().min(1),
+  section: z.string().optional(),
+  label: z.string().optional(),
+  relevance: z.string().optional(),
+});
+
 export const CONTRACT_TOOL_DEFINITIONS = [
   {
     id: 'orgx_bootstrap',
@@ -302,7 +310,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       '  • action="resume"      → Optional session_id; when omitted, resumes the most recent active session in the authenticated workspace.\n' +
       '  • action="improve"     → REQUIRES session_id AND plan_content (the current draft to critique).\n' +
       '  • action="record_edit" → REQUIRES session_id AND edit_summary (one-line description of the change).\n' +
-      '  • action="complete"    → REQUIRES session_id AND plan_content (the final accepted plan). Optional: attach_to (target entity to link the completed plan to).\n\n' +
+      '  • action="complete"    → REQUIRES session_id AND plan_content (the final accepted plan). Optional: attach_to (one target or an array of targets to link the completed plan to).\n\n' +
       'USE WHEN: work is still in planning or should become executable context. NEXT: use orgx_write or orgx_act after the plan is accepted and needs durable execution state. DO NOT USE WHEN: directly scaffolding a full initiative hierarchy; use scaffold_initiative for that compatibility path.',
     inputSchema: {
       action: z.enum(['start', 'resume', 'improve', 'record_edit', 'complete']).describe('Planning action to perform. See top-level description for per-action required fields.'),
@@ -311,7 +319,15 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       initial_plan: z.string().optional().describe('Markdown plan content to seed the new session. Optional on action=start; the session can also be started empty and filled via improve/record_edit.'),
       plan_content: z.string().optional().describe('Current/final plan markdown. REQUIRED when action=improve (the draft to critique) or action=complete (the final accepted plan).'),
       edit_summary: z.string().optional().describe('One-line description of the change being recorded. REQUIRED when action=record_edit.'),
-      attach_to: z.record(z.unknown()).optional().describe('Optional target to link the completed plan to when action=complete. Shape: { entity_type: "initiative" | "workstream" | "task", entity_id: string }.'),
+      attach_to: z
+        .union([
+          planAttachmentTargetSchema,
+          z.array(planAttachmentTargetSchema).min(1),
+        ])
+        .optional()
+        .describe(
+          'Optional target or targets to link the completed plan to when action=complete. A single { entity_type, entity_id } object is accepted and normalized to the API array contract.'
+        ),
       workspace_id: z.string().optional().describe('Workspace UUID to scope action=start plan sessions. Defaults to current session workspace when omitted.'),
       idempotency_key: z.string().optional().describe('Optional idempotency key for safe retries. Same key returns the same result without creating duplicate session state.'),
     },

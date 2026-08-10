@@ -152,7 +152,7 @@ exports[`tool discovery snapshot > full tool catalog description hashes are lock
   "orgx_emit_execution_graph": "8347e352d2fc",
   "orgx_free_audit": "8ac858a2b706",
   "orgx_inspect": "8b297e2f1d82",
-  "orgx_plan": "2f745e22160a",
+  "orgx_plan": "a88ff09069ca",
   "orgx_poll_attention": "778df6f9ab53",
   "orgx_poll_question": "aa8c88d3a5ac",
   "orgx_recommend": "8235781a13e1",
