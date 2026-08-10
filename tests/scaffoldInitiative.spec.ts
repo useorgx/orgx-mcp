@@ -237,6 +237,12 @@ describe('buildScaffoldInitiativeBatch', () => {
         to_ref: 'ws-2',
       },
     ]);
+    expect(result.coordinationDependency).toMatchObject({
+      name: 'Design → Engineering handoff',
+      from_workstream_ref: 'ws-1',
+      to_workstream_ref: 'ws-2',
+      materialized: true,
+    });
     const engineeringWorkstream = result.batch.find(
       (entity) => entity.type === 'workstream' && entity.ref === 'ws-2'
     );
@@ -245,6 +251,55 @@ describe('buildScaffoldInitiativeBatch', () => {
       ref: 'ws-2',
       depends_on: ['ws-1'],
     });
+  });
+
+  it('reports explicit and synthesized dependency edges across the hierarchy', () => {
+    const result = buildScaffoldInitiativeBatch({
+      title: 'Dependency receipt',
+      workstreams: [
+        {
+          ref: 'ws-proof',
+          title: 'Proof spine',
+          milestones: [
+            {
+              ref: 'ms-proof',
+              title: 'Evidence ready',
+              tasks: [
+                { ref: 'task-falsifier', title: 'Define falsifier' },
+                { ref: 'task-evidence', title: 'Capture evidence' },
+              ],
+            },
+          ],
+        },
+        {
+          ref: 'ws-authority',
+          title: 'Authority surface',
+          depends_on: ['ws-proof'],
+          milestones: [
+            {
+              ref: 'ms-authority',
+              title: 'Decision ready',
+              tasks: [{ ref: 'task-decision', title: 'Record decision' }],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(result.materializedDependencies).toEqual([
+      {
+        type: 'task',
+        name: 'task-falsifier -> task-evidence',
+        from_ref: 'task-falsifier',
+        to_ref: 'task-evidence',
+      },
+      {
+        type: 'workstream',
+        name: 'ws-proof -> ws-authority',
+        from_ref: 'ws-proof',
+        to_ref: 'ws-authority',
+      },
+    ]);
   });
 
   it('adds executable children for explicit workstreams without milestones', () => {

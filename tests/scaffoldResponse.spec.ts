@@ -329,6 +329,12 @@ describe('compact scaffold responses', () => {
           to_ref: 'ws-eng',
         },
       ],
+      coordinationDependency: {
+        name: 'Design handoff',
+        from_workstream_ref: 'ws-design',
+        to_workstream_ref: 'ws-eng',
+        materialized: true,
+      },
       batch: [
         { type: 'initiative', ref: 'initiative', title: 'Launch' },
         { type: 'workstream', ref: 'ws-design', title: 'Design' },
@@ -356,6 +362,10 @@ describe('compact scaffold responses', () => {
     expect(result.entity_plan_preview[2]).toMatchObject({
       ref: 'ws-eng',
       depends_on: ['ws-design'],
+    });
+    expect(result.coordination_dependency).toMatchObject({
+      name: 'Design handoff',
+      materialized: true,
     });
   });
 });

@@ -9652,6 +9652,7 @@ export class OrgXMcp extends McpAgent<
             msRefs,
             taskRefs,
             materializedDependencies,
+            coordinationDependency,
             warnings: buildWarnings,
           } =
             buildScaffoldInitiativeBatch(
@@ -9667,6 +9668,7 @@ export class OrgXMcp extends McpAgent<
               idempotencyKey: scaffoldIdempotencyKey,
               contractWarnings: allContractWarnings,
               dependencyEdges: materializedDependencies,
+              coordinationDependency,
             });
             telemetryTrace.mark('draft_response');
             recordScaffoldTelemetry({
@@ -9902,6 +9904,7 @@ export class OrgXMcp extends McpAgent<
                 idempotencyKey: scaffoldIdempotencyKey,
                 contractWarnings: allContractWarnings,
                 dependencyEdges: materializedDependencies,
+                coordinationDependency,
                 firstAgentWork,
                 externalSync: external_sync,
                 benchmarkMetrics,

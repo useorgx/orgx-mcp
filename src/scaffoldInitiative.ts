@@ -11,6 +11,7 @@ export type ScaffoldBatchBuildResult = {
   msRefs: string[][];
   taskRefs: string[][][];
   materializedDependencies: MaterializedDependencyEdge[];
+  coordinationDependency: Record<string, unknown> | null;
   warnings: ScaffoldContractWarning[];
 };
 
@@ -68,6 +69,44 @@ function normalizeDependencyLabel(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const normalized = value.toLowerCase().replace(/\s+/g, ' ').trim();
   return normalized.length > 0 ? normalized : null;
+}
+
+function dependencyEntityType(
+  value: unknown
+): MaterializedDependencyEdge['type'] | null {
+  if (value === 'workstream' || value === 'milestone' || value === 'task') {
+    return value;
+  }
+  return null;
+}
+
+function appendDeclaredDependencyEdges(
+  batch: Array<Record<string, unknown>>,
+  edges: MaterializedDependencyEdge[]
+) {
+  const seen = new Set(
+    edges.map((edge) => `${edge.type}:${edge.from_ref}:${edge.to_ref}`)
+  );
+
+  for (const entity of batch) {
+    const type = dependencyEntityType(entity.type);
+    const toRef = typeof entity.ref === 'string' ? entity.ref.trim() : '';
+    if (!type || !toRef || !Array.isArray(entity.depends_on)) continue;
+
+    for (const dependency of entity.depends_on) {
+      const fromRef = typeof dependency === 'string' ? dependency.trim() : '';
+      if (!fromRef) continue;
+      const key = `${type}:${fromRef}:${toRef}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      edges.push({
+        type,
+        name: `${fromRef} -> ${toRef}`,
+        from_ref: fromRef,
+        to_ref: toRef,
+      });
+    }
+  }
 }
 
 const TOKENS_PER_HOUR = 6_500;
@@ -567,6 +606,7 @@ export function buildScaffoldInitiativeBatch(
   const batch: Array<Record<string, unknown>> = [];
   const warnings: ScaffoldContractWarning[] = [];
   const materializedDependencies: MaterializedDependencyEdge[] = [];
+  let coordinationDependency: Record<string, unknown> | null = null;
   const workstreamRefByLabel = new Map<string, string>();
   for (let wsIdx = 0; wsIdx < workstreamsInput.length; wsIdx++) {
     const ws = safeRecord(workstreamsInput[wsIdx]);
@@ -736,17 +776,18 @@ export function buildScaffoldInitiativeBatch(
     Object.keys(rawCoordination).length > 0 &&
     coordinationName
   ) {
+    coordinationDependency = {
+      name: coordinationName,
+      from_workstream_name: fromWorkstreamName,
+      to_workstream_name: toWorkstreamName,
+      from_workstream_ref: coordinationFromRef,
+      to_workstream_ref: coordinationToRef,
+      materialized: Boolean(coordinationFromRef && coordinationToRef),
+    };
     const base = nextMetadata ?? existingMetadata;
     nextMetadata = {
       ...base,
-      coordination_dependency: {
-        name: coordinationName,
-        from_workstream_name: fromWorkstreamName,
-        to_workstream_name: toWorkstreamName,
-        from_workstream_ref: coordinationFromRef,
-        to_workstream_ref: coordinationToRef,
-        materialized: Boolean(coordinationFromRef && coordinationToRef),
-      },
+      coordination_dependency: coordinationDependency,
     };
 
     if ((fromWorkstreamName || toWorkstreamName) && !(coordinationFromRef && coordinationToRef)) {
@@ -1096,6 +1137,8 @@ export function buildScaffoldInitiativeBatch(
     }
   }
 
+  appendDeclaredDependencyEdges(batch, materializedDependencies);
+
   return {
     batch,
     initiativeRef,
@@ -1103,6 +1146,7 @@ export function buildScaffoldInitiativeBatch(
     msRefs,
     taskRefs,
     materializedDependencies,
+    coordinationDependency,
     warnings,
   };
 }
