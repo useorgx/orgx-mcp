@@ -48,6 +48,42 @@ describe('plan session contract helpers', () => {
     });
   });
 
+  it('normalizes a single complete-plan attachment to the API array contract', () => {
+    const target = {
+      entity_type: 'initiative',
+      entity_id: '33333333-3333-4333-8333-333333333333',
+    };
+
+    expect(
+      normalizePlanSessionRequestArgs('complete_plan', {
+        session_id: SESSION_ID,
+        plan_content: '# Final plan',
+        attach_to: target,
+      })
+    ).toEqual({
+      session_id: SESSION_ID,
+      plan_content: '# Final plan',
+      attach_to: [target],
+    });
+  });
+
+  it('preserves complete-plan attachment arrays', () => {
+    const targets = [
+      {
+        entity_type: 'initiative',
+        entity_id: '33333333-3333-4333-8333-333333333333',
+      },
+    ];
+
+    expect(
+      normalizePlanSessionRequestArgs('complete_plan', {
+        session_id: SESSION_ID,
+        plan_content: '# Final plan',
+        attach_to: targets,
+      })
+    ).toMatchObject({ attach_to: targets });
+  });
+
   it('enriches start_plan_session and get_active_sessions payloads', () => {
     const started = enrichPlanSessionResult('start_plan_session', {
       id: SESSION_ID,
