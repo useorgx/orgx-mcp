@@ -342,6 +342,7 @@ import {
   PLAN_SESSION_ACCEPTED_ID_FORMS,
   enrichPlanSessionResult,
   normalizePlanSessionId,
+  normalizePlanSessionRequestArgs,
 } from './planSessionContract';
 
 // Re-export OAuthState Durable Object
@@ -3449,9 +3450,12 @@ export class OrgXMcp extends McpAgent<
         }
 
         // Build request
-        const normalizedArgs = Object.fromEntries(
-          Object.entries(args).filter(([key]) => key !== '_context')
-        ) as Record<string, unknown>;
+        const normalizedArgs = normalizePlanSessionRequestArgs(
+          toolId,
+          Object.fromEntries(
+            Object.entries(args).filter(([key]) => key !== '_context')
+          ) as Record<string, unknown>
+        );
 
         if (
           toolId === 'improve_plan' ||
@@ -3515,6 +3519,8 @@ export class OrgXMcp extends McpAgent<
 
         const response = await callOrgxApiJson(this.env, path, init, {
           userId: resolvedUserId,
+          userEmail: this.resolveUserEmail(),
+          orgxUserId: this.resolveOrgxUserId(resolvedUserId),
         });
         const rawResult = (await response.json()) as Record<string, unknown>;
         const result = enrichPlanSessionResult(toolId, rawResult);

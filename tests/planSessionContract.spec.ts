@@ -5,6 +5,7 @@ import {
   buildCanonicalPlanSessionRef,
   enrichPlanSessionResult,
   normalizePlanSessionId,
+  normalizePlanSessionRequestArgs,
 } from '../src/planSessionContract';
 
 const SESSION_ID = '123e4567-e89b-12d3-a456-426614174000';
@@ -30,6 +31,19 @@ describe('plan session contract helpers', () => {
       uuid: SESSION_ID,
       uri: `orgx://plan_session/${SESSION_ID}`,
       accepted_id_forms: PLAN_SESSION_ACCEPTED_ID_FORMS,
+    });
+  });
+
+  it('maps the compact record_edit summary to the API edit contract', () => {
+    expect(
+      normalizePlanSessionRequestArgs('record_plan_edit', {
+        session_id: SESSION_ID,
+        edit_summary: 'Added an authority map and evidence requirements.',
+      })
+    ).toEqual({
+      session_id: SESSION_ID,
+      edit_type: 'other',
+      after_content: 'Added an authority map and evidence requirements.',
     });
   });
 
