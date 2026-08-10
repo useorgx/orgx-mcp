@@ -7,6 +7,7 @@ import {
   normalizePlanSessionId,
   normalizePlanSessionRequestArgs,
 } from '../src/planSessionContract';
+import { summarizePlanSessionResult } from '../src/toolDefinitions';
 
 const SESSION_ID = '123e4567-e89b-12d3-a456-426614174000';
 
@@ -70,5 +71,55 @@ describe('plan session contract helpers', () => {
         uri: `orgx://plan_session/${SESSION_ID}`,
       }),
     ]);
+  });
+
+  it('renders a visible LLM receipt and grounded plan critique', () => {
+    const summary = summarizePlanSessionResult('improve_plan', {
+      generation: {
+        source: 'model',
+        provider: 'openai',
+        model: 'gpt-5.4-mini',
+        input_tokens: 1946,
+        output_tokens: 831,
+      },
+      analysis_summary:
+        'The decision owner is clear, but the acceptance boundary is not.',
+      domains_detected: ['product', 'operations'],
+      learned_from_past: 1,
+      suggestions: [
+        {
+          type: 'missing',
+          section: 'Approval boundary',
+          suggestion: 'State what Melissa can approve independently.',
+          rationale: 'Decision ownership does not define escalation.',
+          evidence: '"Preserve Melissa as decision owner."',
+          confidence: 0.92,
+          source: 'LLM analysis using your "Evidence loop" pattern',
+        },
+      ],
+    });
+
+    expect(summary).toContain(
+      'LLM receipt: openai/gpt-5.4-mini (1,946 input / 831 output tokens)'
+    );
+    expect(summary).toContain(
+      'The decision owner is clear, but the acceptance boundary is not.'
+    );
+    expect(summary).toContain('**Approval boundary**');
+    expect(summary).toContain(
+      'Evidence: "Preserve Melissa as decision owner."'
+    );
+    expect(summary).toContain('92% confidence');
+  });
+
+  it('does not invent an LLM receipt for legacy improve responses', () => {
+    const summary = summarizePlanSessionResult('improve_plan', {
+      suggestions: [
+        { type: 'improvement', suggestion: 'Name the acceptance owner.' },
+      ],
+    });
+
+    expect(summary).not.toContain('LLM receipt');
+    expect(summary).toContain('Name the acceptance owner.');
   });
 });
