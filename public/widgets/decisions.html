@@ -1566,8 +1566,15 @@
 
     var normalizeDecision = (decision, index) => {
       if (!decision || typeof decision !== 'object') return null;
+      const packet =
+        decision.review_packet &&
+        typeof decision.review_packet === 'object' &&
+        !Array.isArray(decision.review_packet)
+          ? decision.review_packet
+          : null;
       const id =
         firstString(
+          packet && packet.headDecisionId,
           decision.id,
           decision.decision_id,
           decision.uuid,
@@ -1575,6 +1582,7 @@
         ) || `decision-${index + 1}`;
       const summary =
         firstString(
+          packet && packet.question,
           decision.summary,
           decision.title,
           decision.name,
@@ -1586,10 +1594,22 @@
         decision.urgency_level,
         decision.priority
       ).toLowerCase() || 'medium';
-      const context = decision.context ?? decision.why_it_matters ?? decision.whyItMatters ?? decision.reasoning ?? null;
-      const recommendation = decision.recommendation ?? decision.recommended_action ?? decision.next_action ?? decision.action ?? null;
-      const impact = decision.impact ?? decision.impact_if_ignored ?? decision.risk_if_ignored ?? decision.consequence ?? null;
+      const context =
+        (packet && {
+          outcome: packet.outcome,
+          current: packet.current,
+          evidence: packet.evidence,
+          uncertainty: packet.uncertainty,
+        }) ??
+        decision.context ?? decision.why_it_matters ?? decision.whyItMatters ?? decision.reasoning ?? null;
+      const recommendation =
+        (packet && packet.recommendation) ??
+        decision.recommendation ?? decision.recommended_action ?? decision.next_action ?? decision.action ?? null;
+      const impact =
+        (packet && packet.consequences) ??
+        decision.impact ?? decision.impact_if_ignored ?? decision.risk_if_ignored ?? decision.consequence ?? null;
       const rawOwner = firstString(
+        packet && packet.current && packet.current.owner,
         decision.agent_name,
         decision.owner_agent,
         decision.assigned_agent,
@@ -1602,6 +1622,16 @@
       return {
         ...decision,
         id,
+        packet_id: firstString(decision.packet_id, packet && packet.id),
+        gate_key: firstString(packet && packet.gateKey),
+        duplicate_count:
+          packet && typeof packet.duplicateCount === 'number'
+            ? packet.duplicateCount
+            : 0,
+        provider:
+          packet && packet.recommendation && packet.recommendation.provenance && packet.recommendation.provenance.provider,
+        model:
+          packet && packet.recommendation && packet.recommendation.provenance && packet.recommendation.provenance.model,
         agent_name: isSystemDecision ? 'OrgX System' : rawOwner,
         is_system: isSystemDecision,
         type: firstString(decision.type, decision.entity_type) || 'Decision',
@@ -1617,6 +1647,8 @@
     };
 
     var buildDecisionKey = (decision) => {
+      const packetId = firstString(decision.packet_id, decision.review_packet && decision.review_packet.id);
+      if (packetId) return `packet:${packetId}`;
       const stableId = firstString(decision.id, decision.decision_id, decision.uuid, decision.entity_id);
       if (stableId) return `id:${stableId}`;
       return [
@@ -1841,9 +1873,10 @@
     var render = () => {
       if(isLoading) return;
       if (data && data.error) {
+        var errorMessage = window.OrgXWidgetRuntime.getErrorMessage(data.error, 'The decision queue could not be refreshed.');
         var queueSubtitleError = document.getElementById('queueSubtitle');
         if (queueSubtitleError) queueSubtitleError.textContent = 'The queue is unavailable. No action was taken.';
-        injectHtml(`<div class="empty-state error-state animate-in"><div class="empty-icon">${icons.error(24)}</div><div class="empty-title">Decision queue unavailable</div><div class="empty-desc">${escapeHtml(data.error)}</div><div class="resolution-actions"><button type="button" class="resolution-link resolution-link--secondary" onclick="location.reload()">Retry queue</button></div></div>`);
+        injectHtml(`<div class="empty-state error-state animate-in"><div class="empty-icon">${icons.error(24)}</div><div class="empty-title">Decision queue unavailable</div><div class="empty-desc">${escapeHtml(errorMessage)}</div><div class="resolution-actions"><button type="button" class="resolution-link resolution-link--secondary" onclick="location.reload()">Retry queue</button></div></div>`);
         return;
       }
       data = normalizeDecisionQueue(data);
@@ -1867,7 +1900,7 @@
 
       if (queueSubtitle) {
         var pendingCount = data.decisions.length;
-        queueSubtitle.textContent = pendingCount + ' pending decision' + (pendingCount === 1 ? '' : 's') + ' need operator input. Approve to unblock execution, or reject with clear guidance so the next attempt stays on-rail.';
+        queueSubtitle.textContent = pendingCount + ' review packet' + (pendingCount === 1 ? '' : 's') + ' need operator judgment. Approve to continue, or request a change with guidance.';
       }
 
       const totalPages = Math.ceil(data.decisions.length / itemsPerPage);
@@ -1935,8 +1968,11 @@
               `}
 
               ${isOgDecisionEmbed ? '' : `<div class="params-well">
+                ${d.packet_id ? `<div class="param-chip" title="${escapeHtml(d.packet_id)}">Packet <strong>${escapeHtml(d.packet_id.slice(-18))}</strong></div>` : ''}
                 <div class="param-chip">Type <strong>${escapeHtml(d.type)}</strong></div>
                 <div class="param-chip">Age <strong>${timeAgo(d.created_at)}</strong></div>
+                ${d.provider && d.model ? `<div class="param-chip">Model <strong>${escapeHtml(d.provider + '/' + d.model)}</strong></div>` : ''}
+                ${d.duplicate_count ? `<div class="param-chip">Collapsed <strong>${escapeHtml(String(d.duplicate_count))} duplicate${d.duplicate_count === 1 ? '' : 's'}</strong></div>` : ''}
                 ${d.expected_cost_usd !== undefined ? `<div class="param-chip">Cost <strong>${formatUsd(d.expected_cost_usd)}</strong></div>` : ''}
                 ${d.required_trust_level ? `<div class="param-chip">Rule <strong>${escapeHtml(d.required_trust_level)}</strong></div>` : ''}
               </div>`}

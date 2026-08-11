@@ -2780,19 +2780,20 @@ external: function (size) {
         }
 
         if (pulse && pulse.error) {
-          var errorTitle = /multiple initiatives match/i.test(pulse.error)
+          var errorMessage = window.OrgXWidgetRuntime.getErrorMessage(pulse.error, 'The initiative pulse could not be loaded.');
+          var errorTitle = /multiple initiatives match/i.test(errorMessage)
             ? "Multiple initiatives matched"
-            : /not found/i.test(pulse.error)
+            : /not found/i.test(errorMessage)
             ? "Initiative not found"
             : "Initiative pulse unavailable";
-          var errorDesc = /multiple initiatives match/i.test(pulse.error)
-            ? pulse.error + " Retry with the specific initiative UUID via initiative_id to load a stable pulse view."
-            : /not found/i.test(pulse.error)
-            ? pulse.error + " If you know the initiative UUID, retry with initiative_id for a direct lookup."
-            : pulse.error;
-          var errorCta = /multiple initiatives match/i.test(pulse.error)
+          var errorDesc = /multiple initiatives match/i.test(errorMessage)
+            ? errorMessage + " Retry with the specific initiative UUID via initiative_id to load a stable pulse view."
+            : /not found/i.test(errorMessage)
+            ? errorMessage + " If you know the initiative UUID, retry with initiative_id for a direct lookup."
+            : errorMessage;
+          var errorCta = /multiple initiatives match/i.test(errorMessage)
             ? buildRecoveryCta(null, "Browse initiatives in OrgX")
-            : buildRecoveryCta(pulse, /not found/i.test(pulse.error) ? "Browse initiatives in OrgX" : "Open initiative in OrgX");
+            : buildRecoveryCta(pulse, /not found/i.test(errorMessage) ? "Browse initiatives in OrgX" : "Open initiative in OrgX");
           injectHtml(
             '<div class="empty-state error-state">' +
               '<div class="empty-icon">' +

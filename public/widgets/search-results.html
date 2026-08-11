@@ -1018,7 +1018,8 @@
     var render = () => {
       if(isLoading) return;
       if(data && data.error) {
-        injectHtml(`<div class="empty-state error-state animate-in"><div class="empty-icon">${icons.error(24)}</div><div class="empty-title">Search unavailable</div><div class="empty-desc">${escapeHtml(data.error)}</div></div>`);
+        var errorMessage = window.OrgXWidgetRuntime.getErrorMessage(data.error, 'Organizational memory is temporarily unavailable.');
+        injectHtml(`<div class="empty-state error-state animate-in"><div class="empty-icon">${icons.error(24)}</div><div class="empty-title">Search unavailable</div><div class="empty-desc">${escapeHtml(errorMessage)}</div></div>`);
         return;
       }
       if(!data) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.search(24)}</div><div class="empty-title">No results found</div><div class="empty-desc">Try adjusting your query or expanding your search scope.</div></div>`); return; }

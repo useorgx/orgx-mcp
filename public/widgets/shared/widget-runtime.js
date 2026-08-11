@@ -108,6 +108,35 @@
     return result;
   }
 
+  function getErrorMessage(value, fallback) {
+    var seen = [];
+
+    function read(candidate, depth) {
+      if (candidate === null || candidate === undefined || depth > 4) return '';
+      if (typeof candidate === 'string') return candidate.trim();
+      if (typeof candidate === 'number' || typeof candidate === 'boolean') {
+        return String(candidate);
+      }
+      if (Array.isArray(candidate)) {
+        return candidate
+          .map(function readEntry(entry) { return read(entry, depth + 1); })
+          .filter(Boolean)
+          .join('; ');
+      }
+      if (typeof candidate !== 'object' || seen.indexOf(candidate) !== -1) return '';
+      seen.push(candidate);
+
+      var fields = ['message', 'detail', 'reason', 'description', 'error', 'title', 'code'];
+      for (var index = 0; index < fields.length; index += 1) {
+        var message = read(candidate[fields[index]], depth + 1);
+        if (message) return message;
+      }
+      return '';
+    }
+
+    return read(value, 0) || (typeof fallback === 'string' ? fallback : '');
+  }
+
   function applyHostContext(context) {
     if (!context) return;
     if (context.theme && global.McpApps && global.McpApps.applyDocumentTheme) {
@@ -186,7 +215,7 @@
     if (data.id != null && this.pending.has(data.id)) {
       var pending = this.pending.get(data.id);
       this.pending.delete(data.id);
-      if (data.error) pending.reject(new Error(data.error.message || 'Host request failed'));
+      if (data.error) pending.reject(new Error(getErrorMessage(data.error, 'Host request failed')));
       else pending.resolve(data.result);
       return;
     }
@@ -448,6 +477,7 @@
     detectProtocol: detectProtocol,
     applyTheme: applyTheme,
     extractStructuredWidgetData: extractStructuredWidgetData,
+    getErrorMessage: getErrorMessage,
     getTheme: getTheme,
     getWidgetSessionId: getWidgetSessionId,
     initWidget: initWidget,

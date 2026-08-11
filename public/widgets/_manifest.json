@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-08-08T00:14:28.405Z",
+  "generatedAt": "2026-08-11T04:54:55.257Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -85,8 +85,8 @@
     },
     "decisions": {
       "file": "public/widgets/decisions.html",
-      "bytes": 80216,
-      "hash": "082ca6830777",
+      "bytes": 82159,
+      "hash": "f72c7cb25a81",
       "primaryRgb": "251,191,36",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -115,8 +115,8 @@
     },
     "initiative-pulse": {
       "file": "public/widgets/initiative-pulse.html",
-      "bytes": 108135,
-      "hash": "27887277c75d",
+      "bytes": 108273,
+      "hash": "d6d14bd23b95",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/components/domain-accent.css",
@@ -152,8 +152,8 @@
     },
     "plan-session-live": {
       "file": "public/widgets/plan-session-live.html",
-      "bytes": 58623,
-      "hash": "a7853b3ee135",
+      "bytes": 58659,
+      "hash": "2b18adbeda4b",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -168,8 +168,8 @@
     },
     "scaffold-streaming": {
       "file": "public/widgets/scaffold-streaming.html",
-      "bytes": 40223,
-      "hash": "c72608cc5e98",
+      "bytes": 40261,
+      "hash": "f04f010278ba",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/mcp-apps-sdk.umd.js",
@@ -197,8 +197,8 @@
     },
     "search-results": {
       "file": "public/widgets/search-results.html",
-      "bytes": 55323,
-      "hash": "ba0098d59b88",
+      "bytes": 55459,
+      "hash": "cb7cad2e83f1",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/mcp-apps-sdk.umd.js",

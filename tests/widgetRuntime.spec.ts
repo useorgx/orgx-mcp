@@ -9,6 +9,7 @@ interface WidgetRuntime {
   applyTheme(value: string, source?: string): string | null;
   callTool(name: string, args: Record<string, unknown>): Promise<unknown>;
   detectProtocol(): string;
+  getErrorMessage(value: unknown, fallback?: string): string;
   getTheme(): string | null;
   getWidgetSessionId(): string | null;
   initWidget(options: { render(value: unknown): void }): unknown;
@@ -144,5 +145,19 @@ describe('shared OrgX widget runtime', () => {
     expect(document.documentElement.dataset.themeSource).toBe('test');
     expect(runtime.applyTheme('sepia', 'test')).toBeNull();
     expect(runtime.getTheme()).toBe('dark');
+  });
+
+  it('turns structured host errors into readable widget copy', () => {
+    expect(runtime.getErrorMessage({ message: 'Search timed out', code: 'timeout' })).toBe(
+      'Search timed out'
+    );
+    expect(runtime.getErrorMessage({ error: { detail: 'Connection lost' } })).toBe(
+      'Connection lost'
+    );
+    expect(runtime.getErrorMessage({}, 'Search unavailable')).toBe('Search unavailable');
+    expect(runtime.getErrorMessage({ code: 'upstream_unavailable' })).toBe(
+      'upstream_unavailable'
+    );
+    expect(runtime.getErrorMessage({})).not.toBe('[object Object]');
   });
 });

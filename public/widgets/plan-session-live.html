@@ -1280,7 +1280,7 @@
           '<section class="plan-state-panel" data-tone="error">' +
             '<div class="plan-state-panel__signal">' + icon('warning', 22) + '</div>' +
             '<h1 class="plan-state-panel__title">' + escapeHtml(plan.title || 'Plan unavailable') + '</h1>' +
-            '<p class="plan-state-panel__copy">The plan data could not be read. No edits were sent. Retry the current tool call.</p>' +
+            '<p class="plan-state-panel__copy">' + escapeHtml(plan.error || 'The plan data could not be read.') + ' No edits were sent. Retry the current tool call.</p>' +
             '<button type="button" class="ox-action-btn ox-action-btn--ghost" data-retry style="margin-top:18px;">' +
               icon('refresh', 16) + ' Retry render' +
             '</button>' +
