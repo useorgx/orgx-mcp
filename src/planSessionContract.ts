@@ -122,3 +122,51 @@ export function enrichPlanSessionResult(
       return data;
   }
 }
+
+export function buildPlanSessionStructuredResult(
+  toolId: string,
+  data: Record<string, unknown>,
+  requestArgs: Record<string, unknown>
+): Record<string, unknown> {
+  const sessionId = normalizePlanSessionId(
+    data.session_id ?? data.id ?? requestArgs.session_id
+  );
+  const currentPlan =
+    toolId === 'record_plan_edit'
+      ? requestArgs.after_content
+      : requestArgs.plan_content;
+  const result = enrichPlanSessionResult(
+    toolId,
+    sessionId && !normalizePlanSessionId(data)
+      ? { ...data, session_id: sessionId }
+      : data
+  );
+
+  if (
+    !sessionId ||
+    typeof currentPlan !== 'string' ||
+    currentPlan.trim().length === 0 ||
+    !['improve_plan', 'record_plan_edit', 'complete_plan'].includes(toolId)
+  ) {
+    return result;
+  }
+
+  return {
+    ...result,
+    plan_session: {
+      session_id: sessionId,
+      id: sessionId,
+      uri: `orgx://plan_session/${sessionId}`,
+      accepted_id_forms: PLAN_SESSION_ACCEPTED_ID_FORMS,
+      current_plan: currentPlan,
+      status: toolId === 'complete_plan' ? 'completed' : 'active',
+      domains_detected: Array.isArray(result.domains_detected)
+        ? result.domains_detected
+        : [],
+      last_edit_at:
+        typeof result.created_at === 'string'
+          ? result.created_at
+          : new Date().toISOString(),
+    },
+  };
+}

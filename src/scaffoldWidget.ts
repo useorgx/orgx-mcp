@@ -915,7 +915,7 @@ button[data-oxhref]:not(.foot-link){background:none;border:none;padding:0;font:i
   function onError(data) {
     ldot.className = 'live-dot error';
     statusText.textContent = 'ERROR';
-    errBanner.textContent = 'Error: ' + (data.error || 'scaffold failed');
+    errBanner.textContent = 'Error: ' + window.OrgXWidgetRuntime.getErrorMessage(data.error, 'scaffold failed');
     errBanner.classList.add('show');
     if (es) { try { es.close(); } catch(_){} }
   }

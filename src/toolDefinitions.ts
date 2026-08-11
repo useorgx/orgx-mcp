@@ -2476,6 +2476,15 @@ export function summarizePlanSessionResult(
           ? {
               model: generation.model,
               provider: generation.provider,
+              responseId:
+                typeof generation.response_id === 'string'
+                  ? generation.response_id
+                  : null,
+              requestedModel:
+                typeof generation.requested_model === 'string'
+                  ? generation.requested_model
+                  : null,
+              failoverUsed: generation.failover_used === true,
               inputTokens:
                 typeof generation.input_tokens === 'number'
                   ? generation.input_tokens
@@ -2496,6 +2505,16 @@ export function summarizePlanSessionResult(
         modelReceipt.outputTokens !== null
       ) {
         response += ` (${modelReceipt.inputTokens.toLocaleString()} input / ${modelReceipt.outputTokens.toLocaleString()} output tokens)`;
+      }
+      if (modelReceipt?.responseId) {
+        response += ` · response ${modelReceipt.responseId}`;
+      }
+      if (
+        modelReceipt?.failoverUsed &&
+        modelReceipt.requestedModel &&
+        modelReceipt.requestedModel !== modelReceipt.model
+      ) {
+        response += ` · failover from ${modelReceipt.requestedModel}`;
       }
       if (analysisSummary) {
         response += `${response ? '\n\n' : ''}🧭 ${analysisSummary}`;

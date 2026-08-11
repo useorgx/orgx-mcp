@@ -340,6 +340,7 @@ import {
 import { describeInputShape } from './schemaIntrospection';
 import {
   PLAN_SESSION_ACCEPTED_ID_FORMS,
+  buildPlanSessionStructuredResult,
   enrichPlanSessionResult,
   normalizePlanSessionId,
   normalizePlanSessionRequestArgs,
@@ -3526,7 +3527,11 @@ export class OrgXMcp extends McpAgent<
           allowFallback: mapping.method === 'GET',
         });
         const rawResult = (await response.json()) as Record<string, unknown>;
-        const result = enrichPlanSessionResult(toolId, rawResult);
+        const result = buildPlanSessionStructuredResult(
+          toolId,
+          rawResult,
+          normalizedArgs
+        );
 
         this.captureMcpToolEvent('mcp_tool_succeeded', {
           toolId,
