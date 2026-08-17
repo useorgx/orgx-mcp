@@ -30,4 +30,32 @@ describe('profile auxiliary discovery policy', () => {
       });
     }
   });
+
+  it('only advertises initiative resources to an authorized read grant', () => {
+    expect(
+      resolveProfileDiscoveryPolicy('v2', {
+        userId: 'oauth-user',
+        grantedScopes: [],
+      }).includeInitiativeResource
+    ).toBe(false);
+    expect(
+      resolveProfileDiscoveryPolicy('v2', {
+        userId: 'oauth-user',
+        grantedScopes: ['memory:read'],
+      }).includeInitiativeResource
+    ).toBe(false);
+    expect(
+      resolveProfileDiscoveryPolicy('v2', {
+        userId: 'oauth-user',
+        grantedScopes: ['initiatives:read'],
+      }).includeInitiativeResource
+    ).toBe(true);
+  });
+
+  it('preserves authenticated legacy/internal resource access when the grant source is unknown', () => {
+    expect(
+      resolveProfileDiscoveryPolicy('v2', { userId: 'internal-user' })
+        .includeInitiativeResource
+    ).toBe(true);
+  });
 });

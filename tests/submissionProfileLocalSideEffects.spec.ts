@@ -3,6 +3,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createEmptyMcpActivationState } from '../src/mcpActivationTracker';
+import { AUTHORIZATION_PRESETS } from '../src/authorizationPolicy';
 import {
   CHATGPT_PUBLIC_SURFACE,
   CLAUDE_DIRECTORY_SURFACE,
@@ -240,7 +241,10 @@ async function createSubmissionProfileHarness(
     profile,
     userId: 'directory-reviewer',
     orgxUserId: '33333333-3333-4333-8333-333333333333',
-    scope: 'initiatives:read',
+    scope:
+      profile === 'chatgpt'
+        ? AUTHORIZATION_PRESETS.operate.scopes.join(' ')
+        : AUTHORIZATION_PRESETS.read.scopes.join(' '),
     workspace_id: WORKSPACE_ID,
   };
   worker.ctx = {

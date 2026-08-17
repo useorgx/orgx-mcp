@@ -31,6 +31,7 @@ import {
 
 import { FLYWHEEL_TOOL_DEFINITIONS } from '../src/flywheelTools';
 import { TOOL_PROFILES } from '../src/toolProfiles';
+import { AUTHORIZATION_POLICY } from '../src/authorizationPolicy';
 import {
   CONTRACT_TOOL_DEFINITIONS,
   INLINE_TOOL_CONTRACTS,
@@ -245,7 +246,7 @@ const lifecycleTypeEnum = z.enum(
 
 function extractScopes(securitySchemes: unknown): string[] {
   if (!Array.isArray(securitySchemes)) return [];
-  const scopes: string[] = [];
+  const scopes = new Set<string>();
   for (const scheme of securitySchemes) {
     if (
       scheme &&
@@ -253,10 +254,12 @@ function extractScopes(securitySchemes: unknown): string[] {
       'scopes' in scheme &&
       Array.isArray(scheme.scopes)
     ) {
-      scopes.push(...scheme.scopes);
+      for (const scope of scheme.scopes) {
+        if (typeof scope === 'string') scopes.add(scope);
+      }
     }
   }
-  return scopes;
+  return [...scopes];
 }
 
 const INLINE_TOOL_METADATA: Array<{
@@ -290,7 +293,7 @@ const INLINE_TOOL_METADATA: Array<{
         .optional()
         .describe('Priority / urgency'),
     }),
-    securityScopes: ['initiatives:write', 'memory:write'],
+    securityScopes: ['initiatives:write'],
     readOnly: false,
     profiles: ['memory'],
   },
@@ -803,6 +806,7 @@ function computeSourceHash(): string {
     path.join(rootDir, 'src/toolDefinitions.ts'),
     path.join(rootDir, 'src/flywheelTools.ts'),
     path.join(rootDir, 'src/toolProfiles.ts'),
+    path.join(rootDir, 'src/authorizationPolicy.ts'),
     path.join(rootDir, 'src/contractTools.ts'),
     path.join(rootDir, 'scripts/generate-tool-catalog.ts'),
   ];
@@ -1362,6 +1366,14 @@ function main() {
   const serialized = JSON.stringify(catalog, null, 2) + '\n';
   writeFileSync(outPath, serialized);
 
+  const authorizationPolicyPath = path.resolve(
+    __dirname,
+    '../docs/generated/authorization-policy.json'
+  );
+  const serializedAuthorizationPolicy =
+    JSON.stringify(AUTHORIZATION_POLICY, null, 2) + '\n';
+  writeFileSync(authorizationPolicyPath, serializedAuthorizationPolicy);
+
   // Optional second output — used by catalog:sync:monorepo to refresh the
   // vendored copy the orgx web repo consumes (docs + cross-repo contract
   // tests read it). This replaced the old whole-tree sync of the worker
@@ -1372,11 +1384,26 @@ function main() {
     console.log(`[generate-tool-catalog] Also wrote: ${extraOut}`);
   }
 
+  const authorizationPolicyExtraOut =
+    process.env.AUTHORIZATION_POLICY_EXTRA_OUT;
+  if (authorizationPolicyExtraOut) {
+    writeFileSync(
+      path.resolve(authorizationPolicyExtraOut),
+      serializedAuthorizationPolicy
+    );
+    console.log(
+      `[generate-tool-catalog] Also wrote authorization policy: ${authorizationPolicyExtraOut}`
+    );
+  }
+
   // eslint-disable-next-line no-console
   console.log(
     `[generate-tool-catalog] OK — ${tools.length} tools, ${categories.length} categories`
   );
   console.log(`[generate-tool-catalog] Output: ${outPath}`);
+  console.log(
+    `[generate-tool-catalog] Authorization policy: ${authorizationPolicyPath}`
+  );
 
   if (missingFromCatalog.length > 0) {
     process.exitCode = 1;

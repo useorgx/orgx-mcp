@@ -1,4 +1,5 @@
-import { WIDGET_URIS } from './toolDefinitions';
+import { checkAuthRequirements, type GrantedScopes } from './authHelpers';
+import { SECURITY_SCHEMES, WIDGET_URIS } from './toolDefinitions';
 import { READ_ONLY_FALLBACK_PROFILE, resolveToolProfile } from './toolProfiles';
 
 export const CLAUDE_DIRECTORY_WIDGET_URIS = [
@@ -16,6 +17,12 @@ export interface ProfileDiscoveryPolicy {
   widgetUris: ReadonlySet<string> | null;
 }
 
+export interface ProfileDiscoveryAuthorization {
+  userId?: string;
+  /** `undefined` preserves legacy/internal authenticated sessions. */
+  grantedScopes?: GrantedScopes;
+}
+
 /**
  * Keep auxiliary MCP discovery coherent with the negotiated tool profile.
  * The Anthropic directory endpoint is intentionally smaller than the general
@@ -25,7 +32,8 @@ export interface ProfileDiscoveryPolicy {
  * it exposes the same seven read tools.
  */
 export function resolveProfileDiscoveryPolicy(
-  profileName: string | undefined | null
+  profileName: string | undefined | null,
+  authorization?: ProfileDiscoveryAuthorization
 ): ProfileDiscoveryPolicy {
   const resolved = resolveToolProfile(profileName).name;
   if (resolved === 'claude-directory' || resolved === READ_ONLY_FALLBACK_PROFILE) {
@@ -37,8 +45,16 @@ export function resolveProfileDiscoveryPolicy(
     };
   }
 
+  const initiativeResourceAuthorized = authorization
+    ? checkAuthRequirements(
+        SECURITY_SCHEMES.entityReadRequiresAuth,
+        authorization.userId,
+        authorization.grantedScopes
+      ).isAuthorized
+    : true;
+
   return {
-    includeInitiativeResource: true,
+    includeInitiativeResource: initiativeResourceAuthorized,
     includeSkillResources: true,
     includePrompts: true,
     widgetUris: null,

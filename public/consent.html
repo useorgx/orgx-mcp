@@ -1,1167 +1,979 @@
-<!DOCTYPE html>
-<html lang="en" class="dark">
+<!doctype html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Authorize — OrgX</title>
-    <link rel="icon" type="image/png" href="/orgx-logo.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap"
-      rel="stylesheet"
+    <meta name="referrer" content="no-referrer" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'"
     />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            fontFamily: { sans: ['Geist', 'sans-serif'] },
-            colors: {
-              bg: '#02040a',
-              surface: {
-                DEFAULT: 'rgba(255, 255, 255, 0.03)',
-                hover: 'rgba(255, 255, 255, 0.05)',
-                active: 'rgba(255, 255, 255, 0.08)',
-              },
-              lime: {
-                DEFAULT: '#BFFF00',
-                muted: 'rgba(191, 255, 0, 0.15)',
-                glow: 'rgba(191, 255, 0, 0.08)',
-              },
-              teal: {
-                DEFAULT: '#14B8A6',
-                muted: 'rgba(20, 184, 166, 0.15)',
-              },
-              iris: {
-                DEFAULT: '#6366F1',
-                muted: 'rgba(99, 102, 241, 0.15)',
-              },
-              amber: {
-                DEFAULT: '#F59E0B',
-                muted: 'rgba(245, 158, 11, 0.15)',
-              },
-              border: 'rgba(255, 255, 255, 0.08)',
-            },
-            animation: {
-              'fade-in': 'fadeIn 0.4s ease-out forwards',
-              'slide-up': 'slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-              'pulse-subtle': 'pulseSubtle 2s ease-in-out infinite',
-              'scale-in': 'scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-            },
-            keyframes: {
-              fadeIn: {
-                '0%': { opacity: '0' },
-                '100%': { opacity: '1' },
-              },
-              slideUp: {
-                '0%': { opacity: '0', transform: 'translateY(16px)' },
-                '100%': { opacity: '1', transform: 'translateY(0)' },
-              },
-              pulseSubtle: {
-                '0%, 100%': { opacity: '1' },
-                '50%': { opacity: '0.6' },
-              },
-              scaleIn: {
-                '0%': { opacity: '0', transform: 'scale(0.95)' },
-                '100%': { opacity: '1', transform: 'scale(1)' },
-              },
-            },
-          },
-        },
-      };
-    </script>
+    <title>Connect to OrgX</title>
+    <link rel="icon" type="image/png" href="/orgx-logo.png" />
     <style>
+      :root {
+        color-scheme: dark;
+        --page: #07090d;
+        --surface: #0e1118;
+        --raised: #151922;
+        --muted-surface: #0a0d13;
+        --border: #292e39;
+        --strong-border: #3d4553;
+        --text: #f7f8fa;
+        --secondary: #aab1bf;
+        --muted: #747c8a;
+        --signal: #c8ff3d;
+        --signal-text: #101700;
+        --info: #7dd3fc;
+        --warning: #fbbf24;
+        --danger: #fb7185;
+        font-family:
+          Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { min-height: 100%; margin: 0; }
       body {
-        background-color: #02040a;
-        color: #f2f7ff;
+        position: relative;
+        overflow-x: hidden;
+        background: var(--page);
+        color: var(--text);
         -webkit-font-smoothing: antialiased;
       }
+      button, input { font: inherit; }
+      button, a, input { -webkit-tap-highlight-color: transparent; }
+      button:focus-visible, a:focus-visible, input:focus-visible {
+        outline: 2px solid #d9ff78;
+        outline-offset: 3px;
+      }
+      [hidden] { display: none !important; }
 
-      .bg-noise {
-        background: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
-        opacity: 0.4;
+      .orgx-field {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
         pointer-events: none;
       }
-
-      .glass-panel {
-        background: rgba(255, 255, 255, 0.02);
-        backdrop-filter: blur(24px);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03) inset,
-          0 32px 64px rgba(0, 0, 0, 0.5);
+      .orgx-field svg { width: 100%; height: 100%; }
+      .field-grid { opacity: .38; }
+      .field-path {
+        fill: none;
+        stroke: #23303a;
+        stroke-width: 1.25;
+        vector-effect: non-scaling-stroke;
+      }
+      .field-path.signal { stroke: #1c685d; }
+      .field-node { fill: var(--page); stroke: #33505a; stroke-width: 1.25; }
+      .field-node.active { fill: var(--signal); stroke: var(--signal); }
+      .field-label {
+        fill: #66717e;
+        font: 600 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: .14em;
       }
 
-      .permission-row {
-        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-        border: 1px solid transparent;
+      .signal-line {
+        position: absolute;
+        inset: 0 0 auto;
+        z-index: 10;
+        height: 3px;
+        background: linear-gradient(90deg, var(--signal), #82eaff, #b59cff);
       }
-      .permission-row:hover {
-        background: rgba(255, 255, 255, 0.02);
-        border-color: rgba(255, 255, 255, 0.04);
-      }
-      .permission-row.expanded {
-        background: rgba(255, 255, 255, 0.03);
-        border-color: rgba(255, 255, 255, 0.06);
-      }
-
-      .toggle-group {
-        display: inline-grid;
-        grid-auto-flow: column;
-        grid-auto-columns: minmax(58px, 1fr);
-        flex: 0 0 auto;
-        border-radius: 10px;
-        overflow: hidden;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        background: rgba(0, 0, 0, 0.3);
-      }
-
-      .toggle-btn {
-        min-width: 58px;
-        padding: 7px 12px;
-        font-size: 11px;
-        font-weight: 500;
-        line-height: 1;
-        color: rgba(255, 255, 255, 0.35);
-        background: transparent;
-        border: none;
-        cursor: pointer;
-        transition: color 0.15s ease, transform 0.15s ease;
+      .page {
         position: relative;
-      }
-
-      .toggle-btn:not(:last-child) {
-        border-right: 1px solid rgba(255, 255, 255, 0.06);
-      }
-
-      .toggle-btn:hover:not(.active):not(.active-read):not(.active-none) {
-        color: rgba(255, 255, 255, 0.6);
-        background: rgba(255, 255, 255, 0.03);
-      }
-
-      .toggle-btn.active,
-      .toggle-btn.active-read,
-      .toggle-btn.active-none {
-        font-weight: 600;
         z-index: 1;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 32px;
       }
-
-      .toggle-btn.active {
-        color: #02040a;
-        background: #bfff00;
-        box-shadow: 0 0 0 1px rgba(191, 255, 0, 0.65),
-          0 0 18px rgba(191, 255, 0, 0.28);
-      }
-
-      .toggle-btn.active-read {
-        color: #03110f;
-        background: #2dd4bf;
-        box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.72),
-          0 0 18px rgba(20, 184, 166, 0.3);
-      }
-
-      .toggle-btn.active-none {
-        color: #f2f7ff;
-        background: rgba(255, 255, 255, 0.22);
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28),
-          0 0 14px rgba(255, 255, 255, 0.08);
-      }
-
-      .toggle-btn:focus-visible {
-        outline: 2px solid rgba(191, 255, 0, 0.75);
-        outline-offset: 2px;
-      }
-
-      .chevron {
-        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      .expanded .chevron {
-        transform: rotate(90deg);
-      }
-
-      .description-panel {
-        max-height: 0;
+      .shell {
+        width: min(1160px, 100%);
+        min-height: 690px;
+        display: grid;
+        grid-template-columns: minmax(300px, .82fr) minmax(0, 1.48fr);
         overflow: hidden;
-        transition: max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-          opacity 0.2s ease, padding 0.3s ease;
-        opacity: 0;
-        padding-top: 0;
-        padding-bottom: 0;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        background: var(--surface);
+        box-shadow: 0 24px 64px rgba(0, 0, 0, .42);
       }
-      .expanded .description-panel {
-        max-height: 100px;
-        opacity: 1;
-        padding-top: 4px;
-        padding-bottom: 12px;
+      .context {
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+        padding: 36px;
+        border-right: 1px solid var(--border);
+        background: var(--muted-surface);
       }
+      .brand, .connection-mark, .account-chip, .review-target {
+        display: flex;
+        align-items: center;
+      }
+      .brand { gap: 11px; font-weight: 760; letter-spacing: -.02em; }
+      .brand img { width: 34px; height: 34px; object-fit: contain; }
+      .brand-context {
+        margin-left: 2px;
+        color: var(--muted);
+        font: 650 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+      }
+      .connection-mark { gap: 10px; }
+      .app-icon, .orgx-icon, .avatar {
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+        border: 1px solid var(--strong-border);
+        background: var(--raised);
+        font-weight: 760;
+      }
+      .app-icon, .orgx-icon { width: 46px; height: 46px; border-radius: 12px; }
+      .app-icon svg { width: 25px; height: 25px; }
+      .orgx-icon { overflow: hidden; }
+      .orgx-icon img { width: 42px; height: 42px; object-fit: contain; }
+      .avatar { width: 34px; height: 34px; border-radius: 9px; }
+      .connector-dots { color: var(--muted); letter-spacing: 3px; }
+      .identity-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.35;
+      }
+      .identity-dot {
+        width: 6px;
+        height: 6px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: var(--muted);
+      }
+      .identity-status.verified { color: #76d9c7; }
+      .identity-status.verified .identity-dot { background: #42d7b9; }
+      .identity-status.reported { color: #c5a768; }
+      .identity-status.reported .identity-dot { background: var(--warning); }
+      .context h1 {
+        max-width: 320px;
+        margin: 16px 0 10px;
+        font-size: clamp(27px, 3vw, 38px);
+        line-height: 1.08;
+        letter-spacing: -.035em;
+      }
+      .context-copy, .trust-copy, .lede {
+        color: var(--secondary);
+        font-size: 14px;
+        line-height: 1.55;
+      }
+      .context-copy, .trust-copy { margin: 0; }
+      .trust-block { padding-top: 22px; border-top: 1px solid var(--border); }
+      .eyebrow, .section-label {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 720;
+        letter-spacing: .09em;
+        text-transform: uppercase;
+      }
+      .eyebrow { margin-bottom: 8px; }
+      .callback { margin-top: 14px; }
+      code {
+        display: block;
+        overflow-wrap: anywhere;
+        color: var(--secondary);
+        font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .account-chip {
+        gap: 10px;
+        margin-top: auto;
+        padding-top: 20px;
+        border-top: 1px solid var(--border);
+      }
+      .account-copy { min-width: 0; }
+      .account-copy strong, .account-copy span,
+      .review-target-copy strong, .review-target-copy span { display: block; }
+      .account-copy strong, .account-copy span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .account-copy strong { font-size: 13px; }
+      .account-copy span, .review-target-copy span {
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .context-footer { display: flex; gap: 16px; font-size: 12px; }
+      .context-footer a { color: var(--muted); text-decoration: none; }
+      .context-footer a:hover { color: var(--text); }
 
-      .authorize-btn {
-        background: linear-gradient(180deg, #bfff00 0%, #a8e600 100%);
-        box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.25) inset,
-          0 4px 16px rgba(191, 255, 0, 0.3), 0 0 0 1px rgba(191, 255, 0, 0.1);
-        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      .panel { min-width: 0; display: flex; flex-direction: column; }
+      .progress {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 24px 34px 0;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 660;
       }
-      .authorize-btn:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.25) inset,
-          0 8px 24px rgba(191, 255, 0, 0.35), 0 0 0 1px rgba(191, 255, 0, 0.15);
+      .progress-step { display: inline-flex; align-items: center; gap: 7px; }
+      .step-number {
+        width: 22px;
+        height: 22px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--strong-border);
+        border-radius: 99px;
+        font-size: 11px;
       }
-      .authorize-btn:active {
-        transform: translateY(0);
+      .progress-step.active { color: var(--text); }
+      .progress-step.active .step-number,
+      .progress-step.complete .step-number {
+        border-color: var(--signal);
+        background: var(--signal);
+        color: var(--signal-text);
       }
-
-      .deny-btn {
-        transition: all 0.2s ease;
-        background: rgba(255, 255, 255, 0.02);
+      .progress-divider { width: 28px; height: 1px; background: var(--strong-border); }
+      .stage { display: none; flex: 1; flex-direction: column; min-height: 0; }
+      .stage.active { display: flex; }
+      .stage-body { flex: 1; min-height: 0; overflow: auto; padding: 28px 34px 24px; }
+      .stage h2 {
+        margin: 0;
+        font-size: clamp(25px, 3vw, 34px);
+        line-height: 1.12;
+        letter-spacing: -.03em;
       }
-      .deny-btn:hover {
-        background: rgba(255, 255, 255, 0.06);
-        border-color: rgba(255, 255, 255, 0.12);
+      .lede { margin: 9px 0 24px; }
+      .preset-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        margin-bottom: 22px;
       }
-
-      /* Custom scrollbar */
-      .permissions-list::-webkit-scrollbar {
-        width: 4px;
-      }
-      .permissions-list::-webkit-scrollbar-track {
+      .preset {
+        min-height: 72px;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: 11px;
         background: transparent;
+        color: var(--secondary);
+        text-align: left;
+        cursor: pointer;
       }
-      .permissions-list::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 2px;
+      .preset:hover { border-color: var(--strong-border); background: var(--raised); }
+      .preset[aria-pressed="true"] {
+        border-color: var(--signal);
+        background: rgba(200, 255, 61, .07);
+        color: var(--text);
       }
+      .preset strong, .preset span { display: block; }
+      .preset strong { font-size: 13px; }
+      .preset span { margin-top: 5px; color: var(--muted); font-size: 11px; line-height: 1.35; }
+      .section-label { margin: 0 0 10px; }
+      .resource-list, .review-permissions {
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+      }
+      .resource-row + .resource-row, .review-permission + .review-permission {
+        border-top: 1px solid var(--border);
+      }
+      .resource-line {
+        min-height: 62px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+      }
+      .resource-summary {
+        min-width: 0;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: var(--text);
+        text-align: left;
+        cursor: pointer;
+      }
+      .chevron { color: var(--muted); transition: transform 140ms ease; }
+      .resource-row.expanded .chevron { transform: rotate(90deg); }
+      .resource-title { min-width: 0; }
+      .resource-title strong, .resource-title span { display: block; }
+      .resource-title strong { font-size: 13px; }
+      .resource-title span {
+        margin-top: 3px;
+        overflow: hidden;
+        color: var(--muted);
+        font-size: 11px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .level-control {
+        display: inline-flex;
+        overflow: hidden;
+        border: 1px solid var(--strong-border);
+        border-radius: 9px;
+        background: var(--muted-surface);
+      }
+      .level-button {
+        min-width: 48px;
+        min-height: 44px;
+        padding: 0 9px;
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 650;
+        cursor: pointer;
+      }
+      .level-button + .level-button { border-left: 1px solid var(--border); }
+      .level-button[aria-pressed="true"] { background: var(--text); color: #101216; }
+      .resource-details {
+        display: none;
+        padding: 0 46px 14px;
+        color: var(--secondary);
+        font-size: 12px;
+        line-height: 1.55;
+      }
+      .resource-row.expanded .resource-details { display: block; }
+      .scope-code {
+        display: inline-block;
+        margin: 6px 6px 0 0;
+        padding: 3px 6px;
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        color: var(--info);
+        font: 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .offline-row {
+        min-height: 58px;
+        display: none;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        margin-top: 12px;
+        padding: 14px 2px;
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+      }
+      .offline-row.visible { display: flex; }
+      .offline-row strong, .offline-row span { display: block; }
+      .offline-row strong { font-size: 13px; }
+      .offline-row span { margin-top: 3px; color: var(--muted); font-size: 11px; }
+      .switch {
+        width: 44px;
+        height: 26px;
+        position: relative;
+        flex: 0 0 auto;
+        appearance: none;
+        border: 1px solid var(--strong-border);
+        border-radius: 99px;
+        background: #252a34;
+        cursor: pointer;
+      }
+      .switch::after {
+        content: "";
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: var(--secondary);
+        transition: transform 140ms ease;
+      }
+      .switch:checked { border-color: var(--signal); background: var(--signal); }
+      .switch:checked::after { background: var(--signal-text); transform: translateX(18px); }
+      .inline-error { min-height: 22px; margin: 10px 0 0; color: var(--danger); font-size: 12px; }
+      .review-target, .risk-note {
+        gap: 12px;
+        padding: 4px 0 16px;
+        border-bottom: 1px solid var(--border);
+      }
+      .review-target-copy { min-width: 0; flex: 1; }
+      .review-target-copy strong {
+        overflow: hidden;
+        font-size: 14px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .boundary-pill, .access-pill {
+        padding: 5px 8px;
+        border: 1px solid var(--strong-border);
+        border-radius: 99px;
+        color: var(--secondary);
+        font-size: 10px;
+        font-weight: 680;
+        white-space: nowrap;
+      }
+      .review-permissions { margin-top: 12px; }
+      .review-permission {
+        min-height: 51px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 10px 13px;
+      }
+      .review-permission strong { font-size: 13px; }
+      .review-permission span { color: var(--secondary); font-size: 12px; }
+      .access-pill { border-radius: 6px; }
+      .access-pill.write { border-color: rgba(251, 191, 36, .55); color: var(--warning); }
+      .risk-note {
+        margin-top: 12px;
+        padding: 10px 0 10px 12px;
+        border: 0;
+        border-left: 2px solid rgba(251, 191, 36, .55);
+        color: var(--secondary);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      .risk-note strong { color: var(--warning); }
+      .actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        padding: 16px 34px;
+        border-top: 1px solid var(--border);
+        background: var(--surface);
+      }
+      .button {
+        min-height: 46px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 18px;
+        border: 1px solid var(--strong-border);
+        border-radius: 10px;
+        background: transparent;
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 690;
+        cursor: pointer;
+      }
+      .button:hover:not(:disabled) { background: var(--raised); }
+      .button.primary {
+        min-width: 154px;
+        border-color: var(--signal);
+        background: var(--signal);
+        color: var(--signal-text);
+      }
+      .button.primary:hover:not(:disabled) { background: #d5ff6d; }
+      .button.cancel { margin-right: auto; border-color: transparent; color: var(--muted); }
+      .status-panel {
+        min-height: 690px;
+        display: none;
+        place-items: center;
+        grid-column: 1 / -1;
+        padding: 36px;
+        text-align: center;
+      }
+      .status-panel.active { display: grid; }
+      .status-content { max-width: 430px; }
+      .spinner {
+        width: 36px;
+        height: 36px;
+        margin: 0 auto 18px;
+        border: 3px solid var(--strong-border);
+        border-top-color: var(--signal);
+        border-radius: 50%;
+        animation: spin 800ms linear infinite;
+      }
+      .status-content h2 { margin: 0; font-size: 26px; }
+      .status-content p { color: var(--secondary); line-height: 1.55; }
+      .loading .stage-body { opacity: .45; pointer-events: none; }
+      @keyframes spin { to { transform: rotate(360deg); } }
 
-      /* Client logo shimmer */
-      @keyframes shimmer {
-        0% {
-          background-position: -200% 0;
+      @media (max-width: 860px) {
+        .page { display: block; padding: 18px; }
+        .field-label { display: none; }
+        .orgx-field { opacity: .7; }
+        .shell { min-height: 0; grid-template-columns: 1fr; }
+        .context {
+          gap: 16px;
+          padding: 22px;
+          border-right: 0;
+          border-bottom: 1px solid var(--border);
         }
-        100% {
-          background-position: 200% 0;
-        }
+        .context h1 { max-width: none; margin: 12px 0 5px; font-size: 26px; }
+        .trust-block, .account-chip, .context-footer { display: none; }
+        .progress { padding: 20px 22px 0; }
+        .stage-body { overflow: visible; padding: 24px 22px 20px; }
+        .actions { position: sticky; bottom: 0; z-index: 4; padding: 14px 22px; }
       }
-      .client-logo-ring {
-        background: linear-gradient(
-          90deg,
-          rgba(191, 255, 0, 0) 0%,
-          rgba(191, 255, 0, 0.3) 50%,
-          rgba(191, 255, 0, 0) 100%
-        );
-        background-size: 200% 100%;
-        animation: shimmer 3s infinite linear;
-      }
-
-      /* Stagger animations */
-      .stagger-1 {
-        animation-delay: 0.05s;
-      }
-      .stagger-2 {
-        animation-delay: 0.1s;
-      }
-      .stagger-3 {
-        animation-delay: 0.15s;
-      }
-      .stagger-4 {
-        animation-delay: 0.2s;
-      }
-      .stagger-5 {
-        animation-delay: 0.25s;
-      }
-
-      @media (max-width: 420px) {
-        .permissions-header {
-          flex-direction: column;
-          align-items: stretch !important;
-          gap: 12px;
+      @media (max-width: 520px) {
+        .page { padding: 3px 0 0; }
+        .orgx-field { display: none; }
+        .shell { border-right: 0; border-left: 0; border-radius: 0; box-shadow: none; }
+        .context { padding: 20px 18px 18px; }
+        .brand-context { display: none; }
+        .connection-mark { gap: 8px; }
+        .app-icon, .orgx-icon { width: 42px; height: 42px; border-radius: 11px; }
+        .orgx-icon img { width: 38px; height: 38px; }
+        .context h1 { font-size: 23px; }
+        .progress { padding: 18px 18px 0; }
+        .stage-body { padding: 22px 18px 18px; }
+        .preset-grid { gap: 6px; }
+        .preset { min-height: 62px; padding: 10px 8px; }
+        .preset span { display: none; }
+        .resource-line { grid-template-columns: 1fr; gap: 6px; }
+        .level-control { justify-self: stretch; }
+        .level-button { flex: 1; min-height: 44px; }
+        .resource-details { padding: 0 12px 14px; }
+        .review-target {
+          display: grid;
+          grid-template-columns: 34px minmax(0, 1fr);
+          align-items: start;
         }
-
-        .permissions-header .toggle-group {
-          width: 100%;
+        .boundary-pill {
+          grid-column: 2;
+          justify-self: start;
+          margin: 0;
         }
-
-        .permission-row > div:first-child {
-          display: flex !important;
-          flex-direction: column;
-          align-items: stretch;
-          gap: 12px;
-        }
-
-        .permission-row > div:first-child > .flex {
-          width: 100%;
-          min-width: 0;
-          gap: 9px;
-        }
-
-        .permission-row > div:first-child > .toggle-group {
-          width: 100%;
-        }
-
-        .toggle-group {
-          grid-auto-columns: minmax(0, 1fr);
-        }
-
-        .toggle-btn {
-          min-width: 0;
-          padding-left: 10px;
-          padding-right: 10px;
+        .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 18px; }
+        .button.cancel { display: none; }
+        #review-button { grid-column: 1 / -1; }
+        .button.primary { min-width: 0; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          transition-duration: .01ms !important;
+          animation-duration: .01ms !important;
+          animation-iteration-count: 1 !important;
         }
       }
     </style>
   </head>
-  <body
-    class="min-h-screen flex flex-col items-center justify-center p-4 overflow-x-hidden"
-  >
-    <!-- Background layers -->
-    <div class="fixed inset-0 bg-noise z-0"></div>
-    <div
-      class="fixed inset-0"
-      style="
-        background: radial-gradient(
-          ellipse at 50% 0%,
-          rgba(191, 255, 0, 0.03) 0%,
-          transparent 50%
-        );
-      "
-    ></div>
-
-    <!-- Main Card -->
-    <div class="relative z-10 w-full max-w-lg animate-slide-up">
-      <!-- Header: OrgX branding -->
-      <div class="flex items-center justify-center mb-6 animate-fade-in">
-        <div class="flex items-center gap-2.5">
-          <img src="/orgx-logo.png" alt="OrgX" class="w-7 h-7" />
-          <span class="text-white/50 text-sm font-medium tracking-tight"
-            >OrgX</span
-          >
-        </div>
-      </div>
-
-      <!-- Authorization Card -->
-      <div class="glass-panel rounded-2xl overflow-hidden animate-scale-in">
-        <!-- Card Header -->
-        <div class="px-6 pt-6 pb-5 border-b border-white/[0.04]">
-          <!-- Client + Connection Visual -->
-          <div class="flex items-center justify-center gap-4 mb-5">
-            <!-- Client Logo -->
-            <div class="relative">
-              <div
-                id="client-logo"
-                class="w-14 h-14 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center transition-all duration-300"
-              >
-                <svg
-                  class="w-7 h-7 text-white/60"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="1.5"
-                    d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                  />
-                </svg>
-              </div>
-            </div>
-
-            <!-- Connection Line -->
-            <div class="flex items-center gap-1.5">
-              <div
-                class="w-6 h-px bg-gradient-to-r from-white/15 to-lime/30"
-              ></div>
-              <div
-                class="w-2 h-2 rounded-full bg-lime/70 animate-pulse-subtle"
-              ></div>
-              <div
-                class="w-6 h-px bg-gradient-to-l from-white/15 to-lime/30"
-              ></div>
-            </div>
-
-            <!-- OrgX Logo -->
-            <div class="relative">
-              <div
-                class="absolute -inset-1 rounded-xl bg-lime/10 blur-sm"
-              ></div>
-              <div
-                class="relative w-14 h-14 rounded-xl bg-lime/10 border border-lime/30 flex items-center justify-center"
-              >
-                <img src="/orgx-logo.png" alt="OrgX" class="w-8 h-8" />
-              </div>
-            </div>
-          </div>
-
-          <!-- Title -->
-          <h1 class="text-center text-lg font-semibold text-white mb-1.5">
-            <span id="client-name">Application</span> wants to connect
-          </h1>
-          <p class="text-center text-sm text-white/40 leading-relaxed">
-            Select what <span id="client-name-2">this app</span> can access in
-            your OrgX workspace
-          </p>
-        </div>
-
-        <!-- Account Info -->
-        <div class="px-6 py-3.5 border-b border-white/[0.04] bg-white/[0.01]">
-          <div class="flex items-center gap-3">
-            <div
-              id="user-avatar"
-              class="w-9 h-9 rounded-lg bg-gradient-to-br from-lime/20 to-teal/20 border border-white/10 flex items-center justify-center"
-            >
-              <span
-                id="user-initial"
-                class="text-sm font-semibold text-white/80"
-                >?</span
-              >
-            </div>
-            <div class="flex-1 min-w-0">
-              <div
-                id="user-email"
-                class="text-sm font-medium text-white truncate"
-              >
-                user@example.com
-              </div>
-              <div id="org-name" class="text-xs text-white/40">
-                Personal account
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Permissions Section -->
-        <div class="px-6 py-4">
-          <div class="permissions-header flex items-center justify-between mb-3">
-            <span
-              class="text-xs text-white/40 uppercase tracking-wider font-medium"
-              >Permissions</span
-            >
-            <div class="toggle-group" id="all-permissions-toggle">
-              <button
-                class="toggle-btn"
-                data-value="none"
-                onclick="setAllPermissions('none')"
-              >
-                None
-              </button>
-              <button
-                class="toggle-btn"
-                data-value="read"
-                onclick="setAllPermissions('read')"
-              >
-                Read
-              </button>
-              <button
-                class="toggle-btn active"
-                data-value="write"
-                onclick="setAllPermissions('write')"
-              >
-                Full
-              </button>
-            </div>
-          </div>
-
-          <!-- Permissions List -->
-          <div
-            class="permissions-list space-y-1.5 max-h-[320px] overflow-y-auto -mx-2 px-2"
-          >
-            <!-- Decisions -->
-            <div
-              class="permission-row rounded-xl stagger-1 animate-fade-in"
-              data-scope="decisions"
-            >
-              <div
-                class="flex items-center justify-between py-3 px-3 cursor-pointer"
-                onclick="toggleExpand(this.parentElement)"
-              >
-                <div class="flex items-center gap-3">
-                  <svg
-                    class="chevron w-4 h-4 text-white/25"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                  <div
-                    class="w-8 h-8 rounded-lg bg-lime/10 flex items-center justify-center"
-                  >
-                    <svg
-                      class="w-4 h-4 text-lime"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  </div>
-                  <span class="text-sm font-medium text-white">Decisions</span>
-                </div>
-                <div class="toggle-group">
-                  <button class="toggle-btn" data-value="none">None</button>
-                  <button class="toggle-btn" data-value="read">Read</button>
-                  <button class="toggle-btn active" data-value="write">
-                    Write
-                  </button>
-                </div>
-              </div>
-              <div class="description-panel px-3 ml-10">
-                <p class="text-xs text-white/40 leading-relaxed">
-                  <strong class="text-white/55">Read:</strong> View pending and
-                  completed decisions<br />
-                  <strong class="text-white/55">Write:</strong> Approve, reject,
-                  or create decisions
-                </p>
-              </div>
-            </div>
-
-            <!-- Agents -->
-            <div
-              class="permission-row rounded-xl stagger-2 animate-fade-in"
-              data-scope="agents"
-            >
-              <div
-                class="flex items-center justify-between py-3 px-3 cursor-pointer"
-                onclick="toggleExpand(this.parentElement)"
-              >
-                <div class="flex items-center gap-3">
-                  <svg
-                    class="chevron w-4 h-4 text-white/25"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                  <div
-                    class="w-8 h-8 rounded-lg bg-teal/10 flex items-center justify-center"
-                  >
-                    <svg
-                      class="w-4 h-4 text-teal"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                      />
-                    </svg>
-                  </div>
-                  <span class="text-sm font-medium text-white">Agents</span>
-                </div>
-                <div class="toggle-group">
-                  <button class="toggle-btn" data-value="none">None</button>
-                  <button class="toggle-btn" data-value="read">Read</button>
-                  <button class="toggle-btn active" data-value="write">
-                    Write
-                  </button>
-                </div>
-              </div>
-              <div class="description-panel px-3 ml-10">
-                <p class="text-xs text-white/40 leading-relaxed">
-                  <strong class="text-white/55">Read:</strong> View agent status
-                  and activity<br />
-                  <strong class="text-white/55">Write:</strong> Spawn tasks and
-                  configure agents
-                </p>
-              </div>
-            </div>
-
-            <!-- Initiatives -->
-            <div
-              class="permission-row rounded-xl stagger-3 animate-fade-in"
-              data-scope="initiatives"
-            >
-              <div
-                class="flex items-center justify-between py-3 px-3 cursor-pointer"
-                onclick="toggleExpand(this.parentElement)"
-              >
-                <div class="flex items-center gap-3">
-                  <svg
-                    class="chevron w-4 h-4 text-white/25"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                  <div
-                    class="w-8 h-8 rounded-lg bg-iris/10 flex items-center justify-center"
-                  >
-                    <svg
-                      class="w-4 h-4 text-iris"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                      />
-                    </svg>
-                  </div>
-                  <span class="text-sm font-medium text-white"
-                    >Initiatives</span
-                  >
-                </div>
-                <div class="toggle-group">
-                  <button class="toggle-btn" data-value="none">None</button>
-                  <button class="toggle-btn" data-value="read">Read</button>
-                  <button class="toggle-btn active" data-value="write">
-                    Write
-                  </button>
-                </div>
-              </div>
-              <div class="description-panel px-3 ml-10">
-                <p class="text-xs text-white/40 leading-relaxed">
-                  <strong class="text-white/55">Read:</strong> View initiatives,
-                  milestones, and progress<br />
-                  <strong class="text-white/55">Write:</strong> Create, update,
-                  and manage initiatives
-                </p>
-              </div>
-            </div>
-
-            <!-- Memory -->
-            <div
-              class="permission-row rounded-xl stagger-4 animate-fade-in"
-              data-scope="memory"
-            >
-              <div
-                class="flex items-center justify-between py-3 px-3 cursor-pointer"
-                onclick="toggleExpand(this.parentElement)"
-              >
-                <div class="flex items-center gap-3">
-                  <svg
-                    class="chevron w-4 h-4 text-white/25"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                  <div
-                    class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center"
-                  >
-                    <svg
-                      class="w-4 h-4 text-amber-500"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                      />
-                    </svg>
-                  </div>
-                  <span class="text-sm font-medium text-white">Memory</span>
-                </div>
-                <div class="toggle-group">
-                  <button class="toggle-btn" data-value="none">None</button>
-                  <button class="toggle-btn" data-value="read">Read</button>
-                  <button
-                    class="toggle-btn hidden"
-                    data-value="write"
-                    disabled
-                    aria-hidden="true"
-                  >
-                    Write
-                  </button>
-                </div>
-              </div>
-              <div class="description-panel px-3 ml-10">
-                <p class="text-xs text-white/40 leading-relaxed">
-                  <strong class="text-white/55">Read:</strong> Search and query
-                  organizational memory<br />
-                  <strong class="text-white/55">Write:</strong> Save and update
-                  knowledge entries
-                </p>
-              </div>
-            </div>
-
-            <!-- Planning -->
-            <div
-              class="permission-row hidden rounded-xl stagger-5 animate-fade-in"
-              data-scope="planning"
-            >
-              <div
-                class="flex items-center justify-between py-3 px-3 cursor-pointer"
-                onclick="toggleExpand(this.parentElement)"
-              >
-                <div class="flex items-center gap-3">
-                  <svg
-                    class="chevron w-4 h-4 text-white/25"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                  <div
-                    class="w-8 h-8 rounded-lg bg-pink-500/10 flex items-center justify-center"
-                  >
-                    <svg
-                      class="w-4 h-4 text-pink-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-                      />
-                    </svg>
-                  </div>
-                  <span class="text-sm font-medium text-white">Planning</span>
-                </div>
-                <div class="toggle-group">
-                  <button class="toggle-btn" data-value="none">None</button>
-                  <button class="toggle-btn" data-value="read">Read</button>
-                  <button class="toggle-btn active" data-value="write">
-                    Write
-                  </button>
-                </div>
-              </div>
-              <div class="description-panel px-3 ml-10">
-                <p class="text-xs text-white/40 leading-relaxed">
-                  <strong class="text-white/55">Read:</strong> View plan
-                  sessions and drafts<br />
-                  <strong class="text-white/55">Write:</strong> Create and
-                  refine plans collaboratively
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Actions -->
-        <div class="px-6 py-5 border-t border-white/[0.04] bg-white/[0.01]">
-          <button
-            id="authorize-btn"
-            onclick="authorize()"
-            class="authorize-btn w-full py-3.5 rounded-xl text-sm font-semibold text-black"
-          >
-            Authorize
-          </button>
-          <button
-            id="deny-btn"
-            onclick="deny()"
-            class="deny-btn w-full mt-2.5 py-3 rounded-xl text-sm font-medium text-white/50 border border-white/10"
-          >
-            Deny
-          </button>
-        </div>
-      </div>
-
-      <!-- Footer Links -->
-      <div
-        class="flex items-center justify-center gap-4 mt-5 text-xs text-white/25 animate-fade-in stagger-5"
-      >
-        <a
-          href="https://useorgx.com/privacy"
-          class="hover:text-white/50 transition-colors"
-          >Privacy</a
-        >
-        <span>•</span>
-        <a
-          href="https://useorgx.com/terms"
-          class="hover:text-white/50 transition-colors"
-          >Terms</a
-        >
-      </div>
+  <body>
+    <div class="orgx-field" aria-hidden="true">
+      <svg viewBox="0 0 1440 960" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <pattern id="orgx-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+            <path d="M24 0H0V24" fill="none" stroke="#17202a" stroke-width="1" />
+          </pattern>
+        </defs>
+        <rect class="field-grid" width="1440" height="960" fill="url(#orgx-grid)" />
+        <path class="field-path" d="M-80 720H190V584H370V394H580" />
+        <path class="field-path signal" d="M-80 816H290V670H485V504H720V356H930" />
+        <path class="field-path" d="M1510 168H1260V296H1090V462H870V620H650" />
+        <path class="field-path signal" d="M1510 84H1340V218H1170V386H980V548H760" />
+        <circle class="field-node" cx="190" cy="584" r="5" />
+        <circle class="field-node" cx="370" cy="394" r="5" />
+        <circle class="field-node active" cx="580" cy="394" r="4" />
+        <circle class="field-node" cx="1090" cy="462" r="5" />
+        <circle class="field-node" cx="870" cy="620" r="5" />
+        <circle class="field-node active" cx="650" cy="620" r="4" />
+        <text class="field-label" x="112" y="566">INTENT</text>
+        <text class="field-label" x="390" y="378">WORK</text>
+        <text class="field-label" x="1112" y="446">DECISION</text>
+        <text class="field-label" x="790" y="644">PROOF</text>
+      </svg>
     </div>
+    <div class="signal-line" aria-hidden="true"></div>
+    <main class="page">
+      <section class="shell loading" id="shell" aria-busy="true">
+        <aside class="context" id="context-panel">
+          <div class="brand">
+            <img src="/orgx-logo.png" alt="" />
+            <span>OrgX</span>
+            <span class="brand-context">Authorization</span>
+          </div>
+          <div>
+            <div class="connection-mark" aria-hidden="true">
+              <div class="app-icon" id="client-icon"></div>
+              <div class="connector-dots">•••</div>
+              <div class="orgx-icon"><img src="/orgx-logo.png" alt="" /></div>
+            </div>
+            <div class="identity-status" id="client-identity-status">
+              <span class="identity-dot"></span>
+              <span id="client-identity-copy">Checking client identity…</span>
+            </div>
+            <h1><span id="client-name">Application</span> wants to connect to OrgX</h1>
+            <p class="context-copy">
+              Choose from the access this client requested. You will review the
+              effective grant before authorizing.
+            </p>
+          </div>
+          <div class="trust-block">
+            <span class="eyebrow">Before you authorize</span>
+            <p class="trust-copy">
+              Only connect clients you trust. OrgX controls the grant, but the
+              client controls how it uses data you allow it to access.
+            </p>
+            <div class="callback">
+              <span class="eyebrow">Return destination</span>
+              <code id="redirect-uri">Loading secure callback…</code>
+            </div>
+          </div>
+          <div class="account-chip">
+            <div class="avatar" id="account-initial">•</div>
+            <div class="account-copy">
+              <strong id="account-email">Loading account…</strong>
+              <span>OrgX account</span>
+            </div>
+          </div>
+          <div class="context-footer">
+            <a href="https://useorgx.com/privacy" rel="noreferrer noopener">Privacy</a>
+            <a href="https://useorgx.com/terms" rel="noreferrer noopener">Terms</a>
+          </div>
+        </aside>
+
+        <div class="panel" id="panel">
+          <nav class="progress" aria-label="Authorization steps">
+            <span class="progress-step active" id="progress-configure"><span class="step-number">1</span><span>Set access</span></span>
+            <span class="progress-divider" aria-hidden="true"></span>
+            <span class="progress-step" id="progress-review"><span class="step-number">2</span><span>Review</span></span>
+          </nav>
+
+          <section class="stage active" id="configure-stage" aria-labelledby="configure-title">
+            <div class="stage-body">
+              <h2 id="configure-title">Set access</h2>
+              <p class="lede">
+                Start with a safe preset, or configure each OrgX resource. The
+                client cannot receive permissions it did not request.
+              </p>
+              <div class="preset-grid" role="group" aria-label="Access presets">
+                <button class="preset" type="button" data-preset="read" aria-pressed="true"><strong>Read</strong><span>View requested context</span></button>
+                <button class="preset" type="button" data-preset="operate" aria-pressed="false"><strong>Operate</strong><span>Use requested read + write</span></button>
+                <button class="preset" type="button" data-preset="custom" aria-pressed="false"><strong>Customize</strong><span>Choose resource by resource</span></button>
+              </div>
+              <p class="section-label">Resources</p>
+              <div class="resource-list" id="resource-list" aria-live="polite"></div>
+              <label class="offline-row" id="offline-row">
+                <span><strong>Keep this connection active</strong><span>Allow the client to refresh access after this session.</span></span>
+                <input class="switch" id="offline-toggle" type="checkbox" />
+              </label>
+              <p class="inline-error" id="configure-error" role="alert"></p>
+            </div>
+            <div class="actions">
+              <button class="button cancel" type="button" data-action="deny">Cancel</button>
+              <button class="button primary" id="review-button" type="button">Review access</button>
+            </div>
+          </section>
+
+          <section class="stage" id="review-stage" aria-labelledby="review-title">
+            <div class="stage-body">
+              <h2 id="review-title">Review and connect</h2>
+              <p class="lede">Confirm the account and effective permissions before creating the grant.</p>
+              <p class="section-label">Grant target</p>
+              <div class="review-target">
+                <div class="avatar" id="review-account-initial">•</div>
+                <div class="review-target-copy">
+                  <strong id="review-account-email">Loading account…</strong>
+                  <span>Only data this account is already allowed to access</span>
+                </div>
+                <span class="boundary-pill">Accessible workspaces</span>
+              </div>
+              <p class="section-label" style="margin-top:20px">Effective access</p>
+              <div class="review-permissions" id="review-permissions"></div>
+              <div class="risk-note" id="risk-note" hidden></div>
+            </div>
+            <div class="actions">
+              <button class="button cancel" type="button" data-action="deny">Cancel</button>
+              <button class="button" id="edit-button" type="button">Edit</button>
+              <button class="button primary" id="authorize-button" type="button">Authorize</button>
+            </div>
+          </section>
+        </div>
+
+        <section class="status-panel" id="status-panel" aria-live="assertive">
+          <div class="status-content">
+            <div class="spinner" aria-hidden="true"></div>
+            <h2>Authorizing connection</h2>
+            <p>Creating the scoped OrgX grant and returning you directly to <span id="status-client-name">your client</span>…</p>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <form id="consent-form" method="post" action="/oauth/consent-callback" hidden>
+      <input type="hidden" name="state_key" id="form-state-key" />
+      <input type="hidden" name="final_scope" id="form-final-scope" />
+      <input type="hidden" name="action" id="form-action" value="approve" />
+    </form>
 
     <script>
-      // ===========================================
-      // State
-      // ===========================================
-      let oauthState = null;
-      const scopeCapabilities = {
-        decisions: { read: 'decisions:read', write: 'decisions:write' },
-        agents: { read: 'agents:read', write: 'agents:write' },
-        initiatives: { read: 'initiatives:read', write: 'initiatives:write' },
-        memory: { read: 'memory:read' },
+      let capabilityVersion = '';
+      let resourceCatalog = [];
+      const state = {
+        stateKey: '', client: null, account: null,
+        requested: new Set(), selected: {}, stage: 'configure'
       };
-      let selectedScopes = {
-        decisions: 'write',
-        agents: 'write',
-        initiatives: 'write',
-        memory: 'read',
+      const shell = document.getElementById('shell');
+      const resourceList = document.getElementById('resource-list');
+      const configureError = document.getElementById('configure-error');
+
+      const CLIENT_ICON_PATHS = {
+        openai: 'M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365 2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z',
+        claude: 'm4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.759 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z',
+        cursor: 'M11.503.131 1.891 5.678a.84.84 0 0 0-.42.726v11.188c0 .3.162.575.42.724l9.609 5.55a1 1 0 0 0 .998 0l9.61-5.55a.84.84 0 0 0 .42-.724V6.404a.84.84 0 0 0-.42-.726L12.497.131a1.01 1.01 0 0 0-.996 0M2.657 6.338h18.55c.263 0 .43.287.297.515L12.23 22.918c-.062.107-.229.064-.229-.06V12.335a.59.59 0 0 0-.295-.51l-9.11-5.257c-.109-.063-.064-.23.061-.23',
+        copilot: 'M23.922 16.997C23.061 18.492 18.063 22.02 12 22.02 5.937 22.02.939 18.492.078 16.997A.641.641 0 0 1 0 16.741v-2.869a.883.883 0 0 1 .053-.22c.372-.935 1.347-2.292 2.605-2.656.167-.429.414-1.055.644-1.517a10.098 10.098 0 0 1-.052-1.086c0-1.331.282-2.499 1.132-3.368.397-.406.89-.717 1.474-.952C7.255 2.937 9.248 1.98 11.978 1.98c2.731 0 4.767.957 6.166 2.093.584.235 1.077.546 1.474.952.85.869 1.132 2.037 1.132 3.368 0 .368-.014.733-.052 1.086.23.462.477 1.088.644 1.517 1.258.364 2.233 1.721 2.605 2.656a.841.841 0 0 1 .053.22v2.869a.641.641 0 0 1-.078.256Zm-11.75-5.992h-.344a4.359 4.359 0 0 1-.355.508c-.77.947-1.918 1.492-3.508 1.492-1.725 0-2.989-.359-3.782-1.259a2.137 2.137 0 0 1-.085-.104L4 11.746v6.585c1.435.779 4.514 2.179 8 2.179 3.486 0 6.565-1.4 8-2.179v-6.585l-.098-.104s-.033.045-.085.104c-.793.9-2.057 1.259-3.782 1.259-1.59 0-2.738-.545-3.508-1.492a4.359 4.359 0 0 1-.355-.508Zm2.328 3.25c.549 0 1 .451 1 1v2c0 .549-.451 1-1 1-.549 0-1-.451-1-1v-2c0-.549.451-1 1-1Zm-5 0c.549 0 1 .451 1 1v2c0 .549-.451 1-1 1-.549 0-1-.451-1-1v-2c0-.549.451-1 1-1Z',
+        windsurf: 'M23.55 5.067c-1.2038-.002-2.1806.973-2.1806 2.1765v4.8676c0 .972-.8035 1.7594-1.7597 1.7594-.568 0-1.1352-.286-1.4718-.7659l-4.9713-7.1003c-.4125-.5896-1.0837-.941-1.8103-.941-1.1334 0-2.1533.9635-2.1533 2.153v4.8957c0 .972-.7969 1.7594-1.7596 1.7594-.57 0-1.1363-.286-1.4728-.7658L.4076 5.1598C.2822 4.9798 0 5.0688 0 5.2882v4.2452c0 .2147.0656.4228.1884.599l5.4748 7.8183c.3234.462.8006.8052 1.3509.9298 1.3771.313 2.6446-.747 2.6446-2.0977v-4.893c0-.972.7875-1.7593 1.7596-1.7593h.003a1.798 1.798 0 0 1 1.4718.7658l4.9723 7.0994c.4135.5905 1.05.941 1.8093.941 1.1587 0 2.1515-.9645 2.1515-2.153v-4.8948c0-.972.7875-1.7594 1.7596-1.7594h.194a.22.22 0 0 0 .2204-.2202v-4.622a.22.22 0 0 0-.2203-.2203Z',
+        zed: 'M2.25 1.5a.75.75 0 0 0-.75.75v16.5H0V2.25A2.25 2.25 0 0 1 2.25 0h20.095c1.002 0 1.504 1.212.795 1.92L10.764 14.298h3.486V12.75h1.5v1.922a1.125 1.125 0 0 1-1.125 1.125H9.264l-2.578 2.578h11.689V9h1.5v9.375a1.5 1.5 0 0 1-1.5 1.5H5.185L2.562 22.5H21.75a.75.75 0 0 0 .75-.75V5.25H24v16.5A2.25 2.25 0 0 1 21.75 24H1.655C.653 24 .151 22.788.86 22.08L13.19 9.75H9.75v1.5h-1.5V9.375A1.125 1.125 0 0 1 9.375 8.25h5.314l2.625-2.625H5.625V15h-1.5V5.625a1.5 1.5 0 0 1 1.5-1.5h13.19L21.438 1.5z',
+        raycast: 'M6.004 15.492v2.504L0 11.992l1.258-1.249Zm2.504 2.504H6.004L12.008 24l1.253-1.253zm14.24-4.747L24 11.997 12.003 0 10.75 1.251 15.491 6h-2.865L9.317 2.692 8.065 3.944l2.06 2.06H8.691v9.31H18v-1.432l2.06 2.06 1.252-1.252-3.312-3.32V8.506ZM6.63 5.372 5.38 6.625l1.342 1.343 1.251-1.253Zm10.655 10.655-1.247 1.251 1.342 1.343 1.253-1.251zM3.944 8.059 2.692 9.31l3.312 3.314v-2.506zm9.936 9.937h-2.504l3.314 3.312 1.25-1.252z',
+        gemini: 'M11.04 19.32Q12 21.51 12 24q0-2.49.93-4.68.96-2.19 2.58-3.81t3.81-2.55Q21.51 12 24 12q-2.49 0-4.68-.93a12.3 12.3 0 0 1-3.81-2.58 12.3 12.3 0 0 1-2.58-3.81Q12 2.49 12 0q0 2.49-.96 4.68-.93 2.19-2.55 3.81a12.3 12.3 0 0 1-3.81 2.58Q2.49 12 0 12q2.49 0 4.68.96 2.19.93 3.81 2.55t2.55 3.81',
       };
 
-      // ===========================================
-      // Initialize from URL params
-      // ===========================================
-      function init() {
-        const params = new URLSearchParams(window.location.search);
-
-        // Read state_key and individual params (server-side state)
-        const stateKey = params.get('state_key');
-        const clientId = params.get('client_id') || '';
-        const scope = params.get('scope') || '';
-        const redirectUri = params.get('redirect_uri') || '';
-        const oauthStateParam = params.get('oauth_state') || '';
-
-        if (stateKey) {
-          oauthState = {
-            stateKey,
-            clientId,
-            scope,
-            redirectUri,
-            state: oauthStateParam,
-          };
-        }
-
-        // Get user info
-        const userEmail = params.get('user_email') || 'user@example.com';
-        const userId = params.get('user_id') || '';
-        const orgName = params.get('org_name') || 'Personal account';
-
-        // Update UI with user info
-        document.getElementById('user-email').textContent = userEmail;
-        document.getElementById('org-name').textContent = orgName;
-        document.getElementById('user-initial').textContent =
-          userEmail[0].toUpperCase();
-
-        // Parse client name
-        const clientName = getClientDisplayName(clientId, redirectUri);
-        document.getElementById('client-name').textContent = clientName;
-        document.getElementById('client-name-2').textContent = clientName;
-        updateClientLogo(clientName.toLowerCase());
-
-        // Parse requested scopes and set initial state
-        if (oauthState?.scope) {
-          parseRequestedScopes(oauthState.scope);
-        }
-
-        // Initialize toggle states
-        initializeToggles();
+      function pathIcon(path, color = 'currentColor') {
+        return `<svg viewBox="0 0 24 24" focusable="false"><path fill="${color}" d="${path}"></path></svg>`;
       }
 
-      function getClientDisplayName(clientId, redirectUri) {
-        // Check redirect URI patterns first
-        if (
-          redirectUri?.includes('connector_platform_oauth_redirect') ||
-          redirectUri?.includes('chatgpt.com') ||
-          redirectUri?.includes('openai.com')
-        ) {
-          return 'ChatGPT';
-        }
-        if (
-          redirectUri?.includes('cursor.com') ||
-          redirectUri?.includes('cursor.sh')
-        ) {
-          return 'Cursor';
-        }
-        if (
-          redirectUri?.includes('claude.ai') ||
-          redirectUri?.includes('anthropic.com')
-        ) {
-          return 'Claude';
-        }
-        if (
-          redirectUri?.includes('vscode') ||
-          redirectUri?.includes('visual-studio-code')
-        ) {
-          return 'VS Code';
-        }
-
-        // Check client ID patterns
-        const knownClients = {
-          cursor: 'Cursor',
-          claude: 'Claude',
-          chatgpt: 'ChatGPT',
-          openai: 'ChatGPT',
-          vscode: 'VS Code',
-          goose: 'Goose',
-        };
-
-        for (const [key, name] of Object.entries(knownClients)) {
-          if (clientId?.toLowerCase().includes(key)) return name;
-        }
-
-        return 'Application';
+      function clientIconMarkup(kind) {
+        if (kind === 'chatgpt' || kind === 'codex') return pathIcon(CLIENT_ICON_PATHS.openai);
+        if (kind === 'claude') return pathIcon(CLIENT_ICON_PATHS.claude, '#D97757');
+        if (kind === 'cursor') return pathIcon(CLIENT_ICON_PATHS.cursor);
+        if (kind === 'github_copilot') return pathIcon(CLIENT_ICON_PATHS.copilot);
+        if (kind === 'windsurf') return pathIcon(CLIENT_ICON_PATHS.windsurf);
+        if (kind === 'zed') return pathIcon(CLIENT_ICON_PATHS.zed);
+        if (kind === 'raycast') return pathIcon(CLIENT_ICON_PATHS.raycast, '#FF6363');
+        if (kind === 'gemini') return pathIcon(CLIENT_ICON_PATHS.gemini, '#8AB4F8');
+        if (kind === 'vscode') return '<svg viewBox="0 0 40 40" focusable="false"><path fill="#23A8F2" fill-rule="evenodd" d="M26.02 34.13a1.8 1.8 0 0 0 1.43-.06l5.93-2.85a1.8 1.8 0 0 0 1.02-1.62V10.25a1.8 1.8 0 0 0-1.02-1.62l-5.93-2.85a1.8 1.8 0 0 0-2.04.35L14.05 16.48 9.11 12.73a1.2 1.2 0 0 0-1.53.07l-1.59 1.44a1.2 1.2 0 0 0 0 1.77l4.29 3.92-4.29 3.91a1.2 1.2 0 0 0 0 1.77l1.59 1.44a1.2 1.2 0 0 0 1.53.07l4.94-3.75 11.36 10.36c.18.18.38.31.61.4Zm1.18-20.74-8.61 6.54 8.61 6.53V13.39Z"/></svg>';
+        if (kind === 'cline') return '<svg viewBox="0 0 466.73 487.04" focusable="false"><path fill="currentColor" d="M463.6,275.08l-29.26-58.75v-33.83c0-56.08-45.01-101.5-100.53-101.5h-50.01c3.62-7.43,5.61-15.79,5.61-24.61,0-31.17-25.08-56.39-56.07-56.39s-56.07,25.22-56.07,56.39c0,8.82,1.99,17.17,5.61,24.61h-50.01c-55.51,0-100.52,45.42-100.52,101.5v33.83l-29.87,58.59c-3.01,5.9-3.01,12.92,0,18.81l29.87,57.93v33.83c0,56.08,45.01,101.5,100.52,101.5h200.95c55.51,0,100.53-45.42,100.53-101.5v-33.83l29.21-58.13c2.9-5.79,2.9-12.61.05-18.46ZM202.75,322.96c0,25.48-20.54,46.14-45.88,46.14s-45.88-20.66-45.88-46.14v-82.02c0-25.48,20.54-46.14,45.88-46.14s45.88,20.66,45.88,46.14v82.02ZM350.58,322.96c0,25.48-20.54,46.14-45.88,46.14s-45.88-20.66-45.88-46.14v-82.02c0-25.48,20.54-46.14,45.88-46.14s45.88,20.66,45.88,46.14v82.02Z"/></svg>';
+        if (kind === 'opencode') return '<svg viewBox="0 0 16 16" focusable="false"><path fill="currentColor" fill-rule="evenodd" d="M13 14H3V2h10v12Zm-2.5-9.6h-5v7.2h5V4.4Z"/></svg>';
+        if (kind === 'openclaw') return '<svg viewBox="0 0 16 16" focusable="false" shape-rendering="crispEdges"><g fill="#FF4F40"><path d="M5 3h6v1H5zM4 4h8v1H4zM3 5h10v3H3zM4 8h8v1H4zM5 9h6v1H5zm0 3h6v1H5zm1 1h4v1H6z"/></g><path fill="#F5FBFF" d="M6 4h1v2H6zm3 0h1v2H9z"/><path fill="#081016" d="M6 5h1v1H6zm3 0h1v1H9z"/></svg>';
+        if (kind === 'continue') return '<svg viewBox="0 0 13 13" focusable="false"><path fill="currentColor" d="M2.5 1.25h3.25v1.5H4v1.5H2.5v-3Zm4.75 0h3.25v3H9v-1.5H7.25v-1.5ZM2.5 5.75H4v1.5H2.5v-1.5Zm6.5 0h1.5v1.5H9v-1.5ZM2.5 8.75H4v1.5h1.75v1.5H2.5v-3Zm6.5 0h1.5v3H7.25v-1.5H9v-1.5Z"/></svg>';
+        if (kind === 'roo_code') return '<svg viewBox="0 0 96 96" focusable="false"><path fill="currentColor" d="M78.99,21.9l-1.73,6.24c-.09.33-.44.52-.77.42l-28.11-8.71c-.19-.06-.41-.02-.56.11l-28.95,23.22c-.08.07-.18.11-.29.13l-17.25,2.66c-.31.05-.53.32-.52.63l.11,2.47c.01.31.26.56.57.58l20.08,1.23c.11,0,.22-.02.31-.06l14.64-7.4c.21-.11.46-.08.64.06l9.37,7.03c.16.12.25.3.24.49l-.09,11.65c0,.13.04.25.11.35l14.74,21.15c.11.16.3.26.5.26h5.03c.46,0,.76-.5.54-.9l-10.87-19.92c-.1-.18-.1-.4,0-.58l5.51-10.48c.06-.11.15-.2.26-.26l19.56-9.92c.2-.1.43-.09.62.04l5.6,3.73c.1.07.22.1.34.1h5.15c.48,0,.77-.52.52-.93l-14.2-23.52c-.28-.46-.97-.36-1.11.15Z"/></svg>';
+        if (kind === 'goose') return '<svg viewBox="0 0 24 24" focusable="false"><path fill="#F472B6" d="M20.9093 19.3861L19.5185 18.2413C18.7624 17.619 18.1189 16.8713 17.6157 16.0313C16.9205 14.8706 15.9599 13.8912 14.8133 13.1735L14.2533 12.8475C14.0614 12.7141 13.9276 12.5062 13.9086 12.2716C13.8963 12.1204 13.9326 11.9852 14.0171 11.8662C14.3087 11.4553 15.896 9.74698 16.1722 9.51845C16.528 9.22442 16.9243 8.97987 17.2921 8.69986C17.3443 8.66 17.3968 8.62035 17.4485 8.57989C17.5725 8.48195 17.6838 8.383 17.7724 8.26563C18.2036 7.76631 18.195 7.3443 18.195 7.3443C18.1497 7.23133 17.9847 6.88163 17.6492 6.71759C17.9458 6.71178 18.2805 6.82294 18.4323 6.97156C18.6148 6.68534 18.7328 6.49967 18.9162 6.18762C18.9599 6.11352 18.9831 5.97652 18.8996 5.89981C18.7672 5.7606 18.6302 5.78384 18.5561 5.8275C18.1503 6.06625 17.7555 6.32322 17.3996 6.54855C17.3996 6.54855 16.9778 6.53973 16.4783 6.97116C16.3607 7.05989 16.2618 7.17125 16.1688 7.28902C16.1234 7.3465 16.0837 7.39898 16.0441 7.45145C15.7639 7.81939 15.5195 8.21556 15.2255 8.57128C14.9971 8.84768 13.2887 10.4348 12.8777 10.7264C12.7587 10.8109 12.6237 10.8474 12.4723 10.835C12.2379 10.8161 12.0298 10.6821 11.8965 10.4903L11.5704 9.93024C10.8527 8.78318 9.87332 7.82299 8.71264 7.12778C7.87262 6.62466 7.12514 5.98092 6.50264 5.22503L5.35778 3.83421C5.3013 3.76571 5.19314 3.77693 5.15268 3.85585C5.02249 4.10941 4.77393 4.64479 4.58346 5.36483C4.57885 5.38186 4.58286 5.39988 4.59407 5.4135C4.83082 5.69952 5.37901 6.32983 6.03196 6.863C6.07742 6.90005 6.04017 6.97336 5.98369 6.95774C5.42047 6.80432 4.87288 6.55796 4.46308 6.34805C4.42964 6.33103 4.38918 6.35226 4.38437 6.38951C4.32068 6.89985 4.30425 7.46027 4.37155 8.05112C4.37355 8.07035 4.38577 8.08697 4.4036 8.09479C4.87088 8.29808 5.61816 8.59311 6.40269 8.78078C6.45958 8.7944 6.45777 8.87632 6.40029 8.88733C5.78941 9.0023 5.14968 9.02794 4.62973 9.02113C4.59327 9.02073 4.56643 9.05518 4.57625 9.09023C4.6806 9.45896 4.822 9.8339 5.00847 10.2115C5.08559 10.3811 5.16951 10.5475 5.25944 10.7104C5.27486 10.7382 5.3047 10.7548 5.33655 10.7534C5.76577 10.7324 6.28452 10.6871 6.80608 10.595C6.89501 10.5794 6.94268 10.6964 6.86757 10.7466C6.51345 10.9834 6.13571 11.1873 5.7844 11.3551C5.73733 11.3777 5.72211 11.4378 5.75315 11.4797C5.96186 11.7625 6.19139 12.0301 6.44075 12.2794C6.44075 12.2794 7.66853 13.5441 7.70198 13.6432C8.41841 12.9096 9.59612 12.0964 10.8966 11.3864C9.15488 12.8036 8.18387 13.8499 7.69517 14.4444L7.35447 14.9225C7.17742 15.1708 7.02379 15.4346 6.89541 15.7112C6.46579 16.6356 5.75756 18.5051 5.75756 18.5051C5.70328 18.6515 5.74754 18.7959 5.84168 18.89C5.94924 18.9976 6.09345 19.0416 6.23986 18.9874C6.23986 18.9874 8.10897 18.2791 9.03371 17.8495C9.31031 17.7211 9.57429 17.5673 9.82245 17.3905L10.349 17.0153C10.6278 16.8166 11.0096 16.8483 11.2517 17.0904L12.4655 18.3042C12.7148 18.5535 12.9824 18.7831 13.2652 18.9918C13.3073 19.0226 13.3672 19.0076 13.3898 18.9605C13.5579 18.6094 13.7618 18.2313 13.9983 17.8774C14.0486 17.8022 14.1657 17.8501 14.1499 17.9388C14.0576 18.4606 14.0127 18.9794 13.9915 19.4084C13.9899 19.44 14.0067 19.4701 14.0345 19.4855C14.1972 19.5756 14.3636 19.6595 14.5335 19.7364C14.911 19.9229 15.2862 20.0645 15.6547 20.1687C15.6897 20.1785 15.7242 20.1516 15.7238 20.1152C15.7168 19.595 15.7424 18.9553 15.8576 18.3446C15.8684 18.2869 15.9503 18.2851 15.9641 18.3422C16.1516 19.127 16.4466 19.8742 16.6501 20.3413C16.6579 20.3591 16.6744 20.3712 16.6938 20.3734C17.2847 20.4407 17.8451 20.4242 18.3554 20.3606C18.3929 20.3559 18.4141 20.3155 18.3969 20.2818C18.187 19.872 17.9406 19.3241 17.7872 18.7612C17.7718 18.7046 17.8449 18.6675 17.8819 18.713C18.4151 19.3659 19.0454 19.9141 19.3314 20.1508C19.345 20.1621 19.3633 20.1659 19.3801 20.1615C20.1003 19.9712 20.6357 19.7226 20.8891 19.5922C20.968 19.5518 20.9792 19.4436 20.9107 19.3871L20.9093 19.3861Z"/></svg>';
+        if (kind === 'unverified') return '<svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-dasharray="3 2.5"/><path d="M9.7 9.5a2.5 2.5 0 0 1 4.7.9c0 1.7-2.4 2-2.4 3.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg>';
+        if (kind === 'local') return '<svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="4" width="18" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3 8h18M7 12l2 2-2 2m4 0h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        return '<svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="4" width="18" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3 8h18M7 12l2 2-2 2m4 0h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
       }
 
-      function updateClientLogo(clientName) {
-        const logoContainer = document.getElementById('client-logo');
-        const logoUrls = {
-          chatgpt:
-            'data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22%2310A37F%22%3E%3Cpath%20d%3D%22M22.2819%209.8211a5.9847%205.9847%200%200%200-.5157-4.9108%206.0462%206.0462%200%200%200-6.5098-2.9A6.0651%206.0651%200%200%200%204.9807%204.1818a5.9847%205.9847%200%200%200-3.9977%202.9%206.0462%206.0462%200%200%200%20.7427%207.0966%205.98%205.98%200%200%200%20.511%204.9107%206.051%206.051%200%200%200%206.5146%202.9001A5.9847%205.9847%200%200%200%2013.2599%2024a6.0557%206.0557%200%200%200%205.7718-4.2058%205.9894%205.9894%200%200%200%203.9977-2.9001%206.0557%206.0557%200%200%200-.7475-7.0729zm-9.022%2012.6081a4.4755%204.4755%200%200%201-2.8764-1.0408l.1419-.0804%204.7783-2.7582a.7948.7948%200%200%200%20.3927-.6813v-6.7369l2.02%201.1686a.071.071%200%200%201%20.038.052v5.5826a4.504%204.504%200%200%201-4.4945%204.4944zm-9.6607-4.1254a4.4708%204.4708%200%200%201-.5346-3.0137l.142.0852%204.783%202.7582a.7712.7712%200%200%200%20.7806%200l5.8428-3.3685v2.3324a.0804.0804%200%200%201-.0332.0615L9.74%2019.9502a4.4992%204.4992%200%200%201-6.1408-1.6464zM2.3408%207.8956a4.485%204.485%200%200%201%202.3655-1.9728V11.6a.7664.7664%200%200%200%20.3879.6765l5.8144%203.3543-2.0201%201.1685a.0757.0757%200%200%201-.071%200l-4.8303-2.7865A4.504%204.504%200%200%201%202.3408%207.872zm16.5963%203.8558L13.1038%208.364%2015.1192%207.2a.0757.0757%200%200%201%20.071%200l4.8303%202.7913a4.4944%204.4944%200%200%201-.6765%208.1042v-5.6772a.79.79%200%200%200-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759%200%200%200-.7854%200L9.409%209.2297V6.8974a.0662.0662%200%200%201%20.0284-.0615l4.8303-2.7866a4.4992%204.4992%200%200%201%206.6802%204.66zM8.3065%2012.863l-2.02-1.1638a.0804.0804%200%200%201-.038-.0567V6.0742a4.4992%204.4992%200%200%201%207.3757-3.4537l-.142.0805L8.704%205.459a.7948.7948%200%200%200-.3927.6813zm1.0976-2.3654l2.602-1.4998%202.6069%201.4998v2.9994l-2.5974%201.4997-2.6067-1.4997Z%22%2F%3E%3C%2Fsvg%3E',
-          cursor: 'https://cdn.simpleicons.org/cursor/ffffff',
-          claude: 'https://cdn.simpleicons.org/anthropic/D97757',
-          'vs code': 'https://cdn.simpleicons.org/visualstudiocode/007ACC',
-          goose: null, // No icon available
-        };
-
-        if (logoUrls[clientName]) {
-          logoContainer.innerHTML = `<img src="${logoUrls[clientName]}" class="w-7 h-7" alt="${clientName}" onerror="this.style.display='none'" />`;
+      function renderClientIdentity() {
+        const icon = document.getElementById('client-icon');
+        const identity = document.getElementById('client-identity-status');
+        const copy = document.getElementById('client-identity-copy');
+        const kind = state.client.icon || 'unverified';
+        const trust = state.client.identity_trust || 'unverified';
+        icon.dataset.clientKind = kind;
+        icon.innerHTML = clientIconMarkup(kind);
+        identity.classList.remove('verified', 'reported');
+        if (trust === 'verified_redirect') {
+          identity.classList.add('verified');
+          copy.textContent = `Verified return domain · ${state.client.redirect_host}`;
+        } else if (trust === 'registered_metadata') {
+          identity.classList.add('reported');
+          copy.textContent = 'Name supplied by this OAuth client';
+        } else if (trust === 'local_callback') {
+          copy.textContent = 'Returns to an application on this device';
+        } else {
+          copy.textContent = `Unverified client · ${state.client.redirect_host}`;
         }
       }
 
-      function parseRequestedScopes(scopeString) {
-        const scopes = scopeString.split(/[\s+]/).filter(Boolean);
-
-        // Reset all to none first, then set based on requested scopes
-        Object.keys(selectedScopes).forEach((key) => {
-          selectedScopes[key] = 'none';
-        });
-
-        scopes.forEach((scope) => {
-          // Handle both "scope:permission" and just "scope" formats
-          let resource, permission;
-          if (scope.includes(':')) {
-            [resource, permission] = scope.split(':');
-          } else {
-            resource = scope;
-            permission = 'read';
-          }
-
-          // Map scope names
-          const scopeMap = {
-            decisions: 'decisions',
-            agents: 'agents',
-            initiatives: 'initiatives',
-            memory: 'memory',
-            planning: 'planning',
-            plan: 'planning',
-          };
-
-          const mappedResource = scopeMap[resource] || resource;
-
-          if (selectedScopes.hasOwnProperty(mappedResource)) {
-            const capabilities = scopeCapabilities[mappedResource] || {};
-            // Write supersedes read
-            if (permission === 'write' && capabilities.write) {
-              selectedScopes[mappedResource] = 'write';
-            } else if (
-              permission === 'read' &&
-              selectedScopes[mappedResource] !== 'write'
-            ) {
-              selectedScopes[mappedResource] = 'read';
-            }
-          }
-        });
-
-        // If no scopes were requested, default to full access
-        const hasAnyScope = Object.values(selectedScopes).some(
-          (v) => v !== 'none'
-        );
-        if (!hasAnyScope) {
-          Object.keys(selectedScopes).forEach((key) => {
-            selectedScopes[key] = scopeCapabilities[key]?.write ? 'write' : 'read';
-          });
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll('&', '&amp;').replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;').replaceAll('"', '&quot;')
+          .replaceAll("'", '&#039;');
+      }
+      function availableLevels(resource) {
+        const levels = ['none'];
+        if (resource.read && state.requested.has(resource.read)) levels.push('read');
+        if (resource.write && state.requested.has(resource.write)) levels.push('write');
+        return levels;
+      }
+      function scopesForResource(resource, level) {
+        if (level === 'none') return [];
+        if (level === 'read') {
+          return resource.read && state.requested.has(resource.read) ? [resource.read] : [];
         }
+        return [resource.read, resource.write].filter((scope) => scope && state.requested.has(scope));
       }
-
-      // ===========================================
-      // Toggle Interactions
-      // ===========================================
-      function initializeToggles() {
-        document.querySelectorAll('.permission-row').forEach((row) => {
-          const scope = row.dataset.scope;
-          if (!scopeCapabilities[scope]) {
-            row.remove();
-            return;
-          }
-          const value = selectedScopes[scope] || 'none';
-          if (!scopeCapabilities[scope]?.write) {
-            row.querySelector('[data-value="write"]')?.remove();
-          }
-          setToggleValue(row.querySelector('.toggle-group'), value);
-        });
-        updateAllPermissionsToggle();
+      function detectPreset() {
+        const rows = resourceCatalog.map((resource) => ({
+          levels: availableLevels(resource), value: state.selected[resource.id] ?? 'none'
+        }));
+        if (rows.every(({ levels, value }) => value === (levels.includes('read') ? 'read' : 'none'))) return 'read';
+        if (rows.every(({ levels, value }) => value === (levels.includes('write') ? 'write' : levels.includes('read') ? 'read' : 'none'))) return 'operate';
+        return 'custom';
       }
-
-      function setToggleValue(toggleGroup, value) {
-        toggleGroup.querySelectorAll('.toggle-btn').forEach((btn) => {
-          btn.classList.remove('active', 'active-read', 'active-none');
-          if (btn.dataset.value === value) {
-            btn.classList.add(
-              value === 'write'
-                ? 'active'
-                : value === 'read'
-                ? 'active-read'
-                : 'active-none'
-            );
-            btn.setAttribute('aria-pressed', 'true');
-          } else {
-            btn.setAttribute('aria-pressed', 'false');
-          }
+      function updatePresetState(activePreset) {
+        document.querySelectorAll('[data-preset]').forEach((button) => {
+          button.setAttribute('aria-pressed', String(button.dataset.preset === activePreset));
         });
       }
-
-      // Add click handlers to permission toggles
-      document
-        .querySelectorAll('.permission-row .toggle-group .toggle-btn')
-        .forEach((btn) => {
-          btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const row = btn.closest('.permission-row');
-            const scope = row.dataset.scope;
-            const value = btn.dataset.value;
-
-            selectedScopes[scope] = value;
-            setToggleValue(btn.parentElement, value);
-            updateAllPermissionsToggle();
+      function setPreset(preset) {
+        if (preset !== 'custom') {
+          for (const resource of resourceCatalog) {
+            const levels = availableLevels(resource);
+            state.selected[resource.id] = preset === 'operate'
+              ? levels.includes('write') ? 'write' : levels.includes('read') ? 'read' : 'none'
+              : levels.includes('read') ? 'read' : 'none';
+          }
+        }
+        renderResources();
+        updatePresetState(preset === 'custom' ? 'custom' : detectPreset());
+      }
+      function renderResources() {
+        resourceList.innerHTML = resourceCatalog
+          .filter((resource) => availableLevels(resource).length > 1)
+          .map((resource) => {
+            const levels = availableLevels(resource);
+            const value = state.selected[resource.id] ?? 'none';
+            const codes = [resource.read, resource.write]
+              .filter((scope) => scope && state.requested.has(scope))
+              .map((scope) => `<span class="scope-code">${escapeHtml(scope)}</span>`).join('');
+            return `
+              <div class="resource-row" data-resource="${resource.id}">
+                <div class="resource-line">
+                  <button class="resource-summary" type="button" aria-expanded="false">
+                    <span class="chevron" aria-hidden="true">›</span>
+                    <span class="resource-title"><strong>${escapeHtml(resource.label)}</strong><span>${escapeHtml(resource.summary)}</span></span>
+                  </button>
+                  <div class="level-control" role="group" aria-label="${escapeHtml(resource.label)} access">
+                    ${levels.map((level) => `<button class="level-button" type="button" data-level="${level}" aria-pressed="${String(value === level)}">${level === 'none' ? 'None' : level === 'read' ? 'Read' : 'Write'}</button>`).join('')}
+                  </div>
+                </div>
+                <div class="resource-details">${escapeHtml(resource.description)}<br />${codes}</div>
+              </div>`;
+          }).join('');
+        resourceList.querySelectorAll('.resource-summary').forEach((button) => {
+          button.addEventListener('click', () => {
+            const row = button.closest('.resource-row');
+            row.classList.toggle('expanded');
+            button.setAttribute('aria-expanded', String(row.classList.contains('expanded')));
           });
         });
-
-      function setAllPermissions(value) {
-        Object.keys(selectedScopes).forEach((scope) => {
-          selectedScopes[scope] =
-            value === 'write' && !scopeCapabilities[scope]?.write ? 'read' : value;
-          const row = document.querySelector(`[data-scope="${scope}"]`);
-          if (row) {
-            setToggleValue(row.querySelector('.toggle-group'), selectedScopes[scope]);
-          }
-        });
-        updateAllPermissionsToggle();
-      }
-
-      function updateAllPermissionsToggle() {
-        const values = Object.values(selectedScopes);
-        const allNone = values.every((v) => v === 'none');
-        const allRead = values.every((v) => v === 'read');
-        const allFull = Object.entries(selectedScopes).every(
-          ([scope, permission]) =>
-            permission === (scopeCapabilities[scope]?.write ? 'write' : 'read')
-        );
-        const activeValue = allFull ? 'write' : allRead ? 'read' : allNone ? 'none' : null;
-        const toggle = document.getElementById('all-permissions-toggle');
-
-        toggle.querySelectorAll('.toggle-btn').forEach((btn) => {
-          btn.classList.remove('active', 'active-read', 'active-none');
-          if (btn.dataset.value === activeValue) {
-            btn.classList.add(
-              activeValue === 'write'
-                ? 'active'
-                : activeValue === 'read'
-                ? 'active-read'
-                : 'active-none'
-            );
-            btn.setAttribute('aria-pressed', 'true');
-          } else {
-            btn.setAttribute('aria-pressed', 'false');
-          }
+        resourceList.querySelectorAll('.level-button').forEach((button) => {
+          button.addEventListener('click', () => {
+            const row = button.closest('.resource-row');
+            state.selected[row.dataset.resource] = button.dataset.level;
+            configureError.textContent = '';
+            renderResources();
+            updatePresetState(detectPreset());
+          });
         });
       }
-
-      function toggleExpand(row) {
-        row.classList.toggle('expanded');
-      }
-
-      // ===========================================
-      // Authorization Actions
-      // ===========================================
-      function buildScopeString() {
+      function buildScopeList() {
         const scopes = [];
-
-        Object.entries(selectedScopes).forEach(([resource, permission]) => {
-          const capabilities = scopeCapabilities[resource] || {};
-          if (permission === 'read' && capabilities.read) {
-            scopes.push(capabilities.read);
-          } else if (permission === 'write') {
-            if (capabilities.read) scopes.push(capabilities.read);
-            if (capabilities.write) scopes.push(capabilities.write);
-          }
-        });
-
-        // Add offline_access if originally requested
-        if (oauthState?.scope?.includes('offline_access')) {
+        for (const resource of resourceCatalog) {
+          scopes.push(...scopesForResource(resource, state.selected[resource.id] ?? 'none'));
+        }
+        if (state.requested.has('offline_access') && document.getElementById('offline-toggle').checked) {
           scopes.push('offline_access');
         }
-
-        return scopes.join(' ');
+        return [...new Set(scopes)];
       }
-
-      function authorize() {
-        const btn = document.getElementById('authorize-btn');
-        btn.textContent = 'Connecting...';
-        btn.disabled = true;
-        btn.style.opacity = '0.7';
-
-        const finalScope = buildScopeString();
-        const params = new URLSearchParams(window.location.search);
-
-        // Redirect to the consent-callback with state_key and final_scope
-        const callbackUrl = new URL(
-          '/oauth/consent-callback',
-          window.location.origin
-        );
-
-        callbackUrl.searchParams.set(
-          'state_key',
-          oauthState?.stateKey || params.get('state_key') || ''
-        );
-        callbackUrl.searchParams.set('final_scope', finalScope);
-
-        window.location.href = callbackUrl.toString();
-      }
-
-      function deny() {
-        const params = new URLSearchParams(window.location.search);
-        const redirectUri =
-          oauthState?.redirectUri || params.get('redirect_uri');
-        const oauthStateValue = oauthState?.state || params.get('oauth_state');
-
-        if (redirectUri) {
-          const redirectUrl = new URL(redirectUri);
-          redirectUrl.searchParams.set('error', 'access_denied');
-          redirectUrl.searchParams.set(
-            'error_description',
-            'User denied the authorization request'
-          );
-          if (oauthStateValue) {
-            redirectUrl.searchParams.set('state', oauthStateValue);
-          }
-          window.location.href = redirectUrl.toString();
-        } else {
-          window.close();
+      function renderReview() {
+        const selected = resourceCatalog.filter((resource) => state.selected[resource.id] !== 'none');
+        const review = document.getElementById('review-permissions');
+        review.innerHTML = selected.map((resource) => {
+          const level = state.selected[resource.id];
+          const scopes = scopesForResource(resource, level).join(' · ');
+          return `<div class="review-permission"><span><strong>${escapeHtml(resource.label)}</strong><br /><span>${escapeHtml(scopes)}</span></span><span class="access-pill ${level === 'write' ? 'write' : ''}">${level === 'write' ? 'Write' : 'Read'}</span></div>`;
+        }).join('');
+        if (state.requested.has('offline_access') && document.getElementById('offline-toggle').checked) {
+          review.insertAdjacentHTML('beforeend', '<div class="review-permission"><span><strong>Connection</strong><br /><span>offline_access</span></span><span class="access-pill">Refresh</span></div>');
         }
+        const writes = selected.filter((resource) => state.selected[resource.id] === 'write');
+        const risk = document.getElementById('risk-note');
+        risk.hidden = writes.length === 0;
+        risk.innerHTML = writes.length
+          ? `<strong>Ongoing operate access:</strong> ${escapeHtml(state.client.name)} can change ${escapeHtml(writes.map((resource) => resource.label.toLowerCase()).join(', '))} while this grant remains active. OrgX will continue to record durable state and proof boundaries.`
+          : '';
       }
-
-      // Initialize on load
-      init();
+      function showStage(stage) {
+        const configure = stage === 'configure';
+        state.stage = stage;
+        document.getElementById('configure-stage').classList.toggle('active', configure);
+        document.getElementById('review-stage').classList.toggle('active', !configure);
+        document.getElementById('progress-configure').classList.toggle('active', configure);
+        document.getElementById('progress-configure').classList.toggle('complete', !configure);
+        document.getElementById('progress-review').classList.toggle('active', !configure);
+        if (!configure) renderReview();
+        document.querySelector('.panel').scrollIntoView({ block: 'start' });
+      }
+      function submitConsent(action) {
+        document.getElementById('form-state-key').value = state.stateKey;
+        document.getElementById('form-final-scope').value = buildScopeList().join(' ');
+        document.getElementById('form-action').value = action;
+        if (action === 'approve') {
+          document.getElementById('context-panel').hidden = true;
+          document.getElementById('panel').hidden = true;
+          document.getElementById('status-panel').classList.add('active');
+          shell.classList.remove('loading');
+        }
+        document.getElementById('consent-form').submit();
+      }
+      function bindEvents() {
+        document.querySelectorAll('[data-preset]').forEach((button) => {
+          button.addEventListener('click', () => setPreset(button.dataset.preset));
+        });
+        document.getElementById('review-button').addEventListener('click', () => {
+          if (buildScopeList().filter((scope) => scope !== 'offline_access').length === 0) {
+            configureError.textContent = 'Choose at least one resource permission to continue.';
+            return;
+          }
+          configureError.textContent = '';
+          showStage('review');
+        });
+        document.getElementById('edit-button').addEventListener('click', () => showStage('configure'));
+        document.getElementById('authorize-button').addEventListener('click', () => submitConsent('approve'));
+        document.querySelectorAll('[data-action="deny"]').forEach((button) => {
+          button.addEventListener('click', () => submitConsent('deny'));
+        });
+      }
+      async function initialize() {
+        bindEvents();
+        state.stateKey = new URLSearchParams(window.location.search).get('state_key') ?? '';
+        if (!state.stateKey) throw new Error('Missing authorization session. Restart the connection from your MCP client.');
+        const response = await fetch(`/oauth/consent-session?state_key=${encodeURIComponent(state.stateKey)}`, {
+          credentials: 'same-origin', cache: 'no-store'
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error_description || 'Authorization session expired.');
+        state.client = payload.client;
+        state.account = payload.account;
+        state.requested = new Set(payload.requested_scopes ?? []);
+        const policy = payload.authorization_policy;
+        if (!policy?.version || !Array.isArray(policy.resources)) {
+          throw new Error('The authorization policy could not be loaded.');
+        }
+        capabilityVersion = policy.version;
+        resourceCatalog = policy.resources.map((resource) => {
+          const read = resource.actions.find((action) => action.access === 'read');
+          const operate = resource.actions.find((action) => action.access === 'operate');
+          return {
+            id: resource.id,
+            label: resource.label,
+            summary: resource.description,
+            description: resource.actions.map((action) => action.description).join(' '),
+            read: read?.scope ?? null,
+            write: operate?.scope ?? null
+          };
+        });
+        document.getElementById('client-name').textContent = state.client.name;
+        document.getElementById('status-client-name').textContent = state.client.name;
+        renderClientIdentity();
+        document.getElementById('redirect-uri').textContent = state.client.redirect_uri;
+        document.getElementById('account-email').textContent = state.account.email;
+        document.getElementById('review-account-email').textContent = state.account.email;
+        const initial = state.account.email.slice(0, 1).toUpperCase();
+        document.getElementById('account-initial').textContent = initial;
+        document.getElementById('review-account-initial').textContent = initial;
+        document.getElementById('authorize-button').textContent = `Authorize ${state.client.name}`;
+        document.getElementById('offline-row').classList.toggle('visible', state.requested.has('offline_access'));
+        setPreset('read');
+        shell.classList.remove('loading');
+        shell.setAttribute('aria-busy', 'false');
+        shell.dataset.capabilityVersion = capabilityVersion;
+      }
+      initialize().catch((error) => {
+        document.getElementById('context-panel').hidden = true;
+        document.getElementById('panel').hidden = true;
+        const status = document.getElementById('status-panel');
+        status.classList.add('active');
+        status.innerHTML = `<div class="status-content"><div class="orgx-icon" style="margin:0 auto 18px">!</div><h2>Connection could not be prepared</h2><p>${escapeHtml(error instanceof Error ? error.message : String(error))}</p><p>Return to your MCP client and start the connection again.</p></div>`;
+        shell.classList.remove('loading');
+        shell.setAttribute('aria-busy', 'false');
+      });
     </script>
   </body>
 </html>

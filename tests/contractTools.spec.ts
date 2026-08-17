@@ -8,6 +8,7 @@ import {
   CONTRACT_TOOL_DEFINITIONS,
   getKnownToolContract,
   getKnownToolContracts,
+  resolveContractToolInvocationSecuritySchemes,
 } from '../src/contractTools';
 import {
   CLIENT_CONTEXT_SCHEMA,
@@ -31,6 +32,132 @@ function collectInlineRegisteredToolIds(): string[] {
 }
 
 describe('contract tool catalog', () => {
+  it('resolves polymorphic reads to the selected private-data domain', () => {
+    expect(
+      resolveContractToolInvocationSecuritySchemes('orgx_search', {
+        type: 'decision',
+      })
+    ).toEqual([{ type: 'oauth2', scopes: ['decisions:read'] }]);
+    expect(
+      resolveContractToolInvocationSecuritySchemes('orgx_search', {
+        type: 'run',
+      })
+    ).toEqual([{ type: 'oauth2', scopes: ['agents:read'] }]);
+    expect(
+      resolveContractToolInvocationSecuritySchemes('orgx_search', {
+        type: 'initiative',
+      })
+    ).toEqual([{ type: 'oauth2', scopes: ['initiatives:read'] }]);
+    expect(
+      resolveContractToolInvocationSecuritySchemes('orgx_search', {})
+    ).toEqual([
+      {
+        type: 'oauth2',
+        scopes: [
+          'decisions:read',
+          'agents:read',
+          'initiatives:read',
+          'memory:read',
+        ],
+      },
+    ]);
+  });
+
+  it('requires the safe read union for hydrated inspection', () => {
+    expect(
+      resolveContractToolInvocationSecuritySchemes('orgx_inspect', {
+        type: 'decision',
+        hydrate_context: false,
+      })
+    ).toEqual([{ type: 'oauth2', scopes: ['decisions:read'] }]);
+    expect(
+      resolveContractToolInvocationSecuritySchemes('orgx_inspect', {
+        type: 'decision',
+      })
+    ).toEqual([
+      {
+        type: 'oauth2',
+        scopes: [
+          'decisions:read',
+          'agents:read',
+          'initiatives:read',
+          'memory:read',
+        ],
+      },
+    ]);
+  });
+
+  it('resolves polymorphic writes and dispatching lifecycle actions exactly', () => {
+    expect(
+      resolveContractToolInvocationSecuritySchemes('orgx_write', {
+        type: 'decision',
+      })
+    ).toEqual([{ type: 'oauth2', scopes: ['decisions:write'] }]);
+    expect(
+      resolveContractToolInvocationSecuritySchemes('orgx_write', {
+        type: 'agent',
+      })
+    ).toEqual([{ type: 'oauth2', scopes: ['agents:write'] }]);
+    expect(
+      resolveContractToolInvocationSecuritySchemes('orgx_act', {
+        type: 'initiative',
+        action: 'resume',
+      })
+    ).toEqual([
+      {
+        type: 'oauth2',
+        scopes: ['agents:write', 'initiatives:write'],
+      },
+    ]);
+  });
+
+  it('resolves spawn and decision actions without cross-domain bypasses', () => {
+    expect(
+      resolveContractToolInvocationSecuritySchemes('orgx_spawn', {
+        action: 'handoff',
+      })
+    ).toEqual([
+      {
+        type: 'oauth2',
+        scopes: ['agents:write', 'initiatives:write'],
+      },
+    ]);
+    for (const action of ['guard', 'classify', 'estimate']) {
+      expect(
+        resolveContractToolInvocationSecuritySchemes('orgx_spawn', { action })
+      ).toEqual([{ type: 'oauth2', scopes: ['agents:read'] }]);
+    }
+    expect(
+      resolveContractToolInvocationSecuritySchemes('orgx_spawn', {
+        action: 'spawn',
+      })
+    ).toEqual([{ type: 'oauth2', scopes: ['agents:write'] }]);
+    expect(
+      resolveContractToolInvocationSecuritySchemes('orgx_decide', {
+        action: 'list_pending',
+      })
+    ).toEqual([{ type: 'oauth2', scopes: ['decisions:read'] }]);
+    expect(
+      resolveContractToolInvocationSecuritySchemes('orgx_decide', {
+        action: 'remember',
+      })
+    ).toEqual([{ type: 'oauth2', scopes: ['decisions:write'] }]);
+  });
+
+  it('resolves plan resume as read and every mutating plan action as write', () => {
+    expect(
+      resolveContractToolInvocationSecuritySchemes('orgx_plan', {
+        action: 'resume',
+      })
+    ).toEqual([{ type: 'oauth2', scopes: ['initiatives:read'] }]);
+
+    for (const action of ['start', 'improve', 'record_edit', 'complete']) {
+      expect(
+        resolveContractToolInvocationSecuritySchemes('orgx_plan', { action })
+      ).toEqual([{ type: 'oauth2', scopes: ['initiatives:write'] }]);
+    }
+  });
+
   it('accepts partial client conversation context without requiring a client-specific id', () => {
     expect(() =>
       CLIENT_CONTEXT_SCHEMA.parse({

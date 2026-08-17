@@ -75,9 +75,10 @@ If a client displays a privacy prompt before connection, users should review the
 
 ## Security Baseline
 
-- OAuth 2.0 authorization code flow with PKCE is used for authenticated access.
+- OAuth 2.1 authorization code flow with PKCE S256 is used for authenticated access.
 - Dynamic client registration is supported for MCP clients that require it.
-- Tool access is gated by OAuth scopes and workspace membership.
+- Tool discovery and execution are gated by the explicit OAuth scopes, while
+  underlying data access remains constrained by workspace membership.
 - Read-only and write-capable tools are explicitly annotated in the MCP metadata.
 - Session state is isolated in Durable Objects.
 - Repository guidance forbids logging raw secrets, access tokens, refresh tokens, cookies, or passwords.

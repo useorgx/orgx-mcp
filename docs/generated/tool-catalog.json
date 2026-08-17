@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-11T05:28:26.422Z",
-  "sourceHash": "faf4357982eaf4fb",
+  "generatedAt": "2026-08-16T09:30:37.774Z",
+  "sourceHash": "57a803362eb50e5d",
   "version": "1.0.0",
   "totalTools": 81,
   "categories": [
@@ -67,7 +67,7 @@
         "trust_level": "act_with_approval"
       },
       "securityScopes": [
-        "initiatives:read"
+        "agents:read"
       ],
       "readOnly": false,
       "source": "chatgpt",
@@ -502,7 +502,7 @@
         "budget_remaining_usd": 4.5
       },
       "securityScopes": [
-        "agents:write"
+        "agents:read"
       ],
       "readOnly": true,
       "source": "client_integration",
@@ -588,10 +588,7 @@
         "reasoning": "Standard complexity task with clear requirements."
       },
       "securityScopes": [
-        "decisions:read",
-        "agents:read",
-        "initiatives:read",
-        "memory:read"
+        "agents:read"
       ],
       "readOnly": true,
       "source": "client_integration",
@@ -939,7 +936,10 @@
         "changeset_id": "cs_abc123",
         "entities_affected": 3
       },
-      "securityScopes": [],
+      "securityScopes": [
+        "agents:write",
+        "initiatives:write"
+      ],
       "readOnly": false,
       "source": "client_integration",
       "profiles": []
@@ -1135,7 +1135,9 @@
         "emitted": true,
         "activity_id": "act_abc123"
       },
-      "securityScopes": [],
+      "securityScopes": [
+        "initiatives:write"
+      ],
       "readOnly": false,
       "source": "client_integration",
       "profiles": [
@@ -1283,7 +1285,11 @@
         "last_sync": "2026-02-26T10:00:00Z",
         "pending_changes": 0
       },
-      "securityScopes": [],
+      "securityScopes": [
+        "decisions:write",
+        "initiatives:write",
+        "memory:read"
+      ],
       "readOnly": false,
       "source": "client_integration",
       "profiles": []
@@ -1374,10 +1380,7 @@
         "cursor": "cur_next"
       },
       "securityScopes": [
-        "decisions:read",
-        "agents:read",
-        "initiatives:read",
-        "memory:read"
+        "decisions:read"
       ],
       "readOnly": true,
       "source": "chatgpt",
@@ -1432,7 +1435,7 @@
         "cursor": null
       },
       "securityScopes": [
-        "initiatives:read"
+        "decisions:read"
       ],
       "readOnly": true,
       "source": "chatgpt",
@@ -2255,10 +2258,7 @@
         "last_activity": "2026-02-26T09:30:00Z"
       },
       "securityScopes": [
-        "decisions:read",
-        "agents:read",
-        "initiatives:read",
-        "memory:read"
+        "initiatives:read"
       ],
       "readOnly": false,
       "source": "chatgpt",
@@ -2802,6 +2802,8 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "securityScopes": [
+        "decisions:write",
+        "agents:write",
         "initiatives:write"
       ],
       "readOnly": false,
@@ -2979,10 +2981,7 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "securityScopes": [
-        "decisions:read",
-        "agents:read",
-        "initiatives:read",
-        "memory:read"
+        "initiatives:read"
       ],
       "readOnly": false,
       "source": "contract",
@@ -3068,6 +3067,7 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "securityScopes": [
+        "decisions:read",
         "decisions:write"
       ],
       "readOnly": false,
@@ -3144,7 +3144,10 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "securityScopes": [
-        "initiatives:read"
+        "decisions:read",
+        "agents:read",
+        "initiatives:read",
+        "memory:read"
       ],
       "readOnly": true,
       "source": "contract",
@@ -3221,7 +3224,8 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "securityScopes": [
-        "decisions:write"
+        "initiatives:read",
+        "initiatives:write"
       ],
       "readOnly": false,
       "source": "contract",
@@ -3390,7 +3394,10 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "securityScopes": [
-        "initiatives:read"
+        "decisions:read",
+        "agents:read",
+        "initiatives:read",
+        "memory:read"
       ],
       "readOnly": false,
       "source": "contract",
@@ -3410,7 +3417,7 @@
     {
       "id": "orgx_spawn",
       "title": "Spawn OrgX Agent Work",
-      "description": "Use when the user says \"delegate this and tell me when it's done,\" or when you must check whether delegation is allowed before dispatching. Guards, estimates, classifies, spawns, or hands off specialist agent work.\n\nPer-action requirements: spawn from an existing task REQUIRES task_id; ad-hoc spawn REQUIRES title + instructions and should include agent_type. handoff REQUIRES task_id + agent_type. guard REQUIRES agent_type. classify REQUIRES title or task_id. action=\"estimate\" REQUIRES title or task_id, returns candidate routes/cost context, and runs without dispatching work.\n\nRouting policy: omit model_tier/provider/model for OrgX auto-routing. Set model_tier, provider, model, budget_mode, or max_cost_usd only when the user, policy, or verification plan constrains routing. For controlled reliability validation, use model_tier=\"standard\" and budget_mode=\"cheapest_valid\".\n\nUSE WHEN: explicitly delegating work to an OrgX agent or checking if delegation is allowed. NEXT: use orgx_inspect or orgx_search to monitor the delegated work, then orgx_submit_receipt for proof. DO NOT USE WHEN: only creating a task row; use orgx_write.",
+      "description": "Use when the user says \"delegate this and tell me when it's done,\" or when you must check whether delegation is allowed before dispatching. Guards, estimates, classifies, spawns, or hands off specialist agent work.\n\nPer-action requirements: spawn from an existing task REQUIRES task_id; ad-hoc spawn REQUIRES title + instructions and should include agent_type. handoff REQUIRES task_id + agent_type. guard REQUIRES agent_type. classify REQUIRES title or task_id. action=\"estimate\" REQUIRES title or task_id, returns candidate routes/cost context, and runs without dispatching work. OAuth scopes: guard/classify/estimate require agents:read; spawn requires agents:write; handoff requires BOTH agents:write and initiatives:write.\n\nRouting policy: omit model_tier/provider/model for OrgX auto-routing. Set model_tier, provider, model, budget_mode, or max_cost_usd only when the user, policy, or verification plan constrains routing. For controlled reliability validation, use model_tier=\"standard\" and budget_mode=\"cheapest_valid\".\n\nUSE WHEN: explicitly delegating work to an OrgX agent or checking if delegation is allowed. NEXT: use orgx_inspect or orgx_search to monitor the delegated work, then orgx_submit_receipt for proof. DO NOT USE WHEN: only creating a task row; use orgx_write.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -3512,7 +3519,9 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "securityScopes": [
-        "agents:write"
+        "agents:read",
+        "agents:write",
+        "initiatives:write"
       ],
       "readOnly": false,
       "source": "contract",
@@ -3868,6 +3877,8 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "securityScopes": [
+        "decisions:write",
+        "agents:write",
         "initiatives:write"
       ],
       "readOnly": false,
@@ -3927,9 +3938,6 @@
         "total": 3
       },
       "securityScopes": [
-        "decisions:read",
-        "agents:read",
-        "initiatives:read",
         "memory:read"
       ],
       "readOnly": true,
@@ -4308,7 +4316,8 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "securityScopes": [
-        "agents:write"
+        "agents:write",
+        "initiatives:write"
       ],
       "readOnly": false,
       "source": "stream",
@@ -4381,7 +4390,9 @@
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
-      "securityScopes": [],
+      "securityScopes": [
+        "initiatives:write"
+      ],
       "readOnly": false,
       "source": "client_integration",
       "profiles": [
@@ -4701,7 +4712,9 @@
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
-      "securityScopes": [],
+      "securityScopes": [
+        "initiatives:write"
+      ],
       "readOnly": false,
       "source": "client_integration",
       "profiles": [
@@ -4777,7 +4790,9 @@
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
-      "securityScopes": [],
+      "securityScopes": [
+        "initiatives:read"
+      ],
       "readOnly": true,
       "source": "client_integration",
       "profiles": [
@@ -4808,7 +4823,9 @@
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
-      "securityScopes": [],
+      "securityScopes": [
+        "initiatives:read"
+      ],
       "readOnly": true,
       "source": "client_integration",
       "profiles": [
@@ -5092,7 +5109,9 @@
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
-      "securityScopes": [],
+      "securityScopes": [
+        "initiatives:write"
+      ],
       "readOnly": false,
       "source": "client_integration",
       "profiles": [
@@ -5304,7 +5323,9 @@
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
-      "securityScopes": [],
+      "securityScopes": [
+        "initiatives:write"
+      ],
       "readOnly": false,
       "source": "client_integration",
       "profiles": [
@@ -5530,7 +5551,7 @@
         "completed_at": "2026-02-26T10:10:00Z"
       },
       "securityScopes": [
-        "decisions:write"
+        "initiatives:write"
       ],
       "readOnly": false,
       "source": "plan_session",
@@ -5557,7 +5578,9 @@
           }
         ]
       },
-      "securityScopes": [],
+      "securityScopes": [
+        "agents:read"
+      ],
       "readOnly": true,
       "source": "plan_session",
       "profiles": []
@@ -5600,7 +5623,7 @@
         ]
       },
       "securityScopes": [
-        "decisions:write"
+        "initiatives:write"
       ],
       "readOnly": false,
       "source": "plan_session",
@@ -5665,7 +5688,7 @@
         "recorded_at": "2026-02-26T10:05:00Z"
       },
       "securityScopes": [
-        "decisions:write"
+        "initiatives:write"
       ],
       "readOnly": false,
       "source": "plan_session",
@@ -5706,7 +5729,7 @@
         "created_at": "2026-02-26T10:00:00Z"
       },
       "securityScopes": [
-        "decisions:write"
+        "initiatives:write"
       ],
       "readOnly": false,
       "source": "plan_session",
@@ -5926,8 +5949,7 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "securityScopes": [
-        "initiatives:write",
-        "memory:write"
+        "initiatives:write"
       ],
       "readOnly": false,
       "source": "inline",

@@ -31,8 +31,10 @@ import {
 
 // Import extracted modules for DRY code
 import {
-  buildAuthRequiredResponse,
+  buildAuthRequiredResponse as buildScopedAuthRequiredResponse,
+  checkAuthRequirements,
   toolError as authToolError,
+  type AuthCheckOptions,
   type SecurityScheme,
 } from './authHelpers';
 import { buildEntityLink, entityLinkMarkdown, buildLiveUrl } from './deepLinks';
@@ -336,6 +338,7 @@ import {
   V2_ORGX_TOOL_ID_SET,
   getKnownToolContract,
   getKnownToolContracts,
+  resolveContractToolInvocationSecuritySchemes,
 } from './contractTools';
 import { describeInputShape } from './schemaIntrospection';
 import {
@@ -1357,7 +1360,18 @@ export class OrgXMcp extends McpAgent<
         this.props.orgxUserId &&
           this.props.orgxUserId !== this.sessionAuth.orgxUserId
       );
-      if (isNewAuth || !this.sessionAuth.userId || gainedOrgxUserId) {
+      // A same-user re-consent can intentionally narrow permissions. Persist
+      // the newly verified grant instead of retaining the older, wider scope.
+      const scopeChanged = Boolean(
+        typeof this.props.scope === 'string' &&
+          this.props.scope !== this.sessionAuth.scope
+      );
+      if (
+        isNewAuth ||
+        !this.sessionAuth.userId ||
+        gainedOrgxUserId ||
+        scopeChanged
+      ) {
         this._isNewSession = await this.shouldShowNewSessionWelcome(
           this.props.userId
         );
@@ -1564,6 +1578,63 @@ export class OrgXMcp extends McpAgent<
       .split(/\s+/)
       .map((scope) => scope.trim())
       .filter((scope) => scope.length > 0);
+  }
+
+  /**
+   * Return scopes only when the request came from a concrete OAuth grant.
+   * Internal signed run tokens keep their existing, separately constrained
+   * authorization contract and therefore use the legacy/unknown-grant path.
+   */
+  private resolveGrantedOAuthScopes(): string[] | undefined {
+    const rawScope = this.props?.scope ?? this.sessionAuth.scope;
+    if (typeof rawScope !== 'string') return undefined;
+    if (rawScope.trim() === 'mcp:run' || this.props?.authSource === 'run_token') {
+      return undefined;
+    }
+    return rawScope
+      .split(/\s+/)
+      .map((scope) => scope.trim())
+      .filter((scope) => scope.length > 0);
+  }
+
+  private buildAuthRequiredResponse(
+    options: Omit<AuthCheckOptions, 'grantedScopes'>
+  ): CallToolResult | null {
+    return buildScopedAuthRequiredResponse({
+      ...options,
+      grantedScopes: this.resolveGrantedOAuthScopes(),
+    });
+  }
+
+  /**
+   * Intersect the requested discovery profile with the verified OAuth grant.
+   * Unknown contracts fail closed for scoped OAuth sessions; legacy/internal
+   * sessions retain their existing profile behavior.
+   */
+  private resolveScopeAwareAllowedTools(
+    profileTools: ReadonlySet<string> | null
+  ): Set<string> | null {
+    const grantedScopes = this.resolveGrantedOAuthScopes();
+    if (grantedScopes === undefined) {
+      return profileTools ? new Set(profileTools) : null;
+    }
+
+    const resolvedUserId = this.props?.userId ?? this.sessionAuth.userId;
+    const candidates = profileTools
+      ? [...profileTools]
+      : getKnownToolContracts().map((tool) => tool.id);
+
+    return new Set(
+      candidates.filter((toolId) => {
+        const contract = getKnownToolContract(toolId);
+        if (!contract?.securitySchemes) return false;
+        return checkAuthRequirements(
+          contract.securitySchemes,
+          resolvedUserId,
+          grantedScopes
+        ).isAuthorized;
+      })
+    );
   }
 
   private widgetToolError(
@@ -2725,7 +2796,7 @@ export class OrgXMcp extends McpAgent<
     });
 
     // Use extracted auth helper (DRY)
-    const authResponse = buildAuthRequiredResponse({
+    const authResponse = this.buildAuthRequiredResponse({
       toolId,
       securitySchemes,
       userId: resolvedUserId,
@@ -3252,7 +3323,7 @@ export class OrgXMcp extends McpAgent<
       authSource,
     });
 
-    const authResponse = buildAuthRequiredResponse({
+    const authResponse = this.buildAuthRequiredResponse({
       toolId,
       securitySchemes,
       userId: resolvedUserId,
@@ -3401,7 +3472,7 @@ export class OrgXMcp extends McpAgent<
     });
 
     // Use extracted auth helper (DRY)
-    const authResponse = buildAuthRequiredResponse({
+    const authResponse = this.buildAuthRequiredResponse({
       toolId,
       securitySchemes,
       userId: resolvedUserId,
@@ -3701,7 +3772,7 @@ export class OrgXMcp extends McpAgent<
           });
 
           // Auth check
-          const authResponse = buildAuthRequiredResponse({
+          const authResponse = this.buildAuthRequiredResponse({
             toolId: tool.id,
             securitySchemes: tool.securitySchemes,
             userId: resolvedUserId,
@@ -4377,9 +4448,15 @@ export class OrgXMcp extends McpAgent<
     allowedTools?: Set<string> | null
   ): Promise<CallToolResult> {
     const resolvedUserId = this.resolveUserId();
-    const authResponse = buildAuthRequiredResponse({
+    const invocationSecuritySchemes =
+      resolveContractToolInvocationSecuritySchemes(
+        toolId,
+        args,
+        securitySchemes
+      );
+    const authResponse = this.buildAuthRequiredResponse({
       toolId,
-      securitySchemes,
+      securitySchemes: invocationSecuritySchemes,
       userId: resolvedUserId ?? undefined,
       serverUrl: this.env.MCP_SERVER_URL,
       featureDescription: `use ${toolId.replace(/_/g, ' ')}`,
@@ -4474,7 +4551,7 @@ export class OrgXMcp extends McpAgent<
             return this.executeContractTool(
               'resume_plan_session',
               { session_id: args.id },
-              SECURITY_SCHEMES.authRequired,
+              SECURITY_SCHEMES.entityReadRequiresAuth,
               allowedTools
             );
           }
@@ -4485,10 +4562,12 @@ export class OrgXMcp extends McpAgent<
               String(args.id),
               resolvedUserId
             ),
-            fetchContextPack(this.env, resolvedUserId, {
-              type: String(args.type),
-              id: String(args.id),
-            }),
+            args.hydrate_context === false
+              ? Promise.resolve(null)
+              : fetchContextPack(this.env, resolvedUserId, {
+                  type: String(args.type),
+                  id: String(args.id),
+                }),
           ]);
           if (!entity) {
             return this.toolError(`No ${String(args.type)} found for ${String(args.id)}`, {
@@ -5212,14 +5291,14 @@ export class OrgXMcp extends McpAgent<
             return this.executeContractTool(
               'resume_plan_session',
               args,
-              SECURITY_SCHEMES.authRequired,
+              SECURITY_SCHEMES.entityReadRequiresAuth,
               allowedTools
             );
           }
           return this.executePlanSessionTool(
             planTool,
             args,
-            SECURITY_SCHEMES.writeRequiresAuth
+            SECURITY_SCHEMES.entityWriteRequiresAuth
           );
         }
 
@@ -5333,7 +5412,9 @@ export class OrgXMcp extends McpAgent<
                 ...args,
                 action: action === 'list_pending' ? 'list' : action,
               },
-              SECURITY_SCHEMES.writeRequiresAuth,
+              action === 'list_pending'
+                ? SECURITY_SCHEMES.decisionReadRequiresAuth
+                : SECURITY_SCHEMES.writeRequiresAuth,
               allowedTools
             );
           }
@@ -5345,7 +5426,7 @@ export class OrgXMcp extends McpAgent<
               title: args.title ?? args.decision,
               summary: args.summary ?? args.context ?? args.decision,
             },
-            SECURITY_SCHEMES.entityWriteRequiresAuth,
+            SECURITY_SCHEMES.writeRequiresAuth,
             allowedTools
           );
         }
@@ -5635,7 +5716,7 @@ export class OrgXMcp extends McpAgent<
               initiative_id: args.initiative_id,
               workspace_id: args.workspace_id,
             },
-            SECURITY_SCHEMES.entityReadRequiresAuth
+            SECURITY_SCHEMES.decisionReadRequiresAuth
           );
         }
 
@@ -5923,7 +6004,8 @@ export class OrgXMcp extends McpAgent<
     // Resolve tool profile from connection props (e.g. ?profile=executor).
     // Missing names default to v2; unknown names fail closed to the
     // read-only fallback; null is explicit full only.
-    const allowedTools = resolveToolProfile(this.props?.profile).tools;
+    const profileTools = resolveToolProfile(this.props?.profile).tools;
+    const allowedTools = this.resolveScopeAwareAllowedTools(profileTools);
 
     // Apply profile-aware result-guidance filtering to every subsequent
     // registration without changing tool schemas or result envelopes.
@@ -6019,7 +6101,7 @@ export class OrgXMcp extends McpAgent<
       async (args: Record<string, unknown>) =>
         this.withOrgx(async () => {
           const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
-          const authResponse = buildAuthRequiredResponse({
+          const authResponse = this.buildAuthRequiredResponse({
             toolId: 'get_org_snapshot',
             securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
             userId: resolvedUserId,
@@ -6143,7 +6225,7 @@ export class OrgXMcp extends McpAgent<
         async (args) =>
           this.withOrgx(async () => {
             const resolvedUserId = this.resolveUserId(args.user_id);
-            const authResponse = buildAuthRequiredResponse({
+            const authResponse = this.buildAuthRequiredResponse({
               toolId: 'account_status',
               securitySchemes: SECURITY_SCHEMES.authRequired,
               userId: resolvedUserId ?? undefined,
@@ -6206,7 +6288,7 @@ export class OrgXMcp extends McpAgent<
         async (args) =>
           this.withOrgx(async () => {
             const resolvedUserId = this.resolveUserId(args.user_id);
-            const authResponse = buildAuthRequiredResponse({
+            const authResponse = this.buildAuthRequiredResponse({
               toolId: 'account_upgrade',
               securitySchemes: SECURITY_SCHEMES.authRequired,
               userId: resolvedUserId ?? undefined,
@@ -6329,7 +6411,7 @@ export class OrgXMcp extends McpAgent<
         async (args) =>
           this.withOrgx(async () => {
             const resolvedUserId = this.resolveUserId(args.user_id);
-            const authResponse = buildAuthRequiredResponse({
+            const authResponse = this.buildAuthRequiredResponse({
               toolId: 'account_usage_report',
               securitySchemes: SECURITY_SCHEMES.authRequired,
               userId: resolvedUserId ?? undefined,
@@ -6542,7 +6624,7 @@ export class OrgXMcp extends McpAgent<
             if (!args.id) {
               return this.toolError("hydrate_context requires an 'id' filter");
             }
-            const authResponse = buildAuthRequiredResponse({
+            const authResponse = this.buildAuthRequiredResponse({
               toolId: 'list_entities',
               securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
               userId: authUserId ?? undefined,
@@ -7196,7 +7278,7 @@ export class OrgXMcp extends McpAgent<
       async (args) =>
         this.withOrgx(async () => {
           const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
-          const authResponse = buildAuthRequiredResponse({
+          const authResponse = this.buildAuthRequiredResponse({
             toolId: 'entity_action',
             securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
             userId: resolvedUserId,
@@ -7617,7 +7699,7 @@ export class OrgXMcp extends McpAgent<
       async (args) =>
         this.withOrgx(async () => {
           const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
-          const authResponse = buildAuthRequiredResponse({
+          const authResponse = this.buildAuthRequiredResponse({
             toolId: 'verify_entity_completion',
             securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
             userId: resolvedUserId,
@@ -7975,7 +8057,7 @@ export class OrgXMcp extends McpAgent<
       async (args) =>
         this.withOrgx(async () => {
           const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
-          const authResponse = buildAuthRequiredResponse({
+          const authResponse = this.buildAuthRequiredResponse({
             toolId: 'create_entity',
             securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
             userId: resolvedUserId,
@@ -8498,7 +8580,7 @@ export class OrgXMcp extends McpAgent<
               : null;
           const authUserId = resolvedUserId ?? explicitUserId;
 
-          const authResponse = buildAuthRequiredResponse({
+          const authResponse = this.buildAuthRequiredResponse({
             toolId: 'comment_on_entity',
             securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
             userId: authUserId ?? undefined,
@@ -8588,7 +8670,7 @@ export class OrgXMcp extends McpAgent<
       async (args) =>
         this.withOrgx(async () => {
           const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
-          const authResponse = buildAuthRequiredResponse({
+          const authResponse = this.buildAuthRequiredResponse({
             toolId: 'list_entity_comments',
             securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
             userId: resolvedUserId,
@@ -8680,7 +8762,7 @@ export class OrgXMcp extends McpAgent<
       async (args) =>
         this.withOrgx(async () => {
           const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
-          const authResponse = buildAuthRequiredResponse({
+          const authResponse = this.buildAuthRequiredResponse({
             toolId: 'batch_create_entities',
             securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
             userId: resolvedUserId,
@@ -9161,7 +9243,7 @@ export class OrgXMcp extends McpAgent<
       async (args: Record<string, unknown>) =>
         this.withOrgx(async () => {
           const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
-          const authResponse = buildAuthRequiredResponse({
+          const authResponse = this.buildAuthRequiredResponse({
             toolId: 'scaffold_initiative',
             securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
             userId: resolvedUserId,
@@ -10150,7 +10232,7 @@ export class OrgXMcp extends McpAgent<
       async (args) =>
         this.withOrgx(async () => {
           const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
-          const authResponse = buildAuthRequiredResponse({
+          const authResponse = this.buildAuthRequiredResponse({
             toolId: 'get_task_with_context',
             securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
             userId: resolvedUserId,
@@ -10285,7 +10367,7 @@ export class OrgXMcp extends McpAgent<
       async (args) =>
         this.withOrgx(async () => {
           const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
-          const authResponse = buildAuthRequiredResponse({
+          const authResponse = this.buildAuthRequiredResponse({
             toolId: 'batch_delete_entities',
             securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
             userId: resolvedUserId,
@@ -10420,7 +10502,7 @@ export class OrgXMcp extends McpAgent<
       async (args) =>
         this.withOrgx(async () => {
           const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
-          const authResponse = buildAuthRequiredResponse({
+          const authResponse = this.buildAuthRequiredResponse({
             toolId: 'batch_action',
             securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
             userId: resolvedUserId,
@@ -10649,7 +10731,7 @@ export class OrgXMcp extends McpAgent<
           // Resolve userId for auth propagation
           const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
 
-          const authResponse = buildAuthRequiredResponse({
+          const authResponse = this.buildAuthRequiredResponse({
             toolId: 'update_entity',
             securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
             userId: resolvedUserId,
@@ -10807,7 +10889,7 @@ export class OrgXMcp extends McpAgent<
       async (args) =>
         this.withOrgx(async () => {
           const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
-          const authResponse = buildAuthRequiredResponse({
+          const authResponse = this.buildAuthRequiredResponse({
             toolId: 'configure_org',
             securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
             userId: resolvedUserId,
@@ -10862,7 +10944,7 @@ export class OrgXMcp extends McpAgent<
             }
 
             case 'configure_agent': {
-              const authResponse = buildAuthRequiredResponse({
+              const authResponse = this.buildAuthRequiredResponse({
                 toolId: 'configure_org',
                 securitySchemes: SECURITY_SCHEMES.agentRequiresAuth,
                 userId: resolvedUserId,
@@ -10908,7 +10990,7 @@ export class OrgXMcp extends McpAgent<
             }
 
             case 'set_policy': {
-              const authResponse = buildAuthRequiredResponse({
+              const authResponse = this.buildAuthRequiredResponse({
                 toolId: 'configure_org',
                 securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
                 userId: resolvedUserId,
@@ -10997,7 +11079,7 @@ export class OrgXMcp extends McpAgent<
       async (args) =>
         this.withOrgx(async () => {
           const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
-          const authResponse = buildAuthRequiredResponse({
+          const authResponse = this.buildAuthRequiredResponse({
             toolId: 'stats',
             securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
             userId: resolvedUserId,
@@ -11127,7 +11209,7 @@ export class OrgXMcp extends McpAgent<
         this.withOrgx(async () => {
           const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
 
-          const authResponse = buildAuthRequiredResponse({
+          const authResponse = this.buildAuthRequiredResponse({
             toolId: 'workspace',
             securitySchemes: SECURITY_SCHEMES.authRequired,
             userId: resolvedUserId,
@@ -11746,7 +11828,7 @@ export class OrgXMcp extends McpAgent<
         this.withOrgx(async () => {
           const resolvedUserId =
             this.props?.userId ?? this.sessionAuth?.userId;
-          const authResponse = buildAuthRequiredResponse({
+          const authResponse = this.buildAuthRequiredResponse({
             toolId: 'resume_agent_run',
             securitySchemes: SECURITY_SCHEMES.authRequired,
             userId: resolvedUserId,
@@ -11940,7 +12022,7 @@ export class OrgXMcp extends McpAgent<
       },
       async (args) => {
         const resolvedUserId = this.resolveUserId();
-        const authResponse = buildAuthRequiredResponse({
+        const authResponse = this.buildAuthRequiredResponse({
           toolId: 'start_autonomous_session',
           securitySchemes: startAutonomousSessionSecuritySchemes,
           userId: resolvedUserId ?? undefined,
@@ -12016,7 +12098,7 @@ export class OrgXMcp extends McpAgent<
         },
         async (args: Record<string, unknown>) =>
           this.withOrgx(async () => {
-            const authResponse = buildAuthRequiredResponse({
+            const authResponse = this.buildAuthRequiredResponse({
               toolId: 'review_artifact',
               securitySchemes: reviewArtifactContract.securitySchemes,
               userId: this.resolveUserId() ?? undefined,
@@ -12135,7 +12217,7 @@ export class OrgXMcp extends McpAgent<
         },
         async (args: Record<string, unknown>) =>
           this.withOrgx(async () => {
-            const authResponse = buildAuthRequiredResponse({
+            const authResponse = this.buildAuthRequiredResponse({
               toolId: 'get_morning_brief',
               securitySchemes: [
                 { type: 'oauth2', scopes: ['initiatives:read'] },
@@ -12540,7 +12622,11 @@ export class OrgXMcp extends McpAgent<
   }
 
   private registerResources() {
-    const discoveryPolicy = resolveProfileDiscoveryPolicy(this.props?.profile);
+    const resolvedUserId = this.resolveUserId();
+    const discoveryPolicy = resolveProfileDiscoveryPolicy(this.props?.profile, {
+      userId: resolvedUserId ?? undefined,
+      grantedScopes: this.resolveGrantedOAuthScopes(),
+    });
 
     // Register initiative resource (existing)
     if (discoveryPolicy.includeInitiativeResource) {
@@ -12548,9 +12634,28 @@ export class OrgXMcp extends McpAgent<
         list: undefined,
       });
       this.server.resource('initiative', template, async (_uri, variables) => {
+        const resourceUserId = this.resolveUserId();
+        const resourceAuth = checkAuthRequirements(
+          SECURITY_SCHEMES.entityReadRequiresAuth,
+          resourceUserId ?? undefined,
+          this.resolveGrantedOAuthScopes()
+        );
+        if (!resourceAuth.isAuthorized) {
+          throw new Error(
+            resourceAuth.failureReason === 'missing_authentication'
+              ? 'Authentication required to read OrgX initiative resources.'
+              : 'Additional permission required: initiatives:read.'
+          );
+        }
         const response = await callOrgxApiJson(
           this.env,
-          `/api/initiatives/${variables.id}`
+          `/api/initiatives/${variables.id}`,
+          undefined,
+          {
+            userId: resourceUserId,
+            userEmail: this.resolveUserEmail(),
+            orgxUserId: this.resolveOrgxUserId(resourceUserId),
+          }
         );
         const initiative = (await response.json()) as OrgXInitiative;
         const markdown = formatInitiativeMarkdown(initiative);

@@ -359,7 +359,11 @@ async function main() {
       resource.widget.includes(process.env.WIDGET_FILTER),
   );
 
-  const browser = await chromium.launch({ headless: true });
+  const executablePath = process.env.PLAYWRIGHT_EXECUTABLE_PATH?.trim();
+  const browser = await chromium.launch({
+    headless: true,
+    ...(executablePath ? { executablePath } : {}),
+  });
   const results: CheckResult[] = [];
   try {
     for (const width of [1280, 375]) {

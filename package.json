@@ -55,7 +55,7 @@
     "release:minor": "./scripts/release.sh minor",
     "release:major": "./scripts/release.sh major",
     "catalog:generate": "tsx scripts/generate-tool-catalog.ts",
-    "catalog:sync:monorepo": "TOOL_CATALOG_EXTRA_OUT=${ORGX_MONOREPO_DIR:-../orgx}/orgx/docs/mintlify/generated/tool-catalog.json tsx scripts/generate-tool-catalog.ts"
+    "catalog:sync:monorepo": "TOOL_CATALOG_EXTRA_OUT=${ORGX_MONOREPO_DIR:-../orgx}/orgx/docs/mintlify/generated/tool-catalog.json AUTHORIZATION_POLICY_EXTRA_OUT=${ORGX_MONOREPO_DIR:-../orgx}/orgx/docs/mintlify/generated/authorization-policy.json tsx scripts/generate-tool-catalog.ts"
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "0.2.4",
