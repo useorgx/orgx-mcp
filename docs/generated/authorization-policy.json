@@ -1,0 +1,136 @@
+{
+  "version": "2026-08-15.v1",
+  "scopesSupported": [
+    "decisions:read",
+    "decisions:write",
+    "agents:read",
+    "agents:write",
+    "initiatives:read",
+    "initiatives:write",
+    "memory:read",
+    "offline_access"
+  ],
+  "resources": [
+    {
+      "id": "decisions",
+      "label": "Decisions",
+      "description": "Organizational decisions, approvals, and decision history.",
+      "actions": [
+        {
+          "id": "read",
+          "label": "Read",
+          "access": "read",
+          "scope": "decisions:read",
+          "description": "View decisions, approvals, and their history."
+        },
+        {
+          "id": "operate",
+          "label": "Operate",
+          "access": "operate",
+          "scope": "decisions:write",
+          "description": "Create, approve, reject, or update decisions."
+        }
+      ]
+    },
+    {
+      "id": "agents",
+      "label": "Agents",
+      "description": "Delegated agent work, status, handoffs, and lifecycle.",
+      "actions": [
+        {
+          "id": "read",
+          "label": "Read",
+          "access": "read",
+          "scope": "agents:read",
+          "description": "View agent work, status, and execution history."
+        },
+        {
+          "id": "operate",
+          "label": "Operate",
+          "access": "operate",
+          "scope": "agents:write",
+          "description": "Delegate, hand off, retry, pause, resume, or cancel work."
+        }
+      ]
+    },
+    {
+      "id": "initiatives",
+      "label": "Initiatives",
+      "description": "Initiatives, milestones, tasks, artifacts, and receipts.",
+      "actions": [
+        {
+          "id": "read",
+          "label": "Read",
+          "access": "read",
+          "scope": "initiatives:read",
+          "description": "View initiatives, work state, artifacts, and receipts."
+        },
+        {
+          "id": "operate",
+          "label": "Operate",
+          "access": "operate",
+          "scope": "initiatives:write",
+          "description": "Create or update work and attach artifacts or proof."
+        }
+      ]
+    },
+    {
+      "id": "memory",
+      "label": "Organizational memory",
+      "description": "Durable organizational context and recalled knowledge.",
+      "actions": [
+        {
+          "id": "read",
+          "label": "Read",
+          "access": "read",
+          "scope": "memory:read",
+          "description": "Search and recall organizational memory."
+        }
+      ]
+    }
+  ],
+  "sessionCapabilities": [
+    {
+      "id": "offline_access",
+      "label": "Stay connected",
+      "scope": "offline_access",
+      "description": "Allow the client to refresh access after the current session."
+    }
+  ],
+  "presets": {
+    "read": {
+      "id": "read",
+      "label": "Read",
+      "selection": "fixed",
+      "description": "View organizational work without changing it.",
+      "scopes": [
+        "decisions:read",
+        "agents:read",
+        "initiatives:read",
+        "memory:read"
+      ]
+    },
+    "operate": {
+      "id": "operate",
+      "label": "Operate",
+      "selection": "fixed",
+      "description": "View and change work, including delegated agent actions.",
+      "scopes": [
+        "decisions:read",
+        "decisions:write",
+        "agents:read",
+        "agents:write",
+        "initiatives:read",
+        "initiatives:write",
+        "memory:read"
+      ]
+    },
+    "custom": {
+      "id": "custom",
+      "label": "Custom",
+      "selection": "custom",
+      "description": "Choose access separately for each resource.",
+      "scopes": []
+    }
+  }
+}

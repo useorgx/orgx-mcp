@@ -4,7 +4,7 @@ This document summarizes the practical security posture of the `orgx-mcp` worker
 
 ## Authentication
 
-- Authenticated access uses OAuth 2.0 authorization code flow with PKCE.
+- Authenticated access uses OAuth 2.1 authorization code flow with PKCE S256.
 - Dynamic client registration is supported through `POST /register`.
 - OAuth discovery metadata is served from the worker’s well-known endpoints.
 - OAuth clients register their current callback URI through Dynamic Client
@@ -16,8 +16,11 @@ This document summarizes the practical security posture of the `orgx-mcp` worker
 
 ## Access control
 
-- Tool access is constrained by OAuth scopes.
-- Write-capable tools are explicitly annotated as destructive and require auth.
+- A versioned resource/action policy constrains both advertised tools and tool
+  execution by the explicit OAuth grant.
+- Write-capable tools declare their required scope and effect annotations;
+  destructive hints are reserved for operations that can actually destroy or
+  overwrite durable state.
 - Read-only tools are annotated accordingly to preserve safe client behavior.
 - MCP HTTP and WebSocket routes validate every present `Origin` header against
   an exact allowlist before OAuth, session state, or tool dispatch. Invalid or
@@ -29,8 +32,11 @@ This document summarizes the practical security posture of the `orgx-mcp` worker
 
 ## Token and session handling
 
-- OAuth state and session-bound context are persisted in Durable Objects.
-- The worker issues and validates JWT access tokens for downstream OrgX API access.
+- Short-lived OAuth authorization state is stored server-side; the browser sees
+  only an opaque state key. Session-bound context is persisted in Durable
+  Objects.
+- The OAuth provider issues access and refresh tokens; the worker forwards only
+  verified actor identity and scoped request context to the OrgX API.
 - Session context is stored only to preserve continuity for the active user and workspace.
 
 ## Data minimization

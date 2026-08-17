@@ -14,6 +14,7 @@
 import type {
   OAuthHelpers,
   AuthRequest,
+  ClientInfo,
 } from '@cloudflare/workers-oauth-provider';
 import {
   handleMcpRequest,
@@ -24,6 +25,7 @@ import {
 } from './mcpTransport';
 import { authenticateRequest } from './requestAuth';
 import {
+  AUTHORIZATION_POLICY,
   OAUTH_SCOPES_SUPPORTED,
   WIDGET_RESOURCES,
 } from './toolDefinitions';
@@ -99,6 +101,42 @@ const ORGX_UUID_RE =
 
 const OAUTH_STATE_TTL_SECONDS = 20 * 60;
 
+type ClientIconKind =
+  | 'chatgpt'
+  | 'codex'
+  | 'claude'
+  | 'cursor'
+  | 'vscode'
+  | 'github_copilot'
+  | 'windsurf'
+  | 'zed'
+  | 'cline'
+  | 'roo_code'
+  | 'continue'
+  | 'raycast'
+  | 'gemini'
+  | 'goose'
+  | 'openclaw'
+  | 'opencode'
+  | 'local'
+  | 'unverified';
+
+type ClientIdentityTrust =
+  | 'verified_redirect'
+  | 'registered_metadata'
+  | 'local_callback'
+  | 'unverified';
+
+type ClientPresentation = {
+  name: string;
+  icon: ClientIconKind;
+  identityTrust: ClientIdentityTrust;
+};
+
+type StoredAuthRequest = AuthRequest & {
+  clientPresentation?: ClientPresentation;
+};
+
 function authStateKey(stateKey: string): string {
   return `auth_state:${stateKey}`;
 }
@@ -113,6 +151,186 @@ function isPlaceholderEmail(email: string | null | undefined): boolean {
 
 function scopeListToParam(scopes: readonly string[] | undefined): string {
   return (scopes ?? []).join(' ');
+}
+
+function hostMatches(hostname: string, trustedDomain: string): boolean {
+  return hostname === trustedDomain || hostname.endsWith(`.${trustedDomain}`);
+}
+
+const CLIENT_NAME_MATCHERS: ReadonlyArray<{
+  icon: ClientIconKind;
+  pattern: RegExp;
+}> = [
+  { icon: 'chatgpt', pattern: /^(chatgpt|openai chatgpt)$/i },
+  { icon: 'codex', pattern: /^(codex|openai codex|codex cli)$/i },
+  { icon: 'claude', pattern: /^(claude|claude code|claude desktop|anthropic)$/i },
+  { icon: 'cursor', pattern: /^cursor$/i },
+  { icon: 'vscode', pattern: /^(visual studio code|vs code|vscode)$/i },
+  { icon: 'github_copilot', pattern: /^(github )?copilot$/i },
+  { icon: 'windsurf', pattern: /^(windsurf|codeium)$/i },
+  { icon: 'zed', pattern: /^zed$/i },
+  { icon: 'cline', pattern: /^cline$/i },
+  { icon: 'roo_code', pattern: /^(roo|roo code)$/i },
+  { icon: 'continue', pattern: /^(continue|continue dev)$/i },
+  { icon: 'raycast', pattern: /^raycast$/i },
+  { icon: 'gemini', pattern: /^(gemini|gemini cli|google gemini)$/i },
+  { icon: 'goose', pattern: /^(goose|block goose)$/i },
+  { icon: 'openclaw', pattern: /^openclaw$/i },
+  { icon: 'opencode', pattern: /^opencode$/i },
+];
+
+function safeRegisteredClientName(clientName: string | undefined): string | null {
+  const normalized = clientName?.replace(/[\u0000-\u001f\u007f]/g, '').trim();
+  return normalized ? normalized.slice(0, 80) : null;
+}
+
+function iconForRegisteredName(clientName: string): ClientIconKind {
+  return (
+    CLIENT_NAME_MATCHERS.find(({ pattern }) => pattern.test(clientName))?.icon ??
+    'local'
+  );
+}
+
+function resolveClientPresentation(
+  redirectUri: string,
+  clientInfo?: Pick<ClientInfo, 'clientName'> | null
+): ClientPresentation {
+  try {
+    const redirect = new URL(redirectUri);
+    const hostname = redirect.hostname.toLowerCase();
+    if (
+      (hostMatches(hostname, 'chatgpt.com') ||
+        hostMatches(hostname, 'openai.com')) &&
+      redirect.pathname.includes('connector_platform_oauth_redirect')
+    ) {
+      return {
+        name: 'ChatGPT',
+        icon: 'chatgpt',
+        identityTrust: 'verified_redirect',
+      };
+    }
+    if (hostMatches(hostname, 'cursor.com') || hostMatches(hostname, 'cursor.sh')) {
+      return {
+        name: 'Cursor',
+        icon: 'cursor',
+        identityTrust: 'verified_redirect',
+      };
+    }
+    if (
+      hostMatches(hostname, 'claude.ai') ||
+      hostMatches(hostname, 'anthropic.com')
+    ) {
+      return {
+        name: 'Claude',
+        icon: 'claude',
+        identityTrust: 'verified_redirect',
+      };
+    }
+    if (hostMatches(hostname, 'vscode.dev')) {
+      return {
+        name: 'Visual Studio Code',
+        icon: 'vscode',
+        identityTrust: 'verified_redirect',
+      };
+    }
+    if (hostMatches(hostname, 'windsurf.com')) {
+      return {
+        name: 'Windsurf',
+        icon: 'windsurf',
+        identityTrust: 'verified_redirect',
+      };
+    }
+    if (hostMatches(hostname, 'zed.dev')) {
+      return {
+        name: 'Zed',
+        icon: 'zed',
+        identityTrust: 'verified_redirect',
+      };
+    }
+    if (hostMatches(hostname, 'raycast.com')) {
+      return {
+        name: 'Raycast',
+        icon: 'raycast',
+        identityTrust: 'verified_redirect',
+      };
+    }
+    if (hostMatches(hostname, 'geminicli.com')) {
+      return {
+        name: 'Gemini CLI',
+        icon: 'gemini',
+        identityTrust: 'verified_redirect',
+      };
+    }
+    if (hostMatches(hostname, 'cline.bot')) {
+      return {
+        name: 'Cline',
+        icon: 'cline',
+        identityTrust: 'verified_redirect',
+      };
+    }
+    if (hostMatches(hostname, 'roocode.com')) {
+      return {
+        name: 'Roo Code',
+        icon: 'roo_code',
+        identityTrust: 'verified_redirect',
+      };
+    }
+    if (hostMatches(hostname, 'continue.dev')) {
+      return {
+        name: 'Continue',
+        icon: 'continue',
+        identityTrust: 'verified_redirect',
+      };
+    }
+    if (hostMatches(hostname, 'opencode.ai')) {
+      return {
+        name: 'OpenCode',
+        icon: 'opencode',
+        identityTrust: 'verified_redirect',
+      };
+    }
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '[::1]'
+    ) {
+      const registeredName = safeRegisteredClientName(clientInfo?.clientName);
+      return registeredName
+        ? {
+            name: registeredName,
+            icon: iconForRegisteredName(registeredName),
+            identityTrust: 'registered_metadata',
+          }
+        : {
+            name: 'Local MCP application',
+            icon: 'local',
+            identityTrust: 'local_callback',
+          };
+    }
+  } catch {
+    // The provider validates registered redirect URIs. Unknown or malformed
+    // metadata must never be upgraded to a trusted brand in presentation.
+  }
+  const registeredName = safeRegisteredClientName(clientInfo?.clientName);
+  return registeredName
+    ? {
+        name: registeredName,
+        icon: 'unverified',
+        identityTrust: 'registered_metadata',
+      }
+    : {
+        name: 'Unverified MCP application',
+        icon: 'unverified',
+        identityTrust: 'unverified',
+      };
+}
+
+function safeRedirectHost(redirectUri: string): string {
+  try {
+    return new URL(redirectUri).host;
+  } catch {
+    return 'Invalid callback';
+  }
 }
 
 function isReadOnlyCodexTool(toolName: string | undefined): boolean {
@@ -132,29 +350,52 @@ function isReadOnlyCodexTool(toolName: string | undefined): boolean {
   );
 }
 
-function resolveApprovedScopes(
-  requestedScopes: readonly string[] | undefined,
-  finalScope: string | null
+function resolveSupportedRequestedScopes(
+  requestedScopes: readonly string[] | undefined
 ): string[] {
   const supportedScopes = new Set<string>(OAUTH_SCOPES_SUPPORTED);
-  const requested = (requestedScopes ?? []).filter((scope) =>
+  return [...new Set((requestedScopes ?? []).filter((scope) =>
     supportedScopes.has(scope)
-  );
-  const requestedSet = new Set(requested);
+  ))];
+}
 
-  if (!finalScope) return requested;
+function resolveApprovedScopes(
+  requestedScopes: readonly string[] | undefined,
+  finalScope: string
+): string[] {
+  const supportedScopes = new Set<string>(OAUTH_SCOPES_SUPPORTED);
+  const requested = resolveSupportedRequestedScopes(requestedScopes);
+  const requestedSet = new Set(requested);
 
   const selected = finalScope.split(/\s+/).filter(Boolean);
   const approved: string[] = [];
   const seen = new Set<string>();
   for (const scope of selected) {
     if (!supportedScopes.has(scope)) continue;
-    if (requestedSet.size > 0 && !requestedSet.has(scope)) continue;
+    if (!requestedSet.has(scope)) continue;
     if (seen.has(scope)) continue;
     seen.add(scope);
     approved.push(scope);
   }
   return approved;
+}
+
+function isLoopbackUrl(value: string): boolean {
+  try {
+    const hostname = new URL(value).hostname.toLowerCase();
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+  } catch {
+    return false;
+  }
+}
+
+function safeRedirectDestination(redirectTo: string): string {
+  try {
+    const url = new URL(redirectTo);
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    return 'invalid-redirect';
+  }
 }
 
 async function resolveOAuthCallbackIdentity(params: {
@@ -200,8 +441,18 @@ async function resolveOAuthCallbackIdentity(params: {
     };
   }
 
-  // Development fallback only. Production should configure ORGX_INTERNAL_SECRET
-  // so browser query params are never treated as identity proof.
+  // Local development fallback only. Production query parameters are never
+  // accepted as identity proof when the signing secret is missing.
+  if (
+    !isLoopbackUrl(params.serverUrl) ||
+    !isLoopbackUrl(params.url.origin)
+  ) {
+    return errorRedirect(
+      'server_error',
+      'OrgX identity verification is not configured. Please contact the server administrator.',
+      params.serverUrl
+    );
+  }
   const userId = params.url.searchParams.get('user_id');
   const userEmail = params.url.searchParams.get('user_email');
   if (!userId || !userEmail || isPlaceholderEmail(userEmail)) {
@@ -375,6 +626,17 @@ export const authHandler = {
 
     if (url.pathname === '/public' || url.pathname === '/public/mcp') {
       return withCors(await handlePublicMcpDiscoveryRequest(request));
+    }
+
+    if (
+      request.method === 'GET' &&
+      url.pathname === '/.well-known/orgx-authorization-policy'
+    ) {
+      return withCors(
+        Response.json(AUTHORIZATION_POLICY, {
+          headers: { 'Cache-Control': 'public, max-age=300' },
+        })
+      );
     }
 
     // =========================================================================
@@ -686,7 +948,9 @@ export const authHandler = {
         authorization_servers: [serverUrl],
         scopes_supported: [...OAUTH_SCOPES_SUPPORTED],
         bearer_methods_supported: ['header'],
-        resource_documentation: 'https://docs.useorgx.com',
+        resource_documentation: 'https://docs.useorgx.com/api/scopes',
+        authorization_policy:
+          `${serverUrl}/.well-known/orgx-authorization-policy`,
       };
       return withCors(
         Response.json(metadata, {
@@ -721,7 +985,7 @@ export const authHandler = {
           'none',
         ],
         revocation_endpoint: `${serverUrl}/token`,
-        code_challenge_methods_supported: ['plain', 'S256'],
+        code_challenge_methods_supported: ['S256'],
       };
       return withCors(
         Response.json(metadata, {
@@ -744,11 +1008,31 @@ export const authHandler = {
       return handleOAuthCallback(request, env, serverUrl);
     }
 
-    // Step 3: /oauth/consent-callback — user approved scopes, complete authorization
+    // Consent page display data is resolved from opaque server-side state.
     if (
-      url.pathname === '/oauth/consent-callback' &&
+      url.pathname === '/oauth/consent-session' &&
       request.method === 'GET'
     ) {
+      return handleConsentSession(request, env);
+    }
+
+    // Step 3: /oauth/consent-callback — user approved scopes, complete authorization
+    if (url.pathname === '/oauth/consent-callback') {
+      if (request.method !== 'POST') {
+        return Response.json(
+          {
+            error: 'method_not_allowed',
+            error_description: 'Consent must be submitted from the authorization form.',
+          },
+          {
+            status: 405,
+            headers: {
+              Allow: 'POST',
+              'Cache-Control': 'no-store',
+            },
+          }
+        );
+      }
       return handleConsentCallback(request, env, serverUrl);
     }
 
@@ -1444,12 +1728,32 @@ async function handleAuthorize(
     );
   }
 
+  // Resolve the display identity once, while the provider's registered client
+  // metadata is available. Registered names remain explicitly distinct from
+  // callback-domain-verified brands in the consent UI.
+  let clientInfo: ClientInfo | null = null;
+  try {
+    clientInfo = await env.OAUTH_PROVIDER.lookupClient(oauthReqInfo.clientId);
+  } catch (error) {
+    console.warn('[auth] Registered client metadata could not be loaded', {
+      clientId: oauthReqInfo.clientId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+  const storedAuthRequest: StoredAuthRequest = {
+    ...oauthReqInfo,
+    clientPresentation: resolveClientPresentation(
+      oauthReqInfo.redirectUri,
+      clientInfo
+    ),
+  };
+
   // Store oauthReqInfo in KV with a random state key (TTL: 20 min)
   const stateKey = crypto.randomUUID();
   try {
     await env.OAUTH_KV.put(
       authStateKey(stateKey),
-      JSON.stringify(oauthReqInfo),
+      JSON.stringify(storedAuthRequest),
       { expirationTtl: OAUTH_STATE_TTL_SECONDS }
     );
   } catch (error) {
@@ -1540,15 +1844,12 @@ async function handleOAuthCallback(
       { expirationTtl: OAUTH_STATE_TTL_SECONDS }
     );
 
+    // Keep the browser URL opaque. Client metadata, callback details, scopes,
+    // and identity remain server-side and are loaded by the same-origin consent
+    // session endpoint. This prevents OAuth and personal data leaking through
+    // browser history, referrers, screenshots, or third-party assets.
     const consentUrl = new URL(`${serverUrl}/consent.html`);
     consentUrl.searchParams.set('state_key', stateKey);
-    consentUrl.searchParams.set('client_id', oauthReqInfo.clientId);
-    consentUrl.searchParams.set('redirect_uri', oauthReqInfo.redirectUri);
-    consentUrl.searchParams.set('scope', scopeListToParam(oauthReqInfo.scope));
-    if (oauthReqInfo.state) {
-      consentUrl.searchParams.set('oauth_state', oauthReqInfo.state);
-    }
-    consentUrl.searchParams.set('user_email', identity.userEmail);
 
     console.info('[auth] Redirecting to OAuth consent', {
       userId: identity.userId,
@@ -1568,17 +1869,133 @@ async function handleOAuthCallback(
 }
 
 /**
- * GET /oauth/consent-callback — User approved scopes, complete authorization via provider
+ * GET /oauth/consent-session — Same-origin display contract for consent.html.
+ *
+ * The state key is an opaque, short-lived capability. No OAuth state or
+ * redirect authority is returned to the page; approve and deny are resolved
+ * against the server-side AuthRequest.
+ */
+async function handleConsentSession(
+  request: Request,
+  env: AuthHandlerEnv
+): Promise<Response> {
+  const url = new URL(request.url);
+  const stateKey = url.searchParams.get('state_key');
+  if (!stateKey) {
+    return Response.json(
+      {
+        error: 'invalid_request',
+        error_description: 'Missing authorization session.',
+      },
+      { status: 400, headers: { 'Cache-Control': 'no-store' } }
+    );
+  }
+
+  try {
+    const [storedState, storedIdentity] = await Promise.all([
+      env.OAUTH_KV.get(authStateKey(stateKey)),
+      env.OAUTH_KV.get(authIdentityKey(stateKey)),
+    ]);
+    if (!storedState || !storedIdentity) {
+      return Response.json(
+        {
+          error: 'authorization_session_expired',
+          error_description:
+            'This authorization session expired or was already used. Restart the connection from your MCP client.',
+        },
+        { status: 410, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
+
+    const oauthReqInfo = JSON.parse(storedState) as StoredAuthRequest;
+    const identity = JSON.parse(storedIdentity) as OAuthCallbackIdentity;
+    if (
+      !oauthReqInfo?.clientId ||
+      !oauthReqInfo?.redirectUri ||
+      !identity?.userEmail
+    ) {
+      return Response.json(
+        {
+          error: 'invalid_authorization_session',
+          error_description: 'The authorization session is invalid.',
+        },
+        { status: 400, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
+
+    const requestedScopes = resolveSupportedRequestedScopes(oauthReqInfo.scope);
+    const clientPresentation =
+      oauthReqInfo.clientPresentation ??
+      resolveClientPresentation(oauthReqInfo.redirectUri);
+    return Response.json(
+      {
+        session: {
+          state_key: stateKey,
+          expires_in_seconds: OAUTH_STATE_TTL_SECONDS,
+        },
+        client: {
+          id: oauthReqInfo.clientId,
+          name: clientPresentation.name,
+          icon: clientPresentation.icon,
+          identity_trust: clientPresentation.identityTrust,
+          redirect_uri: oauthReqInfo.redirectUri,
+          redirect_host: safeRedirectHost(oauthReqInfo.redirectUri),
+        },
+        account: {
+          email: identity.userEmail,
+          scope_boundary: 'accessible_workspaces',
+        },
+        authorization_policy: AUTHORIZATION_POLICY,
+        requested_scopes: requestedScopes,
+        offline_access_requested: requestedScopes.includes('offline_access'),
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store',
+          Pragma: 'no-cache',
+        },
+      }
+    );
+  } catch (error) {
+    console.error('[auth] Failed to load consent session:', error);
+    return Response.json(
+      {
+        error: 'invalid_authorization_session',
+        error_description: 'The authorization session could not be loaded.',
+      },
+      { status: 400, headers: { 'Cache-Control': 'no-store' } }
+    );
+  }
+}
+
+/**
+ * POST /oauth/consent-callback — User approved scopes, complete authorization via provider
  */
 async function handleConsentCallback(
   request: Request,
   env: AuthHandlerEnv,
   serverUrl: string
 ): Promise<Response> {
-  const url = new URL(request.url);
+  let body: FormData;
+  try {
+    body = await request.formData();
+  } catch {
+    return errorRedirect(
+      'invalid_request',
+      'The consent submission was invalid. Please start over.',
+      serverUrl
+    );
+  }
 
-  const stateKey = url.searchParams.get('state_key');
-  const finalScope = url.searchParams.get('final_scope');
+  const stateKey = typeof body.get('state_key') === 'string'
+    ? String(body.get('state_key'))
+    : null;
+  const finalScope = typeof body.get('final_scope') === 'string'
+    ? String(body.get('final_scope'))
+    : null;
+  const action = typeof body.get('action') === 'string'
+    ? String(body.get('action'))
+    : null;
 
   if (!stateKey) {
     return errorRedirect(
@@ -1588,7 +2005,8 @@ async function handleConsentCallback(
     );
   }
 
-  // Consume state from KV (read + delete = single-use)
+  // Load the opaque state. It is deleted only after deny or successful grant
+  // creation so transient provider failures remain retryable.
   let oauthReqInfo: AuthRequest;
   let identity: OAuthCallbackIdentity;
   try {
@@ -1632,13 +2050,8 @@ async function handleConsentCallback(
     ) {
       identity.orgxUserId = undefined;
     }
-    // Delete after successful read (single-use)
-    await Promise.all([
-      env.OAUTH_KV.delete(authStateKey(stateKey)),
-      env.OAUTH_KV.delete(authIdentityKey(stateKey)),
-    ]);
   } catch (error) {
-    console.error('[auth] Failed to consume state from KV:', error);
+    console.error('[auth] Failed to load consent state from KV:', error);
     return errorRedirect(
       'invalid_request',
       'Invalid authorization data. Please start over.',
@@ -1646,9 +2059,58 @@ async function handleConsentCallback(
     );
   }
 
+  if (action === 'deny') {
+    try {
+      const redirectUrl = new URL(oauthReqInfo.redirectUri);
+      redirectUrl.searchParams.set('error', 'access_denied');
+      redirectUrl.searchParams.set(
+        'error_description',
+        'The resource owner denied the authorization request.'
+      );
+      if (oauthReqInfo.state) {
+        redirectUrl.searchParams.set('state', oauthReqInfo.state);
+      }
+      await Promise.all([
+        env.OAUTH_KV.delete(authStateKey(stateKey)),
+        env.OAUTH_KV.delete(authIdentityKey(stateKey)),
+      ]);
+      return Response.redirect(redirectUrl.toString(), 302);
+    } catch (error) {
+      console.error('[auth] Failed to deny authorization:', error);
+      return errorRedirect(
+        'invalid_request',
+        'The authorization request could not be denied safely. Please restart it from the client.',
+        serverUrl
+      );
+    }
+  }
+
+  if (action !== 'approve') {
+    return errorRedirect(
+      'invalid_request',
+      'Unknown consent action. Please start over.',
+      serverUrl
+    );
+  }
+
+  if (finalScope === null) {
+    return errorRedirect(
+      'invalid_request',
+      'The consent selection was missing. Please review access and try again.',
+      serverUrl
+    );
+  }
+
   // Use user-selected scopes from the consent page, clamped to the scopes
   // originally requested by the client and supported by this server.
   const scope = resolveApprovedScopes(oauthReqInfo.scope, finalScope);
+  if (scope.filter((selectedScope) => selectedScope !== 'offline_access').length === 0) {
+    return errorRedirect(
+      'invalid_request',
+      'Choose at least one resource permission before authorizing.',
+      serverUrl
+    );
+  }
 
   // Complete authorization via the OAuthProvider
   // This creates a grant, issues an auth code, and returns the redirect URL
@@ -1669,8 +2131,15 @@ async function handleConsentCallback(
     console.info('[auth] Authorization completed', {
       userId: identity.userId,
       scope: scope.join(' '),
-      redirectTo: redirectTo.substring(0, 80),
+      redirectTo: safeRedirectDestination(redirectTo),
     });
+
+    // Consume the opaque session only after the provider has successfully
+    // created the grant. A transient provider failure remains safely retryable.
+    await Promise.all([
+      env.OAUTH_KV.delete(authStateKey(stateKey)),
+      env.OAUTH_KV.delete(authIdentityKey(stateKey)),
+    ]);
 
     // Redirect DIRECTLY to the client's callback URL (standard OAuth 2.1 flow).
     // Intermediary pages (success.html) break some clients' OAuth state tracking
@@ -1692,6 +2161,6 @@ function corsHeadersObj(): Record<string, string> {
   return {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   };
 }

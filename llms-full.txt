@@ -14,6 +14,30 @@ Personal memory remembers the user. OrgX remembers organizational state: decisio
 
 https://mcp.useorgx.com/mcp
 
+## Authorization contract
+
+OAuth access is governed by one versioned policy shared by consent, MCP
+discovery, runtime authorization, and documentation. The current policy is
+`2026-08-15.v1` and is discoverable at
+`https://mcp.useorgx.com/.well-known/orgx-authorization-policy`.
+
+- Read: `decisions:read`, `agents:read`, `initiatives:read`, `memory:read`
+- Operate: Read plus `decisions:write`, `agents:write`,
+  `initiatives:write`
+- Customize: a requested-only subset selected per resource
+- Stay connected: `offline_access`, selected separately from data access
+
+For OAuth sessions, visible tools are the intersection of the connection
+profile and the granted scopes. OrgX checks the same policy again when a tool
+runs. A narrower reauthorization replaces the previous grant. After connecting,
+call `orgx_bootstrap` and compare `granted_scopes` with `visible_tools` before
+claiming the connection is ready.
+
+OAuth grants currently apply to the authenticated account and remain bounded by
+its existing workspace memberships; they are not yet bound to one selected
+workspace. REST API keys have a separate authorization contract and do not yet
+offer OAuth-style per-resource configuration.
+
 ## Registry name
 
 com.useorgx/orgx-mcp

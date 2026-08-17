@@ -1,4 +1,7 @@
-import { resolveToolProfile } from './toolProfiles';
+import {
+  READ_ONLY_FALLBACK_PROFILE,
+  resolveToolProfile,
+} from './toolProfiles';
 
 type RequestContextWithProps = {
   props?: Record<string, unknown>;
@@ -26,8 +29,18 @@ export function attachRequestToolProfile(
   ctx: unknown
 ): void {
   const requestedProfile = new URL(request.url).searchParams.get('profile');
-  const profile = resolveToolProfile(requestedProfile).name;
   const context = ctx as RequestContextWithProps;
+  const resolved = resolveToolProfile(requestedProfile);
+  const provablyInternal = context.props?.authSource === 'run_token';
+  const profile =
+    resolved.name === 'full' && !provablyInternal
+      ? READ_ONLY_FALLBACK_PROFILE
+      : resolved.name;
+  if (resolved.name === 'full' && !provablyInternal) {
+    console.warn(
+      '[mcp:profiles] External full profile request; failing closed to read-only surface'
+    );
+  }
   context.props = { ...(context.props ?? {}), profile };
 }
 

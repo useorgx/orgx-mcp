@@ -186,4 +186,52 @@ describe('request URL tool-profile propagation', () => {
       serverManifest.tools.map((tool) => tool.name)
     );
   });
+
+  it('fails an external full-profile request closed to read-only', async () => {
+    const handler = createInMemoryMcpHandler();
+    const ctx: TestContext = {
+      props: { userId: 'oauth-user', scope: 'initiatives:read' },
+    };
+    const response = await handler.fetch(
+      new Request('https://mcp.useorgx.com/mcp?profile=full', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 4, method: 'tools/list' }),
+      }),
+      undefined,
+      ctx
+    );
+    const body = (await response.json()) as {
+      result: { tools: Array<{ name: string }> };
+    };
+
+    expect(ctx.props?.profile).toBe('read-only');
+    expect(body.result.tools.map((tool) => tool.name)).toEqual([
+      ...CLAUDE_DIRECTORY_SURFACE,
+    ]);
+  });
+
+  it('preserves full only for a verified internal run-token context', async () => {
+    const handler = createInMemoryMcpHandler();
+    const ctx: TestContext = {
+      props: { userId: 'agent-run', authSource: 'run_token' },
+    };
+    const response = await handler.fetch(
+      new Request('https://mcp.useorgx.com/mcp?profile=full', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 5, method: 'tools/list' }),
+      }),
+      undefined,
+      ctx
+    );
+    const body = (await response.json()) as {
+      result: { tools: Array<{ name: string }> };
+    };
+
+    expect(ctx.props?.profile).toBe('full');
+    expect(body.result.tools.map((tool) => tool.name)).toEqual(
+      serverManifest.tools.map((tool) => tool.name)
+    );
+  });
 });

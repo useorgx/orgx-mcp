@@ -19,6 +19,7 @@ describe('tool catalog freshness', () => {
 
     const catalog = JSON.parse(readFileSync(catalogPath, 'utf-8')) as {
       sourceHash: string;
+      tools: Array<{ id: string; securityScopes: string[] }>;
     };
 
     const hash = createHash('sha256');
@@ -26,6 +27,7 @@ describe('tool catalog freshness', () => {
       'src/toolDefinitions.ts',
       'src/flywheelTools.ts',
       'src/toolProfiles.ts',
+      'src/authorizationPolicy.ts',
       'src/contractTools.ts',
       'scripts/generate-tool-catalog.ts',
     ]) {
@@ -37,5 +39,29 @@ describe('tool catalog freshness', () => {
       catalog.sourceHash,
       'tool catalog is stale — run: pnpm catalog:generate (and catalog:sync:monorepo to refresh the orgx web repo copy)'
     ).toBe(expected);
+
+    for (const tool of catalog.tools) {
+      expect(
+        tool.securityScopes,
+        `${tool.id} repeats a scope in generated authorization metadata`
+      ).toEqual([...new Set(tool.securityScopes)]);
+    }
+  });
+
+  it('publishes the exact authorization policy used by the worker', async () => {
+    const policyPath = path.join(
+      rootDir,
+      'docs/generated/authorization-policy.json'
+    );
+    expect(
+      existsSync(policyPath),
+      'authorization-policy.json missing — run: pnpm catalog:generate'
+    ).toBe(true);
+
+    const generated = JSON.parse(readFileSync(policyPath, 'utf-8'));
+    const { AUTHORIZATION_POLICY } = await import(
+      '../src/authorizationPolicy'
+    );
+    expect(generated).toEqual(AUTHORIZATION_POLICY);
   });
 });

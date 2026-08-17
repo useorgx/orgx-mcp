@@ -36,6 +36,22 @@ or connect the remote MCP URL:
 
 Use the Memory profile when you want OrgX to act as shared organizational memory for Claude, ChatGPT, Cursor, and AI agents. Use the Full profile when you want planning, task delegation, widgets, and initiative execution.
 
+## Consent and least-privilege access
+
+The hosted OAuth flow separates configuration from authorization:
+
+1. Choose **Read**, **Operate**, or **Customize**.
+2. Review the exact resource scopes and account boundary.
+3. Authorize once, then verify `granted_scopes` and `visible_tools` with
+   `orgx_bootstrap`.
+
+For OAuth sessions, MCP discovery is the intersection of the connection profile
+and the granted scopes. Every call rechecks the scope and returns a structured
+`403 insufficient_scope` challenge when the grant is too narrow. The versioned
+machine policy is available at
+<https://mcp.useorgx.com/.well-known/orgx-authorization-policy>; the human
+reference is <https://docs.useorgx.com/api/scopes>.
+
 ## What OrgX MCP Does
 
 OrgX MCP is organizational continuity for AI agents. Make AI work resumable, reviewable, and provable across agents. It connects Claude, ChatGPT, Cursor, and other MCP-capable clients to OrgX so users can:
@@ -88,8 +104,9 @@ validation or when the user/workspace sets a budget constraint.
 | `get_operator_chronicle` | Read back decisions, artifacts, PR velocity, goals, and gaps over a period. |
 | `consolidate_pr` | Generate and persist a consolidation_pass receipt for a GitHub pull request. |
 
-Full tool contract: `server.json` at the repo root with OAuth scopes, input
-schemas, and OpenAI widget metadata. Legacy tools remain callable during the
+The server and OAuth discovery contract is in `server.json`; per-tool input
+schemas, required scopes, and profile membership are generated in
+`docs/generated/tool-catalog.json`. Legacy tools remain callable during the
 sunset window, but new prompts, skills, examples, and manifests should teach the
 v2 names above.
 

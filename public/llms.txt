@@ -34,6 +34,16 @@ https://mcp.useorgx.com/mcp
 Registry:
 com.useorgx/orgx-mcp
 
+Authorization policy:
+https://mcp.useorgx.com/.well-known/orgx-authorization-policy
+
+Scope reference:
+https://docs.useorgx.com/api/scopes
+
+OAuth sessions expose the intersection of the selected tool profile and the
+granted resource scopes. Use orgx_bootstrap after connection to verify both
+granted_scopes and visible_tools before claiming the integration is ready.
+
 Primary v2 tools (full contract in server.json):
 - orgx_bootstrap: Use at the start of a fresh session, after reconnecting, or before a multi-step workflow to establish context, scopes, and routing guidance.
 - orgx_search: Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory.

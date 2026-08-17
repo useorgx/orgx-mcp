@@ -53,7 +53,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       timezone: z.string().optional().describe('Optional user timezone for date-sensitive readouts'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-    securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
+    securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Bootstrapping OrgX contract...',
       'openai/toolInvocation/invoked': 'OrgX contract ready',
@@ -76,7 +76,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       session_id: z.string().optional().describe('Optional bootstrap/session identifier'),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
+    securitySchemes: SECURITY_SCHEMES.anyReadRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.searchResults,
       'openai/toolInvocation/invoking': 'Inspecting OrgX entity...',
@@ -103,7 +103,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       session_id: z.string().optional().describe('Optional bootstrap/session identifier'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-    securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
+    securitySchemes: SECURITY_SCHEMES.anyReadRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.searchResults,
       'openai/toolInvocation/invoking': 'Searching OrgX...',
@@ -188,7 +188,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
     },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
-    securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
+    securitySchemes: SECURITY_SCHEMES.anyWriteRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Writing OrgX entity...',
       'openai/toolInvocation/invoked': 'OrgX entity written',
@@ -286,7 +286,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
     },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
-    securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
+    securitySchemes: SECURITY_SCHEMES.anyWriteRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Running OrgX action...',
       'openai/toolInvocation/invoked': 'OrgX action complete',
@@ -316,7 +316,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       idempotency_key: z.string().optional().describe('Optional idempotency key for safe retries. Same key returns the same result without creating duplicate session state.'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-    securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
+    securitySchemes: SECURITY_SCHEMES.entityAccessRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.planSessionLive,
       'openai/toolInvocation/invoking': 'Updating OrgX plan...',
@@ -328,10 +328,10 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_spawn',
     title: 'Spawn OrgX Agent Work',
     description:
-      'Use when the user says "delegate this and tell me when it\'s done," or when you must check whether delegation is allowed before dispatching. Guards, estimates, classifies, spawns, or hands off specialist agent work.\n\n' +
-      'Per-action requirements: spawn from an existing task REQUIRES task_id; ad-hoc spawn REQUIRES title + instructions and should include agent_type. handoff REQUIRES task_id + agent_type. guard REQUIRES agent_type. classify REQUIRES title or task_id. action="estimate" REQUIRES title or task_id, returns candidate routes/cost context, and runs without dispatching work.\n\n' +
-      'Routing policy: omit model_tier/provider/model for OrgX auto-routing. Set model_tier, provider, model, budget_mode, or max_cost_usd only when the user, policy, or verification plan constrains routing. For controlled reliability validation, use model_tier="standard" and budget_mode="cheapest_valid".\n\n' +
-      'USE WHEN: explicitly delegating work to an OrgX agent or checking if delegation is allowed. NEXT: use orgx_inspect or orgx_search to monitor the delegated work, then orgx_submit_receipt for proof. DO NOT USE WHEN: only creating a task row; use orgx_write.',
+      'Delegate specialist work or check whether delegation is allowed. Actions: guard, estimate, classify, spawn, and handoff.\n\n' +
+      'Requirements: existing-task spawn needs task_id; ad-hoc spawn needs title + instructions and should include agent_type. handoff needs task_id + agent_type. guard needs agent_type. classify needs title or task_id. action="estimate" needs title or task_id and returns candidate routes and cost context without dispatching work. OAuth: guard/classify/estimate require agents:read; spawn requires agents:write; handoff requires BOTH agents:write and initiatives:write.\n\n' +
+      'Routing: omit model_tier/provider/model for OrgX auto-routing. Set routing or budget fields only when the user, policy, or verification plan constrains them. For controlled reliability validation, use model_tier="standard" and budget_mode="cheapest_valid".\n\n' +
+      'USE WHEN: delegating work or checking permission/cost before delegation. NEXT: monitor with orgx_inspect or orgx_search, then attach proof with orgx_submit_receipt. DO NOT USE: to create only a task row; use orgx_write.',
     inputSchema: {
       action: z.enum(['guard', 'estimate', 'spawn', 'handoff', 'classify']).optional().describe('Spawn operation. Defaults to "spawn". Use estimate for pre-spawn cost/routing context without dispatching work. See top-level description for per-action required fields.'),
       title: z.string().optional().describe('Task title. REQUIRED for ad-hoc spawn (action=spawn without task_id) or action=classify without task_id. Used as the human-readable label of the spawned task.'),
@@ -355,7 +355,10 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
     },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
-    securitySchemes: SECURITY_SCHEMES.agentRequiresAuth,
+    securitySchemes: [
+      ...SECURITY_SCHEMES.agentAccessRequiresAuth,
+      ...SECURITY_SCHEMES.handoffRequiresAuth,
+    ],
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.taskSpawned,
       'openai/toolInvocation/invoking': 'Preparing OrgX agent work...',
@@ -390,7 +393,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
     },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
-    securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
+    securitySchemes: SECURITY_SCHEMES.decisionAccessRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.decisions,
       'openai/toolInvocation/invoking': 'Updating OrgX decision...',
@@ -536,7 +539,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
         .describe('Maximum number of results to return'),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
+    securitySchemes: SECURITY_SCHEMES.memoryReadRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.searchResults,
       'openai/toolInvocation/invoking': 'Recalling organizational memory...',
@@ -649,7 +652,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
         .describe('Optional initiative title to resolve automatically if ID is unknown'),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
+    securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.initiativePulse,
       'openai/toolInvocation/invoking': 'Tracking project progress...',
@@ -670,7 +673,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
         .describe('Plan session UUID or orgx://plan_session/<uuid>'),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    securitySchemes: SECURITY_SCHEMES.authRequired,
+    securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Loading plan session...',
       'openai/toolInvocation/invoked': 'Plan session loaded',
@@ -1036,6 +1039,7 @@ export const INLINE_TOOL_CONTRACTS = {
       idempotency_key: z.string().optional().describe('Stable retry key.'),
       source_evidence: z.record(z.unknown()).optional().describe('For initiatives based on a named external product/site: include { target_url, verification_state: "verified"|"partial"|"unverified", evidence_urls: string[], notes? }. Do not create or launch from search-result inference when the target could not be rendered; use mode="draft" until screenshots or browser evidence verify the source.'),
     },
+    securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
   },
   get_task_with_context: {
     id: 'get_task_with_context',
@@ -1137,6 +1141,111 @@ export type KnownToolContract = {
     | 'contract'
     | 'inline';
 };
+
+export type ToolSecuritySchemes = readonly {
+  type: string;
+  scopes?: readonly string[];
+}[];
+
+function normalizedEntityDomain(value: unknown):
+  | 'decisions'
+  | 'agents'
+  | 'initiatives'
+  | null {
+  if (typeof value !== 'string') return null;
+  const type = value.trim().toLowerCase().replace(/-/g, '_');
+  if (type === 'decision') return 'decisions';
+  if (type === 'agent' || type === 'run') return 'agents';
+  return entityTypeEnum.options.includes(
+    type as (typeof entityTypeEnum.options)[number]
+  )
+    ? 'initiatives'
+    : null;
+}
+
+function readSchemesForEntity(value: unknown): ToolSecuritySchemes {
+  switch (normalizedEntityDomain(value)) {
+    case 'decisions':
+      return SECURITY_SCHEMES.decisionReadRequiresAuth;
+    case 'agents':
+      return SECURITY_SCHEMES.agentReadRequiresAuth;
+    case 'initiatives':
+      return SECURITY_SCHEMES.entityReadRequiresAuth;
+    default:
+      // An untyped/unknown lookup can traverse every private read domain.
+      return SECURITY_SCHEMES.allReadRequiresAuth;
+  }
+}
+
+function writeSchemesForEntity(value: unknown): ToolSecuritySchemes {
+  switch (normalizedEntityDomain(value)) {
+    case 'decisions':
+      return SECURITY_SCHEMES.writeRequiresAuth;
+    case 'agents':
+      return SECURITY_SCHEMES.agentRequiresAuth;
+    case 'initiatives':
+      return SECURITY_SCHEMES.entityWriteRequiresAuth;
+    default:
+      // orgx_write intentionally accepts a string for forward compatibility.
+      // Unknown domains therefore require the complete write grant rather
+      // than silently inheriting initiatives:write.
+      return SECURITY_SCHEMES.allWriteRequiresAuth;
+  }
+}
+
+/**
+ * Resolve the precise OAuth requirement for contract tools whose resource
+ * domain is selected by their arguments. The advertised scheme remains an
+ * OR-of-domains so a narrow custom grant can discover the tool; this resolver
+ * is the invocation-time authority.
+ */
+export function resolveContractToolInvocationSecuritySchemes(
+  toolId: string,
+  args: Record<string, unknown>,
+  fallback?: ToolSecuritySchemes
+): ToolSecuritySchemes | undefined {
+  switch (toolId) {
+    case 'orgx_search':
+      return readSchemesForEntity(args.type);
+    case 'orgx_inspect':
+      // Hydration is on by default and may include linked decisions, agent
+      // runs, and memory context. Callers with a narrow grant can explicitly
+      // request the base entity only.
+      return args.hydrate_context === false
+        ? readSchemesForEntity(args.type)
+        : SECURITY_SCHEMES.allReadRequiresAuth;
+    case 'orgx_write':
+      return writeSchemesForEntity(args.type);
+    case 'orgx_act': {
+      if (normalizedEntityDomain(args.type) === 'decisions') {
+        return SECURITY_SCHEMES.writeRequiresAuth;
+      }
+      if (args.action === 'launch' || args.action === 'resume') {
+        return SECURITY_SCHEMES.handoffRequiresAuth;
+      }
+      return writeSchemesForEntity(args.type);
+    }
+    case 'orgx_plan':
+      return args.action === 'resume'
+        ? SECURITY_SCHEMES.entityReadRequiresAuth
+        : SECURITY_SCHEMES.entityWriteRequiresAuth;
+    case 'orgx_spawn':
+      if (args.action === 'handoff') {
+        return SECURITY_SCHEMES.handoffRequiresAuth;
+      }
+      return args.action === 'guard' ||
+        args.action === 'classify' ||
+        args.action === 'estimate'
+        ? SECURITY_SCHEMES.agentReadRequiresAuth
+        : SECURITY_SCHEMES.agentRequiresAuth;
+    case 'orgx_decide':
+      return args.action === 'list_pending'
+        ? SECURITY_SCHEMES.decisionReadRequiresAuth
+        : SECURITY_SCHEMES.writeRequiresAuth;
+    default:
+      return fallback;
+  }
+}
 
 export function getKnownToolContracts(): KnownToolContract[] {
   const liftInputSchema = (

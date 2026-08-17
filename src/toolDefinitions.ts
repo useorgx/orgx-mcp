@@ -28,6 +28,7 @@ import {
   toSkybridgeResourceUri,
   withWidgetResourceVersion,
 } from './widgetConfig';
+import { OAUTH_SCOPE, OAUTH_SCOPES_SUPPORTED } from './authorizationPolicy';
 
 // =============================================================================
 // WIDGET URIs
@@ -156,59 +157,153 @@ export const SCAFFOLD_INITIATIVE_WIDGET_META = {
 
 
 // =============================================================================
-// OAUTH SCOPES — single source of truth for all discovery endpoints
+// OAUTH POLICY — single source of truth for discovery, consent, and enforcement
 // =============================================================================
 
-export const OAUTH_SCOPES_SUPPORTED = [
-  'decisions:read',
-  'decisions:write',
-  'agents:read',
-  'agents:write',
-  'initiatives:read',
-  'initiatives:write',
-  'memory:read',
-  'offline_access',
-] as const;
+export {
+  AUTHORIZATION_POLICY,
+  AUTHORIZATION_POLICY_VERSION,
+  AUTHORIZATION_PRESETS,
+  AUTHORIZATION_RESOURCE_ACTION_CATALOG,
+  AUTHORIZATION_SESSION_CAPABILITIES,
+  OAUTH_SCOPE,
+  OAUTH_SCOPES_SUPPORTED,
+  isSupportedOAuthScope,
+  type AuthorizationAccessLevel,
+  type AuthorizationAction,
+  type AuthorizationResource,
+  type OAuthScope,
+} from './authorizationPolicy';
 
 // =============================================================================
 // SECURITY SCHEMES
 // =============================================================================
 
+const oauthScopeAlternative = (scope: string) =>
+  ({ type: 'oauth2' as const, scopes: [scope] as const });
+
 export const SECURITY_SCHEMES = {
-  // Read-only tools can work anonymously but unlock more with auth
+  /**
+   * Compatibility name retained for older definition modules. Private OrgX
+   * reads are never anonymous: each entry is an OAuth alternative, so one
+   * relevant read grant is enough for discovery while invocation-time policy
+   * can enforce the exact resource selected by polymorphic tools.
+   */
   readOptionalAuth: [
-    { type: 'noauth' as const },
+    oauthScopeAlternative(OAUTH_SCOPE.decisionsRead),
+    oauthScopeAlternative(OAUTH_SCOPE.agentsRead),
+    oauthScopeAlternative(OAUTH_SCOPE.initiativesRead),
+    oauthScopeAlternative(OAUTH_SCOPE.memoryRead),
+  ],
+  anyReadRequiresAuth: [
+    oauthScopeAlternative(OAUTH_SCOPE.decisionsRead),
+    oauthScopeAlternative(OAUTH_SCOPE.agentsRead),
+    oauthScopeAlternative(OAUTH_SCOPE.initiativesRead),
+    oauthScopeAlternative(OAUTH_SCOPE.memoryRead),
+  ],
+  allReadRequiresAuth: [
     {
       type: 'oauth2' as const,
       scopes: [
-        'decisions:read',
-        'agents:read',
-        'initiatives:read',
-        'memory:read',
+        OAUTH_SCOPE.decisionsRead,
+        OAUTH_SCOPE.agentsRead,
+        OAUTH_SCOPE.initiativesRead,
+        OAUTH_SCOPE.memoryRead,
       ],
     },
   ],
-  // Write tools require authentication
-  writeRequiresAuth: [{ type: 'oauth2' as const, scopes: ['decisions:write'] }],
-  // Agent spawning requires auth
-  agentRequiresAuth: [{ type: 'oauth2' as const, scopes: ['agents:write'] }],
+  decisionReadRequiresAuth: [
+    { type: 'oauth2' as const, scopes: [OAUTH_SCOPE.decisionsRead] },
+  ],
+  agentReadRequiresAuth: [
+    { type: 'oauth2' as const, scopes: [OAUTH_SCOPE.agentsRead] },
+  ],
+  agentAccessRequiresAuth: [
+    oauthScopeAlternative(OAUTH_SCOPE.agentsRead),
+    oauthScopeAlternative(OAUTH_SCOPE.agentsWrite),
+  ],
+  decisionAccessRequiresAuth: [
+    oauthScopeAlternative(OAUTH_SCOPE.decisionsRead),
+    oauthScopeAlternative(OAUTH_SCOPE.decisionsWrite),
+  ],
+  entityAccessRequiresAuth: [
+    oauthScopeAlternative(OAUTH_SCOPE.initiativesRead),
+    oauthScopeAlternative(OAUTH_SCOPE.initiativesWrite),
+  ],
+  memoryReadRequiresAuth: [
+    { type: 'oauth2' as const, scopes: [OAUTH_SCOPE.memoryRead] },
+  ],
+  // Decision operations require authentication and their existing wire scope.
+  writeRequiresAuth: [
+    { type: 'oauth2' as const, scopes: [OAUTH_SCOPE.decisionsWrite] },
+  ],
+  // Agent operations require auth.
+  agentRequiresAuth: [
+    { type: 'oauth2' as const, scopes: [OAUTH_SCOPE.agentsWrite] },
+  ],
   // Task handoffs require both agent spawning and entity writes
   handoffRequiresAuth: [
     {
       type: 'oauth2' as const,
-      scopes: ['agents:write', 'initiatives:write'],
+      scopes: [OAUTH_SCOPE.agentsWrite, OAUTH_SCOPE.initiativesWrite],
     },
   ],
   // Entity write tools require initiatives:write (entities are part of the initiative system)
   entityWriteRequiresAuth: [
-    { type: 'oauth2' as const, scopes: ['initiatives:write'] },
+    { type: 'oauth2' as const, scopes: [OAUTH_SCOPE.initiativesWrite] },
   ],
   // Entity read tools require initiatives:read (avoid leaking data via service-key routes)
   entityReadRequiresAuth: [
-    { type: 'oauth2' as const, scopes: ['initiatives:read'] },
+    { type: 'oauth2' as const, scopes: [OAUTH_SCOPE.initiativesRead] },
   ],
-  // Generic auth-required tools (no specific scopes enforced yet)
-  authRequired: [{ type: 'oauth2' as const }],
+  // Polymorphic writes are discoverable with any write grant; invocation
+  // resolves the selected entity domain and enforces its exact scope.
+  anyWriteRequiresAuth: [
+    oauthScopeAlternative(OAUTH_SCOPE.decisionsWrite),
+    oauthScopeAlternative(OAUTH_SCOPE.agentsWrite),
+    oauthScopeAlternative(OAUTH_SCOPE.initiativesWrite),
+  ],
+  allWriteRequiresAuth: [
+    {
+      type: 'oauth2' as const,
+      scopes: [
+        OAUTH_SCOPE.decisionsWrite,
+        OAUTH_SCOPE.agentsWrite,
+        OAUTH_SCOPE.initiativesWrite,
+      ],
+    },
+  ],
+  changesetRequiresAuth: [
+    {
+      type: 'oauth2' as const,
+      scopes: [OAUTH_SCOPE.agentsWrite, OAUTH_SCOPE.initiativesWrite],
+    },
+  ],
+  memorySyncRequiresAuth: [
+    {
+      type: 'oauth2' as const,
+      scopes: [
+        OAUTH_SCOPE.decisionsWrite,
+        OAUTH_SCOPE.initiativesWrite,
+        OAUTH_SCOPE.memoryRead,
+      ],
+    },
+  ],
+  /**
+   * Legacy/internal fallback for inline tools that have not yet been assigned
+   * a narrower domain. It is deliberately scoped and high privilege so an
+   * explicit OAuth grant can never satisfy it merely by being authenticated.
+   */
+  authRequired: [
+    {
+      type: 'oauth2' as const,
+      scopes: [
+        OAUTH_SCOPE.decisionsWrite,
+        OAUTH_SCOPE.agentsWrite,
+        OAUTH_SCOPE.initiativesWrite,
+      ],
+    },
+  ],
 } as const;
 
 const agentModelTierSchema = z.enum([
@@ -352,7 +447,7 @@ export const PLAN_SESSION_TOOLS = [
         .describe('Workspace UUID to scope the planning session. Defaults to current session workspace when omitted.'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-    securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
+    securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Starting plan session...',
       'openai/toolInvocation/invoked': 'Plan session started',
@@ -364,7 +459,7 @@ export const PLAN_SESSION_TOOLS = [
     description: 'Find active planning sessions so agents can continue prior planning context. Also known as: resume planning, active plans, planning memory. USE WHEN: resuming a conversation or checking if a plan session exists. NEXT: Continue with improve_plan or complete_plan. Read-only.',
     inputSchema: {},
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    securitySchemes: SECURITY_SCHEMES.authRequired,
+    securitySchemes: SECURITY_SCHEMES.agentReadRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Checking active sessions...',
       'openai/toolInvocation/invoked': 'Retrieved active sessions',
@@ -384,7 +479,7 @@ export const PLAN_SESSION_TOOLS = [
         .describe('Current plan content to analyze'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-    securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
+    securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Analyzing plan for improvements...',
       'openai/toolInvocation/invoked': 'Suggestions ready',
@@ -419,7 +514,7 @@ export const PLAN_SESSION_TOOLS = [
       user_reason: z.string().optional().describe('Why this edit was made'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-    securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
+    securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Recording edit...',
       'openai/toolInvocation/invoked': 'Edit recorded',
@@ -471,7 +566,7 @@ export const PLAN_SESSION_TOOLS = [
         ),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-    securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
+    securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Completing plan session...',
       'openai/toolInvocation/invoked': 'Plan session completed',
@@ -511,7 +606,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         .describe('Optional workspace UUID to scope pending decisions'),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
+    securitySchemes: SECURITY_SCHEMES.decisionReadRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.decisions,
       'openai/toolInvocation/invoking': 'Checking your decision queue...',
@@ -584,7 +679,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         .describe('Include idle agents in the response'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-    securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
+    securitySchemes: SECURITY_SCHEMES.agentReadRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.agentStatus,
       'openai/toolInvocation/invoking': 'Checking agent status...',
@@ -612,7 +707,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         .describe('Maximum number of results to return'),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
+    securitySchemes: SECURITY_SCHEMES.memoryReadRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.searchResults,
       'openai/toolInvocation/invoking': 'Searching organizational memory...',
@@ -639,7 +734,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         ),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-    securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
+    securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.initiativePulse,
       'openai/toolInvocation/invoking': 'Getting initiative health...',
@@ -888,7 +983,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         .describe('Maximum number of historical decisions to return'),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
+    securitySchemes: SECURITY_SCHEMES.decisionReadRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.decisionHistory,
       'openai/toolInvocation/invoking': 'Searching decision history...',
@@ -1448,7 +1543,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         ),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-    securitySchemes: SECURITY_SCHEMES.authRequired,
+    securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Emitting activity...',
       'openai/toolInvocation/invoked': 'Activity emitted',
@@ -1571,7 +1666,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         .describe('Additional non-secret request context'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
-    securitySchemes: SECURITY_SCHEMES.authRequired,
+    securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Forwarding attention request...',
       'openai/toolInvocation/invoked': 'Attention request is waiting',
@@ -1586,7 +1681,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
       attention_id: z.string().uuid().describe('Attention/decision UUID'),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
-    securitySchemes: SECURITY_SCHEMES.authRequired,
+    securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Checking owner response...',
       'openai/toolInvocation/invoked': 'Attention status checked',
@@ -1640,7 +1735,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         .describe('Additional non-secret receipt metadata'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
-    securitySchemes: SECURITY_SCHEMES.authRequired,
+    securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Recording continuation receipt...',
       'openai/toolInvocation/invoked': 'Continuation receipt recorded',
@@ -1731,7 +1826,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
       destructiveHint: false,
       openWorldHint: true,
     },
-    securitySchemes: SECURITY_SCHEMES.authRequired,
+    securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Forwarding question to owner...',
       'openai/toolInvocation/invoked': 'Question is waiting for an answer',
@@ -1753,7 +1848,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
       destructiveHint: false,
       openWorldHint: true,
     },
-    securitySchemes: SECURITY_SCHEMES.authRequired,
+    securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Checking for an owner answer...',
       'openai/toolInvocation/invoked': 'Question status checked',
@@ -1805,7 +1900,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         .describe('Optional structured metadata to attach to the execution-graph emission'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
-    securitySchemes: SECURITY_SCHEMES.authRequired,
+    securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Emitting execution graph...',
       'openai/toolInvocation/invoked': 'Execution graph emitted',
@@ -1843,7 +1938,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         ),
     },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
-    securitySchemes: SECURITY_SCHEMES.authRequired,
+    securitySchemes: SECURITY_SCHEMES.changesetRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Applying changeset...',
       'openai/toolInvocation/invoked': 'Changeset applied',
@@ -1916,7 +2011,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
       daily_log: z.string().optional().describe("Today's session log to push"),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
-    securitySchemes: SECURITY_SCHEMES.authRequired,
+    securitySchemes: SECURITY_SCHEMES.memorySyncRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Syncing with OrgX...',
       'openai/toolInvocation/invoked': 'Org context synced',
@@ -1942,7 +2037,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
       task_description: z.string().optional().describe('Task description'),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
-    securitySchemes: SECURITY_SCHEMES.agentRequiresAuth,
+    securitySchemes: SECURITY_SCHEMES.agentReadRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Checking spawn authorization...',
       'openai/toolInvocation/invoked': 'Spawn check complete',
@@ -2034,7 +2129,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         .describe('When true, return pre-spawn estimate context without dispatching work.'),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
+    securitySchemes: SECURITY_SCHEMES.agentReadRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Classifying task complexity...',
       'openai/toolInvocation/invoked': 'Model tier determined',
@@ -2114,7 +2209,7 @@ export const STREAM_TOOL_DEFINITIONS = [
       destructiveHint: false,
       openWorldHint: true,
     },
-    securitySchemes: SECURITY_SCHEMES.agentRequiresAuth,
+    securitySchemes: SECURITY_SCHEMES.handoffRequiresAuth,
     _meta: {
       'openai/toolInvocation/invoking': 'Applying lifecycle action...',
       'openai/toolInvocation/invoked': 'Lifecycle action applied',
