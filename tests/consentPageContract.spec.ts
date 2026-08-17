@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const html = readFileSync(resolve('public/consent.html'), 'utf8');
+const staticHeaders = readFileSync(resolve('public/_headers'), 'utf8');
 
 describe('OAuth consent page contract', () => {
   it('uses a two-stage configure and review flow with one final authorization', () => {
@@ -38,8 +39,10 @@ describe('OAuth consent page contract', () => {
     expect(html).not.toContain('fonts.googleapis.com');
     expect(html).not.toContain('cdn.tailwindcss.com');
     expect(html).not.toContain('cdn.simpleicons.org');
-    expect(html).toContain("connect-src 'self'");
-    expect(html).toContain("form-action 'self'");
+    expect(staticHeaders).toContain("connect-src 'self'");
+    expect(staticHeaders).toContain(
+      "form-action 'self' https://mcp.useorgx.com"
+    );
   });
 
   it('uses the canonical OrgX mark and a self-hosted client icon registry', () => {
