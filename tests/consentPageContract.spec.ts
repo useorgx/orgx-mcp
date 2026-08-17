@@ -40,9 +40,7 @@ describe('OAuth consent page contract', () => {
     expect(html).not.toContain('cdn.tailwindcss.com');
     expect(html).not.toContain('cdn.simpleicons.org');
     expect(staticHeaders).toContain("connect-src 'self'");
-    expect(staticHeaders).toContain(
-      "form-action 'self' https://mcp.useorgx.com"
-    );
+    expect(staticHeaders).toContain("form-action 'self'");
   });
 
   it('uses the canonical OrgX mark and a self-hosted client icon registry', () => {

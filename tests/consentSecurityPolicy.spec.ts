@@ -14,9 +14,7 @@ describe('consent page security policy', () => {
   it('delivers framing and form restrictions as response headers', () => {
     expect(staticHeaders).toContain('/consent.html');
     expect(staticHeaders).toContain("frame-ancestors 'none'");
-    expect(staticHeaders).toContain(
-      "form-action 'self' https://mcp.useorgx.com"
-    );
+    expect(staticHeaders).toContain("form-action 'self'");
     expect(staticHeaders).toContain('X-Frame-Options: DENY');
   });
 
@@ -24,6 +22,7 @@ describe('consent page security policy', () => {
     expect(staticHeaders).toContain('Cache-Control: no-store, no-transform');
     expect(staticHeaders).not.toContain('static.cloudflareinsights.com');
     expect(staticHeaders).not.toContain('cloudflareinsights.com');
+    expect(staticHeaders).not.toContain('upgrade-insecure-requests');
   });
 
   it('does not attempt to deliver CSP through unsupported meta directives', () => {

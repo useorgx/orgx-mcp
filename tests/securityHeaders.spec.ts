@@ -31,4 +31,22 @@ describe('securityHeaders', () => {
 
     expect(withSecurityHeaders(response)).toBe(response);
   });
+
+  it('preserves stricter route-specific security headers', () => {
+    const response = withSecurityHeaders(
+      new Response('consent', {
+        headers: {
+          'content-security-policy':
+            "default-src 'self'; form-action 'self' http://127.0.0.1:54321",
+          'referrer-policy': 'no-referrer',
+        },
+      })
+    );
+
+    expect(response.headers.get('content-security-policy')).toBe(
+      "default-src 'self'; form-action 'self' http://127.0.0.1:54321"
+    );
+    expect(response.headers.get('referrer-policy')).toBe('no-referrer');
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff');
+  });
 });
