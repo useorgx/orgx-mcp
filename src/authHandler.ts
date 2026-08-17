@@ -475,6 +475,85 @@ async function serveLandingPage(
   return serveStaticAsset(request, env, '/index.html', '/index.html');
 }
 
+const CONSENT_CSP_DIRECTIVES = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "img-src 'self' data:",
+  "style-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline'",
+  "connect-src 'self'",
+];
+
+function consentRedirectCspSource(redirectUri: string): string | null {
+  try {
+    const redirect = new URL(redirectUri);
+    if (redirect.protocol === 'http:' || redirect.protocol === 'https:') {
+      return redirect.origin;
+    }
+    if (
+      ['javascript:', 'data:', 'blob:', 'file:'].includes(redirect.protocol) ||
+      !/^[a-z][a-z0-9+.-]*:$/.test(redirect.protocol)
+    ) {
+      return null;
+    }
+    return redirect.protocol;
+  } catch {
+    return null;
+  }
+}
+
+async function serveConsentPage(
+  request: Request,
+  env: Pick<AuthHandlerEnv, 'ASSETS' | 'MCP_SERVER_URL' | 'OAUTH_KV'>
+): Promise<Response> {
+  const url = new URL(request.url);
+  const stateKey = url.searchParams.get('state_key');
+  let callbackSource: string | null = null;
+
+  if (stateKey) {
+    try {
+      const storedState = await env.OAUTH_KV.get(authStateKey(stateKey));
+      if (storedState) {
+        const oauthRequest = JSON.parse(storedState) as StoredAuthRequest;
+        callbackSource = consentRedirectCspSource(oauthRequest.redirectUri);
+      }
+    } catch (error) {
+      console.warn('[auth] Failed to resolve consent callback CSP source', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  const assetResponse = await serveStaticAsset(
+    request,
+    env,
+    '/consent.html',
+    '/consent.html'
+  );
+  if (assetResponse.status >= 300 && assetResponse.status < 400) {
+    return assetResponse;
+  }
+
+  const headers = new Headers(assetResponse.headers);
+  const formAction = ["'self'", callbackSource].filter(Boolean).join(' ');
+  headers.set(
+    'Content-Security-Policy',
+    [...CONSENT_CSP_DIRECTIVES, `form-action ${formAction}`].join('; ')
+  );
+  headers.set('Cache-Control', 'no-store, no-transform');
+  headers.set('Referrer-Policy', 'no-referrer');
+  headers.set('X-Content-Type-Options', 'nosniff');
+  headers.set('X-Frame-Options', 'DENY');
+
+  return new Response(assetResponse.body, {
+    status: assetResponse.status,
+    statusText: assetResponse.statusText,
+    headers,
+  });
+}
+
 async function serveStaticAsset(
   request: Request,
   env: Pick<AuthHandlerEnv, 'ASSETS' | 'MCP_SERVER_URL'>,
@@ -637,6 +716,13 @@ export const authHandler = {
           headers: { 'Cache-Control': 'public, max-age=300' },
         })
       );
+    }
+
+    if (
+      (request.method === 'GET' || request.method === 'HEAD') &&
+      url.pathname === '/consent.html'
+    ) {
+      return serveConsentPage(request, env);
     }
 
     // =========================================================================

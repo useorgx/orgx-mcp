@@ -22,6 +22,83 @@ function createKv(initial: Record<string, string> = {}) {
 }
 
 describe('authHandler root landing page routing', () => {
+  it.each([
+    [
+      'loopback clients',
+      'http://127.0.0.1:54321/oauth/callback',
+      'http://127.0.0.1:54321',
+    ],
+    [
+      'hosted clients',
+      'https://chatgpt.com/connector_platform_oauth_redirect',
+      'https://chatgpt.com',
+    ],
+    ['custom-scheme clients', 'vscode://orgx/oauth/callback', 'vscode:'],
+  ])(
+    'serves consent with the registered callback in form-action for %s',
+    async (_label, redirectUri, expectedSource) => {
+      const stateKey = `state-csp-${expectedSource}`;
+      const kv = createKv({
+        [`auth_state:${stateKey}`]: JSON.stringify({ redirectUri }),
+      });
+      const env = {
+        MCP_SERVER_URL: 'https://mcp.useorgx.com',
+        ORGX_WEB_URL: 'https://useorgx.com',
+        OAUTH_KV: kv,
+        ASSETS: {
+          fetch: vi.fn(async () =>
+            new Response('<html>consent</html>', {
+              headers: { 'content-type': 'text/html; charset=utf-8' },
+            })
+          ),
+        },
+      } as any;
+
+      const response = await authHandler.fetch(
+        new Request(
+          `https://mcp.useorgx.com/consent.html?state_key=${encodeURIComponent(stateKey)}`
+        ),
+        env,
+        createCtx()
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-security-policy')).toContain(
+        `form-action 'self' ${expectedSource}`
+      );
+      expect(response.headers.get('cache-control')).toBe(
+        'no-store, no-transform'
+      );
+      expect(await response.text()).toContain('consent');
+    }
+  );
+
+  it('fails closed to same-origin form submission when consent state is unavailable', async () => {
+    const env = {
+      MCP_SERVER_URL: 'https://mcp.useorgx.com',
+      ORGX_WEB_URL: 'https://useorgx.com',
+      OAUTH_KV: createKv(),
+      ASSETS: {
+        fetch: vi.fn(async () => new Response('<html>consent</html>')),
+      },
+    } as any;
+
+    const response = await authHandler.fetch(
+      new Request(
+        'https://mcp.useorgx.com/consent.html?state_key=missing-state'
+      ),
+      env,
+      createCtx()
+    );
+
+    expect(response.headers.get('content-security-policy')).toContain(
+      "form-action 'self'"
+    );
+    expect(response.headers.get('content-security-policy')).not.toContain(
+      'attacker.example'
+    );
+  });
+
   it('reports a healthy fallback upstream when the primary API is unreachable', async () => {
     const fetchMock = vi
       .fn()

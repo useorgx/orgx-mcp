@@ -8,6 +8,10 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const wranglerConfig = readFileSync(resolve(root, 'wrangler.toml'), 'utf8');
 
 describe('reviewer deployment configuration', () => {
+  it('routes the consent document through the Worker for session-bound CSP', () => {
+    expect(wranglerConfig).toContain('run_worker_first = ["/consent.html"]');
+  });
+
   it('uses the healthy canonical production API while retaining fallback', () => {
     expect(wranglerConfig).not.toContain('next.useorgx.com');
     expect(

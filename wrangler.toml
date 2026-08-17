@@ -12,6 +12,7 @@ account_id = "5e0f62b0acf89dd1493ff769187814c4"
 directory = "./public"
 html_handling = "none"
 binding = "ASSETS"
+run_worker_first = ["/consent.html"]
 
 # Non-secret variables (secrets like ORGX_SERVICE_KEY, MCP_JWT_SECRET,
 # ORGX_INTERNAL_SECRET, OPENAI_APPS_CHALLENGE_TOKEN should be set via
