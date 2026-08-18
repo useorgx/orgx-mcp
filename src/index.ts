@@ -318,16 +318,25 @@ import {
   applySessionToolObservation,
   buildSessionSummary,
   buildSessionSummaryActivityBody,
+  buildSessionSummaryIngestBody,
   createEmptySessionToolStats,
   installSessionToolObservationWrapper,
   parseStoredSessionToolStats,
   SESSION_FLUSH_SCHEDULE_STORAGE_KEY,
   SESSION_SUMMARY_FLUSH_CALLBACK,
   SESSION_SUMMARY_IDLE_FLUSH_SECONDS,
+  SESSION_SUMMARY_INGEST_PATH,
   SESSION_TOOL_STATS_STORAGE_KEY,
   totalSessionToolCalls,
+  type SessionSummary,
   type SessionToolStats,
 } from './sessionSummary';
+import {
+  buildClientSessionIdentity,
+  CLIENT_SESSION_IDENTITY_TOOL_IDS,
+  withClientSessionIdentity,
+} from './clientSessionIdentity';
+import { applyEntityWriteAttribution } from './entityWriteAttribution';
 import { ensureSqliteColumn } from './sqliteSchema';
 import { checkToolPlanAccess } from './toolAccessGating';
 import {
@@ -1150,11 +1159,62 @@ export class OrgXMcp extends McpAgent<
   }
 
   /**
+   * Post the session summary to the initiative-OPTIONAL v1 ingest, which lands
+   * unbound sessions in a workspace inbox with an attribution stamp. Returns
+   * false — without throwing — when the endpoint is unavailable (a server
+   * deployment that predates it answers 404), so the caller can keep the older
+   * durable-telemetry path as the fallback. Never throws.
+   */
+  private async postSessionSummaryIngest(
+    summary: SessionSummary,
+    sourceClient: SourceClient | null,
+    userId: string | null
+  ): Promise<boolean> {
+    try {
+      const response = await callOrgxApiJson(
+        this.env,
+        SESSION_SUMMARY_INGEST_PATH,
+        {
+          method: 'POST',
+          body: JSON.stringify(
+            buildSessionSummaryIngestBody(
+              summary,
+              toReportingSourceClient(sourceClient)
+            )
+          ),
+        },
+        {
+          userId,
+          userEmail: this.resolveUserEmail(),
+          orgxUserId: this.resolveOrgxUserId(userId),
+        }
+      );
+      if (response.ok) return true;
+      console.warn('[mcp:session-summary] Ingest endpoint rejected summary', {
+        sessionId: summary.session_id,
+        status: response.status,
+      });
+      return false;
+    } catch (error) {
+      console.warn('[mcp:session-summary] Ingest endpoint unreachable', {
+        sessionId: summary.session_id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return false;
+    }
+  }
+
+  /**
    * Idle-flush callback (schedule target — must stay public and keep this
-   * name; see SESSION_SUMMARY_FLUSH_CALLBACK). Best-effort: posts a compact
-   * session summary to the activity endpoint when an initiative binding
-   * exists, otherwise records it through the durable telemetry path with a
-   * session_summary marker. Never throws.
+   * name; see SESSION_SUMMARY_FLUSH_CALLBACK). Best-effort and never throws.
+   *
+   * Every summary now goes to the initiative-OPTIONAL v1 ingest, so an ambient
+   * session lands in the workspace inbox instead of vanishing into telemetry.
+   * A bound session ALSO posts to the activity endpoint exactly as before —
+   * that is what the live initiative feed reads. The durable-telemetry path is
+   * kept as the fallback for an unbound session when the ingest is unavailable
+   * (older server deployment), so a worker deploy that lands ahead of the
+   * server loses nothing.
    */
   async flushSessionSummary(): Promise<void> {
     try {
@@ -1175,6 +1235,12 @@ export class OrgXMcp extends McpAgent<
       const sourceClient = this.resolveSourceClient();
       const userId = this.resolveUserId();
 
+      const ingested = await this.postSessionSummaryIngest(
+        summary,
+        sourceClient,
+        userId
+      );
+
       if (summary.initiative_id) {
         const body = buildSessionSummaryActivityBody(
           summary,
@@ -1190,7 +1256,7 @@ export class OrgXMcp extends McpAgent<
             orgxUserId: this.resolveOrgxUserId(userId),
           }
         );
-      } else {
+      } else if (!ingested) {
         await recordDurableMcpToolInvocation({
           env: this.env,
           toolId: 'session_summary',
@@ -1217,6 +1283,7 @@ export class OrgXMcp extends McpAgent<
         toolCallCount: summary.tool_call_count,
         clientName: summary.client_name,
         boundInitiative: Boolean(summary.initiative_id),
+        ingested,
       });
 
       this.sessionToolStats = createEmptySessionToolStats();
@@ -1510,6 +1577,38 @@ export class OrgXMcp extends McpAgent<
     context?: unknown
   ): ReportingSourceClient | null {
     return toReportingSourceClient(this.resolveSourceClient(context));
+  }
+
+  /**
+   * Verbatim client name for this session: the initialize handshake identity
+   * first, then whatever the agent declared in `_context.client.name`. Used
+   * where the destination stores a free string rather than the reporting enum,
+   * so an unrecognized client is still recorded instead of dropped.
+   */
+  private resolveClientNameLabel(context?: unknown): string | null {
+    this.captureHandshakeClientInfo();
+    const handshakeName =
+      this.readHandshakeClientInfo()?.name ?? this.sessionContext.clientName;
+    if (handshakeName) return handshakeName;
+    const contextName = (
+      context as { client?: { name?: unknown } } | undefined
+    )?.client?.name;
+    return typeof contextName === 'string' && contextName.trim()
+      ? contextName.trim()
+      : null;
+  }
+
+  /**
+   * Attribution label for durable entity writes. Prefers the canonical
+   * reporting value (what the operator surfaces group by) and falls back to
+   * the verbatim client name so a client that shipped before the enum did is
+   * still attributed rather than collapsed into the generic default.
+   */
+  private resolveEntityAttributionClient(context?: unknown): string | null {
+    return (
+      this.resolveReportingSourceClient(context) ??
+      this.resolveClientNameLabel(context)
+    );
   }
 
   /**
@@ -3780,7 +3879,11 @@ export class OrgXMcp extends McpAgent<
                 url = query ? `${endpointPath}?${query}` : endpointPath;
                 fetchInit = { method: 'GET' };
               } else {
-                // Strip _context before forwarding
+                // Strip _context before forwarding: it is an MCP transport
+                // parameter, not an API field. The session identity it carries
+                // is re-attached below for the emission tools — dropping it
+                // wholesale is what left every ambient run unlinked from the
+                // conversation that produced it.
                 const { _context, ...toolArgs } = args;
                 let normalizedToolArgs: Record<string, unknown> = toolArgs;
                 if (
@@ -3830,6 +3933,24 @@ export class OrgXMcp extends McpAgent<
                       source_client: reportingClient,
                     };
                   }
+                }
+                // Re-attach the conversation/session identity stripped with
+                // _context above. `session` is an optional additive field on
+                // these two reporting schemas, which are non-strict zod
+                // objects — a server deployment that predates the field drops
+                // the key rather than rejecting the call, and the metadata
+                // mirror keeps the identity readable either way.
+                if (CLIENT_SESSION_IDENTITY_TOOL_IDS.has(tool.id)) {
+                  normalizedToolArgs = withClientSessionIdentity(
+                    normalizedToolArgs,
+                    buildClientSessionIdentity({
+                      context: args._context,
+                      clientName: this.resolveClientNameLabel(args._context),
+                      clientVersion:
+                        this.sessionContext.clientVersion ?? null,
+                      mcpSessionId: this.name || this.ctx.id.toString(),
+                    })
+                  );
                 }
                 fetchInit = {
                   method: 'POST',
@@ -4936,12 +5057,18 @@ export class OrgXMcp extends McpAgent<
               structuredContent: payload,
             };
           }
+          // Durable writes carry client attribution too — not just the five
+          // reporting tools. Additive and never overrides an explicit value.
+          const attributedBody = applyEntityWriteAttribution(
+            body,
+            this.resolveEntityAttributionClient(args._context)
+          );
           const response = await callOrgxApiJson(
             this.env,
             '/api/entities',
             {
               method: 'POST',
-              body: JSON.stringify(body),
+              body: JSON.stringify(attributedBody),
             },
             { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
           );
@@ -8303,12 +8430,18 @@ export class OrgXMcp extends McpAgent<
             });
           }
 
+          // Same entity-write attribution as orgx_write — see
+          // applyEntityWriteAttribution.
+          const attributedPayload = applyEntityWriteAttribution(
+            payload,
+            this.resolveEntityAttributionClient(args._context)
+          );
           const response = await callOrgxApiJson(
             this.env,
             '/api/entities',
             {
               method: 'POST',
-              body: JSON.stringify(payload),
+              body: JSON.stringify(attributedPayload),
             },
             { userId: ownerId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(ownerId) }
           );
