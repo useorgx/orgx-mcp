@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-19T11:07:08.095Z",
-  "sourceHash": "1975f2f27de83d7d",
+  "generatedAt": "2026-08-19T19:12:34.690Z",
+  "sourceHash": "70a9bf7032605aaf",
   "version": "1.0.0",
   "totalTools": 84,
   "categories": [
@@ -365,12 +365,7 @@
       "category": "Billing",
       "inputSchema": {
         "type": "object",
-        "properties": {
-          "user_id": {
-            "type": "string",
-            "description": "Optional user ID override."
-          }
-        },
+        "properties": {},
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
@@ -412,10 +407,6 @@
               "annual"
             ],
             "description": "Billing cycle preference."
-          },
-          "user_id": {
-            "type": "string",
-            "description": "Optional user ID override."
           }
         },
         "additionalProperties": false,
@@ -438,12 +429,7 @@
       "category": "Billing",
       "inputSchema": {
         "type": "object",
-        "properties": {
-          "user_id": {
-            "type": "string",
-            "description": "Optional user ID override."
-          }
-        },
+        "properties": {},
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
       },

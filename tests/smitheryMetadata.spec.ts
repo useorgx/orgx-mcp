@@ -129,17 +129,15 @@ describe('Smithery metadata coverage', () => {
 
   it('keeps audited inline tools annotated with described top-level parameters', () => {
     const expectations: Record<string, string[]> = {
-      account_status: ['description:', "user_id: z.string().optional().describe("],
+      // The account tools take no identity parameter — they act as the
+      // authenticated session user only. See tests/identityOverride.spec.ts.
+      account_status: ['description:', 'inputSchema: {}'],
       account_upgrade: [
         'description:',
         "target_plan: z",
         "billing_cycle: z",
-        "user_id: z.string().optional().describe(",
       ],
-      account_usage_report: [
-        'description:',
-        "user_id: z.string().optional().describe(",
-      ],
+      account_usage_report: ['description:', 'inputSchema: {}'],
       comment_on_entity: [
         'annotations: {',
         "entity_type: z.enum([",

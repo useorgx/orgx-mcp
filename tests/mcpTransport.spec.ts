@@ -411,10 +411,11 @@ describe('mcpTransport', () => {
     );
 
     expect(received?.params?.name).toBe('account_upgrade');
+    // A caller-supplied user_id must be dropped, not routed onward: the
+    // replacement tool acts as the authenticated session user only.
     expect(received?.params?.arguments).toEqual({
       target_plan: 'pro',
       billing_cycle: 'annual',
-      user_id: 'user-123',
     });
     expect(response.headers.get('x-orgx-deprecated-tool')).toBe(
       'create_checkout_session'

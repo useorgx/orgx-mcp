@@ -935,9 +935,7 @@ export const INLINE_TOOL_CONTRACTS = {
     title: 'Get Account Status',
     description:
       'Inline worker tool for reading the authenticated user account tier, billing status, and usage snapshot.',
-    inputSchema: {
-      user_id: z.string().optional().describe('Optional user ID override.'),
-    },
+    inputSchema: {},
   },
   account_upgrade: {
     id: 'account_upgrade',
@@ -948,7 +946,6 @@ export const INLINE_TOOL_CONTRACTS = {
       target_plan: z.enum(['pro', 'enterprise']).optional().describe('Target account plan. Defaults to pro.'),
       billing_cycle: z.enum(['monthly', 'annual']).optional().describe('Billing cadence for self-serve checkout.'),
       credit_pack: z.enum(['credits_500', 'credits_2000']).optional().describe('Optional agent credit pack to buy instead of upgrading a plan.'),
-      user_id: z.string().optional().describe('Optional user ID override.'),
     },
   },
   account_usage_report: {
@@ -956,9 +953,7 @@ export const INLINE_TOOL_CONTRACTS = {
     title: 'Get Account Usage Report',
     description:
       'Inline worker tool for reading detailed usage, quota, billing-period, and overage signals.',
-    inputSchema: {
-      user_id: z.string().optional().describe('Optional user ID override.'),
-    },
+    inputSchema: {},
   },
   list_entities: {
     id: 'list_entities',
@@ -993,7 +988,6 @@ export const INLINE_TOOL_CONTRACTS = {
       severity: z.enum(['info', 'low', 'medium', 'high', 'critical']).optional().describe('Optional severity for triage.'),
       tags: z.array(z.string()).optional().describe('Optional tags.'),
       metadata: z.record(z.unknown()).optional().describe('Optional structured metadata.'),
-      user_id: z.string().optional().describe('Optional user ID override.'),
     },
   },
   list_entity_comments: {

@@ -38,6 +38,10 @@ import {
   type SecurityScheme,
 } from './authHelpers';
 import { buildEntityLink, entityLinkMarkdown, buildLiveUrl } from './deepLinks';
+import {
+  resolveSessionUserEmail,
+  resolveSessionUserId,
+} from './sessionIdentity';
 import { formatInitiativeMarkdown, type OrgXInitiative } from './formatters';
 import { formatForLLM } from './responseSummarizer';
 import { canonicalizeOrgxWriteResponse } from './writeResponse';
@@ -1501,18 +1505,23 @@ export class OrgXMcp extends McpAgent<
   }
 
   /**
-   * Resolve userId with priority:
-   * 1. Explicit argument
-   * 2. Current request props (per-request auth token)
-   * 3. Persisted session auth (from initial OAuth)
-   * 4. null (will fall back to service user in requestAuth.ts)
+   * Resolve the acting userId from the authenticated connection ONLY:
+   * 1. Current request props (per-request auth token)
+   * 2. Persisted session auth (from initial OAuth)
+   * 3. null (will fall back to service user in requestAuth.ts)
+   *
+   * SECURITY: this takes no override parameter on purpose. The resolved id is
+   * forwarded as `X-Orgx-User-Id` and signed into `X-Orgx-Actor-Token`, which
+   * the API trusts on the service path — a caller-supplied value here would let
+   * any authenticated session act as another user. Ownership inputs such as
+   * `owner_id` belong in the request payload, where the API authorizes them.
    */
-  private resolveUserId(explicit?: string | null) {
-    return explicit ?? this.props?.userId ?? this.sessionAuth.userId ?? null;
+  private resolveUserId() {
+    return resolveSessionUserId(this);
   }
 
   private resolveUserEmail() {
-    return this.props?.email ?? this.sessionAuth.email ?? null;
+    return resolveSessionUserEmail(this);
   }
 
   /**
@@ -1662,10 +1671,14 @@ export class OrgXMcp extends McpAgent<
     return uuid;
   }
 
-  private assertUserId(explicit?: string | null) {
-    const userId = this.resolveUserId(explicit);
+  /**
+   * Require an authenticated acting identity. Like resolveUserId(), it accepts
+   * no override — the caller cannot name the user it acts as.
+   */
+  private assertUserId() {
+    const userId = this.resolveUserId();
     if (!userId) {
-      throw new Error('owner_id or user_id is required for this tool');
+      throw new Error('An authenticated OrgX session is required for this tool');
     }
     return userId;
   }
@@ -6199,10 +6212,14 @@ export class OrgXMcp extends McpAgent<
     type: 'task' | 'milestone' | 'decision',
     args: Record<string, unknown>
   ): Promise<CallToolResult> {
-    const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId ?? null;
-    const ownerId = this.resolveUserId(
-      (args.owner_id as string | undefined) ?? (args.user_id as string | undefined)
-    );
+    // SECURITY: the acting identity is the authenticated session, never an
+    // argument. owner_id/user_id only set the created entity's owner in the
+    // request payload, where the API authorizes the assignment.
+    const resolvedUserId = this.resolveUserId();
+    const explicitOwnerId =
+      (args.owner_id as string | undefined) ??
+      (args.user_id as string | undefined);
+    const ownerId = explicitOwnerId ?? resolvedUserId;
 
     const workspaceId =
       typeof args.workspace_id === 'string' && args.workspace_id.trim().length > 0
@@ -6288,7 +6305,7 @@ export class OrgXMcp extends McpAgent<
         method: 'POST',
         body: JSON.stringify(payload),
       },
-      { userId: ownerId ?? resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(ownerId ?? resolvedUserId) }
+      { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
     );
     const result = (await response.json()) as {
       type?: string;
@@ -6590,14 +6607,12 @@ export class OrgXMcp extends McpAgent<
           destructiveHint: false,
           openWorldHint: false,
         },
-        inputSchema: {
-            user_id: z.string().optional().describe('Optional user id override.'),
-          },
+        inputSchema: {},
           _meta: { 'openai/visibility': 'private' },
         },
-        async (args) =>
+        async () =>
           this.withOrgx(async () => {
-            const resolvedUserId = this.resolveUserId(args.user_id);
+            const resolvedUserId = this.resolveUserId();
             const authResponse = this.buildAuthRequiredResponse({
               toolId: 'account_status',
               securitySchemes: SECURITY_SCHEMES.authRequired,
@@ -6607,7 +6622,7 @@ export class OrgXMcp extends McpAgent<
             });
             if (authResponse) return authResponse;
 
-            const userId = this.assertUserId(args.user_id);
+            const userId = this.assertUserId();
             const response = await callOrgxApiJson(
               this.env,
               '/api/billing/usage',
@@ -6654,13 +6669,12 @@ export class OrgXMcp extends McpAgent<
               .enum(['credits_500', 'credits_2000'])
               .optional()
               .describe('Optional agent credit pack to buy instead of upgrading a plan.'),
-            user_id: z.string().optional().describe('Optional user id override.'),
           },
           _meta: { 'openai/visibility': 'private' },
         },
         async (args) =>
           this.withOrgx(async () => {
-            const resolvedUserId = this.resolveUserId(args.user_id);
+            const resolvedUserId = this.resolveUserId();
             const authResponse = this.buildAuthRequiredResponse({
               toolId: 'account_upgrade',
               securitySchemes: SECURITY_SCHEMES.authRequired,
@@ -6670,7 +6684,7 @@ export class OrgXMcp extends McpAgent<
             });
             if (authResponse) return authResponse;
 
-            const userId = this.assertUserId(args.user_id);
+            const userId = this.assertUserId();
             if (args.credit_pack) {
               const usageResponse = await callOrgxApiJson(
                 this.env,
@@ -6776,14 +6790,12 @@ export class OrgXMcp extends McpAgent<
           destructiveHint: false,
           openWorldHint: false,
         },
-        inputSchema: {
-            user_id: z.string().optional().describe('Optional user id override.'),
-          },
+        inputSchema: {},
           _meta: { 'openai/visibility': 'private' },
         },
-        async (args) =>
+        async () =>
           this.withOrgx(async () => {
-            const resolvedUserId = this.resolveUserId(args.user_id);
+            const resolvedUserId = this.resolveUserId();
             const authResponse = this.buildAuthRequiredResponse({
               toolId: 'account_usage_report',
               securitySchemes: SECURITY_SCHEMES.authRequired,
@@ -6793,7 +6805,7 @@ export class OrgXMcp extends McpAgent<
             });
             if (authResponse) return authResponse;
 
-            const userId = this.assertUserId(args.user_id);
+            const userId = this.assertUserId();
             const response = await callOrgxApiJson(
               this.env,
               '/api/billing/usage',
@@ -6980,16 +6992,17 @@ export class OrgXMcp extends McpAgent<
       },
       async (args) =>
         this.withOrgx(async () => {
-          const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
+          const resolvedUserId = this.resolveUserId() ?? undefined;
 
           const explicitUserId =
             typeof args.user_id === 'string' && args.user_id.trim().length > 0
               ? args.user_id.trim()
               : null;
 
-          // Auth identity (header) can come from OAuth session or an explicit user_id
-          // (service-key MCP mode). This is NOT an owner filter.
-          const authUserId = resolvedUserId ?? explicitUserId;
+          // SECURITY: the auth identity (header) comes from the authenticated
+          // session only. `user_id` is an owner FILTER for studio entities and
+          // must never be promoted to the acting identity.
+          const authUserId = resolvedUserId;
 
           const hydrateContext = args.hydrate_context === true;
 
@@ -8439,9 +8452,11 @@ export class OrgXMcp extends McpAgent<
           });
           if (authResponse) return authResponse;
 
-          // Soft-resolve: use authenticated user if available, let API
-          // fall back to org default when no user identity is present.
-          const ownerId = this.resolveUserId(args.owner_id ?? args.user_id);
+          // Soft-resolve the OWNER for the created entity. SECURITY: this is a
+          // payload field only — the acting identity forwarded to the API stays
+          // the authenticated session (resolvedUserId) so a caller cannot act
+          // as another user by naming them here.
+          const ownerId = args.owner_id ?? args.user_id ?? resolvedUserId ?? null;
 
           const explicitWorkspaceId =
             typeof args.workspace_id === 'string' &&
@@ -8771,7 +8786,7 @@ export class OrgXMcp extends McpAgent<
               method: 'POST',
               body: JSON.stringify(attributedPayload),
             },
-            { userId: ownerId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(ownerId) }
+            { userId: resolvedUserId ?? null, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? null) }
           );
           const result = (await response.json()) as {
             type: string;
@@ -8811,7 +8826,7 @@ export class OrgXMcp extends McpAgent<
           const enrichment = await this.maybeEnrichWithRelatedContext({
             toolId: 'create_entity',
             args: args as Record<string, unknown>,
-            userId: ownerId ?? resolvedUserId ?? null,
+            userId: resolvedUserId ?? null,
             data: {
               ...result.data,
               type: args.type,
@@ -8836,7 +8851,7 @@ export class OrgXMcp extends McpAgent<
             toolId: 'create_entity',
             args: args as Record<string, unknown>,
             data: structuredPayload,
-            userId: ownerId ?? resolvedUserId ?? null,
+            userId: resolvedUserId ?? null,
             sourceClient,
             workspaceId: effectiveWorkspaceId,
             initiativeId: initiativeIdForContext,
@@ -8946,18 +8961,13 @@ export class OrgXMcp extends McpAgent<
             .record(z.unknown())
             .optional()
             .describe('Optional structured metadata attached to the comment.'),
-          user_id: z.string().optional().describe('Optional user id override'),
         },
         _meta: { securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth },
       },
       async (args) =>
         this.withOrgx(async () => {
-          const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
-          const explicitUserId =
-            typeof args.user_id === 'string' && args.user_id.trim().length > 0
-              ? args.user_id.trim()
-              : null;
-          const authUserId = resolvedUserId ?? explicitUserId;
+          // SECURITY: identity comes from the authenticated session only.
+          const authUserId = this.resolveUserId();
 
           const authResponse = this.buildAuthRequiredResponse({
             toolId: 'comment_on_entity',
@@ -9042,27 +9052,21 @@ export class OrgXMcp extends McpAgent<
             .string()
             .optional()
             .describe('Pagination cursor from a previous response.'),
-          user_id: z.string().optional().describe('Optional user id override'),
         },
         _meta: { 'openai/visibility': 'public', 'openai/readOnlyHint': true, securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth },
       },
       async (args) =>
         this.withOrgx(async () => {
-          const resolvedUserId = this.props?.userId ?? this.sessionAuth?.userId;
+          // SECURITY: identity comes from the authenticated session only.
+          const authUserId = this.resolveUserId();
           const authResponse = this.buildAuthRequiredResponse({
             toolId: 'list_entity_comments',
             securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
-            userId: resolvedUserId,
+            userId: authUserId ?? undefined,
             serverUrl: this.env.MCP_SERVER_URL,
             featureDescription: 'read entity comments',
           });
           if (authResponse) return authResponse;
-
-          const explicitUserId =
-            typeof args.user_id === 'string' && args.user_id.trim().length > 0
-              ? args.user_id.trim()
-              : null;
-          const authUserId = resolvedUserId ?? explicitUserId;
 
           const params = new URLSearchParams();
           if (args.limit) params.set('limit', String(args.limit));
@@ -9150,7 +9154,10 @@ export class OrgXMcp extends McpAgent<
           });
           if (authResponse) return authResponse;
 
-          const ownerId = this.resolveUserId(args.owner_id ?? args.user_id);
+          // owner_id/user_id set the created entities' OWNER in the payload.
+          // SECURITY: they never become the acting identity — every API call
+          // below is made as the authenticated session user.
+          const ownerId = args.owner_id ?? args.user_id ?? resolvedUserId ?? null;
           const continueOnError = args.continue_on_error !== false;
           const concurrency = Math.max(1, Math.min(args.concurrency ?? 8, 20));
           const entities = args.entities as Array<Record<string, unknown>>;
@@ -9202,15 +9209,18 @@ export class OrgXMcp extends McpAgent<
               })
             : entities;
 
+          const actorUserId = resolvedUserId ?? null;
           const result = await runBatchCreateEntities({
             env: this.env,
-            callApi: ({ env, path, init, userId }) =>
-              callOrgxApiJson(env, path, init, { userId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(userId) }),
+            // Ignore the runner's per-entity userId: the acting identity is the
+            // authenticated session, not the payload owner.
+            callApi: ({ env, path, init }) =>
+              callOrgxApiJson(env, path, init, { userId: actorUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(actorUserId) }),
             findExistingEntity: ({ body }) =>
               this.findExistingEntityByIdempotencyKey({
                 body,
                 idempotencyKey: readEntityIdempotencyKey(body),
-                userId: ownerId,
+                userId: actorUserId,
               }),
             entities: patchedEntities,
             ownerId,
@@ -9760,7 +9770,8 @@ export class OrgXMcp extends McpAgent<
                 : typeof normalizedArgs.user_id === 'string'
                 ? normalizedArgs.user_id
                 : undefined;
-            const ownerId = this.resolveUserId(explicitOwnerId);
+            // Payload owner only. SECURITY: never the acting identity.
+            const ownerId = explicitOwnerId ?? resolvedUserId ?? null;
             const continueOnError =
               typeof normalizedArgs.continue_on_error === 'boolean'
                 ? normalizedArgs.continue_on_error
@@ -9800,7 +9811,8 @@ export class OrgXMcp extends McpAgent<
                 '/api/billing/usage',
                 undefined,
                 {
-                  userId: ownerId ?? resolvedUserId ?? undefined,
+                  // SECURITY: read OUR billing usage, never a caller-named user's.
+                  userId: resolvedUserId ?? undefined,
                   userEmail,
                 }
               );
@@ -9820,7 +9832,7 @@ export class OrgXMcp extends McpAgent<
 
                 recordScaffoldTelemetry({
                   status: 'error',
-                  userId: ownerId ?? resolvedUserId ?? null,
+                  userId: resolvedUserId ?? null,
                   errorCode: 'mcp_identity_mismatch',
                   metadata: {
                     mode: scaffoldMode,
@@ -9874,7 +9886,7 @@ export class OrgXMcp extends McpAgent<
 
                 recordScaffoldTelemetry({
                   status: 'error',
-                  userId: ownerId ?? resolvedUserId ?? null,
+                  userId: resolvedUserId ?? null,
                   errorCode: 'billing_scaffold_limit_reached',
                   metadata: {
                     mode: scaffoldMode,
@@ -9910,8 +9922,13 @@ export class OrgXMcp extends McpAgent<
             billingUsage.identity.resolvedUserId.trim().length > 0
               ? billingUsage.identity.resolvedUserId.trim()
               : null;
-          const scaffoldOwnerId =
-            billingResolvedUserId ?? ownerId ?? resolvedUserId ?? null;
+          // Acting identity for every downstream API call: the API's own
+          // resolution of this session, else the session user. SECURITY: a
+          // caller-supplied owner_id must never reach the identity headers.
+          const scaffoldActorUserId =
+            billingResolvedUserId ?? resolvedUserId ?? null;
+          // Owner recorded on the created entities (payload field only).
+          const scaffoldOwnerId = explicitOwnerId ?? scaffoldActorUserId;
 
           const explicitWorkspaceId =
             typeof (normalizedArgs as any).workspace_id === 'string' &&
@@ -9930,7 +9947,7 @@ export class OrgXMcp extends McpAgent<
           ) {
             recordScaffoldTelemetry({
               status: 'error',
-              userId: scaffoldOwnerId,
+              userId: scaffoldActorUserId,
               errorCode: 'workspace_alias_conflict',
               metadata: {
                 mode: scaffoldMode,
@@ -9955,7 +9972,7 @@ export class OrgXMcp extends McpAgent<
           // That gap is exactly what made "create an initiative" dead-end on a
           // missing_workspace_context error mid-demo.
           if (!effectiveCommandCenterId && scaffoldMode !== 'draft') {
-            const inferred = await this.inferSessionWorkspace(scaffoldOwnerId);
+            const inferred = await this.inferSessionWorkspace(scaffoldActorUserId);
             if (inferred) {
               effectiveCommandCenterId = inferred.id;
               contractWarnings.push({
@@ -9991,7 +10008,7 @@ export class OrgXMcp extends McpAgent<
             ].join('\n');
             recordScaffoldTelemetry({
               status: 'error',
-              userId: scaffoldOwnerId,
+              userId: scaffoldActorUserId,
               errorCode: 'missing_workspace_context',
               metadata: {
                 mode: scaffoldMode,
@@ -10139,7 +10156,7 @@ export class OrgXMcp extends McpAgent<
             telemetryTrace.mark('draft_response');
             recordScaffoldTelemetry({
               status: 'success',
-              userId: scaffoldOwnerId,
+              userId: scaffoldActorUserId,
               workspaceId: effectiveCommandCenterId,
               metadata: {
                 mode: scaffoldMode,
@@ -10161,11 +10178,13 @@ export class OrgXMcp extends McpAgent<
 
           const result = await runBatchCreateEntities({
             env: this.env,
-            callApi: ({ env, path, init, userId }) =>
+            // Ignore the runner's per-entity userId: the acting identity is the
+            // authenticated session, not the payload owner.
+            callApi: ({ env, path, init }) =>
               callOrgxApiJson(env, path, init, {
-                userId,
+                userId: scaffoldActorUserId ?? undefined,
                 userEmail: this.resolveUserEmail() ?? undefined,
-                orgxUserId: this.resolveOrgxUserId(userId),
+                orgxUserId: this.resolveOrgxUserId(scaffoldActorUserId),
               }),
             entities: batch,
             ownerId: scaffoldOwnerId,
@@ -10216,7 +10235,7 @@ export class OrgXMcp extends McpAgent<
                   createdInitiativeId,
                   launchAfterCreate,
                   effectiveCommandCenterId,
-                  scaffoldOwnerId,
+                  actorUserId: scaffoldActorUserId,
                   hierarchy,
                   resolveUserEmail: () => this.resolveUserEmail(),
                   onStage: (stage) => telemetryTrace.mark(stage),
@@ -10230,7 +10249,7 @@ export class OrgXMcp extends McpAgent<
                 createdInitiativeId,
                 launchAfterCreate,
                 effectiveCommandCenterId,
-                scaffoldOwnerId,
+                actorUserId: scaffoldActorUserId,
                 hierarchy,
                 resolveUserEmail: () => this.resolveUserEmail(),
               }).catch((error) => {
@@ -10313,10 +10332,10 @@ export class OrgXMcp extends McpAgent<
                       }),
                     },
                     {
-                      userId: scaffoldOwnerId ?? undefined,
+                      userId: scaffoldActorUserId ?? undefined,
                       userEmail: this.resolveUserEmail(),
                       orgxUserId: this.resolveOrgxUserId(
-                        scaffoldOwnerId ?? undefined
+                        scaffoldActorUserId ?? undefined
                       ),
                     }
                   ).catch((error) => {
@@ -10456,7 +10475,7 @@ export class OrgXMcp extends McpAgent<
                 toolId: 'scaffold_initiative',
                 args: normalizedArgs as Record<string, unknown>,
                 data: compactScaffoldPayload,
-                userId: scaffoldOwnerId,
+                userId: scaffoldActorUserId,
                 sourceClient,
                 workspaceId: effectiveCommandCenterId,
                 initiativeId: createdInitiativeId,
@@ -10512,7 +10531,7 @@ export class OrgXMcp extends McpAgent<
               telemetryTrace.mark('response_build');
               recordScaffoldTelemetry({
                 status: 'success',
-                userId: scaffoldOwnerId,
+                userId: scaffoldActorUserId,
                 workspaceId: effectiveCommandCenterId,
                 metadata: {
                   mode: scaffoldMode,
@@ -12889,14 +12908,12 @@ export class OrgXMcp extends McpAgent<
             .string()
             .optional()
             .describe('Legacy alias: OrgX initiative UUID to link this artifact to.'),
-          user_id: z.string().optional().describe('Optional user id override'),
         },
       },
       async (args) =>
         this.withOrgx(async () => {
-          const resolvedUserId = this.resolveUserId(
-            typeof args.user_id === 'string' ? args.user_id : undefined
-          );
+          // SECURITY: identity comes from the authenticated session only.
+          const resolvedUserId = this.resolveUserId();
 
           // Resolve entity_type / entity_id with legacy fallbacks
           const taskId =

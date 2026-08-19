@@ -143,14 +143,19 @@ export async function runScaffoldPostCreateFollowups(params: {
   createdInitiativeId?: string | null;
   launchAfterCreate: boolean;
   effectiveCommandCenterId?: string | null;
-  scaffoldOwnerId?: string | null;
+  /**
+   * Acting identity for every follow-up API call. SECURITY: this must be the
+   * authenticated session user (or the API's own resolution of it) — never a
+   * caller-supplied owner_id, which would let a session act as another user.
+   */
+  actorUserId?: string | null;
   hierarchy: unknown;
   resolveUserEmail: () => string | null | undefined;
   onStage?: (stage: FollowupStageName) => void;
 }): Promise<ScaffoldFollowupResult> {
   const userEmail = params.resolveUserEmail();
   const createdInitiativeId = params.createdInitiativeId ?? null;
-  const scaffoldOwnerId = params.scaffoldOwnerId ?? null;
+  const actorUserId = params.actorUserId ?? null;
   const effectiveCommandCenterId = params.effectiveCommandCenterId ?? null;
 
   let agent_assignment: ScaffoldAgentAssignment | undefined;
@@ -162,7 +167,7 @@ export async function runScaffoldPostCreateFollowups(params: {
         `/api/entities/initiative/${createdInitiativeId}/assign-agents`,
         { method: 'POST' },
         {
-          userId: scaffoldOwnerId ?? undefined,
+          userId: actorUserId ?? undefined,
           userEmail,
         }
       );
@@ -233,7 +238,7 @@ export async function runScaffoldPostCreateFollowups(params: {
           body: JSON.stringify({ initiative_id: createdInitiativeId }),
         },
         {
-          userId: scaffoldOwnerId ?? undefined,
+          userId: actorUserId ?? undefined,
           userEmail,
         }
       );
@@ -264,7 +269,7 @@ export async function runScaffoldPostCreateFollowups(params: {
         credentialStatusPath,
         undefined,
         {
-          userId: scaffoldOwnerId ?? undefined,
+          userId: actorUserId ?? undefined,
           userEmail,
         }
       );
@@ -336,7 +341,7 @@ export async function runScaffoldPostCreateFollowups(params: {
           }),
         },
         {
-          userId: scaffoldOwnerId ?? undefined,
+          userId: actorUserId ?? undefined,
           userEmail,
         }
       );
@@ -405,7 +410,7 @@ export async function runScaffoldPostCreateFollowups(params: {
         `/api/entities?${searchParams.toString()}`,
         undefined,
         {
-          userId: scaffoldOwnerId ?? undefined,
+          userId: actorUserId ?? undefined,
           userEmail,
         }
       );
@@ -543,7 +548,7 @@ export async function runScaffoldPostCreateFollowups(params: {
           method: 'POST',
           body: JSON.stringify({
             tool_id: 'spawn_agent_task',
-            user_id: scaffoldOwnerId ?? undefined,
+            user_id: actorUserId ?? undefined,
             args: {
               agent,
               task,
@@ -555,7 +560,7 @@ export async function runScaffoldPostCreateFollowups(params: {
           }),
         },
         {
-          userId: scaffoldOwnerId ?? undefined,
+          userId: actorUserId ?? undefined,
           userEmail,
         }
       );
