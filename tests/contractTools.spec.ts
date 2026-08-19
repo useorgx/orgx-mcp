@@ -229,8 +229,17 @@ describe('contract tool catalog', () => {
     ).toEqual([]);
   });
 
+  // Tools that intentionally take zero parameters. Everything these tools need
+  // comes from the authenticated session — notably the acting user id, which
+  // must never be a caller-supplied argument (see tests/identityOverride.spec.ts).
+  const INTENTIONALLY_PARAMETERLESS_TOOLS = new Set([
+    'account_status',
+    'account_usage_report',
+  ]);
+
   it('exposes non-empty input contracts for every inline-registered tool', () => {
     const missingInputContracts = collectInlineRegisteredToolIds()
+      .filter((toolId) => !INTENTIONALLY_PARAMETERLESS_TOOLS.has(toolId))
       .map((toolId) => getKnownToolContract(toolId))
       .filter((contract) => contract?.source === 'inline')
       .filter((contract) => !contract?.inputSchema || Object.keys(contract.inputSchema).length === 0)
@@ -240,6 +249,17 @@ describe('contract tool catalog', () => {
       missingInputContracts,
       `Inline tools missing input contracts: ${missingInputContracts.join(', ')}`
     ).toEqual([]);
+  });
+
+  it('keeps the parameterless account tools parameterless', () => {
+    for (const toolId of INTENTIONALLY_PARAMETERLESS_TOOLS) {
+      const contract = getKnownToolContract(toolId);
+      expect(contract, `${toolId} should have a known contract`).toBeDefined();
+      expect(
+        Object.keys(contract?.inputSchema ?? {}),
+        `${toolId} must not accept any input parameter`
+      ).toEqual([]);
+    }
   });
 
   it('exposes proof_profile on create_task and create_milestone', () => {

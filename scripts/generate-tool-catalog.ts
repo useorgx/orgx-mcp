@@ -447,9 +447,9 @@ const INLINE_TOOL_METADATA: Array<{
     title: 'Get current account tier and usage',
     description:
       'Returns account tier, usage, and current edge rate-limit allowance.',
-    inputSchema: z.object({
-      user_id: z.string().optional().describe('Optional user ID override.'),
-    }),
+    // Sourced from the registered contract so the published schema cannot
+    // drift back into advertising a caller-supplied identity override.
+    inputSchema: z.object(INLINE_TOOL_CONTRACTS.account_status.inputSchema),
     securityScopes: [],
     readOnly: true,
   },
@@ -467,7 +467,6 @@ const INLINE_TOOL_METADATA: Array<{
         .enum(['monthly', 'annual'])
         .optional()
         .describe('Billing cycle preference.'),
-      user_id: z.string().optional().describe('Optional user ID override.'),
     }),
     securityScopes: [],
     readOnly: false,
@@ -477,9 +476,9 @@ const INLINE_TOOL_METADATA: Array<{
     title: 'Get detailed account usage report',
     description:
       'Returns billing usage details with current edge rate-limit usage.',
-    inputSchema: z.object({
-      user_id: z.string().optional().describe('Optional user ID override.'),
-    }),
+    inputSchema: z.object(
+      INLINE_TOOL_CONTRACTS.account_usage_report.inputSchema
+    ),
     securityScopes: [],
     readOnly: true,
   },

@@ -99,10 +99,11 @@ const DEPRECATED_TOOL_ROUTES: Record<string, DeprecatedToolRoute> = {
         return null;
       }
 
+      // SECURITY: never forward a caller-supplied user_id. account_upgrade
+      // acts as the authenticated session user only.
       return compactArgs({
         target_plan: 'pro',
         billing_cycle: asBillingCycle(args.billing_cycle),
-        user_id: asNonEmptyString(args.user_id),
       });
     },
   },
