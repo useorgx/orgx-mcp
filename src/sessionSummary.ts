@@ -124,6 +124,115 @@ export function buildSessionSummary(params: {
 }
 
 /**
+ * Initiative-OPTIONAL durable home for a session summary.
+ *
+ * The activity endpoint below can only take a summary that is bound to an
+ * initiative, and almost no real session is — so unbound summaries fell back
+ * to durable telemetry and never reached an operator surface. This endpoint
+ * lands them in a workspace-scoped inbox with an attribution stamp instead.
+ */
+export const SESSION_SUMMARY_INGEST_PATH = '/api/v1/sessions/summary';
+
+/**
+ * Bounds copied from sessionSummaryRequestSchema. Overrunning any of them
+ * fails validation for the whole post, so they are enforced here rather than
+ * discovered as a 400 at flush time.
+ */
+export const SESSION_SUMMARY_INGEST_MAX_TOOL_KEYS = 200;
+const MAX_SESSION_ID_LENGTH = 255;
+const MAX_SOURCE_CLIENT_LENGTH = 60;
+const MAX_TOOL_NAME_LENGTH = 120;
+
+/** The endpoint's uuid-typed fields must not receive a non-uuid string. */
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function asUuid(value: string | null | undefined): string | undefined {
+  return typeof value === 'string' && UUID_RE.test(value) ? value : undefined;
+}
+
+/**
+ * Keep the largest counts — the histogram is what the endpoint merges, and a
+ * truncated-but-representative histogram beats a rejected 400.
+ */
+function capToolHistogram(
+  toolCounts: Record<string, number>
+): Record<string, number> | undefined {
+  const entries = Object.entries(toolCounts).filter(
+    ([tool]) => tool.length > 0 && tool.length <= MAX_TOOL_NAME_LENGTH
+  );
+  if (entries.length === 0) return undefined;
+  if (entries.length <= SESSION_SUMMARY_INGEST_MAX_TOOL_KEYS) {
+    return Object.fromEntries(entries);
+  }
+  return Object.fromEntries(
+    entries
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, SESSION_SUMMARY_INGEST_MAX_TOOL_KEYS)
+  );
+}
+
+/**
+ * Body for POST /api/v1/sessions/summary (flat form; the endpoint also accepts
+ * a `{ session, initiative_id }` envelope and normalizes both to this shape).
+ *
+ * `session_id` + `source_client` are the only required fields, and
+ * `source_client` is a FREE string there rather than the reporting enum: an
+ * unrecognized client is recorded verbatim rather than dropped. So the
+ * normalized reporting value is preferred when the client is known, and the
+ * raw handshake name is used when it is not.
+ */
+export function buildSessionSummaryIngestBody(
+  summary: SessionSummary,
+  sourceClient: ReportingSourceClient | null
+): Record<string, unknown> {
+  const startedAt = summary.first_activity_at;
+  const endedAt = summary.last_activity_at;
+  const durationMin =
+    startedAt && endedAt
+      ? Math.max(
+          0,
+          (Date.parse(endedAt) - Date.parse(startedAt)) / 60_000
+        )
+      : undefined;
+  const tools = capToolHistogram(summary.tool_counts);
+
+  return {
+    source: 'orgx-mcp-worker',
+    session_id: summary.session_id.slice(0, MAX_SESSION_ID_LENGTH),
+    source_client: (sourceClient ?? summary.client_name ?? 'api').slice(
+      0,
+      MAX_SOURCE_CLIENT_LENGTH
+    ),
+    ...(asUuid(summary.initiative_id)
+      ? { initiative_id: asUuid(summary.initiative_id) }
+      : {}),
+    ...(asUuid(summary.workspace_id)
+      ? { workspace_id: asUuid(summary.workspace_id) }
+      : {}),
+    ...(startedAt ? { started_at: startedAt } : {}),
+    ...(endedAt ? { ended_at: endedAt } : {}),
+    ...(durationMin === undefined
+      ? {}
+      : { duration_min: Math.round(durationMin * 100) / 100 }),
+    tool_calls: summary.tool_call_count,
+    ...(tools ? { tools } : {}),
+    metadata: {
+      mcp_session_summary: true,
+      unique_tool_count: summary.unique_tool_count,
+      ...(summary.client_name ? { client_name: summary.client_name } : {}),
+      ...(summary.client_version
+        ? { client_version: summary.client_version }
+        : {}),
+      ...(summary.workspace_id ? { workspace_id: summary.workspace_id } : {}),
+      ...(summary.initiative_id
+        ? { initiative_id: summary.initiative_id }
+        : {}),
+    },
+  };
+}
+
+/**
  * Body for POST /api/client/live/activity. correlation_id and source_client
  * are required when run_id is absent, so the summary always carries both
  * ('api' is the neutral fallback when the client could not be identified).
