@@ -372,7 +372,19 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
   },
   orgx_submit_receipt: {
     tier: 'live_read_verified',
-    evidence: ['live receipts ff98c6e1-96ba-4bd2-83ad-eda79b6204d3 and dbd94570-f8fc-4a61-8abb-cd5660661430'],
+    evidence: ['live receipts ff98c6e1-96ba-4bd2-83ad-eda79b6204d3 and dbd94570-f8fc-4a61-8abb-cd5660661430', 'tests/agentWorkReceiptV1.spec.ts (v1 agent-work-receipts adapter + legacy fallback)'],
+  },
+  orgx_create_work: {
+    tier: 'contract_and_unit',
+    evidence: ['tests/workCommandContract.spec.ts', 'tests/toolDiscoverySnapshot.spec.ts'],
+  },
+  orgx_complete_work: {
+    tier: 'contract_and_unit',
+    evidence: ['tests/workCommandContract.spec.ts', 'tests/toolDiscoverySnapshot.spec.ts'],
+  },
+  orgx_events_tail: {
+    tier: 'contract_and_unit',
+    evidence: ['tests/workCommandContract.spec.ts', 'tests/toolDiscoverySnapshot.spec.ts'],
   },
   orgx_write: {
     tier: 'live_read_verified',

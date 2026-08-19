@@ -88,6 +88,11 @@ import {
   buildAgentWorkReceiptImportRequest,
   shouldFallBackToLegacyReceipts,
 } from './agentWorkReceiptV1';
+import {
+  buildCompleteWorkCommandRequest,
+  buildCreateWorkCommandRequest,
+  buildEventsTailRequest,
+} from './workCommandContract';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
 import {
   buildRouteTaskEstimateSummary,
@@ -5690,6 +5695,153 @@ export class OrgXMcp extends McpAgent<
           };
           return {
             content: [{ type: 'text', text: formatForLLM('orgx_submit_receipt', payload) }],
+            structuredContent: payload,
+          };
+        }
+
+        case 'orgx_create_work':
+        case 'orgx_complete_work': {
+          const commandWorkspaceId =
+            (typeof args.workspace_id === 'string' && args.workspace_id.trim()
+              ? args.workspace_id.trim()
+              : null) ??
+            this.sessionContext.workspaceId ??
+            null;
+          if (!commandWorkspaceId) {
+            return this.toolError(
+              `${toolId} requires workspace_id (none bound to this session — pass workspace_id or call orgx_bootstrap first)`,
+              {
+                code: 'invalid_input',
+                status: 400,
+                details: {
+                  field: 'workspace_id',
+                  suggested_next_calls: [{ tool: 'orgx_bootstrap', args: {} }],
+                },
+              }
+            );
+          }
+          const built =
+            toolId === 'orgx_create_work'
+              ? buildCreateWorkCommandRequest(args, {
+                  workspaceId: commandWorkspaceId,
+                })
+              : buildCompleteWorkCommandRequest(args, {
+                  workspaceId: commandWorkspaceId,
+                });
+          if (!built.ok) {
+            return this.toolError(built.message, {
+              code: 'invalid_input',
+              status: 400,
+              details: { field: built.field },
+            });
+          }
+          const response = await callOrgxApiJson(
+            this.env,
+            built.path,
+            {
+              method: 'POST',
+              headers: { 'Idempotency-Key': built.idempotencyKey },
+              body: JSON.stringify(built.body),
+            },
+            { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
+          );
+          const result = (await response.json()) as Record<string, unknown>;
+          const data =
+            result.data && typeof result.data === 'object'
+              ? (result.data as Record<string, unknown>)
+              : result;
+          const meta =
+            result.meta && typeof result.meta === 'object'
+              ? (result.meta as Record<string, unknown>)
+              : null;
+          const payload = {
+            ...data,
+            _v2_tool: toolId,
+            idempotency_key: built.idempotencyKey,
+            ...(toolId === 'orgx_create_work'
+              ? { command_id: (built as { body: { command_id: string } }).body.command_id }
+              : {}),
+            ...(meta ? { meta } : {}),
+          };
+          const duplicate = meta?.duplicate === true || data.duplicate === true;
+          const verb =
+            toolId === 'orgx_create_work' ? 'Work recorded' : 'Completion recorded';
+          return {
+            content: [
+              {
+                type: 'text',
+                text: duplicate
+                  ? `${verb} (idempotent replay) · key ${built.idempotencyKey}`
+                  : `${verb} · key ${built.idempotencyKey}`,
+              },
+            ],
+            structuredContent: payload,
+          };
+        }
+
+        case 'orgx_events_tail': {
+          const eventsWorkspaceId =
+            (typeof args.workspace_id === 'string' && args.workspace_id.trim()
+              ? args.workspace_id.trim()
+              : null) ??
+            this.sessionContext.workspaceId ??
+            null;
+          if (!eventsWorkspaceId) {
+            return this.toolError(
+              'orgx_events_tail requires workspace_id (none bound to this session — pass workspace_id or call orgx_bootstrap first)',
+              {
+                code: 'invalid_input',
+                status: 400,
+                details: {
+                  field: 'workspace_id',
+                  suggested_next_calls: [{ tool: 'orgx_bootstrap', args: {} }],
+                },
+              }
+            );
+          }
+          const built = buildEventsTailRequest(args, {
+            workspaceId: eventsWorkspaceId,
+          });
+          if (!built.ok) {
+            return this.toolError(built.message, {
+              code: 'invalid_input',
+              status: 400,
+              details: { field: built.field },
+            });
+          }
+          const response = await callOrgxApiJson(
+            this.env,
+            built.path,
+            undefined,
+            { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
+          );
+          const result = (await response.json()) as Record<string, unknown>;
+          const events = Array.isArray(result.data) ? result.data : [];
+          const meta =
+            result.meta && typeof result.meta === 'object'
+              ? (result.meta as Record<string, unknown>)
+              : null;
+          const payload = {
+            events,
+            meta,
+            _v2_tool: 'orgx_events_tail',
+          };
+          const hasMore = meta?.hasMore === true;
+          const nextCursor =
+            typeof meta?.nextCursor === 'string' ? meta.nextCursor : null;
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `${events.length} ledger event${
+                  events.length === 1 ? '' : 's'
+                }${
+                  hasMore && nextCursor
+                    ? ` · more available — call again with cursor=${nextCursor}`
+                    : ' · end of stream'
+                }`,
+              },
+            ],
             structuredContent: payload,
           };
         }

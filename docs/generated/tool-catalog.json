@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-08-17T02:53:48.242Z",
-  "sourceHash": "0aaa577a9e0b03a0",
+  "generatedAt": "2026-08-19T11:07:08.095Z",
+  "sourceHash": "1975f2f27de83d7d",
   "version": "1.0.0",
-  "totalTools": 81,
+  "totalTools": 84,
   "categories": [
     "Agents",
     "Billing",
@@ -17,6 +17,7 @@
     "Organization",
     "Other",
     "Planning",
+    "Proof Runtime v1",
     "Recommended Entry Points",
     "Scoring & Queue",
     "Stats",
@@ -5734,6 +5735,234 @@
       "readOnly": false,
       "source": "plan_session",
       "profiles": []
+    },
+    {
+      "id": "orgx_complete_work",
+      "title": "Complete Work (v1 Command)",
+      "description": "Marks a v1 ledger work item complete (POST /api/v1/commands/complete-work) with optimistic concurrency: expected_updated_at and expected_aggregate_version must match the current task record or the command returns a conflict — read them fresh, never guess. Records summary, evidence, and cost on the completion event; it does not verify the work. An Idempotency-Key is generated when none is supplied. USE WHEN: closing a ledger-backed work item created with orgx_create_work. NEXT: orgx_submit_receipt for durable proof of the completed work. DO NOT USE WHEN: completing ordinary OrgX tasks — use orgx_act (complete_with_proof); or on a version conflict — re-read the task and retry with current values.",
+      "category": "Proof Runtime v1",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "description": "Workspace UUID. Defaults to the MCP session's workspace when omitted."
+          },
+          "task_id": {
+            "type": "string",
+            "description": "REQUIRED. UUID of the ledger work item to complete."
+          },
+          "expected_updated_at": {
+            "type": "string",
+            "description": "REQUIRED. The task's current updated_at as an ISO datetime with timezone offset. A mismatch returns a conflict."
+          },
+          "expected_aggregate_version": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "REQUIRED. The task's current aggregate version. A mismatch returns a conflict."
+          },
+          "summary": {
+            "type": "string",
+            "description": "Completion summary (max 4000 characters)."
+          },
+          "evidence": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Free-form JSON evidence recorded on the completion event."
+          },
+          "cost_cents": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Actual cost in cents. Defaults to 0."
+          },
+          "causation_id": {
+            "type": "string",
+            "description": "Optional UUID of the event that caused this command."
+          },
+          "correlation_id": {
+            "type": "string",
+            "description": "Optional correlation UUID linking related commands."
+          },
+          "idempotency_key": {
+            "type": "string",
+            "description": "Client-supplied retry key sent as the Idempotency-Key header. Generated when omitted; reuse the same key to retry safely."
+          },
+          "session_id": {
+            "type": "string",
+            "description": "Optional bootstrap/session identifier returned by orgx_bootstrap."
+          }
+        },
+        "required": [
+          "task_id",
+          "expected_updated_at",
+          "expected_aggregate_version"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "initiatives:write"
+      ],
+      "readOnly": false,
+      "source": "contract",
+      "profiles": [
+        "commander",
+        "executor"
+      ]
+    },
+    {
+      "id": "orgx_create_work",
+      "title": "Create Work (v1 Command)",
+      "description": "Accepts organizational work onto the v1 proof-runtime ledger (POST /api/v1/commands/create-work). Records the work item as a command event; it does not start external execution. Requires an existing initiative + workstream + milestone chain. An Idempotency-Key is generated when none is supplied; retrying with the same idempotency_key returns the original result instead of duplicating. USE WHEN: registering a ledger-backed work item under an existing milestone so its lifecycle is event-sourced. NEXT: orgx_complete_work when the work finishes, or orgx_events_tail to watch the recorded events. DO NOT USE WHEN: creating initiatives, workstreams, milestones, or ordinary tasks — use orgx_write; or when dispatching an agent — use orgx_spawn.",
+      "category": "Proof Runtime v1",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "description": "Workspace UUID. Defaults to the MCP session's workspace when omitted."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Work item title (max 240 characters)."
+          },
+          "description": {
+            "type": "string",
+            "description": "Longer description (max 4000 characters)."
+          },
+          "initiative_id": {
+            "type": "string",
+            "description": "REQUIRED. Parent initiative UUID."
+          },
+          "workstream_id": {
+            "type": "string",
+            "description": "REQUIRED. Parent workstream UUID."
+          },
+          "milestone_id": {
+            "type": "string",
+            "description": "REQUIRED. Parent milestone UUID."
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "urgent"
+            ],
+            "description": "Priority. Defaults to medium."
+          },
+          "due_date": {
+            "type": "string",
+            "description": "Due date as YYYY-MM-DD."
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Free-form JSON metadata stored on the work item."
+          },
+          "estimated_cost_cents": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Estimated cost in cents. Defaults to 0."
+          },
+          "command_id": {
+            "type": "string",
+            "description": "Client-supplied command UUID. Generated when omitted."
+          },
+          "expected_aggregate_version": {
+            "type": "integer",
+            "description": "Must be 0 when provided — create-work targets a brand-new aggregate. Sent as 0 by default."
+          },
+          "causation_id": {
+            "type": "string",
+            "description": "Optional UUID of the event that caused this command."
+          },
+          "correlation_id": {
+            "type": "string",
+            "description": "Optional correlation UUID linking related commands."
+          },
+          "idempotency_key": {
+            "type": "string",
+            "description": "Client-supplied retry key sent as the Idempotency-Key header. Generated when omitted; reuse the same key to retry safely."
+          },
+          "session_id": {
+            "type": "string",
+            "description": "Optional bootstrap/session identifier returned by orgx_bootstrap."
+          }
+        },
+        "required": [
+          "title",
+          "initiative_id",
+          "workstream_id",
+          "milestone_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "initiatives:write"
+      ],
+      "readOnly": false,
+      "source": "contract",
+      "profiles": [
+        "commander",
+        "executor"
+      ]
+    },
+    {
+      "id": "orgx_events_tail",
+      "title": "Tail Ledger Events (v1)",
+      "description": "Reads the workspace's v1 ledger event stream (GET /api/v1/events/stream) in JSON cursor-page mode — never SSE. Returns events newest-first plus meta.nextCursor/hasMore; pass the returned cursor back (cursor or after) to continue paging. Read-only. USE WHEN: tailing what the proof runtime recorded — work commands, completions, receipts — or resuming from a saved cursor. NEXT: orgx_inspect for one referenced entity, or call again with the returned cursor while hasMore=true.",
+      "category": "Proof Runtime v1",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "description": "Workspace UUID. Defaults to the MCP session's workspace when omitted."
+          },
+          "after": {
+            "type": "string",
+            "description": "Cursor from a previous page (alias of cursor): returns the page after it."
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Opaque cursor from meta.nextCursor of a previous page."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Maximum events per page (1-100)."
+          },
+          "event_type": {
+            "type": "string",
+            "description": "Optional event type filter. Comma-separate multiple types."
+          },
+          "aggregate_type": {
+            "type": "string",
+            "description": "Optional aggregate type filter (lowercase identifier)."
+          },
+          "session_id": {
+            "type": "string",
+            "description": "Optional bootstrap/session identifier returned by orgx_bootstrap."
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "initiatives:read"
+      ],
+      "readOnly": true,
+      "source": "contract",
+      "profiles": [
+        "commander",
+        "executor",
+        "observer"
+      ]
     },
     {
       "id": "approve_agent_work",
