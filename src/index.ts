@@ -83,6 +83,16 @@ import {
   evaluateLoopReliabilityReceipt,
   withReceiptEvidenceSourceClient,
 } from './loopReliabilityValidation';
+import {
+  AGENT_WORK_RECEIPTS_V1_PATH,
+  buildAgentWorkReceiptImportRequest,
+  shouldFallBackToLegacyReceipts,
+} from './agentWorkReceiptV1';
+import {
+  buildCompleteWorkCommandRequest,
+  buildCreateWorkCommandRequest,
+  buildEventsTailRequest,
+} from './workCommandContract';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
 import {
   buildRouteTaskEstimateSummary,
@@ -5561,7 +5571,7 @@ export class OrgXMcp extends McpAgent<
         case 'orgx_submit_receipt': {
           const loopValidation = evaluateLoopReliabilityReceipt(args);
           // Default attribution when the agent omitted it (explicit values
-          // pass through untouched). The app's receipts route derives
+          // pass through untouched). The app's legacy receipts route derives
           // agent_type from evidence-level fields only, so the resolved
           // client lands in evidence.source_client; the top-level reporting
           // value stays for forward compatibility.
@@ -5569,7 +5579,7 @@ export class OrgXMcp extends McpAgent<
             typeof args.source_client === 'string'
               ? null
               : this.resolveReportingSourceClient(args._context);
-          const receiptBody = withReceiptEvidenceSourceClient(
+          const legacyReceiptBody = withReceiptEvidenceSourceClient(
             {
               ...args,
               ...(receiptSourceClient
@@ -5579,12 +5589,99 @@ export class OrgXMcp extends McpAgent<
             },
             this.resolveSourceClient(args._context)
           );
+
+          // Preferred path: the hash-chained portable import at
+          // POST /api/v1/agent-work-receipts. It requires a workspace scope;
+          // without one the worker stays on the legacy route and says so.
+          const receiptWorkspaceId =
+            (typeof args.workspace_id === 'string' && args.workspace_id.trim()
+              ? args.workspace_id.trim()
+              : null) ??
+            this.sessionContext.workspaceId ??
+            null;
+
+          let fallbackReason: string | null = null;
+          if (receiptWorkspaceId) {
+            const v1Request = buildAgentWorkReceiptImportRequest(args, {
+              workspaceId: receiptWorkspaceId,
+              sourceClient:
+                (typeof args.source_client === 'string' &&
+                args.source_client.trim()
+                  ? args.source_client.trim()
+                  : null) ??
+                receiptSourceClient ??
+                this.resolveClientNameLabel(args._context),
+            });
+            try {
+              const response = await callOrgxApiJson(
+                this.env,
+                AGENT_WORK_RECEIPTS_V1_PATH,
+                {
+                  method: 'POST',
+                  body: JSON.stringify(v1Request.body),
+                },
+                { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
+              );
+              const result = (await response.json()) as Record<string, unknown>;
+              const payload = {
+                ...result,
+                _v2_tool: 'orgx_submit_receipt',
+                path: 'v1',
+                ...(typeof args.summary === 'string'
+                  ? { summary: args.summary }
+                  : {}),
+                ...(typeof args.verification_status === 'string'
+                  ? { verification_status: args.verification_status }
+                  : {}),
+                loop_validation: loopValidation,
+                ...(v1Request.warnings.length > 0
+                  ? { contract_warnings: v1Request.warnings }
+                  : {}),
+              };
+              return {
+                content: [{ type: 'text', text: formatForLLM('orgx_submit_receipt', payload) }],
+                structuredContent: payload,
+              };
+            } catch (error) {
+              if (
+                error instanceof OrgXApiError &&
+                shouldFallBackToLegacyReceipts(error.statusCode)
+              ) {
+                // Older self-hosted targets (404) or targets that reject the
+                // worker's credentials on the v1 namespace (401) keep the
+                // legacy write path; the result labels it path:'legacy'.
+                fallbackReason = `v1_${error.statusCode}`;
+              } else if (
+                error instanceof OrgXApiError &&
+                error.statusCode === 422
+              ) {
+                // The v1 schema rejected the adapted receipt. Surface the
+                // rejection instead of silently downgrading off the
+                // hash-chained path.
+                return this.toolError(error.message, {
+                  code: 'invalid_agent_work_receipt',
+                  status: 422,
+                  details: {
+                    path: 'v1',
+                    ...(v1Request.warnings.length > 0
+                      ? { contract_warnings: v1Request.warnings }
+                      : {}),
+                  },
+                });
+              } else {
+                throw error;
+              }
+            }
+          } else {
+            fallbackReason = 'missing_workspace_id';
+          }
+
           const response = await callOrgxApiJson(
             this.env,
             '/api/flywheel/receipts',
             {
               method: 'POST',
-              body: JSON.stringify(receiptBody),
+              body: JSON.stringify(legacyReceiptBody),
             },
             { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
           );
@@ -5592,10 +5689,159 @@ export class OrgXMcp extends McpAgent<
           const payload = {
             ...result,
             _v2_tool: 'orgx_submit_receipt',
+            path: 'legacy',
+            ...(fallbackReason ? { fallback_reason: fallbackReason } : {}),
             loop_validation: loopValidation,
           };
           return {
             content: [{ type: 'text', text: formatForLLM('orgx_submit_receipt', payload) }],
+            structuredContent: payload,
+          };
+        }
+
+        case 'orgx_create_work':
+        case 'orgx_complete_work': {
+          const commandWorkspaceId =
+            (typeof args.workspace_id === 'string' && args.workspace_id.trim()
+              ? args.workspace_id.trim()
+              : null) ??
+            this.sessionContext.workspaceId ??
+            null;
+          if (!commandWorkspaceId) {
+            return this.toolError(
+              `${toolId} requires workspace_id (none bound to this session — pass workspace_id or call orgx_bootstrap first)`,
+              {
+                code: 'invalid_input',
+                status: 400,
+                details: {
+                  field: 'workspace_id',
+                  suggested_next_calls: [{ tool: 'orgx_bootstrap', args: {} }],
+                },
+              }
+            );
+          }
+          const built =
+            toolId === 'orgx_create_work'
+              ? buildCreateWorkCommandRequest(args, {
+                  workspaceId: commandWorkspaceId,
+                })
+              : buildCompleteWorkCommandRequest(args, {
+                  workspaceId: commandWorkspaceId,
+                });
+          if (!built.ok) {
+            return this.toolError(built.message, {
+              code: 'invalid_input',
+              status: 400,
+              details: { field: built.field },
+            });
+          }
+          const response = await callOrgxApiJson(
+            this.env,
+            built.path,
+            {
+              method: 'POST',
+              headers: { 'Idempotency-Key': built.idempotencyKey },
+              body: JSON.stringify(built.body),
+            },
+            { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
+          );
+          const result = (await response.json()) as Record<string, unknown>;
+          const data =
+            result.data && typeof result.data === 'object'
+              ? (result.data as Record<string, unknown>)
+              : result;
+          const meta =
+            result.meta && typeof result.meta === 'object'
+              ? (result.meta as Record<string, unknown>)
+              : null;
+          const payload = {
+            ...data,
+            _v2_tool: toolId,
+            idempotency_key: built.idempotencyKey,
+            ...(toolId === 'orgx_create_work'
+              ? { command_id: (built as { body: { command_id: string } }).body.command_id }
+              : {}),
+            ...(meta ? { meta } : {}),
+          };
+          const duplicate = meta?.duplicate === true || data.duplicate === true;
+          const verb =
+            toolId === 'orgx_create_work' ? 'Work recorded' : 'Completion recorded';
+          return {
+            content: [
+              {
+                type: 'text',
+                text: duplicate
+                  ? `${verb} (idempotent replay) · key ${built.idempotencyKey}`
+                  : `${verb} · key ${built.idempotencyKey}`,
+              },
+            ],
+            structuredContent: payload,
+          };
+        }
+
+        case 'orgx_events_tail': {
+          const eventsWorkspaceId =
+            (typeof args.workspace_id === 'string' && args.workspace_id.trim()
+              ? args.workspace_id.trim()
+              : null) ??
+            this.sessionContext.workspaceId ??
+            null;
+          if (!eventsWorkspaceId) {
+            return this.toolError(
+              'orgx_events_tail requires workspace_id (none bound to this session — pass workspace_id or call orgx_bootstrap first)',
+              {
+                code: 'invalid_input',
+                status: 400,
+                details: {
+                  field: 'workspace_id',
+                  suggested_next_calls: [{ tool: 'orgx_bootstrap', args: {} }],
+                },
+              }
+            );
+          }
+          const built = buildEventsTailRequest(args, {
+            workspaceId: eventsWorkspaceId,
+          });
+          if (!built.ok) {
+            return this.toolError(built.message, {
+              code: 'invalid_input',
+              status: 400,
+              details: { field: built.field },
+            });
+          }
+          const response = await callOrgxApiJson(
+            this.env,
+            built.path,
+            undefined,
+            { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
+          );
+          const result = (await response.json()) as Record<string, unknown>;
+          const events = Array.isArray(result.data) ? result.data : [];
+          const meta =
+            result.meta && typeof result.meta === 'object'
+              ? (result.meta as Record<string, unknown>)
+              : null;
+          const payload = {
+            events,
+            meta,
+            _v2_tool: 'orgx_events_tail',
+          };
+          const hasMore = meta?.hasMore === true;
+          const nextCursor =
+            typeof meta?.nextCursor === 'string' ? meta.nextCursor : null;
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `${events.length} ledger event${
+                  events.length === 1 ? '' : 's'
+                }${
+                  hasMore && nextCursor
+                    ? ` · more available — call again with cursor=${nextCursor}`
+                    : ' · end of stream'
+                }`,
+              },
+            ],
             structuredContent: payload,
           };
         }

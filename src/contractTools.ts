@@ -36,6 +36,9 @@ export const V2_ORGX_TOOL_IDS = [
   'orgx_spawn',
   'orgx_decide',
   'orgx_submit_receipt',
+  'orgx_create_work',
+  'orgx_complete_work',
+  'orgx_events_tail',
 ] as const;
 
 export const V2_ORGX_TOOL_ID_SET = new Set<string>(V2_ORGX_TOOL_IDS);
@@ -448,6 +451,83 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     _meta: {
       'openai/toolInvocation/invoking': 'Submitting OrgX receipt...',
       'openai/toolInvocation/invoked': 'OrgX receipt submitted',
+    },
+  },
+  {
+    id: 'orgx_create_work',
+    title: 'Create Work (v1 Command)',
+    description:
+      'Accepts organizational work onto the v1 proof-runtime ledger (POST /api/v1/commands/create-work). Records the work item as a command event; it does not start external execution. Requires an existing initiative + workstream + milestone chain. An Idempotency-Key is generated when none is supplied; retrying with the same idempotency_key returns the original result instead of duplicating. USE WHEN: registering a ledger-backed work item under an existing milestone so its lifecycle is event-sourced. NEXT: orgx_complete_work when the work finishes, or orgx_events_tail to watch the recorded events. DO NOT USE WHEN: creating initiatives, workstreams, milestones, or ordinary tasks — use orgx_write; or when dispatching an agent — use orgx_spawn.',
+    inputSchema: {
+      workspace_id: z.string().optional().describe('Workspace UUID. Defaults to the MCP session\'s workspace when omitted.'),
+      title: z.string().min(1).describe('Work item title (max 240 characters).'),
+      description: z.string().optional().describe('Longer description (max 4000 characters).'),
+      initiative_id: z.string().describe('REQUIRED. Parent initiative UUID.'),
+      workstream_id: z.string().describe('REQUIRED. Parent workstream UUID.'),
+      milestone_id: z.string().describe('REQUIRED. Parent milestone UUID.'),
+      priority: z.enum(['low', 'medium', 'high', 'urgent']).optional().describe('Priority. Defaults to medium.'),
+      due_date: z.string().optional().describe('Due date as YYYY-MM-DD.'),
+      metadata: z.record(z.unknown()).optional().describe('Free-form JSON metadata stored on the work item.'),
+      estimated_cost_cents: z.number().int().nonnegative().optional().describe('Estimated cost in cents. Defaults to 0.'),
+      command_id: z.string().optional().describe('Client-supplied command UUID. Generated when omitted.'),
+      expected_aggregate_version: z.number().int().optional().describe('Must be 0 when provided — create-work targets a brand-new aggregate. Sent as 0 by default.'),
+      causation_id: z.string().optional().describe('Optional UUID of the event that caused this command.'),
+      correlation_id: z.string().optional().describe('Optional correlation UUID linking related commands.'),
+      idempotency_key: z.string().optional().describe('Client-supplied retry key sent as the Idempotency-Key header. Generated when omitted; reuse the same key to retry safely.'),
+      session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
+    _meta: {
+      'openai/toolInvocation/invoking': 'Creating v1 work item...',
+      'openai/toolInvocation/invoked': 'v1 work item recorded',
+    },
+  },
+  {
+    id: 'orgx_complete_work',
+    title: 'Complete Work (v1 Command)',
+    description:
+      'Marks a v1 ledger work item complete (POST /api/v1/commands/complete-work) with optimistic concurrency: expected_updated_at and expected_aggregate_version must match the current task record or the command returns a conflict — read them fresh, never guess. Records summary, evidence, and cost on the completion event; it does not verify the work. An Idempotency-Key is generated when none is supplied. USE WHEN: closing a ledger-backed work item created with orgx_create_work. NEXT: orgx_submit_receipt for durable proof of the completed work. DO NOT USE WHEN: completing ordinary OrgX tasks — use orgx_act (complete_with_proof); or on a version conflict — re-read the task and retry with current values.',
+    inputSchema: {
+      workspace_id: z.string().optional().describe('Workspace UUID. Defaults to the MCP session\'s workspace when omitted.'),
+      task_id: z.string().describe('REQUIRED. UUID of the ledger work item to complete.'),
+      expected_updated_at: z.string().describe('REQUIRED. The task\'s current updated_at as an ISO datetime with timezone offset. A mismatch returns a conflict.'),
+      expected_aggregate_version: z.number().int().nonnegative().describe('REQUIRED. The task\'s current aggregate version. A mismatch returns a conflict.'),
+      summary: z.string().optional().describe('Completion summary (max 4000 characters).'),
+      evidence: z.record(z.unknown()).optional().describe('Free-form JSON evidence recorded on the completion event.'),
+      cost_cents: z.number().int().nonnegative().optional().describe('Actual cost in cents. Defaults to 0.'),
+      causation_id: z.string().optional().describe('Optional UUID of the event that caused this command.'),
+      correlation_id: z.string().optional().describe('Optional correlation UUID linking related commands.'),
+      idempotency_key: z.string().optional().describe('Client-supplied retry key sent as the Idempotency-Key header. Generated when omitted; reuse the same key to retry safely.'),
+      session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+    securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
+    _meta: {
+      'openai/toolInvocation/invoking': 'Completing v1 work item...',
+      'openai/toolInvocation/invoked': 'v1 work completion recorded',
+    },
+  },
+  {
+    id: 'orgx_events_tail',
+    title: 'Tail Ledger Events (v1)',
+    description:
+      'Reads the workspace\'s v1 ledger event stream (GET /api/v1/events/stream) in JSON cursor-page mode — never SSE. Returns events newest-first plus meta.nextCursor/hasMore; pass the returned cursor back (cursor or after) to continue paging. Read-only. USE WHEN: tailing what the proof runtime recorded — work commands, completions, receipts — or resuming from a saved cursor. NEXT: orgx_inspect for one referenced entity, or call again with the returned cursor while hasMore=true.',
+    inputSchema: {
+      workspace_id: z.string().optional().describe('Workspace UUID. Defaults to the MCP session\'s workspace when omitted.'),
+      after: z.string().optional().describe('Cursor from a previous page (alias of cursor): returns the page after it.'),
+      cursor: z.string().optional().describe('Opaque cursor from meta.nextCursor of a previous page.'),
+      limit: z.number().int().min(1).max(100).optional().describe('Maximum events per page (1-100).'),
+      event_type: z.string().optional().describe('Optional event type filter. Comma-separate multiple types.'),
+      aggregate_type: z.string().optional().describe('Optional aggregate type filter (lowercase identifier).'),
+      session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
+    _meta: {
+      'openai/toolInvocation/invoking': 'Reading ledger events...',
+      'openai/toolInvocation/invoked': 'Ledger events ready',
+      'openai/readOnlyHint': true,
     },
   },
   {

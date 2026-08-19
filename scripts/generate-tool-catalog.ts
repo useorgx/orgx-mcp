@@ -92,6 +92,11 @@ const TOOL_CATEGORY_MAP: Record<string, string> = {
   orgx_decide: 'MCP v2 Public Surface',
   orgx_submit_receipt: 'MCP v2 Public Surface',
 
+  // v1 proof-runtime commands + ledger event stream
+  orgx_create_work: 'Proof Runtime v1',
+  orgx_complete_work: 'Proof Runtime v1',
+  orgx_events_tail: 'Proof Runtime v1',
+
   // High-recall wrapper tools for natural-language tool routing
   remember_decision: 'Recommended Entry Points',
   recall_memory: 'Recommended Entry Points',
