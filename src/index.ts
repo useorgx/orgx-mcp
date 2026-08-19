@@ -83,6 +83,11 @@ import {
   evaluateLoopReliabilityReceipt,
   withReceiptEvidenceSourceClient,
 } from './loopReliabilityValidation';
+import {
+  AGENT_WORK_RECEIPTS_V1_PATH,
+  buildAgentWorkReceiptImportRequest,
+  shouldFallBackToLegacyReceipts,
+} from './agentWorkReceiptV1';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
 import {
   buildRouteTaskEstimateSummary,
@@ -5561,7 +5566,7 @@ export class OrgXMcp extends McpAgent<
         case 'orgx_submit_receipt': {
           const loopValidation = evaluateLoopReliabilityReceipt(args);
           // Default attribution when the agent omitted it (explicit values
-          // pass through untouched). The app's receipts route derives
+          // pass through untouched). The app's legacy receipts route derives
           // agent_type from evidence-level fields only, so the resolved
           // client lands in evidence.source_client; the top-level reporting
           // value stays for forward compatibility.
@@ -5569,7 +5574,7 @@ export class OrgXMcp extends McpAgent<
             typeof args.source_client === 'string'
               ? null
               : this.resolveReportingSourceClient(args._context);
-          const receiptBody = withReceiptEvidenceSourceClient(
+          const legacyReceiptBody = withReceiptEvidenceSourceClient(
             {
               ...args,
               ...(receiptSourceClient
@@ -5579,12 +5584,99 @@ export class OrgXMcp extends McpAgent<
             },
             this.resolveSourceClient(args._context)
           );
+
+          // Preferred path: the hash-chained portable import at
+          // POST /api/v1/agent-work-receipts. It requires a workspace scope;
+          // without one the worker stays on the legacy route and says so.
+          const receiptWorkspaceId =
+            (typeof args.workspace_id === 'string' && args.workspace_id.trim()
+              ? args.workspace_id.trim()
+              : null) ??
+            this.sessionContext.workspaceId ??
+            null;
+
+          let fallbackReason: string | null = null;
+          if (receiptWorkspaceId) {
+            const v1Request = buildAgentWorkReceiptImportRequest(args, {
+              workspaceId: receiptWorkspaceId,
+              sourceClient:
+                (typeof args.source_client === 'string' &&
+                args.source_client.trim()
+                  ? args.source_client.trim()
+                  : null) ??
+                receiptSourceClient ??
+                this.resolveClientNameLabel(args._context),
+            });
+            try {
+              const response = await callOrgxApiJson(
+                this.env,
+                AGENT_WORK_RECEIPTS_V1_PATH,
+                {
+                  method: 'POST',
+                  body: JSON.stringify(v1Request.body),
+                },
+                { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
+              );
+              const result = (await response.json()) as Record<string, unknown>;
+              const payload = {
+                ...result,
+                _v2_tool: 'orgx_submit_receipt',
+                path: 'v1',
+                ...(typeof args.summary === 'string'
+                  ? { summary: args.summary }
+                  : {}),
+                ...(typeof args.verification_status === 'string'
+                  ? { verification_status: args.verification_status }
+                  : {}),
+                loop_validation: loopValidation,
+                ...(v1Request.warnings.length > 0
+                  ? { contract_warnings: v1Request.warnings }
+                  : {}),
+              };
+              return {
+                content: [{ type: 'text', text: formatForLLM('orgx_submit_receipt', payload) }],
+                structuredContent: payload,
+              };
+            } catch (error) {
+              if (
+                error instanceof OrgXApiError &&
+                shouldFallBackToLegacyReceipts(error.statusCode)
+              ) {
+                // Older self-hosted targets (404) or targets that reject the
+                // worker's credentials on the v1 namespace (401) keep the
+                // legacy write path; the result labels it path:'legacy'.
+                fallbackReason = `v1_${error.statusCode}`;
+              } else if (
+                error instanceof OrgXApiError &&
+                error.statusCode === 422
+              ) {
+                // The v1 schema rejected the adapted receipt. Surface the
+                // rejection instead of silently downgrading off the
+                // hash-chained path.
+                return this.toolError(error.message, {
+                  code: 'invalid_agent_work_receipt',
+                  status: 422,
+                  details: {
+                    path: 'v1',
+                    ...(v1Request.warnings.length > 0
+                      ? { contract_warnings: v1Request.warnings }
+                      : {}),
+                  },
+                });
+              } else {
+                throw error;
+              }
+            }
+          } else {
+            fallbackReason = 'missing_workspace_id';
+          }
+
           const response = await callOrgxApiJson(
             this.env,
             '/api/flywheel/receipts',
             {
               method: 'POST',
-              body: JSON.stringify(receiptBody),
+              body: JSON.stringify(legacyReceiptBody),
             },
             { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
           );
@@ -5592,6 +5684,8 @@ export class OrgXMcp extends McpAgent<
           const payload = {
             ...result,
             _v2_tool: 'orgx_submit_receipt',
+            path: 'legacy',
+            ...(fallbackReason ? { fallback_reason: fallbackReason } : {}),
             loop_validation: loopValidation,
           };
           return {
