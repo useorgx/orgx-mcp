@@ -2,7 +2,7 @@
  * Context-pack backbone (M).
  *
  * Fetches the compiled AgentContextPack for an entity from the app's
- * POST /api/client/context-pack endpoint, so any MCP client — including hookless
+ * POST /api/v1/context-pack endpoint, so any MCP client — including hookless
  * ones (Codex) — can start briefed by its first call. Attached additively to
  * orgx_inspect's response. Never throws.
  *
@@ -11,6 +11,7 @@
 import { callOrgxApiJson, type OrgxApiEnv } from './orgxApi';
 
 const PACKABLE_TYPES = new Set(['initiative', 'workstream', 'task']);
+export const CONTEXT_PACK_API_PATH = '/api/v1/context-pack';
 
 export interface ContextPackAnchor {
   type: string;
@@ -42,7 +43,7 @@ export async function fetchContextPack(
   try {
     const response = await callOrgxApiJson(
       env,
-      '/api/client/context-pack',
+      CONTEXT_PACK_API_PATH,
       { method: 'POST', body: JSON.stringify(buildContextPackRequestBody(anchor)) },
       { userId: userId ?? null }
     );
