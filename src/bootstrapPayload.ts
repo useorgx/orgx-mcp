@@ -75,26 +75,32 @@ export function resolveBootstrapSessionContext(
 } {
   const requestedWorkspaceId =
     nonEmptyString(args.workspace_id) ?? nonEmptyString(args.command_center_id);
-  if (!requestedWorkspaceId) {
+  const requestedInitiativeId = nonEmptyString(args.initiative_id);
+  if (!requestedWorkspaceId && !requestedInitiativeId) {
     return { context: current, changed: false, requestedWorkspaceId: null };
   }
 
-  const nextWorkspaceName =
-    fetchedWorkspaceName ??
-    (current.workspaceId === requestedWorkspaceId
-      ? current.workspaceName
-      : undefined);
-  const context = {
-    ...current,
-    workspaceId: requestedWorkspaceId,
-    workspaceName: nextWorkspaceName,
-  };
+  const context: BootstrapSessionContext = { ...current };
+  if (requestedWorkspaceId) {
+    const workspaceChanged = current.workspaceId !== requestedWorkspaceId;
+    context.workspaceId = requestedWorkspaceId;
+    context.workspaceName =
+      fetchedWorkspaceName ??
+      (workspaceChanged ? undefined : current.workspaceName);
+    if (workspaceChanged && !requestedInitiativeId) {
+      delete context.initiativeId;
+    }
+  }
+  if (requestedInitiativeId) {
+    context.initiativeId = requestedInitiativeId;
+  }
 
   return {
     context,
     changed:
       current.workspaceId !== context.workspaceId ||
-      current.workspaceName !== context.workspaceName,
+      current.workspaceName !== context.workspaceName ||
+      current.initiativeId !== context.initiativeId,
     requestedWorkspaceId,
   };
 }

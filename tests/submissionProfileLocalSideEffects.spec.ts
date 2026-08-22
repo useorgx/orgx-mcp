@@ -469,13 +469,46 @@ describe('submission profile worker-local side-effect suppression', () => {
       for (const spy of Object.values(spies)) {
         spy.mockClear();
       }
+      apiMocks.fetchContextPack.mockResolvedValueOnce({
+        entity: { id: INITIATIVE_ID, type: 'initiative' },
+        frame: {
+          anchor: {
+            id: INITIATIVE_ID,
+            type: 'initiative',
+            title: 'Directory review initiative',
+          },
+        },
+      });
 
       const result = await client.callTool({
         name: 'orgx_bootstrap',
-        arguments: {},
+        arguments: {
+          workspace_id: WORKSPACE_ID,
+          initiative_id: INITIATIVE_ID,
+        },
       });
 
       expect(result.isError).not.toBe(true);
+      expect(result.structuredContent).toMatchObject({
+        workspace: { id: WORKSPACE_ID },
+        initiative: { id: INITIATIVE_ID },
+        context_pack: {
+          entity: { id: INITIATIVE_ID, type: 'initiative' },
+        },
+      });
+      expect(result.content).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: 'text',
+            text: expect.stringContaining('Context pack:'),
+          }),
+        ])
+      );
+      expect(apiMocks.fetchContextPack).toHaveBeenCalledWith(
+        expect.any(Object),
+        'directory-reviewer',
+        { type: 'initiative', id: INITIATIVE_ID }
+      );
       expect(spies.waitUntil).toHaveBeenCalled();
       expect(spies.storagePut).toHaveBeenCalledWith(
         MCP_SESSION_REENTRY_STORAGE_KEY,

@@ -4610,15 +4610,71 @@ export class OrgXMcp extends McpAgent<
     return this.withOrgx(async () => {
       switch (toolId) {
         case 'orgx_bootstrap': {
-          const requestedWorkspaceId =
+          let requestedWorkspaceId =
             typeof args.workspace_id === 'string' && args.workspace_id.trim()
               ? args.workspace_id.trim()
               : typeof args.command_center_id === 'string' &&
                 args.command_center_id.trim()
               ? args.command_center_id.trim()
               : null;
+          const requestedInitiativeId =
+            typeof args.initiative_id === 'string' && args.initiative_id.trim()
+              ? args.initiative_id.trim()
+              : null;
           let fetchedWorkspaceName: string | null = null;
           let bootstrapArgs = args;
+          if (requestedInitiativeId) {
+            const initiative = await this.fetchEntityRecord(
+              'initiative',
+              requestedInitiativeId,
+              resolvedUserId
+            );
+            if (!initiative) {
+              return this.toolError(
+                `No initiative found for ${requestedInitiativeId}`,
+                {
+                  code: 'entity_not_found',
+                  status: 404,
+                  details: {
+                    entity_type: 'initiative',
+                    entity_id: requestedInitiativeId,
+                  },
+                }
+              );
+            }
+            const initiativeWorkspaceId =
+              typeof initiative.workspace_id === 'string' &&
+              initiative.workspace_id.trim()
+                ? initiative.workspace_id.trim()
+                : typeof initiative.command_center_id === 'string' &&
+                  initiative.command_center_id.trim()
+                ? initiative.command_center_id.trim()
+                : null;
+            if (
+              requestedWorkspaceId &&
+              initiativeWorkspaceId &&
+              requestedWorkspaceId !== initiativeWorkspaceId
+            ) {
+              return this.toolError(
+                'The requested initiative does not belong to the requested workspace',
+                {
+                  code: 'context_scope_mismatch',
+                  status: 409,
+                  details: {
+                    workspace_id: requestedWorkspaceId,
+                    initiative_id: requestedInitiativeId,
+                  },
+                }
+              );
+            }
+            if (!requestedWorkspaceId && initiativeWorkspaceId) {
+              requestedWorkspaceId = initiativeWorkspaceId;
+              bootstrapArgs = {
+                ...bootstrapArgs,
+                workspace_id: initiativeWorkspaceId,
+              };
+            }
+          }
           if (requestedWorkspaceId) {
             const workspace = await this.fetchEntityRecord(
               'workspace',
@@ -4678,12 +4734,21 @@ export class OrgXMcp extends McpAgent<
             };
             await this.saveSessionContext();
           }
-          const payload = this.buildBootstrapPayload(allowedTools ?? null);
+          const context_pack = this.sessionContext.initiativeId
+            ? await fetchContextPack(this.env, resolvedUserId, {
+                type: 'initiative',
+                id: this.sessionContext.initiativeId,
+              })
+            : null;
+          const payload = {
+            ...this.buildBootstrapPayload(allowedTools ?? null),
+            context_pack,
+          };
           return {
             content: [
               {
                 type: 'text',
-                text: `OrgX contract ready. Profile: ${payload.profile}. Visible tools: ${payload.visible_tools_count}.`,
+                text: formatForLLM('orgx_bootstrap', payload),
               },
             ],
             structuredContent: payload,

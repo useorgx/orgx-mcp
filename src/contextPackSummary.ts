@@ -149,10 +149,16 @@ export function formatContextPackSummary(
       lines.push('Decisions already made:');
       for (const decision of decisions.slice(0, Math.min(3, opts.maxItems))) {
         const choice = str(decision.choice) || 'Decision';
+        const disposition = str(decision.disposition);
+        const labelledChoice = disposition
+          ? `[${disposition}] ${choice}`
+          : choice;
         const rationale = str(decision.rationale);
         lines.push(
           `- ${truncateText(
-            rationale ? `${choice} - because ${rationale}` : choice,
+            rationale
+              ? `${labelledChoice} - because ${rationale}`
+              : labelledChoice,
             opts.maxFieldLength
           )}`
         );
