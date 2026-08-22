@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-19T19:12:34.690Z",
-  "sourceHash": "70a9bf7032605aaf",
+  "generatedAt": "2026-08-22T01:27:26.816Z",
+  "sourceHash": "7ad02e4f006035cd",
   "version": "1.0.0",
   "totalTools": 84,
   "categories": [
@@ -2942,7 +2942,7 @@
     {
       "id": "orgx_bootstrap",
       "title": "Bootstrap OrgX Contract",
-      "description": "Use at the start of a fresh session, after reconnecting, or before continuing work another agent left behind. Establishes OrgX session context, discovers granted scopes, returns the v2 tool routing map, and persists workspace/session continuity when the selected context changes. Also known as: bootstrap, setup, tool routing. USE WHEN: first call in a fresh session, after reconnecting, or before performing a multi-step workflow. NEXT: use orgx_search, orgx_inspect, or orgx_recommend based on the returned routing map. DO NOT USE WHEN: you already have session context and need to read or mutate work. Updates private session state; it does not change business records.",
+      "description": "Use at the start of a fresh session, after reconnecting, or before continuing work another agent left behind. Establishes OrgX session context, discovers granted scopes, returns the v2 tool routing map, and persists workspace/session continuity when the selected context changes. Pass initiative_id to bind an initiative and receive its compiled work context, including resolved decisions, acceptance checks, blockers, and artifact state. Also known as: bootstrap, setup, tool routing. USE WHEN: first call in a fresh session, after reconnecting, or before performing a multi-step workflow. NEXT: use orgx_search, orgx_inspect, or orgx_recommend based on the returned routing map. DO NOT USE WHEN: you already have session context and need to read or mutate work. Updates private session state; it does not change business records.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -2950,6 +2950,10 @@
           "workspace_id": {
             "type": "string",
             "description": "Canonical workspace UUID to bind as the active session workspace"
+          },
+          "initiative_id": {
+            "type": "string",
+            "description": "Optional initiative UUID to bind and hydrate as the active work context"
           },
           "conversation_id": {
             "type": "string",

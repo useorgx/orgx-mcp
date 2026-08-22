@@ -59,7 +59,7 @@
     {
       "name": "orgx_bootstrap",
       "title": "Bootstrap OrgX Session",
-      "description": "Use at the start of a fresh session or before continuing work another agent left behind. Establishes OrgX session context, granted scopes, and v2 routing guidance, and persists workspace/session continuity when context changes.",
+      "description": "Use at the start of a fresh session or before continuing work another agent left behind. Establishes OrgX session context, granted scopes, and v2 routing guidance. Pass initiative_id to bind an initiative and receive its compiled work context.",
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": false,

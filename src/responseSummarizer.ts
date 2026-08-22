@@ -490,6 +490,35 @@ function formatOrgxInspect(
   }`;
 }
 
+function formatOrgxBootstrap(
+  data: Record<string, unknown>,
+  opts: Required<FormatOptions>
+): string {
+  const profile = str(data.profile) || 'v2';
+  const visibleTools =
+    typeof data.visible_tools_count === 'number'
+      ? data.visible_tools_count
+      : Array.isArray(data.visible_tools)
+      ? data.visible_tools.length
+      : 0;
+  const lines = [
+    `OrgX contract ready. Profile: ${profile}. Visible tools: ${visibleTools}.`,
+  ];
+  const workspace = firstRecord(data.workspace);
+  const initiative = firstRecord(data.initiative);
+  if (workspace) {
+    lines.push(
+      `Workspace: ${str(workspace.name) || str(workspace.id) || 'bound'}.`
+    );
+  }
+  if (initiative) {
+    lines.push(`Initiative: ${str(initiative.id) || 'bound'}.`);
+  }
+  const context = formatContextPackSummary(data.context_pack, opts);
+  if (context) lines.push('', context);
+  return lines.join('\n');
+}
+
 function formatOrgxWrite(data: Record<string, unknown>): string {
   const operation = str(data.operation) || 'write';
   const replayed = data.idempotent_replay === true || data.replayed === true;
@@ -564,6 +593,9 @@ export function formatForLLM(
   const o: Required<FormatOptions> = { ...DEFAULT_OPTIONS, ...opts };
 
   switch (toolId) {
+    case 'orgx_bootstrap':
+      return formatOrgxBootstrap(data, o);
+
     case 'list_entities':
       if (data.hydrated_context) {
         return formatListEntitiesHydrated(data, o);

@@ -94,6 +94,7 @@ describe('response summarizer v2 OrgX workflows', () => {
             {
               id: 'decision-1',
               choice: 'Use context pack text mirror',
+              disposition: 'accepted',
               rationale: 'Hookless clients read text content first.',
             },
           ],
@@ -134,7 +135,7 @@ describe('response summarizer v2 OrgX workflows', () => {
     expect(text).toContain('MCP context not visible: Text channel omitted the pack.');
     expect(text).toContain('Decisions already made:');
     expect(text).toContain(
-      'Use context pack text mirror - because Hookless clients read text content first.'
+      '[accepted] Use context pack text mirror - because Hookless clients read text content first.'
     );
     expect(text).toContain('Recommended next:');
     expect(text).toContain('Inspect context pack in text channel (high)');
@@ -145,6 +146,35 @@ describe('response summarizer v2 OrgX workflows', () => {
     expect(text).not.toContain('schemaVersion');
     expect(text).not.toContain('compiledAt');
     expect(text).not.toContain('gf_v1');
+  });
+
+  it('mirrors bootstrap initiative context into the text channel', () => {
+    const text = formatForLLM('orgx_bootstrap', {
+      profile: 'executor',
+      visible_tools_count: 12,
+      workspace: { id: 'ws-1', name: 'OrgX' },
+      initiative: { id: 'init-1' },
+      context_pack: {
+        compiledAt: '2026-08-21T18:30:00.000Z',
+        frame: {
+          anchor: { type: 'initiative', id: 'init-1', title: 'Revenue Spine' },
+          decisions: [
+            {
+              id: 'decision-2',
+              choice: 'Do not send without approval',
+              disposition: 'rejected',
+              rationale: 'Authority remains pending.',
+            },
+          ],
+        },
+      },
+    });
+
+    expect(text).toContain('OrgX contract ready. Profile: executor. Visible tools: 12.');
+    expect(text).toContain('Workspace: OrgX.');
+    expect(text).toContain('Initiative: init-1.');
+    expect(text).toContain('Context pack:');
+    expect(text).toContain('[rejected] Do not send without approval');
   });
 
   it('summarizes orgx_write creates with chainable entity IDs', () => {

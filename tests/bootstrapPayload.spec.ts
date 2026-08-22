@@ -68,7 +68,7 @@ describe('bootstrap payload routing hints', () => {
   it('binds bootstrap workspace_id into session context before payload rendering', () => {
     expect(
       resolveBootstrapSessionContext(
-        { workspace_id: ' ws-123 ' },
+        { workspace_id: ' ws-123 ', initiative_id: 'init-1' },
         { initiativeId: 'init-1' },
         'Revenue Ops'
       )
@@ -111,6 +111,43 @@ describe('bootstrap payload routing hints', () => {
       changed: true,
       context: {
         workspaceId: 'ws-2',
+      },
+    });
+  });
+
+  it('binds an explicit initiative into the current workspace context', () => {
+    expect(
+      resolveBootstrapSessionContext(
+        { initiative_id: ' init-2 ' },
+        { workspaceId: 'ws-1', initiativeId: 'init-1' }
+      )
+    ).toEqual({
+      requestedWorkspaceId: null,
+      changed: true,
+      context: {
+        workspaceId: 'ws-1',
+        initiativeId: 'init-2',
+      },
+    });
+  });
+
+  it('clears a stale initiative when bootstrap switches workspaces without one', () => {
+    expect(
+      resolveBootstrapSessionContext(
+        { workspace_id: 'ws-2' },
+        {
+          workspaceId: 'ws-1',
+          workspaceName: 'Old Workspace',
+          initiativeId: 'init-old',
+        },
+        'New Workspace'
+      )
+    ).toEqual({
+      requestedWorkspaceId: 'ws-2',
+      changed: true,
+      context: {
+        workspaceId: 'ws-2',
+        workspaceName: 'New Workspace',
       },
     });
   });
