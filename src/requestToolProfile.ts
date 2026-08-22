@@ -7,6 +7,8 @@ type RequestContextWithProps = {
   props?: Record<string, unknown>;
 };
 
+export const ORGX_TOOL_PROFILE_HEADER = 'x-orgx-tool-profile';
+
 export type RequestHandler<Environment, Context> = {
   fetch(
     request: Request,
@@ -16,7 +18,7 @@ export type RequestHandler<Environment, Context> = {
 };
 
 /**
- * Resolve the URL-selected discovery profile at the API-handler boundary.
+ * Resolve the request-selected discovery profile at the API-handler boundary.
  *
  * OAuthProvider replaces `ctx.props` with the decrypted access-token props
  * before dispatching to `/mcp` or `/sse`, so this must run inside the handler
@@ -28,7 +30,9 @@ export function attachRequestToolProfile(
   request: Request,
   ctx: unknown
 ): void {
-  const requestedProfile = new URL(request.url).searchParams.get('profile');
+  const requestedProfile =
+    new URL(request.url).searchParams.get('profile') ??
+    request.headers.get(ORGX_TOOL_PROFILE_HEADER);
   const context = ctx as RequestContextWithProps;
   const resolved = resolveToolProfile(requestedProfile);
   const provablyInternal = context.props?.authSource === 'run_token';

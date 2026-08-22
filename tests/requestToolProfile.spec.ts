@@ -5,7 +5,10 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import serverManifest from '../server.json';
-import { withRequestToolProfile } from '../src/requestToolProfile';
+import {
+  ORGX_TOOL_PROFILE_HEADER,
+  withRequestToolProfile,
+} from '../src/requestToolProfile';
 import {
   CLAUDE_DIRECTORY_SURFACE,
   resolveProfileToolSet,
@@ -55,7 +58,7 @@ function createInMemoryMcpHandler() {
   });
 }
 
-describe('request URL tool-profile propagation', () => {
+describe('request tool-profile propagation', () => {
   it('uses the profile-aware handlers on the actual OAuthProvider API paths', () => {
     expect(workerSource).toContain(
       'const profileAwareHttpHandler = withRequestToolProfile(rateLimitedHttpHandler);'
@@ -97,6 +100,51 @@ describe('request URL tool-profile propagation', () => {
     expect(body.result.tools.map((tool) => tool.name)).toEqual([
       ...CLAUDE_DIRECTORY_SURFACE,
     ]);
+  });
+
+  it('accepts a profile header on the canonical OAuth resource URL', async () => {
+    const handler = createInMemoryMcpHandler();
+    const ctx: TestContext = { props: { userId: 'codex-user' } };
+    const response = await handler.fetch(
+      new Request('https://mcp.useorgx.com/mcp', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          [ORGX_TOOL_PROFILE_HEADER]: 'commander',
+        },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 6, method: 'tools/list' }),
+      }),
+      undefined,
+      ctx
+    );
+    const body = (await response.json()) as {
+      result: { tools: Array<{ name: string }> };
+    };
+
+    expect(ctx.props).toMatchObject({
+      userId: 'codex-user',
+      profile: 'commander',
+    });
+    expect(body.result.tools.map((tool) => tool.name)).toContain('orgx_expect');
+  });
+
+  it('keeps an explicit query profile authoritative over the header', async () => {
+    const handler = createInMemoryMcpHandler();
+    const ctx: TestContext = {};
+    await handler.fetch(
+      new Request('https://mcp.useorgx.com/mcp?profile=claude-directory', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          [ORGX_TOOL_PROFILE_HEADER]: 'commander',
+        },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 7, method: 'tools/list' }),
+      }),
+      undefined,
+      ctx
+    );
+
+    expect(ctx.props?.profile).toBe('claude-directory');
   });
 
   it('serves the seven-tool non-destructive directory profile with truthful read-only hints', async () => {
