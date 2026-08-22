@@ -5,6 +5,7 @@ export interface OrgxApiEnv {
   ORGX_INTERNAL_SECRET?: string;
   ORGX_API_TIMEOUT_MS?: string;
   ORGX_API_PRIMARY_TIMEOUT_MS?: string;
+  ORGX_BILLING_PLAN_TIMEOUT_MS?: string;
 }
 
 const DEFAULT_ORGX_API_TIMEOUT_MS = 30_000;

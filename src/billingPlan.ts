@@ -9,6 +9,7 @@ export type BillingPlanContext = {
 
 const BILLING_PLAN_CACHE_TTL_MS = 5 * 60 * 1000;
 const BILLING_PLAN_STALE_IF_ERROR_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_BILLING_PLAN_TIMEOUT_MS = 1_000;
 
 const billingPlanCache = new Map<
   string,
@@ -63,19 +64,34 @@ async function fetchBillingPlanContext(
   env: OrgxApiEnv,
   userId: string
 ): Promise<BillingPlanContext> {
-  const response = await callOrgxApiJson(
-    env,
-    '/api/billing/usage',
-    { method: 'GET' },
-    { userId }
+  const configuredTimeoutMs = Number(env.ORGX_BILLING_PLAN_TIMEOUT_MS);
+  const timeoutMs =
+    Number.isFinite(configuredTimeoutMs) && configuredTimeoutMs > 0
+      ? Math.floor(configuredTimeoutMs)
+      : DEFAULT_BILLING_PLAN_TIMEOUT_MS;
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort('billing plan lookup deadline exceeded'),
+    timeoutMs
   );
-  const usage = (await response.json()) as { plan?: unknown };
-  const plan = normalizeBillingPlan(usage.plan);
-  return {
-    plan,
-    tier: mapPlanToAccountTier(plan),
-    source: 'api',
-  };
+
+  try {
+    const response = await callOrgxApiJson(
+      env,
+      '/api/billing/usage',
+      { method: 'GET', signal: controller.signal },
+      { userId }
+    );
+    const usage = (await response.json()) as { plan?: unknown };
+    const plan = normalizeBillingPlan(usage.plan);
+    return {
+      plan,
+      tier: mapPlanToAccountTier(plan),
+      source: 'api',
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export async function resolveBillingPlanContext(
