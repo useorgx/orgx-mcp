@@ -98,6 +98,37 @@ describe('response summarizer v2 OrgX workflows', () => {
               rationale: 'Hookless clients read text content first.',
             },
           ],
+          expectations: [
+            {
+              id: 'expectation-pending',
+              metricRegistryId: 'orgx.run_receipt_coverage.v1',
+              state: 'pending',
+              predicate: { operator: 'gte', threshold: 0.95 },
+              minimumSampleSize: 20,
+            },
+            {
+              id: 'expectation-met',
+              metricRegistryId: 'orgx.run_receipt_coverage.v1',
+              state: 'met',
+              predicate: { operator: 'gte', threshold: 0.95 },
+              minimumSampleSize: 20,
+              observation: {
+                numerator: 19,
+                denominator: 20,
+                value: 0.95,
+              },
+            },
+            {
+              id: 'expectation-cancelled',
+              metricRegistryId: 'orgx.run_receipt_coverage.v1',
+              state: 'cancelled',
+            },
+            {
+              id: 'expectation-unsupported',
+              metricRegistryId: 'orgx.arbitrary_metric.v1',
+              state: 'met',
+            },
+          ],
           budget: {
             capCents: 800,
             spentCents: 150,
@@ -137,6 +168,17 @@ describe('response summarizer v2 OrgX workflows', () => {
     expect(text).toContain(
       '[accepted] Use context pack text mirror - because Hookless clients read text content first.'
     );
+    expect(text).toContain(
+      'Metric expectations (observations do not prove causation):'
+    );
+    expect(text).toContain(
+      '[pending] orgx.run_receipt_coverage.v1 - gte 0.95; minimum sample 20'
+    );
+    expect(text).toContain(
+      '[met] orgx.run_receipt_coverage.v1 - observed 19/20 (0.95); predicate gte 0.95'
+    );
+    expect(text).not.toContain('[cancelled]');
+    expect(text).not.toContain('orgx.arbitrary_metric.v1');
     expect(text).toContain('Recommended next:');
     expect(text).toContain('Inspect context pack in text channel (high)');
     expect(text).toContain('Missing permissions: billing.write');

@@ -165,6 +165,63 @@ export function formatContextPackSummary(
       }
     }
 
+    const expectations = recordArray(frame.expectations).filter(
+      (expectation) =>
+        expectation.metricRegistryId === 'orgx.run_receipt_coverage.v1' &&
+        (expectation.state === 'pending' ||
+          expectation.state === 'met' ||
+          expectation.state === 'not_met' ||
+          expectation.state === 'inconclusive')
+    );
+    if (expectations.length > 0) {
+      lines.push('Metric expectations (observations do not prove causation):');
+      for (const expectation of expectations.slice(
+        0,
+        Math.min(3, opts.maxItems)
+      )) {
+        const metric = str(expectation.metricRegistryId);
+        const state = str(expectation.state);
+        const predicate = firstRecord(expectation.predicate);
+        const operator = str(predicate?.operator);
+        const threshold = str(predicate?.threshold);
+        const predicateText = [operator, threshold].filter(Boolean).join(' ');
+        const minimumSampleSize = str(expectation.minimumSampleSize);
+        if (state === 'pending') {
+          const detail = [
+            predicateText,
+            minimumSampleSize ? `minimum sample ${minimumSampleSize}` : '',
+          ]
+            .filter(Boolean)
+            .join('; ');
+          lines.push(
+            `- ${truncateText(
+              `[pending] ${metric}${detail ? ` - ${detail}` : ''}`,
+              opts.maxFieldLength
+            )}`
+          );
+          continue;
+        }
+
+        const observation = firstRecord(expectation.observation);
+        const numerator = str(observation?.numerator);
+        const denominator = str(observation?.denominator);
+        const value = str(observation?.value);
+        const observed =
+          numerator && denominator
+            ? `observed ${numerator}/${denominator}${value ? ` (${value})` : ''}`
+            : 'resolved; observation details unavailable';
+        const detail = `${observed}${
+          predicateText ? `; predicate ${predicateText}` : ''
+        }`;
+        lines.push(
+          `- ${truncateText(
+            `[${state}] ${metric} - ${detail}`,
+            opts.maxFieldLength
+          )}`
+        );
+      }
+    }
+
     const chronology = firstRecord(frame.chronology);
     const recent = [
       str(chronology?.lastRun),

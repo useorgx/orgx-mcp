@@ -1,8 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { buildContextPackRequestBody, isPackableAnchor } from '../src/contextPack';
+import {
+  buildContextPackRequestBody,
+  CONTEXT_PACK_API_PATH,
+  isPackableAnchor,
+} from '../src/contextPack';
 
 describe('context pack helpers', () => {
   it('builds the app endpoint request body', () => {
+    expect(CONTEXT_PACK_API_PATH).toBe('/api/v1/context-pack');
     expect(buildContextPackRequestBody({ type: 'initiative', id: 'i1' })).toEqual({
       entity_type: 'initiative',
       entity_id: 'i1',
