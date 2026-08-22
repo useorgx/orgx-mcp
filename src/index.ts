@@ -97,6 +97,7 @@ import {
   buildCreateWorkCommandRequest,
   buildEventsTailRequest,
 } from './workCommandContract';
+import { buildMetricExpectationRequest } from './metricExpectationContract';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
 import {
   buildRouteTaskEstimateSummary,
@@ -5644,6 +5645,78 @@ export class OrgXMcp extends McpAgent<
             SECURITY_SCHEMES.writeRequiresAuth,
             allowedTools
           );
+        }
+
+        case 'orgx_expect': {
+          const expectationWorkspaceId =
+            (typeof args.workspace_id === 'string' && args.workspace_id.trim()
+              ? args.workspace_id.trim()
+              : null) ??
+            this.sessionContext.workspaceId ??
+            null;
+          if (!expectationWorkspaceId) {
+            return this.toolError(
+              'orgx_expect requires workspace_id (none bound to this session — pass workspace_id or call orgx_bootstrap first)',
+              {
+                code: 'invalid_input',
+                status: 400,
+                details: {
+                  field: 'workspace_id',
+                  suggested_next_calls: [{ tool: 'orgx_bootstrap', args: {} }],
+                },
+              }
+            );
+          }
+          const built = buildMetricExpectationRequest(args, {
+            workspaceId: expectationWorkspaceId,
+          });
+          if (!built.ok) {
+            return this.toolError(built.message, {
+              code: 'invalid_input',
+              status: 400,
+              details: { field: built.field },
+            });
+          }
+          const response = await callOrgxApiJson(
+            this.env,
+            built.path,
+            {
+              method: 'POST',
+              headers: { 'Idempotency-Key': built.idempotencyKey },
+              body: JSON.stringify(built.body),
+            },
+            {
+              userId: resolvedUserId,
+              userEmail: this.resolveUserEmail(),
+              orgxUserId: this.resolveOrgxUserId(resolvedUserId),
+            }
+          );
+          const result = (await response.json()) as Record<string, unknown>;
+          const expectation =
+            result.expectation && typeof result.expectation === 'object'
+              ? (result.expectation as Record<string, unknown>)
+              : null;
+          const replayed = result.replayed === true;
+          const expectationId =
+            typeof expectation?.id === 'string' ? expectation.id : null;
+          const payload = {
+            ...result,
+            _v2_tool: 'orgx_expect',
+            idempotency_key: built.idempotencyKey,
+          };
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `${
+                  replayed
+                    ? 'Metric expectation replayed'
+                    : 'Metric expectation registered'
+                }${expectationId ? ` · ${expectationId}` : ''} · observation pending`,
+              },
+            ],
+            structuredContent: payload,
+          };
         }
 
         case 'orgx_submit_receipt': {

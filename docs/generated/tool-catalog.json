@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-08-22T01:27:26.816Z",
-  "sourceHash": "7ad02e4f006035cd",
+  "generatedAt": "2026-08-22T02:11:22.029Z",
+  "sourceHash": "cc33bb5f64094e33",
   "version": "1.0.0",
-  "totalTools": 84,
+  "totalTools": 85,
   "categories": [
     "Agents",
     "Billing",
@@ -4711,6 +4711,87 @@
       "profiles": [
         "v2",
         "commander",
+        "executor"
+      ]
+    },
+    {
+      "id": "orgx_expect",
+      "title": "Register OrgX Metric Expectation",
+      "description": "Pre-registers one delayed, workspace-level outcome against an exact observer before its measurement window starts. The current bounded contract supports only orgx.run_receipt_coverage.v1: the share of non-benchmark terminal OrgX Business sessions whose schema-valid automatic Agent Work Receipt is stored within the configured deadline. It records a falsifiable threshold and sample-size gate; it does not infer causality, run arbitrary SQL, or match natural-language outcomes. Defaults reproduce the first production gate: at least 95% within 60 seconds over at least 20 runs. USE WHEN: work promises this delayed reliability result and the future window has not started. NEXT: let the scheduled observer resolve it after the window; inspect compiled context after resolution. DO NOT USE WHEN: reporting execution completion — use orgx_submit_receipt; or for an unsupported business metric.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "metric": {
+            "type": "string",
+            "const": "orgx.run_receipt_coverage.v1",
+            "description": "REQUIRED exact observer registry ID. No other metric is currently admitted."
+          },
+          "workspace_id": {
+            "type": "string",
+            "description": "Workspace UUID. Defaults to the MCP session workspace. The subject and metric scope are derived from this exact workspace."
+          },
+          "window_starts_at": {
+            "type": "string",
+            "description": "REQUIRED future ISO-8601 datetime with timezone offset. Registration is rejected after this window begins."
+          },
+          "window_ends_at": {
+            "type": "string",
+            "description": "REQUIRED ISO-8601 datetime with timezone offset, after window_starts_at and no more than 31 days later."
+          },
+          "threshold": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Required receipt coverage ratio. Defaults to 0.95. The predicate is fixed to greater-than-or-equal."
+          },
+          "minimum_sample_size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000,
+            "description": "Minimum terminal-run denominator required for a conclusive result. Defaults to 20."
+          },
+          "receipt_deadline_seconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3600,
+            "description": "Maximum seconds from terminal session end to durable automatic receipt. Defaults to 60."
+          },
+          "evaluation_interval_seconds": {
+            "type": "integer",
+            "minimum": 60,
+            "maximum": 86400,
+            "description": "Retry cadence when the observer is unavailable. Defaults to 300 seconds."
+          },
+          "idempotency_key": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Client-supplied retry key sent as Idempotency-Key. Generated when omitted; reuse the same key to replay safely."
+          },
+          "session_id": {
+            "type": "string",
+            "description": "Optional bootstrap/session identifier returned by orgx_bootstrap."
+          }
+        },
+        "required": [
+          "metric",
+          "window_starts_at",
+          "window_ends_at"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "initiatives:write"
+      ],
+      "readOnly": false,
+      "source": "contract",
+      "profiles": [
+        "v2",
+        "claude-plugin",
+        "memory",
+        "commander",
+        "planner",
         "executor"
       ]
     },

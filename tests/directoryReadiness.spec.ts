@@ -115,6 +115,7 @@ describe('Anthropic directory readiness', () => {
       'orgx_plan',
       'orgx_spawn',
       'orgx_decide',
+      'orgx_expect',
       'orgx_submit_receipt',
       'orgx_emit_activity',
       'orgx_request_attention',

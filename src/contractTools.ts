@@ -35,6 +35,7 @@ export const V2_ORGX_TOOL_IDS = [
   'orgx_plan',
   'orgx_spawn',
   'orgx_decide',
+  'orgx_expect',
   'orgx_submit_receipt',
   'orgx_create_work',
   'orgx_complete_work',
@@ -403,6 +404,30 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       'openai/toolInvocation/invoking': 'Updating OrgX decision...',
       'openai/toolInvocation/invoked': 'OrgX decision updated',
       ui: { resourceUri: WIDGET_URIS.decisions },
+    },
+  },
+  {
+    id: 'orgx_expect',
+    title: 'Register OrgX Metric Expectation',
+    description:
+      'Pre-registers one delayed, workspace-level outcome against an exact observer before its measurement window starts. The current bounded contract supports only orgx.run_receipt_coverage.v1: the share of non-benchmark terminal OrgX Business sessions whose schema-valid automatic Agent Work Receipt is stored within the configured deadline. It records a falsifiable threshold and sample-size gate; it does not infer causality, run arbitrary SQL, or match natural-language outcomes. Defaults reproduce the first production gate: at least 95% within 60 seconds over at least 20 runs. USE WHEN: work promises this delayed reliability result and the future window has not started. NEXT: let the scheduled observer resolve it after the window; inspect compiled context after resolution. DO NOT USE WHEN: reporting execution completion — use orgx_submit_receipt; or for an unsupported business metric.',
+    inputSchema: {
+      metric: z.literal('orgx.run_receipt_coverage.v1').describe('REQUIRED exact observer registry ID. No other metric is currently admitted.'),
+      workspace_id: z.string().optional().describe('Workspace UUID. Defaults to the MCP session workspace. The subject and metric scope are derived from this exact workspace.'),
+      window_starts_at: z.string().describe('REQUIRED future ISO-8601 datetime with timezone offset. Registration is rejected after this window begins.'),
+      window_ends_at: z.string().describe('REQUIRED ISO-8601 datetime with timezone offset, after window_starts_at and no more than 31 days later.'),
+      threshold: z.number().min(0).max(1).optional().describe('Required receipt coverage ratio. Defaults to 0.95. The predicate is fixed to greater-than-or-equal.'),
+      minimum_sample_size: z.number().int().min(1).max(100000).optional().describe('Minimum terminal-run denominator required for a conclusive result. Defaults to 20.'),
+      receipt_deadline_seconds: z.number().int().min(1).max(3600).optional().describe('Maximum seconds from terminal session end to durable automatic receipt. Defaults to 60.'),
+      evaluation_interval_seconds: z.number().int().min(60).max(86400).optional().describe('Retry cadence when the observer is unavailable. Defaults to 300 seconds.'),
+      idempotency_key: z.string().max(200).optional().describe('Client-supplied retry key sent as Idempotency-Key. Generated when omitted; reuse the same key to replay safely.'),
+      session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
+    _meta: {
+      'openai/toolInvocation/invoking': 'Registering metric expectation...',
+      'openai/toolInvocation/invoked': 'Metric expectation registered',
     },
   },
   {

@@ -69,6 +69,12 @@ const POST_DEPLOY_RECHECKS: PostDeployRecheck[] = [
     blocks: ['live schema still omits the new GTM artifact types'],
   },
   {
+    tool: 'orgx_expect',
+    probe: 'Call orgx_expect with the exact receipt-coverage metric, a future 24-hour window, and a disposable idempotency key.',
+    expected: 'Returns one pending workspace-bound expectation and replays the same ID for the same key.',
+    blocks: ['new tool has not yet been exercised through an authenticated installed client'],
+  },
+  {
     tool: 'consolidate_pr',
     probe: 'Call consolidate_pr against a harmless closed PR fixture after OrgX server-side GitHub credentials are configured.',
     expected: 'Returns an orchestration.consolidation_pass artifact or a structured non-auth blocker.',
@@ -283,6 +289,11 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
   orgx_decide: {
     tier: 'live_read_verified',
     evidence: ['live orgx_decide list_pending found disposable decision a25acdb6-cb60-4400-a11c-63fadd14d0a3 before approval and returned zero pending after approval, 2026-05-28', 'tests/decisionToolsContract.spec.ts'],
+  },
+  orgx_expect: {
+    tier: 'contract_and_unit',
+    evidence: ['tests/metricExpectationContract.spec.ts', 'tests/toolDiscoverySnapshot.spec.ts'],
+    remaining: 'Deploy and register a future disposable receipt-coverage expectation through an authenticated installed client.',
   },
   orgx_describe_action: {
     tier: 'public_discovery',
@@ -603,6 +614,7 @@ describe('MCP tool coverage matrix', () => {
       'orgx_act',
       'orgx_write',
       'orgx_attach',
+      'orgx_expect',
       'consolidate_pr',
     ]);
 

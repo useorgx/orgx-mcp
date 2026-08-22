@@ -90,6 +90,7 @@ validation or when the user/workspace sets a budget constraint.
 | `orgx_plan` | Start, resume, edit, improve, or complete a plan session. |
 | `orgx_spawn` | Guard, classify, spawn, or hand off specialist agent work. |
 | `orgx_decide` | Create, remember, approve, reject, or list decisions. |
+| `orgx_expect` | Pre-register the exact delayed receipt-coverage metric before its observation window starts. |
 | `orgx_submit_receipt` | Submit durable proof, attribution, quality, or outcome receipts. |
 | `orgx_emit_activity` | Emit append-only execution telemetry. |
 | `orgx_request_attention` | Forward a typed question, permission, approval, or recovery request with native continuation context. |

@@ -81,6 +81,16 @@ function successfulApiResponse(path: string, init?: RequestInit): Response {
       data: { id: 'decision-1', title: 'Scoped decision' },
     });
   }
+  if (path === '/api/v1/expectations') {
+    return Response.json({
+      expectation: {
+        id: '44444444-4444-4444-8444-444444444444',
+        workspace_id: WORKSPACE_ID,
+        state: 'pending',
+      },
+      replayed: false,
+    });
+  }
   if (path === '/api/tools/execute') {
     const request = JSON.parse(String(init?.body ?? '{}')) as {
       tool_id?: string;
@@ -228,6 +238,58 @@ afterEach(() => {
 });
 
 describe('OAuth scope enforcement through the live MCP registry', () => {
+  it('registers the exact receipt-coverage expectation with workspace-write authority', async () => {
+    const harness = await createHarness({ scope: 'initiatives:write' });
+    try {
+      const result = await harness.client.callTool({
+        name: 'orgx_expect',
+        arguments: {
+          metric: 'orgx.run_receipt_coverage.v1',
+          workspace_id: WORKSPACE_ID,
+          window_starts_at: '2026-08-22T03:00:00.000Z',
+          window_ends_at: '2026-08-23T03:00:00.000Z',
+          idempotency_key: 'receipt-coverage:oauth-test',
+        },
+      });
+
+      expect(result.isError).not.toBe(true);
+      expect(result.structuredContent).toMatchObject({
+        expectation: {
+          workspace_id: WORKSPACE_ID,
+          state: 'pending',
+        },
+        replayed: false,
+        idempotency_key: 'receipt-coverage:oauth-test',
+      });
+      const expectationCall = apiMocks.callOrgxApiJson.mock.calls.find(
+        ([, path]) => path === '/api/v1/expectations'
+      );
+      expect(expectationCall).toBeTruthy();
+      const init = expectationCall?.[2] as RequestInit | undefined;
+      expect(init?.headers).toEqual({
+        'Idempotency-Key': 'receipt-coverage:oauth-test',
+      });
+      expect(JSON.parse(String(init?.body ?? '{}'))).toMatchObject({
+        workspace_id: WORKSPACE_ID,
+        subject_ref: { type: 'workspace', id: WORKSPACE_ID },
+        metric_ref: {
+          registry_id: 'orgx.run_receipt_coverage.v1',
+          query_version: '1',
+          parameters: {
+            workspace_id: WORKSPACE_ID,
+            capture_path: 'automatic_session_summary',
+            exclude_benchmark: true,
+            receipt_deadline_seconds: 60,
+          },
+        },
+        predicate: { operator: 'gte', threshold: 0.95 },
+        minimum_sample_size: 20,
+      });
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
   it('advertises no private tools or initiative resource for an explicit empty grant', async () => {
     const harness = await createHarness({ scope: '' });
     try {

@@ -179,6 +179,7 @@ describe('toolProfiles backward compatibility', () => {
       'orgx_submit_receipt',
       'orgx_attach',
       'orgx_decide',
+      'orgx_expect',
       'orgx_bootstrap',
     ]) {
       expect(
