@@ -159,6 +159,40 @@ describe('context hydration access tiers', () => {
     });
   });
 
+  it('fails soft when billing usage exceeds its dedicated latency budget', async () => {
+    vi.useFakeTimers();
+    const { callOrgxApiJson } = await import('../src/orgxApi');
+    vi.mocked(callOrgxApiJson).mockImplementationOnce(
+      async (_env, _path, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener(
+            'abort',
+            () => reject(new DOMException('aborted', 'AbortError')),
+            { once: true }
+          );
+        })
+    );
+
+    const resolution = resolveHydrationAccessContext(
+      {
+        ORGX_API_URL: 'https://example.com',
+        ORGX_SERVICE_KEY: 'oxk-test',
+        ORGX_BILLING_PLAN_TIMEOUT_MS: '25',
+      },
+      'user-1'
+    );
+
+    await vi.advanceTimersByTimeAsync(24);
+    expect(callOrgxApiJson).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(1);
+    await expect(resolution).resolves.toEqual({ tier: 'free', plan: 'free' });
+    expect(
+      (vi.mocked(callOrgxApiJson).mock.calls[0]?.[2]?.signal as AbortSignal)
+        .aborted
+    ).toBe(true);
+  });
+
   it('uses stale paid access when billing usage refresh fails', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-07-08T12:00:00Z'));
