@@ -5689,6 +5689,10 @@ export class OrgXMcp extends McpAgent<
               userId: resolvedUserId,
               userEmail: this.resolveUserEmail(),
               orgxUserId: this.resolveOrgxUserId(resolvedUserId),
+              // Expectation registration is a write. Keep the full API timeout
+              // on the canonical origin and fail closed instead of falling
+              // through to a fallback that may run a different release.
+              allowFallback: false,
             }
           );
           const result = (await response.json()) as Record<string, unknown>;

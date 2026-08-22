@@ -269,6 +269,7 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
       expect(init?.headers).toEqual({
         'Idempotency-Key': 'receipt-coverage:oauth-test',
       });
+      expect(expectationCall?.[3]).toMatchObject({ allowFallback: false });
       expect(JSON.parse(String(init?.body ?? '{}'))).toMatchObject({
         workspace_id: WORKSPACE_ID,
         subject_ref: { type: 'workspace', id: WORKSPACE_ID },
