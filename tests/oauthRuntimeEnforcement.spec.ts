@@ -245,6 +245,96 @@ afterEach(() => {
 });
 
 describe('OAuth scope enforcement through the live MCP registry', () => {
+  it('tails material context changes through the live read-only MCP surface', async () => {
+    const harness = await createHarness({
+      scope: AUTHORIZATION_PRESETS.read.scopes.join(' '),
+    });
+    try {
+      apiMocks.callOrgxApiJson.mockImplementation(
+        async (_env: unknown, path: string, init?: RequestInit) => {
+          if (path.startsWith('/api/v1/events/stream?')) {
+            return Response.json({
+              data: [
+                {
+                  eventType: 'decision.approved',
+                  globalSequence: 2492,
+                },
+              ],
+              meta: {
+                afterSequence: 2491,
+                nextAfterSequence: 2492,
+                hasMore: false,
+                delivery: 'sequence_tail',
+              },
+            });
+          }
+          return successfulApiResponse(path, init);
+        }
+      );
+
+      const result = await harness.client.callTool({
+        name: 'orgx_tail',
+        arguments: {
+          capsule_id: 'capsule_0123456789abcdef01234567',
+          after_sequence: 2491,
+          workspace_id: WORKSPACE_ID,
+        },
+      });
+
+      expect(result.isError).not.toBe(true);
+      expect(result.structuredContent).toMatchObject({
+        _v2_tool: 'orgx_tail',
+        capsule_id: 'capsule_0123456789abcdef01234567',
+        after_sequence: 2491,
+        next_after_sequence: 2492,
+        has_more: false,
+        material_changes: [
+          {
+            eventType: 'decision.approved',
+            globalSequence: 2492,
+          },
+        ],
+        coverage: {
+          supported_event_types: [
+            'decision.approved',
+            'decision.superseded',
+            'autonomy.lease_changed',
+            'blocker.opened',
+            'blocker.resolved',
+            'blocker.dismissed',
+          ],
+          unavailable_change_classes: [
+            'constraint.added_or_revoked',
+            'expectation.resolved',
+            'learning.applied',
+            'incident.opened',
+          ],
+        },
+      });
+      expect(result.content).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: 'text',
+            text: expect.stringContaining('not ledger-backed yet'),
+          }),
+        ])
+      );
+
+      const tailCall = apiMocks.callOrgxApiJson.mock.calls.find(([, path]) =>
+        String(path).startsWith('/api/v1/events/stream?')
+      );
+      expect(tailCall).toBeTruthy();
+      const url = new URL(`https://api.useorgx.test${String(tailCall?.[1])}`);
+      expect(url.searchParams.get('workspace_id')).toBe(WORKSPACE_ID);
+      expect(url.searchParams.get('after_sequence')).toBe('2491');
+      expect(url.searchParams.get('event_type')).toBe(
+        'decision.approved,decision.superseded,autonomy.lease_changed,blocker.opened,blocker.resolved,blocker.dismissed'
+      );
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
   it('registers the exact receipt-coverage expectation with workspace-write authority', async () => {
     const harness = await createHarness({ scope: 'initiatives:write' });
     try {

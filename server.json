@@ -67,6 +67,16 @@
       }
     },
     {
+      "name": "orgx_tail",
+      "title": "Tail Material Context Changes",
+      "description": "Use during a long-running session to read accepted material state changes since orgx_bootstrap. Returns the currently ledger-backed material allowlist in ascending global-sequence order and explicitly reports unavailable change classes.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
       "name": "orgx_search",
       "title": "Search OrgX Memory",
       "description": "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Typed searches do not change business records; mixed relevance search records metered MCP allowance usage.",

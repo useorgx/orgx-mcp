@@ -40,6 +40,7 @@ export const V2_ORGX_TOOL_IDS = [
   'orgx_create_work',
   'orgx_complete_work',
   'orgx_events_tail',
+  'orgx_tail',
 ] as const;
 
 export const V2_ORGX_TOOL_ID_SET = new Set<string>(V2_ORGX_TOOL_IDS);
@@ -553,6 +554,51 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     _meta: {
       'openai/toolInvocation/invoking': 'Reading ledger events...',
       'openai/toolInvocation/invoked': 'Ledger events ready',
+      'openai/readOnlyHint': true,
+    },
+  },
+  {
+    id: 'orgx_tail',
+    title: 'Tail Material Context Changes',
+    description:
+      'Use during a long-running session to read accepted material state changes since orgx_bootstrap. Pass the exact capsule_id and as_of_global_sequence returned by bootstrap. Returns only the currently ledger-backed allowlist in ascending global-sequence order: accepted/superseded decisions, authority lease changes, and blocker changes. It explicitly reports material classes that are not ledger-backed yet. Read-only. USE WHEN: the session may have outlived its bootstrap context. NEXT: apply the returned changes or call again with next_after_sequence while has_more=true. DO NOT USE: as a substitute for orgx_bootstrap or to infer expectation resolution, applied learning, constraints, or incidents that the coverage boundary marks unavailable.',
+    inputSchema: {
+      capsule_id: z
+        .string()
+        .regex(/^capsule_[0-9a-f]{24}$/)
+        .describe('Exact capsule_id returned by orgx_bootstrap.'),
+      after_sequence: z
+        .number()
+        .int()
+        .nonnegative()
+        .max(Number.MAX_SAFE_INTEGER)
+        .describe('Exact as_of_global_sequence or next_after_sequence from the previous call.'),
+      workspace_id: z
+        .string()
+        .uuid()
+        .optional()
+        .describe('Workspace UUID. Defaults to the MCP session workspace.'),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(100)
+        .optional()
+        .describe('Maximum material changes per page (1-100).'),
+      session_id: z
+        .string()
+        .optional()
+        .describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
+    },
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: false,
+    },
+    securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
+    _meta: {
+      'openai/toolInvocation/invoking': 'Reading material context changes...',
+      'openai/toolInvocation/invoked': 'Material context changes ready',
       'openai/readOnlyHint': true,
     },
   },

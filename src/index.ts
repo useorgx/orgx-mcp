@@ -94,8 +94,12 @@ import {
 } from './agentWorkReceiptV1';
 import {
   buildCompleteWorkCommandRequest,
+  buildContextTailRequest,
   buildCreateWorkCommandRequest,
   buildEventsTailRequest,
+  CONTEXT_TAIL_MATERIAL_EVENT_TYPES,
+  CONTEXT_TAIL_SUPPORTED_CHANGE_CLASSES,
+  CONTEXT_TAIL_UNAVAILABLE_CHANGE_CLASSES,
 } from './workCommandContract';
 import { buildMetricExpectationRequest } from './metricExpectationContract';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
@@ -6008,6 +6012,86 @@ export class OrgXMcp extends McpAgent<
               },
             ],
             structuredContent: payload,
+          };
+        }
+
+        case 'orgx_tail': {
+          const tailWorkspaceId =
+            (typeof args.workspace_id === 'string' && args.workspace_id.trim()
+              ? args.workspace_id.trim()
+              : null) ??
+            this.sessionContext.workspaceId ??
+            null;
+          if (!tailWorkspaceId) {
+            return this.toolError(
+              'orgx_tail requires workspace_id (none bound to this session — pass workspace_id or call orgx_bootstrap first)',
+              {
+                code: 'invalid_input',
+                status: 400,
+                details: {
+                  field: 'workspace_id',
+                  suggested_next_calls: [{ tool: 'orgx_bootstrap', args: {} }],
+                },
+              }
+            );
+          }
+          const built = buildContextTailRequest(args, {
+            workspaceId: tailWorkspaceId,
+          });
+          if (!built.ok) {
+            return this.toolError(built.message, {
+              code: 'invalid_input',
+              status: 400,
+              details: { field: built.field },
+            });
+          }
+          const response = await callOrgxApiJson(
+            this.env,
+            built.path,
+            undefined,
+            {
+              userId: resolvedUserId,
+              userEmail: this.resolveUserEmail(),
+              orgxUserId: this.resolveOrgxUserId(resolvedUserId),
+            }
+          );
+          const result = (await response.json()) as Record<string, unknown>;
+          const materialChanges = Array.isArray(result.data) ? result.data : [];
+          const meta =
+            result.meta && typeof result.meta === 'object'
+              ? (result.meta as Record<string, unknown>)
+              : null;
+          const nextAfterSequence =
+            typeof meta?.nextAfterSequence === 'number'
+              ? meta.nextAfterSequence
+              : built.afterSequence;
+          const hasMore = meta?.hasMore === true;
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `${materialChanges.length} material context change${
+                  materialChanges.length === 1 ? '' : 's'
+                } after sequence ${built.afterSequence} · next sequence ${nextAfterSequence}${
+                  hasMore ? ' · more available' : ''
+                }\nCoverage boundary: expectation resolution, applied learning, constraints, and incidents are not ledger-backed yet.`,
+              },
+            ],
+            structuredContent: {
+              _v2_tool: 'orgx_tail',
+              capsule_id: built.capsuleId,
+              after_sequence: built.afterSequence,
+              next_after_sequence: nextAfterSequence,
+              has_more: hasMore,
+              material_changes: materialChanges,
+              coverage: {
+                supported_event_types: CONTEXT_TAIL_MATERIAL_EVENT_TYPES,
+                supported_change_classes:
+                  CONTEXT_TAIL_SUPPORTED_CHANGE_CLASSES,
+                unavailable_change_classes:
+                  CONTEXT_TAIL_UNAVAILABLE_CHANGE_CLASSES,
+              },
+            },
           };
         }
 

@@ -19,6 +19,30 @@ export const CREATE_WORK_V1_PATH = '/api/v1/commands/create-work';
 export const COMPLETE_WORK_V1_PATH = '/api/v1/commands/complete-work';
 export const EVENTS_STREAM_V1_PATH = '/api/v1/events/stream';
 
+export const CONTEXT_TAIL_MATERIAL_EVENT_TYPES = [
+  'decision.approved',
+  'decision.superseded',
+  'autonomy.lease_changed',
+  'blocker.opened',
+  'blocker.resolved',
+  'blocker.dismissed',
+] as const;
+
+export const CONTEXT_TAIL_SUPPORTED_CHANGE_CLASSES = [
+  'decision.accepted',
+  'decision.superseded',
+  'authority.changed',
+  'blocker.opened',
+  'blocker.resolved',
+] as const;
+
+export const CONTEXT_TAIL_UNAVAILABLE_CHANGE_CLASSES = [
+  'constraint.added_or_revoked',
+  'expectation.resolved',
+  'learning.applied',
+  'incident.opened',
+] as const;
+
 export const WORK_COMMAND_PRIORITIES = [
   'low',
   'medium',
@@ -36,6 +60,7 @@ const DATETIME_WITH_OFFSET_RE =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 /** Route validates aggregate_type as /^[a-z][a-z0-9_.-]{0,99}$/. */
 const AGGREGATE_TYPE_RE = /^[a-z][a-z0-9_.-]{0,99}$/;
+const CONTEXT_CAPSULE_ID_RE = /^capsule_[0-9a-f]{24}$/;
 
 const MAX_TITLE_LENGTH = 240;
 const MAX_SUMMARY_LENGTH = 4000;
@@ -99,6 +124,14 @@ export type EventsTailRequest = {
   ok: true;
   /** Fully query-encoded GET path. */
   path: string;
+};
+
+export type ContextTailRequest = {
+  ok: true;
+  /** Fully query-encoded GET path. */
+  path: string;
+  capsuleId: string;
+  afterSequence: number;
 };
 
 function fail(field: string, message: string): WorkCommandBuildError {
@@ -396,5 +429,62 @@ export function buildEventsTailRequest(
   return {
     ok: true,
     path: `${EVENTS_STREAM_V1_PATH}?${params.toString()}`,
+  };
+}
+
+/** Build the bounded material-change read used by orgx_tail. */
+export function buildContextTailRequest(
+  args: JsonRecord,
+  options: { workspaceId: string }
+): ContextTailRequest | WorkCommandBuildError {
+  const workspaceId = requireUuid(options.workspaceId, 'workspace_id');
+  if ('ok' in workspaceId) return workspaceId;
+
+  const capsuleId = nonEmptyString(args.capsule_id);
+  if (!capsuleId || !CONTEXT_CAPSULE_ID_RE.test(capsuleId)) {
+    return fail(
+      'capsule_id',
+      'capsule_id must be the capsule_<24 lowercase hex> value returned by orgx_bootstrap'
+    );
+  }
+
+  const afterSequence = args.after_sequence;
+  if (
+    typeof afterSequence !== 'number' ||
+    !Number.isSafeInteger(afterSequence) ||
+    afterSequence < 0
+  ) {
+    return fail(
+      'after_sequence',
+      'after_sequence must be the non-negative safe integer returned by orgx_bootstrap'
+    );
+  }
+
+  const limit = args.limit;
+  if (
+    limit !== undefined &&
+    limit !== null &&
+    (typeof limit !== 'number' ||
+      !Number.isInteger(limit) ||
+      limit < 1 ||
+      limit > MAX_EVENT_LIMIT)
+  ) {
+    return fail(
+      'limit',
+      `limit must be an integer between 1 and ${MAX_EVENT_LIMIT}`
+    );
+  }
+
+  const params = new URLSearchParams();
+  params.set('workspace_id', workspaceId.value);
+  params.set('after_sequence', String(afterSequence));
+  params.set('event_type', CONTEXT_TAIL_MATERIAL_EVENT_TYPES.join(','));
+  if (typeof limit === 'number') params.set('limit', String(limit));
+
+  return {
+    ok: true,
+    path: `${EVENTS_STREAM_V1_PATH}?${params.toString()}`,
+    capsuleId,
+    afterSequence,
   };
 }

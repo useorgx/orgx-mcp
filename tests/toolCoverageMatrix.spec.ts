@@ -397,6 +397,11 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     tier: 'contract_and_unit',
     evidence: ['tests/workCommandContract.spec.ts', 'tests/toolDiscoverySnapshot.spec.ts'],
   },
+  orgx_tail: {
+    tier: 'contract_and_unit',
+    evidence: ['tests/workCommandContract.spec.ts', 'tests/toolDiscoverySnapshot.spec.ts'],
+    remaining: 'Exercise through an authenticated installed client after the app after_sequence endpoint and this worker are deployed.',
+  },
   orgx_write: {
     tier: 'live_read_verified',
     evidence: ['live orgx_write restored initiative after dry_run mutation, 2026-05-27', 'live orgx_write created disposable pending decision a25acdb6-cb60-4400-a11c-63fadd14d0a3 with workspace_id on initiative e617b132-78dd-4bea-a213-5a841b484ee2, 2026-05-28', 'tests/descriptionQuality.spec.ts', 'tests/toolDiscoverySnapshot.spec.ts', 'tests/contractTools.spec.ts'],
