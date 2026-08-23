@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { authHandler } from '../src/authHandler';
+import {
+  authHandler,
+  isOAuthAuthorizationServerMetadataPath,
+} from '../src/authHandler';
 import { signMcpIdentityToken } from '../src/mcpIdentityToken';
 
 function createCtx() {
@@ -20,6 +23,42 @@ function createKv(initial: Record<string, string> = {}) {
     store,
   };
 }
+
+describe('OAuth authorization server discovery', () => {
+  it('serves the exact metadata route with browser-readable CORS headers', async () => {
+    expect(
+      isOAuthAuthorizationServerMetadataPath(
+        '/.well-known/oauth-authorization-server'
+      )
+    ).toBe(true);
+
+    const response = await authHandler.fetch(
+      new Request(
+        'https://mcp.useorgx.com/.well-known/oauth-authorization-server',
+        { headers: { origin: 'https://platform.openai.com' } }
+      ),
+      {
+        MCP_SERVER_URL: 'https://mcp.useorgx.com',
+        ORGX_WEB_URL: 'https://useorgx.com',
+      },
+      createCtx()
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+    expect(response.headers.get('Access-Control-Allow-Methods')).toContain(
+      'GET'
+    );
+    const body = (await response.json()) as {
+      authorization_endpoint?: string;
+      code_challenge_methods_supported?: string[];
+    };
+    expect(body.authorization_endpoint).toBe(
+      'https://mcp.useorgx.com/authorize'
+    );
+    expect(body.code_challenge_methods_supported).toEqual(['S256']);
+  });
+});
 
 describe('authHandler root landing page routing', () => {
   it.each([

@@ -1046,12 +1046,12 @@ export const authHandler = {
     }
 
     // =========================================================================
-    // Authorization Server Metadata — path variants (RFC 8414)
-    // The OAuthProvider auto-serves /.well-known/oauth-authorization-server
-    // (exact match), but path variants like /mcp and /sse fall through here.
+    // Authorization Server Metadata (RFC 8414)
+    // Serve both the exact route and path variants through the app handler so
+    // browser-based MCP clients receive the same CORS contract.
     // =========================================================================
-    if (url.pathname.startsWith('/.well-known/oauth-authorization-server/')) {
-      console.info('[auth:discovery] Auth server metadata (path variant)', {
+    if (isOAuthAuthorizationServerMetadataPath(url.pathname)) {
+      console.info('[auth:discovery] Auth server metadata requested', {
         path: url.pathname,
         userAgent: request.headers.get('user-agent')?.substring(0, 80),
       });
@@ -1072,6 +1072,7 @@ export const authHandler = {
         ],
         revocation_endpoint: `${serverUrl}/token`,
         code_challenge_methods_supported: ['S256'],
+        client_id_metadata_document_supported: false,
       };
       return withCors(
         Response.json(metadata, {
@@ -1864,6 +1865,15 @@ async function handleAuthorize(
   });
 
   return Response.redirect(signInUrl.toString(), 302);
+}
+
+export function isOAuthAuthorizationServerMetadataPath(
+  pathname: string
+): boolean {
+  return (
+    pathname === '/.well-known/oauth-authorization-server' ||
+    pathname.startsWith('/.well-known/oauth-authorization-server/')
+  );
 }
 
 /**
