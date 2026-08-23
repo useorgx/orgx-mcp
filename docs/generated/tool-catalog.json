@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-08-22T02:11:22.029Z",
-  "sourceHash": "cc33bb5f64094e33",
+  "generatedAt": "2026-08-23T02:47:22.200Z",
+  "sourceHash": "613390ba236ae8b5",
   "version": "1.0.0",
-  "totalTools": 85,
+  "totalTools": 86,
   "categories": [
     "Agents",
     "Billing",
@@ -5405,6 +5405,61 @@
         "commander",
         "planner",
         "executor"
+      ]
+    },
+    {
+      "id": "orgx_tail",
+      "title": "Tail Material Context Changes",
+      "description": "Use during a long-running session to read accepted material state changes since orgx_bootstrap. Pass the exact capsule_id and as_of_global_sequence returned by bootstrap. Returns only the currently ledger-backed allowlist in ascending global-sequence order: accepted/superseded decisions, authority lease changes, and blocker changes. It explicitly reports material classes that are not ledger-backed yet. Read-only. USE WHEN: the session may have outlived its bootstrap context. NEXT: apply the returned changes or call again with next_after_sequence while has_more=true. DO NOT USE: as a substitute for orgx_bootstrap or to infer expectation resolution, applied learning, constraints, or incidents that the coverage boundary marks unavailable.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "capsule_id": {
+            "type": "string",
+            "pattern": "^capsule_[0-9a-f]{24}$",
+            "description": "Exact capsule_id returned by orgx_bootstrap."
+          },
+          "after_sequence": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Exact as_of_global_sequence or next_after_sequence from the previous call."
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Workspace UUID. Defaults to the MCP session workspace."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Maximum material changes per page (1-100)."
+          },
+          "session_id": {
+            "type": "string",
+            "description": "Optional bootstrap/session identifier returned by orgx_bootstrap."
+          }
+        },
+        "required": [
+          "capsule_id",
+          "after_sequence"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "initiatives:read"
+      ],
+      "readOnly": true,
+      "source": "contract",
+      "profiles": [
+        "v2",
+        "claude-plugin",
+        "commander",
+        "executor",
+        "observer"
       ]
     },
     {
