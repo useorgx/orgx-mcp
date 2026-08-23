@@ -256,7 +256,7 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
             return Response.json({
               data: [
                 {
-                  eventType: 'decision.approved',
+                  eventType: 'expectation.registered',
                   globalSequence: 2492,
                 },
               ],
@@ -290,7 +290,7 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
         has_more: false,
         material_changes: [
           {
-            eventType: 'decision.approved',
+            eventType: 'expectation.registered',
             globalSequence: 2492,
           },
         ],
@@ -302,10 +302,20 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
             'blocker.opened',
             'blocker.resolved',
             'blocker.dismissed',
+            'expectation.registered',
+            'expectation.resolved',
+          ],
+          supported_change_classes: [
+            'decision.accepted',
+            'decision.superseded',
+            'authority.changed',
+            'blocker.opened',
+            'blocker.resolved',
+            'expectation.registered',
+            'expectation.resolved',
           ],
           unavailable_change_classes: [
             'constraint.added_or_revoked',
-            'expectation.resolved',
             'learning.applied',
             'incident.opened',
           ],
@@ -328,7 +338,7 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
       expect(url.searchParams.get('workspace_id')).toBe(WORKSPACE_ID);
       expect(url.searchParams.get('after_sequence')).toBe('2491');
       expect(url.searchParams.get('event_type')).toBe(
-        'decision.approved,decision.superseded,autonomy.lease_changed,blocker.opened,blocker.resolved,blocker.dismissed'
+        'decision.approved,decision.superseded,autonomy.lease_changed,blocker.opened,blocker.resolved,blocker.dismissed,expectation.registered,expectation.resolved'
       );
     } finally {
       await closeHarness(harness);
