@@ -5,6 +5,8 @@ export interface ContextPackSummaryOptions {
   maxFieldLength: number;
 }
 
+const CONTEXT_CAPSULE_SCHEMA_VERSION = 'orgx.context-capsule/v1';
+
 function str(v: unknown): string {
   if (typeof v === 'string') return v;
   if (typeof v === 'number' || typeof v === 'boolean') return String(v);
@@ -45,6 +47,105 @@ function formatCents(cents: unknown): string {
 function contextPackAsOf(iso: unknown): string {
   const match = /T(\d{2}):(\d{2})/.exec(str(iso));
   return match ? `${match[1]}:${match[2]}` : '';
+}
+
+function formatCapsuleStateItems(
+  lines: string[],
+  heading: string,
+  values: unknown,
+  opts: ContextPackSummaryOptions
+): void {
+  const items = recordArray(values);
+  if (items.length === 0) return;
+  lines.push(`${heading}:`);
+  for (const item of items.slice(0, Math.min(3, opts.maxItems))) {
+    const summary = str(item.summary);
+    const status = str(item.status);
+    const ref = firstRecord(item.ref);
+    const fallback = [str(ref?.type), str(ref?.id)].filter(Boolean).join(':');
+    const value = summary || fallback;
+    if (!value) continue;
+    lines.push(
+      `- ${truncateText(
+        `${status ? `[${status}] ` : ''}${value}`,
+        opts.maxFieldLength
+      )}`
+    );
+  }
+}
+
+/** Mirror the exact v1 capsule into bootstrap text for hookless clients. */
+export function formatContextCapsuleSummary(
+  contextCapsule: unknown,
+  opts: ContextPackSummaryOptions
+): string {
+  const capsule = firstRecord(contextCapsule);
+  if (capsule?.schema_version !== CONTEXT_CAPSULE_SCHEMA_VERSION) return '';
+
+  const id = str(capsule.capsule_id);
+  const sequence = str(capsule.as_of_global_sequence);
+  const digest = str(capsule.content_digest);
+  const lines = [
+    `Context capsule${id ? ` ${id}` : ''}${
+      sequence ? ` (as of sequence ${sequence})` : ''
+    }:`,
+  ];
+
+  const intent = firstRecord(capsule.current_intent);
+  const intentSummary = str(intent?.summary);
+  if (intentSummary) {
+    lines.push(`Current intent: ${truncateText(intentSummary, opts.maxFieldLength)}`);
+  }
+  formatCapsuleStateItems(
+    lines,
+    'Active constraints',
+    capsule.active_constraints,
+    opts
+  );
+  formatCapsuleStateItems(
+    lines,
+    'Accepted decisions',
+    capsule.authoritative_decisions,
+    opts
+  );
+
+  const appliedLearnings = recordArray(capsule.applied_learnings);
+  if (appliedLearnings.length === 0) {
+    lines.push('Applied learnings: none accepted.');
+  } else {
+    formatCapsuleStateItems(
+      lines,
+      'Accepted applied learnings',
+      appliedLearnings,
+      opts
+    );
+  }
+  formatCapsuleStateItems(
+    lines,
+    'Pending expectations',
+    capsule.pending_expectations,
+    opts
+  );
+  formatCapsuleStateItems(lines, 'Open risks', capsule.open_risks, opts);
+
+  const receiptRefs = recordArray(capsule.recent_receipt_refs);
+  if (receiptRefs.length > 0) {
+    const ids = receiptRefs.map((ref) => str(ref.id)).filter(Boolean);
+    if (ids.length > 0) {
+      lines.push(`Recent receipt refs: ${joinLimited(ids, opts.maxItems)}`);
+    }
+  }
+
+  const omittedCounts = firstRecord(capsule.omitted_counts);
+  if (omittedCounts) {
+    const omitted = Object.entries(omittedCounts)
+      .filter(([, value]) => typeof value === 'number' && value > 0)
+      .map(([key, value]) => `${key} ${value}`);
+    if (omitted.length > 0) lines.push(`Omitted by budget: ${omitted.join(', ')}.`);
+  }
+  if (digest) lines.push(`Digest: ${digest}`);
+
+  return lines.join('\n');
 }
 
 export function formatContextPackSummary(

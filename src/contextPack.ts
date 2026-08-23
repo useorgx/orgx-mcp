@@ -12,6 +12,8 @@ import { callOrgxApiJson, type OrgxApiEnv } from './orgxApi';
 
 const PACKABLE_TYPES = new Set(['initiative', 'workstream', 'task']);
 export const CONTEXT_PACK_API_PATH = '/api/v1/context-pack';
+export const CONTEXT_CAPSULE_SCHEMA_VERSION = 'orgx.context-capsule/v1';
+export const CONTEXT_CAPSULE_FETCH_TIMEOUT_MS = 4_000;
 
 export interface ContextPackAnchor {
   type: string;
@@ -23,6 +25,13 @@ export function buildContextPackRequestBody(
   anchor: ContextPackAnchor
 ): Record<string, string> {
   return { entity_type: anchor.type, entity_id: anchor.id };
+}
+
+/** Pure: workspace-scoped request body for the additive v1 context capsule. */
+export function buildContextCapsuleRequestBody(
+  workspaceId: string
+): Record<string, string> {
+  return { workspace_id: workspaceId };
 }
 
 /** Pure: only initiative/workstream/task anchors are packable. */
@@ -51,5 +60,55 @@ export async function fetchContextPack(
     return payload?.data ?? null;
   } catch {
     return null;
+  }
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+/**
+ * Fetch the workspace Context Capsule without making bootstrap availability
+ * depend on this additive projection. The strict local deadline is shorter
+ * than the general API timeout because a missing capsule must degrade to null,
+ * not stall the agent's first call.
+ */
+export async function fetchContextCapsule(
+  env: OrgxApiEnv,
+  userId: string | null | undefined,
+  workspaceId: string
+): Promise<Record<string, unknown> | null> {
+  const normalizedWorkspaceId = workspaceId.trim();
+  if (!normalizedWorkspaceId) return null;
+
+  const controller = new AbortController();
+  const deadline = setTimeout(
+    () => controller.abort('context capsule deadline exceeded'),
+    CONTEXT_CAPSULE_FETCH_TIMEOUT_MS
+  );
+  try {
+    const response = await callOrgxApiJson(
+      env,
+      CONTEXT_PACK_API_PATH,
+      {
+        method: 'POST',
+        body: JSON.stringify(
+          buildContextCapsuleRequestBody(normalizedWorkspaceId)
+        ),
+        signal: controller.signal,
+      },
+      { userId: userId ?? null }
+    );
+    const payload = (await response.json()) as { data?: unknown };
+    const capsule = asRecord(asRecord(payload.data)?.context_capsule);
+    return capsule?.schema_version === CONTEXT_CAPSULE_SCHEMA_VERSION
+      ? capsule
+      : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(deadline);
   }
 }
