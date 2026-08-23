@@ -5,8 +5,10 @@ import {
   CREATE_WORK_V1_PATH,
   EVENTS_STREAM_V1_PATH,
   buildCompleteWorkCommandRequest,
+  buildContextTailRequest,
   buildCreateWorkCommandRequest,
   buildEventsTailRequest,
+  CONTEXT_TAIL_MATERIAL_EVENT_TYPES,
 } from '../src/workCommandContract';
 
 const WORKSPACE_ID = '7af01a51-49b1-47d8-98b9-91a198debca8';
@@ -260,5 +262,55 @@ describe('buildEventsTailRequest', () => {
     expect(built.ok).toBe(false);
     if (built.ok) return;
     expect(built.field).toBe('workspace_id');
+  });
+});
+
+describe('buildContextTailRequest', () => {
+  it('builds the fixed material-event tail after the capsule sequence', () => {
+    const built = buildContextTailRequest(
+      {
+        capsule_id: 'capsule_0123456789abcdef01234567',
+        after_sequence: 2491,
+        limit: 25,
+      },
+      { workspaceId: WORKSPACE_ID }
+    );
+
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    const url = new URL(`https://example.com${built.path}`);
+    expect(url.pathname).toBe(EVENTS_STREAM_V1_PATH);
+    expect(url.searchParams.get('workspace_id')).toBe(WORKSPACE_ID);
+    expect(url.searchParams.get('after_sequence')).toBe('2491');
+    expect(url.searchParams.get('event_type')).toBe(
+      CONTEXT_TAIL_MATERIAL_EVENT_TYPES.join(',')
+    );
+    expect(url.searchParams.get('limit')).toBe('25');
+  });
+
+  it.each([
+    ['capsule_id', { capsule_id: 'capsule_bad', after_sequence: 1 }],
+    [
+      'after_sequence',
+      {
+        capsule_id: 'capsule_0123456789abcdef01234567',
+        after_sequence: -1,
+      },
+    ],
+    [
+      'limit',
+      {
+        capsule_id: 'capsule_0123456789abcdef01234567',
+        after_sequence: 1,
+        limit: 101,
+      },
+    ],
+  ])('rejects invalid %s input', (field, args) => {
+    const built = buildContextTailRequest(args, {
+      workspaceId: WORKSPACE_ID,
+    });
+    expect(built.ok).toBe(false);
+    if (built.ok) return;
+    expect(built.field).toBe(field);
   });
 });

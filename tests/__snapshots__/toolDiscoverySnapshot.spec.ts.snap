@@ -68,6 +68,7 @@ exports[`tool discovery snapshot > full tool catalog ID set is locked (sorted) >
   "orgx_search",
   "orgx_spawn",
   "orgx_submit_receipt",
+  "orgx_tail",
   "orgx_write",
   "pin_workstream",
   "query_org_memory",
@@ -169,6 +170,7 @@ exports[`tool discovery snapshot > full tool catalog description hashes are lock
   "orgx_search": "99af7aa1e3aa",
   "orgx_spawn": "ada9e4f61045",
   "orgx_submit_receipt": "95ed2efba439",
+  "orgx_tail": "5f22c9b9db28",
   "orgx_write": "5e57720e13db",
   "pin_workstream": "3a134a5ae349",
   "query_org_memory": "fd52f2ef6778",
@@ -257,6 +259,7 @@ exports[`tool discovery snapshot > per-profile snapshots > profile "claude-plugi
   "orgx_recommend",
   "orgx_search",
   "orgx_submit_receipt",
+  "orgx_tail",
 ]
 `;
 
@@ -285,6 +288,7 @@ exports[`tool discovery snapshot > per-profile snapshots > profile "commander" e
   "orgx_search",
   "orgx_spawn",
   "orgx_submit_receipt",
+  "orgx_tail",
   "orgx_write",
   "scaffold_initiative",
 ]
@@ -313,6 +317,7 @@ exports[`tool discovery snapshot > per-profile snapshots > profile "executor" ex
   "orgx_search",
   "orgx_spawn",
   "orgx_submit_receipt",
+  "orgx_tail",
   "orgx_write",
 ]
 `;
@@ -342,6 +347,7 @@ exports[`tool discovery snapshot > per-profile snapshots > profile "observer" ex
   "orgx_poll_question",
   "orgx_recommend",
   "orgx_search",
+  "orgx_tail",
 ]
 `;
 
@@ -406,6 +412,7 @@ exports[`tool discovery snapshot > per-profile snapshots > profile "v2" exposes 
   "orgx_search",
   "orgx_spawn",
   "orgx_submit_receipt",
+  "orgx_tail",
   "orgx_write",
   "query_org_memory",
   "recall_memory",

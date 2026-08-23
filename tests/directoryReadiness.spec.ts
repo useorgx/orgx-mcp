@@ -105,6 +105,7 @@ describe('Anthropic directory readiness', () => {
     const toolNames = serverJson.tools?.map((tool) => tool.name).filter(Boolean);
     expect(toolNames).toEqual([
       'orgx_bootstrap',
+      'orgx_tail',
       'orgx_search',
       'orgx_inspect',
       'orgx_recommend',

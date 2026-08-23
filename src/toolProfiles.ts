@@ -149,6 +149,7 @@ export const CLAUDE_PLUGIN_SURFACE = [
   'orgx_decide',
   'orgx_expect',
   'orgx_bootstrap',
+  'orgx_tail',
 ] as const;
 
 /**
@@ -228,6 +229,7 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
       'orgx_create_work',
       'orgx_complete_work',
       'orgx_events_tail',
+      'orgx_tail',
       'check_execution_readiness',
       'scaffold_initiative',
       'consolidate_pr',
@@ -277,6 +279,7 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
       'orgx_create_work',
       'orgx_complete_work',
       'orgx_events_tail',
+      'orgx_tail',
       'consolidate_pr',
     ],
   },
@@ -293,6 +296,7 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
       'orgx_poll_attention',
       'orgx_poll_question',
       'orgx_events_tail',
+      'orgx_tail',
       'get_operator_chronicle',
     ],
   },
