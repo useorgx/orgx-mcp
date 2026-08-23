@@ -20,7 +20,10 @@ import { recoverDurableObjectTransportRequest } from './durableObjectTransportRe
 import { OAuthState, type OAuthEnv } from './oauth';
 
 // Auth handler for OAuthProvider's defaultHandler
-import { authHandler } from './authHandler';
+import {
+  authHandler,
+  isOAuthAuthorizationServerMetadataPath,
+} from './authHandler';
 
 // Per-run, user-scoped bearer verification (detached agent runtimes)
 import {
@@ -14227,6 +14230,10 @@ const worker = {
     }
 
     const requestUrl = new URL(request.url);
+    if (isOAuthAuthorizationServerMetadataPath(requestUrl.pathname)) {
+      return withSecurityHeaders(await authHandler.fetch(request, env, ctx));
+    }
+
     const isMcpTransportRoute =
       requestUrl.pathname === '/mcp' ||
       requestUrl.pathname === '/sse' ||
