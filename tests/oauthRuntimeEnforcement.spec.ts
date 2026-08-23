@@ -304,6 +304,7 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
             'blocker.dismissed',
             'expectation.registered',
             'expectation.resolved',
+            'learning.applied',
           ],
           supported_change_classes: [
             'decision.accepted',
@@ -313,10 +314,10 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
             'blocker.resolved',
             'expectation.registered',
             'expectation.resolved',
+            'learning.applied',
           ],
           unavailable_change_classes: [
             'constraint.added_or_revoked',
-            'learning.applied',
             'incident.opened',
           ],
         },
@@ -338,7 +339,7 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
       expect(url.searchParams.get('workspace_id')).toBe(WORKSPACE_ID);
       expect(url.searchParams.get('after_sequence')).toBe('2491');
       expect(url.searchParams.get('event_type')).toBe(
-        'decision.approved,decision.superseded,autonomy.lease_changed,blocker.opened,blocker.resolved,blocker.dismissed,expectation.registered,expectation.resolved'
+        'decision.approved,decision.superseded,autonomy.lease_changed,blocker.opened,blocker.resolved,blocker.dismissed,expectation.registered,expectation.resolved,learning.applied'
       );
     } finally {
       await closeHarness(harness);
