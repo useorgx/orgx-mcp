@@ -6074,7 +6074,7 @@ export class OrgXMcp extends McpAgent<
                   materialChanges.length === 1 ? '' : 's'
                 } after sequence ${built.afterSequence} · next sequence ${nextAfterSequence}${
                   hasMore ? ' · more available' : ''
-                }\nCoverage boundary: expectation resolution, applied learning, constraints, and incidents are not ledger-backed yet.`,
+                }\nCoverage boundary: applied learning, constraints, and incidents are not ledger-backed yet.`,
               },
             ],
             structuredContent: {

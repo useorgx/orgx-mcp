@@ -561,7 +561,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_tail',
     title: 'Tail Material Context Changes',
     description:
-      'Use during a long-running session to read accepted material state changes since orgx_bootstrap. Pass the exact capsule_id and as_of_global_sequence returned by bootstrap. Returns only the currently ledger-backed allowlist in ascending global-sequence order: accepted/superseded decisions, authority lease changes, and blocker changes. It explicitly reports material classes that are not ledger-backed yet. Read-only. USE WHEN: the session may have outlived its bootstrap context. NEXT: apply the returned changes or call again with next_after_sequence while has_more=true. DO NOT USE: as a substitute for orgx_bootstrap or to infer expectation resolution, applied learning, constraints, or incidents that the coverage boundary marks unavailable.',
+      'Use during a long-running session to read accepted material state changes since orgx_bootstrap. Pass the exact capsule_id and as_of_global_sequence returned by bootstrap. Returns only the currently ledger-backed allowlist in ascending global-sequence order: accepted/superseded decisions, authority lease changes, blocker changes, and metric-expectation registration/resolution. It explicitly reports material classes that are not ledger-backed yet. Read-only. USE WHEN: the session may have outlived its bootstrap context. NEXT: apply the returned changes or call again with next_after_sequence while has_more=true. DO NOT USE: as a substitute for orgx_bootstrap or to infer applied learning, constraints, or incidents that the coverage boundary marks unavailable.',
     inputSchema: {
       capsule_id: z
         .string()
