@@ -28,6 +28,7 @@ export const CONTEXT_TAIL_MATERIAL_EVENT_TYPES = [
   'blocker.dismissed',
   'expectation.registered',
   'expectation.resolved',
+  'learning.applied',
 ] as const;
 
 export const CONTEXT_TAIL_SUPPORTED_CHANGE_CLASSES = [
@@ -38,11 +39,11 @@ export const CONTEXT_TAIL_SUPPORTED_CHANGE_CLASSES = [
   'blocker.resolved',
   'expectation.registered',
   'expectation.resolved',
+  'learning.applied',
 ] as const;
 
 export const CONTEXT_TAIL_UNAVAILABLE_CHANGE_CLASSES = [
   'constraint.added_or_revoked',
-  'learning.applied',
   'incident.opened',
 ] as const;
 
