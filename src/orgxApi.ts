@@ -189,6 +189,14 @@ function shouldTryFallbackForStatus(status: number): boolean {
   );
 }
 
+function expectedResponseMediaType(accept: string | undefined): string | null {
+  if (!accept) return null;
+  const normalized = accept.toLowerCase();
+  if (normalized.includes('application/json')) return 'application/json';
+  if (normalized.includes('text/event-stream')) return 'text/event-stream';
+  return null;
+}
+
 /**
  * Error class for OrgX API errors with separate user-facing and internal messages.
  * The `message` property contains a user-friendly error that's safe to expose.
@@ -288,6 +296,7 @@ export async function callOrgxApiRaw(
       ? configuredBaseUrls.slice(0, 1)
       : configuredBaseUrls;
   let lastRetryableFailure: string | null = null;
+  let lastRetryableStatus: number | undefined;
 
   for (const [index, baseUrl] of baseUrls.entries()) {
     const isFallbackAttempt = index > 0;
@@ -359,6 +368,7 @@ export async function callOrgxApiRaw(
       shouldTryFallbackForStatus(response.status)
     ) {
       lastRetryableFailure = `API ${response.status} from ${url.toString()}`;
+      lastRetryableStatus = response.status;
       console.warn(`[orgx-api] ${lastRetryableFailure}; trying fallback`);
       continue;
     }
@@ -433,6 +443,25 @@ export async function callOrgxApiRaw(
         userMessage,
         `API ${response.status} from ${url.toString()}: ${text}`,
         response.status
+      );
+    }
+
+    const expectedMediaType = expectedResponseMediaType(opts?.accept);
+    const actualMediaType =
+      response.headers.get('content-type')?.toLowerCase() ?? '';
+    if (
+      isFallbackAttempt &&
+      response.ok &&
+      expectedMediaType &&
+      !actualMediaType.includes(expectedMediaType)
+    ) {
+      throw createApiError(
+        'OrgX is temporarily unavailable. Please try again later.',
+        `${lastRetryableFailure ?? 'Primary OrgX API request failed'}; ` +
+          `fallback ${url.toString()} returned ${
+            actualMediaType || 'an unknown content type'
+          } instead of ${expectedMediaType}`,
+        lastRetryableStatus
       );
     }
 

@@ -51,4 +51,40 @@ describe('OrgX API response body deadline', () => {
     } satisfies Partial<OrgXApiError>);
     expect(Date.now() - startedAt).toBeLessThan(500);
   });
+
+  it('does not let a successful HTML fallback mask a structured primary failure', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json(
+          { error: { code: 'upstream_unavailable', message: 'try later' } },
+          { status: 503 }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response('<!doctype html><title>Application</title>', {
+          status: 200,
+          headers: { 'content-type': 'text/html; charset=utf-8' },
+        })
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      callOrgxApiJson(
+        {
+          ...env,
+          ORGX_API_FALLBACK_URL: 'https://fallback.example.test',
+        },
+        '/api/v1/events/stream'
+      )
+    ).rejects.toMatchObject({
+      name: 'OrgXApiError',
+      message: 'OrgX is temporarily unavailable. Please try again later.',
+      statusCode: 503,
+      internalDetails: expect.stringContaining(
+        'returned text/html; charset=utf-8 instead of application/json'
+      ),
+    } satisfies Partial<OrgXApiError>);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });
