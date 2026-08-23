@@ -70,7 +70,7 @@ import { withPathScopedResourceChallenge } from './oauthResourceChallenge';
 import { withSecurityHeaders } from './securityHeaders';
 import { callOrgxApiJson, callOrgxApiRaw, OrgXApiError } from './orgxApi';
 import { mapMorningBriefApiError } from './morningBriefError';
-import { fetchContextPack } from './contextPack';
+import { fetchContextCapsule, fetchContextPack } from './contextPack';
 import {
   batchCreateEntities as runBatchCreateEntities,
   validateEntityCreatePayloadContract,
@@ -4735,15 +4735,25 @@ export class OrgXMcp extends McpAgent<
             };
             await this.saveSessionContext();
           }
-          const context_pack = this.sessionContext.initiativeId
-            ? await fetchContextPack(this.env, resolvedUserId, {
-                type: 'initiative',
-                id: this.sessionContext.initiativeId,
-              })
-            : null;
+          const [context_pack, context_capsule] = await Promise.all([
+            this.sessionContext.initiativeId
+              ? fetchContextPack(this.env, resolvedUserId, {
+                  type: 'initiative',
+                  id: this.sessionContext.initiativeId,
+                })
+              : Promise.resolve(null),
+            this.sessionContext.workspaceId
+              ? fetchContextCapsule(
+                  this.env,
+                  resolvedUserId,
+                  this.sessionContext.workspaceId
+                )
+              : Promise.resolve(null),
+          ]);
           const payload = {
             ...this.buildBootstrapPayload(allowedTools ?? null),
             context_pack,
+            context_capsule,
           };
           return {
             content: [

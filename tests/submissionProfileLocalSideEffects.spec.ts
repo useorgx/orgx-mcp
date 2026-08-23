@@ -17,6 +17,7 @@ const apiMocks = vi.hoisted(() => ({
   callOrgxApiJson: vi.fn(),
   callOrgxApiRaw: vi.fn(),
   fetchContextPack: vi.fn(),
+  fetchContextCapsule: vi.fn(),
   captureWorkerPosthogEvent: vi.fn(),
 }));
 
@@ -65,6 +66,7 @@ vi.mock('../src/orgxApi', async (importOriginal) => {
 
 vi.mock('../src/contextPack', () => ({
   fetchContextPack: apiMocks.fetchContextPack,
+  fetchContextCapsule: apiMocks.fetchContextCapsule,
 }));
 
 vi.mock('../src/posthogTelemetry', () => ({
@@ -305,6 +307,10 @@ async function createSubmissionProfileHarness(
     entity: { id: INITIATIVE_ID, type: 'initiative' },
     related: [],
   });
+  apiMocks.fetchContextCapsule.mockResolvedValue({
+    schema_version: 'orgx.context-capsule/v1',
+    capsule_id: 'capsule_workspace',
+  });
 
   await worker._doInit();
 
@@ -479,6 +485,10 @@ describe('submission profile worker-local side-effect suppression', () => {
           },
         },
       });
+      apiMocks.fetchContextCapsule.mockResolvedValueOnce({
+        schema_version: 'orgx.context-capsule/v1',
+        capsule_id: 'capsule_workspace',
+      });
 
       const result = await client.callTool({
         name: 'orgx_bootstrap',
@@ -495,6 +505,10 @@ describe('submission profile worker-local side-effect suppression', () => {
         context_pack: {
           entity: { id: INITIATIVE_ID, type: 'initiative' },
         },
+        context_capsule: {
+          schema_version: 'orgx.context-capsule/v1',
+          capsule_id: 'capsule_workspace',
+        },
       });
       expect(result.content).toEqual(
         expect.arrayContaining([
@@ -508,6 +522,11 @@ describe('submission profile worker-local side-effect suppression', () => {
         expect.any(Object),
         'directory-reviewer',
         { type: 'initiative', id: INITIATIVE_ID }
+      );
+      expect(apiMocks.fetchContextCapsule).toHaveBeenCalledWith(
+        expect.any(Object),
+        'directory-reviewer',
+        WORKSPACE_ID
       );
       expect(spies.waitUntil).toHaveBeenCalled();
       expect(spies.storagePut).toHaveBeenCalledWith(

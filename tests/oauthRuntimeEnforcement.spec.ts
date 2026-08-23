@@ -13,6 +13,7 @@ const apiMocks = vi.hoisted(() => ({
   callOrgxApiJson: vi.fn(),
   callOrgxApiRaw: vi.fn(),
   fetchContextPack: vi.fn(),
+  fetchContextCapsule: vi.fn(),
   captureWorkerPosthogEvent: vi.fn(),
 }));
 
@@ -55,6 +56,7 @@ vi.mock('../src/orgxApi', async (importOriginal) => {
 
 vi.mock('../src/contextPack', () => ({
   fetchContextPack: apiMocks.fetchContextPack,
+  fetchContextCapsule: apiMocks.fetchContextCapsule,
 }));
 
 vi.mock('../src/posthogTelemetry', () => ({
@@ -205,6 +207,10 @@ async function createHarness(options: HarnessOptions) {
     entity: { id: INITIATIVE_ID, type: 'initiative' },
     related: [],
   });
+  apiMocks.fetchContextCapsule.mockResolvedValue({
+    schema_version: 'orgx.context-capsule/v1',
+    capsule_id: 'capsule_workspace',
+  });
 
   await worker._doInit();
 
@@ -234,6 +240,7 @@ afterEach(() => {
   apiMocks.callOrgxApiJson.mockReset();
   apiMocks.callOrgxApiRaw.mockReset();
   apiMocks.fetchContextPack.mockReset();
+  apiMocks.fetchContextCapsule.mockReset();
   apiMocks.captureWorkerPosthogEvent.mockReset();
 });
 

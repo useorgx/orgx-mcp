@@ -9,7 +9,10 @@
  * 100-500 for single entities) instead of 15,000-50,000 tokens of raw JSON.
  */
 
-import { formatContextPackSummary } from './contextPackSummary';
+import {
+  formatContextCapsuleSummary,
+  formatContextPackSummary,
+} from './contextPackSummary';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -516,6 +519,8 @@ function formatOrgxBootstrap(
   }
   const context = formatContextPackSummary(data.context_pack, opts);
   if (context) lines.push('', context);
+  const capsule = formatContextCapsuleSummary(data.context_capsule, opts);
+  if (capsule) lines.push('', capsule);
   return lines.join('\n');
 }
 

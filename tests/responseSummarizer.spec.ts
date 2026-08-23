@@ -219,6 +219,82 @@ describe('response summarizer v2 OrgX workflows', () => {
     expect(text).toContain('[rejected] Do not send without approval');
   });
 
+  it('mirrors the exact workspace context capsule and its truth boundaries', () => {
+    const text = formatForLLM('orgx_bootstrap', {
+      profile: 'executor',
+      visible_tools_count: 12,
+      workspace: { id: 'ws-1', name: 'OrgX' },
+      context_capsule: {
+        schema_version: 'orgx.context-capsule/v1',
+        capsule_id: 'capsule_123',
+        as_of_global_sequence: 2491,
+        current_intent: null,
+        active_constraints: [],
+        authoritative_decisions: [
+          {
+            ref: { system: 'orgx', type: 'decision', id: 'decision-1' },
+            summary: 'Keep automatic receipts metadata-only.',
+            provenance: 'accepted',
+            status: 'approved',
+          },
+        ],
+        applied_learnings: [],
+        pending_expectations: [
+          {
+            ref: {
+              system: 'orgx',
+              type: 'metric_expectation',
+              id: 'expectation-1',
+            },
+            summary: 'orgx.run_receipt_coverage.v1 gte 0.95',
+            provenance: 'asserted',
+            status: 'pending',
+          },
+        ],
+        open_risks: [],
+        recent_receipt_refs: [
+          { system: 'orgx', type: 'execution_receipt', id: 'receipt-1' },
+        ],
+        omitted_counts: {
+          authoritative_decisions: 2,
+          applied_learnings: 0,
+          pending_expectations: 0,
+          open_risks: 0,
+          recent_receipt_refs: 4,
+        },
+        content_digest: 'sha256:abc123',
+      },
+    });
+
+    expect(text).toContain(
+      'Context capsule capsule_123 (as of sequence 2491):'
+    );
+    expect(text).toContain(
+      '[approved] Keep automatic receipts metadata-only.'
+    );
+    expect(text).toContain('Applied learnings: none accepted.');
+    expect(text).toContain(
+      '[pending] orgx.run_receipt_coverage.v1 gte 0.95'
+    );
+    expect(text).toContain('Recent receipt refs: receipt-1');
+    expect(text).toContain(
+      'Omitted by budget: authoritative_decisions 2, recent_receipt_refs 4.'
+    );
+    expect(text).toContain('Digest: sha256:abc123');
+  });
+
+  it('does not render an unknown context capsule schema', () => {
+    const text = formatForLLM('orgx_bootstrap', {
+      context_capsule: {
+        schema_version: 'orgx.context-capsule/v0',
+        capsule_id: 'stale',
+      },
+    });
+
+    expect(text).not.toContain('Context capsule');
+    expect(text).not.toContain('stale');
+  });
+
   it('summarizes orgx_write creates with chainable entity IDs', () => {
     const text = formatForLLM('orgx_write', {
       _v2_tool: 'orgx_write',
