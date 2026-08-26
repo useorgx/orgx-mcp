@@ -9537,184 +9537,17 @@ export class OrgXMcp extends McpAgent<
      * - Generates stable ref keys when omitted
      * - Returns the created hierarchy with IDs (plus created/failed/ref_map)
      */
-    const scaffoldContextSchema = z
+    // Keep the discovery schema compact enough for MCP hosts to ingest. The
+    // scaffold handler and builder perform the authoritative nested validation
+    // and normalization; enumerating every optional field at all three hierarchy
+    // levels made this one descriptor more than twice the size of any other
+    // public OrgX tool, and ChatGPT silently omitted it from the callable set.
+    const scaffoldHierarchySchema = z
       .array(z.record(z.unknown()))
       .optional()
-      .describe('Optional context attachments (pointers, not payloads).');
-
-    const scaffoldTaskSchema = z
-      .object({
-        ref: z
-          .string()
-          .optional()
-          .describe('Optional stable client-side reference used in ref_map and dependencies'),
-        title: z.string().min(1).describe('Task title'),
-        description: z.string().optional().describe('Task description'),
-        summary: z.string().optional().describe('Short task summary'),
-        type: z
-          .enum(['research', 'create', 'review', 'implement'])
-          .optional()
-          .describe('Task execution type for slicing and estimate defaults'),
-        due_date: z.string().optional().describe('Optional task due date'),
-        priority: z
-          .enum(['low', 'medium', 'high', 'urgent'])
-          .optional()
-          .describe('Task priority. "urgent" is accepted and normalized to "high".'),
-        status: z
-          .enum(['todo', 'in_progress', 'done', 'blocked', 'active'])
-          .optional()
-          .describe('Optional task status. "active" is accepted and normalized to "in_progress".'),
-        depends_on: z
-          .array(z.string())
-          .optional()
-          .describe('Task refs/IDs this task depends on'),
-        goal_ids: z
-          .array(z.string())
-          .optional()
-          .describe(
-            'Optional objective UUIDs for this task. This field is named goal_ids for API compatibility; use IDs from list_entities type=objective when the workspace requires a primary objective.'
-          ),
-        objective_ids: z
-          .array(z.string())
-          .optional()
-          .describe('Preferred alias for goal_ids; objective UUIDs linked to this task.'),
-        expected_duration_hours: z
-          .number()
-          .optional()
-          .describe('Estimated task effort in hours'),
-        expected_tokens: z
-          .number()
-          .optional()
-          .describe('Estimated task token budget'),
-        expected_budget_usd: z
-          .number()
-          .optional()
-          .describe('Estimated task budget in USD'),
-        assigned_agent_ids: z
-          .array(z.string())
-          .optional()
-          .describe('Optional explicit assignee IDs for this task'),
-        context: scaffoldContextSchema,
-      })
-      .passthrough();
-
-    const scaffoldMilestoneSchema = z
-      .object({
-        ref: z
-          .string()
-          .optional()
-          .describe('Optional stable client-side reference used in ref_map and dependencies'),
-        title: z.string().min(1).describe('Milestone title'),
-        description: z.string().optional().describe('Milestone description'),
-        due_date: z.string().optional().describe('Optional milestone due date'),
-        status: z
-          .enum([
-            'planned',
-            'in_progress',
-            'completed',
-            'at_risk',
-            'cancelled',
-            'active',
-          ])
-          .optional()
-          .describe('Optional milestone status. "active" is accepted and normalized to "in_progress".'),
-        depends_on: z
-          .array(z.string())
-          .optional()
-          .describe('Milestone refs/IDs this milestone depends on'),
-        goal_ids: z
-          .array(z.string())
-          .optional()
-          .describe(
-            'Optional objective UUIDs for this milestone. OrgX stores workspace objectives in goal_ids; provide at least one when the parent workspace requires a primary objective.'
-          ),
-        objective_ids: z
-          .array(z.string())
-          .optional()
-          .describe('Preferred alias for goal_ids; objective UUIDs linked to this milestone.'),
-        expected_duration_hours: z
-          .number()
-          .optional()
-          .describe('Estimated milestone effort in hours'),
-        expected_tokens: z
-          .number()
-          .optional()
-          .describe('Estimated milestone token budget'),
-        expected_budget_usd: z
-          .number()
-          .optional()
-          .describe('Estimated milestone budget in USD'),
-        context: scaffoldContextSchema,
-        tasks: z
-          .array(scaffoldTaskSchema)
-          .optional()
-          .describe('Nested tasks under this milestone'),
-      })
-      .passthrough();
-
-    const scaffoldWorkstreamSchema = z
-      .object({
-        ref: z
-          .string()
-          .optional()
-          .describe('Optional stable client-side reference used in ref_map and dependencies'),
-        title: z
-          .string()
-          .optional()
-          .describe(
-            'Workstream title. REQUIRED on each workstream (provide either "title" or "name" — they are aliases).'
-          ),
-        name: z
-          .string()
-          .optional()
-          .describe(
-            'Workstream name; alias for "title". REQUIRED on each workstream when "title" is not provided.'
-          ),
-        summary: z.string().optional().describe('Short workstream summary'),
-        description: z.string().optional().describe('Workstream description'),
-        persona: z.string().optional().describe('Workstream owner/persona label'),
-        domain: z
-          .string()
-          .optional()
-          .describe('Workstream domain (engineering, marketing, design, etc.)'),
-        ownerAgent: z.string().optional().describe('Owner agent alias for this workstream'),
-        primaryAgent: z
-          .string()
-          .optional()
-          .describe('Primary agent alias for this workstream'),
-        depends_on: z
-          .array(z.string())
-          .optional()
-          .describe('Workstream refs/IDs this workstream depends on'),
-        goal_ids: z
-          .array(z.string())
-          .optional()
-          .describe(
-            'Optional objective UUIDs for this workstream. OrgX stores workspace objectives in goal_ids; provide at least one when the parent workspace requires a primary objective.'
-          ),
-        objective_ids: z
-          .array(z.string())
-          .optional()
-          .describe('Preferred alias for goal_ids; objective UUIDs linked to this workstream.'),
-        expected_duration_hours: z
-          .number()
-          .optional()
-          .describe('Estimated workstream effort in hours'),
-        expected_tokens: z
-          .number()
-          .optional()
-          .describe('Estimated workstream token budget'),
-        expected_budget_usd: z
-          .number()
-          .optional()
-          .describe('Estimated workstream budget in USD'),
-        context: scaffoldContextSchema,
-        milestones: z
-          .array(scaffoldMilestoneSchema)
-          .optional()
-          .describe('Nested milestones under this workstream'),
-      })
-      .passthrough();
+      .describe(
+        'Workstreams shaped as [{title|name, milestones:[{title, tasks:[{title}]}]}]. Nested records may also include ref, description, dependencies, objectives, estimates, owners, status, priority, and context.'
+      );
 
     if (shouldRegister('scaffold_initiative'))
     registerAppTool(
@@ -9723,20 +9556,7 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Scaffold an initiative hierarchy',
         description:
-          'Use when a goal, roadmap, or launch plan exists only as prose and must become owned, executable work. Turns an objective, roadmap, launch, or feature plan into executable workstreams, milestones, and tasks. Also known as: Scaffold an initiative hierarchy, scaffold project, create roadmap, generate execution plan, build a workstream tree.\n\n' +
-          'Minimum required input: title.\n' +
-          'Conditionally required:\n' +
-          '  • workspace_id — REQUIRED unless the MCP session already carries workspace context (resolve via list_entities type=command_center or get_org_snapshot).\n' +
-          '  • objective_ids (or goal_ids) — REQUIRED only when workspace policy enforces a primary objective. objective_ids is the preferred alias; goal_ids carries the same content for API compatibility.\n\n' +
-          'Per-nested-entity rules (when workstreams[]/milestones[]/tasks[] are provided):\n' +
-          '  • Each workstream MUST have either "title" or "name" set (they are aliases — provide one).\n' +
-          '  • Each milestone MUST have "title" set.\n' +
-          '  • Each task MUST have "title" set.\n' +
-          '  • All other workstream/milestone/task fields are optional and can be omitted — the scaffold builder auto-fills defaults for missing domain/duration/owner/agent/budget.\n' +
-          '  • "ref" is a client-side label used inside this single call (in depends_on and ref_map). It is not persisted as an ID.\n\n' +
-          'Agent-safe aliases that are accepted and normalized server-side: task priority "urgent" → "high"; task/milestone status "active" → "in_progress".\n\n' +
-          'Source verification gate: when the initiative is based on a named external product or URL, verify the actual target in a browser or from user-provided screenshots before creating records. Pass source_evidence. If the target cannot be rendered, do not infer the product from web-search results; use mode="draft" with verification_state="unverified" and ask for evidence.\n\n' +
-          'USE WHEN: user wants to plan a new initiative from scratch. NEXT: use mode="launch" to create and start agents (default), mode="scaffold" to create without launching, or mode="draft" to validate the plan without writes. Launch dispatches agent work; external_sync can mirror the hierarchy into connected work trackers such as Linear. The result returns initiative_id, ref_map, and preferred_next_calls for orgx_inspect/orgx_search/orgx_write chaining. DO NOT USE: for adding a single task to an existing initiative — use create_entity instead.',
+          'Turn a goal, roadmap, launch, or feature plan into one owned initiative with workstreams, milestones, and tasks. Minimum input is title; workspace context is resolved from the session when omitted. workstreams use {title|name, milestones:[{title, tasks:[{title}]}]}; other nested fields are optional. mode=draft validates, mode=scaffold creates records, and mode=launch creates and dispatches work (default). For a named external product or URL, pass source_evidence; unverified sources must stay in draft. Returns initiative_id, ref_map, and preferred_next_calls. Also known as: scaffold project, create roadmap, build workstream tree. USE WHEN: a full initiative hierarchy should be created from a plan. NEXT: inspect the returned initiative or launch its first executable task. DO NOT USE: to add one item to an existing hierarchy; use orgx_write.',
         annotations: {
           readOnlyHint: false,
           destructiveHint: true,
@@ -9747,13 +9567,13 @@ export class OrgXMcp extends McpAgent<
             .enum(['draft', 'scaffold', 'launch'])
             .optional()
             .describe(
-              'Optional stage. draft validates without writes; scaffold creates records without launching agents; launch creates records and starts agents. Defaults to launch for backwards compatibility.'
+              'draft validates; scaffold creates; launch creates and dispatches (default).'
             ),
           response_mode: z
             .enum(['fast_ack', 'complete'])
             .optional()
             .describe(
-              'Optional response timing. fast_ack returns after durable record creation and queues launch follow-ups asynchronously; complete waits for agent assignment, launch, and stream snapshot before returning. Defaults to fast_ack for non-draft scaffolds.'
+              'fast_ack returns after durable creation; complete waits for launch follow-ups.'
             ),
           title: z.string().min(1).describe('Initiative title'),
           summary: z.string().optional().describe('Initiative summary'),
@@ -9761,36 +9581,31 @@ export class OrgXMcp extends McpAgent<
           objective_ids: z
             .array(z.string())
             .optional()
-            .describe(
-              'Preferred objective UUIDs for the initiative. Normalized to goal_ids for API compatibility.'
-            ),
+            .describe('Preferred objective UUIDs; alias of goal_ids.'),
           goal_ids: z
             .array(z.string())
             .optional()
-            .describe(
-              'Optional objective UUIDs for the initiative. OrgX stores workspace objectives in goal_ids; provide at least one to avoid objective-invariant failures.'
-            ),
+            .describe('Objective UUIDs for API compatibility.'),
           idempotency_key: z
             .string()
             .min(8)
             .max(120)
             .optional()
-            .describe(
-              'Optional stable retry key. When omitted, OrgX derives one from workspace, owner, title, objectives, and hierarchy.'
-            ),
+            .describe('Stable retry key; derived automatically when omitted.'),
           command_center_id: z
             .string()
             .optional()
-            .describe(
-              'Deprecated alias for workspace_id to scope the initiative hierarchy'
-            ),
+            .describe('Deprecated alias for workspace_id.'),
           workspace_id: z
             .string()
             .optional()
             .describe(
-              'Workspace/command center UUID to scope the initiative hierarchy. Required unless the MCP session already has workspace context; resolve with list_entities type=command_center or get_org_snapshot.'
+              'Workspace UUID; resolved from session context when omitted.'
             ),
-          context: scaffoldContextSchema,
+          context: z
+            .array(z.record(z.unknown()))
+            .optional()
+            .describe('Context attachment pointers.'),
           source_evidence: z
             .object({
               target_url: z.string().url().optional(),
@@ -9800,66 +9615,57 @@ export class OrgXMcp extends McpAgent<
             })
             .optional()
             .describe(
-              'Evidence for a named external product/site. verified requires direct browser or user-supplied screenshot evidence; unverified must stay mode=draft.'
+              'External-source evidence; unverified sources require mode=draft.'
             ),
-          workstreams: z
-            .array(scaffoldWorkstreamSchema)
-            .optional()
-            .describe(
-              'Nested workstreams. Include domain, dependencies, and estimate fields when possible. If omitted, the scaffold builder auto-fills subtasks/dependencies and OrgX re-estimates domain+agent+cost with model-guided baselines.'
-            ),
+          workstreams: scaffoldHierarchySchema,
           coordination_dependency: z
             .object({
-              name: z.string().describe('Short label for the dependency, e.g. "Design handoff dependency" or "QA gating dependency"'),
-              fromWorkstreamName: z.string().describe('Name of the upstream workstream that must produce output first'),
-              toWorkstreamName: z.string().describe('Name of the downstream workstream that is blocked until the upstream delivers'),
+              name: z.string(),
+              fromWorkstreamName: z.string(),
+              toWorkstreamName: z.string(),
             })
             .optional()
-            .describe(
-              'The single most important cross-workstream coordination dependency you identified while planning this initiative. Name it specifically based on what the workstreams actually do — not a generic label. Omit if only one workstream exists.'
-            ),
+            .describe('Most important cross-workstream dependency.'),
           owner_id: z
             .string()
             .optional()
-            .describe(
-              'Optional owner user ID for the scaffolded initiative; defaults to the authenticated user when omitted'
-            ),
+            .describe('Owner user ID; defaults to the authenticated user.'),
           user_id: z
             .string()
             .optional()
-            .describe('Deprecated alias for owner_id; prefer owner_id for new calls'),
+            .describe('Deprecated alias for owner_id.'),
           continue_on_error: z
             .boolean()
             .optional()
-            .describe('Continue creating remaining entities after an error'),
+            .describe('Continue remaining creates after an error.'),
           launch_after_create: z
             .boolean()
             .optional()
             .describe(
-              'Legacy alias for mode. false maps to mode=scaffold; true maps to mode=launch when mode is omitted.'
+              'Legacy mode alias: false=scaffold, true=launch.'
             ),
           external_sync: z
             .object({
               targets: z
                 .array(z.enum(['linear', 'jira']))
-                .describe('Optional work-tracker targets to mirror after scaffold. Linear is active v1; Jira is a non-blocking stub.'),
+                .describe('Work trackers to mirror.'),
               mode: z
                 .enum(['project_and_tasks', 'tasks_only'])
                 .optional()
-                .describe('Mirror shape. Defaults to project_and_tasks.'),
+                .describe('Mirror shape.'),
               linear_project_id: z
                 .string()
                 .optional()
-                .describe('Optional existing Linear project ID for tasks_only or project reuse.'),
+                .describe('Existing Linear project ID.'),
             })
             .optional()
-            .describe('Optional async mirror request for external work trackers. Omit for fastest scaffold response.'),
+            .describe('Optional asynchronous work-tracker mirror.'),
           concurrency: z
             .number()
             .min(1)
             .max(20)
             .optional()
-            .describe('Parallel creation concurrency (default 8)'),
+            .describe('Creation concurrency; default 8.'),
         }),
         _meta: {
           'openai/visibility': 'public',

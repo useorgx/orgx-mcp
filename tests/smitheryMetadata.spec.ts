@@ -189,11 +189,10 @@ describe('Smithery metadata coverage', () => {
       scaffold_initiative: [
         'annotations: {',
         'goal_ids: z',
-        // The scaffold_initiative top-level description spells out that the
-        // legacy 'goal_ids' alias carries the same content as objective_ids
-        // for API compatibility.
-        'goal_ids carries the same content for API compatibility',
-        'Workspace/command center UUID to scope the initiative hierarchy. Required unless the MCP session already has workspace context',
+        // Keep alias and workspace guidance explicit without expanding the
+        // public descriptor beyond the ChatGPT ingestion budget.
+        'Preferred objective UUIDs; alias of goal_ids.',
+        'Workspace UUID; resolved from session context when omitted.',
       ],
       get_relevant_learnings: [
         'annotations: {',

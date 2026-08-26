@@ -737,4 +737,49 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
       await closeHarness(decisionsWrite);
     }
   });
+
+  it('publishes a ChatGPT-loadable scaffold_initiative descriptor', async () => {
+    const harness = await createHarness({
+      scope: AUTHORIZATION_PRESETS.operate.scopes.join(' '),
+      profile: 'chatgpt',
+    });
+    try {
+      const descriptor = (await harness.client.listTools()).tools.find(
+        (tool) => tool.name === 'scaffold_initiative'
+      );
+
+      expect(descriptor).toBeDefined();
+      expect(descriptor?._meta).toMatchObject({
+        'openai/visibility': 'public',
+        'openai/outputTemplate': expect.any(String),
+      });
+
+      // Keep public descriptors beneath an explicit host-compatibility budget.
+      // The previous 14.9 KB descriptor was present in OrgX tools/list but was
+      // silently omitted from ChatGPT's callable schema set.
+      expect(
+        Buffer.byteLength(JSON.stringify(descriptor), 'utf8')
+      ).toBeLessThanOrEqual(8 * 1024);
+
+      const properties = (descriptor?.inputSchema as {
+        properties?: Record<string, unknown>;
+      } | undefined)?.properties ?? {};
+      expect(Object.keys(properties)).toEqual(
+        expect.arrayContaining([
+          'title',
+          'workspace_id',
+          'objective_ids',
+          'mode',
+          'response_mode',
+          'workstreams',
+          'source_evidence',
+          'external_sync',
+          '_context',
+        ])
+      );
+      expect(properties.workstreams).toMatchObject({ type: 'array' });
+    } finally {
+      await closeHarness(harness);
+    }
+  });
 });
