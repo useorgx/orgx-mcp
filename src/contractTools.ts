@@ -383,7 +383,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       '  • action="remember"     → REQUIRES decision (the text to capture as a remembered decision). Optional: title, context.\n' +
       '  • action="approve"      → REQUIRES decision_id. Optional: note (free-text approver rationale).\n' +
       '  • action="reject"       → REQUIRES decision_id AND reason (explanation shown to the assigned agent).\n\n' +
-      'USE WHEN: capturing judgment, approval, rejection, or pending decision review. Approval can resume or continue agent execution, including work in connected systems. NEXT: use orgx_act, orgx_write, or orgx_spawn only after the decision resolves the next action. DO NOT USE WHEN: writing non-decision entities; use orgx_write.',
+      'USE WHEN: capturing judgment or reviewing a pending decision. Decision resolution is human-session-only: approve/reject returns a review URL because an MCP delegation is not proof that a person ruled. NEXT: open the returned review URL, then use orgx_act, orgx_write, or orgx_spawn only after the decision resolves. DO NOT USE WHEN: writing non-decision entities; use orgx_write.',
     inputSchema: {
       action: z.enum(['create', 'remember', 'list_pending', 'approve', 'reject']).describe('Decision operation. See top-level description for per-action required fields.'),
       decision_id: z.string().optional().describe('Decision UUID. REQUIRED for action=approve or action=reject. Returned by action=list_pending or action=create.'),
@@ -707,8 +707,8 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       'Use when agent work is paused waiting for a human yes — review pending decisions, then approve or reject them. Also known as: pending approvals, agent blocked, sign off, review decisions, approve AI work.\n\n' +
       'Per-action input requirements:\n' +
       '  • action="list" (default when action omitted) → No required fields. Optional filters: limit, urgency_filter, initiative_id.\n' +
-      '  • action="approve" → REQUIRES decision_id. Optional: note (free-text approver rationale). Approval can resume or continue connected agent execution.\n' +
-      '  • action="reject"  → REQUIRES decision_id AND reason (explanation shown to the assigned agent so it can adjust its next attempt).',
+      '  • action="approve" → REQUIRES decision_id. Returns the human-session review URL; MCP does not self-approve.\n' +
+      '  • action="reject"  → REQUIRES decision_id AND reason. Returns the human-session review URL; MCP does not self-reject.',
     inputSchema: {
       decision_id: z
         .string()

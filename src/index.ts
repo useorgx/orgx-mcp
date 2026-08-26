@@ -41,6 +41,7 @@ import {
   type SecurityScheme,
 } from './authHelpers';
 import { buildEntityLink, entityLinkMarkdown, buildLiveUrl } from './deepLinks';
+import { directHumanDecisionActionRequired } from './directHumanDecisionAction';
 import {
   resolveSessionUserEmail,
   resolveSessionUserId,
@@ -6336,14 +6337,11 @@ export class OrgXMcp extends McpAgent<
                 status: 400,
               });
             }
-            return this.executeChatGPTTool(
-              'approve_decision',
-              {
-                decision_id: args.decision_id,
-                note: args.note,
-              },
-              SECURITY_SCHEMES.writeRequiresAuth
+            const required = directHumanDecisionActionRequired(
+              args.decision_id,
+              'approve'
             );
+            return this.toolError(required.message, required.options);
           }
           if (action === 'reject') {
             if (typeof args.decision_id !== 'string' || !args.decision_id.trim()) {
@@ -6358,14 +6356,11 @@ export class OrgXMcp extends McpAgent<
                 status: 400,
               });
             }
-            return this.executeChatGPTTool(
-              'reject_decision',
-              {
-                decision_id: args.decision_id,
-                reason: args.reason,
-              },
-              SECURITY_SCHEMES.writeRequiresAuth
+            const required = directHumanDecisionActionRequired(
+              args.decision_id,
+              'reject'
             );
+            return this.toolError(required.message, required.options);
           }
           return this.executeChatGPTTool(
             'get_pending_decisions',
