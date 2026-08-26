@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-26T17:59:17.836Z",
-  "sourceHash": "f46b01b374584e4b",
+  "generatedAt": "2026-08-26T18:11:06.938Z",
+  "sourceHash": "ab58a3714fd94a9c",
   "version": "1.0.0",
   "totalTools": 86,
   "categories": [
@@ -2990,7 +2990,7 @@
     {
       "id": "orgx_decide",
       "title": "Manage OrgX Decision",
-      "description": "Use when the user says \"remember this decision,\" asks \"what did we decide about X,\" or agent work needs human approval before it proceeds. Creates, approves, rejects, remembers, or lists durable OrgX decisions.\n\nPer-action input requirements:\n  • action=\"list_pending\" → No required fields. Optional: initiative_id, workspace_id (scope filters).\n  • action=\"create\"       → REQUIRES title AND decision (the resolved decision text). Recommended: context, initiative_id.\n  • action=\"remember\"     → REQUIRES decision (the text to capture as a remembered decision). Optional: title, context.\n  • action=\"approve\"      → REQUIRES decision_id. Optional: note (free-text approver rationale).\n  • action=\"reject\"       → REQUIRES decision_id AND reason (explanation shown to the assigned agent).\n\nUSE WHEN: capturing judgment, approval, rejection, or pending decision review. Approval can resume or continue agent execution, including work in connected systems. NEXT: use orgx_act, orgx_write, or orgx_spawn only after the decision resolves the next action. DO NOT USE WHEN: writing non-decision entities; use orgx_write.",
+      "description": "Use when the user says \"remember this decision,\" asks \"what did we decide about X,\" or agent work needs human approval before it proceeds. Creates, approves, rejects, remembers, or lists durable OrgX decisions.\n\nPer-action input requirements:\n  • action=\"list_pending\" → No required fields. Optional: initiative_id, workspace_id (scope filters).\n  • action=\"create\"       → REQUIRES title AND decision (the resolved decision text). Recommended: context, initiative_id.\n  • action=\"remember\"     → REQUIRES decision (the text to capture as a remembered decision). Optional: title, context.\n  • action=\"approve\"      → REQUIRES decision_id. Optional: note (free-text approver rationale).\n  • action=\"reject\"       → REQUIRES decision_id AND reason (explanation shown to the assigned agent).\n\nUSE WHEN: capturing judgment or reviewing a pending decision. Decision resolution is human-session-only: approve/reject returns a review URL because an MCP delegation is not proof that a person ruled. NEXT: open the returned review URL, then use orgx_act, orgx_write, or orgx_spawn only after the decision resolves. DO NOT USE WHEN: writing non-decision entities; use orgx_write.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
