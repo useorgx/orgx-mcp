@@ -105,6 +105,7 @@ import {
   CONTEXT_TAIL_UNAVAILABLE_CHANGE_CLASSES,
 } from './workCommandContract';
 import { buildMetricExpectationRequest } from './metricExpectationContract';
+import { buildExecutionGraphEmission } from './agenticScaleProof';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
 import {
   buildRouteTaskEstimateSummary,
@@ -4035,6 +4036,21 @@ export class OrgXMcp extends McpAgent<
                 }
                 if (tool.id === 'check_spawn_guard') {
                   normalizedToolArgs = buildSpawnGuardForwardArgs(toolArgs);
+                }
+                if (tool.id === 'orgx_emit_execution_graph') {
+                  const emission = buildExecutionGraphEmission(
+                    normalizedToolArgs
+                  );
+                  if (!emission.ok) {
+                    return this.toolError(emission.message, {
+                      code: emission.code,
+                      status: emission.status,
+                      ...(emission.gaps
+                        ? { details: { gaps: emission.gaps } }
+                        : {}),
+                    });
+                  }
+                  normalizedToolArgs = emission.body;
                 }
                 // Server-side attribution: these endpoints accept
                 // source_client but agents almost never pass it. Default it

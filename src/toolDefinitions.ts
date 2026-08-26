@@ -1427,6 +1427,19 @@ const executionGraphNodeSchema = z.object({
   metadata: z.record(z.unknown()).optional(),
 });
 
+const otelSemanticEventSchema = z.object({
+  traceId: z.string().min(1).max(64),
+  spanId: z.string().min(1).max(32),
+  parentSpanId: z.string().min(1).max(32).optional(),
+  name: z.string().min(1).max(500),
+  timestamp: z.string().datetime(),
+  attributes: z
+    .record(z.unknown())
+    .describe(
+      'OTel attributes. Promotion requires orgx.material=true, orgx.episode.id, and orgx.semantic.kind; inferred events remain explicit gaps.'
+    ),
+});
+
 const executionGraphEdgeSchema = z.object({
   from: z.string().min(1).max(200),
   to: z.string().min(1).max(200),
@@ -1866,7 +1879,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     id: 'orgx_emit_execution_graph',
     title: 'Emit OrgX Execution Graph',
     description:
-      'Emit the deterministic execution graph + trust ledger for the active run: nodes (claimed status + verification evidence), depends_on edges, and trust events. OrgX derives false-completion, hallucinated-receipt, and dependency-violation signals from this and surfaces them on /live. USE WHEN: reporting the structured shape of multi-step work — NOT a single progress line (use orgx_emit_activity for that). NEXT: continue work; re-emit as the graph advances (idempotent per run + graph fingerprint). DO NOT USE to mark entities complete — telemetry only.',
+      'Emit the deterministic execution graph + trust ledger for the active run from explicit nodes, OTel semantic events, or both. OTel promotion requires orgx.material=true plus episode/kind attributes; inferred events stay gaps and raw prompts are never retained. OrgX derives false-completion, hallucinated-receipt, and dependency-violation signals from this and surfaces them on /live. USE WHEN: reporting the structured shape of multi-step work — NOT a single progress line (use orgx_emit_activity for that). NEXT: continue work; re-emit as the graph advances (idempotent per run + graph fingerprint). DO NOT USE to mark entities complete — telemetry only.',
     inputSchema: {
       initiative_id: z.string().uuid().describe('Initiative UUID'),
       run_id: z.string().uuid().optional().describe('Existing run UUID'),
@@ -1888,9 +1901,17 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         .describe('Optional human-readable rollup of the graph state'),
       nodes: z
         .array(executionGraphNodeSchema)
+        .max(2000)
+        .optional()
+        .describe('Execution graph nodes; each carries claimed status + optional verification'),
+      otel_events: z
+        .array(otelSemanticEventSchema)
         .min(1)
         .max(2000)
-        .describe('Execution graph nodes; each carries claimed status + optional verification'),
+        .optional()
+        .describe(
+          'Raw OTel-compatible events to semantically promote. Only explicitly material native/observed facts become graph nodes; prompts and inferred reasoning do not.'
+        ),
       edges: z
         .array(executionGraphEdgeSchema)
         .max(8000)

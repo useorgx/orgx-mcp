@@ -6,6 +6,10 @@ payloads, dependable follow-up execution, and high leverage per tool call.
 This directory also hosts the [Agent Amnesia Test](./agent-amnesia-test/README.md),
 an open cross-session continuity benchmark: it scores how much of a finished
 session's why, state, and proof a fresh agent in a different client can recover.
+The [Agentic Scale Proof](./agentic-scale-proof/README.md) adds a deterministic
+50,000-agent / 1,000,000-node adversarial workload plus cross-language proof
+packet verification. Its claim boundary explicitly excludes production and
+customer-outcome claims.
 The same rule applies to both harnesses: publish what you measured, and keep
 the raw evidence next to the score.
 
