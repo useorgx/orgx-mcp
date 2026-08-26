@@ -752,6 +752,10 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
       expect(descriptor?._meta).toMatchObject({
         'openai/visibility': 'public',
         'openai/outputTemplate': expect.any(String),
+        ui: {
+          resourceUri: expect.any(String),
+          visibility: ['model', 'app'],
+        },
       });
 
       // Keep public descriptors beneath an explicit host-compatibility budget.

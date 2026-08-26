@@ -29,7 +29,10 @@ describe('widget resources', () => {
   it('exposes scaffold_initiative widget metadata', () => {
     expect(SCAFFOLD_INITIATIVE_WIDGET_META).toMatchObject({
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.scaffoldedInitiative,
-      ui: { resourceUri: WIDGET_URIS.scaffoldedInitiative },
+      ui: {
+        resourceUri: WIDGET_URIS.scaffoldedInitiative,
+        visibility: ['model', 'app'],
+      },
     });
   });
 });

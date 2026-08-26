@@ -152,7 +152,14 @@ export const SCAFFOLD_INITIATIVE_WIDGET_META = {
   'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.scaffoldedInitiative,
   'openai/toolInvocation/invoking': 'Scaffolding initiative hierarchy...',
   'openai/toolInvocation/invoked': 'Initiative scaffolded',
-  ui: { resourceUri: WIDGET_URIS.scaffoldedInitiative },
+  // ui.visibility is the current Apps SDK visibility contract. Keep the
+  // legacy openai/visibility field on the registered descriptor as a
+  // compatibility alias, but do not rely on it: the plugin scanner treats a
+  // template-linked tool without model visibility as hidden.
+  ui: {
+    resourceUri: WIDGET_URIS.scaffoldedInitiative,
+    visibility: ['model', 'app'],
+  },
 } as const;
 
 

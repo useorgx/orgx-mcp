@@ -531,6 +531,26 @@ const SUBMITTED_INFORMATIONAL_TOOL_EXECUTIONS = new Set([
 const ORGX_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+function withAppsSdkVisibility(
+  meta: Record<string, unknown> | undefined,
+  visibility: 'public' | 'private'
+): Record<string, unknown> {
+  const existingUi =
+    meta?.ui && typeof meta.ui === 'object' && !Array.isArray(meta.ui)
+      ? (meta.ui as Record<string, unknown>)
+      : {};
+
+  return {
+    ...meta,
+    // Legacy compatibility alias. New hosts use ui.visibility.
+    'openai/visibility': visibility,
+    ui: {
+      ...existingUi,
+      visibility: visibility === 'public' ? ['model', 'app'] : ['app'],
+    },
+  };
+}
+
 /**
  * Client-integration tools whose input schemas (and app endpoints) accept a
  * source_client value — the worker defaults it from session attribution when
@@ -3338,9 +3358,7 @@ export class OrgXMcp extends McpAgent<
           : 'private';
 
       const meta: Record<string, unknown> = {
-        ...tool._meta,
-        // Control ChatGPT connector visibility (Apps SDK convention)
-        'openai/visibility': visibility,
+        ...withAppsSdkVisibility(metaObj, visibility),
         // Per MCP auth spec, declare security requirements
         'mcp/securitySchemes': tool.securitySchemes,
       };
@@ -6581,14 +6599,14 @@ export class OrgXMcp extends McpAgent<
       // rendering — the tool stays protected by its OAuth securitySchemes.
       const hasOutputTemplate = Boolean(metaObj?.['openai/outputTemplate']);
       const configuredVisibility = metaObj?.['openai/visibility'];
+      const visibility =
+        configuredVisibility === 'public' || configuredVisibility === 'private'
+          ? configuredVisibility
+          : isReadOnly || hasOutputTemplate
+          ? 'public'
+          : 'private';
       const meta = {
-        ...tool._meta,
-        'openai/visibility':
-          configuredVisibility === 'public' || configuredVisibility === 'private'
-            ? configuredVisibility
-            : isReadOnly || hasOutputTemplate
-            ? 'public'
-            : 'private',
+        ...withAppsSdkVisibility(metaObj, visibility),
         'mcp/securitySchemes': tool.securitySchemes,
       };
 
