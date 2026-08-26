@@ -2072,14 +2072,35 @@ async function handleConsentCallback(
   env: AuthHandlerEnv,
   serverUrl: string
 ): Promise<Response> {
+  const wantsJson = request.headers.get('accept')
+    ?.split(',')
+    .some((value) => value.trim().startsWith('application/json')) ?? false;
+  const consentError = (
+    error: string,
+    errorDescription: string,
+    status = 400
+  ): Response =>
+    wantsJson
+      ? Response.json(
+          { error, error_description: errorDescription },
+          { status, headers: { 'Cache-Control': 'no-store' } }
+        )
+      : errorRedirect(error, errorDescription, serverUrl);
+  const consentRedirect = (redirectTo: string): Response =>
+    wantsJson
+      ? Response.json(
+          { redirect_to: redirectTo },
+          { headers: { 'Cache-Control': 'no-store' } }
+        )
+      : Response.redirect(redirectTo, 302);
+
   let body: FormData;
   try {
     body = await request.formData();
   } catch {
-    return errorRedirect(
+    return consentError(
       'invalid_request',
-      'The consent submission was invalid. Please start over.',
-      serverUrl
+      'The consent submission was invalid. Please start over.'
     );
   }
 
@@ -2094,10 +2115,9 @@ async function handleConsentCallback(
     : null;
 
   if (!stateKey) {
-    return errorRedirect(
+    return consentError(
       'invalid_request',
-      'Your authorization session has expired. Please start over.',
-      serverUrl
+      'Your authorization session has expired. Please start over.'
     );
   }
 
@@ -2111,17 +2131,15 @@ async function handleConsentCallback(
       env.OAUTH_KV.get(authIdentityKey(stateKey)),
     ]);
     if (!storedIdentity) {
-      return errorRedirect(
+      return consentError(
         'invalid_request',
-        'Authorization session identity expired. Please start over.',
-        serverUrl
+        'Authorization session identity expired. Please start over.'
       );
     }
     if (!storedState) {
-      return errorRedirect(
+      return consentError(
         'invalid_request',
-        'Authorization session expired or already used. Please start over.',
-        serverUrl
+        'Authorization session expired or already used. Please start over.'
       );
     }
     oauthReqInfo = JSON.parse(storedState);
@@ -2133,10 +2151,9 @@ async function handleConsentCallback(
       identity.userId.trim().length === 0 ||
       identity.userEmail.trim().length === 0
     ) {
-      return errorRedirect(
+      return consentError(
         'invalid_request',
-        'Authorization session identity is invalid. Please start over.',
-        serverUrl
+        'Authorization session identity is invalid. Please start over.'
       );
     }
     // Drop a malformed persisted UUID rather than propagating it into props.
@@ -2148,10 +2165,9 @@ async function handleConsentCallback(
     }
   } catch (error) {
     console.error('[auth] Failed to load consent state from KV:', error);
-    return errorRedirect(
+    return consentError(
       'invalid_request',
-      'Invalid authorization data. Please start over.',
-      serverUrl
+      'Invalid authorization data. Please start over.'
     );
   }
 
@@ -2170,30 +2186,27 @@ async function handleConsentCallback(
         env.OAUTH_KV.delete(authStateKey(stateKey)),
         env.OAUTH_KV.delete(authIdentityKey(stateKey)),
       ]);
-      return Response.redirect(redirectUrl.toString(), 302);
+      return consentRedirect(redirectUrl.toString());
     } catch (error) {
       console.error('[auth] Failed to deny authorization:', error);
-      return errorRedirect(
+      return consentError(
         'invalid_request',
-        'The authorization request could not be denied safely. Please restart it from the client.',
-        serverUrl
+        'The authorization request could not be denied safely. Please restart it from the client.'
       );
     }
   }
 
   if (action !== 'approve') {
-    return errorRedirect(
+    return consentError(
       'invalid_request',
-      'Unknown consent action. Please start over.',
-      serverUrl
+      'Unknown consent action. Please start over.'
     );
   }
 
   if (finalScope === null) {
-    return errorRedirect(
+    return consentError(
       'invalid_request',
-      'The consent selection was missing. Please review access and try again.',
-      serverUrl
+      'The consent selection was missing. Please review access and try again.'
     );
   }
 
@@ -2201,10 +2214,9 @@ async function handleConsentCallback(
   // originally requested by the client and supported by this server.
   const scope = resolveApprovedScopes(oauthReqInfo.scope, finalScope);
   if (scope.filter((selectedScope) => selectedScope !== 'offline_access').length === 0) {
-    return errorRedirect(
+    return consentError(
       'invalid_request',
-      'Choose at least one resource permission before authorizing.',
-      serverUrl
+      'Choose at least one resource permission before authorizing.'
     );
   }
 
@@ -2216,6 +2228,15 @@ async function handleConsentCallback(
       userId: identity.userId,
       metadata: { label: identity.userEmail },
       scope,
+      // OrgX intentionally supports concurrent grants for the same account and
+      // OAuth client. ChatGPT runtime connections, Codex, and OpenAI's plugin
+      // review scanner can all authorize independently while sharing a client
+      // identity. The provider's default revocation path scans every grant for
+      // the user synchronously before returning the authorization redirect;
+      // high-cardinality accounts can therefore exhaust Worker/KV limits and
+      // leave the browser stuck on "Authorizing connection". Disconnect and
+      // explicit revocation remain the lifecycle boundary for existing grants.
+      revokeExistingGrants: false,
       props: {
         userId: identity.userId,
         ...(identity.orgxUserId ? { orgxUserId: identity.orgxUserId } : {}),
@@ -2237,16 +2258,17 @@ async function handleConsentCallback(
       env.OAUTH_KV.delete(authIdentityKey(stateKey)),
     ]);
 
-    // Redirect DIRECTLY to the client's callback URL (standard OAuth 2.1 flow).
-    // Intermediary pages (success.html) break some clients' OAuth state tracking
-    // because they expect a direct 302 from the authorization server.
-    return Response.redirect(redirectTo, 302);
+    // Browser consent requests receive the provider-validated callback so the
+    // page can navigate after a same-origin POST. This avoids Chromium applying
+    // form-action to the POST redirect chain. Non-browser clients retain the
+    // standard direct 302 response.
+    return consentRedirect(redirectTo);
   } catch (error) {
     console.error('[auth] Failed to complete authorization:', error);
-    return errorRedirect(
+    return consentError(
       'server_error',
       "We couldn't complete your authorization. This is usually temporary — please try again.",
-      serverUrl
+      500
     );
   }
 }

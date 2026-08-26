@@ -53,6 +53,9 @@ jobs:
       - name: Type-check
         run: npx tsc --noEmit
 
+      - name: Install Chromium for browser contract tests
+        run: pnpm exec playwright install chromium
+
       - name: Run vitest suite
         # Full suite is fast (~3s) and catches regressions like the
         # widget-link handler one — prior validate stage didn't run
