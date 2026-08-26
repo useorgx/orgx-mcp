@@ -63,7 +63,7 @@
     "catalog:sync:monorepo": "TOOL_CATALOG_EXTRA_OUT=${ORGX_MONOREPO_DIR:-../orgx}/orgx/docs/mintlify/generated/tool-catalog.json AUTHORIZATION_POLICY_EXTRA_OUT=${ORGX_MONOREPO_DIR:-../orgx}/orgx/docs/mintlify/generated/authorization-policy.json tsx scripts/generate-tool-catalog.ts"
   },
   "dependencies": {
-    "@cloudflare/workers-oauth-provider": "0.2.4",
+    "@cloudflare/workers-oauth-provider": "0.10.3",
     "@modelcontextprotocol/ext-apps": "1.1.2",
     "@modelcontextprotocol/sdk": "1.26.0",
     "@sentry/cloudflare": "10.65.0",
