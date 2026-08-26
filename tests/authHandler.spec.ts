@@ -799,6 +799,7 @@ describe('authHandler OAuth consent flow', () => {
       expect.objectContaining({
         request: authRequest,
         userId: 'user-1',
+        revokeExistingGrants: false,
         scope: [
           'decisions:read',
           'memory:read',
