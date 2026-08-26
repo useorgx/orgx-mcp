@@ -1,0 +1,69 @@
+{
+  "schema": "orgx.agentic-scale-benchmark.v1",
+  "generated_at": "2026-08-26T17:54:29.841Z",
+  "workload": {
+    "agent_identities": 50000,
+    "episode_nodes": 1000000,
+    "promoted_accountability_nodes": 50000,
+    "raw_to_accountability_ratio": 20
+  },
+  "measured": {
+    "wall_time_ms": 335.85,
+    "nodes_per_second": 2977521,
+    "bytes_for_exact_replay_bitset": 125000,
+    "graph_digest": "sha256:091fb1162436e0974eec805d8c7c3a2ce33272ee9778823e952116772ec0da4c",
+    "anomaly_detection_recall": 1
+  },
+  "adversarial": {
+    "duplicate_events": {
+      "injected": 4,
+      "detected": 4
+    },
+    "reordered_events": {
+      "injected": 9,
+      "detected": 9
+    },
+    "dropped_events": {
+      "injected": 3,
+      "detected": 3
+    },
+    "expired_leases": {
+      "injected": 3,
+      "detected": 3
+    },
+    "stale_policies": {
+      "injected": 2,
+      "detected": 2
+    },
+    "clock_skew": {
+      "injected": 2,
+      "detected": 2
+    },
+    "replay_attacks": {
+      "injected": 2,
+      "detected": 2
+    },
+    "hidden_branches": {
+      "injected": 1,
+      "detected": 1
+    },
+    "out_of_band_effects": {
+      "injected": 1,
+      "detected": 1
+    },
+    "correlated_judges": {
+      "injected": 1,
+      "detected": 1
+    }
+  },
+  "acceptance": {
+    "exact_scale": true,
+    "all_injected_anomalies_detected": true,
+    "bounded_accountability_volume": true
+  },
+  "limitations": [
+    "This is a deterministic local protocol benchmark, not a production network load test.",
+    "Latency and throughput describe this process and machine only.",
+    "The benchmark does not claim third-party review or a realized customer outcome."
+  ]
+}

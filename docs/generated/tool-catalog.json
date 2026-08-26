@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-26T13:57:07.474Z",
-  "sourceHash": "961062b6aed9d95d",
+  "generatedAt": "2026-08-26T17:59:17.836Z",
+  "sourceHash": "f46b01b374584e4b",
   "version": "1.0.0",
   "totalTools": 86,
   "categories": [
@@ -4395,7 +4395,7 @@
     {
       "id": "orgx_emit_execution_graph",
       "title": "Emit OrgX Execution Graph",
-      "description": "Emit the deterministic execution graph + trust ledger for the active run: nodes (claimed status + verification evidence), depends_on edges, and trust events. OrgX derives false-completion, hallucinated-receipt, and dependency-violation signals from this and surfaces them on /live. USE WHEN: reporting the structured shape of multi-step work — NOT a single progress line (use orgx_emit_activity for that). NEXT: continue work; re-emit as the graph advances (idempotent per run + graph fingerprint). DO NOT USE to mark entities complete — telemetry only.",
+      "description": "Emit the deterministic execution graph + trust ledger for the active run from explicit nodes, OTel semantic events, or both. OTel promotion requires orgx.material=true plus episode/kind attributes; inferred events stay gaps and raw prompts are never retained. OrgX derives false-completion, hallucinated-receipt, and dependency-violation signals from this and surfaces them on /live. USE WHEN: reporting the structured shape of multi-step work — NOT a single progress line (use orgx_emit_activity for that). NEXT: continue work; re-emit as the graph advances (idempotent per run + graph fingerprint). DO NOT USE to mark entities complete — telemetry only.",
       "category": "Other",
       "inputSchema": {
         "type": "object",
@@ -4597,9 +4597,56 @@
               ],
               "additionalProperties": false
             },
-            "minItems": 1,
             "maxItems": 2000,
             "description": "Execution graph nodes; each carries claimed status + optional verification"
+          },
+          "otel_events": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "traceId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                "spanId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32
+                },
+                "parentSpanId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "timestamp": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "attributes": {
+                  "type": "object",
+                  "additionalProperties": {},
+                  "description": "OTel attributes. Promotion requires orgx.material=true, orgx.episode.id, and orgx.semantic.kind; inferred events remain explicit gaps."
+                }
+              },
+              "required": [
+                "traceId",
+                "spanId",
+                "name",
+                "timestamp",
+                "attributes"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1,
+            "maxItems": 2000,
+            "description": "Raw OTel-compatible events to semantically promote. Only explicitly material native/observed facts become graph nodes; prompts and inferred reasoning do not."
           },
           "edges": {
             "type": "array",
@@ -4697,8 +4744,7 @@
           }
         },
         "required": [
-          "initiative_id",
-          "nodes"
+          "initiative_id"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
