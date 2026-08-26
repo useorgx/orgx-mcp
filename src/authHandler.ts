@@ -2216,6 +2216,15 @@ async function handleConsentCallback(
       userId: identity.userId,
       metadata: { label: identity.userEmail },
       scope,
+      // OrgX intentionally supports concurrent grants for the same account and
+      // OAuth client. ChatGPT runtime connections, Codex, and OpenAI's plugin
+      // review scanner can all authorize independently while sharing a client
+      // identity. The provider's default revocation path scans every grant for
+      // the user synchronously before returning the authorization redirect;
+      // high-cardinality accounts can therefore exhaust Worker/KV limits and
+      // leave the browser stuck on "Authorizing connection". Disconnect and
+      // explicit revocation remain the lifecycle boundary for existing grants.
+      revokeExistingGrants: false,
       props: {
         userId: identity.userId,
         ...(identity.orgxUserId ? { orgxUserId: identity.orgxUserId } : {}),
