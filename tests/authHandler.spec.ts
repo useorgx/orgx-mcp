@@ -821,6 +821,48 @@ describe('authHandler OAuth consent flow', () => {
     expect(logged).not.toContain('client-state-1');
   });
 
+  it('returns a provider-validated callback for browser JSON consent without a form redirect', async () => {
+    const stateKey = 'state-consent-browser-json';
+    const kv = createKv({
+      [`auth_state:${stateKey}`]: JSON.stringify(authRequest),
+      [`auth_identity:${stateKey}`]: JSON.stringify({
+        userId: 'user-1',
+        userEmail: 'user@example.com',
+      }),
+    });
+    const redirectTo =
+      'https://chatgpt.com/connector_platform_oauth_redirect?code=abc&state=client-state-1';
+    const completeAuthorization = vi.fn(async () => ({ redirectTo }));
+
+    const response = await authHandler.fetch(
+      new Request('https://mcp.useorgx.com/oauth/consent-callback', {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          state_key: stateKey,
+          final_scope: 'memory:read',
+          action: 'approve',
+        }),
+      }),
+      {
+        MCP_SERVER_URL: 'https://mcp.useorgx.com',
+        ORGX_WEB_URL: 'https://useorgx.com',
+        OAUTH_KV: kv,
+        OAUTH_PROVIDER: { completeAuthorization },
+      },
+      createCtx()
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(await response.json()).toEqual({ redirect_to: redirectTo });
+    expect(kv.store.has(`auth_state:${stateKey}`)).toBe(false);
+    expect(kv.store.has(`auth_identity:${stateKey}`)).toBe(false);
+  });
+
   it('denies through the stored callback instead of trusting browser redirect data', async () => {
     const stateKey = 'state-consent-deny';
     const kv = createKv({

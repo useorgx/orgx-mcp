@@ -22,6 +22,9 @@ describe('OAuth consent page contract', () => {
     );
     expect(html).toContain("submitConsent('approve')");
     expect(html).toContain("submitConsent('deny')");
+    expect(html).toContain("headers: { Accept: 'application/json' }");
+    expect(html).toContain('window.location.assign(redirect.href)');
+    expect(html).not.toContain("document.getElementById('consent-form').submit()");
     expect(html).not.toContain("params.get('redirect_uri')");
     expect(html).not.toContain("params.get('oauth_state')");
   });

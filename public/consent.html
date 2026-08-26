@@ -886,17 +886,40 @@
         if (!configure) renderReview();
         document.querySelector('.panel').scrollIntoView({ block: 'start' });
       }
-      function submitConsent(action) {
+      async function submitConsent(action) {
         document.getElementById('form-state-key').value = state.stateKey;
         document.getElementById('form-final-scope').value = buildScopeList().join(' ');
         document.getElementById('form-action').value = action;
-        if (action === 'approve') {
-          document.getElementById('context-panel').hidden = true;
-          document.getElementById('panel').hidden = true;
-          document.getElementById('status-panel').classList.add('active');
-          shell.classList.remove('loading');
+        document.getElementById('context-panel').hidden = true;
+        document.getElementById('panel').hidden = true;
+        document.getElementById('status-panel').classList.add('active');
+        shell.classList.remove('loading');
+
+        try {
+          const form = document.getElementById('consent-form');
+          const response = await fetch('/oauth/consent-callback', {
+            method: 'POST',
+            body: new FormData(form),
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: { Accept: 'application/json' }
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(payload.error_description || 'Authorization could not be completed.');
+          }
+          if (typeof payload.redirect_to !== 'string' || !payload.redirect_to) {
+            throw new Error('Authorization completed without a client return address.');
+          }
+          const redirect = new URL(payload.redirect_to, window.location.origin);
+          if (['javascript:', 'data:', 'blob:', 'file:'].includes(redirect.protocol)) {
+            throw new Error('The client return address is not safe to open.');
+          }
+          window.location.assign(redirect.href);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          document.getElementById('status-panel').innerHTML = `<div class="status-content"><div class="orgx-icon" style="margin:0 auto 18px">!</div><h2>Connection could not be completed</h2><p>${escapeHtml(message)}</p><p>Return to your MCP client and start the connection again.</p></div>`;
         }
-        document.getElementById('consent-form').submit();
       }
       function bindEvents() {
         document.querySelectorAll('[data-preset]').forEach((button) => {
