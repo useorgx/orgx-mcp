@@ -27,6 +27,25 @@ function cacheKey(env: Pick<OrgxApiEnv, 'ORGX_API_URL'>, userId: string): string
   return `${env.ORGX_API_URL.trim()}::${userId}`;
 }
 
+export type BillingPlanScope = {
+  userEmail?: string | null;
+  orgxUserId?: string | null;
+  workspaceId?: string | null;
+};
+
+function scopedCacheKey(
+  env: Pick<OrgxApiEnv, 'ORGX_API_URL'>,
+  userId: string,
+  scope: BillingPlanScope
+): string {
+  return [
+    cacheKey(env, userId),
+    scope.orgxUserId?.trim() ?? '',
+    scope.userEmail?.trim().toLowerCase() ?? '',
+    scope.workspaceId?.trim() ?? '',
+  ].join('::');
+}
+
 function getCachedPlan(
   key: string,
   opts: { allowStale?: boolean } = {}
@@ -62,7 +81,8 @@ function setCachedPlan(key: string, value: BillingPlanContext): void {
 
 async function fetchBillingPlanContext(
   env: OrgxApiEnv,
-  userId: string
+  userId: string,
+  scope: BillingPlanScope
 ): Promise<BillingPlanContext> {
   const configuredTimeoutMs = Number(env.ORGX_BILLING_PLAN_TIMEOUT_MS);
   const timeoutMs =
@@ -76,11 +96,19 @@ async function fetchBillingPlanContext(
   );
 
   try {
+    const workspaceId = scope.workspaceId?.trim();
+    const path = workspaceId
+      ? `/api/billing/usage?workspace_id=${encodeURIComponent(workspaceId)}`
+      : '/api/billing/usage';
     const response = await callOrgxApiJson(
       env,
-      '/api/billing/usage',
+      path,
       { method: 'GET', signal: controller.signal },
-      { userId }
+      {
+        userId,
+        userEmail: scope.userEmail,
+        orgxUserId: scope.orgxUserId,
+      }
     );
     const usage = (await response.json()) as { plan?: unknown };
     const plan = normalizeBillingPlan(usage.plan);
@@ -96,21 +124,22 @@ async function fetchBillingPlanContext(
 
 export async function resolveBillingPlanContext(
   env: OrgxApiEnv,
-  userId: string | null | undefined
+  userId: string | null | undefined,
+  scope: BillingPlanScope = {}
 ): Promise<BillingPlanContext> {
   const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
   if (!normalizedUserId) {
     return { plan: 'free', tier: 'free', source: 'fallback' };
   }
 
-  const key = cacheKey(env, normalizedUserId);
+  const key = scopedCacheKey(env, normalizedUserId, scope);
   const cached = getCachedPlan(key);
   if (cached) return cached;
 
   const inFlight = billingPlanInFlight.get(key);
   if (inFlight) return inFlight;
 
-  const promise = fetchBillingPlanContext(env, normalizedUserId)
+  const promise = fetchBillingPlanContext(env, normalizedUserId, scope)
     .then((value) => {
       setCachedPlan(key, value);
       return value;

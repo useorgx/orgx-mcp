@@ -221,6 +221,9 @@ export async function checkToolPlanAccess(params: {
     ORGX_WEB_URL?: string;
   };
   userId?: string | null;
+  userEmail?: string | null;
+  orgxUserId?: string | null;
+  workspaceId?: string | null;
   feature: ToolAccessFeature;
 }): Promise<CallToolResult | null> {
   const trimmedUserId =
@@ -237,7 +240,11 @@ export async function checkToolPlanAccess(params: {
     );
   }
 
-  const { plan } = await resolveBillingPlanContext(params.env, userId);
+  const { plan } = await resolveBillingPlanContext(params.env, userId, {
+    userEmail: params.userEmail,
+    orgxUserId: params.orgxUserId,
+    workspaceId: params.workspaceId,
+  });
 
   const access = evaluateToolAccess({
     feature: params.feature,

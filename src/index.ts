@@ -2980,9 +2980,17 @@ export class OrgXMcp extends McpAgent<
     }
 
     if (toolId === 'spawn_agent_task') {
+      const billingWorkspaceId =
+        typeof effectiveArgs?.workspace_id === 'string' &&
+        effectiveArgs.workspace_id.trim()
+          ? effectiveArgs.workspace_id.trim()
+          : this.sessionContext?.workspaceId ?? null;
       const planResponse = await checkToolPlanAccess({
         env: this.env,
         userId: resolvedUserId ?? null,
+        userEmail: this.resolveUserEmail(),
+        orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? undefined),
+        workspaceId: billingWorkspaceId,
         feature: 'spawn_agent_task',
       });
       if (planResponse) {
@@ -12506,6 +12514,12 @@ export class OrgXMcp extends McpAgent<
         const planResponse = await checkToolPlanAccess({
           env: this.env,
           userId: resolvedUserId ?? null,
+          userEmail: this.resolveUserEmail(),
+          orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? undefined),
+          workspaceId:
+            (args.workspace_id as string | undefined) ??
+            this.sessionContext?.workspaceId ??
+            null,
           feature: 'start_autonomous_session',
         });
         if (planResponse) return planResponse;
