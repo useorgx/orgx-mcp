@@ -70,6 +70,16 @@
   }
 
   function detectProtocol() {
+    // The gallery embeds fixture pages in an iframe. Explicit gallery mode
+    // must stay deterministic and never wait for a host tool-result bridge.
+    // Real ChatGPT/MCP embeds do not carry this query flag, so their protocol
+    // detection remains unchanged.
+    try {
+      var params = new URLSearchParams(global.location.search);
+      if (params.get('gallery') === 'true') return 'standalone';
+    } catch (_) {
+      // Keep normal protocol detection if URL parsing is unavailable.
+    }
     if (global.openai) return 'chatgpt';
     if (global.McpApps && global.McpApps.App && global.parent !== global) {
       return 'mcp-apps-sdk';
