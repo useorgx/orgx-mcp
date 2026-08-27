@@ -483,7 +483,6 @@
         const stateForWidget = state === 'completed' ? 'resolved' : state;
         if (widget.id === 'agent-status') {
           if (state === 'loading') return 'loading=true';
-          if (state === 'empty') return '';
           return 'demo=true&state=' + encodeURIComponent(stateForWidget);
         }
         if (widget.advanced) {
@@ -498,8 +497,11 @@
           return 'state=' + encodeURIComponent(normalized);
         }
         if (state === 'loading') return 'loading=true';
-        if (state === 'empty' || state === 'error') return '';
-        return 'demo=true' + (stateForWidget !== 'populated' ? '&state=' + encodeURIComponent(stateForWidget) : '');
+        // Simple widgets opt into the same deterministic fixture contract.
+        // Their own `state` query is responsible for presenting the
+        // appropriate lifecycle copy instead of collapsing every state into
+        // a populated or empty surface.
+        return 'demo=true&state=' + encodeURIComponent(stateForWidget);
       }
 
       function previewUrl() {
