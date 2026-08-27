@@ -1689,7 +1689,19 @@ external: function (size) {
             updated_at: staleState
               ? new Date(Date.now() - 1000 * 60 * 14).toISOString()
               : new Date().toISOString(),
-            workstreams: variantWorkstreams
+            workstreams: variantWorkstreams,
+            recent_artifacts: completeState
+              ? (pulse.recent_artifacts || []).map(function (artifact) {
+                  return Object.assign({}, artifact, { status: "approved", primary_label: "Open artifact" });
+                })
+              : pulse.recent_artifacts,
+            artifact_summary: completeState
+              ? {
+                  total: pulse.artifact_summary && pulse.artifact_summary.total || 0,
+                  approved: pulse.artifact_summary && pulse.artifact_summary.total || 0,
+                  in_review: 0
+                }
+              : pulse.artifact_summary
           });
         }
       }
