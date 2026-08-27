@@ -478,6 +478,125 @@
       const root = document.getElementById('root');
       let data = null;
       let lens = 'skills';
+      const params = new URLSearchParams(location.search);
+      const demoState = params.get('state') || 'populated';
+      const galleryDemo = params.get('demo') === 'true' || params.get('gallery') === 'true';
+      let isLoading = params.get('loading') === 'true' || demoState === 'loading';
+      let demoError = demoState === 'error';
+
+      function demoConfidence(value, delta, placeholder) {
+        return {
+          value: value,
+          delta: delta,
+          placeholder: !!placeholder,
+          points: placeholder ? [] : [0.42, 0.55, 0.61, 0.74, value],
+        };
+      }
+
+      function buildDemoData(state) {
+        const complete = state === 'completed' || state === 'resolved';
+        const blocked = state === 'blocked';
+        const stale = state === 'stale' || state === 'degraded';
+        const progressing = state === 'progressing';
+        const long = state === 'long';
+        const skillRows = [
+          {
+            id: 'skill-evidence',
+            name: 'Evidence QA',
+            mode: 'auto',
+            learningLine: progressing ? '<strong>Running now</strong> · validating the latest receipt chain.' : blocked ? '<strong>Blocked</strong> · waiting on a deploy receipt.' : 'Verified receipt coverage across the latest run.',
+            confidence: demoConfidence(complete ? 0.97 : blocked ? 0.48 : stale ? 0.7 : 0.86, complete ? 0.11 : blocked ? -0.14 : 0.08, stale),
+            runs: complete ? 14 : 12,
+          },
+          {
+            id: 'skill-orchestration',
+            name: 'Orchestration',
+            mode: 'auto',
+            learningLine: progressing ? 'Decomposing the next workstream into agent-sized slices.' : 'Keeps handoffs concise and ownership explicit.',
+            confidence: demoConfidence(complete ? 0.94 : blocked ? 0.63 : stale ? 0.76 : 0.82, complete ? 0.06 : 0.04, stale),
+            runs: complete ? 9 : 8,
+          },
+        ];
+        if (long) {
+          skillRows.push(
+            { id: 'skill-search', name: 'Search relevance', mode: 'manual', learningLine: 'Ranking the strongest organizational answer first.', confidence: demoConfidence(0.79, 0.03, stale), runs: 7 },
+            { id: 'skill-memory', name: 'Memory hygiene', mode: 'auto', learningLine: 'Keeping workspace context scoped and current.', confidence: demoConfidence(0.91, 0.09, stale), runs: 11 },
+            { id: 'skill-briefing', name: 'Brief synthesis', mode: 'auto', learningLine: 'Turning completed work into a compact operator readout.', confidence: demoConfidence(0.88, 0.05, stale), runs: 6 }
+          );
+        }
+        const agents = [
+          {
+            id: 'agent-eli',
+            displayName: 'Eli',
+            role: 'Engineering',
+            mode: 'auto',
+            avatarGlyph: 'E',
+            accentRgb: '6, 182, 212',
+            learningLine: progressing ? '<strong>In progress</strong> · assembling the deploy proof packet.' : blocked ? '<strong>Waiting</strong> · a verification gate needs attention.' : 'Closed the latest evidence gap cleanly.',
+            confidence: demoConfidence(complete ? 0.98 : blocked ? 0.45 : stale ? 0.69 : 0.9, complete ? 0.12 : blocked ? -0.18 : 0.07, stale),
+            tasks: complete ? 6 : 5,
+            isRegressed: blocked,
+            sla: { displayLine: stale ? 'Last seen 14m ago' : 'Next checkpoint · 18m' },
+          },
+          {
+            id: 'agent-dana',
+            displayName: 'Dana',
+            role: 'Design',
+            mode: 'manual',
+            avatarGlyph: 'D',
+            accentRgb: '236, 72, 153',
+            learningLine: 'Reviewing the next operator-facing surface.',
+            confidence: demoConfidence(complete ? 0.93 : stale ? 0.77 : 0.84, 0.03, stale),
+            tasks: complete ? 3 : 2,
+            sla: { displayLine: stale ? 'Last seen 14m ago' : 'Next checkpoint · 42m' },
+          },
+        ];
+        if (long) {
+          agents.push(
+            { id: 'agent-mark', displayName: 'Mark', role: 'Marketing', mode: 'auto', avatarGlyph: 'M', accentRgb: '249, 115, 22', learningLine: 'Packaging the launch proof for review.', confidence: demoConfidence(0.81, 0.02, stale), tasks: 4 },
+            { id: 'agent-sage', displayName: 'Sage', role: 'Sales', mode: 'auto', avatarGlyph: 'S', accentRgb: '168, 85, 247', learningLine: 'Qualifying the next accepted outcome.', confidence: demoConfidence(0.76, 0.01, stale), tasks: 3 }
+          );
+        }
+        return {
+          masthead: { kicker: 'OrgX · Daily brief' },
+          skillsLens: {
+            masthead: {
+              headlineHtml: complete ? 'The loop is <em>closed</em>.' : blocked ? 'One gate needs your <em>call</em>.' : progressing ? 'Work is <em>moving</em>.' : stale ? 'Refresh before you <em>act</em>.' : 'Your operating loop, <em>in view</em>.',
+              subtitle: complete ? 'Every completed task has a receipt.' : blocked ? 'Execution is paused until the evidence gate clears.' : progressing ? 'Live work is landing in the ledger now.' : stale ? 'The last readout is outside the live window.' : 'A calm readout of what changed and what is next.',
+              metaLabel: complete ? 'Complete · verified' : blocked ? 'Blocked · needs you' : progressing ? 'Live · updating' : stale ? 'Stale · refresh' : 'Skills · live',
+            },
+            skills: skillRows,
+          },
+          agentsLens: {
+            masthead: {
+              headlineHtml: complete ? 'Agents are <em>clear</em>.' : blocked ? 'An agent is <em>waiting</em>.' : progressing ? 'Agents are <em>working</em>.' : stale ? 'Agent context is <em>stale</em>.' : 'Your agents, <em>in motion</em>.',
+              subtitle: 'See the owner, confidence, and proof behind each move.',
+              metaLabel: complete ? 'Complete · verified' : blocked ? 'Attention · 1 gate' : progressing ? 'Live · 2 active' : stale ? 'Stale · refresh' : 'Agents · live',
+            },
+            agents: agents,
+            crossPollinationPrompt: null,
+          },
+          attention: complete ? null : {
+            eyebrow: blocked ? 'Blocked · one decision' : stale ? 'Needs refresh' : progressing ? 'Live sync' : 'Next useful move',
+            headlineHtml: blocked ? 'Resolve the evidence gate before dispatching more work.' : stale ? 'Refresh this brief to pull current agent state.' : progressing ? 'The latest receipt is still being assembled.' : 'Open today to review the one item that can move the loop forward.',
+            deepLink: 'https://useorgx.com/live?view=mission-control',
+          },
+          proof: {
+            timeSaved: { displayValue: complete ? '42m' : '31m', label: 'time saved', baseline: 'vs. manual review', value: complete ? 42 : 31, goalDelta: { pct: 0.08, displayDelta: '+8%' } },
+            tokensSaved: { displayValue: complete ? '18.4k' : '14.2k', label: 'tokens saved', baseline: 'vs. full replay', value: complete ? 18400 : 14200 },
+            deviationsCaught: { displayValue: complete ? '6' : blocked ? '2' : '4', label: 'deviations caught', baseline: 'before release', value: complete ? 6 : blocked ? 2 : 4 },
+          },
+          footer: {
+            syncedAgo: complete ? 'Verified just now' : stale ? 'Last synced 14m ago' : 'Synced just now',
+            machineCount: 2,
+            deepLink: { href: 'https://useorgx.com/live?view=mission-control', label: complete ? 'Open proof' : 'Open today' },
+          },
+        };
+      }
+
+      if (galleryDemo && !isLoading && !demoError && demoState !== 'empty') {
+        data = buildDemoData(demoState);
+      }
 
       function escapeHtml(v) {
         if (v == null) return '';
@@ -645,17 +764,28 @@
         `;
       }
 
+      function renderLoadingState() {
+        root.innerHTML = '<div class="db-card db-stagger" style="--i:0;"><div class="db-empty" role="status" aria-label="Loading daily brief"><div class="db-empty-title">Loading today’s brief</div><div class="db-empty-desc">Syncing completed work, active agents, and the latest proof.</div><div style="display:grid;gap:8px;margin-top:18px;"><span style="display:block;height:10px;border-radius:999px;background:var(--ox-well-bg);animation:dbPulse 1.3s ease-in-out infinite;"></span><span style="display:block;width:78%;height:10px;border-radius:999px;background:var(--ox-well-bg);animation:dbPulse 1.3s ease-in-out .12s infinite;"></span><span style="display:block;width:56%;height:10px;border-radius:999px;background:var(--ox-well-bg);animation:dbPulse 1.3s ease-in-out .24s infinite;"></span></div></div></div>';
+      }
+
+      function renderErrorState() {
+        root.innerHTML = '<div class="db-card db-stagger" style="--i:0;"><div class="db-empty"><div class="db-empty-title">Daily brief unavailable</div><div class="db-empty-desc">The latest ledger readout could not be loaded. Retry from today when the workspace is reachable.</div><a class="db-footer-link" href="https://useorgx.com/live?view=mission-control" data-action-kind="open-today" data-deep-link="https://useorgx.com/live?view=mission-control">Open today →</a></div></div>';
+        wireActions();
+      }
+
       function renderEmptyState() {
-        root.innerHTML = `
-            <div class="db-card db-stagger" style="--i:0;">
-              <div class="db-empty">
-                <div class="db-empty-title">Nothing needs you yet</div>
-                <div class="db-empty-desc">The ledger fills in as skills and agents run. Complete your first task in an editor and the daily readout will appear here.</div>
-              </div>
-            </div>`;
+        root.innerHTML = '<div class="db-card db-stagger" style="--i:0;"><div class="db-empty"><div class="db-empty-title">Nothing needs you yet</div><div class="db-empty-desc">The ledger fills in as skills and agents run. Complete your first task in an editor and the daily readout will appear here.</div></div></div>';
       }
 
       function render() {
+        if (isLoading) {
+          renderLoadingState();
+          return;
+        }
+        if (demoError) {
+          renderErrorState();
+          return;
+        }
         if (!data) {
           renderEmptyState();
           return;
@@ -795,13 +925,17 @@
         });
       }
 
-      initWidget({
-        render: (d) => {
-          if (d) data = d;
-          if (data && data.defaultLens) lens = data.defaultLens;
-          render();
-        },
-      });
+      if (galleryDemo) {
+        render();
+      } else {
+        initWidget({
+          render: (d) => {
+            if (d) data = d;
+            if (data && data.defaultLens) lens = data.defaultLens;
+            render();
+          },
+        });
+      }
     </script>
   </body>
 </html>
