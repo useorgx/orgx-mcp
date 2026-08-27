@@ -3890,6 +3890,10 @@ export class OrgXMcp extends McpAgent<
       sync_client_state: { path: '/api/client/sync', method: 'POST' },
       check_spawn_guard: { path: '/api/client/spawn', method: 'POST' },
       record_quality_score: { path: '/api/client/quality', method: 'POST' },
+      request_independent_artifact_review: {
+        path: '/api/v1/artifacts',
+        method: 'POST',
+      },
       classify_task_model: {
         path: '/api/client/route-task',
         method: 'POST',
@@ -4025,6 +4029,22 @@ export class OrgXMcp extends McpAgent<
                   )}`;
                   const { attention_id: _attentionId, ...receipt } = toolArgs;
                   normalizedToolArgs = receipt;
+                }
+                if (tool.id === 'request_independent_artifact_review') {
+                  const artifactId =
+                    typeof toolArgs.artifact_id === 'string'
+                      ? toolArgs.artifact_id.trim()
+                      : '';
+                  if (!artifactId) {
+                    return this.toolError('artifact_id is required', {
+                      code: 'invalid_input',
+                      status: 400,
+                    });
+                  }
+                  url = `/api/v1/artifacts/${encodeURIComponent(
+                    artifactId
+                  )}/independent-review`;
+                  normalizedToolArgs = {};
                 }
                 if (tool.id === 'record_quality_score') {
                   const normalized =
@@ -4332,6 +4352,13 @@ export class OrgXMcp extends McpAgent<
         return allowed
           ? `✅ Spawn authorized — use model tier: ${tier}`
           : `🚫 Spawn blocked — ${reason ?? 'unknown reason'}`;
+      }
+      case 'request_independent_artifact_review': {
+        const artifactId =
+          typeof data.artifact_id === 'string' ? data.artifact_id : null;
+        return artifactId
+          ? `Independent review queued · artifact ${artifactId.slice(0, 8)}... · rubric v1`
+          : 'Independent artifact review queued';
       }
       case 'record_quality_score': {
         const score =
