@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-08-27T06:48:42.371Z",
+  "generatedAt": "2026-08-27T07:01:29.770Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -213,8 +213,8 @@
     },
     "task-spawned": {
       "file": "public/widgets/task-spawned.html",
-      "bytes": 44094,
-      "hash": "43b80be89f8c",
+      "bytes": 44411,
+      "hash": "65e03172b8c7",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/interaction-kit.css",

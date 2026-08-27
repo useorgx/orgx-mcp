@@ -890,6 +890,7 @@
         : entity.action === 'guard'
         ? 'OrgX checked whether this delegation can proceed. No agent work was dispatched.'
         : 'OrgX classified the best execution route. No agent work was dispatched.';
+      const preflightCopy = 'Preflight only · no dispatch';
       const isComplete = stateMeta.state === 'completed';
       const statusLabel = isDispatch ? stateMeta.label : 'Preflight complete';
       const receiptId = firstString([entity.receipt_id, entity.receiptId, entity.run_id, entity.runId, entity.execution_id, entity.executionId, entity.id]);
@@ -907,7 +908,7 @@
                 <div class="widget-hero-copy" style="min-width:0">
                   <div class="widget-kicker">${kicker}</div>
                   <div class="widget-title-lg">${escapeHtml(entity.title)}</div>
-                  <div class="widget-subtitle">${escapeHtml(entity.initiative_name ? entity.initiative_name + ' · ' + (entity.note || stateMeta.description) : (entity.note || stateMeta.description))}</div>
+                  <div class="widget-subtitle">${escapeHtml(entity.initiative_name ? entity.initiative_name + ' · ' + (entity.note || stateMeta.description) : (entity.note || (isDispatch ? stateMeta.description : preflightCopy + ' · ' + heroSubtitle)))}</div>
                   <div class="dispatch-sync"><span class="dispatch-sync__dot"></span>${escapeHtml(window.OrgXWidgetState ? window.OrgXWidgetState.formatAge(entity) : 'Sync time unavailable')}</div>
                 </div>
                 <div class="dispatch-state dispatch-state--${escapeHtml(stateMeta.state)}" role="status" aria-label="${escapeHtml(statusLabel)}">
