@@ -2125,6 +2125,24 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     },
   },
   {
+    id: 'request_independent_artifact_review',
+    title: 'Request Independent Artifact Review',
+    description:
+      'Queue OrgX\'s independent evaluator for one completed agent artifact. The producing agent cannot supply or choose the score. OrgX persists the native evaluation and its 1–5 rating projection under the rubric version. USE WHEN: an agent has produced one final artifact and you need an independently scored record. NEXT: inspect the artifact evals after the queued evaluation completes. DO NOT USE: for drafts or to record a self-score.',
+    inputSchema: {
+      artifact_id: z
+        .string()
+        .uuid()
+        .describe('Completed work_artifacts UUID to evaluate'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
+    _meta: {
+      'openai/toolInvocation/invoking': 'Queueing independent artifact review...',
+      'openai/toolInvocation/invoked': 'Independent review queued',
+    },
+  },
+  {
     id: 'classify_task_model',
     title: 'Estimate Task Routing',
     description:

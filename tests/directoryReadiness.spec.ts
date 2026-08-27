@@ -143,6 +143,7 @@ describe('Anthropic directory readiness', () => {
       'get_operator_chronicle',
       'check_execution_readiness',
       'consolidate_pr',
+      'request_independent_artifact_review',
     ]);
     expect(serverJson.tools?.find((tool) => tool.name === 'orgx_bootstrap')?.description).toContain(
       'v2 routing guidance'
