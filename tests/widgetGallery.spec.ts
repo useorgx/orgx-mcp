@@ -27,4 +27,32 @@ describe('widget gallery state contract', () => {
     expect(taskSource).toContain('Execution Needs Refresh');
     expect(taskSource).toContain("stateMeta.state === 'completed' ? 'View result'");
   });
+  it('keeps gallery fixtures deterministic and link-safe', () => {
+    expect(gallerySource).toContain("gallery=true");
+    expect(taskSource).not.toContain("url: '#'");
+    const searchSource = readFileSync(
+      resolve(process.cwd(), 'public/widgets/search-results.html'),
+      'utf8'
+    );
+    expect(searchSource).not.toContain("url: '#'");
+  });
+
+  it('covers state-aware readout and stream fixtures', () => {
+    const pulseSource = readFileSync(
+      resolve(process.cwd(), 'public/widgets/initiative-pulse.html'),
+      'utf8'
+    );
+    const dailySource = readFileSync(
+      resolve(process.cwd(), 'public/widgets/daily-brief.html'),
+      'utf8'
+    );
+    const streamSource = readFileSync(
+      resolve(process.cwd(), 'public/widgets/scaffold-streaming.html'),
+      'utf8'
+    );
+    expect(pulseSource).toContain('var demoState = params.get("state")');
+    expect(dailySource).toContain('function buildDemoData(state)');
+    expect(streamSource).toContain('function showDemoState(mode)');
+  });
+
 });
