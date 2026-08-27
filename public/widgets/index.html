@@ -504,7 +504,9 @@
 
       function previewUrl() {
         const widget = byId.get(selectedId);
-        const query = [stateQuery(widget, elements.state.value), 'theme=' + encodeURIComponent(elements.theme.value)].filter(Boolean).join('&');
+        // Mark embedded previews explicitly so widget runtime bypasses host
+        // bridges and renders the selected deterministic fixture.
+        const query = [stateQuery(widget, elements.state.value), 'theme=' + encodeURIComponent(elements.theme.value), 'gallery=true'].filter(Boolean).join('&');
         return widget.file + (query ? '?' + query : '');
       }
 
