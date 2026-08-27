@@ -926,7 +926,7 @@
 
     const state = {
       brief: null,
-      isLoading: !isDemo,
+      isLoading: !isDemo || isLoadingOverride,
       activeSection: 'priorities',
       error: false,
     };
@@ -2020,7 +2020,7 @@
 
     render();
 
-    if (isDemo) {
+    if (isDemo && !isLoadingOverride) {
       state.brief = demoError || demoState === 'empty' ? null : demoBriefVariant;
       state.isLoading = false;
       render();
