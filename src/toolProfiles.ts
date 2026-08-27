@@ -115,6 +115,7 @@ export const CHATGPT_PUBLIC_SURFACE = [
   'get_morning_brief',
   'get_operator_chronicle',
   'check_execution_readiness',
+  'request_independent_artifact_review',
 ] as const;
 
 /**
