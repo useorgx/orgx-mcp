@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-08-26T18:11:06.938Z",
-  "sourceHash": "ab58a3714fd94a9c",
+  "generatedAt": "2026-08-27T15:19:33.303Z",
+  "sourceHash": "4f70255de4045b85",
   "version": "1.0.0",
-  "totalTools": 86,
+  "totalTools": 87,
   "categories": [
     "Agents",
     "Billing",
@@ -5565,6 +5565,33 @@
       ],
       "readOnly": false,
       "source": "chatgpt",
+      "profiles": []
+    },
+    {
+      "id": "request_independent_artifact_review",
+      "title": "Request Independent Artifact Review",
+      "description": "Queue OrgX's independent evaluator for one completed agent artifact. The producing agent cannot supply or choose the score. OrgX persists the native evaluation and its 1–5 rating projection under the rubric version. USE WHEN: an agent has produced one final artifact and you need an independently scored record. NEXT: inspect the artifact evals after the queued evaluation completes. DO NOT USE: for drafts or to record a self-score.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "artifact_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Completed work_artifacts UUID to evaluate"
+          }
+        },
+        "required": [
+          "artifact_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "initiatives:write"
+      ],
+      "readOnly": false,
+      "source": "client_integration",
       "profiles": []
     },
     {
