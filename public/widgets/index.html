@@ -549,7 +549,8 @@
         elements.widget.value = selectedId;
         elements.title.textContent = widget.name;
         elements.question.textContent = widget.job;
-        elements.status.textContent = elements.state.options[elements.state.selectedIndex].text + ' ready';
+        const selectedOption = elements.state.options[elements.state.selectedIndex];
+        elements.status.textContent = (selectedOption ? selectedOption.text : elements.state.value.replace(/[-_]/g, ' ')) + ' ready';
         elements.shell.dataset.viewport = elements.viewport.value;
         elements.frame.title = widget.name + ' — ' + elements.state.value + ' — ' + elements.theme.value;
         elements.frame.src = url;
