@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 
 import { CLIENT_INTEGRATION_TOOL_DEFINITIONS } from '../src/toolDefinitions';
 
@@ -17,9 +18,7 @@ describe('request_independent_artifact_review tool contract', () => {
   });
 
   it('requires a UUID artifact id and accepts no producer score', () => {
-    const schema = tool?.inputSchema as {
-      safeParse(value: unknown): { success: boolean; data?: Record<string, unknown> };
-    };
+    const schema = z.object(tool?.inputSchema ?? {});
     expect(schema.safeParse({ artifact_id: '11111111-1111-4111-8111-111111111111' }).success).toBe(true);
     expect(schema.safeParse({ artifact_id: 'not-an-artifact' }).success).toBe(false);
     const parsed = schema.safeParse({
