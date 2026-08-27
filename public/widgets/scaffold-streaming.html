@@ -992,11 +992,69 @@ button[data-oxhref]:not(.foot-link){background:none;border:none;padding:0;font:i
     wsStack.innerHTML = '<div class="stream-empty"><strong>Start a scaffold to watch it build here.</strong><span>Live updates connect only when this widget receives an explicit live session.</span></div>';
   }
 
+  function showDemoState(mode) {
+    if (mode === 'empty') {
+      showIdleState();
+      return;
+    }
+    resetAll();
+    var config = mode === 'completed' || mode === 'resolved'
+      ? {
+          eyebrow: 'INITIATIVE SCAFFOLDED',
+          title: 'Scaffold complete — proof attached',
+          status: 'COMPLETE',
+          meta: 'SYNCED',
+          progress: 100,
+          count: '18 / 18',
+          tone: 'done',
+          detail: 'All workstreams, milestones, and tasks are visible with a verified live-view link.'
+        }
+      : mode === 'blocked' || mode === 'error'
+      ? {
+          eyebrow: 'INITIATIVE SCAFFOLDED',
+          title: 'Scaffold paused at an evidence gate',
+          status: 'BLOCKED',
+          meta: 'ACTION NEEDED',
+          progress: 62,
+          count: '11 / 18',
+          tone: 'error',
+          detail: 'The stream is intact, but the next receipt is waiting on an approval or a recoverable execution error.'
+        }
+      : {
+          eyebrow: 'INITIATIVE SCAFFOLDED',
+          title: 'Scaffold needs a fresh sync',
+          status: 'STALE',
+          meta: 'REFRESH TO RESUME',
+          progress: 62,
+          count: '11 / 18',
+          tone: 'stale',
+          detail: 'The last stream update is outside the live window. Refresh before treating this hierarchy as current.'
+        };
+    etext.textContent = config.eyebrow;
+    heroTitle.textContent = config.title;
+    statusText.textContent = config.status;
+    footMeta.textContent = config.meta;
+    wbsCount.textContent = config.count;
+    setProgress(config.progress);
+    ldot.className = 'live-dot' + (config.tone === 'error' ? ' error' : config.tone === 'done' ? ' done' : '');
+    statusPill.classList.toggle('done', config.tone === 'done');
+    wsStack.style.display = 'block';
+    wsStack.innerHTML = '<div class="stream-empty"><strong>' + esc(config.title) + '</strong><span>' + esc(config.detail) + '</span></div>';
+    banner.classList.remove('show');
+    if (errBanner) {
+      errBanner.classList.toggle('show', config.tone === 'error');
+      errBanner.textContent = config.tone === 'error' ? 'This demo state is blocked; no work was submitted.' : '';
+    }
+  }
+
   var _params = new URLSearchParams(location.search);
   var _demo = _params.get('demo') === 'true';
   var _live = _params.get('live') === 'true';
   var _loading = _params.get('loading') === 'true';
-  if (_demo) {
+  var _state = _params.get('state') || '';
+  if (_demo && ['completed', 'resolved', 'blocked', 'error', 'stale', 'degraded', 'empty'].indexOf(_state) >= 0) {
+    showDemoState(_state);
+  } else if (_demo) {
     runDemo();
   } else if (_live) {
     connect();
