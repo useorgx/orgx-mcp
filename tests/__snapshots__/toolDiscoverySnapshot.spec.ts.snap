@@ -229,7 +229,6 @@ exports[`tool discovery snapshot > per-profile snapshots > profile "chatgpt" exp
   "orgx_submit_receipt",
   "orgx_write",
   "reject_decision",
-  "request_independent_artifact_review",
   "review_artifact",
   "scaffold_initiative",
 ]
