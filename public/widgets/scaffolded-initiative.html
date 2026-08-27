@@ -2315,8 +2315,17 @@
     };
     var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
     var renderScaffoldState = (mode) => {
-      var awaiting = mode === 'awaiting';
-      var statusLabel = awaiting ? 'Listening' : 'Composing';
+      var awaiting = mode === 'awaiting' || mode === 'empty';
+      var errored = mode === 'error';
+      var stateClass = errored ? 'error' : awaiting ? 'awaiting' : 'loading';
+      var statusLabel = errored ? 'Needs attention' : awaiting ? 'Listening' : 'Composing';
+      var stateEyebrow = errored ? 'Scaffold unavailable' : awaiting ? 'Scaffold Launchpad' : 'Initiative Composer';
+      var stateTitle = errored ? 'Scaffold could not load' : awaiting ? 'Scaffold standing by' : 'Initiative signal locked';
+      var stateDesc = errored
+        ? 'The scaffold session is unavailable. Retry from the live initiative view when the execution surface is ready.'
+        : awaiting
+        ? 'The launchpad is listening for the first scaffold payload so it can expand the initiative in place.'
+        : 'OrgX is translating the initiative brief into a clean execution spine before the hierarchy drops in.';
       var workstreamChips = [
         { label: 'Narrative lock', rgb: DOMAIN_ACCENTS.product },
         { label: 'Search proof', rgb: DOMAIN_ACCENTS.engineering },
@@ -2352,9 +2361,9 @@
         { rgb: DOMAIN_ACCENTS.engineering, icon: icons.code(14), strong: 'Agent tasks stay precise', copy: 'Each workstream decomposes into milestone checkpoints and session-sized tasks.' },
         { rgb: DOMAIN_ACCENTS.marketing, icon: icons.checkCircle(14), strong: 'Approval stays in the loop', copy: 'Agents pause for decisions and keep the latest status visible as the hierarchy settles.' }
       ];
-      return `<div class="ox-card animate-in"><div class="ox-card-inner"><section class="scaffold-state scaffold-state--${awaiting ? 'awaiting' : 'loading'}" data-scaffold-state data-scaffold-interval="4200" data-current-scene="0">
+      return `<div class="ox-card animate-in"><div class="ox-card-inner"><section class="scaffold-state scaffold-state--${stateClass}" data-scaffold-state data-scaffold-interval="4200" data-current-scene="0">
         <div class="scaffold-state__chrome">
-          <div class="scaffold-state__eyebrow">${awaiting ? 'Scaffold Launchpad' : 'Initiative Composer'}</div>
+          <div class="scaffold-state__eyebrow">${stateEyebrow}</div>
           <div class="scaffold-state__status">
             <span class="scaffold-state__status-dot"></span>
             <span>${statusLabel}</span>
@@ -2363,7 +2372,7 @@
         <div class="scaffold-state__stage">
           <div class="scaffold-state__glow scaffold-state__glow--one" aria-hidden="true"></div>
           <div class="scaffold-state__glow scaffold-state__glow--two" aria-hidden="true"></div>
-          <div class="scaffold-state__scene active" data-scaffold-scene data-caption-title="${escapeHtml(awaiting ? 'Scaffold standing by' : 'Initiative signal locked')}" data-caption-desc="${escapeHtml(awaiting ? 'The launchpad is listening for the first scaffold payload so it can expand the initiative in place.' : 'OrgX is translating the initiative brief into a clean execution spine before the hierarchy drops in.')}">
+          <div class="scaffold-state__scene active" data-scaffold-scene data-caption-title="${escapeHtml(stateTitle)}" data-caption-desc="${escapeHtml(stateDesc)}">
             <div class="scaffold-state__icon-tile" style="--scene-rgb:${DOMAIN_ACCENTS.orchestrator};">${icons.initiative(24)}</div>
           </div>
           <div class="scaffold-state__scene" data-scaffold-scene data-caption-title="Workstreams split into lanes" data-caption-desc="Parallel streams form first so the milestone and task structure can inherit clean ownership and pacing.">
@@ -2407,7 +2416,7 @@
               }).join('')}
             </div>
           </div>
-          <div class="scaffold-state__scene" data-scaffold-scene data-caption-title="${escapeHtml(awaiting ? 'Ready the first render' : 'Control stays visible while it animates')}" data-caption-desc="${escapeHtml(awaiting ? 'As soon as the initiative arrives, the widget expands in place and keeps the live hierarchy grounded to the same frame.' : 'The hierarchy can expand, collapse, and pause for approvals without losing layout discipline or live context.')}">
+          <div class="scaffold-state__scene" data-scaffold-scene data-caption-title="${escapeHtml(stateTitle)}" data-caption-desc="${escapeHtml(stateDesc)}">
             <div class="scaffold-state__tip-list">
               ${tips.map(function(tip, index) {
                 return `<div class="scaffold-state__tip" style="--tip-rgb:${tip.rgb}; --tip-delay:${index * 140}ms;">
@@ -2419,8 +2428,8 @@
           </div>
         </div>
         <div class="scaffold-state__caption">
-          <div class="scaffold-state__caption-title" data-scaffold-caption-title>${awaiting ? 'Scaffold standing by' : 'Initiative signal locked'}</div>
-          <div class="scaffold-state__caption-desc" data-scaffold-caption-desc>${awaiting ? 'The launchpad is listening for the first scaffold payload so it can expand the initiative in place.' : 'OrgX is translating the initiative brief into a clean execution spine before the hierarchy drops in.'}</div>
+          <div class="scaffold-state__caption-title" data-scaffold-caption-title>${escapeHtml(stateTitle)}</div>
+          <div class="scaffold-state__caption-desc" data-scaffold-caption-desc>${escapeHtml(stateDesc)}</div>
         </div>
         <div class="scaffold-state__dots">
           ${new Array(6).fill(null).map(function(_, index) {
@@ -3057,6 +3066,10 @@
       }
     };
     var data = isDemo ? (demoScenarios[demoScenario] || demoScenarios.default) : null;
+    var demoState = queryParams.get('state') || 'populated';
+    if (isDemo && (demoState === 'empty' || demoState === 'error')) {
+      data = null;
+    }
     var demoStatusOverride = queryParams.get('status');
     if (isDemo && data && demoStatusOverride) {
       data = JSON.parse(JSON.stringify(data));
@@ -3538,7 +3551,7 @@
       }
       var scaffold = normalizeScaffoldData(data);
       if(!scaffold || !scaffold.initiative) {
-        injectHtml(renderScaffoldState('awaiting'));
+        injectHtml(renderScaffoldState(demoState === 'error' ? 'error' : 'awaiting'));
         initScaffoldStateAnimation();
         return;
       }
