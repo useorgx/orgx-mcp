@@ -748,7 +748,7 @@
       const estimate = payload.estimate && typeof payload.estimate === 'object'
         ? payload.estimate
         : null;
-      if (payload.title && payload.agent_name && payload.workspace_name) {
+      if (payload.title && payload.agent_name && (payload.workspace_name || payload.id || payload.task_id || payload.run_id)) {
         return { ...payload, action, dispatched, estimate, agent_ready: true, workspace_ready: true, domain_ready: !!payload.domain, initiative_name: payload.initiative_name || null };
       }
       var inferredAgentName = payload.agent_name || inferAgentName(payload);
