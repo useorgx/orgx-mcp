@@ -770,7 +770,11 @@
 
       function renderErrorState() {
         root.innerHTML = '<div class="db-card db-stagger" style="--i:0;"><div class="db-empty"><div class="db-empty-title">Daily brief unavailable</div><div class="db-empty-desc">The latest ledger readout could not be loaded. Retry from today when the workspace is reachable.</div><a class="db-footer-link" href="https://useorgx.com/live?view=mission-control" data-action-kind="open-today" data-deep-link="https://useorgx.com/live?view=mission-control">Open today →</a></div></div>';
-        wireActions();
+        const link = root.querySelector('[data-action-kind]');
+        if (link) link.addEventListener('click', (event) => {
+          event.preventDefault();
+          openWidgetLink(link.dataset.deepLink || 'https://useorgx.com/live?view=mission-control');
+        });
       }
 
       function renderEmptyState() {
