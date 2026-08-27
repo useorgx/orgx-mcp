@@ -1943,6 +1943,8 @@
       else if (stateMeta.state === 'completed' && !tasks.length && !blockers.length) status = 'done';
       if (blockers.length > 0) status = 'blocked';
       else if (artifacts.some(function (artifact) { return artifact.status === 'review'; })) status = 'review';
+      if (status === 'done' && !tasks.length) currentTask = 'No active task right now';
+      if (status === 'stalled' && !tasks.length) currentTask = 'Last execution needs a refresh';
 
       var progress = asNumber(raw.progress || raw.progress_pct || raw.percent_complete);
       if (progress == null && (tasks.length > 0 || completedTasks.length > 0)) {
@@ -2436,6 +2438,14 @@
     // state can be inspected without pretending a snapshot is fresher than
     // it is. Keep these transitions deterministic and intentionally bounded.
     if (demoPayload && demoState === 'stale') {
+      demoPayload.agents[0].status = 'done';
+      demoPayload.agents[0].blockers = [];
+      demoPayload.agents[0].artifacts = (demoPayload.agents[0].artifacts || []).map(function (artifact) {
+        return Object.assign({}, artifact, { status: 'approved' });
+      });
+      demoPayload.agents[0].tasks = (demoPayload.agents[0].tasks || []).map(function (task) {
+        return Object.assign({}, task, { status: 'done' });
+      });
       demoPayload.agents[1].last_heartbeat_at = new Date(Date.now() - 8 * 60 * 1000).toISOString();
       demoPayload.agents[1].updated_at = demoPayload.agents[1].last_heartbeat_at;
     } else if (demoPayload && demoState === 'blocked') {
@@ -2445,6 +2455,9 @@
       demoPayload.agents.forEach(function (agent) {
         agent.status = 'done';
         agent.blockers = [];
+        agent.artifacts = (agent.artifacts || []).map(function (artifact) {
+          return Object.assign({}, artifact, { status: 'approved' });
+        });
         agent.tasks = (agent.tasks || []).map(function (task) {
           return Object.assign({}, task, { status: 'done' });
         });
@@ -2453,6 +2466,11 @@
     } else if (demoPayload && demoState === 'progressing') {
       demoPayload.agents[0].status = 'running';
       demoPayload.agents[0].blockers = [];
+      demoPayload.agents.forEach(function (agent) {
+        agent.artifacts = (agent.artifacts || []).map(function (artifact) {
+          return Object.assign({}, artifact, { status: 'approved' });
+        });
+      });
       demoPayload.agents[0].current_task = 'Validating the next acceptance slice and collecting proof';
       demoPayload.agents[0].updated_at = new Date().toISOString();
     }

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-08-27T07:06:11.554Z",
+  "generatedAt": "2026-08-27T07:09:37.267Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -35,8 +35,8 @@
   "widgets": {
     "agent-status": {
       "file": "public/widgets/agent-status.html",
-      "bytes": 85839,
-      "hash": "8fbdba66602d",
+      "bytes": 86838,
+      "hash": "6cad2b44a715",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/components/domain-accent.css",
