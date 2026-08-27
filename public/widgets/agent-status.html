@@ -2149,7 +2149,9 @@
     var showIdleAgents = false;
 
     function isIdleAgent(agent) {
-      return agent.status === 'idle' || agent.status === 'done';
+      // Completed agents stay in the board so their recent proof remains
+      // one click away instead of disappearing into the idle drawer.
+      return agent.status === 'idle';
     }
 
     function renderSwitcherRow(agent, selected) {
@@ -2448,6 +2450,9 @@
       });
       demoPayload.agents[1].last_heartbeat_at = new Date(Date.now() - 8 * 60 * 1000).toISOString();
       demoPayload.agents[1].updated_at = demoPayload.agents[1].last_heartbeat_at;
+      demoPayload.agents[1].artifacts = (demoPayload.agents[1].artifacts || []).map(function (artifact) {
+        return Object.assign({}, artifact, { status: 'approved' });
+      });
     } else if (demoPayload && demoState === 'blocked') {
       demoPayload.agents[1].status = 'blocked';
       demoPayload.agents[1].blockers = ['Waiting on the production rollout approval before the next verification pass can begin.'];
@@ -2472,7 +2477,11 @@
         });
       });
       demoPayload.agents[0].current_task = 'Validating the next acceptance slice and collecting proof';
-      demoPayload.agents[0].updated_at = new Date().toISOString();
+      demoPayload.agents.forEach(function (agent) {
+        agent.last_heartbeat_at = new Date().toISOString();
+        agent.updated_at = agent.last_heartbeat_at;
+        agent.run_id = agent.agent_name.toLowerCase() + '-run-live';
+      });
     }
 
     initWidget({
