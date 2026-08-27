@@ -2143,7 +2143,7 @@
         chatgpt: [
           {
             title: 'Add Connector',
-            desc: 'Open Settings -> Apps & Connectors and add a remote MCP server.',
+            desc: 'Open Settings → Apps & Connectors in ChatGPT. If your workspace requires Developer Mode, enable it before adding a remote MCP server.',
             code: null,
           },
           {
@@ -2220,19 +2220,17 @@ https://mcp.useorgx.com/mcp
 
         if (client === 'chatgpt') {
           container.innerHTML = `
-          <div class="relative">
-            <div class="absolute inset-0 z-20 backdrop-blur-sm bg-[#02040a]/60 flex items-center justify-center rounded-lg border border-white/10">
-              <div class="bg-white/10 backdrop-blur-md border border-white/10 px-4 py-2 rounded-full flex items-center gap-2">
-                <span class="relative flex h-2 w-2">
-                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-lime opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-2 w-2 bg-lime"></span>
-                </span>
-                <span class="text-xs font-medium text-white">Coming Soon</span>
+          <div class="space-y-4">
+            <div class="rounded-lg border border-lime/15 bg-lime/5 px-4 py-3">
+              <div class="flex items-center justify-between gap-3">
+                <span class="text-xs font-medium uppercase tracking-widest text-lime">ChatGPT Developer Mode</span>
+                <span class="text-[10px] font-medium uppercase tracking-widest text-white/50">Workspace-dependent</span>
               </div>
+              <p class="mt-2 text-sm text-white/60">
+                ChatGPT remote MCP connectors may require Developer Mode and workspace access. If the connector is enabled for your workspace, use the endpoint and OAuth flow below.
+              </p>
             </div>
-            <div class="opacity-30 pointer-events-none select-none filter blur-[2px]">
-              ${stepsHtml}
-            </div>
+            ${stepsHtml}
           </div>
         `;
         } else {
