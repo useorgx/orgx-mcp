@@ -485,6 +485,12 @@
           if (state === 'loading') return 'loading=true';
           return 'demo=true&state=' + encodeURIComponent(stateForWidget);
         }
+        if (widget.id === 'scaffolded-initiative') {
+          if (state === 'loading') return 'loading=true';
+          if (state === 'empty' || state === 'error') return 'demo=true&state=' + encodeURIComponent(stateForWidget);
+          const status = state === 'completed' || state === 'resolved' ? 'completed' : state === 'blocked' || state === 'stale' ? 'paused' : 'active';
+          return 'demo=true&status=' + encodeURIComponent(status);
+        }
         if (widget.advanced) {
           let normalized = stateForWidget;
           if (state === 'populated') normalized = widget.id === 'decisions' || widget.id === 'artifact-review' ? 'urgent' : 'populated';
