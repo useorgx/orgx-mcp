@@ -1268,7 +1268,7 @@
             'OrgX marked this as the next best move.',
         }));
       }
-      if (!priorities.length && topReceipts.length) {
+      if (!suppressPriorities && !priorities.length && topReceipts.length) {
         priorities = topReceipts.slice(0, 3).map((receipt) => ({
           domain: 'Execution',
           title: receipt.intent || 'Recent execution receipt',
