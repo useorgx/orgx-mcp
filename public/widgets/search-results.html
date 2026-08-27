@@ -731,20 +731,19 @@
         return ORGX_BASE_URL + '/settings/goals' + query;
       };
       var buildEntityUrl = (item) => {
-        var explicitUrl =
-          item && typeof item.url === 'string' && item.url.trim()
-            ? item.url.trim()
-            : item && typeof item.live_url === 'string' && item.live_url.trim()
-            ? item.live_url.trim()
-            : item && typeof item.action_url === 'string' && item.action_url.trim()
-            ? item.action_url.trim()
-            : item && typeof item.start_url === 'string' && item.start_url.trim()
-            ? item.start_url.trim()
-            : item && typeof item.link === 'string' && item.link.trim()
-            ? item.link.trim()
-            : item && typeof item._link === 'string' && item._link.trim()
-            ? item._link.trim()
-            : '';
+        var explicitCandidates = [
+          item && item.url,
+          item && item.live_url,
+          item && item.action_url,
+          item && item.start_url,
+          item && item.link,
+          item && item._link,
+        ];
+        var explicitUrl = explicitCandidates.find(function (candidate) {
+          if (typeof candidate !== 'string') return false;
+          var value = candidate.trim();
+          return /^https?:\\/\\//i.test(value) && value !== '#';
+        });
         if (explicitUrl) return explicitUrl;
 
         var type = item && typeof item.type === 'string'
@@ -924,7 +923,7 @@
           type: 'initiative',
           snippet: 'Cross-domain launch that ties <span class="highlight">founder continuity</span> to live search, scaffolded execution, and approvals in one operator loop.',
           score: 0.98,
-          url: '#',
+          https://useorgx.com/initiatives/INI-402,
           date: 'Just now'
         },
         {
@@ -932,7 +931,7 @@
           type: 'decision',
           snippet: '<span class="highlight">Pace - Product</span> is waiting on founder approval to lock the hero narrative, proof order, and CTA before launch.',
           score: 0.93,
-          url: '#',
+          https://useorgx.com/decisions/d1,
           date: '6 minutes ago'
         },
         {
@@ -940,7 +939,7 @@
           type: 'task',
           snippet: 'Marketing and engineering need the final <span class="highlight">continuity launch</span> proof image once the widgets are visually aligned.',
           score: 0.88,
-          url: '#',
+          https://useorgx.com/live?view=mission-control&task=TSK-942,
           date: '18 minutes ago'
         },
         {
@@ -948,7 +947,7 @@
           type: 'document',
           snippet: 'Reusable launch proof showing the same initiative, search query, and decision chain across ChatGPT, Claude, and Cursor surfaces.',
           score: 0.84,
-          url: '#',
+          https://useorgx.com/artifacts/artifact-1,
           date: '32 minutes ago'
         },
         {
@@ -956,7 +955,7 @@
           type: 'document',
           snippet: 'Engineering note explaining why the <span class="highlight">founder continuity</span> query should keep the linked decision and initiative above the fold.',
           score: 0.78,
-          url: '#',
+          https://useorgx.com/artifacts/artifact-2,
           date: '1 hour ago'
         }
       ]
