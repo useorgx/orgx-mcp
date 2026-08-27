@@ -757,7 +757,9 @@
               <span>${escapeHtml(data.footer?.syncedAgo || '')} · ${
           data.footer?.machineCount ?? 1
         } machine${data.footer?.machineCount === 1 ? '' : 's'}</span>
-              <a class="db-footer-link" href="#" data-action-kind="open-today" data-deep-link="${escapeAttr(
+              <a class="db-footer-link" href="${escapeAttr(
+                data.footer?.deepLink?.href || '/today'
+              )}" data-action-kind="open-today" data-deep-link="${escapeAttr(
                 data.footer?.deepLink?.href || '/today'
               )}">
                 ${escapeHtml(data.footer?.deepLink?.label || 'Open today')}
