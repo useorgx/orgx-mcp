@@ -443,6 +443,11 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     evidence: ['tests/toolDiscoverySnapshot.spec.ts'],
     remaining: 'Not visible in installed v2 plugin surface on server 0.3.0-7fc0bdc0; exercise against a draft artifact.',
   },
+  request_independent_artifact_review: {
+    tier: 'contract_and_unit',
+    evidence: ['tests/independentArtifactReviewTool.spec.ts'],
+    remaining: 'Exercise after the core independent-review endpoint and evaluator worker are deployed.',
+  },
   reject_decision: {
     tier: 'live_read_verified',
     evidence: ['live reject_decision declined disposable decision 180707dd-448f-47ac-b331-65e7934d27b2, 2026-05-28', 'tests/decisionToolsContract.spec.ts'],
