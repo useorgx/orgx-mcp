@@ -2283,11 +2283,17 @@
       var needsAttention = activeAgents.filter(function (agent) {
         return agent.status === 'blocked' || agent.status === 'review' || agent.status === 'stalled';
       }).length;
-      var moving = activeAgents.length - needsAttention;
+      var moving = activeAgents.filter(function (agent) {
+        return agent.status === 'running' || agent.status === 'queued';
+      }).length;
+      var completed = activeAgents.filter(function (agent) { return agent.status === 'done'; }).length;
       var summary = needsAttention
         ? needsAttention + ' need' + (needsAttention === 1 ? 's' : '') + ' you' + (moving ? ' · ' + moving + ' active' : '')
-        : activeAgents.length
-        ? activeAgents.length + ' active'
+          + (completed ? ' · ' + completed + ' completed' : '')
+        : moving
+        ? moving + ' active' + (completed ? ' · ' + completed + ' completed' : '')
+        : completed
+        ? completed + ' completed'
         : 'All quiet';
 
       var selectedAccent = selectedAgent ? selectedAgent.accentRgb : '20, 184, 166';
