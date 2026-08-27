@@ -5592,7 +5592,10 @@
       ],
       "readOnly": false,
       "source": "client_integration",
-      "profiles": []
+      "profiles": [
+        "v2",
+        "chatgpt"
+      ]
     },
     {
       "id": "scoring_config",
