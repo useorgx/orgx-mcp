@@ -445,6 +445,16 @@
         "openWorldHint": true,
         "destructiveHint": false
       }
+    },
+    {
+      "name": "request_independent_artifact_review",
+      "title": "Request Independent Artifact Review",
+      "description": "Queue OrgX's independent evaluator for one completed agent artifact. The producing agent cannot supply or choose the score. OrgX persists the native evaluation and its 1–5 rating projection under the rubric version.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     }
   ],
   "resources": [
