@@ -834,7 +834,7 @@
 
       const usableLinks = (entity.links || []).map(l => {
         const rawUrl = typeof l.url === 'string' ? l.url.trim() : '';
-        const hasRealUrl = /^https?:\\/\\//i.test(rawUrl) && rawUrl !== '#';
+        const hasRealUrl = /^https?:\/\//i.test(rawUrl) && rawUrl !== '#';
         const fallbackUrl = buildEntityUrl(entity.type, entity.id, entity.initiative_id);
         if (!hasRealUrl && !fallbackUrl) return null;
         return Object.assign({}, l, {
