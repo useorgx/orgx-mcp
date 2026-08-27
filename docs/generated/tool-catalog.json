@@ -5593,8 +5593,7 @@
       "readOnly": false,
       "source": "client_integration",
       "profiles": [
-        "v2",
-        "chatgpt"
+        "v2"
       ]
     },
     {
