@@ -620,7 +620,10 @@
       entity.run_id = 'run-live-942';
       entity.last_heartbeat_at = new Date().toISOString();
     }
-    if (fixtureState === 'resolved' && entity) entity.status = 'completed';
+      if (fixtureState === 'resolved' && entity) {
+        entity.status = 'completed';
+        entity.completed_at = new Date().toISOString();
+      }
     var isLoading = !isDemo;
     if (isLoadingOverride) { isLoading = true; isDemo = false; }
     var bootStartedAt = Date.now();
