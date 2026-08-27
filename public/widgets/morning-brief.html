@@ -928,7 +928,7 @@
       brief: null,
       isLoading: !isDemo,
       activeSection: 'priorities',
-      error: demoError,
+      error: false,
     };
 
     const content = document.getElementById('content');
@@ -1070,6 +1070,8 @@
         demoBriefVariant.exceptions = [{ exception_type: 'stale_brief' }];
       }
     }
+
+    state.error = demoError;
 
     function asArray(value) {
       return Array.isArray(value) ? value : [];
