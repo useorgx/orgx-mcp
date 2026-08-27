@@ -928,6 +928,7 @@
       brief: null,
       isLoading: !isDemo,
       activeSection: 'priorities',
+      error: demoError,
     };
 
     const content = document.getElementById('content');
@@ -1040,6 +1041,35 @@
       exceptions: [{ exception_type: 'budget_guardrail' }],
       brief_markdown: '# Morning Brief',
     };
+
+    const demoState = params.get('state') || 'populated';
+    const demoError = isDemo && demoState === 'error';
+    let demoBriefVariant = demoBrief;
+    if (isDemo && demoState !== 'populated') {
+      demoBriefVariant = JSON.parse(JSON.stringify(demoBrief));
+      if (demoState === 'completed' || demoState === 'resolved') {
+        demoBriefVariant.summary = 'All planned work closed cleanly. The latest receipts are attached and there is nothing waiting on you.';
+        demoBriefVariant.session_summary.completed = 6;
+        demoBriefVariant.session_summary.failed = 0;
+        demoBriefVariant.workspace_pulse.stats.pendingDecisions = 0;
+        demoBriefVariant.workspace_pulse.stats.blockedWorkstreams = 0;
+        demoBriefVariant.top_priorities = [];
+        demoBriefVariant.exceptions = [];
+      } else if (demoState === 'blocked') {
+        demoBriefVariant.summary = 'Execution is paused at one evidence gate. Review the blocked workstream before dispatching more work.';
+        demoBriefVariant.session_summary.failed = 2;
+        demoBriefVariant.workspace_pulse.stats.blockedWorkstreams = 2;
+        demoBriefVariant.top_priorities[0].reason = 'Needs an operator decision before the deploy proof can be accepted.';
+      } else if (demoState === 'progressing') {
+        demoBriefVariant.summary = 'Two agents are working now. This brief will update as the next receipts land.';
+        demoBriefVariant.session_summary.completed = 3;
+        demoBriefVariant.session_summary.receipts_produced = 4;
+      } else if (demoState === 'stale' || demoState === 'degraded') {
+        demoBriefVariant.generated_at = new Date(Date.now() - 1000 * 60 * 14).toISOString();
+        demoBriefVariant.summary = 'This readout is outside the live window. Refresh before acting on priorities or agent status.';
+        demoBriefVariant.exceptions = [{ exception_type: 'stale_brief' }];
+      }
+    }
 
     function asArray(value) {
       return Array.isArray(value) ? value : [];
@@ -1897,9 +1927,24 @@
       if (suffixEl) suffixEl.textContent = suffix;
     }
 
+    function renderErrorState() {
+      content.innerHTML = `
+        <div class="empty-state error-state animate-in">
+          <div class="empty-icon">${icons.status(24)}</div>
+          <div class="empty-title">Morning brief unavailable</div>
+          <div class="empty-desc">The latest brief could not be loaded. Open live view to retry when the workspace is reachable.</div>
+          <button type="button" class="deep-link focusable" data-action="open-link" data-url="${FALLBACK_REVIEW_URL}">Open live view ↗</button>
+        </div>
+      `;
+    }
+
     function render() {
       if (state.isLoading) {
         renderSkeleton();
+        return;
+      }
+      if (state.error) {
+        renderErrorState();
         return;
       }
 
@@ -1974,7 +2019,7 @@
     render();
 
     if (isDemo) {
-      state.brief = demoBrief;
+      state.brief = demoError || demoState === 'empty' ? null : demoBriefVariant;
       state.isLoading = false;
       render();
     } else if (!isLoadingOverride) {
