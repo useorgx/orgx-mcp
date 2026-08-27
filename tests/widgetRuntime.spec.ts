@@ -139,6 +139,52 @@ describe('shared OrgX widget runtime', () => {
     expect(rendered).toEqual([{ status: 'ready' }]);
   });
 
+  it('ignores an older host result so a re-render cannot move state backwards', () => {
+    const rendered: unknown[] = [];
+    (window as unknown as { openai: unknown }).openai = {
+      toolOutput: { status: 'completed', updated_at: '2026-08-27T00:02:00.000Z' },
+      setWidgetHeight: vi.fn(),
+    };
+
+    runtime.initWidget({ render: (value) => rendered.push(value) });
+    window.dispatchEvent(
+      new CustomEvent('openai:set_globals', {
+        detail: {
+          globals: {
+            toolOutput: { status: 'in_progress', updated_at: '2026-08-27T00:01:00.000Z' },
+          },
+        },
+      })
+    );
+
+    expect(rendered).toEqual([
+      { status: 'completed', updated_at: '2026-08-27T00:02:00.000Z' },
+    ]);
+  });
+
+  it('keeps a terminal snapshot when a same-timestamp replay is less advanced', () => {
+    const rendered: unknown[] = [];
+    (window as unknown as { openai: unknown }).openai = {
+      toolOutput: { status: 'completed', updated_at: '2026-08-27T00:02:00.000Z' },
+      setWidgetHeight: vi.fn(),
+    };
+
+    runtime.initWidget({ render: (value) => rendered.push(value) });
+    window.dispatchEvent(
+      new CustomEvent('openai:set_globals', {
+        detail: {
+          globals: {
+            toolOutput: { status: 'in_progress', updated_at: '2026-08-27T00:02:00.000Z' },
+          },
+        },
+      })
+    );
+
+    expect(rendered).toEqual([
+      { status: 'completed', updated_at: '2026-08-27T00:02:00.000Z' },
+    ]);
+  });
+
   it('exposes one normalized theme setter for non-host integrations', () => {
     expect(runtime.applyTheme('dark', 'test')).toBe('dark');
     expect(runtime.getTheme()).toBe('dark');

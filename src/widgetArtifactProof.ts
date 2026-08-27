@@ -705,6 +705,7 @@ export function buildWidgetProofCards(
     .map(normalizeArtifactRecord)
     .filter((item): item is NormalizedArtifact => Boolean(item))
     .map((artifact) => attachArtifactLinks(artifact, options.initiativeId ?? null))
+    .sort(compareArtifactsForProof)
     .slice(0, limit)
     .map(toWidgetProofCard);
 }

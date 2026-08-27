@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="shared/components/domain-accent.css" />
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
+  <script src="shared/widget-state.js"></script>
   <script src="shared/interaction-kit.js"></script>
   <script src="shared/components/domain-accent.js"></script>
   <script src="shared/components/liveness-indicator.js"></script>
@@ -1338,6 +1339,8 @@
     }
 
     .switcher-status[data-tone='running'] { color: var(--ox-primary); }
+    .switcher-status[data-tone='running']::before { animation: breathe 2.4s ease-in-out infinite; }
+    .switcher-status[data-tone='done'] { color: var(--ox-success, #22c55e); }
     .switcher-status[data-tone='blocked'] { color: var(--ox-danger); }
     .switcher-status[data-tone='review'] { color: var(--ox-warning); }
     .switcher-status[data-tone='idle'] { color: var(--ox-text-dim); }
@@ -1413,6 +1416,38 @@
       line-height: 1.4;
     }
 
+    .command-state-note {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 8px;
+      align-items: start;
+      margin-top: 10px;
+      padding: 9px 10px;
+      border: 1px solid var(--ox-border);
+      border-radius: 10px;
+      color: var(--ox-text-muted);
+      font-size: 0.74rem;
+      line-height: 1.4;
+      background: rgba(255, 255, 255, 0.018);
+    }
+
+    .command-state-note strong { color: var(--ox-text); font-weight: 650; }
+    .command-state-note__dot {
+      width: 7px;
+      height: 7px;
+      margin-top: 5px;
+      border-radius: 50%;
+      background: var(--ox-text-muted);
+    }
+    .command-state-note[data-state='starting'],
+    .command-state-note[data-state='queued'] { border-color: rgba(251, 191, 36, .22); }
+    .command-state-note[data-state='starting'] .command-state-note__dot,
+    .command-state-note[data-state='queued'] .command-state-note__dot { background: var(--ox-warning); }
+    .command-state-note[data-state='stale'] { border-color: rgba(251, 191, 36, .28); }
+    .command-state-note[data-state='stale'] .command-state-note__dot { background: var(--ox-warning); }
+    .command-state-note[data-state='blocked'] { border-color: rgba(244, 63, 94, .28); }
+    .command-state-note[data-state='blocked'] .command-state-note__dot { background: var(--ox-danger); }
+
     .command-facts {
       display: flex;
       flex-wrap: wrap;
@@ -1437,6 +1472,7 @@
 
     .command-fact[data-tone='blocked'] strong { color: var(--ox-danger); }
     .command-fact[data-tone='review'] strong { color: var(--ox-warning); }
+    .command-fact[data-tone='done'] strong { color: var(--ox-primary); }
 
     .command-panel-actions {
       min-height: 44px;
@@ -1531,6 +1567,7 @@
     .command-detail-state[data-tone='blocked'] { color: var(--ox-danger); }
     .command-detail-state[data-tone='review'] { color: var(--ox-warning); }
     .command-detail-state[data-tone='running'] { color: var(--ox-primary); }
+    .command-detail-state[data-tone='done'] { color: var(--ox-primary); }
 
     .quiet-command-state {
       display: flex;
@@ -1582,6 +1619,9 @@
       .command-panel-actions {
         align-items: stretch;
       }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .switcher-status[data-tone='running']::before { animation: none; }
     }
 
 </style>
@@ -1686,6 +1726,7 @@
     }
 
     function getStatusTone(status) {
+      if (status === 'done') return 'done';
       if (status === 'blocked') return 'blocked';
       if (status === 'review') return 'review';
       if (status === 'stalled') return 'review';
@@ -1700,7 +1741,7 @@
       if (status === 'done') return 'Done';
       if (status === 'queued') return 'Queued';
       if (status === 'idle') return 'Idle';
-      if (status === 'stalled') return 'Stalled';
+      if (status === 'stalled') return 'Needs refresh';
       return 'Running';
     }
 
@@ -1863,10 +1904,19 @@
     function normalizeAgent(raw, index) {
       if (!raw || typeof raw !== 'object') return null;
       var profile = resolveAgentProfile(raw);
-      var tasks = mergeUniqueItems(
+      var allTasks = mergeUniqueItems(
         asArray(raw.current_tasks),
         mergeUniqueItems(asArray(raw.active_tasks), asArray(raw.tasks))
       ).map(normalizeTask).filter(Boolean);
+      var completedTasks = mergeUniqueItems(
+        mergeUniqueItems(asArray(raw.completed_tasks), asArray(raw.completedTasks)),
+        mergeUniqueItems(asArray(raw.recent_completed), asArray(raw.history))
+      ).map(normalizeTask).filter(Boolean);
+      completedTasks = mergeUniqueItems(
+        completedTasks,
+        allTasks.filter(function (task) { return task.status === 'done'; })
+      );
+      var tasks = allTasks.filter(function (task) { return task.status !== 'done'; });
       var artifacts = mergeUniqueItems(
         mergeUniqueItems(asArray(raw.proof_cards), asArray(raw.artifacts)),
         asArray(raw.outputs || raw.session_output)
@@ -1877,6 +1927,9 @@
       var streams = mergeUniqueItems(asArray(raw.streams), asArray(raw.workstreams))
         .map(normalizeStream)
         .filter(Boolean);
+      var stateMeta = window.OrgXWidgetState
+        ? window.OrgXWidgetState.derive(raw)
+        : { state: normalizeStatus(raw.status), observedAt: null };
       var currentTask = firstString([
         raw.current_task,
         raw.current_focus,
@@ -1884,13 +1937,16 @@
         tasks[0] && tasks[0].title
       ]);
       var status = normalizeStatus(raw.status);
+      if (stateMeta.state === 'stale') status = 'stalled';
+      else if (stateMeta.state === 'starting') status = 'queued';
+      else if (stateMeta.state === 'in_progress') status = 'running';
+      else if (stateMeta.state === 'completed' && !tasks.length && !blockers.length) status = 'done';
       if (blockers.length > 0) status = 'blocked';
       else if (artifacts.some(function (artifact) { return artifact.status === 'review'; })) status = 'review';
 
       var progress = asNumber(raw.progress || raw.progress_pct || raw.percent_complete);
-      if (progress == null && tasks.length > 0) {
-        var doneTasks = tasks.filter(function (task) { return task.status === 'done'; }).length;
-        progress = Math.round((doneTasks / tasks.length) * 100);
+      if (progress == null && (tasks.length > 0 || completedTasks.length > 0)) {
+        progress = Math.round((completedTasks.length / (tasks.length + completedTasks.length)) * 100);
       }
 
       return {
@@ -1901,14 +1957,16 @@
         status: status,
         tone: getStatusTone(status),
         statusLabel: getStatusLabel(status),
-        currentTask: currentTask || (status === 'idle' ? 'No active task right now' : 'Tracking background execution'),
+        currentTask: currentTask || (status === 'idle' || status === 'done' ? 'No active task right now' : stateMeta.state === 'stale' ? 'Last execution needs a refresh' : 'Tracking background execution'),
         currentMeta: firstString([raw.eta, raw.time_remaining]) || '',
         progress: progress,
         blockers: blockers,
         tasks: tasks,
+        completedTasks: completedTasks.slice(0, 8),
         artifacts: artifacts,
         streams: streams,
-        taskCount: tasks.length || (currentTask ? 1 : 0),
+        taskCount: tasks.length || (currentTask && status !== 'idle' && status !== 'done' ? 1 : 0),
+        completedCount: completedTasks.length,
         blockedCount: blockers.length || tasks.filter(function (task) { return task.status === 'blocked'; }).length,
         reviewCount: artifacts.filter(function (artifact) { return artifact.status === 'review'; }).length,
         openUrl: firstString([raw.url, raw.agent_url]) || buildAgentUrl(firstString([raw.agent_id, raw.id])),
@@ -1920,13 +1978,14 @@
           ? raw.stalled_minutes
           : (typeof raw.stalledMinutes === 'number' ? raw.stalledMinutes : null),
         lastHeartbeatAt: firstString([raw.last_heartbeat_at, raw.lastHeartbeatAt]) || null,
+        observedAt: stateMeta.observedAt,
       };
     }
 
     function mergeAgentAliases(agents) {
       // Stalled outranks running so an auto-closed run stays visible even
       // if a stale duplicate claims 'running'. Blocked still wins overall.
-      var statusWeight = { idle: 1, queued: 2, running: 3, stalled: 4, review: 4, blocked: 5 };
+      var statusWeight = { done: 1, idle: 1, queued: 2, running: 3, stalled: 4, review: 4, blocked: 5 };
       var merged = {};
       agents.forEach(function (agent) {
         var key = (agent.name + '|' + agent.role).toLowerCase();
@@ -1944,14 +2003,16 @@
           tone: keepIncoming ? agent.tone : existing.tone,
           statusLabel: keepIncoming ? agent.statusLabel : existing.statusLabel,
           currentTask: keepIncoming ? (agent.currentTask || existing.currentTask) : (existing.currentTask || agent.currentTask),
-        currentMeta: existing.currentMeta || agent.currentMeta,
-        accentRgb: existing.accentRgb || agent.accentRgb,
-        progress: Math.max(existing.progress || 0, agent.progress || 0),
-        blockers: mergeUniqueItems(existing.blockers, agent.blockers),
-        tasks: mergeUniqueItems(existing.tasks, agent.tasks),
-        artifacts: mergeUniqueItems(existing.artifacts, agent.artifacts),
-        streams: mergeUniqueItems(existing.streams, agent.streams),
+          currentMeta: existing.currentMeta || agent.currentMeta,
+          accentRgb: existing.accentRgb || agent.accentRgb,
+          progress: Math.max(existing.progress || 0, agent.progress || 0),
+          blockers: mergeUniqueItems(existing.blockers, agent.blockers),
+          tasks: mergeUniqueItems(existing.tasks, agent.tasks),
+          completedTasks: mergeUniqueItems(existing.completedTasks, agent.completedTasks),
+          artifacts: mergeUniqueItems(existing.artifacts, agent.artifacts),
+          streams: mergeUniqueItems(existing.streams, agent.streams),
           taskCount: Math.max(existing.taskCount || 0, agent.taskCount || 0),
+          completedCount: Math.max(existing.completedCount || 0, agent.completedCount || 0),
           blockedCount: Math.max(existing.blockedCount || 0, agent.blockedCount || 0),
           reviewCount: Math.max(existing.reviewCount || 0, agent.reviewCount || 0),
           openUrl: existing.openUrl || agent.openUrl,
@@ -1960,6 +2021,7 @@
             ? (agent.stalledMinutes != null ? agent.stalledMinutes : existing.stalledMinutes)
             : (existing.stalledMinutes != null ? existing.stalledMinutes : agent.stalledMinutes),
           lastHeartbeatAt: keepIncoming ? (agent.lastHeartbeatAt || existing.lastHeartbeatAt) : (existing.lastHeartbeatAt || agent.lastHeartbeatAt),
+          observedAt: Math.max(existing.observedAt || 0, agent.observedAt || 0) || null,
         };
       });
       return Object.keys(merged).map(function (key) { return merged[key]; });
@@ -1986,7 +2048,8 @@
     function statusToneForRow(status) {
       if (status === 'blocked') return 'blocked';
       if (status === 'review') return 'review';
-      if (status === 'done' || status === 'approved' || status === 'running') return 'running';
+      if (status === 'done' || status === 'approved') return 'done';
+      if (status === 'running') return 'running';
       if (status === 'queued') return 'queued';
       return 'idle';
     }
@@ -1996,6 +2059,7 @@
       if (agent.blockedCount) parts.push(agent.blockedCount + ' blocked');
       if (agent.reviewCount) parts.push(agent.reviewCount + ' review');
       if (agent.taskCount) parts.push(agent.taskCount + ' tasks in flight');
+      if (agent.completedCount) parts.push(agent.completedCount + ' completed');
       if (!parts.length) parts.push('No agents need you right now');
       return parts.join(' · ');
     }
@@ -2087,12 +2151,16 @@
     }
 
     function renderSwitcherRow(agent, selected) {
+      var switcherMeta = [
+        agent.currentTask,
+        agent.completedCount ? agent.completedCount + ' completed' : ''
+      ].filter(Boolean).join(' · ');
       return (
         '<button type="button" class="agent-switcher-row focusable" role="tab" data-action="select-agent" data-agent-tab="' + escapeHtml(agent.id) + '" aria-selected="' + String(selected) + '" tabindex="' + (selected ? '0' : '-1') + '" style="--row-accent-rgb:' + escapeHtml(agent.accentRgb) + ';">' +
           '<span class="agent-avatar" aria-hidden="true">' + renderAvatar(agent) + '</span>' +
           '<span class="switcher-copy">' +
             '<span class="switcher-identity"><span class="switcher-name">' + escapeHtml(agent.name) + '</span><span class="switcher-role">' + escapeHtml(agent.role) + '</span></span>' +
-            '<span class="switcher-focus">' + escapeHtml(agent.currentTask) + (agent.currentMeta ? ' · ' + escapeHtml(agent.currentMeta) : '') + '</span>' +
+            '<span class="switcher-focus">' + escapeHtml(switcherMeta) + (agent.currentMeta ? ' · ' + escapeHtml(agent.currentMeta) : '') + '</span>' +
           '</span>' +
           '<span class="switcher-status" data-tone="' + escapeHtml(agent.tone) + '">' + escapeHtml(agent.statusLabel) + '</span>' +
         '</button>'
@@ -2127,6 +2195,13 @@
           tone: statusToneForRow(task.status)
         };
       });
+      var completedRows = agent.completedTasks.map(function (task) {
+        return {
+          title: task.title,
+          state: 'Completed',
+          tone: 'done'
+        };
+      });
       var artifactRows = agent.artifacts.map(function (artifact) {
         return {
           title: artifact.title,
@@ -2142,9 +2217,10 @@
         '<div class="command-details' + (isOpen ? ' is-open' : '') + '" id="agent-work-details" aria-hidden="' + String(!isOpen) + '">' +
           renderCommandDetailGroup('Blockers', blockerRows) +
           renderCommandDetailGroup('Tasks', taskRows) +
+          renderCommandDetailGroup('Completed recently', completedRows) +
           renderCommandDetailGroup('Artifacts', artifactRows) +
           renderCommandDetailGroup('Streams', streamRows) +
-          (!blockerRows.length && !taskRows.length && !artifactRows.length && !streamRows.length
+          (!blockerRows.length && !taskRows.length && !completedRows.length && !artifactRows.length && !streamRows.length
             ? '<div class="quiet-command-state">No additional work details.</div>'
             : '') +
         '</div>'
@@ -2153,8 +2229,12 @@
 
     function renderCommandPanel(agent) {
       var detailsOpen = widgetState[agent.id] === 'details';
-      var detailCount = agent.blockers.length + agent.tasks.length + agent.artifacts.length + agent.streams.length;
-      var focusMeta = [agent.currentMeta, summarizeOverview(agent)].filter(Boolean).join(' · ');
+      var detailCount = agent.blockers.length + agent.tasks.length + agent.completedTasks.length + agent.artifacts.length + agent.streams.length;
+      var focusMeta = [agent.currentMeta, summarizeOverview(agent), agent.observedAt && window.OrgXWidgetState ? window.OrgXWidgetState.formatAge(agent.observedAt) : 'Sync time unavailable'].filter(Boolean).join(' · ');
+      var stateMeta = window.OrgXWidgetState ? window.OrgXWidgetState.derive(agent) : null;
+      var stateNote = stateMeta && stateMeta.state !== 'in_progress' && stateMeta.state !== 'completed'
+        ? '<div class="command-state-note" data-state="' + escapeHtml(stateMeta.state) + '"><span class="command-state-note__dot"></span><span><strong>' + escapeHtml(stateMeta.label) + '</strong> · ' + escapeHtml(stateMeta.description) + '</span></div>'
+        : '';
 
       return (
         '<section class="agent-command-panel" role="tabpanel" aria-label="' + escapeHtml(agent.name) + ' agent details" style="--agent-accent-rgb:' + escapeHtml(agent.accentRgb) + ';">' +
@@ -2162,8 +2242,10 @@
           '<div class="command-focus-header"><span class="ox-eyebrow">Current focus</span><span class="switcher-status" data-tone="' + escapeHtml(agent.tone) + '">' + escapeHtml(agent.statusLabel) + '</span></div>' +
           '<div class="command-focus-title">' + escapeHtml(agent.currentTask) + '</div>' +
           '<div class="command-meta">' + escapeHtml(focusMeta || 'Available for the next assignment') + '</div>' +
+          stateNote +
           '<div class="command-facts" aria-label="Agent work summary">' +
-            '<span class="command-fact"><strong>' + escapeHtml(String(agent.taskCount)) + '</strong> tasks</span>' +
+            '<span class="command-fact"><strong>' + escapeHtml(String(agent.taskCount)) + '</strong> active</span>' +
+            '<span class="command-fact" data-tone="done"><strong>' + escapeHtml(String(agent.completedCount || 0)) + '</strong> completed</span>' +
             '<span class="command-fact" data-tone="blocked"><strong>' + escapeHtml(String(agent.blockedCount)) + '</strong> blocked</span>' +
             '<span class="command-fact" data-tone="review"><strong>' + escapeHtml(String(agent.artifacts.length)) + '</strong> artifacts</span>' +
             '<span class="command-fact"><strong>' + escapeHtml(agent.progress == null ? '—' : String(agent.progress) + '%') + '</strong> progress</span>' +
@@ -2299,7 +2381,9 @@
       window.setTimeout(function () { focusAgentTab(selectedAgentId); }, 0);
     });
 
-    var isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
+    var demoParams = new URLSearchParams(window.location.search);
+    var isDemo = demoParams.get('demo') === 'true';
+    var demoState = demoParams.get('state') || 'populated';
     var demoPayload = isDemo
       ? {
           agents: [
@@ -2347,6 +2431,31 @@
           ]
         }
       : null;
+
+    // The gallery uses the same fixture contract as the live widget so each
+    // state can be inspected without pretending a snapshot is fresher than
+    // it is. Keep these transitions deterministic and intentionally bounded.
+    if (demoPayload && demoState === 'stale') {
+      demoPayload.agents[1].last_heartbeat_at = new Date(Date.now() - 8 * 60 * 1000).toISOString();
+      demoPayload.agents[1].updated_at = demoPayload.agents[1].last_heartbeat_at;
+    } else if (demoPayload && demoState === 'blocked') {
+      demoPayload.agents[1].status = 'blocked';
+      demoPayload.agents[1].blockers = ['Waiting on the production rollout approval before the next verification pass can begin.'];
+    } else if (demoPayload && demoState === 'resolved') {
+      demoPayload.agents.forEach(function (agent) {
+        agent.status = 'done';
+        agent.blockers = [];
+        agent.tasks = (agent.tasks || []).map(function (task) {
+          return Object.assign({}, task, { status: 'done' });
+        });
+        agent.updated_at = new Date().toISOString();
+      });
+    } else if (demoPayload && demoState === 'progressing') {
+      demoPayload.agents[0].status = 'running';
+      demoPayload.agents[0].blockers = [];
+      demoPayload.agents[0].current_task = 'Validating the next acceptance slice and collecting proof';
+      demoPayload.agents[0].updated_at = new Date().toISOString();
+    }
 
     initWidget({
       render: function (payload) {

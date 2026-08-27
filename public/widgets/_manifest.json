@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-08-17T02:53:56.380Z",
+  "generatedAt": "2026-08-27T06:48:42.371Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -15,6 +15,7 @@
     "shared/utils.js",
     "shared/widget-foundation.css",
     "shared/widget-runtime.js",
+    "shared/widget-state.js",
     "shared/widget-theme.css"
   ],
   "canonicalPrimaries": {
@@ -34,8 +35,8 @@
   "widgets": {
     "agent-status": {
       "file": "public/widgets/agent-status.html",
-      "bytes": 79643,
-      "hash": "b573e0686e68",
+      "bytes": 85839,
+      "hash": "8fbdba66602d",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/components/domain-accent.css",
@@ -47,6 +48,7 @@
         "shared/tokens.css",
         "shared/widget-foundation.css",
         "shared/widget-runtime.js",
+        "shared/widget-state.js",
         "shared/widget-theme.css"
       ],
       "protocolBridge": "official-sdk",
@@ -101,8 +103,8 @@
     },
     "index": {
       "file": "public/widgets/index.html",
-      "bytes": 20520,
-      "hash": "def65e3d05b4",
+      "bytes": 23535,
+      "hash": "d8dd9a04b22a",
       "primaryRgb": "17,24,39",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -211,8 +213,8 @@
     },
     "task-spawned": {
       "file": "public/widgets/task-spawned.html",
-      "bytes": 39292,
-      "hash": "3a802bec2d27",
+      "bytes": 44094,
+      "hash": "43b80be89f8c",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -220,6 +222,7 @@
         "shared/mcp-apps-sdk.umd.js",
         "shared/widget-foundation.css",
         "shared/widget-runtime.js",
+        "shared/widget-state.js",
         "shared/widget-theme.css"
       ],
       "protocolBridge": "official-sdk",

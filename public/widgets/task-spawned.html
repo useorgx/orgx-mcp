@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="shared/widget-foundation.css" />
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
+  <script src="shared/widget-state.js"></script>
   <script src="shared/interaction-kit.js"></script>
   <style>
       :root, :root[data-theme="light"] {
@@ -103,7 +104,7 @@
         font-family: var(--ox-font);
         background: var(--ox-bg);
         color: var(--ox-text);
-        padding: 24px 16px;
+        padding: 12px 12px 18px;
         -webkit-font-smoothing: antialiased;
         min-height: 100vh;
         overflow-x: hidden;
@@ -118,7 +119,7 @@
         z-index: -1; pointer-events: none;
       }
 
-      .container { max-width: 540px; margin: 0 auto; position: relative; }
+      .container { max-width: 620px; margin: 0 auto; position: relative; }
 
       /* 100x Structural Components */
       .ox-card {
@@ -131,7 +132,7 @@
         margin-bottom: 16px;
       }
       
-      .ox-card-inner { padding: 24px; }
+      .ox-card-inner { padding: 20px; }
 
       .ox-card::after {
         content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
@@ -305,15 +306,19 @@
     .dispatch-hero {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: 16px;
+      gap: 12px;
       align-items: start;
-      padding-bottom: 16px;
+      padding-bottom: 14px;
     }
     .dispatch-state {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      min-height: 44px;
+      min-height: 32px;
+      padding: 0 10px;
+      border: 1px solid currentColor;
+      border-radius: 999px;
+      background: color-mix(in srgb, currentColor 10%, transparent);
       color: var(--ox-primary);
       font: 700 0.64rem var(--ox-mono);
       letter-spacing: 0.1em;
@@ -389,6 +394,62 @@
       gap: 12px;
       padding-top: 14px;
     }
+    .widget-title-lg {
+      max-width: 48ch;
+      margin-top: 8px;
+      font-size: clamp(1.15rem, 2.2vw, 1.5rem);
+      line-height: 1.18;
+      letter-spacing: -.03em;
+    }
+    .dispatch-state--starting,
+    .dispatch-state--queued,
+    .dispatch-state--stale,
+    .dispatch-state--blocked,
+    .dispatch-state--failed {
+      animation: none;
+    }
+    .dispatch-state--starting,
+    .dispatch-state--queued { color: var(--ox-warning); }
+    .dispatch-state--stale { color: var(--ox-warning); }
+    .dispatch-state--blocked,
+    .dispatch-state--failed { color: var(--ox-danger); }
+    .dispatch-state--in_progress { color: var(--ox-teal); }
+    .dispatch-state--in_progress .dispatch-state__dot { animation: breathe 2.4s ease-in-out infinite; }
+    @keyframes breathe {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .35; }
+    }
+    .dispatch-decision {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      margin: 0 0 14px;
+      padding: 11px 12px;
+      border: 1px solid rgba(var(--ox-primary-rgb), .16);
+      border-radius: 12px;
+      background: rgba(var(--ox-primary-rgb), .055);
+      color: var(--ox-text-muted);
+      font-size: .78rem;
+      line-height: 1.45;
+    }
+    .dispatch-decision strong { color: var(--ox-text); font-weight: 650; }
+    .dispatch-sync {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 10px;
+      color: var(--ox-text-muted);
+      font: 600 .62rem var(--ox-mono);
+      letter-spacing: .04em;
+    }
+    .dispatch-sync__dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 0 4px rgba(var(--ox-primary-rgb), .1);
+    }
     .dispatch-proof__meta {
       color: var(--ox-text-muted);
       font: 600 .62rem var(--ox-mono);
@@ -460,6 +521,7 @@
       }
       .dispatch-node__signal { grid-row: 1 / span 2; margin: 0; }
       .dispatch-proof { align-items: stretch; flex-direction: column; }
+      .dispatch-state { justify-self: start; }
       .dispatch-links { width: 100%; }
       .dispatch-links .ox-link-btn { flex: 1 1 100%; }
     }
@@ -513,7 +575,7 @@
     };
 
       var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true">'+c+'</svg>';};
-      var icons = {
+    var icons = {
       external: function(s){return _svg('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>',s);},
       check: function(s){return _svg('<polyline points="20 6 9 17 4 12"></polyline>',s);},
       initiative: function(s){return _svg('<circle cx="12" cy="12" r="9" fill="currentColor" fill-opacity="0.1"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"></circle>',s);},
@@ -522,11 +584,13 @@
       task: function(s){return _svg('<rect x="4" y="4" width="16" height="16" rx="4" fill="currentColor" fill-opacity="0.12"></rect><path d="M9 12.2 11 14.2 15.2 10"></path>',s);}
     };
     var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
+    var firstString = (values) => values.find((value) => typeof value === 'string' && value.trim()) || null;
 
 
     var stateParams = new URLSearchParams(window.location.search);
     var fixtureState = stateParams.get('state') || (stateParams.get('loading') === 'true' ? 'loading' : stateParams.get('demo') === 'true' ? 'progressing' : 'empty');
-    var isDemo = ['populated', 'progressing', 'urgent', 'long', 'error', 'degraded', 'resolved'].includes(fixtureState);
+    if (fixtureState === 'completed') fixtureState = 'resolved';
+    var isDemo = ['populated', 'progressing', 'urgent', 'long', 'error', 'degraded', 'blocked', 'stale', 'resolved'].includes(fixtureState);
     var isLoadingOverride = fixtureState === 'loading';
     
     var entity = isDemo ? { id: 'TSK-942', type: 'task', title: 'Implement rate limiting middleware for public API', agent_name: 'Eli', status: 'In Progress', domain: 'Engineering', workspace_name: 'Core Platform', links: [{ platform: 'Linear', url: '#', label: 'ENG-142' }] } : null;
@@ -536,7 +600,25 @@
     }
     if ((fixtureState === 'error' || fixtureState === 'degraded') && entity) {
       entity.workspace_name = null;
-      entity.note = 'Dispatch accepted; canonical workspace context is still syncing.';
+      entity.status = fixtureState === 'error' ? 'failed' : 'queued';
+      entity.note = fixtureState === 'error'
+        ? 'The handoff ended before an execution receipt was created.'
+        : 'Dispatch accepted; waiting for the execution receipt.';
+    }
+    if (fixtureState === 'blocked' && entity) {
+      entity.status = 'blocked';
+      entity.note = 'This task is waiting on an explicit approval before work can continue.';
+    }
+    if (fixtureState === 'stale' && entity) {
+      entity.status = 'in_progress';
+      entity.run_id = 'run-stale-942';
+      entity.last_heartbeat_at = new Date(Date.now() - 8 * 60 * 1000).toISOString();
+      entity.note = 'The last heartbeat is outside the live window.';
+    }
+    if ((fixtureState === 'populated' || fixtureState === 'progressing' || fixtureState === 'urgent' || fixtureState === 'long') && entity) {
+      entity.status = 'in_progress';
+      entity.run_id = 'run-live-942';
+      entity.last_heartbeat_at = new Date().toISOString();
     }
     if (fixtureState === 'resolved' && entity) entity.status = 'completed';
     var isLoading = !isDemo;
@@ -742,6 +824,9 @@
       }
       entity = normalizeEntityPayload(entity);
       if (!entity) { injectHtml(`<div class="widget-shell-card animate-in"><div class="ox-card"><div class="ox-card-inner"><div class="empty-state dispatch-empty"><div class="empty-icon">${icons.check(24)}</div><div class="empty-title">No dispatch receipt</div><div class="empty-desc">No agent handoff was returned. Nothing is presented as running until OrgX supplies a task or run receipt.</div></div></div></div></div>`); return; }
+      const stateMeta = window.OrgXWidgetState
+        ? window.OrgXWidgetState.derive(entity)
+        : { state: String(entity.status || 'unknown').toLowerCase(), label: 'Awaiting state', description: 'OrgX has not returned a reliable execution state yet.', hasExecutionEvidence: false };
       const agentProfile = resolveAgentProfile(entity.agent_name || entity.domain || '');
 
       const linksHtml = (entity.links || []).map(l => `
@@ -775,8 +860,24 @@
           ? 'Dispatch allowed'
           : 'Guard check complete'
         : 'Automatic routing');
+      const completionCopy = 'Execution complete';
+      const proofBoundaryCopy = 'The execution link remains the proof boundary.';
       const kicker = isDispatch
-        ? 'Agent Dispatched'
+        ? stateMeta.state === 'completed'
+          ? completionCopy
+          : stateMeta.state === 'in_progress'
+          ? 'Execution In Progress'
+          : stateMeta.state === 'starting'
+          ? 'Dispatch Accepted'
+          : stateMeta.state === 'queued'
+          ? 'Queued for Execution'
+          : stateMeta.state === 'stale'
+          ? 'Execution Needs Refresh'
+          : stateMeta.state === 'blocked'
+          ? 'Dispatch Blocked'
+          : stateMeta.state === 'failed'
+          ? 'Execution Failed'
+          : 'Agent Dispatch'
         : entity.action === 'estimate'
         ? 'Route Estimate'
         : entity.action === 'guard'
@@ -789,12 +890,16 @@
         : entity.action === 'guard'
         ? 'OrgX checked whether this delegation can proceed. No agent work was dispatched.'
         : 'OrgX classified the best execution route. No agent work was dispatched.';
-      const statusSlug = String(entity.status || '').toLowerCase();
-      const isComplete = ['done', 'complete', 'completed', 'shipped'].includes(statusSlug);
-      const statusLabel = isComplete ? 'Execution complete' : isDispatch ? 'Execution live' : 'Preflight complete';
+      const isComplete = stateMeta.state === 'completed';
+      const statusLabel = isDispatch ? stateMeta.label : 'Preflight complete';
+      const receiptId = firstString([entity.receipt_id, entity.receiptId, entity.run_id, entity.runId, entity.execution_id, entity.executionId, entity.id]);
+      const executionLabel = stateMeta.state === 'completed' ? 'View result' : stateMeta.state === 'stale' || stateMeta.state === 'blocked' ? 'Open current state' : 'Open execution';
+      const stateNotice = stateMeta.state === 'in_progress'
+        ? ''
+        : `<div class="dispatch-decision" role="status">${icons.external(16)}<span><strong>${escapeHtml(stateMeta.label)}.</strong> ${escapeHtml(stateMeta.description)}${stateMeta.state === 'starting' ? ' ' + escapeHtml(proofBoundaryCopy) : ''}</span></div>`;
 
       injectHtml(`
-        <div class="widget-shell-card animate-in" style="--agent-accent-rgb:${agentProfile.accentRgb};">
+        <div class="widget-shell-card animate-in" data-state="${escapeHtml(stateMeta.state)}" style="--agent-accent-rgb:${agentProfile.accentRgb};">
           <div class="ox-card">
             <div class="ox-card-inner">
               <div class="dispatch-receipt">
@@ -802,14 +907,16 @@
                 <div class="widget-hero-copy" style="min-width:0">
                   <div class="widget-kicker">${kicker}</div>
                   <div class="widget-title-lg">${escapeHtml(entity.title)}</div>
-                  <div class="widget-subtitle">${escapeHtml(entity.initiative_name ? entity.initiative_name + ' · ' + heroSubtitle : heroSubtitle)}</div>
+                  <div class="widget-subtitle">${escapeHtml(entity.initiative_name ? entity.initiative_name + ' · ' + (entity.note || stateMeta.description) : (entity.note || stateMeta.description))}</div>
+                  <div class="dispatch-sync"><span class="dispatch-sync__dot"></span>${escapeHtml(window.OrgXWidgetState ? window.OrgXWidgetState.formatAge(entity) : 'Sync time unavailable')}</div>
                 </div>
-                <div class="dispatch-state ${isComplete ? 'dispatch-state--complete' : ''}" role="status">
+                <div class="dispatch-state dispatch-state--${escapeHtml(stateMeta.state)}" role="status" aria-label="${escapeHtml(statusLabel)}">
                   <span class="dispatch-state__dot"></span>${statusLabel}
                 </div>
               </div>
 
-              ${isDispatch && (!entity.agent_ready || !entity.workspace_ready) ? `<div class="dispatch-degraded">${icons.external(16)}<span>Dispatch accepted, but canonical handoff context is still syncing. The execution link remains the proof boundary.</span></div>` : ''}
+              ${stateNotice}
+              ${isDispatch && (!entity.agent_ready || !entity.workspace_ready) && ['starting', 'queued'].includes(stateMeta.state) ? `<div class="dispatch-degraded">${icons.external(16)}<span>Some handoff context is still syncing. The card will not claim live work until a current receipt or heartbeat arrives.</span></div>` : ''}
 
               <div class="dispatch-spine" aria-label="Dispatch route">
                 <div class="dispatch-node">
@@ -825,16 +932,16 @@
                 <div class="dispatch-node">
                   <div class="dispatch-node__signal">${icons.check(16)}</div>
                   <div class="dispatch-node__label">${isDispatch ? 'Receipt' : 'Result'}</div>
-                  <div class="dispatch-node__value">${escapeHtml(entity.id || (isDispatch ? 'Awaiting receipt ID' : 'No mutation'))}</div>
+                  <div class="dispatch-node__value">${escapeHtml(receiptId || (isDispatch ? 'Awaiting receipt ID' : 'No mutation'))}</div>
                 </div>
               </div>
 
               <div class="dispatch-proof">
-                <div class="dispatch-proof__meta">${escapeHtml(entity.domain || 'Routing pending')} · ${isComplete ? 'proof recorded' : isDispatch ? 'live sync active' : 'Preflight only · no dispatch'}</div>
+                <div class="dispatch-proof__meta">${escapeHtml(entity.domain || 'Routing pending')} · ${escapeHtml(isComplete ? 'proof recorded' : stateMeta.label.toLowerCase())}</div>
                 <div class="dispatch-links">
                   ${linksHtml}
-                  ${isDispatch ? `<a href="${consoleUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(consoleUrl || ''))}, event)' class="deep-link ox-link-btn ox-link-btn--primary">
-                    Open execution ${icons.external(14)}
+                  ${isDispatch && consoleUrl ? `<a href="${consoleUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(consoleUrl || ''))}, event)' class="deep-link ox-link-btn ox-link-btn--primary">
+                    ${executionLabel} ${icons.external(14)}
                   </a>` : ''}
                 </div>
               </div>

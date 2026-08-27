@@ -34,6 +34,33 @@ describe('widget artifact proof helpers', () => {
     });
   });
 
+  it('ranks scored deliverables ahead of newer process notes in proof cards', () => {
+    const cards = buildWidgetProofCards(
+      [
+        {
+          id: 'artifact-note',
+          title: 'Latest progress update',
+          artifact_type: 'eng.progress_update',
+          status: 'approved',
+          created_at: '2026-08-27T00:02:00.000Z',
+        },
+        {
+          id: 'artifact-proof',
+          title: 'Verified launch receipt',
+          artifact_type: 'eng.release',
+          status: 'approved',
+          created_at: '2026-08-26T23:00:00.000Z',
+          verification: { eval: { score: 0.94 } },
+        },
+      ],
+      { limit: 1 }
+    );
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0].title).toBe('Verified launch receipt');
+    expect(cards[0].eval_score).toBe(0.94);
+  });
+
   it('maps initiative artifacts onto agent records by task linkage', () => {
     const payload = enrichAgentStatusWithArtifacts(
       {

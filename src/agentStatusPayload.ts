@@ -8,6 +8,71 @@ function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
+const TERMINAL_TASK_STATES = new Set([
+  'done',
+  'complete',
+  'completed',
+  'approved',
+  'shipped',
+  'resolved',
+]);
+
+function taskState(value: unknown): string {
+  return asNonEmptyString(value)?.toLowerCase().replace(/[^a-z0-9]+/g, '_') ?? '';
+}
+
+function taskArrays(record: Record<string, unknown>, keys: string[]): unknown[] {
+  return uniqueByStableKey(keys.flatMap((key) => asArray(record[key])));
+}
+
+function staleHeartbeat(value: unknown, now = Date.now()): boolean {
+  const raw = asNonEmptyString(value);
+  if (!raw) return false;
+  const parsed = Date.parse(raw);
+  return Number.isFinite(parsed) && now - parsed > 120_000;
+}
+
+function completedTasksForAgent(agent: Record<string, unknown>): unknown[] {
+  const explicit = taskArrays(agent, [
+    'completed_tasks',
+    'completedTasks',
+    'recent_completed',
+    'recentCompleted',
+    'history',
+  ]);
+  const current = taskArrays(agent, [
+    'current_tasks',
+    'currentTasks',
+    'active_tasks',
+    'activeTasks',
+    'tasks',
+  ]).filter((task) => {
+    if (!task || typeof task !== 'object') return false;
+    const record = task as Record<string, unknown>;
+    return TERMINAL_TASK_STATES.has(
+      taskState(record.status ?? record.state ?? record.phase)
+    );
+  });
+  return uniqueByStableKey([...explicit, ...current]);
+}
+
+function withDerivedTaskState(agent: Record<string, unknown>): Record<string, unknown> {
+  const completed = completedTasksForAgent(agent);
+  const status = normalizedStatus(agent.status);
+  const heartbeat = agent.last_heartbeat_at ?? agent.lastHeartbeatAt;
+  const nextStatus =
+    (status === 'running' && staleHeartbeat(heartbeat)) ||
+    ['stalled', 'stale'].includes(taskState(agent.status))
+      ? 'stalled'
+      : status;
+  return {
+    ...agent,
+    status: nextStatus,
+    completed_tasks: completed,
+    completed_count: completed.length,
+  };
+}
+
 function uniqueByStableKey(values: unknown[]): unknown[] {
   const seen = new Set<string>();
   return values.filter((value) => {
@@ -34,17 +99,26 @@ function normalizedStatus(value: unknown): string {
   if (['queued', 'pending', 'not_started', 'todo'].includes(status)) {
     return 'queued';
   }
+  if (['done', 'complete', 'completed', 'approved', 'shipped', 'resolved'].includes(status)) {
+    return 'done';
+  }
+  if (['stalled', 'stale', 'outdated'].includes(status)) {
+    return 'stalled';
+  }
   return status || 'idle';
 }
 
 function statusPriority(value: unknown): number {
   switch (normalizedStatus(value)) {
-    case 'running':
-      return 4;
     case 'blocked':
+      return 5;
+    case 'stalled':
+      return 4;
+    case 'running':
       return 3;
     case 'queued':
       return 2;
+    case 'done':
     case 'idle':
       return 1;
     default:
@@ -103,27 +177,30 @@ function mergeAgentRecords(
   const merged = new Map<string, Record<string, unknown>>();
 
   for (const agent of agents) {
+    const derivedAgent = withDerivedTaskState(agent);
     const key = canonicalAgentKey(agent);
     const existing = merged.get(key);
     if (!existing) {
       merged.set(key, {
-        ...agent,
-        status: normalizedStatus(agent.status),
-        blockers: uniqueByStableKey(asArray(agent.blockers)),
-        tasks: uniqueByStableKey(asArray(agent.tasks)),
-        current_tasks: uniqueByStableKey(asArray(agent.current_tasks)),
-        active_tasks: uniqueByStableKey(asArray(agent.active_tasks)),
-        artifacts: uniqueByStableKey(asArray(agent.artifacts)),
+        ...derivedAgent,
+        status: normalizedStatus(derivedAgent.status),
+        blockers: uniqueByStableKey(asArray(derivedAgent.blockers)),
+        tasks: uniqueByStableKey(asArray(derivedAgent.tasks)),
+        current_tasks: uniqueByStableKey(asArray(derivedAgent.current_tasks)),
+        active_tasks: uniqueByStableKey(asArray(derivedAgent.active_tasks)),
+        artifacts: uniqueByStableKey(asArray(derivedAgent.artifacts)),
+        completed_tasks: uniqueByStableKey(asArray(derivedAgent.completed_tasks)),
+        completed_count: Number(derivedAgent.completed_count) || 0,
       });
       continue;
     }
 
-    const incomingPriority = statusPriority(agent.status);
+    const incomingPriority = statusPriority(derivedAgent.status);
     const existingPriority = statusPriority(existing.status);
 
     merged.set(key, {
       ...existing,
-      ...(incomingPriority > existingPriority ? { status: normalizedStatus(agent.status) } : {}),
+      ...(incomingPriority > existingPriority ? { status: normalizedStatus(derivedAgent.status) } : {}),
       agent_id: asNonEmptyString(existing.agent_id) ?? asNonEmptyString(agent.agent_id),
       agent_name:
         asNonEmptyString(existing.agent_name) ?? asNonEmptyString(agent.agent_name),
@@ -150,6 +227,14 @@ function mergeAgentRecords(
         ...asArray(existing.active_tasks),
         ...asArray(agent.active_tasks),
       ]),
+      completed_tasks: uniqueByStableKey([
+        ...asArray(existing.completed_tasks),
+        ...asArray(derivedAgent.completed_tasks),
+      ]),
+      completed_count: Math.max(
+        Number(existing.completed_count) || 0,
+        Number(derivedAgent.completed_count) || 0
+      ),
       artifacts: uniqueByStableKey([
         ...asArray(existing.artifacts),
         ...asArray(agent.artifacts),
@@ -199,6 +284,11 @@ export function normalizeAgentStatusPayload(
       ? (data.summary as Record<string, unknown>)
       : {};
 
+  const completed = agents.reduce(
+    (total, agent) => total + (Number(agent.completed_count) || 0),
+    0
+  );
+
   return {
     ...data,
     agents,
@@ -206,9 +296,11 @@ export function normalizeAgentStatusPayload(
       ...summary,
       total: agents.length,
       running: countAgentsByStatus(agents, 'running'),
+      stalled: countAgentsByStatus(agents, 'stalled'),
       queued: countAgentsByStatus(agents, 'queued'),
       blocked: countAgentsByStatus(agents, 'blocked'),
       idle: countAgentsByStatus(agents, 'idle'),
+      completed,
     },
   };
 }
