@@ -742,7 +742,7 @@
         var explicitUrl = explicitCandidates.find(function (candidate) {
           if (typeof candidate !== 'string') return false;
           var value = candidate.trim();
-          return /^https?:\\/\\//i.test(value) && value !== '#';
+          return /^https?:\/\//i.test(value) && value !== '#';
         });
         if (explicitUrl) return explicitUrl;
 
