@@ -1054,6 +1054,7 @@
         demoBriefVariant.workspace_pulse.stats.pendingDecisions = 0;
         demoBriefVariant.workspace_pulse.stats.blockedWorkstreams = 0;
         demoBriefVariant.top_priorities = [];
+        demoBriefVariant.suppress_priorities = true;
         demoBriefVariant.review_items = [];
         demoBriefVariant.artifacts_produced = demoBriefVariant.artifacts_produced.map((artifact) => ({ ...artifact, status: 'approved', primary_label: 'Open artifact' }));
         demoBriefVariant.exceptions = [];
@@ -1254,8 +1255,9 @@
         ? asArray(payload.next_actions)
         : asArray(payload.recommended_actions);
 
+      const suppressPriorities = payload.suppress_priorities === true;
       let priorities = asArray(payload.top_priorities);
-      if (!priorities.length && nextActions.length) {
+      if (!suppressPriorities && !priorities.length && nextActions.length) {
         priorities = nextActions.slice(0, 3).map((action) => ({
           domain: action.domain || action.type || 'Execution',
           title: action.title || action.label || 'Recommended follow-up',
