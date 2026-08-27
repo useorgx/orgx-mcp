@@ -1632,6 +1632,68 @@ external: function (size) {
           }
         : null;
 
+      // The gallery passes an explicit lifecycle state so the fixture is
+      // honest about what the operator should see. Keep the base payload
+      // intact for populated, then derive lightweight state variants.
+      var demoState = params.get("state") || "populated";
+      if (isDemo && demoState !== "populated") {
+        if (demoState === "empty") {
+          pulse = null;
+        } else if (demoState === "error") {
+          pulse = { error: { message: "Pulse telemetry is temporarily unavailable." } };
+        } else if (pulse) {
+          var completeState = demoState === "resolved" || demoState === "completed";
+          var blockedState = demoState === "blocked";
+          var staleState = demoState === "stale" || demoState === "degraded";
+          var runningState = demoState === "progressing" || demoState === "running";
+          var variantWorkstreams = (pulse.workstreams || []).map(function (stream, index) {
+            var next = Object.assign({}, stream);
+            if (completeState) {
+              next.status = "completed";
+              next.progress_pct = 100;
+              next.blocker_count = 0;
+              next.summary = "Receipt verified and output accepted.";
+            } else if (blockedState) {
+              next.status = index === 1 || index === 2 ? "blocked" : "active";
+              next.progress_pct = index === 1 ? 48 : index === 2 ? 26 : Math.min(92, Number(stream.progress_pct) || 0);
+              next.blocker_count = index === 1 || index === 2 ? 1 : 0;
+              next.summary = index === 1 || index === 2 ? "Waiting on an evidence gate before work can continue." : stream.summary;
+            } else if (runningState) {
+              next.status = index === 3 ? "active" : "running";
+              next.progress_pct = Math.min(96, (Number(stream.progress_pct) || 0) + 8);
+              next.summary = index === 3 ? "Final proof is being assembled." : "Agent is working now.";
+            } else if (staleState) {
+              next.status = "stale";
+              next.summary = "Last update is outside the live window.";
+            }
+            return next;
+          });
+          pulse = Object.assign({}, pulse, {
+            status: completeState ? "completed" : blockedState ? "blocked" : staleState ? "stale" : runningState ? "running" : pulse.status,
+            health_score: completeState ? 100 : blockedState ? 42 : staleState ? pulse.health_score : runningState ? 86 : pulse.health_score,
+            progress_pct: completeState ? 100 : blockedState ? 53 : staleState ? pulse.progress_pct : runningState ? 72 : pulse.progress_pct,
+            pending_decisions: completeState ? 0 : blockedState ? 2 : staleState ? pulse.pending_decisions : runningState ? 1 : pulse.pending_decisions,
+            active_workstreams: completeState ? 0 : blockedState ? 2 : runningState ? 4 : pulse.active_workstreams,
+            blocked_workstreams: completeState ? 0 : blockedState ? 2 : staleState ? 0 : pulse.blocked_workstreams,
+            message: completeState
+              ? "Every workstream is complete and its receipt is verified."
+              : blockedState
+              ? "Execution is paused at two evidence gates. Resolve them before dispatching more work."
+              : staleState
+              ? "This pulse is outside the live window. Refresh before making a decision."
+              : runningState
+              ? "Agents are working across the launch. The pulse will update as receipts land."
+              : pulse.message,
+            blockers: completeState ? [] : blockedState ? ["Pricing approval and receipt coverage are still open."] : staleState ? [] : pulse.blockers,
+            next_steps: completeState ? [] : pulse.next_steps,
+            updated_at: staleState
+              ? new Date(Date.now() - 1000 * 60 * 14).toISOString()
+              : new Date().toISOString(),
+            workstreams: variantWorkstreams
+          });
+        }
+      }
+
       var isLoading = !isDemo;
       if (isLoadingOverride) {
         isLoading = true;
