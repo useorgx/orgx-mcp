@@ -593,7 +593,7 @@
     var isDemo = ['populated', 'progressing', 'urgent', 'long', 'error', 'degraded', 'blocked', 'stale', 'resolved'].includes(fixtureState);
     var isLoadingOverride = fixtureState === 'loading';
     
-    var entity = isDemo ? { id: 'TSK-942', type: 'task', title: 'Implement rate limiting middleware for public API', agent_name: 'Eli', status: 'In Progress', domain: 'Engineering', workspace_name: 'Core Platform', links: [{ platform: 'Linear', url: '#', label: 'ENG-142' }] } : null;
+    var entity = isDemo ? { id: 'TSK-942', type: 'task', title: 'Implement rate limiting middleware for public API', agent_name: 'Eli', status: 'In Progress', domain: 'Engineering', workspace_name: 'Core Platform', links: [{ platform: 'Task', url: 'https://useorgx.com/live?view=mission-control&task=TSK-942', label: 'ENG-142' }] } : null;
     if (fixtureState === 'long' && entity) {
       entity.title = 'Implement tenant-aware rate limiting middleware, observability receipts, rollback controls, and adversarial load verification for the public API';
       entity.workspace_name = 'Core Platform and Reliability Operations';
@@ -832,7 +832,17 @@
         : { state: String(entity.status || 'unknown').toLowerCase(), label: 'Awaiting state', description: 'OrgX has not returned a reliable execution state yet.', hasExecutionEvidence: false };
       const agentProfile = resolveAgentProfile(entity.agent_name || entity.domain || '');
 
-      const linksHtml = (entity.links || []).map(l => `
+      const usableLinks = (entity.links || []).map(l => {
+        const rawUrl = typeof l.url === 'string' ? l.url.trim() : '';
+        const hasRealUrl = /^https?:\\/\\//i.test(rawUrl) && rawUrl !== '#';
+        const fallbackUrl = buildEntityUrl(entity.type, entity.id, entity.initiative_id);
+        if (!hasRealUrl && !fallbackUrl) return null;
+        return Object.assign({}, l, {
+          url: hasRealUrl ? rawUrl : fallbackUrl,
+          platform: hasRealUrl ? (l.platform || 'OrgX') : 'Task',
+        });
+      }).filter(Boolean);
+      const linksHtml = usableLinks.map(l => `
         <a href="${escapeHtml(l.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(l.url || ''))}, event)' class="ox-link-btn ox-link-btn--ghost">
           ${icons.external(13)} <span>Open ${escapeHtml(l.platform)}</span><span class="platform-link__meta">${escapeHtml(l.label)}</span>
         </a>
