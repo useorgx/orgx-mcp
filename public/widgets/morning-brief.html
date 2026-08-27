@@ -1054,6 +1054,8 @@
         demoBriefVariant.workspace_pulse.stats.pendingDecisions = 0;
         demoBriefVariant.workspace_pulse.stats.blockedWorkstreams = 0;
         demoBriefVariant.top_priorities = [];
+        demoBriefVariant.review_items = [];
+        demoBriefVariant.artifacts_produced = demoBriefVariant.artifacts_produced.map((artifact) => ({ ...artifact, status: 'approved', primary_label: 'Open artifact' }));
         demoBriefVariant.exceptions = [];
       } else if (demoState === 'blocked') {
         demoBriefVariant.summary = 'Execution is paused at one evidence gate. Review the blocked workstream before dispatching more work.';
