@@ -7476,6 +7476,47 @@ export class OrgXMcp extends McpAgent<
             }
           }
 
+          // The upstream entities endpoint has historically ignored some
+          // status aliases (notably at_risk, which is stored as risk_level).
+          // Enforce the requested lifecycle/risk filter at the MCP boundary so
+          // callers never receive a mixed-status page that contradicts their
+          // explicit filter. Pagination remains upstream-backed; later pages
+          // are filtered with the same rule.
+          const requestedStatus =
+            typeof args.status === 'string' && args.status.trim().length > 0
+              ? args.status.trim()
+              : null;
+          let statusFilterDroppedCount = 0;
+          if (
+            requestedStatus &&
+            Array.isArray(postFilteredData) &&
+            postFilteredData.length > 0
+          ) {
+            const filtered = postFilteredData.filter((item) => {
+              const record = item as {
+                status?: unknown;
+                risk_level?: unknown;
+              };
+              return requestedStatus === 'at_risk'
+                ? record.risk_level === 'at_risk'
+                : record.status === requestedStatus;
+            });
+            statusFilterDroppedCount =
+              postFilteredData.length - filtered.length;
+            postFilteredData = filtered;
+            if (statusFilterDroppedCount > 0) {
+              console.warn(
+                '[mcp] list_entities: dropped server-side status mismatches',
+                {
+                  requestedStatus,
+                  serverReturned: statusFilterDroppedCount + filtered.length,
+                  retained: filtered.length,
+                  dropped: statusFilterDroppedCount,
+                }
+              );
+            }
+          }
+
           // Add deep links to each entity
           const dataWithLinks = postFilteredData.map((item) => ({
             ...item,
