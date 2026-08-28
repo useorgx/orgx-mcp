@@ -67,6 +67,22 @@ describe('orgx search pagination', () => {
     });
   });
 
+  it('stops an empty page even when upstream leaves has_more=true', () => {
+    const page = normalizeEntitySearchPage(
+      {
+        data: [],
+        pagination: { limit: 50, offset: 1000, has_more: true },
+      },
+      { limit: 50, offset: 1000 }
+    );
+
+    expect(page.pagination).toMatchObject({
+      has_more: false,
+      next_offset: null,
+      next_cursor: null,
+    });
+  });
+
   it('enforces the at-risk alias and exact lifecycle status filters', () => {
     const records = [
       { id: 'risk', status: 'blocked', risk_level: 'at_risk' },
