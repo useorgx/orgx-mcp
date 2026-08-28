@@ -27,6 +27,34 @@ function nonEmptyString(value: unknown): string | null {
     : null;
 }
 
+export type EntityStatusFilterResult = {
+  records: Array<Record<string, unknown>>;
+  dropped: number;
+};
+
+/**
+ * Enforce explicit lifecycle and risk filters at the MCP boundary.
+ * The upstream API stores at-risk state in risk_level and has historically
+ * ignored the status alias, so callers must never receive contradictory rows.
+ */
+export function filterEntitySearchRecords(
+  records: Array<Record<string, unknown>>,
+  requestedStatus?: string | null
+): EntityStatusFilterResult {
+  const status = nonEmptyString(requestedStatus);
+  if (!status) return { records, dropped: 0 };
+
+  const filtered = records.filter((record) =>
+    status === 'at_risk'
+      ? record.risk_level === 'at_risk'
+      : record.status === status
+  );
+  return {
+    records: filtered,
+    dropped: records.length - filtered.length,
+  };
+}
+
 export function normalizeEntitySearchPage(
   payload: unknown,
   request: { limit?: number; offset?: number }
