@@ -189,6 +189,7 @@ import { buildEntityCollectionSearchParams } from './entityCollectionSearch';
 import {
   buildBroadSearchPagination,
   buildOrgxSearchNextCall,
+  filterEntitySearchRecords,
   normalizeEntitySearchPage,
   type EntitySearchPage,
 } from './orgxSearch';
@@ -5016,6 +5017,18 @@ export class OrgXMcp extends McpAgent<
             query,
             fields,
           });
+          const statusFilter = filterEntitySearchRecords(
+            page.records,
+            typeof args.status === 'string' ? args.status : null
+          );
+          if (statusFilter.dropped > 0) {
+            console.warn('[mcp] orgx_search: dropped server-side status mismatches', {
+              requestedStatus: args.status,
+              serverReturned: page.records.length,
+              retained: statusFilter.records.length,
+              dropped: statusFilter.dropped,
+            });
+          }
           const normalizedArgs = {
             ...args,
             type: explicitType,
@@ -5031,8 +5044,8 @@ export class OrgXMcp extends McpAgent<
             type: explicitType,
             search_mode: 'typed_collection',
             query,
-            count: page.records.length,
-            results: page.records,
+            count: statusFilter.records.length,
+            results: statusFilter.records,
             pagination: page.pagination,
             next_call: nextCall,
           };
