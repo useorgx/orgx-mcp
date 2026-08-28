@@ -85,11 +85,22 @@ export function normalizeEntitySearchPage(
     0;
   const total = finiteNonNegative(rawPagination.total);
   const inferredHasMore = total !== null && offset + records.length < total;
+  const rawNextCursor = nonEmptyString(rawPagination.next_cursor);
+  const rawNextOffset = finiteNonNegative(rawPagination.next_offset);
+  // Some upstream pages incorrectly keep has_more=true after returning no
+  // records. Trust an explicit continuation only when the page has data, the
+  // API supplied a cursor/offset, or a finite total proves more rows exist.
+  const serverHasMore =
+    rawPagination.has_more === true &&
+    (records.length >= limit ||
+      rawNextCursor !== null ||
+      rawNextOffset !== null ||
+      total !== null);
   const hasMore =
-    rawPagination.has_more === true ||
+    serverHasMore ||
     (rawPagination.has_more !== false && inferredHasMore);
   const nextOffset = hasMore
-    ? finiteNonNegative(rawPagination.next_offset) ?? offset + limit
+    ? rawNextOffset ?? offset + limit
     : null;
 
   return {
