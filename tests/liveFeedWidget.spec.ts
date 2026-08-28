@@ -152,6 +152,23 @@ describe('buildLiveFeedWidget quiet CTA footer', () => {
     expect(ctaOccurrences()).toBe(0);
   });
 
+  it('ignores replayed SSE snapshots that are older than the visible state', () => {
+    const source = mountWidget(buildWidget('initiative-pulse'));
+    emit(source, {
+      type: 'snapshot',
+      ts: 200,
+      data: { initiative: { title: 'Fresh state', progress: 80 } },
+    });
+    emit(source, {
+      type: 'delta',
+      ts: 100,
+      data: { initiative: { title: 'Replayed old state', progress: 10 } },
+    });
+
+    expect(document.body.textContent).toContain('Fresh state');
+    expect(document.body.textContent).not.toContain('Replayed old state');
+  });
+
   it('renders the agent-status card CTA once even when several agents carry handoffs', () => {
     const source = mountWidget(buildWidget('agent-status'));
 

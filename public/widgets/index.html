@@ -76,6 +76,26 @@
       padding: 14px 16px;
       border-bottom: 1px solid var(--ox-border);
     }
+    .state-key {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--ox-border);
+      background: color-mix(in srgb, var(--ox-well-bg) 46%, transparent);
+      color: var(--ox-text-muted);
+      font: 600 .62rem var(--ox-mono);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .state-key__label { color: var(--ox-text-dim); }
+    .state-key__item { display: inline-flex; align-items: center; gap: 6px; }
+    .state-key__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .state-key__item[data-state="loading"] { color: var(--ox-text-muted); }
+    .state-key__item[data-state="progress"] { color: var(--ox-teal); }
+    .state-key__item[data-state="complete"] { color: var(--ox-success, #22c55e); }
+    .state-key__item[data-state="attention"] { color: var(--ox-warning, #fbbf24); }
     .field {
       display: flex;
       flex-direction: column;
@@ -356,9 +376,13 @@
           <select id="stateSelect">
             <option value="populated">Populated</option>
             <option value="loading">Loading</option>
+            <option value="progressing">In progress</option>
+            <option value="completed">Completed</option>
+            <option value="blocked">Blocked</option>
             <option value="empty">Empty</option>
             <option value="long">Long content</option>
             <option value="error">Degraded</option>
+            <option value="stale">Needs refresh</option>
             <option value="resolved">Resolved</option>
           </select>
         </div>
@@ -378,6 +402,14 @@
           </select>
         </div>
         <a class="open-preview" id="openPreview" href="#" target="_blank" rel="noreferrer">Open preview ↗</a>
+      </div>
+
+      <div class="state-key" aria-label="Widget state legend">
+        <span class="state-key__label">State contract</span>
+        <span class="state-key__item" data-state="loading"><span class="state-key__dot"></span>Loading</span>
+        <span class="state-key__item" data-state="progress"><span class="state-key__dot"></span>In progress</span>
+        <span class="state-key__item" data-state="complete"><span class="state-key__dot"></span>Completed</span>
+        <span class="state-key__item" data-state="attention"><span class="state-key__dot"></span>Blocked / needs refresh</span>
       </div>
 
       <div class="workbench-body">
@@ -411,11 +443,11 @@
     (function () {
       const widgets = [
         { id: 'artifact-review', name: 'Artifact Review', file: 'artifact-review.html', mode: 'Escalation', job: 'Judge evidence and sign off at the point of consequence.', advanced: true },
-        { id: 'task-spawned', name: 'Task Spawned', file: 'task-spawned.html', mode: 'Command', job: 'Confirm dispatch, owner, execution surface, and proof.', advanced: true },
+        { id: 'task-spawned', name: 'Task Spawned', file: 'task-spawned.html', mode: 'Command', job: 'Confirm dispatch, owner, execution surface, and proof.', advanced: true, supportsStates: ['populated', 'loading', 'progressing', 'completed', 'blocked', 'empty', 'long', 'error', 'stale', 'resolved'] },
         { id: 'search-results', name: 'Search Results', file: 'search-results.html', mode: 'Readout', job: 'Find the strongest organizational answer quickly.', advanced: true },
         { id: 'decisions', name: 'Decisions', file: 'decisions.html', mode: 'Escalation', job: 'Resolve the judgment currently blocking execution.', advanced: true },
         { id: 'plan-session-live', name: 'Plan Session Live', file: 'plan-session-live.html', mode: 'Creation', job: 'Watch a plan become owned and executable.' },
-        { id: 'agent-status', name: 'Agent Status', file: 'agent-status.html', mode: 'Command', job: 'See which agent needs intervention now.' },
+        { id: 'agent-status', name: 'Agent Status', file: 'agent-status.html', mode: 'Command', job: 'See which agent needs intervention now.', supportsStates: ['populated', 'loading', 'progressing', 'completed', 'blocked', 'empty', 'stale', 'resolved'] },
         { id: 'initiative-pulse', name: 'Initiative Pulse', file: 'initiative-pulse.html', mode: 'Command', job: 'Read initiative health and the exception changing it.' },
         { id: 'morning-brief', name: 'Morning Brief', file: 'morning-brief.html', mode: 'Readout', job: 'Orient to the day through exceptions and priorities.' },
         { id: 'daily-brief', name: 'Daily Brief', file: 'daily-brief.html', mode: 'Readout', job: 'Resume from the next useful operating move.' },
@@ -448,18 +480,41 @@
       elements.viewport.value = params.get('viewport') || 'desktop';
 
       function stateQuery(widget, state) {
+        const stateForWidget = state === 'completed' ? 'resolved' : state;
+        if (widget.id === 'agent-status') {
+          if (state === 'loading') return 'loading=true';
+          return 'demo=true&state=' + encodeURIComponent(stateForWidget);
+        }
+        if (widget.id === 'scaffolded-initiative') {
+          if (state === 'loading') return 'loading=true';
+          if (state === 'empty' || state === 'error') return 'demo=true&state=' + encodeURIComponent(stateForWidget);
+          const status = state === 'completed' || state === 'resolved' ? 'completed' : state === 'blocked' || state === 'stale' ? 'paused' : 'active';
+          return 'demo=true&status=' + encodeURIComponent(status);
+        }
         if (widget.advanced) {
-          const normalized = state === 'populated' ? (widget.id === 'decisions' || widget.id === 'artifact-review' ? 'urgent' : 'populated') : state;
+          let normalized = stateForWidget;
+          if (state === 'populated') normalized = widget.id === 'decisions' || widget.id === 'artifact-review' ? 'urgent' : 'populated';
+          // A few readout widgets use their own fixture vocabulary. Keep the
+          // gallery's state contract consistent while selecting the closest
+          // honest fixture rather than silently rendering an empty frame.
+          if (state === 'progressing' && widget.id !== 'task-spawned') normalized = widget.id === 'decisions' || widget.id === 'artifact-review' ? 'urgent' : 'populated';
+          if (state === 'blocked' && widget.id !== 'task-spawned') normalized = 'error';
+          if (state === 'stale' && widget.id !== 'task-spawned') normalized = 'degraded';
           return 'state=' + encodeURIComponent(normalized);
         }
         if (state === 'loading') return 'loading=true';
-        if (state === 'empty' || state === 'error') return '';
-        return 'demo=true';
+        // Simple widgets opt into the same deterministic fixture contract.
+        // Their own `state` query is responsible for presenting the
+        // appropriate lifecycle copy instead of collapsing every state into
+        // a populated or empty surface.
+        return 'demo=true&state=' + encodeURIComponent(stateForWidget);
       }
 
       function previewUrl() {
         const widget = byId.get(selectedId);
-        const query = [stateQuery(widget, elements.state.value), 'theme=' + encodeURIComponent(elements.theme.value)].filter(Boolean).join('&');
+        // Mark embedded previews explicitly so widget runtime bypasses host
+        // bridges and renders the selected deterministic fixture.
+        const query = [stateQuery(widget, elements.state.value), 'theme=' + encodeURIComponent(elements.theme.value), 'gallery=true'].filter(Boolean).join('&');
         return widget.file + (query ? '?' + query : '');
       }
 
@@ -494,7 +549,8 @@
         elements.widget.value = selectedId;
         elements.title.textContent = widget.name;
         elements.question.textContent = widget.job;
-        elements.status.textContent = elements.state.options[elements.state.selectedIndex].text + ' ready';
+        const selectedOption = elements.state.options[elements.state.selectedIndex];
+        elements.status.textContent = (selectedOption ? selectedOption.text : elements.state.value.replace(/[-_]/g, ' ')) + ' ready';
         elements.shell.dataset.viewport = elements.viewport.value;
         elements.frame.title = widget.name + ' — ' + elements.state.value + ' — ' + elements.theme.value;
         elements.frame.src = url;

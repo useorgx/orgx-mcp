@@ -89,4 +89,32 @@ describe('normalizeAgentStatusPayload', () => {
       },
     });
   });
+
+  it('preserves a completed task lane and marks an old heartbeat as stalled', () => {
+    const result = normalizeAgentStatusPayload({
+      agents: [
+        {
+          agent_id: 'engineering-agent',
+          agent_name: 'Eli',
+          status: 'in_progress',
+          last_heartbeat_at: '2020-01-01T00:00:00.000Z',
+          tasks: [
+            { id: 'task-active', title: 'Current repair', status: 'in_progress' },
+            { id: 'task-done', title: 'Shipped repair', status: 'completed' },
+          ],
+        },
+      ],
+    });
+
+    expect(result).toMatchObject({
+      agents: [
+        {
+          status: 'stalled',
+          completed_count: 1,
+          completed_tasks: [{ id: 'task-done', title: 'Shipped repair', status: 'completed' }],
+        },
+      ],
+      summary: { stalled: 1, completed: 1 },
+    });
+  });
 });

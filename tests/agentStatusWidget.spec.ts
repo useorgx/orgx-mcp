@@ -47,4 +47,12 @@ describe('agent status widget', () => {
     expect(tokenSource).toContain('--app-color-attention');
     expect(tokenSource).toContain('--app-color-review');
   });
+
+  it('keeps current and completed work visible with an explicit freshness state', () => {
+    expect(widgetSource).toContain('shared/widget-state.js');
+    expect(widgetSource).toContain('completedTasks');
+    expect(widgetSource).toContain('Completed recently');
+    expect(widgetSource).toContain('Last execution needs a refresh');
+    expect(widgetSource).toContain("data-tone='done'");
+  });
 });

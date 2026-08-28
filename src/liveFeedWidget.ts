@@ -765,6 +765,9 @@ button[data-oxhref]:not(.footer-link){background:none;border:none;padding:0;font
 
   /* ── Event dispatcher ── */
   function handleData(event) {
+    // SSE can deliver a replayed snapshot after a newer delta. Do not let a
+    // late event move the UI backwards to old agent/initiative state.
+    if (event.ts && lastTs && Number(event.ts) < Number(lastTs)) return;
     if (event.ts) lastTs = event.ts;
     var data = event.data;
     if (!data) return;

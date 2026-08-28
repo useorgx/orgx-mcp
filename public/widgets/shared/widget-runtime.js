@@ -70,6 +70,16 @@
   }
 
   function detectProtocol() {
+    // The gallery embeds fixture pages in an iframe. Explicit gallery mode
+    // must stay deterministic and never wait for a host tool-result bridge.
+    // Real ChatGPT/MCP embeds do not carry this query flag, so their protocol
+    // detection remains unchanged.
+    try {
+      var params = new URLSearchParams(global.location.search);
+      if (params.get('gallery') === 'true') return 'standalone';
+    } catch (_) {
+      // Keep normal protocol detection if URL parsing is unavailable.
+    }
     if (global.openai) return 'chatgpt';
     if (global.McpApps && global.McpApps.App && global.parent !== global) {
       return 'mcp-apps-sdk';
@@ -106,6 +116,92 @@
       }
     }
     return result;
+  }
+
+  // Hosts can replay a previous tool result while a fresh result is still
+  // arriving. Accepting that replay makes a card jump backwards (for example
+  // from completed to running). Prefer the newest server timestamp when one
+  // is present, while preserving arrival order for payloads that cannot carry
+  // a timestamp.
+  function extractResultTimestamp(value, depth) {
+    if (value === null || value === undefined || (depth || 0) > 4) return null;
+    if (global.OrgXWidgetState && global.OrgXWidgetState.observedAt) {
+      var shared = global.OrgXWidgetState.observedAt(value);
+      if (shared !== null) return shared;
+    }
+    if (typeof value !== 'object') return null;
+    var fields = [
+      'observed_at', 'observedAt', 'updated_at', 'updatedAt', 'last_synced_at',
+      'lastSyncedAt', 'refreshed_at', 'refreshedAt', 'generated_at', 'generatedAt',
+      'last_heartbeat_at', 'lastHeartbeatAt', 'completed_at', 'completedAt'
+    ];
+    var latest = null;
+    for (var i = 0; i < fields.length; i += 1) {
+      var candidate = value[fields[i]];
+      if (typeof candidate === 'number' && isFinite(candidate)) {
+        var numeric = candidate < 100000000000 ? candidate * 1000 : candidate;
+        latest = latest === null ? numeric : Math.max(latest, numeric);
+      }
+      if (typeof candidate === 'string' && candidate.trim()) {
+        var parsed = Date.parse(candidate);
+        if (isFinite(parsed)) latest = latest === null ? parsed : Math.max(latest, parsed);
+      }
+    }
+    if (latest !== null) return latest;
+    var nested = value.structuredContent || value.result || value.output || value.toolOutput;
+    return nested && nested !== value ? extractResultTimestamp(nested, (depth || 0) + 1) : null;
+  }
+
+  function extractLifecycleRank(value, depth) {
+    if (value === null || value === undefined || (depth || 0) > 4) return 0;
+    var raw = null;
+    if (typeof value === 'object') {
+      var fields = ['status', 'state', 'phase', 'execution_status', 'executionState'];
+      for (var i = 0; i < fields.length; i += 1) {
+        if (typeof value[fields[i]] === 'string' && value[fields[i]].trim()) {
+          raw = value[fields[i]].toLowerCase().replace(/[^a-z0-9]+/g, '_');
+          break;
+        }
+      }
+      if (!raw) {
+        var nested = value.structuredContent || value.result || value.output || value.toolOutput;
+        return nested && nested !== value ? extractLifecycleRank(nested, (depth || 0) + 1) : 0;
+      }
+    } else if (typeof value === 'string') {
+      raw = value.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    }
+    if (['done', 'complete', 'completed', 'approved', 'shipped', 'resolved', 'success'].indexOf(raw) !== -1) return 5;
+    if (['failed', 'error', 'cancelled', 'canceled'].indexOf(raw) !== -1) return 4;
+    if (['blocked', 'at_risk', 'waiting', 'needs_input', 'needs_review'].indexOf(raw) !== -1) return 3;
+    if (['running', 'active', 'executing', 'in_progress', 'working'].indexOf(raw) !== -1) return 2;
+    if (['queued', 'pending', 'not_started', 'todo', 'backlog'].indexOf(raw) !== -1) return 1;
+    return 0;
+  }
+
+  function createResultGate() {
+    var newestObservedAt = null;
+    var newestLifecycleRank = 0;
+    var arrival = 0;
+    return {
+      accept: function accept(raw) {
+        var nextObservedAt = extractResultTimestamp(raw, 0);
+        if (
+          nextObservedAt !== null &&
+          newestObservedAt !== null &&
+          (nextObservedAt < newestObservedAt ||
+            (nextObservedAt === newestObservedAt && extractLifecycleRank(raw, 0) < newestLifecycleRank))
+        ) {
+          return false;
+        }
+        if (nextObservedAt !== null) {
+          newestObservedAt = nextObservedAt;
+          newestLifecycleRank = extractLifecycleRank(raw, 0);
+        }
+        arrival += 1;
+        return arrival > 0;
+      },
+      getObservedAt: function getObservedAt() { return newestObservedAt; }
+    };
   }
 
   function getErrorMessage(value, fallback) {
@@ -337,12 +433,16 @@
     var render = options.render;
     var getData = options.getData || extractStructuredWidgetData;
     var currentData = null;
+    var resultGate = createResultGate();
     var activeProtocol = getProtocol();
     document.documentElement.setAttribute('data-protocol', activeProtocol);
 
     if (activeProtocol === 'chatgpt') {
       applyTheme(global.openai && global.openai.theme, 'host');
-      currentData = getData(global.openai && global.openai.toolOutput);
+      var initialOutput = global.openai && global.openai.toolOutput;
+      if (initialOutput !== null && initialOutput !== undefined && resultGate.accept(initialOutput)) {
+        currentData = getData(initialOutput);
+      }
       render(currentData);
       observeChatGPTSize();
       global.addEventListener(
@@ -352,8 +452,14 @@
           if (!globals) return;
           if (globals.theme !== undefined) applyTheme(globals.theme, 'host');
           if (globals.toolOutput === undefined) return;
-          currentData = getData(globals.toolOutput);
-          render(currentData);
+          if (!resultGate.accept(globals.toolOutput)) return;
+          // A host may briefly publish null while it rehydrates. Keep the
+          // last known result visible instead of replacing it with an empty
+          // or loading-looking card.
+          if (globals.toolOutput !== null || currentData === null) {
+            currentData = getData(globals.toolOutput);
+            render(currentData);
+          }
           reportSize();
         },
         { passive: true }
@@ -362,6 +468,7 @@
       render(null);
       var activeBridge = getBridge(activeProtocol === 'mcp-apps-sdk');
       activeBridge.toolResultCallback = function onToolResult(result) {
+        if (!resultGate.accept(result)) return;
         currentData = getData(result);
         render(currentData);
       };
@@ -477,6 +584,8 @@
     detectProtocol: detectProtocol,
     applyTheme: applyTheme,
     extractStructuredWidgetData: extractStructuredWidgetData,
+    extractResultTimestamp: extractResultTimestamp,
+    extractLifecycleRank: extractLifecycleRank,
     getErrorMessage: getErrorMessage,
     getTheme: getTheme,
     getWidgetSessionId: getWidgetSessionId,
