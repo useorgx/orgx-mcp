@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildBroadSearchPagination,
   buildOrgxSearchNextCall,
+  filterEntitySearchRecords,
   normalizeEntitySearchPage,
 } from '../src/orgxSearch';
 
@@ -63,6 +64,27 @@ describe('orgx search pagination', () => {
       next_cursor: null,
       previous_cursor: null,
       exhaustive: false,
+    });
+  });
+
+  it('enforces the at-risk alias and exact lifecycle status filters', () => {
+    const records = [
+      { id: 'risk', status: 'blocked', risk_level: 'at_risk' },
+      { id: 'healthy', status: 'active', risk_level: 'on_track' },
+      { id: 'unknown', status: 'draft', risk_level: 'unknown' },
+    ];
+
+    expect(filterEntitySearchRecords(records, 'at_risk')).toEqual({
+      records: [{ id: 'risk', status: 'blocked', risk_level: 'at_risk' }],
+      dropped: 2,
+    });
+    expect(filterEntitySearchRecords(records, 'active')).toEqual({
+      records: [{ id: 'healthy', status: 'active', risk_level: 'on_track' }],
+      dropped: 2,
+    });
+    expect(filterEntitySearchRecords(records, null)).toEqual({
+      records,
+      dropped: 0,
     });
   });
 });
