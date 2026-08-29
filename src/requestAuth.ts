@@ -28,10 +28,14 @@ import { buildAuthErrorResponse } from './authErrors';
 
 type AuthResult = {
   userId?: string;
+  orgxUserId?: string;
   scope?: string;
   email?: string;
   response?: Response;
 };
+
+const ORGX_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface AuthEnv {
   MCP_SERVER_URL: string;
@@ -113,6 +117,7 @@ export async function authenticateRequest(
     try {
       const tokenData = await env.OAUTH_PROVIDER.unwrapToken<{
         userId?: string;
+        orgxUserId?: string;
         scope?: string;
         email?: string;
       }>(token);
@@ -120,6 +125,11 @@ export async function authenticateRequest(
       if (tokenData) {
         const props = tokenData.grant?.props;
         const userId = props?.userId ?? tokenData.userId;
+        const orgxUserId =
+          typeof props?.orgxUserId === 'string' &&
+          ORGX_UUID_RE.test(props.orgxUserId.trim())
+            ? props.orgxUserId.trim()
+            : undefined;
         const scope = props?.scope ?? tokenData.grant?.scope?.join(' ');
         const email = props?.email;
 
@@ -129,7 +139,7 @@ export async function authenticateRequest(
           path,
         });
 
-        return { userId, scope, email };
+        return { userId, orgxUserId, scope, email };
       }
 
       // `unwrapToken` returns null for both expired and invalid tokens.
