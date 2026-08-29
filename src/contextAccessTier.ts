@@ -99,6 +99,11 @@ export async function resolveHydrationAccessContext(
   userId: string
 ): Promise<HydrationAccessContext> {
   const billing = await resolveBillingPlanContext(env, userId);
+  if (!billing.available) {
+    // Hydration remains conservatively capped while billing is unavailable,
+    // without claiming the user's verified subscription is Free.
+    return { tier: 'free', plan: 'free' };
+  }
   return {
     tier: billing.tier === 'free' ? 'free' : 'paid',
     plan: billing.plan,

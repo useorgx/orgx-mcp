@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { _clearOrgxApiCachesForTests, callOrgxApiRaw } from '../src/orgxApi';
+import {
+  _clearOrgxApiCachesForTests,
+  callOrgxApiJson,
+  callOrgxApiRaw,
+} from '../src/orgxApi';
 
 function decodeActorToken(token: string) {
   const [payloadB64] = token.split('.');
@@ -185,6 +189,27 @@ describe('callOrgxApiRaw actor token propagation', () => {
     );
     expect(fetchMock.mock.calls[1]?.[0]).toBe(
       'https://fallback.useorgx.test/api/health'
+    );
+  });
+
+  it('surfaces the resolved upstream origin on JSON responses', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('bad gateway', { status: 502 }))
+      .mockResolvedValueOnce(Response.json({ plan: 'enterprise' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await callOrgxApiJson(
+      {
+        ORGX_API_URL: 'https://primary.useorgx.test',
+        ORGX_API_FALLBACK_URL: 'https://fallback.useorgx.test',
+        ORGX_SERVICE_KEY: 'oxk-test',
+      },
+      '/api/billing/usage'
+    );
+
+    expect(response.headers.get('x-orgx-upstream-origin')).toBe(
+      'https://fallback.useorgx.test'
     );
   });
 

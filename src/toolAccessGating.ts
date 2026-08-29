@@ -1,6 +1,9 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
-import { resolveBillingPlanContext } from './billingPlan';
+import {
+  resolveBillingPlanContext,
+  type BillingPlanUnavailableReason,
+} from './billingPlan';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
 import { mapPlanToAccountTier, type AccountTier } from './accountTools';
 
@@ -101,6 +104,8 @@ type ToolAccessAllowed = {
   tier: AccountTier;
   feature: ToolAccessFeature;
   minimumTier: Exclude<AccountTier, 'free'>;
+  source: 'api' | 'cache';
+  origin: string | null;
 };
 
 type ToolAccessBlocked = {
@@ -110,6 +115,8 @@ type ToolAccessBlocked = {
   tier: AccountTier;
   feature: ToolAccessFeature;
   minimumTier: Exclude<AccountTier, 'free'>;
+  source: 'api' | 'cache';
+  origin: string | null;
   error: string;
   upgrade_cta: {
     target_plan: Exclude<AccountTier, 'free'>;
@@ -119,7 +126,22 @@ type ToolAccessBlocked = {
   };
 };
 
-export type ToolAccessResult = ToolAccessAllowed | ToolAccessBlocked;
+type ToolAccessUnavailable = {
+  allowed: false;
+  code: 'plan_unavailable';
+  feature: ToolAccessFeature;
+  minimumTier: Exclude<AccountTier, 'free'>;
+  source: 'unavailable';
+  origin: string | null;
+  reason: BillingPlanUnavailableReason;
+  retryable: true;
+  error: string;
+};
+
+export type ToolAccessResult =
+  | ToolAccessAllowed
+  | ToolAccessBlocked
+  | ToolAccessUnavailable;
 
 const TOOL_ACCESS_RULES: Record<ToolAccessFeature, ToolAccessRule> = {
   spawn_agent_task: {
@@ -149,6 +171,8 @@ export function evaluateToolAccess(params: {
   feature: ToolAccessFeature;
   plan: string | null | undefined;
   orgxWebUrl?: string | null;
+  source?: 'api' | 'cache';
+  origin?: string | null;
 }): ToolAccessResult {
   const rule = TOOL_ACCESS_RULES[params.feature];
   const plan = (params.plan ?? 'free').trim().toLowerCase() || 'free';
@@ -161,6 +185,8 @@ export function evaluateToolAccess(params: {
       tier,
       feature: params.feature,
       minimumTier: rule.minimumTier,
+      source: params.source ?? 'api',
+      origin: params.origin ?? null,
     };
   }
 
@@ -171,6 +197,8 @@ export function evaluateToolAccess(params: {
     tier,
     feature: params.feature,
     minimumTier: rule.minimumTier,
+    source: params.source ?? 'api',
+    origin: params.origin ?? null,
     error: rule.message,
     upgrade_cta: {
       target_plan: rule.minimumTier,
@@ -193,8 +221,23 @@ export function evaluateToolAccess(params: {
 }
 
 export function buildPlanRestrictedToolResult(
-  access: ToolAccessBlocked
+  access: ToolAccessBlocked | ToolAccessUnavailable
 ): CallToolResult {
+  if (access.code === 'plan_unavailable') {
+    return {
+      content: [{ type: 'text', text: access.error }],
+      structuredContent: {
+        ok: false,
+        code: access.code,
+        retryable: access.retryable,
+        reason: access.reason,
+        source: access.source,
+        origin: access.origin,
+        required_plan: access.minimumTier,
+      },
+      isError: true,
+    } as CallToolResult;
+  }
   return {
     content: [
       {
@@ -208,6 +251,8 @@ export function buildPlanRestrictedToolResult(
       plan: access.plan,
       tier: access.tier,
       required_plan: access.minimumTier,
+      source: access.source,
+      origin: access.origin,
       upgrade_cta: access.upgrade_cta,
     },
     isError: true,
@@ -232,24 +277,48 @@ export async function checkToolPlanAccess(params: {
 
   if (!userId) {
     return buildPlanRestrictedToolResult(
-      evaluateToolAccess({
+      {
+        allowed: false,
+        code: 'plan_unavailable',
         feature: params.feature,
-        plan: 'free',
-        orgxWebUrl: params.env.ORGX_WEB_URL,
-      }) as ToolAccessBlocked
+        minimumTier: TOOL_ACCESS_RULES[params.feature].minimumTier,
+        source: 'unavailable',
+        origin: null,
+        reason: 'identity_missing',
+        retryable: true,
+        error:
+          'Your OrgX billing plan could not be verified because the authenticated identity is unavailable. Please reconnect and try again.',
+      }
     );
   }
 
-  const { plan } = await resolveBillingPlanContext(params.env, userId, {
+  const billing = await resolveBillingPlanContext(params.env, userId, {
     userEmail: params.userEmail,
     orgxUserId: params.orgxUserId,
     workspaceId: params.workspaceId,
   });
 
+  if (!billing.available || billing.source === 'unavailable') {
+    return buildPlanRestrictedToolResult({
+      allowed: false,
+      code: 'plan_unavailable',
+      feature: params.feature,
+      minimumTier: TOOL_ACCESS_RULES[params.feature].minimumTier,
+      source: 'unavailable',
+      origin: billing.origin,
+      reason: billing.reason ?? 'upstream_error',
+      retryable: true,
+      error:
+        'Your OrgX billing plan is temporarily unavailable and this action cannot be authorized yet. Please retry.',
+    });
+  }
+
   const access = evaluateToolAccess({
     feature: params.feature,
-    plan,
+    plan: billing.plan,
     orgxWebUrl: params.env.ORGX_WEB_URL,
+    source: billing.source,
+    origin: billing.origin,
   });
   return access.allowed ? null : buildPlanRestrictedToolResult(access);
 }

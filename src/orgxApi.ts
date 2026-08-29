@@ -18,6 +18,7 @@ const ACTOR_TOKEN_AUD = 'orgx-api';
 
 const hmacKeyCache = new Map<string, Promise<CryptoKey>>();
 const actorTokenCache = new Map<string, { token: string; expiresAt: number }>();
+const responseOrigin = new WeakMap<Response, string>();
 
 async function importHmacKey(secret: string): Promise<CryptoKey> {
   const cached = hmacKeyCache.get(secret);
@@ -470,6 +471,7 @@ export async function callOrgxApiRaw(
         `[orgx-api] Fallback succeeded for ${url.toString()} after ${lastRetryableFailure}`
       );
     }
+    responseOrigin.set(response, url.origin);
     return response;
   }
 
@@ -497,11 +499,15 @@ export async function callOrgxApiJson(
     orgxUserId: opts?.orgxUserId ?? undefined,
     allowFallback: opts?.allowFallback,
   });
+  const resolvedOrigin =
+    responseOrigin.get(response) ??
+    new URL(response.url || env.ORGX_API_URL).origin;
+  const resolvedUrl = response.url || new URL(path, resolvedOrigin).toString();
   const contentType = response.headers.get('content-type') ?? '';
   const responseBody = await readResponseTextWithTimeout(
     response,
     parseTimeoutMs(env.ORGX_API_TIMEOUT_MS, DEFAULT_ORGX_API_TIMEOUT_MS),
-    response.url || new URL(path, env.ORGX_API_URL).toString()
+    resolvedUrl
   );
   if (!contentType.includes('application/json')) {
     const text = truncateForErrorBody(responseBody);
@@ -512,10 +518,12 @@ export async function callOrgxApiJson(
       }: ${text}`
     );
   }
+  const responseHeaders = new Headers(response.headers);
+  responseHeaders.set('X-Orgx-Upstream-Origin', resolvedOrigin);
   return new Response(responseBody, {
     status: response.status,
     statusText: response.statusText,
-    headers: response.headers,
+    headers: responseHeaders,
   });
 }
 
