@@ -258,6 +258,7 @@ import { buildInitiativeListWidgetPayload } from './initiativeWidgetPayload';
 import { normalizeAgentDispatchPayload } from './agentDispatchPayload';
 import {
   enrichAgentStatusWithDurableEvidence,
+  filterAgentStatusArtifactsByVisibleScope,
   normalizeAgentStatusPayload,
 } from './agentStatusPayload';
 import {
@@ -2687,12 +2688,17 @@ export class OrgXMcp extends McpAgent<
       // workspace artifact stream for fleet status; initiative-only lookup can
       // otherwise omit a real agent deliverable and silently report zero.
       if (workspaceId && params.toolId === 'get_agent_status') {
-        const records = await this.fetchEntityCollection({
-          type: 'artifact',
-          userId: params.userId,
-          workspaceId,
-          limit: 100,
-        });
+        // Legacy run-output artifacts may not carry workspace_id or
+        // initiative_id. Fetch the authenticated user's bounded artifact head,
+        // then scope it back to the exact visible initiative/task graph.
+        const records = filterAgentStatusArtifactsByVisibleScope(
+          params.data,
+          await this.fetchEntityCollection({
+            type: 'artifact',
+            userId: params.userId,
+            limit: 100,
+          })
+        );
         for (const record of records) {
           const key =
             (typeof record.id === 'string' && record.id.trim()) ||
