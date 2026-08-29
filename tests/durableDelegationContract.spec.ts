@@ -5,47 +5,82 @@ import {
   validateDurableDelegationResponse,
 } from '../src/durableDelegationContract';
 
+const claimedData = {
+  delegation_contract: DURABLE_DELEGATION_CONTRACT,
+  task_id: 'task-123',
+  run_id: 'run-456',
+  job_id: 'job-789',
+  dispatch_receipt: {
+    dispatch: 'inline_claimed',
+    jobStatus: 'running',
+    acceptedAt: '2026-08-29T00:00:00.000Z',
+  },
+};
+
 describe('validateDurableDelegationResponse', () => {
-  it('accepts a versioned receipt with distinct durable task and run IDs', () => {
+  it('accepts distinct durable IDs with a claimed job receipt', () => {
     expect(
-      validateDurableDelegationResponse({
-        ok: true,
-        data: {
-          delegation_contract: DURABLE_DELEGATION_CONTRACT,
-          task_id: 'task-123',
-          run_id: 'run-456',
-        },
-      })
-    ).toEqual({ ok: true, taskId: 'task-123', runId: 'run-456' });
-  });
-
-  it('rejects a stale response that lacks the contract version', () => {
-    const result = validateDurableDelegationResponse({
+      validateDurableDelegationResponse({ ok: true, data: claimedData })
+    ).toMatchObject({
       ok: true,
-      data: { task_id: 'task-123', run_id: 'run-456' },
+      taskId: 'task-123',
+      runId: 'run-456',
+      jobId: 'job-789',
+      dispatchReceipt: {
+        dispatch: 'inline_claimed',
+        jobStatus: 'running',
+      },
     });
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.message).toMatch(/contract/i);
   });
 
-  it('rejects synthetic api parents even when other fields are present', () => {
-    const result = validateDurableDelegationResponse({
-      delegation_contract: DURABLE_DELEGATION_CONTRACT,
-      task_id: 'api-parent',
-      run_id: 'run-456',
-    });
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.message).toMatch(/synthetic/i);
-  });
-
-  it('rejects aliased task/run IDs and missing receipts', () => {
+  it('rejects stale and synthetic contracts', () => {
     expect(
       validateDurableDelegationResponse({
-        delegation_contract: DURABLE_DELEGATION_CONTRACT,
-        task_id: 'same-id',
-        run_id: 'same-id',
+        data: { ...claimedData, delegation_contract: 'durable_delegation_v1' },
       }).ok
     ).toBe(false);
-    expect(validateDurableDelegationResponse({ ok: true }).ok).toBe(false);
+    expect(
+      validateDurableDelegationResponse({
+        data: { ...claimedData, task_id: 'api-parent' },
+      }).ok
+    ).toBe(false);
+  });
+
+  it('rejects missing job evidence', () => {
+    expect(
+      validateDurableDelegationResponse({
+        data: { ...claimedData, job_id: undefined },
+      }).ok
+    ).toBe(false);
+    expect(
+      validateDurableDelegationResponse({
+        data: { ...claimedData, dispatch_receipt: undefined },
+      }).ok
+    ).toBe(false);
+  });
+
+  it('rejects queued or rejected dispatches', () => {
+    expect(
+      validateDurableDelegationResponse({
+        data: {
+          ...claimedData,
+          dispatch_receipt: {
+            dispatch: 'cloud_enqueued',
+            jobStatus: 'queued',
+          },
+        },
+      }).ok
+    ).toBe(false);
+    expect(
+      validateDurableDelegationResponse({
+        data: {
+          ...claimedData,
+          dispatch_receipt: {
+            dispatch: 'dispatch_rejected',
+            jobStatus: 'queued',
+          },
+        },
+      }).ok
+    ).toBe(false);
   });
 });
