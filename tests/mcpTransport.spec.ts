@@ -163,6 +163,70 @@ describe('mcpTransport', () => {
     }
   );
 
+  it('preserves the signed canonical OrgX user id through transport normalization', async () => {
+    const orgxUserId = '5c52c8ca-c1d0-48cc-a177-9cf1ac2c5b06';
+    const ctx = {
+      waitUntil: vi.fn(),
+      props: { sourceClient: 'chatgpt', orgxUserId },
+    } as any;
+    const handler = {
+      fetch: vi.fn(async () => Response.json({ ok: true })),
+    };
+
+    await handleMcpRequest(
+      new Request('http://localhost/mcp', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          method: 'tools/call',
+          params: { name: 'spawn_agent_task', arguments: {} },
+        }),
+      }),
+      env,
+      ctx,
+      handler,
+      vi.fn(async () => ({
+        userId: 'clerk-user-1',
+        orgxUserId,
+        scope: 'agents:write',
+        email: 'hope@example.com',
+      }))
+    );
+
+    expect(ctx.props).toMatchObject({
+      userId: 'clerk-user-1',
+      orgxUserId,
+      scope: 'agents:write',
+      email: 'hope@example.com',
+      sourceClient: 'chatgpt',
+    });
+  });
+
+  it('does not carry a persisted canonical id across authenticated users', async () => {
+    const ctx = {
+      waitUntil: vi.fn(),
+      props: {
+        userId: 'clerk-user-previous',
+        orgxUserId: '5c52c8ca-c1d0-48cc-a177-9cf1ac2c5b06',
+      },
+    } as any;
+
+    await handleMcpRequest(
+      new Request('http://localhost/mcp', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ method: 'tools/list' }),
+      }),
+      env,
+      ctx,
+      { fetch: vi.fn(async () => Response.json({ ok: true })) },
+      vi.fn(async () => ({ userId: 'clerk-user-current' }))
+    );
+
+    expect(ctx.props.userId).toBe('clerk-user-current');
+    expect(ctx.props.orgxUserId).toBeUndefined();
+  });
+
   it('preserves request context and fails unknown profiles closed before dispatch', async () => {
     const ctx = {
       waitUntil: vi.fn(),
