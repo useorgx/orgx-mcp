@@ -19,4 +19,17 @@ describe('agent status workspace evidence query', () => {
     expect(block).toContain('limit: 100');
     expect(block).not.toContain('initiativeIds.size === 0');
   });
+  it('makes durable reconciliation the final agent-status projection', () => {
+    const source = readFileSync('src/index.ts', 'utf8');
+    const proof = source.indexOf(
+      'enrichAgentStatusWithArtifacts(evidenceData, artifacts)'
+    );
+    const durable = source.indexOf(
+      'return enrichAgentStatusWithDurableEvidence(', proof
+    );
+
+    expect(proof).toBeGreaterThan(-1);
+    expect(durable).toBeGreaterThan(proof);
+  });
+
 });
