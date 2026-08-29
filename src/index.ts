@@ -2736,8 +2736,14 @@ export class OrgXMcp extends McpAgent<
               limit: 100,
             })
           : [];
-        evidenceData = enrichAgentStatusWithDurableEvidence(
-          evidenceData,
+        const proofData =
+          artifacts.length > 0
+            ? enrichAgentStatusWithArtifacts(evidenceData, artifacts)
+            : evidenceData;
+        // Durable task/artifact reconciliation is the canonical final projection.
+        // Widget proof is additive and must not overwrite artifact counts or IDs.
+        return enrichAgentStatusWithDurableEvidence(
+          proofData,
           tasks,
           artifacts
         );
