@@ -88,10 +88,11 @@ export function validateDurableDelegationResponse(
   }
 
   const dispatchReceipt = asRecord(data.dispatch_receipt);
-  if (
-    dispatchReceipt?.dispatch !== 'inline_claimed' ||
-    dispatchReceipt.jobStatus !== 'running'
-  ) {
+  const isClaimedDispatch =
+    dispatchReceipt?.dispatch === 'inline_claimed' ||
+    dispatchReceipt?.dispatch === 'cloud_claimed' ||
+    dispatchReceipt?.dispatch === 'session_orchestrator';
+  if (!isClaimedDispatch || dispatchReceipt?.jobStatus !== 'running') {
     return {
       ok: false,
       message:
