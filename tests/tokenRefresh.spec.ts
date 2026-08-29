@@ -175,12 +175,18 @@ describe('authenticateRequest', () => {
   });
 
   it('returns authenticated props when unwrapToken succeeds', async () => {
+    const orgxUserId = '5c52c8ca-c1d0-48cc-a177-9cf1ac2c5b06';
     const env = {
       ...baseEnv,
       OAUTH_PROVIDER: {
         unwrapToken: vi.fn().mockResolvedValue({
           grant: {
-            props: { userId: 'u1', scope: 'read write', email: 'u@example.com' },
+            props: {
+              userId: 'u1',
+              orgxUserId,
+              scope: 'read write',
+              email: 'u@example.com',
+            },
           },
         }),
       } as any,
@@ -193,8 +199,35 @@ describe('authenticateRequest', () => {
     );
     expect(result.response).toBeUndefined();
     expect(result.userId).toBe('u1');
+    expect(result.orgxUserId).toBe(orgxUserId);
     expect(result.scope).toBe('read write');
     expect(result.email).toBe('u@example.com');
+  });
+
+  it('drops a malformed canonical user id from OAuth grant props', async () => {
+    const result = await authenticateRequest(
+      new Request('https://mcp.useorgx.com/some/path', {
+        headers: { authorization: 'Bearer valid-token' },
+      }),
+      {
+        ...baseEnv,
+        OAUTH_PROVIDER: {
+          unwrapToken: vi.fn().mockResolvedValue({
+            grant: {
+              props: {
+                userId: 'u1',
+                orgxUserId: 'not-a-uuid',
+                scope: 'read write',
+                email: 'u@example.com',
+              },
+            },
+          }),
+        } as any,
+      }
+    );
+
+    expect(result.userId).toBe('u1');
+    expect(result.orgxUserId).toBeUndefined();
   });
 });
 

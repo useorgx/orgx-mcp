@@ -40,10 +40,28 @@ export type AgentHandler<Env, Props> = {
 
 export type AuthResult = {
   userId?: string;
+  orgxUserId?: string;
   scope?: string;
   email?: string;
   response?: Response;
 };
+
+function resolveAuthenticatedOrgxUserId(
+  auth: AuthResult,
+  existingProps: Record<string, unknown>
+): string | undefined {
+  if (auth.orgxUserId) return auth.orgxUserId;
+
+  const existingOrgxUserId = pickString(existingProps.orgxUserId);
+  const existingUserId = pickString(existingProps.userId);
+  if (
+    existingOrgxUserId &&
+    (!auth.userId || existingUserId === auth.userId)
+  ) {
+    return existingOrgxUserId;
+  }
+  return undefined;
+}
 
 type McpToolCallTelemetry = {
   jsonrpcId?: string | number;
@@ -934,13 +952,17 @@ export async function handleMcpRequest<Env, Props>(
   const authMs = Math.max(0, Date.now() - authStartedAt);
   if ('response' in auth && auth.response) return withCors(auth.response, request);
   const existingProps = asRecord(ctx.props);
-  (ctx as ExecutionContextWithProps<Props>).props = {
+  const orgxUserId = resolveAuthenticatedOrgxUserId(auth, existingProps);
+  const nextProps: Record<string, unknown> = {
     ...existingProps,
     userId: auth.userId,
     scope: auth.scope,
     email: auth.email,
     profile: connectionProfile,
-  } as unknown as Props;
+  };
+  if (orgxUserId) nextProps.orgxUserId = orgxUserId;
+  else delete nextProps.orgxUserId;
+  (ctx as ExecutionContextWithProps<Props>).props = nextProps as unknown as Props;
 
   // Normalize tool names in the request body (strips server prefixes like "Orgx:")
   const normalizationStartedAt = Date.now();
@@ -1090,9 +1112,18 @@ export async function handleMcpWebSocket<Env, Props>(
   const pair = new WebSocketPair();
   const client = pair[0];
   const server = pair[1];
-  const props = { userId: auth.userId, scope: auth.scope, email: auth.email } as Props;
+  const existingProps = asRecord(ctx.props);
+  const orgxUserId = resolveAuthenticatedOrgxUserId(auth, existingProps);
+  const props: Record<string, unknown> = {
+    ...existingProps,
+    userId: auth.userId,
+    scope: auth.scope,
+    email: auth.email,
+  };
+  if (orgxUserId) props.orgxUserId = orgxUserId;
+  else delete props.orgxUserId;
   const ctxWithProps = ctx as ExecutionContextWithProps<Props>;
-  ctxWithProps.props = props;
+  ctxWithProps.props = props as Props;
   // Preserve existing session IDs from reconnecting clients so auth/context
   // survives transient disconnects (deploys, network blips).
   const sessionHeader = request.headers.get('mcp-session-id');
