@@ -33,6 +33,54 @@ describe('validateDurableDelegationResponse', () => {
     });
   });
 
+  it('accepts a durable cloud claim', () => {
+    expect(
+      validateDurableDelegationResponse({
+        data: {
+          ...claimedData,
+          dispatch_receipt: {
+            dispatch: 'cloud_claimed',
+            jobStatus: 'running',
+            publishId: 'inngest-event-1',
+          },
+        },
+      })
+    ).toMatchObject({
+      ok: true,
+      taskId: 'task-123',
+      runId: 'run-456',
+      jobId: 'job-789',
+      dispatchReceipt: {
+        dispatch: 'cloud_claimed',
+        jobStatus: 'running',
+      },
+    });
+  });
+
+  it('accepts a claimed managed orchestrator session', () => {
+    expect(
+      validateDurableDelegationResponse({
+        data: {
+          ...claimedData,
+          dispatch_receipt: {
+            dispatch: 'session_orchestrator',
+            jobStatus: 'running',
+            publishId: 'session-1',
+          },
+        },
+      })
+    ).toMatchObject({
+      ok: true,
+      taskId: 'task-123',
+      runId: 'run-456',
+      jobId: 'job-789',
+      dispatchReceipt: {
+        dispatch: 'session_orchestrator',
+        jobStatus: 'running',
+      },
+    });
+  });
+
   it('rejects stale and synthetic contracts', () => {
     expect(
       validateDurableDelegationResponse({
@@ -65,7 +113,7 @@ describe('validateDurableDelegationResponse', () => {
         data: {
           ...claimedData,
           dispatch_receipt: {
-            dispatch: 'cloud_enqueued',
+            dispatch: 'cloud_claimed',
             jobStatus: 'queued',
           },
         },
@@ -77,6 +125,17 @@ describe('validateDurableDelegationResponse', () => {
           ...claimedData,
           dispatch_receipt: {
             dispatch: 'dispatch_rejected',
+            jobStatus: 'queued',
+          },
+        },
+      }).ok
+    ).toBe(false);
+    expect(
+      validateDurableDelegationResponse({
+        data: {
+          ...claimedData,
+          dispatch_receipt: {
+            dispatch: 'session_orchestrator',
             jobStatus: 'queued',
           },
         },
