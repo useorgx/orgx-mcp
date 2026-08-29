@@ -23,10 +23,22 @@
         --info: #7dd3fc;
         --warning: #fbbf24;
         --danger: #fb7185;
+        --client-accent-rgb: 170, 177, 191;
+        --client-accent: rgb(var(--client-accent-rgb));
         font-family:
           Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
           sans-serif;
       }
+
+      :root[data-client-kind="chatgpt"],
+      :root[data-client-kind="codex"] { --client-accent-rgb: 118, 217, 193; }
+      :root[data-client-kind="claude"] { --client-accent-rgb: 217, 119, 87; }
+      :root[data-client-kind="cursor"] { --client-accent-rgb: 226, 232, 240; }
+      :root[data-client-kind="vscode"] { --client-accent-rgb: 35, 168, 242; }
+      :root[data-client-kind="raycast"] { --client-accent-rgb: 255, 99, 99; }
+      :root[data-client-kind="gemini"] { --client-accent-rgb: 138, 180, 248; }
+      :root[data-client-kind="goose"] { --client-accent-rgb: 244, 114, 182; }
+      :root[data-client-kind="openclaw"] { --client-accent-rgb: 255, 79, 64; }
 
       * { box-sizing: border-box; }
       html, body { min-height: 100%; margin: 0; }
@@ -59,9 +71,16 @@
         stroke-width: 1.25;
         vector-effect: non-scaling-stroke;
       }
+      .field-path.client { stroke: rgba(var(--client-accent-rgb), .42); }
       .field-path.signal { stroke: #1c685d; }
       .field-node { fill: var(--page); stroke: #33505a; stroke-width: 1.25; }
+      .field-node.client { fill: var(--client-accent); stroke: var(--client-accent); }
       .field-node.active { fill: var(--signal); stroke: var(--signal); }
+      .field-client-mark {
+        color: var(--client-accent);
+        opacity: .16;
+      }
+      .field-client-mark svg { width: 24px; height: 24px; overflow: visible; }
       .field-label {
         fill: #66717e;
         font: 600 10px ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -72,8 +91,13 @@
         position: absolute;
         inset: 0 0 auto;
         z-index: 10;
-        height: 3px;
-        background: linear-gradient(90deg, var(--signal), #82eaff, #b59cff);
+        height: 2px;
+        background: linear-gradient(
+          90deg,
+          var(--client-accent) 0%,
+          rgba(var(--client-accent-rgb), .72) 38%,
+          var(--signal) 100%
+        );
       }
       .page {
         position: relative;
@@ -126,10 +150,15 @@
       }
       .app-icon, .orgx-icon { width: 46px; height: 46px; border-radius: 12px; }
       .app-icon svg { width: 25px; height: 25px; }
+      .app-icon {
+        border-color: rgba(var(--client-accent-rgb), .38);
+        color: var(--client-accent);
+        background: rgba(var(--client-accent-rgb), .07);
+      }
       .orgx-icon { overflow: hidden; }
       .orgx-icon img { width: 42px; height: 42px; object-fit: contain; }
       .avatar { width: 34px; height: 34px; border-radius: 9px; }
-      .connector-dots { color: var(--muted); letter-spacing: 3px; }
+      .connector-dots { color: var(--client-accent); letter-spacing: 3px; opacity: .66; }
       .identity-status {
         display: inline-flex;
         align-items: center;
@@ -157,6 +186,7 @@
         line-height: 1.08;
         letter-spacing: -.035em;
       }
+      #client-name { overflow-wrap: anywhere; }
       .context-copy, .trust-copy, .lede {
         color: var(--secondary);
         font-size: 14px;
@@ -267,12 +297,74 @@
       .preset strong, .preset span { display: block; }
       .preset strong { font-size: 13px; }
       .preset span { margin-top: 5px; color: var(--muted); font-size: 11px; line-height: 1.35; }
+      .scope-notice {
+        display: none;
+        margin: -4px 0 20px;
+        padding: 8px 0 8px 12px;
+        border-left: 2px solid rgba(var(--client-accent-rgb), .72);
+        color: var(--secondary);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      .scope-notice.visible { display: block; }
+      .scope-notice strong { color: var(--text); }
+      .scope-notice.blocked { border-left-color: var(--warning); }
+      .scope-notice.blocked strong { color: var(--warning); }
       .section-label { margin: 0 0 10px; }
       .resource-list, .review-permissions {
         overflow: hidden;
         border: 1px solid var(--border);
         border-radius: 12px;
       }
+      .resource-list.is-empty { border-color: rgba(251, 191, 36, .3); }
+      .resource-empty {
+        min-height: 116px;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 22px;
+      }
+      .resource-empty-mark {
+        width: 28px;
+        height: 28px;
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+        border: 1px solid rgba(251, 191, 36, .38);
+        border-radius: 8px;
+        color: var(--warning);
+        font-weight: 720;
+      }
+      .resource-empty strong, .resource-empty span { display: block; }
+      .resource-empty strong { font-size: 13px; }
+      .resource-empty span {
+        max-width: 520px;
+        margin-top: 5px;
+        color: var(--secondary);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      .resource-loading {
+        min-height: 188px;
+        padding: 4px 12px;
+      }
+      .resource-loading-row {
+        min-height: 60px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 150px;
+        align-items: center;
+        gap: 20px;
+      }
+      .resource-loading-row + .resource-loading-row { border-top: 1px solid var(--border); }
+      .skeleton-copy { display: grid; gap: 7px; }
+      .skeleton-line {
+        height: 9px;
+        border-radius: 4px;
+        background: var(--raised);
+      }
+      .skeleton-line.title { width: min(180px, 58%); }
+      .skeleton-line.detail { width: min(330px, 82%); opacity: .72; }
+      .skeleton-control { width: 150px; height: 36px; border-radius: 9px; }
       .resource-row + .resource-row, .review-permission + .review-permission {
         border-top: 1px solid var(--border);
       }
@@ -461,6 +553,11 @@
         color: var(--signal-text);
       }
       .button.primary:hover:not(:disabled) { background: #d5ff6d; }
+      .button:disabled, .preset:disabled {
+        cursor: not-allowed;
+        opacity: .48;
+        transform: none;
+      }
       .button.cancel { margin-right: auto; border-color: transparent; color: var(--muted); }
       .status-panel {
         min-height: 690px;
@@ -483,7 +580,7 @@
       }
       .status-content h2 { margin: 0; font-size: 26px; }
       .status-content p { color: var(--secondary); line-height: 1.55; }
-      .loading .stage-body { opacity: .45; pointer-events: none; }
+      .loading .preset-grid, .loading .actions { opacity: .58; pointer-events: none; }
       @keyframes spin { to { transform: rotate(360deg); } }
 
       @media (max-width: 860px) {
@@ -505,7 +602,7 @@
       }
       @media (max-width: 520px) {
         .page { padding: 3px 0 0; }
-        .orgx-field { display: none; }
+        .orgx-field { opacity: .34; }
         .shell { border-right: 0; border-left: 0; border-radius: 0; box-shadow: none; }
         .context { padding: 20px 18px 18px; }
         .brand-context { display: none; }
@@ -519,6 +616,8 @@
         .preset { min-height: 62px; padding: 10px 8px; }
         .preset span { display: none; }
         .resource-line { grid-template-columns: 1fr; gap: 6px; }
+        .resource-loading-row { grid-template-columns: 1fr; gap: 9px; padding: 12px 0; }
+        .skeleton-control { width: 100%; }
         .level-control { justify-self: stretch; }
         .level-button { flex: 1; min-height: 44px; }
         .resource-details { padding: 0 12px 14px; }
@@ -555,20 +654,21 @@
           </pattern>
         </defs>
         <rect class="field-grid" width="1440" height="960" fill="url(#orgx-grid)" />
-        <path class="field-path" d="M-80 720H190V584H370V394H580" />
+        <g class="field-client-mark" id="field-client-mark" transform="translate(82 700) scale(3.1)"></g>
+        <path class="field-path client" d="M-80 720H190V584H370V394H580" />
         <path class="field-path signal" d="M-80 816H290V670H485V504H720V356H930" />
         <path class="field-path" d="M1510 168H1260V296H1090V462H870V620H650" />
         <path class="field-path signal" d="M1510 84H1340V218H1170V386H980V548H760" />
-        <circle class="field-node" cx="190" cy="584" r="5" />
+        <circle class="field-node client" cx="190" cy="584" r="5" />
         <circle class="field-node" cx="370" cy="394" r="5" />
         <circle class="field-node active" cx="580" cy="394" r="4" />
         <circle class="field-node" cx="1090" cy="462" r="5" />
         <circle class="field-node" cx="870" cy="620" r="5" />
         <circle class="field-node active" cx="650" cy="620" r="4" />
-        <text class="field-label" x="112" y="566">INTENT</text>
-        <text class="field-label" x="390" y="378">WORK</text>
-        <text class="field-label" x="1112" y="446">DECISION</text>
-        <text class="field-label" x="790" y="644">PROOF</text>
+        <text class="field-label" x="108" y="566">CLIENT</text>
+        <text class="field-label" x="390" y="378">REQUEST</text>
+        <text class="field-label" x="1112" y="446">POLICY</text>
+        <text class="field-label" x="790" y="644">GRANT</text>
       </svg>
     </div>
     <div class="signal-line" aria-hidden="true"></div>
@@ -631,16 +731,32 @@
             <div class="stage-body">
               <h2 id="configure-title">Set access</h2>
               <p class="lede">
-                Start with a safe preset, or configure each OrgX resource. The
-                client cannot receive permissions it did not request.
+                Start with a safe preset, or configure each OrgX resource. OrgX
+                will not grant beyond the client request or the disclosed read-only default.
               </p>
+              <div class="scope-notice" id="scope-notice" role="status"></div>
               <div class="preset-grid" role="group" aria-label="Access presets">
                 <button class="preset" type="button" data-preset="read" aria-pressed="true"><strong>Read</strong><span>View requested context</span></button>
                 <button class="preset" type="button" data-preset="operate" aria-pressed="false"><strong>Operate</strong><span>Use requested read + write</span></button>
                 <button class="preset" type="button" data-preset="custom" aria-pressed="false"><strong>Customize</strong><span>Choose resource by resource</span></button>
               </div>
               <p class="section-label">Resources</p>
-              <div class="resource-list" id="resource-list" aria-live="polite"></div>
+              <div class="resource-list" id="resource-list" aria-live="polite" aria-busy="true">
+                <div class="resource-loading" role="status" aria-label="Loading requested access">
+                  <div class="resource-loading-row">
+                    <div class="skeleton-copy"><span class="skeleton-line title"></span><span class="skeleton-line detail"></span></div>
+                    <span class="skeleton-line skeleton-control"></span>
+                  </div>
+                  <div class="resource-loading-row">
+                    <div class="skeleton-copy"><span class="skeleton-line title"></span><span class="skeleton-line detail"></span></div>
+                    <span class="skeleton-line skeleton-control"></span>
+                  </div>
+                  <div class="resource-loading-row">
+                    <div class="skeleton-copy"><span class="skeleton-line title"></span><span class="skeleton-line detail"></span></div>
+                    <span class="skeleton-line skeleton-control"></span>
+                  </div>
+                </div>
+              </div>
               <label class="offline-row" id="offline-row">
                 <span><strong>Keep this connection active</strong><span>Allow the client to refresh access after this session.</span></span>
                 <input class="switch" id="offline-toggle" type="checkbox" />
@@ -699,7 +815,8 @@
       let resourceCatalog = [];
       const state = {
         stateKey: '', client: null, account: null,
-        requested: new Set(), selected: {}, stage: 'configure'
+        requested: new Set(), selected: {}, stage: 'configure',
+        scopeResolution: { source: 'client_request', status: 'empty' }
       };
       const shell = document.getElementById('shell');
       const resourceList = document.getElementById('resource-list');
@@ -741,14 +858,26 @@
         return '<svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="4" width="18" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3 8h18M7 12l2 2-2 2m4 0h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
       }
 
+      const CLIENT_ICON_KINDS = new Set([
+        'chatgpt', 'codex', 'claude', 'cursor', 'vscode', 'github_copilot',
+        'windsurf', 'zed', 'cline', 'roo_code', 'continue', 'raycast',
+        'gemini', 'goose', 'openclaw', 'opencode', 'local', 'unverified'
+      ]);
+
+      function resolveClientKind(value) {
+        return CLIENT_ICON_KINDS.has(value) ? value : 'unverified';
+      }
+
       function renderClientIdentity() {
         const icon = document.getElementById('client-icon');
         const identity = document.getElementById('client-identity-status');
         const copy = document.getElementById('client-identity-copy');
-        const kind = state.client.icon || 'unverified';
+        const kind = resolveClientKind(state.client.icon);
         const trust = state.client.identity_trust || 'unverified';
+        document.documentElement.dataset.clientKind = kind;
         icon.dataset.clientKind = kind;
         icon.innerHTML = clientIconMarkup(kind);
+        document.getElementById('field-client-mark').innerHTML = clientIconMarkup(kind);
         identity.classList.remove('verified', 'reported');
         if (trust === 'verified_redirect') {
           identity.classList.add('verified');
@@ -783,9 +912,12 @@
         return [resource.read, resource.write].filter((scope) => scope && state.requested.has(scope));
       }
       function detectPreset() {
-        const rows = resourceCatalog.map((resource) => ({
-          levels: availableLevels(resource), value: state.selected[resource.id] ?? 'none'
-        }));
+        const rows = resourceCatalog
+          .map((resource) => ({
+            levels: availableLevels(resource), value: state.selected[resource.id] ?? 'none'
+          }))
+          .filter(({ levels }) => levels.length > 1);
+        if (rows.length === 0) return 'none';
         if (rows.every(({ levels, value }) => value === (levels.includes('read') ? 'read' : 'none'))) return 'read';
         if (rows.every(({ levels, value }) => value === (levels.includes('write') ? 'write' : levels.includes('read') ? 'read' : 'none'))) return 'operate';
         return 'custom';
@@ -805,11 +937,28 @@
           }
         }
         renderResources();
-        updatePresetState(preset === 'custom' ? 'custom' : detectPreset());
+        updatePresetState(preset === 'custom' && detectPreset() !== 'none' ? 'custom' : detectPreset());
       }
       function renderResources() {
-        resourceList.innerHTML = resourceCatalog
-          .filter((resource) => availableLevels(resource).length > 1)
+        const visibleResources = resourceCatalog
+          .filter((resource) => availableLevels(resource).length > 1);
+        resourceList.classList.toggle('is-empty', visibleResources.length === 0);
+        resourceList.setAttribute('aria-busy', 'false');
+        if (visibleResources.length === 0) {
+          const unsupported = state.scopeResolution.status === 'unsupported';
+          resourceList.innerHTML = `
+            <div class="resource-empty">
+              <div class="resource-empty-mark" aria-hidden="true">!</div>
+              <div>
+                <strong>${unsupported ? 'No supported OrgX access requested' : 'No OrgX access requested'}</strong>
+                <span>${unsupported
+                  ? 'This client asked for permissions this OrgX server does not recognize. Update the client configuration, then restart the connection.'
+                  : 'This client sent an empty permission request. Return to the client, enable OrgX access, and start the connection again.'}</span>
+              </div>
+            </div>`;
+          return;
+        }
+        resourceList.innerHTML = visibleResources
           .map((resource) => {
             const levels = availableLevels(resource);
             const value = state.selected[resource.id] ?? 'none';
@@ -846,6 +995,26 @@
             updatePresetState(detectPreset());
           });
         });
+      }
+      function renderScopeResolution() {
+        const notice = document.getElementById('scope-notice');
+        const noSupportedScopes = state.scopeResolution.status !== 'ready';
+        const usedReadDefault = state.scopeResolution.source === 'server_read_default';
+        notice.classList.toggle('visible', usedReadDefault || noSupportedScopes);
+        notice.classList.toggle('blocked', noSupportedScopes);
+        if (noSupportedScopes) {
+          notice.innerHTML = '<strong>Nothing can be authorized yet.</strong> No supported OrgX resource permission reached this request.';
+        } else if (usedReadDefault) {
+          notice.innerHTML = '<strong>Read-only baseline applied.</strong> This client omitted the optional OAuth scope list, so OrgX is offering only the Read permissions shown below. Operate and persistent access remain unavailable.';
+        } else {
+          notice.textContent = '';
+        }
+        document.querySelectorAll('[data-preset]').forEach((button) => {
+          button.disabled = noSupportedScopes;
+        });
+        const reviewButton = document.getElementById('review-button');
+        reviewButton.disabled = noSupportedScopes;
+        reviewButton.textContent = noSupportedScopes ? 'No access to review' : 'Review access';
       }
       function buildScopeList() {
         const scopes = [];
@@ -948,15 +1117,34 @@
         });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.error_description || 'Authorization session expired.');
+        if (!payload.client?.name || !payload.account?.email) {
+          throw new Error('The authorization identity could not be loaded. Restart the connection from your MCP client.');
+        }
+        if (!Array.isArray(payload.requested_scopes)) {
+          throw new Error('The requested permissions could not be loaded. Restart the connection from your MCP client.');
+        }
         state.client = payload.client;
         state.account = payload.account;
-        state.requested = new Set(payload.requested_scopes ?? []);
+        state.requested = new Set(payload.requested_scopes);
+        state.scopeResolution = payload.scope_resolution ?? {
+          source: 'client_request',
+          status: payload.requested_scopes.length > 0 ? 'ready' : 'empty'
+        };
+        // Resolve the closed-registry client signal as soon as identity loads.
+        // If the policy is degraded, the fail-closed panel still retains honest
+        // context about which client initiated the connection.
+        document.getElementById('client-name').textContent = state.client.name;
+        document.getElementById('status-client-name').textContent = state.client.name;
+        renderClientIdentity();
         const policy = payload.authorization_policy;
-        if (!policy?.version || !Array.isArray(policy.resources)) {
+        if (!policy?.version || !Array.isArray(policy.resources) || policy.resources.length === 0) {
           throw new Error('The authorization policy could not be loaded.');
         }
         capabilityVersion = policy.version;
         resourceCatalog = policy.resources.map((resource) => {
+          if (!resource?.id || !resource?.label || !Array.isArray(resource.actions)) {
+            throw new Error('The authorization policy contains an invalid resource.');
+          }
           const read = resource.actions.find((action) => action.access === 'read');
           const operate = resource.actions.find((action) => action.access === 'operate');
           return {
@@ -968,9 +1156,6 @@
             write: operate?.scope ?? null
           };
         });
-        document.getElementById('client-name').textContent = state.client.name;
-        document.getElementById('status-client-name').textContent = state.client.name;
-        renderClientIdentity();
         document.getElementById('redirect-uri').textContent = state.client.redirect_uri;
         document.getElementById('account-email').textContent = state.account.email;
         document.getElementById('review-account-email').textContent = state.account.email;
@@ -979,6 +1164,7 @@
         document.getElementById('review-account-initial').textContent = initial;
         document.getElementById('authorize-button').textContent = `Authorize ${state.client.name}`;
         document.getElementById('offline-row').classList.toggle('visible', state.requested.has('offline_access'));
+        renderScopeResolution();
         setPreset('read');
         shell.classList.remove('loading');
         shell.setAttribute('aria-busy', 'false');

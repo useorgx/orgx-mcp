@@ -26,6 +26,7 @@ import {
 import { authenticateRequest } from './requestAuth';
 import {
   AUTHORIZATION_POLICY,
+  AUTHORIZATION_PRESETS,
   OAUTH_SCOPES_SUPPORTED,
   WIDGET_RESOURCES,
 } from './toolDefinitions';
@@ -133,8 +134,11 @@ type ClientPresentation = {
   identityTrust: ClientIdentityTrust;
 };
 
+type OAuthScopeSource = 'client_request' | 'server_read_default';
+
 type StoredAuthRequest = AuthRequest & {
   clientPresentation?: ClientPresentation;
+  scopeSource?: OAuthScopeSource;
 };
 
 function authStateKey(stateKey: string): string {
@@ -185,8 +189,16 @@ function safeRegisteredClientName(clientName: string | undefined): string | null
 }
 
 function iconForRegisteredName(clientName: string): ClientIconKind {
+  // Dynamic clients commonly append a connection label to their registered
+  // product name (for example, "Claude Code (orgx)"). Keep the full reported
+  // name visible, but resolve the icon from the stable product portion. This
+  // remains presentation only: registered metadata is never upgraded to a
+  // verified client identity.
+  const productName = clientName
+    .replace(/\s+\([^()\r\n]{1,40}\)\s*$/, '')
+    .trim();
   return (
-    CLIENT_NAME_MATCHERS.find(({ pattern }) => pattern.test(clientName))?.icon ??
+    CLIENT_NAME_MATCHERS.find(({ pattern }) => pattern.test(productName))?.icon ??
     'local'
   );
 }
@@ -1827,8 +1839,22 @@ async function handleAuthorize(
       error: error instanceof Error ? error.message : String(error),
     });
   }
+  const shouldApplyReadDefault =
+    requestedScope === null && (oauthReqInfo.scope?.length ?? 0) === 0;
   const storedAuthRequest: StoredAuthRequest = {
     ...oauthReqInfo,
+    // OAuth scope is optional. Claude Code and Cursor can omit it entirely.
+    // When neither the URL nor the provider parser resolves client scopes,
+    // treat omission as the documented server-side Read preset, while an
+    // explicit empty or unsupported scope still fails closed. The same value
+    // is persisted into the AuthRequest used by completeAuthorization(), so
+    // the browser can never select beyond this least-privilege baseline.
+    scope:
+      shouldApplyReadDefault
+        ? [...AUTHORIZATION_PRESETS.read.scopes]
+        : oauthReqInfo.scope,
+    scopeSource:
+      shouldApplyReadDefault ? 'server_read_default' : 'client_request',
     clientPresentation: resolveClientPresentation(
       oauthReqInfo.redirectUri,
       clientInfo
@@ -1860,8 +1886,9 @@ async function handleAuthorize(
   signInUrl.searchParams.set('redirect_url', clerkRedirectUrl);
 
   console.info('[auth] Redirecting to Clerk sign-in', {
-    clientId: oauthReqInfo.clientId,
-    scope: oauthReqInfo.scope,
+    clientId: storedAuthRequest.clientId,
+    scope: storedAuthRequest.scope,
+    scopeSource: storedAuthRequest.scopeSource,
   });
 
   return Response.redirect(signInUrl.toString(), 302);
@@ -2020,6 +2047,13 @@ async function handleConsentSession(
     }
 
     const requestedScopes = resolveSupportedRequestedScopes(oauthReqInfo.scope);
+    const requestedScopeCount = Array.isArray(oauthReqInfo.scope)
+      ? oauthReqInfo.scope.length
+      : 0;
+    const scopeSource: OAuthScopeSource =
+      oauthReqInfo.scopeSource === 'server_read_default'
+        ? 'server_read_default'
+        : 'client_request';
     const clientPresentation =
       oauthReqInfo.clientPresentation ??
       resolveClientPresentation(oauthReqInfo.redirectUri);
@@ -2043,6 +2077,15 @@ async function handleConsentSession(
         },
         authorization_policy: AUTHORIZATION_POLICY,
         requested_scopes: requestedScopes,
+        scope_resolution: {
+          source: scopeSource,
+          status:
+            requestedScopes.length > 0
+              ? 'ready'
+              : requestedScopeCount > 0
+                ? 'unsupported'
+                : 'empty',
+        },
         offline_access_requested: requestedScopes.includes('offline_access'),
       },
       {

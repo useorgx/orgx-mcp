@@ -27,7 +27,11 @@ The current implementation establishes the first release gate:
 
 - one versioned resource/action registry drives OAuth discovery, consent copy,
   MCP security schemes, generated scope documentation, and catalog metadata;
-- Read, Operate, and Customize compile only to scopes the client requested;
+- Read, Operate, and Customize compile only to scopes the client requested or
+  the narrowly defined read-only default disclosed below;
+- when an OAuth client omits the optional `scope` parameter entirely, OrgX
+  substitutes and discloses the canonical Read preset; an explicitly empty or
+  unsupported scope request remains a blocked, zero-permission state;
 - offline access is a separate choice and is never silently added by a preset;
 - tool discovery is the intersection of the connection profile and the OAuth
   grant;
