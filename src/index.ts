@@ -256,7 +256,10 @@ import {
 } from './freeAudit';
 import { buildInitiativeListWidgetPayload } from './initiativeWidgetPayload';
 import { normalizeAgentDispatchPayload } from './agentDispatchPayload';
-import { normalizeAgentStatusPayload } from './agentStatusPayload';
+import {
+  enrichAgentStatusWithDurableEvidence,
+  normalizeAgentStatusPayload,
+} from './agentStatusPayload';
 import {
   enrichAgentStatusWithArtifacts,
   enrichInitiativePulseWithArtifacts,
@@ -2677,7 +2680,11 @@ export class OrgXMcp extends McpAgent<
             }
           }
         }
-      } else if (workspaceId && params.toolId === 'get_morning_brief') {
+      } else if (
+        workspaceId &&
+        (params.toolId === 'get_morning_brief' ||
+          params.toolId === 'get_agent_status')
+      ) {
         const records = await this.fetchEntityCollection({
           type: 'artifact',
           userId: params.userId,
@@ -2693,18 +2700,36 @@ export class OrgXMcp extends McpAgent<
       }
 
       const artifacts = Array.from(artifactMap.values());
-      if (artifacts.length === 0) return params.data;
+      let evidenceData = params.data;
+
+      if (params.toolId === 'get_agent_status') {
+        const tasks = workspaceId
+          ? await this.fetchEntityCollection({
+              type: 'task',
+              userId: params.userId,
+              workspaceId,
+              limit: 100,
+            })
+          : [];
+        evidenceData = enrichAgentStatusWithDurableEvidence(
+          evidenceData,
+          tasks,
+          artifacts
+        );
+      }
+
+      if (artifacts.length === 0) return evidenceData;
 
       if (params.toolId === 'get_initiative_pulse') {
-        return enrichInitiativePulseWithArtifacts(params.data, artifacts);
+        return enrichInitiativePulseWithArtifacts(evidenceData, artifacts);
       }
       if (params.toolId === 'get_agent_status') {
-        return enrichAgentStatusWithArtifacts(params.data, artifacts);
+        return enrichAgentStatusWithArtifacts(evidenceData, artifacts);
       }
       if (params.toolId === 'get_morning_brief') {
-        return enrichMorningBriefWithArtifacts(params.data, artifacts);
+        return enrichMorningBriefWithArtifacts(evidenceData, artifacts);
       }
-      return params.data;
+      return evidenceData;
     } catch (error) {
       console.warn('[mcp:artifact-proof] enrichment skipped', {
         toolId: params.toolId,
