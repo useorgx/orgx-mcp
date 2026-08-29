@@ -503,7 +503,9 @@ describe('authHandler OAuth consent flow', () => {
       ['ChatGPT', 'chatgpt'],
       ['OpenAI Codex', 'codex'],
       ['Claude Code', 'claude'],
+      ['Claude Code (orgx)', 'claude'],
       ['Cursor', 'cursor'],
+      ['Cursor (OrgX)', 'cursor'],
       ['Visual Studio Code', 'vscode'],
       ['GitHub Copilot', 'github_copilot'],
       ['Windsurf', 'windsurf'],
@@ -551,6 +553,8 @@ describe('authHandler OAuth consent flow', () => {
       );
       expect(stored, `stored authorization state for ${clientName}`).toBeDefined();
       expect(JSON.parse(stored![1])).toMatchObject({
+        scope: authRequest.scope,
+        scopeSource: 'client_request',
         clientPresentation: {
           name: clientName,
           icon,
@@ -559,6 +563,221 @@ describe('authHandler OAuth consent flow', () => {
       });
     }
   });
+
+  it.each([
+    ['Claude Code (orgx)', 'claude'],
+    ['Cursor (orgx)', 'cursor'],
+  ] as const)(
+    'applies and discloses the read-only server default when %s omits scope',
+    async (clientName, icon) => {
+      const kv = createKv();
+      const parsedRequest = {
+        ...authRequest,
+        clientId: `omitted-scope-${icon}`,
+        redirectUri: 'http://127.0.0.1:54321/oauth/callback',
+        scope: [],
+      };
+      const authorizeResponse = await authHandler.fetch(
+        new Request(
+          `https://mcp.useorgx.com/authorize?client_id=${parsedRequest.clientId}`
+        ),
+        {
+          MCP_SERVER_URL: 'https://mcp.useorgx.com',
+          ORGX_WEB_URL: 'https://useorgx.com',
+          OAUTH_KV: kv,
+          OAUTH_PROVIDER: {
+            parseAuthRequest: vi.fn(async () => parsedRequest),
+            lookupClient: vi.fn(async () => ({
+              clientId: parsedRequest.clientId,
+              clientName,
+              redirectUris: [parsedRequest.redirectUri],
+            })),
+          },
+        },
+        createCtx()
+      );
+
+      expect(authorizeResponse.status).toBe(302);
+      const storedEntry = [...kv.store.entries()].find(([key]) =>
+        key.startsWith('auth_state:')
+      );
+      expect(storedEntry).toBeDefined();
+      const [, storedJson] = storedEntry!;
+      expect(JSON.parse(storedJson)).toMatchObject({
+        scope: [
+          'decisions:read',
+          'agents:read',
+          'initiatives:read',
+          'memory:read',
+        ],
+        scopeSource: 'server_read_default',
+        clientPresentation: {
+          name: clientName,
+          icon,
+          identityTrust: 'registered_metadata',
+        },
+      });
+
+      const stateKey = storedEntry![0].slice('auth_state:'.length);
+      kv.store.set(
+        `auth_identity:${stateKey}`,
+        JSON.stringify({ userId: 'user-1', userEmail: 'user@example.com' })
+      );
+      const consentResponse = await authHandler.fetch(
+        new Request(
+          `https://mcp.useorgx.com/oauth/consent-session?state_key=${stateKey}`
+        ),
+        {
+          MCP_SERVER_URL: 'https://mcp.useorgx.com',
+          ORGX_WEB_URL: 'https://useorgx.com',
+          OAUTH_KV: kv,
+        },
+        createCtx()
+      );
+
+      expect(consentResponse.status).toBe(200);
+      expect(await consentResponse.json()).toMatchObject({
+        client: {
+          name: clientName,
+          icon,
+          identity_trust: 'registered_metadata',
+        },
+        requested_scopes: [
+          'decisions:read',
+          'agents:read',
+          'initiatives:read',
+          'memory:read',
+        ],
+        scope_resolution: {
+          source: 'server_read_default',
+          status: 'ready',
+        },
+        offline_access_requested: false,
+      });
+    }
+  );
+
+  it('does not apply the read default when the client sends an explicitly empty scope parameter', async () => {
+    const kv = createKv();
+    const parsedRequest = {
+      ...authRequest,
+      clientId: 'explicit-empty-scope',
+      redirectUri: 'http://127.0.0.1:54321/oauth/callback',
+      scope: [],
+    };
+    const response = await authHandler.fetch(
+      new Request(
+        `https://mcp.useorgx.com/authorize?client_id=${parsedRequest.clientId}&scope=`
+      ),
+      {
+        MCP_SERVER_URL: 'https://mcp.useorgx.com',
+        ORGX_WEB_URL: 'https://useorgx.com',
+        OAUTH_KV: kv,
+        OAUTH_PROVIDER: {
+          parseAuthRequest: vi.fn(async () => parsedRequest),
+          lookupClient: vi.fn(async () => ({
+            clientId: parsedRequest.clientId,
+            clientName: 'Cursor (orgx)',
+            redirectUris: [parsedRequest.redirectUri],
+          })),
+        },
+      },
+      createCtx()
+    );
+
+    expect(response.status).toBe(302);
+    const stored = [...kv.store.entries()].find(([key]) =>
+      key.startsWith('auth_state:')
+    );
+    expect(JSON.parse(stored![1])).toMatchObject({
+      scope: [],
+      scopeSource: 'client_request',
+    });
+  });
+
+  it.each([
+    ['an explicit empty request', [], 'empty'],
+    ['an unsupported request', ['unknown:read'], 'unsupported'],
+  ] as const)(
+    'keeps %s fail-closed in the consent session',
+    async (_label, scope, status) => {
+      const stateKey = `state-${status}`;
+      const kv = createKv({
+        [`auth_state:${stateKey}`]: JSON.stringify({
+          ...authRequest,
+          scope,
+          scopeSource: 'client_request',
+        }),
+        [`auth_identity:${stateKey}`]: JSON.stringify({
+          userId: 'user-1',
+          userEmail: 'user@example.com',
+        }),
+      });
+
+      const response = await authHandler.fetch(
+        new Request(
+          `https://mcp.useorgx.com/oauth/consent-session?state_key=${stateKey}`
+        ),
+        {
+          MCP_SERVER_URL: 'https://mcp.useorgx.com',
+          ORGX_WEB_URL: 'https://useorgx.com',
+          OAUTH_KV: kv,
+        },
+        createCtx()
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({
+        requested_scopes: [],
+        scope_resolution: {
+          source: 'client_request',
+          status,
+        },
+      });
+    }
+  );
+
+  it.each(['Unknown Assistant', 'Claude Code (orgx) extra'])(
+    'does not map unknown registered name %s to a trusted product mark',
+    async (clientName) => {
+      const kv = createKv();
+      const parsedRequest = {
+        ...authRequest,
+        clientId: 'unknown-registered-client',
+        redirectUri: 'http://127.0.0.1:54321/oauth/callback',
+      };
+      await authHandler.fetch(
+        new Request(
+          `https://mcp.useorgx.com/authorize?client_id=${parsedRequest.clientId}&scope=memory%3Aread`
+        ),
+        {
+          MCP_SERVER_URL: 'https://mcp.useorgx.com',
+          ORGX_WEB_URL: 'https://useorgx.com',
+          OAUTH_KV: kv,
+          OAUTH_PROVIDER: {
+            parseAuthRequest: vi.fn(async () => parsedRequest),
+            lookupClient: vi.fn(async () => ({
+              clientId: parsedRequest.clientId,
+              clientName,
+              redirectUris: [parsedRequest.redirectUri],
+            })),
+          },
+        },
+        createCtx()
+      );
+
+      const stored = [...kv.store.entries()].find(([key]) =>
+        key.startsWith('auth_state:')
+      );
+      expect(JSON.parse(stored![1])).toMatchObject({
+        clientPresentation: {
+          name: clientName,
+          icon: 'local',
+          identityTrust: 'registered_metadata',
+        },
+      });
+    }
+  );
 
   it('marks only product-controlled callback domains as verified client identities', async () => {
     const verifiedClients = [

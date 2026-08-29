@@ -32,6 +32,11 @@ describe('OAuth consent page contract', () => {
   it('loads resource/action copy from the canonical server policy', () => {
     expect(html).toContain('payload.authorization_policy');
     expect(html).toContain('policy.resources.map');
+    expect(html).toContain('payload.scope_resolution');
+    expect(html).toContain('Read-only baseline applied.');
+    expect(html).toContain('No supported OrgX access requested');
+    expect(html).toContain("reviewButton.disabled = noSupportedScopes");
+    expect(html).toContain('aria-label="Loading requested access"');
     expect(html).not.toContain("scope: 'memory:write'");
     expect(html).toContain('id="offline-toggle" type="checkbox" />');
     expect(html).not.toContain('id="offline-toggle" type="checkbox" checked');
@@ -52,6 +57,7 @@ describe('OAuth consent page contract', () => {
     expect(html).not.toContain('id="client-initial"');
     expect(html).toContain('id="client-icon"');
     expect(html).toContain('CLIENT_ICON_PATHS');
+    expect(html).toContain('CLIENT_ICON_KINDS');
     for (const kind of [
       'chatgpt',
       'codex',
@@ -86,10 +92,12 @@ describe('OAuth consent page contract', () => {
 
   it('uses a semantic OrgX execution field rather than a decorative image dependency', () => {
     expect(html).toContain('class="orgx-field"');
-    expect(html).toContain('>INTENT<');
-    expect(html).toContain('>WORK<');
-    expect(html).toContain('>DECISION<');
-    expect(html).toContain('>PROOF<');
+    expect(html).toContain('id="field-client-mark"');
+    expect(html).toContain('>CLIENT<');
+    expect(html).toContain('>REQUEST<');
+    expect(html).toContain('>POLICY<');
+    expect(html).toContain('>GRANT<');
+    expect(html).toContain('document.documentElement.dataset.clientKind = kind');
     expect(html).toContain('.field-path.signal');
   });
 

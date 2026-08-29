@@ -30,4 +30,6 @@ artifacts/outreach/
 # scripts/audit-widgets.mjs and scripts/audit-widget-gallery.mjs.
 artifacts/widget-audit/
 artifacts/widget-gallery/
+# Local browser and design QA evidence. Keep captures out of release source.
+artifacts/qa/
 widget-gallery-before-*.png
