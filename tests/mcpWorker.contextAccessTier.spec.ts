@@ -193,7 +193,7 @@ describe('context hydration access tiers', () => {
     ).toBe(true);
   });
 
-  it('uses stale paid access when billing usage refresh fails', async () => {
+  it('does not reuse stale paid access when billing usage refresh fails', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-07-08T12:00:00Z'));
 
@@ -217,8 +217,8 @@ describe('context hydration access tiers', () => {
     vi.advanceTimersByTime(5 * 60 * 1000 + 1);
 
     await expect(resolveHydrationAccessContext(env, 'user-1')).resolves.toEqual({
-      tier: 'paid',
-      plan: 'starter',
+      tier: 'free',
+      plan: 'free',
     });
     expect(callOrgxApiJson).toHaveBeenCalledTimes(2);
   });

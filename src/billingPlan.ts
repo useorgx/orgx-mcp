@@ -4,23 +4,44 @@ import { callOrgxApiJson, type OrgxApiEnv } from './orgxApi';
 export type BillingPlanContext = {
   plan: string;
   tier: AccountTier;
-  source: 'api' | 'fallback' | 'stale';
+  available: boolean;
+  source: 'api' | 'cache' | 'unavailable';
+  origin: string | null;
+  reason?: BillingPlanUnavailableReason;
+  retryable?: boolean;
 };
 
+export type BillingPlanUnavailableReason =
+  | 'identity_missing'
+  | 'timeout'
+  | 'invalid_response'
+  | 'upstream_error';
+
 const BILLING_PLAN_CACHE_TTL_MS = 5 * 60 * 1000;
-const BILLING_PLAN_STALE_IF_ERROR_MS = 24 * 60 * 60 * 1000;
-const DEFAULT_BILLING_PLAN_TIMEOUT_MS = 1_000;
+const DEFAULT_BILLING_PLAN_TIMEOUT_MS = 5_000;
 
 const billingPlanCache = new Map<
   string,
-  { value: BillingPlanContext; expiresAt: number; staleUntil: number }
+  { value: BillingPlanContext; expiresAt: number }
 >();
 const billingPlanInFlight = new Map<string, Promise<BillingPlanContext>>();
 
-export function normalizeBillingPlan(plan: unknown): string {
-  if (typeof plan !== 'string') return 'free';
+const KNOWN_BILLING_PLANS = new Set([
+  'free',
+  'starter',
+  'pro',
+  'team',
+  'growth',
+  'scale',
+  'enterprise',
+  'enterprise_plus',
+  'enterprise-pro',
+]);
+
+export function normalizeBillingPlan(plan: unknown): string | null {
+  if (typeof plan !== 'string') return null;
   const normalized = plan.trim().toLowerCase();
-  return normalized.length > 0 ? normalized : 'free';
+  return KNOWN_BILLING_PLANS.has(normalized) ? normalized : null;
 }
 
 function cacheKey(env: Pick<OrgxApiEnv, 'ORGX_API_URL'>, userId: string): string {
@@ -46,28 +67,15 @@ function scopedCacheKey(
   ].join('::');
 }
 
-function getCachedPlan(
-  key: string,
-  opts: { allowStale?: boolean } = {}
-): BillingPlanContext | null {
+function getCachedPlan(key: string): BillingPlanContext | null {
   const cached = billingPlanCache.get(key);
   if (!cached) return null;
   const now = Date.now();
   if (cached.expiresAt <= now) {
-    if (opts.allowStale && cached.staleUntil > now) {
-      return { ...cached.value, source: 'stale' };
-    }
-    if (cached.staleUntil <= now) {
-      billingPlanCache.delete(key);
-    }
+    billingPlanCache.delete(key);
     return null;
   }
-  return cached.value;
-}
-
-function getStaleCachedPlan(key: string): BillingPlanContext | null {
-  const cached = getCachedPlan(key, { allowStale: true });
-  return cached?.source === 'stale' ? cached : null;
+  return { ...cached.value, source: 'cache' };
 }
 
 function setCachedPlan(key: string, value: BillingPlanContext): void {
@@ -75,8 +83,36 @@ function setCachedPlan(key: string, value: BillingPlanContext): void {
   billingPlanCache.set(key, {
     value,
     expiresAt,
-    staleUntil: expiresAt + BILLING_PLAN_STALE_IF_ERROR_MS,
   });
+}
+
+function unavailableBillingPlan(
+  reason: BillingPlanUnavailableReason,
+  origin: string | null = null
+): BillingPlanContext {
+  return {
+    plan: 'unknown',
+    tier: 'free',
+    available: false,
+    source: 'unavailable',
+    origin,
+    reason,
+    retryable: true,
+  };
+}
+
+function classifyBillingPlanError(
+  error: unknown,
+  signal: AbortSignal
+): BillingPlanUnavailableReason {
+  if (
+    signal.aborted ||
+    (error instanceof DOMException && error.name === 'AbortError')
+  ) {
+    return 'timeout';
+  }
+  if (error instanceof SyntaxError) return 'invalid_response';
+  return 'upstream_error';
 }
 
 async function fetchBillingPlanContext(
@@ -110,13 +146,29 @@ async function fetchBillingPlanContext(
         orgxUserId: scope.orgxUserId,
       }
     );
-    const usage = (await response.json()) as { plan?: unknown };
+    let usage: { plan?: unknown };
+    try {
+      usage = (await response.json()) as { plan?: unknown };
+    } catch {
+      return unavailableBillingPlan(
+        'invalid_response',
+        response.headers?.get?.('x-orgx-upstream-origin') ?? null
+      );
+    }
     const plan = normalizeBillingPlan(usage.plan);
+    const origin = response.headers?.get?.('x-orgx-upstream-origin') ?? null;
+    if (!plan) return unavailableBillingPlan('invalid_response', origin);
     return {
       plan,
       tier: mapPlanToAccountTier(plan),
+      available: true,
       source: 'api',
+      origin,
     };
+  } catch (error) {
+    return unavailableBillingPlan(
+      classifyBillingPlanError(error, controller.signal)
+    );
   } finally {
     clearTimeout(timeout);
   }
@@ -129,7 +181,7 @@ export async function resolveBillingPlanContext(
 ): Promise<BillingPlanContext> {
   const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
   if (!normalizedUserId) {
-    return { plan: 'free', tier: 'free', source: 'fallback' };
+    return unavailableBillingPlan('identity_missing');
   }
 
   const key = scopedCacheKey(env, normalizedUserId, scope);
@@ -141,13 +193,13 @@ export async function resolveBillingPlanContext(
 
   const promise = fetchBillingPlanContext(env, normalizedUserId, scope)
     .then((value) => {
-      setCachedPlan(key, value);
+      if (value.available && value.source === 'api') setCachedPlan(key, value);
       return value;
     })
-    .catch((): BillingPlanContext => {
-      const stale = getStaleCachedPlan(key);
-      if (stale) return stale;
-      return { plan: 'free', tier: 'free', source: 'fallback' };
+    .catch((error): BillingPlanContext => {
+      return unavailableBillingPlan(
+        error instanceof SyntaxError ? 'invalid_response' : 'upstream_error'
+      );
     })
     .finally(() => {
       billingPlanInFlight.delete(key);
