@@ -1,0 +1,113 @@
+name: Validate MCP worker
+description: Run the static, unit, upstream, and Wrangler checks shared by PRs and deploys
+
+inputs:
+  wrangler-environment:
+    description: Wrangler environment to validate during the dry-run
+    required: false
+    default: production
+
+runs:
+  using: composite
+  steps:
+    - name: Set up pnpm
+      uses: pnpm/action-setup@v5
+      with:
+        version: 10.18.1
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '22'
+        cache: pnpm
+
+    - name: Validate server.json
+      shell: bash
+      run: |
+        set -euo pipefail
+        jq empty server.json
+        jq -e '.name and .version and .remotes' server.json >/dev/null
+        echo "server.json is valid"
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile
+
+    - name: Type-check
+      shell: bash
+      run: pnpm exec tsc --noEmit
+
+    - name: Install Chromium for browser-backed tests
+      shell: bash
+      env:
+        PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: 120000
+      run: |
+        set -euo pipefail
+        for attempt in 1 2 3; do
+          echo "Installing Chromium headless shell (attempt $attempt/3)"
+          if pnpm exec playwright install --only-shell chromium; then
+            exit 0
+          fi
+          if [ "$attempt" -lt 3 ]; then
+            echo "::warning::Chromium download failed; retrying"
+            sleep 5
+          fi
+        done
+        echo "::error::Unable to install Chromium after 3 attempts"
+        exit 1
+
+    - name: Run Vitest suite
+      shell: bash
+      run: pnpm exec vitest run --testTimeout=30000 --hookTimeout=30000
+
+    - name: Verify upstream API is reachable without redirects
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        api_url="$({
+          awk '
+            /^\[env\.production\.vars\]$/ { in_production=1; next }
+            /^\[/ {
+              if (in_production) exit
+              next
+            }
+            in_production && $1 == "ORGX_API_URL" {
+              value=$0
+              sub(/^[^=]+=[[:space:]]*"/, "", value)
+              sub(/"[[:space:]]*$/, "", value)
+              print value
+              exit
+            }
+          ' wrangler.toml
+        })"
+
+        if [[ -z "$api_url" ]]; then
+          echo "::error::ORGX_API_URL is missing from [env.production.vars] in wrangler.toml"
+          exit 1
+        fi
+
+        headers_file="$(mktemp)"
+        trap 'rm -f "$headers_file"' EXIT
+        status="$(curl --silent --show-error \
+          --connect-timeout 10 --max-time 30 \
+          --dump-header "$headers_file" --output /dev/null \
+          --write-out '%{http_code}' "$api_url/api/health" || true)"
+
+        if [[ "$status" =~ ^30[0-9]$ ]]; then
+          location="$(grep -i '^location:' "$headers_file" | head -1 | cut -d' ' -f2- | tr -d '\r' || true)"
+          echo "::error::ORGX_API_URL ($api_url) returned HTTP $status${location:+ redirect to $location}"
+          echo "::error::Workers fetch() does not follow redirects; use the final upstream URL"
+          exit 1
+        fi
+
+        if [[ "$status" != "200" ]]; then
+          echo "::error::ORGX_API_URL ($api_url) health check returned HTTP $status, expected 200"
+          exit 1
+        fi
+
+        echo "ORGX_API_URL responds HTTP 200 without a redirect"
+
+    - name: Verify Wrangler build (dry-run)
+      shell: bash
+      run: pnpm exec wrangler deploy --env "${{ inputs.wrangler-environment }}" --dry-run --outdir .wrangler/dist
