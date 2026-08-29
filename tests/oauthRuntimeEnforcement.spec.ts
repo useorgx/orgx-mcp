@@ -105,9 +105,14 @@ function successfulApiResponse(path: string, init?: RequestInit): Response {
       ok: true,
       data: isDelegation
         ? {
-            delegation_contract: 'durable_delegation_v1',
+            delegation_contract: 'durable_delegation_v2',
             task_id: request.args?.task_id ?? 'task-created-by-delegation',
             run_id: 'run-created-by-delegation',
+            job_id: 'job-created-by-delegation',
+            dispatch_receipt: {
+              dispatch: 'inline_claimed',
+              jobStatus: 'running',
+            },
           }
         : request.tool_id === 'get_pending_decisions'
         ? { decisions: [] }
