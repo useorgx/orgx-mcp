@@ -13,6 +13,7 @@ on:
         default: false
       environment:
         description: "Environment to deploy to"
+        required: true
         type: choice
         options:
           - production
@@ -25,110 +26,73 @@ permissions:
   contents: read
   deployments: write
 
+concurrency:
+  group: mcp-deploy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  # ──────────────────────────────────────────────────────────────────────────
-  # Validate server.json + build + type-check before deployment
-  # ──────────────────────────────────────────────────────────────────────────
+  # PRs get the validation gate, but never deploy a shared preview.
   validate:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
 
-      - uses: pnpm/action-setup@v5
+      - uses: ./.github/actions/validate
 
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Validate server.json
-        run: |
-          jq empty server.json
-          jq -e '.name and .version and .remotes' server.json
-          echo "server.json is valid"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Type-check
-        run: npx tsc --noEmit
-
-      - name: Install Chromium for browser contract tests
-        run: pnpm exec playwright install chromium
-
-      - name: Run vitest suite
-        # Full suite is fast (~3s) and catches regressions like the
-        # widget-link handler one — prior validate stage didn't run
-        # tests at all, so tests/widgetOpenLinkHelper.spec.ts was a
-        # regression guard that nothing checked on PR.
-        run: pnpm vitest run
-
-      - name: Verify upstream URLs have no redirects
-        run: |
-          # Extract ORGX_API_URL from wrangler.toml production vars
-          api_url=$(grep -A 10 '\[env\.production\.vars\]' wrangler.toml | grep 'ORGX_API_URL' | head -1 | sed 's/.*= *"\(.*\)"/\1/')
-          if [[ -z "$api_url" ]]; then
-            api_url=$(grep 'ORGX_API_URL' wrangler.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
-          fi
-          echo "Checking ORGX_API_URL: $api_url"
-          status=$(curl -sI -o /dev/null -w '%{http_code}' "$api_url/api/health" 2>/dev/null || echo "000")
-          if [[ "$status" == "301" || "$status" == "302" ]]; then
-            location=$(curl -sI "$api_url/api/health" 2>/dev/null | grep -i '^location:' | tr -d '\r')
-            echo "::error::ORGX_API_URL ($api_url) returns HTTP $status redirect: $location"
-            echo "::error::Workers fetch() does not follow redirects — update wrangler.toml to use the final URL"
-            exit 1
-          fi
-          echo "ORGX_API_URL responds $status (no redirect) ✓"
-
-      - name: Verify wrangler build (dry-run)
-        run: pnpm wrangler deploy --dry-run --outdir .wrangler/dist
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Deploy to production (push to main, release, or manual)
-  # ──────────────────────────────────────────────────────────────────────────
+  # Main, release, and manual production/preview deploys validate in the same
+  # job that deploys. This avoids a second checkout and dependency install.
   deploy:
-    if: github.event_name != 'pull_request'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
-    needs: validate
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 15
+    env:
+      DEPLOY_ENV: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'production' }}
     environment:
-      name: ${{ github.event_name == 'release' && 'production' || inputs.environment || 'production' }}
-      url: https://mcp.useorgx.com
+      name: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'production' }}
+      url: ${{ github.event_name == 'workflow_dispatch' && inputs.environment == 'preview' && 'https://mcp-staging.useorgx.com' || 'https://mcp.useorgx.com' }}
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v6
 
-      - uses: pnpm/action-setup@v5
-
-      - uses: actions/setup-node@v6
+      - uses: ./.github/actions/validate
         with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          wrangler-environment: ${{ env.DEPLOY_ENV }}
 
       - name: Determine version
         id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          COMMIT_SHA: ${{ github.sha }}
         run: |
-          if [[ "${{ github.event_name }}" == "release" ]]; then
-            VERSION="${{ github.event.release.tag_name }}"
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "release" ]]; then
+            VERSION="$RELEASE_TAG"
             VERSION="${VERSION#v}"
           else
-            VERSION="0.0.0-$(echo ${{ github.sha }} | cut -c1-7)"
+            VERSION="0.0.0-${COMMIT_SHA:0:7}"
           fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Version: $VERSION"
 
       - name: Update server.json version
-        if: github.event_name == 'release'
+        if: ${{ github.event_name == 'release' }}
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
-          jq --arg v "${{ steps.version.outputs.version }}" '.version = $v' \
+          set -euo pipefail
+          jq --arg v "$RELEASE_VERSION" '.version = $v' \
             server.json > tmp.json && mv tmp.json server.json
 
-      - name: Sync Worker secrets
+      - name: Sync production Worker secrets
+        if: ${{ env.DEPLOY_ENV == 'production' }}
         run: |
+          set -euo pipefail
           secrets_file="$(mktemp)"
+          trap 'rm -f "$secrets_file"' EXIT
           python3 - <<'PY' > "$secrets_file"
           import json
           import os
@@ -146,7 +110,6 @@ jobs:
           print(json.dumps({k: v for k, v in payload.items() if v}))
           PY
           pnpm wrangler secret bulk "$secrets_file" --env production
-          rm -f "$secrets_file"
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
@@ -159,55 +122,12 @@ jobs:
           COOKIE_ENCRYPTION_KEY: ${{ secrets.MCP_COOKIE_ENCRYPTION_KEY }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
-      - name: Deploy to Cloudflare
-        run: >-
-          pnpm wrangler deploy --env production --outdir dist
-          --upload-source-maps
-          --var SENTRY_RELEASE:${{ steps.version.outputs.version }}
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-
-      - name: Upload Sentry source maps
-        run: pnpm sentry:sourcemaps
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_RELEASE: ${{ steps.version.outputs.version }}
-
-      - name: Sync production triggers
-        run: pnpm wrangler triggers deploy --env production
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-
-      - name: Verify deployment
+      - name: Sync preview Worker secrets
+        if: ${{ env.DEPLOY_ENV == 'preview' }}
         run: |
-          sleep 5
-          ./scripts/smoke-endpoints.sh https://mcp.useorgx.com https://useorgx.com
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Preview deploy (PRs only)
-  # ──────────────────────────────────────────────────────────────────────────
-  preview:
-    if: github.event_name == 'pull_request'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
-    needs: validate
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: pnpm/action-setup@v5
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Sync Worker secrets (preview)
-        run: |
+          set -euo pipefail
           secrets_file="$(mktemp)"
+          trap 'rm -f "$secrets_file"' EXIT
           python3 - <<'PY' > "$secrets_file"
           import json
           import os
@@ -223,7 +143,6 @@ jobs:
           print(json.dumps({k: v for k, v in payload.items() if v}))
           PY
           pnpm wrangler secret bulk "$secrets_file" --env preview
-          rm -f "$secrets_file"
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
@@ -234,35 +153,64 @@ jobs:
           ORGX_INTERNAL_SECRET: ${{ secrets.ORGX_INTERNAL_SECRET }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
-      - name: Deploy to Cloudflare (preview)
-        run: >-
-          pnpm wrangler deploy --env preview --outdir dist
-          --upload-source-maps --var SENTRY_RELEASE:${{ github.sha }}
+      - name: Deploy to Cloudflare
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          DEPLOY_ENV: ${{ env.DEPLOY_ENV }}
+          SENTRY_RELEASE: ${{ steps.version.outputs.version }}
+        run: >-
+          pnpm wrangler deploy --env "$DEPLOY_ENV" --outdir dist
+          --upload-source-maps --var "SENTRY_RELEASE:$SENTRY_RELEASE"
 
-      - name: Upload Sentry source maps (preview)
-        run: pnpm sentry:sourcemaps
+      - name: Upload Sentry source maps
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_RELEASE: ${{ github.sha }}
+          SENTRY_RELEASE: ${{ steps.version.outputs.version }}
+        run: pnpm sentry:sourcemaps
 
-      - name: Sync preview triggers
-        run: pnpm wrangler triggers deploy --env preview
+      - name: Sync Worker triggers
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          DEPLOY_ENV: ${{ env.DEPLOY_ENV }}
+        run: pnpm wrangler triggers deploy --env "$DEPLOY_ENV"
+
+      - name: Verify deployment
+        env:
+          DEPLOY_ENV: ${{ env.DEPLOY_ENV }}
+        run: |
+          set -euo pipefail
+          sleep 5
+          if [[ "$DEPLOY_ENV" == "preview" ]]; then
+            curl --fail --silent --show-error \
+              --connect-timeout 10 --max-time 30 \
+              https://mcp-staging.useorgx.com/healthz >/dev/null
+            curl --fail --silent --show-error \
+              --connect-timeout 10 --max-time 30 \
+              https://mcp-staging.useorgx.com/.well-known/oauth-authorization-server \
+              | jq -e '.token_endpoint' >/dev/null
+            curl --fail --silent --show-error \
+              --connect-timeout 10 --max-time 30 \
+              https://mcp-staging.useorgx.com/.well-known/oauth-protected-resource \
+              | jq -e '.authorization_servers' >/dev/null
+            echo "Preview deployment health and OAuth metadata passed"
+          else
+            ./scripts/smoke-endpoints.sh https://mcp.useorgx.com https://useorgx.com
+          fi
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Publish to MCP Registry (releases or manual trigger)
+  # Publish to MCP Registry (releases or manual production trigger)
   # ──────────────────────────────────────────────────────────────────────────
   publish-registry:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 10
     needs: deploy
     if: |
       github.event_name == 'release' ||
-      (github.event_name == 'workflow_dispatch' && inputs.publish_registry)
+      (github.event_name == 'workflow_dispatch' &&
+       inputs.publish_registry &&
+       inputs.environment == 'production')
     environment:
       name: mcp-registry
     steps:
@@ -270,24 +218,34 @@ jobs:
 
       - name: Install mcp-publisher
         run: |
-          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+          set -euo pipefail
+          curl --fail --silent --show-error --location \
+            --connect-timeout 10 --max-time 120 \
+            "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" \
+            | tar xz mcp-publisher
           chmod +x mcp-publisher
           sudo mv mcp-publisher /usr/local/bin/
           mcp-publisher --version
 
       - name: Update server.json version
+        env:
+          PUBLISHED_VERSION: ${{ needs.deploy.outputs.version }}
         run: |
-          jq --arg v "${{ needs.deploy.outputs.version }}" '.version = $v' \
+          set -euo pipefail
+          jq --arg v "$PUBLISHED_VERSION" '.version = $v' \
             server.json > tmp.json && mv tmp.json server.json
-          cat server.json | jq '{name, version, description}'
+          jq '{name, version, description}' server.json
 
       - name: Login to MCP Registry
+        env:
+          MCP_REGISTRY_PRIVATE_KEY: ${{ secrets.MCP_REGISTRY_PRIVATE_KEY }}
         run: |
-          registry_private_key="$(
-            printf '%s\n' "${{ secrets.MCP_REGISTRY_PRIVATE_KEY }}" \
+          set -euo pipefail
+          registry_private_key="$({
+            printf '%s\n' "$MCP_REGISTRY_PRIVATE_KEY" \
               | grep -v '^[[:space:]]*#' \
               | tr -d '[:space:]'
-          )"
+          })"
 
           if [[ -z "$registry_private_key" ]]; then
             echo "::error::MCP_REGISTRY_PRIVATE_KEY resolved to an empty value after stripping comments/whitespace"
@@ -300,6 +258,7 @@ jobs:
 
       - name: Validate and publish
         run: |
+          set -euo pipefail
           mcp-publisher validate
           mcp-publisher publish
           echo "Published to MCP Registry"

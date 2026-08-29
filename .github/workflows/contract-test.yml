@@ -5,15 +5,37 @@ on:
     - cron: "0 9 * * 1" # Weekly Monday 9am UTC
   workflow_dispatch:
 
+concurrency:
+  group: mcp-contract-test
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   contract:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
 
+      - uses: pnpm/action-setup@v5
+        with:
+          version: 10.18.1
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Verify main app API is reachable
         run: |
-          STATUS=$(curl -s -o /dev/null -w '%{http_code}' https://useorgx.com/api/health)
+          set -euo pipefail
+          STATUS="$(curl --silent --show-error --connect-timeout 10 --max-time 30 \
+            --output /dev/null --write-out '%{http_code}' https://useorgx.com/api/health || true)"
           if [ "$STATUS" != "200" ]; then
             echo "Main app API unreachable (HTTP $STATUS)"
             exit 1
@@ -22,26 +44,50 @@ jobs:
 
       - name: Verify MCP server is healthy
         run: |
-          curl -sf https://mcp.useorgx.com/healthz || exit 1
+          set -euo pipefail
+          curl --fail --silent --show-error --connect-timeout 10 --max-time 30 \
+            https://mcp.useorgx.com/healthz >/dev/null
           echo "MCP server healthy"
 
       - name: Verify OAuth discovery
         run: |
-          curl -sf https://mcp.useorgx.com/.well-known/oauth-authorization-server | jq -e '.token_endpoint' || exit 1
+          set -euo pipefail
+          curl --fail --silent --show-error --connect-timeout 10 --max-time 30 \
+            https://mcp.useorgx.com/.well-known/oauth-authorization-server \
+            | jq -e '.token_endpoint' >/dev/null
           echo "OAuth discovery OK"
 
-      - name: Verify shared entity types are in sync
+      - name: Verify local entity type catalog is populated
         run: |
-          # Fetch entity types from the list_entities tool schema
-          # and compare with our local shared/entity.ts
-          TYPES=$(grep -oP "'[a-z_]+'" src/shared/entity.ts | tr -d "'" | sort)
+          set -euo pipefail
+          TYPES="$(grep -oE "'[a-z_]+'" src/shared/entity.ts | tr -d "'" | sort -u || true)"
           echo "Local entity types:"
           echo "$TYPES"
           echo "---"
-          # Basic validation: ensure we have at least 15 entity types
-          COUNT=$(echo "$TYPES" | wc -l)
+          COUNT="$(printf '%s\n' "$TYPES" | sed '/^$/d' | wc -l | tr -d ' ')"
           if [ "$COUNT" -lt 15 ]; then
             echo "Entity type count too low ($COUNT), possible drift"
             exit 1
           fi
           echo "Entity types look consistent ($COUNT types)"
+
+      - name: Install Chromium for browser contract checks
+        env:
+          PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: 120000
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "Installing Chromium (attempt $attempt/3)"
+            if pnpm exec playwright install --with-deps --only-shell chromium; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "::warning::Chromium download failed; retrying"
+              sleep 5
+            fi
+          done
+          echo "::error::Unable to install Chromium after 3 attempts"
+          exit 1
+
+      - name: Verify widget rendering in supported host variants
+        run: pnpm widget:verify-rendering
