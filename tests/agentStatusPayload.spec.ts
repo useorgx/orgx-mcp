@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { normalizeAgentStatusPayload } from '../src/agentStatusPayload';
+import {
+  enrichAgentStatusWithDurableEvidence,
+  normalizeAgentStatusPayload,
+} from '../src/agentStatusPayload';
 
 describe('normalizeAgentStatusPayload', () => {
   it('filters non-agent app entries and recomputes the fleet summary', () => {
@@ -117,4 +120,178 @@ describe('normalizeAgentStatusPayload', () => {
       summary: { stalled: 1, completed: 1 },
     });
   });
+
+  it('projects a fresh claimed task as active with durable identifiers', () => {
+    const now = Date.parse('2026-08-29T10:00:00.000Z');
+    const result = enrichAgentStatusWithDurableEvidence(
+      {
+        agents: [
+          {
+            agent_id: 'design-agent',
+            agent_name: 'Dana',
+            domain: 'design',
+            status: 'idle',
+          },
+        ],
+      },
+      [
+        {
+          id: 'task-dana',
+          status: 'in_progress',
+          assigned_agent_id: 'design-agent',
+          run_id: 'run-dana',
+          job_id: 'job-dana',
+          last_heartbeat_at: '2026-08-29T09:59:30.000Z',
+        },
+      ],
+      [],
+      now
+    );
+
+    expect(result.agents).toEqual([
+      expect.objectContaining({
+        status: 'running',
+        activity_state: 'active',
+        observability_state: 'fresh',
+        status_source: 'durable_task',
+        task_id: 'task-dana',
+        run_id: 'run-dana',
+        job_id: 'job-dana',
+        artifact_count: 0,
+      }),
+    ]);
+  });
+
+  it('surfaces a stale task/artifact conflict instead of silently reporting idle', () => {
+    const now = Date.parse('2026-08-29T10:00:00.000Z');
+    const result = enrichAgentStatusWithDurableEvidence(
+      {
+        agents: [
+          {
+            agent_id: 'design-agent',
+            agent_name: 'Dana',
+            domain: 'design',
+            status: 'idle',
+          },
+        ],
+      },
+      [
+        {
+          id: 'task-dana',
+          status: 'in_progress',
+          assigned_agent_id: 'design-agent',
+          run_id: 'run-dana',
+          job_id: 'job-dana',
+          updated_at: '2026-08-29T09:00:00.000Z',
+        },
+      ],
+      [
+        {
+          id: 'artifact-dana',
+          title: 'Agent review surface',
+          status: 'in_review',
+          task_id: 'task-dana',
+          created_at: '2026-08-29T09:30:00.000Z',
+          verification: { eval: { score: 0.92 } },
+        },
+      ],
+      now
+    );
+
+    expect(result.agents).toEqual([
+      expect.objectContaining({
+        status: 'stalled',
+        activity_state: 'stalled',
+        observability_state: 'stale',
+        stale_reason: 'active_task_conflicts_with_delivered_artifact',
+        reconciliation_required: true,
+        task_id: 'task-dana',
+        run_id: 'run-dana',
+        job_id: 'job-dana',
+        artifact_count: 1,
+        latest_artifact: expect.objectContaining({
+          id: 'artifact-dana',
+          task_id: 'task-dana',
+          eval_score: 0.92,
+        }),
+      }),
+    ]);
+  });
+
+  it('uses unknown when an active task has no freshness evidence', () => {
+    const result = enrichAgentStatusWithDurableEvidence(
+      {
+        agents: [
+          {
+            agent_id: 'engineering-agent',
+            agent_name: 'Eli',
+            status: 'idle',
+          },
+        ],
+      },
+      [
+        {
+          id: 'task-eli',
+          status: 'in_progress',
+          assigned_agent_id: 'engineering-agent',
+          run_id: 'run-eli',
+          job_id: 'job-eli',
+        },
+      ],
+      [],
+      Date.parse('2026-08-29T10:00:00.000Z')
+    );
+
+    expect(result.agents).toEqual([
+      expect.objectContaining({
+        status: 'unknown',
+        activity_state: 'unknown',
+        observability_state: 'unknown',
+        stale_reason: 'active_task_missing_freshness_evidence',
+      }),
+    ]);
+  });
+
+  it('projects terminal task and artifact evidence as done', () => {
+    const result = enrichAgentStatusWithDurableEvidence(
+      {
+        agents: [
+          {
+            agent_id: 'product-agent',
+            agent_name: 'Pace',
+            status: 'idle',
+          },
+        ],
+      },
+      [
+        {
+          id: 'task-pace',
+          status: 'completed',
+          assigned_agent_id: 'product-agent',
+          run_id: 'run-pace',
+          job_id: 'job-pace',
+          completed_at: '2026-08-29T09:00:00.000Z',
+        },
+      ],
+      [
+        {
+          id: 'artifact-pace',
+          task_id: 'task-pace',
+          title: 'Evaluation rubric',
+          status: 'approved',
+        },
+      ]
+    );
+
+    expect(result.agents).toEqual([
+      expect.objectContaining({
+        status: 'done',
+        activity_state: 'terminal',
+        observability_state: 'terminal',
+        artifact_count: 1,
+        latest_artifact: expect.objectContaining({ id: 'artifact-pace' }),
+      }),
+    ]);
+  });
+
 });

@@ -267,6 +267,363 @@ function countAgentsByStatus(
   ).length;
 }
 
+
+const ACTIVE_TASK_STATES = new Set([
+  'running',
+  'active',
+  'executing',
+  'in_progress',
+  'claimed',
+]);
+
+const QUEUED_TASK_STATES = new Set(['queued', 'pending', 'not_started', 'todo']);
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function firstString(
+  record: Record<string, unknown>,
+  keys: string[]
+): string | null {
+  for (const key of keys) {
+    const value = asNonEmptyString(record[key]);
+    if (value) return value;
+  }
+  return null;
+}
+
+function recordMetadata(record: Record<string, unknown>): Record<string, unknown> {
+  return asRecord(record.metadata) ?? {};
+}
+
+function recordString(
+  record: Record<string, unknown>,
+  keys: string[]
+): string | null {
+  return firstString(record, keys) ?? firstString(recordMetadata(record), keys);
+}
+
+function recordTimestamp(record: Record<string, unknown>): string | null {
+  return recordString(record, [
+    'last_heartbeat_at',
+    'lastHeartbeatAt',
+    'heartbeat_at',
+    'heartbeatAt',
+    'updated_at',
+    'updatedAt',
+    'completed_at',
+    'completedAt',
+    'created_at',
+    'createdAt',
+  ]);
+}
+
+function timestampMillis(record: Record<string, unknown>): number {
+  const raw = recordTimestamp(record);
+  if (!raw) return 0;
+  const parsed = Date.parse(raw);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function evidenceTokens(
+  record: Record<string, unknown>,
+  keys: string[]
+): Set<string> {
+  const metadata = recordMetadata(record);
+  const tokens = new Set<string>();
+  for (const key of keys) {
+    const direct = asNonEmptyString(record[key]);
+    const nested = asNonEmptyString(metadata[key]);
+    if (direct) tokens.add(direct.toLowerCase());
+    if (nested) tokens.add(nested.toLowerCase());
+  }
+  return tokens;
+}
+
+function agentIdentityTokens(agent: Record<string, unknown>): Set<string> {
+  return evidenceTokens(agent, [
+    'agent_id',
+    'agentId',
+    'agent_name',
+    'agentName',
+    'role',
+    'domain',
+    'agent_type',
+    'agentType',
+  ]);
+}
+
+function taskOwnerTokens(task: Record<string, unknown>): Set<string> {
+  return evidenceTokens(task, [
+    'agent_id',
+    'agentId',
+    'agent_name',
+    'agentName',
+    'assigned_agent_id',
+    'assignedAgentId',
+    'assigned_to',
+    'assignedTo',
+    'assignee',
+    'owner_agent_id',
+    'ownerAgentId',
+    'domain',
+  ]);
+}
+
+function artifactOwnerTokens(artifact: Record<string, unknown>): Set<string> {
+  return evidenceTokens(artifact, [
+    'agent_id',
+    'agentId',
+    'agent_name',
+    'agentName',
+    'created_by_id',
+    'createdById',
+    'created_by_name',
+    'createdByName',
+    'producer_id',
+    'producerId',
+    'domain',
+  ]);
+}
+
+function intersects(left: Set<string>, right: Set<string>): boolean {
+  for (const token of left) {
+    if (right.has(token)) return true;
+  }
+  return false;
+}
+
+function durableTaskId(record: Record<string, unknown>): string | null {
+  return recordString(record, ['task_id', 'taskId', 'id', 'entity_id', 'entityId']);
+}
+
+function artifactTaskId(record: Record<string, unknown>): string | null {
+  const entityType = recordString(record, ['entity_type', 'entityType']);
+  return (
+    recordString(record, ['task_id', 'taskId']) ??
+    (taskState(entityType) === 'task'
+      ? recordString(record, ['entity_id', 'entityId'])
+      : null)
+  );
+}
+
+function matchesArtifact(
+  artifact: Record<string, unknown>,
+  identity: Set<string>,
+  taskIds: Set<string>
+): boolean {
+  const artifactTask = artifactTaskId(artifact);
+  return (
+    (!!artifactTask && taskIds.has(artifactTask)) ||
+    intersects(identity, artifactOwnerTokens(artifact))
+  );
+}
+
+function newest(records: Record<string, unknown>[]): Record<string, unknown> | null {
+  return (
+    [...records].sort((left, right) => timestampMillis(right) - timestampMillis(left))[0] ??
+    null
+  );
+}
+
+function evidenceSnapshot(
+  record: Record<string, unknown> | null
+): Record<string, unknown> | null {
+  if (!record) return null;
+  return {
+    id: recordString(record, ['id', 'artifact_id', 'artifactId']),
+    title: recordString(record, ['title', 'name', 'label']),
+    status: recordString(record, ['status', 'state']),
+    task_id: artifactTaskId(record),
+    run_id: recordString(record, ['run_id', 'runId']),
+    job_id: recordString(record, ['job_id', 'jobId']),
+    eval_score:
+      asRecord(record.verification)?.eval &&
+      typeof asRecord(asRecord(record.verification)?.eval)?.score === 'number'
+        ? asRecord(asRecord(record.verification)?.eval)?.score
+        : recordMetadata(record).eval_score ?? null,
+    created_at: recordString(record, ['created_at', 'createdAt', 'updated_at', 'updatedAt']),
+  };
+}
+
+/**
+ * Reconcile the fleet summary with durable task and artifact evidence.
+ *
+ * Upstream persona rows are configuration records and may say "idle" while a
+ * claimed job is running. The projection therefore prefers durable work
+ * evidence, exposes its IDs, and uses "unknown" or "stalled" when freshness
+ * cannot be proven. It never turns missing evidence into idle.
+ */
+export function enrichAgentStatusWithDurableEvidence(
+  data: Record<string, unknown>,
+  tasksInput: unknown[],
+  artifactsInput: unknown[],
+  now = Date.now()
+): Record<string, unknown> {
+  if (!Array.isArray(data.agents)) return data;
+
+  const tasks = tasksInput
+    .map(asRecord)
+    .filter((item): item is Record<string, unknown> => Boolean(item));
+  const artifacts = artifactsInput
+    .map(asRecord)
+    .filter((item): item is Record<string, unknown> => Boolean(item));
+
+  return {
+    ...data,
+    agents: data.agents.map((rawAgent) => {
+      const agent = asRecord(rawAgent);
+      if (!agent) return rawAgent;
+
+      const identity = agentIdentityTokens(agent);
+      const existingTasks = taskArrays(agent, [
+        'current_tasks',
+        'currentTasks',
+        'active_tasks',
+        'activeTasks',
+        'tasks',
+      ])
+        .map(asRecord)
+        .filter((item): item is Record<string, unknown> => Boolean(item));
+      const existingTaskIds = new Set(
+        existingTasks.map(durableTaskId).filter((id): id is string => Boolean(id))
+      );
+      const matchedTasks = uniqueByStableKey([
+        ...existingTasks,
+        ...tasks.filter((task) => {
+          const id = durableTaskId(task);
+          return (
+            (!!id && existingTaskIds.has(id)) ||
+            intersects(identity, taskOwnerTokens(task))
+          );
+        }),
+      ])
+        .map(asRecord)
+        .filter((item): item is Record<string, unknown> => Boolean(item));
+
+      const taskIds = new Set(
+        matchedTasks.map(durableTaskId).filter((id): id is string => Boolean(id))
+      );
+      const matchedArtifacts = artifacts.filter((artifact) =>
+        matchesArtifact(artifact, identity, taskIds)
+      );
+      const activeTasks = matchedTasks.filter((task) =>
+        ACTIVE_TASK_STATES.has(
+          taskState(task.status ?? task.state ?? task.phase)
+        )
+      );
+      const queuedTasks = matchedTasks.filter((task) =>
+        QUEUED_TASK_STATES.has(
+          taskState(task.status ?? task.state ?? task.phase)
+        )
+      );
+      const terminalTasks = matchedTasks.filter((task) =>
+        TERMINAL_TASK_STATES.has(
+          taskState(task.status ?? task.state ?? task.phase)
+        )
+      );
+
+      const focusTask =
+        newest(activeTasks) ?? newest(queuedTasks) ?? newest(terminalTasks);
+      const latestArtifact = newest(matchedArtifacts);
+      const heartbeat =
+        (focusTask ? recordTimestamp(focusTask) : null) ??
+        recordString(agent, ['last_heartbeat_at', 'lastHeartbeatAt']);
+      const heartbeatMs = heartbeat ? Date.parse(heartbeat) : Number.NaN;
+      const isFresh =
+        Number.isFinite(heartbeatMs) && now - heartbeatMs <= 120_000;
+      const hasActiveTask = activeTasks.length > 0;
+      const hasTerminalEvidence =
+        terminalTasks.length > 0 || matchedArtifacts.length > 0;
+      const hasStateConflict = hasActiveTask && matchedArtifacts.length > 0;
+
+      let status = normalizedStatus(agent.status);
+      let activityState = status;
+      let observabilityState = 'fresh';
+      let staleReason: string | null = null;
+
+      if (hasActiveTask) {
+        if (!heartbeat || !Number.isFinite(heartbeatMs)) {
+          status = 'unknown';
+          activityState = 'unknown';
+          observabilityState = 'unknown';
+          staleReason = 'active_task_missing_freshness_evidence';
+        } else if (!isFresh || hasStateConflict) {
+          status = 'stalled';
+          activityState = 'stalled';
+          observabilityState = 'stale';
+          staleReason = hasStateConflict
+            ? 'active_task_conflicts_with_delivered_artifact'
+            : 'active_task_heartbeat_stale';
+        } else {
+          status = 'running';
+          activityState = 'active';
+          observabilityState = 'fresh';
+        }
+      } else if (queuedTasks.length > 0) {
+        status = 'queued';
+        activityState = 'queued';
+        observabilityState = heartbeat ? (isFresh ? 'fresh' : 'stale') : 'unknown';
+        if (observabilityState !== 'fresh') {
+          staleReason = heartbeat
+            ? 'queued_task_update_stale'
+            : 'queued_task_missing_freshness_evidence';
+        }
+      } else if (hasTerminalEvidence) {
+        status = 'done';
+        activityState = 'terminal';
+        observabilityState = 'terminal';
+      } else if (!asNonEmptyString(agent.status)) {
+        status = 'unknown';
+        activityState = 'unknown';
+        observabilityState = 'unknown';
+        staleReason = 'no_agent_or_durable_work_state';
+      }
+
+      const runId =
+        (focusTask ? recordString(focusTask, ['run_id', 'runId']) : null) ??
+        (latestArtifact
+          ? recordString(latestArtifact, ['run_id', 'runId'])
+          : null) ??
+        recordString(agent, ['run_id', 'runId']);
+      const jobId =
+        (focusTask ? recordString(focusTask, ['job_id', 'jobId']) : null) ??
+        (latestArtifact
+          ? recordString(latestArtifact, ['job_id', 'jobId'])
+          : null) ??
+        recordString(agent, ['job_id', 'jobId']);
+
+      return {
+        ...agent,
+        status,
+        activity_state: activityState,
+        observability_state: observabilityState,
+        status_source:
+          matchedTasks.length > 0
+            ? 'durable_task'
+            : matchedArtifacts.length > 0
+              ? 'artifact'
+              : 'agent_record',
+        stale_reason: staleReason,
+        reconciliation_required: hasStateConflict,
+        task_id: focusTask ? durableTaskId(focusTask) : null,
+        run_id: runId,
+        job_id: jobId,
+        last_heartbeat_at: heartbeat,
+        current_tasks: activeTasks,
+        active_tasks: activeTasks,
+        completed_tasks: terminalTasks,
+        artifacts: matchedArtifacts,
+        artifact_count: matchedArtifacts.length,
+        latest_artifact: evidenceSnapshot(latestArtifact),
+      };
+    }),
+  };
+}
+
 export function normalizeAgentStatusPayload(
   data: Record<string, unknown>
 ): Record<string, unknown> {
