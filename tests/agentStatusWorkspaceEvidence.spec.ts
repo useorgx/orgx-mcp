@@ -12,7 +12,8 @@ describe('agent status workspace evidence query', () => {
     expect(initiativeLookup).toBeGreaterThan(-1);
     expect(workspaceUnion).toBeGreaterThan(initiativeLookup);
 
-    const block = source.slice(workspaceUnion, workspaceUnion + 700);
+    const nextBranch = source.indexOf('} else if (', workspaceUnion);
+    const block = source.slice(workspaceUnion, nextBranch);
     expect(block).toContain("type: 'artifact'");
     expect(block).toContain('workspaceId');
     expect(block).toContain('limit: 100');
