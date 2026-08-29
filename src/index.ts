@@ -2754,9 +2754,6 @@ export class OrgXMcp extends McpAgent<
       if (params.toolId === 'get_initiative_pulse') {
         return enrichInitiativePulseWithArtifacts(evidenceData, artifacts);
       }
-      if (params.toolId === 'get_agent_status') {
-        return enrichAgentStatusWithArtifacts(evidenceData, artifacts);
-      }
       if (params.toolId === 'get_morning_brief') {
         return enrichMorningBriefWithArtifacts(evidenceData, artifacts);
       }
