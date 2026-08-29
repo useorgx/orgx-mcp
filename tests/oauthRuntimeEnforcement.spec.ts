@@ -96,13 +96,22 @@ function successfulApiResponse(path: string, init?: RequestInit): Response {
   if (path === '/api/tools/execute') {
     const request = JSON.parse(String(init?.body ?? '{}')) as {
       tool_id?: string;
+      args?: { task_id?: string };
     };
+    const isDelegation =
+      request.tool_id === 'spawn_agent_task' ||
+      request.tool_id === 'handoff_task';
     return Response.json({
       ok: true,
-      data:
-        request.tool_id === 'get_pending_decisions'
-          ? { decisions: [] }
-          : { results: [] },
+      data: isDelegation
+        ? {
+            delegation_contract: 'durable_delegation_v1',
+            task_id: request.args?.task_id ?? 'task-created-by-delegation',
+            run_id: 'run-created-by-delegation',
+          }
+        : request.tool_id === 'get_pending_decisions'
+        ? { decisions: [] }
+        : { results: [] },
     });
   }
   return Response.json({ ok: true, data: {} });

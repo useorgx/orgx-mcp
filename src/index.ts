@@ -175,6 +175,7 @@ import {
   buildSpawnGuardForwardArgs,
   validateSpawnContract,
 } from './spawnContract';
+import { validateDurableDelegationResponse } from './durableDelegationContract';
 import { validateWriteCreateContract } from './writeContract';
 import { buildLiveFeedWidget } from './liveFeedWidget';
 import { signStreamToken } from './streamToken';
@@ -2295,9 +2296,9 @@ export class OrgXMcp extends McpAgent<
    * Route tools to optimal endpoints.
    * Direct endpoints for high-traffic tools, generic executor for others.
    *
-   * NOTE: chatgpt.spawn_agent_task ultimately delegates via router.spawnChild which
-   * requires a parentRunId. /api/tools/execute will generate a synthetic `api-...`
-   * run ID when none is provided so MCP calls can spawn safely.
+   * Delegated spawn/handoff is validated after execution against the versioned
+   * durable-delegation contract. A response carrying a synthetic `api-*` ID or
+   * lacking the contract is rejected instead of being presented as success.
    */
   private getToolEndpoint(
     toolId: string,
@@ -3091,7 +3092,16 @@ export class OrgXMcp extends McpAgent<
             method: 'POST',
             body: JSON.stringify(body),
           },
-          { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
+          {
+            userId: resolvedUserId,
+            userEmail: this.resolveUserEmail(),
+            orgxUserId: this.resolveOrgxUserId(resolvedUserId),
+            // Delegation changes durable state and may incur cost. An ambiguous
+            // primary failure must never replay against a fallback origin.
+            allowFallback:
+              resolvedToolId !== 'spawn_agent_task' &&
+              resolvedToolId !== 'handoff_task',
+          }
         );
 
         const result = (await response.json()) as {
@@ -3130,6 +3140,29 @@ export class OrgXMcp extends McpAgent<
             );
           }
           return this.toolError(errorMessage);
+        }
+
+        if (
+          resolvedToolId === 'spawn_agent_task' ||
+          resolvedToolId === 'handoff_task'
+        ) {
+          const delegation = validateDurableDelegationResponse(result);
+          if (!delegation.ok) {
+            this.captureMcpToolEvent('mcp_tool_failed', {
+              toolId,
+              toolFamily: 'chatgpt',
+              userId: resolvedUserId,
+              authSource,
+              ok: false,
+              latencyMs,
+              error: 'durable_delegation_contract_violation',
+              isWidgetTool,
+            });
+            return this.toolError(delegation.message, {
+              code: 'durable_delegation_contract_violation',
+              status: 424,
+            });
+          }
         }
 
         if (!this.isSubmittedInformationalToolExecution(toolId)) {
@@ -5693,9 +5726,31 @@ export class OrgXMcp extends McpAgent<
               method: 'POST',
               body: JSON.stringify(body),
             },
-            { userId: resolvedUserId, userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
+            {
+              userId: resolvedUserId,
+              userEmail: this.resolveUserEmail(),
+              orgxUserId: this.resolveOrgxUserId(resolvedUserId),
+              allowFallback:
+                targetTool !== 'spawn_agent_task' && targetTool !== 'handoff_task',
+            }
           );
           const result = (await response.json()) as Record<string, unknown>;
+          if (result.ok === false) {
+            return this.toolError(
+              typeof result.error === 'string'
+                ? result.error
+                : 'Unable to delegate this work.'
+            );
+          }
+          if (targetTool === 'spawn_agent_task' || targetTool === 'handoff_task') {
+            const delegation = validateDurableDelegationResponse(result);
+            if (!delegation.ok) {
+              return this.toolError(delegation.message, {
+                code: 'durable_delegation_contract_violation',
+                status: 424,
+              });
+            }
+          }
           const data =
             result.data && typeof result.data === 'object'
               ? (result.data as Record<string, unknown>)
