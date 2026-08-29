@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   enrichAgentStatusWithDurableEvidence,
+  filterAgentStatusArtifactsByVisibleScope,
   normalizeAgentStatusPayload,
 } from '../src/agentStatusPayload';
 
@@ -349,6 +350,44 @@ describe('normalizeAgentStatusPayload', () => {
         }),
       }),
     ]);
+  });
+
+
+  it('scopes legacy initiative-entity artifacts without leaking another workspace', () => {
+    const data = {
+      agents: [
+        {
+          agent_id: 'design-agent',
+          initiative_id: 'initiative-visible',
+          tasks: [
+            {
+              task_id: 'task-visible',
+              initiative_id: 'initiative-visible',
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(
+      filterAgentStatusArtifactsByVisibleScope(data, [
+        {
+          id: 'artifact-visible-initiative',
+          entity_type: 'initiative',
+          entity_id: 'initiative-visible',
+        },
+        {
+          id: 'artifact-visible-task',
+          entity_type: 'task',
+          entity_id: 'task-visible',
+        },
+        {
+          id: 'artifact-other-workspace',
+          entity_type: 'initiative',
+          entity_id: 'initiative-private',
+        },
+      ]).map((artifact) => artifact.id)
+    ).toEqual(['artifact-visible-initiative', 'artifact-visible-task']);
   });
 
 });

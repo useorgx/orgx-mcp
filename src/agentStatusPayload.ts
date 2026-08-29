@@ -461,6 +461,79 @@ function evidenceSnapshot(
  * evidence, exposes its IDs, and uses "unknown" or "stalled" when freshness
  * cannot be proven. It never turns missing evidence into idle.
  */
+/**
+ * Scope a user-level artifact collection back to the exact initiatives/tasks
+ * visible in a workspace status payload. This supports legacy run outputs that
+ * store their initiative in entity_id/entity_type rather than initiative_id
+ * without allowing artifacts from another workspace into the projection.
+ */
+export function filterAgentStatusArtifactsByVisibleScope(
+  data: Record<string, unknown>,
+  artifactsInput: unknown[]
+): Record<string, unknown>[] {
+  const initiativeIds = new Set<string>();
+  const taskIds = new Set<string>();
+
+  for (const rawAgent of asArray(data.agents)) {
+    const agent = asRecord(rawAgent);
+    if (!agent) continue;
+    const initiativeId = recordString(agent, [
+      'initiative_id',
+      'initiativeId',
+      'workspace_initiative_id',
+    ]);
+    if (initiativeId) initiativeIds.add(initiativeId);
+
+    for (const rawTask of taskArrays(agent, [
+      'current_tasks',
+      'currentTasks',
+      'active_tasks',
+      'activeTasks',
+      'tasks',
+      'items',
+    ])) {
+      const task = asRecord(rawTask);
+      if (!task) continue;
+      const taskId = durableTaskId(task);
+      if (taskId) taskIds.add(taskId);
+      const taskInitiativeId = recordString(task, [
+        'initiative_id',
+        'initiativeId',
+      ]);
+      if (taskInitiativeId) initiativeIds.add(taskInitiativeId);
+    }
+  }
+
+  return artifactsInput
+    .map(asRecord)
+    .filter((artifact): artifact is Record<string, unknown> => {
+      if (!artifact) return false;
+      const initiativeId = recordString(artifact, [
+        'initiative_id',
+        'initiativeId',
+      ]);
+      if (initiativeId && initiativeIds.has(initiativeId)) return true;
+
+      const entityType = taskState(
+        recordString(artifact, ['entity_type', 'entityType'])
+      );
+      const entityId = recordString(artifact, ['entity_id', 'entityId']);
+      if (
+        entityType === 'initiative' &&
+        entityId &&
+        initiativeIds.has(entityId)
+      ) {
+        return true;
+      }
+      if (entityType === 'task' && entityId && taskIds.has(entityId)) {
+        return true;
+      }
+
+      const taskId = artifactTaskId(artifact);
+      return !!taskId && taskIds.has(taskId);
+    });
+}
+
 export function enrichAgentStatusWithDurableEvidence(
   data: Record<string, unknown>,
   tasksInput: unknown[],
