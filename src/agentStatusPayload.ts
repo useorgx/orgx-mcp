@@ -344,7 +344,7 @@ function evidenceTokens(
 }
 
 function agentIdentityTokens(agent: Record<string, unknown>): Set<string> {
-  return evidenceTokens(agent, [
+  const tokens = evidenceTokens(agent, [
     'agent_id',
     'agentId',
     'agent_name',
@@ -354,6 +354,14 @@ function agentIdentityTokens(agent: Record<string, unknown>): Set<string> {
     'agent_type',
     'agentType',
   ]);
+  // Persona rows do not always repeat their domain. Their durable identity does:
+  // design-agent is the design producer, engineering-agent is engineering, etc.
+  // Add only the exact conventional suffix variant; do not fuzzy-match names.
+  for (const token of [...tokens]) {
+    const domainToken = token.replace(/(?:[-_.]agent)$/, '');
+    if (domainToken && domainToken !== token) tokens.add(domainToken);
+  }
+  return tokens;
 }
 
 function taskOwnerTokens(task: Record<string, unknown>): Set<string> {

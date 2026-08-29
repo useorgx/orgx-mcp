@@ -296,15 +296,21 @@ describe('normalizeAgentStatusPayload', () => {
   });
 
 
-  it('attributes a domain artifact and exposes its source run without inventing a job id', () => {
+  it('derives the domain from the agent id for a legacy run artifact', () => {
     const result = enrichAgentStatusWithDurableEvidence(
       {
         agents: [
           {
             agent_id: 'design-agent',
             agent_name: 'Dana',
-            domain: 'design',
             status: 'idle',
+            current_tasks: [
+              {
+                id: 'task-dana',
+                status: 'in_progress',
+                updated_at: '2026-08-29T09:51:07.000Z',
+              },
+            ],
           },
         ],
       },
@@ -312,7 +318,6 @@ describe('normalizeAgentStatusPayload', () => {
         {
           id: 'task-dana',
           status: 'in_progress',
-          domain: 'design',
           updated_at: '2026-08-29T09:51:07.000Z',
         },
       ],
