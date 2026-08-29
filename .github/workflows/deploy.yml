@@ -61,6 +61,8 @@ jobs:
         with:
           wrangler-environment: ${{ env.DEPLOY_ENV }}
 
+      - name: Validate gateway parity probe syntax
+        run: node --check scripts/verify-gateway-actor-parity.mjs
       - name: Determine version
         id: version
         env:
@@ -87,6 +89,29 @@ jobs:
           jq --arg v "$RELEASE_VERSION" '.version = $v' \
             server.json > tmp.json && mv tmp.json server.json
 
+      - name: Validate gateway identity deployment inputs
+        env:
+          ORGX_SERVICE_KEY: ${{ secrets.ORGX_SERVICE_KEY }}
+          ORGX_INTERNAL_SECRET: ${{ secrets.ORGX_INTERNAL_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ORGX_SERVICE_KEY:-}" ]; then
+            echo "::error::ORGX_SERVICE_KEY is required for MCP deployment"
+            exit 1
+          fi
+          if [[ "${ORGX_SERVICE_KEY}" != oxk-* ]]; then
+            echo "::error::ORGX_SERVICE_KEY has an invalid format"
+            exit 1
+          fi
+          if [ -z "${ORGX_INTERNAL_SECRET:-}" ]; then
+            echo "::error::ORGX_INTERNAL_SECRET is required for signed gateway identity"
+            exit 1
+          fi
+          if [ "${#ORGX_INTERNAL_SECRET}" -lt 32 ]; then
+            echo "::error::ORGX_INTERNAL_SECRET must be at least 32 characters"
+            exit 1
+          fi
+          echo "Required gateway identity secrets are configured"
       - name: Sync production Worker secrets
         if: ${{ env.DEPLOY_ENV == 'production' }}
         run: |
@@ -198,6 +223,13 @@ jobs:
           else
             ./scripts/smoke-endpoints.sh https://mcp.useorgx.com https://useorgx.com
           fi
+      - name: Verify MCP-to-core actor signing parity
+        if: ${{ env.DEPLOY_ENV == 'production' }}
+        env:
+          ORGX_API_URL: https://useorgx.com
+          ORGX_SERVICE_KEY: ${{ secrets.ORGX_SERVICE_KEY }}
+          ORGX_INTERNAL_SECRET: ${{ secrets.ORGX_INTERNAL_SECRET }}
+        run: node scripts/verify-gateway-actor-parity.mjs
 
   # ──────────────────────────────────────────────────────────────────────────
   # Publish to MCP Registry (releases or manual production trigger)
