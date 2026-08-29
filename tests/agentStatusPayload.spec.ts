@@ -294,4 +294,61 @@ describe('normalizeAgentStatusPayload', () => {
     ]);
   });
 
+
+  it('attributes a domain artifact and exposes its source run without inventing a job id', () => {
+    const result = enrichAgentStatusWithDurableEvidence(
+      {
+        agents: [
+          {
+            agent_id: 'design-agent',
+            agent_name: 'Dana',
+            domain: 'design',
+            status: 'idle',
+          },
+        ],
+      },
+      [
+        {
+          id: 'task-dana',
+          status: 'in_progress',
+          domain: 'design',
+          updated_at: '2026-08-29T09:51:07.000Z',
+        },
+      ],
+      [
+        {
+          id: 'artifact-dana',
+          title: 'Trust Progress UX Specification',
+          artifact_type: 'design.document',
+          entity_type: 'initiative',
+          entity_id: 'initiative-trust',
+          status: 'in_review',
+          created_at: '2026-08-29T09:52:42.000Z',
+          metadata: {
+            source_run_id: 'run-dana',
+          },
+          verification: { eval: { score: 0.92 } },
+        },
+      ],
+      Date.parse('2026-08-29T10:00:00.000Z')
+    );
+
+    expect(result.agents).toEqual([
+      expect.objectContaining({
+        status: 'stalled',
+        artifact_count: 1,
+        artifact_attribution_state: 'matched',
+        run_id: 'run-dana',
+        run_id_state: 'known',
+        job_id: null,
+        job_id_state: 'unknown',
+        latest_artifact: expect.objectContaining({
+          id: 'artifact-dana',
+          run_id: 'run-dana',
+          eval_score: 0.92,
+        }),
+      }),
+    ]);
+  });
+
 });

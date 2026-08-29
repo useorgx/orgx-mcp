@@ -374,7 +374,7 @@ function taskOwnerTokens(task: Record<string, unknown>): Set<string> {
 }
 
 function artifactOwnerTokens(artifact: Record<string, unknown>): Set<string> {
-  return evidenceTokens(artifact, [
+  const tokens = evidenceTokens(artifact, [
     'agent_id',
     'agentId',
     'agent_name',
@@ -387,6 +387,10 @@ function artifactOwnerTokens(artifact: Record<string, unknown>): Set<string> {
     'producerId',
     'domain',
   ]);
+  const artifactType = recordString(artifact, ['artifact_type', 'artifactType']);
+  const domainPrefix = artifactType?.toLowerCase().split(/[._-]/)[0] ?? null;
+  if (domainPrefix) tokens.add(domainPrefix);
+  return tokens;
 }
 
 function intersects(left: Set<string>, right: Set<string>): boolean {
@@ -438,7 +442,7 @@ function evidenceSnapshot(
     title: recordString(record, ['title', 'name', 'label']),
     status: recordString(record, ['status', 'state']),
     task_id: artifactTaskId(record),
-    run_id: recordString(record, ['run_id', 'runId']),
+    run_id: recordString(record, ['run_id', 'runId', 'source_run_id', 'sourceRunId']),
     job_id: recordString(record, ['job_id', 'jobId']),
     eval_score:
       asRecord(record.verification)?.eval &&
@@ -584,11 +588,11 @@ export function enrichAgentStatusWithDurableEvidence(
       }
 
       const runId =
-        (focusTask ? recordString(focusTask, ['run_id', 'runId']) : null) ??
+        (focusTask ? recordString(focusTask, ['run_id', 'runId', 'source_run_id', 'sourceRunId']) : null) ??
         (latestArtifact
-          ? recordString(latestArtifact, ['run_id', 'runId'])
+          ? recordString(latestArtifact, ['run_id', 'runId', 'source_run_id', 'sourceRunId'])
           : null) ??
-        recordString(agent, ['run_id', 'runId']);
+        recordString(agent, ['run_id', 'runId', 'source_run_id', 'sourceRunId']);
       const jobId =
         (focusTask ? recordString(focusTask, ['job_id', 'jobId']) : null) ??
         (latestArtifact
@@ -611,7 +615,11 @@ export function enrichAgentStatusWithDurableEvidence(
         reconciliation_required: hasStateConflict,
         task_id: focusTask ? durableTaskId(focusTask) : null,
         run_id: runId,
+        run_id_state: runId ? 'known' : 'unknown',
         job_id: jobId,
+        job_id_state: jobId ? 'known' : 'unknown',
+        artifact_attribution_state:
+          matchedArtifacts.length > 0 ? 'matched' : 'not_observed',
         last_heartbeat_at: heartbeat,
         current_tasks: activeTasks,
         active_tasks: activeTasks,
@@ -657,6 +665,8 @@ export function normalizeAgentStatusPayload(
       queued: countAgentsByStatus(agents, 'queued'),
       blocked: countAgentsByStatus(agents, 'blocked'),
       idle: countAgentsByStatus(agents, 'idle'),
+      unknown: countAgentsByStatus(agents, 'unknown'),
+      done: countAgentsByStatus(agents, 'done'),
       completed,
     },
   };
