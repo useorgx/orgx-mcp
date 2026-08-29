@@ -2680,10 +2680,29 @@ export class OrgXMcp extends McpAgent<
             }
           }
         }
+      }
+
+      // Agent run outputs are sometimes scoped through entity_id/entity_type
+      // instead of the artifact initiative_id column. Always union the
+      // workspace artifact stream for fleet status; initiative-only lookup can
+      // otherwise omit a real agent deliverable and silently report zero.
+      if (workspaceId && params.toolId === 'get_agent_status') {
+        const records = await this.fetchEntityCollection({
+          type: 'artifact',
+          userId: params.userId,
+          workspaceId,
+          limit: 100,
+        });
+        for (const record of records) {
+          const key =
+            (typeof record.id === 'string' && record.id.trim()) ||
+            `${record.title ?? record.name ?? 'artifact'}:${record.status ?? 'draft'}`;
+          artifactMap.set(String(key), record);
+        }
       } else if (
         workspaceId &&
-        (params.toolId === 'get_morning_brief' ||
-          params.toolId === 'get_agent_status')
+        params.toolId === 'get_morning_brief' &&
+        initiativeIds.size === 0
       ) {
         const records = await this.fetchEntityCollection({
           type: 'artifact',
