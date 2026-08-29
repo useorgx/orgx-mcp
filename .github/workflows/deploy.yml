@@ -41,6 +41,9 @@ jobs:
 
       - uses: ./.github/actions/validate
 
+      - name: Validate gateway parity probe syntax
+        run: node --check scripts/verify-gateway-actor-parity.mjs
+
   # Main, release, and manual production/preview deploys validate in the same
   # job that deploys. This avoids a second checkout and dependency install.
   deploy:
