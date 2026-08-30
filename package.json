@@ -35,7 +35,7 @@
     "type-check": "tsc --noEmit",
     "test": "vitest",
     "test:watch": "vitest --watch",
-    "test:openai-review": "vitest run tests/openaiSubmissionReadiness.spec.ts tests/openaiOutputSchemas.spec.ts tests/submissionProfileLocalSideEffects.spec.ts tests/toolCatalogContractParity.spec.ts tests/openaiAppsChallenge.spec.ts tests/standardOutputSchema.spec.ts tests/widgetConfig.spec.ts tests/reviewerDeploymentConfig.spec.ts tests/mcpOriginValidation.spec.ts tests/requestToolProfile.spec.ts",
+    "test:openai-review": "vitest run tests/openaiSubmissionReadiness.spec.ts tests/openaiOutputSchemas.spec.ts tests/submissionProfileLocalSideEffects.spec.ts tests/toolCatalogContractParity.spec.ts tests/openaiAppsChallenge.spec.ts tests/standardOutputSchema.spec.ts tests/widgetConfig.spec.ts tests/reviewerDeploymentConfig.spec.ts tests/mcpOriginValidation.spec.ts tests/requestToolProfile.spec.ts tests/profileDiscoveryPolicy.spec.ts",
     "test:anthropic-review": "vitest run tests/directoryReadiness.spec.ts tests/submissionProfileLocalSideEffects.spec.ts tests/toolProfiles.compat.spec.ts tests/profileDiscoveryPolicy.spec.ts tests/smitheryMetadata.spec.ts tests/reviewerDeploymentConfig.spec.ts tests/mcpOriginValidation.spec.ts tests/requestToolProfile.spec.ts",
     "test:agent-selection": "node scripts/run-agent-selection.mjs",
     "test:description-ab": "node scripts/description-ab.mjs",

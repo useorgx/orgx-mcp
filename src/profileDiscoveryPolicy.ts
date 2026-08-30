@@ -29,7 +29,9 @@ export interface ProfileDiscoveryAuthorization {
  * OrgX surface, so it does not advertise mutation prompts, skill packs that
  * require unavailable tools, or unrelated action widgets. The read-only
  * fallback (unknown profile names) shares that restricted discovery because
- * it exposes the same seven read tools.
+ * it exposes the same seven read tools. The ChatGPT review profile keeps its
+ * authorized initiative resource and full widget set, but suppresses legacy
+ * prompts and skill packs whose required tools are not in its 23-tool surface.
  */
 export function resolveProfileDiscoveryPolicy(
   profileName: string | undefined | null,
@@ -52,11 +54,12 @@ export function resolveProfileDiscoveryPolicy(
         authorization.grantedScopes
       ).isAuthorized
     : true;
+  const includeLegacyAuxiliaryContent = resolved !== 'chatgpt';
 
   return {
     includeInitiativeResource: initiativeResourceAuthorized,
-    includeSkillResources: true,
-    includePrompts: true,
+    includeSkillResources: includeLegacyAuxiliaryContent,
+    includePrompts: includeLegacyAuxiliaryContent,
     widgetUris: null,
   };
 }
