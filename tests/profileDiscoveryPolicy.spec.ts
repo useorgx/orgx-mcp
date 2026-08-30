@@ -21,7 +21,7 @@ describe('profile auxiliary discovery policy', () => {
   });
 
   it('preserves the established auxiliary surface for general profiles', () => {
-    for (const profileName of ['v2', 'chatgpt', 'full', undefined]) {
+    for (const profileName of ['v2', 'full', 'claude-plugin', undefined]) {
       expect(resolveProfileDiscoveryPolicy(profileName)).toEqual({
         includeInitiativeResource: true,
         includeSkillResources: true,
@@ -29,6 +29,39 @@ describe('profile auxiliary discovery policy', () => {
         widgetUris: null,
       });
     }
+  });
+
+  it('suppresses incompatible auxiliary skills and prompts for the ChatGPT review profile', () => {
+    expect(resolveProfileDiscoveryPolicy('chatgpt')).toEqual({
+      includeInitiativeResource: true,
+      includeSkillResources: false,
+      includePrompts: false,
+      widgetUris: null,
+    });
+
+    expect(
+      resolveProfileDiscoveryPolicy('chatgpt', {
+        userId: 'oauth-user',
+        grantedScopes: [],
+      })
+    ).toEqual({
+      includeInitiativeResource: false,
+      includeSkillResources: false,
+      includePrompts: false,
+      widgetUris: null,
+    });
+
+    expect(
+      resolveProfileDiscoveryPolicy('chatgpt', {
+        userId: 'oauth-user',
+        grantedScopes: ['initiatives:read'],
+      })
+    ).toEqual({
+      includeInitiativeResource: true,
+      includeSkillResources: false,
+      includePrompts: false,
+      widgetUris: null,
+    });
   });
 
   it('only advertises initiative resources to an authorized read grant', () => {
