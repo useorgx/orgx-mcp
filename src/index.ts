@@ -13496,8 +13496,11 @@ export class OrgXMcp extends McpAgent<
     allowedWidgetUris: ReadonlySet<string> | null = null
   ) {
     const widgetMeta = buildWidgetMeta(this.env);
-    const mcpAppsMeta = buildMcpAppsMeta(this.env);
+    const activeProfile = resolveToolProfile(this.props?.profile).name;
+    const mcpAppsMeta = buildMcpAppsMeta(this.env, activeProfile);
     const mcpAppsContentMeta = { ...widgetMeta, ...mcpAppsMeta };
+    const skybridgeContentMeta =
+      activeProfile === 'chatgpt' ? mcpAppsContentMeta : widgetMeta;
 
     for (const widget of WIDGET_RESOURCES) {
       if (allowedWidgetUris && !allowedWidgetUris.has(widget.uri)) continue;
@@ -13544,14 +13547,14 @@ export class OrgXMcp extends McpAgent<
         {
           description: `${widget.title} (ChatGPT)`,
           mimeType: SKYBRIDGE_MIME_TYPE,
-          _meta: widgetMeta,
+          _meta: skybridgeContentMeta,
         },
         async () =>
           this.buildWidgetResourceResponse(
             widget.uri,
             widget.title,
             SKYBRIDGE_MIME_TYPE,
-            widgetMeta,
+            skybridgeContentMeta,
             outputTemplateUri
           )
       );
@@ -13564,14 +13567,14 @@ export class OrgXMcp extends McpAgent<
         {
           description: `${widget.title} (ChatGPT, version-tolerant)`,
           mimeType: SKYBRIDGE_MIME_TYPE,
-          _meta: widgetMeta,
+          _meta: skybridgeContentMeta,
         },
         async (uri) =>
           this.buildWidgetResourceResponse(
             toWidgetHtmlResourceUri(uri.toString()),
             widget.title,
             SKYBRIDGE_MIME_TYPE,
-            widgetMeta,
+            skybridgeContentMeta,
             uri.toString()
           )
       );

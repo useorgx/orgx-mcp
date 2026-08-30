@@ -1125,12 +1125,24 @@
     (function () {
       'use strict';
 
+      const ALLOWED_ARTIFACT_MEDIA_ORIGINS = [
+        'https://mcp.useorgx.com',
+        'https://cdn.useorgx.com',
+      ];
+      const ALLOWED_ARTIFACT_LINK_ORIGINS = [
+        'https://mcp.useorgx.com',
+        'https://useorgx.com',
+        'https://www.useorgx.com',
+        'https://github.com',
+      ];
+
       // ─── SDK shim ────────────────────────────────────────────────
       function callTool(name, args) {
         return window.OrgXWidgetRuntime.callTool(name, args || {});
       }
 
       function openWidgetLink(url) {
+        if (!isAllowedArtifactLinkUrl(url)) return false;
         return window.OrgXWidgetRuntime.openWidgetLink(url);
       }
 
@@ -1408,8 +1420,22 @@
         return labels.length ? labels.join(' · ') : fallback;
       }
 
+      function hasAllowedHttpsOrigin(value, allowedOrigins) {
+        try {
+          const url = new URL(value);
+          return url.protocol === 'https:' && allowedOrigins.includes(url.origin);
+        } catch (_) {
+          return false;
+        }
+      }
+
+      function isAllowedArtifactLinkUrl(value) {
+        return hasAllowedHttpsOrigin(value, ALLOWED_ARTIFACT_LINK_ORIGINS);
+      }
+
       function isSafeMediaUrl(value, allowImageData) {
-        return /^https?:\/\//i.test(value) || (allowImageData && /^data:image\//i.test(value));
+        if (allowImageData && /^data:image\//i.test(value)) return true;
+        return hasAllowedHttpsOrigin(value, ALLOWED_ARTIFACT_MEDIA_ORIGINS);
       }
 
       function normalizeArtifact(artifact) {
@@ -2111,7 +2137,7 @@
         const scoreWidth = evidence.score === null ? 0 : Math.round(evidence.score * 100);
         const thresholdLeft = evidence.threshold === null ? null : Math.round(evidence.threshold * 100);
         const producer = artifact.author || {};
-        const source = evidence.sourceUrl && /^https?:\/\//i.test(evidence.sourceUrl)
+        const source = evidence.sourceUrl && isAllowedArtifactLinkUrl(evidence.sourceUrl)
           ? '<a href="' + escapeAttribute(evidence.sourceUrl) + '" data-source-link>' + escapeHtml(evidence.sourceUrl.replace(/^https?:\/\//i, '').slice(0, 52)) + (evidence.sourceUrl.length > 60 ? '…' : '') + '</a>'
           : 'Attached artifact record';
         return (

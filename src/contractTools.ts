@@ -376,14 +376,14 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_decide',
     title: 'Manage OrgX Decision',
     description:
-      'Use when the user says "remember this decision," asks "what did we decide about X," or agent work needs human approval before it proceeds. Creates, approves, rejects, remembers, or lists durable OrgX decisions.\n\n' +
+      'Creates or remembers durable OrgX decisions, lists pending decisions, and opens human review. Approval and rejection are human-session-only: those actions return a review URL and never resolve the decision or resume work from MCP.\n\n' +
       'Per-action input requirements:\n' +
-      '  • action="list_pending" → No required fields. Optional: initiative_id, workspace_id (scope filters).\n' +
-      '  • action="create"       → REQUIRES title AND decision (the resolved decision text). Recommended: context, initiative_id.\n' +
-      '  • action="remember"     → REQUIRES decision (the text to capture as a remembered decision). Optional: title, context.\n' +
-      '  • action="approve"      → REQUIRES decision_id. Optional: note (free-text approver rationale).\n' +
-      '  • action="reject"       → REQUIRES decision_id AND reason (explanation shown to the assigned agent).\n\n' +
-      'USE WHEN: capturing judgment or reviewing a pending decision. Decision resolution is human-session-only: approve/reject returns a review URL because an MCP delegation is not proof that a person ruled. NEXT: open the returned review URL, then use orgx_act, orgx_write, or orgx_spawn only after the decision resolves. DO NOT USE WHEN: writing non-decision entities; use orgx_write.',
+      '  • action="list_pending" → No required fields; initiative_id and workspace_id are optional filters.\n' +
+      '  • action="create" → REQUIRES title and decision. Optional: context, initiative_id.\n' +
+      '  • action="remember" → REQUIRES decision. Optional: title, context.\n' +
+      '  • action="approve" → REQUIRES decision_id. Optional note is accepted but not persisted by MCP.\n' +
+      '  • action="reject" → REQUIRES decision_id and reason; MCP does not persist the reason.\n\n' +
+      'USE WHEN: capturing judgment or reviewing a pending decision. NEXT: open the returned review URL, then act only after the decision resolves. DO NOT USE WHEN: writing non-decision entities; use orgx_write.',
     inputSchema: {
       action: z.enum(['create', 'remember', 'list_pending', 'approve', 'reject']).describe('Decision operation. See top-level description for per-action required fields.'),
       decision_id: z.string().optional().describe('Decision UUID. REQUIRED for action=approve or action=reject. Returned by action=list_pending or action=create.'),
@@ -391,14 +391,14 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       decision: z.string().optional().describe('The decision text itself (what was decided). REQUIRED for action=create and action=remember.'),
       summary: z.string().optional().describe('Optional one-line summary used in lists. Falls back to title when omitted.'),
       context: z.string().optional().describe('Background context / rationale that led to the decision. Recommended for action=create to capture provenance.'),
-      reason: z.string().optional().describe('REQUIRED for action=reject. Explanation of why the decision was rejected — used by the assigned agent to adjust its next attempt.'),
-      note: z.string().optional().describe('Optional approver note for action=approve. Free-text rationale stored in audit history.'),
+      reason: z.string().optional().describe('REQUIRED for action=reject before returning the human-session review URL. MCP does not persist or submit this reason.'),
+      note: z.string().optional().describe('Optional compatibility field for action=approve. MCP does not persist it; enter the final rationale in the human review session.'),
       initiative_id: z.string().optional().describe('Optional initiative UUID to scope the decision. Used as filter when action=list_pending; used as parent when action=create.'),
       workspace_id: z.string().optional().describe('Optional workspace UUID to scope the decision. Defaults to the MCP session\'s workspace.'),
-      idempotency_key: z.string().optional().describe('Strongly recommended client-supplied idempotency key for writes (action=create, remember, approve, reject). Same key returns the same result without duplicating state.'),
+      idempotency_key: z.string().optional().describe('Strongly recommended client-supplied idempotency key for action=create or action=remember. Same key returns the same result without duplicating state.'),
       session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
     },
-    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.decisionAccessRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.decisions,
@@ -704,7 +704,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'approve_agent_work',
     title: 'Approve Agent Work',
     description:
-      'Use when agent work is paused waiting for a human yes — review pending decisions, then approve or reject them. Also known as: pending approvals, agent blocked, sign off, review decisions, approve AI work.\n\n' +
+      'Use when agent work is paused waiting for a human yes — list pending decisions and open the human review surface. Listing may record usage or session state, so this tool is not read-only. Approval and rejection are human-session-only: those actions return a review URL and never resolve the item or resume work from MCP. Also known as: pending approvals, agent blocked, sign off, review decisions, approve AI work.\n\n' +
       'Per-action input requirements:\n' +
       '  • action="list" (default when action omitted) → No required fields. Optional filters: limit, urgency_filter, initiative_id.\n' +
       '  • action="approve" → REQUIRES decision_id. Returns the human-session review URL; MCP does not self-approve.\n' +
@@ -717,9 +717,9 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       action: z
         .enum(['list', 'approve', 'reject'])
         .optional()
-        .describe('Operation to perform. Defaults to "list" (returns pending approvals). Use "approve" or "reject" to act on a specific decision_id.'),
-      note: z.string().optional().describe('Optional approver note for action="approve". Free-text rationale stored in audit history.'),
-      reason: z.string().optional().describe('REQUIRED for action="reject". Explanation of why the decision was rejected — used by the agent to adjust its next attempt.'),
+        .describe('Operation to perform. Defaults to "list" (returns pending approvals). "approve" and "reject" validate the request and return the human-session review URL without resolving the decision.'),
+      note: z.string().optional().describe('Optional compatibility field for action="approve". MCP does not persist it; enter the final rationale in the human review session.'),
+      reason: z.string().optional().describe('REQUIRED for action="reject" before returning the human-session review URL. MCP does not persist or submit this reason.'),
       limit: z
         .number()
         .optional()
@@ -737,7 +737,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
         .optional()
         .describe('Used only when action="list". Scopes pending decisions to a specific workspace UUID. Defaults to the MCP session workspace when omitted.'),
     },
-    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.decisions,
@@ -1172,7 +1172,7 @@ export const INLINE_TOOL_CONTRACTS = {
     id: 'scaffold_initiative',
     title: 'Scaffold Initiative',
     description:
-      'Inline worker tool for drafting, creating, or launching a full initiative hierarchy in one call. Also known as: Scaffold an initiative hierarchy, create workstream tree, build initiative plan. Returns initiative_id, ref_map, and preferred_next_calls with orgx_search/orgx_inspect next calls for chaining.',
+      'Scaffold an initiative hierarchy to draft, create, or launch it. Returns initiative_id, ref_map, and preferred_next_calls.',
     inputSchema: {
       title: z.string().min(1).describe('Initiative title.'),
       summary: z.string().optional().describe('Initiative summary.'),

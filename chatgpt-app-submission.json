@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developers.openai.com/apps-sdk/schemas/chatgpt-app-submission.v1.json",
+  "$schema": "https://developers.openai.com/plugins/schemas/chatgpt-app-submission.v1.json",
   "schema_version": 1,
   "app_info": {
     "display_name": "OrgX",
@@ -96,12 +96,12 @@
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": true,
-        "destructiveHint": false
+        "destructiveHint": true
       },
       "justifications": {
         "read_only_justification": "Pauses, resumes, retries, or cancels running OrgX work and therefore changes execution state.",
         "open_world_justification": "Resume and retry can redispatch descendant agents that may act in connected third-party systems.",
-        "destructive_justification": "Controls reversible runtime state and cancels active work without deleting durable OrgX records."
+        "destructive_justification": "Cancellation stops active runs and propagated descendant work, which cannot be restored as the same execution even though durable records remain."
       }
     },
     "orgx_plan": {
@@ -131,13 +131,13 @@
     "orgx_decide": {
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": true,
-        "destructiveHint": true
+        "openWorldHint": false,
+        "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Can create, approve, reject, or remember decisions, so it changes decision state.",
-        "open_world_justification": "Approve mode can resume or continue agent work that operates in connected systems.",
-        "destructive_justification": "Approval or rejection can irreversibly resolve a pending decision; approval may also resume execution."
+        "read_only_justification": "Creates or remembers private OrgX decisions, so it changes durable decision state.",
+        "open_world_justification": "Create, remember, and list stay inside OrgX; approve and reject only return a human-session review URL and never resume external work from MCP.",
+        "destructive_justification": "Does not resolve decisions, delete records, or resume work; approval and rejection must occur in the human review session."
       }
     },
     "orgx_submit_receipt": {
@@ -227,13 +227,13 @@
     "approve_agent_work": {
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": true,
-        "destructiveHint": true
+        "openWorldHint": false,
+        "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Can approve or reject agent approval items, so it changes approval state.",
-        "open_world_justification": "Approve mode can resume or continue agent work that operates in connected systems.",
-        "destructive_justification": "Approval or rejection can irreversibly resolve agent work; approval may also resume execution."
+        "read_only_justification": "Listing approval items may record usage or session state, while approve and reject only return a human-session review URL.",
+        "open_world_justification": "Does not resolve approval items or resume connected work from MCP; it only reads private OrgX state and returns a review URL.",
+        "destructive_justification": "Does not approve, reject, delete, or irreversibly change agent work from MCP."
       }
     },
     "review_artifact": {

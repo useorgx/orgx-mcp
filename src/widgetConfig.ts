@@ -10,6 +10,7 @@ export const SKYBRIDGE_MIME_TYPE = 'text/html+skybridge';
 
 const DEFAULT_WIDGET_BASE_URL = 'https://mcp.useorgx.com/widgets/';
 const DEFAULT_WIDGET_DOMAIN = 'https://mcp.useorgx.com';
+const DEFAULT_RESOURCE_DOMAINS = ['https://cdn.useorgx.com'];
 const DEFAULT_REDIRECT_DOMAINS = [
   'https://mcp.useorgx.com',
   'https://useorgx.com',
@@ -116,6 +117,9 @@ function buildWidgetCsp(env: WidgetEnv) {
   if (resourceOrigins.size === 0) {
     resourceOrigins.add('https://mcp.useorgx.com');
   }
+  for (const domain of DEFAULT_RESOURCE_DOMAINS) {
+    resourceOrigins.add(domain);
+  }
   const redirectDomains = new Set(DEFAULT_REDIRECT_DOMAINS);
   addOrigin(redirectDomains, env.MCP_SERVER_URL);
   addOrigin(redirectDomains, env.ORGX_WEB_URL);
@@ -145,14 +149,14 @@ export function buildWidgetMeta(env: WidgetEnv) {
  * - resourceDomains: For loading scripts, styles, images
  * - connectDomains: For fetch/WebSocket API calls
  */
-export function buildMcpAppsMeta(env: WidgetEnv) {
+export function buildMcpAppsMeta(env: WidgetEnv, profile?: string) {
   const csp = buildWidgetCsp(env);
   return {
     ui: {
-      // `ui.domain` is host-specific. Claude requires a dedicated
-      // `{hash}.claudemcpcontent.com` origin, so do not send the MCP server
-      // URL here. Omitting it lets each MCP Apps host choose its sandbox
-      // origin. The ChatGPT-specific domain remains in buildWidgetMeta().
+      // The standard MCP Apps domain is safe only for the explicit ChatGPT
+      // profile. Claude requires a dedicated `{hash}.claudemcpcontent.com`
+      // origin, so every other profile lets the host choose its sandbox.
+      ...(profile === 'chatgpt' ? { domain: resolveWidgetDomain(env) } : {}),
       prefersBorder: true,
       csp: {
         // resourceDomains allows loading external scripts/styles/images
@@ -160,9 +164,9 @@ export function buildMcpAppsMeta(env: WidgetEnv) {
         resourceDomains: csp.resource_domains,
         // connectDomains allows fetch/XHR/WebSocket connections
         connectDomains: csp.connect_domains,
-        // Keep base-uri permissive for future compatibility, but widgets should
-        // not depend on it because some hosts reject runtime base injection.
-        baseUriDomains: csp.resource_domains,
+        // Base URLs stay pinned to the widget server; allowing the media CDN
+        // here would broaden navigation without helping resource loads.
+        baseUriDomains: csp.connect_domains,
       },
     },
   };

@@ -143,7 +143,7 @@
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": true,
-        "destructiveHint": false
+        "destructiveHint": true
       }
     },
     {
@@ -169,11 +169,11 @@
     {
       "name": "orgx_decide",
       "title": "Manage OrgX Decision",
-      "description": "Use when the user says \"remember this decision,\" asks \"what did we decide about X,\" or agent work needs human approval. Creates, remembers, lists, approves, or rejects durable OrgX decisions; approval can resume connected agent execution.",
+      "description": "Creates or remembers durable OrgX decisions and lists pending decisions. Approve and reject return a human-session review URL; they never resolve the decision or resume work from MCP.",
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": true,
-        "destructiveHint": true
+        "openWorldHint": false,
+        "destructiveHint": false
       }
     },
     {
@@ -369,11 +369,11 @@
     {
       "name": "approve_agent_work",
       "title": "Approve Agent Work",
-      "description": "Use when agent work is paused waiting for a human yes. Lists, approves, or rejects agent approval items; approval can resume connected agent execution.",
+      "description": "Lists pending agent approval items. Approve and reject validate the request and return a human-session review URL; they never resolve the item or resume work from MCP.",
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": true,
-        "destructiveHint": true
+        "openWorldHint": false,
+        "destructiveHint": false
       }
     },
     {

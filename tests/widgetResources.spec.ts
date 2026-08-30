@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -7,6 +11,13 @@ import {
   WIDGET_URIS,
 } from '../src/toolDefinitions';
 import { WIDGET_BUILD_VERSION } from '../src/generated/widgetBuildInfo';
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const artifactReviewHtml = readFileSync(
+  resolve(root, 'public/widgets/artifact-review.html'),
+  'utf8'
+);
+const workerSource = readFileSync(resolve(root, 'src/index.ts'), 'utf8');
 
 describe('widget resources', () => {
   it('registers scaffolded initiative widget URIs', () => {
@@ -34,5 +45,29 @@ describe('widget resources', () => {
         visibility: ['model', 'app'],
       },
     });
+  });
+
+  it('keeps artifact media and outbound links inside the declared CSP allowlists', () => {
+    expect(artifactReviewHtml).toContain("'https://cdn.useorgx.com'");
+    expect(artifactReviewHtml).toContain('ALLOWED_ARTIFACT_MEDIA_ORIGINS');
+    expect(artifactReviewHtml).toContain('ALLOWED_ARTIFACT_LINK_ORIGINS');
+    expect(artifactReviewHtml).toContain(
+      'return hasAllowedHttpsOrigin(value, ALLOWED_ARTIFACT_MEDIA_ORIGINS);'
+    );
+    expect(artifactReviewHtml).toContain(
+      'evidence.sourceUrl && isAllowedArtifactLinkUrl(evidence.sourceUrl)'
+    );
+    expect(artifactReviewHtml).not.toContain(
+      'return /^https?:\\/\\//i.test(value)'
+    );
+  });
+
+  it('publishes standard ui.domain metadata only through the explicit ChatGPT profile', () => {
+    expect(workerSource).toContain(
+      'buildMcpAppsMeta(this.env, activeProfile)'
+    );
+    expect(workerSource).toContain(
+      "activeProfile === 'chatgpt' ? mcpAppsContentMeta : widgetMeta"
+    );
   });
 });
