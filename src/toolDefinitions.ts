@@ -2252,7 +2252,7 @@ export const STREAM_TOOL_DEFINITIONS = [
     },
     annotations: {
       readOnlyHint: false,
-      destructiveHint: false,
+      destructiveHint: true,
       openWorldHint: true,
     },
     securitySchemes: SECURITY_SCHEMES.handoffRequiresAuth,

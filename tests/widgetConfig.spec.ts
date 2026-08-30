@@ -90,7 +90,7 @@ describe('widgetConfig', () => {
     );
   });
 
-  it('includes baseUriDomains for MCP Apps sandbox compatibility', () => {
+  it('includes baseUriDomains and the fixed CDN resource origin without setting a host domain', () => {
     const meta = buildMcpAppsMeta({
       MCP_SERVER_URL: 'https://mcp.useorgx.com',
       ORGX_WEB_URL: 'https://www.useorgx.com',
@@ -98,7 +98,10 @@ describe('widgetConfig', () => {
     });
 
     expect(meta.ui.csp.connectDomains).toEqual(['https://mcp.useorgx.com']);
-    expect(meta.ui.csp.resourceDomains).toEqual(['https://mcp.useorgx.com']);
+    expect(meta.ui.csp.resourceDomains).toEqual([
+      'https://mcp.useorgx.com',
+      'https://cdn.useorgx.com',
+    ]);
     expect(meta.ui.csp.baseUriDomains).toEqual(['https://mcp.useorgx.com']);
     expect(meta.ui.csp.connectDomains).not.toContain(
       'https://next.useorgx.com'
@@ -112,6 +115,21 @@ describe('widgetConfig', () => {
     expect(meta.ui).not.toHaveProperty('domain');
   });
 
+  it('sets standard ui.domain only for the explicit ChatGPT profile', () => {
+    const env = {
+      MCP_SERVER_URL: 'https://mcp.useorgx.com/mcp',
+      ORGX_WEB_URL: 'https://useorgx.com',
+    };
+
+    expect(buildMcpAppsMeta(env, 'chatgpt').ui.domain).toBe(
+      'https://mcp.useorgx.com'
+    );
+    expect(buildMcpAppsMeta(env, 'claude-directory').ui).not.toHaveProperty(
+      'domain'
+    );
+    expect(buildMcpAppsMeta(env, 'v2').ui).not.toHaveProperty('domain');
+  });
+
   it('publishes a dedicated widget origin and narrow external-link allowlist', () => {
     const meta = buildWidgetMeta({
       MCP_SERVER_URL: 'https://mcp.useorgx.com/mcp',
@@ -119,6 +137,11 @@ describe('widgetConfig', () => {
     });
 
     expect(meta['openai/widgetDomain']).toBe('https://mcp.useorgx.com');
+    expect(meta['openai/widgetCSP'].resource_domains).toEqual([
+      'https://mcp.useorgx.com',
+      'https://cdn.useorgx.com',
+    ]);
+    expect(meta['openai/widgetCSP'].resource_domains).not.toContain('*');
     expect(meta['openai/widgetCSP'].redirect_domains).toEqual(
       expect.arrayContaining([
         'https://mcp.useorgx.com',

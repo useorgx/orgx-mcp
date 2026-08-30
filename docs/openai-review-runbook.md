@@ -8,6 +8,7 @@ Use this runbook before each OpenAI app submission or resubmission. It verifies 
 
 - submitted ChatGPT test prompts map to exact MCP tools,
 - expected outputs are deterministic and reviewable,
+- every submitted tool publishes an exact, tool-specific `outputSchema`,
 - every enabled ChatGPT and Codex review surface uses the same seeded
   workspace baseline,
 - tool responses do not return unnecessary personal identifiers, secrets, raw logs, request IDs, or trace IDs,
@@ -30,8 +31,10 @@ Submit through the OpenAI Platform plugin portal at
 <https://platform.openai.com/plugins>. Use submission type **With MCP** and
 enter the production Universal URL directly. Do not reference an older
 integration ID. `chatgpt-app-submission.json` remains the checked-in source of
-truth for listing copy, annotations, and tests, but it is not proof that the
-current portal supports JSON import.
+truth for listing copy, annotations, and tests and uses the current
+`https://developers.openai.com/plugins/schemas/chatgpt-app-submission.v1.json`
+package schema, but it is not proof that the current portal supports JSON
+import.
 
 Before opening review, confirm all of the following in the portal:
 
@@ -48,6 +51,9 @@ Before opening review, confirm all of the following in the portal:
 - a fresh **Scan Tools** result matches the deployed tool names,
   descriptions, schemas, security schemes, annotations, `_meta`, UI resources,
   CSP, and verified domains;
+- every one of the 23 `chatgpt` profile tools has a non-null, exact
+  `outputSchema`, and every standard widget resource includes
+  `_meta.ui.domain=https://mcp.useorgx.com` on that profile;
 - no other version of this MCP-backed plugin is already under review.
 
 There is no general first-party requirement for a demo MP4 in the current
@@ -67,6 +73,22 @@ Five submitted tools are strictly read-only: `orgx_inspect`,
 `readOnlyHint: false` because a successful mode records metered MCP allowance
 usage: mixed `orgx_search`, default `orgx_recommend`, `get_agent_status`, and
 `get_initiative_pulse`. All nine are non-destructive and closed-world.
+
+The consolidated `orgx_decide` and `approve_agent_work` routers also use
+`readOnlyHint: false`, `openWorldHint: false`, and `destructiveHint: false`.
+Their create/remember/list paths can write private state or record usage, while
+approve/reject only validate the request and return the human-session review
+URL; they never resolve a decision or resume execution from MCP. The legacy
+`approve_decision` and `reject_decision` tools remain separate
+explicit-confirmation actions for compatibility. Do not describe the consolidated
+routers as aliases for those direct actions.
+
+Widget resource metadata is profile-aware. The explicit `chatgpt` profile
+publishes the standard MCP Apps `ui.domain` for `https://mcp.useorgx.com`.
+Claude and every non-ChatGPT profile omit `ui.domain` so the host can assign
+its required sandbox origin. Resource CSP is limited to the MCP origin and
+`https://cdn.useorgx.com`; outbound widget links remain limited to the declared
+OrgX and GitHub origins. No wildcard is permitted.
 
 The worker suppresses local session-context, activation/reentry, analytics,
 diagnostic, and success-log writes for these informational tool executions as
@@ -186,26 +208,25 @@ Allowed when needed for the user request:
 - workspace or entity references needed for follow-up actions,
 - policy/auth blockers stated without exposing secrets.
 
-## Output Schema Reliability Warning
+## Output Schema Submission Gate
 
-Missing `outputSchema` is a nonblocking submission warning. It does not block
-generating, importing, or submitting the ChatGPT app submission JSON. Exact
-tool-specific `outputSchema` declarations are still recommended because they
-make structured results more reliable for clients and reviewers. A permissive
-catch-all schema is not an acceptable substitute because it does not describe
-the object the tool actually returns.
+OrgX treats a missing or catch-all `outputSchema` on any submitted tool as a
+blocking current-release gate. Do not submit or resubmit until a fresh
+`tools/list` confirms that all 23 `chatgpt` profile tools publish exact,
+tool-specific schemas. A permissive catch-all `outputSchema` is not an
+acceptable substitute because it does not describe the object the tool actually
+returns.
 
 Contract references: [OpenAI MCP server guide](https://developers.openai.com/plugins/build/mcp-server),
 [OpenAI Plugins reference](https://developers.openai.com/plugins/reference),
 and the [MCP tools specification](https://modelcontextprotocol.io/specification/2025-11-25/server/tools).
 
-The worker currently omits a blanket output schema rather than advertising a
-false contract. Add exact schemas incrementally at each tool definition, keep
-`additionalProperties: false` where the returned object is closed, and validate
-representative success, empty, auth-error, validation-error, and provider-error
-results as each schema lands. Rerun `pnpm test:openai-review` plus the
-authenticated enabled-surface cases after each schema change; do not invent a
-schema merely to silence the warning.
+The worker maps each submitted tool to its exact structured-result schema and
+never substitutes a blanket schema. Keep `additionalProperties: false` where a
+returned object is closed, and validate representative success, empty,
+auth-error, validation-error, and provider-error results. Rerun
+`pnpm test:openai-review` plus the authenticated enabled-surface cases after any
+schema change.
 
 ## Resubmission Notes
 
@@ -215,6 +236,8 @@ In the OpenAI plugin portal release notes, summarize:
 - submitted test cases rewritten with exact expected tool names and deterministic seeded outputs,
 - enabled ChatGPT/Codex surface verification rerun against the dedicated
   review workspace,
+- all 23 submitted tools published exact `outputSchema` contracts and the
+  profile-aware widget domain/CSP contract passed a fresh portal scan,
 - output audit completed to remove unnecessary identifiers and secrets.
 
 Approval and publication are separate states. After approval, publish the

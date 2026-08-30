@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-08-27T07:17:12.110Z",
+  "generatedAt": "2026-08-30T20:44:10.805Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -56,8 +56,8 @@
     },
     "artifact-review": {
       "file": "public/widgets/artifact-review.html",
-      "bytes": 107622,
-      "hash": "060734d8d032",
+      "bytes": 108447,
+      "hash": "dd549a3cd551",
       "primaryRgb": "251,191,36",
       "sharedRefs": [
         "shared/components/domain-accent.css",
@@ -74,8 +74,8 @@
     },
     "daily-brief": {
       "file": "public/widgets/daily-brief.html",
-      "bytes": 26535,
-      "hash": "702974abf2a0",
+      "bytes": 36025,
+      "hash": "8b84ff18e9ea",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/mcp-apps-sdk.umd.js",
@@ -103,8 +103,8 @@
     },
     "index": {
       "file": "public/widgets/index.html",
-      "bytes": 23535,
-      "hash": "d8dd9a04b22a",
+      "bytes": 24374,
+      "hash": "ab75370af72a",
       "primaryRgb": "17,24,39",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -117,8 +117,8 @@
     },
     "initiative-pulse": {
       "file": "public/widgets/initiative-pulse.html",
-      "bytes": 108273,
-      "hash": "d6d14bd23b95",
+      "bytes": 112843,
+      "hash": "659d7c6df4d2",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/components/domain-accent.css",
@@ -136,8 +136,8 @@
     },
     "morning-brief": {
       "file": "public/widgets/morning-brief.html",
-      "bytes": 66571,
-      "hash": "ed8423204614",
+      "bytes": 69641,
+      "hash": "a4cd4f54403a",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/icons.js",
@@ -170,8 +170,8 @@
     },
     "scaffold-streaming": {
       "file": "public/widgets/scaffold-streaming.html",
-      "bytes": 40261,
-      "hash": "f04f010278ba",
+      "bytes": 42641,
+      "hash": "f53ad60e2b3b",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/mcp-apps-sdk.umd.js",
@@ -183,8 +183,8 @@
     },
     "scaffolded-initiative": {
       "file": "public/widgets/scaffolded-initiative.html",
-      "bytes": 145213,
-      "hash": "b531026c641a",
+      "bytes": 145340,
+      "hash": "f51a51cf9525",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -199,8 +199,8 @@
     },
     "search-results": {
       "file": "public/widgets/search-results.html",
-      "bytes": 55459,
-      "hash": "cb7cad2e83f1",
+      "bytes": 55442,
+      "hash": "0fe1e5c7aa88",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/mcp-apps-sdk.umd.js",
@@ -213,8 +213,8 @@
     },
     "task-spawned": {
       "file": "public/widgets/task-spawned.html",
-      "bytes": 44487,
-      "hash": "8f961183c593",
+      "bytes": 45125,
+      "hash": "6fd0bb85d08d",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/interaction-kit.css",

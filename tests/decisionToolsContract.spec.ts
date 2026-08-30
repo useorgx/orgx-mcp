@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { CONTRACT_TOOL_DEFINITIONS } from '../src/contractTools';
 import { CHATGPT_TOOL_DEFINITIONS } from '../src/toolDefinitions';
 
 /**
@@ -28,7 +29,11 @@ interface DefinedTool {
   id: string;
   description: string;
   inputSchema: Record<string, { _def?: { typeName?: string } } & { isOptional?: () => boolean }>;
-  annotations?: { readOnlyHint?: boolean; destructiveHint?: boolean };
+  annotations?: {
+    readOnlyHint?: boolean;
+    destructiveHint?: boolean;
+    openWorldHint?: boolean;
+  };
   _meta?: Record<string, unknown>;
 }
 
@@ -37,6 +42,14 @@ function findTool(id: string): DefinedTool {
     (t) => t.id === id
   );
   if (!tool) throw new Error(`tool ${id} not found in CHATGPT_TOOL_DEFINITIONS`);
+  return tool;
+}
+
+function findContractTool(id: string): DefinedTool {
+  const tool = (CONTRACT_TOOL_DEFINITIONS as unknown as DefinedTool[]).find(
+    (entry) => entry.id === id
+  );
+  if (!tool) throw new Error(`contract tool ${id} not found`);
   return tool;
 }
 
@@ -145,5 +158,44 @@ describe('decision tools contract', () => {
         ]
     );
     expect(new Set(templates).size).toBe(1);
+  });
+
+  it('keeps consolidated review routers closed-world and non-destructive', () => {
+    for (const id of ['orgx_decide', 'approve_agent_work']) {
+      const tool = findContractTool(id);
+      expect(tool.annotations, id).toEqual({
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+      });
+      expect(tool.description, id).toContain('human-session-only');
+      expect(tool.description, id).toContain('return a review URL');
+      expect(tool.description, id).toContain('never resolve');
+      expect(tool.description, id).not.toContain('approval can resume');
+
+      const note = tool.inputSchema.note as { description?: string } | undefined;
+      const reason = tool.inputSchema.reason as { description?: string } | undefined;
+      expect(note?.description, id).toContain('does not persist');
+      expect(reason?.description, id).toContain('does not persist');
+    }
+  });
+
+  it('preserves direct legacy decision actions behind explicit user confirmation', () => {
+    const approve = findTool('approve_decision');
+    const reject = findTool('reject_decision');
+
+    expect(approve.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: true,
+      openWorldHint: true,
+    });
+    expect(reject.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: true,
+      openWorldHint: false,
+    });
+    expect(approve.description).toContain('explicit confirmation');
+    expect(approve.description).toContain('DO NOT USE');
+    expect(reject.description).toContain('DO NOT USE');
   });
 });

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import { OPENAI_OUTPUT_SCHEMAS } from '../src/openaiOutputSchemas';
 import { CHATGPT_PUBLIC_SURFACE } from '../src/toolProfiles';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -11,6 +12,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const submission = JSON.parse(
   readFileSync(resolve(root, 'chatgpt-app-submission.json'), 'utf8')
 ) as {
+  $schema: string;
   app_info: {
     display_name: string;
     subtitle: string;
@@ -69,10 +71,6 @@ const toolDefinitionsSource = readFileSync(
   resolve(root, 'src/toolDefinitions.ts'),
   'utf8'
 );
-const toolResultRegistrationSource = readFileSync(
-  resolve(root, 'src/toolResultRegistration.ts'),
-  'utf8'
-);
 const workerSource = readFileSync(resolve(root, 'src/index.ts'), 'utf8');
 const scaffoldControlSource = readFileSync(
   resolve(root, 'src/scaffoldControl.ts'),
@@ -93,10 +91,10 @@ const expectedChatGptHints = {
   orgx_write: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
   orgx_attach: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
   orgx_act: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
-  manage_lifecycle: { readOnlyHint: false, openWorldHint: true, destructiveHint: false },
+  manage_lifecycle: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
   orgx_plan: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
   orgx_spawn: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
-  orgx_decide: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
+  orgx_decide: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
   orgx_submit_receipt: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
   approve_decision: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
   reject_decision: { readOnlyHint: false, openWorldHint: false, destructiveHint: true },
@@ -104,7 +102,7 @@ const expectedChatGptHints = {
   get_initiative_pulse: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
   scaffold_initiative: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
   handoff_task: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
-  approve_agent_work: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
+  approve_agent_work: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
   review_artifact: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
   get_morning_brief: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
   get_operator_chronicle: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
@@ -117,6 +115,9 @@ const serverToolsByName = new Map(
 
 describe('OpenAI ChatGPT app submission readiness', () => {
   it('keeps app info concise and review-facing', () => {
+    expect(submission.$schema).toBe(
+      'https://developers.openai.com/plugins/schemas/chatgpt-app-submission.v1.json'
+    );
     expect(submission.app_info.display_name).toBe('OrgX');
     expect(submission.app_info.subtitle.length).toBeLessThanOrEqual(30);
     expect(submission.app_info.description).toContain(
@@ -190,24 +191,27 @@ describe('OpenAI ChatGPT app submission readiness', () => {
     }
   });
 
-  it('omits false catch-all output schemas and documents the nonblocking warning', () => {
-    expect(workerSource).not.toContain('STANDARD_TOOL_OUTPUT_SCHEMA');
-    expect(toolDefinitionsSource).not.toContain('STANDARD_TOOL_OUTPUT_SCHEMA');
-    expect(toolResultRegistrationSource).toContain(
-      'this wrapper never invents an outputSchema'
+  it('requires an exact output schema for every submitted tool', () => {
+    expect(Object.keys(OPENAI_OUTPUT_SCHEMAS).sort()).toEqual(
+      [...CHATGPT_PUBLIC_SURFACE].sort()
     );
-    expect(openaiRunbook).toContain('nonblocking submission warning');
+    for (const toolName of CHATGPT_PUBLIC_SURFACE) {
+      expect(OPENAI_OUTPUT_SCHEMAS[toolName], toolName).toBeDefined();
+      expect(OPENAI_OUTPUT_SCHEMAS[toolName].safeParse, toolName).toEqual(
+        expect.any(Function)
+      );
+    }
+    expect(openaiRunbook).toContain('blocking current-release gate');
     expect(openaiRunbook).toContain(
-      'does not block\n' +
-        'generating, importing, or submitting the ChatGPT app submission JSON'
+      'all 23 `chatgpt` profile tools publish exact,\n' +
+        'tool-specific schemas'
     );
-    expect(openaiRunbook).toMatch(/Exact\s+tool-specific `outputSchema`/);
-    expect(openaiRunbook).toMatch(/A permissive\s+catch-all schema/);
-    expect(openaiRunbook).not.toContain('OpenAI submission remains blocked');
-    expect(openaiRunbook).not.toMatch(/Do not submit or resubmit/);
+    expect(openaiRunbook).toMatch(/exact,\s+tool-specific `outputSchema`/i);
+    expect(openaiRunbook).toMatch(/permissive\s+catch-all `outputSchema`/);
+    expect(openaiRunbook).toContain('Do not submit or resubmit');
   });
 
-  it('ties elevated hints to implemented overwrite, dispatch, approval, and external-sync modes', () => {
+  it('ties elevated hints to implemented overwrite, dispatch, lifecycle, and external-sync modes', () => {
     expect(contractToolsSource).toMatch(
       /id: 'orgx_bootstrap',[\s\S]*?annotations: \{ readOnlyHint: false, destructiveHint: false, openWorldHint: false \}/
     );
@@ -227,8 +231,19 @@ describe('OpenAI ChatGPT app submission readiness', () => {
     expect(workerSource).toContain(
       "`/api/entities/${args.type}/${args.id}/${resolvedAction}`"
     );
+    expect(toolDefinitionsSource).toMatch(
+      /id: 'manage_lifecycle',[\s\S]*?destructiveHint: true/
+    );
+    expect(contractToolsSource).toMatch(
+      /id: 'orgx_decide',[\s\S]*?annotations: \{ readOnlyHint: false, destructiveHint: false, openWorldHint: false \}/
+    );
+    expect(contractToolsSource).toMatch(
+      /id: 'approve_agent_work',[\s\S]*?annotations: \{ readOnlyHint: false, destructiveHint: false, openWorldHint: false \}/
+    );
     expect(workerSource).toContain("case 'approve_agent_work':");
-    expect(workerSource).toContain("'approve_decision'");
+    expect(workerSource).toContain('directHumanDecisionActionRequired(');
+    expect(toolDefinitionsSource).toContain("id: 'approve_decision'");
+    expect(toolDefinitionsSource).toContain("id: 'reject_decision'");
     expect(workerSource).toContain(
       'which handles MCP context, stream continuation, and agent resumption.'
     );

@@ -204,10 +204,7 @@ async function createHarness(options: HarnessOptions) {
     },
   }));
   worker.fetchEntityCollection = vi.fn(async () => []);
-  worker.fetchBroadOrgxSearch = vi.fn(async () => ({
-    records: [],
-    pagination: { has_more: false, next_cursor: null, limit: 10, offset: 0 },
-  }));
+  worker.fetchBroadOrgxSearch = vi.fn(async () => []);
   worker.executePlanSessionTool = vi.fn(async () => ({
     content: [{ type: 'text', text: 'Plan action accepted' }],
     structuredContent: { ok: true },
@@ -775,9 +772,11 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
       // Keep public descriptors beneath an explicit host-compatibility budget.
       // The previous 14.9 KB descriptor was present in OrgX tools/list but was
       // silently omitted from ChatGPT's callable schema set.
-      expect(
-        Buffer.byteLength(JSON.stringify(descriptor), 'utf8')
-      ).toBeLessThanOrEqual(8 * 1024);
+      const descriptorBytes = Buffer.byteLength(
+        JSON.stringify(descriptor),
+        'utf8'
+      );
+      expect(descriptorBytes).toBeLessThanOrEqual(8 * 1024);
 
       const properties = (descriptor?.inputSchema as {
         properties?: Record<string, unknown>;

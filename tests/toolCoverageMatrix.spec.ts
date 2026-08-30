@@ -96,8 +96,9 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     evidence: ['tests/mcpWorker.accountTools.spec.ts'],
   },
   approve_agent_work: {
-    tier: 'live_read_verified',
-    evidence: ['live approve_agent_work action=list returned zero pending decisions, then found and approved disposable decision a25acdb6-cb60-4400-a11c-63fadd14d0a3, 2026-05-28', 'tests/toolDiscoverySnapshot.spec.ts'],
+    tier: 'contract_and_unit',
+    evidence: ['historical live receipt, 2026-05-28: approve_agent_work action=list returned zero pending decisions; the later disposable approval occurred under the legacy pre-router contract and is not evidence of current direct-write behavior', 'tests/toolDiscoverySnapshot.spec.ts', 'tests/decisionToolsContract.spec.ts'],
+    remaining: 'Re-run action=list against the deployed current profile and verify approve/reject return the human-session review URL without mutating decision state.',
   },
   approve_decision: {
     tier: 'live_read_verified',
@@ -287,8 +288,9 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     remaining: 'Re-run live orgx_bootstrap with workspace_id after deployment to verify workspace is bound in the payload.',
   },
   orgx_decide: {
-    tier: 'live_read_verified',
-    evidence: ['live orgx_decide list_pending found disposable decision a25acdb6-cb60-4400-a11c-63fadd14d0a3 before approval and returned zero pending after approval, 2026-05-28', 'tests/decisionToolsContract.spec.ts'],
+    tier: 'contract_and_unit',
+    evidence: ['historical live receipt, 2026-05-28: orgx_decide list_pending observed a disposable decision before and after a legacy approval; this is not evidence that the current consolidated router can approve or reject', 'tests/decisionToolsContract.spec.ts'],
+    remaining: 'Re-run list_pending against the deployed current profile and verify approve/reject return the human-session review URL without mutating or resuming work.',
   },
   orgx_expect: {
     tier: 'contract_and_unit',
