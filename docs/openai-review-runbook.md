@@ -32,7 +32,7 @@ Submit through the OpenAI Platform plugin portal at
 enter the production Universal URL directly. Do not reference an older
 integration ID. `chatgpt-app-submission.json` remains the checked-in source of
 truth for listing copy, annotations, and tests and uses the current
-`https://developers.openai.com/plugins/schemas/chatgpt-app-submission.v1.json`
+`https://developers.openai.com/apps-sdk/schemas/chatgpt-app-submission.v1.json`
 package schema, but it is not proof that the current portal supports JSON
 import.
 

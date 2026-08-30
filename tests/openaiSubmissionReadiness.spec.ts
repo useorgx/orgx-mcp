@@ -116,7 +116,7 @@ const serverToolsByName = new Map(
 describe('OpenAI ChatGPT app submission readiness', () => {
   it('keeps app info concise and review-facing', () => {
     expect(submission.$schema).toBe(
-      'https://developers.openai.com/plugins/schemas/chatgpt-app-submission.v1.json'
+      'https://developers.openai.com/apps-sdk/schemas/chatgpt-app-submission.v1.json'
     );
     expect(submission.app_info.display_name).toBe('OrgX');
     expect(submission.app_info.subtitle.length).toBeLessThanOrEqual(30);
