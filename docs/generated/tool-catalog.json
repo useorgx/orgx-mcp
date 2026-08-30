@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-27T15:19:33.303Z",
-  "sourceHash": "4f70255de4045b85",
+  "generatedAt": "2026-08-30T20:50:23.054Z",
+  "sourceHash": "cf3bc0cafcfede9a",
   "version": "1.0.0",
   "totalTools": 87,
   "categories": [
@@ -2990,7 +2990,7 @@
     {
       "id": "orgx_decide",
       "title": "Manage OrgX Decision",
-      "description": "Use when the user says \"remember this decision,\" asks \"what did we decide about X,\" or agent work needs human approval before it proceeds. Creates, approves, rejects, remembers, or lists durable OrgX decisions.\n\nPer-action input requirements:\n  • action=\"list_pending\" → No required fields. Optional: initiative_id, workspace_id (scope filters).\n  • action=\"create\"       → REQUIRES title AND decision (the resolved decision text). Recommended: context, initiative_id.\n  • action=\"remember\"     → REQUIRES decision (the text to capture as a remembered decision). Optional: title, context.\n  • action=\"approve\"      → REQUIRES decision_id. Optional: note (free-text approver rationale).\n  • action=\"reject\"       → REQUIRES decision_id AND reason (explanation shown to the assigned agent).\n\nUSE WHEN: capturing judgment or reviewing a pending decision. Decision resolution is human-session-only: approve/reject returns a review URL because an MCP delegation is not proof that a person ruled. NEXT: open the returned review URL, then use orgx_act, orgx_write, or orgx_spawn only after the decision resolves. DO NOT USE WHEN: writing non-decision entities; use orgx_write.",
+      "description": "Creates or remembers durable OrgX decisions, lists pending decisions, and opens human review. Approval and rejection are human-session-only: those actions return a review URL and never resolve the decision or resume work from MCP.\n\nPer-action input requirements:\n  • action=\"list_pending\" → No required fields; initiative_id and workspace_id are optional filters.\n  • action=\"create\" → REQUIRES title and decision. Optional: context, initiative_id.\n  • action=\"remember\" → REQUIRES decision. Optional: title, context.\n  • action=\"approve\" → REQUIRES decision_id. Optional note is accepted but not persisted by MCP.\n  • action=\"reject\" → REQUIRES decision_id and reason; MCP does not persist the reason.\n\nUSE WHEN: capturing judgment or reviewing a pending decision. NEXT: open the returned review URL, then act only after the decision resolves. DO NOT USE WHEN: writing non-decision entities; use orgx_write.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -3028,11 +3028,11 @@
           },
           "reason": {
             "type": "string",
-            "description": "REQUIRED for action=reject. Explanation of why the decision was rejected — used by the assigned agent to adjust its next attempt."
+            "description": "REQUIRED for action=reject before returning the human-session review URL. MCP does not persist or submit this reason."
           },
           "note": {
             "type": "string",
-            "description": "Optional approver note for action=approve. Free-text rationale stored in audit history."
+            "description": "Optional compatibility field for action=approve. MCP does not persist it; enter the final rationale in the human review session."
           },
           "initiative_id": {
             "type": "string",
@@ -3044,7 +3044,7 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Strongly recommended client-supplied idempotency key for writes (action=create, remember, approve, reject). Same key returns the same result without duplicating state."
+            "description": "Strongly recommended client-supplied idempotency key for action=create or action=remember. Same key returns the same result without duplicating state."
           },
           "session_id": {
             "type": "string",

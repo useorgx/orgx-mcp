@@ -376,14 +376,14 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_decide',
     title: 'Manage OrgX Decision',
     description:
-      'Use when the user says "remember this decision," asks "what did we decide about X," or agent work needs human approval before it proceeds. Creates or remembers durable OrgX decisions and lists pending decisions. Approval and rejection are human-session-only: those actions return a review URL and never resolve the decision or resume work from MCP.\n\n' +
+      'Creates or remembers durable OrgX decisions, lists pending decisions, and opens human review. Approval and rejection are human-session-only: those actions return a review URL and never resolve the decision or resume work from MCP.\n\n' +
       'Per-action input requirements:\n' +
-      '  • action="list_pending" → No required fields. Optional: initiative_id, workspace_id (scope filters).\n' +
-      '  • action="create"       → REQUIRES title AND decision (the resolved decision text). Recommended: context, initiative_id.\n' +
-      '  • action="remember"     → REQUIRES decision (the text to capture as a remembered decision). Optional: title, context.\n' +
-      '  • action="approve"      → REQUIRES decision_id. Optional: note is accepted for compatibility but is not persisted by MCP.\n' +
-      '  • action="reject"       → REQUIRES decision_id AND reason to validate the request; MCP does not persist the reason.\n\n' +
-      'USE WHEN: capturing judgment or reviewing a pending decision. Decision resolution is human-session-only: approve/reject returns a review URL because an MCP delegation is not proof that a person ruled. NEXT: open the returned review URL, then use orgx_act, orgx_write, or orgx_spawn only after the decision resolves. DO NOT USE WHEN: writing non-decision entities; use orgx_write.',
+      '  • action="list_pending" → No required fields; initiative_id and workspace_id are optional filters.\n' +
+      '  • action="create" → REQUIRES title and decision. Optional: context, initiative_id.\n' +
+      '  • action="remember" → REQUIRES decision. Optional: title, context.\n' +
+      '  • action="approve" → REQUIRES decision_id. Optional note is accepted but not persisted by MCP.\n' +
+      '  • action="reject" → REQUIRES decision_id and reason; MCP does not persist the reason.\n\n' +
+      'USE WHEN: capturing judgment or reviewing a pending decision. NEXT: open the returned review URL, then act only after the decision resolves. DO NOT USE WHEN: writing non-decision entities; use orgx_write.',
     inputSchema: {
       action: z.enum(['create', 'remember', 'list_pending', 'approve', 'reject']).describe('Decision operation. See top-level description for per-action required fields.'),
       decision_id: z.string().optional().describe('Decision UUID. REQUIRED for action=approve or action=reject. Returned by action=list_pending or action=create.'),
