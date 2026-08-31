@@ -48,6 +48,11 @@ import {
 } from './sessionIdentity';
 import { formatInitiativeMarkdown, type OrgXInitiative } from './formatters';
 import { formatForLLM } from './responseSummarizer';
+import {
+  CONTROLLER_PROTOCOL_VERSION,
+  ControllerDomainSchema,
+  validateControllerStatusEnvelope,
+} from './controllerStatusContract';
 import { canonicalizeOrgxWriteResponse } from './writeResponse';
 import {
   buildCompletionProofMetadata,
@@ -4974,6 +4979,57 @@ export class OrgXMcp extends McpAgent<
           return {
             content: [{ type: 'text', text: formatForLLM('orgx_inspect', payload) }],
             structuredContent: payload,
+          };
+        }
+
+        case 'orgx_controller_status': {
+          const workspaceId = String(args.workspace_id);
+          const domain = ControllerDomainSchema.parse(args.domain);
+          const query = new URLSearchParams({
+            workspace_id: workspaceId,
+            protocol_version: CONTROLLER_PROTOCOL_VERSION,
+          });
+          const response = await callOrgxApiJson(
+            this.env,
+            `/api/v1/controllers/${encodeURIComponent(domain)}?${query.toString()}`,
+            undefined,
+            {
+              userId: resolvedUserId,
+              userEmail: this.resolveUserEmail(),
+              orgxUserId: this.resolveOrgxUserId(resolvedUserId),
+            }
+          );
+          const result = await response.json();
+          const validation = validateControllerStatusEnvelope(result, {
+            workspaceId,
+            domain,
+            protocolVersion: CONTROLLER_PROTOCOL_VERSION,
+          });
+          if (!validation.ok) {
+            return this.toolError(
+              'OrgX returned an invalid controller status response',
+              {
+                code: 'invalid_controller_status_response',
+                status: 502,
+                details: {
+                  reason: validation.reason,
+                  issues: validation.issues,
+                },
+              }
+            );
+          }
+          const { envelope } = validation;
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatForLLM(
+                  'orgx_controller_status',
+                  envelope.data
+                ),
+              },
+            ],
+            structuredContent: envelope,
           };
         }
 

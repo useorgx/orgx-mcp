@@ -108,6 +108,7 @@ describe('Anthropic directory readiness', () => {
       'orgx_tail',
       'orgx_search',
       'orgx_inspect',
+      'orgx_controller_status',
       'orgx_recommend',
       'orgx_write',
       'orgx_attach',

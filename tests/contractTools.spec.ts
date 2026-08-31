@@ -14,6 +14,7 @@ import {
   CLIENT_CONTEXT_SCHEMA,
   CLIENT_INTEGRATION_TOOL_DEFINITIONS,
   ENTITY_TYPES,
+  SECURITY_SCHEMES,
 } from '../src/toolDefinitions';
 
 function collectInlineRegisteredToolIds(): string[] {
@@ -175,6 +176,45 @@ describe('contract tool catalog', () => {
     expect(ids).toContain('create_task');
     expect(ids).toContain('validate_studio_content');
     expect(ids).toContain('pin_workstream');
+  });
+
+  it('publishes a strict read-only controller status contract', () => {
+    const tool = CONTRACT_TOOL_DEFINITIONS.find(
+      (definition) => definition.id === 'orgx_controller_status'
+    );
+    expect(tool, 'orgx_controller_status should be registered').toBeDefined();
+    expect(tool?.annotations).toEqual({
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: false,
+    });
+    expect(tool?.securitySchemes).toEqual(
+      SECURITY_SCHEMES.controllerStatusRequiresAuth
+    );
+    expect(tool?.securitySchemes).toEqual([
+      {
+        type: 'oauth2',
+        scopes: ['decisions:read', 'initiatives:read'],
+      },
+    ]);
+
+    const schema = z.object(
+      tool!.inputSchema as Record<string, z.ZodTypeAny>
+    );
+    const workspaceId = '11111111-1111-4111-8111-111111111111';
+    for (const domain of [
+      'product',
+      'engineering',
+      'growth',
+      'sales',
+      'design',
+      'operations',
+    ]) {
+      expect(() => schema.parse({ workspace_id: workspaceId, domain })).not.toThrow();
+    }
+    expect(() => schema.parse({ workspace_id: 'not-a-uuid', domain: 'growth' })).toThrow();
+    expect(() => schema.parse({ workspace_id: workspaceId, domain: 'finance' })).toThrow();
+    expect(() => schema.parse({ domain: 'growth' })).toThrow();
   });
 
   it('can resolve known tools from the runtime catalog', () => {

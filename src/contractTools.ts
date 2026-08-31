@@ -17,10 +17,12 @@ import {
   lifecycleEntityTypeEnum,
 } from './toolDefinitions';
 import { FLYWHEEL_TOOL_DEFINITIONS } from './flywheelTools';
+import { ControllerDomainSchema } from './controllerStatusContract';
 
 export const V2_ORGX_TOOL_IDS = [
   'orgx_bootstrap',
   'orgx_inspect',
+  'orgx_controller_status',
   'orgx_search',
   'orgx_recommend',
   'orgx_write',
@@ -89,6 +91,31 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       'openai/toolInvocation/invoked': 'OrgX entity inspected',
       'openai/readOnlyHint': true,
       ui: { resourceUri: WIDGET_URIS.searchResults },
+    },
+  },
+  {
+    id: 'orgx_controller_status',
+    title: 'Read OrgX Controller Status',
+    description:
+      'Read the exact workspace-scoped projection for one domain controller without reconciling or triggering a run. USE WHEN: verifying whether a controller ran, its latest outcome, signal, receipt, projection cursor, or parity after a REST, SDK, or runner canary. NEXT: compare the returned lineage across surfaces or inspect the referenced Decision and Receipt. Requires an explicit workspace UUID. Read-only.',
+    inputSchema: {
+      workspace_id: z
+        .string()
+        .uuid()
+        .describe('Workspace UUID whose controller status should be read'),
+      domain: ControllerDomainSchema.describe('OrgX controller domain'),
+    },
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: false,
+    },
+    securitySchemes: SECURITY_SCHEMES.controllerStatusRequiresAuth,
+    _meta: {
+      'openai/toolInvocation/invoking': 'Reading OrgX controller status...',
+      'openai/toolInvocation/invoked': 'OrgX controller status ready',
+      'openai/readOnlyHint': true,
+      'openai/visibility': 'public',
     },
   },
   {

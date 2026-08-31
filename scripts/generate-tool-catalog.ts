@@ -81,6 +81,7 @@ const TOOL_CATEGORY_MAP: Record<string, string> = {
   // MCP v2 public surface
   orgx_bootstrap: 'MCP v2 Public Surface',
   orgx_inspect: 'MCP v2 Public Surface',
+  orgx_controller_status: 'MCP v2 Public Surface',
   orgx_search: 'MCP v2 Public Surface',
   orgx_recommend: 'MCP v2 Public Surface',
   orgx_write: 'MCP v2 Public Surface',

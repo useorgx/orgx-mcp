@@ -214,6 +214,12 @@ export const SECURITY_SCHEMES = {
       ],
     },
   ],
+  controllerStatusRequiresAuth: [
+    {
+      type: 'oauth2' as const,
+      scopes: [OAUTH_SCOPE.decisionsRead, OAUTH_SCOPE.initiativesRead],
+    },
+  ],
   decisionReadRequiresAuth: [
     { type: 'oauth2' as const, scopes: [OAUTH_SCOPE.decisionsRead] },
   ],

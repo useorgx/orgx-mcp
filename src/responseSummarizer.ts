@@ -582,6 +582,33 @@ function formatOrgxReceipt(data: Record<string, unknown>): string {
   }${promotable}`;
 }
 
+function formatOrgxControllerStatus(data: Record<string, unknown>): string {
+  const domain = str(data.domain) || 'unknown';
+  const status = str(data.status) || 'unknown';
+  const mode = str(data.mode) || 'unknown';
+  const runId = str(data.run_id) || str(data.last_run_id) || 'none';
+  const result = str(data.last_result) || str(data.result) || 'none';
+  const signalId = str(data.last_signal_id);
+  const signalState = str(data.last_signal_state);
+  const signal = signalId
+    ? `${signalId}${signalState ? ` (${signalState})` : ''}`
+    : 'none';
+  const receiptId =
+    str(data.receipt_id) || str(data.last_receipt_id) || 'none';
+  const projectionCursor = str(data.projection_cursor) || '0';
+  const protocol = str(data.protocol_version) || 'unknown';
+
+  return [
+    `**OrgX ${domain} controller** — ${status} (${mode})`,
+    `- Run: ${runId}`,
+    `- Result: ${result}`,
+    `- Signal: ${signal}`,
+    `- Receipt: ${receiptId}`,
+    `- Projection cursor: ${projectionCursor}`,
+    `- Protocol: ${protocol}`,
+  ].join('\n');
+}
+
 // ---------------------------------------------------------------------------
 // Main entry point
 // ---------------------------------------------------------------------------
@@ -618,6 +645,9 @@ export function formatForLLM(
 
     case 'orgx_inspect':
       return formatOrgxInspect(data, o);
+
+    case 'orgx_controller_status':
+      return formatOrgxControllerStatus(data);
 
     case 'orgx_write':
       return formatOrgxWrite(data);
