@@ -102,6 +102,37 @@ const ORGX_UUID_RE =
 
 const OAUTH_STATE_TTL_SECONDS = 20 * 60;
 
+const ED25519_SPKI_PREFIX = [
+  0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00,
+];
+
+/** Return the registry-required base64 encoding of the raw 32-byte key. */
+export function normalizeRegistryPublicKey(value: string): string | null {
+  const compact = value
+    .trim()
+    .replace(/-----BEGIN PUBLIC KEY-----/g, '')
+    .replace(/-----END PUBLIC KEY-----/g, '')
+    .replace(/\s+/g, '');
+  if (!compact) return null;
+  try {
+    const bytes = Uint8Array.from(atob(compact), (character) =>
+      character.charCodeAt(0)
+    );
+    if (bytes.length === 32) return compact;
+    if (
+      bytes.length === ED25519_SPKI_PREFIX.length + 32 &&
+      ED25519_SPKI_PREFIX.every((byte, index) => bytes[index] === byte)
+    ) {
+      return btoa(
+        String.fromCharCode(...bytes.slice(ED25519_SPKI_PREFIX.length))
+      );
+    }
+  } catch {
+    // Invalid base64 is rejected below.
+  }
+  return null;
+}
+
 type ClientIconKind =
   | 'chatgpt'
   | 'codex'
@@ -1285,11 +1316,13 @@ export const authHandler = {
     // MCP Registry Authentication (custom logic, not auto-generated)
     // =========================================================================
     if (url.pathname === '/.well-known/mcp-registry-auth') {
-      const pubkey = env.MCP_REGISTRY_PUBKEY;
+      const pubkey = env.MCP_REGISTRY_PUBKEY
+        ? normalizeRegistryPublicKey(env.MCP_REGISTRY_PUBKEY)
+        : null;
       if (!pubkey) {
         return withCors(
           new Response(
-            'MCP Registry auth not configured. Set MCP_REGISTRY_PUBKEY environment variable.',
+            'MCP Registry auth not configured with a valid Ed25519 public key.',
             { status: 503 }
           )
         );

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-08-30T20:51:19.112Z",
+  "generatedAt": "2026-08-31T04:15:30.363Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -83,7 +83,7 @@
         "shared/widget-theme.css"
       ],
       "protocolBridge": "official-sdk",
-      "demoOnly": false
+      "demoOnly": true
     },
     "decisions": {
       "file": "public/widgets/decisions.html",
@@ -213,8 +213,8 @@
     },
     "task-spawned": {
       "file": "public/widgets/task-spawned.html",
-      "bytes": 45125,
-      "hash": "6fd0bb85d08d",
+      "bytes": 45123,
+      "hash": "e1306316cb46",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/interaction-kit.css",

@@ -121,6 +121,13 @@ async function inspect(page, expectedTheme, state) {
           ".skeleton-wrapper, .review-skeleton, .dispatch-skeleton, .decision-skeleton-card",
         ),
       );
+      const visibleSkeleton = [...document.querySelectorAll(
+        ".skeleton-wrapper, .review-skeleton, .dispatch-skeleton, .decision-skeleton-card",
+      )].some((element) => {
+        const style = getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return style.opacity !== "0" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+      });
       return {
         theme: root.dataset.theme || null,
         colorScheme: getComputedStyle(root).colorScheme,
@@ -130,7 +137,7 @@ async function inspect(page, expectedTheme, state) {
         smallTargets,
         stateRendered:
           fixtureState === "loading"
-            ? hasSkeleton
+            ? hasSkeleton && visibleSkeleton
             : text.length > 12 && !hasSkeleton,
         expectedTheme: theme,
       };

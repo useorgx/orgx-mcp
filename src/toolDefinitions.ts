@@ -141,11 +141,6 @@ export const WIDGET_RESOURCES = [
     uri: WIDGET_URIS.planSessionLive,
     title: 'Plan Session Live Widget',
   },
-  {
-    name: 'daily-brief-widget',
-    uri: WIDGET_URIS.dailyBrief,
-    title: 'Daily Brief + Trust Loop Widget',
-  },
 ] as const;
 
 export const SCAFFOLD_INITIATIVE_WIDGET_META = {
