@@ -38,6 +38,7 @@ export const V2_CORE_PUBLIC_SURFACE = [
   'orgx_bootstrap',
   'orgx_search',
   'orgx_inspect',
+  'orgx_controller_status',
   'orgx_recommend',
   'orgx_write',
   'orgx_attach',
@@ -143,6 +144,7 @@ export const CLAUDE_DIRECTORY_SURFACE = [
  */
 export const CLAUDE_PLUGIN_SURFACE = [
   ...CLAUDE_DIRECTORY_SURFACE,
+  'orgx_controller_status',
   'orgx_emit_activity',
   'orgx_submit_receipt',
   'orgx_attach',

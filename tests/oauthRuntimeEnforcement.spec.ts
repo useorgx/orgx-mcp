@@ -4,10 +4,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AUTHORIZATION_PRESETS } from '../src/authorizationPolicy';
 import { createEmptyMcpActivationState } from '../src/mcpActivationTracker';
+import { OrgXApiError } from '../src/orgxApi';
 import { attachRequestToolProfile } from '../src/requestToolProfile';
 import { createEmptySessionToolStats } from '../src/sessionSummary';
 import { CLAUDE_DIRECTORY_SURFACE } from '../src/toolProfiles';
 import { createEmptyMcpSessionReentryState } from '../src/welcomeBackContext';
+import {
+  buildControllerStatusEnvelope,
+  CONTROLLER_RECEIPT_ID,
+  CONTROLLER_RUN_ID,
+} from './fixtures/controllerStatus';
 
 const apiMocks = vi.hoisted(() => ({
   callOrgxApiJson: vi.fn(),
@@ -256,6 +262,176 @@ afterEach(() => {
 });
 
 describe('OAuth scope enforcement through the live MCP registry', () => {
+  it('reads exact controller status through the default v2 registry and forwards workspace plus actor identity', async () => {
+    const controllerEnvelope = buildControllerStatusEnvelope();
+    const expectedPath =
+      `/api/v1/controllers/growth?workspace_id=${WORKSPACE_ID}` +
+      '&protocol_version=orgx.controller.v1';
+    const harness = await createHarness({
+      scope: 'decisions:read initiatives:read',
+    });
+    try {
+      apiMocks.callOrgxApiJson.mockImplementation(
+        async (_env: unknown, path: string) => {
+          if (path === expectedPath) {
+            return Response.json(controllerEnvelope);
+          }
+          return successfulApiResponse(path);
+        }
+      );
+
+      const listedNames = (await harness.client.listTools()).tools.map(
+        (tool) => tool.name
+      );
+      expect(listedNames).toContain('orgx_controller_status');
+
+      const result = await harness.client.callTool({
+        name: 'orgx_controller_status',
+        arguments: { workspace_id: WORKSPACE_ID, domain: 'growth' },
+      });
+
+      expect(result.isError).not.toBe(true);
+      expect(result.structuredContent).toEqual(controllerEnvelope);
+      expect(result.structuredContent).toHaveProperty(
+        'meta.workspaceId',
+        WORKSPACE_ID
+      );
+      expect(result.content).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: 'text',
+            text: expect.stringMatching(
+              new RegExp(
+                `${CONTROLLER_RUN_ID}.*proposal.*growth-allocation-pressure.*${CONTROLLER_RECEIPT_ID}.*Projection cursor: 42`,
+                's'
+              )
+            ),
+          }),
+        ])
+      );
+
+      const controllerCall = apiMocks.callOrgxApiJson.mock.calls.find(
+        ([, path]) => path === expectedPath
+      );
+      expect(controllerCall?.[2]).toBeUndefined();
+      expect(controllerCall?.[3]).toEqual({
+        userId: USER_ID,
+        userEmail: 'oauth-user@example.com',
+        orgxUserId: ORGX_USER_ID,
+      });
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
+  it('preserves an upstream workspace refusal as a read error', async () => {
+    const inaccessibleWorkspaceId =
+      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const expectedPath =
+      `/api/v1/controllers/growth?workspace_id=${inaccessibleWorkspaceId}` +
+      '&protocol_version=orgx.controller.v1';
+    const harness = await createHarness({
+      scope: 'decisions:read initiatives:read',
+    });
+    try {
+      apiMocks.callOrgxApiJson.mockRejectedValueOnce(
+        new OrgXApiError(
+          'Controller is not in the caller workspace',
+          'upstream returned 404',
+          404
+        )
+      );
+
+      const result = await harness.client.callTool({
+        name: 'orgx_controller_status',
+        arguments: {
+          workspace_id: inaccessibleWorkspaceId,
+          domain: 'growth',
+        },
+      });
+
+      expect(result.isError).toBe(true);
+      expect(errorCode(result)).toBe('entity_not_found');
+      expect(result.structuredContent).toMatchObject({
+        error: { status: 404 },
+      });
+      expect(apiMocks.callOrgxApiJson).toHaveBeenCalledWith(
+        expect.anything(),
+        expectedPath,
+        undefined,
+        {
+          userId: USER_ID,
+          userEmail: 'oauth-user@example.com',
+          orgxUserId: ORGX_USER_ID,
+        }
+      );
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
+  it('rejects a controller envelope for a different workspace', async () => {
+    const controllerEnvelope = buildControllerStatusEnvelope();
+    controllerEnvelope.meta.workspaceId =
+      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const harness = await createHarness({
+      scope: 'decisions:read initiatives:read',
+    });
+    try {
+      apiMocks.callOrgxApiJson.mockResolvedValueOnce(
+        Response.json(controllerEnvelope)
+      );
+
+      const result = await harness.client.callTool({
+        name: 'orgx_controller_status',
+        arguments: { workspace_id: WORKSPACE_ID, domain: 'growth' },
+      });
+
+      expect(result.isError).toBe(true);
+      expect(errorCode(result)).toBe('invalid_controller_status_response');
+      expect(result.structuredContent).toMatchObject({
+        error: {
+          status: 502,
+          details: {
+            reason: 'request_mismatch',
+            issues: [{ path: 'meta.workspaceId' }],
+          },
+        },
+      });
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
+  it('requires both decision and initiative read grants for controller status', async () => {
+    for (const scope of ['decisions:read', 'initiatives:read']) {
+      const harness = await createHarness({ scope });
+      try {
+        const names = (await harness.client.listTools()).tools.map(
+          (tool) => tool.name
+        );
+        expect(names, scope).not.toContain('orgx_controller_status');
+      } finally {
+        await closeHarness(harness);
+      }
+    }
+  });
+
+  it('exposes controller status through the installed Claude plugin profile', async () => {
+    const harness = await createHarness({
+      scope: 'decisions:read initiatives:read',
+      profile: 'claude-plugin',
+    });
+    try {
+      const names = (await harness.client.listTools()).tools.map(
+        (tool) => tool.name
+      );
+      expect(names).toContain('orgx_controller_status');
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
   it('tails material context changes through the live read-only MCP surface', async () => {
     const harness = await createHarness({
       scope: AUTHORIZATION_PRESETS.read.scopes.join(' '),

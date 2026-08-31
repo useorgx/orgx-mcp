@@ -4,7 +4,10 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { INLINE_TOOL_CONTRACTS } from '../src/contractTools';
+import {
+  CONTRACT_TOOL_DEFINITIONS,
+  INLINE_TOOL_CONTRACTS,
+} from '../src/contractTools';
 import { TOOL_PROFILES } from '../src/toolProfiles';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -36,6 +39,29 @@ function expectedProfiles(toolId: string): string[] {
 }
 
 describe('generated tool catalog contract parity', () => {
+  it('keeps controller status aligned with its read-only contract and canary profiles', () => {
+    const source = CONTRACT_TOOL_DEFINITIONS.find(
+      (tool) => tool.id === 'orgx_controller_status'
+    )!;
+    const generated = catalog.tools.find((tool) => tool.id === source.id);
+
+    expect(generated).toEqual(
+      expect.objectContaining({
+        id: source.id,
+        securityScopes: extractScopes(source.securitySchemes),
+        readOnly: source.annotations.readOnlyHint,
+        source: 'contract',
+        profiles: expectedProfiles(source.id),
+      })
+    );
+    expect(generated?.securityScopes).toEqual([
+      'decisions:read',
+      'initiatives:read',
+    ]);
+    expect(generated?.readOnly).toBe(true);
+    expect(generated?.profiles).toEqual(['v2', 'claude-plugin']);
+  });
+
   it('keeps review_artifact aligned with its registered inline contract', () => {
     const source = INLINE_TOOL_CONTRACTS.review_artifact;
     const generated = catalog.tools.find((tool) => tool.id === source.id);

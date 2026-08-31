@@ -97,6 +97,16 @@
       }
     },
     {
+      "name": "orgx_controller_status",
+      "title": "Read OrgX Controller Status",
+      "description": "Read the exact workspace-scoped projection for one OrgX domain controller without reconciling or triggering a run. USE WHEN: verifying whether a controller ran, its latest outcome, signal, receipt, projection cursor, or parity after a REST, SDK, or runner canary. NEXT: compare the returned lineage across surfaces or inspect the referenced Decision and Receipt. Requires an explicit workspace UUID. Read-only.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
       "name": "orgx_recommend",
       "title": "Recommend Next Action",
       "description": "Use when the user asks what to do next, wants a brief, or returns after time away. The default next-action mode records metered MCP allowance usage but does not change business records.",

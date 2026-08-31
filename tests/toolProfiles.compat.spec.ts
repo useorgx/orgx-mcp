@@ -45,6 +45,7 @@ describe('toolProfiles backward compatibility', () => {
     expect(chatgptTools!.has('spawn_agent_task')).toBe(false);
     expect(chatgptTools!.has('orgx_emit_activity')).toBe(false);
     expect(chatgptTools!.has('orgx_request_attention')).toBe(false);
+    expect(chatgptTools!.has('orgx_controller_status')).toBe(false);
     expect(chatgptTools!.has('query_org_memory')).toBe(false);
     expect(chatgptTools!.has('recall_memory')).toBe(false);
     expect(chatgptTools!.has('recommend_next_action')).toBe(false);
@@ -115,6 +116,7 @@ describe('toolProfiles backward compatibility', () => {
 
     expect(defaultTools).toBeInstanceOf(Set);
     expect(defaultTools!.has('orgx_bootstrap')).toBe(true);
+    expect(defaultTools!.has('orgx_controller_status')).toBe(true);
     expect(defaultTools!.has('orgx_write')).toBe(true);
     expect(defaultTools!.has('orgx_request_question')).toBe(true);
     expect(defaultTools!.has('orgx_poll_question')).toBe(true);
@@ -187,6 +189,7 @@ describe('toolProfiles backward compatibility', () => {
         `${writeTool} must be on the claude-plugin profile`
       ).toBe(true);
     }
+    expect(pluginTools?.has('orgx_controller_status')).toBe(true);
     // The plugin surface stays lean: no broad writes or delegation.
     for (const excludedTool of [
       'orgx_write',

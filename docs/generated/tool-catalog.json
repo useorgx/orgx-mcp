@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-08-31T04:22:53.763Z",
-  "sourceHash": "2721b6aab44efbbf",
+  "generatedAt": "2026-08-31T06:58:03.970Z",
+  "sourceHash": "9ebb2d232cbf68bd",
   "version": "1.0.0",
-  "totalTools": 87,
+  "totalTools": 88,
   "categories": [
     "Agents",
     "Billing",
@@ -2985,6 +2985,50 @@
         "planner",
         "executor",
         "observer"
+      ]
+    },
+    {
+      "id": "orgx_controller_status",
+      "title": "Read OrgX Controller Status",
+      "description": "Read the exact workspace-scoped projection for one domain controller without reconciling or triggering a run. USE WHEN: verifying whether a controller ran, its latest outcome, signal, receipt, projection cursor, or parity after a REST, SDK, or runner canary. NEXT: compare the returned lineage across surfaces or inspect the referenced Decision and Receipt. Requires an explicit workspace UUID. Read-only.",
+      "category": "MCP v2 Public Surface",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Workspace UUID whose controller status should be read"
+          },
+          "domain": {
+            "type": "string",
+            "enum": [
+              "product",
+              "engineering",
+              "growth",
+              "sales",
+              "design",
+              "operations"
+            ],
+            "description": "OrgX controller domain"
+          }
+        },
+        "required": [
+          "workspace_id",
+          "domain"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "decisions:read",
+        "initiatives:read"
+      ],
+      "readOnly": true,
+      "source": "contract",
+      "profiles": [
+        "v2",
+        "claude-plugin"
       ]
     },
     {

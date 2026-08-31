@@ -75,6 +75,12 @@ const POST_DEPLOY_RECHECKS: PostDeployRecheck[] = [
     blocks: ['new tool has not yet been exercised through an authenticated installed client'],
   },
   {
+    tool: 'orgx_controller_status',
+    probe: 'Call orgx_controller_status for growth with the canary workspace UUID after a real REST, SDK, daily-runner, or event-runner execution.',
+    expected: 'Response exactly matches the REST data projection for run, result, receipt, signal, cursor, protocol, and shadow-mode fields.',
+    blocks: ['new MCP read tool has not yet been deployed and exercised through an authenticated installed client'],
+  },
+  {
     tool: 'consolidate_pr',
     probe: 'Call consolidate_pr against a harmless closed PR fixture after OrgX server-side GitHub credentials are configured.',
     expected: 'Returns an orchestration.consolidation_pass artifact or a structured non-auth blocker.',
@@ -286,6 +292,18 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     tier: 'live_read_verified',
     evidence: ['live orgx_bootstrap exposed workspace:null despite workspace_id on server 0.3.0-7fc0bdc0, patched locally 2026-05-27 and rechecked 2026-05-28', 'live orgx_bootstrap still returned workspace:null on server 0.3.0-7fc0bdc0 with workspace_id=7af01a51-49b1-47d8-98b9-91a198debca8, 2026-05-28', 'tests/bootstrapPayload.spec.ts'],
     remaining: 'Re-run live orgx_bootstrap with workspace_id after deployment to verify workspace is bound in the payload.',
+  },
+  orgx_controller_status: {
+    tier: 'contract_and_unit',
+    evidence: [
+      'tests/oauthRuntimeEnforcement.spec.ts',
+      'tests/controllerStatusContract.spec.ts',
+      'tests/contractTools.spec.ts',
+      'tests/toolCatalogContractParity.spec.ts',
+      'tests/toolDiscoverySnapshot.spec.ts',
+    ],
+    remaining:
+      'Deploy and compare one authenticated MCP response with the same canary workspace status read through REST and the TypeScript SDK after daily and event runner executions.',
   },
   orgx_decide: {
     tier: 'contract_and_unit',
@@ -627,6 +645,7 @@ describe('MCP tool coverage matrix', () => {
       'orgx_write',
       'orgx_attach',
       'orgx_expect',
+      'orgx_controller_status',
       'consolidate_pr',
     ]);
 
