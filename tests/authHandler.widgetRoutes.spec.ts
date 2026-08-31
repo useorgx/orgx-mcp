@@ -9,6 +9,43 @@ import {
 import { toSkybridgeResourceUri } from '../src/widgetConfig';
 
 describe('authHandler widget compatibility routes', () => {
+  it('normalizes a PEM Ed25519 key to the registry raw-key record', async () => {
+    const raw = Uint8Array.from({ length: 32 }, (_, index) => index + 1);
+    const spkiPrefix = Uint8Array.from([
+      0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21,
+      0x00,
+    ]);
+    const pemPayload = Buffer.concat([spkiPrefix, raw]).toString('base64');
+    const response = await authHandler.fetch(
+      new Request('https://mcp.useorgx.com/.well-known/mcp-registry-auth'),
+      {
+        MCP_SERVER_URL: 'https://mcp.useorgx.com',
+        ORGX_WEB_URL: 'https://www.useorgx.com',
+        MCP_REGISTRY_PUBKEY: `-----BEGIN PUBLIC KEY-----\n${pemPayload}\n-----END PUBLIC KEY-----`,
+      },
+      {} as ExecutionContext
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe(
+      `v=MCPv1; k=ed25519; p=${Buffer.from(raw).toString('base64')}`
+    );
+  });
+
+  it('rejects malformed registry public keys', async () => {
+    const response = await authHandler.fetch(
+      new Request('https://mcp.useorgx.com/.well-known/mcp-registry-auth'),
+      {
+        MCP_SERVER_URL: 'https://mcp.useorgx.com',
+        ORGX_WEB_URL: 'https://www.useorgx.com',
+        MCP_REGISTRY_PUBKEY: 'not-a-key',
+      },
+      {} as ExecutionContext
+    );
+
+    expect(response.status).toBe(503);
+  });
+
   it('serves a derived Smithery server card from the worker origin', async () => {
     const response = await authHandler.fetch(
       new Request('https://mcp.useorgx.com/.well-known/mcp/server-card.json'),

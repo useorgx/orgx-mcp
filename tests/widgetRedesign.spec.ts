@@ -40,6 +40,8 @@ describe("OrgX compact widget redesign", () => {
     expect(html).toContain("Receipt");
     expect(html).toContain("The execution link remains the proof boundary.");
     expect(html).toContain("Execution complete");
+    expect(html).toContain("replacement itself must be atomic");
+    expect(html).not.toContain("skeleton.style.opacity = '0'");
   });
 
   it("compresses search into one leading match and quiet continuation rows", () => {

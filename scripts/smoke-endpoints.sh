@@ -111,6 +111,33 @@ check_redirected_endpoint() {
   rm -f "$headers_tmp" "$body_tmp"
 }
 
+check_registry_auth() {
+  local name="$1"
+  local url="$2"
+  local tmp
+  tmp="$(mktemp)"
+  local status
+  status="$(curl -sS -o "$tmp" -w '%{http_code}' "$url")"
+  local record
+  record="$(tr -d '\r\n' < "$tmp")"
+  local prefix='v=MCPv1; k=ed25519; p='
+  local encoded="${record#"$prefix"}"
+  local byte_count=0
+  if [[ "$status" == "200" && "$record" == "$prefix"* ]]; then
+    byte_count="$(printf '%s' "$encoded" | openssl base64 -d -A 2>/dev/null | wc -c | tr -d ' ')"
+  fi
+  if [[ "$status" != "200" || ! "$encoded" =~ ^[A-Za-z0-9+/]{43}=$ || "$byte_count" != "32" ]]; then
+    echo "FAIL: $name"
+    echo "   URL: $url"
+    echo "   Expected HTTP 200 with one raw 32-byte Ed25519 key"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  else
+    echo "PASS: $name ($status, 32-byte Ed25519 key)"
+    PASS_COUNT=$((PASS_COUNT + 1))
+  fi
+  rm -f "$tmp"
+}
+
 echo "Running OrgX MCP endpoint smoke checks..."
 echo "   MCP base:  $MCP_BASE"
 echo "   Apex base: $APEX_BASE"
@@ -126,7 +153,7 @@ check_endpoint "Upstream: OrgX API health (via MCP /healthz?check=upstream)" \
   "$MCP_BASE/healthz?check=upstream" "200" "upstream"
 check_endpoint "OAuth authorization server discovery" "$MCP_BASE/.well-known/oauth-authorization-server" "200" "authorization_endpoint"
 check_endpoint "OAuth protected resource metadata" "$MCP_BASE/.well-known/oauth-protected-resource" "200" "authorization_servers"
-check_endpoint "Registry auth on MCP subdomain" "$MCP_BASE/.well-known/mcp-registry-auth" "200" "v=MCPv1; k=ed25519; p="
+check_registry_auth "Registry auth on MCP subdomain" "$MCP_BASE/.well-known/mcp-registry-auth"
 check_redirected_endpoint \
   "Registry auth on apex" \
   "$APEX_BASE/.well-known/mcp-registry-auth" \

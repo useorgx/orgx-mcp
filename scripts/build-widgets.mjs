@@ -57,7 +57,13 @@ const CANONICAL_PRIMARIES = {
 // Widgets that are demo-only (gallery / preview) and therefore exempt
 // from "bound-to-a-tool" checks but still must pass palette + shared-layer
 // contracts. Streaming demos converge on the main widgets via ?live=true.
-const DEMO_ONLY_WIDGETS = new Set(['index', 'scaffold-streaming']);
+const DEMO_ONLY_WIDGETS = new Set([
+  'index',
+  'scaffold-streaming',
+  // Trust-loop exploration retained in the QA gallery; the production
+  // operator-brief tool is bound to morning-brief.html.
+  'daily-brief',
+]);
 
 // ── Contract 2: shared-layer allowlist ───────────────────────────
 // Must match MCP_APPS_SHARED_COMPONENT_PATHS in src/widgetConfig.ts.
