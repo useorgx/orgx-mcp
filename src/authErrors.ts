@@ -52,11 +52,13 @@ const REASON_DEFAULTS: Record<
 > = {
   missing_token: {
     error: 'invalid_token',
-    description: 'Missing access token',
+    description:
+      'Missing access token. Re-authorize the OrgX MCP connection (run the orgx authorize flow), then retry.',
   },
   invalid_token: {
     error: 'invalid_token',
-    description: 'Invalid access token',
+    description:
+      'Invalid or expired access token. Re-authorize the OrgX MCP connection (run the orgx authorize flow), then retry.',
   },
   token_expired: {
     error: 'invalid_token',
