@@ -106,14 +106,37 @@ function looksLikeDefaultPlaceholder(value: string | undefined) {
   );
 }
 
+/**
+ * Canonicalize an OrgX API base URL so a www/http misconfig can't take the MCP
+ * down. OrgX serves its API from the apex over https; `www.` 301-redirects and
+ * `http` 308-redirects, and callOrgxApiRaw treats ANY 3xx as a hard failure
+ * (redirect:'manual'). So a single wrong `ORGX_API_URL` (e.g. https://www.useorgx.com)
+ * makes every authed tool 500 before the app is ever reached. Forcing https and
+ * stripping a leading `www.` makes the worker call the canonical origin directly
+ * — deterministic, without re-introducing the untrusted-redirect risk that
+ * "follow redirects" would. Unparseable values pass through unchanged.
+ */
+export function canonicalizeOrgxApiBaseUrl(value: string): string {
+  try {
+    const u = new URL(value);
+    if (u.protocol === 'http:') u.protocol = 'https:';
+    if (u.hostname.startsWith('www.')) u.hostname = u.hostname.slice(4);
+    return u.toString().replace(/\/+$/, '');
+  } catch {
+    return value;
+  }
+}
+
 function getOrgxApiBaseUrls(env: OrgxApiEnv): string[] {
   const seen = new Set<string>();
   const urls: string[] = [];
   for (const value of [env.ORGX_API_URL, env.ORGX_API_FALLBACK_URL]) {
     const trimmed = value?.trim();
-    if (!trimmed || seen.has(trimmed)) continue;
-    seen.add(trimmed);
-    urls.push(trimmed);
+    if (!trimmed) continue;
+    const canonical = canonicalizeOrgxApiBaseUrl(trimmed);
+    if (seen.has(canonical)) continue;
+    seen.add(canonical);
+    urls.push(canonical);
   }
   return urls;
 }
