@@ -300,7 +300,7 @@ export const CANONICAL_OUTPUT_SCHEMAS = {
       plan_version: z.number().optional(),
       patterns_applied: z.array(z.string()).optional(),
       started_at: z.string().optional(),
-      last_edit_at: z.string().optional(),
+      last_edit_at: nullableString.optional(),
       edits: z.array(resourceSchema).optional(),
       edit_type: z.string().optional(),
       edit_summary: z.string().optional(),

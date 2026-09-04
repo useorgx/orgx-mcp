@@ -242,7 +242,7 @@ export const planSessionSchema = z.object({
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
   completed_at: nullableString.optional(),
-  last_edit_at: z.string().optional(),
+  last_edit_at: nullableString.optional(),
 });
 
 export const recommendationSchema = z.object({
