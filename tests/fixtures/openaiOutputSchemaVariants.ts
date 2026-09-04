@@ -112,15 +112,17 @@ const CANONICAL_PLAN_SESSION = {
 };
 
 export const ORGX_PLAN_OUTPUT_VARIANTS = [
-  { id: PLAN_SESSION_ID, title: 'Plan', ...PLAN_REF },
+  // A newly persisted session has never been edited. Preserve that absence;
+  // rejecting this successful write makes clients retry work already created.
+  { id: PLAN_SESSION_ID, title: 'Plan', last_edit_at: null, ...PLAN_REF },
   {
     sessions: [],
     accepted_id_forms: ['uuid', 'orgx://plan_session/<uuid>'],
   },
   {
-    sessions: [{ id: PLAN_SESSION_ID, title: 'Plan', ...PLAN_REF }],
+    sessions: [{ id: PLAN_SESSION_ID, title: 'Plan', last_edit_at: null, ...PLAN_REF }],
     accepted_id_forms: ['uuid', 'orgx://plan_session/<uuid>'],
-    selected_session: { id: PLAN_SESSION_ID, title: 'Plan', ...PLAN_REF },
+    selected_session: { id: PLAN_SESSION_ID, title: 'Plan', last_edit_at: null, ...PLAN_REF },
   },
   {
     suggestions: [],
