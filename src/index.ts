@@ -78,6 +78,7 @@ import {
 import { withPathScopedResourceChallenge } from './oauthResourceChallenge';
 import { withSecurityHeaders } from './securityHeaders';
 import { callOrgxApiJson, callOrgxApiRaw, OrgXApiError } from './orgxApi';
+import { captureDecision } from './decisionCapture';
 import { mapMorningBriefApiError } from './morningBriefError';
 import { fetchContextCapsule, fetchContextPack } from './contextPack';
 import {
@@ -6722,6 +6723,16 @@ export class OrgXMcp extends McpAgent<
       );
     }
 
+    if (type === 'decision') {
+      return captureDecision(args, {
+        env: this.env,
+        userId: resolvedUserId,
+        userEmail: this.resolveUserEmail(),
+        orgxUserId: this.resolveOrgxUserId(resolvedUserId),
+        workspaceId,
+      });
+    }
+
     const payload: Record<string, unknown> = {
       type,
       title: args.title,
@@ -6742,7 +6753,7 @@ export class OrgXMcp extends McpAgent<
     if (args.sequence !== undefined && (type === 'task' || type === 'milestone')) {
       payload.sequence = args.sequence;
     }
-    if (args.domain && type !== 'decision') payload.domain = args.domain;
+    if (args.domain) payload.domain = args.domain;
     if (args.depends_on && type === 'task') payload.depends_on = args.depends_on;
     if (args.assigned_agent_ids && type === 'task') {
       payload.assigned_agent_ids = args.assigned_agent_ids;
