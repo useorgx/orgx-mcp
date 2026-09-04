@@ -111,7 +111,25 @@ const CANONICAL_PLAN_SESSION = {
   last_edit_at: '2026-08-30T12:00:00.000Z',
 };
 
+const NULLABLE_PLAN_SESSION = {
+  ...CANONICAL_PLAN_SESSION, feature_name: null, current_plan: null,
+  workspace_id: null, patterns_applied: null, domains_detected: null, last_edit_at: null,
+};
+
 export const ORGX_PLAN_OUTPUT_VARIANTS = [
+  NULLABLE_PLAN_SESSION,
+  { sessions: [NULLABLE_PLAN_SESSION], selected_session: NULLABLE_PLAN_SESSION },
+  {
+    ...PLAN_REF, id: 'edit-record', owner_id: 'owner', edit_type: 'other',
+    section_path: null, before_content: null, after_content: 'Deployment verified.',
+    user_reason: null, ai_suggestion: false, pattern_key: null, learning_extracted: false,
+    created_at: '2026-09-04T22:30:00.000Z',
+  },
+  {
+    ...PLAN_REF, id: 'legacy-edit', edit_type: 'other', after_content: 'Updated plan.',
+    section_path: null, before_content: null, user_reason: null,
+    ai_suggestion: null, learning_extracted: null, pattern_key: 'continuity',
+  },
   // A newly persisted session has never been edited. Preserve that absence;
   // rejecting this successful write makes clients retry work already created.
   { id: PLAN_SESSION_ID, title: 'Plan', last_edit_at: null, ...PLAN_REF },
