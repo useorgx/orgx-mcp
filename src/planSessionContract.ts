@@ -129,44 +129,12 @@ export function buildPlanSessionStructuredResult(
   requestArgs: Record<string, unknown>
 ): Record<string, unknown> {
   const sessionId = normalizePlanSessionId(
-    data.session_id ?? data.id ?? requestArgs.session_id
+    data.session_id ?? requestArgs.session_id ?? data.id
   );
-  const currentPlan =
-    toolId === 'record_plan_edit'
-      ? requestArgs.after_content
-      : requestArgs.plan_content;
-  const result = enrichPlanSessionResult(
+  // An edit receipt or critique does not prove the submitted text became the
+  // saved plan. Preserve server-returned plan state; only enrich its identity.
+  return enrichPlanSessionResult(
     toolId,
-    sessionId && !normalizePlanSessionId(data)
-      ? { ...data, session_id: sessionId }
-      : data
+    sessionId ? { ...data, session_id: sessionId } : data
   );
-
-  if (
-    !sessionId ||
-    typeof currentPlan !== 'string' ||
-    currentPlan.trim().length === 0 ||
-    !['improve_plan', 'record_plan_edit', 'complete_plan'].includes(toolId)
-  ) {
-    return result;
-  }
-
-  return {
-    ...result,
-    plan_session: {
-      session_id: sessionId,
-      id: sessionId,
-      uri: `orgx://plan_session/${sessionId}`,
-      accepted_id_forms: PLAN_SESSION_ACCEPTED_ID_FORMS,
-      current_plan: currentPlan,
-      status: toolId === 'complete_plan' ? 'completed' : 'active',
-      domains_detected: Array.isArray(result.domains_detected)
-        ? result.domains_detected
-        : [],
-      last_edit_at:
-        typeof result.created_at === 'string'
-          ? result.created_at
-          : new Date().toISOString(),
-    },
-  };
 }

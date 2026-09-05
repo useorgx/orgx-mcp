@@ -89,6 +89,12 @@ function successfulApiResponse(path: string, init?: RequestInit): Response {
       data: { id: 'decision-1', title: 'Scoped decision' },
     });
   }
+  if (path === '/api/v1/decisions') {
+    return Response.json({ decision: {
+      id: '55555555-5555-4555-8555-555555555555',
+      title: 'Use decision scope', status: 'pending',
+    } });
+  }
   if (path === '/api/v1/expectations') {
     return Response.json({
       expectation: {
@@ -913,13 +919,23 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
     try {
       const remembered = await decisionsWrite.client.callTool({
         name: 'orgx_decide',
-        arguments: { action: 'remember', decision: 'Use decision scope' },
+        arguments: {
+          action: 'remember', decision: 'Use decision scope',
+          idempotency_key: 'oauth-capture-001',
+        },
       });
       expect(remembered.isError).not.toBe(true);
       const entityCall = apiMocks.callOrgxApiJson.mock.calls.find(
-        ([, path]) => path === '/api/entities'
+        ([, path]) => path === '/api/v1/decisions'
       );
       expect(entityCall).toBeTruthy();
+      expect(entityCall?.[2]?.headers).toEqual({ 'Idempotency-Key': 'oauth-capture-001' });
+      expect(entityCall?.[3]).toMatchObject({ userId: USER_ID, allowFallback: false });
+      expect(JSON.parse(String(entityCall?.[2]?.body))).toMatchObject({
+        workspace_id: WORKSPACE_ID,
+        shape_context: { description: 'Use decision scope' },
+        blocks_task: false,
+      });
     } finally {
       await closeHarness(decisionsWrite);
     }

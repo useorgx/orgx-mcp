@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-05T01:54:51.355Z",
-  "sourceHash": "82dcab123592d9c9",
+  "generatedAt": "2026-09-05T03:58:01.432Z",
+  "sourceHash": "55e8b8de92885977",
   "version": "1.0.0",
   "totalTools": 88,
   "categories": [
@@ -180,7 +180,7 @@
           },
           "canonical_only": {
             "type": "boolean",
-            "description": "When true, return only the canonical next task linked to the active goal spine."
+            "description": "When true, return only the canonical next task linked to the active goal."
           },
           "limit": {
             "type": "number",

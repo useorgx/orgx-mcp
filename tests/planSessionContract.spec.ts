@@ -74,7 +74,7 @@ describe('plan session contract helpers', () => {
     ]);
   });
 
-  it('keeps the current plan visible after improve and edit mutations', () => {
+  it('does not present a critique request as persisted plan state', () => {
     const improved = buildPlanSessionStructuredResult(
       'improve_plan',
       { suggestions: [], domains_detected: ['product'] },
@@ -85,27 +85,45 @@ describe('plan session contract helpers', () => {
     );
     expect(improved).toMatchObject({
       session_id: SESSION_ID,
-      plan_session: {
-        session_id: SESSION_ID,
-        current_plan: '# Melissa plan\n\n## Outcome\nProof plus next action.',
-        domains_detected: ['product'],
-      },
+      domains_detected: ['product'],
     });
+    expect(improved).not.toHaveProperty('plan_session');
+    expect(improved).not.toHaveProperty('last_edit_at');
+    expect(improved).not.toHaveProperty('status');
+  });
 
+  it('keeps an edit receipt separate from the saved plan and session identity', () => {
+    const editId = '123e4567-e89b-12d3-a456-426614174001';
     const edited = buildPlanSessionStructuredResult(
       'record_plan_edit',
-      { id: 'edit-1', session_id: SESSION_ID, edit_type: 'change_approach' },
+      { id: editId, edit_type: 'other', after_content: 'Recorded build progress.' },
       {
         session_id: SESSION_ID,
-        after_content: '# Four workstreams\n\n## Human gate\nApprove outreach.',
+        after_content: 'Recorded build progress.',
       }
     );
     expect(edited).toMatchObject({
-      plan_session: {
-        session_id: SESSION_ID,
-        current_plan: '# Four workstreams\n\n## Human gate\nApprove outreach.',
-      },
+      id: editId,
+      session_id: SESSION_ID,
+      uri: `orgx://plan_session/${SESSION_ID}`,
+      after_content: 'Recorded build progress.',
     });
+    expect(edited).not.toHaveProperty('plan_session');
+  });
+
+  it('preserves the server-returned plan, status, and timestamp during completion', () => {
+    const persistedPlan = {
+      id: SESSION_ID,
+      current_plan: '# Server-accepted plan',
+      status: 'awaiting_review',
+      last_edit_at: null,
+    };
+    const result = buildPlanSessionStructuredResult(
+      'complete_plan',
+      { session_id: SESSION_ID, plan_session: persistedPlan },
+      { session_id: SESSION_ID, plan_content: '# Submitted draft' }
+    );
+    expect(result.plan_session).toEqual(persistedPlan);
   });
 
   it('renders a visible LLM receipt and grounded plan critique', () => {
