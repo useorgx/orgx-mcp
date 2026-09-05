@@ -17,7 +17,7 @@ const apiMocks = vi.hoisted(() => ({
   callOrgxApiJson: vi.fn(),
   callOrgxApiRaw: vi.fn(),
   fetchContextPack: vi.fn(),
-  fetchContextCapsule: vi.fn(),
+  fetchContextPreparation: vi.fn(),
   captureWorkerPosthogEvent: vi.fn(),
 }));
 
@@ -66,7 +66,7 @@ vi.mock('../src/orgxApi', async (importOriginal) => {
 
 vi.mock('../src/contextPack', () => ({
   fetchContextPack: apiMocks.fetchContextPack,
-  fetchContextCapsule: apiMocks.fetchContextCapsule,
+  fetchContextPreparation: apiMocks.fetchContextPreparation,
 }));
 
 vi.mock('../src/posthogTelemetry', () => ({
@@ -307,9 +307,13 @@ async function createSubmissionProfileHarness(
     entity: { id: INITIATIVE_ID, type: 'initiative' },
     related: [],
   });
-  apiMocks.fetchContextCapsule.mockResolvedValue({
-    schema_version: 'orgx.context-capsule/v1',
-    capsule_id: 'capsule_workspace',
+  apiMocks.fetchContextPreparation.mockResolvedValue({
+    context_pack: { entity: { id: INITIATIVE_ID, type: 'initiative' }, related: [] },
+    context_capsule: {
+      schema_version: 'orgx.context-capsule/v1',
+      capsule_id: 'capsule_workspace',
+    },
+    context_delivery: { base_verified: false, mode: 'full' },
   });
 
   await worker._doInit();
@@ -475,19 +479,24 @@ describe('submission profile worker-local side-effect suppression', () => {
       for (const spy of Object.values(spies)) {
         spy.mockClear();
       }
-      apiMocks.fetchContextPack.mockResolvedValueOnce({
-        entity: { id: INITIATIVE_ID, type: 'initiative' },
-        frame: {
-          anchor: {
-            id: INITIATIVE_ID,
-            type: 'initiative',
-            title: 'Directory review initiative',
+      apiMocks.fetchContextPack.mockClear();
+      apiMocks.fetchContextPreparation.mockClear();
+      apiMocks.fetchContextPreparation.mockResolvedValueOnce({
+        context_pack: {
+          entity: { id: INITIATIVE_ID, type: 'initiative' },
+          frame: {
+            anchor: {
+              id: INITIATIVE_ID,
+              type: 'initiative',
+              title: 'Directory review initiative',
+            },
           },
         },
-      });
-      apiMocks.fetchContextCapsule.mockResolvedValueOnce({
-        schema_version: 'orgx.context-capsule/v1',
-        capsule_id: 'capsule_workspace',
+        context_capsule: {
+          schema_version: 'orgx.context-capsule/v1',
+          capsule_id: 'capsule_workspace',
+        },
+        context_delivery: { base_verified: false, mode: 'full' },
       });
 
       const result = await client.callTool({
@@ -518,16 +527,16 @@ describe('submission profile worker-local side-effect suppression', () => {
           }),
         ])
       );
-      expect(apiMocks.fetchContextPack).toHaveBeenCalledWith(
+      expect(apiMocks.fetchContextPreparation).toHaveBeenCalledExactlyOnceWith(
         expect.any(Object),
         'directory-reviewer',
-        { type: 'initiative', id: INITIATIVE_ID }
+        WORKSPACE_ID,
+        INITIATIVE_ID
       );
-      expect(apiMocks.fetchContextCapsule).toHaveBeenCalledWith(
-        expect.any(Object),
-        'directory-reviewer',
-        WORKSPACE_ID
-      );
+      expect(apiMocks.fetchContextPack).not.toHaveBeenCalled();
+      expect(result.structuredContent).toMatchObject({
+        context_delivery: { base_verified: false, mode: 'full' },
+      });
       expect(spies.waitUntil).toHaveBeenCalled();
       expect(spies.storagePut).toHaveBeenCalledWith(
         MCP_SESSION_REENTRY_STORAGE_KEY,

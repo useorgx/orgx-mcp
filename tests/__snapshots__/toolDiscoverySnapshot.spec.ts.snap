@@ -173,7 +173,7 @@ exports[`tool discovery snapshot > full tool catalog description hashes are lock
   "orgx_search": "99af7aa1e3aa",
   "orgx_spawn": "ada9e4f61045",
   "orgx_submit_receipt": "95ed2efba439",
-  "orgx_tail": "6add7d4c6891",
+  "orgx_tail": "9c764df70fc4",
   "orgx_write": "5e57720e13db",
   "pin_workstream": "3a134a5ae349",
   "query_org_memory": "fd52f2ef6778",
