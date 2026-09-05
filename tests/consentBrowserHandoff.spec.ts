@@ -118,17 +118,15 @@ describe('OAuth consent browser handoff', () => {
     try {
       await page.goto('https://mcp.useorgx.test/consent.html?state_key=test-state');
       await page.waitForSelector('#configure-stage.active');
-      const navigation = page.waitForURL(
-        'https://chatgpt.com/connector_platform_oauth_redirect?code=test-code',
-        { timeout: 3_000 }
-      );
-      await page.evaluate(() =>
-        (window as unknown as {
-          submitConsent: (action: string) => Promise<void>;
-        }).submitConsent('approve')
-      );
+      await page.getByRole('button', { name: 'Review access', exact: true }).click();
       try {
-        await navigation;
+        await Promise.all([
+          page.waitForURL(
+            'https://chatgpt.com/connector_platform_oauth_redirect?code=test-code',
+            { timeout: 3_000 }
+          ),
+          page.getByRole('button', { name: 'Authorize ChatGPT', exact: true }).click(),
+        ]);
       } catch {
         throw new Error(JSON.stringify({
           url: page.url(),
