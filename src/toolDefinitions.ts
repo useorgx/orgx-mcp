@@ -2698,12 +2698,8 @@ export function summarizePlanSessionResult(
       return response;
     }
 
-    case 'record_plan_edit': {
-      const editType = data.edit_type as string | undefined;
-      return `📝 Recorded ${
-        editType?.replace('_', ' ') || 'edit'
-      }. I'm learning from your planning style.`;
-    }
+    case 'record_plan_edit':
+      return 'Recorded plan edit.';
 
     case 'complete_plan': {
       const suggestions = data.skill_suggestions as
