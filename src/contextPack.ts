@@ -75,11 +75,12 @@ function asRecord(value: unknown): Record<string, unknown> | null {
  * than the general API timeout because a missing capsule must degrade to null,
  * not stall the agent's first call.
  */
-export async function fetchContextCapsule(
+export async function fetchContextPreparation(
   env: OrgxApiEnv,
   userId: string | null | undefined,
-  workspaceId: string
-): Promise<Record<string, unknown> | null> {
+  workspaceId: string,
+  initiativeId?: string
+): Promise<{ context_capsule: Record<string, unknown> | null; context_delivery: Record<string, unknown> | null; context_pack: Record<string, unknown> | null } | null> {
   const normalizedWorkspaceId = workspaceId.trim();
   if (!normalizedWorkspaceId) return null;
 
@@ -95,20 +96,32 @@ export async function fetchContextCapsule(
       {
         method: 'POST',
         body: JSON.stringify(
-          buildContextCapsuleRequestBody(normalizedWorkspaceId)
+          { ...buildContextCapsuleRequestBody(normalizedWorkspaceId),
+            ...(initiativeId ? { initiative_id: initiativeId } : {}) }
         ),
         signal: controller.signal,
       },
       { userId: userId ?? null }
     );
     const payload = (await response.json()) as { data?: unknown };
-    const capsule = asRecord(asRecord(payload.data)?.context_capsule);
-    return capsule?.schema_version === CONTEXT_CAPSULE_SCHEMA_VERSION
-      ? capsule
-      : null;
+    const data = asRecord(payload.data);
+    const capsule = asRecord(data?.context_capsule);
+    if (!data) return null;
+    return {
+      context_capsule: capsule?.schema_version === CONTEXT_CAPSULE_SCHEMA_VERSION ? capsule : null,
+      context_delivery: asRecord(data.context_delivery),
+      context_pack: initiativeId ? data : null,
+    };
   } catch {
     return null;
   } finally {
     clearTimeout(deadline);
   }
+}
+
+/** Compatibility helper for consumers that only need the capsule. */
+export async function fetchContextCapsule(
+  env: OrgxApiEnv, userId: string | null | undefined, workspaceId: string
+): Promise<Record<string, unknown> | null> {
+  return (await fetchContextPreparation(env, userId, workspaceId))?.context_capsule ?? null;
 }

@@ -272,7 +272,9 @@ describe('response summarizer v2 OrgX workflows', () => {
     expect(text).toContain(
       '[approved] Keep automatic receipts metadata-only.'
     );
-    expect(text).toContain('Applied learnings: none accepted.');
+    expect(text).toContain('Applied learnings: none returned in this bounded projection.');
+    expect(text).toContain('Consistency: best-effort reads.');
+    expect(text).toContain('Source coverage is incomplete or unknown.');
     expect(text).toContain(
       '[pending] orgx.run_receipt_coverage.v1 gte 0.95'
     );
