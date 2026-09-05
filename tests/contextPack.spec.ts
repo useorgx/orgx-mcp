@@ -65,7 +65,7 @@ describe('context pack helpers', () => {
       CONTEXT_PACK_API_PATH,
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ workspace_id: 'workspace-1', delivery_mode: 'delta' }),
+        body: JSON.stringify({ workspace_id: 'workspace-1', response_profile: 'prepared' }),
         signal: expect.any(AbortSignal),
       }),
       { userId: 'user-1' }
@@ -102,6 +102,17 @@ describe('context pack helpers', () => {
 
 
 describe('context delivery propagation', () => {
+  it('falls back from an oversized prepared capsule using the same scope and deadline', async () => {
+    apiMocks.callOrgxApiJson.mockRejectedValueOnce(new Error('prepared byte budget'));
+    apiMocks.callOrgxApiJson.mockResolvedValueOnce(Response.json({data:{context_capsule:{schema_version:'orgx.context-capsule/v1',capsule_id:'full-fallback'}}}));
+    const result=await fetchContextPreparation({} as never,'scoped-user','scoped-workspace');
+    expect(result?.context_capsule?.capsule_id).toBe('full-fallback');
+    expect(apiMocks.callOrgxApiJson).toHaveBeenCalledTimes(2);
+    const first=apiMocks.callOrgxApiJson.mock.calls[0],second=apiMocks.callOrgxApiJson.mock.calls[1];
+    expect(JSON.parse(first[2].body)).toEqual({workspace_id:'scoped-workspace',response_profile:'prepared'});
+    expect(JSON.parse(second[2].body)).toEqual({workspace_id:'scoped-workspace',delivery_mode:'delta'});
+    expect(first[2].signal).toBe(second[2].signal);expect(second[3]).toEqual({userId:'scoped-user'});
+  });
   it('preserves initiative scope and server delivery metadata for bootstrap', async () => {
     const delivery = { schema_version: 'orgx.context-delivery/v1', base_verified: false };
     apiMocks.callOrgxApiJson.mockResolvedValue(Response.json({ data: {

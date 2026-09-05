@@ -110,7 +110,7 @@ export async function fetchContextPreparation(
   try {
     const key = JSON.stringify([env.ORGX_API_URL, userId, normalizedWorkspaceId, initiativeId]);
     const previous = continuationBases.get(key);
-    const fetchPreparation = async (base?: ContextContinuation) => {
+    const fetchPreparation = async (base?: ContextContinuation, prepared = false) => {
     const response = await callOrgxApiJson(
       env,
       CONTEXT_PACK_API_PATH,
@@ -119,8 +119,10 @@ export async function fetchContextPreparation(
         body: JSON.stringify(
           { ...buildContextCapsuleRequestBody(normalizedWorkspaceId),
             ...(initiativeId ? { initiative_id: initiativeId } : {}),
-            delivery_mode: 'delta',
-            ...(base ? { acknowledged_context_version: base.version } : {}) }
+            ...(prepared ? { response_profile: 'prepared' } : {
+              delivery_mode: 'delta',
+              ...(base ? { acknowledged_context_version: base.version } : {})
+            }) }
         ),
         signal: controller.signal,
       },
@@ -136,10 +138,12 @@ export async function fetchContextPreparation(
     return restored.data;
     };
     let data: Record<string, unknown> | null;
-    try { data = await fetchPreparation(previous); }
+    try { data = await fetchPreparation(initiativeId ? previous : undefined, !initiativeId); }
     catch (error) {
-      if (!previous || controller.signal.aborted) throw error;
-      data = await fetchPreparation();
+      if (controller.signal.aborted || (initiativeId && !previous)) throw error;
+      // Oversized prepared context uses the existing full/continuation path,
+      // with the same owner, workspace and total deadline.
+      data = await fetchPreparation(initiativeId ? undefined : previous);
     }
     const capsule = asRecord(data?.context_capsule);
     if (!data) return null;
