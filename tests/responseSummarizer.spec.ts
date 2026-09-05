@@ -285,6 +285,17 @@ describe('response summarizer v2 OrgX workflows', () => {
     expect(text).toContain('Digest: sha256:abc123');
   });
 
+  it('describes coherent capsule sources without promoting the entity frame', () => {
+    const text = formatForLLM('orgx_bootstrap', { context_capsule: {
+      schema_version: 'orgx.context-capsule/v1', capsule_id: 'snapshot',
+      projection_consistency: 'database_snapshot',
+    } });
+    expect(text).toContain('Capsule sources: one database snapshot.');
+    expect(text).toContain('Additional entity-frame reads may be best-effort.');
+    expect(text).toContain('Recheck permissions and required revisions');
+    expect(text).toContain('Source coverage is incomplete or unknown.');
+  });
+
   it('does not render an unknown context capsule schema', () => {
     const text = formatForLLM('orgx_bootstrap', {
       context_capsule: {
