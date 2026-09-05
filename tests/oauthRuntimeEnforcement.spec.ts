@@ -479,6 +479,9 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
         _v2_tool: 'orgx_tail',
         capsule_id: 'capsule_0123456789abcdef01234567',
         after_sequence: 2491,
+        base_verified: false,
+        rebootstrap_required: true,
+        reusable_for_consequential_action: false,
         next_after_sequence: 2492,
         has_more: false,
         material_changes: [
@@ -519,7 +522,7 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
         expect.arrayContaining([
           expect.objectContaining({
             type: 'text',
-            text: expect.stringContaining('not ledger-backed yet'),
+            text: expect.stringContaining('does not validate the capsule base'),
           }),
         ])
       );
