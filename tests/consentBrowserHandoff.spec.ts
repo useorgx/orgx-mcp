@@ -125,7 +125,7 @@ describe('OAuth consent browser handoff', () => {
             'https://chatgpt.com/connector_platform_oauth_redirect?code=test-code',
             { timeout: 3_000 }
           ),
-          page.getByRole('button', { name: 'Authorize', exact: true }).click(),
+          page.getByRole('button', { name: 'Authorize ChatGPT', exact: true }).click(),
         ]);
       } catch {
         throw new Error(JSON.stringify({
