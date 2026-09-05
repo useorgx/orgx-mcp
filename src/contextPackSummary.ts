@@ -91,7 +91,9 @@ export function formatContextCapsuleSummary(
     }:`,
   ];
 
-  lines.push('Consistency: best-effort reads. Recheck permissions and required revisions before acting.');
+  lines.push(capsule.projection_consistency === 'database_snapshot'
+    ? 'Capsule sources: one database snapshot. Additional entity-frame reads may be best-effort. Recheck permissions and required revisions before acting.'
+    : 'Consistency: best-effort reads. Recheck permissions and required revisions before acting.');
   const completeness = firstRecord(capsule.source_completeness);
   if (!completeness || Object.values(completeness).some((value) => firstRecord(value)?.status !== 'complete')) {
     lines.push('Source coverage is incomplete or unknown. Expand the relevant evidence before relying on it.');
