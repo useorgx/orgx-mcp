@@ -79,7 +79,7 @@ import { withPathScopedResourceChallenge } from './oauthResourceChallenge';
 import { withSecurityHeaders } from './securityHeaders';
 import { callOrgxApiJson, callOrgxApiRaw, OrgXApiError } from './orgxApi';
 import { mapMorningBriefApiError } from './morningBriefError';
-import { fetchContextCapsule, fetchContextPack } from './contextPack';
+import { fetchContextPreparation, fetchContextPack } from './contextPack';
 import {
   batchCreateEntities as runBatchCreateEntities,
   validateEntityCreatePayloadContract,
@@ -4904,25 +4904,20 @@ export class OrgXMcp extends McpAgent<
             };
             await this.saveSessionContext();
           }
-          const [context_pack, context_capsule] = await Promise.all([
-            this.sessionContext.initiativeId
-              ? fetchContextPack(this.env, resolvedUserId, {
-                  type: 'initiative',
-                  id: this.sessionContext.initiativeId,
-                })
-              : Promise.resolve(null),
-            this.sessionContext.workspaceId
-              ? fetchContextCapsule(
-                  this.env,
-                  resolvedUserId,
-                  this.sessionContext.workspaceId
-                )
-              : Promise.resolve(null),
-          ]);
+          const preparation = this.sessionContext.workspaceId
+            ? await fetchContextPreparation(
+                this.env,
+                resolvedUserId,
+                this.sessionContext.workspaceId,
+                this.sessionContext.initiativeId ?? undefined
+              )
+            : null;
+          const context_pack = preparation?.context_pack ?? null;
           const payload = {
             ...this.buildBootstrapPayload(allowedTools ?? null),
             context_pack,
-            context_capsule,
+            context_capsule: preparation?.context_capsule ?? null,
+            context_delivery: preparation?.context_delivery ?? null,
           };
           return {
             content: [
@@ -6324,11 +6319,15 @@ export class OrgXMcp extends McpAgent<
                   materialChanges.length === 1 ? '' : 's'
                 } after sequence ${built.afterSequence} · next sequence ${nextAfterSequence}${
                   hasMore ? ' · more available' : ''
-                }\nCoverage boundary: constraints and incidents are not ledger-backed yet.`,
+                }\nCoverage boundary: this event feed is incomplete and does not validate the capsule base. Bootstrap current context before consequential action.`,
               },
             ],
             structuredContent: {
               _v2_tool: 'orgx_tail',
+              base_verified: false,
+              rebootstrap_required: true,
+              reusable_for_consequential_action: false,
+              delivery_mode: 'partial_event_feed',
               capsule_id: built.capsuleId,
               after_sequence: built.afterSequence,
               next_after_sequence: nextAfterSequence,

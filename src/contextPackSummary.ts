@@ -91,6 +91,12 @@ export function formatContextCapsuleSummary(
     }:`,
   ];
 
+  lines.push('Consistency: best-effort reads. Recheck permissions and required revisions before acting.');
+  const completeness = firstRecord(capsule.source_completeness);
+  if (!completeness || Object.values(completeness).some((value) => firstRecord(value)?.status !== 'complete')) {
+    lines.push('Source coverage is incomplete or unknown. Expand the relevant evidence before relying on it.');
+  }
+
   const intent = firstRecord(capsule.current_intent);
   const intentSummary = str(intent?.summary);
   if (intentSummary) {
@@ -111,7 +117,7 @@ export function formatContextCapsuleSummary(
 
   const appliedLearnings = recordArray(capsule.applied_learnings);
   if (appliedLearnings.length === 0) {
-    lines.push('Applied learnings: none accepted.');
+    lines.push('Applied learnings: none returned in this bounded projection.');
   } else {
     formatCapsuleStateItems(
       lines,

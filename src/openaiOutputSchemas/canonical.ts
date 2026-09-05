@@ -53,6 +53,7 @@ export const CANONICAL_OUTPUT_SCHEMAS = {
       }),
       context_pack: contextPackSchema.nullable(),
       context_capsule: contextPackSchema.nullable(),
+      context_delivery: contextPackSchema.nullable().optional(),
     })
     .strict(),
 
