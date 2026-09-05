@@ -65,7 +65,7 @@ describe('context pack helpers', () => {
       CONTEXT_PACK_API_PATH,
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ workspace_id: 'workspace-1' }),
+        body: JSON.stringify({ workspace_id: 'workspace-1', delivery_mode: 'delta' }),
         signal: expect.any(AbortSignal),
       }),
       { userId: 'user-1' }
@@ -113,7 +113,7 @@ describe('context delivery propagation', () => {
     expect(result?.context_pack?.frame).toEqual({ anchor: { id: 'initiative-1' } });
     expect(apiMocks.callOrgxApiJson).toHaveBeenCalledTimes(1);
     expect(JSON.parse(apiMocks.callOrgxApiJson.mock.calls[0][2].body)).toEqual({
-      workspace_id: 'workspace-1', initiative_id: 'initiative-1',
+      workspace_id: 'workspace-1', initiative_id: 'initiative-1', delivery_mode: 'delta',
     });
   });
   it('leaves missing delivery guarantees unknown on older app deployments', async () => {
@@ -130,4 +130,21 @@ it('preserves a legacy initiative pack when its app does not supply a capsule', 
   const result = await fetchContextPreparation({} as never, 'user', 'workspace', 'i');
   expect(result?.context_capsule).toBeNull();
   expect(result?.context_pack?.frame).toEqual({ anchor: { id: 'i' } });
+});
+
+it('reconstructs acknowledged transfers and repairs a stale base without losing scope', async () => {
+  const serialized = JSON.stringify({ context_delivery: { consistency: 'database_snapshot' }, context_capsule: { schema_version: 'orgx.context-capsule/v1', capsule_id: 'portable' } }, null, 2);
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(serialized));
+  const version = 'sha256:' + Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, '0')).join('');
+  const transfer = { schema_version: 'orgx.context-transfer/v1', mode: 'full', serialized, version };
+  apiMocks.callOrgxApiJson.mockImplementation(async () => Response.json({ data: { context_transfer: transfer } }));
+  const first = await fetchContextPreparation({} as never, 'portable-user', 'portable-workspace', 'portable-initiative');
+  expect(first?.context_capsule?.capsule_id).toBe('portable');
+  apiMocks.callOrgxApiJson.mockImplementationOnce(async () => Response.json({ data: { context_transfer: { schema_version: transfer.schema_version, mode: 'delta', base_version: version, version, operations: [{ copy: [0, serialized.split('\n').length] }] } } }));
+  expect(await fetchContextPreparation({} as never, 'portable-user', 'portable-workspace', 'portable-initiative')).toEqual(first);
+  expect(JSON.parse(apiMocks.callOrgxApiJson.mock.calls[1][2].body).acknowledged_context_version).toBe(version);
+  apiMocks.callOrgxApiJson.mockImplementationOnce(async () => Response.json({ data: { context_transfer: { ...transfer, serialized: 'tampered' } } }));
+  expect(await fetchContextPreparation({} as never, 'portable-user', 'portable-workspace', 'portable-initiative')).toEqual(first);
+  expect(apiMocks.callOrgxApiJson).toHaveBeenCalledTimes(4);
+  expect(JSON.parse(apiMocks.callOrgxApiJson.mock.calls[3][2].body)).toEqual({ workspace_id: 'portable-workspace', initiative_id: 'portable-initiative', delivery_mode: 'delta' });
 });

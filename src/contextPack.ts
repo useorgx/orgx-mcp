@@ -9,6 +9,24 @@
  * @module contextPack
  */
 import { callOrgxApiJson, type OrgxApiEnv } from './orgxApi';
+import { applyContextTransfer, type ContextContinuation } from './contextContinuation';
+
+// Optional transport acceleration. Current auth and current app preparation run on every call.
+const continuationBases = new Map<string, ContextContinuation>();
+let continuationBytes = 0;
+function retainContinuation(key: string, base: ContextContinuation) {
+  const size = new TextEncoder().encode(base.serialized).byteLength;
+  const previous = continuationBases.get(key);
+  if (previous) { continuationBytes -= new TextEncoder().encode(previous.serialized).byteLength; continuationBases.delete(key); }
+  if (size > 1024 * 1024) return;
+  while (continuationBases.size >= 32 || continuationBytes + size > 8 * 1024 * 1024) {
+    const oldest = continuationBases.keys().next().value;
+    if (oldest === undefined) break;
+    continuationBytes -= new TextEncoder().encode(continuationBases.get(oldest)!.serialized).byteLength;
+    continuationBases.delete(oldest);
+  }
+  continuationBases.set(key, base); continuationBytes += size;
+}
 
 const PACKABLE_TYPES = new Set(['initiative', 'workstream', 'task']);
 export const CONTEXT_PACK_API_PATH = '/api/v1/context-pack';
@@ -90,6 +108,9 @@ export async function fetchContextPreparation(
     CONTEXT_CAPSULE_FETCH_TIMEOUT_MS
   );
   try {
+    const key = JSON.stringify([env.ORGX_API_URL, userId, normalizedWorkspaceId, initiativeId]);
+    const previous = continuationBases.get(key);
+    const fetchPreparation = async (base?: ContextContinuation) => {
     const response = await callOrgxApiJson(
       env,
       CONTEXT_PACK_API_PATH,
@@ -97,14 +118,29 @@ export async function fetchContextPreparation(
         method: 'POST',
         body: JSON.stringify(
           { ...buildContextCapsuleRequestBody(normalizedWorkspaceId),
-            ...(initiativeId ? { initiative_id: initiativeId } : {}) }
+            ...(initiativeId ? { initiative_id: initiativeId } : {}),
+            delivery_mode: 'delta',
+            ...(base ? { acknowledged_context_version: base.version } : {}) }
         ),
         signal: controller.signal,
       },
       { userId: userId ?? null }
     );
     const payload = (await response.json()) as { data?: unknown };
-    const data = asRecord(payload.data);
+    const responseData = asRecord(payload.data);
+    if (!responseData) return null;
+    // Older app releases ignore the additive request and return the established full shape.
+    if (!responseData.context_transfer) return responseData;
+    const restored = await applyContextTransfer(responseData, base);
+    retainContinuation(key, restored);
+    return restored.data;
+    };
+    let data: Record<string, unknown> | null;
+    try { data = await fetchPreparation(previous); }
+    catch (error) {
+      if (!previous || controller.signal.aborted) throw error;
+      data = await fetchPreparation();
+    }
     const capsule = asRecord(data?.context_capsule);
     if (!data) return null;
     return {

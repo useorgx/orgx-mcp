@@ -17,3 +17,12 @@ relevant information exists.
 Proposed targets and measurement status are available after the app change ships
 at `https://useorgx.com/.well-known/orgx-performance.json`. No comparative speedup,
 coherent snapshot, exact model-token count, or customer SLA is established here.
+
+
+Bootstrap now requests the context transfer protocol and reconstructs full or
+acknowledged delta responses before returning the established tool response.
+The bounded cache is optional; loss or an invalid base triggers a fresh read.
+Every request still authenticates and prepares current context on the app.
+Workspace capsule snapshots can report `database_snapshot`; initiative frames
+include additional reads and remain `best_effort_multi_read`. Transport reuse
+does not grant action authority or establish comparative performance.
