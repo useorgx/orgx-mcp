@@ -946,7 +946,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         .boolean()
         .optional()
         .describe(
-          'When true, return only the canonical next task linked to the active goal spine.'
+          'When true, return only the canonical next task linked to the active goal.'
         ),
       limit: z
         .number()
