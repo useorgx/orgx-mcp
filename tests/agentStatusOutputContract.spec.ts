@@ -8,6 +8,7 @@ import {
   normalizeAgentStatusPayload,
 } from '../src/agentStatusPayload';
 import { getOpenAiOutputSchema } from '../src/openaiOutputSchemas';
+import { projectAgentStatusTasks } from '../src/agentStatusTaskProjection';
 
 const now = Date.parse('2026-09-06T10:00:00Z');
 
@@ -33,6 +34,15 @@ function task(id: string, status: string) {
 }
 
 describe('agent status output after durable enrichment', () => {
+  it('returns one current row when app and entity evidence share an identity', () => {
+    const current = { ...task('same', 'in_progress'), updated_at: '2026-09-06T10:00:00Z', blocker: 'Owner review' };
+    const older = { ...task('same', 'in_progress'), task_id: 'same', updated_at: '2026-09-06T09:00:00Z' };
+    for (const rows of [[older, current], [current, older]]) {
+      const agent = projectAgentStatusTasks({ active_tasks: rows, completed_tasks: rows });
+      expect(agent.active_tasks).toEqual([expect.objectContaining({ task_id: 'same', blocker: 'Owner review' })]);
+      expect(agent.completed_tasks).toHaveLength(1);
+    }
+  });
   it('delivers active and completed entity rows through the MCP wire contract', async () => {
     const payload = statusPayload([
       task('active-task', 'in_progress'), task('finished-task', 'completed'),
