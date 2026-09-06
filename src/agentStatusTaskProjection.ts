@@ -22,7 +22,29 @@ export function projectAgentStatusTasks(
   const projected = { ...agent };
   for (const field of ['tasks', 'current_tasks', 'active_tasks', 'completed_tasks']) {
     if (Array.isArray(agent[field])) {
-      projected[field] = (agent[field] as unknown[]).map(projectTask);
+      const rows: unknown[] = [];
+      const positions = new Map<string, number>();
+      for (const value of agent[field] as unknown[]) {
+        const task = projectTask(value);
+        const record = task && typeof task === 'object'
+          ? task as Record<string, unknown> : null;
+        const id = typeof record?.task_id === 'string' ? record.task_id : null;
+        const position = id ? positions.get(id) : undefined;
+        if (position === undefined) {
+          if (id) positions.set(id, rows.length);
+          rows.push(task);
+        } else {
+          const previous = rows[position] as Record<string, unknown>;
+          const before = Date.parse(String(previous.updated_at ?? ''));
+          const after = Date.parse(String(record?.updated_at ?? ''));
+          // Enrichment may return the same entity in app and database shapes.
+          // Keep its position stable and prefer the newest observed version.
+          if (!Number.isFinite(before) || (Number.isFinite(after) && after >= before)) {
+            rows[position] = task;
+          }
+        }
+      }
+      projected[field] = rows;
     }
   }
   return projected;
