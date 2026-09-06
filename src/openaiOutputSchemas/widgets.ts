@@ -103,7 +103,9 @@ export const WIDGET_OUTPUT_SCHEMAS = {
       created_at: z.string(),
       milestones: z.array(resourceSchema),
       workstreams: z.array(resourceSchema),
-      blockers: z.array(resourceSchema),
+      // The initiative API and pulse widget support both blocker text and
+      // linked resource details. Preserve either representation on the wire.
+      blockers: z.array(z.union([z.string().min(1), resourceSchema])),
       pending_decisions: z.number(),
       continuity: z
         .object({
