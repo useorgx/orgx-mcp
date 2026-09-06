@@ -1,3 +1,5 @@
+import { projectAgentStatusTasks } from './agentStatusTaskProjection';
+
 function asNonEmptyString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0
     ? value.trim()
@@ -737,7 +739,7 @@ export function normalizeAgentStatusPayload(
 
   return {
     ...data,
-    agents,
+    agents: agents.map(projectAgentStatusTasks),
     summary: {
       ...summary,
       total: agents.length,
