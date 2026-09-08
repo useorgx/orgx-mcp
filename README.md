@@ -81,6 +81,7 @@ validation or when the user/workspace sets a budget constraint.
 | Tool | Purpose |
 |------|---------|
 | `orgx_bootstrap` | Establish session context, scopes, and routing guidance; pass `initiative_id` to bind an initiative and receive its compiled work context. |
+| `orgx_tail` | Read supported material changes after bootstrap; reports unavailable change classes rather than claiming complete coverage. |
 | `orgx_search` | Find entities, decisions, artifacts, and memory. |
 | `orgx_inspect` | Hydrate one entity with execution context. |
 | `orgx_recommend` | Get next-action recommendations or morning brief signals. |
@@ -89,7 +90,7 @@ validation or when the user/workspace sets a budget constraint.
 | `orgx_act` | Launch, pause, complete, validate, delete, or otherwise act on an entity. |
 | `orgx_plan` | Start, resume, edit, improve, or complete a plan session. |
 | `orgx_spawn` | Guard, classify, spawn, or hand off specialist agent work. |
-| `orgx_decide` | Create, remember, approve, reject, or list decisions. |
+| `orgx_decide` | Create, remember, or list decisions; approval and rejection return a human review URL rather than resolving decisions from MCP. |
 | `orgx_expect` | Pre-register the exact delayed receipt-coverage metric before its observation window starts. |
 | `orgx_submit_receipt` | Submit durable proof, attribution, quality, or outcome receipts. |
 | `orgx_emit_activity` | Emit append-only execution telemetry. |
