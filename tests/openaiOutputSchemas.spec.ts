@@ -127,6 +127,27 @@ describe('OpenAI public tool output schemas', () => {
         enum: ['draft', 'scaffold', 'launch'],
       });
       expect(scaffoldOutput?.properties?.dependency_edges).toEqual({});
+
+      const compactNestedProperties = {
+        get_agent_status: 'agents',
+        get_initiative_pulse: 'workstreams',
+        get_operator_chronicle: 'chronicle',
+        check_execution_readiness: 'providers',
+        orgx_bootstrap: 'context_capsule',
+        orgx_inspect: 'entity',
+        orgx_search: 'results',
+        orgx_recommend: 'recommendations',
+        orgx_decide: 'decisions',
+      } as const;
+      for (const [toolName, propertyName] of Object.entries(
+        compactNestedProperties
+      )) {
+        const tool = listed.tools.find((candidate) => candidate.name === toolName);
+        const output = tool?.outputSchema as
+          | { properties?: Record<string, unknown> }
+          | undefined;
+        expect(output?.properties?.[propertyName], toolName).toEqual({});
+      }
     } finally {
       await Promise.allSettled([client.close(), server.close()]);
     }
@@ -294,21 +315,36 @@ describe('OpenAI public tool output schemas', () => {
     }
   });
 
-  it('drops undeclared API metadata before strict clients validate a public result', async () => {
+  it('preserves newer nested API metadata behind a portable advertised schema', async () => {
     const server = new McpServer({
-      name: 'orgx-plan-forward-compatible-output',
+      name: 'orgx-agent-forward-compatible-output',
       version: '1.0.0',
     });
     installToolResultGuidanceWrapper(server, null);
     server.registerTool(
-      'orgx_plan',
-      { description: 'Forward-compatible plan output probe', inputSchema: {} },
+      'get_agent_status',
+      { description: 'Forward-compatible agent output probe', inputSchema: {} },
       async () => ({
-        content: [{ type: 'text' as const, text: 'Plan session loaded.' }],
+        content: [{ type: 'text' as const, text: 'Agent status loaded.' }],
         structuredContent: {
-          ...ORGX_PLAN_OUTPUT_VARIANTS[6],
-          api_revision: '2026-09-09',
-          internal_trace: { request_id: 'trace-1' },
+          agents: [
+            {
+              agent_id: 'agent-1',
+              agent_name: 'Eli',
+              current_task: null,
+              status: 'idle',
+              progress: null,
+              blockers: [],
+              started_at: null,
+              run_id: null,
+              initiative_id: null,
+              execution_target: 'cloud',
+              api_only_state: 'warming',
+            },
+          ],
+          summary: { total: 1, api_only_count: 1 },
+          stalled_agents: [],
+          message: 'One agent found.',
         },
       })
     );
@@ -316,16 +352,64 @@ describe('OpenAI public tool output schemas', () => {
     const client = await connect(server);
     try {
       const result = await client.callTool({
-        name: 'orgx_plan',
+        name: 'get_agent_status',
         arguments: {},
       });
       expect(result.isError).not.toBe(true);
-      expect(result.content).toEqual([
-        { type: 'text', text: 'Plan session loaded.' },
-      ]);
-      expect(result.structuredContent).toEqual(ORGX_PLAN_OUTPUT_VARIANTS[6]);
-      expect(result.structuredContent).not.toHaveProperty('api_revision');
-      expect(result.structuredContent).not.toHaveProperty('internal_trace');
+      expect(result.structuredContent).toMatchObject({
+        agents: [{ agent_id: 'agent-1', agent_name: 'Eli' }],
+        summary: { total: 1 },
+      });
+      expect(result.structuredContent).toHaveProperty(
+        'agents.0.api_only_state',
+        'warming'
+      );
+      expect(result.structuredContent).toHaveProperty(
+        'summary.api_only_count',
+        1
+      );
+    } finally {
+      await Promise.allSettled([client.close(), server.close()]);
+    }
+  });
+
+  it('declares and preserves the orgx_spawn estimate aliases returned by the API', async () => {
+    const server = new McpServer({
+      name: 'orgx-spawn-forward-compatible-output',
+      version: '1.0.0',
+    });
+    installToolResultGuidanceWrapper(server, null);
+    server.registerTool(
+      'orgx_spawn',
+      { description: 'Forward-compatible spawn estimate probe', inputSchema: {} },
+      async () => ({
+        content: [{ type: 'text' as const, text: 'Estimate ready.' }],
+        structuredContent: {
+          _v2_tool: 'orgx_spawn' as const,
+          _action: 'estimate' as const,
+          routed_tool: 'classify_task_model' as const,
+          estimate_only: true,
+          reason: 'Matched standard engineering work.',
+          estimatedTokens: 2400,
+        },
+      })
+    );
+
+    const client = await connect(server);
+    try {
+      const result = await client.callTool({
+        name: 'orgx_spawn',
+        arguments: {},
+      });
+      expect(result.isError).not.toBe(true);
+      expect(result.structuredContent).toEqual({
+        _v2_tool: 'orgx_spawn',
+        _action: 'estimate',
+        routed_tool: 'classify_task_model',
+        estimate_only: true,
+        reason: 'Matched standard engineering work.',
+        estimatedTokens: 2400,
+      });
     } finally {
       await Promise.allSettled([client.close(), server.close()]);
     }
