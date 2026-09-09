@@ -38,6 +38,22 @@ const SCAFFOLD_TYPED_SCALAR_PROPERTIES = new Set([
   'error_type',
 ]);
 
+// These tools return API-owned nested projections that evolve independently
+// of the MCP worker. Keep their named top-level contract closed, but advertise
+// nested values as opaque so strict JSON Schema clients do not reject newer
+// response fields that the server's full Zod validators already accept.
+const COMPACT_NESTED_OUTPUT_TOOLS = new Set<ChatGptPublicTool>([
+  'get_agent_status',
+  'get_initiative_pulse',
+  'get_operator_chronicle',
+  'check_execution_readiness',
+  'orgx_bootstrap',
+  'orgx_inspect',
+  'orgx_search',
+  'orgx_recommend',
+  'orgx_decide',
+]);
+
 const rawOutputSchemas = {
   ...CANONICAL_OUTPUT_SCHEMAS,
   ...WIDGET_OUTPUT_SCHEMAS,
@@ -53,6 +69,8 @@ const outputSchemas = Object.fromEntries(
             errorCompatibleSchema,
             SCAFFOLD_TYPED_SCALAR_PROPERTIES
           )
+        : COMPACT_NESTED_OUTPUT_TOOLS.has(name as ChatGptPublicTool)
+        ? makeCompactAdvertisedSchema(errorCompatibleSchema)
         : errorCompatibleSchema,
     ];
   })
