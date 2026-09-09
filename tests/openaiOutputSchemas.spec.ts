@@ -294,6 +294,43 @@ describe('OpenAI public tool output schemas', () => {
     }
   });
 
+  it('drops undeclared API metadata before strict clients validate a public result', async () => {
+    const server = new McpServer({
+      name: 'orgx-plan-forward-compatible-output',
+      version: '1.0.0',
+    });
+    installToolResultGuidanceWrapper(server, null);
+    server.registerTool(
+      'orgx_plan',
+      { description: 'Forward-compatible plan output probe', inputSchema: {} },
+      async () => ({
+        content: [{ type: 'text' as const, text: 'Plan session loaded.' }],
+        structuredContent: {
+          ...ORGX_PLAN_OUTPUT_VARIANTS[6],
+          api_revision: '2026-09-09',
+          internal_trace: { request_id: 'trace-1' },
+        },
+      })
+    );
+
+    const client = await connect(server);
+    try {
+      const result = await client.callTool({
+        name: 'orgx_plan',
+        arguments: {},
+      });
+      expect(result.isError).not.toBe(true);
+      expect(result.content).toEqual([
+        { type: 'text', text: 'Plan session loaded.' },
+      ]);
+      expect(result.structuredContent).toEqual(ORGX_PLAN_OUTPUT_VARIANTS[6]);
+      expect(result.structuredContent).not.toHaveProperty('api_revision');
+      expect(result.structuredContent).not.toHaveProperty('internal_trace');
+    } finally {
+      await Promise.allSettled([client.close(), server.close()]);
+    }
+  });
+
   it('validates a durable orgx_spawn delegation receipt through an MCP call', async () => {
     const server = new McpServer({
       name: 'orgx-spawn-durable-output',
