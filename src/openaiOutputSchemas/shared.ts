@@ -1,7 +1,9 @@
 import { z } from 'zod';
+import { z as z4 } from 'zod/v4';
 
-
-export type OutputSchema = z.AnyZodObject;
+export type SourceOutputSchema = z.AnyZodObject;
+export type PortableOutputSchema = ReturnType<typeof z4.object>;
+export type OutputSchema = SourceOutputSchema | PortableOutputSchema;
 
 export const nullableString = z.string().nullable();
 export const nullableNumber = z.number().nullable();
@@ -151,8 +153,8 @@ export const toolErrorEnvelopeSchema = z.object({
 });
 
 export function makeErrorCompatibleSchema(
-  schema: OutputSchema
-): OutputSchema {
+  schema: SourceOutputSchema
+): SourceOutputSchema {
   return schema
     .partial()
     .extend({
@@ -172,9 +174,9 @@ export function makeErrorCompatibleSchema(
  * so malformed nested structuredContent remains a hard failure.
  */
 export function makeCompactAdvertisedSchema(
-  schema: OutputSchema,
+  schema: SourceOutputSchema,
   typedScalarProperties: ReadonlySet<string> = new Set()
-): OutputSchema {
+): SourceOutputSchema {
   const projectedShape = Object.fromEntries(
     Object.entries(schema.shape).map(([key, propertySchema]) => [
       key,
@@ -184,6 +186,38 @@ export function makeCompactAdvertisedSchema(
     ])
   ) as z.ZodRawShape;
   return z.object(projectedShape).strict();
+}
+
+/**
+ * Advertise a closed, named, JSON-only top-level schema without using bare
+ * `{}` subschemas. The latter are legal but several MCP clients warn on or
+ * reject unconstrained schema positions. The original Zod 3 schema remains
+ * the runtime validator, so this portability projection does not weaken the
+ * server-side contract or discard API-owned nested fields.
+ */
+export function makePortableJsonAdvertisedSchema(
+  schema: SourceOutputSchema
+): PortableOutputSchema {
+  const jsonValue = z4.json();
+  const projectedShape = Object.fromEntries(
+    Object.keys(schema.shape).map((key) => [key, jsonValue.optional()])
+  ) as Record<string, ReturnType<typeof jsonValue.optional>>;
+
+  return z4
+    .object(projectedShape)
+    .strict()
+    .superRefine((value, context) => {
+      const parsed = schema.safeParse(value);
+      if (parsed.success) return;
+
+      for (const issue of parsed.error.issues) {
+        context.addIssue({
+          code: 'custom',
+          message: issue.message,
+          path: issue.path,
+        });
+      }
+    });
 }
 
 export const paginationSchema = z.object({
