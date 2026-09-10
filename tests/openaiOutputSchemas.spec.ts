@@ -59,6 +59,45 @@ function findBooleanAdditionalProperties(
   return matches;
 }
 
+function findUnportableSchemaPositions(
+  value: unknown,
+  path = '$'
+): string[] {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+  const record = value as Record<string, unknown>;
+  const matches: string[] = [];
+  if (Array.isArray(record.type)) matches.push(`${path}.type`);
+  if (
+    Object.keys(record).length === 0 ||
+    (Object.keys(record).every((key) =>
+      ['title', 'description', 'default', 'examples', '$comment'].includes(key)
+    ))
+  ) {
+    matches.push(path);
+  }
+  if (
+    typeof record.$ref === 'string' &&
+    record.$ref !== '' &&
+    !record.$ref.startsWith('#')
+  ) {
+    matches.push(`${path}.$ref`);
+  }
+  for (const [key, child] of Object.entries(record)) {
+    if (key === 'additionalProperties' && typeof child === 'boolean') continue;
+    if (typeof child === 'boolean') matches.push(`${path}.${key}`);
+    else if (Array.isArray(child)) {
+      child.forEach((item, index) => {
+        matches.push(
+          ...findUnportableSchemaPositions(item, `${path}.${key}[${index}]`)
+        );
+      });
+    } else {
+      matches.push(...findUnportableSchemaPositions(child, `${path}.${key}`));
+    }
+  }
+  return matches;
+}
+
 describe('OpenAI public tool output schemas', () => {
   it('covers exactly the 23 ChatGPT public tools', () => {
     expect(Object.keys(OPENAI_OUTPUT_SCHEMAS)).toEqual([
@@ -146,7 +185,11 @@ describe('OpenAI public tool output schemas', () => {
         const output = tool?.outputSchema as
           | { properties?: Record<string, unknown> }
           | undefined;
-        expect(output?.properties?.[propertyName], toolName).toEqual({});
+        expect(output?.properties?.[propertyName], toolName).not.toEqual({});
+        expect(
+          findUnportableSchemaPositions(tool?.outputSchema),
+          `${toolName} must avoid the Inspector portability constructs`
+        ).toEqual([]);
       }
     } finally {
       await Promise.allSettled([client.close(), server.close()]);
@@ -367,6 +410,43 @@ describe('OpenAI public tool output schemas', () => {
       expect(result.structuredContent).toHaveProperty(
         'summary.api_only_count',
         1
+      );
+    } finally {
+      await Promise.allSettled([client.close(), server.close()]);
+    }
+  });
+
+  it('keeps full runtime validation behind the portable JSON advertisement', async () => {
+    const server = new McpServer({
+      name: 'orgx-agent-portable-runtime-validation',
+      version: '1.0.0',
+    });
+    installToolResultGuidanceWrapper(server, null);
+    server.registerTool(
+      'get_agent_status',
+      { description: 'Agent output validation probe', inputSchema: {} },
+      async () => ({
+        content: [{ type: 'text' as const, text: 'Malformed agent status.' }],
+        structuredContent: {
+          agents: 'not-an-array',
+          summary: {},
+          stalled_agents: [],
+          message: 'Malformed.',
+        },
+      })
+    );
+
+    const client = await connect(server);
+    try {
+      const result = await client.callTool({
+        name: 'get_agent_status',
+        arguments: {},
+      });
+      expect(result.isError).toBe(true);
+      expect(result.content).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ type: 'text' }),
+        ])
       );
     } finally {
       await Promise.allSettled([client.close(), server.close()]);
