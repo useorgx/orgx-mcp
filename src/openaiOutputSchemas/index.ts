@@ -3,7 +3,9 @@ import { CANONICAL_OUTPUT_SCHEMAS } from './canonical';
 import {
   makeCompactAdvertisedSchema,
   makeErrorCompatibleSchema,
+  makePortableJsonAdvertisedSchema,
   type OutputSchema,
+  type SourceOutputSchema,
 } from './shared';
 import { WIDGET_OUTPUT_SCHEMAS } from './widgets';
 
@@ -57,7 +59,7 @@ const COMPACT_NESTED_OUTPUT_TOOLS = new Set<ChatGptPublicTool>([
 const rawOutputSchemas = {
   ...CANONICAL_OUTPUT_SCHEMAS,
   ...WIDGET_OUTPUT_SCHEMAS,
-} satisfies Record<ChatGptPublicTool, OutputSchema>;
+} satisfies Record<ChatGptPublicTool, SourceOutputSchema>;
 
 const outputSchemas = Object.fromEntries(
   Object.entries(rawOutputSchemas).map(([name, schema]) => {
@@ -70,7 +72,7 @@ const outputSchemas = Object.fromEntries(
             SCAFFOLD_TYPED_SCALAR_PROPERTIES
           )
         : COMPACT_NESTED_OUTPUT_TOOLS.has(name as ChatGptPublicTool)
-        ? makeCompactAdvertisedSchema(errorCompatibleSchema)
+        ? makePortableJsonAdvertisedSchema(errorCompatibleSchema)
         : errorCompatibleSchema,
     ];
   })
