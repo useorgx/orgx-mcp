@@ -14,6 +14,8 @@ describe('OAuth consent page contract', () => {
     expect(html).toContain('Review and connect');
     expect(html).toContain('id="authorize-button"');
     expect(html).toContain('Accessible workspaces');
+    expect(html).toContain('Use requested read + Operate access');
+    expect(html).not.toContain('>Write</span>');
   });
 
   it('submits approve and deny to the server instead of constructing client redirects', () => {
@@ -106,5 +108,17 @@ describe('OAuth consent page contract', () => {
     expect(html).toContain('@media (max-width: 520px)');
     expect(html).toContain('#review-button { grid-column: 1 / -1; }');
     expect(html).toContain('@media (prefers-reduced-motion: reduce)');
+  });
+
+  it('reserves one shared layout track for both authorization phases', () => {
+    expect(html).toContain('grid-template-rows: auto minmax(0, 1fr)');
+    expect(html).toContain('grid-column: 1;');
+    expect(html).toContain('grid-row: 2;');
+    expect(html).toContain(
+      "configureStage.setAttribute('aria-hidden', String(!configure))"
+    );
+    expect(html).toContain(
+      "reviewStage.setAttribute('aria-hidden', String(configure))"
+    );
   });
 });

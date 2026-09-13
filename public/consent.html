@@ -234,8 +234,14 @@
       .context-footer a { color: var(--muted); text-decoration: none; }
       .context-footer a:hover { color: var(--text); }
 
-      .panel { min-width: 0; display: flex; flex-direction: column; }
+      .panel {
+        min-width: 0;
+        min-height: 690px;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+      }
       .progress {
+        grid-row: 1;
         display: flex;
         align-items: center;
         gap: 8px;
@@ -262,8 +268,19 @@
         color: var(--signal-text);
       }
       .progress-divider { width: 28px; height: 1px; background: var(--strong-border); }
-      .stage { display: none; flex: 1; flex-direction: column; min-height: 0; }
-      .stage.active { display: flex; }
+      /* Keep both phases in one layout track so switching phases does not
+         change the panel geometry. Inactive content is inaccessible and inert
+         while still reserving space for the active phase. */
+      .stage {
+        grid-column: 1;
+        grid-row: 2;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      .stage.active { visibility: visible; pointer-events: auto; }
       .stage-body { flex: 1; min-height: 0; overflow: auto; padding: 28px 34px 24px; }
       .stage h2 {
         margin: 0;
@@ -512,7 +529,7 @@
       .review-permission strong { font-size: 13px; }
       .review-permission span { color: var(--secondary); font-size: 12px; }
       .access-pill { border-radius: 6px; }
-      .access-pill.write { border-color: rgba(251, 191, 36, .55); color: var(--warning); }
+      .access-pill.operate { border-color: rgba(251, 191, 36, .55); color: var(--warning); }
       .risk-note {
         margin-top: 12px;
         padding: 10px 0 10px 12px;
@@ -588,6 +605,7 @@
         .field-label { display: none; }
         .orgx-field { opacity: .7; }
         .shell { min-height: 0; grid-template-columns: 1fr; }
+        .panel { min-height: 0; }
         .context {
           gap: 16px;
           padding: 22px;
@@ -727,7 +745,7 @@
             <span class="progress-step" id="progress-review"><span class="step-number">2</span><span>Review</span></span>
           </nav>
 
-          <section class="stage active" id="configure-stage" aria-labelledby="configure-title">
+          <section class="stage active" id="configure-stage" aria-labelledby="configure-title" aria-hidden="false">
             <div class="stage-body">
               <h2 id="configure-title">Set access</h2>
               <p class="lede">
@@ -737,7 +755,7 @@
               <div class="scope-notice" id="scope-notice" role="status"></div>
               <div class="preset-grid" role="group" aria-label="Access presets">
                 <button class="preset" type="button" data-preset="read" aria-pressed="true"><strong>Read</strong><span>View requested context</span></button>
-                <button class="preset" type="button" data-preset="operate" aria-pressed="false"><strong>Operate</strong><span>Use requested read + write</span></button>
+                <button class="preset" type="button" data-preset="operate" aria-pressed="false"><strong>Operate</strong><span>Use requested read + Operate access</span></button>
                 <button class="preset" type="button" data-preset="custom" aria-pressed="false"><strong>Customize</strong><span>Choose resource by resource</span></button>
               </div>
               <p class="section-label">Resources</p>
@@ -769,7 +787,7 @@
             </div>
           </section>
 
-          <section class="stage" id="review-stage" aria-labelledby="review-title">
+          <section class="stage" id="review-stage" aria-labelledby="review-title" aria-hidden="true">
             <div class="stage-body">
               <h2 id="review-title">Review and connect</h2>
               <p class="lede">Confirm the account and effective permissions before creating the grant.</p>
@@ -973,7 +991,7 @@
                     <span class="resource-title"><strong>${escapeHtml(resource.label)}</strong><span>${escapeHtml(resource.summary)}</span></span>
                   </button>
                   <div class="level-control" role="group" aria-label="${escapeHtml(resource.label)} access">
-                    ${levels.map((level) => `<button class="level-button" type="button" data-level="${level}" aria-pressed="${String(value === level)}">${level === 'none' ? 'None' : level === 'read' ? 'Read' : 'Write'}</button>`).join('')}
+                    ${levels.map((level) => `<button class="level-button" type="button" data-level="${level}" aria-pressed="${String(value === level)}">${level === 'none' ? 'None' : level === 'read' ? 'Read' : 'Operate'}</button>`).join('')}
                   </div>
                 </div>
                 <div class="resource-details">${escapeHtml(resource.description)}<br />${codes}</div>
@@ -995,6 +1013,9 @@
             updatePresetState(detectPreset());
           });
         });
+        // Keep the hidden review phase synchronized with the current selection
+        // so it cannot introduce a new intrinsic height during the transition.
+        renderReview();
       }
       function renderScopeResolution() {
         const notice = document.getElementById('scope-notice');
@@ -1032,7 +1053,7 @@
         review.innerHTML = selected.map((resource) => {
           const level = state.selected[resource.id];
           const scopes = scopesForResource(resource, level).join(' · ');
-          return `<div class="review-permission"><span><strong>${escapeHtml(resource.label)}</strong><br /><span>${escapeHtml(scopes)}</span></span><span class="access-pill ${level === 'write' ? 'write' : ''}">${level === 'write' ? 'Write' : 'Read'}</span></div>`;
+          return `<div class="review-permission"><span><strong>${escapeHtml(resource.label)}</strong><br /><span>${escapeHtml(scopes)}</span></span><span class="access-pill ${level === 'write' ? 'operate' : ''}">${level === 'write' ? 'Operate' : 'Read'}</span></div>`;
         }).join('');
         if (state.requested.has('offline_access') && document.getElementById('offline-toggle').checked) {
           review.insertAdjacentHTML('beforeend', '<div class="review-permission"><span><strong>Connection</strong><br /><span>offline_access</span></span><span class="access-pill">Refresh</span></div>');
@@ -1047,8 +1068,12 @@
       function showStage(stage) {
         const configure = stage === 'configure';
         state.stage = stage;
-        document.getElementById('configure-stage').classList.toggle('active', configure);
-        document.getElementById('review-stage').classList.toggle('active', !configure);
+        const configureStage = document.getElementById('configure-stage');
+        const reviewStage = document.getElementById('review-stage');
+        configureStage.classList.toggle('active', configure);
+        reviewStage.classList.toggle('active', !configure);
+        configureStage.setAttribute('aria-hidden', String(!configure));
+        reviewStage.setAttribute('aria-hidden', String(configure));
         document.getElementById('progress-configure').classList.toggle('active', configure);
         document.getElementById('progress-configure').classList.toggle('complete', !configure);
         document.getElementById('progress-review').classList.toggle('active', !configure);
