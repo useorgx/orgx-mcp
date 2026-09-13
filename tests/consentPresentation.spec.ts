@@ -312,4 +312,57 @@ describe('OAuth consent presentation', () => {
       await page.close();
     }
   });
+
+  it('uses Operate for write-capable access and keeps phase geometry stable', async () => {
+    const page = await openConsent(
+      browser,
+      {
+        ...defaultPayload,
+        requested_scopes: [
+          'decisions:read',
+          'decisions:write',
+          'agents:read',
+          'agents:write',
+          'initiatives:read',
+          'initiatives:write',
+          'memory:read',
+        ],
+        scope_resolution: { source: 'client_request', status: 'ready' },
+      },
+      { width: 375, height: 812 }
+    );
+    try {
+      expect(
+        await page.locator('.level-button[data-level="write"]').allTextContents()
+      ).toEqual(['Operate', 'Operate', 'Operate']);
+      expect(
+        await page.locator('#configure-stage').getAttribute('aria-hidden')
+      ).toBe('false');
+      expect(
+        await page.locator('#review-stage').getAttribute('aria-hidden')
+      ).toBe('true');
+
+      const before = await page.locator('#panel').evaluate((element) =>
+        Math.round(element.getBoundingClientRect().height)
+      );
+      await page.getByRole('button', { name: 'Operate', exact: true }).first().click();
+      await page.getByRole('button', { name: 'Review access', exact: true }).click();
+      const after = await page.locator('#panel').evaluate((element) =>
+        Math.round(element.getBoundingClientRect().height)
+      );
+
+      expect(after).toBe(before);
+      expect(
+        await page.locator('#configure-stage').getAttribute('aria-hidden')
+      ).toBe('true');
+      expect(
+        await page.locator('#review-stage').getAttribute('aria-hidden')
+      ).toBe('false');
+      expect(await page.locator('.access-pill.operate').allTextContents()).toContain(
+        'Operate'
+      );
+    } finally {
+      await page.close();
+    }
+  });
 });
