@@ -58,6 +58,15 @@ export function normalizePlanSessionRequestArgs(
     delete normalized.edit_summary;
   }
 
+  if (
+    toolId === 'complete_plan' &&
+    normalized.attach_to &&
+    typeof normalized.attach_to === 'object' &&
+    !Array.isArray(normalized.attach_to)
+  ) {
+    normalized.attach_to = [normalized.attach_to];
+  }
+
   return normalized;
 }
 
