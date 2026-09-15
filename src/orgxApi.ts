@@ -106,14 +106,32 @@ function looksLikeDefaultPlaceholder(value: string | undefined) {
   );
 }
 
+/**
+ * Canonicalize the OrgX API origin so redirecting aliases cannot turn every
+ * authenticated MCP request into a hard failure. Invalid values pass through
+ * unchanged for the existing configuration error to report.
+ */
+export function canonicalizeOrgxApiBaseUrl(value: string): string {
+  try {
+    const url = new URL(value);
+    if (url.protocol === 'http:') url.protocol = 'https:';
+    if (url.hostname.startsWith('www.')) url.hostname = url.hostname.slice(4);
+    return url.toString().replace(/\/+$/, '');
+  } catch {
+    return value;
+  }
+}
+
 function getOrgxApiBaseUrls(env: OrgxApiEnv): string[] {
   const seen = new Set<string>();
   const urls: string[] = [];
   for (const value of [env.ORGX_API_URL, env.ORGX_API_FALLBACK_URL]) {
     const trimmed = value?.trim();
-    if (!trimmed || seen.has(trimmed)) continue;
-    seen.add(trimmed);
-    urls.push(trimmed);
+    if (!trimmed) continue;
+    const canonical = canonicalizeOrgxApiBaseUrl(trimmed);
+    if (seen.has(canonical)) continue;
+    seen.add(canonical);
+    urls.push(canonical);
   }
   return urls;
 }
