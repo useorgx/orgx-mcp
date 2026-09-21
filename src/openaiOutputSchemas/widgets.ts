@@ -447,7 +447,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
         has_executable_subscription: z.boolean(),
         has_interactive_route: z.boolean(),
         has_cloud_route: z.boolean(),
-        accounts: z.array(resourceSchema),
+        accounts: z.array(resourceSchema.extend({ reason: nullableString.optional() })),
       }),
       capabilities: z.object({
         api_sdk: z.boolean(),
