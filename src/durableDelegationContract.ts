@@ -14,6 +14,7 @@ export type DurableDelegationContractResult =
       jobId: string;
       dispatchReceipt: Record<string, unknown>;
     }
+  | { ok: true; reassigned: true; taskId: string; agentId: string }
   | {
       ok: false;
       message: string;
@@ -40,7 +41,8 @@ function readNonEmptyString(
  * contract is rejected without fallback because replay could duplicate paid work.
  */
 export function validateDurableDelegationResponse(
-  payload: unknown
+  payload: unknown,
+  reassignment?: { taskId: string }
 ): DurableDelegationContractResult {
   const envelope = asRecord(payload);
   const data = asRecord(envelope?.data) ?? envelope;
@@ -50,6 +52,15 @@ export function validateDurableDelegationResponse(
       message:
         'Delegation was not confirmed by the canonical OrgX release. No durable delegation receipt was returned.',
     };
+  }
+
+  if (reassignment) {
+    const taskId = readNonEmptyString(data, 'task_id');
+    const agentId = readNonEmptyString(data, 'agent_id');
+    if (taskId === reassignment.taskId && agentId && !data.run_id && !data.job_id) {
+      return { ok: true, reassigned: true, taskId, agentId };
+    }
+    return { ok: false, message: 'Task reassignment was not confirmed for the requested task.' };
   }
 
   if (

@@ -3105,7 +3105,7 @@ export class OrgXMcp extends McpAgent<
         let budgetPreflight: SpawnBudgetPreflight | null = null;
         if (
           resolvedToolId === 'spawn_agent_task' ||
-          resolvedToolId === 'handoff_task'
+          (resolvedToolId === 'handoff_task' && expandedArgs.spawn !== false)
         ) {
           const preflight = await this.runSpawnBudgetPreflight(
             expandedArgs,
@@ -3205,7 +3205,9 @@ export class OrgXMcp extends McpAgent<
           resolvedToolId === 'spawn_agent_task' ||
           resolvedToolId === 'handoff_task'
         ) {
-          const delegation = validateDurableDelegationResponse(result);
+          const delegation = validateDurableDelegationResponse(result,
+            resolvedToolId === 'handoff_task' && expandedArgs.spawn === false
+              ? { taskId: String(expandedArgs.task_id ?? '') } : undefined);
           if (!delegation.ok) {
             this.captureMcpToolEvent('mcp_tool_failed', {
               toolId,
