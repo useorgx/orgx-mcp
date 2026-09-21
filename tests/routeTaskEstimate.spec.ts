@@ -67,4 +67,10 @@ describe('route task estimate summary', () => {
       'Task route estimate · tier: balanced'
     );
   });
+  it('does not advertise an unknown estimate as within budget', () => {
+    const summary = buildRouteTaskEstimateSummary({ tier: 'opus' }, { max_cost_usd: 0.5 });
+    expect(formatRouteTaskEstimateSummary(summary)).toContain('cost unknown; cap $0.5000');
+    expect(formatRouteTaskEstimateSummary(summary)).not.toContain('within cap');
+  });
+
 });
