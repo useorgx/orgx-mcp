@@ -308,6 +308,19 @@ export const WIDGET_OUTPUT_SCHEMAS = {
 
   get_morning_brief: z
     .object({
+      workspace_id: z.string().optional(),
+      artifacts_produced: z.array(artifactSchema).optional(),
+      review_items: z.array(artifactSchema).optional(),
+      top_priorities: z.array(resourceSchema).optional(),
+      metrics: chronicleSchema.shape.metrics.optional(),
+      topPriorities: chronicleSchema.shape.topPriorities.optional(),
+      rollups: chronicleSchema.shape.rollups.optional(),
+      decisionChronology: chronicleSchema.shape.decisionChronology.optional(),
+      artifactLedger: chronicleSchema.shape.artifactLedger.optional(),
+      continuity: chronicleSchema.shape.continuity.optional(),
+      prVelocity: chronicleSchema.shape.prVelocity.optional(),
+      initiatives: chronicleSchema.shape.initiatives.optional(),
+      message: z.string().optional(),
       session_summary: z
         .object({
           session_id: nullableString.optional(),
@@ -320,6 +333,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
           failed: z.number().optional(),
           total_cost: z.number().optional(),
           total_value: z.number().optional(),
+          roi: nullableNumber.optional(),
         })
         .optional(),
       session_id: z.string().optional(),

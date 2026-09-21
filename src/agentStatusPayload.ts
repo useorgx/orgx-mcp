@@ -459,6 +459,11 @@ function evidenceSnapshot(
       typeof asRecord(asRecord(record.verification)?.eval)?.score === 'number'
         ? asRecord(asRecord(record.verification)?.eval)?.score
         : recordMetadata(record).eval_score ?? null,
+    artifact_url: recordString(record, ['artifact_url', 'external_url', 'url']),
+    primary_url: recordString(record, ['primary_url', 'artifact_url', 'external_url', 'url', 'review_url', 'task_url', 'live_url']),
+    artifact_type: recordString(record, ['artifact_type', 'artifactType']),
+    entity_id: recordString(record, ['entity_id', 'entityId']),
+    entity_type: recordString(record, ['entity_type', 'entityType']),
     created_at: recordString(record, ['created_at', 'createdAt', 'updated_at', 'updatedAt']),
   };
 }
@@ -737,9 +742,55 @@ export function normalizeAgentStatusPayload(
     0
   );
 
+  const projectedAgents = agents.map((agent) => {
+    const projected = projectAgentStatusTasks(agent);
+    const artifacts = asArray(agent.artifacts).map(asRecord).filter(
+      (artifact): artifact is Record<string, unknown> => artifact !== null
+    );
+    const workloadTasks = projectAgentStatusTasks({
+      tasks: taskArrays(projected, ['current_tasks', 'active_tasks', 'tasks']),
+    }).tasks;
+    return {
+      ...projected,
+      // Status is an index into evidence, not an unbounded artifact download.
+      // Retain IDs and links so orgx_inspect can retrieve the full records.
+      artifacts: [...artifacts]
+        .sort((a, b) => timestampMillis(b) - timestampMillis(a))
+        .slice(0, 6)
+        .map(evidenceSnapshot),
+      artifact_count: Math.max(Number(agent.artifact_count) || 0, artifacts.length),
+      artifact_preview_count: Math.min(6, artifacts.length),
+      ...(asRecord(agent.workload)
+        ? {
+            workload: {
+              ...asRecord(agent.workload),
+              tasks_in_progress: asArray(workloadTasks).filter((task) => {
+                const record = asRecord(task);
+                return record && ACTIVE_TASK_STATES.has(taskState(record.status));
+              }).length,
+            },
+          }
+        : {}),
+    };
+  });
+  const statusCounts = ['running', 'stalled', 'queued', 'blocked', 'idle', 'unknown', 'done']
+    .map((status) => ({ status, count: countAgentsByStatus(agents, status) }))
+    .filter(({ count }) => count > 0);
+
   return {
     ...data,
-    agents: agents.map(projectAgentStatusTasks),
+    agents: projectedAgents,
+    message: agents.length === 0
+      ? 'No agents in the current scope.'
+      : `Agent status: ${statusCounts.map(({ status, count }) => `${count} ${status}`).join(', ')}.`,
+    stalled_agents: agents.filter((agent) => agent.status === 'stalled').map((agent) => ({
+      agent_id: agent.agent_id,
+      agent_name: agent.agent_name,
+      run_id: asNonEmptyString(agent.run_id),
+      initiative_id: asNonEmptyString(agent.initiative_id),
+      stalled_minutes: null,
+      last_heartbeat_at: asNonEmptyString(agent.last_heartbeat_at),
+    })),
     summary: {
       ...summary,
       total: agents.length,

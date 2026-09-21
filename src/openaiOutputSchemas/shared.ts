@@ -422,6 +422,7 @@ export const agentSchema = z.object({
   artifacts: z.array(artifactSchema).optional(),
   proof_cards: z.array(artifactSchema).optional(),
   artifact_count: z.number().optional(),
+  artifact_preview_count: z.number().optional(),
   proof_handoff: proofHandoffSchema.optional(),
   workload: z
     .object({

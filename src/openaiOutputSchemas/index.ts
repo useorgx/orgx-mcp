@@ -46,6 +46,7 @@ const SCAFFOLD_TYPED_SCALAR_PROPERTIES = new Set([
 // response fields that the server's full Zod validators already accept.
 const COMPACT_NESTED_OUTPUT_TOOLS = new Set<ChatGptPublicTool>([
   'get_agent_status',
+  'get_morning_brief',
   'get_initiative_pulse',
   'get_operator_chronicle',
   'check_execution_readiness',
