@@ -22,6 +22,7 @@
     "og:render": "node scripts/render-social-preview.mjs",
     "widget:version": "node scripts/generate-widget-build-info.mjs",
     "widget:build": "node scripts/build-widgets.mjs",
+    "widget:verify-payloads": "node scripts/verify-widget-payloads.mjs",
     "widget:verify-rendering": "tsx scripts/verify-widget-rendering.ts",
     "widget:audit-redesign": "node scripts/audit-widget-redesign.mjs",
     "widget:audit-themes": "node scripts/audit-widget-themes.mjs",

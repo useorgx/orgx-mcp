@@ -585,7 +585,7 @@
     var stateParams = new URLSearchParams(window.location.search);
     var fixtureState = stateParams.get('state') || (stateParams.get('loading') === 'true' ? 'loading' : stateParams.get('demo') === 'true' ? 'progressing' : 'empty');
     if (fixtureState === 'completed') fixtureState = 'resolved';
-    var isDemo = ['populated', 'progressing', 'urgent', 'long', 'error', 'degraded', 'blocked', 'stale', 'resolved'].includes(fixtureState);
+    var isDemo = ['estimate', 'guard', 'populated', 'progressing', 'urgent', 'long', 'error', 'degraded', 'blocked', 'stale', 'resolved'].includes(fixtureState);
     var isLoadingOverride = fixtureState === 'loading';
     
     var entity = isDemo ? { id: 'TSK-942', type: 'task', title: 'Implement rate limiting middleware for public API', agent_name: 'Eli', status: 'In Progress', domain: 'Engineering', workspace_name: 'Core Platform', links: [{ platform: 'Task', url: 'https://useorgx.com/live?view=mission-control&task=TSK-942', label: 'ENG-142' }] } : null;
@@ -619,6 +619,8 @@
         entity.status = 'completed';
         entity.completed_at = new Date().toISOString();
       }
+    if (fixtureState === 'estimate') entity = { action: 'estimate', estimate: { recommended_model: 'standard', estimated_cost_usd: 0.02 } };
+    if (fixtureState === 'guard') entity = { action: 'guard', allowed: false };
     var isLoading = !isDemo;
     if (isLoadingOverride) { isLoading = true; isDemo = false; }
     var bootStartedAt = Date.now();
@@ -899,16 +901,17 @@
         ? 'OrgX checked whether this delegation can proceed. No agent work was dispatched.'
         : 'OrgX classified the best execution route. No agent work was dispatched.';
       const preflightCopy = 'Preflight only · no dispatch';
-      const isComplete = stateMeta.state === 'completed';
-      const statusLabel = isDispatch ? stateMeta.label : 'Preflight complete';
+      const isComplete = isDispatch && stateMeta.state === 'completed';
+      const displayState = isDispatch ? stateMeta.state : entity.allowed === false ? 'blocked' : 'preflight';
+      const statusLabel = isDispatch ? stateMeta.label : entity.allowed === false ? 'Dispatch blocked' : 'Preflight complete';
       const receiptId = firstString([entity.receipt_id, entity.receiptId, entity.run_id, entity.runId, entity.execution_id, entity.executionId, entity.id]);
       const executionLabel = stateMeta.state === 'completed' ? 'View result' : stateMeta.state === 'stale' || stateMeta.state === 'blocked' ? 'Open current state' : 'Open execution';
-      const stateNotice = stateMeta.state === 'in_progress'
+      const stateNotice = !isDispatch || stateMeta.state === 'in_progress'
         ? ''
         : `<div class="dispatch-decision" role="status">${icons.external(16)}<span><strong>${escapeHtml(stateMeta.label)}.</strong> ${escapeHtml(stateMeta.description)}${stateMeta.state === 'starting' ? ' ' + escapeHtml(proofBoundaryCopy) : ''}</span></div>`;
 
       injectHtml(`
-        <div class="widget-shell-card animate-in" data-state="${escapeHtml(stateMeta.state)}" style="--agent-accent-rgb:${agentProfile.accentRgb};">
+        <div class="widget-shell-card animate-in" data-state="${escapeHtml(displayState)}" style="--agent-accent-rgb:${agentProfile.accentRgb};">
           <div class="ox-card">
             <div class="ox-card-inner">
               <div class="dispatch-receipt">
@@ -916,10 +919,10 @@
                 <div class="widget-hero-copy" style="min-width:0">
                   <div class="widget-kicker">${kicker}</div>
                   <div class="widget-title-lg">${escapeHtml(entity.title)}</div>
-                  <div class="widget-subtitle">${escapeHtml(entity.initiative_name ? entity.initiative_name + ' · ' + (entity.note || stateMeta.description) : (entity.note || (isDispatch ? stateMeta.description : preflightCopy + ' · ' + heroSubtitle)))}</div>
-                  <div class="dispatch-sync"><span class="dispatch-sync__dot"></span>${escapeHtml(window.OrgXWidgetState ? window.OrgXWidgetState.formatAge(entity) : 'Sync time unavailable')}</div>
+                  <div class="widget-subtitle">${escapeHtml(entity.initiative_name ? entity.initiative_name + ' · ' + (isDispatch ? entity.note || stateMeta.description : heroSubtitle) : (isDispatch ? entity.note || stateMeta.description : heroSubtitle))}</div>
+                  ${isDispatch ? `<div class="dispatch-sync"><span class="dispatch-sync__dot"></span>${escapeHtml(window.OrgXWidgetState ? window.OrgXWidgetState.formatAge(entity) : 'Sync time unavailable')}</div>` : ''}
                 </div>
-                <div class="dispatch-state dispatch-state--${escapeHtml(stateMeta.state)}" role="status" aria-label="${escapeHtml(statusLabel)}">
+                <div class="dispatch-state dispatch-state--${escapeHtml(displayState)}" role="status" aria-label="${escapeHtml(statusLabel)}">
                   <span class="dispatch-state__dot"></span>${statusLabel}
                 </div>
               </div>
@@ -929,7 +932,7 @@
 
               <div class="dispatch-spine" aria-label="Dispatch route">
                 <div class="dispatch-node">
-                  <div class="dispatch-node__signal" style="overflow:hidden">${renderAvatar(entity.agent_name || entity.domain || 'Pending')}</div>
+                  <div class="dispatch-node__signal" style="overflow:hidden">${entity.agent_name || isDispatch ? renderAvatar(entity.agent_name || entity.domain || 'Pending') : typeIcon}</div>
                   <div class="dispatch-node__label">${isDispatch ? 'Owner' : 'Requested owner'}</div>
                   <div class="dispatch-node__value">${escapeHtml(entity.agent_name || (isDispatch ? 'Confirming agent' : 'Automatic'))}</div>
                 </div>
@@ -941,12 +944,12 @@
                 <div class="dispatch-node">
                   <div class="dispatch-node__signal">${icons.check(16)}</div>
                   <div class="dispatch-node__label">${isDispatch ? 'Receipt' : 'Result'}</div>
-                  <div class="dispatch-node__value">${escapeHtml(receiptId || (isDispatch ? 'Awaiting receipt ID' : 'No mutation'))}</div>
+                  <div class="dispatch-node__value">${escapeHtml(isDispatch ? receiptId || 'Awaiting receipt ID' : 'No dispatch')}</div>
                 </div>
               </div>
 
               <div class="dispatch-proof">
-                <div class="dispatch-proof__meta">${escapeHtml(entity.domain || 'Routing pending')} · ${escapeHtml(isComplete ? 'proof recorded' : stateMeta.label.toLowerCase())}</div>
+                <div class="dispatch-proof__meta">${escapeHtml(isDispatch ? (entity.domain || 'Routing pending') + ' · ' + (isComplete ? 'proof recorded' : stateMeta.label.toLowerCase()) : preflightCopy)}</div>
                 <div class="dispatch-links">
                   ${linksHtml}
                   ${isDispatch && consoleUrl ? `<a href="${consoleUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(consoleUrl || ''))}, event)' class="deep-link ox-link-btn ox-link-btn--primary">

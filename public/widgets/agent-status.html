@@ -2490,7 +2490,7 @@
       });
     }
 
-    initWidget({
+    if (demoParams.get('loading') !== 'true' && demoState !== 'loading') initWidget({
       render: function (payload) {
         renderBoard(payload || demoPayload);
       }
