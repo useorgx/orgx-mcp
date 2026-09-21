@@ -41,7 +41,7 @@ describe('OAuth consent page contract', () => {
     expect(html).toContain('aria-label="Loading requested access"');
     expect(html).not.toContain("scope: 'memory:write'");
     expect(html).toContain('id="offline-toggle" type="checkbox" />');
-    expect(html).not.toContain('id="offline-toggle" type="checkbox" checked');
+    expect(html).toContain("document.getElementById('offline-toggle').checked = state.requested.has('offline_access')");
   });
 
   it('has no third-party runtime assets and suppresses referrers', () => {

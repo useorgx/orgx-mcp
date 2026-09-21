@@ -365,4 +365,24 @@ describe('OAuth consent presentation', () => {
       await page.close();
     }
   });
+  for (const width of [1440, 375]) {
+    it(`defaults requested refresh access on and allows opt-out at ${width}px`, async () => {
+      const page = await openConsent(browser, {
+        ...defaultPayload,
+        requested_scopes: [...defaultPayload.requested_scopes, 'offline_access'],
+      }, { width, height: 960 });
+      try {
+        expect(await page.locator('#offline-toggle').isChecked()).toBe(true);
+        await page.getByRole('button', { name: 'Review access', exact: true }).click();
+        expect(await page.locator('#review-stage').textContent()).toContain('offline_access');
+        await page.getByRole('button', { name: 'Edit', exact: true }).click();
+        await page.locator('#offline-toggle').uncheck();
+        await page.getByRole('button', { name: 'Review access', exact: true }).click();
+        expect(await page.locator('#review-stage').textContent()).not.toContain('offline_access');
+      } finally {
+        await page.close();
+      }
+    });
+  }
+
 });

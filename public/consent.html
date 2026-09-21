@@ -1189,6 +1189,7 @@
         document.getElementById('review-account-initial').textContent = initial;
         document.getElementById('authorize-button').textContent = `Authorize ${state.client.name}`;
         document.getElementById('offline-row').classList.toggle('visible', state.requested.has('offline_access'));
+        document.getElementById('offline-toggle').checked = state.requested.has('offline_access');
         renderScopeResolution();
         setPreset('read');
         shell.classList.remove('loading');
