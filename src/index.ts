@@ -3267,6 +3267,7 @@ export class OrgXMcp extends McpAgent<
         });
         if (toolId === 'get_agent_status') {
           data = normalizeAgentStatusPayload(data);
+          message = String(data.message);
         }
 
         this.maybeUpdateSessionInitiativeContext({
