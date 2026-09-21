@@ -376,6 +376,8 @@
           <select id="stateSelect">
             <option value="populated">Populated</option>
             <option value="loading">Loading</option>
+            <option value="estimate">Route estimate (no dispatch)</option>
+            <option value="guard">Guard blocked (no dispatch)</option>
             <option value="progressing">In progress</option>
             <option value="completed">Completed</option>
             <option value="blocked">Blocked</option>
@@ -442,17 +444,17 @@
   <script>
     (function () {
       const widgets = [
-        { id: 'artifact-review', name: 'Artifact Review', file: 'artifact-review.html', mode: 'Escalation', job: 'Judge evidence and sign off at the point of consequence.', advanced: true },
-        { id: 'task-spawned', name: 'Task Spawned', file: 'task-spawned.html', mode: 'Command', job: 'Confirm dispatch, owner, execution surface, and proof.', advanced: true, supportsStates: ['populated', 'loading', 'progressing', 'completed', 'blocked', 'empty', 'long', 'error', 'stale', 'resolved'] },
-        { id: 'search-results', name: 'Search Results', file: 'search-results.html', mode: 'Readout', job: 'Find the strongest organizational answer quickly.', advanced: true },
-        { id: 'decisions', name: 'Decisions', file: 'decisions.html', mode: 'Escalation', job: 'Resolve the judgment currently blocking execution.', advanced: true },
-        { id: 'plan-session-live', name: 'Plan Session Live', file: 'plan-session-live.html', mode: 'Creation', job: 'Watch a plan become owned and executable.' },
+        { id: 'artifact-review', name: 'Artifact Review', file: 'artifact-review.html', mode: 'Escalation', job: 'Judge evidence and sign off at the point of consequence.', advanced: true, supportsStates: ['populated', 'loading', 'empty', 'long', 'error', 'resolved'] },
+        { id: 'task-spawned', name: 'Task Spawned', file: 'task-spawned.html', mode: 'Command', job: 'Confirm dispatch, owner, execution surface, and proof.', advanced: true, supportsStates: ['estimate', 'guard', 'populated', 'loading', 'progressing', 'completed', 'blocked', 'empty', 'long', 'error', 'stale', 'resolved'] },
+        { id: 'search-results', name: 'Search Results', file: 'search-results.html', mode: 'Readout', job: 'Find the strongest organizational answer quickly.', advanced: true, supportsStates: ['populated', 'loading', 'empty', 'long', 'error', 'resolved'] },
+        { id: 'decisions', name: 'Decisions', file: 'decisions.html', mode: 'Escalation', job: 'Resolve the judgment currently blocking execution.', advanced: true, supportsStates: ['populated', 'loading', 'empty', 'long', 'error', 'resolved'] },
+        { id: 'plan-session-live', name: 'Plan Session Live', file: 'plan-session-live.html', mode: 'Creation', job: 'Watch a plan become owned and executable.', supportsStates: ['populated', 'loading', 'empty', 'long', 'error', 'resolved', 'completed'] },
         { id: 'agent-status', name: 'Agent Status', file: 'agent-status.html', mode: 'Command', job: 'See which agent needs intervention now.', supportsStates: ['populated', 'loading', 'progressing', 'completed', 'blocked', 'empty', 'stale', 'resolved'] },
         { id: 'initiative-pulse', name: 'Initiative Pulse', file: 'initiative-pulse.html', mode: 'Command', job: 'Read initiative health and the exception changing it.' },
         { id: 'morning-brief', name: 'Morning Brief', file: 'morning-brief.html', mode: 'Readout', job: 'Orient to the day through exceptions and priorities.' },
-        { id: 'daily-brief', name: 'Daily Brief', file: 'daily-brief.html', mode: 'Readout', job: 'Resume from the next useful operating move.' },
-        { id: 'scaffolded-initiative', name: 'Scaffolded Initiative', file: 'scaffolded-initiative.html', mode: 'Creation', job: 'Inspect the hierarchy created from a goal.' },
-        { id: 'scaffold-streaming', name: 'Scaffold Streaming', file: 'scaffold-streaming.html', mode: 'Creation', job: 'Observe entity creation as the scaffold builds.' }
+        { id: 'daily-brief', name: 'Daily Brief', file: 'daily-brief.html', mode: 'Readout', job: 'Demo: resume from the next useful operating move.' },
+        { id: 'scaffolded-initiative', name: 'Scaffolded Initiative', file: 'scaffolded-initiative.html', mode: 'Creation', job: 'Inspect the hierarchy created from a goal.', supportsStates: ['populated', 'loading', 'empty', 'error', 'completed', 'blocked', 'resolved'] },
+        { id: 'scaffold-streaming', name: 'Scaffold Streaming', file: 'scaffold-streaming.html', mode: 'Creation', job: 'Demo: observe entity creation as the scaffold builds.', supportsStates: ['populated', 'loading', 'empty', 'error', 'blocked', 'stale', 'resolved', 'completed', 'progressing'] }
       ];
       const byId = new Map(widgets.map(widget => [widget.id, widget]));
       const params = new URLSearchParams(location.search);
@@ -493,7 +495,7 @@
         }
         if (widget.advanced) {
           let normalized = stateForWidget;
-          if (state === 'populated') normalized = widget.id === 'decisions' || widget.id === 'artifact-review' ? 'urgent' : 'populated';
+          if (state === 'populated') normalized = 'populated';
           // A few readout widgets use their own fixture vocabulary. Keep the
           // gallery's state contract consistent while selecting the closest
           // honest fixture rather than silently rendering an empty frame.
@@ -545,6 +547,9 @@
 
       function renderPreview() {
         const widget = byId.get(selectedId);
+        const supported = widget.supportsStates || ['populated', 'loading', 'progressing', 'completed', 'blocked', 'empty', 'long', 'error', 'stale', 'resolved'];
+        Array.from(elements.state.options).forEach(option => { option.disabled = !supported.includes(option.value); });
+        if (!supported.includes(elements.state.value)) elements.state.value = 'populated';
         const url = previewUrl();
         elements.widget.value = selectedId;
         elements.title.textContent = widget.name;

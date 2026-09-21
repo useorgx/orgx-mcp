@@ -5,7 +5,7 @@ import { chromium } from 'playwright';
 
 const rootDir = resolve(process.cwd());
 const publicDir = join(rootDir, 'public');
-const outDir = join(rootDir, 'artifacts', 'widget-gallery', '2026-07-17', 'final');
+const outDir = join(rootDir, 'artifacts', 'widget-gallery', 'current');
 const port = 4329;
 
 const cases = [
@@ -14,28 +14,28 @@ const cases = [
     viewport: { width: 1440, height: 1000 },
     colorScheme: 'dark',
     reducedMotion: 'no-preference',
-    query: 'widget=scaffolded-initiative&state=urgent&viewport=wide&theme=dark',
+    query: 'widget=scaffolded-initiative&state=blocked&viewport=desktop&previewTheme=dark',
   },
   {
     name: 'tablet-light',
     viewport: { width: 768, height: 900 },
     colorScheme: 'light',
     reducedMotion: 'no-preference',
-    query: 'widget=artifact-review&state=populated&viewport=tablet&theme=light',
+    query: 'widget=artifact-review&state=populated&viewport=tablet&previewTheme=light',
   },
   {
     name: 'phone-dark',
     viewport: { width: 375, height: 812 },
     colorScheme: 'dark',
     reducedMotion: 'no-preference',
-    query: 'widget=daily-brief&state=agents&viewport=phone&theme=dark',
+    query: 'widget=daily-brief&state=populated&viewport=phone&previewTheme=dark',
   },
   {
     name: 'desktop-reduced',
     viewport: { width: 1440, height: 1000 },
     colorScheme: 'dark',
     reducedMotion: 'reduce',
-    query: 'widget=decisions&state=loading&viewport=wide&theme=dark',
+    query: 'widget=decisions&state=loading&viewport=desktop&previewTheme=dark',
   },
 ];
 
@@ -124,39 +124,39 @@ async function inspectCase(browser, config) {
         };
       })
       .filter((target) => target.width < 44 || target.height < 44);
-    const activeRow = document.querySelector('.registry-row.is-active');
-    const registry = document.getElementById('registry-list');
+    const activeRow = document.querySelector('.catalog-item[aria-selected="true"]');
+    const registry = document.getElementById('catalogList');
     const activeRect = activeRow?.getBoundingClientRect();
     const registryRect = registry?.getBoundingClientRect();
     const activeVisibleInRegistry =
-      !activeRect ||
-      !registryRect ||
+      !!activeRect &&
+      !!registryRect &&
       (activeRect.top >= registryRect.top - 1 && activeRect.bottom <= registryRect.bottom + 1);
     return {
       title: document.title,
       horizontalOverflow:
         Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) -
         document.documentElement.clientWidth,
-      registryCount: document.querySelectorAll('.registry-row').length,
-      coverage: document.getElementById('coverage-copy')?.textContent || '',
-      selected: activeRow?.dataset.widgetId || '',
+      registryCount: document.querySelectorAll('.catalog-item').length,
+      coverage: document.getElementById('catalogCount')?.textContent || '',
+      selected: activeRow?.dataset.widget || '',
       selectedState:
-        document.querySelector('#state-options .is-active')?.textContent?.trim() || '',
-      iframeUrl: document.getElementById('preview-frame')?.src || '',
+        document.getElementById('stateSelect')?.value || '',
+      iframeUrl: document.getElementById('previewFrame')?.src || '',
       manifestWarning: document.getElementById('manifest-warning')?.classList.contains('is-visible'),
       smallTargets,
       activeVisibleInRegistry,
     };
   });
 
-  await page.locator('#widget-filter').fill('artifact');
-  const filteredRows = await page.locator('.registry-row').count();
-  await page.locator('#widget-filter').fill('');
-  const firstRow = page.locator('.registry-row').first();
+  await page.locator('#catalogSearch').fill('artifact');
+  const filteredRows = await page.locator('.catalog-item').count();
+  await page.locator('#catalogSearch').fill('');
+  const firstRow = page.locator('.catalog-item').first();
   await firstRow.focus();
   await page.keyboard.press('ArrowDown');
   const keyboardMoved = await page.evaluate(
-    () => document.activeElement?.classList.contains('registry-row') && document.activeElement !== document.querySelector('.registry-row')
+    () => document.activeElement?.classList.contains('catalog-item') && document.activeElement !== document.querySelector('.catalog-item')
   );
 
   const screenshot = join(outDir, `${config.name}.png`);
@@ -183,7 +183,8 @@ function collectFailures(results) {
     }
     if (result.horizontalOverflow > 1) add('horizontal-overflow', result.horizontalOverflow);
     if (result.registryCount !== 11) add('registry-coverage', result.registryCount);
-    if (!result.coverage.includes('11/11')) add('manifest-coverage', result.coverage);
+    if (!result.coverage.includes('11 widgets')) add('manifest-coverage', result.coverage);
+    if (!result.iframeUrl.includes('/widgets/')) add('missing-preview', result.iframeUrl);
     if (result.manifestWarning) add('manifest-warning', true);
     if (result.smallTargets.length) add('undersized-target', result.smallTargets);
     if (!result.activeVisibleInRegistry) add('selected-row-not-visible', result.selected);

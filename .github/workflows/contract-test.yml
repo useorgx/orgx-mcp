@@ -91,3 +91,6 @@ jobs:
 
       - name: Verify widget rendering in supported host variants
         run: pnpm widget:verify-rendering
+
+      - name: Verify widget payload semantics and interactions
+        run: pnpm widget:verify-payloads

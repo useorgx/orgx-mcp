@@ -121,7 +121,7 @@
         color: var(--ox-text);
         padding: 24px 16px;
         -webkit-font-smoothing: antialiased;
-        min-height: 100vh;
+        min-height: auto;
       }
 
       body::before {
@@ -133,7 +133,7 @@
         z-index: -1; pointer-events: none;
       }
 
-      .container { max-width: 540px; margin: 0 auto; position: relative; }
+      .container { max-width: 700px; margin: 0 auto; position: relative; }
 
       :root[data-embed="og-wide-search"] body {
         min-height: auto;
@@ -578,7 +578,7 @@
       border: 0;
       background: transparent;
     }
-    .page-summary { display: none; }
+    .page-summary { display: flex; }
     .page-controls { gap: 4px; }
     .page-btn {
       min-width: 64px;
@@ -651,15 +651,7 @@
 
     var injectHtml = (html) => {
       const content = document.getElementById('content');
-      const skeleton = content.querySelector('.skeleton-wrapper');
-      if (skeleton) {
-        skeleton.style.opacity = '0';
-        setTimeout(() => {
-          content.innerHTML = html;
-        }, 300);
-      } else {
-        content.innerHTML = html;
-      }
+      content.innerHTML = html;
     };
 
     
@@ -781,15 +773,22 @@
         if (type === 'workspace' || type === 'command_center') return ORGX_BASE_URL + '/command?center=' + encodeURIComponent(id);
         return ORGX_BASE_URL;
       };
-      var normalizeResult = (item) => {
-        var score = coerceScore(item && (item.score ?? item.relevance_score ?? item.vector_score));
+      var excerptText = (value) => decodeEscapedText(value)
+        .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+        .replace(/\[([^\]]+)\]\(https?:\/\/[^)]+\)/g, '$1')
+        .replace(/(\*\*|__|`)/g, '')
+        .replace(/\s+/g, ' ').trim();
+      var normalizeResult = (item, fallbackType) => {
+        item = item || {};
+        var type = item.type || item.entity_type || fallbackType || 'result';
+        var snippet = [item.snippet, item.summary, item.description].find(value => typeof value === 'string' && value.trim()) || '';
         return {
-          title: item && typeof item.title === 'string' ? decodeEscapedText(item.title) : 'Untitled',
-          type: item && typeof item.type === 'string' ? decodeEscapedText(item.type) : 'result',
-          snippet: item && typeof item.snippet === 'string' ? decodeEscapedText(item.snippet) : item && typeof item.summary === 'string' ? decodeEscapedText(item.summary) : item && typeof item.description === 'string' ? decodeEscapedText(item.description) : 'No excerpt available yet.',
-          score: score,
-          url: buildEntityUrl(item || {}),
-          date: formatRelativeDate(item && (item.date || item.created_at || item.updated_at)) || 'Recently updated'
+          title: decodeEscapedText(item.title || item.name || 'Untitled'),
+          type: decodeEscapedText(type),
+          snippet: excerptText(snippet),
+          score: coerceScore(item.score ?? item.relevance_score ?? item.vector_score),
+          url: buildEntityUrl({ ...item, type }),
+          date: formatRelativeDate(item.updated_at || item.date || item.created_at)
         };
       };
       var normalizeDecisionHistoryItem = (item) => {
@@ -1006,6 +1005,29 @@
 
 
     
+    var loadingMore = false;
+    var loadMoreError = '';
+    window.loadMoreResults = async () => {
+      if (loadingMore || !data || !data.next_call || data.next_call.tool !== 'orgx_search') return;
+      const previous = data;
+      loadingMore = true;
+      loadMoreError = '';
+      render();
+      try {
+        const response = await callTool('orgx_search', previous.next_call.args || {});
+        const next = response && (response.structuredContent || response);
+        if (!next || next.error || response.isError || !Array.isArray(next.results)) throw new Error('Search did not return a result page.');
+        if (data !== previous) return;
+        data = { ...previous, ...next, results: previous.results.concat(next.results) };
+        currentPage = Math.floor(previous.results.length / itemsPerPage) + 1;
+      } catch (_) {
+        loadMoreError = 'More results could not be loaded. Your current results are preserved. Try again.';
+      } finally {
+        loadingMore = false;
+        render();
+      }
+    };
+
     window.changePage = (delta) => {
       const totalPages = Math.max(1, Math.ceil(((data && data.results) || []).length / itemsPerPage));
       const nextPage = Math.min(totalPages, Math.max(1, currentPage + delta));
@@ -1047,7 +1069,7 @@
             <div class="r-footer">
               <div class="r-meta">
                 <span class="r-chip">Decision</span>
-                <span class="r-chip">${escapeHtml(r.date)}</span>
+                ${r.date ? `<span class="r-chip">${escapeHtml(r.date)}</span>` : ''}
               </div>
               <div class="r-open-hint">${icons.external(14)} Open in OrgX <small>new tab</small></div>
             </div>
@@ -1130,7 +1152,7 @@
         return;
       }
 
-      var normalizedResults = Array.isArray(data.results) ? data.results.map(normalizeResult) : [];
+      var normalizedResults = Array.isArray(data.results) ? data.results.map(item => normalizeResult(item, data.type)) : [];
       if (!normalizedResults.length) {
         injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.search(24)}</div><div class="empty-title">No results found</div><div class="empty-desc">${escapeHtml(data.query ? 'OrgX could not find a strong match for \"' + data.query + '\". Try a broader phrase or a different scope.' : 'Try adjusting your query or expanding your search scope.')}</div></div>`);
         return;
@@ -1155,11 +1177,11 @@
             ${r.score !== null ? `<div class="score-pill ${r.score >= 0.9 ? 'score-high' : r.score >= 0.7 ? 'score-med' : 'score-low'}">${Math.round(r.score * 100)}% Match</div>` : ''}
           </div>
 
-          <div class="r-snippet">${renderSnippet(r.snippet)}</div>
+          ${r.snippet ? `<div class="r-snippet">${renderSnippet(r.snippet)}</div>` : ''}
           <div class="r-footer">
             <div class="r-meta">
               <span class="r-chip">${escapeHtml(titleCase(r.type))}</span>
-              <span class="r-chip">${escapeHtml(r.date)}</span>
+              ${r.date ? `<span class="r-chip">${escapeHtml(r.date)}</span>` : ''}
             </div>
             <div class="r-open-hint">${icons.external(14)} Open in OrgX <small>new tab</small></div>
           </div>
@@ -1181,6 +1203,8 @@
               <div class="result-list">
                 ${resultsHtml}
               </div>
+              ${data.pagination && data.pagination.has_more && data.next_call && data.next_call.tool === 'orgx_search' ? `<button type="button" class="page-btn" onclick="loadMoreResults()" ${loadingMore ? 'disabled' : ''}>${loadingMore ? 'Loading more…' : 'Load more results'}</button>` : ''}
+              ${loadMoreError ? `<p role="alert">${escapeHtml(loadMoreError)}</p>` : ''}
               ${totalPages > 1 ? `
                 <div class="pagination">
                   <div class="page-info">
@@ -1190,7 +1214,7 @@
                     </div>
                     <div class="page-summary">
                       <span class="page-range">Showing ${startIdx + 1}-${Math.min(startIdx + paginatedResults.length, normalizedResults.length)}</span>
-                      <span class="page-total">${normalizedResults.length} results total</span>
+                      <span class="page-total">${normalizedResults.length} loaded${data.pagination && data.pagination.has_more ? ' · More results available in OrgX' : ' results'}</span>
                     </div>
                     <div class="page-progress" aria-hidden="true">
                       <span class="page-progress-bar" style="width:${progress}%"></span>

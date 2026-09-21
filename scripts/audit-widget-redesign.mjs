@@ -17,6 +17,13 @@ const widgets = [
   "task-spawned",
   "search-results",
   "decisions",
+  "agent-status",
+  "initiative-pulse",
+  "morning-brief",
+  "daily-brief",
+  "plan-session-live",
+  "scaffolded-initiative",
+  "scaffold-streaming",
 ].filter(
   (widget) => !requestedWidgets.length || requestedWidgets.includes(widget),
 );
@@ -118,11 +125,11 @@ async function inspect(page, expectedTheme, state) {
       const text = document.body.innerText.replace(/\s+/g, " ").trim();
       const hasSkeleton = Boolean(
         document.querySelector(
-          ".skeleton-wrapper, .review-skeleton, .dispatch-skeleton, .decision-skeleton-card",
+          ".skeleton-wrapper, .review-skeleton, .dispatch-skeleton, .decision-skeleton-card, .pulse-skeleton, .skeleton-shell, .plan-skeleton, .scaffold-state--loading, #skeleton, [aria-label=\"Loading daily brief\"]",
         ),
       );
       const visibleSkeleton = [...document.querySelectorAll(
-        ".skeleton-wrapper, .review-skeleton, .dispatch-skeleton, .decision-skeleton-card",
+        ".skeleton-wrapper, .review-skeleton, .dispatch-skeleton, .decision-skeleton-card, .pulse-skeleton, .skeleton-shell, .plan-skeleton, .scaffold-state--loading, #skeleton, [aria-label=\"Loading daily brief\"]",
       )].some((element) => {
         const style = getComputedStyle(element);
         const rect = element.getBoundingClientRect();
@@ -138,7 +145,7 @@ async function inspect(page, expectedTheme, state) {
         stateRendered:
           fixtureState === "loading"
             ? hasSkeleton && visibleSkeleton
-            : text.length > 12 && !hasSkeleton,
+            : text.length > 12 && !visibleSkeleton,
         expectedTheme: theme,
       };
     },
@@ -160,7 +167,7 @@ async function auditWidgetCase(browser, widget, state, theme, viewport) {
     if (message.type() === "error") errors.push(`console: ${message.text()}`);
   });
   await page.goto(
-    `${origin}/widgets/${widget}.html?state=${state}&theme=${theme}`,
+    `${origin}/widgets/${widget}.html?${state === "loading" ? "loading=true" : "demo=true"}&state=${state}&theme=${theme}`,
     { waitUntil: "domcontentloaded" },
   );
   await page.waitForTimeout(state === "loading" ? 180 : 650);

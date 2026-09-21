@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-08-31T04:15:30.363Z",
+  "generatedAt": "2026-09-21T21:48:43.525Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -35,8 +35,8 @@
   "widgets": {
     "agent-status": {
       "file": "public/widgets/agent-status.html",
-      "bytes": 87656,
-      "hash": "6cc4ec2ca1db",
+      "bytes": 87725,
+      "hash": "b06d5beda054",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/components/domain-accent.css",
@@ -103,8 +103,8 @@
     },
     "index": {
       "file": "public/widgets/index.html",
-      "bytes": 24374,
-      "hash": "ab75370af72a",
+      "bytes": 25402,
+      "hash": "c717cd648f3d",
       "primaryRgb": "17,24,39",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -117,8 +117,8 @@
     },
     "initiative-pulse": {
       "file": "public/widgets/initiative-pulse.html",
-      "bytes": 112843,
-      "hash": "659d7c6df4d2",
+      "bytes": 112574,
+      "hash": "2cfcd3fc98c3",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/components/domain-accent.css",
@@ -136,8 +136,8 @@
     },
     "morning-brief": {
       "file": "public/widgets/morning-brief.html",
-      "bytes": 69641,
-      "hash": "a4cd4f54403a",
+      "bytes": 69783,
+      "hash": "d9e3e4f5b7c5",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/icons.js",
@@ -199,8 +199,8 @@
     },
     "search-results": {
       "file": "public/widgets/search-results.html",
-      "bytes": 55442,
-      "hash": "0fe1e5c7aa88",
+      "bytes": 56894,
+      "hash": "37ca1ce66bc2",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/mcp-apps-sdk.umd.js",
@@ -213,8 +213,8 @@
     },
     "task-spawned": {
       "file": "public/widgets/task-spawned.html",
-      "bytes": 45123,
-      "hash": "e1306316cb46",
+      "bytes": 45640,
+      "hash": "ac997ab6e283",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/interaction-kit.css",

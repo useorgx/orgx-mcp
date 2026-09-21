@@ -1348,15 +1348,7 @@
       var injectHtml = function (html) {
         var content = document.getElementById("content");
         if (!content) return;
-        var skeleton = content.querySelector(".skeleton-wrapper, .pulse-skeleton");
-        if (skeleton) {
-          skeleton.style.opacity = "0";
-          setTimeout(function () {
-            content.innerHTML = html;
-          }, 220);
-        } else {
-          content.innerHTML = html;
-        }
+        content.innerHTML = html;
       };
 
       function buildInitiativeRecoveryUrl(rawPulse) {
