@@ -116,7 +116,9 @@ export function formatRouteTaskEstimateSummary(
     parts.push(
       summary.budget_check.within_cap === false
         ? `over cap $${summary.budget_check.max_cost_usd.toFixed(4)}`
-        : `within cap $${summary.budget_check.max_cost_usd.toFixed(4)}`
+        : summary.budget_check.within_cap === true
+        ? `within cap $${summary.budget_check.max_cost_usd.toFixed(4)}`
+        : `cost unknown; cap $${summary.budget_check.max_cost_usd.toFixed(4)}`
     );
   }
   if (summary.candidate_count > 0) {

@@ -5812,7 +5812,7 @@ export class OrgXMcp extends McpAgent<
               ? buildOrgxSpawnForwardArgs(targetTool, spawnArgs)
               : targetTool === 'check_spawn_guard'
               ? buildSpawnGuardForwardArgs(spawnArgs)
-              : spawnArgs;
+              : buildSpawnBudgetPreflightArgs(spawnArgs);
           const body =
             targetTool === 'spawn_agent_task' || targetTool === 'handoff_task'
               ? {
