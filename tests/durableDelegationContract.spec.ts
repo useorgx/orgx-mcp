@@ -143,3 +143,15 @@ describe('validateDurableDelegationResponse', () => {
     ).toBe(false);
   });
 });
+
+
+describe('assignment without paid dispatch', () => {
+  it('accepts a matching reassignment without inventing a run', () => {
+    expect(validateDurableDelegationResponse({ data: { task_id: 'task-1', agent_id: 'sales-agent' } }, { taskId: 'task-1' })).toMatchObject({ ok: true, reassigned: true });
+  });
+  it('rejects mismatched assignment and still requires a receipt for ordinary dispatch', () => {
+    const payload = { data: { task_id: 'task-1', agent_id: 'sales-agent' } };
+    expect(validateDurableDelegationResponse(payload, { taskId: 'task-2' }).ok).toBe(false);
+    expect(validateDurableDelegationResponse(payload).ok).toBe(false);
+  });
+});
