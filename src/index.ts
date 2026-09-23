@@ -72,6 +72,7 @@ import { installToolResultGuidanceWrapper } from './toolResultRegistration';
 import { withRequestToolProfile } from './requestToolProfile';
 import {
   buildMcpTransportExceptionResponse,
+  isOrgxApiTelemetryConfigured,
   withCorsAndHeaders,
   withSseKeepAlive,
 } from './mcpTransport';
@@ -367,6 +368,7 @@ import {
   SESSION_TOOL_STATS_STORAGE_KEY,
   totalSessionToolCalls,
   type SessionSummary,
+  type SessionToolCompletion,
   type SessionToolStats,
 } from './sessionSummary';
 import {
@@ -1169,6 +1171,54 @@ export class OrgXMcp extends McpAgent<
    * submitted informational tools produce zero worker-local state changes,
    * so their calls are excluded from session summaries by design.
    */
+  /**
+   * Durable invocation telemetry from the tool handler. The transport layer
+   * records only single top-level `tools/call` HTTP bodies, so calls over
+   * legacy SSE, WebSocket or batched requests were never recorded — including
+   * every call from the one returning external workspace (plan v3 Stage 1).
+   * The app merges this row with the transport row for the same
+   * (mcp_session_id, request_id, tool_id).
+   */
+  private recordHandlerToolInvocation(completion: SessionToolCompletion): void {
+    // Same gates as the session counter (review profiles promise no
+    // worker-side effects) and the transport recorder (telemetry configured).
+    if (
+      this.isDirectoryReviewProfile() ||
+      this.isSubmittedInformationalToolExecution(completion.toolName) ||
+      !isOrgxApiTelemetryConfigured(this.env)
+    ) {
+      return;
+    }
+    const userId = this.resolveUserId();
+    const delivery = recordDurableMcpToolInvocation({
+      env: this.env,
+      toolId: completion.toolName,
+      status: completion.status,
+      latencyMs: completion.latencyMs,
+      metadata: { telemetry_source: 'mcp_handler' },
+      userId,
+      workspaceId: this.sessionContext.workspaceId ?? null,
+      sourceClient: this.resolveSourceClient(),
+      fallbackClient: this.sessionContext.clientName
+        ? {
+            name: this.sessionContext.clientName,
+            version: this.sessionContext.clientVersion,
+          }
+        : null,
+      errorCode: completion.errorCode,
+      serverVersion: MCP_SERVER_VERSION,
+      isWidgetTool: false,
+      requestId: completion.requestId,
+      mcpSessionId: completion.mcpSessionId,
+      source: 'mcp_handler',
+    });
+    try {
+      this.ctx.waitUntil(delivery);
+    } catch {
+      void delivery;
+    }
+  }
+
   private observeSessionToolCall(toolName: string): void {
     if (
       this.isDirectoryReviewProfile() ||
@@ -6899,8 +6949,10 @@ export class OrgXMcp extends McpAgent<
     // covered too; idempotent per in-memory DO lifetime.
     if (!this.sessionToolObservationInstalled) {
       this.sessionToolObservationInstalled = true;
-      installSessionToolObservationWrapper(this.server, (toolName) =>
-        this.observeSessionToolCall(toolName)
+      installSessionToolObservationWrapper(
+        this.server,
+        (toolName) => this.observeSessionToolCall(toolName),
+        (completion) => this.recordHandlerToolInvocation(completion)
       );
     }
 

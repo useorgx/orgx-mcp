@@ -106,6 +106,14 @@ export function recordDurableMcpToolInvocation(params: {
   isWidgetTool?: boolean;
   toolFamily?: string;
   requestId?: string | null;
+  /** MCP session id; with requestId it identifies one call across sources. */
+  mcpSessionId?: string | null;
+  /**
+   * `mcp_worker` = transport layer (richest timing, but only sees single
+   * top-level tools/call bodies); `mcp_handler` = tool handler (sees every
+   * transport). The app merges the two records of one call.
+   */
+  source?: 'mcp_worker' | 'mcp_handler';
 }): Promise<void> {
   const clientInfo = cleanClientInfo(params.context);
   return callOrgxApiJson(
@@ -117,7 +125,7 @@ export function recordDurableMcpToolInvocation(params: {
         tool_id: params.toolId,
         status: params.status,
         latency_ms: params.latencyMs,
-        source: 'mcp_worker',
+        source: params.source ?? 'mcp_worker',
         client_name:
           clientInfo.clientName ??
           params.fallbackClient?.name ??
@@ -132,6 +140,7 @@ export function recordDurableMcpToolInvocation(params: {
         is_widget_tool: params.isWidgetTool ?? true,
         mcp_server_version: params.serverVersion,
         request_id: params.requestId ?? clientInfo.requestId,
+        mcp_session_id: params.mcpSessionId ?? undefined,
         conversation_id: clientInfo.conversationId,
         user_id: params.userId ?? undefined,
         workspace_id: params.workspaceId ?? undefined,

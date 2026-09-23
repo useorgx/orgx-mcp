@@ -351,7 +351,7 @@ function extractClientContext(context: unknown): {
   };
 }
 
-function isOrgxApiTelemetryConfigured(env: unknown): env is OrgxApiEnv {
+export function isOrgxApiTelemetryConfigured(env: unknown): env is OrgxApiEnv {
   const record = asRecord(env);
   return Boolean(
     pickString(record.ORGX_API_URL) &&
@@ -812,6 +812,7 @@ async function captureMcpToolCallVisibility<Env>(
       isWidgetTool: false,
       toolFamily,
       requestId,
+      mcpSessionId: sessionId ?? null,
     }));
   }
 
