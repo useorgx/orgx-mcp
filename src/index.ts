@@ -6315,6 +6315,15 @@ export class OrgXMcp extends McpAgent<
               ? meta.nextAfterSequence
               : built.afterSequence;
           const hasMore = meta?.hasMore === true;
+          const baseVerification =
+            meta?.baseVerification && typeof meta.baseVerification === 'object'
+              ? (meta.baseVerification as Record<string, unknown>)
+              : null;
+          // Verified only when the server recompiled the capsule and it
+          // matched; an older server or a failed check stays unverified.
+          const baseVerified =
+            baseVerification?.acknowledgedCapsuleId === built.capsuleId &&
+            baseVerification.current === true;
           return {
             content: [
               {
@@ -6323,13 +6332,21 @@ export class OrgXMcp extends McpAgent<
                   materialChanges.length === 1 ? '' : 's'
                 } after sequence ${built.afterSequence} · next sequence ${nextAfterSequence}${
                   hasMore ? ' · more available' : ''
-                }\nCoverage boundary: this event feed is incomplete and does not validate the capsule base. Bootstrap current context before consequential action.`,
+                }\n${
+                  baseVerified
+                    ? 'Capsule base verified current: nothing the capsule covers changed since bootstrap.'
+                    : 'Capsule base not verified current. Bootstrap current context before consequential action.'
+                }`,
               },
             ],
             structuredContent: {
               _v2_tool: 'orgx_tail',
-              base_verified: false,
-              rebootstrap_required: true,
+              base_verified: baseVerified,
+              rebootstrap_required: !baseVerified,
+              current_capsule_id:
+                typeof baseVerification?.currentCapsuleId === 'string'
+                  ? baseVerification.currentCapsuleId
+                  : null,
               reusable_for_consequential_action: false,
               delivery_mode: 'partial_event_feed',
               capsule_id: built.capsuleId,
