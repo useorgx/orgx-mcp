@@ -782,8 +782,15 @@
         item = item || {};
         var type = item.type || item.entity_type || fallbackType || 'result';
         var snippet = [item.snippet, item.summary, item.description].find(value => typeof value === 'string' && value.trim()) || '';
+        var related = [item.entity, item.record, item.data].find(value => value && typeof value === 'object' && !Array.isArray(value)) || {};
+        var title = [
+          item.title, item.name, item.label, item.display_name, item.displayName,
+          item.entity_title, item.entityTitle, item.initiative_title,
+          item.artifact_title, related.title, related.name, related.label
+        ].find(value => typeof value === 'string' && value.trim() && !/^untitled$/i.test(value.trim()));
+        var normalizedType = String(type).toLowerCase().replace(/-/g, '_');
         return {
-          title: decodeEscapedText(item.title || item.name || 'Untitled'),
+          title: decodeEscapedText(title || (normalizedType === 'initiative' ? 'Initiative title unavailable' : normalizedType === 'artifact' ? 'Artifact title unavailable' : normalizedType === 'decision' ? 'Decision title unavailable' : 'Result title unavailable')),
           type: decodeEscapedText(type),
           snippet: excerptText(snippet),
           score: coerceScore(item.score ?? item.relevance_score ?? item.vector_score),
@@ -913,7 +920,8 @@
       };
 
     var fixtureState = queryParams.get('state') || (queryParams.get('loading') === 'true' ? 'loading' : queryParams.get('demo') === 'true' ? 'populated' : 'empty');
-    var isDemo = ['populated', 'urgent', 'long', 'resolved'].includes(fixtureState);
+    var hasFixturePayload = queryParams.get('gallery') === 'true' || queryParams.has('demo') || queryParams.has('state') || queryParams.get('loading') === 'true';
+    var isDemo = hasFixturePayload && fixtureState !== 'loading';
     var data = isDemo ? {
       query: "founder continuity launch",
       results: [
@@ -958,7 +966,7 @@
           date: '1 hour ago'
         }
       ]
-    } : null;
+    } : fixtureState === 'empty' && hasFixturePayload ? { query: '', results: [] } : null;
     if (fixtureState === 'long' && data) {
       data.query = 'founder continuity launch proof and organizational decision provenance across every connected agent execution surface';
       data.results[0].title = 'Founder continuity launch, approval provenance, evidence chain, and cross-agent continuation operating record';
@@ -987,11 +995,17 @@
     }
     var bootStartedAt = Date.now();
     var MIN_LOADING_MS = 220;
+    var SEARCH_RESPONSE_TIMEOUT_MS = Number(window.__ORGX_SEARCH_RESPONSE_TIMEOUT_MS) || 12000;
     var loadingSettled = false;
-    var applyBootPayload = function(assign) {
+    var bootError = '';
+    var bootTimeoutId = null;
+    var applyBootPayload = function(payload) {
+      if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return;
       var commit = function() {
-        if (typeof assign === 'function') assign();
+        data = payload;
+        bootError = '';
         isLoading = false;
+        if (bootTimeoutId !== null) window.clearTimeout(bootTimeoutId);
         render();
       };
       if (loadingSettled) {
@@ -1002,6 +1016,15 @@
       var delay = Math.max(0, MIN_LOADING_MS - (Date.now() - bootStartedAt));
       window.setTimeout(commit, delay);
     };
+    if (!isDemo && !isLoadingOverride) {
+      bootTimeoutId = window.setTimeout(function() {
+        if (loadingSettled) return;
+        loadingSettled = true;
+        bootError = 'OrgX did not receive a search response. Check the connection and retry the search.';
+        isLoading = false;
+        render();
+      }, SEARCH_RESPONSE_TIMEOUT_MS);
+    }
 
 
     
@@ -1043,7 +1066,15 @@
         injectHtml(`<div class="empty-state error-state animate-in"><div class="empty-icon">${icons.error(24)}</div><div class="empty-title">Search unavailable</div><div class="empty-desc">${escapeHtml(errorMessage)}</div></div>`);
         return;
       }
-      if(!data) { injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.search(24)}</div><div class="empty-title">No results found</div><div class="empty-desc">Try adjusting your query or expanding your search scope.</div></div>`); return; }
+      if (bootError || !data || typeof data !== 'object') {
+        var unavailableMessage = bootError || 'OrgX returned an incomplete search response. Retry the search.';
+        injectHtml(`<div class="empty-state error-state animate-in"><div class="empty-icon">${icons.error(24)}</div><div class="empty-title">Search unavailable</div><div class="empty-desc">${escapeHtml(unavailableMessage)}</div></div>`);
+        return;
+      }
+      if (typeof data.query === 'string' && !Array.isArray(data.results)) {
+        injectHtml(`<div class="empty-state error-state animate-in"><div class="empty-icon">${icons.error(24)}</div><div class="empty-title">Search unavailable</div><div class="empty-desc">OrgX returned an incomplete search response. Retry the search.</div></div>`);
+        return;
+      }
       var recommendationMode = Array.isArray(data.recommendations) || !!data.next_action;
       var historyMode = Array.isArray(data.decisions) || data.scope === 'decisions' || !!data.topic;
 
@@ -1153,6 +1184,10 @@
       }
 
       var normalizedResults = Array.isArray(data.results) ? data.results.map(item => normalizeResult(item, data.type)) : [];
+      if (!Array.isArray(data.results)) {
+        injectHtml(`<div class="empty-state error-state animate-in"><div class="empty-icon">${icons.error(24)}</div><div class="empty-title">Search unavailable</div><div class="empty-desc">OrgX returned an incomplete search response. Retry the search.</div></div>`);
+        return;
+      }
       if (!normalizedResults.length) {
         injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.search(24)}</div><div class="empty-title">No results found</div><div class="empty-desc">${escapeHtml(data.query ? 'OrgX could not find a strong match for \"' + data.query + '\". Try a broader phrase or a different scope.' : 'Try adjusting your query or expanding your search scope.')}</div></div>`);
         return;
@@ -1232,8 +1267,8 @@
       `);
     };
 
-    if(isDemo) applyBootPayload();
-    else initWidget({ render: d => { applyBootPayload(function(){ if(d) data = d; }); } });
+    if(isDemo) applyBootPayload(data);
+    else initWidget({ render: d => { applyBootPayload(d); } });
   </script>
 </body>
 </html>
