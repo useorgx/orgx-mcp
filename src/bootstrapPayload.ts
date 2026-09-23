@@ -222,7 +222,9 @@ export function buildBootstrapToolRouting(params: {
     manifest: {
       version: SERVER_MANIFEST_VERSION,
       public_profile: 'v2',
-      public_tools_count: V2_PUBLIC_TOOL_IDS.length,
+      // The fixed public manifest size is not what this connection can call;
+      // reporting it beside visible_tools_count read as a discovery mismatch
+      // (plan v3 A02). Agents get the effective set only.
       negotiated_profile: resolved.name,
       visible_tools_count: visibleTools.length,
     },

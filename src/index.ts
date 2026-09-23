@@ -78,6 +78,7 @@ import {
 } from './mcpTransport';
 import { withPathScopedResourceChallenge } from './oauthResourceChallenge';
 import { withSecurityHeaders } from './securityHeaders';
+import { probeOrgxHealth, readUptimeSummary, recordProbe } from './uptimeProbe';
 import { callOrgxApiJson, callOrgxApiRaw, OrgXApiError } from './orgxApi';
 import { captureDecision } from './decisionCapture';
 import { mapMorningBriefApiError } from './morningBriefError';
@@ -4536,6 +4537,37 @@ export class OrgXMcp extends McpAgent<
     }
   }
 
+  /**
+   * Measured service levels an agent can check against its own experience
+   * (plan v3 Stage 4). Only measured values; null when not yet observed.
+   */
+  private async bootstrapServiceLevels() {
+    const links = {
+      measured_cells: `${
+        (this.env as unknown as { ORGX_API_URL?: string }).ORGX_API_URL ??
+        'https://useorgx.com'
+      }/api/v1/service-levels`,
+      uptime: 'https://mcp.useorgx.com/status/uptime',
+    };
+    const kv = (this.env as unknown as { OAUTH_KV?: KVNamespace }).OAUTH_KV;
+    if (!kv) return { ...links, availability_7d: null };
+    try {
+      const summary = await readUptimeSummary(kv, 7);
+      return {
+        ...links,
+        availability_7d: {
+          measured: summary.availability,
+          target: summary.target,
+          probes: summary.probes,
+          health_p95_ms: summary.health_latency_ms.p95,
+          release_sha: summary.release_sha,
+        },
+      };
+    } catch {
+      return { ...links, availability_7d: null };
+    }
+  }
+
   private buildBootstrapPayload(allowedTools: Set<string> | null) {
     const visibleTools = allowedTools
       ? Array.from(allowedTools).sort()
@@ -4969,6 +5001,7 @@ export class OrgXMcp extends McpAgent<
           const context_pack = preparation?.context_pack ?? null;
           const payload = {
             ...this.buildBootstrapPayload(allowedTools ?? null),
+            service_levels: await this.bootstrapServiceLevels(),
             context_pack,
             context_capsule: preparation?.context_capsule ?? null,
             context_delivery: preparation?.context_delivery ?? null,
@@ -14395,11 +14428,40 @@ async function tryRunTokenAuth(
 }
 
 const worker = {
+  /** Per-minute off-box probe of the app (plan v3 Stage 4). */
+  async scheduled(
+    _controller: ScheduledController,
+    env: Env,
+    ctx: ExecutionContext
+  ): Promise<void> {
+    const kv = (env as unknown as { OAUTH_KV?: KVNamespace }).OAUTH_KV;
+    const baseUrl = (env as unknown as { ORGX_API_URL?: string }).ORGX_API_URL;
+    if (!kv || !baseUrl) return;
+    ctx.waitUntil(
+      probeOrgxHealth(baseUrl).then((result) => recordProbe(kv, result))
+    );
+  },
+
   async fetch(
     request: Request,
     env: Env,
     ctx: ExecutionContext
   ): Promise<Response> {
+    if (new URL(request.url).pathname === '/status/uptime') {
+      const kv = (env as unknown as { OAUTH_KV?: KVNamespace }).OAUTH_KV;
+      if (!kv) {
+        return withSecurityHeaders(
+          Response.json({ error: 'uptime store unavailable' }, { status: 503 })
+        );
+      }
+      const rawDays = Number(new URL(request.url).searchParams.get('days'));
+      const days = Number.isInteger(rawDays) && rawDays >= 1 && rawDays <= 90 ? rawDays : 30;
+      return withSecurityHeaders(
+        Response.json(await readUptimeSummary(kv, days), {
+          headers: { 'cache-control': 'public, max-age=60' },
+        })
+      );
+    }
     // OpenAI verifies domain control through an exact, unauthenticated
     // plaintext challenge. Handle it before OAuthProvider so no discovery or
     // authorization routing can rewrite the response.

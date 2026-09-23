@@ -92,6 +92,10 @@ bindings = [
   { name = "LIVE_FEED", class_name = "LiveFeedDO" }
 ]
 
+# Per-minute off-box probe of useorgx.com/api/health (src/uptimeProbe.ts).
+[env.production.triggers]
+crons = ["* * * * *"]
+
 [[env.production.kv_namespaces]]
 binding = "OAUTH_KV"
 id = "5bff02959fa74d43ba6708d9746121e4"
