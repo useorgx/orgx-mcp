@@ -148,6 +148,52 @@ describe('sessionSummary', () => {
     expect(observed).toEqual(['orgx_search', 'orgx_search', 'exploding_tool']);
   });
 
+  it('reports each call outcome from the handler for every transport (plan v3 Stage 1)', async () => {
+    const registered = new Map<string, (...args: unknown[]) => unknown>();
+    const fakeServer = {
+      registerTool: vi.fn(
+        (
+          name: string,
+          _config: Record<string, unknown>,
+          handler: (...args: unknown[]) => unknown
+        ) => {
+          registered.set(name, handler);
+        }
+      ),
+    };
+    const completions: Array<Record<string, unknown>> = [];
+    installSessionToolObservationWrapper(
+      fakeServer as never,
+      () => undefined,
+      (completion) => completions.push({ ...completion })
+    );
+    fakeServer.registerTool('ok_tool', {}, async () => ({
+      content: [],
+      structuredContent: { base_verified: true, secret: 'not forwarded' },
+    }));
+    fakeServer.registerTool('soft_error', {}, async () => ({
+      isError: true,
+      content: [],
+    }));
+    fakeServer.registerTool('throws', {}, async () => {
+      throw new Error('boom');
+    });
+    const extra = { requestId: 7, sessionId: 'sess-1' };
+
+    await registered.get('ok_tool')?.({}, extra);
+    await registered.get('soft_error')?.({}, extra);
+    await expect(registered.get('throws')?.({}, extra)).rejects.toThrow('boom');
+
+    expect(completions).toEqual([
+      expect.objectContaining({ toolName: 'ok_tool', status: 'success', requestId: '7', mcpSessionId: 'sess-1', errorCode: null, resultFlags: { base_verified: true } }),
+      expect.objectContaining({ toolName: 'soft_error', status: 'error', errorCode: 'tool_result_error' }),
+      expect.objectContaining({ toolName: 'throws', status: 'error', errorCode: 'handler_threw' }),
+    ]);
+    for (const completion of completions) {
+      expect(typeof completion.latencyMs).toBe('number');
+    }
+  });
+
   describe('v1 ingest body', () => {
     const buildStats = () => {
       let stats = createEmptySessionToolStats();

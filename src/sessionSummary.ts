@@ -263,9 +263,69 @@ export function buildSessionSummaryActivityBody(
  * through registerTool — reports to the observer before the handler runs.
  * The observer must never throw; failures are contained here regardless.
  */
+export interface SessionToolCompletion {
+  toolName: string;
+  status: 'success' | 'error';
+  latencyMs: number;
+  requestId: string | null;
+  mcpSessionId: string | null;
+  errorCode: string | null;
+  /** Allowlisted boolean outcome flags from the tool's structured result. */
+  resultFlags: Record<string, boolean>;
+}
+
+/**
+ * Outcome flags worth measuring across sessions. base_verified on orgx_tail
+ * is the plan v3 L3 signal: an agent continued on an acknowledged base
+ * without re-briefing.
+ */
+const RESULT_FLAG_ALLOWLIST = ['base_verified', 'rebootstrap_required'] as const;
+
+function readResultFlags(value: unknown): Record<string, boolean> {
+  const structured =
+    value && typeof value === 'object'
+      ? (value as { structuredContent?: unknown }).structuredContent
+      : null;
+  if (!structured || typeof structured !== 'object') return {};
+  const flags: Record<string, boolean> = {};
+  for (const key of RESULT_FLAG_ALLOWLIST) {
+    const flag = (structured as Record<string, unknown>)[key];
+    if (typeof flag === 'boolean') flags[key] = flag;
+  }
+  return flags;
+}
+
+function readHandlerExtra(args: unknown[]): {
+  requestId: string | null;
+  sessionId: string | null;
+} {
+  const extra = args[args.length - 1];
+  if (!extra || typeof extra !== 'object') {
+    return { requestId: null, sessionId: null };
+  }
+  const record = extra as { requestId?: unknown; sessionId?: unknown };
+  const requestId =
+    typeof record.requestId === 'string' || typeof record.requestId === 'number'
+      ? String(record.requestId)
+      : null;
+  const sessionId =
+    typeof record.sessionId === 'string' && record.sessionId.trim()
+      ? record.sessionId.trim()
+      : null;
+  return { requestId, sessionId };
+}
+
+/**
+ * Observe every registered tool at the handler, which every transport
+ * (streamable HTTP, legacy SSE, WebSocket) reaches. `observe` counts the call
+ * for the session summary; `complete`, when given, receives the timed outcome
+ * so invocation telemetry does not depend on the transport having parsed a
+ * single top-level `tools/call` body.
+ */
 export function installSessionToolObservationWrapper(
   mcpServer: McpServer,
-  observe: (toolName: string) => void
+  observe: (toolName: string) => void,
+  complete?: (completion: SessionToolCompletion) => void
 ) {
   const server = mcpServer as unknown as {
     registerTool: (
@@ -275,6 +335,34 @@ export function installSessionToolObservationWrapper(
     ) => unknown;
   };
   const original = server.registerTool.bind(server);
+
+  const report = (
+    name: string,
+    args: unknown[],
+    startedAt: number,
+    status: 'success' | 'error',
+    errorCode: string | null,
+    resultFlags: Record<string, boolean> = {}
+  ) => {
+    if (!complete) return;
+    try {
+      const { requestId, sessionId } = readHandlerExtra(args);
+      complete({
+        toolName: name,
+        status,
+        latencyMs: Math.max(0, Date.now() - startedAt),
+        requestId,
+        mcpSessionId: sessionId,
+        errorCode,
+        resultFlags,
+      });
+    } catch (error) {
+      console.warn('[mcp:session-summary] tool completion report failed', {
+        toolName: name,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  };
 
   server.registerTool = ((
     name: string,
@@ -290,7 +378,35 @@ export function installSessionToolObservationWrapper(
           error: error instanceof Error ? error.message : String(error),
         });
       }
-      return handler(...args);
+      const startedAt = Date.now();
+      let result: unknown;
+      try {
+        result = handler(...args);
+      } catch (error) {
+        report(name, args, startedAt, 'error', 'handler_threw');
+        throw error;
+      }
+      return Promise.resolve(result).then(
+        (value) => {
+          const isError =
+            !!value &&
+            typeof value === 'object' &&
+            (value as { isError?: unknown }).isError === true;
+          report(
+            name,
+            args,
+            startedAt,
+            isError ? 'error' : 'success',
+            isError ? 'tool_result_error' : null,
+            readResultFlags(value)
+          );
+          return value;
+        },
+        (error) => {
+          report(name, args, startedAt, 'error', 'handler_threw');
+          throw error;
+        }
+      );
     };
     return original(name, config, wrappedHandler);
   }) as typeof server.registerTool;
