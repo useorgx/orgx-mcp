@@ -167,7 +167,10 @@ describe('sessionSummary', () => {
       () => undefined,
       (completion) => completions.push({ ...completion })
     );
-    fakeServer.registerTool('ok_tool', {}, async () => ({ content: [] }));
+    fakeServer.registerTool('ok_tool', {}, async () => ({
+      content: [],
+      structuredContent: { base_verified: true, secret: 'not forwarded' },
+    }));
     fakeServer.registerTool('soft_error', {}, async () => ({
       isError: true,
       content: [],
@@ -182,7 +185,7 @@ describe('sessionSummary', () => {
     await expect(registered.get('throws')?.({}, extra)).rejects.toThrow('boom');
 
     expect(completions).toEqual([
-      expect.objectContaining({ toolName: 'ok_tool', status: 'success', requestId: '7', mcpSessionId: 'sess-1', errorCode: null }),
+      expect.objectContaining({ toolName: 'ok_tool', status: 'success', requestId: '7', mcpSessionId: 'sess-1', errorCode: null, resultFlags: { base_verified: true } }),
       expect.objectContaining({ toolName: 'soft_error', status: 'error', errorCode: 'tool_result_error' }),
       expect.objectContaining({ toolName: 'throws', status: 'error', errorCode: 'handler_threw' }),
     ]);

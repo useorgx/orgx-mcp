@@ -1195,7 +1195,7 @@ export class OrgXMcp extends McpAgent<
       toolId: completion.toolName,
       status: completion.status,
       latencyMs: completion.latencyMs,
-      metadata: { telemetry_source: 'mcp_handler' },
+      metadata: { telemetry_source: 'mcp_handler', ...completion.resultFlags },
       userId,
       workspaceId: this.sessionContext.workspaceId ?? null,
       sourceClient: this.resolveSourceClient(),

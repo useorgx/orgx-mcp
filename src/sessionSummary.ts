@@ -270,6 +270,29 @@ export interface SessionToolCompletion {
   requestId: string | null;
   mcpSessionId: string | null;
   errorCode: string | null;
+  /** Allowlisted boolean outcome flags from the tool's structured result. */
+  resultFlags: Record<string, boolean>;
+}
+
+/**
+ * Outcome flags worth measuring across sessions. base_verified on orgx_tail
+ * is the plan v3 L3 signal: an agent continued on an acknowledged base
+ * without re-briefing.
+ */
+const RESULT_FLAG_ALLOWLIST = ['base_verified', 'rebootstrap_required'] as const;
+
+function readResultFlags(value: unknown): Record<string, boolean> {
+  const structured =
+    value && typeof value === 'object'
+      ? (value as { structuredContent?: unknown }).structuredContent
+      : null;
+  if (!structured || typeof structured !== 'object') return {};
+  const flags: Record<string, boolean> = {};
+  for (const key of RESULT_FLAG_ALLOWLIST) {
+    const flag = (structured as Record<string, unknown>)[key];
+    if (typeof flag === 'boolean') flags[key] = flag;
+  }
+  return flags;
 }
 
 function readHandlerExtra(args: unknown[]): {
@@ -318,7 +341,8 @@ export function installSessionToolObservationWrapper(
     args: unknown[],
     startedAt: number,
     status: 'success' | 'error',
-    errorCode: string | null
+    errorCode: string | null,
+    resultFlags: Record<string, boolean> = {}
   ) => {
     if (!complete) return;
     try {
@@ -330,6 +354,7 @@ export function installSessionToolObservationWrapper(
         requestId,
         mcpSessionId: sessionId,
         errorCode,
+        resultFlags,
       });
     } catch (error) {
       console.warn('[mcp:session-summary] tool completion report failed', {
@@ -372,7 +397,8 @@ export function installSessionToolObservationWrapper(
             args,
             startedAt,
             isError ? 'error' : 'success',
-            isError ? 'tool_result_error' : null
+            isError ? 'tool_result_error' : null,
+            readResultFlags(value)
           );
           return value;
         },
