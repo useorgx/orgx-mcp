@@ -46,7 +46,14 @@ const interactionKitJs = readFileSync(
   "utf8",
 );
 
-type RuntimeVariant = "standalone-demo" | "claude-mcp-error" | "chatgpt-error";
+type RuntimeVariant =
+  | "standalone-demo"
+  | "claude-mcp-error"
+  | "chatgpt-error"
+  | "chatgpt-search-results"
+  | "chatgpt-empty-results"
+  | "chatgpt-no-response"
+  | "chatgpt-malformed-response";
 
 const errorSurfaceWidgets = new Set([
   "artifact-review-widget",
@@ -194,23 +201,42 @@ async function checkWidget(
 
   await page.setViewportSize({ width, height: 900 });
   const payload = hostErrorPayload(widget);
-  if (variant === "chatgpt-error") {
+  const isChatgptVariant = variant.startsWith("chatgpt-");
+  const searchPayloads: Record<string, unknown> = {
+    "chatgpt-search-results": {
+      query: "calibration",
+      scope: "initiatives",
+      results: [
+        { id: "initiative-1", type: "initiative", label: "Calibration via label", summary: "Label alias payload." },
+        { id: "initiative-2", type: "initiative", entity: { title: "Calibration via nested entity" }, summary: "Nested entity payload." },
+        { id: "initiative-3", type: "initiative", title: "Untitled", summary: "Placeholder titles should be replaced with an explicit missing-title state." },
+      ],
+    },
+    "chatgpt-empty-results": { query: "calibration", results: [] },
+    "chatgpt-malformed-response": { query: "calibration" },
+  };
+  if (isChatgptVariant) {
+    const toolOutput =
+      variant === "chatgpt-no-response"
+        ? null
+        : { structuredContent: searchPayloads[variant] ?? payload };
     await page.addInitScript({
       content: `window.openai = {
         theme: 'dark',
-        toolOutput: ${JSON.stringify(payload)},
+        toolOutput: ${JSON.stringify(toolOutput)},
         setWidgetHeight() {},
         callTool: async () => ({ structuredContent: null }),
         openExternal() {},
         sendFollowUpMessage() {},
         requestDisplayMode: async () => ({ mode: 'inline' }),
-      };`,
+      };
+      window.__ORGX_SEARCH_RESPONSE_TIMEOUT_MS = 35;`,
     });
   }
 
   const params = new URLSearchParams();
   if (variant === "standalone-demo") params.set("demo", "true");
-  if (variant === "chatgpt-error") params.set("resource", "true");
+  if (isChatgptVariant) params.set("resource", "true");
   params.set("theme", "dark");
   const pageUrl =
     variant === "claude-mcp-error"
@@ -317,7 +343,7 @@ async function checkWidget(
       `interaction: undersized targets ${JSON.stringify(diagnostics.smallTargets)}`,
     );
   }
-  if (variant === "chatgpt-error" && diagnostics.protocol !== "chatgpt") {
+  if (isChatgptVariant && diagnostics.protocol !== "chatgpt") {
     errors.push(`runtime: expected chatgpt, received ${diagnostics.protocol}`);
   }
   if (
@@ -329,11 +355,46 @@ async function checkWidget(
     );
   }
   if (
-    variant !== "standalone-demo" &&
+    (variant === "claude-mcp-error" || variant === "chatgpt-error") &&
     errorSurfaceWidgets.has(widget) &&
     !diagnostics.visibleText.includes(`Structured host error for ${widget}`)
   ) {
     errors.push("render: structured host error message was not shown");
+  }
+  if (widget === "search-results-widget") {
+    if (variant === "chatgpt-search-results") {
+      for (const expected of [
+        "Calibration via label",
+        "Calibration via nested entity",
+        "Initiative title unavailable",
+      ]) {
+        if (!diagnostics.visibleText.includes(expected)) {
+          errors.push(`render: search result title missing: ${expected}`);
+        }
+      }
+      if (diagnostics.visibleText.includes("Untitled")) {
+        errors.push("render: placeholder Untitled title was displayed");
+      }
+    }
+    if (variant === "chatgpt-empty-results") {
+      if (!diagnostics.visibleText.includes("No results found")) {
+        errors.push("render: successful empty search was not shown");
+      }
+      if (diagnostics.visibleText.includes("Search unavailable")) {
+        errors.push("render: successful empty search was misclassified as an error");
+      }
+    }
+    if (
+      variant === "chatgpt-no-response" ||
+      variant === "chatgpt-malformed-response"
+    ) {
+      if (!diagnostics.visibleText.includes("Search unavailable")) {
+        errors.push("render: missing or malformed search response was not surfaced");
+      }
+      if (diagnostics.visibleText.includes("No results found")) {
+        errors.push("render: missing or malformed response was shown as zero results");
+      }
+    }
   }
 
   page.off("console", onConsole);
@@ -371,6 +432,10 @@ async function main() {
         "standalone-demo",
         "claude-mcp-error",
         "chatgpt-error",
+        "chatgpt-search-results",
+        "chatgpt-empty-results",
+        "chatgpt-no-response",
+        "chatgpt-malformed-response",
       ] as const) {
         if (
           process.env.VARIANT_FILTER &&
@@ -378,6 +443,14 @@ async function main() {
         )
           continue;
         for (const resource of resources) {
+          if (
+            variant.startsWith("chatgpt-search-") ||
+            variant === "chatgpt-empty-results" ||
+            variant === "chatgpt-no-response" ||
+            variant === "chatgpt-malformed-response"
+          ) {
+            if (resource.widget !== "search-results-widget") continue;
+          }
           const context = await browser.newContext({
             viewport: { width, height: 900 },
             colorScheme: "dark",

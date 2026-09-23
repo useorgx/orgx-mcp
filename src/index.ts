@@ -179,6 +179,11 @@ import {
 import { extractRunCostTelemetry } from './runCostTelemetry';
 import { detectProviderPinning } from './providerPinning';
 import {
+  classifySearchFailure,
+  summarizeSearchPayload,
+  type SearchTelemetry,
+} from './searchTelemetry';
+import {
   buildOrgxSpawnForwardArgs,
   buildSpawnGuardForwardArgs,
   validateSpawnContract,
@@ -1934,6 +1939,7 @@ export class OrgXMcp extends McpAgent<
        * error text.
        */
       errorKind?: string;
+      searchTelemetry?: SearchTelemetry;
       // A6/A7: realized per-run token/cost telemetry, when the tool-execute
       // response carried it (see runCostTelemetry.extractRunCostTelemetry).
       tokensUsed?: number;
@@ -1970,6 +1976,7 @@ export class OrgXMcp extends McpAgent<
         latency_ms: params.latencyMs,
         error: params.error,
         error_kind: resolvedErrorKind,
+        ...(params.searchTelemetry ?? {}),
         is_widget_tool: params.isWidgetTool,
         tokens_used: params.tokensUsed,
         cost_usd: params.costUsd,
@@ -3224,9 +3231,13 @@ export class OrgXMcp extends McpAgent<
         const latencyMs = Date.now() - startTime;
 
         if (!result.ok) {
+          const searchErrorKind =
+            toolId === 'query_org_memory'
+              ? classifySearchFailure(result.error)
+              : undefined;
           console.error('[mcp] Tool execution failed', {
             toolId,
-            error: result.error,
+            error: searchErrorKind ?? result.error,
             latencyMs,
             hasUserId: !!resolvedUserId,
           });
@@ -3237,7 +3248,8 @@ export class OrgXMcp extends McpAgent<
             authSource,
             ok: false,
             latencyMs,
-            error: result.error ?? 'tool_execution_failed',
+            error: searchErrorKind ?? result.error ?? 'tool_execution_failed',
+            errorKind: searchErrorKind,
             isWidgetTool,
           });
           const errorMessage = result.error ?? 'Tool execution failed';
@@ -3354,6 +3366,15 @@ export class OrgXMcp extends McpAgent<
           ok: true,
           latencyMs,
           isWidgetTool,
+          ...(toolId === 'query_org_memory'
+            ? {
+                searchTelemetry: summarizeSearchPayload(
+                  data,
+                  effectiveArgs.scope,
+                  'memory_hybrid'
+                ),
+              }
+            : {}),
           // A6/A7: capture realized token/cost spend when the response carried it.
           ...extractRunCostTelemetry(result.data),
           // A1: verify a requested provider/model pin was honored end-to-end.
@@ -3441,6 +3462,10 @@ export class OrgXMcp extends McpAgent<
         } as CallToolResult;
       } catch (error) {
         const latencyMs = Date.now() - startTime;
+        const isMemorySearch = toolId === 'query_org_memory';
+        const searchErrorKind = isMemorySearch
+          ? classifySearchFailure(error)
+          : undefined;
         this.captureMcpToolEvent('mcp_tool_failed', {
           toolId,
           toolFamily: 'chatgpt',
@@ -3448,13 +3473,20 @@ export class OrgXMcp extends McpAgent<
           authSource,
           ok: false,
           latencyMs,
-          error: error instanceof Error ? error.message : String(error),
+          error:
+            searchErrorKind ??
+            (error instanceof Error ? error.message : String(error)),
+          errorKind: searchErrorKind,
           isWidgetTool,
         });
         if (isWidgetTool) {
           return this.widgetToolError(
             toolId,
-            error instanceof Error ? error.message : String(error),
+            isMemorySearch
+              ? 'OrgX could not complete this memory search because the search service is temporarily unavailable. Try again shortly.'
+              : error instanceof Error
+                ? error.message
+                : String(error),
             typeof outputTemplate === 'string' ? outputTemplate : undefined
           );
         }
