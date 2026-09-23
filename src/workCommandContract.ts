@@ -483,6 +483,9 @@ export function buildContextTailRequest(
   params.set('workspace_id', workspaceId.value);
   params.set('after_sequence', String(afterSequence));
   params.set('event_type', CONTEXT_TAIL_MATERIAL_EVENT_TYPES.join(','));
+  // The server recompiles the workspace capsule and reports whether this
+  // acknowledged base is still current (plan v3 Stage 2).
+  params.set('capsule_id', capsuleId);
   if (typeof limit === 'number') params.set('limit', String(limit));
 
   return {

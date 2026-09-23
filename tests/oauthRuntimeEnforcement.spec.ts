@@ -522,7 +522,7 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
         expect.arrayContaining([
           expect.objectContaining({
             type: 'text',
-            text: expect.stringContaining('does not validate the capsule base'),
+            text: expect.stringContaining('Capsule base not verified current'),
           }),
         ])
       );
@@ -534,9 +534,55 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
       const url = new URL(`https://api.useorgx.test${String(tailCall?.[1])}`);
       expect(url.searchParams.get('workspace_id')).toBe(WORKSPACE_ID);
       expect(url.searchParams.get('after_sequence')).toBe('2491');
+      expect(url.searchParams.get('capsule_id')).toBe(
+        'capsule_0123456789abcdef01234567'
+      );
       expect(url.searchParams.get('event_type')).toBe(
         'decision.approved,decision.superseded,autonomy.lease_changed,blocker.opened,blocker.resolved,blocker.dismissed,expectation.registered,expectation.resolved,learning.applied'
       );
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
+  it('reports a verified base only when the server matched the acknowledged capsule (plan v3 Stage 2)', async () => {
+    const harness = await createHarness({
+      scope: AUTHORIZATION_PRESETS.read.scopes.join(' '),
+    });
+    const CAPSULE = 'capsule_0123456789abcdef01234567';
+    try {
+      for (const [current, expected] of [
+        [CAPSULE, true],
+        ['capsule_ffffffffffffffffffffffff', false],
+      ] as const) {
+        apiMocks.callOrgxApiJson.mockImplementation(
+          async (_env: unknown, path: string, init?: RequestInit) =>
+            path.startsWith('/api/v1/events/stream?')
+              ? Response.json({
+                  data: [],
+                  meta: {
+                    nextAfterSequence: 10,
+                    hasMore: false,
+                    baseVerification: {
+                      acknowledgedCapsuleId: CAPSULE,
+                      currentCapsuleId: current,
+                      current: current === CAPSULE,
+                    },
+                  },
+                })
+              : successfulApiResponse(path, init)
+        );
+        const result = await harness.client.callTool({
+          name: 'orgx_tail',
+          arguments: { capsule_id: CAPSULE, after_sequence: 10, workspace_id: WORKSPACE_ID },
+        });
+        expect(result.structuredContent).toMatchObject({
+          base_verified: expected,
+          rebootstrap_required: !expected,
+          current_capsule_id: current,
+          reusable_for_consequential_action: false,
+        });
+      }
     } finally {
       await closeHarness(harness);
     }
