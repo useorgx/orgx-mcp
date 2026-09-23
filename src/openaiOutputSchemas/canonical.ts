@@ -29,7 +29,7 @@ export const CANONICAL_OUTPUT_SCHEMAS = {
       manifest: z.object({
         version: z.string(),
         public_profile: z.string(),
-        public_tools_count: z.number(),
+        public_tools_count: z.number().optional(),
         negotiated_profile: z.string(),
         visible_tools_count: z.number(),
       }),
@@ -51,6 +51,23 @@ export const CANONICAL_OUTPUT_SCHEMAS = {
         initiative: z.array(z.string()),
         task: z.array(z.string()),
       }),
+      service_levels: z
+        .object({
+          measured_cells: z.string(),
+          uptime: z.string(),
+          availability_7d: z
+            .object({
+              measured: z.number().nullable(),
+              target: z.number(),
+              probes: z.number(),
+              health_p95_ms: z.number().nullable(),
+              release_sha: z.string().nullable(),
+            })
+            .strict()
+            .nullable(),
+        })
+        .strict()
+        .optional(),
       context_pack: contextPackSchema.nullable(),
       context_capsule: contextPackSchema.nullable(),
       context_delivery: contextPackSchema.nullable().optional(),
