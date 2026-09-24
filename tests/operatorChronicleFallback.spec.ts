@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildOperatorChroniclePath,
   formatOperatorChronicleBrief,
+  readFlywheelSummary,
   normalizeOperatorChroniclePeriod,
 } from '../src/operatorChronicleFallback';
 
@@ -60,5 +61,23 @@ describe('operator chronicle fallback', () => {
         },
       })
     ).toContain('PR receipts: 4');
+  });
+
+  it('lists the flywheel scoreboard lines the app sends', () => {
+    const chronicle = {
+      headline: 'Operator chronicle ready',
+      metrics: {},
+      flywheel: {
+        summary: ['Reach: 4 sent, 2 replies, 1 booked', 'Build: 12 merged PRs', 7, '  '],
+      },
+    };
+    expect(readFlywheelSummary(chronicle)).toEqual([
+      'Reach: 4 sent, 2 replies, 1 booked',
+      'Build: 12 merged PRs',
+    ]);
+    expect(readFlywheelSummary({ headline: 'x' })).toEqual([]);
+    expect(formatOperatorChronicleBrief({ chronicle })).toContain(
+      '## Flywheel\n\n- Reach: 4 sent, 2 replies, 1 booked\n- Build: 12 merged PRs'
+    );
   });
 });
