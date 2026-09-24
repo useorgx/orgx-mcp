@@ -257,6 +257,7 @@ import {
 import {
   buildOperatorChroniclePath,
   formatOperatorChronicleBrief,
+  readFlywheelSummary,
 } from './operatorChronicleFallback';
 import {
   entityMatchesIdempotencyKey,
@@ -4505,7 +4506,10 @@ export class OrgXMcp extends McpAgent<
           typeof narrative.nextAction === 'string' && narrative.nextAction.trim()
             ? ` · Next: ${narrative.nextAction.trim()}`
             : '';
-        return `${headline} · ${pending} decisions pending · ${blocked} blocked · ${artifacts} artifacts · ${prs} PR receipts${nextAction}`;
+        const flywheel = readFlywheelSummary(chronicle)
+          .map((line) => ` · ${line}`)
+          .join('');
+        return `${headline} · ${pending} decisions pending · ${blocked} blocked · ${artifacts} artifacts · ${prs} PR receipts${flywheel}${nextAction}`;
       }
       case 'consolidate_pr': {
         const status = typeof data.status === 'string' ? data.status : 'ok';

@@ -40,6 +40,16 @@ export function buildOperatorChroniclePath(
   return `/api/operator/chronicle?${params.toString()}`;
 }
 
+/** The app's flywheel scoreboard lines (reach, build, ledger, decisions), when sent. */
+export function readFlywheelSummary(chronicle: Record<string, unknown>): string[] {
+  const summary = readRecord(chronicle.flywheel).summary;
+  return Array.isArray(summary)
+    ? summary.filter(
+        (line): line is string => typeof line === 'string' && line.trim().length > 0
+      )
+    : [];
+}
+
 export function formatOperatorChronicleBrief(data: Record<string, unknown>) {
   const explicitChronicle = readRecord(data.chronicle);
   const dataChronicle = readRecord(readRecord(data.data).chronicle);
@@ -73,6 +83,10 @@ export function formatOperatorChronicleBrief(data: Record<string, unknown>) {
     `- Artifacts: ${readNumber(metrics.artifactsProduced)}`,
     `- PR receipts: ${readNumber(metrics.prReceipts)}`,
   ];
+  const flywheel = readFlywheelSummary(payload);
+  if (flywheel.length > 0) {
+    lines.push('', '## Flywheel', '', ...flywheel.map((line) => `- ${line}`));
+  }
   if (nextAction) lines.push('', `Next: ${nextAction}`);
   return lines.join('\n');
 }

@@ -130,7 +130,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_search',
     title: 'Search OrgX',
     description:
-      "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Finds OrgX entities, decisions, artifacts, and memory. A query without type runs a mixed relevance search and records metered MCP allowance usage; typed searches provide exhaustive cursor/offset pagination without changing business records. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use structuredContent.next_call exactly when pagination.has_more=true, orgx_inspect for one selected result, or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.",
+      "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Finds OrgX entities, decisions, artifacts, memory, and the work ledger (receipts, work sessions, outreach touches). A query without type runs a mixed relevance search and records metered MCP allowance usage; typed searches provide exhaustive cursor/offset pagination without changing business records. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use structuredContent.next_call exactly when pagination.has_more=true, orgx_inspect for one selected result, or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.",
     inputSchema: {
       query: z.string().optional().describe('Search query for memory or title/text matching'),
       type: z.enum(entityTypeEnum.options).optional().describe('Optional entity type filter, such as task, milestone, decision, artifact, or initiative. Omit with query for a mixed relevance search across memory-backed entity types.'),
@@ -725,9 +725,9 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     inputSchema: {
       query: z.string().min(1).describe('Search query for organizational memory'),
       scope: z
-        .enum(['all', 'artifacts', 'decisions', 'initiatives'])
+        .enum(['all', 'artifacts', 'decisions', 'initiatives', 'ledger'])
         .optional()
-        .describe('Optional scope filter for the memory search'),
+        .describe('Optional scope filter. "all" (default) includes the work ledger; "ledger" searches only receipts, work sessions, and outreach touches.'),
       limit: z
         .number()
         .optional()

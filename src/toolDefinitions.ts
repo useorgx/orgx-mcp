@@ -706,9 +706,9 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     inputSchema: {
       query: z.string().min(1).describe('Search query for OrgX memory'),
       scope: z
-        .enum(['all', 'artifacts', 'decisions', 'initiatives'])
+        .enum(['all', 'artifacts', 'decisions', 'initiatives', 'ledger'])
         .optional()
-        .describe('Optional scope filter for the memory search'),
+        .describe('Optional scope filter. "all" (default) includes the work ledger; "ledger" searches only receipts, work sessions, and outreach touches.'),
       limit: z
         .number()
         .optional()
