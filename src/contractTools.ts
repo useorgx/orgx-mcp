@@ -71,10 +71,12 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
     _meta: {
+      'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.workspaceMap,
       'openai/toolInvocation/invoking': 'Bootstrapping OrgX contract...',
       'openai/toolInvocation/invoked': 'OrgX contract ready',
       'openai/readOnlyHint': false,
       'openai/visibility': 'public',
+      ui: { resourceUri: WIDGET_URIS.workspaceMap },
     },
   },
   {

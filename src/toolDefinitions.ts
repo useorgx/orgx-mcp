@@ -79,6 +79,10 @@ export const WIDGET_URIS = {
     'ui://widget/daily-brief.html',
     WIDGET_BUILD_VERSION
   ), // Daily Brief + Trust Loop: skill/agent ascension surface
+  workspaceMap: withWidgetResourceVersion(
+    'ui://widget/workspace-map.html',
+    WIDGET_BUILD_VERSION
+  ), // orgx_bootstrap: workspace, scopes, and every OrgX surface with its tools
 } as const;
 
 export const OUTPUT_TEMPLATE_URIS = {
@@ -93,6 +97,7 @@ export const OUTPUT_TEMPLATE_URIS = {
   artifactReview: toSkybridgeResourceUri(WIDGET_URIS.artifactReview),
   planSessionLive: toSkybridgeResourceUri(WIDGET_URIS.planSessionLive),
   dailyBrief: toSkybridgeResourceUri(WIDGET_URIS.dailyBrief),
+  workspaceMap: toSkybridgeResourceUri(WIDGET_URIS.workspaceMap),
 } as const;
 
 export const WIDGET_RESOURCES = [
@@ -125,6 +130,11 @@ export const WIDGET_RESOURCES = [
     name: 'task-spawned-widget',
     uri: WIDGET_URIS.taskSpawned,
     title: 'Task Spawned Widget',
+  },
+  {
+    name: 'workspace-map-widget',
+    uri: WIDGET_URIS.workspaceMap,
+    title: 'Workspace Map Widget',
   },
   {
     name: 'morning-brief-widget',

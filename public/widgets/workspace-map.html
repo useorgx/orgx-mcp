@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en" data-accent="lime">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Workspace Map - OrgX</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Crect x='14' y='14' width='14' height='14' rx='3' fill='none' stroke='%23bfff00' stroke-width='5'/%3E%3Crect x='36' y='14' width='14' height='14' rx='3' fill='none' stroke='%23bfff00' stroke-width='5'/%3E%3Crect x='14' y='36' width='14' height='14' rx='3' fill='none' stroke='%23bfff00' stroke-width='5'/%3E%3Crect x='36' y='36' width='14' height='14' rx='3' fill='%23bfff00'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="shared/interaction-kit.css" />
+  <link rel="stylesheet" href="shared/widget-foundation.css" />
+  <script src="shared/mcp-apps-sdk.umd.js"></script>
+  <script src="shared/widget-runtime.js"></script>
+  <script src="shared/interaction-kit.js"></script>
+  <style>
+    /*
+     * Workspace map — the orgx_bootstrap result as one card: which workspace
+     * this session is bound to, what it may do, and every OrgX surface with
+     * the tools that read or change it. The same map the web app's sidebar
+     * draws, so a person and an agent point at the same places.
+     */
+    :root {
+      --ox-primary-rgb: 191, 255, 0;
+      --wm-gap: 12px;
+    }
+
+    .wm {
+      display: grid;
+      gap: 16px;
+      padding: 18px;
+      font-family: var(--ox-font);
+      color: var(--ox-text);
+    }
+
+    .wm-kicker {
+      font-family: var(--ox-mono);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ox-text-muted);
+    }
+
+    .wm-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .wm-head h1 {
+      margin: 4px 0 0;
+      font-size: 20px;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+    }
+
+    .wm-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .wm-chip {
+      padding: 4px 9px;
+      border: 1px solid var(--ox-border);
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--ox-text-muted);
+    }
+
+    .wm-chip b {
+      color: var(--ox-text);
+      font-weight: 600;
+    }
+
+    .wm-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: var(--wm-gap);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .wm-surface {
+      display: grid;
+      gap: 8px;
+      align-content: start;
+      padding: 12px 14px;
+      border: 1px solid var(--ox-border);
+      border-radius: 12px;
+      background: var(--ox-panel);
+    }
+
+    .wm-surface[data-idle='true'] {
+      opacity: 0.7;
+    }
+
+    .wm-surface__top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .wm-surface h2 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .wm-surface p {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--ox-text-muted);
+    }
+
+    .wm-tools {
+      display: grid;
+      gap: 4px;
+      font-size: 11px;
+    }
+
+    .wm-tools code {
+      font-family: var(--ox-mono);
+      font-size: 11px;
+      color: var(--ox-text);
+    }
+
+    .wm-tools span {
+      color: var(--ox-text-muted);
+    }
+
+    .wm-open {
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .wm-first {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      font-size: 12px;
+      color: var(--ox-text-muted);
+    }
+
+    .wm-first code {
+      padding: 3px 7px;
+      border-radius: 6px;
+      background: var(--ox-well-bg, rgba(127, 127, 127, 0.1));
+      font-family: var(--ox-mono);
+      font-size: 11px;
+      color: var(--ox-text);
+    }
+
+    .wm-empty {
+      padding: 18px;
+      font-size: 13px;
+      color: var(--ox-text-muted);
+    }
+  </style>
+  <link rel="stylesheet" href="shared/widget-theme.css" />
+</head>
+<body>
+  <div class="container" id="content">
+    <div class="skeleton-wrapper" style="display:grid; gap:12px; padding:18px;">
+      <div class="skeleton-line" style="width:40%; height:18px;"></div>
+      <div class="skeleton-line" style="width:100%; height:64px; border-radius:12px;"></div>
+      <div class="skeleton-line" style="width:100%; height:64px; border-radius:12px;"></div>
+    </div>
+  </div>
+  <script>
+    var params = new URLSearchParams(window.location.search);
+    (function () {
+      var theme = params.get('theme');
+      if (theme) document.documentElement.setAttribute('data-theme', theme);
+    })();
+
+    var escapeHtml = function (value) {
+      if (value === null || value === undefined) return '';
+      var div = document.createElement('div');
+      div.textContent = String(value);
+      return div.innerHTML;
+    };
+
+    var asArray = function (value) {
+      return Array.isArray(value) ? value : [];
+    };
+
+    var DEMO = {
+      profile: 'v2',
+      visible_tools_count: 21,
+      granted_scopes: ['entities:read', 'entities:write', 'decisions:write'],
+      workspace: { id: 'ws-demo', name: 'Atina Labs' },
+      safe_first_calls: [
+        { tool: 'orgx_recommend', args: {} },
+        { tool: 'orgx_search', args: { query: 'launch' } }
+      ],
+      surfaces: [
+        { id: 'command', name: 'Command', url: 'https://useorgx.com/command', purpose: 'What needs you now, and what is running.', read: ['orgx_recommend', 'orgx_tail'], control: ['orgx_act'] },
+        { id: 'decisions', name: 'Decisions', url: 'https://useorgx.com/decisions', purpose: 'Choices waiting on a named person, with options and evidence.', read: ['orgx_search', 'orgx_inspect'], control: ['orgx_decide'] },
+        { id: 'initiatives', name: 'Initiatives', url: 'https://useorgx.com/initiatives', purpose: 'Outcomes broken into workstreams, milestones, and tasks.', read: ['orgx_inspect'], control: ['orgx_plan', 'orgx_write'] },
+        { id: 'work-ledger', name: 'Work Ledger', url: 'https://useorgx.com/work-ledger', purpose: 'The record of agent work across clients.', read: ['orgx_search'], control: ['orgx_submit_receipt', 'orgx_attach'] },
+        { id: 'quality', name: 'Quality Studio', url: 'https://useorgx.com/settings/quality', purpose: 'The checks an artifact must pass before it ships.', read: ['orgx_inspect'], control: ['orgx_expect'] },
+        { id: 'execution', name: 'Execution', url: 'https://useorgx.com/settings/execution', purpose: 'Route priority, capacity, spend limits, and readiness.', read: [], control: [] }
+      ]
+    };
+
+    var state = params.get('state') || (params.get('demo') === 'true' ? 'populated' : null);
+    var data = state === 'populated' ? DEMO : state === 'empty' ? { surfaces: [] } : null;
+
+    var toolList = function (label, tools) {
+      if (!tools.length) return '';
+      return '<div><span>' + label + ' </span>' +
+        tools.map(function (tool) { return '<code>' + escapeHtml(tool) + '</code>'; }).join(' ') +
+        '</div>';
+    };
+
+    var render = function (payload) {
+      var content = document.getElementById('content');
+      if (!payload) {
+        if (state === 'loading' || !state) return;
+      }
+      var surfaces = asArray(payload && payload.surfaces);
+      if (!surfaces.length) {
+        content.innerHTML =
+          '<div class="wm-empty">This session has no OrgX surfaces yet. Call orgx_bootstrap again after signing in to a workspace.</div>';
+        return;
+      }
+      var workspace = payload.workspace && typeof payload.workspace === 'object' ? payload.workspace : null;
+      var toolsCount = typeof payload.visible_tools_count === 'number'
+        ? payload.visible_tools_count
+        : asArray(payload.visible_tools).length;
+      var scopes = asArray(payload.granted_scopes);
+      var first = asArray(payload.safe_first_calls)
+        .map(function (call) { return call && call.tool; })
+        .filter(Boolean);
+
+      var cards = surfaces.map(function (surface) {
+        var read = asArray(surface.read);
+        var control = asArray(surface.control);
+        var idle = !read.length && !control.length;
+        var url = typeof surface.url === 'string' ? surface.url : '';
+        return '<li class="wm-surface" data-idle="' + (idle ? 'true' : 'false') + '">' +
+          '<div class="wm-surface__top"><h2>' + escapeHtml(surface.name) + '</h2>' +
+          (url
+            ? '<a class="wm-open ox-link-btn" href="' + escapeHtml(url) + '" target="_blank" rel="noreferrer" onclick=\'return openWidgetLink(' + JSON.stringify(url) + ', event)\'>Open</a>'
+            : '') +
+          '</div>' +
+          '<p>' + escapeHtml(surface.purpose) + '</p>' +
+          '<div class="wm-tools">' +
+          (idle
+            ? '<div><span>Open in OrgX; no tool in this session changes it.</span></div>'
+            : toolList('Read', read) + toolList('Change', control)) +
+          '</div></li>';
+      }).join('');
+
+      content.innerHTML =
+        '<section class="wm" aria-label="OrgX workspace map">' +
+        '<div class="wm-head"><div>' +
+        '<div class="wm-kicker">OrgX workspace</div>' +
+        '<h1>' + escapeHtml(workspace ? (workspace.name || workspace.id) : 'No workspace bound') + '</h1>' +
+        '</div><div class="wm-chips">' +
+        '<span class="wm-chip"><b>' + escapeHtml(toolsCount) + '</b> tools</span>' +
+        '<span class="wm-chip"><b>' + escapeHtml(scopes.length) + '</b> scopes</span>' +
+        (payload.profile ? '<span class="wm-chip">profile <b>' + escapeHtml(payload.profile) + '</b></span>' : '') +
+        '</div></div>' +
+        '<ul class="wm-grid">' + cards + '</ul>' +
+        (first.length
+          ? '<div class="wm-first"><span>Start with</span>' +
+            first.map(function (tool) { return '<code>' + escapeHtml(tool) + '</code>'; }).join('') +
+            '</div>'
+          : '') +
+        '</section>';
+    };
+
+    if (state === 'loading') {
+      // Keep the skeleton.
+    } else if (data) {
+      render(data);
+    } else {
+      initWidget({ render: render });
+    }
+  </script>
+</body>
+</html>

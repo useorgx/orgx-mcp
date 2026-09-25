@@ -217,6 +217,7 @@ import {
   pickBootstrapWorkspaceFallback,
   resolveBootstrapSessionContext,
 } from './bootstrapPayload';
+import { buildSurfaceMap } from './surfaceMap';
 import {
   buildClientSkillOnboarding,
   formatClientSkillOnboarding,
@@ -4628,6 +4629,12 @@ export class OrgXMcp extends McpAgent<
         ? { id: this.sessionContext.initiativeId }
         : null,
       granted_scopes: this.parseGrantedScopes(),
+      // Where work lives in the web app, and which of this session's tools
+      // read or change each surface. Drawn by the workspace-map widget.
+      surfaces: buildSurfaceMap({
+        visibleTools,
+        webUrl: this.env.ORGX_WEB_URL,
+      }),
       accepted_id_forms: {
         plan_session: PLAN_SESSION_ACCEPTED_ID_FORMS,
         initiative: ['uuid'],

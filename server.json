@@ -571,6 +571,18 @@
       "mimeType": "text/html+skybridge"
     },
     {
+      "uri": "ui://widget/workspace-map.html",
+      "name": "Workspace Map Widget",
+      "description": "Widget showing the bound workspace, granted scopes, and every OrgX surface with the tools that read or change it",
+      "mimeType": "text/html;profile=mcp-app"
+    },
+    {
+      "uri": "ui://widget/workspace-map.skybridge.html",
+      "name": "Workspace Map Widget (Skybridge)",
+      "description": "ChatGPT Apps SDK widget showing the bound workspace, granted scopes, and every OrgX surface with its tools",
+      "mimeType": "text/html+skybridge"
+    },
+    {
       "uri": "ui://widget/morning-brief.skybridge.html",
       "name": "Morning Brief Widget (Skybridge)",
       "description": "ChatGPT Apps SDK widget showing the latest autonomous session brief and ROI deltas",

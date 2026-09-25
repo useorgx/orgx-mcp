@@ -45,6 +45,7 @@ const CANONICAL_PRIMARIES: Record<string, string> = {
 
   // Gallery — neutral slate.
   index: '17,24,39',
+  'workspace-map': '191,255,0',
 };
 
 function normalizeRgb(raw: string): string {
