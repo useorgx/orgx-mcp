@@ -30,6 +30,11 @@ import {
 } from '../src/toolDefinitions';
 
 import { FLYWHEEL_TOOL_DEFINITIONS } from '../src/flywheelTools';
+import {
+  WORK_LEASE_DESCRIPTION,
+  WORK_LEASE_TOOL_ID,
+  workLeaseInputSchema,
+} from '../src/workLeases';
 import { TOOL_PROFILES } from '../src/toolProfiles';
 import { AUTHORIZATION_POLICY } from '../src/authorizationPolicy';
 import {
@@ -142,6 +147,7 @@ const TOOL_CATEGORY_MAP: Record<string, string> = {
 
   // Client integration
   orgx_emit_activity: 'Client Integration',
+  orgx_lease: 'Client Integration',
   orgx_apply_changeset: 'Client Integration',
   consolidate_pr: 'Client Integration',
   sync_client_state: 'Client Integration',
@@ -277,6 +283,14 @@ const INLINE_TOOL_METADATA: Array<{
   readOnly: boolean;
   profiles?: string[];
 }> = [
+  {
+    id: WORK_LEASE_TOOL_ID,
+    title: 'Coordinate File Edits',
+    description: WORK_LEASE_DESCRIPTION,
+    inputSchema: z.object(workLeaseInputSchema),
+    securityScopes: ['initiatives:write'],
+    readOnly: false,
+  },
   {
     id: 'remember_decision',
     title: 'Remember Decision',

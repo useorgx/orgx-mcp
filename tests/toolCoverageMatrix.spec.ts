@@ -327,6 +327,12 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     tier: 'live_read_verified',
     evidence: ['live events evt_1779925592864_dc7a83cc and evt_1779925941304_8dd45ad4, 2026-05-27', 'tests/toolDiscoverySnapshot.spec.ts'],
   },
+  orgx_lease: {
+    tier: 'contract_and_unit',
+    evidence: ['tests/workLeases.spec.ts', 'tests/toolDiscoverySnapshot.spec.ts'],
+    remaining:
+      'Deploy the OrgX /api/v1/leases routes (hopeatina/orgx#3083) and live-verify a claim, a refused overlap and a release from an executor-profile session.',
+  },
   orgx_emit_execution_graph: {
     tier: 'contract_and_unit',
     evidence: ['tests/toolDiscoverySnapshot.spec.ts', 'tests/smitheryMetadata.spec.ts'],

@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-09-25T01:12:55.018Z",
-  "sourceHash": "d2d4a3bccd948020",
+  "generatedAt": "2026-09-25T06:01:59.113Z",
+  "sourceHash": "626a141974813427",
   "version": "1.0.0",
-  "totalTools": 88,
+  "totalTools": 89,
   "categories": [
     "Agents",
     "Billing",
@@ -1130,6 +1130,77 @@
       "profiles": [
         "v2",
         "claude-plugin",
+        "executor"
+      ]
+    },
+    {
+      "id": "orgx_lease",
+      "title": "Coordinate File Edits",
+      "description": "Coordinate file edits with other agents working in the same repository. USE WHEN: about to edit files another agent might be editing — claim the paths first. action=claim needs repo (owner/name) and paths (repo-relative files or globs); a refused claim lists who holds which paths until when, so wait or take other work. action=list shows live leases on a repo. action=release frees a lease early (lease_id). Leases are advisory and expire (default 60 minutes); claiming the same paths again renews yours.",
+      "category": "Client Integration",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "claim",
+              "list",
+              "release"
+            ],
+            "description": "claim paths, list live leases, or release one"
+          },
+          "repo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Repository as owner/name, e.g. hopeatina/orgx. Required for claim and list."
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300
+            },
+            "minItems": 1,
+            "maxItems": 50,
+            "description": "Repo-relative files or globs you are about to edit. Required for claim."
+          },
+          "minutes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 480,
+            "description": "How long to hold the lease; default 60."
+          },
+          "lease_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The lease to release. Required for release."
+          },
+          "task_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "OrgX task the edit belongs to, if any."
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "One line other agents will see."
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "initiatives:write"
+      ],
+      "readOnly": false,
+      "source": "inline",
+      "profiles": [
         "executor"
       ]
     },

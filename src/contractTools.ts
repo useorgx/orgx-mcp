@@ -17,6 +17,7 @@ import {
   lifecycleEntityTypeEnum,
 } from './toolDefinitions';
 import { FLYWHEEL_TOOL_DEFINITIONS } from './flywheelTools';
+import { WORK_LEASE_DESCRIPTION, workLeaseInputSchema } from './workLeases';
 import { ControllerDomainSchema } from './controllerStatusContract';
 
 export const V2_ORGX_TOOL_IDS = [
@@ -1192,6 +1193,12 @@ export const INLINE_TOOL_CONTRACTS = {
       description: z.string().optional().describe('Optional description patch.'),
       status: z.string().optional().describe('Optional status patch.'),
     },
+  },
+  orgx_lease: {
+    id: 'orgx_lease',
+    title: 'Coordinate File Edits',
+    description: WORK_LEASE_DESCRIPTION,
+    inputSchema: workLeaseInputSchema,
   },
   entity_action: {
     id: 'entity_action',
