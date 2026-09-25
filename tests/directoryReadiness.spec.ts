@@ -98,6 +98,9 @@ describe('Anthropic directory readiness', () => {
     expect(serverJson.description).toContain(
       'Make AI work resumable, reviewable, and provable across agents.'
     );
+    // The MCP Registry rejects a description over 100 characters (422 on
+    // body.description), which failed the v1.1.5 registry publish.
+    expect(serverJson.description?.length ?? 0).toBeLessThanOrEqual(100);
     expect(serverJson.remotes).toEqual([
       { type: 'streamable-http', url: 'https://mcp.useorgx.com/mcp' },
       { type: 'sse', url: 'https://mcp.useorgx.com/sse' },
