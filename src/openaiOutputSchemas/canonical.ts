@@ -46,6 +46,20 @@ export const CANONICAL_OUTPUT_SCHEMAS = {
         .nullable(),
       initiative: z.object({ id: z.string() }).nullable(),
       granted_scopes: z.array(z.string()),
+      surfaces: z
+        .array(
+          z
+            .object({
+              id: z.string(),
+              name: z.string(),
+              url: z.string(),
+              purpose: z.string(),
+              read: z.array(z.string()),
+              control: z.array(z.string()),
+            })
+            .strict()
+        )
+        .optional(),
       accepted_id_forms: z.object({
         plan_session: z.array(z.string()),
         initiative: z.array(z.string()),

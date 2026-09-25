@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-09-23T23:12:32.045Z",
+  "generatedAt": "2026-09-25T00:22:47.040Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -30,7 +30,8 @@
     "search-results": "0,201,167",
     "plan-session-live": "99,102,241",
     "daily-brief": "99,102,241",
-    "index": "17,24,39"
+    "index": "17,24,39",
+    "workspace-map": "191,255,0"
   },
   "widgets": {
     "agent-status": {
@@ -223,6 +224,22 @@
         "shared/widget-foundation.css",
         "shared/widget-runtime.js",
         "shared/widget-state.js",
+        "shared/widget-theme.css"
+      ],
+      "protocolBridge": "official-sdk",
+      "demoOnly": false
+    },
+    "workspace-map": {
+      "file": "public/widgets/workspace-map.html",
+      "bytes": 10176,
+      "hash": "c29390778eef",
+      "primaryRgb": "191,255,0",
+      "sharedRefs": [
+        "shared/interaction-kit.css",
+        "shared/interaction-kit.js",
+        "shared/mcp-apps-sdk.umd.js",
+        "shared/widget-foundation.css",
+        "shared/widget-runtime.js",
         "shared/widget-theme.css"
       ],
       "protocolBridge": "official-sdk",

@@ -493,6 +493,25 @@ function formatOrgxInspect(
   }`;
 }
 
+/**
+ * One line per OrgX surface: name, link, and the tools that change it, so a
+ * text-only agent can route work and send the human to the right page.
+ */
+function formatSurfaceMapSummary(value: unknown): string | null {
+  if (!Array.isArray(value) || value.length === 0) return null;
+  const lines = ['Surfaces (where work lives; open for the human, or use the tools):'];
+  for (const entry of value) {
+    const surface = firstRecord(entry);
+    if (!surface) continue;
+    const control = Array.isArray(surface.control)
+      ? surface.control.filter((tool): tool is string => typeof tool === 'string')
+      : [];
+    const tools = control.length > 0 ? ` — change with ${control.join(', ')}` : '';
+    lines.push(`- ${str(surface.name)}: ${str(surface.url)}${tools}`);
+  }
+  return lines.length > 1 ? lines.join('\n') : null;
+}
+
 function formatOrgxBootstrap(
   data: Record<string, unknown>,
   opts: Required<FormatOptions>
@@ -517,6 +536,8 @@ function formatOrgxBootstrap(
   if (initiative) {
     lines.push(`Initiative: ${str(initiative.id) || 'bound'}.`);
   }
+  const surfaces = formatSurfaceMapSummary(data.surfaces);
+  if (surfaces) lines.push('', surfaces);
   const context = formatContextPackSummary(data.context_pack, opts);
   if (context) lines.push('', context);
   const capsule = formatContextCapsuleSummary(data.context_capsule, opts);

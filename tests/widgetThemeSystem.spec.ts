@@ -29,6 +29,7 @@ const accents: Record<string, string> = {
   "scaffolded-initiative.html": "iris",
   "search-results.html": "teal",
   "task-spawned.html": "iris",
+  "workspace-map.html": "lime",
 };
 
 describe("shared widget theme system", () => {

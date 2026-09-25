@@ -52,6 +52,7 @@ const CANONICAL_PRIMARIES = {
   'plan-session-live': '99,102,241',
   'daily-brief': '99,102,241',
   index: '17,24,39',
+  'workspace-map': '191,255,0',
 };
 
 // Widgets that are demo-only (gallery / preview) and therefore exempt
