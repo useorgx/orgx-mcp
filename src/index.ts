@@ -218,6 +218,7 @@ import {
   resolveBootstrapSessionContext,
 } from './bootstrapPayload';
 import { buildSurfaceMap } from './surfaceMap';
+import { buildEntityCard } from './entityCard';
 import {
   buildClientSkillOnboarding,
   formatClientSkillOnboarding,
@@ -5100,6 +5101,15 @@ export class OrgXMcp extends McpAgent<
             id: args.id,
             entity,
             context_pack,
+            // One-entity card for the entity-card widget: status, facts, a
+            // link to the web page, and a proof record where work carries one.
+            card: buildEntityCard({
+              type: String(args.type),
+              id: String(args.id),
+              entity,
+              contextPack: context_pack,
+              webUrl: this.env.ORGX_WEB_URL,
+            }),
           };
           return {
             content: [{ type: 'text', text: formatForLLM('orgx_inspect', payload) }],

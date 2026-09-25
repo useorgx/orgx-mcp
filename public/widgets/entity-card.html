@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en" data-accent="teal">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Entity Card - OrgX</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Crect x='14' y='16' width='36' height='32' rx='5' fill='none' stroke='%2300c9a7' stroke-width='5'/%3E%3Cpath d='M22 28h20M22 37h12' stroke='%2300c9a7' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="shared/interaction-kit.css" />
+  <link rel="stylesheet" href="shared/widget-foundation.css" />
+  <script src="shared/mcp-apps-sdk.umd.js"></script>
+  <script src="shared/widget-runtime.js"></script>
+  <script src="shared/interaction-kit.js"></script>
+  <style>
+    /*
+     * Entity card — the orgx_inspect result as one object, not a list: type,
+     * status, the facts that matter, what it links to, and, for work that
+     * carries evidence, the proof record. The proof record uses the same rows,
+     * markers, and verdicts as the web app's ProofRecord, so an agent and a
+     * person read the same object.
+     */
+    :root {
+      --ox-primary-rgb: 0, 201, 167;
+      --ec-amber: #f59e0b;
+    }
+
+    .ec {
+      display: grid;
+      gap: 16px;
+      padding: 18px;
+      font-family: var(--ox-font);
+      color: var(--ox-text);
+    }
+
+    .ec-kicker {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      font-family: var(--ox-mono);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ox-text-muted);
+    }
+
+    .ec-status {
+      padding: 2px 8px;
+      border: 1px solid var(--ox-border);
+      border-radius: 999px;
+      letter-spacing: 0.08em;
+      color: var(--ox-text);
+    }
+
+    .ec-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .ec-head h1 {
+      margin: 6px 0 0;
+      font-size: 20px;
+      font-weight: 650;
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+    }
+
+    .ec-summary {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--ox-text-muted);
+    }
+
+    .ec-facts {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 10px;
+      margin: 0;
+    }
+
+    .ec-facts div {
+      padding: 10px 12px;
+      border: 1px solid var(--ox-border);
+      border-radius: 10px;
+      background: var(--ox-panel);
+    }
+
+    .ec-facts dt {
+      font-family: var(--ox-mono);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ox-text-muted);
+    }
+
+    .ec-facts dd {
+      margin: 4px 0 0;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .ec-proof {
+      border: 1px solid var(--ox-border);
+      border-radius: 12px;
+      background: var(--ox-panel);
+      overflow: hidden;
+    }
+
+    .ec-proof__head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--ox-divider);
+    }
+
+    .ec-proof__head span {
+      font-family: var(--ox-mono);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ox-text-muted);
+    }
+
+    .ec-verdict {
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .ec-verdict[data-verdict='accepted'] { color: var(--ox-teal); }
+    .ec-verdict[data-verdict='verifying'] { color: var(--ox-iris); }
+    .ec-verdict[data-verdict='needs-you'] { color: var(--ox-warning); }
+    .ec-verdict[data-verdict='open'] { color: var(--ox-text-muted); }
+
+    .ec-proof ul {
+      margin: 0;
+      padding: 4px 14px 8px;
+      list-style: none;
+    }
+
+    .ec-proof li {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 0;
+      font-size: 13px;
+      border-bottom: 1px solid var(--ox-divider);
+    }
+
+    .ec-proof li:last-child {
+      border-bottom: 0;
+    }
+
+    .ec-proof li span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--ox-text-muted);
+    }
+
+    .ec-proof li b {
+      font-weight: 650;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .ec-marker {
+      width: 6px;
+      height: 6px;
+      border-radius: 2px;
+      background: var(--ox-text-dim);
+    }
+
+    .ec-marker[data-kind='decision'] { background: var(--ec-amber); }
+    .ec-marker[data-kind='artifact'] { background: var(--ox-teal); }
+    .ec-marker[data-kind='check'] { background: var(--ox-iris); }
+
+    .ec-related h2 {
+      margin: 0 0 8px;
+      font-family: var(--ox-mono);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ox-text-muted);
+    }
+
+    .ec-related ul {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      font-size: 13px;
+    }
+
+    .ec-related li span {
+      margin-right: 8px;
+      font-family: var(--ox-mono);
+      font-size: 11px;
+      color: var(--ox-text-muted);
+    }
+
+    .ec-open {
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .ec-empty {
+      padding: 18px;
+      font-size: 13px;
+      color: var(--ox-text-muted);
+    }
+  </style>
+  <link rel="stylesheet" href="shared/widget-theme.css" />
+</head>
+<body>
+  <div class="container" id="content">
+    <div class="skeleton-wrapper" style="display:grid; gap:12px; padding:18px;">
+      <div class="skeleton-line" style="width:30%; height:12px;"></div>
+      <div class="skeleton-line" style="width:70%; height:20px;"></div>
+      <div class="skeleton-line" style="width:100%; height:96px; border-radius:12px;"></div>
+    </div>
+  </div>
+  <script>
+    var params = new URLSearchParams(window.location.search);
+    (function () {
+      var theme = params.get('theme');
+      if (theme) document.documentElement.setAttribute('data-theme', theme);
+    })();
+
+    var escapeHtml = function (value) {
+      if (value === null || value === undefined) return '';
+      var div = document.createElement('div');
+      div.textContent = String(value);
+      return div.innerHTML;
+    };
+
+    var asArray = function (value) {
+      return Array.isArray(value) ? value : [];
+    };
+
+    var VERDICT_LABEL = {
+      accepted: 'Accepted',
+      verifying: 'Verifying',
+      'needs-you': 'Needs you',
+      open: 'Open'
+    };
+
+    var DEMO = {
+      _v2_tool: 'orgx_inspect',
+      type: 'initiative',
+      id: 'init-demo',
+      card: {
+        type: 'initiative',
+        id: 'init-demo',
+        title: 'Launch the self-serve plan',
+        status: 'in_review',
+        summary: 'Pricing page, checkout, and onboarding email ship together, checked against the launch bar.',
+        url: 'https://useorgx.com/initiatives/init-demo',
+        facts: [
+          { label: 'Owner', value: 'Hope' },
+          { label: 'Due', value: '2026-10-03' },
+          { label: 'Progress', value: '72%' }
+        ],
+        proof: {
+          verdict: 'verifying',
+          rows: [
+            { label: 'Decisions', value: '2', kind: 'decision' },
+            { label: 'Artifacts', value: '5', kind: 'artifact' },
+            { label: 'Checks', value: '4', kind: 'check' }
+          ]
+        },
+        related: [
+          { type: 'decision', title: 'Ship annual pricing at launch' },
+          { type: 'workstream', title: 'Checkout and billing' }
+        ]
+      }
+    };
+
+    var state = params.get('state') || (params.get('demo') === 'true' ? 'populated' : null);
+    var data = state === 'populated' ? DEMO : state === 'empty' ? {} : null;
+
+    var humanize = function (value) {
+      return String(value || '').replace(/_/g, ' ');
+    };
+
+    // Older servers send no card; draw what the raw entity gives us.
+    var cardFrom = function (payload) {
+      if (payload && payload.card && typeof payload.card === 'object') return payload.card;
+      var entity = payload && payload.entity && typeof payload.entity === 'object' ? payload.entity : null;
+      if (!entity) return null;
+      return {
+        type: payload.type || 'entity',
+        id: payload.id || entity.id || '',
+        title: entity.title || entity.name || payload.id || 'Untitled',
+        status: typeof entity.status === 'string' ? entity.status : null,
+        summary: entity.description || entity.summary || null,
+        url: null,
+        facts: [],
+        proof: null,
+        related: []
+      };
+    };
+
+    var render = function (payload) {
+      var content = document.getElementById('content');
+      if (!payload) {
+        if (state === 'loading' || !state) return;
+      }
+      var card = cardFrom(payload);
+      if (!card) {
+        content.innerHTML =
+          '<div class="ec-empty">No entity to show. Call orgx_inspect with a type and id from orgx_search.</div>';
+        return;
+      }
+      var url = typeof card.url === 'string' ? card.url : '';
+      var facts = asArray(card.facts);
+      var related = asArray(card.related);
+      var proof = card.proof && typeof card.proof === 'object' ? card.proof : null;
+      var verdict = proof && VERDICT_LABEL[proof.verdict] ? proof.verdict : 'open';
+
+      content.innerHTML =
+        '<article class="ec" aria-label="OrgX ' + escapeHtml(humanize(card.type)) + '">' +
+        '<div class="ec-head"><div>' +
+        '<div class="ec-kicker"><span>' + escapeHtml(humanize(card.type)) + '</span>' +
+        (card.status ? '<span class="ec-status">' + escapeHtml(humanize(card.status)) + '</span>' : '') +
+        '</div>' +
+        '<h1>' + escapeHtml(card.title) + '</h1>' +
+        '</div>' +
+        (url
+          ? '<a class="ec-open ox-link-btn" href="' + escapeHtml(url) + '" target="_blank" rel="noreferrer" onclick=\'return openWidgetLink(' + JSON.stringify(url) + ', event)\'>Open in OrgX</a>'
+          : '') +
+        '</div>' +
+        (card.summary ? '<p class="ec-summary">' + escapeHtml(card.summary) + '</p>' : '') +
+        (facts.length
+          ? '<dl class="ec-facts">' +
+            facts.map(function (fact) {
+              return '<div><dt>' + escapeHtml(fact.label) + '</dt><dd>' + escapeHtml(fact.value) + '</dd></div>';
+            }).join('') +
+            '</dl>'
+          : '') +
+        (proof && asArray(proof.rows).length
+          ? '<section class="ec-proof" aria-label="Proof record">' +
+            '<div class="ec-proof__head"><span>Proof record</span>' +
+            '<b class="ec-verdict" data-verdict="' + escapeHtml(verdict) + '">' + escapeHtml(VERDICT_LABEL[verdict]) + '</b></div>' +
+            '<ul>' +
+            asArray(proof.rows).map(function (row) {
+              return '<li><span><i class="ec-marker" data-kind="' + escapeHtml(row.kind || 'neutral') + '"></i>' +
+                escapeHtml(row.label) + '</span><b>' + escapeHtml(row.value) + '</b></li>';
+            }).join('') +
+            '</ul></section>'
+          : '') +
+        (related.length
+          ? '<section class="ec-related"><h2>Linked</h2><ul>' +
+            related.map(function (item) {
+              return '<li><span>' + escapeHtml(humanize(item.type)) + '</span>' + escapeHtml(item.title) + '</li>';
+            }).join('') +
+            '</ul></section>'
+          : '') +
+        '</article>';
+    };
+
+    if (state === 'loading') {
+      // Keep the skeleton.
+    } else if (data) {
+      render(data);
+    } else {
+      initWidget({ render: render });
+    }
+  </script>
+</body>
+</html>

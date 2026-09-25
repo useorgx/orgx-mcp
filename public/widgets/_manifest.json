@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-09-25T00:22:47.040Z",
+  "generatedAt": "2026-09-25T01:12:53.816Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -29,7 +29,8 @@
     "morning-brief": "0,201,167",
     "search-results": "0,201,167",
     "plan-session-live": "99,102,241",
-    "daily-brief": "99,102,241",
+    "entity-card": "0,201,167",
+    "work-ledger": "0,201,167",
     "index": "17,24,39",
     "workspace-map": "191,255,0"
   },
@@ -73,19 +74,6 @@
       "protocolBridge": "official-sdk",
       "demoOnly": false
     },
-    "daily-brief": {
-      "file": "public/widgets/daily-brief.html",
-      "bytes": 36025,
-      "hash": "8b84ff18e9ea",
-      "primaryRgb": "99,102,241",
-      "sharedRefs": [
-        "shared/mcp-apps-sdk.umd.js",
-        "shared/widget-runtime.js",
-        "shared/widget-theme.css"
-      ],
-      "protocolBridge": "official-sdk",
-      "demoOnly": true
-    },
     "decisions": {
       "file": "public/widgets/decisions.html",
       "bytes": 82159,
@@ -102,10 +90,26 @@
       "protocolBridge": "official-sdk",
       "demoOnly": false
     },
+    "entity-card": {
+      "file": "public/widgets/entity-card.html",
+      "bytes": 11591,
+      "hash": "90ce68e33c20",
+      "primaryRgb": "0,201,167",
+      "sharedRefs": [
+        "shared/interaction-kit.css",
+        "shared/interaction-kit.js",
+        "shared/mcp-apps-sdk.umd.js",
+        "shared/widget-foundation.css",
+        "shared/widget-runtime.js",
+        "shared/widget-theme.css"
+      ],
+      "protocolBridge": "official-sdk",
+      "demoOnly": false
+    },
     "index": {
       "file": "public/widgets/index.html",
-      "bytes": 25402,
-      "hash": "c717cd648f3d",
+      "bytes": 25880,
+      "hash": "2530580ec644",
       "primaryRgb": "17,24,39",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -224,6 +228,22 @@
         "shared/widget-foundation.css",
         "shared/widget-runtime.js",
         "shared/widget-state.js",
+        "shared/widget-theme.css"
+      ],
+      "protocolBridge": "official-sdk",
+      "demoOnly": false
+    },
+    "work-ledger": {
+      "file": "public/widgets/work-ledger.html",
+      "bytes": 11726,
+      "hash": "ec0aecbf5d1a",
+      "primaryRgb": "0,201,167",
+      "sharedRefs": [
+        "shared/interaction-kit.css",
+        "shared/interaction-kit.js",
+        "shared/mcp-apps-sdk.umd.js",
+        "shared/widget-foundation.css",
+        "shared/widget-runtime.js",
         "shared/widget-theme.css"
       ],
       "protocolBridge": "official-sdk",

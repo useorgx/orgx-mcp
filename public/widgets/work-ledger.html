@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en" data-accent="teal">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Work Ledger - OrgX</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Cpath d='M18 20h28M18 32h28M18 44h18' stroke='%2300c9a7' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="shared/interaction-kit.css" />
+  <link rel="stylesheet" href="shared/widget-foundation.css" />
+  <script src="shared/mcp-apps-sdk.umd.js"></script>
+  <script src="shared/widget-runtime.js"></script>
+  <script src="shared/interaction-kit.js"></script>
+  <style>
+    /*
+     * Work Ledger — the get_operator_chronicle result as the app's Work Ledger
+     * page draws it: one window, the totals that count as proof, which
+     * clients wrote to the record, the latest entries, and the flywheel
+     * scoreboard lines the app computes (the worker only renders them).
+     */
+    :root {
+      --ox-primary-rgb: 0, 201, 167;
+      --wl-amber: #f59e0b;
+    }
+
+    .wl {
+      display: grid;
+      gap: 16px;
+      padding: 18px;
+      font-family: var(--ox-font);
+      color: var(--ox-text);
+    }
+
+    .wl-kicker,
+    .wl h2 {
+      margin: 0;
+      font-family: var(--ox-mono);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ox-text-muted);
+    }
+
+    .wl-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .wl-head h1 {
+      margin: 6px 0 0;
+      font-size: 18px;
+      font-weight: 650;
+      line-height: 1.3;
+      letter-spacing: -0.02em;
+    }
+
+    .wl-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 10px;
+      margin: 0;
+    }
+
+    .wl-stats div {
+      padding: 10px 12px;
+      border: 1px solid var(--ox-border);
+      border-radius: 10px;
+      background: var(--ox-panel);
+    }
+
+    .wl-stats dt {
+      font-size: 12px;
+      color: var(--ox-text-muted);
+    }
+
+    .wl-stats dd {
+      margin: 2px 0 0;
+      font-size: 20px;
+      font-weight: 650;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .wl-section {
+      display: grid;
+      gap: 8px;
+    }
+
+    .wl-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      border: 1px solid var(--ox-border);
+      border-radius: 12px;
+      background: var(--ox-panel);
+    }
+
+    .wl-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      padding: 9px 14px;
+      font-size: 13px;
+      border-bottom: 1px solid var(--ox-divider);
+    }
+
+    .wl-list li:last-child {
+      border-bottom: 0;
+    }
+
+    .wl-list small {
+      font-size: 12px;
+      color: var(--ox-text-muted);
+      white-space: nowrap;
+    }
+
+    .wl-entry {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .wl-marker {
+      flex: none;
+      width: 6px;
+      height: 6px;
+      border-radius: 2px;
+      background: var(--ox-text-dim);
+    }
+
+    .wl-marker[data-kind='decision'] { background: var(--wl-amber); }
+    .wl-marker[data-kind='artifact'],
+    .wl-marker[data-kind='pull_request'] { background: var(--ox-teal); }
+    .wl-marker[data-kind='run'] { background: var(--ox-iris); }
+
+    .wl-flywheel {
+      margin: 0;
+      padding-left: 18px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--ox-text-muted);
+    }
+
+    .wl-next {
+      padding: 10px 14px;
+      border: 1px solid var(--ox-border);
+      border-radius: 10px;
+      font-size: 13px;
+    }
+
+    .wl-next b {
+      color: var(--ox-teal);
+    }
+
+    .wl-open {
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .wl-empty {
+      padding: 18px;
+      font-size: 13px;
+      color: var(--ox-text-muted);
+    }
+  </style>
+  <link rel="stylesheet" href="shared/widget-theme.css" />
+</head>
+<body>
+  <div class="container" id="content">
+    <div class="skeleton-wrapper" style="display:grid; gap:12px; padding:18px;">
+      <div class="skeleton-line" style="width:60%; height:18px;"></div>
+      <div class="skeleton-line" style="width:100%; height:56px; border-radius:10px;"></div>
+      <div class="skeleton-line" style="width:100%; height:96px; border-radius:12px;"></div>
+    </div>
+  </div>
+  <script>
+    var params = new URLSearchParams(window.location.search);
+    (function () {
+      var theme = params.get('theme');
+      if (theme) document.documentElement.setAttribute('data-theme', theme);
+    })();
+
+    var LEDGER_URL = 'https://useorgx.com/work-ledger';
+    var PERIOD_LABEL = { day: 'Last 24 hours', week: 'Last 7 days', '30d': 'Last 30 days' };
+
+    var escapeHtml = function (value) {
+      if (value === null || value === undefined) return '';
+      var div = document.createElement('div');
+      div.textContent = String(value);
+      return div.innerHTML;
+    };
+
+    var asArray = function (value) {
+      return Array.isArray(value) ? value : [];
+    };
+
+    var num = function (value) {
+      return typeof value === 'number' && isFinite(value) ? value : 0;
+    };
+
+    var DEMO = {
+      chronicle: {
+        workspaceName: 'Atina Labs',
+        period: 'week',
+        headline: 'Launch work moved in three clients; one decision waits on you.',
+        metrics: {
+          decisionsResolved: 4,
+          pendingDecisions: 1,
+          artifactsProduced: 9,
+          prReceipts: 6,
+          receiptsProduced: 14,
+          valueCreatedUsd: 1840
+        },
+        continuity: {
+          clients: [
+            { label: 'Claude Code', evidenceLabel: 'Verified', sessions: 11, artifacts: 5, decisions: 2, pullRequests: 4 },
+            { label: 'Codex', evidenceLabel: 'Observed', sessions: 6, artifacts: 3, decisions: 1, pullRequests: 2 },
+            { label: 'Cursor', evidenceLabel: 'Observed', sessions: 3, artifacts: 1, decisions: 1, pullRequests: 0 }
+          ],
+          events: [
+            { kind: 'decision', title: 'Ship annual pricing at launch', sourceLabel: 'Claude Code', occurredAt: '2026-09-24T16:10:00Z' },
+            { kind: 'pull_request', title: 'Checkout: proration for annual plans', sourceLabel: 'Codex', occurredAt: '2026-09-24T14:02:00Z' },
+            { kind: 'artifact', title: 'Pricing page copy v3', sourceLabel: 'Claude Code', occurredAt: '2026-09-23T19:40:00Z' }
+          ]
+        },
+        flywheel: {
+          summary: [
+            'Ledger coverage: 3 of 3 linked clients wrote this week',
+            'Decision-model spend: $4.20 across 5 decisions'
+          ]
+        },
+        reportingNarrative: { nextAction: 'Decide the launch-week discount in Decisions.' }
+      }
+    };
+
+    var state = params.get('state') || (params.get('demo') === 'true' ? 'populated' : null);
+    var data = state === 'populated' ? DEMO : state === 'empty' ? {} : null;
+
+    var count = function (value, noun) {
+      var n = num(value);
+      return n + ' ' + noun + (n === 1 ? '' : 's');
+    };
+
+    var shortDate = function (value) {
+      if (typeof value !== 'string') return '';
+      var date = new Date(value);
+      return isNaN(date.getTime())
+        ? ''
+        : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    };
+
+    var render = function (payload) {
+      var content = document.getElementById('content');
+      if (!payload) {
+        if (state === 'loading' || !state) return;
+      }
+      var chronicle = payload && payload.chronicle && typeof payload.chronicle === 'object'
+        ? payload.chronicle
+        : null;
+      if (!chronicle) {
+        content.innerHTML =
+          '<div class="wl-empty">No ledger entries for this window yet. Work lands here when a connected client records a session, receipt, decision, or artifact.</div>';
+        return;
+      }
+      var metrics = chronicle.metrics || {};
+      var continuity = chronicle.continuity || {};
+      var clients = asArray(continuity.clients).filter(function (client) {
+        return num(client.sessions) + num(client.artifacts) + num(client.decisions) + num(client.pullRequests) > 0;
+      });
+      var events = asArray(continuity.events).slice(0, 6);
+      var flywheel = asArray(chronicle.flywheel && chronicle.flywheel.summary).filter(function (line) {
+        return typeof line === 'string' && line.trim();
+      });
+      var narrative = chronicle.reportingNarrative || payload.reportingNarrative || {};
+      var nextAction = typeof narrative.nextAction === 'string' ? narrative.nextAction.trim() : '';
+      var stats = [
+        ['Receipts', num(metrics.receiptsProduced)],
+        ['Decisions', num(metrics.decisionsResolved)],
+        ['Artifacts', num(metrics.artifactsProduced)],
+        ['PR receipts', num(metrics.prReceipts)]
+      ];
+      if (num(metrics.valueCreatedUsd) > 0) {
+        stats.push(['Value', '$' + Math.round(num(metrics.valueCreatedUsd)).toLocaleString()]);
+      }
+
+      content.innerHTML =
+        '<section class="wl" aria-label="OrgX Work Ledger">' +
+        '<div class="wl-head"><div>' +
+        '<div class="wl-kicker">Work Ledger · ' + escapeHtml(PERIOD_LABEL[chronicle.period] || 'This window') +
+        (chronicle.workspaceName ? ' · ' + escapeHtml(chronicle.workspaceName) : '') + '</div>' +
+        '<h1>' + escapeHtml(chronicle.headline || payload.headline || 'The record of agent work') + '</h1>' +
+        '</div>' +
+        '<a class="wl-open ox-link-btn" href="' + LEDGER_URL + '" target="_blank" rel="noreferrer" onclick=\'return openWidgetLink(' + JSON.stringify(LEDGER_URL) + ', event)\'>Open Work Ledger</a>' +
+        '</div>' +
+        '<dl class="wl-stats">' +
+        stats.map(function (stat) {
+          return '<div><dt>' + escapeHtml(stat[0]) + '</dt><dd>' + escapeHtml(stat[1]) + '</dd></div>';
+        }).join('') +
+        '</dl>' +
+        (clients.length
+          ? '<div class="wl-section"><h2>By client</h2><ul class="wl-list">' +
+            clients.map(function (client) {
+              return '<li><span>' + escapeHtml(client.label || client.sourceClient) +
+                (client.evidenceLabel ? ' <small>' + escapeHtml(client.evidenceLabel) + '</small>' : '') +
+                '</span><small>' + count(client.sessions, 'session') + ' · ' + count(client.artifacts, 'artifact') + ' · ' +
+                count(client.decisions, 'decision') + '</small></li>';
+            }).join('') +
+            '</ul></div>'
+          : '') +
+        (events.length
+          ? '<div class="wl-section"><h2>Latest entries</h2><ul class="wl-list">' +
+            events.map(function (event) {
+              return '<li><span class="wl-entry"><i class="wl-marker" data-kind="' + escapeHtml(event.kind || '') + '"></i>' +
+                escapeHtml(event.title) + '</span><small>' +
+                escapeHtml([event.sourceLabel, shortDate(event.occurredAt)].filter(Boolean).join(' · ')) +
+                '</small></li>';
+            }).join('') +
+            '</ul></div>'
+          : '') +
+        (flywheel.length
+          ? '<div class="wl-section"><h2>Flywheel</h2><ul class="wl-flywheel">' +
+            flywheel.map(function (line) { return '<li>' + escapeHtml(line) + '</li>'; }).join('') +
+            '</ul></div>'
+          : '') +
+        (nextAction ? '<div class="wl-next"><b>Next:</b> ' + escapeHtml(nextAction) + '</div>' : '') +
+        '</section>';
+    };
+
+    if (state === 'loading') {
+      // Keep the skeleton.
+    } else if (data) {
+      render(data);
+    } else {
+      initWidget({ render: render });
+    }
+  </script>
+</body>
+</html>

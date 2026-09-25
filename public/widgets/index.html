@@ -452,7 +452,9 @@
         { id: 'agent-status', name: 'Agent Status', file: 'agent-status.html', mode: 'Command', job: 'See which agent needs intervention now.', supportsStates: ['populated', 'loading', 'progressing', 'completed', 'blocked', 'empty', 'stale', 'resolved'] },
         { id: 'initiative-pulse', name: 'Initiative Pulse', file: 'initiative-pulse.html', mode: 'Command', job: 'Read initiative health and the exception changing it.' },
         { id: 'morning-brief', name: 'Morning Brief', file: 'morning-brief.html', mode: 'Readout', job: 'Orient to the day through exceptions and priorities.' },
-        { id: 'daily-brief', name: 'Daily Brief', file: 'daily-brief.html', mode: 'Readout', job: 'Demo: resume from the next useful operating move.' },
+        { id: 'workspace-map', name: 'Workspace Map', file: 'workspace-map.html', mode: 'Command', job: 'See what this session can read and change, surface by surface.', supportsStates: ['populated', 'loading', 'empty'] },
+        { id: 'entity-card', name: 'Entity Card', file: 'entity-card.html', mode: 'Readout', job: 'Read one entity, its links, and its proof record.', supportsStates: ['populated', 'loading', 'empty'] },
+        { id: 'work-ledger', name: 'Work Ledger', file: 'work-ledger.html', mode: 'Readout', job: 'Read what agent work the record holds, by client.', supportsStates: ['populated', 'loading', 'empty'] },
         { id: 'scaffolded-initiative', name: 'Scaffolded Initiative', file: 'scaffolded-initiative.html', mode: 'Creation', job: 'Inspect the hierarchy created from a goal.', supportsStates: ['populated', 'loading', 'empty', 'error', 'completed', 'blocked', 'resolved'] },
         { id: 'scaffold-streaming', name: 'Scaffold Streaming', file: 'scaffold-streaming.html', mode: 'Creation', job: 'Demo: observe entity creation as the scaffold builds.', supportsStates: ['populated', 'loading', 'empty', 'error', 'blocked', 'stale', 'resolved', 'completed', 'progressing'] }
       ];

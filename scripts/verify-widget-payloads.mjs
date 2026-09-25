@@ -70,9 +70,10 @@ try {
     await page.goto(`${origin}/widgets/morning-brief.html?demo=true&theme=dark`);
     await page.locator('#trigger-output').click();
     assert.equal(await page.locator('#trigger-output').getAttribute('aria-expanded'), 'true');
-    await page.goto(`${origin}/widgets/daily-brief.html?demo=true&theme=dark`);
-    await page.locator('[data-lens="agents"]').click();
-    assert.match(await page.locator('[data-lens="agents"]').getAttribute('class'), /active/);
+    await page.goto(`${origin}/widgets/entity-card.html?demo=true&theme=dark`);
+    await page.locator('.ec-proof').waitFor();
+    await page.goto(`${origin}/widgets/work-ledger.html?demo=true&theme=dark`);
+    await page.locator('.wl-stats').waitFor();
     await page.goto(`${origin}/widgets/plan-session-live.html?demo=true&theme=dark`);
     await page.locator('[data-lens="activity"]').click();
     assert.equal(await page.locator('[data-lens="activity"]').getAttribute('aria-selected'), 'true');
