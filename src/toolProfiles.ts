@@ -283,6 +283,7 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
       'orgx_events_tail',
       'orgx_tail',
       'consolidate_pr',
+      'orgx_lease',
     ],
   },
   observer: {

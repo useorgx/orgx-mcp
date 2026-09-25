@@ -81,6 +81,12 @@ import { withSecurityHeaders } from './securityHeaders';
 import { probeOrgxHealth, readUptimeSummary, recordProbe } from './uptimeProbe';
 import { callOrgxApiJson, callOrgxApiRaw, OrgXApiError } from './orgxApi';
 import { captureDecision } from './decisionCapture';
+import {
+  executeWorkLease,
+  WORK_LEASE_DESCRIPTION,
+  WORK_LEASE_TOOL_ID,
+  workLeaseInputSchema,
+} from './workLeases';
 import { mapMorningBriefApiError } from './morningBriefError';
 import { fetchContextPreparation, fetchContextPack } from './contextPack';
 import {
@@ -12389,6 +12395,41 @@ export class OrgXMcp extends McpAgent<
     // @see Intelligence Flywheel Architecture — MCP Tools inventory
     // =========================================================================
     this.registerFlywheelTools(allowedTools);
+    this.registerWorkLeaseTool(allowedTools);
+  }
+
+  /** Advisory file leases for agents sharing a repository (src/workLeases.ts). */
+  private registerWorkLeaseTool(allowedTools: Set<string> | null) {
+    if (allowedTools && !allowedTools.has(WORK_LEASE_TOOL_ID)) return;
+    this.server.registerTool(
+      'orgx_lease',
+      {
+        title: 'Coordinate File Edits',
+        description: WORK_LEASE_DESCRIPTION,
+        annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+        inputSchema: this.withClientContext(workLeaseInputSchema),
+      },
+      async (args) =>
+        this.withOrgx(async () => {
+          const userId = this.resolveUserId();
+          const session = (this.name || this.ctx.id.toString()).slice(0, 24);
+          const client =
+            this.resolveEntityAttributionClient((args as { _context?: unknown })._context) ?? 'mcp';
+          const result = await executeWorkLease(args as Record<string, unknown>, {
+            env: this.env,
+            userId,
+            userEmail: this.resolveUserEmail(),
+            orgxUserId: this.resolveOrgxUserId(userId),
+            holder: `${client}:${session}`,
+          });
+          return result.ok
+            ? {
+                content: [{ type: 'text' as const, text: result.text }],
+                structuredContent: result.structured,
+              }
+            : this.toolError(result.text);
+        })
+    );
   }
 
   /**
