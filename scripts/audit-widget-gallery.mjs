@@ -28,7 +28,7 @@ const cases = [
     viewport: { width: 375, height: 812 },
     colorScheme: 'dark',
     reducedMotion: 'no-preference',
-    query: 'widget=daily-brief&state=populated&viewport=phone&previewTheme=dark',
+    query: 'widget=entity-card&state=populated&viewport=phone&previewTheme=dark',
   },
   {
     name: 'desktop-reduced',

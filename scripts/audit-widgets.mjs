@@ -20,7 +20,8 @@ const widgets = [
   'morning-brief',
   'artifact-review',
   'plan-session-live',
-  'daily-brief',
+  'entity-card',
+  'work-ledger',
   'scaffold-streaming',
 ];
 
@@ -38,9 +39,6 @@ const widgetSpecificStates = {
     { name: 'long', query: 'demo=true&scenario=branchy&theme=dark' },
     { name: 'urgent', query: 'demo=true&status=blocked&theme=dark' },
     { name: 'resolved', query: 'demo=true&status=completed&theme=dark' },
-  ],
-  'daily-brief': [
-    { name: 'agents-lens', query: 'demo=true&lens=agents&theme=dark' },
   ],
 };
 

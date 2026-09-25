@@ -75,10 +75,14 @@ export const WIDGET_URIS = {
     'ui://widget/plan-session-live.html',
     WIDGET_BUILD_VERSION
   ), // Creation-mode widget for co-authored agent reasoning
-  dailyBrief: withWidgetResourceVersion(
-    'ui://widget/daily-brief.html',
+  entityCard: withWidgetResourceVersion(
+    'ui://widget/entity-card.html',
     WIDGET_BUILD_VERSION
-  ), // Daily Brief + Trust Loop: skill/agent ascension surface
+  ), // orgx_inspect: one entity, its facts, links, and proof record
+  workLedger: withWidgetResourceVersion(
+    'ui://widget/work-ledger.html',
+    WIDGET_BUILD_VERSION
+  ), // get_operator_chronicle: the Work Ledger window, by client
   workspaceMap: withWidgetResourceVersion(
     'ui://widget/workspace-map.html',
     WIDGET_BUILD_VERSION
@@ -96,7 +100,8 @@ export const OUTPUT_TEMPLATE_URIS = {
   morningBrief: toSkybridgeResourceUri(WIDGET_URIS.morningBrief),
   artifactReview: toSkybridgeResourceUri(WIDGET_URIS.artifactReview),
   planSessionLive: toSkybridgeResourceUri(WIDGET_URIS.planSessionLive),
-  dailyBrief: toSkybridgeResourceUri(WIDGET_URIS.dailyBrief),
+  entityCard: toSkybridgeResourceUri(WIDGET_URIS.entityCard),
+  workLedger: toSkybridgeResourceUri(WIDGET_URIS.workLedger),
   workspaceMap: toSkybridgeResourceUri(WIDGET_URIS.workspaceMap),
 } as const;
 
@@ -135,6 +140,16 @@ export const WIDGET_RESOURCES = [
     name: 'workspace-map-widget',
     uri: WIDGET_URIS.workspaceMap,
     title: 'Workspace Map Widget',
+  },
+  {
+    name: 'entity-card-widget',
+    uri: WIDGET_URIS.entityCard,
+    title: 'Entity Card Widget',
+  },
+  {
+    name: 'work-ledger-widget',
+    uri: WIDGET_URIS.workLedger,
+    title: 'Work Ledger Widget',
   },
   {
     name: 'morning-brief-widget',
@@ -1501,9 +1516,11 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
     _meta: {
+      'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.workLedger,
       'openai/toolInvocation/invoking': 'Loading operator chronicle...',
       'openai/toolInvocation/invoked': 'Operator chronicle ready',
       'openai/readOnlyHint': true,
+      ui: { resourceUri: WIDGET_URIS.workLedger },
     },
   },
   {

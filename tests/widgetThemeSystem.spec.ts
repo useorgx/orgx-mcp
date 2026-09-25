@@ -19,7 +19,7 @@ const interactionKit = readFileSync(
 const accents: Record<string, string> = {
   "agent-status.html": "lime",
   "artifact-review.html": "amber",
-  "daily-brief.html": "iris",
+  "entity-card.html": "teal",
   "decisions.html": "amber",
   "index.html": "neutral",
   "initiative-pulse.html": "teal",
@@ -29,6 +29,7 @@ const accents: Record<string, string> = {
   "scaffolded-initiative.html": "iris",
   "search-results.html": "teal",
   "task-spawned.html": "iris",
+  "work-ledger.html": "teal",
   "workspace-map.html": "lime",
 };
 

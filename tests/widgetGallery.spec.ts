@@ -42,8 +42,12 @@ describe('widget gallery state contract', () => {
       resolve(process.cwd(), 'public/widgets/initiative-pulse.html'),
       'utf8'
     );
-    const dailySource = readFileSync(
-      resolve(process.cwd(), 'public/widgets/daily-brief.html'),
+    const entitySource = readFileSync(
+      resolve(process.cwd(), 'public/widgets/entity-card.html'),
+      'utf8'
+    );
+    const ledgerSource = readFileSync(
+      resolve(process.cwd(), 'public/widgets/work-ledger.html'),
       'utf8'
     );
     const streamSource = readFileSync(
@@ -51,7 +55,8 @@ describe('widget gallery state contract', () => {
       'utf8'
     );
     expect(pulseSource).toContain('var demoState = params.get("state")');
-    expect(dailySource).toContain('function buildDemoData(state)');
+    expect(entitySource).toContain("var state = params.get('state')");
+    expect(ledgerSource).toContain("var state = params.get('state')");
     expect(streamSource).toContain('function showDemoState(mode)');
   });
 

@@ -34,7 +34,8 @@ const widgets = [
   'morning-brief',
   'artifact-review',
   'plan-session-live',
-  'daily-brief',
+  'entity-card',
+  'work-ledger',
   'scaffold-streaming',
 ];
 

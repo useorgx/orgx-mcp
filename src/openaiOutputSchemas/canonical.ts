@@ -108,6 +108,30 @@ export const CANONICAL_OUTPUT_SCHEMAS = {
       id: z.string().optional(),
       entity: resourceSchema.optional(),
       context_pack: contextPackSchema.nullable().optional(),
+      card: z
+        .object({
+          type: z.string(),
+          id: z.string(),
+          title: z.string(),
+          status: z.string().nullable(),
+          summary: z.string().nullable(),
+          url: z.string().nullable(),
+          facts: z.array(z.object({ label: z.string(), value: z.string() })),
+          proof: z
+            .object({
+              verdict: z.enum(['accepted', 'verifying', 'needs-you', 'open']),
+              rows: z.array(
+                z.object({
+                  label: z.string(),
+                  value: z.string(),
+                  kind: z.enum(['decision', 'artifact', 'check', 'neutral']),
+                })
+              ),
+            })
+            .nullable(),
+          related: z.array(z.object({ type: z.string(), title: z.string() })),
+        })
+        .optional(),
       session_id: z.string().optional(),
       uuid: z.string().optional(),
       uri: z.string().optional(),

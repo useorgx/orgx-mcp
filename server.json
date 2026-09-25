@@ -529,12 +529,6 @@
       "mimeType": "text/html;profile=mcp-app"
     },
     {
-      "uri": "ui://widget/daily-brief.html",
-      "name": "Daily Brief + Trust Loop Widget",
-      "description": "Widget showing skill and agent trust-loop signals for daily brief workflows",
-      "mimeType": "text/html;profile=mcp-app"
-    },
-    {
       "uri": "ui://widget/decisions.skybridge.html",
       "name": "Decisions Widget (Skybridge)",
       "description": "ChatGPT Apps SDK widget for displaying and managing pending decisions",
@@ -583,6 +577,30 @@
       "mimeType": "text/html+skybridge"
     },
     {
+      "uri": "ui://widget/entity-card.html",
+      "name": "Entity Card Widget",
+      "description": "Widget showing one OrgX entity with its facts, links, and proof record",
+      "mimeType": "text/html;profile=mcp-app"
+    },
+    {
+      "uri": "ui://widget/entity-card.skybridge.html",
+      "name": "Entity Card Widget (Skybridge)",
+      "description": "ChatGPT Apps SDK widget showing one OrgX entity with its facts, links, and proof record",
+      "mimeType": "text/html+skybridge"
+    },
+    {
+      "uri": "ui://widget/work-ledger.html",
+      "name": "Work Ledger Widget",
+      "description": "Widget showing the Work Ledger window: receipts, decisions, artifacts, and clients",
+      "mimeType": "text/html;profile=mcp-app"
+    },
+    {
+      "uri": "ui://widget/work-ledger.skybridge.html",
+      "name": "Work Ledger Widget (Skybridge)",
+      "description": "ChatGPT Apps SDK widget showing the Work Ledger window: receipts, decisions, artifacts, and clients",
+      "mimeType": "text/html+skybridge"
+    },
+    {
       "uri": "ui://widget/morning-brief.skybridge.html",
       "name": "Morning Brief Widget (Skybridge)",
       "description": "ChatGPT Apps SDK widget showing the latest autonomous session brief and ROI deltas",
@@ -598,12 +616,6 @@
       "uri": "ui://widget/plan-session-live.skybridge.html",
       "name": "Plan Session Live Widget (Skybridge)",
       "description": "ChatGPT Apps SDK widget for live tracked planning sessions and co-authored agent reasoning",
-      "mimeType": "text/html+skybridge"
-    },
-    {
-      "uri": "ui://widget/daily-brief.skybridge.html",
-      "name": "Daily Brief + Trust Loop Widget (Skybridge)",
-      "description": "ChatGPT Apps SDK widget showing skill and agent trust-loop signals for daily brief workflows",
       "mimeType": "text/html+skybridge"
     }
   ],

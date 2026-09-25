@@ -96,11 +96,11 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.anyReadRequiresAuth,
     _meta: {
-      'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.searchResults,
+      'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.entityCard,
       'openai/toolInvocation/invoking': 'Inspecting OrgX entity...',
       'openai/toolInvocation/invoked': 'OrgX entity inspected',
       'openai/readOnlyHint': true,
-      ui: { resourceUri: WIDGET_URIS.searchResults },
+      ui: { resourceUri: WIDGET_URIS.entityCard },
     },
   },
   {
