@@ -81,14 +81,18 @@ export interface WorkGraph {
   proofHandoff?: { quiet_cta?: string };
 }
 
+// Kept in lockstep with the client copies in shared/live-machine.js and
+// shared/widget-state.js. A status that means one thing in the Durable Object
+// and another in the widget changes meaning as it crosses the wire;
+// tests/statusVocabulary.spec.ts holds all three together.
 const EXECUTING = new Set([
   'EXECUTING',
   'REEXECUTING',
-  'WAITING',
   'RUNNING',
   'IN_PROGRESS',
   'ACTIVE',
   'STREAMING',
+  'WORKING',
 ]);
 
 const TERMINAL = new Set([
@@ -106,6 +110,8 @@ const TERMINAL = new Set([
   'SHIPPED',
   'APPROVED',
   'REJECTED',
+  'RESOLVED',
+  'SUCCESS',
 ]);
 
 const BLOCKED = new Set([
@@ -116,6 +122,14 @@ const BLOCKED = new Set([
   'NEEDS_ATTENTION',
   'ESCALATED',
   'PENDING_APPROVAL',
+  'AT_RISK',
+  'PAUSED',
+  'NEEDS_INPUT',
+  'NEEDS_REVIEW',
+  // Waiting on someone is blocked. Trigger's WAITING run state means something
+  // else — suspended on a child while still executing — and reaches the client
+  // as a lifecycle boolean, not as this status string.
+  'WAITING',
 ]);
 
 export function phaseForStatus(status: unknown): WorkPhase {

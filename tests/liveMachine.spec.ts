@@ -318,10 +318,20 @@ describe('work phases', () => {
   });
 
   it('ignores churn inside a phase so the surface does not flicker', () => {
-    const first = M.diffPhases(null, [{ id: 'a', status: 'EXECUTING' }]);
-    const second = M.diffPhases(first.next, [{ id: 'a', status: 'WAITING' }]);
+    // RUNNING and IN_PROGRESS are the same phase under different names, which
+    // upstreams do swap between. (EXECUTING → WAITING used to stand in here,
+    // but a bare "waiting" means waiting on someone and is now blocked — a real
+    // boundary, and news worth showing.)
+    const first = M.diffPhases(null, [{ id: 'a', status: 'RUNNING' }]);
+    const second = M.diffPhases(first.next, [{ id: 'a', status: 'IN_PROGRESS' }]);
     expect(second.changed).toBe(false);
     expect(second.started).toEqual([]);
+  });
+
+  it('treats a bare waiting status as a block, because it is one', () => {
+    const first = M.diffPhases(null, [{ id: 'a', status: 'RUNNING' }]);
+    const second = M.diffPhases(first.next, [{ id: 'a', status: 'waiting' }]);
+    expect(second.blocked).toEqual(['a']);
   });
 
   it('reports a block and the later unblock', () => {

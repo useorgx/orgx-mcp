@@ -457,14 +457,19 @@
     BLOCKED: 'blocked',
   };
 
+  // These sets are a superset of the vocabulary in shared/widget-state.js, and
+  // must stay that way: both run on the same page, so a status either one
+  // recognizes but the other does not means the panel and the surrounding card
+  // can show the same node in different states. tests/statusVocabulary.spec.ts
+  // pins the agreement.
   var EXECUTING_STATUSES = {
     EXECUTING: 1,
     REEXECUTING: 1,
-    WAITING: 1,
     RUNNING: 1,
     IN_PROGRESS: 1,
     ACTIVE: 1,
     STREAMING: 1,
+    WORKING: 1,
   };
 
   var TERMINAL_STATUSES = {
@@ -480,6 +485,9 @@
     TIMED_OUT: 1,
     INTERRUPTED: 1,
     SHIPPED: 1,
+    APPROVED: 1,
+    RESOLVED: 1,
+    SUCCESS: 1,
   };
 
   // Blocked is a first-class phase here even though Trigger has no such run
@@ -493,6 +501,15 @@
     AWAITING_INPUT: 1,
     NEEDS_ATTENTION: 1,
     ESCALATED: 1,
+    AT_RISK: 1,
+    PAUSED: 1,
+    NEEDS_INPUT: 1,
+    NEEDS_REVIEW: 1,
+    // A bare "waiting" status means waiting on someone, which is blocked.
+    // Trigger's WAITING run state means something else — suspended on a child
+    // while still executing — and reaches us as the `isWaiting` lifecycle
+    // boolean, which phaseForRow reads before it ever looks at this table.
+    WAITING: 1,
   };
 
   function phaseForStatus(status) {
