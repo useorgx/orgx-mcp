@@ -11,6 +11,7 @@
  */
 
 import { INLINE_WIDGET_THEME_BOOTSTRAP } from './widgetTheme';
+import { WIDGET_THEME_CSS } from './generated/widgetThemeCss';
 
 export interface LiveFeedWidgetOptions {
   feedType: 'agent-status' | 'initiative-pulse';
@@ -44,60 +45,18 @@ export function buildLiveFeedWidget(opts: LiveFeedWidgetOptions): string {
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
-/* ── OrgX Design Tokens (light-first, matches production widgets) ── */
-:root,:root[data-theme="light"]{
-  --ox-bg:#f8fafc;
-  --ox-panel:#ffffff;
-  --ox-border:rgba(0,0,0,.08);
-  --ox-border-strong:rgba(0,0,0,.15);
-  --ox-text:#0f172a;
-  --ox-text-muted:#526078;
-  --ox-text-dim:#657188;
-  --ox-well:#f1f5f9;
-  --ox-well-shadow:inset 0 2px 4px rgba(0,0,0,.02);
-  --ox-shadow:0 12px 32px -12px rgba(0,0,0,.1),0 2px 6px rgba(0,0,0,.04);
-  --ox-grid:rgba(0,0,0,.03);
-  --ox-primary:#0f766e;
-}
-@media(prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --ox-bg:#02040a;
-    --ox-panel:rgba(10,15,22,.95);
-    --ox-border:rgba(255,255,255,.08);
-    --ox-border-strong:rgba(255,255,255,.15);
-    --ox-text:#f8fafc;
-    --ox-text-muted:#aab4c4;
-    --ox-text-dim:#8792a3;
-    --ox-well:rgba(0,0,0,.28);
-    --ox-well-shadow:inset 0 2px 10px rgba(0,0,0,.4);
-    --ox-shadow:0 24px 48px -20px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05);
-    --ox-grid:rgba(255,255,255,.02);
-    --ox-primary:#2dd4bf;
-  }
-}
-:root[data-theme="dark"]{
-  --ox-bg:#02040a;
-  --ox-panel:rgba(10,15,22,.95);
-  --ox-border:rgba(255,255,255,.08);
-  --ox-border-strong:rgba(255,255,255,.15);
-  --ox-text:#f8fafc;
-  --ox-text-muted:#aab4c4;
-  --ox-text-dim:#8792a3;
-  --ox-well:rgba(0,0,0,.28);
-  --ox-well-shadow:inset 0 2px 10px rgba(0,0,0,.4);
-  --ox-shadow:0 24px 48px -20px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05);
-  --ox-grid:rgba(255,255,255,.02);
-  --ox-primary:#2dd4bf;
-}
-/* Invariant tokens */
+/* Canonical theme, generated from public/widgets/shared/widget-theme.css.
+   This block used to be a hand-written copy of the --ox-* tokens and had
+   drifted from the shared file (--ox-border at rgba(0,0,0,.08) against the
+   canonical rgba(15,23,42,.1)), so this widget and the static ones were two
+   design systems. See scripts/generate-widget-theme.mjs. */
+${WIDGET_THEME_CSS}
+
+/* Tokens this widget needs that the shared theme does not own: domain colors
+   for agent avatars and the run-status hues. */
 :root{
-  --ox-primary-rgb:0,201,167;
-  --ox-success:#22c55e;--ox-success-rgb:34,197,94;
-  --ox-danger:#f43f5e;
-  --ox-warn:#fbbf24;--ox-warn-rgb:251,191,36;
   --ox-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,monospace;
   --ox-font:-apple-system,BlinkMacSystemFont,'Inter',system-ui,sans-serif;
-  /* Domain color palette (matches widget-foundation.css) */
   --d-engineering:6,182,212;
   --d-product:22,163,74;
   --d-marketing:249,115,22;
@@ -105,7 +64,6 @@ export function buildLiveFeedWidget(opts: LiveFeedWidgetOptions): string {
   --d-sales:168,85,247;
   --d-operations:245,158,11;
   --d-orchestration:0,201,167;
-  /* Status colors */
   --s-running:6,182,212;
   --s-queued:168,85,247;
   --s-blocked:245,158,11;

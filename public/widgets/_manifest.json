@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-09-27T17:17:06.058Z",
+  "generatedAt": "2026-09-27T17:20:42.350Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -130,8 +130,8 @@
     },
     "initiative-pulse": {
       "file": "public/widgets/initiative-pulse.html",
-      "bytes": 108569,
-      "hash": "9c2b84db15ac",
+      "bytes": 109121,
+      "hash": "21544da6e247",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/components/domain-accent.css",

@@ -2814,32 +2814,41 @@ external: function (size) {
           return;
         }
 
-        if (!pulse) {
-          injectHtml(
+        /* The pulse snapshot and the live panel are separate sources. When the
+           panel above is already listing running workstreams, "no recent pulse
+           data" is true of this card but reads as though nothing is happening,
+           so the copy defers to what the reader can already see. */
+        function emptyState(recoveryFor, recoveryLabel) {
+          var liveRows =
+            window.OrgXLiveStore && window.OrgXLiveStore.liveRowCount
+              ? window.OrgXLiveStore.liveRowCount()
+              : 0;
+          var title = liveRows ? "Live work only" : "Awaiting telemetry";
+          var desc = liveRows
+            ? "Current workstreams are shown above. The pulse snapshot for this initiative has not been recorded yet."
+            : "No recent pulse data was found for this initiative.";
+          return (
             '<div class="empty-state">' +
-              '<div class="empty-icon">' +
-              icons.pulse(24) +
-              "</div>" +
-              '<div class="empty-title">Awaiting telemetry</div>' +
-              '<div class="empty-desc">No recent pulse data was found for this initiative.</div>' +
-              buildRecoveryCta(null, "Browse initiatives in OrgX") +
+            '<div class="empty-icon">' +
+            icons.pulse(24) +
+            "</div>" +
+            '<div class="empty-title">' + title + "</div>" +
+            '<div class="empty-desc">' + desc + "</div>" +
+            (recoveryLabel
+              ? buildRecoveryCta(recoveryFor, recoveryLabel)
+              : buildRecoveryCta(recoveryFor)) +
             "</div>"
           );
+        }
+
+        if (!pulse) {
+          injectHtml(emptyState(null, "Browse initiatives in OrgX"));
           return;
         }
 
         var normalized = normalizePulse(pulse);
         if (!normalized) {
-          injectHtml(
-            '<div class="empty-state">' +
-              '<div class="empty-icon">' +
-              icons.pulse(24) +
-              "</div>" +
-              '<div class="empty-title">Awaiting telemetry</div>' +
-              '<div class="empty-desc">No recent pulse data was found for this initiative.</div>' +
-              buildRecoveryCta(pulse) +
-            "</div>"
-          );
+          injectHtml(emptyState(pulse));
           return;
         }
 

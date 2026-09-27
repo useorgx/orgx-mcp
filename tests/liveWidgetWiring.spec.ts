@@ -447,3 +447,63 @@ describe('every wired widget attaches the live layer', () => {
     expect(html).not.toContain('shared/live-machine.js');
   });
 });
+
+describe('empty states defer to the live panel', () => {
+  it('does not claim "no data" while the panel is listing running work', async () => {
+    // The pulse snapshot and the live feed are separate sources. A card reading
+    // "Awaiting telemetry" above a panel listing four running workstreams is
+    // technically true and completely misleading.
+    mountWidget('initiative-pulse', {
+      live: {
+        ...GRANT,
+        feedType: 'initiative-pulse',
+        streamUrl: 'https://mcp.useorgx.com/live-feed/initiative-pulse/init-1/stream?t=tok',
+      },
+    });
+    FakeEventSource.latest.onopen?.();
+    emit({
+      type: 'snapshot',
+      ts: 1,
+      data: graphFrom([{ id: 'a', name: 'Deploy', status: 'running' }]),
+    });
+
+    const flow = document.getElementById('liveFlow')!;
+    expect(flow.textContent).toContain('Deploy');
+
+    // The card commits on a staged reveal timer, so wait for it to land before
+    // asserting — a bare negative assertion would pass against the skeleton.
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('Live work only');
+    });
+    expect(document.body.textContent).not.toContain('Awaiting telemetry');
+  });
+
+  it('still says "Awaiting telemetry" when there is genuinely nothing', async () => {
+    mountWidget('initiative-pulse', {});
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('Awaiting telemetry');
+    });
+    expect(document.body.textContent).not.toContain('Live work only');
+  });
+
+  it('reports the live row count across attached feeds', () => {
+    mountWidget('agent-status', {
+      live: { ...GRANT },
+    });
+    const store = (window as unknown as {
+      OrgXLiveStore: { liveRowCount(): number };
+    }).OrgXLiveStore;
+    expect(store.liveRowCount()).toBe(0);
+
+    FakeEventSource.latest.onopen?.();
+    emit({
+      type: 'snapshot',
+      ts: 1,
+      data: graphFrom([
+        { id: 'a', name: 'A', status: 'running' },
+        { id: 'b', name: 'B', status: 'queued' },
+      ]),
+    });
+    expect(store.liveRowCount()).toBe(2);
+  });
+});

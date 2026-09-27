@@ -653,6 +653,20 @@
   // users that have no live feed.
   // ===========================================================================
 
+  // Feeds attached on this page. A widget's own empty state can ask whether the
+  // live layer is showing anything, so a card cannot claim "no data" while the
+  // panel above it lists running work.
+  var attachedFeeds = [];
+
+  function liveRowCount() {
+    var total = 0;
+    for (var i = 0; i < attachedFeeds.length; i += 1) {
+      var state = attachedFeeds[i].store.getState();
+      total += state.rows ? state.rows.length : 0;
+    }
+    return total;
+  }
+
   function attachLiveFeed(options) {
     var opts = options || {};
     var grant = opts.grant;
@@ -714,7 +728,9 @@
     });
 
     store.start();
-    return { store: store, panel: panel };
+    var attached = { store: store, panel: panel };
+    attachedFeeds.push(attached);
+    return attached;
   }
 
   /**
@@ -741,6 +757,7 @@
   global.OrgXLiveStore = {
     attachLiveFeed: attachLiveFeed,
     ensureLiveMount: ensureLiveMount,
+    liveRowCount: liveRowCount,
     createLiveStore: createLiveStore,
     createLogger: createLogger,
     createSseTransport: createSseTransport,
