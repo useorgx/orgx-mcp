@@ -89,8 +89,11 @@
     '.oxlp-meta{display:flex;align-items:center;gap:8px;flex:none}',
     '.oxlp-phase{font-size:.68rem;letter-spacing:.03em;text-transform:uppercase;color:var(--ox-text-dim,#657188);font-variant-numeric:tabular-nums}',
     /* Fixed-width track: a progress change must not move the text beside it. */
-    '.oxlp-track{width:44px;height:3px;border-radius:2px;background:var(--ox-well,#f1f5f9);overflow:hidden;flex:none}',
-    '.oxlp-fill{height:100%;background:rgb(var(--ox-primary-rgb,0,201,167));transition:width .45s cubic-bezier(.4,0,.2,1)}',
+    '.oxlp-track{display:block;width:44px;height:3px;border-radius:2px;background:var(--ox-well,#f1f5f9);overflow:hidden;flex:none}',
+    // display:block is load-bearing: the fill is a <span> inside a non-flex
+    // parent, so without it the element stays inline, width:% is ignored, and
+    // the bar renders 0px wide however much progress a node reports.
+    '.oxlp-fill{display:block;height:100%;width:0;background:rgb(var(--ox-primary-rgb,0,201,167));transition:width .45s cubic-bezier(.4,0,.2,1)}',
     '.oxlp-empty{padding:16px 0;text-align:center;font-size:.78rem;color:var(--ox-text-dim,#657188)}',
     '.oxlp-retry{appearance:none;border:1px solid var(--ox-border-strong,rgba(0,0,0,.15));background:transparent;',
     'color:var(--ox-text,#0f172a);font:inherit;font-size:.72rem;padding:3px 10px;border-radius:6px;cursor:pointer}',
@@ -104,6 +107,14 @@
     /* Exit collapses height so the list closes the gap without a jump. */
     '.oxlp-row[data-anim="exit"]{animation:oxlp-exit .24s ease-in forwards;pointer-events:none}',
     '@keyframes oxlp-exit{to{opacity:0;min-height:0;height:0;padding-top:0;padding-bottom:0;margin-top:-6px}}',
+    // Narrow widths: the reserved chip costs the headline ~104px, and the
+    // headline is the more useful of the two on a phone. Stacking gives it the
+    // full width. It stays single-line and truncated — letting it wrap would
+    // make header height depend on copy length, reintroducing the shift.
+    '@media(max-width:440px){',
+    '.oxlp-head{flex-direction:column-reverse;align-items:stretch;gap:3px}',
+    '.oxlp-conn{justify-content:flex-start;min-width:0}',
+    '.oxlp-headline{width:100%}}',
     '@media(prefers-reduced-motion:reduce){',
     '.oxlp-row[data-anim]{animation:none!important}',
     '.oxlp-fill{transition:none}',

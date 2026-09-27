@@ -198,6 +198,15 @@ describe('no layout shift', () => {
     expect((track.querySelector('.oxlp-fill') as HTMLElement).style.width).toBe('40%');
   });
 
+  it('makes the progress bar a block so its percentage width actually renders', () => {
+    // jsdom reports the inline style regardless of layout, so this asserts the
+    // declaration directly: as an inline <span> in a non-flex parent the fill
+    // computed to 0px wide in a real browser however much progress was set.
+    const css = document.getElementById('orgx-live-panel-style')!.textContent!;
+    expect(css).toMatch(/\.oxlp-fill\{[^}]*display:block/);
+    expect(css).toMatch(/\.oxlp-track\{[^}]*display:block/);
+  });
+
   it('treats a finished row with no reported progress as full', () => {
     panel.apply(snapshot([node('a', 'terminal')]));
     const fill = rows()[0]!.querySelector('.oxlp-fill') as HTMLElement;
@@ -225,6 +234,14 @@ describe('no layout shift', () => {
     const css = document.getElementById('orgx-live-panel-style')!.textContent!;
     expect(css).toMatch(/\.oxlp-row\{[\s\S]*?min-height:\s*\d+px/);
     expect(css).toMatch(/\.oxlp-row\{[\s\S]*?contain:\s*layout/);
+  });
+
+  it('stacks the header on narrow screens without letting the headline wrap', () => {
+    const css = document.getElementById('orgx-live-panel-style')!.textContent!;
+    expect(css).toContain('@media(max-width:440px)');
+    // Wrapping would make header height depend on copy length, which is the
+    // layout shift this component exists to avoid.
+    expect(css).not.toMatch(/max-width:440px\)\{[\s\S]*?white-space:\s*normal/);
   });
 
   it('disables motion when the viewer asked for reduced motion', () => {

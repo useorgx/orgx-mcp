@@ -211,16 +211,11 @@ describe('feed registry', () => {
     expect(graph.title).toBe('Operation Prism');
   });
 
-  it('treats a pending decision as actionable blocked work', () => {
-    const graph = FEEDS.decisions!.normalize(
-      { decisions: [{ id: 'd1', title: 'Ship v3?', status: 'pending' }] },
-      'init-1'
-    );
-    expect(graph.nodes[0]).toMatchObject({ kind: 'decision', phase: 'blocked' });
-    expect(graph.nodes[0]!.blockers?.[0]).toMatchObject({
-      actionable: true,
-      resolveTool: 'orgx_decide',
-    });
+  it('ships only feeds whose upstream the DO can actually read', () => {
+    // decisions and execution-room are intentionally absent: LiveFeedDO polls
+    // with a service key and neither upstream accepts one, so registering them
+    // would mean a widget subscribing to a feed that 401s on its first poll.
+    expect(FEED_TYPES.sort()).toEqual(['agent-status', 'initiative-pulse']);
   });
 
   it('survives empty, null and unexpected payloads', () => {

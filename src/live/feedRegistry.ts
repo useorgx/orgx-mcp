@@ -231,60 +231,22 @@ export const FEEDS: Record<string, FeedDefinition> = {
     },
   },
 
-  decisions: {
-    type: 'decisions',
-    label: 'Decision queue',
-    // A decision queue changes on human time, not machine time.
-    cadence: CALM,
-    buildUrl: (feedId, apiBase) =>
-      `${apiBase}/api/live/decisions?initiative=${encodeURIComponent(feedId)}`,
-    normalize(raw, feedId) {
-      const record = asRecord(raw);
-      const decisions = readArray(record, ['decisions', 'data', 'items', 'pending']);
-      return buildWorkGraph({
-        feedType: 'decisions',
-        feedId,
-        nodes: compact(decisions.map(nodeFromDecision)),
-      });
-    },
-  },
-
-  'execution-room': {
-    type: 'execution-room',
-    label: 'Execution room',
-    cadence: RESPONSIVE,
-    buildUrl: (feedId, apiBase) =>
-      `${apiBase}/api/live/execution-room?initiative_id=${encodeURIComponent(feedId)}`,
-    normalize(raw, feedId) {
-      const record = asRecord(raw);
-      const room = asRecord(record.room ?? record.projection ?? record);
-      const nodes: WorkNode[] = [];
-
-      // The execution room is the closest upstream analogue of what a founder
-      // wants from a widget: lanes of work with their current run state.
-      const lanes = readArray(room, ['lanes', 'workstreams', 'rows']);
-      for (let index = 0; index < lanes.length; index += 1) {
-        const node = nodeFromWorkstream(lanes[index], index);
-        if (node) nodes.push(node);
-      }
-
-      const agents = readArray(room, ['agents', 'runs']);
-      for (let index = 0; index < agents.length; index += 1) {
-        const node = nodeFromAgent(agents[index], index);
-        if (node) nodes.push(node);
-      }
-
-      return buildWorkGraph({
-        feedType: 'execution-room',
-        feedId,
-        nodes,
-        ...(readString(room, ['title', 'initiative_title']) !== undefined
-          ? { title: readString(room, ['title', 'initiative_title']) }
-          : {}),
-      });
-    },
-  },
 };
+
+// ── Not yet shipped ─────────────────────────────────────────────────────────
+// `decisions` and `execution-room` are deliberately absent from FEEDS.
+//
+// LiveFeedDO polls with ORGX_SERVICE_KEY, and neither upstream accepts it:
+//   - There is no GET /api/live/decisions at all — only .../decisions/approve.
+//     The queue is served by /api/decisions, which authenticates through
+//     getUserContext() (a Clerk user session).
+//   - GET /api/live/execution-room exists but gates on hasViewerAuthSignal(),
+//     i.e. a Clerk bearer token or session cookie.
+//
+// Registering them anyway would mean a widget subscribing to a feed that 404s or
+// 401s on its first poll. Adding them needs a service-key-authenticated read on
+// the OrgX side (lib/server/cronAuth.ts already recognizes the x-orgx-service-key
+// header that the DO sends); `nodeFromDecision` below is kept ready for that.
 
 export const FEED_TYPES = Object.keys(FEEDS);
 

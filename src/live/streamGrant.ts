@@ -79,6 +79,9 @@ export async function buildStreamGrant(input: {
  * Keeping this beside the registry means a tool becomes live by gaining a row
  * here rather than by growing its own token plumbing.
  */
+// Only feeds present in FEEDS may be bound here; buildStreamGrant returns null
+// for anything else, so a stale binding degrades to a static widget rather than
+// a broken subscription.
 export const TOOL_FEED_BINDINGS: Record<
   string,
   { feedType: string; refreshTool: string }
@@ -88,7 +91,6 @@ export const TOOL_FEED_BINDINGS: Record<
     feedType: 'initiative-pulse',
     refreshTool: 'get_initiative_pulse',
   },
-  orgx_tail: { feedType: 'execution-room', refreshTool: 'orgx_tail' },
   spawn_agent_task: { feedType: 'agent-status', refreshTool: 'get_agent_status' },
   delegate_agent_task: { feedType: 'agent-status', refreshTool: 'get_agent_status' },
   orgx_spawn: { feedType: 'agent-status', refreshTool: 'get_agent_status' },
