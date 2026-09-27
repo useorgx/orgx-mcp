@@ -12,7 +12,14 @@
  */
 
 export const RUN_MCP_TOKEN_PREFIX = 'oxrun1';
+/**
+ * v2 binds the token to one run: audience `orgx-mcp`, required workspace and
+ * run, granted tool scopes and a jti. The worker forwards rid/wid/scp in its
+ * actor token so the API can refuse calls once the run has ended.
+ */
+export const RUN_MCP_TOKEN_V2_PREFIX = 'oxrun2';
 export const RUN_MCP_TOKEN_ISSUER = 'orgx-run-mcp';
+export const RUN_MCP_TOKEN_AUDIENCE = 'orgx-mcp';
 const MIN_SECRET_LENGTH = 32;
 
 export interface RunMcpTokenPayload {
@@ -21,6 +28,12 @@ export interface RunMcpTokenPayload {
   wid: string | null;
   rid: string | null;
   exp: number;
+  /** v2 only */
+  v?: 2;
+  aud?: string;
+  scp?: string[];
+  jti?: string;
+  iat?: number;
 }
 
 /** Shared signing secret: a dedicated key if configured, else the service key. */
@@ -37,7 +50,9 @@ export function runMcpTokenSecret(env: {
 
 export function isRunMcpToken(token: string | null | undefined): boolean {
   return (
-    typeof token === 'string' && token.startsWith(`${RUN_MCP_TOKEN_PREFIX}.`)
+    typeof token === 'string' &&
+    (token.startsWith(`${RUN_MCP_TOKEN_PREFIX}.`) ||
+      token.startsWith(`${RUN_MCP_TOKEN_V2_PREFIX}.`))
   );
 }
 
@@ -109,6 +124,21 @@ export async function verifyRunMcpToken(
   }
 
   if (payload.iss !== RUN_MCP_TOKEN_ISSUER || !payload.uid) return null;
+  if (parts[0] === RUN_MCP_TOKEN_V2_PREFIX) {
+    if (
+      payload.v !== 2 ||
+      payload.aud !== RUN_MCP_TOKEN_AUDIENCE ||
+      !payload.wid ||
+      !payload.rid ||
+      !Array.isArray(payload.scp) ||
+      !payload.scp.every((scope) => typeof scope === 'string')
+    ) {
+      return null;
+    }
+  } else if (payload.v !== undefined) {
+    // A v1 prefix may not carry a v2 body.
+    return null;
+  }
   const nowSec = Math.floor(nowMs / 1000);
   if (typeof payload.exp !== 'number' || payload.exp <= nowSec) return null;
 

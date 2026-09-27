@@ -47,16 +47,32 @@ function base64Url(input: ArrayBuffer): string {
     .replace(/=+$/, '');
 }
 
-async function signGatewayActorToken(opts: {
-  userId: string;
-  userEmail?: string | null;
-  orgxUserId?: string | null;
-  secret: string;
-}): Promise<string> {
+/**
+ * Delegation claims for run-token sessions: the agent run and workspace the
+ * call is bound to, and the run's granted tool scopes. The API refuses calls
+ * for a run that has ended or belongs to someone else, and pins the workspace.
+ */
+export type GatewayDelegationClaims = {
+  runId?: string | null;
+  workspaceId?: string | null;
+  scopes?: readonly string[] | null;
+};
+
+async function signGatewayActorToken(
+  opts: {
+    userId: string;
+    userEmail?: string | null;
+    orgxUserId?: string | null;
+    secret: string;
+  } & GatewayDelegationClaims
+): Promise<string> {
   const now = Date.now();
   const normalizedEmail = opts.userEmail?.trim().toLowerCase() ?? '';
   const orgxUserId = opts.orgxUserId ?? '';
-  const cacheKey = `${opts.secret}::${opts.userId}::${normalizedEmail}::${orgxUserId}`;
+  const runId = opts.runId?.trim() ?? '';
+  const workspaceId = runId ? opts.workspaceId?.trim() ?? '' : '';
+  const scopes = runId && opts.scopes ? [...opts.scopes] : null;
+  const cacheKey = `${opts.secret}::${opts.userId}::${normalizedEmail}::${orgxUserId}::${runId}::${workspaceId}::${scopes?.join(',') ?? ''}`;
   const cached = actorTokenCache.get(cacheKey);
   if (cached && cached.expiresAt > now) {
     return cached.token;
@@ -72,6 +88,9 @@ async function signGatewayActorToken(opts: {
     // as a verified fast path (existence + email cross-check) and falls back to
     // resolving `sub` (Clerk id) + email when it is absent or disagrees.
     ...(orgxUserId ? { orgx_user_id: orgxUserId } : {}),
+    ...(runId ? { rid: runId } : {}),
+    ...(workspaceId ? { wid: workspaceId } : {}),
+    ...(scopes ? { scp: scopes } : {}),
     iat: now,
     exp: now + ACTOR_TOKEN_TTL_MS,
   };
@@ -258,6 +277,9 @@ export async function callOrgxApiRaw(
     userId?: string | null;
     userEmail?: string | null;
     orgxUserId?: string | null;
+    runId?: string | null;
+    workspaceId?: string | null;
+    scopes?: readonly string[] | null;
     /**
      * Retry a configured secondary API origin when the primary is unavailable.
      * Disable this for non-idempotent operations that must fail closed rather
@@ -285,6 +307,9 @@ export async function callOrgxApiRaw(
         userId: opts.userId,
         userEmail: opts.userEmail,
         orgxUserId: opts.orgxUserId,
+        runId: opts.runId,
+        workspaceId: opts.workspaceId,
+        scopes: opts.scopes,
         secret: env.ORGX_INTERNAL_SECRET,
       })
     );
@@ -508,13 +533,16 @@ export async function callOrgxApiJson(
     userEmail?: string | null;
     orgxUserId?: string | null;
     allowFallback?: boolean;
-  }
+  } & GatewayDelegationClaims
 ) {
   const response = await callOrgxApiRaw(env, path, init, {
     accept: 'application/json',
     userId: opts?.userId ?? undefined,
     userEmail: opts?.userEmail ?? undefined,
     orgxUserId: opts?.orgxUserId ?? undefined,
+    runId: opts?.runId,
+    workspaceId: opts?.workspaceId,
+    scopes: opts?.scopes,
     allowFallback: opts?.allowFallback,
   });
   const resolvedOrigin =
