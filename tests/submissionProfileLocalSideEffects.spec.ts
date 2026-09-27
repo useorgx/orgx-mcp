@@ -440,6 +440,8 @@ async function expectNoWorkerLocalSideEffects(params: {
 }
 
 describe('submission profile worker-local side-effect suppression', () => {
+  // Drives seven tools through the full worker surface; see the note in
+  // tests/widgetSharedComponentInlining.spec.ts on why the budget is explicit.
   it('executes all seven Claude directory tools without worker-local persistence or logging', async () => {
     const directoryTools = new Set<string>(CLAUDE_DIRECTORY_SURFACE);
     await expectNoWorkerLocalSideEffects({
@@ -449,7 +451,7 @@ describe('submission profile worker-local side-effect suppression', () => {
         directoryTools.has(call.name)
       ),
     });
-  });
+  }, 20000);
 
   it('executes all nine submitted ChatGPT informational tools without worker-local persistence or logging', async () => {
     await expectNoWorkerLocalSideEffects({

@@ -100,6 +100,9 @@ describe('MCP Apps shared-component inlining', () => {
     ).toHaveLength(1);
   });
 
+  // Inlines the ~316KB MCP Apps SDK into every registered widget, so this is
+  // seconds of real work rather than a slow assertion. Explicit budget keeps it
+  // from flaking when the suite is under parallel load.
   it('keeps the SDK source inside script elements for every registered widget resource', () => {
     const sharedComponents = Object.fromEntries(
       MCP_APPS_SHARED_COMPONENT_PATHS.map((path) => [
@@ -169,7 +172,7 @@ describe('MCP Apps shared-component inlining', () => {
         expect(sanitized).not.toContain("from './shared/utils.js'");
       }
     }
-  });
+  }, 20000);
 
   it('preserves replacement tokens in interaction-kit assets', () => {
     const html = `<link rel="stylesheet" href="shared/interaction-kit.css" />

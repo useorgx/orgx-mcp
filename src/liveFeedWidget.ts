@@ -594,6 +594,104 @@ button[data-oxhref]:not(.footer-link){background:none;border:none;padding:0;font
     );
   }
 
+  /* ── Canonical payload adapter ──────────────────────────────────────────
+     LiveFeedDO now emits the canonical WorkGraph from src/live/workGraph.ts
+     (a flat 'nodes' list with a shared phase vocabulary) instead of passing the
+     raw OrgX API response through. These renderers predate that, so the graph is
+     mapped back onto the shapes they already read.
+
+     Raw payloads are still accepted: demo mode builds them by hand, and a client
+     reconnecting with 'since=' can replay events cached before a deploy. A
+     payload carrying 'nodes' + 'summary' is canonical; anything else is raw. */
+  function isWorkGraph(payload) {
+    return Boolean(payload && Array.isArray(payload.nodes) && payload.summary);
+  }
+
+  /* A canonical node delta, as opposed to a legacy 'delta' frame that carried a
+     whole raw payload. The frame type alone cannot tell these apart, so
+     discriminate on the delta's own fields. */
+  function isNodeDelta(payload) {
+    return Boolean(
+      payload && (Array.isArray(payload.changed) || Array.isArray(payload.removed))
+    );
+  }
+
+  function nodesOfKind(graph, kind) {
+    var out = [];
+    for (var i = 0; i < graph.nodes.length; i++) {
+      if (graph.nodes[i] && graph.nodes[i].kind === kind) out.push(graph.nodes[i]);
+    }
+    return out;
+  }
+
+  /* A canonical node's blocked phase is authoritative; its upstream 'status'
+     string may still say "running". Showing the raw status here would undo the
+     normalizer's whole point. */
+  function statusForNode(node) {
+    if (node.phase === 'blocked') return 'blocked';
+    if (node.phase === 'executing') return 'running';
+    if (node.phase === 'terminal') return 'done';
+    if (node.phase === 'pending') return 'queued';
+    return node.status || 'idle';
+  }
+
+  function adaptAgentStatus(graph) {
+    var agents = nodesOfKind(graph, 'agent').map(function (node) {
+      return {
+        id: node.id,
+        name: node.title,
+        domain: node.domain || '',
+        status: statusForNode(node),
+        /* The normalizer parks the agent's current activity on 'owner'. */
+        currentTask: node.owner || '',
+        workstream: node.parentId || '',
+        progress: node.progress,
+        blockers: node.blockers || []
+      };
+    });
+    return {
+      agents: agents,
+      summary: graph.summary,
+      proof_handoff: graph.proofHandoff
+    };
+  }
+
+  function adaptInitiativePulse(graph) {
+    var root = nodesOfKind(graph, 'initiative')[0] || null;
+    var streams = nodesOfKind(graph, 'workstream').map(function (node) {
+      return {
+        name: node.title,
+        domain: node.domain || '',
+        status: statusForNode(node),
+        progress: typeof node.progress === 'number' ? node.progress : 0,
+        blockers: node.blockers || []
+      };
+    });
+    return {
+      initiatives: [{
+        id: root ? root.id : graph.feedId,
+        title: (root && root.title) || graph.title || '',
+        status: root ? statusForNode(root) : '—',
+        /* Prefer the rollup: it counts every node, where the root node's own
+           progress is only whatever upstream happened to stamp on it. */
+        progress: graph.summary.progress,
+        risk_level: graph.summary.blocked > 0 ? 'high' : 'low',
+        workstreamCount: streams.length,
+        activeRuns: graph.summary.running,
+        workstreams: streams
+      }],
+      headline: graph.headline,
+      proof_handoff: graph.proofHandoff
+    };
+  }
+
+  function adaptPayload(payload) {
+    if (!isWorkGraph(payload)) return payload;
+    return FEED_TYPE === 'agent-status'
+      ? adaptAgentStatus(payload)
+      : adaptInitiativePulse(payload);
+  }
+
   /* ── Agent status renderer ── */
   function renderAgentStatus(data) {
     var agents  = data.agents || [];
@@ -764,10 +862,60 @@ button[data-oxhref]:not(.footer-link){background:none;border:none;padding:0;font
   }
 
   /* ── Event dispatcher ── */
+  /* Last canonical graph, so a 'delta' frame can be folded onto it. The DO now
+     sends only changed nodes; re-rendering from a delta alone would drop every
+     node it did not mention. */
+  var heldGraph = null;
+
+  function foldDelta(delta) {
+    if (!heldGraph) return null;
+    var byId = {};
+    var order = [];
+    var i;
+    for (i = 0; i < heldGraph.nodes.length; i++) {
+      byId[heldGraph.nodes[i].id] = heldGraph.nodes[i];
+      order.push(heldGraph.nodes[i].id);
+    }
+    var changed = delta.changed || [];
+    for (i = 0; i < changed.length; i++) {
+      if (!byId[changed[i].id]) order.push(changed[i].id);
+      byId[changed[i].id] = changed[i];
+    }
+    var removed = delta.removed || [];
+    for (i = 0; i < removed.length; i++) delete byId[removed[i]];
+
+    var nodes = [];
+    for (i = 0; i < order.length; i++) {
+      if (byId[order[i]]) nodes.push(byId[order[i]]);
+    }
+    return {
+      feedType: heldGraph.feedType,
+      feedId: heldGraph.feedId,
+      title: delta.title || heldGraph.title,
+      nodes: nodes,
+      summary: delta.summary || heldGraph.summary,
+      headline: delta.headline,
+      updatedAt: delta.updatedAt,
+      proofHandoff: heldGraph.proofHandoff
+    };
+  }
+
   function handleData(event) {
     if (event.ts) lastTs = event.ts;
-    var data = event.data;
-    if (!data) return;
+    var payload = event.data;
+    if (!payload) return;
+
+    if (isNodeDelta(payload)) {
+      var folded = foldDelta(payload);
+      /* No held snapshot means this client joined mid-stream on a 'since='
+         replay. Skip the delta rather than render a partial graph; the next
+         snapshot will resynchronize. */
+      if (!folded) return;
+      payload = folded;
+    }
+    if (isWorkGraph(payload)) heldGraph = payload;
+
+    var data = adaptPayload(payload);
 
     updatedRow.textContent = 'Updated ' + fmt(event.ts || Date.now());
 

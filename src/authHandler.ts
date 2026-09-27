@@ -35,6 +35,7 @@ import {
   verifyStreamTokenDetailed,
   withStreamTokenExpiry,
 } from './streamToken';
+import { FEED_ROUTE_PATTERN } from './live/feedRegistry';
 import { verifyMcpIdentityTokenDetailed } from './mcpIdentityToken';
 import { buildAuthErrorResponse } from './authErrors';
 import { secureCompare } from './secureCompare';
@@ -1302,17 +1303,16 @@ tool_timeout_sec = 60
     }
 
     // =========================================================================
-    // Live Feed SSE — agent-status + initiative-pulse streaming
+    // Live Feed SSE — one route for every feed in src/live/feedRegistry.ts
     //
-    // GET /live-feed/agent-status/:initiativeId/stream
-    // GET /live-feed/initiative-pulse/:initiativeId/stream
+    // GET /live-feed/:feedType/:feedId/stream
     //
     // The DO is keyed by "feedType:feedId" so each (type, id) pair shares one
     // polling instance with a 10-second alarm cycle.
     // =========================================================================
-    const liveFeedMatch = url.pathname.match(
-      /^\/live-feed\/(agent-status|initiative-pulse)\/([^/]+)\/stream$/
-    );
+    // Pattern is derived from the feed registry so a new feed cannot be
+    // reachable in the DO but 404 at the edge (or the reverse).
+    const liveFeedMatch = url.pathname.match(FEED_ROUTE_PATTERN);
     if (liveFeedMatch) {
       if (request.method === 'OPTIONS') {
         return new Response(null, {
