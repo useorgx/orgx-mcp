@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-27T15:46:01.146Z",
-  "sourceHash": "9e38a24fada66dbb",
+  "generatedAt": "2026-09-27T16:41:40.905Z",
+  "sourceHash": "948aecbb20b98bee",
   "version": "1.0.0",
   "totalTools": 89,
   "categories": [
@@ -3460,7 +3460,7 @@
     {
       "id": "orgx_search",
       "title": "Search OrgX",
-      "description": "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Finds OrgX entities, decisions, artifacts, memory, and the work ledger (receipts, work sessions, outreach touches). A query without type runs a mixed relevance search and records metered MCP allowance usage; typed searches provide exhaustive cursor/offset pagination without changing business records. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use structuredContent.next_call exactly when pagination.has_more=true, orgx_inspect for one selected result, or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.",
+      "description": "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Finds OrgX entities, decisions, artifacts, memory, and the work ledger (receipts, work sessions, outreach touches). scope=work_ledger searches Agent Work Receipts as a work graph: what was asked, whether each acceptance criterion was met, how work joins across sessions and people, which initiative it serves, and what is still uncertain. A query without type runs a mixed relevance search and records metered MCP allowance usage; typed searches provide exhaustive cursor/offset pagination without changing business records. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use structuredContent.next_call exactly when pagination.has_more=true, orgx_inspect for one selected result, or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -3533,6 +3533,31 @@
           "session_id": {
             "type": "string",
             "description": "Optional bootstrap/session identifier"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "entities",
+              "work_ledger"
+            ],
+            "description": "work_ledger searches Agent Work Receipts (one per piece of agent work) instead of entities. query takes free text plus exact filters: outcome:, verification:, accepted:, type:, area:, repo:, actor:, ws:, entity:, pr:, file:, since:, until:, conf:<0.6, unmet:tests|any, status: (workstream). Results say which terms matched."
+          },
+          "receipt_id": {
+            "type": "string",
+            "description": "With scope=work_ledger: one receipt in full, with its workstream, plan mapping, links and what is uncertain"
+          },
+          "workstream_id": {
+            "type": "string",
+            "description": "With scope=work_ledger: one workstream (work joined across people and sessions) with every member"
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "search",
+              "workstreams",
+              "review"
+            ],
+            "description": "With scope=work_ledger: search receipts (default), list workstreams, or the review queue of calls a person should make"
           }
         },
         "additionalProperties": false,

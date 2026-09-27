@@ -2570,6 +2570,57 @@ export class OrgXMcp extends McpAgent<
     });
   }
 
+  /**
+   * orgx_search scope=work_ledger: the workspace's Agent Work Receipts as a work graph
+   * (GET /api/v1/work-ledger/*). One receipt by id, one workstream by id, the review
+   * queue, or a ranked search whose query takes key:value filters. Read-only.
+   */
+  private async searchWorkLedger(args: Record<string, unknown>, userId: string | null) {
+    const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+    const workspaceId = str(args.workspace_id) ?? this.sessionContext?.workspaceId ?? null;
+    const limit = typeof args.limit === 'number' && Number.isInteger(args.limit) ? Math.min(Math.max(args.limit, 1), 100) : 25;
+    const qs = (extra: Record<string, string | number | null>) => {
+      const p = new URLSearchParams();
+      if (workspaceId) p.set('workspace_id', workspaceId);
+      for (const [k, v] of Object.entries(extra)) if (v !== null && v !== '') p.set(k, String(v));
+      const t = p.toString();
+      return t ? `?${t}` : '';
+    };
+    const receiptId = str(args.receipt_id);
+    const workstreamId = str(args.workstream_id);
+    const view = str(args.view);
+    const path = receiptId
+      ? `/api/v1/work-ledger/receipts/${encodeURIComponent(receiptId)}${qs({})}`
+      : workstreamId
+        ? `/api/v1/work-ledger/workstreams${qs({ id: workstreamId })}`
+        : view === 'review'
+          ? `/api/v1/work-ledger/review${qs({ limit })}`
+          : view === 'workstreams'
+            ? `/api/v1/work-ledger/workstreams${qs({ q: str(args.query), limit })}`
+            : `/api/v1/work-ledger/receipts${qs({ q: str(args.query) ?? '', limit })}`;
+    const body = await this.fetchOrgxJsonOrNull<{ ok?: boolean; data?: Record<string, unknown> }>(path, userId);
+    if (!body?.data) {
+      return this.toolError('The work ledger could not be read. Check the id, or that receipts have been imported (trail sync --receipts, or POST /api/v1/agent-work-receipts).', {
+        code: 'work_ledger_unavailable',
+        status: 404,
+        details: { path: path.split('?')[0] },
+      });
+    }
+    const payload = {
+      _v2_tool: 'orgx_search',
+      scope: 'work_ledger',
+      view: receiptId ? 'receipt' : workstreamId ? 'workstream' : view ?? 'search',
+      ...body.data,
+      next_calls: receiptId || workstreamId
+        ? [{ tool: 'orgx_search', args: { scope: 'work_ledger', view: 'review' } }]
+        : [{ tool: 'orgx_search', args: { scope: 'work_ledger', receipt_id: '<id from results>' } }],
+    };
+    return {
+      content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 1).slice(0, 60_000) }],
+      structuredContent: payload,
+    };
+  }
+
   private async fetchBroadOrgxSearch(params: {
     query: string;
     limit: number;
@@ -5205,6 +5256,9 @@ export class OrgXMcp extends McpAgent<
         }
 
         case 'orgx_search': {
+          if (args.scope === 'work_ledger') {
+            return this.searchWorkLedger(args, resolvedUserId);
+          }
           const query =
             typeof args.query === 'string' && args.query.trim().length > 0
               ? args.query.trim()
