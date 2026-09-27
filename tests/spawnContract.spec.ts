@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildOrgxSpawnForwardArgs,
+  runtimeRoutingFields,
   buildSpawnGuardForwardArgs,
   validateSpawnContract,
 } from '../src/spawnContract';
@@ -144,3 +145,24 @@ describe('buildSpawnGuardForwardArgs', () => {
     });
   });
 });
+
+describe('orgx_spawn runtime choice', () => {
+  it('maps each runtime onto the app routing fields', () => {
+    expect(runtimeRoutingFields('managed_openai')).toEqual({ execution_target: 'cloud', managed_runtime: 'openai' });
+    expect(runtimeRoutingFields('managed_anthropic')).toEqual({ execution_target: 'cloud', managed_runtime: 'anthropic' });
+    expect(runtimeRoutingFields('cloud_claude')).toEqual({ execution_target: 'cloud', sdk_backend: 'claude' });
+    expect(runtimeRoutingFields('cloud_openai')).toEqual({ execution_target: 'cloud', sdk_backend: 'openai' });
+    expect(runtimeRoutingFields('local')).toEqual({ execution_target: 'local' });
+    expect(runtimeRoutingFields('auto')).toEqual({});
+    expect(runtimeRoutingFields('nonsense')).toEqual({});
+  });
+
+  it('forwards the mapped fields, drops runtime itself, and never overrides explicit routing', () => {
+    const out = buildOrgxSpawnForwardArgs('spawn_agent_task', { title: 'x', instructions: 'y', agent_type: 'engineering', runtime: 'managed_openai' });
+    expect(out).toMatchObject({ execution_target: 'cloud', managed_runtime: 'openai' });
+    expect(out).not.toHaveProperty('runtime');
+    const explicit = buildOrgxSpawnForwardArgs('spawn_agent_task', { title: 'x', runtime: 'cloud_claude', sdk_backend: 'openai' });
+    expect(explicit.sdk_backend).toBe('openai');
+  });
+});
+

@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-25T06:01:59.113Z",
-  "sourceHash": "626a141974813427",
+  "generatedAt": "2026-09-27T15:46:01.146Z",
+  "sourceHash": "9e38a24fada66dbb",
   "version": "1.0.0",
   "totalTools": 89,
   "categories": [
@@ -3650,6 +3650,18 @@
             "type": "number",
             "minimum": 0,
             "description": "Optional per-task hard cost ceiling in USD. If the estimate exceeds this, OrgX should block, downgrade, or request approval before dispatch."
+          },
+          "runtime": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "cloud_claude",
+              "cloud_openai",
+              "managed_openai",
+              "managed_anthropic",
+              "local"
+            ],
+            "description": "Optional runtime OrgX runs the work on. Omit or auto to let OrgX choose. cloud_claude / cloud_openai: OrgX cloud on the Claude Agent SDK or OpenAI Responses. managed_openai / managed_anthropic: the OpenAI Agents API or Claude Managed Agents under OrgX governance. local: a paired local peer (Claude Code, Codex, OpenClaw) on the user machine."
           },
           "idempotency_key": {
             "type": "string",
