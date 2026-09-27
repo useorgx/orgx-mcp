@@ -29,7 +29,7 @@
   /* Type */
   --ox-text: #f8fafc;
   --ox-text-muted: rgba(255, 255, 255, 0.5);
-  --ox-text-faint: rgba(255, 255, 255, 0.32);
+  --ox-text-faint: rgba(255, 255, 255, 0.46);
 
   /* Status */
   --ox-lime: #bfff00;
@@ -379,7 +379,7 @@ body::before {
   justify-content: center;
   gap: 8px;
   font-size: 0.73rem;
-  color: var(--ox-text-faint);
+  color: var(--ox-text-muted);
 }
 
 .auth-foot a {

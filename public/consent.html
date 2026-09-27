@@ -160,23 +160,23 @@
         overflow: hidden;
       }
 
+      /* Aligned to the row name, not to the card edge: chevron (13) + gap (9)
+         + icon (16) + gap (9) + toggle inset (4). */
       .scope__detail p {
         margin: 0;
-        padding: 0 8px 12px 26px;
+        padding: 0 8px 12px 51px;
         font-size: 0.76rem;
-        line-height: 1.55;
+        line-height: 1.6;
         color: var(--ox-text-muted);
       }
 
-      .scope__detail dt {
-        display: inline;
-        font-weight: 600;
-        color: rgba(255, 255, 255, 0.62);
+      .scope__detail p + p {
+        padding-top: 0;
       }
 
-      .scope__detail dd {
-        display: inline;
-        margin: 0;
+      .scope__detail b {
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.64);
       }
 
       /* ── Segmented level control ──────────────────────────────────────── */
@@ -184,9 +184,9 @@
       .levels {
         display: inline-flex;
         flex: 0 0 auto;
-        padding: 3px;
+        padding: 2px;
         gap: 2px;
-        border-radius: 11px;
+        border-radius: 12px;
         border: 1px solid rgba(255, 255, 255, 0.09);
         background: rgba(0, 0, 0, 0.32);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
@@ -195,10 +195,10 @@
       .level {
         position: relative;
         min-width: 58px;
-        min-height: 38px;
+        min-height: 44px;
         padding: 0 11px;
         border: 0;
-        border-radius: 8px;
+        border-radius: 10px;
         background: transparent;
         color: rgba(255, 255, 255, 0.4);
         font: inherit;
@@ -206,6 +206,13 @@
         font-weight: 600;
         line-height: 1;
         cursor: pointer;
+        /* Selection glow and focus ring both live in box-shadow, so they are
+           composed through a variable. Declaring them as two competing rules
+           let the later one silently erase the other — and the one that lost
+           was the focus ring on the selected chip, which is precisely where
+           roving tabindex puts focus. */
+        --chip-shadow: 0 0 #0000;
+        box-shadow: var(--chip-shadow);
         transition:
           color 160ms var(--ox-ease),
           background 160ms var(--ox-ease),
@@ -222,21 +229,27 @@
         transform: scale(0.97);
       }
 
-      .level:focus-visible {
-        outline: none;
-        box-shadow: 0 0 0 2px rgba(var(--ox-primary-rgb), 0.5);
-        z-index: 1;
-      }
-
       .level[aria-checked='true'] {
         color: var(--ox-primary-contrast);
         background: rgb(var(--sel-rgb, var(--ox-muted-rgb)));
-        box-shadow: 0 8px 18px -12px rgba(var(--sel-rgb), 0.9);
+        --chip-shadow: 0 8px 18px -12px rgba(var(--sel-rgb), 0.9);
       }
 
+      /* None is the absence of a grant, so it must not glow like one. It
+         reads as selected-but-inert: legible, never luminous. */
       .level[data-value='none'][aria-checked='true'] {
-        --sel-rgb: var(--ox-muted-rgb);
-        color: #0b1220;
+        background: rgba(255, 255, 255, 0.13);
+        color: rgba(255, 255, 255, 0.88);
+        --chip-shadow: 0 0 #0000;
+      }
+
+      /* Last, so the ring always survives — stacked over any selection glow. */
+      .level:focus-visible {
+        outline: none;
+        box-shadow:
+          0 0 0 2px rgba(var(--ox-primary-rgb), 0.85),
+          var(--chip-shadow);
+        z-index: 1;
       }
 
       .level[data-value='read'][aria-checked='true'] {
@@ -330,30 +343,59 @@
         color: var(--ox-text-faint);
       }
 
+      /* On a phone the rows compress rather than stack. Stacking doubled row
+         height and pushed the decision itself below the fold, which is the one
+         thing a consent screen cannot do. The control keeps its 44px height;
+         only its width gives. */
       @media (max-width: 460px) {
-        .scope__head {
-          flex-direction: column;
-          align-items: stretch;
-          gap: 2px;
-          padding-bottom: 8px;
+        .scope__toggle {
+          flex: 0 1 auto;
+          gap: 7px;
+          padding-right: 2px;
+          font-size: 0.83rem;
         }
 
+        .scope__head {
+          gap: 6px;
+          padding-right: 4px;
+        }
+
+        /* Fixed chip width keeps every control the same size, so the column
+           of controls shares one edge instead of going ragged. Memory stays
+           visibly narrower because it genuinely has no Full option. */
         .levels {
-          width: 100%;
+          flex: 0 0 auto;
+          justify-content: flex-end;
         }
 
         .level {
-          flex: 1;
-          min-width: 0;
+          flex: 0 0 52px;
+          min-width: 52px;
+          padding: 0 6px;
+          font-size: 0.7rem;
         }
 
-        .perm-head {
-          flex-direction: column;
-          align-items: stretch;
+        .scope__detail p {
+          padding-left: 42px;
         }
 
         .perm-head .levels {
-          width: 100%;
+          flex: 0 1 auto;
+        }
+
+        .perm-head .level {
+          min-width: 56px;
+        }
+      }
+
+      /* Below this the icon stops earning its width. */
+      @media (max-width: 340px) {
+        .scope__icon {
+          display: none;
+        }
+
+        .scope__detail p {
+          padding-left: 26px;
         }
       }
     </style>
@@ -690,12 +732,9 @@
                 : '');
 
             var detail =
-              '<dt>Read</dt><dd> — ' +
+              '<b>Read</b> — ' +
               scope.readDesc +
-              '</dd>' +
-              (scope.write
-                ? '<br /><dt>Full</dt><dd> — ' + scope.writeDesc + '</dd>'
-                : '');
+              (scope.write ? '<br /><b>Full</b> — ' + scope.writeDesc : '');
 
             return (
               '<div class="scope animate-in" data-scope="' +
