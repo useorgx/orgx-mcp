@@ -84,6 +84,13 @@
   // missing stream URL — and must be able to say so rather than sitting in
   // `idle` looking like it simply had not started yet.
   TABLE[STATES.IDLE][EVENTS.FATAL] = { next: STATES.FATAL, effects: [] };
+  // A store can start with a grant whose token already expired — a widget that
+  // was hidden across the expiry. Without this it would sit in `idle` having
+  // silently dropped the refresh it asked for.
+  TABLE[STATES.IDLE][EVENTS.AUTH_EXPIRED] = {
+    next: STATES.REFRESHING,
+    effects: [EFFECTS.REFRESH_TOKEN],
+  };
 
   TABLE[STATES.CONNECTING] = {};
   TABLE[STATES.CONNECTING][EVENTS.OPEN] = {
@@ -372,7 +379,9 @@
     var prev = Array.isArray(prevRows) ? prevRows : [];
     var next = Array.isArray(nextRows) ? nextRows : [];
 
-    var prevIndex = {};
+    // Null-prototype: a row keyed "constructor" or "__proto__" would otherwise
+    // resolve an inherited member and read as an already-present entry.
+    var prevIndex = Object.create(null);
     var prevOrder = [];
     for (var i = 0; i < prev.length; i += 1) {
       var pk = key(prev[i], i);
@@ -384,7 +393,7 @@
     var updated = [];
     var moved = [];
     var keys = [];
-    var seen = {};
+    var seen = Object.create(null);
 
     for (var j = 0; j < next.length; j += 1) {
       var nk = key(next[j], j);
@@ -514,7 +523,7 @@
 
   function buildPhaseMap(rows, keyFn) {
     var key = keyFn || defaultKey;
-    var map = {};
+    var map = Object.create(null);
     var list = Array.isArray(rows) ? rows : [];
     for (var i = 0; i < list.length; i += 1) {
       map[key(list[i], i)] = phaseForRow(list[i]);
@@ -534,7 +543,7 @@
    */
   function diffPhases(prevMap, rows, keyFn) {
     var key = keyFn || defaultKey;
-    var prev = prevMap || {};
+    var prev = prevMap || Object.create(null);
     var next = buildPhaseMap(rows, key);
     var started = [];
     var finished = [];
@@ -625,7 +634,7 @@
    */
   function foldGraphDelta(base, delta) {
     if (!base || !delta) return null;
-    var byId = {};
+    var byId = Object.create(null);
     var order = [];
     var index;
 
@@ -645,6 +654,10 @@
       delete byId[removed[index]];
     }
 
+    // The server's order when it sent one. Appending locally cannot express a
+    // reorder, and put a node the server prepended at the bottom instead.
+    if (Array.isArray(delta.order) && delta.order.length) order = delta.order;
+
     var nodes = [];
     for (index = 0; index < order.length; index += 1) {
       if (byId[order[index]]) nodes.push(byId[order[index]]);
@@ -658,7 +671,9 @@
       summary: delta.summary || base.summary,
       headline: delta.headline,
       updatedAt: delta.updatedAt || base.updatedAt,
-      proofHandoff: base.proofHandoff,
+      // A delta that carries a handoff replaces the held one; only fall back to
+      // the base when the delta says nothing about it.
+      proofHandoff: delta.proofHandoff !== undefined ? delta.proofHandoff : base.proofHandoff,
     };
   }
 

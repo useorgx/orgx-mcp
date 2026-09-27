@@ -147,6 +147,16 @@
           handlers.onFrame(parsed);
         };
 
+        // Heartbeats are a named event for the same reason `auth_expired` is:
+        // EventSource discards `: comment` lines entirely, so a comment
+        // heartbeat never reaches the page and the staleness watchdog trips on
+        // a healthy stream that simply has no news.
+        if (es.addEventListener) {
+          es.addEventListener('heartbeat', function onHeartbeat() {
+            handlers.onHeartbeat();
+          });
+        }
+
         // `auth_expired` is a *named* SSE event, so it never reaches onmessage.
         // Every previous widget wired only onmessage, which is exactly why the
         // server's expiry warning was dead code and streams silently died at
@@ -263,6 +273,7 @@
     var select = opts.select || function identity(payload) { return payload; };
     var keyFn = opts.keyFn || machine.defaultKey;
     var refreshToken = typeof opts.refreshToken === 'function' ? opts.refreshToken : null;
+    var refreshTimeoutMs = opts.refreshTimeoutMs || 20000;
 
     // Resolved per call rather than captured at construction. Binding to
     // whichever setTimeout happened to exist when the store was built makes the
@@ -277,6 +288,8 @@
     var now = opts.now || function nowMs() { return Date.now(); };
 
     var streamUrl = opts.streamUrl || '';
+    /** Epoch ms the current token stops being accepted, when the grant says. */
+    var expiresAt = typeof opts.expiresAt === 'number' ? opts.expiresAt : 0;
     var state = STATES.IDLE;
     var cursor = 0; // last event ts, for `since=` replay
     var data = null;
@@ -385,6 +398,8 @@
       }
     }
 
+    var refreshDeadlineTimer = null;
+
     function performRefresh() {
       if (!refreshToken) {
         // Without a refresh path the only honest outcome is to stop and tell the
@@ -395,23 +410,52 @@
       }
       logger.info('token_refresh_started', {});
       var started = now();
+      var settled = false;
+
+      // A host that never settles the tool call would otherwise strand the
+      // machine in `refreshing` forever: no stream, no timers, and a Retry
+      // button the panel only offers once the state is `fatal`.
+      if (refreshDeadlineTimer) clearTimeoutImpl(refreshDeadlineTimer);
+      refreshDeadlineTimer = setTimeoutImpl(function onRefreshDeadline() {
+        if (settled) return;
+        settled = true;
+        logger.warn('token_refresh_timeout', { afterMs: refreshTimeoutMs });
+        logger.count('token_refresh_timeout');
+        dispatch(EVENTS.REFRESH_FAILED);
+      }, refreshTimeoutMs);
+
+      function finish(run) {
+        if (settled) return;
+        settled = true;
+        if (refreshDeadlineTimer) clearTimeoutImpl(refreshDeadlineTimer);
+        refreshDeadlineTimer = null;
+        run();
+      }
+
       Promise.resolve()
         .then(refreshToken)
         .then(function onRefreshed(next) {
           var url = typeof next === 'string' ? next : next && next.streamUrl;
           if (!url) throw new Error('refresh returned no stream url');
-          streamUrl = url;
-          logger.info('token_refreshed', { latencyMs: now() - started });
-          logger.count('token_refresh_ok');
-          dispatch(EVENTS.TOKEN_REFRESHED);
+          finish(function applyRefresh() {
+            streamUrl = url;
+            if (next && typeof next.expiresAt === 'number') expiresAt = next.expiresAt;
+            else expiresAt = 0;
+            cursor = 0;
+            logger.info('token_refreshed', { latencyMs: now() - started });
+            logger.count('token_refresh_ok');
+            dispatch(EVENTS.TOKEN_REFRESHED);
+          });
         })
         .catch(function onRefreshFailed(error) {
-          logger.warn('token_refresh_failed', {
-            message: error && error.message,
-            latencyMs: now() - started,
+          finish(function reportFailure() {
+            logger.warn('token_refresh_failed', {
+              message: error && error.message,
+              latencyMs: now() - started,
+            });
+            logger.count('token_refresh_failed');
+            dispatch(EVENTS.REFRESH_FAILED);
           });
-          logger.count('token_refresh_failed');
-          dispatch(EVENTS.REFRESH_FAILED);
         });
     }
 
@@ -541,6 +585,12 @@
         lastError = null;
         ingest(frame);
       },
+      onHeartbeat: function onHeartbeat() {
+        // Proof of life without news. Rearms the watchdog so a feed with
+        // nothing to report is not mistaken for a dead one.
+        if (state === STATES.LIVE || state === STATES.CONNECTING) armHeartbeat();
+        logger.count('heartbeat');
+      },
       onMalformed: function onMalformed(info) {
         logger.warn('frame_unparseable', { bytes: info && info.raw ? info.raw.length : 0 });
         logger.count('frame_unparseable');
@@ -570,7 +620,10 @@
         dispatch(EVENTS.PAUSE);
       } else if (state === STATES.PAUSED) {
         logger.info('resumed_visible', {});
-        dispatch(EVENTS.RESUME);
+        // A widget hidden across its token's expiry would otherwise resume onto
+        // a dead URL and burn the whole reconnect budget on a 401 it can fix.
+        if (grantExpired()) dispatch(EVENTS.AUTH_EXPIRED);
+        else dispatch(EVENTS.RESUME);
       }
     }
     if (doc && doc.addEventListener && opts.observeVisibility !== false) {
@@ -582,9 +635,23 @@
       return String(url).replace(/([?&]t=)[^&]+/, '$1<redacted>');
     }
 
+    /**
+     * True when the current stream URL's token is known to be past its useful
+     * life. Reopening it would only fail, and the failure arrives as a generic
+     * transport error that retries the same dead URL until the budget is spent.
+     */
+    function grantExpired() {
+      return typeof expiresAt === 'number' && expiresAt > 0 && now() >= expiresAt;
+    }
+
     return {
       start: function start() {
         if (!transport.supported || transport.supported()) {
+          if (grantExpired()) {
+            logger.info('grant_expired_before_connect', {});
+            dispatch(EVENTS.AUTH_EXPIRED);
+            return true;
+          }
           dispatch(EVENTS.CONNECT);
           return true;
         }
@@ -592,11 +659,16 @@
         dispatch(EVENTS.FATAL);
         return false;
       },
-      /** Operator-initiated retry out of `fatal`. */
+      /** Operator-initiated retry, from any state a human can see. */
       reconnect: function reconnect() {
         backoff.reset();
         cancelRetry();
-        dispatch(state === STATES.FATAL ? EVENTS.CONNECT : EVENTS.RETRY);
+        if (state === STATES.FATAL) return dispatch(EVENTS.CONNECT);
+        // `refreshing` ignores RETRY on purpose — a refresh is in flight. Treat
+        // an explicit retry as "that refresh is not coming back" so the machine
+        // falls through to normal backoff instead of sitting there.
+        if (state === STATES.REFRESHING) return dispatch(EVENTS.REFRESH_FAILED);
+        return dispatch(EVENTS.RETRY);
       },
       stop: function stop() {
         dispatch(EVENTS.CLOSE);
@@ -667,6 +739,38 @@
     return total;
   }
 
+  /**
+   * Pull the grant out of a tool result.
+   *
+   * The MCP Apps bridges unwrap a result to its structured content before
+   * returning it; the ChatGPT branch hands back the raw envelope. Reading
+   * `result.live` alone therefore worked on one host and silently threw away a
+   * perfectly good replacement token on the other.
+   */
+  function readGrantFromToolResult(result) {
+    if (!result || typeof result !== 'object') return null;
+    if (result.live && result.live.streamUrl) return result.live;
+
+    var structured = result.structuredContent;
+    if (structured && structured.live && structured.live.streamUrl) {
+      return structured.live;
+    }
+
+    if (Array.isArray(result.content)) {
+      for (var index = 0; index < result.content.length; index += 1) {
+        var item = result.content[index];
+        if (!item || item.type !== 'text' || !item.text) continue;
+        try {
+          var parsed = JSON.parse(item.text);
+          if (parsed && parsed.live && parsed.live.streamUrl) return parsed.live;
+        } catch (_) {
+          // Not JSON; the next block may still carry it.
+        }
+      }
+    }
+    return null;
+  }
+
   function attachLiveFeed(options) {
     var opts = options || {};
     var grant = opts.grant;
@@ -694,6 +798,9 @@
     store = createLiveStore({
       widget: opts.widget || grant.feedType,
       streamUrl: grant.streamUrl,
+      // Lets the store notice a token that died while the widget was hidden and
+      // refresh up front, rather than spending its reconnect budget on 401s.
+      expiresAt: grant.expiresAt,
       logSink: opts.logSink,
       // The canonical graph is a flat node list; the panel renders it directly.
       select:
@@ -709,7 +816,7 @@
               return runtime
                 .callTool(grant.refreshTool, grant.refreshArgs || {})
                 .then(function readGrant(result) {
-                  var next = result && result.live;
+                  var next = readGrantFromToolResult(result);
                   if (!next || !next.streamUrl) {
                     throw new Error('refresh result carried no grant');
                   }

@@ -93,12 +93,34 @@ function mountWidget(name: string, payload: unknown): void {
     /<script(?:\s+type="module")?>|<\/script>/g,
     ''
   );
-  window.eval(widgetScript);
 
-  // Some widgets bootstrap on DOMContentLoaded. In a real page their listener is
+  // Some widgets bootstrap on DOMContentLoaded. In a real page the listener is
   // registered while the document is still parsing, so the event follows; here
-  // the script is evaluated after parsing, so fire it to match.
-  document.dispatchEvent(new window.Event('DOMContentLoaded'));
+  // the script runs after parsing, so it has to be fired manually.
+  //
+  // Capturing the handler instead of dispatching on the shared document matters:
+  // listeners bound to `document` outlive the innerHTML swap between mounts, so
+  // a plain dispatch re-runs every previously mounted widget's bootstrap against
+  // the current widget's DOM.
+  const bootstraps: EventListener[] = [];
+  const realAddEventListener = document.addEventListener.bind(document);
+  document.addEventListener = ((type: string, listener: EventListener, ...rest: unknown[]) => {
+    if (type === 'DOMContentLoaded') {
+      bootstraps.push(listener);
+      return;
+    }
+    return realAddEventListener(type, listener, ...(rest as []));
+  }) as typeof document.addEventListener;
+
+  try {
+    window.eval(widgetScript);
+  } finally {
+    document.addEventListener = realAddEventListener;
+  }
+
+  for (const bootstrap of bootstraps) {
+    bootstrap(new window.Event('DOMContentLoaded'));
+  }
 }
 
 function mountAgentStatus(payload: unknown): void {

@@ -192,8 +192,12 @@
     root.appendChild(empty);
     mount.appendChild(root);
 
-    var rowNodes = {}; // key → { row, title, sub, phase, fill, track }
-    var badges = {};
+    // Null-prototype maps: a node titled "constructor" gets that as its id (the
+    // normalizer falls back to the title), and `rowNodes["constructor"]` on a
+    // plain object resolves Object.prototype.constructor — truthy, so the row is
+    // treated as already built and painting it throws.
+    var rowNodes = Object.create(null); // key → { row, title, sub, phase, fill, track }
+    var badges = Object.create(null);
     var retryButton = null;
 
     function buildRow(node) {
@@ -334,7 +338,7 @@
       );
       renderSummary(snapshot.summary || {});
 
-      var boundaries = {};
+      var boundaries = Object.create(null);
       if (snapshot.phases) {
         var mark = function mark(ids, kind) {
           for (var i = 0; i < (ids || []).length; i += 1) boundaries[ids[i]] = kind;
@@ -344,7 +348,7 @@
         mark(snapshot.phases.started, 'started');
       }
 
-      var seen = {};
+      var seen = Object.create(null);
       var previousSibling = null;
       for (var i = 0; i < nodes.length; i += 1) {
         var node = nodes[i];
@@ -405,8 +409,8 @@
       },
       destroy: function destroy() {
         if (root.parentNode) root.parentNode.removeChild(root);
-        rowNodes = {};
-        badges = {};
+        rowNodes = Object.create(null);
+        badges = Object.create(null);
       },
     };
   }

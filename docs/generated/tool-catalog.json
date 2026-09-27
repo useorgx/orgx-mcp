@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-11T05:28:26.422Z",
-  "sourceHash": "faf4357982eaf4fb",
+  "generatedAt": "2026-09-27T20:36:47.060Z",
+  "sourceHash": "0331c3c093f3d4f6",
   "version": "1.0.0",
   "totalTools": 81,
   "categories": [
@@ -104,6 +104,101 @@
           "spawn": {
             "type": "boolean",
             "description": "If true (default), spawn a new agent run for the target agent"
+          },
+          "deadline": {
+            "type": "string",
+            "description": "Optional ISO-8601 instant by which the work must finish (e.g. \"2026-09-28T17:00:00Z\"). Validated and recorded; free text is rejected because a constraint that cannot be evaluated is not a constraint."
+          },
+          "max_cost_usd": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Optional hard cost ceiling in USD for this dispatch. If the estimate exceeds it, OrgX blocks, downgrades, or requests approval before dispatch."
+          },
+          "budget_mode": {
+            "type": "string",
+            "enum": [
+              "cheapest_valid",
+              "balanced",
+              "highest_quality"
+            ],
+            "description": "Optional budget posture. Use cheapest_valid for controlled validation runs while reliability is being proven."
+          },
+          "max_parallel": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 16,
+            "description": "Optional cap on concurrent workers for this dispatch. Work that shares a repository is usually integration-bound well below this: more workers add merge contention, not throughput."
+          },
+          "expected_artifacts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional expected final-output labels. Declaring at least one adds an artifact contract to the run."
+          },
+          "effects": {
+            "type": "object",
+            "properties": {
+              "allowed": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "Effects the work may perform without further approval (e.g. \"branch.write\", \"tests.run\", \"pull_request.create\")."
+              },
+              "approval_required": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "Effects that must pause for an approving decision (e.g. \"merge\", \"deploy\", \"email.send\")."
+              }
+            },
+            "additionalProperties": false,
+            "description": "Optional declared effect scope for the work. Recorded on the run and shown in the receipt. Declaring an effect never grants it — the platform intersects it with the caller authority."
+          },
+          "acceptance": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "description": "Stable identifier for this check, referenced by the receipt. Reuse it across retries so the verdict stays comparable."
+                },
+                "statement": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500,
+                  "description": "What must become true. One falsifiable sentence."
+                },
+                "verify": {
+                  "type": "object",
+                  "additionalProperties": {},
+                  "description": "How the check is evaluated. One of: { kind: \"command\", command, expect_exit } | { kind: \"http\", url, expect_status } | { kind: \"artifact\", artifact_type } | { kind: \"manual\", reviewer }."
+                },
+                "must_fail_before": {
+                  "type": "boolean",
+                  "description": "Default true. A check that already passes before the work starts is non-discriminating and is excluded from the acceptance verdict."
+                }
+              },
+              "required": [
+                "id",
+                "statement",
+                "verify"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 20,
+            "description": "Optional acceptance checks that define what counts as done. Declared BEFORE the work and hashed at dispatch. A check that already passes on the pre-state is reported as non-discriminating and excluded from the verdict."
+          },
+          "idempotency_key": {
+            "type": "string",
+            "description": "Optional client-supplied idempotency key for safe retries. The same key returns the same dispatch result without re-running the work."
           }
         },
         "required": [
@@ -254,17 +349,6 @@
             "type": "string",
             "description": "Optional task UUID to bind the spawned run to a specific scaffolded task, enabling direct task-level progress rollup. Use create_entity type=task first if the task does not exist yet."
           },
-          "expected_artifacts": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Optional: Final outputs you expect (e.g., \"PRD\", \"10 ad images\")."
-          },
-          "deadline": {
-            "type": "string",
-            "description": "Optional: When this is needed by (ISO date or plain text)."
-          },
           "style_guidelines": {
             "type": "string",
             "description": "Optional: Voice/format/style constraints for the agent."
@@ -301,6 +385,15 @@
             ],
             "description": "Optional provider preference. Use auto unless the user requests a specific provider or the budget/capability comparison has selected one."
           },
+          "deadline": {
+            "type": "string",
+            "description": "Optional ISO-8601 instant by which the work must finish (e.g. \"2026-09-28T17:00:00Z\"). Validated and recorded; free text is rejected because a constraint that cannot be evaluated is not a constraint."
+          },
+          "max_cost_usd": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Optional hard cost ceiling in USD for this dispatch. If the estimate exceeds it, OrgX blocks, downgrades, or requests approval before dispatch."
+          },
           "budget_mode": {
             "type": "string",
             "enum": [
@@ -308,12 +401,84 @@
               "balanced",
               "highest_quality"
             ],
-            "description": "Optional budget posture override. Omit to let OrgX apply workspace policy. Use cheapest_valid for controlled reliability/validation runs where cost must be pinned while the loop is being proven."
+            "description": "Optional budget posture. Use cheapest_valid for controlled validation runs while reliability is being proven."
           },
-          "max_cost_usd": {
-            "type": "number",
-            "minimum": 0,
-            "description": "Optional per-task hard cost ceiling in USD. If the estimate exceeds this, OrgX should block, downgrade, or ask for approval before dispatch."
+          "max_parallel": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 16,
+            "description": "Optional cap on concurrent workers for this dispatch. Work that shares a repository is usually integration-bound well below this: more workers add merge contention, not throughput."
+          },
+          "expected_artifacts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional expected final-output labels. Declaring at least one adds an artifact contract to the run."
+          },
+          "effects": {
+            "type": "object",
+            "properties": {
+              "allowed": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "Effects the work may perform without further approval (e.g. \"branch.write\", \"tests.run\", \"pull_request.create\")."
+              },
+              "approval_required": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "Effects that must pause for an approving decision (e.g. \"merge\", \"deploy\", \"email.send\")."
+              }
+            },
+            "additionalProperties": false,
+            "description": "Optional declared effect scope for the work. Recorded on the run and shown in the receipt. Declaring an effect never grants it — the platform intersects it with the caller authority."
+          },
+          "acceptance": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "description": "Stable identifier for this check, referenced by the receipt. Reuse it across retries so the verdict stays comparable."
+                },
+                "statement": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500,
+                  "description": "What must become true. One falsifiable sentence."
+                },
+                "verify": {
+                  "type": "object",
+                  "additionalProperties": {},
+                  "description": "How the check is evaluated. One of: { kind: \"command\", command, expect_exit } | { kind: \"http\", url, expect_status } | { kind: \"artifact\", artifact_type } | { kind: \"manual\", reviewer }."
+                },
+                "must_fail_before": {
+                  "type": "boolean",
+                  "description": "Default true. A check that already passes before the work starts is non-discriminating and is excluded from the acceptance verdict."
+                }
+              },
+              "required": [
+                "id",
+                "statement",
+                "verify"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 20,
+            "description": "Optional acceptance checks that define what counts as done. Declared BEFORE the work and hashed at dispatch. A check that already passes on the pre-state is reported as non-discriminating and excluded from the verdict."
+          },
+          "idempotency_key": {
+            "type": "string",
+            "description": "Optional client-supplied idempotency key for safe retries. The same key returns the same dispatch result without re-running the work."
           },
           "execution_target": {
             "type": "string",
@@ -3450,13 +3615,6 @@
             "type": "string",
             "description": "Delegation instructions for the agent. REQUIRED for action=spawn when spawning ad-hoc (without task_id). Used to override the task description for action=handoff."
           },
-          "expected_artifacts": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Optional expected final-output labels for action=spawn. Declaring at least one adds an artifact contract to the run; when the agent returns final text without a selectable artifact, OrgX persists that response as a document using the first label."
-          },
           "model_tier": {
             "type": "string",
             "enum": [
@@ -3485,6 +3643,15 @@
             ],
             "description": "Optional provider preference. Use auto unless the user asks for a specific provider or a cost comparison selects one."
           },
+          "deadline": {
+            "type": "string",
+            "description": "Optional ISO-8601 instant by which the work must finish (e.g. \"2026-09-28T17:00:00Z\"). Validated and recorded; free text is rejected because a constraint that cannot be evaluated is not a constraint."
+          },
+          "max_cost_usd": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Optional hard cost ceiling in USD for this dispatch. If the estimate exceeds it, OrgX blocks, downgrades, or requests approval before dispatch."
+          },
           "budget_mode": {
             "type": "string",
             "enum": [
@@ -3492,16 +3659,84 @@
               "balanced",
               "highest_quality"
             ],
-            "description": "Optional budget posture override. Use cheapest_valid for controlled validation runs while reliability is being proven."
+            "description": "Optional budget posture. Use cheapest_valid for controlled validation runs while reliability is being proven."
           },
-          "max_cost_usd": {
-            "type": "number",
-            "minimum": 0,
-            "description": "Optional per-task hard cost ceiling in USD. If the estimate exceeds this, OrgX should block, downgrade, or request approval before dispatch."
+          "max_parallel": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 16,
+            "description": "Optional cap on concurrent workers for this dispatch. Work that shares a repository is usually integration-bound well below this: more workers add merge contention, not throughput."
+          },
+          "expected_artifacts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional expected final-output labels. Declaring at least one adds an artifact contract to the run."
+          },
+          "effects": {
+            "type": "object",
+            "properties": {
+              "allowed": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "Effects the work may perform without further approval (e.g. \"branch.write\", \"tests.run\", \"pull_request.create\")."
+              },
+              "approval_required": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "Effects that must pause for an approving decision (e.g. \"merge\", \"deploy\", \"email.send\")."
+              }
+            },
+            "additionalProperties": false,
+            "description": "Optional declared effect scope for the work. Recorded on the run and shown in the receipt. Declaring an effect never grants it — the platform intersects it with the caller authority."
+          },
+          "acceptance": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "description": "Stable identifier for this check, referenced by the receipt. Reuse it across retries so the verdict stays comparable."
+                },
+                "statement": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500,
+                  "description": "What must become true. One falsifiable sentence."
+                },
+                "verify": {
+                  "type": "object",
+                  "additionalProperties": {},
+                  "description": "How the check is evaluated. One of: { kind: \"command\", command, expect_exit } | { kind: \"http\", url, expect_status } | { kind: \"artifact\", artifact_type } | { kind: \"manual\", reviewer }."
+                },
+                "must_fail_before": {
+                  "type": "boolean",
+                  "description": "Default true. A check that already passes before the work starts is non-discriminating and is excluded from the acceptance verdict."
+                }
+              },
+              "required": [
+                "id",
+                "statement",
+                "verify"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 20,
+            "description": "Optional acceptance checks that define what counts as done. Declared BEFORE the work and hashed at dispatch. A check that already passes on the pre-state is reported as non-discriminating and excluded from the verdict."
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Optional client-supplied idempotency key for safe retries. Same key returns the same spawn result without re-running."
+            "description": "Optional client-supplied idempotency key for safe retries. The same key returns the same dispatch result without re-running the work."
           },
           "session_id": {
             "type": "string",

@@ -36,6 +36,10 @@ const HEARTBEAT_MS = 15_000;
 const UPSTREAM_TIMEOUT_MS = 8_000;
 /** Consecutive upstream failures before the feed reports itself unhealthy. */
 const ERROR_STREAK_LIMIT = 3;
+/** Upper bound on concurrent widgets attached to one feed instance. */
+const MAX_CLIENTS = 64;
+/** A single stuck consumer must not stall the fan-out for everyone else. */
+const CLIENT_WRITE_TIMEOUT_MS = 5_000;
 
 export type LiveFeedEvent =
   | { type: 'snapshot'; feedType: string; feedId: string; data: WorkGraph; ts: number }
@@ -68,6 +72,8 @@ export class LiveFeedDO {
   private seq = 0;
   /** Viewer id for user-scoped feeds, from the edge's verified header. */
   private viewerId: string | null = null;
+  /** In-flight cold-start poll, shared by every client racing to attach. */
+  private firstPoll: Promise<void> | null = null;
 
   constructor(
     private readonly ctx: DurableObjectState,
@@ -140,65 +146,160 @@ export class LiveFeedDO {
     const since = parseInt(url.searchParams.get('since') ?? '0', 10) || 0;
     const clientId = crypto.randomUUID();
 
+    // One Durable Object fans out to every widget watching a feed, so an
+    // unbounded client set is a denial-of-service surface: a single valid grant
+    // can be replayed to open as many streams as the caller likes, each costing
+    // a writer and a heartbeat timer.
+    if (this.clients.size >= MAX_CLIENTS) {
+      this.log('warn', 'client_rejected_at_capacity', { clientId });
+      return new Response(
+        JSON.stringify({ error: 'feed_at_capacity' }),
+        {
+          status: 503,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': '30',
+            ...corsHeaders(),
+          },
+        }
+      );
+    }
+
     const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
     const writer = writable.getWriter();
 
     this.log('info', 'client_connected', { clientId, since });
-
-    // A reconnecting client gets the events it missed. A fresh client gets a
-    // full snapshot rather than a replay of deltas it has no base for.
-    if (since > 0 && this.events.length > 0) {
-      for (const event of this.events.filter((candidate) => candidate.ts > since)) {
-        if (!(await this.writeTo(writer, event))) {
-          return new Response(readable, { headers: sseHeaders() });
-        }
-      }
-    } else if (this.lastGraph) {
-      await this.writeTo(writer, {
-        type: 'snapshot',
-        feedType,
-        feedId,
-        data: this.lastGraph,
-        ts: Date.now(),
-      });
-    }
-
-    // Nothing cached yet — poll once so the first paint is real data rather
-    // than a spinner waiting out a full alarm interval.
-    if (!this.lastGraph) {
-      try {
-        const event = await this.poll(feedType, feedId);
-        if (event) await this.writeTo(writer, event);
-      } catch (error) {
-        await this.writeTo(writer, this.errorEvent(error));
-      }
-    }
 
     const heartbeatTimer = setInterval(() => {
       if (!this.clients.has(clientId)) {
         clearInterval(heartbeatTimer);
         return;
       }
-      // A comment frame keeps intermediaries from closing an idle stream and
-      // feeds the client's heartbeat watchdog.
-      writer.write(this.encoder.encode(': heartbeat\n\n')).catch(() => {
-        clearInterval(heartbeatTimer);
-        this.dropClient(clientId, 'heartbeat_write_failed');
-      });
+      // A named event, not a bare `: comment`. EventSource silently discards
+      // comment lines, so a comment heartbeat never reaches the client and its
+      // staleness watchdog trips on a perfectly healthy but quiet stream.
+      this.writeRaw(writer, `event: heartbeat\ndata: {"ts":${Date.now()}}\n\n`).catch(
+        () => {
+          clearInterval(heartbeatTimer);
+          this.dropClient(clientId, 'heartbeat_write_failed');
+        }
+      );
     }, HEARTBEAT_MS);
 
     this.clients.set(clientId, { writer, connectedAt: Date.now(), heartbeatTimer });
-
-    const currentAlarm = await this.ctx.storage.getAlarm();
-    if (currentAlarm === null) {
-      await this.scheduleNextPoll();
-    }
 
     request.signal.addEventListener('abort', () => {
       this.dropClient(clientId, 'client_aborted');
     });
 
+    // Everything above is synchronous. The backfill below is deliberately NOT
+    // awaited: a TransformStream write does not resolve until something reads
+    // the readable end, and the readable is only handed to the runtime by the
+    // `return` at the bottom. Awaiting a write first deadlocks the request
+    // before the response ever exists, so a cold connection never completes.
+    this.ctx.waitUntil(this.backfill(clientId, feedType, feedId, since));
+
     return new Response(readable, { headers: sseHeaders() });
+  }
+
+  /**
+   * Bring a freshly attached client up to date.
+   *
+   * Runs after the response is returned, so its writes have a reader. Every
+   * client leaves this with a usable base: either a full snapshot, or a replay
+   * it can actually apply on top of one it already holds.
+   */
+  private async backfill(
+    clientId: string,
+    feedType: string,
+    feedId: string,
+    since: number
+  ): Promise<void> {
+    const client = this.clients.get(clientId);
+    if (!client) return;
+
+    // The alarm lapses whenever the last client leaves, so a new attachment has
+    // to restart it. Storage reads are safe here — unlike a stream write, they
+    // do not depend on anyone reading the response.
+    try {
+      if ((await this.ctx.storage.getAlarm()) === null) await this.scheduleNextPoll();
+    } catch (error) {
+      this.log('warn', 'alarm_schedule_failed', {
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    try {
+      // A reconnecting client can only apply a replay if the buffer still
+      // reaches back to its cursor. Once events have been evicted there is a
+      // hole, and sending the surviving suffix would silently leave removed
+      // nodes on screen forever — so fall back to a snapshot.
+      const oldest = this.events[0];
+      const replayable =
+        since > 0 && oldest !== undefined && oldest.ts <= since && this.lastGraph !== null;
+
+      if (replayable) {
+        const missed = this.events.filter((candidate) => candidate.ts > since);
+        this.log('info', 'replay', { clientId, since, events: missed.length });
+        for (const event of missed) {
+          if (!(await this.writeTo(client.writer, event))) return;
+        }
+        return;
+      }
+
+      if (since > 0) {
+        this.log('info', 'replay_gap_snapshot', {
+          clientId,
+          since,
+          oldest: oldest?.ts,
+          buffered: this.events.length,
+        });
+      }
+
+      // Cold start. Poll only when nothing is cached, and guard the poll so two
+      // simultaneous cold connections do not both call upstream — the second
+      // poll would return null (nothing changed) and that client would attach
+      // with no base at all, then discard every delta that followed.
+      if (!this.lastGraph) {
+        try {
+          await this.ensureFirstGraph(feedType, feedId);
+        } catch (error) {
+          await this.writeTo(client.writer, this.errorEvent(error));
+          return;
+        }
+      }
+
+      if (this.lastGraph) {
+        await this.writeTo(client.writer, {
+          type: 'snapshot',
+          feedType,
+          feedId,
+          data: this.lastGraph,
+          ts: Date.now(),
+        });
+      }
+    } catch (error) {
+      this.log('warn', 'backfill_failed', {
+        clientId,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * Populate `lastGraph` exactly once, even if several cold clients race.
+   * Callers that lose the race await the winner's poll rather than issuing
+   * their own, which would come back "unchanged" and leave them baseless.
+   */
+  private ensureFirstGraph(feedType: string, feedId: string): Promise<void> {
+    if (!this.firstPoll) {
+      this.firstPoll = this.poll(feedType, feedId)
+        .then(() => undefined)
+        .finally(() => {
+          this.firstPoll = null;
+        });
+    }
+    return this.firstPoll;
   }
 
   private dropClient(clientId: string, reason: string): void {
@@ -219,12 +320,45 @@ export class LiveFeedDO {
     event: LiveFeedEvent
   ): Promise<boolean> {
     try {
-      await writer.write(this.sseChunk(event));
+      await this.writeRaw(writer, `data: ${JSON.stringify(event)}\n\n`);
       return true;
     } catch {
       writer.close().catch(() => {});
       return false;
     }
+  }
+
+  /**
+   * Write with a deadline. A consumer that has stopped reading leaves its write
+   * pending forever; without a timeout one such client stalls the shared
+   * fan-out and, with it, the alarm that schedules the next poll for everyone.
+   */
+  private writeRaw(
+    writer: WritableStreamDefaultWriter<Uint8Array>,
+    text: string
+  ): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        reject(new Error('client_write_timeout'));
+      }, CLIENT_WRITE_TIMEOUT_MS);
+      writer.write(this.encoder.encode(text)).then(
+        () => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          resolve();
+        },
+        (error) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          reject(error);
+        }
+      );
+    });
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -364,14 +498,16 @@ export class LiveFeedDO {
   }
 
   private async fanOut(event: LiveFeedEvent): Promise<void> {
-    const chunk = this.sseChunk(event);
+    const chunk = `data: ${JSON.stringify(event)}\n\n`;
     const dead: string[] = [];
-    // Writes go out concurrently: a single slow consumer should not delay the
-    // rest of the fan-out behind it.
+    // Concurrent, and each write is deadline-bounded. A consumer that stopped
+    // reading — an expired stream whose wrapper closed its output but never
+    // cancelled this side — would otherwise leave its write pending forever and
+    // hold up the alarm that schedules the next poll for every other watcher.
     await Promise.all(
       Array.from(this.clients.entries()).map(async ([id, client]) => {
         try {
-          await client.writer.write(chunk);
+          await this.writeRaw(client.writer, chunk);
         } catch {
           clearInterval(client.heartbeatTimer);
           dead.push(id);
