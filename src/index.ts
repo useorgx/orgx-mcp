@@ -152,6 +152,7 @@ import {
 import { validateWriteCreateContract } from './writeContract';
 import { buildLiveFeedWidget } from './liveFeedWidget';
 import { signStreamToken } from './streamToken';
+import { buildStreamGrant, feedBindingForTool } from './live/streamGrant';
 import { hydrateTaskContext } from './taskContextHydrator';
 import {
   loadArtifactReviewEnvelope,
@@ -3097,6 +3098,31 @@ export class OrgXMcp extends McpAgent<
         // - Widget tools: JSON in content[0] for MCP Apps widget parsing
         // - Non-widget tools: concise summary only (saves 80-95% tokens)
         // structuredContent always carries the full payload for widgets.
+        // Live subscription grant: attached to structuredContent so the static
+        // widgets in public/widgets/ can subscribe. Any tool listed in
+        // TOOL_FEED_BINDINGS becomes live without its own token plumbing.
+        if (effectiveInitiativeId && this.env.LIVE_FEED && this.env.MCP_JWT_SECRET) {
+          const _binding = feedBindingForTool(toolId);
+          if (_binding) {
+            try {
+              const _grant = await buildStreamGrant({
+                feedType: _binding.feedType,
+                feedId: effectiveInitiativeId,
+                serverUrl: this.env.MCP_SERVER_URL,
+                secret: this.env.MCP_JWT_SECRET,
+                refreshTool: _binding.refreshTool,
+                refreshArgs: { initiative_id: effectiveInitiativeId },
+                userId: resolvedUserId ?? undefined,
+              });
+              if (_grant) (data as Record<string, unknown>).live = _grant;
+            } catch (_err) {
+              // A missing grant degrades the widget to a static snapshot, which
+              // is the pre-existing behaviour — never a failed tool call.
+              console.warn('[live-grant] build failed', { toolId, error: _err });
+            }
+          }
+        }
+
         // Live-feed SSE widget: inject for agent-status + initiative-pulse tools
         let _liveFeedWidgetHtml: string | null = null;
         if (

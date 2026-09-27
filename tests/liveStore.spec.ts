@@ -358,6 +358,92 @@ describe('failure handling', () => {
   });
 });
 
+describe('delta folding', () => {
+  it('folds a node delta onto the held graph so unmentioned rows survive', () => {
+    const store = makeStore({ select: (payload: { nodes?: unknown[] }) => payload?.nodes ?? [] });
+    store.start();
+    transport.handlers.onFrame({
+      type: 'snapshot',
+      ts: 1,
+      data: {
+        feedType: 'agent-status',
+        feedId: 'i',
+        summary: { running: 2, queued: 0, blocked: 0, done: 0, total: 2, progress: 0 },
+        nodes: [
+          { id: 'a', title: 'A', phase: 'executing' },
+          { id: 'b', title: 'B', phase: 'executing' },
+        ],
+      },
+    });
+
+    transport.handlers.onFrame({
+      type: 'delta',
+      ts: 2,
+      data: {
+        changed: [{ id: 'a', title: 'A', phase: 'terminal' }],
+        removed: [],
+        summary: { running: 1, queued: 0, blocked: 0, done: 1, total: 2, progress: 50 },
+        updatedAt: 'T',
+      },
+    });
+
+    const rows = store.getState().rows as { id: string; phase: string }[];
+    // `b` was never mentioned by the delta and must still be there.
+    expect(rows.map((row) => row.id)).toEqual(['a', 'b']);
+    expect(rows[0]!.phase).toBe('terminal');
+    expect(store.getState().summary.done).toBe(1);
+  });
+
+  it('skips a delta that has no base rather than rendering a partial graph', () => {
+    // Happens on a `since=` reconnect replaying deltas from before this client
+    // attached.
+    const store = makeStore({ select: (payload: { nodes?: unknown[] }) => payload?.nodes ?? [] });
+    store.start();
+    transport.handlers.onFrame({
+      type: 'delta',
+      ts: 1,
+      data: { changed: [{ id: 'ghost', phase: 'executing' }], removed: [], summary: {} },
+    });
+    expect(store.getState().rows).toEqual([]);
+    expect(store.diagnostics().counters.delta_without_base).toBe(1);
+  });
+});
+
+describe('timer resolution', () => {
+  it('honours a timer implementation installed after the store was built', () => {
+    // The store must not capture global.setTimeout at construction: doing so
+    // binds it to load order and silently ignores a later implementation, which
+    // left the reconnect budget unable to drain.
+    const store = scope.OrgXLiveStore!.createLiveStore({
+      widget: 'late-timers',
+      streamUrl: 'stub://feed',
+      transport,
+      observeVisibility: false,
+      select: () => [],
+      console: { log() {}, warn() {}, error() {} },
+    });
+
+    // Installed only after the store exists.
+    const scheduled: (() => void)[] = [];
+    (scope as unknown as { setTimeout: unknown; clearTimeout: unknown }).setTimeout = (
+      fn: () => void
+    ) => {
+      scheduled.push(fn);
+      return scheduled.length;
+    };
+    (scope as unknown as { clearTimeout: unknown }).clearTimeout = () => {};
+
+    store.start();
+    transport.handlers.onError({ message: 'drop' });
+
+    expect(scheduled.length).toBeGreaterThan(0);
+    // Firing the scheduled retry only advances the store if it looked the timer
+    // up at call time.
+    scheduled[scheduled.length - 1]!();
+    expect(store.getState().connection).toBe('connecting');
+  });
+});
+
 describe('visibility', () => {
   it('closes the stream when hidden and reopens when visible again', () => {
     const listeners: Record<string, () => void> = {};

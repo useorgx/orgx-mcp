@@ -488,8 +488,23 @@
     return PHASES.PENDING;
   }
 
+  /** True when a value is already one of our own canonical phase names. */
+  function isCanonicalPhase(value) {
+    return (
+      value === PHASES.PENDING ||
+      value === PHASES.EXECUTING ||
+      value === PHASES.BLOCKED ||
+      value === PHASES.TERMINAL
+    );
+  }
+
   function phaseForRow(row) {
     if (!row || typeof row !== 'object') return PHASES.PENDING;
+    // A node normalized by src/live/workGraph.ts already carries a canonical
+    // phase. Re-deriving it from the status vocabulary would mis-bucket it —
+    // "terminal" is not a word any upstream status set contains, so it used to
+    // fall through to pending and a finished row counted as queued.
+    if (isCanonicalPhase(row.phase)) return row.phase;
     if (row.isCompleted || row.isFailed || row.isCancelled) return PHASES.TERMINAL;
     if (row.isBlocked) return PHASES.BLOCKED;
     if (row.isExecuting || row.isWaiting) return PHASES.EXECUTING;
@@ -575,12 +590,87 @@
     return summary;
   }
 
+  // ===========================================================================
+  // Delta folding
+  //
+  // LiveFeedDO sends a full snapshot once, then row-level deltas naming only the
+  // nodes that moved. Folding belongs here rather than in each widget: a widget
+  // that rendered a delta directly would drop every node the delta did not
+  // mention. Kept pure so the convergence property — a delta stream lands on the
+  // same state as a snapshot — is testable.
+  // ===========================================================================
+
+  function isWorkGraph(payload) {
+    return Boolean(payload && Array.isArray(payload.nodes) && payload.summary);
+  }
+
+  /**
+   * A canonical node delta, as opposed to a full graph. The SSE frame's `type`
+   * cannot be trusted alone: legacy `delta` frames carried whole payloads, so
+   * discriminate on the delta's own fields.
+   */
+  function isNodeDelta(payload) {
+    return Boolean(
+      payload &&
+        !Array.isArray(payload.nodes) &&
+        (Array.isArray(payload.changed) || Array.isArray(payload.removed))
+    );
+  }
+
+  /**
+   * Apply a node delta to a held graph. Returns null when there is no base to
+   * fold onto — which happens on a `since=` reconnect that replays deltas from
+   * before this client attached. Rendering a partial graph would be worse than
+   * waiting for the next snapshot.
+   */
+  function foldGraphDelta(base, delta) {
+    if (!base || !delta) return null;
+    var byId = {};
+    var order = [];
+    var index;
+
+    for (index = 0; index < base.nodes.length; index += 1) {
+      byId[base.nodes[index].id] = base.nodes[index];
+      order.push(base.nodes[index].id);
+    }
+
+    var changed = delta.changed || [];
+    for (index = 0; index < changed.length; index += 1) {
+      if (!byId[changed[index].id]) order.push(changed[index].id);
+      byId[changed[index].id] = changed[index];
+    }
+
+    var removed = delta.removed || [];
+    for (index = 0; index < removed.length; index += 1) {
+      delete byId[removed[index]];
+    }
+
+    var nodes = [];
+    for (index = 0; index < order.length; index += 1) {
+      if (byId[order[index]]) nodes.push(byId[order[index]]);
+    }
+
+    return {
+      feedType: base.feedType,
+      feedId: base.feedId,
+      title: delta.title || base.title,
+      nodes: nodes,
+      summary: delta.summary || base.summary,
+      headline: delta.headline,
+      updatedAt: delta.updatedAt || base.updatedAt,
+      proofHandoff: base.proofHandoff,
+    };
+  }
+
   global.OrgXLiveMachine = {
     STATES: STATES,
     EVENTS: EVENTS,
     EFFECTS: EFFECTS,
     PHASES: PHASES,
     transition: transition,
+    isWorkGraph: isWorkGraph,
+    isNodeDelta: isNodeDelta,
+    foldGraphDelta: foldGraphDelta,
     isLiveish: isLiveish,
     isDegraded: isDegraded,
     createBackoff: createBackoff,
@@ -589,6 +679,7 @@
     defaultKey: defaultKey,
     phaseForStatus: phaseForStatus,
     phaseForRow: phaseForRow,
+    isCanonicalPhase: isCanonicalPhase,
     buildPhaseMap: buildPhaseMap,
     diffPhases: diffPhases,
     summarizePhases: summarizePhases,

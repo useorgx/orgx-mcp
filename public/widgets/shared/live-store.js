@@ -264,8 +264,16 @@
     var keyFn = opts.keyFn || machine.defaultKey;
     var refreshToken = typeof opts.refreshToken === 'function' ? opts.refreshToken : null;
 
-    var setTimeoutImpl = opts.setTimeout || global.setTimeout;
-    var clearTimeoutImpl = opts.clearTimeout || global.clearTimeout;
+    // Resolved per call rather than captured at construction. Binding to
+    // whichever setTimeout happened to exist when the store was built makes the
+    // store hostage to load order, and silently ignores a timer implementation
+    // the host (or a test harness) installs later.
+    function setTimeoutImpl(fn, ms) {
+      return (opts.setTimeout || global.setTimeout)(fn, ms);
+    }
+    function clearTimeoutImpl(id) {
+      return (opts.clearTimeout || global.clearTimeout)(id);
+    }
     var now = opts.now || function nowMs() { return Date.now(); };
 
     var streamUrl = opts.streamUrl || '';
@@ -273,6 +281,8 @@
     var cursor = 0; // last event ts, for `since=` replay
     var data = null;
     var rows = [];
+    /** Last full graph, so a node delta has something to fold onto. */
+    var heldGraph = null;
     var phaseMap = {};
     var lastError = null;
     var connectedAt = null;
@@ -463,6 +473,22 @@
       if (frame && frame.ts) cursor = frame.ts;
 
       var payload = frame && frame.data !== undefined ? frame.data : frame;
+
+      // The DO sends one snapshot then row-level deltas. Fold here so widgets
+      // receive whole graphs and never have to know the wire format.
+      if (machine.isNodeDelta(payload)) {
+        var folded = machine.foldGraphDelta(heldGraph, payload);
+        if (!folded) {
+          // A `since=` replay can deliver deltas from before this client
+          // attached. Skipping is correct: the next snapshot resynchronizes.
+          logger.warn('delta_without_base', { cursor: cursor });
+          logger.count('delta_without_base');
+          return null;
+        }
+        payload = folded;
+      }
+      if (machine.isWorkGraph(payload)) heldGraph = payload;
+
       var nextRows = select(payload);
       if (!Array.isArray(nextRows)) nextRows = [];
 

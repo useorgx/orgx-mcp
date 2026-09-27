@@ -13,6 +13,9 @@
   <script src="shared/interaction-kit.js"></script>
   <script src="shared/components/domain-accent.js"></script>
   <script src="shared/components/liveness-indicator.js"></script>
+  <script src="shared/live-machine.js"></script>
+  <script src="shared/live-store.js"></script>
+  <script src="shared/live-panel.js"></script>
   <style>
     
     :root, :root[data-theme="light"] {
@@ -2348,9 +2351,78 @@
         }
       : null;
 
+    /* ── Live subscription ───────────────────────────────────────────────
+       The board renders from the tool payload, which is a point-in-time
+       snapshot. When the payload carries a `live` grant (see
+       src/live/streamGrant.ts) the widget also subscribes to the feed, so agents
+       that start, finish, or block after this message was sent show up here
+       instead of going unseen until someone asks again.
+
+       The panel is additive: it mounts above the board and patches by key, so a
+       widget with no grant behaves exactly as it did before. */
+    var liveStore = null;
+    var livePanel = null;
+
+    function mountLivePanel() {
+      var host = document.getElementById('liveFlow');
+      if (host || !document.body) return document.getElementById('liveFlow');
+      host = document.createElement('section');
+      host.id = 'liveFlow';
+      host.style.margin = '0 0 14px';
+      var anchor = document.querySelector('.board') || document.body.firstChild;
+      if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(host, anchor);
+      else document.body.insertBefore(host, document.body.firstChild);
+      return host;
+    }
+
+    function startLive(grant) {
+      if (!grant || !grant.streamUrl) return;
+      if (!window.OrgXLiveStore || !window.OrgXLivePanel) return;
+      /* Re-subscribing on every tool result would open a second stream per
+         message; the grant is per-feed, so one store is enough. */
+      if (liveStore) return;
+
+      var host = mountLivePanel();
+      if (!host) return;
+
+      livePanel = window.OrgXLivePanel.createPanel({
+        mount: host,
+        emptyLabel: 'No agents running',
+        onRetry: function () { if (liveStore) liveStore.reconnect(); }
+      });
+
+      liveStore = window.OrgXLiveStore.createLiveStore({
+        widget: 'agent-status',
+        streamUrl: grant.streamUrl,
+        /* The canonical graph is a flat node list; the panel renders it directly. */
+        select: function (payload) {
+          return payload && Array.isArray(payload.nodes) ? payload.nodes : [];
+        },
+        /* A sandboxed widget cannot mint a stream token, so the bound MCP tool
+           call IS the refresh: re-invoking it returns a fresh grant. */
+        refreshToken: function () {
+          return window.OrgXWidgetRuntime
+            .callTool(grant.refreshTool, grant.refreshArgs || {})
+            .then(function (result) {
+              var next = result && result.live;
+              if (!next || !next.streamUrl) throw new Error('no grant in refresh result');
+              return next.streamUrl;
+            });
+        }
+      });
+
+      liveStore.subscribe(function (state) {
+        if (livePanel) livePanel.apply(state);
+        window.OrgXWidgetRuntime.reportSize();
+      });
+      liveStore.start();
+    }
+
     initWidget({
       render: function (payload) {
-        renderBoard(payload || demoPayload);
+        var data = payload || demoPayload;
+        renderBoard(data);
+        if (data && data.live) startLive(data.live);
       }
     });
   </script>

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-09-27T16:42:37.247Z",
+  "generatedAt": "2026-09-27T16:55:09.705Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -10,6 +10,9 @@
     "shared/icons.js",
     "shared/interaction-kit.css",
     "shared/interaction-kit.js",
+    "shared/live-machine.js",
+    "shared/live-panel.js",
+    "shared/live-store.js",
     "shared/mcp-apps-sdk.umd.js",
     "shared/tokens.css",
     "shared/utils.js",
@@ -34,8 +37,8 @@
   "widgets": {
     "agent-status": {
       "file": "public/widgets/agent-status.html",
-      "bytes": 79643,
-      "hash": "b573e0686e68",
+      "bytes": 82675,
+      "hash": "ad65fb7056b6",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/components/domain-accent.css",
@@ -43,6 +46,9 @@
         "shared/components/liveness-indicator.js",
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
+        "shared/live-machine.js",
+        "shared/live-panel.js",
+        "shared/live-store.js",
         "shared/mcp-apps-sdk.umd.js",
         "shared/tokens.css",
         "shared/widget-foundation.css",
