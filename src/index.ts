@@ -86,6 +86,7 @@ import {
   type GatewayDelegationClaims,
 } from './orgxApi';
 import { captureDecision } from './decisionCapture';
+import { resolveWriteWorkspace } from './writeWorkspace';
 import {
   executeWorkLease,
   WORK_LEASE_DESCRIPTION,
@@ -6892,13 +6893,25 @@ export class OrgXMcp extends McpAgent<
       (args.user_id as string | undefined);
     const ownerId = explicitOwnerId ?? resolvedUserId;
 
-    const workspaceId =
-      typeof args.workspace_id === 'string' && args.workspace_id.trim().length > 0
-        ? args.workspace_id.trim()
-        : typeof args.command_center_id === 'string' &&
-          args.command_center_id.trim().length > 0
-        ? args.command_center_id.trim()
-        : this.sessionContext.workspaceId ?? null;
+    // Tool contracts promise workspace_id defaults to the session's workspace;
+    // a fresh session that skipped orgx_bootstrap has none, so infer it the way
+    // scaffold_initiative does and bind it (src/writeWorkspace.ts). Production
+    // verification (2026-09-27) caught orgx_decide action=remember from the
+    // claude.ai connector failing on workspace_id=null and recording nothing.
+    const resolvedWorkspace = await resolveWriteWorkspace({
+      args,
+      sessionWorkspaceId: this.sessionContext.workspaceId,
+      infer: () => this.inferSessionWorkspace(resolvedUserId),
+    });
+    const workspaceId = resolvedWorkspace.workspaceId;
+    if (resolvedWorkspace.source === 'inferred' && this.sessionContext?.workspaceId !== resolvedWorkspace.workspaceId) {
+      this.sessionContext = {
+        ...this.sessionContext,
+        workspaceId: resolvedWorkspace.workspaceId,
+        ...(resolvedWorkspace.name ? { workspaceName: resolvedWorkspace.name } : {}),
+      };
+      await this.saveSessionContext();
+    }
 
     if (
       typeof args.workspace_id === 'string' &&
@@ -6914,6 +6927,19 @@ export class OrgXMcp extends McpAgent<
     }
 
     if (type === 'decision') {
+      if (!workspaceId) {
+        return this.toolError(
+          'No workspace is bound to this session and none could be chosen automatically (you have several and none is the default). Pass workspace_id, or call orgx_bootstrap first.',
+          {
+            code: 'invalid_input',
+            status: 400,
+            details: {
+              field: 'workspace_id',
+              suggested_next_calls: [{ tool: 'orgx_bootstrap', args: {} }],
+            },
+          }
+        );
+      }
       return captureDecision(args, {
         env: this.env,
         userId: resolvedUserId,
