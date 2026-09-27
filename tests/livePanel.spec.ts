@@ -105,6 +105,22 @@ describe('rendering', () => {
     expect(sub.getAttribute('data-blocked')).toBe('true');
   });
 
+  it('actually hides a badge whose count drops to zero', () => {
+    // `hidden` alone was not enough: .oxlp-badge sets display, which outranks
+    // the UA's [hidden] rule, so a stale "1 blocked" kept painting after the
+    // work unblocked and the header contradicted the rows beneath it.
+    const css = document.getElementById('orgx-live-panel-style')!.textContent!;
+    expect(css).toMatch(/\.oxlp \[hidden\]\{display:none!important\}/);
+
+    panel.apply(snapshot([node('a', 'blocked')]));
+    expect(panel.element.textContent).toContain('1 blocked');
+
+    panel.apply(snapshot([node('a', 'executing')]));
+    const blocked = panel.element.querySelector('.oxlp-badge[data-kind="blocked"]') as HTMLElement;
+    expect(blocked).not.toBeNull();
+    expect(blocked.hidden).toBe(true);
+  });
+
   it('renders the summary counts and the headline', () => {
     panel.apply(
       snapshot([node('a', 'executing'), node('b', 'blocked')], {

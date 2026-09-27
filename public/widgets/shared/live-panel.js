@@ -58,6 +58,11 @@
   // the ancestors' layout.
   var CSS = [
     '.oxlp{display:flex;flex-direction:column;gap:10px}',
+    // The UA's [hidden]{display:none} is a type-less rule, so any class here
+    // that sets `display` silently beats it: a badge hidden with .hidden kept
+    // painting, and the header went on claiming work was blocked after it had
+    // unblocked. Scoped and forced so toggling `hidden` actually hides.
+    '.oxlp [hidden]{display:none!important}',
     '.oxlp-head{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:22px}',
     '.oxlp-headline{font-size:.78rem;color:var(--ox-text-muted,#526078);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
     '.oxlp-headline[data-blocked="true"]{color:var(--ox-warn,#fbbf24);font-weight:600}',
