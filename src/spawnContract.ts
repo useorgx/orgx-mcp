@@ -55,9 +55,34 @@ function omitContractOnlyFields(
     instructions: _instructions,
     agent_type: _agentType,
     domain: _domain,
+    runtime: _runtime,
     ...rest
   } = args;
   return rest;
+}
+
+type SpawnRuntime = 'auto' | 'cloud_claude' | 'cloud_openai' | 'managed_openai' | 'managed_anthropic' | 'local';
+
+/**
+ * The one `runtime` choice on orgx_spawn, mapped onto the app's routing fields
+ * (execution_target, sdk_backend, managed_runtime). Explicit routing fields a
+ * caller already set win; `auto` or an unknown value sets nothing.
+ */
+export function runtimeRoutingFields(runtime: unknown): Record<string, string> {
+  switch (runtime as SpawnRuntime) {
+    case 'cloud_claude':
+      return { execution_target: 'cloud', sdk_backend: 'claude' };
+    case 'cloud_openai':
+      return { execution_target: 'cloud', sdk_backend: 'openai' };
+    case 'managed_openai':
+      return { execution_target: 'cloud', managed_runtime: 'openai' };
+    case 'managed_anthropic':
+      return { execution_target: 'cloud', managed_runtime: 'anthropic' };
+    case 'local':
+      return { execution_target: 'local' };
+    default:
+      return {};
+  }
 }
 
 /**
@@ -83,6 +108,9 @@ export function buildOrgxSpawnForwardArgs(
   }
 
   if (agent && !readString(out.agent)) out.agent = agent;
+  for (const [key, value] of Object.entries(runtimeRoutingFields(args.runtime))) {
+    if (!readString(out[key])) out[key] = value;
+  }
 
   const title = readString(args.title);
   const instructions = readString(args.instructions);

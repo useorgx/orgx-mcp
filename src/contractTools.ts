@@ -403,6 +403,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       provider: z.enum(['auto', 'openai', 'anthropic', 'openrouter', 'groq', 'local']).optional().describe('Optional provider preference. Use auto unless the user asks for a specific provider or a cost comparison selects one.'),
       budget_mode: z.enum(['cheapest_valid', 'balanced', 'highest_quality']).optional().describe('Optional budget posture override. Use cheapest_valid for controlled validation runs while reliability is being proven.'),
       max_cost_usd: z.number().nonnegative().optional().describe('Optional per-task hard cost ceiling in USD. If the estimate exceeds this, OrgX should block, downgrade, or request approval before dispatch.'),
+      runtime: z.enum(['auto', 'cloud_claude', 'cloud_openai', 'managed_openai', 'managed_anthropic', 'local']).optional().describe('Optional runtime OrgX runs the work on. Omit or auto to let OrgX choose. cloud_claude / cloud_openai: OrgX cloud on the Claude Agent SDK or OpenAI Responses. managed_openai / managed_anthropic: the OpenAI Agents API or Claude Managed Agents under OrgX governance. local: a paired local peer (Claude Code, Codex, OpenClaw) on the user machine.'),
       idempotency_key: z.string().optional().describe('Optional client-supplied idempotency key for safe retries. Same key returns the same spawn result without re-running.'),
       session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
     },
