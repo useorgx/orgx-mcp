@@ -1396,7 +1396,7 @@ tool_timeout_sec = 60
 # Enable per shell:
 #   export ORGX_EMIT_EXECUTION_GRAPH=1
 #   export ORGX_INITIATIVE_ID="<initiative-uuid>"
-#   export ORGX_CLIENT_KEY="oxk_..."           # or ORGX_SERVICE_KEY + ORGX_USER_ID
+#   export ORGX_CLIENT_KEY="oxk_..."           # your personal API key
 #   export ORGX_SOURCE_CLIENT="codex"
 # Emitter + full instructions: ${webUrl}/docs/integrations/execution-graph-hook
 `;

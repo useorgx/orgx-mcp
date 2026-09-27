@@ -15,6 +15,9 @@ function decodeActorToken(token: string) {
     sub: string;
     email?: string;
     orgx_user_id?: string;
+    rid?: string;
+    wid?: string;
+    scp?: string[];
     exp: number;
   };
 }
@@ -307,5 +310,41 @@ describe('callOrgxApiRaw actor token propagation', () => {
     expect(fetchMock.mock.calls[1]?.[0]).toBe(
       'https://fallback.useorgx.test/api/health'
     );
+  });
+
+  it('forwards run delegation claims only when a run is present', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true })));
+    vi.stubGlobal('fetch', fetchMock);
+    const env = {
+      ORGX_API_URL: 'https://api.useorgx.test',
+      ORGX_SERVICE_KEY: 'oxk-test',
+      ORGX_INTERNAL_SECRET: 'test-internal-secret',
+    };
+
+    await callOrgxApiRaw(env, '/api/x', undefined, {
+      userId: 'user_123',
+      runId: 'run-1',
+      workspaceId: 'ws-1',
+      scopes: ['mcp.slack'],
+    });
+    await callOrgxApiRaw(env, '/api/x', undefined, {
+      userId: 'user_123',
+      workspaceId: 'ws-1',
+    });
+
+    const tokenOf = (call: number) =>
+      decodeActorToken(
+        new Headers((fetchMock.mock.calls[call]?.[1] as RequestInit).headers).get(
+          'x-orgx-actor-token'
+        )!
+      );
+    expect(tokenOf(0)).toMatchObject({
+      rid: 'run-1',
+      wid: 'ws-1',
+      scp: ['mcp.slack'],
+    });
+    const interactive = tokenOf(1);
+    expect(interactive.rid).toBeUndefined();
+    expect(interactive.wid).toBeUndefined();
   });
 });
