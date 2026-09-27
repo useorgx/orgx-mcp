@@ -639,7 +639,108 @@
     };
   }
 
+  // ===========================================================================
+  // attachLiveFeed — the whole widget-side wiring in one call.
+  //
+  // Every widget needs the same six steps: find a mount, create a panel, create
+  // a store from the grant, wire the MCP tool call as the token refresh,
+  // subscribe, and re-report height to the host. Done by hand that is ~60 lines
+  // per widget, which is how the old surfaces drifted apart. Done here it is two
+  // lines at the call site, and a fix lands everywhere at once.
+  //
+  // Returns null when the payload carries no grant, so a widget calling this
+  // unconditionally still behaves exactly as it did before for hosts, tools, or
+  // users that have no live feed.
+  // ===========================================================================
+
+  function attachLiveFeed(options) {
+    var opts = options || {};
+    var grant = opts.grant;
+    if (!grant || !grant.streamUrl) return null;
+    if (!global.OrgXLivePanel) return null;
+
+    var doc = opts.document || global.document;
+    var mount = typeof opts.mount === 'function' ? opts.mount() : opts.mount;
+    if (!mount) return null;
+
+    var runtime = opts.runtime || global.OrgXWidgetRuntime;
+    var store = null;
+
+    var panel = global.OrgXLivePanel.createPanel({
+      document: doc,
+      mount: mount,
+      emptyLabel: opts.emptyLabel,
+      maxRows: opts.maxRows,
+      onSelect: opts.onSelect,
+      onRetry: function onRetry() {
+        if (store) store.reconnect();
+      },
+    });
+
+    store = createLiveStore({
+      widget: opts.widget || grant.feedType,
+      streamUrl: grant.streamUrl,
+      logSink: opts.logSink,
+      // The canonical graph is a flat node list; the panel renders it directly.
+      select:
+        opts.select ||
+        function selectNodes(payload) {
+          return payload && Array.isArray(payload.nodes) ? payload.nodes : [];
+        },
+      // A sandboxed widget cannot mint a stream token, so re-invoking the bound
+      // MCP tool IS the refresh: its result carries a fresh grant.
+      refreshToken:
+        runtime && runtime.callTool
+          ? function refreshToken() {
+              return runtime
+                .callTool(grant.refreshTool, grant.refreshArgs || {})
+                .then(function readGrant(result) {
+                  var next = result && result.live;
+                  if (!next || !next.streamUrl) {
+                    throw new Error('refresh result carried no grant');
+                  }
+                  return next.streamUrl;
+                });
+            }
+          : undefined,
+    });
+
+    store.subscribe(function onState(state) {
+      panel.apply(state);
+      // The panel changes the document height when rows enter or leave, and the
+      // host only resizes the iframe when told.
+      if (runtime && runtime.reportSize) runtime.reportSize();
+      if (opts.onState) opts.onState(state);
+    });
+
+    store.start();
+    return { store: store, panel: panel };
+  }
+
+  /**
+   * Insert a live-panel host before `selector`, or at the top of the body.
+   * Idempotent by id, so a host that re-delivers a tool result cannot stack a
+   * second panel on the page.
+   */
+  function ensureLiveMount(selector, id) {
+    var doc = global.document;
+    var mountId = id || 'orgxLiveFlow';
+    var existing = doc.getElementById(mountId);
+    if (existing) return existing;
+
+    var host = doc.createElement('section');
+    host.id = mountId;
+    host.style.margin = '0 0 14px';
+    var anchor = selector ? doc.querySelector(selector) : null;
+    if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(host, anchor);
+    else if (doc.body) doc.body.insertBefore(host, doc.body.firstChild);
+    else return null;
+    return host;
+  }
+
   global.OrgXLiveStore = {
+    attachLiveFeed: attachLiveFeed,
+    ensureLiveMount: ensureLiveMount,
     createLiveStore: createLiveStore,
     createLogger: createLogger,
     createSseTransport: createSseTransport,

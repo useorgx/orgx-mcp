@@ -55,8 +55,8 @@ const callTool = vi.fn();
  * Mount the widget the way the serving layer does: shared scripts first, then
  * the widget's own inline script.
  */
-function mountAgentStatus(payload: unknown): void {
-  const html = readFileSync(join(ROOT, 'public', 'widgets', 'agent-status.html'), 'utf8');
+function mountWidget(name: string, payload: unknown): void {
+  const html = readFileSync(join(ROOT, 'public', 'widgets', `${name}.html`), 'utf8');
   const body = html.match(/<body[^>]*>([\s\S]*)<\/body>/)?.[1] ?? '';
   document.documentElement.innerHTML = `<head></head><body>${body.replace(
     /<script>[\s\S]*?<\/script>/g,
@@ -92,6 +92,10 @@ function mountAgentStatus(payload: unknown): void {
   const scripts = html.match(/<script>([\s\S]*?)<\/script>/g) ?? [];
   const widgetScript = scripts[scripts.length - 1]!.replace(/<\/?script>/g, '');
   window.eval(widgetScript);
+}
+
+function mountAgentStatus(payload: unknown): void {
+  mountWidget('agent-status', payload);
 }
 
 function graphFrom(agents: Record<string, unknown>[]) {
@@ -314,5 +318,55 @@ describe('agent-status widget goes live from its grant', () => {
     const retry = document.querySelector('#liveFlow .oxlp-retry') as HTMLButtonElement;
     expect(retry).not.toBeNull();
     expect(retry.hidden).toBe(false);
+  });
+});
+
+describe('initiative-pulse widget uses the same shared wiring', () => {
+  const PULSE_GRANT = {
+    ...GRANT,
+    feedType: 'initiative-pulse',
+    streamUrl: 'https://mcp.useorgx.com/live-feed/initiative-pulse/init-1/stream?t=tok',
+    refreshTool: 'get_initiative_pulse',
+  };
+
+  function pulseGraph(workstreams: Record<string, unknown>[]) {
+    return FEEDS['initiative-pulse']!.normalize(
+      { initiatives: [{ id: 'init-1', title: 'Operation Prism', workstreams }] },
+      'init-1'
+    );
+  }
+
+  it('subscribes from its grant and renders workstreams', () => {
+    mountWidget('initiative-pulse', { initiative: { title: 'Operation Prism' }, live: PULSE_GRANT });
+    expect(FakeEventSource.latest.url).toContain('/live-feed/initiative-pulse/init-1/stream');
+
+    FakeEventSource.latest.onopen?.();
+    emit({
+      type: 'snapshot',
+      ts: 1,
+      data: pulseGraph([
+        { name: 'SSE Infrastructure', status: 'done', progress: 100 },
+        { name: 'Deploy & Monitor', status: 'blocked', progress: 20 },
+      ]),
+    });
+
+    const text = document.getElementById('liveFlow')?.textContent ?? '';
+    expect(text).toContain('SSE Infrastructure');
+    expect(text).toContain('Deploy & Monitor');
+    expect(text).toContain('1 blocked');
+  });
+
+  it('stays static without a grant', () => {
+    mountWidget('initiative-pulse', { initiative: { title: 'Operation Prism' } });
+    expect(FakeEventSource.instances).toHaveLength(0);
+    expect(document.getElementById('liveFlow')).toBeNull();
+  });
+
+  it('mounts exactly one panel even if the host re-renders', () => {
+    // ensureLiveMount is keyed by id; a host re-delivering a tool result must
+    // not stack a second panel.
+    mountWidget('initiative-pulse', { initiative: {}, live: PULSE_GRANT });
+    expect(document.querySelectorAll('#liveFlow')).toHaveLength(1);
+    expect(FakeEventSource.instances).toHaveLength(1);
   });
 });

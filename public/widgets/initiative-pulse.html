@@ -12,6 +12,9 @@
   <script src="shared/interaction-kit.js"></script>
   <script src="shared/components/domain-accent.js"></script>
   <script src="shared/components/liveness-indicator.js"></script>
+  <script src="shared/live-machine.js"></script>
+  <script src="shared/live-store.js"></script>
+  <script src="shared/live-panel.js"></script>
     <link
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='15' fill='none' stroke='%2300C9A7' stroke-width='6'/%3E%3Cpath d='M20 34l7-7 6 6 12-12' stroke='%2300C9A7' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"
@@ -3086,6 +3089,24 @@ external: function (size) {
         );
       };
 
+      /* Live workstream flow. The pulse card is a snapshot of the moment the
+         tool ran; this subscribes so workstreams that start, finish, or block
+         afterwards appear without the user asking again. Additive — a payload
+         with no 'live' grant renders exactly as before. */
+      var liveFeed = null;
+
+      function startLive(grant) {
+        if (liveFeed || !window.OrgXLiveStore) return;
+        liveFeed = window.OrgXLiveStore.attachLiveFeed({
+          widget: 'initiative-pulse',
+          grant: grant,
+          emptyLabel: 'No workstreams running',
+          mount: function () {
+            return window.OrgXLiveStore.ensureLiveMount('#content', 'liveFlow');
+          },
+        });
+      }
+
       if (isDemo) {
         applyBootPayload();
       } else {
@@ -3094,6 +3115,7 @@ external: function (size) {
             applyBootPayload(function () {
               if (data) pulse = data;
             });
+            if (data && data.live) startLive(data.live);
           },
         });
       }
