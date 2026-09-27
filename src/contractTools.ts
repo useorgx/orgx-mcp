@@ -4,6 +4,7 @@ import {
   FOUNDER_TEAM_ARTIFACT_TYPE_SUMMARY,
   FOUNDER_TEAM_COMPANY_STAGES,
 } from './artifactContracts';
+import { DISPATCH_CONTRACT_SHAPE } from './dispatchContract';
 import { LOOP_VALIDATION_RUNGS } from './loopReliabilityValidation';
 import {
   CHATGPT_TOOL_DEFINITIONS,
@@ -396,19 +397,15 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       workspace_id: z.string().optional().describe('Optional workspace UUID to scope the spawned task. Defaults to the MCP session\'s workspace.'),
       agent_type: z.string().optional().describe('Target agent type/domain (e.g. "engineering", "marketing", "design"). REQUIRED for action=guard or action=handoff. Strongly recommended for action=spawn so the work routes to the right specialist.'),
       instructions: z.string().optional().describe('Delegation instructions for the agent. REQUIRED for action=spawn when spawning ad-hoc (without task_id). Used to override the task description for action=handoff.'),
-      expected_artifacts: z
-        .array(z.string())
-        .optional()
-        .describe(
-          'Optional expected final-output labels for action=spawn. Declaring at least one adds an artifact contract to the run; when the agent returns final text without a selectable artifact, OrgX persists that response as a document using the first label.'
-        ),
       model_tier: z.enum(['standard', 'balanced', 'precision', 'local', 'sonnet', 'opus']).optional().describe('Optional model tier override. Omit to let OrgX auto-route from task complexity. Legacy local/sonnet/opus are accepted for older clients.'),
       model: z.string().optional().describe('Optional exact model identifier when the user explicitly selects one. Otherwise OrgX resolves the model from task, tier, provider, policy, and budget.'),
       provider: z.enum(['auto', 'openai', 'anthropic', 'openrouter', 'groq', 'local']).optional().describe('Optional provider preference. Use auto unless the user asks for a specific provider or a cost comparison selects one.'),
-      budget_mode: z.enum(['cheapest_valid', 'balanced', 'highest_quality']).optional().describe('Optional budget posture override. Use cheapest_valid for controlled validation runs while reliability is being proven.'),
-      max_cost_usd: z.number().nonnegative().optional().describe('Optional per-task hard cost ceiling in USD. If the estimate exceeds this, OrgX should block, downgrade, or request approval before dispatch.'),
       runtime: z.enum(['auto', 'cloud_claude', 'cloud_openai', 'managed_openai', 'managed_anthropic', 'local']).optional().describe('Optional runtime OrgX runs the work on. Omit or auto to let OrgX choose. cloud_claude / cloud_openai: OrgX cloud on the Claude Agent SDK or OpenAI Responses. managed_openai / managed_anthropic: the OpenAI Agents API or Claude Managed Agents under OrgX governance. local: a paired local peer (Claude Code, Codex, OpenClaw) on the user machine.'),
-      idempotency_key: z.string().optional().describe('Optional client-supplied idempotency key for safe retries. Same key returns the same spawn result without re-running.'),
+      // The shared dispatch contract: deadline, budget, parallelism, effects,
+      // acceptance and idempotency. Identical across every dispatch verb so
+      // the four surfaces cannot drift apart again. Supersedes this tool's own
+      // budget_mode / max_cost_usd / idempotency_key declarations.
+      ...DISPATCH_CONTRACT_SHAPE,
       session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
     },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
@@ -817,18 +814,14 @@ export const CONTRACT_TOOL_DEFINITIONS = [
         .string()
         .optional()
         .describe('Optional initiative title to resolve automatically if ID is unknown'),
-      expected_artifacts: z
-        .array(z.string())
-        .optional()
-        .describe('Optional final outputs you expect'),
-      deadline: z
-        .string()
-        .optional()
-        .describe('Optional due date or plain-text deadline'),
       style_guidelines: z
         .string()
         .optional()
         .describe('Optional voice, format, or style constraints'),
+      // Same dispatch contract as orgx_spawn. This verb previously offered a
+      // free-text deadline and no budget or idempotency key, so a caller could
+      // not retry it safely or cap what it spent.
+      ...DISPATCH_CONTRACT_SHAPE,
     },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.agentRequiresAuth,
