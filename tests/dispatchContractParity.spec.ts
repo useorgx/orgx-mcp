@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
 import { CONTRACT_TOOL_DEFINITIONS } from '../src/contractTools';
@@ -60,6 +62,40 @@ describe('dispatch contract parity', () => {
       }
     }
   );
+
+  /**
+   * The tool definitions were correct while docs/generated/tool-catalog.json
+   * still showed delegate_agent_task with 2 of 8 contract fields and a
+   * plain-text deadline, because scripts/generate-tool-catalog.ts keeps its
+   * own inline copy of that schema. The definitions are not the surface an
+   * agent reads — the catalog is. Check the artifact, not just the source.
+   */
+  it('the generated catalog serves the full contract on every verb', () => {
+    const catalog = JSON.parse(
+      readFileSync(
+        new URL('../docs/generated/tool-catalog.json', import.meta.url),
+        'utf8'
+      )
+    ) as { tools: Array<Record<string, unknown>> };
+
+    for (const id of DISPATCH_TOOL_IDS) {
+      const entry = catalog.tools.find(
+        (tool) => (tool.id ?? tool.name) === id
+      );
+      if (!entry) continue; // not every verb is published to every catalog
+      const schema = (entry.inputSchema ?? {}) as {
+        properties?: Record<string, unknown>;
+      };
+      const props = schema.properties ?? {};
+      const missing = CONTRACT_FIELDS.filter((field) => !(field in props));
+      expect(
+        missing,
+        `tool-catalog.json entry for ${id} is missing: ${missing.join(
+          ', '
+        )} — run pnpm catalog:generate`
+      ).toEqual([]);
+    }
+  });
 
   it('no longer advertises a free-text deadline anywhere', () => {
     for (const id of DISPATCH_TOOL_IDS) {

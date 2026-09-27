@@ -28,6 +28,7 @@ import {
   ENTITY_TYPES,
   LIFECYCLE_ENTITY_TYPES,
 } from '../src/toolDefinitions';
+import { DISPATCH_CONTRACT_SHAPE } from '../src/dispatchContract';
 
 import { FLYWHEEL_TOOL_DEFINITIONS } from '../src/flywheelTools';
 import {
@@ -387,12 +388,16 @@ const INLINE_TOOL_METADATA: Array<{
         .string()
         .optional()
         .describe('Optional initiative title to resolve automatically if ID is unknown'),
-      expected_artifacts: z.array(z.string()).optional().describe('Optional final outputs you expect'),
-      deadline: z.string().optional().describe('Optional due date or plain-text deadline'),
       style_guidelines: z
         .string()
         .optional()
         .describe('Optional voice, format, or style constraints'),
+      // Same shared dispatch contract the tool itself declares in
+      // src/contractTools.ts. This catalog entry is a second copy of that
+      // schema; spreading the shared shape keeps the copy from drifting the
+      // way it already had (it still advertised a plain-text deadline after
+      // the tool moved to a validated ISO-8601 instant).
+      ...DISPATCH_CONTRACT_SHAPE,
     }),
     securityScopes: ['agents:write'],
     readOnly: false,
