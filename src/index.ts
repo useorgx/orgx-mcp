@@ -149,6 +149,12 @@ import {
   buildSpawnGuardForwardArgs,
   validateSpawnContract,
 } from './spawnContract';
+import {
+  applyDispatchContractToArgs,
+  buildAcceptanceBinding,
+  DISPATCH_TOOL_IDS,
+  normalizeDispatchContract,
+} from './dispatchContract';
 import { validateWriteCreateContract } from './writeContract';
 import { buildLiveFeedWidget } from './liveFeedWidget';
 import { signStreamToken } from './streamToken';
@@ -2794,12 +2800,52 @@ export class OrgXMcp extends McpAgent<
    * - Check if tool requires auth via securitySchemes
    * - Return _meta["mcp/www_authenticate"] if auth required but missing
    */
+  /**
+   * Normalize the shared dispatch contract before any verb starts work.
+   *
+   * Every dispatch door (orgx_spawn, delegate_agent_task, spawn_agent_task,
+   * handoff_task) passes through here, so a deadline means the same thing and
+   * an acceptance contract is hashed at the same moment regardless of which
+   * verb the caller reached for. Invalid input is refused at dispatch rather
+   * than discovered at completion, when the work has already been paid for.
+   */
+  private async resolveDispatchContract(
+    toolId: string,
+    args: Record<string, unknown>
+  ): Promise<
+    | { ok: true; args: Record<string, unknown> }
+    | { ok: false; result: CallToolResult }
+  > {
+    if (!DISPATCH_TOOL_IDS.has(toolId)) return { ok: true, args };
+
+    const normalized = normalizeDispatchContract(args);
+    if (!normalized.ok || !normalized.contract) {
+      return {
+        ok: false,
+        result: this.toolError(
+          normalized.message ?? `Invalid dispatch contract for ${toolId}`,
+          { code: normalized.code ?? 'invalid_dispatch_contract', status: 422 }
+        ),
+      };
+    }
+
+    const binding = await buildAcceptanceBinding(normalized.contract.acceptance);
+    return {
+      ok: true,
+      args: applyDispatchContractToArgs(args, normalized.contract, binding),
+    };
+  }
+
   private async executeChatGPTTool(
     toolId: string,
     args: Record<string, unknown>,
     securitySchemes?: readonly { type: string; scopes?: readonly string[] }[]
   ): Promise<CallToolResult> {
     const startTime = Date.now();
+
+    const dispatchContract = await this.resolveDispatchContract(toolId, args);
+    if (!dispatchContract.ok) return dispatchContract.result;
+    args = dispatchContract.args;
 
     // Resolve userId from props (current request), session auth (OAuth), or explicit args (service-key MCP)
     const resolvedUserId = this.props?.userId ?? this.sessionAuth.userId;
@@ -5387,6 +5433,16 @@ export class OrgXMcp extends McpAgent<
               code: 'spawn_contract_violation',
               status: 422,
             });
+          }
+          // orgx_spawn posts straight to the client API instead of going
+          // through executeChatGPTTool, so it normalizes the shared dispatch
+          // contract here. Read-only actions (guard/classify/estimate) start
+          // no work, so they carry no contract to bind.
+          const dispatchesWork = action === 'spawn' || action === 'handoff';
+          if (dispatchesWork) {
+            const resolved = await this.resolveDispatchContract('orgx_spawn', args);
+            if (!resolved.ok) return resolved.result;
+            args = resolved.args;
           }
           const targetTool =
             action === 'guard'

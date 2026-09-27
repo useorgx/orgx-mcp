@@ -19,6 +19,7 @@ import {
   MISSION_CONTROL_NODE_TYPES,
 } from './shared/entity';
 import { CONFIGURE_ORG_POLICY_TYPES } from './configureOrgPolicy';
+import { DISPATCH_CONTRACT_SHAPE } from './dispatchContract';
 import {
   compatibilityAliasDescription,
   preferredToolCallout,
@@ -688,16 +689,6 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         .describe(
           'Optional task UUID to bind the spawned run to a specific scaffolded task, enabling direct task-level progress rollup. Use create_entity type=task first if the task does not exist yet.'
         ),
-      expected_artifacts: z
-        .array(z.string())
-        .optional()
-        .describe(
-          'Optional: Final outputs you expect (e.g., "PRD", "10 ad images").'
-        ),
-      deadline: z
-        .string()
-        .optional()
-        .describe('Optional: When this is needed by (ISO date or plain text).'),
       style_guidelines: z
         .string()
         .optional()
@@ -724,18 +715,10 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         .describe(
           'Optional provider preference. Use auto unless the user requests a specific provider or the budget/capability comparison has selected one.'
         ),
-      budget_mode: agentBudgetModeSchema
-        .optional()
-        .describe(
-          'Optional budget posture override. Omit to let OrgX apply workspace policy. Use cheapest_valid for controlled reliability/validation runs where cost must be pinned while the loop is being proven.'
-        ),
-      max_cost_usd: z
-        .number()
-        .nonnegative()
-        .optional()
-        .describe(
-          'Optional per-task hard cost ceiling in USD. If the estimate exceeds this, OrgX should block, downgrade, or ask for approval before dispatch.'
-        ),
+      // Shared dispatch contract — see src/dispatchContract.ts. Replaces this
+      // tool's own budget_mode/max_cost_usd/deadline/expected_artifacts so the
+      // legacy verb and orgx_spawn accept exactly the same thing.
+      ...DISPATCH_CONTRACT_SHAPE,
       execution_target: z
         .enum(['auto', 'cloud', 'local', 'local_preferred'])
         .optional()
@@ -783,6 +766,10 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         .describe(
           'If true (default), spawn a new agent run for the target agent'
         ),
+      // A handoff re-dispatches the work, so it carries the same contract.
+      // Previously it carried none: no budget, no deadline, no idempotency,
+      // and no way to restate what would count as done for the new owner.
+      ...DISPATCH_CONTRACT_SHAPE,
     },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.handoffRequiresAuth,
