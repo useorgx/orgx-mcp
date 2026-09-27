@@ -10,6 +10,9 @@
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/interaction-kit.js"></script>
+  <script src="shared/live-machine.js"></script>
+  <script src="shared/live-store.js"></script>
+  <script src="shared/live-panel.js"></script>
   <script>
     (function() {
       const params = new URLSearchParams(window.location.search);
@@ -3707,7 +3710,12 @@
     window.addEventListener('resize', function(){ queueTreeLayout(false); _scheduleSizeSync([24, 180]); });
 
     if(isDemo) applyBootPayload();
-    else initWidget({ getData: _extractData, render: d => { applyBootPayload(function(){ if(d) data = d; }); } });
+    else initWidget({
+      /* Scaffolding an initiative is the start of the work, not the end of it. */
+      live: { anchor: '#content', widget: 'scaffolded-initiative', emptyLabel: 'No workstreams running' },
+      getData: _extractData,
+      render: d => { applyBootPayload(function(){ if(d) data = d; }); }
+    });
   </script>
 </body>
 </html>

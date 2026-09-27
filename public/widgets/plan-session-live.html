@@ -994,6 +994,9 @@
 
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
+  <script src="shared/live-machine.js"></script>
+  <script src="shared/live-store.js"></script>
+  <script src="shared/live-panel.js"></script>
   <script>
     (function installPlanWidget() {
       'use strict';
@@ -1795,6 +1798,11 @@
         }
 
         window.OrgXWidgetRuntime.initWidget({
+          live: {
+            anchor: '.widget-shell-card',
+            widget: 'plan-session-live',
+            emptyLabel: 'No agents running',
+          },
           render: renderPayload,
         });
       });

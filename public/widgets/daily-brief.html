@@ -472,6 +472,9 @@
     <div id="root" class="ox-surface"></div>
     <script src="shared/mcp-apps-sdk.umd.js"></script>
     <script src="shared/widget-runtime.js"></script>
+    <script src="shared/live-machine.js"></script>
+    <script src="shared/live-store.js"></script>
+    <script src="shared/live-panel.js"></script>
     <script type="module">
       const { initWidget, callTool, openWidgetLink } = window.OrgXWidgetRuntime;
 
@@ -794,6 +797,7 @@
       }
 
       initWidget({
+        live: { anchor: '#root', widget: 'daily-brief', emptyLabel: 'No agents running' },
         render: (d) => {
           if (d) data = d;
           if (data && data.defaultLens) lens = data.defaultLens;

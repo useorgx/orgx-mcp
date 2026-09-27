@@ -52,8 +52,13 @@ class FakeEventSource {
 const callTool = vi.fn();
 
 /**
- * Mount the widget the way the serving layer does: shared scripts first, then
- * the widget's own inline script.
+ * Mount a widget the way the serving layer does: shared scripts first, then the
+ * widget's own inline script.
+ *
+ * The real widget-runtime.js is loaded rather than stubbed, because the live
+ * attach now happens inside its initWidget — stubbing it would test the harness
+ * instead of the shipped path. A fake `window.openai` puts the runtime on its
+ * ChatGPT branch, which is the one that renders from a payload synchronously.
  */
 function mountWidget(name: string, payload: unknown): void {
   const html = readFileSync(join(ROOT, 'public', 'widgets', `${name}.html`), 'utf8');
@@ -69,29 +74,31 @@ function mountWidget(name: string, payload: unknown): void {
   }
   (window as unknown as { EventSource: unknown }).EventSource = FakeEventSource;
 
-  for (const file of ['live-machine.js', 'live-store.js', 'live-panel.js']) {
+  // The runtime's ChatGPT branch reads its payload from window.openai.
+  scope.openai = {
+    toolOutput: payload,
+    theme: 'dark',
+    callTool,
+    setWidgetHeight() {},
+  };
+
+  for (const file of ['widget-runtime.js', 'live-machine.js', 'live-store.js', 'live-panel.js']) {
     window.eval(readFileSync(join(SHARED, file), 'utf8'));
   }
+  (scope.OrgXWidgetRuntime as { __resetForTests(): void }).__resetForTests();
 
-  // Stand in for widget-runtime.js: the widget only needs callTool, reportSize
-  // and an initWidget that hands it the payload.
-  scope.OrgXWidgetRuntime = {
-    callTool,
-    reportSize() {},
-    detectProtocol: () => 'mcp-apps',
-    openWidgetLink: () => false,
-    getErrorMessage: (value: unknown, fallback: string) =>
-      typeof value === 'string' ? value : fallback,
-  };
-  scope.initWidget = (options: { render(data: unknown): void }) => {
-    options.render(payload);
-  };
-  scope.callTool = callTool;
-  scope.openWidgetLink = () => false;
-
-  const scripts = html.match(/<script>([\s\S]*?)<\/script>/g) ?? [];
-  const widgetScript = scripts[scripts.length - 1]!.replace(/<\/?script>/g, '');
+  // daily-brief's inline script is a module; match both spellings.
+  const scripts = html.match(/<script(?:\s+type="module")?>[\s\S]*?<\/script>/g) ?? [];
+  const widgetScript = scripts[scripts.length - 1]!.replace(
+    /<script(?:\s+type="module")?>|<\/script>/g,
+    ''
+  );
   window.eval(widgetScript);
+
+  // Some widgets bootstrap on DOMContentLoaded. In a real page their listener is
+  // registered while the document is still parsing, so the event follows; here
+  // the script is evaluated after parsing, so fire it to match.
+  document.dispatchEvent(new window.Event('DOMContentLoaded'));
 }
 
 function mountAgentStatus(payload: unknown): void {
@@ -368,5 +375,75 @@ describe('initiative-pulse widget uses the same shared wiring', () => {
     mountWidget('initiative-pulse', { initiative: {}, live: PULSE_GRANT });
     expect(document.querySelectorAll('#liveFlow')).toHaveLength(1);
     expect(FakeEventSource.instances).toHaveLength(1);
+  });
+});
+
+/**
+ * Every widget that opted into the live layer, and the anchor it mounts against.
+ * The point of the table is that adding a widget to the layer means adding a row
+ * here, so a widget cannot quietly ship a `live` block that never attaches.
+ */
+const WIRED_WIDGETS: { name: string; feedType: string }[] = [
+  { name: 'agent-status', feedType: 'agent-status' },
+  { name: 'initiative-pulse', feedType: 'initiative-pulse' },
+  { name: 'task-spawned', feedType: 'agent-status' },
+  { name: 'scaffolded-initiative', feedType: 'initiative-pulse' },
+  { name: 'decisions', feedType: 'agent-status' },
+  { name: 'artifact-review', feedType: 'agent-status' },
+  { name: 'plan-session-live', feedType: 'agent-status' },
+  { name: 'morning-brief', feedType: 'agent-status' },
+  { name: 'daily-brief', feedType: 'agent-status' },
+];
+
+describe('every wired widget attaches the live layer', () => {
+  it.each(WIRED_WIDGETS)('$name loads the live scripts', ({ name }) => {
+    const html = readFileSync(join(ROOT, 'public', 'widgets', `${name}.html`), 'utf8');
+    // Order matters: the store and panel both assert the machine is installed.
+    const machine = html.indexOf('shared/live-machine.js');
+    const store = html.indexOf('shared/live-store.js');
+    const panel = html.indexOf('shared/live-panel.js');
+    expect(machine).toBeGreaterThan(-1);
+    expect(store).toBeGreaterThan(machine);
+    expect(panel).toBeGreaterThan(machine);
+  });
+
+  it.each(WIRED_WIDGETS)('$name mounts a panel and renders a live snapshot', ({ name, feedType }) => {
+    const grant = {
+      ...GRANT,
+      feedType,
+      streamUrl: `https://mcp.useorgx.com/live-feed/${feedType}/init-1/stream?t=tok`,
+    };
+    mountWidget(name, { live: grant });
+
+    // Attached to the real stream.
+    expect(FakeEventSource.instances).toHaveLength(1);
+    expect(FakeEventSource.latest.url).toContain(`/live-feed/${feedType}/init-1/stream`);
+
+    FakeEventSource.latest.onopen?.();
+    emit({
+      type: 'snapshot',
+      ts: 1,
+      data: graphFrom([
+        { id: 'a', name: 'Alpha Agent', status: 'running', currentTask: 'Doing the thing' },
+        { id: 'b', name: 'Beta Agent', status: 'blocked', blockers: ['Needs approval'] },
+      ]),
+    });
+
+    const flow = document.getElementById('liveFlow');
+    expect(flow, `${name} did not mount a live panel`).not.toBeNull();
+    expect(flow!.textContent).toContain('Alpha Agent');
+    expect(flow!.textContent).toContain('Needs approval');
+    expect(flow!.querySelectorAll('.oxlp-row')).toHaveLength(2);
+  });
+
+  it.each(WIRED_WIDGETS)('$name stays completely static without a grant', ({ name }) => {
+    mountWidget(name, {});
+    expect(FakeEventSource.instances).toHaveLength(0);
+    expect(document.getElementById('liveFlow')).toBeNull();
+  });
+
+  it('leaves search-results alone: a result list has no live work to show', () => {
+    const html = readFileSync(join(ROOT, 'public', 'widgets', 'search-results.html'), 'utf8');
+    expect(html).not.toContain('shared/live-machine.js');
   });
 });

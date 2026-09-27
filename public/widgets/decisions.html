@@ -10,6 +10,9 @@
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/interaction-kit.js"></script>
+  <script src="shared/live-machine.js"></script>
+  <script src="shared/live-store.js"></script>
+  <script src="shared/live-panel.js"></script>
   <template id="structured-review-contract">
     <section class="review-step-panel" data-direction="neutral">
       <ol>
@@ -2107,7 +2110,10 @@
     });
 
     if(isDemo) applyBootPayload();
-    else initWidget({ render: d => { applyBootPayload(function(){ if(d) data = d; }); } });
+    else initWidget({
+      live: { anchor: '.widget-shell-card', widget: 'decisions', emptyLabel: 'No decisions pending' },
+      render: d => { applyBootPayload(function(){ if(d) data = d; }); }
+    });
   </script>
 </body>
 </html>

@@ -10,6 +10,9 @@
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/interaction-kit.js"></script>
+  <script src="shared/live-machine.js"></script>
+  <script src="shared/live-store.js"></script>
+  <script src="shared/live-panel.js"></script>
   <style>
       :root, :root[data-theme="light"] {
         --ox-bg: #f8fafc;
@@ -847,7 +850,12 @@
 
     if (isLoadingOverride) render();
     else if (isDemo) applyBootPayload();
-    else initWidget({ render: d => { applyBootPayload(function(){ if(d) entity = d; }); } });
+    else initWidget({
+      /* Spawning a task used to end the story here. The grant turns the
+         dispatch receipt into a view of the work it started. */
+      live: { anchor: '#content', widget: 'task-spawned', emptyLabel: 'No agents running yet' },
+      render: d => { applyBootPayload(function(){ if(d) entity = d; }); }
+    });
 
   </script>
 </body>

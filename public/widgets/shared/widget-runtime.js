@@ -333,10 +333,41 @@
     observer.observe(document.body);
   }
 
+  /**
+   * Attach the live control-flow panel when a payload carries a subscription
+   * grant and the widget opted in via `options.live`.
+   *
+   * This lives in initWidget because initWidget is the one place every widget
+   * already routes its payload through. Doing it per widget meant each one
+   * re-implementing the same mount/attach/guard dance, which is how the live
+   * surfaces drifted apart before. Resolved lazily: live-store.js loads after
+   * this file, and a widget without it simply stays static.
+   */
+  function maybeAttachLive(options, data, state) {
+    if (!options.live || state.attached) return;
+    var grant = data && data.live;
+    if (!grant || !grant.streamUrl) return;
+    var store = global.OrgXLiveStore;
+    if (!store || !store.attachLiveFeed) return;
+
+    state.attached = store.attachLiveFeed({
+      widget: options.live.widget || grant.feedType,
+      grant: grant,
+      emptyLabel: options.live.emptyLabel,
+      maxRows: options.live.maxRows,
+      onSelect: options.live.onSelect,
+      mount: function mount() {
+        return store.ensureLiveMount(options.live.anchor, 'liveFlow');
+      },
+    });
+    return state.attached;
+  }
+
   function initWidget(options) {
     var render = options.render;
     var getData = options.getData || extractStructuredWidgetData;
     var currentData = null;
+    var liveState = { attached: null };
     var activeProtocol = getProtocol();
     document.documentElement.setAttribute('data-protocol', activeProtocol);
 
@@ -344,6 +375,7 @@
       applyTheme(global.openai && global.openai.theme, 'host');
       currentData = getData(global.openai && global.openai.toolOutput);
       render(currentData);
+      maybeAttachLive(options, currentData, liveState);
       observeChatGPTSize();
       global.addEventListener(
         'openai:set_globals',
@@ -354,6 +386,7 @@
           if (globals.toolOutput === undefined) return;
           currentData = getData(globals.toolOutput);
           render(currentData);
+          maybeAttachLive(options, currentData, liveState);
           reportSize();
         },
         { passive: true }
@@ -364,6 +397,7 @@
       activeBridge.toolResultCallback = function onToolResult(result) {
         currentData = getData(result);
         render(currentData);
+        maybeAttachLive(options, currentData, liveState);
       };
       activeBridge.connect().catch(function onConnectionFailure(error) {
         console.error('[OrgX Widget] Host connection failed:', error);
@@ -372,7 +406,10 @@
       render(null);
     }
 
-    return { getData: function getCurrentData() { return currentData; } };
+    return {
+      getData: function getCurrentData() { return currentData; },
+      getLiveFeed: function getLiveFeed() { return liveState.attached; },
+    };
   }
 
   function callTool(name, args) {

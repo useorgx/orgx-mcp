@@ -2351,31 +2351,18 @@
         }
       : null;
 
-    /* ── Live subscription ───────────────────────────────────────────────
-       The board renders from the tool payload, which is a point-in-time
-       snapshot. When the payload carries a 'live' grant (src/live/streamGrant.ts)
-       the widget also subscribes, so agents that start, finish, or block after
-       this message was sent show up instead of going unseen until someone asks
-       again. Additive: with no grant the widget behaves exactly as before. */
-    var liveFeed = null;
-
-    function startLive(grant) {
-      if (liveFeed || !window.OrgXLiveStore) return;
-      liveFeed = window.OrgXLiveStore.attachLiveFeed({
-        widget: 'agent-status',
-        grant: grant,
-        emptyLabel: 'No agents running',
-        mount: function () {
-          return window.OrgXLiveStore.ensureLiveMount('.board', 'liveFlow');
-        }
-      });
-    }
-
     initWidget({
+      /* Live control flow. The board is a point-in-time snapshot; this
+         subscribes so agents that start, finish, or block after the message was
+         sent show up instead of going unseen. Additive — a payload with no
+         'live' grant renders exactly as before. */
+      live: {
+        anchor: '.board',
+        widget: 'agent-status',
+        emptyLabel: 'No agents running',
+      },
       render: function (payload) {
-        var data = payload || demoPayload;
-        renderBoard(data);
-        if (data && data.live) startLive(data.live);
+        renderBoard(payload || demoPayload);
       }
     });
   </script>
