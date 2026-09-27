@@ -14,6 +14,9 @@
   <script src="shared/interaction-kit.js"></script>
   <script src="shared/components/domain-accent.js"></script>
   <script src="shared/components/liveness-indicator.js"></script>
+  <script src="shared/live-machine.js"></script>
+  <script src="shared/live-store.js"></script>
+  <script src="shared/live-panel.js"></script>
   <style>
     
     :root, :root[data-theme="light"] {
@@ -2491,6 +2494,15 @@
     }
 
     if (demoParams.get('loading') !== 'true' && demoState !== 'loading') initWidget({
+      /* Live control flow. The board is a point-in-time snapshot; this
+         subscribes so agents that start, finish, or block after the message was
+         sent show up instead of going unseen. Additive — a payload with no
+         'live' grant renders exactly as before. */
+      live: {
+        anchor: '.board',
+        widget: 'agent-status',
+        emptyLabel: 'No agents running',
+      },
       render: function (payload) {
         renderBoard(payload || demoPayload);
       }

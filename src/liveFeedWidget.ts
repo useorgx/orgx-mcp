@@ -11,6 +11,7 @@
  */
 
 import { INLINE_WIDGET_THEME_BOOTSTRAP } from './widgetTheme';
+import { WIDGET_THEME_CSS } from './generated/widgetThemeCss';
 
 export interface LiveFeedWidgetOptions {
   feedType: 'agent-status' | 'initiative-pulse';
@@ -44,60 +45,18 @@ export function buildLiveFeedWidget(opts: LiveFeedWidgetOptions): string {
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
-/* ── OrgX Design Tokens (light-first, matches production widgets) ── */
-:root,:root[data-theme="light"]{
-  --ox-bg:#f8fafc;
-  --ox-panel:#ffffff;
-  --ox-border:rgba(0,0,0,.08);
-  --ox-border-strong:rgba(0,0,0,.15);
-  --ox-text:#0f172a;
-  --ox-text-muted:#526078;
-  --ox-text-dim:#657188;
-  --ox-well:#f1f5f9;
-  --ox-well-shadow:inset 0 2px 4px rgba(0,0,0,.02);
-  --ox-shadow:0 12px 32px -12px rgba(0,0,0,.1),0 2px 6px rgba(0,0,0,.04);
-  --ox-grid:rgba(0,0,0,.03);
-  --ox-primary:#0f766e;
-}
-@media(prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --ox-bg:#02040a;
-    --ox-panel:rgba(10,15,22,.95);
-    --ox-border:rgba(255,255,255,.08);
-    --ox-border-strong:rgba(255,255,255,.15);
-    --ox-text:#f8fafc;
-    --ox-text-muted:#aab4c4;
-    --ox-text-dim:#8792a3;
-    --ox-well:rgba(0,0,0,.28);
-    --ox-well-shadow:inset 0 2px 10px rgba(0,0,0,.4);
-    --ox-shadow:0 24px 48px -20px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05);
-    --ox-grid:rgba(255,255,255,.02);
-    --ox-primary:#2dd4bf;
-  }
-}
-:root[data-theme="dark"]{
-  --ox-bg:#02040a;
-  --ox-panel:rgba(10,15,22,.95);
-  --ox-border:rgba(255,255,255,.08);
-  --ox-border-strong:rgba(255,255,255,.15);
-  --ox-text:#f8fafc;
-  --ox-text-muted:#aab4c4;
-  --ox-text-dim:#8792a3;
-  --ox-well:rgba(0,0,0,.28);
-  --ox-well-shadow:inset 0 2px 10px rgba(0,0,0,.4);
-  --ox-shadow:0 24px 48px -20px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05);
-  --ox-grid:rgba(255,255,255,.02);
-  --ox-primary:#2dd4bf;
-}
-/* Invariant tokens */
+/* Canonical theme, generated from public/widgets/shared/widget-theme.css.
+   This block used to be a hand-written copy of the --ox-* tokens and had
+   drifted from the shared file (--ox-border at rgba(0,0,0,.08) against the
+   canonical rgba(15,23,42,.1)), so this widget and the static ones were two
+   design systems. See scripts/generate-widget-theme.mjs. */
+${WIDGET_THEME_CSS}
+
+/* Tokens this widget needs that the shared theme does not own: domain colors
+   for agent avatars and the run-status hues. */
 :root{
-  --ox-primary-rgb:0,201,167;
-  --ox-success:#22c55e;--ox-success-rgb:34,197,94;
-  --ox-danger:#f43f5e;
-  --ox-warn:#fbbf24;--ox-warn-rgb:251,191,36;
   --ox-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,monospace;
   --ox-font:-apple-system,BlinkMacSystemFont,'Inter',system-ui,sans-serif;
-  /* Domain color palette (matches widget-foundation.css) */
   --d-engineering:6,182,212;
   --d-product:22,163,74;
   --d-marketing:249,115,22;
@@ -105,7 +64,6 @@ export function buildLiveFeedWidget(opts: LiveFeedWidgetOptions): string {
   --d-sales:168,85,247;
   --d-operations:245,158,11;
   --d-orchestration:0,201,167;
-  /* Status colors */
   --s-running:6,182,212;
   --s-queued:168,85,247;
   --s-blocked:245,158,11;
@@ -594,6 +552,104 @@ button[data-oxhref]:not(.footer-link){background:none;border:none;padding:0;font
     );
   }
 
+  /* ── Canonical payload adapter ──────────────────────────────────────────
+     LiveFeedDO now emits the canonical WorkGraph from src/live/workGraph.ts
+     (a flat 'nodes' list with a shared phase vocabulary) instead of passing the
+     raw OrgX API response through. These renderers predate that, so the graph is
+     mapped back onto the shapes they already read.
+
+     Raw payloads are still accepted: demo mode builds them by hand, and a client
+     reconnecting with 'since=' can replay events cached before a deploy. A
+     payload carrying 'nodes' + 'summary' is canonical; anything else is raw. */
+  function isWorkGraph(payload) {
+    return Boolean(payload && Array.isArray(payload.nodes) && payload.summary);
+  }
+
+  /* A canonical node delta, as opposed to a legacy 'delta' frame that carried a
+     whole raw payload. The frame type alone cannot tell these apart, so
+     discriminate on the delta's own fields. */
+  function isNodeDelta(payload) {
+    return Boolean(
+      payload && (Array.isArray(payload.changed) || Array.isArray(payload.removed))
+    );
+  }
+
+  function nodesOfKind(graph, kind) {
+    var out = [];
+    for (var i = 0; i < graph.nodes.length; i++) {
+      if (graph.nodes[i] && graph.nodes[i].kind === kind) out.push(graph.nodes[i]);
+    }
+    return out;
+  }
+
+  /* A canonical node's blocked phase is authoritative; its upstream 'status'
+     string may still say "running". Showing the raw status here would undo the
+     normalizer's whole point. */
+  function statusForNode(node) {
+    if (node.phase === 'blocked') return 'blocked';
+    if (node.phase === 'executing') return 'running';
+    if (node.phase === 'terminal') return 'done';
+    if (node.phase === 'pending') return 'queued';
+    return node.status || 'idle';
+  }
+
+  function adaptAgentStatus(graph) {
+    var agents = nodesOfKind(graph, 'agent').map(function (node) {
+      return {
+        id: node.id,
+        name: node.title,
+        domain: node.domain || '',
+        status: statusForNode(node),
+        /* The normalizer parks the agent's current activity on 'owner'. */
+        currentTask: node.owner || '',
+        workstream: node.parentId || '',
+        progress: node.progress,
+        blockers: node.blockers || []
+      };
+    });
+    return {
+      agents: agents,
+      summary: graph.summary,
+      proof_handoff: graph.proofHandoff
+    };
+  }
+
+  function adaptInitiativePulse(graph) {
+    var root = nodesOfKind(graph, 'initiative')[0] || null;
+    var streams = nodesOfKind(graph, 'workstream').map(function (node) {
+      return {
+        name: node.title,
+        domain: node.domain || '',
+        status: statusForNode(node),
+        progress: typeof node.progress === 'number' ? node.progress : 0,
+        blockers: node.blockers || []
+      };
+    });
+    return {
+      initiatives: [{
+        id: root ? root.id : graph.feedId,
+        title: (root && root.title) || graph.title || '',
+        status: root ? statusForNode(root) : '—',
+        /* Prefer the rollup: it counts every node, where the root node's own
+           progress is only whatever upstream happened to stamp on it. */
+        progress: graph.summary.progress,
+        risk_level: graph.summary.blocked > 0 ? 'high' : 'low',
+        workstreamCount: streams.length,
+        activeRuns: graph.summary.running,
+        workstreams: streams
+      }],
+      headline: graph.headline,
+      proof_handoff: graph.proofHandoff
+    };
+  }
+
+  function adaptPayload(payload) {
+    if (!isWorkGraph(payload)) return payload;
+    return FEED_TYPE === 'agent-status'
+      ? adaptAgentStatus(payload)
+      : adaptInitiativePulse(payload);
+  }
+
   /* ── Agent status renderer ── */
   function renderAgentStatus(data) {
     var agents  = data.agents || [];
@@ -764,13 +820,74 @@ button[data-oxhref]:not(.footer-link){background:none;border:none;padding:0;font
   }
 
   /* ── Event dispatcher ── */
+  /* Last canonical graph, so a 'delta' frame can be folded onto it. The DO now
+     sends only changed nodes; re-rendering from a delta alone would drop every
+     node it did not mention. */
+  var heldGraph = null;
+
+  function foldDelta(delta) {
+    if (!heldGraph) return null;
+    /* Null-prototype: a node whose id is 'constructor' or '__proto__' would
+       otherwise resolve an inherited member and read as already present. */
+    var byId = Object.create(null);
+    var order = [];
+    var i;
+    for (i = 0; i < heldGraph.nodes.length; i++) {
+      byId[heldGraph.nodes[i].id] = heldGraph.nodes[i];
+      order.push(heldGraph.nodes[i].id);
+    }
+    var changed = delta.changed || [];
+    for (i = 0; i < changed.length; i++) {
+      if (!byId[changed[i].id]) order.push(changed[i].id);
+      byId[changed[i].id] = changed[i];
+    }
+    var removed = delta.removed || [];
+    for (i = 0; i < removed.length; i++) delete byId[removed[i]];
+
+    /* The server's order when it sent one. Appending locally cannot express a
+       reorder, and puts a node the server prepended at the bottom. */
+    if (Object.prototype.toString.call(delta.order) === '[object Array]' && delta.order.length) {
+      order = delta.order;
+    }
+
+    var nodes = [];
+    for (i = 0; i < order.length; i++) {
+      if (byId[order[i]]) nodes.push(byId[order[i]]);
+    }
+    return {
+      feedType: heldGraph.feedType,
+      feedId: heldGraph.feedId,
+      title: delta.title || heldGraph.title,
+      nodes: nodes,
+      summary: delta.summary || heldGraph.summary,
+      headline: delta.headline,
+      updatedAt: delta.updatedAt,
+      /* A delta that mentions the handoff wins, including null for 'withdrawn'. */
+      proofHandoff: delta.proofHandoff !== undefined
+        ? (delta.proofHandoff || undefined)
+        : heldGraph.proofHandoff
+    };
+  }
+
   function handleData(event) {
     // SSE can deliver a replayed snapshot after a newer delta. Do not let a
     // late event move the UI backwards to old agent/initiative state.
     if (event.ts && lastTs && Number(event.ts) < Number(lastTs)) return;
     if (event.ts) lastTs = event.ts;
-    var data = event.data;
-    if (!data) return;
+    var payload = event.data;
+    if (!payload) return;
+
+    if (isNodeDelta(payload)) {
+      var folded = foldDelta(payload);
+      /* No held snapshot means this client joined mid-stream on a 'since='
+         replay. Skip the delta rather than render a partial graph; the next
+         snapshot will resynchronize. */
+      if (!folded) return;
+      payload = folded;
+    }
+    if (isWorkGraph(payload)) heldGraph = payload;
+
+    var data = adaptPayload(payload);
 
     updatedRow.textContent = 'Updated ' + fmt(event.ts || Date.now());
 
@@ -782,8 +899,12 @@ button[data-oxhref]:not(.footer-link){background:none;border:none;padding:0;font
     applyQuietCta(data);
   }
 
+  /* Set once the server says the token is done; suppresses the retry loop. */
+  var expired = false;
+
   /* ── SSE connection with backoff ── */
   function connect() {
+    if (expired) return;
     if (es) { try { es.close(); } catch(_) {} }
     var url = STREAM_URL + (lastTs ? '&since=' + lastTs : '');
     connLabel.textContent = 'Connecting\u2026';
@@ -809,8 +930,22 @@ button[data-oxhref]:not(.footer-link){background:none;border:none;padding:0;font
       }
     };
 
+    /* The server warns before the stream token expires. This widget is
+       standalone HTML with no MCP tool handle, so it cannot mint a replacement:
+       the honest response is to stop and say so, rather than reconnect forever
+       on a URL that will never be accepted again. */
+    if (es.addEventListener) {
+      es.addEventListener('auth_expired', function() {
+        expired = true;
+        try { es.close(); } catch(_) {}
+        ldot.className = 'live-dot error';
+        connLabel.textContent = 'Live updates ended \u2014 re-run the tool to resume';
+      });
+    }
+
     es.onerror = function() {
       try { es.close(); } catch(_) {}
+      if (expired) return;
       ldot.className = 'live-dot error';
       var wait = Math.round(retryDelay / 1000);
       connLabel.textContent = 'Reconnecting in ' + wait + 's\u2026';

@@ -100,6 +100,72 @@ describe('MCP Apps shared-component inlining', () => {
     ).toHaveLength(1);
   });
 
+  // The live layer is what makes a widget update after the tool call that
+  // produced it. A widget served over MCP is a single self-contained document,
+  // so if these are not inlined — or land out of order — the widget silently
+  // falls back to a static snapshot with no error anywhere.
+  it('inlines the live layer into every widget that opted in, in dependency order', () => {
+    const sharedComponents = Object.fromEntries(
+      MCP_APPS_SHARED_COMPONENT_PATHS.map((path) => [
+        path,
+        readFileSync(resolve(process.cwd(), 'public/widgets', path), 'utf8'),
+      ])
+    );
+
+    const liveScripts = [
+      'shared/live-machine.js',
+      'shared/live-store.js',
+      'shared/live-panel.js',
+    ];
+    for (const path of liveScripts) {
+      expect(MCP_APPS_SHARED_COMPONENT_PATHS).toContain(path);
+    }
+
+    let checked = 0;
+    for (const resource of WIDGET_RESOURCES) {
+      const { widgetFile } = parseWidgetResourceUri(resource.uri);
+      const raw = readFileSync(
+        resolve(process.cwd(), 'public/widgets', widgetFile),
+        'utf8'
+      );
+      if (!raw.includes('shared/live-machine.js')) continue;
+      checked += 1;
+
+      const sanitized = sanitizeMcpAppsHtml(raw, { sharedComponents });
+
+      for (const path of liveScripts) {
+        // The external reference must be gone...
+        expect(
+          sanitized,
+          `${widgetFile} still references ${path}`
+        ).not.toMatch(new RegExp(`<script[^>]*src=["'][^"']*${path.replace('.', '\\.')}`));
+        // ...and replaced by the real body.
+        expect(
+          sanitized,
+          `${widgetFile} did not inline ${path}`
+        ).toContain(`<script data-inline-asset="${path}">`);
+      }
+
+      // live-store.js and live-panel.js both throw if the machine is missing,
+      // so order is a hard dependency, not a preference.
+      const machineAt = sanitized.indexOf('data-inline-asset="shared/live-machine.js"');
+      const storeAt = sanitized.indexOf('data-inline-asset="shared/live-store.js"');
+      const panelAt = sanitized.indexOf('data-inline-asset="shared/live-panel.js"');
+      expect(machineAt, `${widgetFile}: machine missing`).toBeGreaterThan(-1);
+      expect(storeAt, `${widgetFile}: store before machine`).toBeGreaterThan(machineAt);
+      expect(panelAt, `${widgetFile}: panel before machine`).toBeGreaterThan(machineAt);
+
+      // And the runtime that reads the `live` block is present.
+      expect(sanitized).toContain('function maybeAttachLive');
+    }
+
+    // Guard against the loop silently matching nothing.
+    expect(checked).toBe(8);
+  }, 30000);
+
+  // Inlines the ~316KB MCP Apps SDK into every registered widget, so this is
+  // seconds of real work rather than a slow assertion. Explicit budget keeps it
+  // from flaking when the suite is under parallel load.
   it('keeps the SDK source inside script elements for every registered widget resource', () => {
     const sharedComponents = Object.fromEntries(
       MCP_APPS_SHARED_COMPONENT_PATHS.map((path) => [
@@ -169,7 +235,7 @@ describe('MCP Apps shared-component inlining', () => {
         expect(sanitized).not.toContain("from './shared/utils.js'");
       }
     }
-  });
+  }, 20000);
 
   it('preserves replacement tokens in interaction-kit assets', () => {
     const html = `<link rel="stylesheet" href="shared/interaction-kit.css" />
