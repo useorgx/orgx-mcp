@@ -316,3 +316,112 @@ describe('deltas carry everything the client needs', () => {
     expect(diffGraphs(graph(nodes), graph(nodes))).toBeNull();
   });
 });
+
+describe('the stream credential stays out of the transcript', () => {
+  it('redacts the grant from the model-visible JSON block', async () => {
+    // structuredContent is how the widget receives the grant, and it has to.
+    // This block is a different audience: the model reads it and it lands in
+    // the transcript. A signed stream URL is a bearer credential, and for a
+    // user-scoped feed it carries the viewer's identity.
+    const { buildJsonFirstContentBlocks } = await import('../src/agentErgonomics');
+    const blocks = buildJsonFirstContentBlocks({
+      data: {
+        agents: [{ id: 'a' }],
+        live: {
+          feedType: 'decisions',
+          label: 'Decision queue',
+          streamUrl: 'https://mcp.useorgx.com/live-feed/decisions/i/stream?t=SECRET-TOKEN',
+          expiresAt: Date.now() + 60_000,
+          refreshTool: 'get_pending_decisions',
+        },
+      },
+      summary: 'ok',
+    });
+
+    const json = blocks[0]!.text;
+    expect(json).not.toContain('SECRET-TOKEN');
+    expect(json).not.toContain('/live-feed/decisions/i/stream?t=');
+    // The model should still be able to see that a live feed exists.
+    expect(json).toContain('decisions');
+    expect(json).toContain('[redacted]');
+    // And the rest of the payload is untouched.
+    expect(JSON.parse(json).agents).toEqual([{ id: 'a' }]);
+  });
+
+  it('leaves payloads without a grant exactly as they were', async () => {
+    const { buildJsonFirstContentBlocks } = await import('../src/agentErgonomics');
+    const data = { agents: [{ id: 'a' }], initiative: { id: 'i' } };
+    const blocks = buildJsonFirstContentBlocks({ data, summary: 's' });
+    expect(JSON.parse(blocks[0]!.text)).toEqual(data);
+  });
+
+  it('mints short-lived grants, since the widget can refresh', async () => {
+    const { buildStreamGrant } = await import('../src/live/streamGrant');
+    const grant = await buildStreamGrant({
+      feedType: 'agent-status',
+      feedId: 'i',
+      serverUrl: 'https://mcp.useorgx.com',
+      secret: 's',
+      refreshTool: 'get_agent_status',
+    });
+    const lifetimeMs = grant!.expiresAt - Date.now();
+    // Well under the hour a scaffold session gets: a leaked URL is replayable
+    // for its whole lifetime, and refresh costs one tool call.
+    expect(lifetimeMs).toBeLessThanOrEqual(15 * 60 * 1000);
+    expect(lifetimeMs).toBeGreaterThan(5 * 60 * 1000);
+  });
+});
+
+describe('the expiry wrapper releases its upstream', () => {
+  it('cancels the origin stream when the token expires', async () => {
+    // Closing only the downstream controller left the pump parked in
+    // reader.read() forever on an idle feed, so the Durable Object kept the
+    // client registered and its heartbeat running with nobody reading.
+    const { withStreamTokenExpiry } = await import('../src/streamToken');
+    let cancelled = false;
+    const origin = new ReadableStream<Uint8Array>({
+      pull() {
+        // Deliberately never resolves: an expired feed with nothing to send.
+        return new Promise<void>(() => {});
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+    const wrapped = withStreamTokenExpiry(
+      new Response(origin, { headers: { 'content-type': 'text/event-stream' } }),
+      Date.now() + 40,
+      10
+    );
+
+    const reader = wrapped.body!.getReader();
+    const chunks: string[] = [];
+    const decoder = new TextDecoder();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) chunks.push(decoder.decode(value));
+    }
+    expect(chunks.join('')).toContain('event: auth_expired');
+    await vi.waitFor(() => expect(cancelled).toBe(true));
+  });
+
+  it('cancels the origin when the client hangs up first', async () => {
+    const { withStreamTokenExpiry } = await import('../src/streamToken');
+    let cancelled = false;
+    const origin = new ReadableStream<Uint8Array>({
+      pull() {
+        return new Promise<void>(() => {});
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+    const wrapped = withStreamTokenExpiry(
+      new Response(origin, { headers: { 'content-type': 'text/event-stream' } }),
+      Date.now() + 60_000
+    );
+    await wrapped.body!.cancel();
+    await vi.waitFor(() => expect(cancelled).toBe(true));
+  });
+});

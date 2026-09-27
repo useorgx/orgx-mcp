@@ -48,13 +48,42 @@ function redactSensitiveText(value: string): string {
     .replace(/table\s+"[^"]+"\s+does not exist/gi, 'backend data path is unavailable');
 }
 
+/**
+ * Strip the live-feed grant's credential out of a payload bound for a text
+ * content block.
+ *
+ * `structuredContent` is how a widget receives its data, and the grant has to
+ * travel there for the widget to subscribe at all. This JSON block is a
+ * different audience: it is read by the model and lands in the transcript. A
+ * signed stream URL is a bearer credential — for a user-scoped feed it carries
+ * the viewer's identity — so it has no business being in the part a model
+ * reads, summarizes, or quotes back.
+ *
+ * The shape is kept so the model can still see that a live feed exists and
+ * which one; only the URL and expiry go.
+ */
+function redactLiveGrant(data: Record<string, unknown>): Record<string, unknown> {
+  const grant = data.live;
+  if (!grant || typeof grant !== 'object') return data;
+  const { feedType, label } = grant as Record<string, unknown>;
+  return {
+    ...data,
+    live: {
+      ...(typeof feedType === 'string' ? { feedType } : {}),
+      ...(typeof label === 'string' ? { label } : {}),
+      streamUrl: '[redacted]',
+      note: 'Live subscription delivered to the widget via structuredContent.',
+    },
+  };
+}
+
 export function buildJsonFirstContentBlocks(params: {
   data: Record<string, unknown>;
   summary: string;
   widgetHtml?: string | null;
 }): TextContent[] {
   const blocks: TextContent[] = [
-    { type: 'text', text: JSON.stringify(params.data) },
+    { type: 'text', text: JSON.stringify(redactLiveGrant(params.data)) },
     { type: 'text', text: params.summary },
   ];
   if (params.widgetHtml) {

@@ -33,8 +33,15 @@ export interface StreamGrant {
   label: string;
 }
 
-/** Mirrors TOKEN_TTL_MS in streamToken.ts. */
-const TOKEN_TTL_MS = 60 * 60 * 1000;
+/**
+ * Live-feed grants are deliberately short-lived.
+ *
+ * The signed URL reaches the widget through the tool result, so it is exposed
+ * more widely than a credential minted inside a request. The widget refreshes
+ * through its bound MCP tool, which costs one call, so the only thing a long
+ * lifetime buys is a longer replay window for a leaked URL.
+ */
+const GRANT_TTL_MS = 15 * 60 * 1000;
 
 export async function buildStreamGrant(input: {
   feedType: string;
@@ -54,6 +61,7 @@ export async function buildStreamGrant(input: {
     feedId: input.feedId,
     ...(input.userId ? { userId: input.userId } : {}),
     secret: input.secret,
+    ttlMs: GRANT_TTL_MS,
   });
 
   const base = input.serverUrl.replace(/\/+$/, '');
@@ -67,7 +75,7 @@ export async function buildStreamGrant(input: {
     streamUrl,
     // Reported slightly short of the real exp so a widget that refreshes on
     // this value always beats the server's own expiry warning.
-    expiresAt: Date.now() + TOKEN_TTL_MS - 30_000,
+    expiresAt: Date.now() + GRANT_TTL_MS - 30_000,
     refreshTool: input.refreshTool,
     refreshArgs: input.refreshArgs ?? {},
     label: feed.label,
