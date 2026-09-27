@@ -508,6 +508,43 @@ describe('empty states defer to the live panel', () => {
     expect(document.body.textContent).not.toContain('Live work only');
   });
 
+  it('decisions does not say "all caught up" over a live queue', async () => {
+    // Reachable in production, unlike the task-spawned case: the card renders
+    // the tool payload (a snapshot from when the tool ran) and the panel renders
+    // the live feed, so a decision raised seconds later appears above a card
+    // still claiming the queue is clear.
+    mountWidget('decisions', {
+      decisions: [],
+      live: {
+        ...GRANT,
+        feedType: 'decisions',
+        streamUrl: 'https://mcp.useorgx.com/live-feed/decisions/init-1/stream?t=tok',
+      },
+    });
+    FakeEventSource.latest.onopen?.();
+    emit({
+      type: 'snapshot',
+      ts: 1,
+      data: FEEDS.decisions!.normalize(
+        { decisions: [{ id: 'd1', title: 'Ship v3?', status: 'pending' }] },
+        'init-1'
+      ),
+    });
+
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('Newer than this snapshot');
+    });
+    expect(document.body.textContent).not.toContain('All caught up');
+  });
+
+  it('decisions still says "all caught up" when the live queue is empty too', async () => {
+    mountWidget('decisions', { decisions: [] });
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('All caught up');
+    });
+    expect(document.body.textContent).not.toContain('Newer than this snapshot');
+  });
+
   it('reports the live row count across attached feeds', () => {
     mountWidget('agent-status', {
       live: { ...GRANT },

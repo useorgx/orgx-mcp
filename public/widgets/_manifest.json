@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-09-27T22:33:17.657Z",
+  "generatedAt": "2026-09-27T22:36:10.399Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -97,8 +97,8 @@
     },
     "decisions": {
       "file": "public/widgets/decisions.html",
-      "bytes": 82415,
-      "hash": "b64412c910e0",
+      "bytes": 83920,
+      "hash": "05d8d8a9fb02",
       "primaryRgb": "251,191,36",
       "sharedRefs": [
         "shared/interaction-kit.css",
