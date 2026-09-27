@@ -389,6 +389,14 @@
     }
 
     function openStream() {
+      // Reconnect paths converge here. Without this check, a store that
+      // abandoned a refresh — or whose refresh failed — spends its whole
+      // budget reopening a URL it already knows is dead.
+      if (grantExpired()) {
+        logger.info('grant_expired_on_open', {});
+        dispatch(EVENTS.AUTH_EXPIRED);
+        return;
+      }
       logger.info('stream_opening', { cursor: cursor, transport: transport.name });
       try {
         transport.open(handlers);
@@ -775,7 +783,16 @@
    * accepted it and opened `EventSource("[redacted]")`.
    */
   function isStreamUrl(value) {
-    return typeof value === 'string' && /^https?:\/\//i.test(value);
+    if (typeof value !== 'string' || !/^https?:\/\//i.test(value)) return false;
+    // Actually parse it. "https://" satisfies the prefix test and then throws
+    // inside the EventSource constructor, which surfaces as a generic transport
+    // error and retries the same unusable URL until the budget is gone.
+    try {
+      var parsed = new URL(value);
+      return Boolean(parsed.host);
+    } catch (_) {
+      return false;
+    }
   }
 
   function readGrantFromToolResult(result) {

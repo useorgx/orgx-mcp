@@ -896,8 +896,12 @@ button[data-oxhref]:not(.footer-link){background:none;border:none;padding:0;font
     applyQuietCta(data);
   }
 
+  /* Set once the server says the token is done; suppresses the retry loop. */
+  var expired = false;
+
   /* ── SSE connection with backoff ── */
   function connect() {
+    if (expired) return;
     if (es) { try { es.close(); } catch(_) {} }
     var url = STREAM_URL + (lastTs ? '&since=' + lastTs : '');
     connLabel.textContent = 'Connecting\u2026';
@@ -923,8 +927,22 @@ button[data-oxhref]:not(.footer-link){background:none;border:none;padding:0;font
       }
     };
 
+    /* The server warns before the stream token expires. This widget is
+       standalone HTML with no MCP tool handle, so it cannot mint a replacement:
+       the honest response is to stop and say so, rather than reconnect forever
+       on a URL that will never be accepted again. */
+    if (es.addEventListener) {
+      es.addEventListener('auth_expired', function() {
+        expired = true;
+        try { es.close(); } catch(_) {}
+        ldot.className = 'live-dot error';
+        connLabel.textContent = 'Live updates ended \u2014 re-run the tool to resume';
+      });
+    }
+
     es.onerror = function() {
       try { es.close(); } catch(_) {}
+      if (expired) return;
       ldot.className = 'live-dot error';
       var wait = Math.round(retryDelay / 1000);
       connLabel.textContent = 'Reconnecting in ' + wait + 's\u2026';

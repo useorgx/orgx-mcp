@@ -559,46 +559,32 @@ describe('second-round regressions', () => {
     expect(applyDelta(base, overWire).proofHandoff).toBeUndefined();
   });
 
-  it('queues live events while a client is still being backfilled', () => {
-    // A client joined the broadcast map before its history was written, so a
-    // poll landing mid-replay interleaved a live event between two historical
-    // ones: the client applied the older one last and reverted fields.
-    const source = readFileSync(join(__dirname, '..', 'src', 'liveFeedDO.ts'), 'utf8');
-    expect(source).toContain('backfilling');
-    expect(source).toContain('client.queued.push(event)');
-    expect(source).toContain('private async finishBackfill(');
-  });
-
-  it('arms the alarm only after the cold-start poll settles', () => {
-    // Arming it first let the alarm poll ahead of the cold start; a client
-    // attaching in between kept the alarm's graph while lastGraph moved on.
-    const source = readFileSync(join(__dirname, '..', 'src', 'liveFeedDO.ts'), 'utf8');
-    const backfill = source.slice(
-      source.indexOf('private async backfill('),
-      source.indexOf('private ensureFirstGraph(')
+  it('does not give the generated widget the short grant lifetime', async () => {
+    // Shortening it looked like a security win and was a regression: that widget
+    // is standalone HTML with no MCP tool handle, so it cannot mint a
+    // replacement. The short life only works for a grant that can refresh
+    // itself, and applying it here cut the widget's updates from an hour to
+    // fifteen minutes with no way to recover.
+    const { LIVE_GRANT_TTL_MS, GENERATED_WIDGET_TTL_MS } = await import(
+      '../src/live/streamGrant'
     );
-    // Scheduling lives in the finally, after finishBackfill.
-    const flushAt = backfill.indexOf('await this.finishBackfill(clientId)');
-    const alarmAt = backfill.indexOf('this.scheduleNextPoll()');
-    expect(flushAt).toBeGreaterThan(-1);
-    expect(alarmAt).toBeGreaterThan(flushAt);
-    // And the alarm defers to an in-flight cold start.
-    expect(source).toContain('if (this.firstPoll) {');
-  });
+    expect(GENERATED_WIDGET_TTL_MS).toBeGreaterThan(LIVE_GRANT_TTL_MS);
 
-  it('aborts a timed-out writer rather than orphaning the stream', () => {
-    // Dropping the map entry alone left the response stream open and unfed:
-    // no updates, no heartbeats, no EOF, and the client cap stopped bounding
-    // the number of outstanding streams.
-    const source = readFileSync(join(__dirname, '..', 'src', 'liveFeedDO.ts'), 'utf8');
-    expect(source).toContain("client.writer.abort('client_write_timeout')");
-  });
-
-  it('gives the generated widget the same short-lived token as a grant', () => {
-    // It defaulted to an hour purely because nobody passed a ttl, and it ships
-    // inside a text content block.
     const source = readFileSync(join(__dirname, '..', 'src', 'index.ts'), 'utf8');
-    expect(source).toContain('ttlMs: LIVE_GRANT_TTL_MS');
+    expect(source).toContain('ttlMs: GENERATED_WIDGET_TTL_MS');
+  });
+
+  it('stops the generated widget looping on a token it cannot replace', async () => {
+    // It ignored the server's expiry warning entirely and reconnected forever.
+    const { buildLiveFeedWidget } = await import('../src/liveFeedWidget');
+    const html = buildLiveFeedWidget({
+      feedType: 'agent-status',
+      feedId: 'i',
+      streamBaseUrl: 'https://mcp.test',
+      streamToken: 'tok',
+    });
+    expect(html).toContain("addEventListener('auth_expired'");
+    expect(html).toContain('re-run the tool to resume');
   });
 
   it('hardens the generated widget fold the same way as the shared one', () => {

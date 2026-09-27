@@ -161,7 +161,7 @@ import { signStreamToken } from './streamToken';
 import {
   buildStreamGrant,
   feedBindingForTool,
-  LIVE_GRANT_TTL_MS,
+  GENERATED_WIDGET_TTL_MS,
 } from './live/streamGrant';
 import { hydrateTaskContext } from './taskContextHydrator';
 import {
@@ -3188,11 +3188,13 @@ export class OrgXMcp extends McpAgent<
               feedId: effectiveInitiativeId,
               userId: resolvedUserId ?? undefined,
               secret: this.env.MCP_JWT_SECRET,
-              // Same short lifetime as a structuredContent grant. This token is
-              // baked into HTML that ships as a text content block, so it is at
-              // least as exposed; it defaulted to an hour purely because nobody
-              // passed a ttl.
-              ttlMs: LIVE_GRANT_TTL_MS,
+              // Deliberately NOT the short grant lifetime. A structuredContent
+              // grant can refresh itself by re-invoking its bound tool; this
+              // token is baked into standalone HTML with no tool access, so a
+              // short life would just end its updates sooner with no way to
+              // recover. Shortening it here traded a smaller exposure window
+              // for a widget that died after fifteen minutes instead of sixty.
+              ttlMs: GENERATED_WIDGET_TTL_MS,
             });
             const _liveUrl = hasInitiativeContext && effectiveInitiativeId
               ? buildLiveUrl(effectiveInitiativeId)

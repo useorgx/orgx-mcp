@@ -81,7 +81,11 @@ export class LiveFeedDO {
   private seq = 0;
   /** Viewer id for user-scoped feeds, from the edge's verified header. */
   private viewerId: string | null = null;
-  /** In-flight cold-start poll, shared by every client racing to attach. */
+  /**
+   * The in-flight poll, whatever started it. Guarding only cold starts left the
+   * reverse overlap open: an alarm poll issued first could return *after* a
+   * newer cold poll and overwrite the graph with older data.
+   */
   private firstPoll: Promise<void> | null = null;
 
   constructor(
@@ -275,12 +279,24 @@ export class LiveFeedDO {
       }
 
       if (this.lastGraph) {
+        const snapshotTs = Date.now();
+        // Everything queued so far is older than, and contained in, this
+        // snapshot. Draining it afterwards would hand the client a newer frame
+        // followed by older ones and regress its cursor.
+        const superseded = client.queued.length;
+        client.queued = client.queued.filter((event) => event.ts > snapshotTs);
+        if (superseded > client.queued.length) {
+          this.log('info', 'queue_superseded_by_snapshot', {
+            clientId,
+            dropped: superseded - client.queued.length,
+          });
+        }
         await this.writeTo(client.writer, {
           type: 'snapshot',
           feedType,
           feedId,
           data: this.lastGraph,
-          ts: Date.now(),
+          ts: snapshotTs,
         });
       }
     } catch (error) {
@@ -312,18 +328,23 @@ export class LiveFeedDO {
   private async finishBackfill(clientId: string): Promise<void> {
     const client = this.clients.get(clientId);
     if (!client) return;
-    const queued = client.queued;
-    client.queued = [];
-    client.backfilling = false;
-    if (queued.length === 0) return;
 
-    this.log('info', 'backfill_flush', { clientId, queued: queued.length });
-    for (const event of queued) {
+    // Drain to empty *before* clearing the flag. Clearing first let a fan-out
+    // landing mid-drain write straight to the socket and overtake events still
+    // queued behind it — 2, 4, 3 again, which is the whole reason the queue
+    // exists. Each awaited write can admit another event, so this loops until
+    // the queue is genuinely empty and only then opens the direct path.
+    let flushed = 0;
+    while (client.queued.length > 0) {
+      const event = client.queued.shift()!;
+      flushed += 1;
       if (!(await this.writeTo(client.writer, event))) {
         this.dropClient(clientId, 'flush_write_failed');
         return;
       }
     }
+    client.backfilling = false;
+    if (flushed > 0) this.log('info', 'backfill_flush', { clientId, flushed });
   }
 
   /**
@@ -351,7 +372,10 @@ export class LiveFeedDO {
     const client = this.clients.get(clientId);
     if (!client) return;
     clearInterval(client.heartbeatTimer);
-    client.writer.close().catch(() => {});
+    // abort, not close: close() waits for writes already queued, so a consumer
+    // that stopped reading keeps its writer unsettled and its stream open long
+    // after we have forgotten it.
+    client.writer.abort(reason).catch(() => {});
     this.clients.delete(clientId);
     this.log('info', 'client_disconnected', {
       clientId,
@@ -368,7 +392,7 @@ export class LiveFeedDO {
       await this.writeRaw(writer, `data: ${JSON.stringify(event)}\n\n`);
       return true;
     } catch {
-      writer.close().catch(() => {});
+      writer.abort('write_failed').catch(() => {});
       return false;
     }
   }
@@ -425,7 +449,11 @@ export class LiveFeedDO {
         if (this.clients.size > 0) await this.scheduleNextPoll();
         return;
       }
-      const event = await this.poll(this.feedType, this.feedId);
+      const inFlight = this.poll(this.feedType, this.feedId);
+      this.firstPoll = inFlight.then(() => undefined).finally(() => {
+        this.firstPoll = null;
+      });
+      const event = await inFlight;
       if (event) await this.fanOut(event);
     } catch (error) {
       this.errorStreak += 1;

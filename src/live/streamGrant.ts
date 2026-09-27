@@ -43,6 +43,16 @@ export interface StreamGrant {
  */
 export const LIVE_GRANT_TTL_MS = 15 * 60 * 1000;
 
+/**
+ * Lifetime for the token baked into the server-generated HTML widget.
+ *
+ * That widget is standalone: no MCP tool handle, so no way to obtain a fresh
+ * token. The short grant lifetime above only works because a widget holding a
+ * grant can re-invoke its bound tool. Applying it here would simply end the
+ * widget's updates sooner, with nothing it could do about it.
+ */
+export const GENERATED_WIDGET_TTL_MS = 60 * 60 * 1000;
+
 export async function buildStreamGrant(input: {
   feedType: string;
   feedId: string;
