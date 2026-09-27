@@ -158,7 +158,11 @@ import {
 import { validateWriteCreateContract } from './writeContract';
 import { buildLiveFeedWidget } from './liveFeedWidget';
 import { signStreamToken } from './streamToken';
-import { buildStreamGrant, feedBindingForTool } from './live/streamGrant';
+import {
+  buildStreamGrant,
+  feedBindingForTool,
+  LIVE_GRANT_TTL_MS,
+} from './live/streamGrant';
 import { hydrateTaskContext } from './taskContextHydrator';
 import {
   loadArtifactReviewEnvelope,
@@ -3184,6 +3188,11 @@ export class OrgXMcp extends McpAgent<
               feedId: effectiveInitiativeId,
               userId: resolvedUserId ?? undefined,
               secret: this.env.MCP_JWT_SECRET,
+              // Same short lifetime as a structuredContent grant. This token is
+              // baked into HTML that ships as a text content block, so it is at
+              // least as exposed; it defaulted to an hour purely because nobody
+              // passed a ttl.
+              ttlMs: LIVE_GRANT_TTL_MS,
             });
             const _liveUrl = hasInitiativeContext && effectiveInitiativeId
               ? buildLiveUrl(effectiveInitiativeId)

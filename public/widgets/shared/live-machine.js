@@ -243,6 +243,13 @@
     next: STATES.CONNECTING,
     effects: [EFFECTS.RESET_BACKOFF, EFFECTS.OPEN_STREAM, EFFECTS.ARM_HEARTBEAT],
   };
+  // A widget hidden across its token's expiry resumes into a refresh, not into
+  // a doomed reconnect. Without this the store's resume-time AUTH_EXPIRED was
+  // dropped as illegal and the widget stayed paused for good.
+  TABLE[STATES.PAUSED][EVENTS.AUTH_EXPIRED] = {
+    next: STATES.REFRESHING,
+    effects: [EFFECTS.REFRESH_TOKEN],
+  };
   TABLE[STATES.PAUSED][EVENTS.CLOSE] = {
     next: STATES.CLOSED,
     effects: [EFFECTS.CLOSE_STREAM, EFFECTS.CANCEL_RETRY],
@@ -671,9 +678,13 @@
       summary: delta.summary || base.summary,
       headline: delta.headline,
       updatedAt: delta.updatedAt || base.updatedAt,
-      // A delta that carries a handoff replaces the held one; only fall back to
-      // the base when the delta says nothing about it.
-      proofHandoff: delta.proofHandoff !== undefined ? delta.proofHandoff : base.proofHandoff,
+      // A delta that mentions the handoff wins, including `null` for "withdrawn".
+      // Falling back to the base on anything but `undefined` would leave a CTA
+      // on screen after the server removed it.
+      proofHandoff:
+        delta.proofHandoff !== undefined
+          ? delta.proofHandoff || undefined
+          : base.proofHandoff,
     };
   }
 

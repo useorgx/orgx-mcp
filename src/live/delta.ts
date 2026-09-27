@@ -34,8 +34,12 @@ export interface WorkGraphDelta {
   headline?: string;
   title?: string;
   updatedAt: string;
-  /** Sent only when it changed; the client keeps its held value otherwise. */
-  proofHandoff?: { quiet_cta?: string };
+  /**
+   * Sent only when it changed; the client keeps its held value otherwise.
+   * `null` means it was removed — `undefined` would vanish in JSON and the
+   * client would keep showing a CTA the server has withdrawn.
+   */
+  proofHandoff?: { quiet_cta?: string } | null;
 }
 
 /**
@@ -163,7 +167,7 @@ export function diffGraphs(
     summary: next.summary,
     ...(next.headline ? { headline: next.headline } : {}),
     ...(next.title ? { title: next.title } : {}),
-    ...(handoffChanged ? { proofHandoff: next.proofHandoff } : {}),
+    ...(handoffChanged ? { proofHandoff: next.proofHandoff ?? null } : {}),
     updatedAt: next.updatedAt,
   };
 }
@@ -197,6 +201,10 @@ export function applyDelta(base: WorkGraph, delta: WorkGraphDelta): WorkGraph {
     nodes: order.filter((id) => byId.has(id)).map((id) => byId.get(id)!),
     summary: delta.summary,
     ...(delta.headline ? { headline: delta.headline } : { headline: undefined }),
+    // A delta that mentions the handoff wins, including when it withdraws it.
+    ...(delta.proofHandoff !== undefined
+      ? { proofHandoff: delta.proofHandoff ?? undefined }
+      : {}),
     updatedAt: delta.updatedAt,
   };
 }

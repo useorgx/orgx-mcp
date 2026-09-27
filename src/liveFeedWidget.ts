@@ -827,7 +827,9 @@ button[data-oxhref]:not(.footer-link){background:none;border:none;padding:0;font
 
   function foldDelta(delta) {
     if (!heldGraph) return null;
-    var byId = {};
+    /* Null-prototype: a node whose id is 'constructor' or '__proto__' would
+       otherwise resolve an inherited member and read as already present. */
+    var byId = Object.create(null);
     var order = [];
     var i;
     for (i = 0; i < heldGraph.nodes.length; i++) {
@@ -842,6 +844,12 @@ button[data-oxhref]:not(.footer-link){background:none;border:none;padding:0;font
     var removed = delta.removed || [];
     for (i = 0; i < removed.length; i++) delete byId[removed[i]];
 
+    /* The server's order when it sent one. Appending locally cannot express a
+       reorder, and puts a node the server prepended at the bottom. */
+    if (Object.prototype.toString.call(delta.order) === '[object Array]' && delta.order.length) {
+      order = delta.order;
+    }
+
     var nodes = [];
     for (i = 0; i < order.length; i++) {
       if (byId[order[i]]) nodes.push(byId[order[i]]);
@@ -854,7 +862,10 @@ button[data-oxhref]:not(.footer-link){background:none;border:none;padding:0;font
       summary: delta.summary || heldGraph.summary,
       headline: delta.headline,
       updatedAt: delta.updatedAt,
-      proofHandoff: heldGraph.proofHandoff
+      /* A delta that mentions the handoff wins, including null for 'withdrawn'. */
+      proofHandoff: delta.proofHandoff !== undefined
+        ? (delta.proofHandoff || undefined)
+        : heldGraph.proofHandoff
     };
   }
 

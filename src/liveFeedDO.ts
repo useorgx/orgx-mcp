@@ -52,6 +52,15 @@ interface SSEClient {
   writer: WritableStreamDefaultWriter<Uint8Array>;
   connectedAt: number;
   heartbeatTimer: ReturnType<typeof setInterval>;
+  /**
+   * True until backfill has finished. A client joins the broadcast map before
+   * its history has been written, so a poll landing mid-replay would interleave
+   * a live event between two historical ones — the client would then apply an
+   * older event last and silently revert fields, and move its cursor backwards.
+   * Live events are queued here instead and flushed once history is complete.
+   */
+  backfilling: boolean;
+  queued: LiveFeedEvent[];
 }
 
 interface LogFields {
@@ -186,7 +195,13 @@ export class LiveFeedDO {
       );
     }, HEARTBEAT_MS);
 
-    this.clients.set(clientId, { writer, connectedAt: Date.now(), heartbeatTimer });
+    this.clients.set(clientId, {
+      writer,
+      connectedAt: Date.now(),
+      heartbeatTimer,
+      backfilling: true,
+      queued: [],
+    });
 
     request.signal.addEventListener('abort', () => {
       this.dropClient(clientId, 'client_aborted');
@@ -218,17 +233,6 @@ export class LiveFeedDO {
     const client = this.clients.get(clientId);
     if (!client) return;
 
-    // The alarm lapses whenever the last client leaves, so a new attachment has
-    // to restart it. Storage reads are safe here — unlike a stream write, they
-    // do not depend on anyone reading the response.
-    try {
-      if ((await this.ctx.storage.getAlarm()) === null) await this.scheduleNextPoll();
-    } catch (error) {
-      this.log('warn', 'alarm_schedule_failed', {
-        message: error instanceof Error ? error.message : String(error),
-      });
-    }
-
     try {
       // A reconnecting client can only apply a replay if the buffer still
       // reaches back to its cursor. Once events have been evicted there is a
@@ -246,6 +250,7 @@ export class LiveFeedDO {
         }
         return;
       }
+
 
       if (since > 0) {
         this.log('info', 'replay_gap_snapshot', {
@@ -283,6 +288,41 @@ export class LiveFeedDO {
         clientId,
         message: error instanceof Error ? error.message : String(error),
       });
+    } finally {
+      await this.finishBackfill(clientId);
+      // Scheduled only now. Arming the alarm before the cold-start poll settled
+      // let the alarm run its own poll first: a client attaching in between got
+      // the alarm's graph, then the cold poll replaced lastGraph with a newer
+      // one and reported nothing, leaving that client a version behind with no
+      // later frame to repair it.
+      try {
+        if ((await this.ctx.storage.getAlarm()) === null) await this.scheduleNextPoll();
+      } catch (error) {
+        this.log('warn', 'alarm_schedule_failed', {
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+  }
+
+  /**
+   * Mark a client live and drain anything that arrived while it was catching
+   * up, preserving order.
+   */
+  private async finishBackfill(clientId: string): Promise<void> {
+    const client = this.clients.get(clientId);
+    if (!client) return;
+    const queued = client.queued;
+    client.queued = [];
+    client.backfilling = false;
+    if (queued.length === 0) return;
+
+    this.log('info', 'backfill_flush', { clientId, queued: queued.length });
+    for (const event of queued) {
+      if (!(await this.writeTo(client.writer, event))) {
+        this.dropClient(clientId, 'flush_write_failed');
+        return;
+      }
     }
   }
 
@@ -294,7 +334,12 @@ export class LiveFeedDO {
   private ensureFirstGraph(feedType: string, feedId: string): Promise<void> {
     if (!this.firstPoll) {
       this.firstPoll = this.poll(feedType, feedId)
-        .then(() => undefined)
+        .then((event) => {
+          // Anyone already live when the cold poll lands must be told, or they
+          // sit on whatever the alarm happened to fetch first.
+          if (event) return this.fanOut(event);
+          return undefined;
+        })
         .finally(() => {
           this.firstPoll = null;
         });
@@ -373,6 +418,13 @@ export class LiveFeedDO {
     }
 
     try {
+      // Never poll on top of an in-flight cold start; the second call reports
+      // "unchanged" against the first one's result and loses the difference.
+      if (this.firstPoll) {
+        await this.firstPoll;
+        if (this.clients.size > 0) await this.scheduleNextPoll();
+        return;
+      }
       const event = await this.poll(this.feedType, this.feedId);
       if (event) await this.fanOut(event);
     } catch (error) {
@@ -506,10 +558,21 @@ export class LiveFeedDO {
     // hold up the alarm that schedules the next poll for every other watcher.
     await Promise.all(
       Array.from(this.clients.entries()).map(async ([id, client]) => {
+        if (client.backfilling) {
+          // Still catching up. Queue rather than interleave; finishBackfill
+          // drains this in order once history has been written.
+          client.queued.push(event);
+          return;
+        }
         try {
           await this.writeRaw(client.writer, chunk);
         } catch {
           clearInterval(client.heartbeatTimer);
+          // Abort, do not just forget. Dropping the map entry alone left the
+          // response stream open and unfed: the viewer saw no updates, no
+          // heartbeats and no EOF, and the client cap stopped bounding the
+          // number of outstanding streams.
+          client.writer.abort('client_write_timeout').catch(() => {});
           dead.push(id);
         }
       })

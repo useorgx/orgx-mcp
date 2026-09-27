@@ -399,6 +399,7 @@
     }
 
     var refreshDeadlineTimer = null;
+    var refreshGeneration = 0;
 
     function performRefresh() {
       if (!refreshToken) {
@@ -411,13 +412,21 @@
       logger.info('token_refresh_started', {});
       var started = now();
       var settled = false;
+      // Any state change that abandons this attempt bumps the counter, so a
+      // late resolution cannot clear a newer attempt's deadline or reconnect
+      // the stream onto its own stale URL.
+      refreshGeneration += 1;
+      var generation = refreshGeneration;
+      var isCurrent = function isCurrent() {
+        return generation === refreshGeneration && !settled;
+      };
 
       // A host that never settles the tool call would otherwise strand the
       // machine in `refreshing` forever: no stream, no timers, and a Retry
       // button the panel only offers once the state is `fatal`.
       if (refreshDeadlineTimer) clearTimeoutImpl(refreshDeadlineTimer);
       refreshDeadlineTimer = setTimeoutImpl(function onRefreshDeadline() {
-        if (settled) return;
+        if (!isCurrent()) return;
         settled = true;
         logger.warn('token_refresh_timeout', { afterMs: refreshTimeoutMs });
         logger.count('token_refresh_timeout');
@@ -425,7 +434,10 @@
       }, refreshTimeoutMs);
 
       function finish(run) {
-        if (settled) return;
+        if (!isCurrent()) {
+          logger.info('token_refresh_superseded', { generation: generation });
+          return;
+        }
         settled = true;
         if (refreshDeadlineTimer) clearTimeoutImpl(refreshDeadlineTimer);
         refreshDeadlineTimer = null;
@@ -436,7 +448,7 @@
         .then(refreshToken)
         .then(function onRefreshed(next) {
           var url = typeof next === 'string' ? next : next && next.streamUrl;
-          if (!url) throw new Error('refresh returned no stream url');
+          if (!isStreamUrl(url)) throw new Error('refresh returned no usable stream url');
           finish(function applyRefresh() {
             streamUrl = url;
             if (next && typeof next.expiresAt === 'number') expiresAt = next.expiresAt;
@@ -667,7 +679,14 @@
         // `refreshing` ignores RETRY on purpose — a refresh is in flight. Treat
         // an explicit retry as "that refresh is not coming back" so the machine
         // falls through to normal backoff instead of sitting there.
-        if (state === STATES.REFRESHING) return dispatch(EVENTS.REFRESH_FAILED);
+        if (state === STATES.REFRESHING) {
+          // Abandon the in-flight refresh explicitly; otherwise it can land
+          // later and reconnect the stream onto a URL we have moved past.
+          refreshGeneration += 1;
+          if (refreshDeadlineTimer) clearTimeoutImpl(refreshDeadlineTimer);
+          refreshDeadlineTimer = null;
+          return dispatch(EVENTS.REFRESH_FAILED);
+        }
         return dispatch(EVENTS.RETRY);
       },
       stop: function stop() {
@@ -747,12 +766,24 @@
    * `result.live` alone therefore worked on one host and silently threw away a
    * perfectly good replacement token on the other.
    */
+  /**
+   * A stream URL has to be an absolute http(s) URL.
+   *
+   * Truthiness is not enough: the server redacts the grant out of the
+   * model-visible text block by replacing the URL with a placeholder, and a
+   * content-block fallback that only checked for a non-empty string happily
+   * accepted it and opened `EventSource("[redacted]")`.
+   */
+  function isStreamUrl(value) {
+    return typeof value === 'string' && /^https?:\/\//i.test(value);
+  }
+
   function readGrantFromToolResult(result) {
     if (!result || typeof result !== 'object') return null;
-    if (result.live && result.live.streamUrl) return result.live;
+    if (result.live && isStreamUrl(result.live.streamUrl)) return result.live;
 
     var structured = result.structuredContent;
-    if (structured && structured.live && structured.live.streamUrl) {
+    if (structured && structured.live && isStreamUrl(structured.live.streamUrl)) {
       return structured.live;
     }
 
@@ -762,7 +793,9 @@
         if (!item || item.type !== 'text' || !item.text) continue;
         try {
           var parsed = JSON.parse(item.text);
-          if (parsed && parsed.live && parsed.live.streamUrl) return parsed.live;
+          if (parsed && parsed.live && isStreamUrl(parsed.live.streamUrl)) {
+            return parsed.live;
+          }
         } catch (_) {
           // Not JSON; the next block may still carry it.
         }
@@ -774,7 +807,7 @@
   function attachLiveFeed(options) {
     var opts = options || {};
     var grant = opts.grant;
-    if (!grant || !grant.streamUrl) return null;
+    if (!grant || !isStreamUrl(grant.streamUrl)) return null;
     if (!global.OrgXLivePanel) return null;
 
     var doc = opts.document || global.document;
@@ -817,10 +850,11 @@
                 .callTool(grant.refreshTool, grant.refreshArgs || {})
                 .then(function readGrant(result) {
                   var next = readGrantFromToolResult(result);
-                  if (!next || !next.streamUrl) {
-                    throw new Error('refresh result carried no grant');
-                  }
-                  return next.streamUrl;
+                  if (!next) throw new Error('refresh result carried no grant');
+                  // The whole grant, not just the URL: returning a bare string
+                  // left the store with expiresAt = 0, disabling the very
+                  // up-front refresh check this exists to feed.
+                  return next;
                 });
             }
           : undefined,
