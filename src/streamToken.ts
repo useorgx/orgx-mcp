@@ -181,20 +181,25 @@ export function withStreamTokenExpiry(
     });
   };
 
+  /** Controller captured at start, so the expiry timer and pull share teardown. */
+  let controllerRef: ReadableStreamDefaultController<Uint8Array> | null = null;
+
+  const safeClose = () => {
+    if (closed) return;
+    closed = true;
+    if (timer) clearTimeout(timer);
+    timer = null;
+    try {
+      controllerRef?.close();
+    } catch {
+      // Already closed by another path.
+    }
+    releaseUpstream();
+  };
+
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      const safeClose = () => {
-        if (closed) return;
-        closed = true;
-        if (timer) clearTimeout(timer);
-        timer = null;
-        try {
-          controller.close();
-        } catch {
-          // ignore — another path already closed it
-        }
-        releaseUpstream();
-      };
+      controllerRef = controller;
       const emitExpired = () => {
         if (closed) return;
         try {
@@ -204,28 +209,40 @@ export function withStreamTokenExpiry(
             )
           );
         } catch {
-          // ignore
+          // The consumer may already be gone; closing below is still correct.
         }
         safeClose();
       };
       timer = setTimeout(emitExpired, fireAt);
-
-      const pump = async () => {
-        try {
-          while (!closed) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            if (value && !closed) controller.enqueue(value);
-          }
-        } catch {
-          // upstream disconnect — close cleanly
-        } finally {
-          safeClose();
-        }
-      };
-
-      void pump();
     },
+
+    /**
+     * Demand-driven: one upstream chunk per downstream pull.
+     *
+     * This used to pump in a loop from `start`, reading upstream as fast as it
+     * arrived and enqueueing regardless of whether anything was reading. A slow
+     * consumer therefore accumulated the whole stream inside this wrapper — the
+     * Durable Object's writes kept succeeding, so its write deadline never
+     * noticed, and nothing bounded the buffer. Reading from `pull` means the
+     * stream machinery only asks for more when there is demand, which is
+     * backpressure by construction.
+     */
+    async pull(controller) {
+      if (closed) return;
+      try {
+        const { done, value } = await reader.read();
+        if (closed) return;
+        if (done) {
+          safeClose();
+          return;
+        }
+        if (value) controller.enqueue(value);
+      } catch {
+        // Upstream disconnected.
+        safeClose();
+      }
+    },
+
     /**
      * The client hung up. Same teardown: without it, a widget that navigates
      * away leaves the DO holding a client it will never reach.

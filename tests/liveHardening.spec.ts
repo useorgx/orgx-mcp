@@ -406,6 +406,30 @@ describe('the expiry wrapper releases its upstream', () => {
     await vi.waitFor(() => expect(cancelled).toBe(true));
   });
 
+  it('does not buffer unboundedly when nobody is reading', async () => {
+    // It used to pump from `start`, reading upstream as fast as it arrived and
+    // enqueueing regardless of demand, so a slow consumer accumulated the whole
+    // stream inside the wrapper with nothing bounding it.
+    const { withStreamTokenExpiry } = await import('../src/streamToken');
+    let produced = 0;
+    const origin = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        produced += 1;
+        controller.enqueue(new TextEncoder().encode(`data: ${produced}\n\n`));
+      },
+    });
+    const wrapped = withStreamTokenExpiry(
+      new Response(origin, { headers: { 'content-type': 'text/event-stream' } }),
+      Date.now() + 60_000
+    );
+
+    // Attach a reader but never read: demand stays at the initial high-water
+    // mark, so the wrapper must stop asking upstream for more.
+    wrapped.body!.getReader();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(produced).toBeLessThan(10);
+  });
+
   it('cancels the origin when the client hangs up first', async () => {
     const { withStreamTokenExpiry } = await import('../src/streamToken');
     let cancelled = false;
