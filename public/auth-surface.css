@@ -1,0 +1,507 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   auth-surface.css — the shared material for OrgX's pre-auth pages
+   (consent.html, error.html, success.html).
+
+   These three pages are the only OrgX surfaces an operator sees before they
+   are authenticated, so they carry the whole first impression of the product.
+   They are deliberately self-contained: no CDN, no framework, no render-
+   blocking third party. A consent screen should not import a script it does
+   not control, and it should never flash unstyled.
+
+   Values come from the OrgX token system (orgx-design/tokens.md). Interactive
+   controls come from /widgets/shared/interaction-kit.css, which these pages
+   link directly rather than restating.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  color-scheme: dark;
+
+  /* Surface */
+  --ox-bg: #02040a;
+  --ox-panel: rgba(10, 15, 22, 0.95);
+  --ox-well-bg: rgba(255, 255, 255, 0.03);
+  --ox-grid: rgba(255, 255, 255, 0.022);
+
+  /* Line */
+  --ox-border: rgba(255, 255, 255, 0.08);
+  --ox-border-strong: rgba(255, 255, 255, 0.15);
+
+  /* Type */
+  --ox-text: #f8fafc;
+  --ox-text-muted: rgba(255, 255, 255, 0.5);
+  --ox-text-faint: rgba(255, 255, 255, 0.32);
+
+  /* Status */
+  --ox-lime: #bfff00;
+  --ox-teal: #00c9a7;
+  --ox-danger: #f43f5e;
+  --ox-warning: #fbbf24;
+  --ox-iris: #6366f1;
+
+  --ox-lime-rgb: 191, 255, 0;
+  --ox-teal-rgb: 0, 201, 167;
+  --ox-danger-rgb: 244, 63, 94;
+  --ox-warning-rgb: 251, 191, 36;
+  --ox-muted-rgb: 148, 163, 184;
+
+  /* The per-surface primary. Each page overrides this one triplet and the
+     gradient line, glow, focus ring and primary button all follow. */
+  --ox-primary-rgb: 191, 255, 0;
+  --ox-primary-contrast: #02040a;
+
+  --ox-font: 'Geist', -apple-system, BlinkMacSystemFont, 'Inter', system-ui,
+    sans-serif;
+  --ox-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --ox-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+  --ox-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 24px 16px;
+  background-color: var(--ox-bg);
+  color: var(--ox-text);
+  font-family: var(--ox-font);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+/* The signature grid: spatial grounding, plus one radial bloom in the surface
+   primary so the page reads as an instrument panel rather than a black div.
+   Fixed, so it never scrolls against the card on short viewports. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse 80% 50% at 50% 0%,
+      rgba(var(--ox-primary-rgb), 0.07),
+      transparent 60%
+    ),
+    linear-gradient(var(--ox-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px);
+  background-size: 100% 100%, 22px 22px, 22px 22px;
+  /* Fade the grid out toward the edges so it grounds without framing. */
+  -webkit-mask-image: radial-gradient(
+    ellipse 90% 70% at 50% 35%,
+    #000 40%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    ellipse 90% 70% at 50% 35%,
+    #000 40%,
+    transparent 100%
+  );
+}
+
+/* ── Shell ──────────────────────────────────────────────────────────────── */
+
+.auth-shell {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+}
+
+.auth-brand img {
+  width: 22px;
+  height: 22px;
+}
+
+.auth-brand span {
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--ox-text-faint);
+}
+
+/* ── Card ───────────────────────────────────────────────────────────────── */
+
+.auth-card {
+  position: relative;
+  border-radius: 18px;
+  border: 1px solid var(--ox-border);
+  background: var(--ox-panel);
+  box-shadow: var(--ox-shadow);
+  overflow: hidden;
+}
+
+/* The gradient line. One 1px edge-light across the card top, coloured by the
+   surface primary — the signature OrgX detail, and the only decorative
+   gradient allowed on the surface. */
+.auth-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(var(--ox-primary-rgb), 0.55),
+    transparent
+  );
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.auth-section {
+  padding: 20px;
+}
+
+.auth-section + .auth-section {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.auth-section--head {
+  padding-top: 24px;
+}
+
+.auth-section--foot {
+  background: rgba(255, 255, 255, 0.012);
+}
+
+/* ── Type voices ────────────────────────────────────────────────────────── */
+
+.ox-eyebrow {
+  font-family: var(--ox-mono);
+  font-size: 0.63rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ox-text-faint);
+  margin: 0;
+}
+
+.auth-title {
+  margin: 0;
+  font-size: 1.16rem;
+  font-weight: 600;
+  letter-spacing: -0.022em;
+  line-height: 1.3;
+  color: var(--ox-text);
+  text-wrap: balance;
+}
+
+.auth-sub {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--ox-text-muted);
+  text-wrap: pretty;
+}
+
+.auth-center {
+  text-align: center;
+}
+
+/* ── The connection glyph ───────────────────────────────────────────────── */
+/* Client and OrgX as two machined tiles with a live link between them. The
+   travelling pulse is the one ambient animation on the consent surface: it
+   says "this is a live connection being made", which is the page's whole
+   subject. */
+
+.link-rig {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.link-tile {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ox-border);
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.link-tile img,
+.link-tile svg {
+  width: 26px;
+  height: 26px;
+  display: block;
+}
+
+.link-tile--orgx {
+  border-color: rgba(var(--ox-primary-rgb), 0.3);
+  background: rgba(var(--ox-primary-rgb), 0.08);
+}
+
+.link-wire {
+  position: relative;
+  width: 56px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(var(--ox-primary-rgb), 0.3)
+  );
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.link-wire::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(var(--ox-primary-rgb)),
+    transparent
+  );
+  animation: wire-travel 2.6s var(--ox-ease) infinite;
+}
+
+@keyframes wire-travel {
+  0% {
+    transform: translateX(-110%);
+    opacity: 0;
+  }
+  22% {
+    opacity: 1;
+  }
+  78% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(260%);
+    opacity: 0;
+  }
+}
+
+/* ── Identity row ───────────────────────────────────────────────────────── */
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.identity__mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ox-text);
+  border: 1px solid var(--ox-border);
+  background: linear-gradient(
+    140deg,
+    rgba(var(--ox-primary-rgb), 0.18),
+    rgba(var(--ox-teal-rgb), 0.16)
+  );
+}
+
+.identity__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.identity__email {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--ox-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.identity__meta {
+  font-size: 0.72rem;
+  color: var(--ox-text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Footer links ───────────────────────────────────────────────────────── */
+
+.auth-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.73rem;
+  color: var(--ox-text-faint);
+}
+
+.auth-foot a {
+  color: inherit;
+  text-decoration: none;
+  border-radius: 5px;
+  padding: 2px 3px;
+  transition: color 160ms var(--ox-ease);
+}
+
+.auth-foot a:hover {
+  color: var(--ox-text-muted);
+}
+
+.auth-foot a:focus-visible {
+  outline: none;
+  color: var(--ox-text);
+  box-shadow: 0 0 0 2px rgba(var(--ox-primary-rgb), 0.45);
+}
+
+.auth-foot__dot {
+  opacity: 0.4;
+}
+
+/* ── Entrance ───────────────────────────────────────────────────────────── */
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.animate-in {
+  opacity: 0;
+  animation: fadeSlideUp 0.6s var(--ox-ease) forwards;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+
+/* ── Exit ───────────────────────────────────────────────────────────────── */
+/* Played deliberately before a navigation so the surface leaves under its own
+   control instead of being torn away mid-frame. */
+
+.is-leaving .auth-card,
+.is-leaving .auth-brand,
+.is-leaving .auth-foot {
+  opacity: 0;
+  transform: translateY(-6px) scale(0.99);
+  transition:
+    opacity 200ms var(--ox-ease),
+    transform 200ms var(--ox-ease);
+}
+
+/* ── Utility ────────────────────────────────────────────────────────────── */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+@media (max-width: 420px) {
+  body {
+    padding: 16px 12px;
+  }
+
+  .auth-section {
+    padding: 16px;
+  }
+
+  .auth-section--head {
+    padding-top: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-in {
+    opacity: 1;
+    animation: none;
+  }
+
+  .link-wire::after {
+    animation: none;
+    opacity: 0.85;
+    transform: translateX(75%);
+  }
+
+  .is-leaving .auth-card,
+  .is-leaving .auth-brand,
+  .is-leaving .auth-foot {
+    transition-duration: 1ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}

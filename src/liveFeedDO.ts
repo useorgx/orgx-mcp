@@ -20,7 +20,13 @@
  *   GET /live-feed/:feedType/:feedId/stream
  */
 
-import { cadenceFor, getFeed, FEED_ROUTE_PATTERN } from './live/feedRegistry';
+import {
+  cadenceFor,
+  getFeed,
+  FEED_ROUTE_PATTERN,
+  FEED_VIEWER_HEADER,
+} from './live/feedRegistry';
+import { callOrgxApiRaw, type OrgxApiEnv } from './orgxApi';
 import { diffGraphs, type WorkGraphDelta } from './live/delta';
 import type { WorkGraph } from './live/workGraph';
 
@@ -36,10 +42,7 @@ export type LiveFeedEvent =
   | { type: 'delta'; feedType: string; feedId: string; data: WorkGraphDelta; ts: number }
   | { type: 'error'; message: string; retryable: boolean; ts: number };
 
-interface LiveFeedEnv {
-  ORGX_API_URL: string;
-  ORGX_SERVICE_KEY?: string;
-}
+type LiveFeedEnv = OrgxApiEnv;
 
 interface SSEClient {
   writer: WritableStreamDefaultWriter<Uint8Array>;
@@ -63,6 +66,8 @@ export class LiveFeedDO {
   private pollCount = 0;
   private lastPollMs = 0;
   private seq = 0;
+  /** Viewer id for user-scoped feeds, from the edge's verified header. */
+  private viewerId: string | null = null;
 
   constructor(
     private readonly ctx: DurableObjectState,
@@ -115,6 +120,10 @@ export class LiveFeedDO {
       this.feedId = feedId;
       this.initialized = true;
     }
+    // Set by authHandler from the verified stream token. The edge strips any
+    // inbound copy first, so this is not caller-controlled.
+    const viewer = request.headers.get(FEED_VIEWER_HEADER);
+    if (viewer) this.viewerId = viewer;
 
     return this.handleStream(request, feedType, feedId);
   }
@@ -266,18 +275,24 @@ export class LiveFeedDO {
       return null;
     }
 
-    const apiUrl = feed.buildUrl(feedId, this.env.ORGX_API_URL);
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (this.env.ORGX_SERVICE_KEY) {
-      headers['Authorization'] = `Bearer ${this.env.ORGX_SERVICE_KEY}`;
-      headers['x-orgx-service-key'] = this.env.ORGX_SERVICE_KEY;
-    }
+    // Path only — callOrgxApiRaw owns the origin, so a feed cannot pin itself to
+    // the primary and miss the configured fallback.
+    const apiPath = feed.buildUrl(feedId, '');
 
     const startedAt = Date.now();
-    const response = await fetch(apiUrl, {
-      headers,
-      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-    });
+    // Routing through callOrgxApiRaw rather than a bare fetch buys the signed
+    // actor token (required for user-scoped upstreams), the fallback origin,
+    // and the shared timeout policy. The first version hand-rolled the service
+    // key here and got none of that.
+    const response = await callOrgxApiRaw(
+      this.env,
+      apiPath,
+      { signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) },
+      {
+        accept: 'application/json',
+        ...(feed.scope === 'user' && this.viewerId ? { userId: this.viewerId } : {}),
+      }
+    );
     const latencyMs = Date.now() - startedAt;
     this.pollCount += 1;
     this.lastPollMs = latencyMs;

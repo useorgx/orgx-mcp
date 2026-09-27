@@ -212,10 +212,38 @@ describe('feed registry', () => {
   });
 
   it('ships only feeds whose upstream the DO can actually read', () => {
-    // decisions and execution-room are intentionally absent: LiveFeedDO polls
-    // with a service key and neither upstream accepts one, so registering them
-    // would mean a widget subscribing to a feed that 401s on its first poll.
-    expect(FEED_TYPES.sort()).toEqual(['agent-status', 'initiative-pulse']);
+    // execution-room stays out: GET /api/live/execution-room gates on
+    // hasViewerAuthSignal() (a Clerk bearer or session cookie), which the
+    // worker's service-key + actor-token path does not satisfy.
+    expect(FEED_TYPES.sort()).toEqual(['agent-status', 'decisions', 'initiative-pulse']);
+  });
+
+  it('declares who each feed belongs to', () => {
+    // Scope decides Durable Object keying. Getting this wrong on a user-scoped
+    // feed means two people watching one initiative share an instance — and one
+    // person's decision queue.
+    expect(FEEDS['agent-status']!.scope).toBe('initiative');
+    expect(FEEDS['initiative-pulse']!.scope).toBe('initiative');
+    expect(FEEDS.decisions!.scope).toBe('user');
+  });
+
+  it('treats a pending decision as actionable blocked work', () => {
+    const graph = FEEDS.decisions!.normalize(
+      { decisions: [{ id: 'd1', title: 'Ship v3?', status: 'pending' }] },
+      'init-1'
+    );
+    expect(graph.nodes[0]).toMatchObject({ kind: 'decision', phase: 'blocked' });
+    expect(graph.nodes[0]!.blockers?.[0]).toMatchObject({
+      actionable: true,
+      resolveTool: 'orgx_decide',
+    });
+  });
+
+  it('builds a decisions URL the OrgX route accepts', () => {
+    // Must match the spellings GET /api/live/decisions reads.
+    expect(FEEDS.decisions!.buildUrl('init-1', '')).toBe(
+      '/api/live/decisions?initiative=init-1'
+    );
   });
 
   it('survives empty, null and unexpected payloads', () => {

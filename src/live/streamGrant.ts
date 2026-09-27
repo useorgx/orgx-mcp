@@ -98,6 +98,13 @@ export const TOOL_FEED_BINDINGS: Record<
     feedType: 'initiative-pulse',
     refreshTool: 'get_initiative_pulse',
   },
+  // The decision queue is the one feed scoped to a person rather than an
+  // initiative; see FeedDefinition.scope.
+  get_pending_decisions: {
+    feedType: 'decisions',
+    refreshTool: 'get_pending_decisions',
+  },
+  orgx_decide: { feedType: 'decisions', refreshTool: 'get_pending_decisions' },
 };
 
 export function feedBindingForTool(

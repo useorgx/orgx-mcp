@@ -3,1165 +3,1016 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
     <title>Authorize — OrgX</title>
     <link rel="icon" type="image/png" href="/orgx-logo.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap"
       rel="stylesheet"
     />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            fontFamily: { sans: ['Geist', 'sans-serif'] },
-            colors: {
-              bg: '#02040a',
-              surface: {
-                DEFAULT: 'rgba(255, 255, 255, 0.03)',
-                hover: 'rgba(255, 255, 255, 0.05)',
-                active: 'rgba(255, 255, 255, 0.08)',
-              },
-              lime: {
-                DEFAULT: '#BFFF00',
-                muted: 'rgba(191, 255, 0, 0.15)',
-                glow: 'rgba(191, 255, 0, 0.08)',
-              },
-              teal: {
-                DEFAULT: '#14B8A6',
-                muted: 'rgba(20, 184, 166, 0.15)',
-              },
-              iris: {
-                DEFAULT: '#6366F1',
-                muted: 'rgba(99, 102, 241, 0.15)',
-              },
-              amber: {
-                DEFAULT: '#F59E0B',
-                muted: 'rgba(245, 158, 11, 0.15)',
-              },
-              border: 'rgba(255, 255, 255, 0.08)',
-            },
-            animation: {
-              'fade-in': 'fadeIn 0.4s ease-out forwards',
-              'slide-up': 'slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-              'pulse-subtle': 'pulseSubtle 2s ease-in-out infinite',
-              'scale-in': 'scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-            },
-            keyframes: {
-              fadeIn: {
-                '0%': { opacity: '0' },
-                '100%': { opacity: '1' },
-              },
-              slideUp: {
-                '0%': { opacity: '0', transform: 'translateY(16px)' },
-                '100%': { opacity: '1', transform: 'translateY(0)' },
-              },
-              pulseSubtle: {
-                '0%, 100%': { opacity: '1' },
-                '50%': { opacity: '0.6' },
-              },
-              scaleIn: {
-                '0%': { opacity: '0', transform: 'scale(0.95)' },
-                '100%': { opacity: '1', transform: 'scale(1)' },
-              },
-            },
-          },
-        },
-      };
-    </script>
+    <link rel="stylesheet" href="/auth-surface.css" />
+    <link rel="stylesheet" href="/widgets/shared/interaction-kit.css" />
+    <script src="/widgets/shared/interaction-kit.js" defer></script>
     <style>
-      body {
-        background-color: #02040a;
-        color: #f2f7ff;
-        -webkit-font-smoothing: antialiased;
+      /* Consent is an execution-authority decision, so the surface primary is
+         lime — the same accent OrgX uses for execution everywhere else. */
+      :root {
+        --ox-primary-rgb: 191, 255, 0;
       }
 
-      .bg-noise {
-        background: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
-        opacity: 0.4;
-        pointer-events: none;
+      /* ── Permissions header ───────────────────────────────────────────── */
+
+      .perm-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 10px;
       }
 
-      .glass-panel {
-        background: rgba(255, 255, 255, 0.02);
-        backdrop-filter: blur(24px);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03) inset,
-          0 32px 64px rgba(0, 0, 0, 0.5);
-      }
+      /* ── Scope row ────────────────────────────────────────────────────── */
+      /* Level is the only thing that carries colour here. Scanning the column
+         of rail bars tells you where you handed over write authority before
+         you read a single word — and a row set to None goes quiet instead of
+         sitting at the same volume as a granted one. */
 
-      .permission-row {
-        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-        border: 1px solid transparent;
-      }
-      .permission-row:hover {
-        background: rgba(255, 255, 255, 0.02);
-        border-color: rgba(255, 255, 255, 0.04);
-      }
-      .permission-row.expanded {
-        background: rgba(255, 255, 255, 0.03);
-        border-color: rgba(255, 255, 255, 0.06);
-      }
-
-      .toggle-group {
-        display: inline-grid;
-        grid-auto-flow: column;
-        grid-auto-columns: minmax(58px, 1fr);
-        flex: 0 0 auto;
-        border-radius: 10px;
-        overflow: hidden;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        background: rgba(0, 0, 0, 0.3);
-      }
-
-      .toggle-btn {
-        min-width: 58px;
-        padding: 7px 12px;
-        font-size: 11px;
-        font-weight: 500;
-        line-height: 1;
-        color: rgba(255, 255, 255, 0.35);
-        background: transparent;
-        border: none;
-        cursor: pointer;
-        transition: color 0.15s ease, transform 0.15s ease;
+      .scope {
         position: relative;
+        border-radius: 12px;
+        border: 1px solid transparent;
+        padding-left: 11px;
+        transition:
+          background 200ms var(--ox-ease),
+          border-color 200ms var(--ox-ease),
+          opacity 200ms var(--ox-ease);
       }
 
-      .toggle-btn:not(:last-child) {
-        border-right: 1px solid rgba(255, 255, 255, 0.06);
+      .scope::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 10px;
+        bottom: 10px;
+        width: 2px;
+        border-radius: 999px;
+        background: rgb(var(--level-rgb, var(--ox-muted-rgb)));
+        opacity: var(--level-strength, 0.25);
+        transition:
+          background 200ms var(--ox-ease),
+          opacity 200ms var(--ox-ease);
       }
 
-      .toggle-btn:hover:not(.active):not(.active-read):not(.active-none) {
-        color: rgba(255, 255, 255, 0.6);
-        background: rgba(255, 255, 255, 0.03);
+      .scope[data-level='none'] {
+        opacity: 0.58;
       }
 
-      .toggle-btn.active,
-      .toggle-btn.active-read,
-      .toggle-btn.active-none {
-        font-weight: 600;
-        z-index: 1;
+      .scope[data-level='read'] {
+        --level-rgb: var(--ox-teal-rgb);
+        --level-strength: 0.75;
       }
 
-      .toggle-btn.active {
-        color: #02040a;
-        background: #bfff00;
-        box-shadow: 0 0 0 1px rgba(191, 255, 0, 0.65),
-          0 0 18px rgba(191, 255, 0, 0.28);
+      .scope[data-level='write'] {
+        --level-rgb: var(--ox-primary-rgb);
+        --level-strength: 1;
       }
 
-      .toggle-btn.active-read {
-        color: #03110f;
-        background: #2dd4bf;
-        box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.72),
-          0 0 18px rgba(20, 184, 166, 0.3);
+      .scope:hover,
+      .scope:focus-within {
+        background: rgba(255, 255, 255, 0.022);
+        border-color: rgba(255, 255, 255, 0.05);
+        opacity: 1;
       }
 
-      .toggle-btn.active-none {
-        color: #f2f7ff;
-        background: rgba(255, 255, 255, 0.22);
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28),
-          0 0 14px rgba(255, 255, 255, 0.08);
+      .scope__head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 4px 8px 4px 0;
       }
 
-      .toggle-btn:focus-visible {
-        outline: 2px solid rgba(191, 255, 0, 0.75);
-        outline-offset: 2px;
+      /* The disclosure is its own button so the row is reachable by keyboard.
+         The old markup put the handler on a <div>, which made the whole
+         consent screen unusable without a mouse. */
+      .scope__toggle {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        min-height: 44px;
+        padding: 0 6px 0 4px;
+        border: 0;
+        border-radius: 9px;
+        background: transparent;
+        color: var(--ox-text);
+        font: inherit;
+        font-size: 0.86rem;
+        font-weight: 500;
+        text-align: left;
+        cursor: pointer;
+        transition: color 160ms var(--ox-ease);
       }
 
-      .chevron {
-        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      .scope__toggle:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(var(--ox-primary-rgb), 0.45);
       }
-      .expanded .chevron {
+
+      .scope__chev {
+        width: 13px;
+        height: 13px;
+        flex-shrink: 0;
+        color: var(--ox-text-faint);
+        transition: transform 250ms var(--ox-ease);
+      }
+
+      .scope.is-open .scope__chev {
         transform: rotate(90deg);
       }
 
-      .description-panel {
-        max-height: 0;
+      .scope__icon {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        color: var(--ox-text-muted);
+      }
+
+      .scope__name {
         overflow: hidden;
-        transition: max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-          opacity 0.2s ease, padding 0.3s ease;
-        opacity: 0;
-        padding-top: 0;
-        padding-bottom: 0;
-      }
-      .expanded .description-panel {
-        max-height: 100px;
-        opacity: 1;
-        padding-top: 4px;
-        padding-bottom: 12px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
-      .authorize-btn {
-        background: linear-gradient(180deg, #bfff00 0%, #a8e600 100%);
-        box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.25) inset,
-          0 4px 16px rgba(191, 255, 0, 0.3), 0 0 0 1px rgba(191, 255, 0, 0.1);
-        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      .authorize-btn:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.25) inset,
-          0 8px 24px rgba(191, 255, 0, 0.35), 0 0 0 1px rgba(191, 255, 0, 0.15);
-      }
-      .authorize-btn:active {
-        transform: translateY(0);
+      .scope__detail {
+        display: grid;
+        grid-template-rows: 0fr;
+        transition: grid-template-rows 280ms var(--ox-ease);
       }
 
-      .deny-btn {
-        transition: all 0.2s ease;
-        background: rgba(255, 255, 255, 0.02);
-      }
-      .deny-btn:hover {
-        background: rgba(255, 255, 255, 0.06);
-        border-color: rgba(255, 255, 255, 0.12);
+      .scope.is-open .scope__detail {
+        grid-template-rows: 1fr;
       }
 
-      /* Custom scrollbar */
-      .permissions-list::-webkit-scrollbar {
-        width: 4px;
+      .scope__detail > div {
+        overflow: hidden;
       }
-      .permissions-list::-webkit-scrollbar-track {
+
+      .scope__detail p {
+        margin: 0;
+        padding: 0 8px 12px 26px;
+        font-size: 0.76rem;
+        line-height: 1.55;
+        color: var(--ox-text-muted);
+      }
+
+      .scope__detail dt {
+        display: inline;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.62);
+      }
+
+      .scope__detail dd {
+        display: inline;
+        margin: 0;
+      }
+
+      /* ── Segmented level control ──────────────────────────────────────── */
+
+      .levels {
+        display: inline-flex;
+        flex: 0 0 auto;
+        padding: 3px;
+        gap: 2px;
+        border-radius: 11px;
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        background: rgba(0, 0, 0, 0.32);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+      }
+
+      .level {
+        position: relative;
+        min-width: 58px;
+        min-height: 38px;
+        padding: 0 11px;
+        border: 0;
+        border-radius: 8px;
         background: transparent;
-      }
-      .permissions-list::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 2px;
+        color: rgba(255, 255, 255, 0.4);
+        font: inherit;
+        font-size: 0.72rem;
+        font-weight: 600;
+        line-height: 1;
+        cursor: pointer;
+        transition:
+          color 160ms var(--ox-ease),
+          background 160ms var(--ox-ease),
+          box-shadow 200ms var(--ox-ease),
+          transform 160ms var(--ox-ease);
       }
 
-      /* Client logo shimmer */
-      @keyframes shimmer {
-        0% {
-          background-position: -200% 0;
+      .level:hover:not([aria-checked='true']) {
+        color: rgba(255, 255, 255, 0.78);
+        background: rgba(255, 255, 255, 0.045);
+      }
+
+      .level:active {
+        transform: scale(0.97);
+      }
+
+      .level:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(var(--ox-primary-rgb), 0.5);
+        z-index: 1;
+      }
+
+      .level[aria-checked='true'] {
+        color: var(--ox-primary-contrast);
+        background: rgb(var(--sel-rgb, var(--ox-muted-rgb)));
+        box-shadow: 0 8px 18px -12px rgba(var(--sel-rgb), 0.9);
+      }
+
+      .level[data-value='none'][aria-checked='true'] {
+        --sel-rgb: var(--ox-muted-rgb);
+        color: #0b1220;
+      }
+
+      .level[data-value='read'][aria-checked='true'] {
+        --sel-rgb: var(--ox-teal-rgb);
+        color: #02120f;
+      }
+
+      .level[data-value='write'][aria-checked='true'] {
+        --sel-rgb: var(--ox-primary-rgb);
+        color: #050a02;
+      }
+
+      /* ── Consequence + actions ────────────────────────────────────────── */
+
+      .consequence {
+        margin: 0 0 12px;
+        font-size: 0.79rem;
+        line-height: 1.5;
+        color: var(--ox-text-muted);
+        text-align: center;
+        min-height: 1.2em;
+      }
+
+      .consequence strong {
+        color: rgba(255, 255, 255, 0.86);
+        font-weight: 600;
+      }
+
+      .consequence[data-empty='true'] strong {
+        color: var(--ox-warning);
+      }
+
+      .actions {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+      }
+
+      /* ── Handoff ──────────────────────────────────────────────────────── */
+      /* Authorizing kicks off a 302 chain that ends on another origin. Without
+         this the operator stares at a frozen, disabled card while that runs.
+         The overlay owns the wait and repeats what was granted, so the last
+         thing they see is a confirmation rather than a dead frame. */
+
+      .handoff {
+        position: absolute;
+        inset: 0;
+        z-index: 3;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        padding: 28px 24px;
+        text-align: center;
+        background: rgba(6, 10, 16, 0.86);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        opacity: 0;
+        animation: handoff-in 320ms var(--ox-ease) forwards;
+      }
+
+      .handoff[hidden] {
+        display: none;
+      }
+
+      @keyframes handoff-in {
+        from {
+          opacity: 0;
+          transform: scale(1.015);
         }
-        100% {
-          background-position: 200% 0;
+        to {
+          opacity: 1;
+          transform: scale(1);
         }
       }
-      .client-logo-ring {
-        background: linear-gradient(
-          90deg,
-          rgba(191, 255, 0, 0) 0%,
-          rgba(191, 255, 0, 0.3) 50%,
-          rgba(191, 255, 0, 0) 100%
-        );
-        background-size: 200% 100%;
-        animation: shimmer 3s infinite linear;
+
+      .handoff__title {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+        color: var(--ox-text);
       }
 
-      /* Stagger animations */
-      .stagger-1 {
-        animation-delay: 0.05s;
-      }
-      .stagger-2 {
-        animation-delay: 0.1s;
-      }
-      .stagger-3 {
-        animation-delay: 0.15s;
-      }
-      .stagger-4 {
-        animation-delay: 0.2s;
-      }
-      .stagger-5 {
-        animation-delay: 0.25s;
+      .handoff__sub {
+        margin: 5px 0 0;
+        font-family: var(--ox-mono);
+        font-size: 0.72rem;
+        letter-spacing: 0.02em;
+        color: var(--ox-text-faint);
       }
 
-      @media (max-width: 420px) {
-        .permissions-header {
-          flex-direction: column;
-          align-items: stretch !important;
-          gap: 12px;
-        }
-
-        .permissions-header .toggle-group {
-          width: 100%;
-        }
-
-        .permission-row > div:first-child {
-          display: flex !important;
+      @media (max-width: 460px) {
+        .scope__head {
           flex-direction: column;
           align-items: stretch;
-          gap: 12px;
+          gap: 2px;
+          padding-bottom: 8px;
         }
 
-        .permission-row > div:first-child > .flex {
-          width: 100%;
-          min-width: 0;
-          gap: 9px;
-        }
-
-        .permission-row > div:first-child > .toggle-group {
+        .levels {
           width: 100%;
         }
 
-        .toggle-group {
-          grid-auto-columns: minmax(0, 1fr);
+        .level {
+          flex: 1;
+          min-width: 0;
         }
 
-        .toggle-btn {
-          min-width: 0;
-          padding-left: 10px;
-          padding-right: 10px;
+        .perm-head {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .perm-head .levels {
+          width: 100%;
         }
       }
     </style>
   </head>
-  <body
-    class="min-h-screen flex flex-col items-center justify-center p-4 overflow-x-hidden"
-  >
-    <!-- Background layers -->
-    <div class="fixed inset-0 bg-noise z-0"></div>
-    <div
-      class="fixed inset-0"
-      style="
-        background: radial-gradient(
-          ellipse at 50% 0%,
-          rgba(191, 255, 0, 0.03) 0%,
-          transparent 50%
-        );
-      "
-    ></div>
-
-    <!-- Main Card -->
-    <div class="relative z-10 w-full max-w-lg animate-slide-up">
-      <!-- Header: OrgX branding -->
-      <div class="flex items-center justify-center mb-6 animate-fade-in">
-        <div class="flex items-center gap-2.5">
-          <img src="/orgx-logo.png" alt="OrgX" class="w-7 h-7" />
-          <span class="text-white/50 text-sm font-medium tracking-tight"
-            >OrgX</span
-          >
-        </div>
+  <body>
+    <main class="auth-shell">
+      <div class="auth-brand animate-in" style="--i: 0">
+        <img src="/orgx-logo.png" alt="" />
+        <span>OrgX</span>
       </div>
 
-      <!-- Authorization Card -->
-      <div class="glass-panel rounded-2xl overflow-hidden animate-scale-in">
-        <!-- Card Header -->
-        <div class="px-6 pt-6 pb-5 border-b border-white/[0.04]">
-          <!-- Client + Connection Visual -->
-          <div class="flex items-center justify-center gap-4 mb-5">
-            <!-- Client Logo -->
-            <div class="relative">
-              <div
-                id="client-logo"
-                class="w-14 h-14 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center transition-all duration-300"
+      <div class="auth-card animate-in" style="--i: 1">
+        <!-- Who is asking -->
+        <div class="auth-section auth-section--head auth-center">
+          <div class="link-rig" style="margin-bottom: 16px">
+            <div class="link-tile" id="client-tile">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                style="color: rgba(255, 255, 255, 0.6)"
+                aria-hidden="true"
               >
-                <svg
-                  class="w-7 h-7 text-white/60"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="1.5"
-                    d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                  />
-                </svg>
-              </div>
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                />
+              </svg>
             </div>
-
-            <!-- Connection Line -->
-            <div class="flex items-center gap-1.5">
-              <div
-                class="w-6 h-px bg-gradient-to-r from-white/15 to-lime/30"
-              ></div>
-              <div
-                class="w-2 h-2 rounded-full bg-lime/70 animate-pulse-subtle"
-              ></div>
-              <div
-                class="w-6 h-px bg-gradient-to-l from-white/15 to-lime/30"
-              ></div>
-            </div>
-
-            <!-- OrgX Logo -->
-            <div class="relative">
-              <div
-                class="absolute -inset-1 rounded-xl bg-lime/10 blur-sm"
-              ></div>
-              <div
-                class="relative w-14 h-14 rounded-xl bg-lime/10 border border-lime/30 flex items-center justify-center"
-              >
-                <img src="/orgx-logo.png" alt="OrgX" class="w-8 h-8" />
-              </div>
+            <div class="link-wire" aria-hidden="true"></div>
+            <div class="link-tile link-tile--orgx">
+              <img src="/orgx-logo.png" alt="" />
             </div>
           </div>
 
-          <!-- Title -->
-          <h1 class="text-center text-lg font-semibold text-white mb-1.5">
-            <span id="client-name">Application</span> wants to connect
+          <h1 class="auth-title">
+            <span id="client-name">An application</span> wants to connect
           </h1>
-          <p class="text-center text-sm text-white/40 leading-relaxed">
-            Select what <span id="client-name-2">this app</span> can access in
-            your OrgX workspace
+          <p class="auth-sub">
+            Choose what it can reach in your OrgX workspace. You can change this
+            later by reconnecting.
           </p>
         </div>
 
-        <!-- Account Info -->
-        <div class="px-6 py-3.5 border-b border-white/[0.04] bg-white/[0.01]">
-          <div class="flex items-center gap-3">
-            <div
-              id="user-avatar"
-              class="w-9 h-9 rounded-lg bg-gradient-to-br from-lime/20 to-teal/20 border border-white/10 flex items-center justify-center"
-            >
-              <span
-                id="user-initial"
-                class="text-sm font-semibold text-white/80"
-                >?</span
-              >
+        <!-- Which account -->
+        <div class="auth-section" style="padding-top: 14px; padding-bottom: 14px">
+          <div class="identity">
+            <div class="identity__mark" id="user-initial" aria-hidden="true">
+              ?
             </div>
-            <div class="flex-1 min-w-0">
-              <div
-                id="user-email"
-                class="text-sm font-medium text-white truncate"
-              >
-                user@example.com
-              </div>
-              <div id="org-name" class="text-xs text-white/40">
-                Personal account
-              </div>
+            <div class="identity__body">
+              <div class="identity__email" id="user-email">—</div>
+              <div class="identity__meta" id="org-name" hidden></div>
             </div>
           </div>
         </div>
 
-        <!-- Permissions Section -->
-        <div class="px-6 py-4">
-          <div class="permissions-header flex items-center justify-between mb-3">
-            <span
-              class="text-xs text-white/40 uppercase tracking-wider font-medium"
-              >Permissions</span
+        <!-- What it gets -->
+        <div class="auth-section">
+          <div class="perm-head">
+            <p class="ox-eyebrow" id="perm-label">Access</p>
+            <div
+              class="levels"
+              id="all-levels"
+              role="radiogroup"
+              aria-labelledby="perm-label"
             >
-            <div class="toggle-group" id="all-permissions-toggle">
               <button
-                class="toggle-btn"
+                type="button"
+                class="level"
+                role="radio"
                 data-value="none"
-                onclick="setAllPermissions('none')"
+                aria-checked="false"
               >
                 None
               </button>
               <button
-                class="toggle-btn"
+                type="button"
+                class="level"
+                role="radio"
                 data-value="read"
-                onclick="setAllPermissions('read')"
+                aria-checked="false"
               >
                 Read
               </button>
               <button
-                class="toggle-btn active"
+                type="button"
+                class="level"
+                role="radio"
                 data-value="write"
-                onclick="setAllPermissions('write')"
+                aria-checked="true"
               >
                 Full
               </button>
             </div>
           </div>
 
-          <!-- Permissions List -->
-          <div
-            class="permissions-list space-y-1.5 max-h-[320px] overflow-y-auto -mx-2 px-2"
-          >
-            <!-- Decisions -->
-            <div
-              class="permission-row rounded-xl stagger-1 animate-fade-in"
-              data-scope="decisions"
-            >
-              <div
-                class="flex items-center justify-between py-3 px-3 cursor-pointer"
-                onclick="toggleExpand(this.parentElement)"
-              >
-                <div class="flex items-center gap-3">
-                  <svg
-                    class="chevron w-4 h-4 text-white/25"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                  <div
-                    class="w-8 h-8 rounded-lg bg-lime/10 flex items-center justify-center"
-                  >
-                    <svg
-                      class="w-4 h-4 text-lime"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  </div>
-                  <span class="text-sm font-medium text-white">Decisions</span>
-                </div>
-                <div class="toggle-group">
-                  <button class="toggle-btn" data-value="none">None</button>
-                  <button class="toggle-btn" data-value="read">Read</button>
-                  <button class="toggle-btn active" data-value="write">
-                    Write
-                  </button>
-                </div>
-              </div>
-              <div class="description-panel px-3 ml-10">
-                <p class="text-xs text-white/40 leading-relaxed">
-                  <strong class="text-white/55">Read:</strong> View pending and
-                  completed decisions<br />
-                  <strong class="text-white/55">Write:</strong> Approve, reject,
-                  or create decisions
-                </p>
-              </div>
-            </div>
+          <div class="stack" id="scope-list"></div>
+        </div>
 
-            <!-- Agents -->
-            <div
-              class="permission-row rounded-xl stagger-2 animate-fade-in"
-              data-scope="agents"
+        <!-- Decide -->
+        <div class="auth-section auth-section--foot">
+          <p class="consequence" id="consequence"></p>
+          <div class="actions">
+            <button
+              type="button"
+              id="authorize-btn"
+              class="ox-action-btn ox-action-btn--primary ox-action-btn--full"
             >
-              <div
-                class="flex items-center justify-between py-3 px-3 cursor-pointer"
-                onclick="toggleExpand(this.parentElement)"
-              >
-                <div class="flex items-center gap-3">
-                  <svg
-                    class="chevron w-4 h-4 text-white/25"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                  <div
-                    class="w-8 h-8 rounded-lg bg-teal/10 flex items-center justify-center"
-                  >
-                    <svg
-                      class="w-4 h-4 text-teal"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                      />
-                    </svg>
-                  </div>
-                  <span class="text-sm font-medium text-white">Agents</span>
-                </div>
-                <div class="toggle-group">
-                  <button class="toggle-btn" data-value="none">None</button>
-                  <button class="toggle-btn" data-value="read">Read</button>
-                  <button class="toggle-btn active" data-value="write">
-                    Write
-                  </button>
-                </div>
-              </div>
-              <div class="description-panel px-3 ml-10">
-                <p class="text-xs text-white/40 leading-relaxed">
-                  <strong class="text-white/55">Read:</strong> View agent status
-                  and activity<br />
-                  <strong class="text-white/55">Write:</strong> Spawn tasks and
-                  configure agents
-                </p>
-              </div>
-            </div>
-
-            <!-- Initiatives -->
-            <div
-              class="permission-row rounded-xl stagger-3 animate-fade-in"
-              data-scope="initiatives"
+              Authorize
+            </button>
+            <button
+              type="button"
+              id="deny-btn"
+              class="ox-action-btn ox-action-btn--quiet ox-action-btn--full"
             >
-              <div
-                class="flex items-center justify-between py-3 px-3 cursor-pointer"
-                onclick="toggleExpand(this.parentElement)"
-              >
-                <div class="flex items-center gap-3">
-                  <svg
-                    class="chevron w-4 h-4 text-white/25"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                  <div
-                    class="w-8 h-8 rounded-lg bg-iris/10 flex items-center justify-center"
-                  >
-                    <svg
-                      class="w-4 h-4 text-iris"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                      />
-                    </svg>
-                  </div>
-                  <span class="text-sm font-medium text-white"
-                    >Initiatives</span
-                  >
-                </div>
-                <div class="toggle-group">
-                  <button class="toggle-btn" data-value="none">None</button>
-                  <button class="toggle-btn" data-value="read">Read</button>
-                  <button class="toggle-btn active" data-value="write">
-                    Write
-                  </button>
-                </div>
-              </div>
-              <div class="description-panel px-3 ml-10">
-                <p class="text-xs text-white/40 leading-relaxed">
-                  <strong class="text-white/55">Read:</strong> View initiatives,
-                  milestones, and progress<br />
-                  <strong class="text-white/55">Write:</strong> Create, update,
-                  and manage initiatives
-                </p>
-              </div>
-            </div>
-
-            <!-- Memory -->
-            <div
-              class="permission-row rounded-xl stagger-4 animate-fade-in"
-              data-scope="memory"
-            >
-              <div
-                class="flex items-center justify-between py-3 px-3 cursor-pointer"
-                onclick="toggleExpand(this.parentElement)"
-              >
-                <div class="flex items-center gap-3">
-                  <svg
-                    class="chevron w-4 h-4 text-white/25"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                  <div
-                    class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center"
-                  >
-                    <svg
-                      class="w-4 h-4 text-amber-500"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                      />
-                    </svg>
-                  </div>
-                  <span class="text-sm font-medium text-white">Memory</span>
-                </div>
-                <div class="toggle-group">
-                  <button class="toggle-btn" data-value="none">None</button>
-                  <button class="toggle-btn" data-value="read">Read</button>
-                  <button
-                    class="toggle-btn hidden"
-                    data-value="write"
-                    disabled
-                    aria-hidden="true"
-                  >
-                    Write
-                  </button>
-                </div>
-              </div>
-              <div class="description-panel px-3 ml-10">
-                <p class="text-xs text-white/40 leading-relaxed">
-                  <strong class="text-white/55">Read:</strong> Search and query
-                  organizational memory<br />
-                  <strong class="text-white/55">Write:</strong> Save and update
-                  knowledge entries
-                </p>
-              </div>
-            </div>
-
-            <!-- Planning -->
-            <div
-              class="permission-row hidden rounded-xl stagger-5 animate-fade-in"
-              data-scope="planning"
-            >
-              <div
-                class="flex items-center justify-between py-3 px-3 cursor-pointer"
-                onclick="toggleExpand(this.parentElement)"
-              >
-                <div class="flex items-center gap-3">
-                  <svg
-                    class="chevron w-4 h-4 text-white/25"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                  <div
-                    class="w-8 h-8 rounded-lg bg-pink-500/10 flex items-center justify-center"
-                  >
-                    <svg
-                      class="w-4 h-4 text-pink-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-                      />
-                    </svg>
-                  </div>
-                  <span class="text-sm font-medium text-white">Planning</span>
-                </div>
-                <div class="toggle-group">
-                  <button class="toggle-btn" data-value="none">None</button>
-                  <button class="toggle-btn" data-value="read">Read</button>
-                  <button class="toggle-btn active" data-value="write">
-                    Write
-                  </button>
-                </div>
-              </div>
-              <div class="description-panel px-3 ml-10">
-                <p class="text-xs text-white/40 leading-relaxed">
-                  <strong class="text-white/55">Read:</strong> View plan
-                  sessions and drafts<br />
-                  <strong class="text-white/55">Write:</strong> Create and
-                  refine plans collaboratively
-                </p>
-              </div>
-            </div>
+              Deny
+            </button>
           </div>
         </div>
 
-        <!-- Actions -->
-        <div class="px-6 py-5 border-t border-white/[0.04] bg-white/[0.01]">
-          <button
-            id="authorize-btn"
-            onclick="authorize()"
-            class="authorize-btn w-full py-3.5 rounded-xl text-sm font-semibold text-black"
-          >
-            Authorize
-          </button>
-          <button
-            id="deny-btn"
-            onclick="deny()"
-            class="deny-btn w-full mt-2.5 py-3 rounded-xl text-sm font-medium text-white/50 border border-white/10"
-          >
-            Deny
-          </button>
+        <!-- Handoff overlay -->
+        <div class="handoff" id="handoff" hidden role="status">
+          <div class="link-rig">
+            <div class="link-tile" id="handoff-tile"></div>
+            <div class="link-wire" aria-hidden="true"></div>
+            <div class="link-tile link-tile--orgx">
+              <img src="/orgx-logo.png" alt="" />
+            </div>
+          </div>
+          <div>
+            <p class="handoff__title" id="handoff-title">Handing off…</p>
+            <p class="handoff__sub" id="handoff-sub"></p>
+          </div>
         </div>
       </div>
 
-      <!-- Footer Links -->
-      <div
-        class="flex items-center justify-center gap-4 mt-5 text-xs text-white/25 animate-fade-in stagger-5"
-      >
-        <a
-          href="https://useorgx.com/privacy"
-          class="hover:text-white/50 transition-colors"
-          >Privacy</a
-        >
-        <span>•</span>
-        <a
-          href="https://useorgx.com/terms"
-          class="hover:text-white/50 transition-colors"
-          >Terms</a
-        >
+      <div class="auth-foot animate-in" style="--i: 2">
+        <a href="https://useorgx.com/privacy">Privacy</a>
+        <span class="auth-foot__dot">·</span>
+        <a href="https://useorgx.com/terms">Terms</a>
       </div>
-    </div>
+    </main>
 
     <script>
-      // ===========================================
-      // State
-      // ===========================================
-      let oauthState = null;
-      const scopeCapabilities = {
-        decisions: { read: 'decisions:read', write: 'decisions:write' },
-        agents: { read: 'agents:read', write: 'agents:write' },
-        initiatives: { read: 'initiatives:read', write: 'initiatives:write' },
-        memory: { read: 'memory:read' },
-      };
-      let selectedScopes = {
-        decisions: 'write',
-        agents: 'write',
-        initiatives: 'write',
-        memory: 'read',
-      };
+      (function () {
+        'use strict';
 
-      // ===========================================
-      // Initialize from URL params
-      // ===========================================
-      function init() {
-        const params = new URLSearchParams(window.location.search);
+        // ── Scope model ────────────────────────────────────────────────────
+        // Order here is the order shown. Memory is read-only by design: the
+        // server exposes no memory:write capability, so offering a Full toggle
+        // for it would promise authority that does not exist.
+        var SCOPES = [
+          {
+            id: 'decisions',
+            name: 'Decisions',
+            read: 'decisions:read',
+            write: 'decisions:write',
+            readDesc: 'See pending and settled decisions',
+            writeDesc: 'Approve, reject, and raise decisions',
+            icon: '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />',
+          },
+          {
+            id: 'agents',
+            name: 'Agents',
+            read: 'agents:read',
+            write: 'agents:write',
+            readDesc: 'See agent status and activity',
+            writeDesc: 'Spawn tasks and configure agents',
+            icon: '<path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />',
+          },
+          {
+            id: 'initiatives',
+            name: 'Initiatives',
+            read: 'initiatives:read',
+            write: 'initiatives:write',
+            readDesc: 'See initiatives, milestones, and progress',
+            writeDesc: 'Create and reshape initiatives',
+            icon: '<path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />',
+          },
+          {
+            id: 'memory',
+            name: 'Memory',
+            read: 'memory:read',
+            write: null,
+            readDesc: 'Search organizational memory',
+            writeDesc: null,
+            icon: '<path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />',
+          },
+        ];
 
-        // Read state_key and individual params (server-side state)
-        const stateKey = params.get('state_key');
-        const clientId = params.get('client_id') || '';
-        const scope = params.get('scope') || '';
-        const redirectUri = params.get('redirect_uri') || '';
-        const oauthStateParam = params.get('oauth_state') || '';
+        var LEVEL_ORDER = ['none', 'read', 'write'];
 
-        if (stateKey) {
-          oauthState = {
-            stateKey,
-            clientId,
-            scope,
-            redirectUri,
-            state: oauthStateParam,
+        var params = new URLSearchParams(window.location.search);
+        var selected = {};
+        var clientName = 'An application';
+
+        // ── Client identification ──────────────────────────────────────────
+
+        function resolveClientName(clientId, redirectUri) {
+          var uri = (redirectUri || '').toLowerCase();
+          var id = (clientId || '').toLowerCase();
+
+          if (
+            uri.indexOf('connector_platform_oauth_redirect') !== -1 ||
+            uri.indexOf('chatgpt.com') !== -1 ||
+            uri.indexOf('openai.com') !== -1
+          )
+            return 'ChatGPT';
+          if (uri.indexOf('cursor.com') !== -1 || uri.indexOf('cursor.sh') !== -1)
+            return 'Cursor';
+          if (uri.indexOf('claude.ai') !== -1 || uri.indexOf('anthropic.com') !== -1)
+            return 'Claude';
+          if (uri.indexOf('vscode') !== -1 || uri.indexOf('visual-studio-code') !== -1)
+            return 'VS Code';
+
+          var known = {
+            cursor: 'Cursor',
+            claude: 'Claude',
+            chatgpt: 'ChatGPT',
+            openai: 'ChatGPT',
+            vscode: 'VS Code',
+            goose: 'Goose',
           };
+          for (var key in known) {
+            if (id.indexOf(key) !== -1) return known[key];
+          }
+          return 'An application';
         }
 
-        // Get user info
-        const userEmail = params.get('user_email') || 'user@example.com';
-        const userId = params.get('user_id') || '';
-        const orgName = params.get('org_name') || 'Personal account';
-
-        // Update UI with user info
-        document.getElementById('user-email').textContent = userEmail;
-        document.getElementById('org-name').textContent = orgName;
-        document.getElementById('user-initial').textContent =
-          userEmail[0].toUpperCase();
-
-        // Parse client name
-        const clientName = getClientDisplayName(clientId, redirectUri);
-        document.getElementById('client-name').textContent = clientName;
-        document.getElementById('client-name-2').textContent = clientName;
-        updateClientLogo(clientName.toLowerCase());
-
-        // Parse requested scopes and set initial state
-        if (oauthState?.scope) {
-          parseRequestedScopes(oauthState.scope);
-        }
-
-        // Initialize toggle states
-        initializeToggles();
-      }
-
-      function getClientDisplayName(clientId, redirectUri) {
-        // Check redirect URI patterns first
-        if (
-          redirectUri?.includes('connector_platform_oauth_redirect') ||
-          redirectUri?.includes('chatgpt.com') ||
-          redirectUri?.includes('openai.com')
-        ) {
-          return 'ChatGPT';
-        }
-        if (
-          redirectUri?.includes('cursor.com') ||
-          redirectUri?.includes('cursor.sh')
-        ) {
-          return 'Cursor';
-        }
-        if (
-          redirectUri?.includes('claude.ai') ||
-          redirectUri?.includes('anthropic.com')
-        ) {
-          return 'Claude';
-        }
-        if (
-          redirectUri?.includes('vscode') ||
-          redirectUri?.includes('visual-studio-code')
-        ) {
-          return 'VS Code';
-        }
-
-        // Check client ID patterns
-        const knownClients = {
-          cursor: 'Cursor',
-          claude: 'Claude',
-          chatgpt: 'ChatGPT',
-          openai: 'ChatGPT',
-          vscode: 'VS Code',
-          goose: 'Goose',
-        };
-
-        for (const [key, name] of Object.entries(knownClients)) {
-          if (clientId?.toLowerCase().includes(key)) return name;
-        }
-
-        return 'Application';
-      }
-
-      function updateClientLogo(clientName) {
-        const logoContainer = document.getElementById('client-logo');
-        const logoUrls = {
+        var CLIENT_LOGOS = {
           chatgpt:
             'data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22%2310A37F%22%3E%3Cpath%20d%3D%22M22.2819%209.8211a5.9847%205.9847%200%200%200-.5157-4.9108%206.0462%206.0462%200%200%200-6.5098-2.9A6.0651%206.0651%200%200%200%204.9807%204.1818a5.9847%205.9847%200%200%200-3.9977%202.9%206.0462%206.0462%200%200%200%20.7427%207.0966%205.98%205.98%200%200%200%20.511%204.9107%206.051%206.051%200%200%200%206.5146%202.9001A5.9847%205.9847%200%200%200%2013.2599%2024a6.0557%206.0557%200%200%200%205.7718-4.2058%205.9894%205.9894%200%200%200%203.9977-2.9001%206.0557%206.0557%200%200%200-.7475-7.0729zm-9.022%2012.6081a4.4755%204.4755%200%200%201-2.8764-1.0408l.1419-.0804%204.7783-2.7582a.7948.7948%200%200%200%20.3927-.6813v-6.7369l2.02%201.1686a.071.071%200%200%201%20.038.052v5.5826a4.504%204.504%200%200%201-4.4945%204.4944zm-9.6607-4.1254a4.4708%204.4708%200%200%201-.5346-3.0137l.142.0852%204.783%202.7582a.7712.7712%200%200%200%20.7806%200l5.8428-3.3685v2.3324a.0804.0804%200%200%201-.0332.0615L9.74%2019.9502a4.4992%204.4992%200%200%201-6.1408-1.6464zM2.3408%207.8956a4.485%204.485%200%200%201%202.3655-1.9728V11.6a.7664.7664%200%200%200%20.3879.6765l5.8144%203.3543-2.0201%201.1685a.0757.0757%200%200%201-.071%200l-4.8303-2.7865A4.504%204.504%200%200%201%202.3408%207.872zm16.5963%203.8558L13.1038%208.364%2015.1192%207.2a.0757.0757%200%200%201%20.071%200l4.8303%202.7913a4.4944%204.4944%200%200%201-.6765%208.1042v-5.6772a.79.79%200%200%200-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759%200%200%200-.7854%200L9.409%209.2297V6.8974a.0662.0662%200%200%201%20.0284-.0615l4.8303-2.7866a4.4992%204.4992%200%200%201%206.6802%204.66zM8.3065%2012.863l-2.02-1.1638a.0804.0804%200%200%201-.038-.0567V6.0742a4.4992%204.4992%200%200%201%207.3757-3.4537l-.142.0805L8.704%205.459a.7948.7948%200%200%200-.3927.6813zm1.0976-2.3654l2.602-1.4998%202.6069%201.4998v2.9994l-2.5974%201.4997-2.6067-1.4997Z%22%2F%3E%3C%2Fsvg%3E',
           cursor: 'https://cdn.simpleicons.org/cursor/ffffff',
           claude: 'https://cdn.simpleicons.org/anthropic/D97757',
           'vs code': 'https://cdn.simpleicons.org/visualstudiocode/007ACC',
-          goose: null, // No icon available
         };
 
-        if (logoUrls[clientName]) {
-          logoContainer.innerHTML = `<img src="${logoUrls[clientName]}" class="w-7 h-7" alt="${clientName}" onerror="this.style.display='none'" />`;
+        // A monogram always renders. The remote marks are a nicety on top of
+        // it, never a dependency — a blocked CDN must not leave a hole where
+        // the requesting app's identity should be.
+        function monogram(name) {
+          var letter = (name || '?').trim().charAt(0).toUpperCase() || '?';
+          return (
+            '<span style="font-size:1.05rem;font-weight:600;color:rgba(255,255,255,0.82)">' +
+            letter +
+            '</span>'
+          );
         }
-      }
 
-      function parseRequestedScopes(scopeString) {
-        const scopes = scopeString.split(/[\s+]/).filter(Boolean);
+        function paintClientTile(tile, name) {
+          if (!tile) return;
+          tile.innerHTML = monogram(name);
+          var src = CLIENT_LOGOS[name.toLowerCase()];
+          if (!src) return;
+          var img = new Image();
+          img.onload = function () {
+            tile.innerHTML = '';
+            img.setAttribute('alt', '');
+            tile.appendChild(img);
+          };
+          img.src = src;
+        }
 
-        // Reset all to none first, then set based on requested scopes
-        Object.keys(selectedScopes).forEach((key) => {
-          selectedScopes[key] = 'none';
-        });
+        // ── Requested scopes ───────────────────────────────────────────────
 
-        scopes.forEach((scope) => {
-          // Handle both "scope:permission" and just "scope" formats
-          let resource, permission;
-          if (scope.includes(':')) {
-            [resource, permission] = scope.split(':');
-          } else {
-            resource = scope;
-            permission = 'read';
+        function highestAvailable(scope) {
+          return scope.write ? 'write' : 'read';
+        }
+
+        function applyRequestedScopes(scopeString) {
+          SCOPES.forEach(function (scope) {
+            selected[scope.id] = 'none';
+          });
+
+          var requested = (scopeString || '').split(/[\s+]+/).filter(Boolean);
+          var aliases = { plan: 'planning', planning: 'planning' };
+
+          requested.forEach(function (raw) {
+            var parts = raw.split(':');
+            var resource = aliases[parts[0]] || parts[0];
+            var permission = parts.length > 1 ? parts[1] : 'read';
+
+            SCOPES.forEach(function (scope) {
+              if (scope.id !== resource) return;
+              if (permission === 'write' && scope.write) {
+                selected[scope.id] = 'write';
+              } else if (permission === 'read' && selected[scope.id] !== 'write') {
+                selected[scope.id] = 'read';
+              }
+            });
+          });
+
+          // A client that asks for nothing specific is asking for the default
+          // connection, not for nothing.
+          var anyGranted = SCOPES.some(function (scope) {
+            return selected[scope.id] !== 'none';
+          });
+          if (!anyGranted) {
+            SCOPES.forEach(function (scope) {
+              selected[scope.id] = highestAvailable(scope);
+            });
           }
+        }
 
-          // Map scope names
-          const scopeMap = {
-            decisions: 'decisions',
-            agents: 'agents',
-            initiatives: 'initiatives',
-            memory: 'memory',
-            planning: 'planning',
-            plan: 'planning',
+        // ── Rendering ──────────────────────────────────────────────────────
+
+        function levelButton(value, label, checked) {
+          return (
+            '<button type="button" class="level" role="radio" data-value="' +
+            value +
+            '" aria-checked="' +
+            (checked ? 'true' : 'false') +
+            '" tabindex="' +
+            (checked ? '0' : '-1') +
+            '">' +
+            label +
+            '</button>'
+          );
+        }
+
+        function renderScopes() {
+          var list = document.getElementById('scope-list');
+          list.innerHTML = SCOPES.map(function (scope, index) {
+            var level = selected[scope.id];
+            var detailId = 'detail-' + scope.id;
+            var levels =
+              levelButton('none', 'None', level === 'none') +
+              levelButton('read', 'Read', level === 'read') +
+              (scope.write
+                ? levelButton('write', 'Full', level === 'write')
+                : '');
+
+            var detail =
+              '<dt>Read</dt><dd> — ' +
+              scope.readDesc +
+              '</dd>' +
+              (scope.write
+                ? '<br /><dt>Full</dt><dd> — ' + scope.writeDesc + '</dd>'
+                : '');
+
+            return (
+              '<div class="scope animate-in" data-scope="' +
+              scope.id +
+              '" data-level="' +
+              level +
+              '" style="--i:' +
+              (index + 2) +
+              '">' +
+              '<div class="scope__head">' +
+              '<button type="button" class="scope__toggle" aria-expanded="false" aria-controls="' +
+              detailId +
+              '">' +
+              '<svg class="scope__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>' +
+              '<svg class="scope__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">' +
+              scope.icon +
+              '</svg>' +
+              '<span class="scope__name">' +
+              scope.name +
+              '</span>' +
+              '</button>' +
+              '<div class="levels" role="radiogroup" aria-label="' +
+              scope.name +
+              ' access">' +
+              levels +
+              '</div>' +
+              '</div>' +
+              '<div class="scope__detail" id="' +
+              detailId +
+              '"><div><p>' +
+              detail +
+              '</p></div></div>' +
+              '</div>'
+            );
+          }).join('');
+        }
+
+        function syncGroup(group, value) {
+          group.querySelectorAll('.level').forEach(function (button) {
+            var isOn = button.dataset.value === value;
+            button.setAttribute('aria-checked', isOn ? 'true' : 'false');
+            button.tabIndex = isOn ? 0 : -1;
+          });
+          // With no match (a mixed master toggle) keep one stop in the tab order.
+          if (!group.querySelector('.level[aria-checked="true"]')) {
+            var first = group.querySelector('.level');
+            if (first) first.tabIndex = 0;
+          }
+        }
+
+        function syncAll() {
+          SCOPES.forEach(function (scope) {
+            var row = document.querySelector('[data-scope="' + scope.id + '"]');
+            if (!row) return;
+            row.dataset.level = selected[scope.id];
+            syncGroup(row.querySelector('.levels'), selected[scope.id]);
+          });
+
+          // The master control only claims a level when every scope truly sits
+          // at it; a mixed selection shows none selected rather than lying.
+          var allAt = function (level) {
+            return SCOPES.every(function (scope) {
+              var target =
+                level === 'write' ? highestAvailable(scope) : level;
+              return selected[scope.id] === target;
+            });
+          };
+          var master = allAt('none')
+            ? 'none'
+            : allAt('read')
+            ? 'read'
+            : allAt('write')
+            ? 'write'
+            : null;
+          syncGroup(document.getElementById('all-levels'), master);
+
+          renderConsequence();
+        }
+
+        // ── Consequence ────────────────────────────────────────────────────
+        // The operator should never have to reconstruct what they are granting
+        // by re-reading four toggles.
+
+        function renderConsequence() {
+          var writes = 0;
+          var reads = 0;
+          SCOPES.forEach(function (scope) {
+            if (selected[scope.id] === 'write') writes++;
+            else if (selected[scope.id] === 'read') reads++;
+          });
+
+          var node = document.getElementById('consequence');
+          var button = document.getElementById('authorize-btn');
+          var plural = function (n, word) {
+            return n + ' ' + word + (n === 1 ? '' : 's');
           };
 
-          const mappedResource = scopeMap[resource] || resource;
-
-          if (selectedScopes.hasOwnProperty(mappedResource)) {
-            const capabilities = scopeCapabilities[mappedResource] || {};
-            // Write supersedes read
-            if (permission === 'write' && capabilities.write) {
-              selectedScopes[mappedResource] = 'write';
-            } else if (
-              permission === 'read' &&
-              selectedScopes[mappedResource] !== 'write'
-            ) {
-              selectedScopes[mappedResource] = 'read';
-            }
-          }
-        });
-
-        // If no scopes were requested, default to full access
-        const hasAnyScope = Object.values(selectedScopes).some(
-          (v) => v !== 'none'
-        );
-        if (!hasAnyScope) {
-          Object.keys(selectedScopes).forEach((key) => {
-            selectedScopes[key] = scopeCapabilities[key]?.write ? 'write' : 'read';
-          });
-        }
-      }
-
-      // ===========================================
-      // Toggle Interactions
-      // ===========================================
-      function initializeToggles() {
-        document.querySelectorAll('.permission-row').forEach((row) => {
-          const scope = row.dataset.scope;
-          if (!scopeCapabilities[scope]) {
-            row.remove();
+          if (writes === 0 && reads === 0) {
+            node.dataset.empty = 'true';
+            node.innerHTML =
+              '<strong>Nothing selected.</strong> Grant at least one area to connect.';
+            button.disabled = true;
             return;
           }
-          const value = selectedScopes[scope] || 'none';
-          if (!scopeCapabilities[scope]?.write) {
-            row.querySelector('[data-value="write"]')?.remove();
-          }
-          setToggleValue(row.querySelector('.toggle-group'), value);
-        });
-        updateAllPermissionsToggle();
-      }
 
-      function setToggleValue(toggleGroup, value) {
-        toggleGroup.querySelectorAll('.toggle-btn').forEach((btn) => {
-          btn.classList.remove('active', 'active-read', 'active-none');
-          if (btn.dataset.value === value) {
-            btn.classList.add(
-              value === 'write'
-                ? 'active'
-                : value === 'read'
-                ? 'active-read'
-                : 'active-none'
-            );
-            btn.setAttribute('aria-pressed', 'true');
-          } else {
-            btn.setAttribute('aria-pressed', 'false');
-          }
-        });
-      }
+          node.dataset.empty = 'false';
+          button.disabled = false;
 
-      // Add click handlers to permission toggles
-      document
-        .querySelectorAll('.permission-row .toggle-group .toggle-btn')
-        .forEach((btn) => {
-          btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const row = btn.closest('.permission-row');
-            const scope = row.dataset.scope;
-            const value = btn.dataset.value;
+          var parts = [];
+          if (writes) parts.push('<strong>change ' + plural(writes, 'area') + '</strong>');
+          if (reads) parts.push('<strong>read ' + plural(reads, 'area') + '</strong>');
+          node.innerHTML = clientName + ' will be able to ' + parts.join(' and ') + '.';
+        }
 
-            selectedScopes[scope] = value;
-            setToggleValue(btn.parentElement, value);
-            updateAllPermissionsToggle();
-          });
-        });
+        // ── Interaction ────────────────────────────────────────────────────
 
-      function setAllPermissions(value) {
-        Object.keys(selectedScopes).forEach((scope) => {
-          selectedScopes[scope] =
-            value === 'write' && !scopeCapabilities[scope]?.write ? 'read' : value;
-          const row = document.querySelector(`[data-scope="${scope}"]`);
+        function selectLevel(group, value) {
+          var row = group.closest('.scope');
           if (row) {
-            setToggleValue(row.querySelector('.toggle-group'), selectedScopes[scope]);
-          }
-        });
-        updateAllPermissionsToggle();
-      }
-
-      function updateAllPermissionsToggle() {
-        const values = Object.values(selectedScopes);
-        const allNone = values.every((v) => v === 'none');
-        const allRead = values.every((v) => v === 'read');
-        const allFull = Object.entries(selectedScopes).every(
-          ([scope, permission]) =>
-            permission === (scopeCapabilities[scope]?.write ? 'write' : 'read')
-        );
-        const activeValue = allFull ? 'write' : allRead ? 'read' : allNone ? 'none' : null;
-        const toggle = document.getElementById('all-permissions-toggle');
-
-        toggle.querySelectorAll('.toggle-btn').forEach((btn) => {
-          btn.classList.remove('active', 'active-read', 'active-none');
-          if (btn.dataset.value === activeValue) {
-            btn.classList.add(
-              activeValue === 'write'
-                ? 'active'
-                : activeValue === 'read'
-                ? 'active-read'
-                : 'active-none'
-            );
-            btn.setAttribute('aria-pressed', 'true');
+            selected[row.dataset.scope] = value;
           } else {
-            btn.setAttribute('aria-pressed', 'false');
+            // Master: clamp to what each scope can actually grant.
+            SCOPES.forEach(function (scope) {
+              selected[scope.id] =
+                value === 'write' ? highestAvailable(scope) : value;
+            });
           }
-        });
-      }
-
-      function toggleExpand(row) {
-        row.classList.toggle('expanded');
-      }
-
-      // ===========================================
-      // Authorization Actions
-      // ===========================================
-      function buildScopeString() {
-        const scopes = [];
-
-        Object.entries(selectedScopes).forEach(([resource, permission]) => {
-          const capabilities = scopeCapabilities[resource] || {};
-          if (permission === 'read' && capabilities.read) {
-            scopes.push(capabilities.read);
-          } else if (permission === 'write') {
-            if (capabilities.read) scopes.push(capabilities.read);
-            if (capabilities.write) scopes.push(capabilities.write);
-          }
-        });
-
-        // Add offline_access if originally requested
-        if (oauthState?.scope?.includes('offline_access')) {
-          scopes.push('offline_access');
+          syncAll();
         }
 
-        return scopes.join(' ');
-      }
+        function wireLevels(root) {
+          root.addEventListener('click', function (event) {
+            var button = event.target.closest('.level');
+            if (!button) return;
+            event.preventDefault();
+            selectLevel(button.closest('.levels'), button.dataset.value);
+          });
 
-      function authorize() {
-        const btn = document.getElementById('authorize-btn');
-        btn.textContent = 'Connecting...';
-        btn.disabled = true;
-        btn.style.opacity = '0.7';
+          // Arrow keys move and select, per the radiogroup pattern.
+          root.addEventListener('keydown', function (event) {
+            var button = event.target.closest('.level');
+            if (!button) return;
+            var group = button.closest('.levels');
+            var buttons = Array.prototype.slice.call(
+              group.querySelectorAll('.level')
+            );
+            var index = buttons.indexOf(button);
+            var next = null;
 
-        const finalScope = buildScopeString();
-        const params = new URLSearchParams(window.location.search);
+            if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+              next = buttons[(index + 1) % buttons.length];
+            } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+              next = buttons[(index - 1 + buttons.length) % buttons.length];
+            } else if (event.key === 'Home') {
+              next = buttons[0];
+            } else if (event.key === 'End') {
+              next = buttons[buttons.length - 1];
+            } else {
+              return;
+            }
 
-        // Redirect to the consent-callback with state_key and final_scope
-        const callbackUrl = new URL(
-          '/oauth/consent-callback',
-          window.location.origin
-        );
+            event.preventDefault();
+            selectLevel(group, next.dataset.value);
+            var moved = group.querySelector(
+              '.level[data-value="' + next.dataset.value + '"]'
+            );
+            if (moved) moved.focus();
+          });
+        }
 
-        callbackUrl.searchParams.set(
-          'state_key',
-          oauthState?.stateKey || params.get('state_key') || ''
-        );
-        callbackUrl.searchParams.set('final_scope', finalScope);
+        function wireDisclosure(root) {
+          root.addEventListener('click', function (event) {
+            var toggle = event.target.closest('.scope__toggle');
+            if (!toggle) return;
+            var row = toggle.closest('.scope');
+            var open = row.classList.toggle('is-open');
+            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+          });
+        }
 
-        window.location.href = callbackUrl.toString();
-      }
+        // ── Submission ─────────────────────────────────────────────────────
 
-      function deny() {
-        const params = new URLSearchParams(window.location.search);
-        const redirectUri =
-          oauthState?.redirectUri || params.get('redirect_uri');
-        const oauthStateValue = oauthState?.state || params.get('oauth_state');
+        function buildScopeString() {
+          var granted = [];
+          SCOPES.forEach(function (scope) {
+            var level = selected[scope.id];
+            if (level === 'read' && scope.read) {
+              granted.push(scope.read);
+            } else if (level === 'write') {
+              if (scope.read) granted.push(scope.read);
+              if (scope.write) granted.push(scope.write);
+            }
+          });
+          if ((params.get('scope') || '').indexOf('offline_access') !== -1) {
+            granted.push('offline_access');
+          }
+          return granted.join(' ');
+        }
 
-        if (redirectUri) {
-          const redirectUrl = new URL(redirectUri);
-          redirectUrl.searchParams.set('error', 'access_denied');
-          redirectUrl.searchParams.set(
-            'error_description',
-            'User denied the authorization request'
+        function grantSummary() {
+          var writes = [];
+          var reads = [];
+          SCOPES.forEach(function (scope) {
+            if (selected[scope.id] === 'write') writes.push(scope.name);
+            else if (selected[scope.id] === 'read') reads.push(scope.name);
+          });
+          var parts = [];
+          if (writes.length) parts.push(writes.length + ' full');
+          if (reads.length) parts.push(reads.length + ' read');
+          return parts.join(' · ');
+        }
+
+        function authorize() {
+          var button = document.getElementById('authorize-btn');
+          if (button.disabled) return;
+
+          if (window.OrgXWidgetUX) {
+            window.OrgXWidgetUX.setLoading(button, {
+              loadingLabel: 'Authorizing…',
+            });
+          }
+          document.getElementById('deny-btn').disabled = true;
+
+          var handoff = document.getElementById('handoff');
+          paintClientTile(document.getElementById('handoff-tile'), clientName);
+          document.getElementById('handoff-title').textContent =
+            'Handing off to ' + clientName;
+          document.getElementById('handoff-sub').textContent = grantSummary();
+          handoff.hidden = false;
+
+          var callback = new URL('/oauth/consent-callback', window.location.origin);
+          callback.searchParams.set('state_key', params.get('state_key') || '');
+          callback.searchParams.set('final_scope', buildScopeString());
+
+          // Let the overlay land before the navigation tears the frame down.
+          window.setTimeout(function () {
+            window.location.href = callback.toString();
+          }, 260);
+        }
+
+        function deny() {
+          var button = document.getElementById('deny-btn');
+          if (window.OrgXWidgetUX) {
+            window.OrgXWidgetUX.setLoading(button, { loadingLabel: 'Denying…' });
+          }
+          document.getElementById('authorize-btn').disabled = true;
+
+          var redirectUri = params.get('redirect_uri');
+          var oauthState = params.get('oauth_state');
+
+          document.body.classList.add('is-leaving');
+          window.setTimeout(function () {
+            if (!redirectUri) {
+              window.close();
+              return;
+            }
+            var target;
+            try {
+              target = new URL(redirectUri);
+            } catch (error) {
+              window.close();
+              return;
+            }
+            target.searchParams.set('error', 'access_denied');
+            target.searchParams.set(
+              'error_description',
+              'User denied the authorization request'
+            );
+            if (oauthState) target.searchParams.set('state', oauthState);
+            window.location.href = target.toString();
+          }, 200);
+        }
+
+        // ── Boot ───────────────────────────────────────────────────────────
+
+        function init() {
+          clientName = resolveClientName(
+            params.get('client_id'),
+            params.get('redirect_uri')
           );
-          if (oauthStateValue) {
-            redirectUrl.searchParams.set('state', oauthStateValue);
-          }
-          window.location.href = redirectUrl.toString();
-        } else {
-          window.close();
-        }
-      }
 
-      // Initialize on load
-      init();
+          document.getElementById('client-name').textContent = clientName;
+          document.title = 'Authorize ' + clientName + ' — OrgX';
+          paintClientTile(document.getElementById('client-tile'), clientName);
+
+          var email = params.get('user_email') || '';
+          document.getElementById('user-email').textContent =
+            email || 'Signed in to OrgX';
+          document.getElementById('user-initial').textContent = email
+            ? email.charAt(0).toUpperCase()
+            : '?';
+
+          // Only claim an organization when the server actually named one.
+          var org = params.get('org_name');
+          if (org) {
+            var orgNode = document.getElementById('org-name');
+            orgNode.textContent = org;
+            orgNode.hidden = false;
+          }
+
+          applyRequestedScopes(params.get('scope'));
+          renderScopes();
+          wireLevels(document.getElementById('scope-list'));
+          wireLevels(document.getElementById('all-levels'));
+          wireDisclosure(document.getElementById('scope-list'));
+          syncAll();
+
+          document.getElementById('authorize-btn').textContent =
+            'Authorize ' + clientName;
+          document
+            .getElementById('authorize-btn')
+            .addEventListener('click', authorize);
+          document.getElementById('deny-btn').addEventListener('click', deny);
+        }
+
+        init();
+      })();
     </script>
   </body>
 </html>

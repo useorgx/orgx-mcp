@@ -35,7 +35,7 @@ import {
   verifyStreamTokenDetailed,
   withStreamTokenExpiry,
 } from './streamToken';
-import { FEED_ROUTE_PATTERN } from './live/feedRegistry';
+import { FEED_ROUTE_PATTERN, FEED_VIEWER_HEADER, getFeed } from './live/feedRegistry';
 import { verifyMcpIdentityTokenDetailed } from './mcpIdentityToken';
 import { buildAuthErrorResponse } from './authErrors';
 import { secureCompare } from './secureCompare';
@@ -1356,10 +1356,39 @@ tool_timeout_sec = 60
         });
       }
 
-      const doKey = `${feedType}:${feedId}`;
+      // A user-scoped feed gets one Durable Object per viewer. Sharing an
+      // instance across viewers would let two people watching the same
+      // initiative see each other's decision queue.
+      const feed = getFeed(feedType);
+      const viewerId = payload.uid ?? '';
+      if (feed?.scope === 'user' && !viewerId) {
+        return new Response(
+          JSON.stringify({ error: 'user_scope_requires_identity' }),
+          {
+            status: 403,
+            headers: { 'Content-Type': 'application/json', ...corsHeadersObj() },
+          }
+        );
+      }
+      const doKey =
+        feed?.scope === 'user'
+          ? `${feedType}:${feedId}:${viewerId}`
+          : `${feedType}:${feedId}`;
       const doId = env.LIVE_FEED.idFromName(doKey);
       const stub = env.LIVE_FEED.get(doId);
-      const liveFeedResponse = await stub.fetch(request);
+
+      // The viewer identity comes from the verified stream token, never from the
+      // caller. Build the forwarded request here so a client-supplied header of
+      // the same name cannot survive.
+      const forwardedHeaders = new Headers(request.headers);
+      forwardedHeaders.delete(FEED_VIEWER_HEADER);
+      if (viewerId) forwardedHeaders.set(FEED_VIEWER_HEADER, viewerId);
+      const forwarded = new Request(request.url, {
+        method: request.method,
+        headers: forwardedHeaders,
+        signal: request.signal,
+      });
+      const liveFeedResponse = await stub.fetch(forwarded);
       // Emit an `auth_expired` SSE event before the token's exp so clients
       // reconnect with a fresh token instead of receiving stale data past
       // the expiry window.

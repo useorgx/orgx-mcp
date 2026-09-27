@@ -31,6 +31,16 @@ export interface FeedCadence {
 
 export interface FeedDefinition {
   type: string;
+  /**
+   * Who the feed's data belongs to.
+   *
+   * `initiative` data is the same for everyone who can see the initiative, so
+   * one Durable Object serves every watcher. `user` data differs per viewer —
+   * a decision queue is scoped to the person who has to act on it — so the DO
+   * must be keyed per user as well, or two people watching the same initiative
+   * would share one instance and see each other's queue.
+   */
+  scope: 'initiative' | 'user';
   /** Build the upstream OrgX API URL for this feed. */
   buildUrl(feedId: string, apiBase: string): string;
   /** Fold the upstream payload into the canonical graph. */
@@ -160,6 +170,7 @@ export const FEEDS: Record<string, FeedDefinition> = {
   'agent-status': {
     type: 'agent-status',
     label: 'Agent status',
+    scope: 'initiative',
     cadence: RESPONSIVE,
     buildUrl: (feedId, apiBase) =>
       `${apiBase}/api/live/agents?initiative=${encodeURIComponent(feedId)}`,
@@ -182,6 +193,7 @@ export const FEEDS: Record<string, FeedDefinition> = {
   'initiative-pulse': {
     type: 'initiative-pulse',
     label: 'Initiative pulse',
+    scope: 'initiative',
     cadence: RESPONSIVE,
     buildUrl: (feedId, apiBase) =>
       `${apiBase}/api/live/initiatives?id=${encodeURIComponent(feedId)}`,
@@ -231,22 +243,41 @@ export const FEEDS: Record<string, FeedDefinition> = {
     },
   },
 
+
+  decisions: {
+    type: 'decisions',
+    label: 'Decision queue',
+    // A decision queue belongs to the person who has to act on it.
+    scope: 'user',
+    // Decisions move on human time, not machine time.
+    cadence: CALM,
+    buildUrl: (feedId, apiBase) =>
+      `${apiBase}/api/live/decisions?initiative=${encodeURIComponent(feedId)}`,
+    normalize(raw, feedId) {
+      const record = asRecord(raw);
+      const decisions = readArray(record, ['decisions', 'data', 'items', 'pending']);
+      return buildWorkGraph({
+        feedType: 'decisions',
+        feedId,
+        nodes: compact(decisions.map(nodeFromDecision)),
+      });
+    },
+  },
 };
 
 // ── Not yet shipped ─────────────────────────────────────────────────────────
-// `decisions` and `execution-room` are deliberately absent from FEEDS.
-//
-// LiveFeedDO polls with ORGX_SERVICE_KEY, and neither upstream accepts it:
-//   - There is no GET /api/live/decisions at all — only .../decisions/approve.
-//     The queue is served by /api/decisions, which authenticates through
-//     getUserContext() (a Clerk user session).
-//   - GET /api/live/execution-room exists but gates on hasViewerAuthSignal(),
-//     i.e. a Clerk bearer token or session cookie.
-//
-// Registering them anyway would mean a widget subscribing to a feed that 404s or
-// 401s on its first poll. Adding them needs a service-key-authenticated read on
-// the OrgX side (lib/server/cronAuth.ts already recognizes the x-orgx-service-key
-// header that the DO sends); `nodeFromDecision` below is kept ready for that.
+// `execution-room` is deliberately absent. GET /api/live/execution-room gates on
+// hasViewerAuthSignal() — a Clerk bearer token or session cookie — which the
+// worker's service-key + actor-token path does not satisfy. Its lanes largely
+// duplicate what agent-status and initiative-pulse already provide, so enabling
+// it is not worth widening that route's auth surface today.
+
+/**
+ * Header the edge uses to tell the Durable Object which viewer a user-scoped
+ * stream belongs to. Set from the verified stream token and stripped from the
+ * inbound request first, so it can never be spoofed by a caller.
+ */
+export const FEED_VIEWER_HEADER = 'x-orgx-feed-viewer';
 
 export const FEED_TYPES = Object.keys(FEEDS);
 
