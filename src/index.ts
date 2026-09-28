@@ -97,6 +97,7 @@ import {
 } from './workLeases';
 import { mapMorningBriefApiError } from './morningBriefError';
 import { fetchContextPreparation, fetchContextPack } from './contextPack';
+import { normalizeRunOutputs, runOutputsApiPath } from './runOutputs';
 import {
   batchCreateEntities as runBatchCreateEntities,
   validateEntityCreatePayloadContract,
@@ -5261,7 +5262,8 @@ export class OrgXMcp extends McpAgent<
             );
           }
 
-          const [entity, context_pack] = await Promise.all([
+          const isRun = args.type === 'run';
+          const [entity, context_pack, runOutputs] = await Promise.all([
             this.fetchEntityRecord(
               String(args.type),
               String(args.id),
@@ -5273,6 +5275,13 @@ export class OrgXMcp extends McpAgent<
                   type: String(args.type),
                   id: String(args.id),
                 }),
+            // A run's answer is a run artifact, not a column on the run row.
+            isRun
+              ? this.fetchOrgxJsonOrNull(
+                  runOutputsApiPath(String(args.id)),
+                  resolvedUserId
+                ).then(normalizeRunOutputs)
+              : Promise.resolve(null),
           ]);
           if (!entity) {
             return this.toolError(`No ${String(args.type)} found for ${String(args.id)}`, {
@@ -5291,6 +5300,12 @@ export class OrgXMcp extends McpAgent<
             id: args.id,
             entity,
             context_pack,
+            ...(isRun
+              ? {
+                  outputs: runOutputs?.outputs ?? null,
+                  outputs_has_more: runOutputs?.has_more ?? false,
+                }
+              : {}),
             // One-entity card for the entity-card widget: status, facts, a
             // link to the web page, and a proof record where work carries one.
             card: buildEntityCard({

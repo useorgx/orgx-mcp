@@ -868,6 +868,107 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
     }
   });
 
+  it("inspects a run with the answer it produced, read as the caller", async () => {
+    const RUN_ID = 'dbc8c971-e23e-4c3c-9fb2-3b684b3c0f99';
+    const harness = await createHarness({
+      scope: AUTHORIZATION_PRESETS.read.scopes.join(' '),
+    });
+    try {
+      apiMocks.callOrgxApiJson.mockImplementation(
+        async (_env: unknown, path: string, init?: RequestInit) => {
+          if (path === `/api/v1/runs/${RUN_ID}/artifacts`) {
+            return Response.json({
+              ok: true,
+              data: {
+                run_id: RUN_ID,
+                has_more: false,
+                outputs: [
+                  {
+                    run_artifact_id: 'ra-1',
+                    work_artifact_id: 'wa-1',
+                    title: 'Continuity answer',
+                    type: 'document',
+                    status: 'draft',
+                    summary: 'CODENAME=HERON',
+                    excerpt: 'CODENAME=HERON',
+                    excerpt_truncated: false,
+                    url: null,
+                    created_at: '2026-09-28T10:00:00.000Z',
+                  },
+                ],
+              },
+            });
+          }
+          return successfulApiResponse(path, init);
+        }
+      );
+
+      const result = await harness.client.callTool({
+        name: 'orgx_inspect',
+        arguments: { type: 'run', id: RUN_ID, hydrate_context: false },
+      });
+      expect(result.isError).not.toBe(true);
+      const text = (result.content as Array<{ text?: string }>)[0]?.text ?? '';
+      expect(text).toContain('Continuity answer');
+      expect(text).toContain('CODENAME=HERON');
+      expect(text).toContain('work_artifact_id:wa-1');
+      expect(result.structuredContent).toMatchObject({
+        outputs: [
+          { work_artifact_id: 'wa-1', title: 'Continuity answer', excerpt: 'CODENAME=HERON' },
+        ],
+        outputs_has_more: false,
+      });
+      const outputsCall = apiMocks.callOrgxApiJson.mock.calls.find(
+        ([, path]) => path === `/api/v1/runs/${RUN_ID}/artifacts`
+      );
+      expect(outputsCall?.[3]).toEqual({
+        userId: USER_ID,
+        userEmail: 'oauth-user@example.com',
+        orgxUserId: ORGX_USER_ID,
+      });
+
+      // Other entity types do not ask for run outputs.
+      apiMocks.callOrgxApiJson.mockClear();
+      const decision = await harness.client.callTool({
+        name: 'orgx_inspect',
+        arguments: { type: 'decision', id: 'decision-1', hydrate_context: false },
+      });
+      expect(decision.structuredContent).not.toHaveProperty('outputs');
+      expect(
+        apiMocks.callOrgxApiJson.mock.calls.some(([, path]) =>
+          String(path).includes('/artifacts')
+        )
+      ).toBe(false);
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
+  it('still inspects a run when its outputs cannot be read', async () => {
+    const harness = await createHarness({
+      scope: AUTHORIZATION_PRESETS.read.scopes.join(' '),
+    });
+    try {
+      apiMocks.callOrgxApiJson.mockImplementation(
+        async (_env: unknown, path: string, init?: RequestInit) =>
+          path.endsWith('/artifacts')
+            ? new Response('{}', { status: 404 })
+            : successfulApiResponse(path, init)
+      );
+      const result = await harness.client.callTool({
+        name: 'orgx_inspect',
+        arguments: { type: 'run', id: 'run-1', hydrate_context: false },
+      });
+      expect(result.isError).not.toBe(true);
+      expect(result.structuredContent).toMatchObject({ outputs: null });
+      expect((result.content as Array<{ text?: string }>)[0]?.text).toContain(
+        'Outputs: could not be read for this run.'
+      );
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
   it('fails external full closed while preserving provably internal full discovery', async () => {
     const external = await createHarness({
       scope: AUTHORIZATION_PRESETS.operate.scopes.join(' '),

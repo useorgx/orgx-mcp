@@ -13,6 +13,7 @@ import {
   formatContextCapsuleSummary,
   formatContextPackSummary,
 } from './contextPackSummary';
+import { formatRunOutputsSummary } from './runOutputs';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -487,8 +488,17 @@ function formatOrgxInspect(
   const details = description
     ? `\nDescription: ${truncateField(description, opts.maxFieldLength)}`
     : '';
+  const outputs =
+    'outputs' in data
+      ? Array.isArray(data.outputs)
+        ? formatRunOutputsSummary({
+            outputs: data.outputs,
+            has_more: data.outputs_has_more,
+          })
+        : 'Outputs: could not be read for this run.'
+      : null;
   const context = formatContextPackSummary(data.context_pack, opts);
-  return `OrgX ${type}: ${line}${details}${
+  return `OrgX ${type}: ${line}${details}${outputs ? `\n\n${outputs}` : ''}${
     context ? `\n\n${context}` : ''
   }`;
 }
