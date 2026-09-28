@@ -18,6 +18,11 @@
  * to fail on the pre-state. That rule lived in a skill doc; prose is not a
  * constraint, so it lives in the contract now.
  *
+ * This module normalizes and fixes the contract; it does not judge it. The
+ * verdict lives in the app (orgx/lib/server/acceptance/dispatchAcceptance.ts),
+ * which has the run, its artifacts and the pre-state probes, and which shares
+ * one discrimination rule with the initiative criteria gate.
+ *
  * Pure and deterministic apart from hashAcceptanceContract, which uses
  * crypto.subtle. Normalization never throws: it returns diagnostics the caller
  * turns into a refusal.
@@ -500,11 +505,11 @@ export async function hashAcceptanceContract(
 }
 
 /**
- * Build the object persisted at dispatch. Checks start `unprobed`: nothing has
- * run the pre-state yet, and an unprobed check is not allowed to claim it
- * discriminated. Probing is the runner's job (see the deferred section of
- * docs/design/dispatch-contract-2026-09-27.md); until it exists, the receipt
- * reports `unprobed` honestly instead of assuming `fail`.
+ * Build the object persisted at dispatch. Checks start `unprobed`: this worker
+ * never observes anything. The app records the pre-states OrgX can see before
+ * the work starts, and judges the run against this binding at completion
+ * (orgx/lib/server/acceptance/dispatchAcceptance.ts). There is deliberately
+ * no verdict here — one judge, in the place that has the evidence.
  */
 export async function buildAcceptanceBinding(
   checks: NormalizedAcceptanceCheck[],
@@ -558,116 +563,4 @@ export function applyDispatchContractToArgs(
   if (binding) out.acceptance_binding = binding;
 
   return out;
-}
-
-// =============================================================================
-// VERDICT
-// =============================================================================
-
-export interface AcceptanceObservation {
-  id: string;
-  pre: AcceptancePreState;
-  post: 'pass' | 'fail' | 'unprobed';
-}
-
-export interface AcceptanceCheckVerdict {
-  id: string;
-  pre: AcceptancePreState;
-  post: 'pass' | 'fail' | 'unprobed';
-  counted: boolean;
-  reason?: 'non_discriminating' | 'unprobed' | 'not_observed' | 'failed';
-}
-
-export interface AcceptanceVerdict {
-  accepted: boolean;
-  contract_hash: string;
-  declared_at: string;
-  checks: AcceptanceCheckVerdict[];
-  /** Set when the completion did not match the contract fixed at dispatch. */
-  rejection?: string;
-}
-
-/**
- * Decide acceptance against the contract fixed at dispatch.
- *
- * Three ways a check fails to count, all recorded rather than hidden:
- *   non_discriminating — it already passed before the work (this is the
- *                        `|| echo` case the ledger caught);
- *   unprobed           — nobody established the pre-state, so fail->pass was
- *                        never observed;
- *   not_observed       — the completion said nothing about it.
- *
- * Acceptance requires at least one counted check. A run with no discriminating
- * check is not accepted, because nothing about it was falsifiable.
- */
-export function evaluateAcceptance(
-  binding: AcceptanceBinding,
-  observations: AcceptanceObservation[],
-  observedContractHash?: string
-): AcceptanceVerdict {
-  if (observedContractHash && observedContractHash !== binding.contract_hash) {
-    return {
-      accepted: false,
-      contract_hash: binding.contract_hash,
-      declared_at: binding.declared_at,
-      checks: [],
-      rejection: `Completion reported acceptance contract ${observedContractHash} but the work was dispatched under ${binding.contract_hash}. The contract cannot be substituted after dispatch.`,
-    };
-  }
-
-  const byId = new Map(observations.map((o) => [o.id, o]));
-  const checks: AcceptanceCheckVerdict[] = binding.checks.map((check) => {
-    const observed = byId.get(check.id);
-    if (!observed) {
-      return {
-        id: check.id,
-        pre: check.pre_state,
-        post: 'unprobed',
-        counted: false,
-        reason: 'not_observed',
-      };
-    }
-    // The pre-state recorded at completion wins over the dispatch placeholder:
-    // the runner may have probed after the binding was written.
-    const pre = observed.pre ?? check.pre_state;
-
-    if (check.must_fail_before && pre === 'pass') {
-      return {
-        id: check.id,
-        pre,
-        post: observed.post,
-        counted: false,
-        reason: 'non_discriminating',
-      };
-    }
-    if (check.must_fail_before && pre === 'unprobed') {
-      return {
-        id: check.id,
-        pre,
-        post: observed.post,
-        counted: false,
-        reason: 'unprobed',
-      };
-    }
-    if (observed.post !== 'pass') {
-      return {
-        id: check.id,
-        pre,
-        post: observed.post,
-        counted: false,
-        reason: 'failed',
-      };
-    }
-    return { id: check.id, pre, post: observed.post, counted: true };
-  });
-
-  const counted = checks.filter((c) => c.counted);
-  const accepted = counted.length > 0 && counted.length === checks.length;
-
-  return {
-    accepted,
-    contract_hash: binding.contract_hash,
-    declared_at: binding.declared_at,
-    checks,
-  };
 }
