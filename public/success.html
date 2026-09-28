@@ -1,239 +1,217 @@
-<!DOCTYPE html>
-<html lang="en" class="dark">
+<!doctype html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
     <meta name="robots" content="noindex, nofollow" />
     <title>Connected — OrgX</title>
     <link rel="icon" type="image/png" href="/orgx-logo.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap"
-      rel="stylesheet"
-    />
     <link rel="stylesheet" href="/auth-surface.css" />
-    <link rel="stylesheet" href="/widgets/shared/interaction-kit.css" />
-    <script src="/widgets/shared/interaction-kit.js" defer></script>
     <style>
-      /* Teal: this is a health/confirmation readout, not an execution surface. */
-      :root {
-        --ox-primary-rgb: 0, 201, 167;
-      }
-
-      /* The seal.
-         Connecting is onboarding, which is the one mode where OrgX is allowed
-         an emotional payoff — but the payoff is controlled emergence, not
-         celebration. The ring draws, then the check draws inside it. No
-         confetti: routine work does not get a party. */
+      /* The seal. Connecting is onboarding, the one moment OrgX allows itself a
+         payoff — but it is controlled emergence, not a party: the ring draws,
+         then the check draws inside it. No confetti. */
       .seal {
         position: relative;
-        width: 56px;
-        height: 56px;
-        margin: 0 auto 16px;
+        width: 46px;
+        height: 46px;
+        margin-top: 22px;
       }
 
       .seal svg {
-        width: 56px;
-        height: 56px;
-        display: block;
-        transform: rotate(-90deg);
+        position: absolute;
+        inset: 0;
+        width: 46px;
+        height: 46px;
       }
 
       .seal__ring {
-        fill: none;
-        stroke: rgba(var(--ox-primary-rgb), 0.9);
+        transform: rotate(-90deg);
+        transform-origin: 50% 50%;
+      }
+
+      .seal__ring circle {
+        fill: rgba(var(--state-rgb), 0.07);
+        stroke: var(--state);
         stroke-width: 1.5;
         stroke-linecap: round;
-        stroke-dasharray: 163;
-        stroke-dashoffset: 163;
-        animation: seal-ring 700ms var(--ox-ease) 120ms forwards;
-      }
-
-      .seal__track {
-        fill: rgba(var(--ox-primary-rgb), 0.07);
-        stroke: rgba(var(--ox-primary-rgb), 0.16);
-        stroke-width: 1;
-      }
-
-      /* Drawn in its own upright layer so the rotated ring does not skew it. */
-      .seal__check {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .seal__check svg {
-        width: 24px;
-        height: 24px;
-        transform: none;
+        stroke-dasharray: 135;
+        stroke-dashoffset: 135;
+        animation: seal-draw 700ms var(--ease) 150ms forwards;
       }
 
       .seal__check path {
         fill: none;
-        stroke: rgb(var(--ox-primary-rgb));
+        stroke: var(--state);
         stroke-width: 2.4;
         stroke-linecap: round;
         stroke-linejoin: round;
         stroke-dasharray: 26;
         stroke-dashoffset: 26;
-        animation: seal-check 420ms var(--ox-ease) 640ms forwards;
+        animation: seal-draw 420ms var(--ease) 700ms forwards;
       }
 
-      @keyframes seal-ring {
+      @keyframes seal-draw {
         to {
           stroke-dashoffset: 0;
         }
       }
 
-      @keyframes seal-check {
-        to {
-          stroke-dashoffset: 0;
-        }
+      .seal + h1 {
+        margin-top: 16px;
       }
 
-      /* ── What it can now do ───────────────────────────────────────────── */
-      /* A compressed list, not a grid of equal cards. Each line is one
-         capability and its scope — scannable in one pass. */
-
+      /* What the client can reach now, as one scannable list rather than a
+         grid of equal cards. Copy follows consent.html's resource rows. */
       .caps {
         margin: 0;
         padding: 0;
         list-style: none;
-        display: flex;
-        flex-direction: column;
       }
 
       .caps li {
-        display: flex;
-        align-items: baseline;
-        gap: 10px;
-        padding: 7px 0;
-        font-size: 0.82rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.04);
+        display: grid;
+        grid-template-columns: minmax(0, 170px) minmax(0, 1fr);
+        gap: 12px;
+        padding: 10px 0;
+        border-top: 1px solid var(--border);
+        font-size: 13px;
+        line-height: 1.45;
       }
 
       .caps li:first-child {
         border-top: 0;
+        padding-top: 0;
       }
 
-      .caps__name {
-        color: rgba(255, 255, 255, 0.88);
-        font-weight: 500;
-        min-width: 92px;
-        flex-shrink: 0;
+      .caps b {
+        font-weight: 650;
       }
 
-      .caps__what {
-        color: var(--ox-text-muted);
-        font-size: 0.79rem;
-        min-width: 0;
-      }
-
-      /* ── Return notice ────────────────────────────────────────────────── */
-
-      /* A `display` rule outranks the hidden attribute, so guard it. */
-      .returning[hidden] {
-        display: none;
+      .caps span {
+        color: var(--secondary);
       }
 
       .returning {
         display: flex;
         align-items: center;
-        justify-content: center;
-        gap: 8px;
-        font-size: 0.76rem;
-        color: var(--ox-text-muted);
+        gap: 9px;
+        color: var(--secondary);
+        font-size: 13px;
       }
 
-      .actions {
-        display: flex;
-        flex-direction: column;
-        gap: 9px;
+      .returning .spin {
+        width: 14px;
+        height: 14px;
+        border: 2px solid var(--strong-border);
+        border-top-color: var(--signal);
+        border-radius: 50%;
+        animation: spin 800ms linear infinite;
+      }
+
+      @media (max-width: 520px) {
+        .caps li {
+          grid-template-columns: 1fr;
+          gap: 2px;
+        }
       }
     </style>
   </head>
   <body>
-    <main class="auth-shell">
-      <div class="auth-brand animate-in" style="--i: 0">
-        <img src="/orgx-logo.png" alt="" />
-        <span>OrgX</span>
-      </div>
+    <div class="orgx-field" aria-hidden="true">
+      <svg viewBox="0 0 1440 960" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <pattern id="orgx-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+            <path d="M24 0H0V24" fill="none" stroke="#17202a" stroke-width="1" />
+          </pattern>
+        </defs>
+        <rect class="field-grid" width="1440" height="960" fill="url(#orgx-grid)" />
+        <path class="field-path" d="M-80 720H190V584H370V394H580" />
+        <path class="field-path" d="M-80 816H290V670H485V504H720V356H930" />
+        <path class="field-path" d="M1510 168H1260V296H1090V462H870V620H650" />
+        <path class="field-path state" d="M1510 84H1340V218H1170" />
+        <path class="field-path" d="M1170 218V386H980V548H760" />
+        <circle class="field-node" cx="190" cy="584" r="5" />
+        <circle class="field-node" cx="370" cy="394" r="5" />
+        <circle class="field-node state" cx="1170" cy="218" r="4" />
+        <circle class="field-node" cx="1090" cy="462" r="5" />
+        <circle class="field-node" cx="870" cy="620" r="5" />
+        <text class="field-label" x="108" y="566">CLIENT</text>
+        <text class="field-label" x="390" y="378">REQUEST</text>
+        <text class="field-label" x="1112" y="446">POLICY</text>
+        <text class="field-label" x="1190" y="208">GRANTED</text>
+      </svg>
+    </div>
+    <div class="signal-line" aria-hidden="true"></div>
 
-      <div class="auth-card animate-in" style="--i: 1">
-        <div class="auth-section auth-section--head auth-center">
-          <div class="seal" aria-hidden="true">
-            <svg viewBox="0 0 56 56">
-              <circle class="seal__track" cx="28" cy="28" r="26" />
-              <circle class="seal__ring" cx="28" cy="28" r="26" />
-            </svg>
-            <span class="seal__check">
-              <svg viewBox="0 0 24 24">
-                <path d="M5 12.5l4.5 4.5L19 7.5" />
+    <main class="page">
+      <div class="shell-col">
+        <section class="card" aria-labelledby="title">
+          <div class="card-head">
+            <div class="brand">
+              <img src="/orgx-logo.png" alt="" />
+              <span>OrgX</span>
+              <span class="brand-context">Authorization</span>
+            </div>
+            <div class="seal" aria-hidden="true">
+              <svg class="seal__ring" viewBox="0 0 46 46">
+                <circle cx="23" cy="23" r="21.5" />
               </svg>
-            </span>
+              <svg class="seal__check" viewBox="0 0 46 46">
+                <path d="M15 23.5l5 5 11-11.5" />
+              </svg>
+            </div>
+            <h1 id="title">Connected to OrgX</h1>
+            <p class="lede">
+              Work done in this client now carries over. Decisions, artifacts,
+              and proof outlive the conversation that made them.
+            </p>
           </div>
 
-          <h1 class="auth-title" id="title">Connected to OrgX</h1>
-          <p class="auth-sub" id="subtitle">
-            Work done here now carries over — decisions, artifacts, and proof
-            survive the end of this conversation.
-          </p>
-        </div>
+          <div class="card-body">
+            <span class="eyebrow">Now reachable</span>
+            <ul class="caps">
+              <li>
+                <b>Decisions</b>
+                <span>Organizational decisions, approvals, and history</span>
+              </li>
+              <li>
+                <b>Agents</b>
+                <span>Delegated work, status, handoffs, and lifecycle</span>
+              </li>
+              <li>
+                <b>Initiatives</b>
+                <span>Milestones, tasks, artifacts, and receipts</span>
+              </li>
+              <li>
+                <b>Organizational memory</b>
+                <span>Durable context and recalled knowledge</span>
+              </li>
+            </ul>
+          </div>
 
-        <div class="auth-section">
-          <p class="ox-eyebrow" style="margin-bottom: 8px">Now available</p>
-          <ul class="caps">
-            <li>
-              <span class="caps__name">Decisions</span>
-              <span class="caps__what">Approve, reject, and review</span>
-            </li>
-            <li>
-              <span class="caps__name">Agents</span>
-              <span class="caps__what">Spawn and monitor tasks</span>
-            </li>
-            <li>
-              <span class="caps__name">Initiatives</span>
-              <span class="caps__what">Track pulse and workstreams</span>
-            </li>
-            <li>
-              <span class="caps__name">Memory</span>
-              <span class="caps__what">Search organizational knowledge</span>
-            </li>
-          </ul>
-        </div>
+          <div class="card-body" id="returning-row" hidden>
+            <div class="returning" role="status">
+              <span class="spin" aria-hidden="true"></span>
+              <span id="returning-label">Sending you back…</span>
+            </div>
+          </div>
 
-        <div class="auth-section auth-section--foot">
-          <div class="actions">
-            <a
-              href="https://useorgx.com/command"
-              id="command-btn"
-              class="ox-link-btn ox-link-btn--primary ox-link-btn--full"
-            >
+          <div class="card-foot">
+            <button type="button" class="button quiet" id="close-btn">
+              Close window
+            </button>
+            <a class="button primary grow" id="command-btn" href="https://useorgx.com/command">
               Open command center
             </a>
-            <button
-              type="button"
-              id="close-btn"
-              class="ox-action-btn ox-action-btn--quiet ox-action-btn--full"
-            >
-              Close this window
-            </button>
           </div>
-        </div>
-      </div>
+        </section>
 
-      <div class="returning animate-in" id="returning" style="--i: 2" hidden>
-        <span class="ox-inline-spinner" aria-hidden="true"></span>
-        <span id="returning-label">Sending you back…</span>
-      </div>
-
-      <div class="auth-foot animate-in" style="--i: 3">
-        <a href="https://useorgx.com/privacy">Privacy</a>
-        <span class="auth-foot__dot">·</span>
-        <a href="https://useorgx.com/terms">Terms</a>
+        <nav class="foot-links" aria-label="Legal">
+          <a href="https://useorgx.com/privacy">Privacy</a>
+          <a href="https://useorgx.com/terms">Terms</a>
+        </nav>
       </div>
     </main>
 
@@ -243,62 +221,42 @@
 
         var params = new URLSearchParams(window.location.search);
 
-        function clientFromCallback(callbackUrl) {
+        function clientFromCallback(url) {
           try {
-            var host = new URL(callbackUrl).hostname;
-            if (host.indexOf('chatgpt.com') !== -1) return 'ChatGPT';
-            if (host.indexOf('openai.com') !== -1) return 'ChatGPT';
-            if (host.indexOf('claude.ai') !== -1) return 'Claude';
-            if (host.indexOf('anthropic.com') !== -1) return 'Claude';
-            if (host.indexOf('cursor.') !== -1) return 'Cursor';
+            var host = new URL(url).hostname;
+            if (/chatgpt\.com|openai\.com/.test(host)) return 'ChatGPT';
+            if (/claude\.ai|anthropic\.com/.test(host)) return 'Claude';
+            if (/cursor\./.test(host)) return 'Cursor';
           } catch (error) {
-            /* fall through to the generic label */
+            /* fall through */
           }
-          return 'your app';
+          return 'your client';
         }
 
-        function init() {
-          var callbackUrl = params.get('callback_url');
-          var client = params.get('client');
+        var client = params.get('client');
+        if (client) {
+          document.getElementById('title').textContent = client + ' is connected';
+          document.title = client + ' connected — OrgX';
+        }
 
-          if (client) {
-            document.getElementById('title').textContent =
-              client + ' is connected';
-          }
-
-          if (callbackUrl) {
-            var name = clientFromCallback(callbackUrl);
-            var notice = document.getElementById('returning');
-            document.getElementById('returning-label').textContent =
-              'Sending you back to ' + name + '…';
-            notice.hidden = false;
-
-            // callbackUrl already carries the code and state issued by
-            // completeAuthorization(), so this is a direct hand-back.
+        var callbackUrl = params.get('callback_url');
+        if (callbackUrl) {
+          document.getElementById('returning-label').textContent =
+            'Sending you back to ' + clientFromCallback(callbackUrl) + '…';
+          document.getElementById('returning-row').hidden = false;
+          // callbackUrl already carries the code and state issued by
+          // completeAuthorization(), so this is a direct hand-back.
+          window.setTimeout(function () {
+            document.body.classList.add('is-leaving');
             window.setTimeout(function () {
-              document.body.classList.add('is-leaving');
-              window.setTimeout(function () {
-                window.location.href = callbackUrl;
-              }, 200);
-            }, 1400);
-          }
-
-          document
-            .getElementById('close-btn')
-            .addEventListener('click', function () {
-              var button = document.getElementById('close-btn');
-              if (window.OrgXWidgetUX) {
-                window.OrgXWidgetUX.setLoading(button, {
-                  loadingLabel: 'Closing…',
-                });
-              }
-              window.setTimeout(function () {
-                window.close();
-              }, 80);
-            });
+              window.location.href = callbackUrl;
+            }, 200);
+          }, 1400);
         }
 
-        init();
+        document.getElementById('close-btn').addEventListener('click', function () {
+          window.close();
+        });
       })();
     </script>
   </body>

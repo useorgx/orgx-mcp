@@ -202,7 +202,7 @@
     <style>
       :root {
         --ox-primary-rgb: 191, 255, 0;
-        --ox-grid: rgba(255, 255, 255, 0.022);
+        --ox-grid: rgba(255, 255, 255, 0.03);
         --ox-ease: cubic-bezier(0.16, 1, 0.3, 1);
       }
 
@@ -214,13 +214,13 @@
 
       /* The signature grid. Replaces the old fractal-noise wash: grain is
          texture for its own sake, whereas the grid gives the page spatial
-         grounding and matches the consent and error surfaces this page hands
-         off to. Masked at the edges so it grounds without framing. */
+         grounding and matches the 24px lattice behind consent.html, the page
+         this one hands off to. Masked at the edges so it grounds without framing. */
       .bg-grid {
         background:
           linear-gradient(var(--ox-grid) 1px, transparent 1px),
           linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px);
-        background-size: 22px 22px, 22px 22px;
+        background-size: 24px 24px, 24px 24px;
         -webkit-mask-image: radial-gradient(
           ellipse 78% 58% at 50% 0%,
           #000 30%,
