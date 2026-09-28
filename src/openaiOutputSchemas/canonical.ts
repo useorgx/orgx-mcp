@@ -448,6 +448,8 @@ export const CANONICAL_OUTPUT_SCHEMAS = {
       run_id: z.string().optional(),
       run_short_id: z.string().optional(),
       spawned_run_id: z.string().optional(),
+      delegation_parent_run_id: z.string().optional(),
+      managed_runtime: z.string().optional(),
       delegation_contract: z
         .literal('durable_delegation_v2')
         .optional(),

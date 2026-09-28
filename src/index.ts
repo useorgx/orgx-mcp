@@ -1,5 +1,6 @@
 import { McpAgent } from 'agents/mcp';
 import { applyRunTokenScopes } from './runTokenScopes';
+import { conformSpawnPayload } from './spawnOutput';
 import {
   McpServer,
   ResourceTemplate,
@@ -6205,7 +6206,7 @@ export class OrgXMcp extends McpAgent<
             targetTool === 'classify_task_model'
               ? buildRouteTaskEstimateSummary(data, spawnArgs)
               : undefined;
-          const payload = {
+          const payload = conformSpawnPayload({
             ...data,
             _v2_tool: 'orgx_spawn',
             _action: action,
@@ -6213,7 +6214,7 @@ export class OrgXMcp extends McpAgent<
             ...(action === 'estimate' ? { estimate_only: true } : {}),
             ...(estimate ? { estimate } : {}),
             ...(budgetPreflight ? { budget_preflight: budgetPreflight } : {}),
-          };
+          });
           return {
             content: [{ type: 'text', text: this.summarizeClientResult(targetTool, payload) }],
             structuredContent: payload,
