@@ -50,4 +50,20 @@ describe('conformSpawnPayload', () => {
     expect(() => CANONICAL_OUTPUT_SCHEMAS.orgx_spawn.parse(out)).not.toThrow();
     expect(out).not.toHaveProperty('dispatch_receipt');
   });
+
+  it('repairs a null inside an array and drops a field of the wrong shape', () => {
+    const out = conformSpawnPayload({
+      _v2_tool: 'orgx_spawn',
+      _action: 'spawn',
+      routed_tool: 'spawn_agent_task',
+      run_id: 'run-1',
+      next_steps: ['Watch progress', null, 'Check status'],
+      live_url: 42,
+    });
+    expect(() => CANONICAL_OUTPUT_SCHEMAS.orgx_spawn.parse(out)).not.toThrow();
+    expect(out.next_steps).toEqual(['Watch progress', 'Check status']);
+    expect(out).not.toHaveProperty('live_url');
+    expect(out.run_id).toBe('run-1');
+  });
 });
+
