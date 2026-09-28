@@ -9,6 +9,7 @@
  * 100-500 for single entities) instead of 15,000-50,000 tokens of raw JSON.
  */
 
+import { formatRunOutputs, type RunOutput } from './runOutputs';
 import {
   formatContextCapsuleSummary,
   formatContextPackSummary,
@@ -488,7 +489,8 @@ function formatOrgxInspect(
     ? `\nDescription: ${truncateField(description, opts.maxFieldLength)}`
     : '';
   const context = formatContextPackSummary(data.context_pack, opts);
-  return `OrgX ${type}: ${line}${details}${
+  const outputs = formatRunOutputs(Array.isArray(data.outputs) ? (data.outputs as RunOutput[]) : null);
+  return `OrgX ${type}: ${line}${details}${outputs ? `\n\n${outputs}` : ''}${
     context ? `\n\n${context}` : ''
   }`;
 }

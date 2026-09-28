@@ -1,6 +1,7 @@
 import { McpAgent } from 'agents/mcp';
 import { applyRunTokenScopes } from './runTokenScopes';
 import { conformSpawnPayload } from './spawnOutput';
+import { fetchRunOutputs } from './runOutputs';
 import {
   McpServer,
   ResourceTemplate,
@@ -5261,7 +5262,7 @@ export class OrgXMcp extends McpAgent<
             );
           }
 
-          const [entity, context_pack] = await Promise.all([
+          const [entity, context_pack, outputs] = await Promise.all([
             this.fetchEntityRecord(
               String(args.type),
               String(args.id),
@@ -5273,6 +5274,15 @@ export class OrgXMcp extends McpAgent<
                   type: String(args.type),
                   id: String(args.id),
                 }),
+            // A run's answer lives in its outputs, not its row.
+            args.type === 'run'
+              ? fetchRunOutputs(this.env, String(args.id), {
+                  userId: resolvedUserId ?? null,
+                  userEmail: this.resolveUserEmail(),
+                  orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? undefined),
+                  ...this.delegationClaims(),
+                })
+              : Promise.resolve(null),
           ]);
           if (!entity) {
             return this.toolError(`No ${String(args.type)} found for ${String(args.id)}`, {
@@ -5291,6 +5301,7 @@ export class OrgXMcp extends McpAgent<
             id: args.id,
             entity,
             context_pack,
+            ...(outputs ? { outputs } : {}),
             // One-entity card for the entity-card widget: status, facts, a
             // link to the web page, and a proof record where work carries one.
             card: buildEntityCard({
