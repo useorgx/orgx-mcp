@@ -1,14 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+
+import {
+  createClock,
+  createStubTransport,
+  loadLiveScope,
+  storeOptions,
+  type LiveGlobals,
+  type StubTransport,
+  type TestClock,
+} from './fixtures/live';
 
 /**
- * Loads the real shipped scripts, same as tests/liveMachine.spec.ts, and drives
- * the store through a stub transport so every lifecycle path is exercised
- * without a network or a live Durable Object.
+ * Drives the shipped store through a stub transport and a hand-cranked clock,
+ * so every lifecycle path runs without a network, a Durable Object or real
+ * time. The harness is shared — see tests/fixtures/live.ts.
  */
-
-const SHARED = join(__dirname, '..', 'public', 'widgets', 'shared');
 
 interface StoreSnapshot {
   connection: string;
@@ -25,142 +31,24 @@ interface StoreSnapshot {
   phases?: { started: string[]; finished: string[]; blocked: string[] } | null;
 }
 
-interface TransportHandlers {
-  onOpen(info?: unknown): void;
-  onFrame(frame: unknown): void;
-  onMalformed(info: unknown): void;
-  onAuthExpired(detail: unknown): void;
-  onError(info: unknown): void;
-}
-
-interface Scope {
-  OrgXLiveMachine?: Record<string, unknown>;
-  OrgXLiveStore?: {
-    createLiveStore(options: Record<string, unknown>): {
-      start(): boolean;
-      stop(): void;
-      reconnect(): void;
-      subscribe(listener: (s: StoreSnapshot) => void): () => void;
-      ingest(frame: unknown): unknown;
-      getState(): StoreSnapshot;
-      diagnostics(): { counters: Record<string, number>; recent: { event: string }[] };
-      getLogger(): { records(): { event: string; level: string }[] };
-    };
-    createLogger(options?: Record<string, unknown>): {
-      info(event: string, fields?: unknown): unknown;
-      error(event: string, fields?: unknown): unknown;
-      counters(): Record<string, number>;
-      records(): { event: string; level: string }[];
-    };
-    createSseTransport(options: Record<string, unknown>): {
-      supported(): boolean;
-      open(handlers: TransportHandlers): string;
-      close(): void;
-    };
-    createPollTransport(options: Record<string, unknown>): {
-      supported(): boolean;
-      open(handlers: TransportHandlers): string;
-      close(): void;
-    };
-  };
-  console?: unknown;
-}
-
-function loadScope(): Scope {
-  const scope: Scope = { console: { log() {}, warn() {}, error() {} } };
-  for (const file of ['live-machine.js', 'live-store.js']) {
-    const source = readFileSync(join(SHARED, file), 'utf8');
-    new Function('globalThis', 'window', source).call(scope, scope, scope);
-  }
-  if (!scope.OrgXLiveStore) throw new Error('live-store.js did not install');
-  return scope;
-}
-
-/** A transport the test drives by hand. */
-function createStubTransport() {
-  let handlers: TransportHandlers | null = null;
-  const opens: string[] = [];
-  let closes = 0;
-  return {
-    name: 'stub',
-    supported: () => true,
-    open(h: TransportHandlers) {
-      handlers = h;
-      opens.push('open');
-      return 'stub://feed';
-    },
-    close() {
-      closes += 1;
-    },
-    get handlers() {
-      if (!handlers) throw new Error('transport was never opened');
-      return handlers;
-    },
-    get openCount() {
-      return opens.length;
-    },
-    get closeCount() {
-      return closes;
-    },
-  };
-}
-
-type Clock = {
-  advance(ms: number): void;
-  setTimeout(fn: () => void, ms: number): number;
-  clearTimeout(id: number): void;
-  pending(): number;
-};
-
-function createClock(): Clock {
-  let time = 0;
-  let nextId = 1;
-  const timers = new Map<number, { at: number; fn: () => void }>();
-  return {
-    setTimeout(fn, ms) {
-      const id = nextId++;
-      timers.set(id, { at: time + ms, fn });
-      return id;
-    },
-    clearTimeout(id) {
-      timers.delete(id);
-    },
-    advance(ms) {
-      time += ms;
-      const due = [...timers.entries()]
-        .filter(([, t]) => t.at <= time)
-        .sort((a, b) => a[1].at - b[1].at);
-      for (const [id, timer] of due) {
-        timers.delete(id);
-        timer.fn();
-      }
-    },
-    pending() {
-      return timers.size;
-    },
-  };
-}
-
-let scope: Scope;
-let transport: ReturnType<typeof createStubTransport>;
-let clock: Clock;
+let scope: LiveGlobals;
+let transport: StubTransport;
+let clock: TestClock;
 
 function makeStore(overrides: Record<string, unknown> = {}) {
-  return scope.OrgXLiveStore!.createLiveStore({
-    widget: 'test-widget',
-    streamUrl: 'https://mcp.useorgx.com/live-feed/agent-status/init-1/stream?t=tok',
-    transport,
-    setTimeout: clock.setTimeout,
-    clearTimeout: clock.clearTimeout,
-    observeVisibility: false,
-    select: (payload: { agents?: unknown[] }) => payload?.agents ?? [],
-    console: { log() {}, warn() {}, error() {} },
-    ...overrides,
-  });
+  return scope.OrgXLiveStore!.createLiveStore(
+    storeOptions({
+      transport,
+      setTimeout: clock.setTimeout,
+      clearTimeout: clock.clearTimeout,
+      select: (payload: { agents?: unknown[] }) => payload?.agents ?? [],
+      ...overrides,
+    })
+  );
 }
 
 beforeEach(() => {
-  scope = loadScope();
+  scope = loadLiveScope(['live-machine.js', 'live-store.js']);
   transport = createStubTransport();
   clock = createClock();
 });

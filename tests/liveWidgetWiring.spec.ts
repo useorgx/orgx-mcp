@@ -6,121 +6,30 @@ import { join } from 'node:path';
 import { buildStreamGrant, feedBindingForTool } from '../src/live/streamGrant';
 import { FEEDS } from '../src/live/feedRegistry';
 import { diffGraphs } from '../src/live/delta';
+import {
+  emit,
+  FakeEventSource,
+  mountWidget as mountWidgetDocument,
+  testGrant,
+  WIDGETS_DIR,
+} from './fixtures/live';
 
 /**
- * End-to-end wiring for a static widget in public/widgets/.
+ * End-to-end wiring for the static widgets in public/widgets.
  *
- * Runs the real agent-status.html script against a fake EventSource: the widget
- * reads the `live` grant out of its tool payload, subscribes, and patches its
- * panel as frames arrive. This is the path that did not exist before — the
- * static widgets rendered once from tool output and never learned that anything
- * changed.
+ * Each widget reads the `live` grant out of its tool payload, subscribes, and
+ * patches its panel as frames arrive — the path that did not exist before, when
+ * a widget rendered once from a tool result and never learned anything changed.
+ *
+ * The real widget-runtime.js runs here rather than a stub, because the attach
+ * happens inside its initWidget; stubbing it would test the harness instead of
+ * the shipped path.
  */
-
-const ROOT = join(__dirname, '..');
-const SHARED = join(ROOT, 'public', 'widgets', 'shared');
-
-class FakeEventSource {
-  static instances: FakeEventSource[] = [];
-  url: string;
-  onopen: ((event?: unknown) => void) | null = null;
-  onmessage: ((event: { data: string }) => void) | null = null;
-  onerror: ((event?: unknown) => void) | null = null;
-  closed = false;
-  listeners: Record<string, (event: { data?: string }) => void> = {};
-
-  constructor(url: string) {
-    this.url = url;
-    FakeEventSource.instances.push(this);
-  }
-
-  addEventListener(name: string, fn: (event: { data?: string }) => void): void {
-    this.listeners[name] = fn;
-  }
-
-  close(): void {
-    this.closed = true;
-  }
-
-  static get latest(): FakeEventSource {
-    const source = FakeEventSource.instances[FakeEventSource.instances.length - 1];
-    if (!source) throw new Error('widget never opened a stream');
-    return source;
-  }
-}
 
 const callTool = vi.fn();
 
-/**
- * Mount a widget the way the serving layer does: shared scripts first, then the
- * widget's own inline script.
- *
- * The real widget-runtime.js is loaded rather than stubbed, because the live
- * attach now happens inside its initWidget — stubbing it would test the harness
- * instead of the shipped path. A fake `window.openai` puts the runtime on its
- * ChatGPT branch, which is the one that renders from a payload synchronously.
- */
 function mountWidget(name: string, payload: unknown): void {
-  const html = readFileSync(join(ROOT, 'public', 'widgets', `${name}.html`), 'utf8');
-  const body = html.match(/<body[^>]*>([\s\S]*)<\/body>/)?.[1] ?? '';
-  document.documentElement.innerHTML = `<head></head><body>${body.replace(
-    /<script>[\s\S]*?<\/script>/g,
-    ''
-  )}</body>`;
-
-  const scope = window as unknown as Record<string, unknown>;
-  for (const key of ['OrgXLiveMachine', 'OrgXLiveStore', 'OrgXLivePanel', 'OrgXWidgetRuntime']) {
-    delete scope[key];
-  }
-  (window as unknown as { EventSource: unknown }).EventSource = FakeEventSource;
-
-  // The runtime's ChatGPT branch reads its payload from window.openai.
-  scope.openai = {
-    toolOutput: payload,
-    theme: 'dark',
-    callTool,
-    setWidgetHeight() {},
-  };
-
-  for (const file of ['widget-runtime.js', 'live-machine.js', 'live-store.js', 'live-panel.js']) {
-    window.eval(readFileSync(join(SHARED, file), 'utf8'));
-  }
-  (scope.OrgXWidgetRuntime as { __resetForTests(): void }).__resetForTests();
-
-  // daily-brief's inline script is a module; match both spellings.
-  const scripts = html.match(/<script(?:\s+type="module")?>[\s\S]*?<\/script>/g) ?? [];
-  const widgetScript = scripts[scripts.length - 1]!.replace(
-    /<script(?:\s+type="module")?>|<\/script>/g,
-    ''
-  );
-
-  // Some widgets bootstrap on DOMContentLoaded. In a real page the listener is
-  // registered while the document is still parsing, so the event follows; here
-  // the script runs after parsing, so it has to be fired manually.
-  //
-  // Capturing the handler instead of dispatching on the shared document matters:
-  // listeners bound to `document` outlive the innerHTML swap between mounts, so
-  // a plain dispatch re-runs every previously mounted widget's bootstrap against
-  // the current widget's DOM.
-  const bootstraps: EventListener[] = [];
-  const realAddEventListener = document.addEventListener.bind(document);
-  document.addEventListener = ((type: string, listener: EventListener, ...rest: unknown[]) => {
-    if (type === 'DOMContentLoaded') {
-      bootstraps.push(listener);
-      return;
-    }
-    return realAddEventListener(type, listener, ...(rest as []));
-  }) as typeof document.addEventListener;
-
-  try {
-    window.eval(widgetScript);
-  } finally {
-    document.addEventListener = realAddEventListener;
-  }
-
-  for (const bootstrap of bootstraps) {
-    bootstrap(new window.Event('DOMContentLoaded'));
-  }
+  mountWidgetDocument(name, { payload, callTool });
 }
 
 function mountAgentStatus(payload: unknown): void {
@@ -131,10 +40,6 @@ function graphFrom(agents: Record<string, unknown>[]) {
   return FEEDS['agent-status']!.normalize({ agents }, 'init-1');
 }
 
-function emit(frame: Record<string, unknown>): void {
-  FakeEventSource.latest.onmessage?.({ data: JSON.stringify(frame) });
-}
-
 function panelText(): string {
   return document.getElementById('liveFlow')?.textContent ?? '';
 }
@@ -143,18 +48,10 @@ function panelRows(): HTMLElement[] {
   return Array.from(document.querySelectorAll('#liveFlow .oxlp-row')) as HTMLElement[];
 }
 
-const GRANT = {
-  feedType: 'agent-status',
-  feedId: 'init-1',
-  streamUrl: 'https://mcp.useorgx.com/live-feed/agent-status/init-1/stream?t=tok',
-  expiresAt: Date.now() + 3_600_000,
-  refreshTool: 'get_agent_status',
-  refreshArgs: { initiative_id: 'init-1' },
-  label: 'Agent status',
-};
+const GRANT = testGrant();
 
 beforeEach(() => {
-  FakeEventSource.instances = [];
+  FakeEventSource.reset();
   callTool.mockReset();
   document.documentElement.innerHTML = '<head></head><body></body>';
 });
@@ -423,7 +320,7 @@ const WIRED_WIDGETS: { name: string; feedType: string }[] = [
 
 describe('every wired widget attaches the live layer', () => {
   it.each(WIRED_WIDGETS)('$name loads the live scripts', ({ name }) => {
-    const html = readFileSync(join(ROOT, 'public', 'widgets', `${name}.html`), 'utf8');
+    const html = readFileSync(join(WIDGETS_DIR, `${name}.html`), 'utf8');
     // Order matters: the store and panel both assert the machine is installed.
     const machine = html.indexOf('shared/live-machine.js');
     const store = html.indexOf('shared/live-store.js');
@@ -469,7 +366,7 @@ describe('every wired widget attaches the live layer', () => {
   });
 
   it('leaves search-results alone: a result list has no live work to show', () => {
-    const html = readFileSync(join(ROOT, 'public', 'widgets', 'search-results.html'), 'utf8');
+    const html = readFileSync(join(WIDGETS_DIR, 'search-results.html'), 'utf8');
     expect(html).not.toContain('shared/live-machine.js');
   });
 });

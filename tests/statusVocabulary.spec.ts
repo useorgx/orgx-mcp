@@ -103,17 +103,40 @@ describe('the server agrees with the client', () => {
     expect(disagreements).toEqual([]);
   });
 
-  it('agrees on the run-lifecycle statuses too', () => {
+  /**
+   * Statuses widget-state does not declare, so the table above never reaches
+   * them: Trigger's run lifecycle, and the separator spellings an upstream can
+   * send for the same word. Each row states the phase it must resolve to, so a
+   * failure names the expected answer rather than only reporting a mismatch.
+   */
+  const RUN_LIFECYCLE: [status: string, phase: string][] = [
+    ['EXECUTING', 'executing'],
+    ['REEXECUTING', 'executing'],
+    ['RUNNING', 'executing'],
+    ['IN_PROGRESS', 'executing'],
+    ['STREAMING', 'executing'],
+    // Separator spellings normalize to the same phase: space, hyphen, underscore.
+    ['in progress', 'executing'],
+    ['in-progress', 'executing'],
+    ['COMPLETED', 'terminal'],
+    ['FAILED', 'terminal'],
+    ['CRASHED', 'terminal'],
+    ['CANCELED', 'terminal'],
+    ['EXPIRED', 'terminal'],
+    ['TIMED_OUT', 'terminal'],
+    ['INTERRUPTED', 'terminal'],
+    ['SHIPPED', 'terminal'],
+    ['NEEDS_APPROVAL', 'blocked'],
+    ['AWAITING_INPUT', 'blocked'],
+    ['ESCALATED', 'blocked'],
+    ['queued', 'pending'],
+    ['pending', 'pending'],
+  ];
+
+  it.each(RUN_LIFECYCLE)('classifies %s as %s on both sides', (status, phase) => {
     const machine = scope.OrgXLiveMachine!;
-    const runStatuses = [
-      'EXECUTING', 'REEXECUTING', 'RUNNING', 'IN_PROGRESS', 'STREAMING',
-      'COMPLETED', 'FAILED', 'CRASHED', 'CANCELED', 'EXPIRED', 'TIMED_OUT',
-      'INTERRUPTED', 'SHIPPED', 'NEEDS_APPROVAL', 'AWAITING_INPUT', 'ESCALATED',
-      'queued', 'pending', 'in-progress',
-    ];
-    for (const status of runStatuses) {
-      expect(machine.phaseForStatus(status), status).toBe(serverPhaseForStatus(status));
-    }
+    expect(machine.phaseForStatus(status), `client: ${status}`).toBe(phase);
+    expect(serverPhaseForStatus(status), `server: ${status}`).toBe(phase);
   });
 
   it('agrees that an unknown status is pending on both sides', () => {

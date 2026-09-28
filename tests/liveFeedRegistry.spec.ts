@@ -22,16 +22,10 @@ function node(overrides: Partial<WorkNode> & { id: string }): WorkNode {
   return { title: overrides.id, phase: 'pending', ...overrides };
 }
 
+// Spelling-by-spelling agreement with the client lives in
+// tests/statusVocabulary.spec.ts. These cover resolvePhase's semantics, which
+// are the server's alone.
 describe('phase vocabulary', () => {
-  it('agrees with the widget-side and /live classifications', () => {
-    expect(phaseForStatus('EXECUTING')).toBe('executing');
-    expect(phaseForStatus('in-progress')).toBe('executing');
-    expect(phaseForStatus('COMPLETED')).toBe('terminal');
-    expect(phaseForStatus('needs_approval')).toBe('blocked');
-    expect(phaseForStatus('queued')).toBe('pending');
-    expect(phaseForStatus(undefined)).toBe('pending');
-  });
-
   it('treats a running node with blockers as blocked, not running', () => {
     // An upstream that reports `running` alongside a blocker is describing a
     // stalled run. Filing it under running is how a stuck initiative looks
