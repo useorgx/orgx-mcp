@@ -6,6 +6,7 @@ import { CONTRACT_TOOL_DEFINITIONS } from '../src/contractTools';
 import { CHATGPT_TOOL_DEFINITIONS } from '../src/toolDefinitions';
 import {
   DISPATCH_CONTRACT_SHAPE,
+  DISPATCH_EFFECT_NAMES,
   DISPATCH_TOOL_IDS,
 } from '../src/dispatchContract';
 
@@ -107,5 +108,19 @@ describe('dispatch contract parity', () => {
       expect(described.toLowerCase()).toContain('iso-8601');
       expect(described.toLowerCase()).not.toContain('plain-text deadline');
     }
+  });
+});
+
+describe('effect vocabulary in the served schema', () => {
+  const effects = DISPATCH_CONTRACT_SHAPE.effects as unknown as {
+    _def: { innerType: { shape: Record<string, { _def: { description?: string } }> } };
+  };
+  const shape = effects._def.innerType.shape;
+
+  it('names every effect the app accepts, instead of examples it would refuse', () => {
+    const described = shape.allowed._def.description ?? '';
+    for (const name of DISPATCH_EFFECT_NAMES) expect(described).toContain(name);
+    for (const stale of ['branch.write', 'tests.run']) expect(described).not.toContain(stale);
+    expect(shape.approval_required._def.description ?? '').not.toMatch(/e\.g\./);
   });
 });
