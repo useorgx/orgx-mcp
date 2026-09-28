@@ -1,15 +1,13 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+
+import { loadLiveIntoWindow } from './fixtures/live';
 
 /**
  * The shared control-flow panel. These tests hold the two properties the
  * component exists to guarantee: rows are patched by key (never rebuilt), and
  * arriving data animates only on real phase boundaries.
  */
-
-const SHARED = join(__dirname, '..', 'public', 'widgets', 'shared');
 
 interface PanelSnapshot {
   connection: string;
@@ -32,16 +30,10 @@ interface Panel {
 let createPanel: (options: Record<string, unknown>) => Panel;
 
 function load(): void {
-  const scope = window as unknown as Record<string, unknown>;
-  delete scope.OrgXLiveMachine;
-  delete scope.OrgXLivePanel;
-  for (const file of ['live-machine.js', 'live-panel.js']) {
-    const source = readFileSync(join(SHARED, file), 'utf8');
-    window.eval(source);
-  }
-  createPanel = (window as unknown as {
-    OrgXLivePanel: { createPanel: (o: Record<string, unknown>) => Panel };
-  }).OrgXLivePanel.createPanel;
+  const scope = loadLiveIntoWindow(['live-machine.js', 'live-panel.js']);
+  createPanel = (scope.OrgXLivePanel as {
+    createPanel: (o: Record<string, unknown>) => Panel;
+  }).createPanel;
 }
 
 function node(

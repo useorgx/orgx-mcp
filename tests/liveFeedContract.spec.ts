@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { FakeEventSource } from './fixtures/live';
+import { PROOF_SURFACE_QUIET_CTA } from '../src/widgetArtifactProof';
+
 import { buildLiveFeedWidget } from '../src/liveFeedWidget';
 import { FEEDS } from '../src/live/feedRegistry';
 import { diffGraphs } from '../src/live/delta';
@@ -18,26 +21,6 @@ import type { WorkGraph } from '../src/live/workGraph';
  *
  * Every case here drives the real normalizer's output into the real widget.
  */
-
-class FakeEventSource {
-  static instances: FakeEventSource[] = [];
-  url: string;
-  onopen: ((event?: unknown) => void) | null = null;
-  onmessage: ((event: { data: string }) => void) | null = null;
-  onerror: ((event?: unknown) => void) | null = null;
-  listeners: Record<string, (event: { data?: string }) => void> = {};
-
-  constructor(url: string) {
-    this.url = url;
-    FakeEventSource.instances.push(this);
-  }
-
-  addEventListener(name: string, fn: (event: { data?: string }) => void): void {
-    this.listeners[name] = fn;
-  }
-
-  close(): void {}
-}
 
 function mount(feedType: 'agent-status' | 'initiative-pulse'): FakeEventSource {
   const html = buildLiveFeedWidget({
@@ -72,13 +55,19 @@ function emitSnapshot(source: FakeEventSource, graph: WorkGraph): void {
   });
 }
 
+function quietCtaEl(): HTMLElement {
+  const el = document.getElementById('quietCta');
+  if (!el) throw new Error('quiet CTA element missing');
+  return el;
+}
+
 function text(): string {
   return document.body.textContent ?? '';
 }
 
 beforeEach(() => {
   document.body.innerHTML = '';
-  FakeEventSource.instances = [];
+  FakeEventSource.reset();
 });
 
 describe('agent-status: normalizer output renders in the widget', () => {
@@ -293,5 +282,98 @@ describe('legacy payloads still render after the shape change', () => {
     });
     expect(text()).toContain('Legacy Agent');
     expect(text()).toContain('Old shape');
+  });
+});
+
+describe('the generated widget folds deltas like the shared layer', () => {
+  /**
+   * src/liveFeedWidget.ts is a second consumer of the same wire format, built
+   * as a self-contained HTML string rather than from public/widgets. It carried
+   * its own copy of the fold and its own copies of the fold's bugs. These drive
+   * the real generated document, so a regression there cannot hide behind the
+   * shared layer's tests.
+   */
+  const pulse = (workstreams: Record<string, unknown>[]) => ({
+    initiatives: [{ id: 'init-12345678', title: 'Operation Prism', workstreams }],
+  });
+
+  it('honours the order the server sent, rather than appending', () => {
+    // A pure reorder changes no node's fields. Appending locally cannot express
+    // it, and put a node the server led with at the bottom.
+    const feed = FEEDS['initiative-pulse']!;
+    const first = feed.normalize(
+      pulse([
+        { name: 'Alpha', status: 'running', progress: 10 },
+        { name: 'Beta', status: 'running', progress: 20 },
+      ]),
+      'init-12345678'
+    );
+    const second = feed.normalize(
+      pulse([
+        { name: 'Beta', status: 'running', progress: 20 },
+        { name: 'Alpha', status: 'running', progress: 10 },
+      ]),
+      'init-12345678'
+    );
+    const delta = diffGraphs(first, second)!;
+    expect(delta.order).toBeTruthy();
+
+    const source = mount('initiative-pulse');
+    emitSnapshot(source, first);
+    emit(source, { type: 'delta', data: delta, ts: Date.now() + 1 });
+
+    const rendered = text();
+    expect(rendered.indexOf('Beta')).toBeLessThan(rendered.indexOf('Alpha'));
+  });
+
+  it('renders a workstream named "constructor" instead of crashing', () => {
+    // An id-less workstream takes its title as its id. On a plain object,
+    // lookup of "constructor" resolves an inherited member and reads as an
+    // already-present node.
+    const feed = FEEDS['initiative-pulse']!;
+    const graph = feed.normalize(
+      pulse([
+        { name: 'constructor', status: 'running' },
+        { name: '__proto__', status: 'blocked' },
+      ]),
+      'init-12345678'
+    );
+    const source = mount('initiative-pulse');
+    expect(() => emitSnapshot(source, graph)).not.toThrow();
+    expect(text()).toContain('constructor');
+
+    // A snapshot never enters the fold. Drive a delta touching that id, which
+    // is where a plain-object lookup mistakes the inherited member for a node.
+    const moved = feed.normalize(
+      pulse([
+        { name: '__proto__', status: 'blocked' },
+        { name: 'constructor', status: 'done' },
+      ]),
+      'init-12345678'
+    );
+    const delta = diffGraphs(graph, moved)!;
+    expect(() =>
+      emit(source, { type: 'delta', data: delta, ts: Date.now() + 1 })
+    ).not.toThrow();
+    const rendered = text();
+    expect(rendered.indexOf('__proto__')).toBeLessThan(rendered.indexOf('constructor'));
+  });
+
+  it('withdraws a proof handoff the delta removed', () => {
+    const feed = FEEDS['initiative-pulse']!;
+    const withCta = {
+      ...feed.normalize(pulse([{ name: 'Alpha', status: 'running' }]), 'init-12345678'),
+      proofHandoff: { quiet_cta: PROOF_SURFACE_QUIET_CTA },
+    };
+    const without = feed.normalize(pulse([{ name: 'Alpha', status: 'running' }]), 'init-12345678');
+    const delta = diffGraphs(withCta, without)!;
+    expect(delta.proofHandoff).toBeNull();
+
+    const source = mount('initiative-pulse');
+    emitSnapshot(source, withCta);
+    expect(quietCtaEl().hidden).toBe(false);
+
+    emit(source, { type: 'delta', data: JSON.parse(JSON.stringify(delta)), ts: Date.now() + 1 });
+    expect(quietCtaEl().hidden).toBe(true);
   });
 });

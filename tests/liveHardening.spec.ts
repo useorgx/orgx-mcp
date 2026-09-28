@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { buildWorkGraph, type WorkNode } from '../src/live/workGraph';
 import { applyDelta, diffGraphs, nodeChanged } from '../src/live/delta';
 import { FEEDS } from '../src/live/feedRegistry';
+import { loadLiveIntoWindow, REPO_ROOT } from './fixtures/live';
 
 /**
  * Regressions for defects an adversarial review of this branch turned up. Each
@@ -13,17 +14,8 @@ import { FEEDS } from '../src/live/feedRegistry';
  * actually looked like, because several of them fail silently in production.
  */
 
-const SHARED = join(__dirname, '..', 'public', 'widgets', 'shared');
-
 function loadShared(): Record<string, any> {
-  const scope = window as unknown as Record<string, any>;
-  for (const key of ['OrgXLiveMachine', 'OrgXLiveStore', 'OrgXLivePanel']) {
-    delete scope[key];
-  }
-  for (const file of ['live-machine.js', 'live-store.js', 'live-panel.js']) {
-    window.eval(readFileSync(join(SHARED, file), 'utf8'));
-  }
-  return scope;
+  return loadLiveIntoWindow() as Record<string, any>;
 }
 
 beforeEach(() => {
@@ -35,7 +27,9 @@ describe('the stream response is returned before anything is written', () => {
     // The premise, pinned down because it is unintuitive: the Durable Object
     // used to `await writer.write(...)` for its first snapshot *before*
     // returning `new Response(readable)`. Nothing was reading yet, so the write
-    // never resolved and a cold connection never completed at all.
+    // never resolved and a cold connection never completed at all. The
+    // consequence is exercised end to end in tests/liveFeedDO.spec.ts; this
+    // pins the platform behaviour that makes it a trap.
     const { writable } = new TransformStream<Uint8Array, Uint8Array>();
     const writer = writable.getWriter();
     const settled = vi.fn();
@@ -44,17 +38,6 @@ describe('the stream response is returned before anything is written', () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(settled).not.toHaveBeenCalled();
   });
-
-  it('the DO hands its backfill to waitUntil rather than awaiting it inline', () => {
-    const source = readFileSync(join(__dirname, '..', 'src', 'liveFeedDO.ts'), 'utf8');
-    const handle = source.slice(
-      source.indexOf('private async handleStream('),
-      source.indexOf('private async backfill(')
-    );
-    // No awaited write may appear before the response is constructed.
-    expect(handle).not.toMatch(/await this\.writeTo\(/);
-    expect(handle).toContain('this.ctx.waitUntil(this.backfill(');
-  });
 });
 
 describe('heartbeats reach the client', () => {
@@ -62,7 +45,7 @@ describe('heartbeats reach the client', () => {
     // EventSource discards `: comment` lines entirely, so a comment heartbeat
     // never reaches the page: a healthy feed with no news went stale every 45s
     // and reconnected in a loop.
-    const source = readFileSync(join(__dirname, '..', 'src', 'liveFeedDO.ts'), 'utf8');
+    const source = readFileSync(join(REPO_ROOT, 'src', 'liveFeedDO.ts'), 'utf8');
     expect(source).toContain('event: heartbeat');
     expect(source).not.toContain("': heartbeat");
   });
@@ -594,7 +577,7 @@ describe('second-round regressions', () => {
     );
     expect(GENERATED_WIDGET_TTL_MS).toBeGreaterThan(LIVE_GRANT_TTL_MS);
 
-    const source = readFileSync(join(__dirname, '..', 'src', 'index.ts'), 'utf8');
+    const source = readFileSync(join(REPO_ROOT, 'src', 'index.ts'), 'utf8');
     expect(source).toContain('ttlMs: GENERATED_WIDGET_TTL_MS');
   });
 
@@ -609,11 +592,5 @@ describe('second-round regressions', () => {
     });
     expect(html).toContain("addEventListener('auth_expired'");
     expect(html).toContain('re-run the tool to resume');
-  });
-
-  it('hardens the generated widget fold the same way as the shared one', () => {
-    const source = readFileSync(join(__dirname, '..', 'src', 'liveFeedWidget.ts'), 'utf8');
-    expect(source).toContain('Object.create(null)');
-    expect(source).toContain('delta.order');
   });
 });
