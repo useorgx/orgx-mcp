@@ -7,6 +7,7 @@ import {
   type OutputSchema,
   type SourceOutputSchema,
 } from './shared';
+import { OUTPUT_SCHEMA_ALIASES, V2_OUTPUT_SCHEMAS } from './v2';
 import { WIDGET_OUTPUT_SCHEMAS } from './widgets';
 
 type ChatGptPublicTool = (typeof CHATGPT_PUBLIC_SURFACE)[number];
@@ -88,5 +89,27 @@ export function getOpenAiOutputSchema(
 ): OutputSchema | undefined {
   return Object.prototype.hasOwnProperty.call(OPENAI_OUTPUT_SCHEMAS, toolName)
     ? OPENAI_OUTPUT_SCHEMAS[toolName as ChatGptPublicTool]
+    : undefined;
+}
+
+/**
+ * The output contract for any published tool: the reviewed ChatGPT registry
+ * first, then an alias to it, then the v2 registry. Returns undefined for a
+ * tool with no verified contract, so nothing is ever invented.
+ */
+export function getToolOutputSchema(
+  toolName: string
+): OutputSchema | undefined {
+  const reviewed = getOpenAiOutputSchema(toolName);
+  if (reviewed) return reviewed;
+  const aliasTarget = Object.prototype.hasOwnProperty.call(
+    OUTPUT_SCHEMA_ALIASES,
+    toolName
+  )
+    ? OUTPUT_SCHEMA_ALIASES[toolName]
+    : undefined;
+  if (aliasTarget) return getOpenAiOutputSchema(aliasTarget);
+  return Object.prototype.hasOwnProperty.call(V2_OUTPUT_SCHEMAS, toolName)
+    ? V2_OUTPUT_SCHEMAS[toolName]
     : undefined;
 }

@@ -5,6 +5,30 @@ export type SourceOutputSchema = z.AnyZodObject;
 export type PortableOutputSchema = ReturnType<typeof z4.object>;
 export type OutputSchema = SourceOutputSchema | PortableOutputSchema;
 
+/**
+ * Any JSON value, described without a bare `{}`. Used as the `catchall` of an
+ * open object, so extra fields are allowed but still typed: the advertised
+ * schema says `additionalProperties: <a JSON value>` rather than `true`,
+ * which several MCP clients warn on or reject.
+ */
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+export const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(jsonValueSchema),
+    z.record(jsonValueSchema),
+  ])
+);
+
 export const nullableString = z.string().nullable();
 export const nullableNumber = z.number().nullable();
 export const nullableBoolean = z.boolean().nullable();
@@ -149,6 +173,16 @@ export const toolErrorEnvelopeSchema = z.object({
       contract_warnings: z.array(scaffoldContractWarningSchema).optional(),
       suggested_next_calls: z.array(toolCallSchema).optional(),
     })
+    // Open, not closed. `details` is diagnostic context and the worker adds
+    // keys the list above does not name — `review_url` and `authority_kind`
+    // on a decision that needs a human, `corrected_payload` and `diagnostic`
+    // on a failed client-integration call, `gaps` on a rejected execution
+    // graph, the spawn budget preflight. As a closed object it advertised
+    // `additionalProperties: false`, and the MCP SDK client validates
+    // structuredContent even on error results, so those errors were rejected
+    // with a schema mismatch and the caller never saw the message or the URL
+    // it needed. The named keys stay typed; unnamed ones must be JSON values.
+    .catchall(jsonValueSchema)
     .optional(),
 });
 
@@ -164,6 +198,35 @@ export function makeErrorCompatibleSchema(
       error_type: z.string().optional(),
     })
     .strict();
+}
+
+/**
+ * An honest contract for a payload the worker does not own.
+ *
+ * Most tools outside the reviewed ChatGPT surface return the OrgX API's
+ * response body unmodified, and that body evolves independently of this
+ * worker. A closed schema would reject a valid response the first time the
+ * API added a field, and the SDK client enforces outputSchema on every call.
+ *
+ * So this states what is verified and no more: each named field is typed
+ * exactly as its producer emits it, and any other field may be any JSON value.
+ * Every named field is optional because error results share the object,
+ * carrying only `error`. Pass the full z.object — the SDK closes the schema if
+ * it is handed a raw shape, silently dropping the catchall.
+ */
+export function makeOpenErrorCompatibleSchema(
+  shape: z.ZodRawShape
+): SourceOutputSchema {
+  return z
+    .object(shape)
+    .partial()
+    .extend({
+      ok: z.boolean().optional(),
+      error: z.union([z.string(), toolErrorEnvelopeSchema]).optional(),
+      tool_id: z.string().optional(),
+      error_type: z.string().optional(),
+    })
+    .catchall(jsonValueSchema);
 }
 
 /**

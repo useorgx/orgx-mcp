@@ -18,6 +18,7 @@ import {
   ORGX_PLAN_OUTPUT_VARIANTS,
   ORGX_SPAWN_DURABLE_OUTPUT,
 } from './fixtures/openaiOutputSchemaVariants';
+import { findBooleanAdditionalProperties } from './fixtures/outputSchemaPortability';
 
 const SCAFFOLD_OUTPUT_KEYS = `
   ok error_kind error resolution_hint request_id identity_warning billing_url pricing_url usage missing
@@ -42,21 +43,6 @@ async function connect(server: McpServer) {
   await server.connect(serverTransport);
   await client.connect(clientTransport);
   return client;
-}
-
-function findBooleanAdditionalProperties(
-  value: unknown,
-  path = '$'
-): string[] {
-  if (!value || typeof value !== 'object') return [];
-  const record = value as Record<string, unknown>;
-  const matches = record.additionalProperties === true ? [path] : [];
-  for (const [key, child] of Object.entries(record)) {
-    matches.push(
-      ...findBooleanAdditionalProperties(child, `${path}.${key}`)
-    );
-  }
-  return matches;
 }
 
 function findUnportableSchemaPositions(

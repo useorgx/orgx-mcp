@@ -1,14 +1,15 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
-import { getOpenAiOutputSchema } from './openaiOutputSchemas';
+import { getToolOutputSchema } from './openaiOutputSchemas';
 import { sanitizeToolResultGuidance } from './toolGuidance';
 
 /**
  * Apply profile-aware guidance filtering to subsequently registered tools.
  *
  * Tool configuration and result envelopes are otherwise preserved verbatim.
- * In particular, this wrapper never invents an outputSchema for tools outside
- * the exact, reviewed ChatGPT public schema registry. An explicit schema on a
+ * In particular, this wrapper never invents an outputSchema: it attaches one
+ * only for a tool with a verified contract in the reviewed ChatGPT registry or
+ * the v2 registry (see ./openaiOutputSchemas/v2.ts). An explicit schema on a
  * registration always wins so local and future tools retain their own contract.
  */
 export function installToolResultGuidanceWrapper(
@@ -29,7 +30,7 @@ export function installToolResultGuidanceWrapper(
     config: Record<string, unknown>,
     handler: (...args: unknown[]) => unknown
   ) => {
-    const registeredSchema = getOpenAiOutputSchema(name);
+    const registeredSchema = getToolOutputSchema(name);
     const nextConfig =
       registeredSchema && config.outputSchema === undefined
         ? { ...config, outputSchema: registeredSchema }
