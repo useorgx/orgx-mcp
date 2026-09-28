@@ -14,11 +14,14 @@ import { join, relative, resolve } from 'node:path';
 /**
  * Files under public/widgets that are themselves generated from the others.
  *
- * `_manifest.json` carries a `generatedAt` timestamp, so hashing it made the
- * build version change on every build even when no widget had: `pnpm verify`
- * dirtied the tree and the version test failed until the regenerated file was
- * committed again. It is derived from inputs this hash already covers, so
- * excluding it loses nothing and makes the build reproducible.
+ * `_manifest.json` is written from the widgets this hash already walks, so
+ * folding it back in would hash the same bytes twice and couple the build
+ * version to the manifest's own formatting. Excluding it loses nothing.
+ *
+ * It used to carry a `generatedAt` timestamp too, which made the version
+ * change on every build even when no widget had — `pnpm verify` dirtied the
+ * tree and the version test failed until the file was committed again. The
+ * timestamp is gone, and the manifest is reproducible on its own.
  */
 export const DERIVED_WIDGET_FILES = new Set(['_manifest.json']);
 
