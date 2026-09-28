@@ -1,0 +1,457 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   auth-surface.css — shared material for the pages that sit on either side of
+   consent.html in the connect flow: error.html and success.html.
+
+   consent.html owns the visual language (tokens, field, signal line, buttons)
+   and keeps its styles inline under its own strict CSP. This file restates
+   that language — same values, same names — so a failed or finished
+   authorization lands on a page that is visibly the same product rather than
+   an older one. When consent.html's tokens change, change them here too.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  color-scheme: dark;
+  --page: #07090d;
+  --surface: #0e1118;
+  --raised: #151922;
+  --muted-surface: #0a0d13;
+  --border: #292e39;
+  --strong-border: #3d4553;
+  --text: #f7f8fa;
+  --secondary: #aab1bf;
+  --muted: #747c8a;
+  --signal: #c8ff3d;
+  --signal-text: #101700;
+  --info: #7dd3fc;
+  --warning: #fbbf24;
+  --danger: #fb7185;
+  --teal: #42d7b9;
+
+  /* The accent the field and signal line borrow. Each page sets it to the
+     state it reports: signal for connected, danger for a failed handshake. */
+  --state-rgb: 200, 255, 61;
+  --state: rgb(var(--state-rgb));
+
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  position: relative;
+  overflow-x: hidden;
+  background: var(--page);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+a {
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid #d9ff78;
+  outline-offset: 3px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* ── Field ──────────────────────────────────────────────────────────────── */
+/* The same 24px lattice and routed paths as consent.html, so the page behind
+   the card does not change when the flow moves from consent to its outcome.
+   Only the lit path takes the state colour. */
+
+.orgx-field {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.orgx-field svg {
+  width: 100%;
+  height: 100%;
+}
+
+.field-grid {
+  opacity: 0.38;
+}
+
+.field-path {
+  fill: none;
+  stroke: #23303a;
+  stroke-width: 1.25;
+  vector-effect: non-scaling-stroke;
+}
+
+.field-path.state {
+  stroke: rgba(var(--state-rgb), 0.42);
+  stroke-dasharray: 1400;
+  stroke-dashoffset: 1400;
+  animation: field-draw 1.6s var(--ease) 200ms forwards;
+}
+
+.field-node {
+  fill: var(--page);
+  stroke: #33505a;
+  stroke-width: 1.25;
+}
+
+.field-node.state {
+  fill: var(--state);
+  stroke: var(--state);
+}
+
+.field-label {
+  fill: #66717e;
+  font: 600 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.14em;
+}
+
+@keyframes field-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.signal-line {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 10;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--state-rgb), 0.55) 0%,
+    var(--state) 100%
+  );
+  transform-origin: left center;
+  animation: signal-sweep 900ms var(--ease) forwards;
+}
+
+@keyframes signal-sweep {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* ── Page + card ────────────────────────────────────────────────────────── */
+
+.page {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+}
+
+.card {
+  width: min(520px, 100%);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.42);
+  animation: card-in 560ms var(--ease) both;
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.card-head {
+  padding: 28px 30px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--muted-surface);
+}
+
+.card-body {
+  padding: 24px 30px;
+}
+
+.card-body + .card-body {
+  border-top: 1px solid var(--border);
+}
+
+.card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 18px 30px;
+  border-top: 1px solid var(--border);
+}
+
+/* ── Brand ──────────────────────────────────────────────────────────────── */
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  font-weight: 760;
+  letter-spacing: -0.02em;
+}
+
+.brand img {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.brand-context {
+  margin-left: 2px;
+  color: var(--muted);
+  font: 650 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ── Type ───────────────────────────────────────────────────────────────── */
+
+h1 {
+  margin: 22px 0 8px;
+  font-size: clamp(24px, 3vw, 30px);
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.lede {
+  margin: 0;
+  color: var(--secondary);
+  font-size: 14px;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.eyebrow {
+  display: block;
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 720;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+code {
+  overflow-wrap: anywhere;
+  color: var(--secondary);
+  font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* ── Status mark ────────────────────────────────────────────────────────── */
+
+.state-mark {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(var(--state-rgb), 0.38);
+  border-radius: 12px;
+  background: rgba(var(--state-rgb), 0.07);
+  color: var(--state);
+}
+
+.state-mark svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* ── Buttons — identical to consent.html ────────────────────────────────── */
+
+.button {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 0 18px;
+  border: 1px solid var(--strong-border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 690;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 160ms var(--ease),
+    border-color 160ms var(--ease),
+    transform 160ms var(--ease);
+}
+
+.button:hover:not(:disabled) {
+  background: var(--raised);
+}
+
+.button:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.button.primary {
+  min-width: 154px;
+  border-color: var(--signal);
+  background: var(--signal);
+  color: var(--signal-text);
+}
+
+.button.primary:hover:not(:disabled) {
+  background: #d5ff6d;
+}
+
+.button.quiet {
+  border-color: transparent;
+  color: var(--muted);
+}
+
+.button.quiet:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.button:disabled {
+  cursor: progress;
+  opacity: 0.72;
+}
+
+.button.grow {
+  flex: 1 1 0;
+}
+
+/* A button mid-navigation keeps its colour and gains a spinner, so it reads
+   as working rather than unavailable. */
+.button .spin {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+
+.foot-links {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 18px;
+  font-size: 12px;
+}
+
+.foot-links a {
+  color: var(--muted);
+  text-decoration: none;
+  border-radius: 4px;
+  transition: color 160ms var(--ease);
+}
+
+.foot-links a:hover {
+  color: var(--secondary);
+}
+
+.shell-col {
+  width: min(520px, 100%);
+}
+
+/* ── Leaving ────────────────────────────────────────────────────────────── */
+
+.is-leaving .card,
+.is-leaving .foot-links {
+  opacity: 0;
+  transform: translateY(-6px);
+  transition:
+    opacity 200ms var(--ease),
+    transform 200ms var(--ease);
+}
+
+/* ── Responsive — follows consent.html's breakpoints ───────────────────── */
+
+@media (max-width: 860px) {
+  .field-label {
+    display: none;
+  }
+
+  .orgx-field {
+    opacity: 0.7;
+  }
+}
+
+@media (max-width: 520px) {
+  .page {
+    display: block;
+    padding: 3px 0 0;
+  }
+
+  .orgx-field {
+    opacity: 0.34;
+  }
+
+  .shell-col,
+  .card {
+    width: 100%;
+  }
+
+  .card {
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .card-head,
+  .card-body {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .card-foot {
+    padding: 14px 18px;
+  }
+
+  .brand-context {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
