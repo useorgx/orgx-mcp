@@ -94,6 +94,17 @@ describe('validateDurableDelegationResponse', () => {
     ).toBe(false);
   });
 
+  it('accepts a claimed run spawned without a task', () => {
+    expect(
+      validateDurableDelegationResponse({ data: { ...claimedData, task_id: undefined } })
+    ).toMatchObject({ ok: true, taskId: null });
+  });
+
+  it('rejects a task id that is the run id or synthetic', () => {
+    expect(validateDurableDelegationResponse({ data: { ...claimedData, task_id: claimedData.run_id } }).ok).toBe(false);
+    expect(validateDurableDelegationResponse({ data: { ...claimedData, run_id: undefined } }).ok).toBe(false);
+  });
+
   it('rejects missing job evidence', () => {
     expect(
       validateDurableDelegationResponse({
