@@ -69,18 +69,43 @@ export const acceptanceCheckSchema = z.object({
     ),
 });
 
+/**
+ * The effect names a run can declare. The app is the authority — it refuses
+ * an unknown name at spawn and enforces the scope
+ * (orgx/lib/agents/tools/effects.ts); this copy exists so the schema an agent
+ * reads names the real vocabulary instead of examples it would be refused for.
+ * A drift test in the app repo compares the two.
+ */
+export const DISPATCH_EFFECT_NAMES = [
+  'email.send',
+  'message.send',
+  'crm.write',
+  'campaign.schedule',
+  'document.write',
+  'issue.write',
+  'calendar.write',
+  'computer.use',
+  'repo.sync',
+  'ci.trigger',
+  'repo.push',
+  'pull_request.create',
+  'merge',
+  'deploy',
+  'package.publish',
+] as const;
+
 export const dispatchEffectsSchema = z.object({
   allowed: z
     .array(z.string().min(1))
     .optional()
     .describe(
-      'Effects the work may perform without further approval (e.g. "branch.write", "tests.run", "pull_request.create").'
+      `Effects the work may perform without further approval. One of: ${DISPATCH_EFFECT_NAMES.join(', ')}. Internal work (editing files, running tests) is not an effect and needs no declaration.`
     ),
   approval_required: z
     .array(z.string().min(1))
     .optional()
     .describe(
-      'Effects that must pause for an approving decision (e.g. "merge", "deploy", "email.send").'
+      `Effects that must wait for a person to approve them, per run. Same names as allowed. An unknown name is refused, so a typo cannot silently gate nothing.`
     ),
 });
 

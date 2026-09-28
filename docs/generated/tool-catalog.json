@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-28T01:49:53.817Z",
+  "generatedAt": "2026-09-28T03:57:38.574Z",
   "sourceHash": "fb3c128c08888ba7",
   "version": "1.0.0",
   "totalTools": 89,
@@ -146,7 +146,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects the work may perform without further approval (e.g. \"branch.write\", \"tests.run\", \"pull_request.create\")."
+                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. Internal work (editing files, running tests) is not an effect and needs no declaration."
               },
               "approval_required": {
                 "type": "array",
@@ -154,7 +154,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects that must pause for an approving decision (e.g. \"merge\", \"deploy\", \"email.send\")."
+                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. An unknown name is refused, so a typo cannot silently gate nothing."
               }
             },
             "additionalProperties": false,
@@ -426,7 +426,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects the work may perform without further approval (e.g. \"branch.write\", \"tests.run\", \"pull_request.create\")."
+                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. Internal work (editing files, running tests) is not an effect and needs no declaration."
               },
               "approval_required": {
                 "type": "array",
@@ -434,7 +434,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects that must pause for an approving decision (e.g. \"merge\", \"deploy\", \"email.send\")."
+                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. An unknown name is refused, so a typo cannot silently gate nothing."
               }
             },
             "additionalProperties": false,
@@ -3872,7 +3872,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects the work may perform without further approval (e.g. \"branch.write\", \"tests.run\", \"pull_request.create\")."
+                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. Internal work (editing files, running tests) is not an effect and needs no declaration."
               },
               "approval_required": {
                 "type": "array",
@@ -3880,7 +3880,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects that must pause for an approving decision (e.g. \"merge\", \"deploy\", \"email.send\")."
+                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. An unknown name is refused, so a typo cannot silently gate nothing."
               }
             },
             "additionalProperties": false,
@@ -6726,7 +6726,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects the work may perform without further approval (e.g. \"branch.write\", \"tests.run\", \"pull_request.create\")."
+                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. Internal work (editing files, running tests) is not an effect and needs no declaration."
               },
               "approval_required": {
                 "type": "array",
@@ -6734,7 +6734,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects that must pause for an approving decision (e.g. \"merge\", \"deploy\", \"email.send\")."
+                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. An unknown name is refused, so a typo cannot silently gate nothing."
               }
             },
             "additionalProperties": false,
