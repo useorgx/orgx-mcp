@@ -271,18 +271,10 @@ describe('keyed reconciliation', () => {
   });
 });
 
+// The status vocabulary itself lives in tests/statusVocabulary.spec.ts, which
+// checks every spelling against BOTH the client and the server. What is left
+// here is phase *semantics*: how a row is classified once its status is known.
 describe('work phases', () => {
-  it('maps OrgX and Trigger status vocabularies onto the same phases', () => {
-    expect(M.phaseForStatus('EXECUTING')).toBe(M.PHASES.EXECUTING);
-    expect(M.phaseForStatus('running')).toBe(M.PHASES.EXECUTING);
-    expect(M.phaseForStatus('in progress')).toBe(M.PHASES.EXECUTING);
-    expect(M.phaseForStatus('in-progress')).toBe(M.PHASES.EXECUTING);
-    expect(M.phaseForStatus('COMPLETED')).toBe(M.PHASES.TERMINAL);
-    expect(M.phaseForStatus('shipped')).toBe(M.PHASES.TERMINAL);
-    expect(M.phaseForStatus('queued')).toBe(M.PHASES.PENDING);
-    expect(M.phaseForStatus(null)).toBe(M.PHASES.PENDING);
-  });
-
   it('treats blocked and approval-waiting work as its own phase, never as pending', () => {
     // A blocked workstream is the most action-relevant row on the screen;
     // collapsing it into "pending" is how it gets missed.

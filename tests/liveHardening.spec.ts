@@ -9,9 +9,13 @@ import { FEEDS } from '../src/live/feedRegistry';
 import { loadLiveIntoWindow, REPO_ROOT } from './fixtures/live';
 
 /**
- * Regressions for defects an adversarial review of this branch turned up. Each
- * one was reproduced before being fixed; the comments say what the failure
- * actually looked like, because several of them fail silently in production.
+ * Regressions for defects adversarial review turned up, grouped by subject.
+ *
+ * Each was reproduced before being fixed, and the comments say what the failure
+ * actually looked like, because most of them fail silently in production — a
+ * stream that never connects, a heartbeat nobody sees, a CTA that will not go
+ * away. Several were introduced by the fix for an earlier one, so a test here
+ * often guards the second attempt rather than the first.
  */
 
 function loadShared(): Record<string, any> {
@@ -177,6 +181,81 @@ describe('token refresh', () => {
       panelHost.innerHTML = '';
     }
   });
+  it('refreshes when a widget was hidden across its token expiry', async () => {
+    // `paused` had no AUTH_EXPIRED transition, so the resume-time dispatch was
+    // dropped as illegal: hide → expire → show left the widget paused forever
+    // with zero refresh calls.
+    const scope = loadShared();
+    const M = scope.OrgXLiveMachine;
+    const result = M.transition(M.STATES.PAUSED, M.EVENTS.AUTH_EXPIRED);
+    expect(result.handled).toBe(true);
+    expect(result.state).toBe(M.STATES.REFRESHING);
+    expect(result.effects).toContain(M.EFFECTS.REFRESH_TOKEN);
+  });
+
+  it('keeps the replacement expiry after a successful refresh', async () => {
+    // Returning a bare URL left expiresAt at 0, which disabled the very
+    // up-front expiry check the refresh exists to feed — so the *next* hide
+    // across expiry was broken again.
+    const nextExpiry = Date.now() + 900_000;
+    const callTool = vi.fn().mockResolvedValue({
+      live: { streamUrl: 'https://mcp.test/live-feed/a/i/stream?t=new', expiresAt: nextExpiry },
+    });
+    const scope = loadShared();
+    const attached = scope.OrgXLiveStore.attachLiveFeed({
+      widget: 'w',
+      grant: {
+        feedType: 'agent-status',
+        streamUrl: 'https://mcp.test/live-feed/a/i/stream?t=old',
+        refreshTool: 't',
+        refreshArgs: {},
+      },
+      mount: document.getElementById('mount')!,
+      runtime: { callTool, reportSize() {} },
+    });
+    expect(attached).not.toBeNull();
+    attached.store.stop();
+  });
+
+  it('ignores a refresh that was abandoned before it landed', async () => {
+    // An abandoned refresh could clear a newer one's deadline and reconnect
+    // the stream onto its own stale URL.
+    let resolveA: (v: unknown) => void = () => {};
+    const refreshToken = vi
+      .fn()
+      .mockImplementationOnce(() => new Promise((r) => { resolveA = r; }))
+      .mockImplementationOnce(() => Promise.resolve('https://stub.test/feed?t=B'));
+
+    // Destructuring `handlers` would capture the getter's value before the
+    // transport has opened, which is null.
+    const harness = storeWith({ refreshToken });
+    const store = harness.store;
+    store.start();
+    harness.handlers.onOpen();
+    harness.handlers.onAuthExpired({ reason: 'expired' });
+    expect(store.getState().connection).toBe('refreshing');
+
+    store.reconnect(); // abandons A
+    resolveA('https://stub.test/feed?t=A');
+    await new Promise((r) => setTimeout(r, 10));
+
+    // A landing late must not drag the machine back into connecting on its URL.
+    expect(refreshToken).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops the generated widget looping on a token it cannot replace', async () => {
+    // It ignored the server's expiry warning entirely and reconnected forever.
+    const { buildLiveFeedWidget } = await import('../src/liveFeedWidget');
+    const html = buildLiveFeedWidget({
+      feedType: 'agent-status',
+      feedId: 'i',
+      streamBaseUrl: 'https://mcp.test',
+      streamToken: 'tok',
+    });
+    expect(html).toContain("addEventListener('auth_expired'");
+    expect(html).toContain('re-run the tool to resume');
+  });
+
 });
 
 describe('keyed maps survive hostile node names', () => {
@@ -276,22 +355,31 @@ describe('deltas carry everything the client needs', () => {
     expect(folded.nodes.map((n: WorkNode) => n.id)).toEqual(['b', 'a']);
   });
 
-  it('propagates a changed proof handoff instead of keeping the stale one', () => {
+  it.each([
+    ['replaced', { quiet_cta: 'new' }, { quiet_cta: 'new' }],
+    // `undefined` vanishes in JSON, so "removed" used to look like
+    // "unmentioned" and the client kept showing a CTA the server had withdrawn.
+    // `null` is what makes removal survive the wire.
+    ['withdrawn', undefined, undefined],
+  ])('carries a proof handoff that was %s', (_case, nextHandoff, expected) => {
+    const scope = loadShared();
     const base = {
       ...graph([node({ id: 'a' })]),
       proofHandoff: { quiet_cta: 'old' },
     };
     const next = {
       ...graph([node({ id: 'a' })]),
-      proofHandoff: { quiet_cta: 'new' },
+      ...(nextHandoff ? { proofHandoff: nextHandoff } : {}),
     };
+
     const delta = diffGraphs(base, next);
     expect(delta).not.toBeNull();
-    expect(delta!.proofHandoff).toEqual({ quiet_cta: 'new' });
+    expect(delta!.proofHandoff).toEqual(nextHandoff ?? null);
 
-    const scope = loadShared();
-    const folded = scope.OrgXLiveMachine.foldGraphDelta(base, delta);
-    expect(folded.proofHandoff).toEqual({ quiet_cta: 'new' });
+    // Both folds and the server's own applyDelta must agree, over the wire.
+    const overWire = JSON.parse(JSON.stringify(delta));
+    expect(scope.OrgXLiveMachine.foldGraphDelta(base, overWire).proofHandoff).toEqual(expected);
+    expect(applyDelta(base, overWire).proofHandoff).toEqual(expected);
   });
 
   it('still reports nothing when nothing changed', () => {
@@ -353,6 +441,34 @@ describe('the stream credential stays out of the transcript', () => {
     expect(lifetimeMs).toBeLessThanOrEqual(15 * 60 * 1000);
     expect(lifetimeMs).toBeGreaterThan(5 * 60 * 1000);
   });
+  it('refuses a redacted placeholder as a stream url', () => {
+    // The server redacts the grant out of the model-visible text block; a
+    // truthiness-only check accepted "[redacted]" and opened EventSource on it.
+    const scope = loadShared();
+    const attached = scope.OrgXLiveStore.attachLiveFeed({
+      widget: 'w',
+      grant: { feedType: 'agent-status', streamUrl: '[redacted]', refreshTool: 't' },
+      mount: document.getElementById('mount')!,
+      runtime: { callTool: vi.fn(), reportSize() {} },
+    });
+    expect(attached).toBeNull();
+  });
+
+  it('does not give the generated widget the short grant lifetime', async () => {
+    // Shortening it looked like a security win and was a regression: that widget
+    // is standalone HTML with no MCP tool handle, so it cannot mint a
+    // replacement. The short life only works for a grant that can refresh
+    // itself, and applying it here cut the widget's updates from an hour to
+    // fifteen minutes with no way to recover.
+    const { LIVE_GRANT_TTL_MS, GENERATED_WIDGET_TTL_MS } = await import(
+      '../src/live/streamGrant'
+    );
+    expect(GENERATED_WIDGET_TTL_MS).toBeGreaterThan(LIVE_GRANT_TTL_MS);
+
+    const source = readFileSync(join(REPO_ROOT, 'src', 'index.ts'), 'utf8');
+    expect(source).toContain('ttlMs: GENERATED_WIDGET_TTL_MS');
+  });
+
 });
 
 describe('the expiry wrapper releases its upstream', () => {
@@ -437,160 +553,3 @@ describe('the expiry wrapper releases its upstream', () => {
  * Second round: defects the first round's fixes introduced or left partly
  * closed, found by re-running the same adversarial review against the fixes.
  */
-describe('second-round regressions', () => {
-  function storeWith(opts: Record<string, unknown>) {
-    const scope = loadShared();
-    let handlers: any = null;
-    const opens: string[] = [];
-    const transport = {
-      name: 'stub',
-      supported: () => true,
-      open(h: any) { handlers = h; opens.push('open'); },
-      close() {},
-    };
-    const store = scope.OrgXLiveStore.createLiveStore({
-      widget: 'r2',
-      streamUrl: 'https://stub.test/feed',
-      transport,
-      observeVisibility: false,
-      select: () => [],
-      console: { log() {}, warn() {}, error() {} },
-      ...opts,
-    });
-    return { scope, store, opens, get handlers() { return handlers; } };
-  }
-
-  it('refreshes when a widget was hidden across its token expiry', async () => {
-    // `paused` had no AUTH_EXPIRED transition, so the resume-time dispatch was
-    // dropped as illegal: hide → expire → show left the widget paused forever
-    // with zero refresh calls.
-    const scope = loadShared();
-    const M = scope.OrgXLiveMachine;
-    const result = M.transition(M.STATES.PAUSED, M.EVENTS.AUTH_EXPIRED);
-    expect(result.handled).toBe(true);
-    expect(result.state).toBe(M.STATES.REFRESHING);
-    expect(result.effects).toContain(M.EFFECTS.REFRESH_TOKEN);
-  });
-
-  it('keeps the replacement expiry after a successful refresh', async () => {
-    // Returning a bare URL left expiresAt at 0, which disabled the very
-    // up-front expiry check the refresh exists to feed — so the *next* hide
-    // across expiry was broken again.
-    const nextExpiry = Date.now() + 900_000;
-    const callTool = vi.fn().mockResolvedValue({
-      live: { streamUrl: 'https://mcp.test/live-feed/a/i/stream?t=new', expiresAt: nextExpiry },
-    });
-    const scope = loadShared();
-    const attached = scope.OrgXLiveStore.attachLiveFeed({
-      widget: 'w',
-      grant: {
-        feedType: 'agent-status',
-        streamUrl: 'https://mcp.test/live-feed/a/i/stream?t=old',
-        refreshTool: 't',
-        refreshArgs: {},
-      },
-      mount: document.getElementById('mount')!,
-      runtime: { callTool, reportSize() {} },
-    });
-    expect(attached).not.toBeNull();
-    attached.store.stop();
-  });
-
-  it('ignores a refresh that was abandoned before it landed', async () => {
-    // An abandoned refresh could clear a newer one's deadline and reconnect
-    // the stream onto its own stale URL.
-    let resolveA: (v: unknown) => void = () => {};
-    const refreshToken = vi
-      .fn()
-      .mockImplementationOnce(() => new Promise((r) => { resolveA = r; }))
-      .mockImplementationOnce(() => Promise.resolve('https://stub.test/feed?t=B'));
-
-    // Destructuring `handlers` would capture the getter's value before the
-    // transport has opened, which is null.
-    const harness = storeWith({ refreshToken });
-    const store = harness.store;
-    store.start();
-    harness.handlers.onOpen();
-    harness.handlers.onAuthExpired({ reason: 'expired' });
-    expect(store.getState().connection).toBe('refreshing');
-
-    store.reconnect(); // abandons A
-    resolveA('https://stub.test/feed?t=A');
-    await new Promise((r) => setTimeout(r, 10));
-
-    // A landing late must not drag the machine back into connecting on its URL.
-    expect(refreshToken).toHaveBeenCalledTimes(1);
-  });
-
-  it('refuses a redacted placeholder as a stream url', () => {
-    // The server redacts the grant out of the model-visible text block; a
-    // truthiness-only check accepted "[redacted]" and opened EventSource on it.
-    const scope = loadShared();
-    const attached = scope.OrgXLiveStore.attachLiveFeed({
-      widget: 'w',
-      grant: { feedType: 'agent-status', streamUrl: '[redacted]', refreshTool: 't' },
-      mount: document.getElementById('mount')!,
-      runtime: { callTool: vi.fn(), reportSize() {} },
-    });
-    expect(attached).toBeNull();
-  });
-
-  it('withdraws a proof handoff instead of leaving a stale CTA on screen', () => {
-    // `undefined` vanishes in JSON, so "removed" looked like "unmentioned" and
-    // the client kept showing a CTA the server had withdrawn.
-    const scope = loadShared();
-    const base = {
-      ...buildWorkGraph({
-        feedType: 'agent-status',
-        feedId: 'i',
-        nodes: [{ id: 'a', title: 'A', phase: 'executing' as const }],
-        updatedAt: 'T',
-      }),
-      proofHandoff: { quiet_cta: 'old' },
-    };
-    const next = buildWorkGraph({
-      feedType: 'agent-status',
-      feedId: 'i',
-      nodes: [{ id: 'a', title: 'A', phase: 'executing' as const }],
-      updatedAt: 'T2',
-    });
-
-    const delta = diffGraphs(base, next);
-    expect(delta).not.toBeNull();
-    expect(delta!.proofHandoff).toBeNull();
-    // Survives the wire.
-    const overWire = JSON.parse(JSON.stringify(delta));
-    expect(overWire.proofHandoff).toBeNull();
-
-    expect(scope.OrgXLiveMachine.foldGraphDelta(base, overWire).proofHandoff).toBeUndefined();
-    expect(applyDelta(base, overWire).proofHandoff).toBeUndefined();
-  });
-
-  it('does not give the generated widget the short grant lifetime', async () => {
-    // Shortening it looked like a security win and was a regression: that widget
-    // is standalone HTML with no MCP tool handle, so it cannot mint a
-    // replacement. The short life only works for a grant that can refresh
-    // itself, and applying it here cut the widget's updates from an hour to
-    // fifteen minutes with no way to recover.
-    const { LIVE_GRANT_TTL_MS, GENERATED_WIDGET_TTL_MS } = await import(
-      '../src/live/streamGrant'
-    );
-    expect(GENERATED_WIDGET_TTL_MS).toBeGreaterThan(LIVE_GRANT_TTL_MS);
-
-    const source = readFileSync(join(REPO_ROOT, 'src', 'index.ts'), 'utf8');
-    expect(source).toContain('ttlMs: GENERATED_WIDGET_TTL_MS');
-  });
-
-  it('stops the generated widget looping on a token it cannot replace', async () => {
-    // It ignored the server's expiry warning entirely and reconnected forever.
-    const { buildLiveFeedWidget } = await import('../src/liveFeedWidget');
-    const html = buildLiveFeedWidget({
-      feedType: 'agent-status',
-      feedId: 'i',
-      streamBaseUrl: 'https://mcp.test',
-      streamToken: 'tok',
-    });
-    expect(html).toContain("addEventListener('auth_expired'");
-    expect(html).toContain('re-run the tool to resume');
-  });
-});

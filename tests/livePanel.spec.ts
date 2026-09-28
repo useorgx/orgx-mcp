@@ -305,19 +305,18 @@ describe('boundary animation', () => {
 });
 
 describe('connection state', () => {
-  it('renders plain copy for each connection state', () => {
-    const expected: Record<string, string> = {
-      connecting: 'Connecting',
-      live: 'Live',
-      stale: 'Reconnecting',
-      refreshing: 'Reauthorizing',
-      paused: 'Paused',
-      fatal: 'Disconnected',
-    };
-    for (const [state, label] of Object.entries(expected)) {
-      panel.apply(snapshot([node('a', 'executing')], { connection: state }));
-      expect(panel.element.querySelector('.oxlp-conn-label')!.textContent).toBe(label);
-    }
+  // A table rather than a loop inside one test: a failure names the state that
+  // regressed instead of reporting a mismatch with no clue which one it was.
+  it.each([
+    ['connecting', 'Connecting'],
+    ['live', 'Live'],
+    ['stale', 'Reconnecting'],
+    ['refreshing', 'Reauthorizing'],
+    ['paused', 'Paused'],
+    ['fatal', 'Disconnected'],
+  ])('renders %s as "%s"', (state, label) => {
+    panel.apply(snapshot([node('a', 'executing')], { connection: state }));
+    expect(panel.element.querySelector('.oxlp-conn-label')!.textContent).toBe(label);
   });
 
   it('offers a retry only when the connection is truly dead', () => {
