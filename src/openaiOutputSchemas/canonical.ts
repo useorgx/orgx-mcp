@@ -108,6 +108,20 @@ export const CANONICAL_OUTPUT_SCHEMAS = {
       id: z.string().optional(),
       entity: resourceSchema.optional(),
       context_pack: contextPackSchema.nullable().optional(),
+      outputs: z
+        .array(
+          z.object({
+            id: z.string(),
+            title: z.string(),
+            type: z.string().nullable(),
+            summary: z.string().nullable(),
+            excerpt: z.string().nullable(),
+            truncated: z.boolean(),
+            url: z.string().nullable(),
+            createdAt: z.string(),
+          })
+        )
+        .optional(),
       card: z
         .object({
           type: z.string(),
