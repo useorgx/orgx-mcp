@@ -218,6 +218,16 @@ async function readResponseTextWithTimeout(
   }
 }
 
+const RETRY_SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+/** Safe to send twice: a read, or a write the API deduplicates by key. */
+export function isRetrySafe(method: string | undefined, headers: Headers): boolean {
+  return (
+    RETRY_SAFE_METHODS.has((method ?? 'GET').toUpperCase()) ||
+    headers.has('Idempotency-Key')
+  );
+}
+
 function shouldTryFallbackForStatus(status: number): boolean {
   return (
     status === 502 ||
@@ -335,8 +345,12 @@ export async function callOrgxApiRaw(
   }
 
   const configuredBaseUrls = getOrgxApiBaseUrls(env);
+  // A request that may already have reached the primary is only re-sent when
+  // repeating it is safe. A timed-out or 5xx POST (e.g. spawn) has often done
+  // its work; re-sending it to the fallback risks doing it twice and reports
+  // the fallback's failure for work that succeeded.
   const baseUrls =
-    opts?.allowFallback === false
+    opts?.allowFallback === false || !isRetrySafe(init?.method, headers)
       ? configuredBaseUrls.slice(0, 1)
       : configuredBaseUrls;
   let lastRetryableFailure: string | null = null;

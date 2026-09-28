@@ -1,4 +1,5 @@
 import { McpAgent } from 'agents/mcp';
+import { applyRunTokenScopes } from './runTokenScopes';
 import {
   McpServer,
   ResourceTemplate,
@@ -1605,8 +1606,18 @@ export class OrgXMcp extends McpAgent<
     }
 
     this.registerTools();
-    this.registerResources();
-    this.registerPrompts();
+    // A scoped run token (oxrun2) is granted tools by name and nothing else:
+    // resources and prompts would read OrgX data outside that grant.
+    if (!this.hasScopedRunToken()) {
+      this.registerResources();
+      this.registerPrompts();
+    }
+  }
+
+  private hasScopedRunToken(): boolean {
+    return (
+      this.props?.authSource === 'run_token' && Array.isArray(this.props.scopes)
+    );
   }
 
   /**
@@ -7257,7 +7268,11 @@ export class OrgXMcp extends McpAgent<
     // Missing names default to v2; unknown names fail closed to the
     // read-only fallback; null is explicit full only.
     const profileTools = resolveToolProfile(this.props?.profile).tools;
-    const allowedTools = this.resolveScopeAwareAllowedTools(profileTools);
+    // A v2 run token's granted scopes cap whatever the profile allows.
+    const allowedTools = applyRunTokenScopes(
+      this.resolveScopeAwareAllowedTools(profileTools),
+      this.hasScopedRunToken() ? this.props?.scopes : undefined
+    );
 
     // Apply profile-aware result-guidance filtering to every subsequent
     // registration without changing tool schemas or result envelopes.
