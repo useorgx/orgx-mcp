@@ -213,6 +213,7 @@ import { signStreamToken } from './streamToken';
 import {
   buildStreamGrant,
   feedBindingForTool,
+  resolveFeedIdForTool,
   GENERATED_WIDGET_TTL_MS,
 } from './live/streamGrant';
 import { hydrateTaskContext } from './taskContextHydrator';
@@ -3541,17 +3542,24 @@ export class OrgXMcp extends McpAgent<
         // Live subscription grant: attached to structuredContent so the static
         // widgets in public/widgets/ can subscribe. Any tool listed in
         // TOOL_FEED_BINDINGS becomes live without its own token plumbing.
-        if (effectiveInitiativeId && this.env.LIVE_FEED && this.env.MCP_JWT_SECRET) {
+        if (this.env.LIVE_FEED && this.env.MCP_JWT_SECRET) {
           const _binding = feedBindingForTool(toolId);
-          if (_binding) {
+          // Not `effectiveInitiativeId`: that falls back to `data.id`, which for
+          // a tool like orgx_inspect is whichever entity was inspected. Feeding
+          // a task id to the agents API asks for an initiative that does not
+          // exist, so each binding states where its initiative id comes from.
+          const _feedId = _binding
+            ? resolveFeedIdForTool(_binding, data as Record<string, unknown>)
+            : null;
+          if (_binding && _feedId) {
             try {
               const _grant = await buildStreamGrant({
                 feedType: _binding.feedType,
-                feedId: effectiveInitiativeId,
+                feedId: _feedId,
                 serverUrl: this.env.MCP_SERVER_URL,
                 secret: this.env.MCP_JWT_SECRET,
                 refreshTool: _binding.refreshTool,
-                refreshArgs: { initiative_id: effectiveInitiativeId },
+                refreshArgs: { initiative_id: _feedId },
                 userId: resolvedUserId ?? undefined,
               });
               if (_grant) (data as Record<string, unknown>).live = _grant;

@@ -160,7 +160,7 @@ describe('MCP Apps shared-component inlining', () => {
     }
 
     // Guard against the loop silently matching nothing.
-    expect(checked).toBe(8);
+    expect(checked).toBe(11);
   }, 30000);
 
   // Inlines the ~316KB MCP Apps SDK into every registered widget, so this is

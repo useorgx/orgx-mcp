@@ -416,6 +416,9 @@ const WIRED_WIDGETS: { name: string; feedType: string }[] = [
   { name: 'artifact-review', feedType: 'agent-status' },
   { name: 'plan-session-live', feedType: 'agent-status' },
   { name: 'morning-brief', feedType: 'agent-status' },
+  { name: 'entity-card', feedType: 'agent-status' },
+  { name: 'work-ledger', feedType: 'agent-status' },
+  { name: 'workspace-map', feedType: 'initiative-pulse' },
 ];
 
 describe('every wired widget attaches the live layer', () => {
@@ -565,5 +568,48 @@ describe('empty states defer to the live panel', () => {
       ]),
     });
     expect(store.liveRowCount()).toBe(2);
+  });
+});
+
+describe('a feed is only bound to an id that is really an initiative', () => {
+  it('uses initiative_id when the payload has one', async () => {
+    const { feedBindingForTool, resolveFeedIdForTool } = await import(
+      '../src/live/streamGrant'
+    );
+    const binding = feedBindingForTool('orgx_inspect')!;
+    expect(resolveFeedIdForTool(binding, { id: 'task-9', initiative_id: 'init-1' })).toBe(
+      'init-1'
+    );
+  });
+
+  it('refuses to subscribe an inspected entity as if it were an initiative', async () => {
+    // orgx_inspect hydrates whatever you named — a task, an artifact, a
+    // decision. The caller's effectiveInitiativeId falls back to data.id, and
+    // feeding that to the agents API asks for an initiative that does not
+    // exist. No initiative context means no grant, and a static widget.
+    const { feedBindingForTool, resolveFeedIdForTool } = await import(
+      '../src/live/streamGrant'
+    );
+    const binding = feedBindingForTool('orgx_inspect')!;
+    expect(resolveFeedIdForTool(binding, { id: 'task-9' })).toBeNull();
+  });
+
+  it('allows the fallback only where the entity IS the initiative', async () => {
+    const { feedBindingForTool, resolveFeedIdForTool } = await import(
+      '../src/live/streamGrant'
+    );
+    // Scaffolding returns the initiative it just created.
+    const scaffold = feedBindingForTool('scaffold_initiative')!;
+    expect(resolveFeedIdForTool(scaffold, { id: 'init-new' })).toBe('init-new');
+    // A spawn returns a run id, not an initiative.
+    const spawn = feedBindingForTool('orgx_spawn')!;
+    expect(resolveFeedIdForTool(spawn, { id: 'run-7' })).toBeNull();
+  });
+
+  it('binds the widgets that arrived on main', async () => {
+    const { feedBindingForTool } = await import('../src/live/streamGrant');
+    expect(feedBindingForTool('orgx_inspect')?.feedType).toBe('agent-status');
+    expect(feedBindingForTool('get_operator_chronicle')?.feedType).toBe('agent-status');
+    expect(feedBindingForTool('orgx_bootstrap')?.feedType).toBe('initiative-pulse');
   });
 });

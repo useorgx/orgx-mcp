@@ -97,38 +97,115 @@ export async function buildStreamGrant(input: {
  * Keeping this beside the registry means a tool becomes live by gaining a row
  * here rather than by growing its own token plumbing.
  */
+/**
+ * Where a tool's initiative id comes from.
+ *
+ * `initiative_id` is the only field that is reliably an initiative. The caller's
+ * `effectiveInitiativeId` falls back to `data.id`, which for orgx_inspect is
+ * whichever entity was inspected — a task, an artifact, a decision — and
+ * subscribing a feed to a task id polls the agents API for an initiative that
+ * does not exist. `entity_is_initiative` marks the tools whose own `id` *is* an
+ * initiative, which is the only case where that fallback is correct.
+ */
+export type FeedIdSource = 'initiative_id' | 'entity_is_initiative';
+
+export interface ToolFeedBinding {
+  feedType: string;
+  refreshTool: string;
+  idSource: FeedIdSource;
+}
+
 // Only feeds present in FEEDS may be bound here; buildStreamGrant returns null
 // for anything else, so a stale binding degrades to a static widget rather than
 // a broken subscription.
-export const TOOL_FEED_BINDINGS: Record<
-  string,
-  { feedType: string; refreshTool: string }
-> = {
-  get_agent_status: { feedType: 'agent-status', refreshTool: 'get_agent_status' },
+export const TOOL_FEED_BINDINGS: Record<string, ToolFeedBinding> = {
+  get_agent_status: {
+    feedType: 'agent-status',
+    refreshTool: 'get_agent_status',
+    idSource: 'initiative_id',
+  },
   get_initiative_pulse: {
     feedType: 'initiative-pulse',
     refreshTool: 'get_initiative_pulse',
+    // The pulse's own subject is the initiative.
+    idSource: 'entity_is_initiative',
   },
-  spawn_agent_task: { feedType: 'agent-status', refreshTool: 'get_agent_status' },
-  delegate_agent_task: { feedType: 'agent-status', refreshTool: 'get_agent_status' },
-  orgx_spawn: { feedType: 'agent-status', refreshTool: 'get_agent_status' },
+  spawn_agent_task: {
+    feedType: 'agent-status',
+    refreshTool: 'get_agent_status',
+    idSource: 'initiative_id',
+  },
+  delegate_agent_task: {
+    feedType: 'agent-status',
+    refreshTool: 'get_agent_status',
+    idSource: 'initiative_id',
+  },
+  orgx_spawn: {
+    feedType: 'agent-status',
+    refreshTool: 'get_agent_status',
+    // A spawn returns a run id in `data.id`, not an initiative.
+    idSource: 'initiative_id',
+  },
   scaffold_initiative: {
     feedType: 'initiative-pulse',
     refreshTool: 'get_initiative_pulse',
+    // Scaffolding returns the initiative it just created.
+    idSource: 'entity_is_initiative',
   },
   // The decision queue is the one feed scoped to a person rather than an
   // initiative; see FeedDefinition.scope.
   get_pending_decisions: {
     feedType: 'decisions',
     refreshTool: 'get_pending_decisions',
+    idSource: 'initiative_id',
   },
-  orgx_decide: { feedType: 'decisions', refreshTool: 'get_pending_decisions' },
+  orgx_decide: {
+    feedType: 'decisions',
+    refreshTool: 'get_pending_decisions',
+    idSource: 'initiative_id',
+  },
+  // Widgets that arrived on main after this layer was built.
+  orgx_inspect: {
+    // Inspecting an entity: show what is running on the initiative it belongs
+    // to. `data.id` is the inspected entity and must not be used as the feed.
+    feedType: 'agent-status',
+    refreshTool: 'get_agent_status',
+    idSource: 'initiative_id',
+  },
+  get_operator_chronicle: {
+    // A chronicle answers "what happened"; the panel answers "what is happening".
+    feedType: 'agent-status',
+    refreshTool: 'get_agent_status',
+    idSource: 'initiative_id',
+  },
+  orgx_bootstrap: {
+    // Bootstrap can bind an initiative for the session. When it does, the
+    // workspace map opens on that initiative's live state — which is the
+    // "continue where the last agent left off" case this layer exists for.
+    feedType: 'initiative-pulse',
+    refreshTool: 'get_initiative_pulse',
+    idSource: 'initiative_id',
+  },
 };
 
-export function feedBindingForTool(
-  toolId: string
-): { feedType: string; refreshTool: string } | null {
+export function feedBindingForTool(toolId: string): ToolFeedBinding | null {
   return Object.prototype.hasOwnProperty.call(TOOL_FEED_BINDINGS, toolId)
     ? TOOL_FEED_BINDINGS[toolId]!
     : null;
+}
+
+/**
+ * The initiative id a tool's payload may be subscribed against, or null when it
+ * has none. A tool with no initiative context simply gets no grant, and its
+ * widget stays static.
+ */
+export function resolveFeedIdForTool(
+  binding: ToolFeedBinding,
+  data: Record<string, unknown>
+): string | null {
+  const initiativeId = data.initiative_id;
+  if (typeof initiativeId === 'string' && initiativeId.trim()) return initiativeId;
+  if (binding.idSource !== 'entity_is_initiative') return null;
+  const entityId = data.id;
+  return typeof entityId === 'string' && entityId.trim() ? entityId : null;
 }
