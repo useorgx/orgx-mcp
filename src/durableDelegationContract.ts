@@ -9,7 +9,8 @@ export const DURABLE_DELEGATION_CONTRACT = 'durable_delegation_v2';
 export type DurableDelegationContractResult =
   | {
       ok: true;
-      taskId: string;
+      /** Absent when the spawn carried free-form instructions and no task. */
+      taskId: string | null;
       runId: string;
       jobId: string;
       dispatchReceipt: Record<string, unknown>;
@@ -74,20 +75,22 @@ export function validateDurableDelegationResponse(
     };
   }
 
+  // Durable = a persisted run whose job a worker claimed. A task is optional:
+  // a spawn with free-form instructions has none, and requiring one refused
+  // every such spawn after its run had started (2026-09-27).
   const taskId = readNonEmptyString(data, 'task_id');
   const runId = readNonEmptyString(data, 'run_id');
   const jobId = readNonEmptyString(data, 'job_id');
-  if (!taskId || !runId || !jobId) {
+  if (!runId || !jobId) {
     return {
       ok: false,
       message:
-        'Delegation was not confirmed by the canonical OrgX release. Its durable task, run, or job receipt is missing.',
+        'Delegation was not confirmed by the canonical OrgX release. Its durable run or job receipt is missing.',
     };
   }
 
   if (
-    taskId === runId ||
-    taskId.startsWith('api-') ||
+    (taskId !== null && (taskId === runId || taskId.startsWith('api-'))) ||
     runId.startsWith('api-') ||
     jobId.startsWith('api-')
   ) {
