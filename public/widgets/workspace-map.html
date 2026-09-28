@@ -10,6 +10,9 @@
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/interaction-kit.js"></script>
+  <script src="shared/live-machine.js"></script>
+  <script src="shared/live-store.js"></script>
+  <script src="shared/live-panel.js"></script>
   <style>
     /*
      * Workspace map — the orgx_bootstrap result as one card: which workspace
@@ -280,7 +283,10 @@
     } else if (data) {
       render(data);
     } else {
-      initWidget({ render: render });
+      initWidget({
+        live: { anchor: '#content', widget: 'workspace-map', emptyLabel: 'No workstreams running' },
+        render: render,
+      });
     }
   </script>
 </body>

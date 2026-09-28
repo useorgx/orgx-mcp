@@ -10,6 +10,9 @@
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/interaction-kit.js"></script>
+  <script src="shared/live-machine.js"></script>
+  <script src="shared/live-store.js"></script>
+  <script src="shared/live-panel.js"></script>
   <template id="structured-review-contract">
     <section class="review-step-panel" data-direction="neutral">
       <ol>
@@ -1888,11 +1891,31 @@
       if(!data || !data.decisions || data.decisions.length === 0) {
         var resolvedHtml = lastResolution
           ? `<div class="empty-title">${lastResolution.action === 'approved' ? 'Decision approved' : 'Decision sent back'}</div><div class="empty-desc">${escapeHtml(lastResolution.summary)} ${lastResolution.action === 'approved' ? 'is now unblocked and ' + lastResolution.agent_name + ' can keep moving.' : 'was returned to ' + lastResolution.agent_name + ' with your note so the next revision addresses the right constraint.'}</div><div class="resolution-actions"><a href="${decisionsUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(decisionsUrl)}, event)' class="resolution-link">${icons.link(14)} View all decisions in OrgX</a><a href="${agentStatusUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(agentStatusUrl)}, event)' class="resolution-link resolution-link--secondary">${icons.agent(14)} Open agent status</a></div>`
-          : `<div class="empty-title">All caught up</div><div class="empty-desc">No decisions require your attention right now. New approvals will appear here as soon as work needs operator input.</div><div class="resolution-actions"><a href="${decisionsUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(decisionsUrl)}, event)' class="resolution-link">${icons.link(14)} View all decisions in OrgX</a></div>`;
+          : (function emptyQueueCopy() {
+              /* The card renders the tool payload; the panel above renders the
+                 live feed. Both read the same queue, but the payload is a
+                 snapshot from when the tool ran — a decision raised seconds
+                 later shows up live while this card still says the queue is
+                 clear. "All caught up" over a list of pending approvals is
+                 true of the payload and wrong on the screen, so defer to what
+                 the reader can already see. */
+              var liveRows = window.OrgXLiveStore && window.OrgXLiveStore.liveRowCount
+                ? window.OrgXLiveStore.liveRowCount()
+                : 0;
+              if (liveRows) {
+                return `<div class="empty-title">Newer than this snapshot</div><div class="empty-desc">The live queue above has ${liveRows} item${liveRows === 1 ? '' : 's'} that arrived after this result was produced.</div><div class="resolution-actions"><a href="${decisionsUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(decisionsUrl)}, event)' class="resolution-link">${icons.link(14)} View all decisions in OrgX</a></div>`;
+              }
+              return `<div class="empty-title">All caught up</div><div class="empty-desc">No decisions require your attention right now. New approvals will appear here as soon as work needs operator input.</div><div class="resolution-actions"><a href="${decisionsUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(decisionsUrl)}, event)' class="resolution-link">${icons.link(14)} View all decisions in OrgX</a></div>`;
+            })();
         injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.check(24)}</div>${resolvedHtml}</div>`);
         if (queueSubtitle) {
+          var liveWaiting = window.OrgXLiveStore && window.OrgXLiveStore.liveRowCount
+            ? window.OrgXLiveStore.liveRowCount()
+            : 0;
           queueSubtitle.textContent = lastResolution
             ? 'The queue is clear. You can monitor follow-through in Agent Status.'
+            : liveWaiting
+            ? 'Showing the live queue above; this result predates it.'
             : 'No operator approvals are waiting right now.';
         }
         return;
@@ -2107,7 +2130,10 @@
     });
 
     if(isDemo) applyBootPayload();
-    else initWidget({ render: d => { applyBootPayload(function(){ if(d) data = d; }); } });
+    else initWidget({
+      live: { anchor: '.widget-shell-card', widget: 'decisions', emptyLabel: 'No decisions pending' },
+      render: d => { applyBootPayload(function(){ if(d) data = d; }); }
+    });
   </script>
 </body>
 </html>

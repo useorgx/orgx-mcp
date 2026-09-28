@@ -1121,6 +1121,9 @@
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/components/domain-accent.js"></script>
+  <script src="shared/live-machine.js"></script>
+  <script src="shared/live-store.js"></script>
+  <script src="shared/live-panel.js"></script>
   <script>
     (function () {
       'use strict';
@@ -2632,6 +2635,12 @@
           return;
         }
         window.OrgXWidgetRuntime.initWidget({
+          /* Context while you review: what else is running on this initiative. */
+          live: {
+            anchor: '.widget-shell-card',
+            widget: 'artifact-review',
+            emptyLabel: 'No agents running',
+          },
           render: function (payload) {
             if (!payload) {
               render({ __loading: true });

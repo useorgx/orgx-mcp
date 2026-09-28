@@ -268,6 +268,11 @@ export const MCP_APPS_SHARED_COMPONENT_PATHS: ReadonlyArray<string> = [
   'shared/components/domain-accent.js',
   'shared/components/liveness-indicator.js',
   'shared/widget-state.js',
+  // Live state layer. Order matters: the store and panel both assert that
+  // live-machine.js is already installed.
+  'shared/live-machine.js',
+  'shared/live-store.js',
+  'shared/live-panel.js',
   'shared/icons.js',
   'shared/mcp-apps-sdk.umd.js',
   'shared/widget-runtime.js',

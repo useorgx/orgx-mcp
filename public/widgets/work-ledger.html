@@ -10,6 +10,9 @@
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/interaction-kit.js"></script>
+  <script src="shared/live-machine.js"></script>
+  <script src="shared/live-store.js"></script>
+  <script src="shared/live-panel.js"></script>
   <style>
     /*
      * Work Ledger — the get_operator_chronicle result as the app's Work Ledger
@@ -335,7 +338,10 @@
     } else if (data) {
       render(data);
     } else {
-      initWidget({ render: render });
+      initWidget({
+        live: { anchor: '#content', widget: 'work-ledger', emptyLabel: 'No agents running right now' },
+        render: render,
+      });
     }
   </script>
 </body>

@@ -10,6 +10,9 @@
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/interaction-kit.js"></script>
+  <script src="shared/live-machine.js"></script>
+  <script src="shared/live-store.js"></script>
+  <script src="shared/live-panel.js"></script>
   <style>
     /*
      * Entity card — the orgx_inspect result as one object, not a list: type,
@@ -369,7 +372,10 @@
     } else if (data) {
       render(data);
     } else {
-      initWidget({ render: render });
+      initWidget({
+        live: { anchor: '#content', widget: 'entity-card', emptyLabel: 'No agents running on this work' },
+        render: render,
+      });
     }
   </script>
 </body>

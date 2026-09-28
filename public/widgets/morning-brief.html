@@ -903,6 +903,9 @@
 <body>
   <div class="container" id="content"></div>
   <script src="shared/icons.js"></script>
+  <script src="shared/live-machine.js"></script>
+  <script src="shared/live-store.js"></script>
+  <script src="shared/live-panel.js"></script>
   <script>
     const icons = window.OrgXWidgetIcons;
     const escapeHtml = (value) => {
@@ -2033,6 +2036,7 @@
     } else if (!isLoadingOverride) {
       const protocol = detectProtocol();
       initWidget({
+        live: { anchor: '#content', widget: 'morning-brief', emptyLabel: 'No agents running' },
         render: (payload) => {
           if (payload) {
             settleBrief(payload);
