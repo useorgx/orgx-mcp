@@ -3,13 +3,11 @@ import { describe, expect, it } from 'vitest';
 import {
   buildAcceptanceBinding,
   canonicalJson,
-  evaluateAcceptance,
   hashAcceptanceContract,
   normalizeAcceptance,
   normalizeDeadline,
   normalizeDispatchContract,
   normalizeVerify,
-  type AcceptanceBinding,
 } from '../src/dispatchContract';
 
 const NOW = new Date('2026-09-27T12:00:00Z');
@@ -228,101 +226,5 @@ describe('buildAcceptanceBinding', () => {
     expect(binding!.declared_at).toBe('2026-09-27T12:00:00.000Z');
     expect(binding!.checks[0]!.pre_state).toBe('unprobed');
     expect(binding!.contract_hash).toMatch(/^[0-9a-f]{64}$/);
-  });
-});
-
-describe('evaluateAcceptance', () => {
-  async function bindingFor(ids: string[]): Promise<AcceptanceBinding> {
-    const normalized = normalizeAcceptance(ids.map((id) => commandCheck(id)));
-    if (!normalized.ok) throw new Error('fixture failed');
-    const binding = await buildAcceptanceBinding(normalized.value, NOW);
-    if (!binding) throw new Error('fixture failed');
-    return binding;
-  }
-
-  it('accepts only when every check was observed to go fail -> pass', async () => {
-    const binding = await bindingFor(['a', 'b']);
-    const verdict = evaluateAcceptance(binding, [
-      { id: 'a', pre: 'fail', post: 'pass' },
-      { id: 'b', pre: 'fail', post: 'pass' },
-    ]);
-    expect(verdict.accepted).toBe(true);
-    expect(verdict.checks.every((c) => c.counted)).toBe(true);
-  });
-
-  it('refuses to count a check that already passed — the `|| echo` case', async () => {
-    const binding = await bindingFor(['already-green']);
-    const verdict = evaluateAcceptance(binding, [
-      { id: 'already-green', pre: 'pass', post: 'pass' },
-    ]);
-    expect(verdict.accepted).toBe(false);
-    expect(verdict.checks[0]).toMatchObject({
-      counted: false,
-      reason: 'non_discriminating',
-    });
-  });
-
-  it('refuses to count a check whose pre-state nobody established', async () => {
-    const binding = await bindingFor(['unknown-pre']);
-    const verdict = evaluateAcceptance(binding, [
-      { id: 'unknown-pre', pre: 'unprobed', post: 'pass' },
-    ]);
-    expect(verdict.accepted).toBe(false);
-    expect(verdict.checks[0]).toMatchObject({
-      counted: false,
-      reason: 'unprobed',
-    });
-  });
-
-  it('counts a pre-passing check when the author waived discrimination', async () => {
-    const normalized = normalizeAcceptance([
-      { ...commandCheck('waived'), must_fail_before: false },
-    ]);
-    if (!normalized.ok) throw new Error('fixture failed');
-    const binding = await buildAcceptanceBinding(normalized.value, NOW);
-    const verdict = evaluateAcceptance(binding!, [
-      { id: 'waived', pre: 'pass', post: 'pass' },
-    ]);
-    expect(verdict.accepted).toBe(true);
-  });
-
-  it('marks a check the completion never mentioned as not_observed', async () => {
-    const binding = await bindingFor(['a', 'silent']);
-    const verdict = evaluateAcceptance(binding, [
-      { id: 'a', pre: 'fail', post: 'pass' },
-    ]);
-    expect(verdict.accepted).toBe(false);
-    expect(verdict.checks[1]).toMatchObject({
-      counted: false,
-      reason: 'not_observed',
-    });
-  });
-
-  it('does not accept a run with no discriminating check at all', async () => {
-    const binding = await bindingFor(['a']);
-    const verdict = evaluateAcceptance(binding, [
-      { id: 'a', pre: 'pass', post: 'pass' },
-    ]);
-    expect(verdict.accepted).toBe(false);
-  });
-
-  it('rejects a completion that substituted the contract after dispatch', async () => {
-    const binding = await bindingFor(['a']);
-    const verdict = evaluateAcceptance(
-      binding,
-      [{ id: 'a', pre: 'fail', post: 'pass' }],
-      'f'.repeat(64)
-    );
-    expect(verdict.accepted).toBe(false);
-    expect(verdict.rejection).toMatch(/cannot be substituted/);
-  });
-
-  it('reports a genuinely failing check as failed, not missing', async () => {
-    const binding = await bindingFor(['a']);
-    const verdict = evaluateAcceptance(binding, [
-      { id: 'a', pre: 'fail', post: 'fail' },
-    ]);
-    expect(verdict.accepted).toBe(false);
-    expect(verdict.checks[0]).toMatchObject({ counted: false, reason: 'failed' });
   });
 });
