@@ -24,7 +24,6 @@ import { MCP_APPS_SHARED_COMPONENT_PATHS } from '../src/widgetConfig';
 
 type WidgetManifest = {
   version: number;
-  generatedAt: string;
   allowlist: string[];
   canonicalPrimaries: Record<string, string>;
   widgets: Record<string, {

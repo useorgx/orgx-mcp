@@ -346,9 +346,12 @@ function main() {
     process.exit(1);
   }
 
+  // No build timestamp. It was the only part of this file that changed when
+  // nothing else did, which left the tree dirty after any build and made the
+  // manifest easy to sweep into an unrelated commit. Every other field is
+  // derived from the widgets themselves, so the manifest is now reproducible.
   const manifest = {
     version: 2,
-    generatedAt: new Date().toISOString(),
     allowlist: [...SHARED_ALLOWLIST].sort(),
     canonicalPrimaries: CANONICAL_PRIMARIES,
     widgets: entries,

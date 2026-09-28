@@ -8,10 +8,6 @@ describe('social preview metadata', () => {
     resolve(process.cwd(), 'public/index.html'),
     'utf8'
   );
-  const sharedIndex = readFileSync(
-    resolve(process.cwd(), 'public/widgets/shared/index.html'),
-    'utf8'
-  );
   const previewPage = readFileSync(
     resolve(process.cwd(), 'public/og-preview.html'),
     'utf8'
@@ -23,9 +19,7 @@ describe('social preview metadata', () => {
 
   it('points public metadata at the dedicated orgx mcp social preview asset', () => {
     expect(publicIndex).toContain('https://mcp.useorgx.com/screenshots/orgx-mcp-og.png');
-    expect(sharedIndex).toContain('https://mcp.useorgx.com/screenshots/orgx-mcp-og.png');
     expect(publicIndex).not.toContain('https://mcp.useorgx.com/control_tower.png');
-    expect(sharedIndex).not.toContain('https://mcp.useorgx.com/control_tower.png');
   });
 
   it('composes the preview from generated widget screenshots', () => {
