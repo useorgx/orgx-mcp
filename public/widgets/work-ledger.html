@@ -28,7 +28,10 @@
     .wl {
       display: grid;
       gap: 16px;
-      padding: 18px;
+      /* Extra bottom room: the host floats a scroll chevron over the widget's
+         lower edge, and it was landing on the last flywheel line. */
+      padding: 18px 18px 34px;
+      min-width: 0;
       font-family: var(--ox-font);
       color: var(--ox-text);
     }
@@ -52,12 +55,79 @@
       gap: 10px;
     }
 
+    /*
+     * A flex item will not shrink below its content width without this, and the
+     * kicker is a long uppercase string with wide letter-spacing. At phone
+     * width it pushed the header past the viewport and took the whole document
+     * with it — wrapping on .wl-head alone could not help, because the item
+     * itself refused to narrow.
+     */
+    .wl-head > div {
+      flex: 1 1 200px;
+      min-width: 0;
+    }
+
+    .wl-kicker {
+      overflow-wrap: anywhere;
+    }
+
     .wl-head h1 {
       margin: 6px 0 0;
       font-size: 18px;
       font-weight: 650;
       line-height: 1.3;
       letter-spacing: -0.02em;
+    }
+
+    /*
+     * The headline and these numbers answer different questions over different
+     * spans — the headline is a standing backlog ("57 items need a decision"),
+     * these are what happened inside the window. Printed adjacently with no
+     * label they read as one set, and "57 items need a decision" above
+     * "Decisions 2" looks like a contradiction rather than two facts.
+     */
+    /*
+     * Grid items default to min-width:auto, so they refuse to shrink below
+     * their min-content width and push the whole document sideways instead.
+     * The header row is the widest — a nowrap button beside an unbreakable
+     * headline — so without this the widget scrolls horizontally at phone
+     * width no matter what the container does.
+     */
+    .wl > *,
+    .wl-section > * {
+      min-width: 0;
+    }
+
+    /*
+     * Phone width: a ledger row is a name and its counts, and the counts are
+     * nowrap so the row's minimum width is the sum of both. Below this the two
+     * no longer fit side by side and the row used to force the whole document
+     * to scroll sideways rather than give way. Stacking keeps the pair legible
+     * and lets the row narrow.
+     */
+    @media (max-width: 430px) {
+      .wl-list li {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 3px;
+      }
+
+      .wl-list small {
+        white-space: normal;
+      }
+
+      .wl-open {
+        width: 100%;
+        text-align: center;
+      }
+    }
+
+    .wl-stats-label {
+      margin: 2px 0 -6px;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ox-text-dim);
     }
 
     .wl-stats {
@@ -118,6 +188,44 @@
       font-size: 12px;
       color: var(--ox-text-muted);
       white-space: nowrap;
+    }
+
+    /*
+     * The evidence label is a trust tier, not part of the client's name.
+     *
+     * The server sends three of them — "Verified work", "Activity observed",
+     * "Seen earlier" — and they used to render as bare text right after the
+     * client name, where they read as a continuation of it. A chip separates
+     * the claim from the name and lets the tier be scanned down the column.
+     */
+    .wl-evidence {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 1px 7px;
+      border-radius: 999px;
+      border: 1px solid var(--ox-border);
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      color: var(--ox-text-dim);
+      white-space: nowrap;
+      vertical-align: 1px;
+    }
+
+    .wl-evidence[data-tier='verified'] {
+      color: rgb(var(--ox-primary-rgb));
+      border-color: rgba(var(--ox-primary-rgb), 0.35);
+      background: rgba(var(--ox-primary-rgb), 0.08);
+    }
+
+    /* A repeated entry collapsed into one row. */
+    .wl-repeat {
+      margin-left: 6px;
+      font-style: normal;
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      color: var(--ox-text-dim);
     }
 
     .wl-entry {
@@ -240,12 +348,113 @@
       }
     };
 
+
+    /*
+     * Real data, not a brochure.
+     *
+     * DEMO is tidy: every client has all three counts, every entry is
+     * distinct, every label is short. Production is not, and the difference is
+     * where this widget's layout actually failed — all-zero count triples, the
+     * same entry four times, a standing backlog headline over windowed stats.
+     * Keeping an untidy fixture beside the tidy one means the gallery shows
+     * both, and the next person to change this layout sees what it has to
+     * survive.
+     */
+    var MESSY = {
+      chronicle: {
+        workspaceName: 'OrgX Business',
+        period: 'week',
+        headline: '57 items need a decision or unblock',
+        metrics: {
+          receiptsProduced: 7,
+          decisionsResolved: 2,
+          artifactsProduced: 72,
+          prReceipts: 59,
+          valueCreatedUsd: 253
+        },
+        continuity: {
+          clients: [
+            { label: 'Claude Code', evidenceLabel: 'Verified work', sessions: 80, artifacts: 0, decisions: 0, pullRequests: 0 },
+            { label: 'Codex', evidenceLabel: 'Activity observed', sessions: 38, artifacts: 0, decisions: 0, pullRequests: 0 },
+            { label: 'OrgX', evidenceLabel: 'Verified work', sessions: 0, artifacts: 13, decisions: 17, pullRequests: 0 },
+            { label: 'ChatGPT', evidenceLabel: 'Activity observed', sessions: 21, artifacts: 0, decisions: 0, pullRequests: 0 },
+            { label: 'Cursor', evidenceLabel: 'Verified work', sessions: 11, artifacts: 0, decisions: 0, pullRequests: 0 },
+            { label: 'Orgx Floor', evidenceLabel: 'Activity observed', sessions: 0, artifacts: 0, decisions: 4, pullRequests: 0 },
+            { label: 'Recovery Execution', evidenceLabel: 'Seen earlier', sessions: 0, artifacts: 0, decisions: 1, pullRequests: 0 }
+          ],
+          events: [
+            { kind: 'session', title: 'claude-code session: 5 step(s)', sourceLabel: 'Claude Code', occurredAt: '2026-09-28' },
+            { kind: 'report', title: 'Reporting \u00b7 claude-code', sourceLabel: 'Claude Code', occurredAt: '2026-09-28' },
+            { kind: 'report', title: 'Reporting \u00b7 codex', sourceLabel: 'Codex', occurredAt: '2026-09-28' },
+            { kind: 'report', title: 'Reporting \u00b7 codex', sourceLabel: 'Codex', occurredAt: '2026-09-28' },
+            { kind: 'report', title: 'Reporting \u00b7 codex', sourceLabel: 'Codex', occurredAt: '2026-09-28' },
+            { kind: 'report', title: 'Reporting \u00b7 codex', sourceLabel: 'Codex', occurredAt: '2026-09-28' }
+          ]
+        },
+        flywheel: {
+          summary: [
+            'Reach: 0 sent, 0 replies, 0 booked (0 touches per merged PR; target 5)',
+            'Build: 59 merged PRs'
+          ]
+        },
+        reportingNarrative: { nextAction: 'Clear the two decisions waiting on you.' }
+      }
+    };
+
     var state = params.get('state') || (params.get('demo') === 'true' ? 'populated' : null);
-    var data = state === 'populated' ? DEMO : state === 'empty' ? {} : null;
+    var data = state === 'populated' ? DEMO : state === 'messy' ? MESSY : state === 'empty' ? {} : null;
 
     var count = function (value, noun) {
       var n = num(value);
       return n + ' ' + noun + (n === 1 ? '' : 's');
+    };
+
+    /*
+     * Only the counts a client actually has.
+     *
+     * Every row used to print all three — "80 sessions · 0 artifacts · 0
+     * decisions" — so the eye had to filter the zeros out of every line to find
+     * the one number that meant anything. The demo fixture happened to have all
+     * three populated everywhere, which is why this never showed up until real
+     * data arrived.
+     */
+    var countSummary = function (client) {
+      var parts = [];
+      if (num(client.sessions)) parts.push(count(client.sessions, 'session'));
+      if (num(client.artifacts)) parts.push(count(client.artifacts, 'artifact'));
+      if (num(client.decisions)) parts.push(count(client.decisions, 'decision'));
+      if (num(client.pullRequests)) parts.push(count(client.pullRequests, 'PR'));
+      return parts.join(' \u00b7 ');
+    };
+
+    /*
+     * Collapse runs of the same entry.
+     *
+     * A client that reports four times in a window produced four identical
+     * "Reporting · codex" rows, which filled the list without saying anything.
+     * Identical title and source collapse to one row carrying the count.
+     */
+    var collapseEvents = function (list) {
+      var out = [];
+      list.forEach(function (event) {
+        var previous = out[out.length - 1];
+        if (
+          previous &&
+          previous.title === event.title &&
+          previous.sourceLabel === event.sourceLabel
+        ) {
+          previous.repeats += 1;
+          return;
+        }
+        out.push({
+          kind: event.kind,
+          title: event.title,
+          sourceLabel: event.sourceLabel,
+          occurredAt: event.occurredAt,
+          repeats: 1
+        });
+      });
+      return out;
     };
 
     var shortDate = function (value) {
@@ -274,7 +483,7 @@
       var clients = asArray(continuity.clients).filter(function (client) {
         return num(client.sessions) + num(client.artifacts) + num(client.decisions) + num(client.pullRequests) > 0;
       });
-      var events = asArray(continuity.events).slice(0, 6);
+      var events = collapseEvents(asArray(continuity.events)).slice(0, 6);
       var flywheel = asArray(chronicle.flywheel && chronicle.flywheel.summary).filter(function (line) {
         return typeof line === 'string' && line.trim();
       });
@@ -299,6 +508,7 @@
         '</div>' +
         '<a class="wl-open ox-link-btn" href="' + LEDGER_URL + '" target="_blank" rel="noreferrer" onclick=\'return openWidgetLink(' + JSON.stringify(LEDGER_URL) + ', event)\'>Open Work Ledger</a>' +
         '</div>' +
+        '<p class="wl-stats-label">Produced in this window</p>' +
         '<dl class="wl-stats">' +
         stats.map(function (stat) {
           return '<div><dt>' + escapeHtml(stat[0]) + '</dt><dd>' + escapeHtml(stat[1]) + '</dd></div>';
@@ -308,9 +518,12 @@
           ? '<div class="wl-section"><h2>By client</h2><ul class="wl-list">' +
             clients.map(function (client) {
               return '<li><span>' + escapeHtml(client.label || client.sourceClient) +
-                (client.evidenceLabel ? ' <small>' + escapeHtml(client.evidenceLabel) + '</small>' : '') +
-                '</span><small>' + count(client.sessions, 'session') + ' · ' + count(client.artifacts, 'artifact') + ' · ' +
-                count(client.decisions, 'decision') + '</small></li>';
+                (client.evidenceLabel
+                  ? '<span class="wl-evidence" data-tier="' +
+                    (/verif/i.test(client.evidenceLabel) ? 'verified' : 'observed') + '">' +
+                    escapeHtml(client.evidenceLabel) + '</span>'
+                  : '') +
+                '</span><small>' + escapeHtml(countSummary(client)) + '</small></li>';
             }).join('') +
             '</ul></div>'
           : '') +
@@ -318,7 +531,9 @@
           ? '<div class="wl-section"><h2>Latest entries</h2><ul class="wl-list">' +
             events.map(function (event) {
               return '<li><span class="wl-entry"><i class="wl-marker" data-kind="' + escapeHtml(event.kind || '') + '"></i>' +
-                escapeHtml(event.title) + '</span><small>' +
+                escapeHtml(event.title) +
+                (event.repeats > 1 ? '<em class="wl-repeat">\u00d7' + event.repeats + '</em>' : '') +
+                '</span><small>' +
                 escapeHtml([event.sourceLabel, shortDate(event.occurredAt)].filter(Boolean).join(' · ')) +
                 '</small></li>';
             }).join('') +

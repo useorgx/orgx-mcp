@@ -308,13 +308,50 @@
   --ox-primary-contrast: #02040a;
 }
 
+/*
+ * Base reset.
+ *
+ * This lived only in tokens.css, which three of the newer widgets never link —
+ * entity-card, work-ledger and workspace-map. Without it they kept the
+ * browser's default 8px body margin and content-box sizing, so their padded
+ * container measured wider than the viewport and every one of them scrolled
+ * sideways by exactly 16px at phone width. It reads as "the layout is broken"
+ * rather than "a stylesheet is missing", which is why it survived review.
+ *
+ * Duplicating a reset is cheap and idempotent; tokens.css still applies the
+ * same values where it is loaded.
+ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 html {
   background: var(--ox-bg);
 }
 
 body {
+  margin: 0;
+}
+
+body {
   background-color: var(--ox-bg);
   color: var(--ox-text);
+  /*
+   * Base typography belongs with the base surface.
+   *
+   * It used to live only in tokens.css, which most widgets reference but three
+   * of the newer ones never did — so entity-card, work-ledger and workspace-map
+   * inherited the browser default and rendered in Times while every other
+   * widget rendered in the system sans. Nothing in their own CSS set a family,
+   * so the mismatch showed up as "this widget looks wrong" rather than as a
+   * missing file. This file is inlined into every MCP-served document, so
+   * putting it here reaches them all; tokens.css still wins where it is loaded,
+   * because it is linked after.
+   */
+  font-family: var(--ox-font, var(--app-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, 'Helvetica Neue', Arial, sans-serif));
+  -webkit-font-smoothing: antialiased;
 }
 
 input,

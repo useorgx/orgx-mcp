@@ -103,8 +103,8 @@
     },
     "entity-card": {
       "file": "public/widgets/entity-card.html",
-      "bytes": 11856,
-      "hash": "d32de94a2860",
+      "bytes": 12648,
+      "hash": "c2e161c8d5b1",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -264,8 +264,8 @@
     },
     "work-ledger": {
       "file": "public/widgets/work-ledger.html",
-      "bytes": 11988,
-      "hash": "879cb203c6e9",
+      "bytes": 20366,
+      "hash": "0d0ba45cb324",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/interaction-kit.css",

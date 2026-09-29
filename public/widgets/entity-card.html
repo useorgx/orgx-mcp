@@ -212,10 +212,27 @@
       white-space: nowrap;
     }
 
+    /*
+     * The empty state is what a person sees when a lookup finds nothing, so it
+     * reads as a sentence about their work rather than as an instruction to
+     * the agent. It used to say "Call orgx_inspect with a type and id from
+     * orgx_search", which is a note to a tool caller printed at a human, and
+     * it inherited no styling either — bare text in the browser's default
+     * serif, which is what made it look broken rather than empty.
+     */
     .ec-empty {
-      padding: 18px;
+      display: grid;
+      gap: 6px;
+      justify-items: start;
+      padding: 22px 18px 24px;
       font-size: 13px;
       color: var(--ox-text-muted);
+    }
+
+    .ec-empty b {
+      font-size: 14px;
+      font-weight: 650;
+      color: var(--ox-text);
     }
   </style>
   <link rel="stylesheet" href="shared/widget-theme.css" />
@@ -317,7 +334,11 @@
       var card = cardFrom(payload);
       if (!card) {
         content.innerHTML =
-          '<div class="ec-empty">No entity to show. Call orgx_inspect with a type and id from orgx_search.</div>';
+          '<div class="ec-empty">' +
+          '<b>Nothing to show here</b>' +
+          '<span>This result did not carry an entity to display. Search for the ' +
+          'initiative, task, or artifact you meant and open it again.</span>' +
+          '</div>';
         return;
       }
       var url = typeof card.url === 'string' ? card.url : '';
