@@ -360,7 +360,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
       goals: z.array(resourceSchema).optional(),
       dataGaps: z.array(z.string()).optional(),
       brief_markdown: nullableString.optional(),
-      degraded: z.boolean().optional(),
+      degraded: z.union([z.boolean(), z.array(z.string())]).optional(),
       degraded_reason: nullableString.optional(),
       value_dashboard: z.object({
         period: z.literal('30d'),

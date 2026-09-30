@@ -2,9 +2,21 @@
 function projectTask(value: unknown): unknown {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
   const task = value as Record<string, unknown>;
+  const taskId = task.task_id ?? task.taskId ?? task.id;
+  // Status is a workload preview. Full task bodies/metadata belong to inspect;
+  // copying them into four alias lists makes payload size grow with prose.
+  const fields = ['id', 'name', 'created_at', 'started_at', 'completed_at', 'due_date',
+    'progress', 'progress_pct', 'run_id', 'assigned_agent_id', 'assigned_agent_ids', 'url', 'live_url'];
+  const statusFields = Object.fromEntries(fields.filter(key => task[key] !== undefined).map(key => [key, task[key]]));
+  const description = typeof task.description === 'string' ? task.description :
+    typeof task.detail === 'string' ? task.detail : null;
   return {
-    ...task,
-    task_id: task.task_id ?? task.taskId ?? task.id,
+    ...statusFields,
+    ...(description ? { description: description.length > 360 ? description.slice(0, 359) + '…' : description } : {}),
+    description_truncated: Boolean(description && description.length > 360),
+    details_available: Boolean(description || task.metadata),
+    ...(typeof taskId === 'string' ? { inspect_call: { tool: 'orgx_inspect', args: { type: 'task', id: taskId } } } : {}),
+    task_id: taskId,
     title: task.title ?? task.name,
     status: task.status ?? task.state ?? null,
     priority: task.priority ?? null,
