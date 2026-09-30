@@ -726,6 +726,7 @@ async function captureMcpToolCallVisibility<Env>(
   );
   const transportMetadata = {
     ...metadata,
+    request_uuid: crypto.randomUUID(),
     http_status: response.status,
     journey_phase: 'complete',
     auth_ms: journey.authMs,
@@ -752,6 +753,8 @@ async function captureMcpToolCallVisibility<Env>(
         ? responseSizeHeader
         : undefined,
     edge_rate_limit_ms: knownServerTimings.get('edge_rate_limit'),
+    edge_rate_limit_source: response.headers.get('x-ratelimit-source') ?? undefined,
+    edge_rate_limit_degraded: response.headers.get('x-ratelimit-degraded') ?? undefined,
     edge_rate_limit_backend_ms:
       knownServerTimings.get('rate_limit_backend'),
     edge_rate_limit_identity_ms:

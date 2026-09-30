@@ -672,7 +672,7 @@ describe('mcpTransport', () => {
         client_platform: 'macos',
         has_conversation_id: true,
         has_working_directory: true,
-        request_id: 'req-1',
+        request_uuid: expect.any(String),
         edge_rate_limit_ms: 1.25,
         edge_rate_limit_backend_ms: 0.2,
         edge_rate_limit_identity_ms: 0,
@@ -680,6 +680,8 @@ describe('mcpTransport', () => {
         edge_rate_limit_strategy: 'base_allowance',
         $lib: 'orgx-mcp',
       });
+      expect(posthogPayload.batch[0]?.properties).not.toHaveProperty('request_id');
+      expect(posthogPayload.batch[0]?.properties).not.toHaveProperty('conversation_id');
 
       const backendCall = telemetryFetch.mock.calls.find(([url]) =>
         String(url).includes('/api/internal/mcp/tool-invocations')
@@ -816,8 +818,7 @@ describe('mcpTransport', () => {
         source_client: 'codex',
         profile: 'executor',
         session_present: true,
-        conversation_id: 'conv-journey',
-        step_id: 'step-2',
+        request_uuid: expect.any(String),
         step_index: 2,
         previous_tool_id: 'orgx_search',
         expected_next_tool_id: 'orgx_attach',
@@ -833,6 +834,8 @@ describe('mcpTransport', () => {
         response_measurement_point: 'worker_response_clone',
         journey_phase: 'complete',
       });
+      expect(posthogPayload.batch[0]?.properties).not.toHaveProperty('conversation_id');
+      expect(posthogPayload.batch[0]?.properties).not.toHaveProperty('step_id');
       expect(posthogPayload.batch[0]?.properties).not.toHaveProperty(
         'response_size_header_bytes'
       );

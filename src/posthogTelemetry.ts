@@ -1,10 +1,15 @@
+import { sanitizeWorkerTelemetryProperties } from './workerTelemetryPrivacy';
+
 export type PosthogTelemetryEnv = {
   POSTHOG_KEY?: string;
   POSTHOG_HOST?: string;
   MCP_SERVER_URL?: string;
+  SENTRY_RELEASE?: string;
+  CF_VERSION_METADATA?: { id?: string };
 };
 
-const TELEMETRY_SCHEMA_VERSION = '2026-07-20';
+const TELEMETRY_SCHEMA_VERSION = '2026-09-30';
+const CAPTURE_TIMEOUT_MS = 2000;
 
 type WaitUntilLike = {
   waitUntil?: (promise: Promise<unknown>) => unknown;
@@ -38,7 +43,7 @@ export function captureWorkerPosthogEvent(params: {
 
     const sentAt = new Date().toISOString();
     const eventProperties: Record<string, unknown> = {
-      ...(params.properties ?? {}),
+      ...sanitizeWorkerTelemetryProperties(params.properties),
       $lib: 'orgx-mcp',
       telemetry_schema_version: TELEMETRY_SCHEMA_VERSION,
       surface: 'mcp',
@@ -47,6 +52,20 @@ export function captureWorkerPosthogEvent(params: {
         ? 'preview'
         : 'production',
     };
+
+    const release = params.env.SENTRY_RELEASE;
+    const workerVersion = params.env.CF_VERSION_METADATA?.id;
+    if (release && /^[0-9a-f]{7,40}$/i.test(release)) {
+      eventProperties.release = release;
+      eventProperties.release_source = 'sentry_release';
+    } else if (workerVersion && /^[0-9a-f-]{36}$/i.test(workerVersion)) {
+      eventProperties.release = workerVersion;
+      eventProperties.release_source = 'cloudflare_version';
+    } else {
+      eventProperties.release_source = 'unknown';
+    }
+    const eventId = crypto.randomUUID();
+    eventProperties.event_id = eventId;
 
     if (params.serverVersion) {
       eventProperties.$lib_version = params.serverVersion;
@@ -58,6 +77,7 @@ export function captureWorkerPosthogEvent(params: {
       batch: [
         {
           type: 'capture',
+          uuid: eventId,
           event: params.event,
           distinct_id: params.distinctId,
           properties: eventProperties,
@@ -67,10 +87,13 @@ export function captureWorkerPosthogEvent(params: {
       sent_at: sentAt,
     };
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), CAPTURE_TIMEOUT_MS);
     const request = fetch(`${host}/batch/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
+      signal: controller.signal,
     })
       .then((response) => {
         if (!response.ok) {
@@ -80,7 +103,10 @@ export function captureWorkerPosthogEvent(params: {
           });
         }
       })
-      .catch(() => undefined);
+      .catch(() => {
+        console.warn('[telemetry] PostHog capture unavailable', { event: params.event });
+      })
+      .finally(() => clearTimeout(timeout));
 
     params.ctx?.waitUntil?.(request);
   } catch {

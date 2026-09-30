@@ -109,6 +109,8 @@ const DEPRECATED_TOOL_ROUTES: Record<string, DeprecatedToolRoute> = {
   },
 };
 
+export const DEPRECATED_TOOL_IDS = Object.freeze(Object.keys(DEPRECATED_TOOL_ROUTES));
+
 export function resolveDeprecatedToolCall(
   toolId: string,
   args: ToolArgs = {}
