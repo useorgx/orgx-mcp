@@ -6,6 +6,24 @@ import {
 } from '../src/toolGuidance';
 
 describe('tool result guidance', () => {
+  it('preserves scored next actions while sanitizing their nested call breadcrumbs', () => {
+    const recommendation = { key: 'task:42', label: 'Review the release', ready: false,
+      initiativeId: 'initiative-1', nextTaskId: 'task-42', score: 13.5,
+      suggested_next_calls: [{ tool: 'orgx_inspect', args: { type: 'task', id: 'task-42' } }] };
+    const result = sanitizeToolResultGuidance({ structuredContent: {
+      recommendations: [recommendation], next_action: recommendation,
+      next_call: { label: 'Malformed continuation without a tool' },
+    } }, new Set(['orgx_inspect']));
+    expect(result.structuredContent.next_action).toEqual(recommendation);
+    expect(result.structuredContent.next_action).toEqual(result.structuredContent.recommendations[0]);
+    expect(result.structuredContent.next_call).toBeNull();
+    expect(sanitizeToolResultGuidance({ structuredContent: { next_action: {
+      ...recommendation, suggested_next_calls: [{ tool: 'orgx_spawn', args: { title: 'Hidden action' } }],
+    } } }, new Set(['orgx_inspect'])).structuredContent.next_action).toEqual({
+      ...recommendation, suggested_next_calls: [],
+    });
+  });
+
   it('rewrites legacy list breadcrumbs to the visible canonical search contract', () => {
     expect(
       canonicalizeToolCallGuidance(
