@@ -1233,6 +1233,7 @@
     function normalizeBrief(payload) {
       if (!payload || typeof payload !== 'object') return null;
 
+      const isPartial = payload.degraded === true || asArray(payload.degraded).length > 0;
       const sessionSummary = asObject(payload.session_summary);
       const valueDashboard = asObject(payload.value_dashboard);
       const workspacePulse = asObject(payload.workspace_pulse);
@@ -1410,18 +1411,18 @@
         dateLabel: formatDayLabel(payload.generated_at || payload.created_at || workspacePulse.generatedAt),
         timeLabel: formatTimeLabel(payload.generated_at || payload.created_at || workspacePulse.generatedAt),
         summary,
-        heroMetric: buildHeroMetric(roiDisplay, valueDelivered),
-        heroSupportLine: valueDelivered
+        heroMetric: isPartial ? { label: 'Partial report', valueText: '—', suffix: '', numeric: null } : buildHeroMetric(roiDisplay, valueDelivered),
+        heroSupportLine: isPartial ? 'Source data is refreshing' : valueDelivered
           ? `${formatCurrency(valueDelivered)} value delivered`
           : 'Value signals updated',
-        heroSupportMeta: timeSaved
+        heroSupportMeta: isPartial ? 'Available results shown below' : timeSaved
           ? `${timeSaved.toFixed(timeSaved >= 10 ? 0 : 1)} hours saved modeled`
           : decisionsResolved > 0
             ? `${pluralize(decisionsResolved, 'decision')} resolved in 30d`
-            : '30d economic proof ready',
-        heroPills: [
-          `${pluralize(outputRows.length, 'output')} delivered`,
-          `${pluralize(decisionsResolved || pendingDecisions, 'decision')} made`,
+            : 'No attributable value reported',
+        heroPills: isPartial ? ['Partial report'] : [
+          `${pluralize(outputRows.length, 'output')} shown`,
+          `${pluralize(decisionsResolved, 'decision')} resolved`,
           activeInitiatives > 0
             ? `${pluralize(activeInitiatives, 'active initiative')}`
             : completedThisWeek > 0
@@ -1446,16 +1447,16 @@
           attention: attentionSignals.length,
         },
         metricDisplays: {
-          priorities: String(priorities.length || 0),
-          output: String(outputRows.length || 0),
+          priorities: isPartial && !priorities.length ? '—' : String(priorities.length || 0),
+          output: isPartial && !outputRows.length ? '—' : String(outputRows.length || 0),
           receipts: topReceipts.length
             ? formatCompactCurrency(
                 topReceipts.reduce((total, receipt) => {
                   return total + (asNumber(receipt.attributed_value_usd) || 0);
                 }, 0)
               )
-            : '0',
-          attention: String(attentionSignals.length || 0),
+            : isPartial ? '—' : '0',
+          attention: isPartial && !attentionSignals.length ? '—' : String(attentionSignals.length || 0),
         },
       };
     }
