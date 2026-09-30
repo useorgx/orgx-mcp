@@ -426,6 +426,7 @@ import {
 import { describeInputShape } from './schemaIntrospection';
 import {
   PLAN_SESSION_ACCEPTED_ID_FORMS,
+  buildPlanSessionInspectionResult,
   buildPlanSessionStructuredResult,
   enrichPlanSessionResult,
   normalizePlanSessionId,
@@ -5254,12 +5255,19 @@ export class OrgXMcp extends McpAgent<
 
         case 'orgx_inspect': {
           if (args.type === 'plan_session') {
-            return this.executeContractTool(
+            const result = await this.executeContractTool(
               'resume_plan_session',
               { session_id: args.id },
               SECURITY_SCHEMES.entityReadRequiresAuth,
               allowedTools
             );
+            if (result.isError || !result.structuredContent) return result;
+            return {
+              ...result,
+              structuredContent: buildPlanSessionInspectionResult(
+                result.structuredContent as Record<string, unknown>
+              ),
+            };
           }
 
           const [entity, context_pack, outputs] = await Promise.all([

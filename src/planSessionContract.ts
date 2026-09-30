@@ -1,3 +1,5 @@
+import { planSessionSchema } from './openaiOutputSchemas/shared';
+
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -107,8 +109,34 @@ export function enrichPlanSessionResult(
     case 'start_plan_session':
     case 'improve_plan':
     case 'record_plan_edit':
-    case 'complete_plan':
       return enrichPlanSessionRecord(data);
+
+    case 'complete_plan': {
+      const attachments = data.context_attachments;
+      if (!attachments || typeof attachments !== 'object' || Array.isArray(attachments)) {
+        return enrichPlanSessionRecord(data);
+      }
+      const summary = attachments as Record<string, unknown>;
+      // The API also returns requested and API-owned error records. Older
+      // advertised MCP contracts close this nested object. Project its
+      // receipt without changing the persisted completion or replaying it.
+      const errors = Array.isArray(summary.errors) ? summary.errors.map((error) => {
+        if (typeof error === 'string') return error;
+        if (!error || typeof error !== 'object' || Array.isArray(error)) return 'Attachment failed';
+        const record = error as Record<string, unknown>;
+        return [record.entity_type, record.entity_id, record.error]
+          .filter((value): value is string => typeof value === 'string')
+          .join(': ') || 'Attachment failed';
+      }) : undefined;
+      return enrichPlanSessionRecord({
+        ...data,
+        context_attachments: {
+          ...(summary.attached_count !== undefined ? { attached_count: summary.attached_count } : {}),
+          ...(summary.skipped_count !== undefined ? { skipped_count: summary.skipped_count } : {}),
+          ...(errors ? { errors } : {}),
+        },
+      });
+    }
 
     case 'get_active_sessions': {
       const sessions = Array.isArray(data.sessions)
@@ -130,6 +158,22 @@ export function enrichPlanSessionResult(
     default:
       return data;
   }
+}
+
+export function buildPlanSessionInspectionResult(
+  data: Record<string, unknown>
+): Record<string, unknown> {
+  const ref = buildCanonicalPlanSessionRef(data);
+  if (!ref) return data;
+  const plan = planSessionSchema.parse(enrichPlanSessionRecord(data));
+  return {
+    _v2_tool: 'orgx_inspect',
+    type: 'plan_session',
+    ...ref,
+    status: plan.status,
+    ...(typeof plan.current_plan === 'string' ? { current_plan: plan.current_plan } : {}),
+    plan_session: plan,
+  };
 }
 
 export function buildPlanSessionStructuredResult(
