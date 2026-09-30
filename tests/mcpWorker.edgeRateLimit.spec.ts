@@ -110,15 +110,10 @@ describe('edge rate limiting', () => {
     vi.setSystemTime(baseMs);
 
     const fetchMock = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
-      const commands = JSON.parse(String(init?.body));
-      expect(commands.some((command: string[]) => command[0] === 'ZADD')).toBe(
-        false
-      );
-      return Response.json([
-        { result: 0 },
-        { result: 100 },
-        { result: [`${baseMs}-first`, String(baseMs)] },
-      ]);
+      const command = JSON.parse(String(init?.body));
+      expect(command[0]).toBe('EVAL');
+      expect(command[2]).toBe(1);
+      return Response.json({ result: [0, 100, baseMs] });
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -282,5 +277,62 @@ describe('edge rate limiting', () => {
       },
     });
     expect(payload.upgrade_cta.url).toContain('/pricing');
+  });
+
+  it('keeps distinct bearer tokens with the same legacy short hash in separate buckets', async () => {
+    const env = { ORGX_API_URL: 'https://example.com', ORGX_SERVICE_KEY: 'oxk-test' };
+    const request = (token: string) => new Request('https://example.com/mcp', {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    // Aa and B@ collide under the former djb2 hash.
+    for (let i = 0; i < 100; i++) await checkEdgeRateLimit(request('Aa'), env);
+    expect((await checkEdgeRateLimit(request('Aa'), env)).allowed).toBe(false);
+    expect((await checkEdgeRateLimit(request('B@'), env)).allowed).toBe(true);
+  });
+
+  it.each([
+    {}, { error: 'ERR script failed' }, { result: [1] },
+    { result: [1, -1, 1] }, { result: [1, 101, 1] },
+    { result: [0, 0, 1] }, { result: [1, '1', 1] },
+  ])('marks malformed Redis responses as degraded fallback: %j', async (body) => {
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json(body)));
+    const decision = await checkEdgeRateLimit(new Request('https://example.com/mcp'), {
+      ORGX_API_URL: 'https://example.com', ORGX_SERVICE_KEY: 'oxk-test',
+      UPSTASH_REDIS_REST_URL: 'https://redis.example.com', UPSTASH_REDIS_REST_TOKEN: 'test',
+    });
+    expect(decision.source).toBe('memory');
+    expect(decision.headers['X-RateLimit-Degraded']).toBe('upstash_unavailable');
+  });
+
+  it('bounds Redis response-body waits as well as the initial fetch', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('fetch', vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => ({
+      ok: true,
+      json: () => new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+      }),
+    })));
+    const pending = checkEdgeRateLimit(new Request('https://example.com/mcp'), {
+      ORGX_API_URL: 'https://example.com', ORGX_SERVICE_KEY: 'oxk-test',
+      UPSTASH_REDIS_REST_URL: 'https://redis.example.com', UPSTASH_REDIS_REST_TOKEN: 'test',
+    });
+    await vi.advanceTimersByTimeAsync(750);
+    expect((await pending).headers['X-RateLimit-Degraded']).toBe('upstash_unavailable');
+  });
+
+  it('bounds fallback cardinality without replenishing active callers and recovers after expiry', async () => {
+    vi.useFakeTimers();
+    const start = Date.parse('2026-09-30T00:00:00Z');
+    vi.setSystemTime(start);
+    const env = { ORGX_API_URL: 'https://example.com', ORGX_SERVICE_KEY: 'oxk-test' };
+    const request = (i: number) => new Request('https://example.com/mcp', {
+      headers: { 'cf-connecting-ip': `test-ip-${i}` },
+    });
+    for (let i = 0; i < 2048; i++) expect((await checkEdgeRateLimit(request(i), env)).allowed).toBe(true);
+    expect((await checkEdgeRateLimit(request(2048), env)).allowed).toBe(false);
+    for (let i = 0; i < 99; i++) expect((await checkEdgeRateLimit(request(0), env)).allowed).toBe(true);
+    expect((await checkEdgeRateLimit(request(0), env)).allowed).toBe(false);
+    vi.setSystemTime(start + 3600_000);
+    expect((await checkEdgeRateLimit(request(2048), env)).allowed).toBe(true);
   });
 });
