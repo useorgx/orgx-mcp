@@ -136,14 +136,23 @@ export function buildEntityCard(params: {
       : 0;
     const blockers = list(pack.blockers).length || list(frame.blockers).length;
     const rows: ProofRow[] = [];
+    const evaluation = record(record(entity.verification)?.eval);
+    const evaluationStatus = text(evaluation?.status)?.toLowerCase();
+    const failedEvaluation = evaluationStatus === 'failed' || evaluationStatus === 'rejected' ||
+      (typeof evaluation?.score === 'number' && typeof evaluation?.threshold === 'number' && evaluation.score < evaluation.threshold);
     if (decisions) rows.push({ label: 'Decisions', value: String(decisions), kind: 'decision' });
     if (artifacts) rows.push({ label: 'Artifacts', value: String(artifacts), kind: 'artifact' });
     if (checks) rows.push({ label: 'Checks', value: String(checks), kind: 'check' });
     if (blockers) rows.push({ label: 'Open blockers', value: String(blockers), kind: 'neutral' });
+    if (evaluationStatus || failedEvaluation) rows.push({
+      label: 'Evaluation',
+      value: failedEvaluation ? 'Failed' : evaluationStatus!,
+      kind: 'check',
+    });
     if (rows.length > 0) {
       proof = {
         // Open blockers keep work out of "accepted" whatever its status says.
-        verdict: blockers && proofVerdictForStatus(status) === 'accepted'
+        verdict: failedEvaluation || (blockers && proofVerdictForStatus(status) === 'accepted')
           ? 'needs-you'
           : proofVerdictForStatus(status),
         rows,

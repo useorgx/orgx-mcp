@@ -494,3 +494,18 @@
     scroll-behavior: auto !important;
   }
 }
+/* Shared tool failures replace misleading empty/loading states in every host. */
+.widget-tool-error {
+  box-sizing: border-box;
+  max-width: 720px;
+  margin: 24px auto;
+  padding: 20px 24px;
+  border-left: 3px solid var(--ox-danger, #be123c);
+  background: var(--ox-panel, #fff);
+  color: var(--ox-text, #0f172a);
+  font: 14px/1.6 system-ui, sans-serif;
+  overflow-wrap: anywhere;
+}
+.widget-tool-error strong { font-size: 16px; }
+.widget-tool-error p { margin: 8px 0 0; }
+[data-orgx-error-hidden] { display: none !important; }

@@ -50,6 +50,16 @@ export function readFlywheelSummary(chronicle: Record<string, unknown>): string[
     : [];
 }
 
+/** The HTTP route publishes two compatibility aliases; MCP needs one snapshot. */
+export function normalizeOperatorChronicleEnvelope(result: Record<string, unknown>): Record<string, unknown> {
+  const nested = readRecord(result.data);
+  const chronicle = readRecord(result.chronicle);
+  if (!Object.keys(chronicle).length || JSON.stringify(chronicle) !== JSON.stringify(nested.chronicle)) return result;
+  const { chronicle: _duplicate, ...remaining } = nested;
+  const { data: _data, ...envelope } = result;
+  return Object.keys(remaining).length ? { ...envelope, data: remaining } : envelope;
+}
+
 export function formatOperatorChronicleBrief(data: Record<string, unknown>) {
   const explicitChronicle = readRecord(data.chronicle);
   const dataChronicle = readRecord(readRecord(data.data).chronicle);

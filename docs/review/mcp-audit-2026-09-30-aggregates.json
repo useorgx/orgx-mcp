@@ -1,0 +1,425 @@
+{
+  "window": {
+    "start": "2026-09-16T05:00:00Z",
+    "end": "2026-09-30T15:30:00Z"
+  },
+  "source": "agent_tool_invocations / mcp_worker",
+  "rows": [
+    {
+      "tool_id": "orgx_bootstrap",
+      "status": "error",
+      "error_kind": "authentication_required",
+      "calls": 18,
+      "avg_latency_ms": "406",
+      "max_latency_ms": 524
+    },
+    {
+      "tool_id": "orgx_inspect",
+      "status": "error",
+      "error_kind": "entity_not_found",
+      "calls": 11,
+      "avg_latency_ms": "748",
+      "max_latency_ms": 1689
+    },
+    {
+      "tool_id": "orgx_bootstrap",
+      "status": "error",
+      "error_kind": "-32000",
+      "calls": 8,
+      "avg_latency_ms": "23",
+      "max_latency_ms": 61
+    },
+    {
+      "tool_id": "orgx_inspect",
+      "status": "error",
+      "error_kind": "mcp_tool_error",
+      "calls": 7,
+      "avg_latency_ms": "901",
+      "max_latency_ms": 1665
+    },
+    {
+      "tool_id": "spawn_agent_task",
+      "status": "error",
+      "error_kind": "mcp_tool_error",
+      "calls": 6,
+      "avg_latency_ms": "11837",
+      "max_latency_ms": 23005
+    },
+    {
+      "tool_id": "orgx_search",
+      "status": "error",
+      "error_kind": "authentication_required",
+      "calls": 5,
+      "avg_latency_ms": "388",
+      "max_latency_ms": 627
+    },
+    {
+      "tool_id": "orgx_recommend",
+      "status": "error",
+      "error_kind": "mcp_tool_error",
+      "calls": 5,
+      "avg_latency_ms": "30055",
+      "max_latency_ms": 30208
+    },
+    {
+      "tool_id": "get_morning_brief",
+      "status": "error",
+      "error_kind": "mcp_tool_error",
+      "calls": 5,
+      "avg_latency_ms": "3962",
+      "max_latency_ms": 5451
+    },
+    {
+      "tool_id": "orgx_search",
+      "status": "error",
+      "error_kind": "mcp_tool_error",
+      "calls": 4,
+      "avg_latency_ms": "38",
+      "max_latency_ms": 52
+    },
+    {
+      "tool_id": "orgx_inspect",
+      "status": "error",
+      "error_kind": "-32000",
+      "calls": 3,
+      "avg_latency_ms": "22",
+      "max_latency_ms": 52
+    },
+    {
+      "tool_id": "get_initiative_pulse",
+      "status": "error",
+      "error_kind": "authentication_required",
+      "calls": 3,
+      "avg_latency_ms": "196",
+      "max_latency_ms": 296
+    },
+    {
+      "tool_id": "get_operator_chronicle",
+      "status": "error",
+      "error_kind": "authentication_required",
+      "calls": 3,
+      "avg_latency_ms": "230",
+      "max_latency_ms": 633
+    },
+    {
+      "tool_id": "get_agent_status",
+      "status": "error",
+      "error_kind": "authentication_required",
+      "calls": 2,
+      "avg_latency_ms": "336",
+      "max_latency_ms": 645
+    },
+    {
+      "tool_id": "orgx_plan",
+      "status": "error",
+      "error_kind": "mcp_tool_error",
+      "calls": 2,
+      "avg_latency_ms": "1483",
+      "max_latency_ms": 1607
+    },
+    {
+      "tool_id": "query_org_memory",
+      "status": "error",
+      "error_kind": "authentication_required",
+      "calls": 2,
+      "avg_latency_ms": "138",
+      "max_latency_ms": 194
+    },
+    {
+      "tool_id": "handoff_task",
+      "status": "error",
+      "error_kind": "mcp_tool_error",
+      "calls": 2,
+      "avg_latency_ms": "1919",
+      "max_latency_ms": 2165
+    },
+    {
+      "tool_id": "recommend_next_action",
+      "status": "error",
+      "error_kind": "mcp_tool_error",
+      "calls": 1,
+      "avg_latency_ms": "30018",
+      "max_latency_ms": 30018
+    },
+    {
+      "tool_id": "orgx_controller_status",
+      "status": "error",
+      "error_kind": "mcp_tool_error",
+      "calls": 1,
+      "avg_latency_ms": "44",
+      "max_latency_ms": 44
+    },
+    {
+      "tool_id": "recall_memory",
+      "status": "error",
+      "error_kind": "authentication_required",
+      "calls": 1,
+      "avg_latency_ms": "197",
+      "max_latency_ms": 197
+    },
+    {
+      "tool_id": "get_initiative_pulse",
+      "status": "error",
+      "error_kind": "mcp_tool_error",
+      "calls": 1,
+      "avg_latency_ms": "3855",
+      "max_latency_ms": 3855
+    },
+    {
+      "tool_id": "orgx_poll_question",
+      "status": "error",
+      "error_kind": "mcp_tool_error",
+      "calls": 1,
+      "avg_latency_ms": "24",
+      "max_latency_ms": 24
+    },
+    {
+      "tool_id": "check_execution_readiness",
+      "status": "error",
+      "error_kind": "authentication_required",
+      "calls": 1,
+      "avg_latency_ms": "46",
+      "max_latency_ms": 46
+    },
+    {
+      "tool_id": "query_org_memory",
+      "status": "error",
+      "error_kind": "mcp_tool_error",
+      "calls": 1,
+      "avg_latency_ms": "23",
+      "max_latency_ms": 23
+    },
+    {
+      "tool_id": "query_org_memory",
+      "status": "error",
+      "error_kind": "-32000",
+      "calls": 1,
+      "avg_latency_ms": "37",
+      "max_latency_ms": 37
+    },
+    {
+      "tool_id": "approve_decision",
+      "status": "error",
+      "error_kind": "mcp_tool_error",
+      "calls": 1,
+      "avg_latency_ms": "1919",
+      "max_latency_ms": 1919
+    },
+    {
+      "tool_id": "orgx_poll_attention",
+      "status": "error",
+      "error_kind": "mcp_tool_error",
+      "calls": 1,
+      "avg_latency_ms": "49",
+      "max_latency_ms": 49
+    },
+    {
+      "tool_id": "orgx_search",
+      "status": "error",
+      "error_kind": "invalid_input",
+      "calls": 1,
+      "avg_latency_ms": "38",
+      "max_latency_ms": 38
+    },
+    {
+      "tool_id": "recommend_next_action",
+      "status": "error",
+      "error_kind": "authentication_required",
+      "calls": 1,
+      "avg_latency_ms": "54",
+      "max_latency_ms": 54
+    },
+    {
+      "tool_id": "recall_memory",
+      "status": "error",
+      "error_kind": "mcp_tool_error",
+      "calls": 1,
+      "avg_latency_ms": "56",
+      "max_latency_ms": 56
+    },
+    {
+      "tool_id": "orgx_decide",
+      "status": "error",
+      "error_kind": "direct_human_decision_action_required",
+      "calls": 1,
+      "avg_latency_ms": "109",
+      "max_latency_ms": 109
+    },
+    {
+      "tool_id": "review_artifact",
+      "status": "error",
+      "error_kind": "authentication_required",
+      "calls": 1,
+      "avg_latency_ms": "621",
+      "max_latency_ms": 621
+    },
+    {
+      "tool_id": "track_project_progress",
+      "status": "error",
+      "error_kind": "authentication_required",
+      "calls": 1,
+      "avg_latency_ms": "200",
+      "max_latency_ms": 200
+    },
+    {
+      "tool_id": "orgx_tail",
+      "status": "error",
+      "error_kind": "mcp_tool_error",
+      "calls": 1,
+      "avg_latency_ms": "21",
+      "max_latency_ms": 21
+    },
+    {
+      "tool_id": "orgx_inspect",
+      "status": "success",
+      "error_kind": "none",
+      "calls": 386,
+      "avg_latency_ms": "1365",
+      "max_latency_ms": 4812
+    },
+    {
+      "tool_id": "orgx_search",
+      "status": "success",
+      "error_kind": "none",
+      "calls": 177,
+      "avg_latency_ms": "1931",
+      "max_latency_ms": 16186
+    },
+    {
+      "tool_id": "orgx_bootstrap",
+      "status": "success",
+      "error_kind": "none",
+      "calls": 87,
+      "avg_latency_ms": "2065",
+      "max_latency_ms": 4336
+    },
+    {
+      "tool_id": "get_agent_status",
+      "status": "success",
+      "error_kind": "none",
+      "calls": 58,
+      "avg_latency_ms": "3804",
+      "max_latency_ms": 13844
+    },
+    {
+      "tool_id": "get_initiative_pulse",
+      "status": "success",
+      "error_kind": "none",
+      "calls": 49,
+      "avg_latency_ms": "3997",
+      "max_latency_ms": 12858
+    },
+    {
+      "tool_id": "orgx_plan",
+      "status": "success",
+      "error_kind": "none",
+      "calls": 23,
+      "avg_latency_ms": "1651",
+      "max_latency_ms": 6561
+    },
+    {
+      "tool_id": "query_org_memory",
+      "status": "success",
+      "error_kind": "none",
+      "calls": 19,
+      "avg_latency_ms": "5725",
+      "max_latency_ms": 14951
+    },
+    {
+      "tool_id": "spawn_agent_task",
+      "status": "success",
+      "error_kind": "none",
+      "calls": 19,
+      "avg_latency_ms": "16184",
+      "max_latency_ms": 18391
+    },
+    {
+      "tool_id": "session_summary",
+      "status": "success",
+      "error_kind": "none",
+      "calls": 19,
+      "avg_latency_ms": "0",
+      "max_latency_ms": 0
+    },
+    {
+      "tool_id": "orgx_recommend",
+      "status": "success",
+      "error_kind": "none",
+      "calls": 9,
+      "avg_latency_ms": "3691",
+      "max_latency_ms": 11690
+    },
+    {
+      "tool_id": "review_artifact",
+      "status": "success",
+      "error_kind": "none",
+      "calls": 6,
+      "avg_latency_ms": "1234",
+      "max_latency_ms": 1586
+    },
+    {
+      "tool_id": "scaffold_initiative",
+      "status": "success",
+      "error_kind": "none",
+      "calls": 4,
+      "avg_latency_ms": "13285",
+      "max_latency_ms": 41632
+    },
+    {
+      "tool_id": "recall_memory",
+      "status": "success",
+      "error_kind": "none",
+      "calls": 3,
+      "avg_latency_ms": "2657",
+      "max_latency_ms": 3213
+    },
+    {
+      "tool_id": "recommend_next_action",
+      "status": "success",
+      "error_kind": "none",
+      "calls": 2,
+      "avg_latency_ms": "10144",
+      "max_latency_ms": 12380
+    },
+    {
+      "tool_id": "orgx_decide",
+      "status": "success",
+      "error_kind": "none",
+      "calls": 2,
+      "avg_latency_ms": "1109",
+      "max_latency_ms": 1349
+    },
+    {
+      "tool_id": "get_morning_brief",
+      "status": "success",
+      "error_kind": "none",
+      "calls": 2,
+      "avg_latency_ms": "4262",
+      "max_latency_ms": 4730
+    },
+    {
+      "tool_id": "track_project_progress",
+      "status": "success",
+      "error_kind": "none",
+      "calls": 1,
+      "avg_latency_ms": "2500",
+      "max_latency_ms": 2500
+    },
+    {
+      "tool_id": "approve_agent_work",
+      "status": "success",
+      "error_kind": "none",
+      "calls": 1,
+      "avg_latency_ms": "1170",
+      "max_latency_ms": 1170
+    },
+    {
+      "tool_id": "handoff_task",
+      "status": "success",
+      "error_kind": "none",
+      "calls": 1,
+      "avg_latency_ms": "4360",
+      "max_latency_ms": 4360
+    }
+  ]
+}

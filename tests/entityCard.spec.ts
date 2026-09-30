@@ -7,6 +7,15 @@ import {
 } from '../src/entityCard';
 
 describe('entity card for orgx_inspect', () => {
+  it.each(['in_review', 'approved'])('surfaces a failed evaluation even when artifact status is %s', (status) => {
+    const card = buildEntityCard({ type: 'artifact', id: 'a-1', entity: {
+      title: 'Release proof', status, verification: { eval: { status: 'failed', score: 0.2, threshold: 0.8 } },
+    }});
+    expect(card.proof).toMatchObject({ verdict: 'needs-you', rows: expect.arrayContaining([
+      { label: 'Evaluation', value: 'Failed', kind: 'check' },
+    ]) });
+  });
+
   it('links each entity to its web page, and nothing where no page exists', () => {
     expect(entityWebUrl('initiative', 'i-1')).toBe(
       'https://useorgx.com/initiatives/i-1'
