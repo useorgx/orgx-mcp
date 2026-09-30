@@ -19,7 +19,7 @@ describe('production output drift regressions', () => {
 
   it.each([
     ['get_initiative_pulse', { live }],
-    ['get_morning_brief', { generated_at: '2026-09-30T15:00:00Z', data_gaps: ['Session not found'], session_summary: null, brief_markdown: null }],
+    ['get_morning_brief', { generated_at: '2026-09-30T15:00:00Z', degraded: ['Session not found'], data_gaps: ['Session not found'], session_summary: null, brief_markdown: null }],
   ] as const)('returns %s through the strict SDK without -32602', async (name, payload) => {
     const schema = getToolOutputSchema(name)!;
     const server = new McpServer({ name: 'production-contract', version: '1' });

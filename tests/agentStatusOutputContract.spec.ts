@@ -34,6 +34,21 @@ function task(id: string, status: string) {
 }
 
 describe('agent status output after durable enrichment', () => {
+  it('bounds previews independently of full task metadata without dropping task identities', () => {
+    const rows = Array.from({ length: 100 }, (_, index) => ({
+      ...task(`task-${index}`, 'in_progress'), description: 'Long assignment '.repeat(2000),
+      metadata: { arbitrary_context: 'x'.repeat(100_000) },
+    }));
+    const projected = projectAgentStatusTasks({ active_tasks: rows });
+    const tasks = projected.active_tasks as Record<string, unknown>[];
+    expect(tasks).toHaveLength(100);
+    expect(JSON.stringify(projected).length).toBeLessThan(100_000);
+    for (const row of tasks) {
+      expect(row.metadata).toBeUndefined();
+      expect(row.description_truncated).toBe(true);
+      expect(row.inspect_call).toEqual({ tool: 'orgx_inspect', args: { type: 'task', id: row.task_id } });
+    }
+  });
   it('returns one current row when app and entity evidence share an identity', () => {
     const current = { ...task('same', 'in_progress'), updated_at: '2026-09-06T10:00:00Z', blocker: 'Owner review' };
     const older = { ...task('same', 'in_progress'), task_id: 'same', updated_at: '2026-09-06T09:00:00Z' };
