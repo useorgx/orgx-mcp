@@ -283,8 +283,8 @@
     },
     "workspace-map": {
       "file": "public/widgets/workspace-map.html",
-      "bytes": 10435,
-      "hash": "d884d53b724d",
+      "bytes": 10309,
+      "hash": "7d96d50a3add",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/interaction-kit.css",
