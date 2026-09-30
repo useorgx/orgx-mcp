@@ -17,8 +17,8 @@
     /*
      * Workspace map — the orgx_bootstrap result as one card: which workspace
      * this session is bound to, what it may do, and every OrgX surface with
-     * the tools that read or change it. The same map the web app's sidebar
-     * draws, so a person and an agent point at the same places.
+     * what this session can do to it. The same map the web app's sidebar draws,
+     * so a person and an agent point at the same places.
      */
     :root {
       --ox-primary-rgb: 191, 255, 0;
@@ -119,42 +119,14 @@
     }
 
     .wm-tools {
-      display: grid;
-      gap: 4px;
       font-size: 11px;
-    }
-
-    .wm-tools code {
-      font-family: var(--ox-mono);
-      font-size: 11px;
-      color: var(--ox-text);
-    }
-
-    .wm-tools span {
+      line-height: 1.5;
       color: var(--ox-text-muted);
     }
 
     .wm-open {
       font-size: 12px;
       white-space: nowrap;
-    }
-
-    .wm-first {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      align-items: center;
-      font-size: 12px;
-      color: var(--ox-text-muted);
-    }
-
-    .wm-first code {
-      padding: 3px 7px;
-      border-radius: 6px;
-      background: var(--ox-well-bg, rgba(127, 127, 127, 0.1));
-      font-family: var(--ox-mono);
-      font-size: 11px;
-      color: var(--ox-text);
     }
 
     .wm-empty {
@@ -213,11 +185,25 @@
     var state = params.get('state') || (params.get('demo') === 'true' ? 'populated' : null);
     var data = state === 'populated' ? DEMO : state === 'empty' ? { surfaces: [] } : null;
 
-    var toolList = function (label, tools) {
-      if (!tools.length) return '';
-      return '<div><span>' + label + ' </span>' +
-        tools.map(function (tool) { return '<code>' + escapeHtml(tool) + '</code>'; }).join(' ') +
-        '</div>';
+    /*
+     * What the card says about a surface.
+     *
+     * The payload names the tools that read and change each surface because the
+     * agent needs them to route. A person reading this card does not: listing
+     * `orgx_recommend orgx_tail` under "Read" put the agent's routing table in
+     * front of the human at session start. The tool ids stay in
+     * structuredContent, where the model reads them; the card says what this
+     * session can actually do with the surface.
+     */
+    var capabilityLine = function (read, control) {
+      // Most surfaces are both readable and changeable, so saying so on every
+      // card is a line the eye learns to skip. What a person needs to see is
+      // where this session is *limited* — that is the thing that will surprise
+      // them when a tool refuses. So the full-access case says nothing.
+      if (read.length && control.length) return '';
+      if (read.length) return 'Read-only in this session.';
+      if (control.length) return 'Changed from here; read it in OrgX.';
+      return 'Open it in OrgX; this session does not touch it.';
     };
 
     var render = function (payload) {
@@ -228,7 +214,7 @@
       var surfaces = asArray(payload && payload.surfaces);
       if (!surfaces.length) {
         content.innerHTML =
-          '<div class="wm-empty">This session has no OrgX surfaces yet. Call orgx_bootstrap again after signing in to a workspace.</div>';
+          '<div class="wm-empty">No workspace is bound yet, so there is nothing to map. Sign in to an OrgX workspace and the surfaces appear here.</div>';
         return;
       }
       var workspace = payload.workspace && typeof payload.workspace === 'object' ? payload.workspace : null;
@@ -236,14 +222,12 @@
         ? payload.visible_tools_count
         : asArray(payload.visible_tools).length;
       var scopes = asArray(payload.granted_scopes);
-      var first = asArray(payload.safe_first_calls)
-        .map(function (call) { return call && call.tool; })
-        .filter(Boolean);
 
       var cards = surfaces.map(function (surface) {
         var read = asArray(surface.read);
         var control = asArray(surface.control);
         var idle = !read.length && !control.length;
+        var limit = capabilityLine(read, control);
         var url = typeof surface.url === 'string' ? surface.url : '';
         return '<li class="wm-surface" data-idle="' + (idle ? 'true' : 'false') + '">' +
           '<div class="wm-surface__top"><h2>' + escapeHtml(surface.name) + '</h2>' +
@@ -252,11 +236,8 @@
             : '') +
           '</div>' +
           '<p>' + escapeHtml(surface.purpose) + '</p>' +
-          '<div class="wm-tools">' +
-          (idle
-            ? '<div><span>Open in OrgX; no tool in this session changes it.</span></div>'
-            : toolList('Read', read) + toolList('Change', control)) +
-          '</div></li>';
+          (limit ? '<div class="wm-tools">' + escapeHtml(limit) + '</div>' : '') +
+          '</li>';
       }).join('');
 
       content.innerHTML =
@@ -270,11 +251,6 @@
         (payload.profile ? '<span class="wm-chip">profile <b>' + escapeHtml(payload.profile) + '</b></span>' : '') +
         '</div></div>' +
         '<ul class="wm-grid">' + cards + '</ul>' +
-        (first.length
-          ? '<div class="wm-first"><span>Start with</span>' +
-            first.map(function (tool) { return '<code>' + escapeHtml(tool) + '</code>'; }).join('') +
-            '</div>'
-          : '') +
         '</section>';
     };
 
