@@ -1,9 +1,11 @@
 import { CHATGPT_PUBLIC_SURFACE } from '../toolProfiles';
+import { feedBindingForTool } from '../live/streamGrant';
 import { CANONICAL_OUTPUT_SCHEMAS } from './canonical';
 import {
   makeCompactAdvertisedSchema,
   makeErrorCompatibleSchema,
   makePortableJsonAdvertisedSchema,
+  streamGrantSchema,
   type OutputSchema,
   type SourceOutputSchema,
 } from './shared';
@@ -11,6 +13,15 @@ import { OUTPUT_SCHEMA_ALIASES, V2_OUTPUT_SCHEMAS } from './v2';
 import { WIDGET_OUTPUT_SCHEMAS } from './widgets';
 
 type ChatGptPublicTool = (typeof CHATGPT_PUBLIC_SURFACE)[number];
+
+const liveSchemas = new WeakMap<SourceOutputSchema, SourceOutputSchema>();
+function withStreamGrant(schema: SourceOutputSchema): SourceOutputSchema {
+  const cached = liveSchemas.get(schema);
+  if (cached) return cached;
+  const extended = schema.extend({ live: streamGrantSchema.optional() });
+  liveSchemas.set(schema, extended);
+  return extended;
+}
 
 const SCAFFOLD_TYPED_SCALAR_PROPERTIES = new Set([
   'ok',
@@ -65,7 +76,10 @@ const rawOutputSchemas = {
 
 const outputSchemas = Object.fromEntries(
   Object.entries(rawOutputSchemas).map(([name, schema]) => {
-    const errorCompatibleSchema = makeErrorCompatibleSchema(schema);
+    const transportSchema = feedBindingForTool(name)
+      ? withStreamGrant(schema)
+      : schema;
+    const errorCompatibleSchema = makeErrorCompatibleSchema(transportSchema);
     return [
       name,
       name === 'scaffold_initiative'
@@ -109,7 +123,8 @@ export function getToolOutputSchema(
     ? OUTPUT_SCHEMA_ALIASES[toolName]
     : undefined;
   if (aliasTarget) return getOpenAiOutputSchema(aliasTarget);
-  return Object.prototype.hasOwnProperty.call(V2_OUTPUT_SCHEMAS, toolName)
-    ? V2_OUTPUT_SCHEMAS[toolName]
-    : undefined;
+  const schema = Object.prototype.hasOwnProperty.call(V2_OUTPUT_SCHEMAS, toolName)
+    ? V2_OUTPUT_SCHEMAS[toolName] : undefined;
+  return schema && feedBindingForTool(toolName)
+    ? withStreamGrant(schema) : schema;
 }

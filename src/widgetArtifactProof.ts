@@ -755,7 +755,7 @@ export function buildWidgetProofHandoff(options: {
     primary_prompt: basePrompt,
     surface_prompts: SUPPORTED_WIDGET_SURFACES.map((surface) => ({
       surface,
-      prompt: `${basePrompt} Continue in ${surface} using the OrgX tools already configured there.`,
+      prompt: `Follow primary_prompt above. Continue in ${surface} using the OrgX tools already configured there.`,
     })),
     quiet_cta: PROOF_SURFACE_QUIET_CTA,
   };

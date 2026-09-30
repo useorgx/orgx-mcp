@@ -94,6 +94,10 @@
   }
 
   function extractStructuredWidgetData(result, plainTextObject) {
+    if (result && result.isError === true) {
+      var decoded = extractStructuredWidgetData(Object.assign({}, result, { isError: false }), true);
+      return { ok: false, error: getErrorMessage(decoded, 'The tool request failed. Try the request again.') };
+    }
     if (result && result.structuredContent !== undefined) {
       return result.structuredContent;
     }
@@ -116,6 +120,12 @@
       }
     }
     return result;
+  }
+
+  function unpackToolResult(result) {
+    var data = extractStructuredWidgetData(result, true);
+    if (data && data.ok === false) throw new Error(getErrorMessage(data.error || data, 'The tool request failed.'));
+    return data;
   }
 
   // Hosts can replay a previous tool result while a fresh result is still
@@ -289,7 +299,7 @@
 
   LegacyBridge.prototype.callServerTool = function callServerTool(params) {
     return this.request('tools/call', params).then(function normalize(result) {
-      return extractStructuredWidgetData(result, true);
+      return unpackToolResult(result);
     });
   };
 
@@ -372,7 +382,7 @@
   McpAppsSDKBridge.prototype.callServerTool = async function callServerTool(params) {
     await this.connect();
     var result = await this.app.callServerTool(params);
-    return extractStructuredWidgetData(result, true);
+    return unpackToolResult(result);
   };
 
   McpAppsSDKBridge.prototype.openLink = async function openLink(url) {
@@ -468,14 +478,55 @@
     var activeProtocol = getProtocol();
     document.documentElement.setAttribute('data-protocol', activeProtocol);
 
+    function receiveResult(result) {
+      if (result === null && document.getElementById('orgx-tool-error')) return;
+      if (!resultGate.accept(result)) return;
+      var decoded = extractStructuredWidgetData(result, true);
+      var failure = decoded && typeof decoded === 'object' && decoded.ok === false;
+      var alert = document.getElementById('orgx-tool-error');
+      if (failure) {
+        if (!alert) {
+          alert = document.createElement('section');
+          alert.id = 'orgx-tool-error';
+          alert.className = 'widget-tool-error';
+          alert.setAttribute('role', 'alert');
+          var title = document.createElement('strong');
+          title.textContent = 'Request failed';
+          alert.appendChild(title);
+          alert.appendChild(document.createElement('p'));
+        }
+        alert.querySelector('p').textContent = getErrorMessage(decoded.error || decoded, 'The tool request failed. Try the request again.');
+        // Renderers replace their own content. An initial failure must never
+        // look like a successful empty result or remain a loading skeleton.
+        // Preserve the last data internally so a subsequent success recovers.
+        Array.prototype.forEach.call(document.body.children, function hideContent(child) {
+          if (child.tagName !== 'SCRIPT' && child.tagName !== 'STYLE' && child !== alert && !child.hidden) {
+            child.setAttribute('data-orgx-error-hidden', 'true');
+            child.hidden = true;
+          }
+        });
+        document.body.prepend(alert);
+        reportSize();
+        return;
+      }
+      if (alert) alert.remove();
+      Array.prototype.forEach.call(document.querySelectorAll('[data-orgx-error-hidden]'), function restoreContent(child) {
+        child.hidden = false;
+        child.removeAttribute('data-orgx-error-hidden');
+      });
+      if (result !== null || currentData === null) {
+        currentData = getData(result);
+        render(currentData);
+        maybeAttachLive(options, currentData, liveState);
+      }
+      reportSize();
+    }
+
     if (activeProtocol === 'chatgpt') {
       applyTheme(global.openai && global.openai.theme, 'host');
       var initialOutput = global.openai && global.openai.toolOutput;
-      if (initialOutput !== null && initialOutput !== undefined && resultGate.accept(initialOutput)) {
-        currentData = getData(initialOutput);
-      }
-      render(currentData);
-      maybeAttachLive(options, currentData, liveState);
+      if (initialOutput !== null && initialOutput !== undefined) receiveResult(initialOutput);
+      else render(null);
       observeChatGPTSize();
       global.addEventListener(
         'openai:set_globals',
@@ -484,16 +535,10 @@
           if (!globals) return;
           if (globals.theme !== undefined) applyTheme(globals.theme, 'host');
           if (globals.toolOutput === undefined) return;
-          if (!resultGate.accept(globals.toolOutput)) return;
           // A host may briefly publish null while it rehydrates. Keep the
           // last known result visible instead of replacing it with an empty
           // or loading-looking card.
-          if (globals.toolOutput !== null || currentData === null) {
-            currentData = getData(globals.toolOutput);
-            render(currentData);
-            maybeAttachLive(options, currentData, liveState);
-          }
-          reportSize();
+          receiveResult(globals.toolOutput);
         },
         { passive: true }
       );
@@ -501,10 +546,7 @@
       render(null);
       var activeBridge = getBridge(activeProtocol === 'mcp-apps-sdk');
       activeBridge.toolResultCallback = function onToolResult(result) {
-        if (!resultGate.accept(result)) return;
-        currentData = getData(result);
-        render(currentData);
-        maybeAttachLive(options, currentData, liveState);
+        receiveResult(result);
       };
       activeBridge.connect().catch(function onConnectionFailure(error) {
         console.error('[OrgX Widget] Host connection failed:', error);
@@ -523,7 +565,11 @@
     var activeProtocol = getProtocol();
     if (activeProtocol === 'chatgpt') {
       if (!global.openai || !global.openai.callTool) return Promise.resolve(null);
-      return global.openai.callTool(name, args || {});
+      return Promise.resolve(global.openai.callTool(name, args || {})).then(function rejectToolFailure(result) {
+        var data = extractStructuredWidgetData(result, true);
+        if (data && data.ok === false) throw new Error(getErrorMessage(data.error || data, 'The tool request failed.'));
+        return result;
+      });
     }
     if (activeProtocol === 'mcp-apps-sdk' || activeProtocol === 'mcp-apps') {
       return getBridge(activeProtocol === 'mcp-apps-sdk').callServerTool({

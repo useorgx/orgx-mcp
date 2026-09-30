@@ -308,6 +308,8 @@ export const WIDGET_OUTPUT_SCHEMAS = {
 
   get_morning_brief: z
     .object({
+      generated_at: z.string().optional(),
+      data_gaps: z.array(z.string()).optional(),
       workspace_id: z.string().optional(),
       artifacts_produced: z.array(artifactSchema).optional(),
       review_items: z.array(artifactSchema).optional(),
@@ -335,6 +337,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
           total_value: z.number().optional(),
           roi: nullableNumber.optional(),
         })
+        .nullable()
         .optional(),
       session_id: z.string().optional(),
       receipts: z.array(resourceSchema).optional(),
@@ -356,7 +359,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
       reportingNarrative: chronicleSchema.shape.reportingNarrative.optional(),
       goals: z.array(resourceSchema).optional(),
       dataGaps: z.array(z.string()).optional(),
-      brief_markdown: z.string().optional(),
+      brief_markdown: nullableString.optional(),
       degraded: z.boolean().optional(),
       degraded_reason: nullableString.optional(),
       value_dashboard: z.object({

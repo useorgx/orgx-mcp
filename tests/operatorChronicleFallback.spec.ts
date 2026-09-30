@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  normalizeOperatorChronicleEnvelope,
   buildOperatorChroniclePath,
   formatOperatorChronicleBrief,
   readFlywheelSummary,
@@ -8,6 +9,13 @@ import {
 } from '../src/operatorChronicleFallback';
 
 describe('operator chronicle fallback', () => {
+  it('removes only an identical chronicle alias, preserving all other result data', () => {
+    const chronicle = { headline: 'Current outcomes', metrics: { pendingDecisions: 2 } };
+    expect(normalizeOperatorChronicleEnvelope({ ok: true, chronicle, data: { chronicle } })).toEqual({ ok: true, chronicle });
+    expect(normalizeOperatorChronicleEnvelope({ chronicle, data: { chronicle, coverage: 'complete' } })).toEqual({ chronicle, data: { coverage: 'complete' } });
+    const different = { chronicle, data: { chronicle: { headline: 'Older outcomes' } } };
+    expect(normalizeOperatorChronicleEnvelope(different)).toBe(different);
+  });
   it('defaults stale morning brief calls to the 30-day operator chronicle', () => {
     expect(normalizeOperatorChroniclePeriod(undefined)).toBe('30d');
     expect(buildOperatorChroniclePath({}, null)).toBe(

@@ -33,6 +33,18 @@ export const nullableString = z.string().nullable();
 export const nullableNumber = z.number().nullable();
 export const nullableBoolean = z.boolean().nullable();
 
+// Worker-owned transport fields must be declared alongside API-owned data.
+// Keep this shape aligned with StreamGrant in live/streamGrant.ts.
+export const streamGrantSchema = z.object({
+  feedType: z.string(),
+  feedId: z.string(),
+  streamUrl: z.string(),
+  expiresAt: z.number(),
+  refreshTool: z.string(),
+  refreshArgs: z.record(z.string()),
+  label: z.string(),
+}).strict();
+
 /**
  * Only the outer result envelope is strict. Nested resource projections are
  * intentionally forward-compatible because their full shape is owned by the

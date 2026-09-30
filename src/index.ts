@@ -285,6 +285,7 @@ import {
 } from './morningBriefValue';
 import {
   buildOperatorChroniclePath,
+  normalizeOperatorChronicleEnvelope,
   formatOperatorChronicleBrief,
   readFlywheelSummary,
 } from './operatorChronicleFallback';
@@ -5557,7 +5558,7 @@ export class OrgXMcp extends McpAgent<
             );
             const result = (await response.json()) as Record<string, unknown>;
             const payload = {
-              ...result,
+              ...normalizeOperatorChronicleEnvelope(result),
               _v2_tool: 'orgx_recommend',
               mode: 'morning_brief',
               source_tool: 'get_operator_chronicle',

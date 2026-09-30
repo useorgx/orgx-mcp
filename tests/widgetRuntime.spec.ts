@@ -28,12 +28,39 @@ const originalParent = window.parent;
 describe('shared OrgX widget runtime', () => {
   afterEach(() => {
     runtime.__resetForTests();
+    document.body.innerHTML = '';
     delete (window as unknown as { McpApps?: unknown }).McpApps;
     delete (window as unknown as { openai?: unknown }).openai;
     Object.defineProperty(window, 'parent', {
       configurable: true,
       value: originalParent,
     });
+  });
+
+  it.each([
+    { ok: false, error: { message: 'Upstream unavailable' } },
+    { isError: true, content: [{ type: 'text', text: '{"error":{"message":"Upstream unavailable"}}' }] },
+  ])('shows a failed initial result and recovers without rendering it as success: %j', (toolOutput) => {
+    document.body.innerHTML = '<main id="content">Awaiting context</main>';
+    (window as unknown as { openai: unknown }).openai = { toolOutput, setWidgetHeight: vi.fn() };
+    const render = vi.fn();
+    runtime.initWidget({ render });
+    expect(render).not.toHaveBeenCalled();
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain('Upstream unavailable');
+    expect(document.getElementById('content')?.hidden).toBe(true);
+    window.dispatchEvent(new CustomEvent('openai:set_globals', { detail: { globals: { toolOutput: null } } }));
+    expect(document.querySelector('[role="alert"]')).not.toBeNull();
+    window.dispatchEvent(new CustomEvent('openai:set_globals', { detail: { globals: { toolOutput: { message: 'Recovered' } } } }));
+    expect(render).toHaveBeenLastCalledWith({ message: 'Recovered' });
+    expect(document.querySelector('[role="alert"]')).toBeNull();
+    expect(document.getElementById('content')?.hidden).toBe(false);
+  });
+
+  it('rejects a failed action result so callers cannot report a successful approval', async () => {
+    (window as unknown as { openai: unknown }).openai = {
+      callTool: vi.fn().mockResolvedValue({ isError: true, structuredContent: { error: { message: 'Approval rejected' } } }),
+    };
+    await expect(runtime.callTool('approve_decision', { decision_id: 'd-1' })).rejects.toThrow('Approval rejected');
   });
 
   it('routes official MCP Apps actions through one connected SDK app', async () => {
