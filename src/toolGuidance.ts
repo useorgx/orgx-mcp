@@ -205,7 +205,11 @@ function sanitizeValue(
   const record = asRecord(value);
   if (!record) return value;
 
-  if (parentKey && CALL_KEYS.has(parentKey)) {
+  // `next_action` also carries a scored business recommendation or activation
+  // state. Only objects declaring a tool are call breadcrumbs. Treating every
+  // recommendation as a call erased valid next-action data to null.
+  if (parentKey && CALL_KEYS.has(parentKey) &&
+    (parentKey === 'next_call' || Object.hasOwn(record, 'tool'))) {
     return canonicalizeToolCallGuidance(record, visibleTools);
   }
 

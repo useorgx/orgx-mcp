@@ -478,6 +478,32 @@
     var activeProtocol = getProtocol();
     document.documentElement.setAttribute('data-protocol', activeProtocol);
 
+    function showDataAvailability(decoded) {
+      var records = [decoded, decoded && decoded.data];
+      var degraded = records.some(function isPartial(record) {
+        return record && (record.degraded === true ||
+          (Array.isArray(record.degraded) && record.degraded.length > 0));
+      });
+      var notice = document.getElementById('orgx-data-availability');
+      if (!degraded) {
+        if (notice) notice.remove();
+        return;
+      }
+      if (!notice) {
+        notice = document.createElement('section');
+        notice.id = 'orgx-data-availability';
+        notice.className = 'widget-data-availability';
+        notice.setAttribute('role', 'status');
+        var title = document.createElement('strong');
+        title.textContent = 'Data may be incomplete';
+        var detail = document.createElement('p');
+        detail.textContent = 'Some source data is unavailable. Treat counts and summaries as partial until the next successful refresh.';
+        notice.appendChild(title);
+        notice.appendChild(detail);
+      }
+      document.body.prepend(notice);
+    }
+
     function receiveResult(result) {
       if (result === null && document.getElementById('orgx-tool-error')) return;
       if (!resultGate.accept(result)) return;
@@ -485,6 +511,8 @@
       var failure = decoded && typeof decoded === 'object' && decoded.ok === false;
       var alert = document.getElementById('orgx-tool-error');
       if (failure) {
+        var notice = document.getElementById('orgx-data-availability');
+        if (notice) notice.remove();
         if (!alert) {
           alert = document.createElement('section');
           alert.id = 'orgx-tool-error';
@@ -518,6 +546,7 @@
         currentData = getData(result);
         render(currentData);
         maybeAttachLive(options, currentData, liveState);
+        showDataAvailability(decoded);
       }
       reportSize();
     }

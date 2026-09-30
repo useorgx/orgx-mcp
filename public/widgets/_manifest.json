@@ -158,8 +158,8 @@
     },
     "morning-brief": {
       "file": "public/widgets/morning-brief.html",
-      "bytes": 70022,
-      "hash": "c5252aa554dd",
+      "bytes": 70449,
+      "hash": "6e40d2a72d9e",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/icons.js",

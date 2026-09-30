@@ -63,6 +63,40 @@ describe('shared OrgX widget runtime', () => {
     await expect(runtime.callTool('approve_decision', { decision_id: 'd-1' })).rejects.toThrow('Approval rejected');
   });
 
+  it.each([
+    { degraded: ['brief_route_timeout'], metrics: { completed: 0 } },
+    { degraded: true, results: [{ id: 'partial-result' }] },
+    { structuredContent: { data: { degraded: ['source_unavailable'], results: [] } } },
+  ])('discloses partial data, retains usable content and clears the notice after recovery: %j', (toolOutput) => {
+    document.body.innerHTML = '<main id="content">Usable partial results</main>';
+    (window as unknown as { openai: unknown }).openai = { toolOutput, setWidgetHeight: vi.fn() };
+    const render = vi.fn();
+    runtime.initWidget({ render });
+    expect(render).toHaveBeenCalledOnce();
+    expect(document.getElementById('content')?.hidden).toBe(false);
+    expect(document.querySelector('[role="status"]')?.textContent).toContain('Data may be incomplete');
+    expect(document.querySelector('[role="status"]')?.textContent).not.toContain('brief_route_timeout');
+    window.dispatchEvent(new CustomEvent('openai:set_globals', { detail: { globals: { toolOutput: null } } }));
+    expect(document.querySelector('[role="status"]')).not.toBeNull();
+    window.dispatchEvent(new CustomEvent('openai:set_globals', { detail: { globals: { toolOutput: { degraded: false, metrics: { completed: 2 } } } } }));
+    expect(document.querySelector('[role="status"]')).toBeNull();
+    expect(render).toHaveBeenLastCalledWith({ degraded: false, metrics: { completed: 2 } });
+  });
+
+  it('replaces a partial-data notice with an actual tool failure', () => {
+    (window as unknown as { openai: unknown }).openai = { toolOutput: { degraded: true }, setWidgetHeight: vi.fn() };
+    runtime.initWidget({ render: vi.fn() });
+    window.dispatchEvent(new CustomEvent('openai:set_globals', { detail: { globals: { toolOutput: { ok: false, error: 'Upstream unavailable' } } } }));
+    expect(document.querySelector('[role="status"]')).toBeNull();
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain('Upstream unavailable');
+  });
+
+  it.each([{}, { degraded: false }, { degraded: [] }])('does not mark a complete result as partial: %j', (toolOutput) => {
+    (window as unknown as { openai: unknown }).openai = { toolOutput, setWidgetHeight: vi.fn() };
+    runtime.initWidget({ render: vi.fn() });
+    expect(document.querySelector('[role="status"]')).toBeNull();
+  });
+
   it('routes official MCP Apps actions through one connected SDK app', async () => {
     let app: {
       callServerTool: ReturnType<typeof vi.fn>;

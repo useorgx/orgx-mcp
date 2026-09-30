@@ -495,7 +495,8 @@
   }
 }
 /* Shared tool failures replace misleading empty/loading states in every host. */
-.widget-tool-error {
+.widget-tool-error,
+.widget-data-availability {
   box-sizing: border-box;
   max-width: 720px;
   margin: 24px auto;
@@ -506,6 +507,9 @@
   font: 14px/1.6 system-ui, sans-serif;
   overflow-wrap: anywhere;
 }
-.widget-tool-error strong { font-size: 16px; }
-.widget-tool-error p { margin: 8px 0 0; }
+.widget-data-availability { border-left-color: var(--ox-warning, #b45309); }
+.widget-tool-error strong,
+.widget-data-availability strong { font-size: 16px; }
+.widget-tool-error p,
+.widget-data-availability p { margin: 8px 0 0; }
 [data-orgx-error-hidden] { display: none !important; }
