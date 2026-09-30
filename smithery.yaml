@@ -18,22 +18,32 @@ startCommand:
       profile:
         type: string
         description: >
-          Optional tool profile to expose a narrower toolset at connection time.
-          Defaults to full access.
-          - full: all tools (default)
-          - memory: shared memory, decision recall, pending approvals, and project progress
+          Optional tool profile to expose at connection time. Defaults to the
+          published v2 surface. Must match src/smitheryConfig.ts, which is the
+          schema the server actually advertises; tests/smitheryMetadata.spec.ts
+          fails if the two drift.
+          - v2: the published surface (default)
+          - chatgpt: the streamlined ChatGPT App review surface
+          - claude-directory: the focused, non-destructive Anthropic Connector
+            Directory surface
+          - full: every tool, for admin and debugging
+          - memory: shared memory, decision recall, pending approvals, and
+            project progress
           - commander: decision + initiative tools only
           - planner: planning + scaffold tools only
           - executor: task execution tools only
           - observer: read-only monitoring tools only
         enum:
+          - v2
+          - chatgpt
+          - claude-directory
           - full
           - memory
           - commander
           - planner
           - executor
           - observer
-        default: full
+        default: v2
       workspace_id:
         type: string
         description: >

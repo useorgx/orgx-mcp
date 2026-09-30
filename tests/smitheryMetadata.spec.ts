@@ -12,7 +12,10 @@ import {
 } from '../src/toolDefinitions';
 import { CONTRACT_TOOL_DEFINITIONS } from '../src/contractTools';
 import { FLYWHEEL_TOOL_DEFINITIONS } from '../src/flywheelTools';
-import { smitheryConfigSchema } from '../src/smitheryConfig';
+import {
+  SMITHERY_TOOL_PROFILES,
+  smitheryConfigSchema,
+} from '../src/smitheryConfig';
 
 const root = process.cwd();
 const serverJson = JSON.parse(
@@ -55,6 +58,28 @@ describe('Smithery metadata coverage', () => {
     expect(indexSource).toContain(
       'export const configSchema = buildSmitheryConfigSchema();'
     );
+  });
+
+  it('keeps smithery.yaml in step with the schema the server advertises', () => {
+    // smithery.yaml once said the default was `full` and omitted v2. Smithery
+    // reads the served schema today, but a fallback to this file would have
+    // scanned the 89-tool full profile instead of the published 41.
+    const yaml = readFileSync(resolve(root, 'smithery.yaml'), 'utf8');
+    const profileBlock = yaml.slice(
+      yaml.indexOf('      profile:'),
+      yaml.indexOf('      workspace_id:')
+    );
+    const enumBlock = profileBlock.slice(
+      profileBlock.indexOf('enum:'),
+      profileBlock.indexOf('default:')
+    );
+    const listed = [...enumBlock.matchAll(/^\s+- ([a-z0-9-]+)\s*$/gm)].map(
+      (match) => match[1]
+    );
+    const declaredDefault = /default:\s*(\S+)/.exec(profileBlock)?.[1];
+
+    expect(listed).toEqual([...SMITHERY_TOOL_PROFILES]);
+    expect(declaredDefault).toBe(smitheryConfigSchema.parse({}).profile);
   });
 
   it('publishes direct MCP remotes instead of the landing-page root URL', () => {
