@@ -138,3 +138,76 @@ describe('empty states speak to the person, not the tool caller', () => {
     expect(text).not.toContain('orgx_search');
   });
 });
+
+describe('workspace-map describes surfaces without naming tools', () => {
+  // orgx_bootstrap is the first call of a session, and workspace-map is its
+  // widget — so this is the first thing a person sees. It used to render the
+  // payload's routing arrays verbatim ("Read orgx_recommend orgx_tail",
+  // "Change orgx_act") and a "Start with" footer of tool ids. Those are for the
+  // model, which reads them from structuredContent either way.
+  const PAYLOAD = {
+    profile: 'v2',
+    visible_tools_count: 21,
+    granted_scopes: ['entities:read'],
+    workspace: { id: 'ws-1', name: 'Atina Labs' },
+    safe_first_calls: [{ tool: 'orgx_recommend', args: {} }],
+    surfaces: [
+      {
+        id: 'command',
+        name: 'Command',
+        url: 'https://useorgx.com/command',
+        purpose: 'What needs you now.',
+        read: ['orgx_recommend', 'orgx_tail'],
+        control: ['orgx_act'],
+      },
+      {
+        id: 'quality',
+        name: 'Quality Studio',
+        url: 'https://useorgx.com/settings/quality',
+        purpose: 'The checks an artifact must pass.',
+        read: ['orgx_inspect'],
+        control: [],
+      },
+      {
+        id: 'execution',
+        name: 'Execution',
+        url: 'https://useorgx.com/settings/execution',
+        purpose: 'Route priority and spend limits.',
+        read: [],
+        control: [],
+      },
+    ],
+  };
+
+  beforeEach(() => {
+    document.documentElement.innerHTML = '<head></head><body></body>';
+  });
+
+  it('prints no tool id anywhere in the rendered map', () => {
+    mountWidget('workspace-map', { payload: PAYLOAD });
+    const text = document.body.textContent ?? '';
+    expect(text).toContain('Atina Labs');
+    expect(text).not.toMatch(/orgx_[a-z_]+/);
+    expect(text).not.toMatch(/get_[a-z_]+/);
+  });
+
+  it('marks only the surfaces this session is limited on', () => {
+    mountWidget('workspace-map', { payload: PAYLOAD });
+    const cards = Array.from(document.querySelectorAll('.wm-surface'));
+    expect(cards).toHaveLength(3);
+    const note = (card: Element) =>
+      card.querySelector('.wm-tools')?.textContent ?? null;
+    // Command has both read and control: full access needs no caveat, and a
+    // line repeated on every card is one the eye skips.
+    expect(note(cards[0]!)).toBeNull();
+    expect(note(cards[1]!)).toContain('Read-only in this session');
+    expect(note(cards[2]!)).toContain('does not touch it');
+  });
+
+  it('asks an unbound session to sign in rather than to call a tool', () => {
+    mountWidget('workspace-map', { payload: { surfaces: [] } });
+    const text = document.body.textContent ?? '';
+    expect(text).toContain('Sign in to an OrgX workspace');
+    expect(text).not.toContain('orgx_bootstrap');
+  });
+});
