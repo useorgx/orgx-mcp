@@ -109,20 +109,13 @@
   transform: translateY(0) scale(0.985);
 }
 
+/* The kit's lime action ring (widget-theme.css), never an accent-coloured halo. */
 .ox-action-btn:focus-visible,
 .ox-link-btn:focus-visible,
 .ox-icon-btn:focus-visible {
-  outline: none;
-  border-color: var(
-    --ox-focus-border,
-    rgba(var(--ox-primary-rgb-effective), 0.45)
-  );
-  box-shadow:
-    0 0 0 3px var(
-      --ox-focus-ring,
-      rgba(var(--ox-primary-rgb-effective), 0.18)
-    ),
-    var(--ox-control-shadow-active);
+  outline: 2px solid var(--ox-focus, rgba(191, 255, 0, 0.8));
+  outline-offset: 2px;
+  box-shadow: var(--ox-control-shadow-active);
 }
 
 .ox-action-btn:disabled,
@@ -394,8 +387,8 @@
 }
 
 .ox-toast__close:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(var(--ox-toast-accent-rgb, 191, 255, 0), 0.16);
+  outline: 2px solid var(--ox-focus, rgba(191, 255, 0, 0.8));
+  outline-offset: 2px;
 }
 
 .ox-toast__progress {
@@ -508,4 +501,10 @@
     border-right-color: currentColor;
     opacity: 0.65;
   }
+}
+
+/* announce(): screen readers only. */
+[data-orgx-live-region] {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
 }

@@ -107,7 +107,7 @@
   transform: scale(1.05);
 }
 .avatar-interactive:focus-visible {
-  outline: 2px solid var(--app-color-primary);
+  outline: 2px solid var(--ox-focus, rgba(191, 255, 0, 0.8));
   outline-offset: 2px;
 }
 
@@ -317,7 +317,7 @@
 
 /* Button states */
 .btn:focus-visible {
-  outline: 2px solid var(--app-color-primary);
+  outline: 2px solid var(--ox-focus, rgba(191, 255, 0, 0.8));
   outline-offset: 2px;
 }
 
@@ -685,7 +685,7 @@
   box-shadow: var(--app-shadow-md);
 }
 .card-interactive:focus-visible {
-  outline: 2px solid var(--app-color-primary);
+  outline: 2px solid var(--ox-focus, rgba(191, 255, 0, 0.8));
   outline-offset: 2px;
 }
 

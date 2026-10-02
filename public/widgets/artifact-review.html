@@ -315,7 +315,49 @@
         } catch (_) { /* keep the default */ }
       }
 
+      // Focus rings follow the keyboard (widget-theme.css keys on data-ox-input). This widget
+      // doesn't load interaction-kit.js, which records it for the others.
+      (function trackInputModality(doc) {
+        if (!doc || doc.__oxInput) return;
+        doc.__oxInput = true;
+        const set = function (mode) { if (doc.documentElement.getAttribute('data-ox-input') !== mode) doc.documentElement.setAttribute('data-ox-input', mode); };
+        doc.addEventListener('pointerdown', function () { set('pointer'); }, true);
+        doc.addEventListener('keydown', function (event) { if (!event.metaKey && !event.ctrlKey && !event.altKey) set('keyboard'); }, true);
+      })(document);
+
       // ─── SDK shim ────────────────────────────────────────────────
+      // Blocker artifacts can carry raw codes ("Model call stopped: model_budget_exhausted").
+      // Known codes read as words; an unknown snake_case code becomes plain words. Code, diffs
+      // and structured payloads are shown as they are.
+      const CODE_COPY = {
+        model_budget_exhausted: 'the model budget ran out',
+        budget_exhausted: 'the budget ran out',
+        budget_exceeded: 'it went over the spend cap',
+        max_cost_exceeded: 'it went over the spend cap',
+        spend_cap_exceeded: 'it went over the spend cap',
+        rate_limited: 'the provider rate limit',
+        provider_rate_limited: 'the provider rate limit',
+        provider_unavailable: 'the model provider was unavailable',
+        model_unavailable: 'the model was unavailable',
+        context_length_exceeded: 'the input was too long for the model',
+        timed_out: 'it timed out',
+        run_timeout: 'it timed out',
+        heartbeat_lost: 'it stopped reporting',
+        no_heartbeat: 'it stopped reporting',
+        guardrail_blocked: 'a guardrail stopped it',
+        policy_blocked: 'a policy stopped it',
+        authentication_required: 'it needs you to sign in again',
+        tool_unavailable: 'a tool it needed was unavailable',
+      };
+      function humanizeCodes(text) {
+        return String(text == null ? '' : text).replace(/(^|[^\w./:#=?&@-])([a-z][a-z0-9]*(?:_[a-z0-9]+)+)(?![\w/=@-]|\.\w)/g, function (all, lead, code) {
+          return lead + (CODE_COPY[code] || code.replace(/_/g, ' '));
+        });
+      }
+      function looksRaw(text) {
+        return /^[\s{[<"]/.test(text) || /^[\s{}[\]"',:]*$/.test(text) || /"\s*:/.test(text);
+      }
+
       function callTool(name, args) {
         return window.OrgXWidgetRuntime.callTool(name, args || {});
       }
@@ -343,6 +385,19 @@
         if (fixtureState === 'empty') return { artifact: null };
         if (fixtureState === 'error' || fixtureState === 'degraded') {
           return { artifact: { __error: 'Artifact evidence could not be loaded. The review remains open and no action was taken.' } };
+        }
+
+        if (fixtureState === 'blocker') {
+          // A structured blocker that still carries the run's raw codes (live QA, 2026-10-02).
+          return {
+            artifact: {
+              id: 'ART-BLOCKER', name: 'Model call stopped: model_budget_exhausted', artifact_type: 'structured_blocker',
+              artifact_url: '', status: 'in_review', version: 1,
+              summary: 'Model call stopped: model_budget_exhausted',
+              content: 'Model call stopped: model_budget_exhausted\n\nThe run hit provider_rate_limited twice before the budget check.',
+              author: { name: 'Eli', domain: 'engineering', role: 'Engineering' },
+            },
+          };
         }
 
         const failedFixture = fixtureState === 'urgent' || fixtureState === 'failed';
@@ -659,9 +714,12 @@
         const candidate = payload.artifact || data.artifact || result.artifact || payload;
         const error = payload.error || data.error || result.error;
         if (error && !(candidate && (candidate.id || candidate.artifact_id || candidate.artifactId))) {
-          const detail = typeof error === 'string'
+          const rawDetail = typeof error === 'string'
             ? error
-            : firstString([error.message, error.detail, error.code]) || 'Artifact evidence could not be loaded.';
+            : firstString([error.message, error.detail, error.code]) || '';
+          // Never show a raw payload; a code reads as words.
+          const words = rawDetail && !looksRaw(rawDetail) ? humanizeCodes(rawDetail).trim() : '';
+          const detail = words ? words.charAt(0).toUpperCase() + words.slice(1).replace(/[.!]?$/, '.') : 'Artifact evidence could not be loaded.';
           return {
             __error: detail + ' The review remains open and no action was taken.',
             __errorCode: typeof error === 'object' ? firstString([error.code, error.kind]) : '',
@@ -967,7 +1025,7 @@
         }
 
         if (type.includes('markdown') || type.includes('doc') || type.includes('report') || type.includes('brief') || content) {
-          return '<div class="artifact-preview__markdown">' + escapeHtml(content).replace(/\n\n/g, '</p><p>').replace(/^(.+)$/, '<p>$1</p>') + '</div>';
+          return '<div class="artifact-preview__markdown">' + escapeHtml(humanizeCodes(content)).replace(/\n\n/g, '</p><p>').replace(/^(.+)$/, '<p>$1</p>') + '</div>';
         }
 
         if (payload) return renderStructured(payload);
@@ -976,7 +1034,7 @@
         return (
           '<div class="artifact-preview__placeholder">' +
           '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h7M7 16h10"/></svg>' +
-          '<div>' + escapeHtml(artifact.summary || 'Preview unavailable for this artifact type.') + '</div>' +
+          '<div>' + escapeHtml(humanizeCodes(artifact.summary || 'Preview unavailable for this artifact type.')) + '</div>' +
           '</div>'
         );
       }
@@ -1487,7 +1545,7 @@
           '<div class="hd">' +
           '<ox-glyph kind="artifact"' + (tone ? ' tone="' + tone + '"' : '') + '></ox-glyph>' +
           '<span class="kind">Artifact</span>' +
-          '<span class="src" title="' + escapeAttribute(artifact.name || '') + '"><b>' + escapeHtml(artifact.name || 'Artifact') + '</b> · v' + escapeHtml(String(artifact.version || 1)) + ' · ' + escapeHtml(status) + '</span>' +
+          '<span class="src" title="' + escapeAttribute(humanizeCodes(artifact.name || '')) + '"><b>' + escapeHtml(humanizeCodes(artifact.name || 'Artifact')) + '</b> · v' + escapeHtml(String(artifact.version || 1)) + ' · ' + escapeHtml(status) + '</span>' +
           '<span class="sp"></span>' +
           (deepLink ? '<a class="hd-link" data-deeplink href="' + escapeAttribute(deepLink) + '" aria-label="Open in OrgX"><span>Open in OrgX</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg></a>' : '') +
           renderAuthor(artifact, form) +
@@ -1839,7 +1897,7 @@
           '<div class="review-control">' +
           '<div class="review-status">' + chip + (held ? '' : '<span class="meta">' + escapeHtml(evidence.label || '') + '</span>') + '</div>' +
           '<h2 class="review-question">' + (rulingRecorded ? 'What remains unresolved after the ruling?' : evidence.canReview === false ? 'What does the current evidence establish?' : 'Does this evidence meet the bar to advance?') + '</h2>' +
-          '<p class="review-summary">' + escapeHtml(summary) + '</p>' +
+          '<p class="review-summary">' + escapeHtml(humanizeCodes(summary)) + '</p>' +
           renderQualityGauge(evidence) +
           renderReceipts(artifact, evidence, activeReviewContract) +
           '<p class="review-consequence">' + (rulingRecorded

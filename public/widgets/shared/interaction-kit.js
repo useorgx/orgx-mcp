@@ -1,4 +1,13 @@
 (function (global) {
+  // Last input on <html>: widget-theme.css hides focus rings after a pointer press.
+  (function (doc) {
+    if (!doc || doc.__oxInput) return;
+    doc.__oxInput = 1;
+    var set = function (m) { doc.documentElement.setAttribute('data-ox-input', m); };
+    doc.addEventListener('pointerdown', function () { set('pointer'); }, true);
+    doc.addEventListener('keydown', function (e) { if (!e.metaKey && !e.ctrlKey && !e.altKey) set('keyboard'); }, true);
+  })(typeof document !== 'undefined' ? document : null);
+
   function escapeHtml(value) {
     if (value === null || value === undefined) return '';
     return String(value)
