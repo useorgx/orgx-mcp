@@ -62,6 +62,21 @@ describe('widget resources', () => {
     );
   });
 
+  it('registers the OrgX panel resource with its OpenAI display modes', () => {
+    const panel = WIDGET_RESOURCES.find((widget) => widget.name === 'orgx-panel-widget');
+    expect(panel?.uri).toBe(WIDGET_URIS.orgxPanel);
+    expect(panel && 'contentMeta' in panel ? panel.contentMeta : null).toEqual({
+      'openai/ui': { availableDisplayModes: ['inline', 'fullscreen'] },
+    });
+    expect(OUTPUT_TEMPLATE_URIS.orgxPanel).toBe(
+      WIDGET_URIS.orgxPanel.replace('.html', '.skybridge.html')
+    );
+    // Per-widget content meta is layered over the shared CSP/domain meta for
+    // every registration of that widget (MCP Apps and skybridge).
+    expect(workerSource).toContain('{ ...mcpAppsContentMeta, ...extraContentMeta }');
+    expect(workerSource).toContain('{ ...skybridgeContentMeta, ...extraContentMeta }');
+  });
+
   it('publishes standard ui.domain metadata only through the explicit ChatGPT profile', () => {
     expect(workerSource).toContain(
       'buildMcpAppsMeta(this.env, activeProfile)'

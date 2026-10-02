@@ -327,3 +327,126 @@ describe('shared OrgX widget runtime', () => {
     expect(runtime.getErrorMessage({})).not.toBe('[object Object]');
   });
 });
+
+describe('opt-in MCP Apps bridge for the OrgX panel', () => {
+  type OptInRuntime = WidgetRuntime & {
+    callToolResult(name: string, args: Record<string, unknown>): Promise<{ data: unknown; meta: unknown }>;
+    getApp(): unknown;
+    initWidget(options: Record<string, unknown>): unknown;
+  };
+  const optIn = runtime as unknown as OptInRuntime;
+
+  function installFakeSdk(overrides: Record<string, unknown> = {}) {
+    const apps: Array<Record<string, any>> = [];
+    class FakeApp {
+      connect = vi.fn().mockResolvedValue(undefined);
+      getHostContext = vi.fn().mockReturnValue({ 'openai/deepLink': { url: 'https://useorgx.com/live/x' } });
+      callServerTool = vi.fn().mockResolvedValue({ structuredContent: { ok: true }, _meta: { 'orgx/widgetApproval': { approval_tokens: { a: 't' } } } });
+      close = vi.fn();
+      constructor() {
+        Object.assign(this, overrides);
+        apps.push(this as unknown as Record<string, any>);
+      }
+    }
+    Object.defineProperty(window, 'parent', { configurable: true, value: { postMessage: vi.fn() } });
+    (window as unknown as { McpApps: unknown }).McpApps = { App: FakeApp, applyDocumentTheme: vi.fn() };
+    return apps;
+  }
+
+  afterEach(() => {
+    runtime.__resetForTests();
+    document.body.innerHTML = '';
+    delete (window as unknown as { McpApps?: unknown }).McpApps;
+    delete (window as unknown as { openai?: unknown }).openai;
+    Object.defineProperty(window, 'parent', { configurable: true, value: originalParent });
+  });
+
+  it('keeps existing widgets on the ChatGPT bridge whenever window.openai exists', () => {
+    const apps = installFakeSdk();
+    (window as unknown as { openai: unknown }).openai = { toolOutput: { ok: 1 }, setWidgetHeight: vi.fn() };
+    const render = vi.fn();
+    optIn.initWidget({ render });
+    expect(runtime.detectProtocol()).toBe('chatgpt');
+    expect(document.documentElement.getAttribute('data-protocol')).toBe('chatgpt');
+    expect(render).toHaveBeenCalledWith({ ok: 1 });
+    expect(apps).toHaveLength(0);
+  });
+
+  it('prefers the MCP Apps bridge only for a widget that opts in, and reports host context', async () => {
+    const apps = installFakeSdk();
+    (window as unknown as { openai: unknown }).openai = { toolOutput: null };
+    const onHostContext = vi.fn();
+    optIn.initWidget({ render: vi.fn(), bridge: 'mcp-apps-sdk', onHostContext });
+    expect(document.documentElement.getAttribute('data-protocol')).toBe('mcp-apps-sdk');
+    await vi.waitFor(() => expect(onHostContext).toHaveBeenCalled());
+    expect(onHostContext.mock.calls[0]![0]).toEqual({ 'openai/deepLink': { url: 'https://useorgx.com/live/x' } });
+    expect(optIn.getApp()).toBe(apps[0]);
+  });
+
+  it('falls back to ChatGPT when the opted-in bridge cannot connect', async () => {
+    installFakeSdk({ connect: vi.fn().mockRejectedValue(new Error('no host')) });
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    (window as unknown as { openai: unknown }).openai = { toolOutput: { from: 'chatgpt' }, setWidgetHeight: vi.fn() };
+    const render = vi.fn();
+    optIn.initWidget({ render, bridge: 'mcp-apps-sdk' });
+    await vi.waitFor(() => expect(render).toHaveBeenCalledWith({ from: 'chatgpt' }));
+    expect(document.documentElement.getAttribute('data-protocol')).toBe('chatgpt');
+    errors.mockRestore();
+  });
+
+  it('works when no OpenAI extension fields exist and returns result meta for refreshes', async () => {
+    const apps = installFakeSdk({ getHostContext: vi.fn().mockReturnValue({}) });
+    optIn.initWidget({ render: vi.fn(), bridge: 'mcp-apps-sdk' });
+    await vi.waitFor(() => expect(apps).toHaveLength(1));
+    await expect(optIn.callToolResult('orgx_panel_snapshot', {})).resolves.toEqual({
+      data: { ok: true },
+      meta: { 'orgx/widgetApproval': { approval_tokens: { a: 't' } } },
+    });
+    expect(apps[0]!.callServerTool).toHaveBeenCalledTimes(1);
+  });
+
+  it('makes no tool call on mount when the host delivers the result', async () => {
+    const apps = installFakeSdk();
+    const render = vi.fn();
+    optIn.initWidget({ render, bridge: 'mcp-apps-sdk' });
+    await vi.waitFor(() => expect(apps[0]?.ontoolresult).toBeTypeOf('function'));
+    apps[0]!.ontoolresult({ structuredContent: { schema: 'orgx.panel.v1' } });
+    expect(render).toHaveBeenLastCalledWith({ schema: 'orgx.panel.v1' });
+    expect(apps[0]!.callServerTool).not.toHaveBeenCalled();
+  });
+
+  it('lets an opted-in widget render failures itself and skip the generic partial-data notice', () => {
+    (window as unknown as { openai: unknown }).openai = {
+      toolOutput: { isError: true, structuredContent: { error: { code: 'authentication_required', message: 'Sign in' } } },
+      setWidgetHeight: vi.fn(),
+    };
+    const onFailure = vi.fn().mockReturnValue(true);
+    optIn.initWidget({ render: vi.fn(), onFailure, dataAvailabilityNotice: false });
+    expect(onFailure).toHaveBeenCalledWith(expect.objectContaining({ ok: false, code: 'authentication_required' }));
+    expect(document.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('skips the generic partial-data notice for a widget that renders its own degraded state', () => {
+    (window as unknown as { openai: unknown }).openai = {
+      toolOutput: { schema: 'orgx.panel.v1', degraded: ['proof_unavailable'] },
+      setWidgetHeight: vi.fn(),
+    };
+    const render = vi.fn();
+    optIn.initWidget({ render, dataAvailabilityNotice: false });
+    expect(render).toHaveBeenCalledOnce();
+    expect(document.getElementById('orgx-data-availability')).toBeNull();
+  });
+
+  it('drops host-context listeners on reset', async () => {
+    const onHostContext = vi.fn();
+    installFakeSdk();
+    optIn.initWidget({ render: vi.fn(), bridge: 'mcp-apps-sdk', onHostContext });
+    await vi.waitFor(() => expect(onHostContext).toHaveBeenCalledTimes(1));
+    runtime.__resetForTests();
+    const apps = installFakeSdk();
+    optIn.initWidget({ render: vi.fn() });
+    await vi.waitFor(() => expect(apps).toHaveLength(1));
+    await Promise.resolve();
+    expect(onHostContext).toHaveBeenCalledTimes(1);
+  });
+});

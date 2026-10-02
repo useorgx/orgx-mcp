@@ -16,6 +16,7 @@
     "shared/live-panel.js",
     "shared/live-store.js",
     "shared/mcp-apps-sdk.umd.js",
+    "shared/openai-extensions.js",
     "shared/tokens.css",
     "shared/utils.js",
     "shared/widget-foundation.css",
@@ -37,7 +38,8 @@
     "entity-card": "0,201,167",
     "work-ledger": "0,201,167",
     "index": "17,24,39",
-    "workspace-map": "191,255,0"
+    "workspace-map": "191,255,0",
+    "orgx-panel": "251,191,36"
   },
   "widgets": {
     "agent-status": {
@@ -110,12 +112,15 @@
     },
     "entity-card": {
       "file": "public/widgets/entity-card.html",
-      "bytes": 12648,
-      "hash": "c2e161c8d5b1",
+      "bytes": 34670,
+      "hash": "4a8a51d01e4c",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
+        "shared/agent-identity.js",
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
+        "shared/kit/ox-elements.js",
+        "shared/kit/ox-tokens.css",
         "shared/live-machine.js",
         "shared/live-panel.js",
         "shared/live-store.js",
@@ -184,6 +189,24 @@
       "protocolBridge": "official-sdk",
       "demoOnly": false
     },
+    "orgx-panel": {
+      "file": "public/widgets/orgx-panel.html",
+      "bytes": 58763,
+      "hash": "8edbe4b55731",
+      "primaryRgb": "251,191,36",
+      "sharedRefs": [
+        "shared/interaction-kit.css",
+        "shared/interaction-kit.js",
+        "shared/kit/ox-elements.js",
+        "shared/kit/ox-tokens.css",
+        "shared/mcp-apps-sdk.umd.js",
+        "shared/openai-extensions.js",
+        "shared/widget-runtime.js",
+        "shared/widget-theme.css"
+      ],
+      "protocolBridge": "official-sdk",
+      "demoOnly": false
+    },
     "plan-session-live": {
       "file": "public/widgets/plan-session-live.html",
       "bytes": 47627,
@@ -242,10 +265,12 @@
     },
     "search-results": {
       "file": "public/widgets/search-results.html",
-      "bytes": 59381,
-      "hash": "f342e7e6d459",
+      "bytes": 46786,
+      "hash": "d4420af64277",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
+        "shared/kit/ox-elements.js",
+        "shared/kit/ox-tokens.css",
         "shared/mcp-apps-sdk.umd.js",
         "shared/widget-foundation.css",
         "shared/widget-runtime.js",
@@ -279,12 +304,14 @@
     },
     "work-ledger": {
       "file": "public/widgets/work-ledger.html",
-      "bytes": 20366,
-      "hash": "0d0ba45cb324",
+      "bytes": 25709,
+      "hash": "bc135151405d",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
+        "shared/kit/ox-elements.js",
+        "shared/kit/ox-tokens.css",
         "shared/live-machine.js",
         "shared/live-panel.js",
         "shared/live-store.js",
@@ -298,12 +325,14 @@
     },
     "workspace-map": {
       "file": "public/widgets/workspace-map.html",
-      "bytes": 10309,
-      "hash": "7d96d50a3add",
+      "bytes": 22612,
+      "hash": "ad8a49d666c3",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
+        "shared/kit/ox-elements.js",
+        "shared/kit/ox-tokens.css",
         "shared/live-machine.js",
         "shared/live-panel.js",
         "shared/live-store.js",

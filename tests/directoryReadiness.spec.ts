@@ -133,6 +133,7 @@ describe('Anthropic directory readiness', () => {
       'reject_decision',
       'orgx_widget_decide',
       'orgx_command_status',
+      'orgx_panel_snapshot',
       'get_agent_status',
       'get_initiative_pulse',
       'scaffold_initiative',

@@ -114,6 +114,7 @@ const TOOL_CATEGORY_MAP: Record<string, string> = {
   // Decision tools
   get_pending_decisions: 'Decisions',
   approve_decision: 'Decisions',
+  orgx_panel_snapshot: 'Decisions',
   reject_decision: 'Decisions',
   get_decision_history: 'Decisions',
 
@@ -461,6 +462,17 @@ const INLINE_TOOL_METADATA: Array<{
     ),
     readOnly:
       INLINE_TOOL_CONTRACTS.review_artifact.annotations.readOnlyHint,
+  },
+  {
+    id: INLINE_TOOL_CONTRACTS.orgx_panel_snapshot.id,
+    title: INLINE_TOOL_CONTRACTS.orgx_panel_snapshot.title,
+    description: INLINE_TOOL_CONTRACTS.orgx_panel_snapshot.description,
+    inputSchema: z.object(INLINE_TOOL_CONTRACTS.orgx_panel_snapshot.inputSchema),
+    securityScopes: extractScopes(
+      INLINE_TOOL_CONTRACTS.orgx_panel_snapshot.securitySchemes
+    ),
+    readOnly:
+      INLINE_TOOL_CONTRACTS.orgx_panel_snapshot.annotations.readOnlyHint,
   },
   {
     id: 'account_status',
