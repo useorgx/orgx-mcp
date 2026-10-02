@@ -1,3 +1,4 @@
+import { parseSearchDateRange, type SearchDateRange } from './searchDateRange';
 import { McpAgent } from 'agents/mcp';
 import { applyRunTokenScopes } from './runTokenScopes';
 import { conformSpawnPayload } from './spawnOutput';
@@ -2592,6 +2593,8 @@ export class OrgXMcp extends McpAgent<
     status?: string | null;
     query?: string | null;
     fields?: string[] | null;
+    createdFrom?: string;
+    createdTo?: string;
   }): Promise<EntitySearchPage> {
     const search = buildEntityCollectionSearchParams(params);
 
@@ -2663,6 +2666,7 @@ export class OrgXMcp extends McpAgent<
     query: string;
     limit: number;
     userId: string | null;
+    dateRange?: SearchDateRange;
   }): Promise<Array<Record<string, unknown>>> {
     const response = await callOrgxApiJson(
       this.env,
@@ -2672,6 +2676,7 @@ export class OrgXMcp extends McpAgent<
         body: JSON.stringify({
           tool_id: 'query_org_memory',
           args: {
+            ...params.dateRange,
             query: params.query,
             scope: 'all',
             limit: Math.min(params.limit, 20),
@@ -5481,6 +5486,12 @@ export class OrgXMcp extends McpAgent<
         }
 
         case 'orgx_search': {
+          let dateRange: SearchDateRange;
+          try { dateRange = parseSearchDateRange(args); } catch (error) {
+            return this.toolError(error instanceof Error ? error.message : 'Invalid creation dates', { code: 'invalid_input', status: 400 });
+          }
+          if (args.scope === 'work_ledger' && (dateRange.created_from || dateRange.created_to))
+            return this.toolError('Work ledger uses since: and until: filters in query.', { code: 'invalid_input', status: 400 });
           if (args.scope === 'work_ledger') {
             return this.searchWorkLedger(args, resolvedUserId);
           }
@@ -5570,6 +5581,7 @@ export class OrgXMcp extends McpAgent<
               );
             }
             const records = await this.fetchBroadOrgxSearch({
+              dateRange,
               query: query!,
               limit,
               userId: resolvedUserId,
@@ -5594,6 +5606,7 @@ export class OrgXMcp extends McpAgent<
           }
 
           const page = await this.fetchEntityCollectionPage({
+            createdFrom: dateRange.created_from, createdTo: dateRange.created_to,
             type: explicitType,
             userId: resolvedUserId,
             limit,

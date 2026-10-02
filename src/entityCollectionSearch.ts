@@ -8,6 +8,8 @@ export type EntityCollectionSearchInput = {
   status?: string | null;
   query?: string | null;
   fields?: string[] | null;
+  createdFrom?: string;
+  createdTo?: string;
 };
 
 /**
@@ -29,6 +31,8 @@ export function buildEntityCollectionSearchParams(
   if (input.initiativeId) search.set('initiative_id', input.initiativeId);
   if (input.workspaceId) search.set('workspace_id', input.workspaceId);
   if (input.status) search.set('status', input.status);
+  if (input.createdFrom) search.set('created_from', input.createdFrom);
+  if (input.createdTo) search.set('created_to', input.createdTo);
   if (input.query) search.set('search', input.query);
   if (input.fields?.length) search.set('fields', input.fields.join(','));
   return search;
