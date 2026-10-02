@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { getToolOutputSchema } from './openaiOutputSchemas';
 import { sanitizeToolResultGuidance } from './toolGuidance';
+import { prepareSearchResult, type SearchDeliveryObservation } from './searchResultDelivery';
 
 /**
  * Apply profile-aware guidance filtering to subsequently registered tools.
@@ -14,7 +15,9 @@ import { sanitizeToolResultGuidance } from './toolGuidance';
  */
 export function installToolResultGuidanceWrapper(
   mcpServer: McpServer,
-  allowedTools: ReadonlySet<string> | null
+  allowedTools: ReadonlySet<string> | null,
+  onSearchResult?: (toolId: string, observation: SearchDeliveryObservation) => void,
+  searchContext?: () => Promise<{ meta: Record<string, unknown>; health: Record<string, unknown> } | null>
 ) {
   const server = mcpServer as unknown as {
     registerTool: (
@@ -35,14 +38,30 @@ export function installToolResultGuidanceWrapper(
       registeredSchema && config.outputSchema === undefined
         ? { ...config, outputSchema: registeredSchema }
         : config;
-    const wrappedHandler = async (...args: unknown[]) =>
-      sanitizeToolResultGuidance(
+    const wrappedHandler = async (...args: unknown[]) => {
+      const result = prepareSearchResult(name, sanitizeToolResultGuidance(
         (await handler(...args)) as
           | { structuredContent?: unknown }
           | null
           | undefined,
         allowedTools
-      );
+      ), (observation) => onSearchResult?.(name, observation));
+      if (!result || !searchContext || !['orgx_search', 'query_org_memory'].includes(name)) return result;
+      try {
+        const context = await searchContext();
+        if (!context) return result;
+        return {
+          ...result,
+          structuredContent: name === 'orgx_search' && Array.isArray((result.structuredContent as Record<string, unknown>)?.results)
+            ? { ...result.structuredContent as Record<string, unknown>, search_widget_health: context.health }
+            : result.structuredContent,
+          _meta: { ...(result as { _meta?: Record<string, unknown> })._meta, 'orgx/widgetDiagnostics': context.meta },
+        };
+      } catch {
+        // Monitoring cannot turn a healthy search into a failed request.
+        return result;
+      }
+    };
     return original(name, nextConfig, wrappedHandler);
   }) as typeof server.registerTool;
 }

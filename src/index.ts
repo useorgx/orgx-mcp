@@ -78,6 +78,7 @@ import {
   type McpOriginValidationEnv,
 } from './mcpOriginValidation';
 import { installToolResultGuidanceWrapper } from './toolResultRegistration';
+import { buildSearchDiagnosticsContext, handleSearchWidgetDiagnostics } from './searchWidgetDiagnostics';
 import { withRequestToolProfile } from './requestToolProfile';
 import {
   buildMcpTransportExceptionResponse,
@@ -2692,6 +2693,9 @@ export class OrgXMcp extends McpAgent<
     };
     if (result.ok === false) {
       throw new Error(result.error ?? 'Broad OrgX search failed');
+    }
+    if (!Array.isArray(result.data?.results)) {
+      throw new Error('OrgX returned an incomplete search response');
     }
     return Array.isArray(result.data?.results)
       ? result.data.results.filter(
@@ -7377,7 +7381,27 @@ export class OrgXMcp extends McpAgent<
   ) {
     if (this.toolResultGuidanceInstalled) return;
     this.toolResultGuidanceInstalled = true;
-    installToolResultGuidanceWrapper(this.server, allowedTools);
+    installToolResultGuidanceWrapper(this.server, allowedTools, (toolId, observation) => {
+      if (this.isDirectoryReviewProfile()) return;
+      this.capturePosthogEvent('mcp_search_response', {
+        distinctId: this.resolveUserId() ?? this.resolveAnonymousDistinctId(),
+        properties: {
+          tool_id: toolId,
+          ok: !observation.failed,
+          is_widget_tool: true,
+          error_kind: observation.errorKind,
+          ...observation.telemetry,
+        },
+      });
+      if (observation.failed) {
+        Sentry.captureMessage('OrgX search response failed', {
+          level: 'error',
+          fingerprint: ['orgx-search', observation.errorKind ?? 'search_backend_error'],
+          tags: { tool_id: toolId, error_kind: observation.errorKind ?? 'search_backend_error' },
+          extra: { ...observation.telemetry },
+        });
+      }
+    }, () => this.isDirectoryReviewProfile() ? Promise.resolve(null) : buildSearchDiagnosticsContext(this.env));
   }
 
   private registerTools() {
@@ -14898,6 +14922,18 @@ const worker = {
     env: Env,
     ctx: ExecutionContext
   ): Promise<Response> {
+    const diagnosticResponse = await handleSearchWidgetDiagnostics(request, env, (event) => {
+      captureWorkerPosthogEvent({
+        env, ctx, event: event.failed ? 'mcp_search_widget_failed' : 'mcp_search_widget_rendered',
+        distinctId: 'mcp:search-widget',
+        properties: { search_delivery_code: event.code, widget_protocol: event.protocol, ok: !event.failed },
+      });
+      if (event.failed) Sentry.captureMessage('OrgX search widget failed', {
+        level: 'error', fingerprint: ['orgx-search-widget', event.code],
+        tags: { search_delivery_code: event.code, widget_protocol: event.protocol },
+      });
+    });
+    if (diagnosticResponse) return withSecurityHeaders(diagnosticResponse);
     if (new URL(request.url).pathname === '/status/uptime') {
       const kv = (env as unknown as { OAUTH_KV?: KVNamespace }).OAUTH_KV;
       if (!kv) {

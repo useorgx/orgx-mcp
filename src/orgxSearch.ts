@@ -63,6 +63,9 @@ export function normalizeEntitySearchPage(
     payload && typeof payload === 'object' && !Array.isArray(payload)
       ? (payload as Record<string, unknown>)
       : {};
+  if (!Array.isArray(root.data)) {
+    throw new Error('OrgX returned an incomplete search response');
+  }
   const records = Array.isArray(root.data)
     ? root.data.filter(
         (record): record is Record<string, unknown> =>
