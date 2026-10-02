@@ -262,6 +262,12 @@ export const MCP_APPS_SHARED_COMPONENT_PATHS: ReadonlyArray<string> = [
   // Base design tokens — widgets that used `@import url()` to pull this
   // rendered unstyled in Claude's sandbox. Inline it so the served
   // document is fully self-contained regardless of how it's referenced.
+  // OrgX design kit (vendored from @useorgx/orgx-ui-kit by
+  // scripts/sync-ui-kit.mjs). Widgets load ox-tokens.css first so their own
+  // theme still wins for shared names until each widget is rebuilt on the kit.
+  'shared/kit/ox-tokens.css',
+  'shared/kit/ox-elements.js',
+  'shared/agent-identity.js',
   'shared/tokens.css',
   'shared/widget-theme.css',
   'shared/components/domain-accent.css',

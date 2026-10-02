@@ -67,6 +67,9 @@ const DEMO_ONLY_WIDGETS = new Set([
 // ── Contract 2: shared-layer allowlist ───────────────────────────
 // Must match MCP_APPS_SHARED_COMPONENT_PATHS in src/widgetConfig.ts.
 const SHARED_ALLOWLIST = new Set([
+  'shared/kit/ox-tokens.css',
+  'shared/kit/ox-elements.js',
+  'shared/agent-identity.js',
   'shared/tokens.css',
   'shared/widget-theme.css',
   'shared/widget-foundation.css',
@@ -93,6 +96,9 @@ const SHARED_ALLOWLIST = new Set([
 // allowed to import), and shared tokens/components that are inlined must
 // be referenced by at least one widget somewhere.
 const RUNTIME_INLINED_PATHS = new Set([
+  'shared/kit/ox-tokens.css',
+  'shared/kit/ox-elements.js',
+  'shared/agent-identity.js',
   'shared/tokens.css',
   'shared/widget-theme.css',
   'shared/components/domain-accent.css',
