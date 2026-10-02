@@ -42,15 +42,18 @@
   "widgets": {
     "agent-status": {
       "file": "public/widgets/agent-status.html",
-      "bytes": 88271,
-      "hash": "3892bffcf8f9",
+      "bytes": 62695,
+      "hash": "e3fcffac0450",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
+        "shared/agent-identity.js",
         "shared/components/domain-accent.css",
         "shared/components/domain-accent.js",
         "shared/components/liveness-indicator.js",
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
+        "shared/kit/ox-elements.js",
+        "shared/kit/ox-tokens.css",
         "shared/live-machine.js",
         "shared/live-panel.js",
         "shared/live-store.js",
