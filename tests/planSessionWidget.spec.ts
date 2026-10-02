@@ -128,4 +128,62 @@ describe('plan session widget', () => {
       'https://useorgx.com/planning/sessions/'
     );
   });
+
+  it('sends guidance from the kit footer with the same orgx_plan call and keeps the note on failure', async () => {
+    const dom = new JSDOM(widgetHtml, {
+      url: 'https://example.test/widgets/plan-session-live.html',
+      runScripts: 'outside-only',
+      pretendToBeVisual: true,
+    });
+    const calls: Array<[string, unknown]> = [];
+    let fail = true;
+    Object.defineProperty(dom.window, 'OrgXWidgetRuntime', {
+      configurable: true,
+      value: {
+        detectProtocol: () => 'chatgpt',
+        reportSize: () => undefined,
+        openWidgetLink: () => false,
+        callTool: async (name: string, args: unknown) => {
+          calls.push([name, args]);
+          if (fail) throw new Error('host refused');
+          return { structuredContent: { ok: true } };
+        },
+        initWidget: (options: { render: (payload: unknown) => void }) =>
+          options.render({
+            id: 'plan-1',
+            current_plan: '# Ship it\n\n## Outcome\nMake proof visible.',
+            status: 'active',
+          }),
+      },
+    });
+    dom.window.eval(scriptSource);
+    const doc = dom.window.document;
+    doc.dispatchEvent(new dom.window.Event('DOMContentLoaded'));
+    const footer = () => doc.getElementById('planFooter') as HTMLElement;
+    const press = () => footer().dispatchEvent(new dom.window.CustomEvent('ox-primary'));
+
+    expect(footer().getAttribute('primary-label')).toBe('Guide this plan');
+    expect(doc.querySelector('[data-open-plan]')?.getAttribute('href')).toBe(
+      'https://useorgx.com/planning/sessions/plan-1'
+    );
+    press();
+    const input = doc.querySelector('[data-guidance-input]') as HTMLTextAreaElement;
+    input.value = 'Name the reviewer.';
+    input.dispatchEvent(new dom.window.Event('input'));
+    press();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(calls[0]).toEqual([
+      'orgx_plan',
+      { action: 'record_edit', session_id: 'plan-1', edit_summary: 'Outcome: Name the reviewer.' },
+    ]);
+    expect(footer().getAttribute('state')).toBe('failed');
+    expect((doc.querySelector('[data-guidance-input]') as HTMLTextAreaElement).value).toBe('Name the reviewer.');
+
+    fail = false;
+    press();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(calls).toHaveLength(2);
+    expect(footer().getAttribute('heading')).toBe('Guidance recorded');
+  });
 });
