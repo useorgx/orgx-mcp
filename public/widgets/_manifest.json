@@ -239,10 +239,12 @@
     },
     "search-results": {
       "file": "public/widgets/search-results.html",
-      "bytes": 59381,
-      "hash": "f342e7e6d459",
+      "bytes": 46786,
+      "hash": "d4420af64277",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
+        "shared/kit/ox-elements.js",
+        "shared/kit/ox-tokens.css",
         "shared/mcp-apps-sdk.umd.js",
         "shared/widget-foundation.css",
         "shared/widget-runtime.js",
