@@ -829,7 +829,8 @@
     };
     window.clearSearchFilters = function() {
       var form = document.querySelector('.sr-filters').closest('form');
-      form.elements.namedItem('type').value = '';
+      var initial = (window.openai && window.openai.toolInput) || searchRequest || {};
+      form.elements.namedItem('type').value = initial.query ? '' : (initial.type || '');
       form.elements.namedItem('from').value = '';
       form.elements.namedItem('to').value = '';
       window.applySearchFilters({ preventDefault: function() {}, currentTarget: form });
@@ -861,13 +862,14 @@
         filters = { type: searchRequest.type || '', from: searchRequest.created_from ? localTime(searchRequest.created_from) : '', to: searchRequest.created_to ? localTime(searchRequest.created_to) : '' };
       }
       var types = ['initiative', 'workstream', 'milestone', 'task', 'decision', 'artifact', 'objective', 'project', 'workspace'];
+      if (filters.type && types.indexOf(filters.type) < 0) types.push(filters.type);
       return `<details class="sr-tools" ${filterOpen ? 'open' : ''} ontoggle="filterOpen=this.open"><summary>Search filters</summary>
         <p>Type and creation dates start a new search, before ranking and result limits. Dates include both endpoints and use your device’s time zone. Retention limits still apply.</p>
         <form onsubmit="applySearchFilters(event)"><div class="sr-filters">
           <label>Type<select name="type"><option value="">All types</option>${types.map(type => `<option value="${escapeHtml(type)}" ${filters.type === type ? 'selected' : ''}>${escapeHtml(kindLabel(type))}</option>`).join('')}</select></label>
           <label>Created from<input name="from" type="datetime-local" value="${escapeHtml(filters.from)}"></label>
           <label>Created to<input name="to" type="datetime-local" value="${escapeHtml(filters.to)}"></label>
-        </div><div class="sr-filter-actions"><button class="page-btn" type="submit" ${retrying ? 'disabled' : ''}>Apply filters</button><button class="page-btn" type="button" onclick="clearSearchFilters()">Clear</button></div>
+        </div><div class="sr-filter-actions"><button class="page-btn" type="submit" ${retrying ? 'disabled' : ''}>Apply filters</button><button class="page-btn" type="button" onclick="clearSearchFilters()" ${retrying ? 'disabled' : ''}>Clear</button></div>
         ${filterError ? `<p role="alert">${escapeHtml(filterError)}</p>` : ''}</form></details>
         <details class="sr-tools"><summary>How search works</summary><p>A phrase searches organizational memory. Ask for an entity type, status, workspace or initiative to narrow the request. Typed searches can load more pages; memory searches return a ranked selection. Creation-date controls apply to the full search before results are loaded.</p></details>`;
     };

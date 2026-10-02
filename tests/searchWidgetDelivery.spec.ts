@@ -131,6 +131,15 @@ describe('search delivery through the real ChatGPT widget', () => {
       created_from: new Date('2026-10-02T09:00').toISOString(), created_to: new Date('2026-10-02T09:00').toISOString() });
     expect(text()).toContain('Filtered task'); expect(text()).not.toContain('Old task');
   });
+  it('clears dates while preserving the type required for browsing', async () => {
+    const callTool = vi.fn().mockResolvedValue({ structuredContent: payload });
+    boot(payload, undefined, callTool);
+    (dom.window as any).openai.toolInput = { type: 'initiative', limit: 1, created_from: '2026-10-01T00:00Z' };
+    await vi.advanceTimersByTimeAsync(250);
+    (dom.window as any).clearSearchFilters();
+    await vi.advanceTimersByTimeAsync(250);
+    expect(callTool).toHaveBeenCalledWith('orgx_search', { type: 'initiative', limit: 1 });
+  });
   it('preserves loaded results when the filtered request fails', async () => {
     const callTool = vi.fn().mockRejectedValue(new Error('transport unavailable'));
     boot(payload, undefined, callTool); (dom.window as any).openai.toolInput = { query: 'launch' };
