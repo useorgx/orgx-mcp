@@ -60,6 +60,20 @@ export const WIDGET_OUTPUT_SCHEMAS = {
     })
     .strict(),
 
+  orgx_command_status: z
+    .object({
+      kind: z.enum(['decision', 'run', 'command']),
+      id: z.string(),
+      state: z.enum(['queued', 'held', 'running', 'succeeded', 'failed', 'cancelled', 'not_found']),
+      outcome: z.string().nullable().optional(),
+      waiting_on: z.enum(['person', 'agent']).nullable().optional(),
+      started_at: z.string().nullable().optional(),
+      updated_at: z.string().nullable().optional(),
+      next_poll_after_ms: z.number().nullable(),
+      message: z.string().optional(),
+    })
+    .strict(),
+
   get_agent_status: z
     .object({
       agents: z.array(agentSchema),
