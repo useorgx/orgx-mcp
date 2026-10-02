@@ -17,10 +17,11 @@
  *   (never in structuredContent), exactly like the decisions widget.
  * - Assume the model can see structuredContent: no tokens, evidence bodies,
  *   notes, emails or costs, and every title is clipped.
- * - "Accepted" means status `approved` AND a human `approved_by_user_id`.
- *   `system:*`, a null approver and `in_review` are "completed, not yet
- *   accepted". When the API does not return `approved_by_user_id` at all,
- *   the snapshot says `proof_unavailable` instead of guessing.
+ * - "Accepted" comes from the app's acceptance ledger when the decisions read
+ *   carries `proof` (a human accepted ruling on a work artifact). Older apps
+ *   without it fall back to the artifact read: status `approved` AND a human
+ *   `approved_by_user_id`. Either way, a proof that can't be read says
+ *   `proof_unavailable` instead of guessing.
  *
  * Registration lives here; index.ts wires it with one call.
  */
@@ -46,6 +47,9 @@ export const PANEL_TITLE_MAX = 160;
 export const PANEL_QUESTION_MAX = 500;
 export const PANEL_EVIDENCE_TITLE_MAX = 80;
 export const PANEL_TEXT_MAX = 280;
+/** Options the panel can render as buttons for one decision. */
+export const PANEL_OPTION_LIMIT = 12;
+export const PANEL_OPTION_LABEL_MAX = 80;
 /** Pending decisions read per snapshot: enough to find a selected item. */
 export const PANEL_DECISION_READ_LIMIT = 25;
 export const PANEL_ARTIFACT_READ_LIMIT = 50;
@@ -112,7 +116,25 @@ export interface PanelQueueItem {
   blocked: boolean;
   /** Present only when OrgX says this one has to be decided in the app. */
   decide_in_orgx_reason: string | null;
+  /** How many options the server offers; a row with options opens the packet to choose. */
+  option_count: number;
   url: string;
+}
+
+/** One option the person can pick, as the server sent it. */
+export interface PanelOption {
+  id: string;
+  label: string;
+}
+
+/**
+ * One action the pending list says the person can take here. The panel
+ * renders these instead of deciding from the decision's type.
+ */
+export interface PanelWidgetAction {
+  kind: 'approve' | 'reject' | 'option';
+  label: string;
+  option_id: string | null;
 }
 
 export interface PanelFocus {
@@ -133,6 +155,12 @@ export interface PanelFocus {
   consequence_if_rejected: string | null;
   blocked: boolean;
   decide_in_orgx_reason: string | null;
+  /** The decision's options (buttons when there are two or more). */
+  options: PanelOption[];
+  /** True when the person may choose several options and confirm them together. */
+  multiselect: boolean;
+  /** The actions the server lists for this decision, when it lists them; preferred over options. */
+  widget_actions: PanelWidgetAction[] | null;
   url: string;
 }
 
@@ -227,7 +255,79 @@ interface NormalizedDecision {
   initiativeTitle: string | null;
   blocked: boolean;
   decideInOrgxReason: string | null;
+  options: PanelOption[];
+  multiselect: boolean;
+  widgetActions: PanelWidgetAction[] | null;
   packet: Record<string, unknown> | null;
+}
+
+/** Options as the pending list carries them (strings or {id,label}). */
+export function normalizePanelOptions(value: unknown): PanelOption[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  const options: PanelOption[] = [];
+  value.forEach((item, index) => {
+    const record = asRecord(item);
+    const id =
+      (record && (str(record.id) ?? str(record.option_id) ?? str(record.action_id))) ??
+      `option-${index + 1}`;
+    const label = clipText(
+      record
+        ? record.label ?? record.title ?? record.name ?? record.action
+        : item,
+      PANEL_OPTION_LABEL_MAX
+    );
+    if (!label || seen.has(id)) return;
+    seen.add(id);
+    options.push({ id, label });
+  });
+  return options.slice(0, PANEL_OPTION_LIMIT);
+}
+
+/** True when the payload marks the decision as choose-several. */
+export function isPanelMultiselect(record: Record<string, unknown>): boolean {
+  const mode = [record.selection, record.selection_mode, record.selectionMode, record.shape]
+    .map((value) => (typeof value === 'string' ? value.trim().toLowerCase() : ''))
+    .find(Boolean);
+  return (
+    record.multiselect === true ||
+    record.multi_select === true ||
+    record.allow_multiple === true ||
+    mode === 'multi' ||
+    mode === 'multiple' ||
+    mode === 'multiselect' ||
+    mode === 'option_multiselect'
+  );
+}
+
+/** The server's list of actions for a decision, or null when it sends none. */
+export function normalizePanelWidgetActions(value: unknown): PanelWidgetAction[] | null {
+  const list = Array.isArray(value) ? value : asRecord(value)?.actions;
+  if (!Array.isArray(list)) return null;
+  const actions: PanelWidgetAction[] = [];
+  for (const raw of list) {
+    const record = asRecord(raw);
+    if (!record) continue;
+    const verb = (str(record.action) ?? str(record.kind) ?? str(record.type) ?? '').toLowerCase();
+    const optionId = str(record.option_id) ?? str(record.optionId);
+    const kind: PanelWidgetAction['kind'] | null = /reject|decline|send_back|sendback|request_changes/.test(verb)
+      ? 'reject'
+      : optionId || verb === 'option' || verb === 'choose' || verb === 'select'
+        ? 'option'
+        : /approve|accept|confirm/.test(verb)
+          ? 'approve'
+          : null;
+    if (!kind) continue;
+    const resolvedOption = kind === 'option' ? optionId ?? str(record.id) : null;
+    if (kind === 'option' && !resolvedOption) continue;
+    const label =
+      clipText(record.label ?? record.title ?? record.name, PANEL_OPTION_LABEL_MAX) ??
+      (kind === 'reject' ? 'Send back' : kind === 'approve' ? 'Approve' : null);
+    if (!label) continue;
+    actions.push({ kind, label, option_id: resolvedOption });
+    if (actions.length >= PANEL_OPTION_LIMIT + 2) break;
+  }
+  return actions.length ? actions : null;
 }
 
 function normalizeDecision(input: unknown): NormalizedDecision | null {
@@ -257,6 +357,11 @@ function normalizeDecision(input: unknown): NormalizedDecision | null {
     initiativeTitle: clipText(initiativeRef?.label, PANEL_TITLE_MAX),
     blocked: current.blocked === true,
     decideInOrgxReason: str(record.decide_in_orgx_reason),
+    options: normalizePanelOptions(
+      Array.isArray(record.options) && record.options.length ? record.options : packet?.options
+    ),
+    multiselect: isPanelMultiselect(record),
+    widgetActions: normalizePanelWidgetActions(record.widget_actions),
     packet,
   };
 }
@@ -277,6 +382,9 @@ function toQueueItem(decision: NormalizedDecision): PanelQueueItem {
     initiative_title: decision.initiativeTitle,
     blocked: decision.blocked,
     decide_in_orgx_reason: decision.decideInOrgxReason,
+    option_count: decision.widgetActions
+      ? decision.widgetActions.filter((action) => action.kind === 'option').length
+      : decision.options.length,
     url: decisionUrl(decision),
   };
 }
@@ -315,6 +423,9 @@ function toFocus(decision: NormalizedDecision): PanelFocus {
     consequence_if_rejected: clipText(consequences.reject, PANEL_TEXT_MAX),
     blocked: decision.blocked,
     decide_in_orgx_reason: decision.decideInOrgxReason,
+    options: decision.options,
+    multiselect: decision.multiselect,
+    widget_actions: decision.widgetActions,
     url: decisionUrl(decision),
   };
 }
@@ -402,6 +513,38 @@ export function summarizePanelProof(
   };
 }
 
+const UUID_ANY_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The app's ledger-backed proof (`acceptance_records`: accepted by a human
+ * on a work artifact). Null means the app could not read it; a malformed
+ * value is treated the same, never shown as accepted. The link is rebuilt
+ * from the id so the panel only opens canonical OrgX routes.
+ */
+export function normalizeAppProof(value: unknown): PanelSnapshot['proof'] | null {
+  const proof = asRecord(value);
+  if (!proof) return null;
+  const count = proof.completed_unaccepted;
+  const completedUnaccepted =
+    typeof count === 'number' && Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
+  const last = asRecord(proof.last_accepted);
+  if (proof.last_accepted !== null && proof.last_accepted !== undefined && !last) return null;
+  if (!last) return { last_accepted: null, completed_unaccepted: completedUnaccepted };
+  const id = str(last.artifact_id);
+  if (!id || !UUID_ANY_RE.test(id)) return null;
+  const acceptedBy = last.accepted_by === 'you' ? 'you' : 'workspace_member';
+  return {
+    last_accepted: {
+      artifact_id: id,
+      title: clipText(last.title, PANEL_TITLE_MAX) ?? 'Untitled artifact',
+      accepted_at: str(last.accepted_at),
+      accepted_by: acceptedBy,
+      url: buildEntityLink('artifact', id).url,
+    },
+    completed_unaccepted: completedUnaccepted,
+  };
+}
+
 export interface BuildPanelSnapshotInput {
   now?: Date;
   workspace: { id: string; name: string | null } | null;
@@ -409,6 +552,12 @@ export interface BuildPanelSnapshotInput {
   decisions: unknown[] | null;
   /** Artifact records, or null if the read failed or was skipped. */
   artifacts: unknown[] | null;
+  /**
+   * The app's `proof` from the pending-decisions read (acceptance ledger).
+   * Undefined when the app did not send one (older app): fall back to the
+   * artifact read. Null when the app could not read it: proof_unavailable.
+   */
+  appProof?: unknown;
   focus?: { type: 'decision'; id: string } | null;
   viewerUserIds?: ReadonlyArray<string | null | undefined>;
 }
@@ -472,7 +621,11 @@ export function buildPanelSnapshot(input: BuildPanelSnapshotInput): PanelSnapsho
     .sort((a, b) => timeOf(a) - timeOf(b))[0] ?? null;
 
   let proof: PanelSnapshot['proof'] = { last_accepted: null, completed_unaccepted: 0 };
-  if (input.artifacts === null) {
+  const ledgerProof = input.appProof === undefined ? undefined : normalizeAppProof(input.appProof);
+  if (ledgerProof !== undefined) {
+    if (ledgerProof === null) degraded.push('proof_unavailable');
+    else proof = ledgerProof;
+  } else if (input.artifacts === null) {
     degraded.push('proof_unavailable');
   } else {
     const summary = summarizePanelProof(input.artifacts, {
@@ -597,6 +750,7 @@ export async function handlePanelSnapshot(
     let decisions: unknown[] | null = null;
     let artifacts: unknown[] | null = null;
     let approvalMeta: Record<string, unknown> | null = null;
+    let appProof: unknown = undefined;
 
     if (workspace) {
       const workspaceId = workspace.id;
@@ -608,6 +762,7 @@ export async function handlePanelSnapshot(
         const split = splitWidgetApprovalMeta(asRecord(decisionRead.value?.data) ?? {});
         decisions = Array.isArray(split.data.decisions) ? split.data.decisions : [];
         approvalMeta = split.meta;
+        if ('proof' in split.data) appProof = split.data.proof;
       }
       if (artifactRead.status === 'fulfilled' && Array.isArray(artifactRead.value)) {
         artifacts = artifactRead.value;
@@ -619,6 +774,7 @@ export async function handlePanelSnapshot(
       workspace,
       decisions,
       artifacts,
+      appProof,
       focus,
       viewerUserIds: host.viewerUserIds(),
     });

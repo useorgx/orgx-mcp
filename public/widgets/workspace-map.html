@@ -213,20 +213,13 @@
     }
 
     .wm-btn.primary {
-      border-color: transparent;
-      background: rgb(251, 191, 36);
-      color: #1a1204;
+      border-color: var(--ox-action-border);
+      background: var(--ox-action);
+      color: var(--ox-action-fg);
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
     }
 
-    :root[data-theme='light'] .wm-btn.primary { border-color: #e9a800; }
-
     .wm-btn[aria-disabled='true'] { opacity: 0.6; cursor: default; }
-
-    .wm ox-footer {
-      --ox-primary-rgb: 251, 191, 36;
-      --ox-primary: rgb(251, 191, 36);
-    }
 
     .wm-sk {
       display: block;

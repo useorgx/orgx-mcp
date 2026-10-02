@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-accent="amber">
+<html lang="en" data-accent="lime">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -12,8 +12,10 @@
   <script src="shared/openai-extensions.js"></script>
   <script src="shared/interaction-kit.js"></script>
   <style>
+    /* Primaries are the kit's action lime; amber marks only what needs you
+       (the attention line, the panel edge, urgency). */
     :root {
-      --ox-primary-rgb: 251, 191, 36;
+      --ox-primary-rgb: 191, 255, 0;
       --pn-gutter: 16px;
       --pn-ease: cubic-bezier(0.16, 1, 0.3, 1);
       --pn-edge: var(--ox-border);
@@ -59,9 +61,9 @@
     .quiet-btn { color: var(--ox-text-muted); }
     .quiet-btn:hover, .text-btn:hover { background: var(--ox-hover, rgba(127, 127, 127, 0.08)); }
     button:focus-visible, a:focus-visible, textarea:focus-visible {
-      outline: 2px solid var(--ox-focus, rgba(251, 191, 36, 0.8)); outline-offset: 2px;
+      outline: 2px solid var(--ox-focus, rgba(191, 255, 0, 0.8)); outline-offset: 2px;
     }
-    .text-btn { color: var(--ox-warning); padding: 0 4px; }
+    .text-btn { color: var(--ox-primary); padding: 0 4px; }
     .text-btn[aria-disabled="true"] { opacity: 0.6; cursor: default; }
 
     ox-attention-line { margin: 0 calc(-1 * var(--pn-gutter)); }
@@ -119,12 +121,8 @@
     .ev-open:hover { background: var(--ox-hover, rgba(127, 127, 127, 0.08)); color: var(--ox-text); }
 
     .actions { margin-top: 14px; }
-    ox-footer {
-      margin: 0 calc(-1 * var(--pn-gutter));
-      /* The kit fills its primary with --ox-primary; the shared theme turns
-         that into a darker text color in light mode. Keep the amber fill. */
-      --ox-primary: rgb(var(--ox-primary-rgb));
-    }
+    /* The kit paints its primary with --ox-action (the homepage lime). */
+    ox-footer { margin: 0 calc(-1 * var(--pn-gutter)); }
     .ft-action {
       appearance: none; border: 0; background: none; font: inherit; font-size: 13px;
       font-weight: 600; color: var(--ox-text); min-height: 44px; padding: 0 10px;
@@ -133,8 +131,8 @@
     .ft-action:hover { background: var(--ox-hover, rgba(127, 127, 127, 0.08)); }
     .primary-btn {
       display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%;
-      min-height: 48px; border: 1px solid var(--ox-primary-border, transparent); border-radius: 12px;
-      background: rgb(var(--ox-primary-rgb)); color: var(--ox-on-primary, #1a1204);
+      min-height: 48px; border: 1px solid var(--ox-action-border, transparent); border-radius: 12px;
+      background: var(--ox-action); color: var(--ox-action-fg);
       font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
     }
     .primary-btn:hover { filter: brightness(0.97); }
@@ -180,8 +178,29 @@
       border: 1px solid var(--ox-border-strong); background: transparent; color: var(--ox-text);
       font: inherit; font-size: 13px; font-weight: 650; cursor: pointer;
     }
-    .mini.approve { border-color: rgba(var(--ox-primary-rgb), 0.7); }
     .mini:hover { background: var(--ox-hover, rgba(127, 127, 127, 0.08)); }
+    .mini.approve { background: var(--ox-action); color: var(--ox-action-fg); border-color: var(--ox-action-border, transparent); }
+    .mini.approve:hover { background: var(--ox-action); filter: brightness(0.97); }
+
+    /* Options the server sent: one click records a choice; several are toggles plus Confirm. */
+    .opts { display: grid; gap: 6px; margin-bottom: 10px; }
+    .opts-label { margin: 0; font-size: 12px; font-weight: 600; color: var(--ox-text-muted); }
+    .opt {
+      appearance: none; display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px;
+      padding: 8px 12px; border: 1px solid var(--ox-border-strong); border-radius: 12px;
+      background: transparent; color: var(--ox-text); font: inherit; font-size: 14px; font-weight: 650;
+      text-align: left; cursor: pointer; overflow-wrap: anywhere;
+    }
+    .opt:hover:not([disabled]) { background: var(--ox-hover, rgba(127, 127, 127, 0.08)); border-color: var(--ox-primary); }
+    .opt[disabled] { cursor: default; opacity: 0.6; }
+    .opt[aria-pressed="true"] { border-color: var(--ox-primary); background: rgba(var(--ox-action-rgb, 191, 255, 0), 0.1); }
+    .opt-text { flex: 1; min-width: 0; }
+    .opt-go { flex: none; color: var(--ox-text-muted); font-weight: 500; }
+    .opt-box {
+      flex: none; width: 18px; height: 18px; border-radius: 5px; display: grid; place-items: center;
+      border: 1.5px solid var(--ox-border-strong); color: transparent; font-size: 12px; line-height: 1;
+    }
+    .opt[aria-pressed="true"] .opt-box { background: var(--ox-action); border-color: var(--ox-action-border, transparent); color: var(--ox-action-fg); }
     .row .composer { flex: 1 1 100%; padding: 4px 0 8px; }
 
     /* Proof: one quiet line. */
@@ -247,6 +266,7 @@
       listOpen: false,         // thread: "Choose another item"
       evidenceOpen: false,
       composer: null,          // { id, draft }
+      selections: {},          // decisionId -> option ids toggled (multiselect)
       rulings: {},             // decisionId -> { action, phase, detail, title }
       lastRuling: null,        // { action, title } after a refresh removes it
       actionError: null,       // { id, message }
@@ -313,6 +333,34 @@
         case 'artifact_review_lifecycle': return 'This one needs the full review in OrgX.';
         default: return 'Approval uses your signed-in OrgX session.';
       }
+    }
+    // What the person can do comes from the snapshot, never from the decision's type:
+    // widget_actions when the server lists them, else options (two or more), else Approve.
+    function choicesFor(f) {
+      var actions = Array.isArray(f.widget_actions) && f.widget_actions.length ? f.widget_actions : null;
+      var options;
+      var approve = { label: 'Approve', option_id: null };
+      var reject = { label: 'Send back' };
+      if (actions) {
+        options = actions.filter(function isOption(a) { return a.kind === 'option' && a.option_id; })
+          .map(function toOption(a) { return { id: a.option_id, label: a.label }; });
+        var approveAction = actions.filter(function isApprove(a) { return a.kind === 'approve'; })[0];
+        var rejectAction = actions.filter(function isReject(a) { return a.kind === 'reject'; })[0];
+        if (options.length === 1 && !approveAction) approve = { label: options[0].label, option_id: options[0].id };
+        else if (approveAction) approve = { label: approveAction.label, option_id: null };
+        reject = rejectAction ? { label: rejectAction.label } : null;
+      } else {
+        options = Array.isArray(f.options) ? f.options : [];
+      }
+      if (options.length >= 2) return { mode: 'options', options: options, multiselect: f.multiselect === true, reject: reject };
+      return { mode: 'approve', options: [], multiselect: false, approve: approve, reject: reject };
+    }
+    function selectedFor(id) {
+      return Array.isArray(ui.selections[id]) ? ui.selections[id] : [];
+    }
+    function optionLabel(f, optionId) {
+      var match = choicesFor(f).options.filter(function byId(o) { return o.id === optionId; })[0];
+      return match ? match.label : '';
     }
     function tokenFor(id) {
       var t = ui.tokens[id];
@@ -408,7 +456,7 @@
         var frames = {
           saving: { state: 'saving', heading: ruling.action === 'approve' ? 'Recording your approval' : 'Sending it back', detail: 'nothing else changes yet' },
           waiting: { state: 'waiting', heading: 'Recorded', detail: 'checking status in OrgX', action: 'Check now' },
-          confirmed: { state: 'confirmed', heading: 'Approved by you', detail: ruling.detail || 'the agent can continue', action: 'Receipt ↗' },
+          confirmed: { state: 'confirmed', heading: ruling.choice ? 'You chose ' + ruling.choice : 'Approved by you', detail: ruling.detail || 'the agent can continue', action: 'Receipt ↗' },
           rejected: { state: 'rejected', heading: 'Sent back by you', detail: ruling.detail || 'the agent reworks it', action: 'Receipt ↗' },
         };
         var fr = frames[ruling.phase] || frames.saving;
@@ -417,8 +465,33 @@
       }
       if (ui.composer && ui.composer.id === f.id) return composerHtml(f.id);
       if (tokenFor(f.id)) {
-        return '<ox-footer variant="confirms-in-orgx" state="needs-you" heading="Decide here" detail="recorded in OrgX" primary-label="Approve" data-id="' + esc(f.id) + '">' +
-          '<button type="button" slot="action" class="ft-action" data-action="sendback" data-id="' + esc(f.id) + '">Send back</button></ox-footer>';
+        var c = choicesFor(f);
+        var sendBack = c.reject
+          ? '<button type="button" slot="action" class="ft-action" data-action="sendback" data-id="' + esc(f.id) + '">' + esc(c.reject.label) + '</button>'
+          : '';
+        if (c.mode === 'options') {
+          var picked = selectedFor(f.id);
+          var opts = '<div class="opts" role="group" aria-labelledby="opts-' + esc(f.id) + '"><p class="opts-label" id="opts-' + esc(f.id) + '">' +
+            (c.multiselect ? 'Choose the options to approve' : 'Choose one') + '</p>' +
+            c.options.map(function optionButton(o) {
+              if (c.multiselect) {
+                var on = picked.indexOf(o.id) !== -1;
+                return '<button type="button" class="opt" data-action="toggle-option" data-id="' + esc(f.id) + '" data-option="' + esc(o.id) + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
+                  '<span class="opt-box" aria-hidden="true">✓</span><span class="opt-text">' + esc(o.label) + '</span></button>';
+              }
+              return '<button type="button" class="opt" data-action="option" data-id="' + esc(f.id) + '" data-option="' + esc(o.id) + '">' +
+                '<span class="opt-text">' + esc(o.label) + '</span><span class="opt-go" aria-hidden="true">›</span></button>';
+            }).join('') + '</div>';
+          if (c.multiselect) {
+            var n = picked.length;
+            return opts + '<ox-footer variant="confirms-in-orgx" state="needs-you" heading="' + esc(n ? n + ' chosen' : 'Choose one or more') +
+              '" detail="recorded in OrgX" primary-label="' + esc(n ? 'Confirm ' + n : 'Confirm') + '"' + (n ? '' : ' disabled') + ' data-id="' + esc(f.id) + '">' + sendBack + '</ox-footer>';
+          }
+          // An empty primary-label keeps the kit from showing its default primary: the options are the actions.
+          return opts + '<ox-footer variant="confirms-in-orgx" state="needs-you" heading="Choose one" detail="recorded in OrgX" primary-label="" data-id="' + esc(f.id) + '">' + sendBack + '</ox-footer>';
+        }
+        return '<ox-footer variant="confirms-in-orgx" state="needs-you" heading="Decide here" detail="recorded in OrgX" primary-label="' + esc(c.approve.label) + '" data-id="' + esc(f.id) + '">' +
+          sendBack + '</ox-footer>';
       }
       return '<button type="button" class="primary-btn" data-action="open" data-url="' + esc(f.url) + '">Decide in OrgX <span aria-hidden="true">↗</span><span class="sr-only">(opens OrgX)</span></button>' +
         '<p class="handoff-detail">' + esc(decideInOrgxDetail(f.decide_in_orgx_reason)) + '</p>';
@@ -474,6 +547,9 @@
         var chip = ruling.phase === 'confirmed' ? 'confirmed' : ruling.phase === 'rejected' ? 'rejected' : 'sending';
         var label = ruling.phase === 'confirmed' ? 'Approved' : ruling.phase === 'rejected' ? 'Sent back' : 'Recording';
         acts = '<div class="row-acts"><ox-state-chip state="' + chip + '" label="' + label + '"></ox-state-chip></div>';
+      } else if (tokenFor(item.id) && item.option_count >= 2) {
+        // Options are chosen in the packet, where they are listed.
+        acts = '<div class="row-acts"><button type="button" class="mini approve" data-action="select" data-id="' + esc(item.id) + '" aria-label="Choose: ' + esc(item.title) + '">Choose</button></div>';
       } else if (tokenFor(item.id) && !(ui.composer && ui.composer.id === item.id)) {
         acts = '<div class="row-acts"><button type="button" class="mini approve" data-action="approve" data-id="' + esc(item.id) + '" aria-label="Approve: ' + esc(item.title) + '">Approve</button>' +
           '<button type="button" class="mini" data-action="sendback" data-id="' + esc(item.id) + '" aria-label="Send back: ' + esc(item.title) + '">Send back</button></div>';
@@ -606,7 +682,8 @@
 
     function render() {
       var focusKey = document.activeElement && document.activeElement.getAttribute
-        ? document.activeElement.getAttribute('data-action') + '|' + (document.activeElement.getAttribute('data-id') || '')
+        ? document.activeElement.getAttribute('data-action') + '|' + (document.activeElement.getAttribute('data-id') || '') +
+          '|' + (document.activeElement.getAttribute('data-option') || '')
         : null;
       root.setAttribute('data-mode', ui.mode);
       if (ui.auth) {
@@ -620,9 +697,10 @@
         root.innerHTML = ui.mode === 'thread' ? threadHtml(ui.snapshot) : globalHtml(ui.snapshot);
       }
       root.setAttribute('aria-busy', ui.snapshot || ui.auth ? 'false' : 'true');
-      if (focusKey && focusKey !== 'null|') {
+      if (focusKey && focusKey !== 'null||') {
         var parts = focusKey.split('|');
-        var selector = '[data-action="' + parts[0] + '"]' + (parts[1] ? '[data-id="' + parts[1] + '"]' : '');
+        var selector = '[data-action="' + parts[0] + '"]' + (parts[1] ? '[data-id="' + parts[1] + '"]' : '') +
+          (parts[2] ? '[data-option="' + (window.CSS && CSS.escape ? CSS.escape(parts[2]) : parts[2]) + '"]' : '');
         var again = root.querySelector(selector);
         if (again && again.focus) again.focus();
       }
@@ -796,7 +874,8 @@
       return once();
     }
 
-    function rule(id, action, reason) {
+    // choice: { option_id, label } or { option_ids, label } when the person picked options.
+    function rule(id, action, reason, choice) {
       if (ui.rulings[id]) return;
       var token = tokenFor(id);
       var item = findItem(id);
@@ -809,11 +888,13 @@
       var title = item.title || item.question || 'Decision';
       ui.actionError = null;
       ui.composer = null;
-      ui.rulings[id] = { action: action, phase: 'saving', title: title };
+      ui.rulings[id] = { action: action, phase: 'saving', title: title, choice: choice && choice.label ? choice.label : null };
       delete ui.tokens[id]; // single use
       render();
       var args = { decision_id: id, action: action, approval_token: token };
       if (action === 'reject') args.reason = reason;
+      if (action === 'approve' && choice && choice.option_id) args.option_id = choice.option_id;
+      if (action === 'approve' && choice && choice.option_ids && choice.option_ids.length) args.option_ids = choice.option_ids.slice();
       function settle(status) {
         if (gen !== ui.generation || !ui.rulings[id]) return;
         if (status && status.state === 'failed') {
@@ -888,7 +969,14 @@
         case 'refresh': fetchSnapshot(ui.snapshot && ui.snapshot.selection.status === 'selected' && ui.snapshot.focus ? ui.snapshot.focus.id : null, 'refresh'); break;
         case 'open': event.preventDefault(); openUrl(el.getAttribute('data-url'), event); break;
         case 'select': selectDecision(id); break;
-        case 'approve': rule(id, 'approve'); break;
+        case 'approve': approve(id); break;
+        case 'option': {
+          var optionId = el.getAttribute('data-option');
+          var holder = findItem(id);
+          rule(id, 'approve', undefined, { option_id: optionId, label: holder ? optionLabel(holder, optionId) : '' });
+          break;
+        }
+        case 'toggle-option': toggleOption(id, el.getAttribute('data-option')); break;
         case 'sendback': ui.composer = { id: id, draft: '', focus: true, opener: id }; ui.actionError = null; render(); break;
         case 'cancel-sendback': closeComposer(); break;
         case 'submit-sendback': {
@@ -926,8 +1014,35 @@
     root.addEventListener('ox-primary', function onPrimary(event) {
       var footer = event.target.closest('ox-footer');
       var id = footer && footer.getAttribute('data-id');
-      if (id && footer.getAttribute('state') === 'needs-you') rule(id, 'approve');
+      if (!id || footer.getAttribute('state') !== 'needs-you') return;
+      var item = findItem(id);
+      var c = item ? choicesFor(item) : null;
+      if (c && c.mode === 'options' && c.multiselect) confirmOptions(id);
+      else if (!c || c.mode === 'approve') approve(id);
     });
+
+    function approve(id) {
+      var item = findItem(id);
+      var c = item ? choicesFor(item) : null;
+      var choice = c && c.mode === 'approve' && c.approve.option_id ? { option_id: c.approve.option_id, label: c.approve.label } : undefined;
+      rule(id, 'approve', undefined, choice);
+    }
+    function toggleOption(id, optionId) {
+      var item = findItem(id);
+      if (!item || ui.rulings[id]) return;
+      var current = selectedFor(id);
+      var next = current.indexOf(optionId) === -1 ? current.concat(optionId) : current.filter(function keep(x) { return x !== optionId; });
+      ui.selections[id] = choicesFor(item).options.map(function ids(o) { return o.id; })
+        .filter(function picked(oid) { return next.indexOf(oid) !== -1; });
+      render();
+    }
+    function confirmOptions(id) {
+      var item = findItem(id);
+      var ids = selectedFor(id);
+      if (!item || !ids.length) return;
+      var labels = ids.map(function label(oid) { return optionLabel(item, oid); }).filter(Boolean);
+      rule(id, 'approve', undefined, { option_ids: ids, label: labels.join(', ') });
+    }
     root.addEventListener('ox-action', function onFooterAction(event) {
       var footer = event.target.closest('ox-footer');
       var id = footer && footer.getAttribute('data-id');
@@ -993,9 +1108,9 @@
     };
     function decisionUrl(id) { return 'https://useorgx.com/initiatives/' + IDS.init + '?focus=decisions&decision=' + id; }
     var FIXTURE_QUEUE = [
-      { id: IDS.d1, version: isoAgo(2 * D), title: 'Ship release 4.2 to production?', urgency: 'critical', waiting_since: isoAgo(2 * D), initiative_title: 'Release initiative', blocked: false, decide_in_orgx_reason: null, url: decisionUrl(IDS.d1) },
-      { id: IDS.d2, version: isoAgo(5 * H), title: 'Rotate billing API keys?', urgency: 'high', waiting_since: isoAgo(5 * H), initiative_title: 'Billing hardening', blocked: false, decide_in_orgx_reason: null, url: decisionUrl(IDS.d2) },
-      { id: IDS.d3, version: isoAgo(26 * H), title: 'Publish the onboarding checklist v2?', urgency: 'medium', waiting_since: isoAgo(26 * H), initiative_title: 'Activation', blocked: false, decide_in_orgx_reason: null, url: decisionUrl(IDS.d3) },
+      { id: IDS.d1, version: isoAgo(2 * D), title: 'Ship release 4.2 to production?', urgency: 'critical', waiting_since: isoAgo(2 * D), initiative_title: 'Release initiative', blocked: false, decide_in_orgx_reason: null, option_count: 0, url: decisionUrl(IDS.d1) },
+      { id: IDS.d2, version: isoAgo(5 * H), title: 'Rotate billing API keys?', urgency: 'high', waiting_since: isoAgo(5 * H), initiative_title: 'Billing hardening', blocked: false, decide_in_orgx_reason: null, option_count: 0, url: decisionUrl(IDS.d2) },
+      { id: IDS.d3, version: isoAgo(26 * H), title: 'Publish the onboarding checklist v2?', urgency: 'medium', waiting_since: isoAgo(26 * H), initiative_title: 'Activation', blocked: false, decide_in_orgx_reason: null, option_count: 0, url: decisionUrl(IDS.d3) },
     ];
     function galleryFocus(item) {
       var packets = {};
@@ -1031,7 +1146,8 @@
         type: 'decision', id: item.id, version: item.version, question: p.question, urgency: item.urgency,
         waiting_since: item.waiting_since, initiative_title: item.initiative_title, recommendation: p.recommendation,
         evidence: p.evidence, evidence_total: p.evidence_total, consequence_if_approved: p.consequence_if_approved,
-        consequence_if_rejected: null, blocked: item.blocked, decide_in_orgx_reason: item.decide_in_orgx_reason, url: item.url,
+        consequence_if_rejected: null, blocked: item.blocked, decide_in_orgx_reason: item.decide_in_orgx_reason,
+        options: [], multiselect: false, widget_actions: null, url: item.url,
       };
     }
     function baseSnapshot() {
@@ -1126,6 +1242,30 @@
           break;
         case 'approved':
           ui.rulings[IDS.d1] = { action: 'approve', phase: 'confirmed', title: s.focus.question, detail: 'the agent can continue' };
+          break;
+        case 'options':
+          // The server sends the options; each one is a single-click approval.
+          s.queue[0].title = s.focus.question = 'When does release 4.2 go to production?';
+          s.queue[0].option_count = 3;
+          s.focus.recommendation = { status: 'ready', action: 'Tonight after the freeze' };
+          s.focus.options = [
+            { id: 'opt-tonight', label: 'Tonight, 22:00 UTC' },
+            { id: 'opt-tomorrow', label: 'Tomorrow, 09:00 UTC' },
+            { id: 'opt-monday', label: 'Monday, after the change review' },
+          ];
+          s.queue[1].option_count = 2;
+          break;
+        case 'multiselect':
+          s.queue[0].title = s.focus.question = 'Which regions get release 4.2 first?';
+          s.queue[0].option_count = 3;
+          s.focus.recommendation = { status: 'ready', action: 'EU and US' };
+          s.focus.multiselect = true;
+          s.focus.options = [
+            { id: 'eu', label: 'EU (Frankfurt)' },
+            { id: 'us', label: 'US (Virginia)' },
+            { id: 'apac', label: 'APAC (Singapore)' },
+          ];
+          ui.selections[IDS.d1] = ['eu', 'us'];
           break;
         default:
           break;

@@ -34,9 +34,10 @@ const CANONICAL_PRIMARIES: Record<string, string> = {
   'task-spawned': '99,102,241',
   'plan-session-live': '99,102,241',
 
-  // Escalation / attention mode — amber.
-  decisions: '251,191,36',
-  'artifact-review': '251,191,36',
+  // Escalation / attention mode. Amber stays the needs-you tone (attention
+  // line, edge, chips); the accent and every primary are the homepage lime.
+  decisions: '191,255,0',
+  'artifact-review': '191,255,0',
 
   // Readout mode — canonical teal.
   'morning-brief': '0,201,167',
@@ -47,7 +48,7 @@ const CANONICAL_PRIMARIES: Record<string, string> = {
   // Gallery — neutral slate.
   index: '17,24,39',
   'workspace-map': '191,255,0',
-  'orgx-panel': '251,191,36',
+  'orgx-panel': '191,255,0',
   'proof-receipt': '0,201,167',
 };
 
@@ -69,6 +70,16 @@ function extractPrimaryRgb(html: string): string | null {
 }
 
 describe('widget primary palette parity', () => {
+  it('never repaints a primary in the needs-you amber', () => {
+    const offenders = readdirSync(WIDGETS_DIR)
+      .filter((f) => f.endsWith('.html'))
+      .filter((f) => {
+        const html = readFileSync(join(WIDGETS_DIR, f), 'utf8');
+        return /--ox-primary(-rgb)?\s*:\s*(rgb\(\s*)?(#fbbf24|251,\s*191,\s*36)/i.test(html);
+      });
+    expect(offenders).toEqual([]);
+  });
+
   const widgetFiles = readdirSync(WIDGETS_DIR).filter((f) => f.endsWith('.html'));
 
   it('covers every shipped widget HTML in the canonical map', () => {

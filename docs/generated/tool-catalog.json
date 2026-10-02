@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-02T14:43:23.722Z",
-  "sourceHash": "2e058d0a5d6a9473",
+  "generatedAt": "2026-10-02T14:56:46.605Z",
+  "sourceHash": "0a39ab639d2e3d77",
   "version": "1.0.0",
   "totalTools": 92,
   "categories": [
@@ -6042,7 +6042,7 @@
     {
       "id": "orgx_widget_decide",
       "title": "Decide from the decisions widget",
-      "description": "Widget-only: settles one ordinary decision after the person clicks Approve or Send back in the decisions widget. USE WHEN: the decisions widget sends a click with its approval token from result metadata, which models never see. NEXT: the widget shows the decision as settled. DO NOT USE: from a model or without a widget approval token; use approve_decision or reject_decision to point the person to where they decide.",
+      "description": "Widget-only: settles one decision after the person clicks Approve, an option, or Send back in the decisions widget or the OrgX panel. USE WHEN: the widget sends a click with its approval token from result metadata, which models never see. NEXT: the widget shows the decision as settled. DO NOT USE: from a model or without a widget approval token; use approve_decision or reject_decision to point the person to where they decide.",
       "category": "Other",
       "inputSchema": {
         "type": "object",
@@ -6064,6 +6064,23 @@
             "type": "string",
             "maxLength": 2000,
             "description": "Required when rejecting"
+          },
+          "option_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "The option the person chose, when the decision has options"
+          },
+          "option_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "minItems": 1,
+            "maxItems": 50,
+            "description": "The options the person chose, when the decision allows several"
           },
           "approval_token": {
             "type": "string",

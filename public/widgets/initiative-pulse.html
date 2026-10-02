@@ -28,10 +28,7 @@
          tokens and the widget theme; this sheet lays the pulse out. */
       :root { --ox-primary-rgb: 0, 201, 167; }
 
-      /* The kit's primaries stay the needs-you amber inside this teal widget. */
-      ox-footer, ox-attention-line, ox-state-chip, ox-receipt-row, ox-glyph, ox-avatar {
-        --ox-primary: rgb(251, 191, 36);
-      }
+      /* The kit's primaries are its action lime (--ox-action) in every widget. */
 
       * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -74,7 +71,7 @@
       .pulse-head { border-bottom: 1px solid var(--ox-border); --ox-attention-padding: 0 8px 0 20px; }
       .pulse-attention {
         display: inline-flex; align-items: center; gap: 6px; min-height: 36px; margin: 4px 0; padding: 0 12px;
-        border-radius: 9px; border: 1px solid #e9a800; background: rgb(251, 191, 36); color: #1a1204;
+        border-radius: 9px; border: 1px solid var(--ox-action-border); background: var(--ox-action); color: var(--ox-action-fg);
         font-size: 12.5px; font-weight: 650; white-space: nowrap; cursor: pointer;
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
       }

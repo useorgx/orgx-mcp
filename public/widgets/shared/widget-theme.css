@@ -103,7 +103,9 @@
 }
 
 /* Accent RGB remains stable for identity and translucent fills. The visible
- * foreground changes by theme so signal text stays legible. */
+ * foreground changes by theme so signal text stays legible. There is no amber
+ * accent: amber is the warning tone (needs you), and primary buttons are the
+ * kit's action lime in every widget. */
 :root[data-accent="lime"] {
   --ox-primary: #4d7c0f;
   --ox-primary-rgb: 191, 255, 0;
@@ -123,13 +125,6 @@
   --ox-primary-rgb: 99, 102, 241;
   --ox-primary-fill-rgb: 79, 70, 229;
   --ox-primary-contrast: #ffffff;
-}
-
-:root[data-accent="amber"] {
-  --ox-primary: #a16207;
-  --ox-primary-rgb: 251, 191, 36;
-  --ox-primary-fill-rgb: 251, 191, 36;
-  --ox-primary-contrast: #211500;
 }
 
 :root[data-accent="neutral"] {
@@ -212,10 +207,6 @@
     --ox-primary: #818cf8;
   }
 
-  :root:not([data-theme="light"])[data-accent="amber"] {
-    --ox-primary: #fbbf24;
-  }
-
   :root:not([data-theme="light"])[data-accent="neutral"] {
     --ox-primary: #f2f7ff;
     --ox-primary-hover: #ffffff;
@@ -294,10 +285,6 @@
 
 :root[data-theme="dark"][data-accent="iris"] {
   --ox-primary: #818cf8;
-}
-
-:root[data-theme="dark"][data-accent="amber"] {
-  --ox-primary: #fbbf24;
 }
 
 :root[data-theme="dark"][data-accent="neutral"] {
