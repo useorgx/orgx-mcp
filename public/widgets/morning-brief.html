@@ -132,8 +132,22 @@
     .priority-who { width: 22px; height: 22px; display: grid; place-items: center; color: var(--ox-text-muted); }
     .priority-who ox-glyph { --ox-glyph-size: 16px; }
     .priority-domain { font: 500 11.5px/1.3 var(--ox-mono); color: var(--ox-text-muted); }
-    .priority-title { font-size: 13.5px; font-weight: 600; line-height: 1.35; margin-top: 1px; }
-    .priority-note { font-size: 12.5px; line-height: 1.45; color: var(--ox-text-2); margin-top: 2px; }
+    /* Priority headline: the title's first sentence, about three lines; the rest reads as body text. */
+    .priority-title {
+      font-size: 13.5px; font-weight: 600; line-height: 1.35; margin-top: 1px; overflow-wrap: anywhere;
+      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden;
+    }
+    .priority-note { font-size: 12.5px; line-height: 1.45; color: var(--ox-text-2); margin-top: 2px; overflow-wrap: anywhere; }
+    .priority-more { font-size: 12.5px; line-height: 1.45; color: var(--ox-text-muted); margin-top: 2px; overflow-wrap: anywhere; }
+
+    /* One honest degraded notice, inside the card: which source is missing, and what that means. */
+    .brief-partial {
+      display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 8px 10px; border-radius: 10px;
+      background: var(--ox-warning-surface, rgba(161, 98, 7, 0.09)); color: var(--ox-text-2);
+      font-size: 12.5px; line-height: 1.45;
+    }
+    .brief-partial b { color: var(--ox-text); font-weight: 650; }
+    .brief-partial .ev-dot { margin-top: 5px; }
 
     .output-row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
     .output-meta { display: flex; align-items: center; gap: 6px; font: 500 11.5px/1.3 var(--ox-mono); color: var(--ox-text-muted); margin-top: 2px; }
@@ -159,7 +173,7 @@
     .sk { display: block; border-radius: 6px; background: var(--ox-skeleton, rgba(127, 127, 127, 0.12)); }
 
     .focusable:focus-visible, .app-action-card:focus-visible, .app-metric-button:focus-visible, .app-accordion-trigger:focus-visible, .output-link:focus-visible {
-      outline: 2px solid var(--ox-focus, var(--ox-teal)); outline-offset: -2px; border-radius: 8px;
+      outline: 2px solid var(--ox-focus); outline-offset: -2px; border-radius: 8px;
     }
 
     @media (max-width: 480px) {
@@ -361,6 +375,15 @@
         demoBriefVariant.summary = 'Two agents are working now. This brief will update as the next receipts land.';
         demoBriefVariant.session_summary.completed = 3;
         demoBriefVariant.session_summary.receipts_produced = 4;
+      } else if (demoState === 'partial') {
+        // A brief built while one source was down (live QA, 2026-10-02).
+        demoBriefVariant.degraded = ['workspace_pulse_unavailable'];
+        demoBriefVariant.degraded_reason = 'workspace_pulse_timeout';
+        demoBriefVariant.top_priorities[0] = {
+          domain: 'Engineering',
+          title: 'Production verification of MCP PR #424: admission, privacy and plan compatibility changes are deployed as f9c40d233e4e13809d9f901b005fe3410b37a4b0. A green deployment alone does not approve broad plugin marketing. Verification marker: orgx-prod-e2e-20260930-1525.',
+          reason: 'Blocks plugin marketing until the remaining checks are accepted.',
+        };
       } else if (demoState === 'stale' || demoState === 'degraded') {
         demoBriefVariant.generated_at = new Date(Date.now() - 1000 * 60 * 14).toISOString();
         demoBriefVariant.summary = 'This readout is outside the live window. Refresh before acting on priorities or agent status.';
@@ -535,6 +558,67 @@
         suffix: '',
         numeric: 0,
       };
+    }
+
+    // Which sources a partial brief is missing, in words. The payload names them in degraded,
+    // dataGaps or degraded_reason (codes like workspace_pulse_unavailable).
+    const SOURCE_NAMES = {
+      workspace_pulse: 'the workspace pulse', pulse: 'the workspace pulse', value_dashboard: 'value numbers', value: 'value numbers',
+      decisions: 'decisions', pending_decisions: 'decisions', receipts: 'receipts', top_receipts: 'receipts',
+      artifacts: 'overnight output', artifacts_produced: 'overnight output', review_items: 'review items', proof_cards: 'overnight output',
+      chronicle: 'activity history', intelligence: 'learning stats', outcome_attribution: 'outcome attribution', goals: 'goals',
+      session_summary: 'the session summary', exceptions: 'guardrail flags', next_actions: 'next actions', priorities: 'priorities',
+    };
+    function sourceName(raw) {
+      const code = String(raw || '').trim().toLowerCase()
+        .replace(/[\s-]+/g, '_')
+        .replace(/_(?:unavailable|failed|failure|error|errored|timeout|timed_out|missing|stale|skipped|degraded)$/, '');
+      if (!code || !/^[a-z][a-z0-9_]*$/.test(code)) return '';
+      return SOURCE_NAMES[code] || code.replace(/_/g, ' ');
+    }
+    function missingSources(payload) {
+      const names = [];
+      [...asArray(payload.degraded), ...asArray(payload.dataGaps), payload.degraded_reason].forEach((item) => {
+        const name = sourceName(typeof item === 'string' ? item : asObject(item).source || asObject(item).name);
+        if (name && !names.includes(name)) names.push(name);
+      });
+      return names.slice(0, 3);
+    }
+    function joinWords(list) {
+      if (list.length <= 1) return list[0] || '';
+      return list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1];
+    }
+    function partialNotice(payload) {
+      const names = missingSources(payload);
+      return names.length
+        ? `Couldn’t load ${joinWords(names)} for this brief. Counts may be low until the next refresh.`
+        : 'Some sources didn’t load for this brief. Counts may be low until the next refresh.';
+    }
+
+    // Priority headlines: the title's first sentence, about three lines; the rest stays as body text.
+    const HEADLINE_MAX = 96;
+    const NOT_A_SENTENCE_END = /(?:\b(?:e\.g|i\.e|vs|etc|approx|incl|No|Mr|Ms|Dr|St|Inc|Ltd)|\b[A-Z])$/;
+    function splitHeadline(text) {
+      const full = String(text || '').replace(/\s+/g, ' ').trim();
+      let head = full;
+      let rest = '';
+      const re = /[.!?](?=\s+["“(]?[A-Z0-9])/g;
+      let match;
+      while ((match = re.exec(full))) {
+        const end = match.index + 1;
+        if (end < 12 || NOT_A_SENTENCE_END.test(full.slice(0, match.index))) continue;
+        head = full.slice(0, end).trim();
+        rest = full.slice(end).trim();
+        break;
+      }
+      if (head.length > HEADLINE_MAX) {
+        const cut = head.slice(0, HEADLINE_MAX);
+        const space = cut.lastIndexOf(' ');
+        const at = space > HEADLINE_MAX * 0.6 ? space : HEADLINE_MAX;
+        rest = '…' + head.slice(at).trim() + (rest ? ' ' + rest : '');
+        head = head.slice(0, at).replace(/[\s,;:–—-]+$/, '') + '…';
+      }
+      return { headline: head, body: rest };
     }
 
     function normalizeBrief(payload) {
@@ -750,6 +834,7 @@
         pendingDecisions,
         blockedWork,
         isPartial,
+        partialNotice: isPartial ? partialNotice(payload) : '',
         isStale: exceptions.some((item) => String(asObject(item).exception_type || asObject(item).type || '').toLowerCase().includes('stale')) || isOlderThan(payload.generated_at || payload.created_at || workspacePulse.generatedAt, 18),
         shortDateLabel: formatShortDay(payload.generated_at || payload.created_at || workspacePulse.generatedAt),
         clockLabel: formatClock(payload.generated_at || payload.created_at || workspacePulse.generatedAt),
@@ -856,12 +941,14 @@
         .map((priority) => {
           const domain = titleCase(priority.domain || 'Execution');
           const agentKey = agentFor(priority.agent_name, priority.domain);
+          const head = splitHeadline(priority.title || 'Priority item');
           return `
             <div class="priority-row">
               <div class="priority-who">${agentKey ? avatarHtml(agentKey, '', 22) : '<ox-glyph kind="task"></ox-glyph>'}</div>
               <div class="priority-body">
                 <div class="priority-domain">${escapeHtml(domain)}</div>
-                <div class="priority-title">${escapeHtml(priority.title || 'Priority item')}</div>
+                <div class="priority-title">${escapeHtml(head.headline)}</div>
+                ${head.body ? `<div class="priority-more">${escapeHtml(head.body)}</div>` : ''}
                 <div class="priority-note">${escapeHtml(priority.reason || 'No rationale provided.')}</div>
               </div>
             </div>
@@ -981,7 +1068,8 @@
     function footerFor(brief, line) {
       const action = brief.footerUrl ? `${brief.footerLabel} ↗` : '';
       if (brief.isPartial) {
-        return { state: 'stale', heading: 'Partial brief', detail: 'some sources are still refreshing', action };
+        // The notice in the digest says what is missing; the footer only says when.
+        return { state: 'stale', heading: `Generated ${brief.clockLabel}`, detail: brief.doneLine || `as of ${brief.shortDateLabel}`, action };
       }
       if (brief.isStale) {
         return { state: 'stale', heading: 'Out of date', detail: `as of ${brief.clockLabel}`, action };
@@ -1012,6 +1100,7 @@
             </div>
 
             <div class="brief-digest">
+              ${brief.partialNotice ? `<p class="brief-partial" role="status"><span class="ev-dot" aria-hidden="true"></span><span><b>Partial brief.</b> ${escapeHtml(brief.partialNotice)}</span></p>` : ''}
               <p class="brief-summary">${escapeHtml(brief.summary)}</p>
               ${
                 brief.actions.length
@@ -1207,6 +1296,8 @@
     } else if (!isLoadingOverride) {
       const protocol = detectProtocol();
       initWidget({
+        // The partial notice lives inside the card; no second banner above it.
+        dataAvailabilityNotice: false,
         live: { anchor: '#content', widget: 'morning-brief', emptyLabel: 'No agents running' },
         render: (payload) => {
           if (payload) {

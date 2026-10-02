@@ -133,17 +133,25 @@
     .dq-status .urg-critical { color: var(--ox-danger); }
     .dq-status ox-glyph { --ox-glyph-size: 15px; }
 
-    .dq-q { font-size: 26px; line-height: 1.18; font-weight: 700; letter-spacing: -0.025em; text-wrap: balance; overflow-wrap: anywhere; }
+    /* The headline is the decision's title (or its first sentence), about three lines at most;
+       the rest of the text reads as body copy under it. */
+    .dq-q {
+      font-size: 26px; line-height: 1.18; font-weight: 700; letter-spacing: -0.025em; text-wrap: balance; overflow-wrap: anywhere;
+      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden;
+    }
+    .dq-detail { margin-top: 10px; font-size: 14px; line-height: 1.5; color: var(--ox-text-2); overflow-wrap: anywhere; text-wrap: pretty; }
     .dq-q a { color: inherit; text-decoration: none; }
     .dq-q a:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
 
     .dq-rec { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 650; min-width: 0; }
     .dq-rec .role { font-weight: 500; color: var(--ox-text-muted); }
     .dq-why { font-size: 14px; line-height: 1.5; color: var(--ox-text-2); margin-top: 6px; text-wrap: pretty; }
+    .dq-rec.is-quiet { font-size: 13px; font-weight: 500; color: var(--ox-text-muted); }
 
     .agent-avatar { display: inline-flex; flex: none; line-height: 0; }
-    .agent-avatar--system { width: 22px; height: 22px; border-radius: 50%; overflow: hidden; background: rgba(var(--ox-teal-rgb, 0, 201, 167), 0.12); align-items: center; justify-content: center; font: 600 10px/1 var(--ox-mono); color: var(--ox-teal); }
-    .agent-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    /* OrgX's own items carry the OrgX mark, drawn inline so a host that blocks images never shows an empty circle. */
+    .agent-avatar--system { width: 22px; height: 22px; border-radius: 50%; overflow: hidden; background: var(--ox-surface-subtle, rgba(127, 127, 127, 0.1)); align-items: center; justify-content: center; }
+    .agent-avatar--system svg { display: block; width: 78%; height: 78%; }
 
     .dq-evidence { display: flex; flex-direction: column; }
     .dq-all {
@@ -174,6 +182,8 @@
     .decision-evidence__body { display: flex; flex-direction: column; gap: 12px; padding: 2px 0 6px; }
     .decision-evidence__item .k { font-size: 12.5px; color: var(--ox-text-muted); margin-bottom: 3px; }
     .decision-evidence__copy { font-size: 13.5px; line-height: 1.5; color: var(--ox-text-2); overflow-wrap: anywhere; }
+    .decision-evidence__copy p { margin: 0; }
+    .decision-evidence__copy p + p { margin-top: 4px; }
     .decision-tradeoffs { display: grid; gap: 8px; }
     .decision-tradeoff { font-size: 13px; line-height: 1.45; color: var(--ox-text-2); }
     .decision-tradeoff strong { display: block; color: var(--ox-text); font-weight: 600; }
@@ -231,7 +241,7 @@
       font: 14px/1.5 var(--ox-font);
     }
     .reject-textarea::placeholder { color: var(--ox-placeholder, var(--ox-text-muted)); }
-    .reject-textarea:focus-visible { outline: 2px solid var(--ox-focus, var(--ox-warning)); outline-offset: 1px; }
+    .reject-textarea:focus-visible { outline: 2px solid var(--ox-focus); outline-offset: 1px; }
     .reject-textarea.is-short { min-height: 56px; }
     .reject-textarea[aria-invalid="true"] { border-color: var(--ox-danger); }
     .reject-textarea[readonly] { opacity: 0.7; }
@@ -259,7 +269,7 @@
     .dq-text-btn:hover { color: var(--ox-text); background: var(--ox-hover); }
     .dq-text-btn:disabled { opacity: 0.55; cursor: default; }
     .dq-text-btn:focus-visible, .dq-opt:focus-visible, .dq-row:focus-visible, .dq-head-link:focus-visible, .dq-all:focus-visible, .decide-in-orgx:focus-visible, .dq-q a:focus-visible, .decision-evidence > summary:focus-visible {
-      outline: 2px solid var(--ox-focus, var(--ox-warning)); outline-offset: 2px;
+      outline: 2px solid var(--ox-focus); outline-offset: 2px;
     }
 
     /* The rest of the queue: one quiet row each, opened in place. */
@@ -314,7 +324,7 @@
       body { padding: 12px; }
       .dq-body { padding: 16px 16px 18px; gap: 16px; }
       .dq-calm { padding: 16px; }
-      .dq-q { font-size: 21px; }
+      .dq-q { font-size: 21px; -webkit-line-clamp: 4; line-clamp: 4; }
       .dq-cons { grid-template-columns: minmax(0, 1fr); gap: 10px; }
       .dq-head { --ox-attention-padding: 0 4px 0 16px; }
       .dq-status .ctx-wrap { display: none; }
@@ -394,16 +404,17 @@
 
     var fixtureState = queryParams.get('state') || (queryParams.get('loading') === 'true' ? 'loading' : queryParams.get('demo') === 'true' ? 'urgent' : 'empty');
     // Footer fixtures for the gallery: each one opens decision d2, which this demo can approve here.
-    var FOOTER_FIXTURES = ['decide-here', 'composing', 'sending', 'confirming', 'approved', 'not-sent', 'unconfirmed'];
+    var FOOTER_FIXTURES = ['decide-here', 'composing', 'sending', 'confirming', 'approved', 'not-sent', 'not-sent-network', 'chat-unavailable', 'unconfirmed'];
     var isFooterFixture = FOOTER_FIXTURES.includes(fixtureState);
     // Option fixtures: a decision whose options come from the server (one click each), and one that allows several.
     var OPTION_FIXTURES = ['options', 'multiselect'];
     var isOptionFixture = OPTION_FIXTURES.includes(fixtureState);
     // Contract fixtures: one item per kind of widget_actions the app sends, plus refusals and the batch.
     var CONTRACT_FIXTURES = ['external-question', 'option-multiselect', 'access-request', 'gateway-action', 'artifact-review',
-      'validation-error', 'decide-reason', 'batch-ready', 'batch-result'];
+      'validation-error', 'decide-reason', 'batch-ready', 'batch-result', 'batch-unavailable'];
     var isContractFixture = CONTRACT_FIXTURES.includes(fixtureState);
-    var isDemo = ['urgent', 'populated', 'long', 'resolved'].includes(fixtureState) || isFooterFixture || isOptionFixture || isContractFixture;
+    // packet: what the app sends from a review packet with no recommendation (live QA, 2026-10-02).
+    var isDemo = ['urgent', 'populated', 'long', 'resolved', 'packet'].includes(fixtureState) || isFooterFixture || isOptionFixture || isContractFixture;
     var demoNow = Date.now();
     var data = isDemo ? {
       summary: { critical: 1, high: 2 },
@@ -565,15 +576,30 @@
       },
     };
     CONTRACT_ITEMS['validation-error'] = Object.assign({}, CONTRACT_ITEMS['external-question'], { id: 'c7' });
+    if (fixtureState === 'packet' && data) {
+      var packetItem = function(id, text, extra) {
+        return Object.assign({
+          id: id, urgency: 'high', type: 'decision_queue', summary: text, created_at: new Date(demoNow - 3 * 24 * 60 * 60 * 1000).toISOString(),
+          review_packet: {
+            id: 'pkt-' + id, headDecisionId: id, question: text, outcome: 'Outcome not linked', current: { state: 'pending', blocked: false },
+            evidence: [], uncertainty: 'No LLM recommendation is available for this decision yet.', recommendation: { status: 'unavailable', action: null }, consequences: {},
+          },
+        }, extra || {});
+      };
+      data.decisions = [
+        packetItem('p1', 'The OrgX floor stopped a merge action in an agent-cli session and is waiting for you. Agent’s reason: please review PR #3239. Local focused tests and the initiative criterion pass; required GitHub CI did not start because the Actions budget is exhausted. Command: gh pr merge 3239. Approve to let exactly this action run once in the next 24 hours.'),
+        packetItem('p2', 'Production verification of MCP PR #424: admission, privacy and plan compatibility changes are deployed as f9c40d233e4e13809d9f901b005fe3410b37a4b0. A green deployment alone does not approve broad plugin marketing.', { review_packet: { id: 'pkt-p2', headDecisionId: 'p2', question: 'Production verification of MCP PR #424: admission, privacy and plan compatibility changes are deployed as f9c40d233e4e13809d9f901b005fe3410b37a4b0. A green deployment alone does not approve broad plugin marketing.', outcome: 'Plugin directory launch', current: { state: 'pending', blocked: true }, evidence: [], uncertainty: 'Onboarding telemetry for fresh accounts is not correlated yet.', recommendation: { status: 'ready', action: 'Hold marketing until the fresh-account flow is verified.' }, consequences: {} } }),
+      ];
+    }
     if (isContractFixture && data) {
-      if (fixtureState === 'batch-ready' || fixtureState === 'batch-result') {
+      if (fixtureState === 'batch-ready' || fixtureState === 'batch-result' || fixtureState === 'batch-unavailable') {
         data.decisions.push(Object.assign({}, CONTRACT_ITEMS['gateway-action']), Object.assign({}, CONTRACT_ITEMS['access-request']));
       } else {
         data.decisions.push(Object.assign({}, CONTRACT_ITEMS[fixtureState]));
       }
     }
     // Demo-only stand-ins for the widget approval tokens a real result carries in its _meta.
-    var demoApprovalTokens = isDemo ? { d2: 'demo-approval-token', d3: 'demo-approval-token', d4: 'demo-approval-token', d5: 'demo-approval-token', c1: 'demo-approval-token', c2: 'demo-approval-token', c3: 'demo-approval-token', c4: 'demo-approval-token', c5: 'demo-approval-token', c7: 'demo-approval-token' } : null;
+    var demoApprovalTokens = isDemo ? { p1: 'demo-approval-token', p2: 'demo-approval-token', d2: 'demo-approval-token', d3: 'demo-approval-token', d4: 'demo-approval-token', d5: 'demo-approval-token', c1: 'demo-approval-token', c2: 'demo-approval-token', c3: 'demo-approval-token', c4: 'demo-approval-token', c5: 'demo-approval-token', c7: 'demo-approval-token' } : null;
     if (fixtureState === 'long' && data) {
       data.decisions[0].summary = 'Approve the founder continuity launch story, linked artifact evidence, decision provenance language, responsive social preview, CTA hierarchy, and cross-agent continuation receipt before the scheduled release window';
       data.decisions[0].context += ' This long-content fixture verifies wrapping and disclosure behavior across compact hosts.';
@@ -624,6 +650,9 @@
     var fieldErrors = {};
     // Approval tokens from a refresh this widget ran (the host's metadata keeps the first result's).
     var refreshedTokens = null;
+    // Set when the host says the decide tool is not there (tool_unavailable): this chat can't
+    // settle anything, so every card hands off to OrgX instead of offering Retry again.
+    var chatCannotDecide = false;
     // Multiselect toggles per decision, and the choice that went with each ruling (for Retry and the receipt).
     var optionSelections = {};
     var decisionChoices = {};
@@ -675,15 +704,17 @@
         confirming: { phase: 'confirming', action: 'approve', detail: 'Eli is picking it up' },
         approved: { phase: 'done', action: 'approve', detail: 'Eli continues · 0.82 ships to production' },
         'not-sent': { phase: 'failed', action: 'approve' },
+        'not-sent-network': { phase: 'failed', action: 'approve', detail: 'couldn’t reach OrgX · nothing changed' },
         unconfirmed: { phase: 'waiting', action: 'approve' },
       }[fixtureState];
       if (fixturePhase) actionStates.d2 = fixturePhase;
+      if (fixtureState === 'chat-unavailable') chatCannotDecide = true;
       if (fixtureState === 'approved') {
         lastResolution = { action: 'approved', summary: 'Lock the launch search relevance threshold at 0.82?', agent_name: 'Eli - Engineering' };
       }
     }
     if (isContractFixture) {
-      currentPage = fixtureState === 'batch-ready' ? 2 : 4;
+      currentPage = fixtureState === 'batch-ready' || fixtureState === 'batch-unavailable' ? 2 : 4;
       if (fixtureState === 'option-multiselect') optionSelections.c2 = ['eu', 'us'];
       if (fixtureState === 'validation-error') fieldErrors.c7 = { action: 'approve', field: 'answer', code: 'answer_required', message: 'Type an answer to send.' };
     }
@@ -753,6 +784,7 @@
     // Approval tokens arrive in widget-only result metadata. A decision without
     // one is decided in OrgX: the widget never pretends it can settle it.
     var getApprovalToken = (decisionId) => {
+      if (chatCannotDecide) return null;
       if (refreshedTokens) {
         const fresh = refreshedTokens[decisionId];
         return typeof fresh === 'string' && fresh ? fresh : null;
@@ -779,6 +811,7 @@
       action_authority_denied: 'Your role can’t approve this from chat. OrgX shows who can.',
       token_mismatch: 'This view belongs to another account or workspace. Open it in OrgX.',
       lifecycle_required: 'This one finishes in OrgX.',
+      chat_unavailable: 'This chat can’t settle it right now, so nothing was sent.',
       // Older servers.
       critical: 'Critical decisions are made in OrgX.',
       choice_required: 'Choose between the options in OrgX.',
@@ -786,10 +819,12 @@
       protected_decision_type: 'This one needs the full review in OrgX.',
       artifact_review_lifecycle: 'This one needs the full review in OrgX.',
     };
-    var decideInOrgxDetail = (decision) => DECIDE_IN_ORGX_COPY[decision && decision.decide_in_orgx_reason] || 'Open it in OrgX to decide.';
+    var decideInOrgxDetail = (decision) => DECIDE_IN_ORGX_COPY[decision && decision.decide_in_orgx_reason] ||
+      (chatCannotDecide ? DECIDE_IN_ORGX_COPY.chat_unavailable : 'Open it in OrgX to decide.');
 
     var buildDecisionSurfaceUrl = (decision) => {
       if (!decision || !decision.id) return ORGX_BASE_URL + '/decisions';
+      if (typeof decision.review_url === 'string' && /^https:\/\//.test(decision.review_url.trim())) return decision.review_url.trim();
       if (typeof decision.url === 'string' && decision.url.trim()) return decision.url.trim();
       if (typeof decision.link === 'string' && decision.link.trim()) return decision.link.trim();
       const refs = decision.context_refs || {};
@@ -830,10 +865,26 @@
       parts.push(text);
     };
 
+    // Placeholders the app sends when it knows nothing: never worth a line on the card.
+    var isEmptyUnknown = (text) => {
+      const t = String(text || '').trim().replace(/[.!]+$/, '');
+      if (!t) return true;
+      if (/^(?:n\/?a|none|null|undefined|unknown|tbd|not set|unavailable|pending|[-–—?]+)$/i.test(t)) return true;
+      return t.length <= 40 && /\b(?:not linked|not set|not available|unavailable|unknown)$/i.test(t);
+    };
+    var sentence = (text) => {
+      const t = String(text || '').trim();
+      if (!t) return '';
+      const s = t.charAt(0).toUpperCase() + t.slice(1);
+      return /[.!?…)"”]$/.test(s) ? s : s + '.';
+    };
+
+    // Free-form fields as words: booleans and empty unknowns are dropped, never printed as "blocked: false".
     var formatDecisionField = (value, depth) => {
       if (value === null || value === undefined) return '';
-      if (typeof value === 'string') return value.trim();
-      if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+      if (typeof value === 'string') return isEmptyUnknown(value) ? '' : value.trim();
+      if (typeof value === 'boolean') return '';
+      if (typeof value === 'number') return Number.isFinite(value) ? String(value) : '';
       if (Array.isArray(value)) {
         var listParts = [];
         value.forEach((item) => pushUniqueText(listParts, formatDecisionField(item, (depth || 0) + 1)));
@@ -843,7 +894,7 @@
         if ((depth || 0) > 2) return '';
         var objectParts = [];
         var preferredKeys = ['summary', 'text', 'message', 'title', 'description', 'reason', 'note', 'content', 'detail', 'details', 'body', 'why', 'impact', 'recommendation'];
-        var hiddenKeys = ['id', 'uuid', 'created_at', 'createdAt', 'updated_at', 'updatedAt', 'decision_id', 'entity_id', 'initiative_id', 'workstream_id', 'milestone_id', 'task_id', 'run_id', 'mission_id', 'policy_key'];
+        var hiddenKeys = ['id', 'uuid', 'created_at', 'createdAt', 'updated_at', 'updatedAt', 'decision_id', 'entity_id', 'initiative_id', 'workstream_id', 'milestone_id', 'task_id', 'run_id', 'mission_id', 'policy_key', 'status', 'state', 'provenance', 'evidence'];
         var orderedKeys = preferredKeys.filter((key) => key in value);
         Object.keys(value).forEach((key) => {
           if (orderedKeys.includes(key) || hiddenKeys.includes(key)) return;
@@ -856,11 +907,91 @@
             pushUniqueText(objectParts, formatted);
             return;
           }
-          pushUniqueText(objectParts, humanizeDecisionKey(key) + ': ' + formatted);
+          pushUniqueText(objectParts, sentence(humanizeDecisionKey(key)).replace(/\.$/, '') + ': ' + formatted);
         });
-        return objectParts.join(' • ');
+        return objectParts.map(sentence).join(' ');
       }
       return '';
+    };
+
+    // "Why it matters" from a review packet, in short sentences. The evidence list renders as
+    // receipt rows and a missing recommendation is said once, in the recommendation line.
+    var IDLE_STATES = ['pending', 'open', 'needs_decision', 'awaiting_decision', 'pending_decision', 'needs_you', 'in_review'];
+    var textOf = (value) => typeof value === 'string' ? value.trim()
+      : value && typeof value === 'object' && !Array.isArray(value) ? firstString(value.summary, value.title, value.text, value.label, value.name, value.description) : '';
+    var packetContextLines = (packet) => {
+      const lines = [];
+      const outcome = textOf(packet.outcome);
+      if (outcome && !isEmptyUnknown(outcome)) lines.push('It serves this outcome: ' + sentence(outcome));
+      const current = packet.current;
+      if (current && typeof current === 'object' && !Array.isArray(current)) {
+        const state = firstString(current.state, current.status).toLowerCase();
+        if (state && !IDLE_STATES.includes(state) && !isEmptyUnknown(state)) lines.push('It is ' + humanizeDecisionKey(state).toLowerCase() + ' right now.');
+        if (current.blocked === true) lines.push('It is blocking work until you decide.');
+        const note = firstString(current.summary, current.note, current.detail);
+        if (note && !isEmptyUnknown(note)) lines.push(sentence(note));
+      } else if (textOf(current) && !isEmptyUnknown(textOf(current))) {
+        lines.push(sentence(textOf(current)));
+      }
+      const uncertainty = textOf(packet.uncertainty);
+      if (uncertainty && !isEmptyUnknown(uncertainty) && !/\bno\b.*\brecommendation\b/i.test(uncertainty)) {
+        lines.push('Still uncertain: ' + sentence(uncertainty));
+      }
+      return lines;
+    };
+    var contextLines = (packet, raw) => {
+      if (packet) return packetContextLines(packet);
+      const text = formatDecisionField(raw);
+      return text ? [text] : [];
+    };
+
+    // A recommendation the app could not make is not a recommendation: no "status: unavailable".
+    var EMPTY_RECOMMENDATION = ['unavailable', 'none', 'missing', 'pending', 'not_available', 'skipped', 'failed', 'error'];
+    var readRecommendation = (value) => {
+      if (value === null || value === undefined) return { text: '', empty: false, unverified: false };
+      if (typeof value === 'string') return { text: isEmptyUnknown(value) ? '' : value.trim(), empty: isEmptyUnknown(value), unverified: false };
+      if (typeof value !== 'object' || Array.isArray(value)) {
+        const text = formatDecisionField(value);
+        return { text, empty: !text, unverified: false };
+      }
+      const status = firstString(value.status).toLowerCase();
+      const action = firstString(value.action, value.summary, value.text, value.recommendation, value.title, value.label);
+      const why = firstString(value.rationale, value.reason, value.why);
+      if (EMPTY_RECOMMENDATION.includes(status) && !action) return { text: '', empty: true, unverified: false };
+      const parts = [action && !isEmptyUnknown(action) ? action : '', why && !isEmptyUnknown(why) ? why : ''].filter(Boolean);
+      const text = parts.length > 1 ? sentence(parts[0]) + ' ' + parts[1] : parts[0] || '';
+      return { text, empty: !text, unverified: status === 'unverified' };
+    };
+
+    // The headline: the title when the item has its own, else the first sentence, kept to about
+    // three lines. Whatever does not fit reads as body text underneath; nothing is dropped.
+    var HEADLINE_MAX = 96;
+    var NOT_A_SENTENCE_END = /(?:\b(?:e\.g|i\.e|vs|etc|approx|incl|No|Mr|Ms|Dr|St|Inc|Ltd)|\b[A-Z])$/;
+    var firstSentence = (text) => {
+      const re = /[.!?](?=\s+["“(]?[A-Z0-9])/g;
+      let match;
+      while ((match = re.exec(text))) {
+        const end = match.index + 1;
+        if (end < 12 || NOT_A_SENTENCE_END.test(text.slice(0, match.index))) continue;
+        return { head: text.slice(0, end).trim(), rest: text.slice(end).trim() };
+      }
+      return { head: text, rest: '' };
+    };
+    var splitHeadline = (title, text) => {
+      const full = String(text || '').replace(/\s+/g, ' ').trim();
+      const own = String(title || '').replace(/\s+/g, ' ').trim();
+      if (own && own !== full && own.length <= HEADLINE_MAX) {
+        return { headline: own, body: full.startsWith(own) ? full.slice(own.length).trim() : full };
+      }
+      let { head, rest } = firstSentence(full || own);
+      if (head.length > HEADLINE_MAX) {
+        const cut = head.slice(0, HEADLINE_MAX);
+        const space = cut.lastIndexOf(' ');
+        const at = space > HEADLINE_MAX * 0.6 ? space : HEADLINE_MAX;
+        rest = '…' + head.slice(at).trim() + (rest ? ' ' + rest : '');
+        head = head.slice(0, at).replace(/[\s,;:–—-]+$/, '') + '…';
+      }
+      return { headline: head, body: rest };
     };
 
     // Evidence lists become receipt rows: one line of proof each.
@@ -1161,17 +1292,16 @@
         decision.urgency_level,
         decision.priority
       ).toLowerCase() || 'medium';
-      const context =
-        (packet && {
-          outcome: packet.outcome,
-          current: packet.current,
-          evidence: packet.evidence,
-          uncertainty: packet.uncertainty,
-        }) ??
-        decision.context ?? decision.why_it_matters ?? decision.whyItMatters ?? decision.reasoning ?? null;
-      const recommendation =
+      const why = contextLines(
+        packet,
+        decision.context ?? decision.why_it_matters ?? decision.whyItMatters ?? decision.reasoning ?? null
+      );
+      const recommendation = readRecommendation(
         (packet && packet.recommendation) ??
-        decision.recommendation ?? decision.recommended_action ?? decision.next_action ?? decision.action ?? null;
+        decision.recommendation ?? decision.recommended_action ?? decision.next_action ?? decision.action ?? null
+      );
+      const ownTitle = firstString(decision.title, decision.name);
+      const head = splitHeadline(ownTitle !== summary ? ownTitle : '', summary);
       const impact =
         (packet && packet.consequences) ??
         decision.impact ?? decision.impact_if_ignored ?? decision.risk_if_ignored ?? decision.consequence ?? null;
@@ -1209,9 +1339,14 @@
         context_refs: decision.context && typeof decision.context === 'object' && !Array.isArray(decision.context) ? decision.context : {},
         source_label: firstString(decision.sourceLabel, decision.source_label, decision.initiative_title, decision.initiative_name),
         summary,
+        headline: head.headline,
+        headline_body: head.body,
         urgency,
-        context: formatDecisionField(context),
-        recommendation: formatDecisionField(recommendation),
+        context: why.join(' '),
+        context_lines: why,
+        recommendation: recommendation.text,
+        recommendation_missing: recommendation.empty,
+        recommendation_unverified: recommendation.unverified,
         impact: ifApproved || ifRejected ? '' : formatDecisionField(impact),
         if_approved: ifApproved,
         if_rejected: ifRejected,
@@ -1297,9 +1432,7 @@
 
     var renderAvatar = (name, sizePx, isSystem) => {
       if (isSystem) {
-        const localUrl = resolveWidgetAsset('orgx-logo.png');
-        const remoteUrl = 'https://mcp.useorgx.com/widgets/shared/orgx-logo.png';
-        return `<span class="agent-avatar agent-avatar--system" style="width:${sizePx}px;height:${sizePx}px"><img src="${localUrl}" alt="" loading="eager" decoding="sync" draggable="false" onerror="if(!this.dataset.retried){this.dataset.retried='1';this.src='${remoteUrl}';return;}this.remove();" /></span>`;
+        return `<span class="agent-avatar agent-avatar--system" style="width:${sizePx}px;height:${sizePx}px">${ORGX_MARK_SVG}</span>`;
       }
       const agentKey = window.OrgXAgentIdentity ? window.OrgXAgentIdentity.resolveAgentKey(name) : null;
       const form = window.OrgXAgentIdentity && window.OrgXAgentIdentity.formForState ? window.OrgXAgentIdentity.formForState('needs_you') : 'asking';
@@ -1308,6 +1441,9 @@
       }
       return '';
     };
+
+    // The OrgX mark: two crossed loops, lime to teal. Inline, so it renders in every host sandbox.
+    var ORGX_MARK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><defs><linearGradient id="oxMarkGrad" x1="4" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#facc15"/><stop offset=".5" stop-color="#4ade80"/><stop offset="1" stop-color="#14b8a6"/></linearGradient></defs><g fill="none" stroke="url(#oxMarkGrad)" stroke-width="2.4"><rect x="2.6" y="8.4" width="18.8" height="7.2" rx="3.6" transform="rotate(45 12 12)"/><rect x="2.6" y="8.4" width="18.8" height="7.2" rx="3.6" transform="rotate(-45 12 12)"/></g></svg>';
 
     var formatUsd = v => Number.isFinite(Number(v)) ? '$'+Number(v).toFixed(2) : null;
     // "5h", "2d": the canvas status-line age.
@@ -1517,9 +1653,32 @@
       syncFooter(id);
     };
 
-    var shortError = (error, fallback) => {
+    // Host and transport failures arrive with a code (widget-runtime.js): tool_unavailable when the
+    // host has no such tool or resource, network when the call never arrived. The card says what
+    // happened from the code; a raw payload ({"detail":…} or a lone "{") is never shown.
+    var looksRaw = (text) => /^[\s{[<"]/.test(text) || /^[\s{}[\]"',:]*$/.test(text) || /"\s*:/.test(text) || /\b(?:undefined|null|NaN)\b/.test(text);
+    var safeErrorText = (error, fallback, max) => {
       const message = error && typeof error.message === 'string' ? error.message.trim() : '';
-      return message && message.length <= 36 ? message.replace(/\.$/, '') : fallback;
+      if (!message || looksRaw(message) || message.length > (max || 160) || /tool (?:request|execution) failed/i.test(message)) return fallback;
+      return message;
+    };
+    var errorKind = (error) => {
+      const code = String((error && error.code) || '').toLowerCase();
+      if (code === 'tool_unavailable' || code === 'network') return code;
+      // No host bridge at all (a standalone preview): nothing can be settled here either.
+      if (code === 'host_unavailable') return 'tool_unavailable';
+      if (code && code !== 'tool_failed') return code;
+      const raw = [error && error.message, error && error.details && error.details.raw].filter((v) => typeof v === 'string').join(' ');
+      if (/resource not found|tool not found|unknown tool|method not found|no such tool/i.test(raw)) return 'tool_unavailable';
+      if (/failed to fetch|networkerror|network error|load failed|timed? ?out|offline/i.test(raw)) return 'network';
+      return code;
+    };
+    var shortError = (error, fallback) => safeErrorText(error, fallback, 36).replace(/\.$/, '');
+    var markChatCannotDecide = () => {
+      chatCannotDecide = true;
+      (data && Array.isArray(data.decisions) ? data.decisions : []).forEach((d) => {
+        if (!isSettled(d) && !d.decide_in_orgx_reason) d.decide_in_orgx_reason = 'chat_unavailable';
+      });
     };
 
     // After OrgX records the decision, read its status until it settles (orgx_command_status).
@@ -1596,10 +1755,7 @@
       widget_decision_lifecycle_required: 'lifecycle_required',
     };
     var fieldForCode = (code) => code === 'reason_required' ? 'reason' : code === 'answer_required' ? 'answer' : code === 'answer_not_accepted' ? 'form' : 'options';
-    var refusalCopy = (error, fallback) => {
-      const message = error && typeof error.message === 'string' ? error.message.trim() : '';
-      return message && !/tool request failed|tool execution failed/i.test(message) && message.length <= 160 ? message : fallback;
-    };
+    var refusalCopy = (error, fallback) => safeErrorText(error, fallback, 160);
     // Drop picks the current contract no longer offers.
     var pruneSelections = (d) => {
       const c = choicesFor(d);
@@ -1610,9 +1766,20 @@
     };
 
     var handleRefusal = (id, action, error, opts) => {
-      const code = String((error && error.code) || '');
+      const code = errorKind(error);
       const details = error && error.details && typeof error.details === 'object' ? error.details : {};
       const d = getDecisionById(id);
+      if (code === 'tool_unavailable') {
+        // The chat's OrgX connection can't settle this here: every card hands off to OrgX
+        // (Decide in OrgX, with why), and nothing offers Retry again.
+        markChatCannotDecide();
+        delete actionStates[id];
+        if (!(opts && opts.batch)) render();
+        return;
+      }
+      if (code === 'network') {
+        return setPhase(id, { phase: 'failed', action, detail: action === 'approve' ? 'couldn’t reach OrgX · nothing changed' : 'couldn’t reach OrgX · your note is kept' });
+      }
       if (VALIDATION_CODES.includes(code)) {
         // The server sends the item's current widget_actions with every validation refusal.
         if (d && details.widget_actions && typeof details.widget_actions === 'object') {
@@ -1720,7 +1887,7 @@
         lastResolution = {
           action: action === 'approve' ? 'approved' : 'rejected',
           verb: pastTense(decision, action).toLowerCase(),
-          summary: decision.summary || 'This decision',
+          summary: decision.headline || decision.summary || 'This decision',
           agent_name: decision.agent_name || 'the assigned agent',
           choice: action === 'approve' && label ? label : null,
           note: draft.args.reason || null,
@@ -2018,13 +2185,29 @@
         },
       };
     }
+    if (fixtureState === 'batch-unavailable') {
+      // The host has no decide tool: one call was refused as tool_unavailable and the rest hand off.
+      chatCannotDecide = true;
+      batchState = {
+        ids: ['d2', 'd3', 'c4', 'c3'],
+        running: false,
+        results: {
+          d2: { status: 'orgx', text: 'This chat can’t settle it right now. Decide it in OrgX.' },
+          d3: { status: 'orgx', text: 'This chat can’t settle it right now. Decide it in OrgX.' },
+          c4: { status: 'orgx', text: 'This chat can’t settle it right now. Decide it in OrgX.' },
+          c3: { status: 'orgx', text: 'This chat can’t settle it right now. Decide it in OrgX.' },
+        },
+      };
+    }
     var batchEligible = (d) => {
       if (!d || isSettled(d) || actionStates[d.id] || !getApprovalToken(d.id)) return false;
       const c = choicesFor(d);
       return Boolean(c.approve && !c.selection && !(c.answer && c.answer.approve));
     };
     var batchResultFor = (d, error) => {
-      const code = String((error && error.code) || '');
+      const code = errorKind(error);
+      if (code === 'tool_unavailable') return { status: 'orgx', text: 'This chat can’t settle it right now. Decide it in OrgX.' };
+      if (code === 'network') return { status: 'failed', text: 'Not sent · couldn’t reach OrgX, try again' };
       if (VALIDATION_CODES.includes(code)) return { status: 'failed', text: refusalCopy(error, VALIDATION_COPY[code]) + ' Open it to decide.' };
       if (OUT_OF_DATE_CODES.includes(code)) return { status: 'changed', text: 'This view is out of date. Refresh to decide.' };
       if (code === 'widget_decision_conflict') return { status: 'changed', text: 'Changed since you opened it' };
@@ -2042,6 +2225,11 @@
       setPageButtonsDisabled(true);
       render();
       for (const d of items) {
+        if (chatCannotDecide) {
+          // An earlier item already showed the decide tool isn't there; don't call it again.
+          batchState.results[d.id] = batchResultFor(d, { code: 'tool_unavailable' });
+          continue;
+        }
         batchState.results[d.id] = { status: 'sending', text: 'Approving' };
         const draft = draftFor(d, 'approve');
         setPhase(d.id, { phase: 'sending', action: 'approve' });
@@ -2065,7 +2253,7 @@
       const settled = batchState.ids.filter((id) => batchState.results[id].status === 'settled');
       if (settled.length) {
         const first = getDecisionById(settled[0]);
-        lastResolution = { action: 'approved', verb: 'approved', summary: settled.length === 1 && first ? first.summary : settled.length + ' decisions', agent_name: 'the assigned agents' };
+        lastResolution = { action: 'approved', verb: 'approved', summary: settled.length === 1 && first ? first.headline || first.summary : settled.length + ' decisions', agent_name: 'the assigned agents' };
         scheduleDecisionStatePersistence();
       }
       render();
@@ -2094,7 +2282,7 @@
           const d = getDecisionById(id);
           const result = batchState.results[id] || { status: 'sending', text: 'Waiting its turn' };
           const row = BATCH_ROW[result.status] || BATCH_ROW.sending;
-          const summary = d ? d.summary : 'Decision';
+          const summary = d ? d.headline || d.summary : 'Decision';
           return `<ox-receipt-row status="${row.status}" label="${escapeHtml(summary)}" detail="${escapeHtml(result.text || '')}" value="${row.value}"${d ? ` href="${escapeHtml(buildDecisionSurfaceUrl(d))}"` : ''}></ox-receipt-row>`;
         }).join('');
         return `<section class="dq-batch is-result" aria-label="Approved together" aria-busy="${batchState.running ? 'true' : 'false'}">
@@ -2141,9 +2329,12 @@
       const hasCons = Boolean(d.if_approved || d.if_rejected);
       let recLine = d.recommendation
         ? `<div>
-            <div class="dq-rec">${renderAvatar(owner.isSystem ? 'OrgX System' : owner.label, 22, owner.isSystem)}<span>${escapeHtml(owner.name)} recommends</span>${owner.role ? `<span class="role">· ${escapeHtml(owner.role)} agent</span>` : ''}</div>
+            <div class="dq-rec">${renderAvatar(owner.isSystem ? 'OrgX System' : owner.label, 22, owner.isSystem)}<span>${escapeHtml(owner.name)} recommends</span>${owner.role ? `<span class="role">· ${escapeHtml(owner.role)} agent</span>` : ''}${d.recommendation_unverified ? '<span class="role">· unverified</span>' : ''}</div>
             <div class="dq-why">${escapeHtml(d.recommendation)}</div>
           </div>`
+        : d.recommendation_missing && kindFromType(d) === 'decision'
+        // The app could not make one: say so once, quietly.
+        ? `<div class="dq-rec is-quiet">${renderAvatar(owner.isSystem ? 'OrgX System' : owner.label, 22, owner.isSystem)}<span>No recommendation yet</span></div>`
         : '';
       // Actions and run approvals carry no recommendation: say who is asking.
       const kind = kindFromType(d);
@@ -2168,7 +2359,7 @@
         <details class="decision-evidence">
           <summary>Evidence and consequence</summary>
           <div class="decision-evidence__body">
-            ${d.context ? `<div class="decision-evidence__item"><div class="k">Why it matters</div><div class="decision-evidence__copy">${escapeHtml(d.context)}</div></div>` : ''}
+            ${d.context_lines && d.context_lines.length ? `<div class="decision-evidence__item"><div class="k">Why it matters</div><div class="decision-evidence__copy">${d.context_lines.map((line) => `<p>${escapeHtml(line)}</p>`).join('')}</div></div>` : ''}
             ${hasCons && formatDecisionField(d.impact_if_ignored || d.risk_if_ignored) ? `<div class="decision-evidence__item"><div class="k">If ignored</div><div class="decision-evidence__copy">${escapeHtml(formatDecisionField(d.impact_if_ignored || d.risk_if_ignored))}</div></div>` : ''}
             ${d.tradeoffs && d.tradeoffs.length ? `<div class="decision-tradeoffs">${d.tradeoffs.map(t => `<div class="decision-tradeoff"><strong>${escapeHtml(t.option)}</strong>${escapeHtml(t.detail)}</div>`).join('')}</div>` : ''}
             <div class="params-well">
@@ -2279,7 +2470,8 @@
         <div class="dq-body">
           <div>
             <div class="dq-status" data-status-for="${escapeHtml(d.id)}">${statusLineHtml(d)}</div>
-            <h1 class="dq-q" style="margin-top:8px"><a ${linkAttrs(decisionUrl)} title="Open in OrgX">${escapeHtml(d.summary)}</a></h1>
+            <h1 class="dq-q" style="margin-top:8px"><a ${linkAttrs(decisionUrl)} title="Open in OrgX">${escapeHtml(d.headline || d.summary)}</a></h1>
+            ${d.headline_body ? `<p class="dq-detail">${escapeHtml(d.headline_body)}</p>` : ''}
           </div>
           ${recLine}
           ${evidenceHtml || (isOgDecisionEmbed ? '' : `<a class="dq-all decision-open-link" ${linkAttrs(decisionUrl)}>Open in OrgX ${icons.ext(12)}</a>`)}
@@ -2302,9 +2494,9 @@
       const shown = others.slice(0, 4);
       const rows = shown.map((d) => {
         const age = shortAge(d.created_at);
-        return `<button type="button" class="dq-row page-btn" onclick="selectDecision('${escapeHtml(d.id)}')" aria-label="Open: ${escapeHtml(d.summary)}">
+        return `<button type="button" class="dq-row page-btn" onclick="selectDecision('${escapeHtml(d.id)}')" aria-label="Open: ${escapeHtml(d.headline || d.summary)}">
           <span class="dot" aria-hidden="true"></span>
-          <span class="ttl">${escapeHtml(d.summary)}</span>
+          <span class="ttl">${escapeHtml(d.headline || d.summary)}</span>
           <span class="meta">${age && age !== 'now' ? '<span class="long">Needs you · </span>' + age : 'Needs you'}</span>
           <span class="chev">${icons.chevron(14)}</span>
         </button>`;
@@ -2323,7 +2515,8 @@
           const st = actionStates[d.id];
           const verb = st.phase === 'waiting' ? 'Recorded' : st.phase === 'elsewhere' ? 'Settled in OrgX' : pastTense(d, st.action);
           const by = st.phase === 'elsewhere' ? 'not by you' : 'by you';
-          return `<ox-receipt-row status="${st.phase === 'waiting' ? 'pending' : 'met'}" label="${escapeHtml(verb + ' · ' + d.summary)}" value="${by}" href="${escapeHtml(buildDecisionSurfaceUrl(d))}">${escapeHtml(verb + ' · ' + d.summary)}</ox-receipt-row>`;
+          const title = d.headline || d.summary;
+          return `<ox-receipt-row status="${st.phase === 'waiting' ? 'pending' : 'met'}" label="${escapeHtml(verb + ' · ' + title)}" value="${by}" href="${escapeHtml(buildDecisionSurfaceUrl(d))}">${escapeHtml(verb + ' · ' + title)}</ox-receipt-row>`;
         }).join('')}
       </div>`;
     };
@@ -2416,7 +2609,7 @@
 
       const cardsHtml = paginated.map((d) => `
         <div class="decision-card urgency-${escapeHtml(d.urgency)}">
-          <article class="ox-card" data-card-for="${escapeHtml(d.id)}" data-edge="${edgeFor(d)}" aria-label="Decision: ${escapeHtml(d.summary)}">
+          <article class="ox-card" data-card-for="${escapeHtml(d.id)}" data-edge="${edgeFor(d)}" aria-label="Decision: ${escapeHtml(d.headline || d.summary)}">
             ${attentionHtml(pending.length, oldestAge(pending), '')}
             ${decisionBodyHtml(d)}
           </article>

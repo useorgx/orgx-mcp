@@ -94,10 +94,14 @@
       flex: none; font-size: 12px; font-weight: 600; color: var(--ox-text-muted);
       min-height: 44px; padding: 0 6px;
     }
+    /* The headline is the item's first sentence, about three lines at most; the rest is body text. */
     .q {
       margin: 6px 0 10px; font-size: 17px; line-height: 1.3; font-weight: 650;
       letter-spacing: -0.015em; overflow-wrap: anywhere;
+      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden;
     }
+    .q-body { margin: -4px 0 10px; font-size: 13.5px; line-height: 1.5; color: var(--ox-text-2, var(--ox-text)); overflow-wrap: anywhere; }
+    .fact dd.quiet { color: var(--ox-text-muted); }
     .facts { margin: 0; display: grid; gap: 8px; }
     .fact { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 2px 12px; }
     .fact dt { font-size: 12px; font-weight: 600; color: var(--ox-text-muted); padding-top: 2px; }
@@ -171,7 +175,10 @@
       margin-left: -8px; border-radius: 10px; cursor: pointer;
     }
     .row-main:hover { background: var(--ox-hover, rgba(127, 127, 127, 0.08)); }
-    .row-title { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+    .row-title {
+      font-size: 14px; font-weight: 600; overflow-wrap: anywhere;
+      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
+    }
     .row-meta { font-size: 12px; color: var(--ox-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .row-acts { display: flex; gap: 6px; flex: none; margin-left: auto; align-items: center; }
     .mini {
@@ -287,6 +294,7 @@
       limited: false,          // restored/deep-linked selection is not available
       caps: { modelContext: false, deepLink: false },
       generation: 0,
+      chatCannotDecide: false, // the host has no decide tool: every item hands off to OrgX
     };
     var ext = { deepLink: undefined, modelContext: undefined };
     var share = X.createShareController({ modelContext: undefined });
@@ -349,6 +357,7 @@
       action_authority_denied: 'Your role can’t approve this from chat. OrgX shows who can.',
       token_mismatch: 'This view belongs to another account or workspace. Open it in OrgX.',
       lifecycle_required: 'This one finishes in OrgX.',
+      chat_unavailable: 'This chat can’t settle it right now, so nothing was sent.',
       // Older servers.
       critical: 'Critical decisions are made in OrgX.',
       choice_required: 'Choose between the options in OrgX.',
@@ -357,7 +366,54 @@
       artifact_review_lifecycle: 'This one needs the full review in OrgX.',
     };
     function decideInOrgxDetail(reason) {
-      return DECIDE_IN_ORGX_COPY[reason] || 'Approval uses your signed-in OrgX session.';
+      return DECIDE_IN_ORGX_COPY[reason] || (ui.chatCannotDecide ? DECIDE_IN_ORGX_COPY.chat_unavailable : 'Approval uses your signed-in OrgX session.');
+    }
+
+    // The headline: the first sentence, kept to about three lines; the rest reads as body text.
+    var HEADLINE_MAX = 96;
+    var NOT_A_SENTENCE_END = /(?:\b(?:e\.g|i\.e|vs|etc|approx|incl|No|Mr|Ms|Dr|St|Inc|Ltd)|\b[A-Z])$/;
+    function splitHeadline(text) {
+      var full = String(text || '').replace(/\s+/g, ' ').trim();
+      var head = full;
+      var rest = '';
+      var re = /[.!?](?=\s+["“(]?[A-Z0-9])/g;
+      var match;
+      while ((match = re.exec(full))) {
+        var end = match.index + 1;
+        if (end < 12 || NOT_A_SENTENCE_END.test(full.slice(0, match.index))) continue;
+        head = full.slice(0, end).trim();
+        rest = full.slice(end).trim();
+        break;
+      }
+      if (head.length > HEADLINE_MAX) {
+        var cut = head.slice(0, HEADLINE_MAX);
+        var space = cut.lastIndexOf(' ');
+        var at = space > HEADLINE_MAX * 0.6 ? space : HEADLINE_MAX;
+        rest = '…' + head.slice(at).trim() + (rest ? ' ' + rest : '');
+        head = head.slice(0, at).replace(/[\s,;:–—-]+$/, '') + '…';
+      }
+      return { headline: head, body: rest };
+    }
+
+    // Host and transport failures arrive with a code (widget-runtime.js). Copy comes from the
+    // code; a raw payload ({"detail":…} or a lone "{") never reaches the panel.
+    function looksRaw(text) {
+      return /^[\s{[<"]/.test(text) || /^[\s{}[\]"',:]*$/.test(text) || /"\s*:/.test(text) || /\b(?:undefined|null|NaN)\b/.test(text);
+    }
+    function safeErrorText(error, fallback, max) {
+      var message = error && typeof error.message === 'string' ? error.message.trim() : '';
+      if (!message || looksRaw(message) || message.length > (max || 160) || /tool (?:request|execution) failed/i.test(message)) return fallback;
+      return message;
+    }
+    function errorKind(error) {
+      var code = String((error && error.code) || '').toLowerCase();
+      if (code === 'tool_unavailable' || code === 'network') return code;
+      if (code === 'host_unavailable') return 'tool_unavailable';
+      if (code && code !== 'tool_failed') return code;
+      var raw = [error && error.message, error && error.details && error.details.raw].filter(function str(v) { return typeof v === 'string'; }).join(' ');
+      if (/resource not found|tool not found|unknown tool|method not found|no such tool/i.test(raw)) return 'tool_unavailable';
+      if (/failed to fetch|networkerror|network error|load failed|timed? ?out|offline/i.test(raw)) return 'network';
+      return code;
     }
     var PAST = {
       approve: 'Approved', 'approve and continue': 'Approved', 'approve selected': 'Approved', 'grant access': 'Access granted',
@@ -519,6 +575,7 @@
       return Boolean(c.approve && !c.selection && !(c.answer && c.answer.approve));
     }
     function tokenFor(id) {
+      if (ui.chatCannotDecide) return null;
       var t = ui.tokens[id];
       return typeof t === 'string' && t ? t : null;
     }
@@ -757,9 +814,13 @@
       var changed = ui.changedSince
         ? '<div class="notice" role="status"><p>Changed since ' + esc(ui.changedSince) + '</p></div>' : '';
       var facts = [];
+      var head = splitHeadline(f.question);
       if (f.recommendation && f.recommendation.action) {
         facts.push('<div class="fact"><dt>Recommendation</dt><dd>' + esc(f.recommendation.action) +
           (f.recommendation.status === 'unverified' ? ' <span class="sub">(unverified)</span>' : '') + '</dd></div>');
+      } else if (f.recommendation && kindOf(f) === 'decision') {
+        // OrgX couldn't make one: say so once, quietly; never "status: unavailable".
+        facts.push('<div class="fact"><dt>Recommendation</dt><dd class="quiet">No recommendation yet</dd></div>');
       }
       if (f.consequence_if_approved) {
         facts.push('<div class="fact"><dt>If approved</dt><dd>' + esc(f.consequence_if_approved) + '</dd></div>');
@@ -770,7 +831,8 @@
         (metaBits.length ? '<span aria-hidden="true">·</span><span class="meta-text" title="' + esc(metaBits.join(' · ')) + '">' + esc(metaBits.join(' · ')) + '</span>' : '<span class="meta-text"></span>') +
         // "Decide in OrgX" already opens it when there is no in-place action.
         (tokenFor(f.id) || ui.rulings[f.id] ? '<button type="button" class="text-btn open-link" data-action="open" data-url="' + esc(f.url) + '" aria-label="Open this decision in OrgX">Open ↗</button>' : '') + '</p>' +
-        '<' + headingTag + ' id="pk-q" class="q">' + esc(f.question) + '</' + headingTag + '>' +
+        '<' + headingTag + ' id="pk-q" class="q">' + esc(head.headline) + '</' + headingTag + '>' +
+        (head.body ? '<p class="q-body">' + esc(head.body) + '</p>' : '') +
         (facts.length ? '<dl class="facts">' + facts.join('') + '</dl>' : '') +
         evidenceHtml(f) +
         '<div class="actions">' + footerFor(f) + error + '</div>' +
@@ -800,7 +862,7 @@
       var error = ui.actionError && ui.actionError.id === item.id ? actionErrorHtml('flex:1 1 100%') : '';
       var kindTag = item.kind === 'action' ? 'Action · ' : item.kind === 'approval' ? 'Run approval · ' : '';
       return '<li class="row" data-row="' + esc(item.id) + '"><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '" aria-label="' + esc(item.title + '. ' + meta) + '">' +
-        '<span class="row-title">' + esc(item.title) + '</span><span class="row-meta">' + esc(kindTag + meta) + '</span></button>' + acts +
+        '<span class="row-title">' + esc(splitHeadline(item.title).headline) + '</span><span class="row-meta">' + esc(kindTag + meta) + '</span></button>' + acts +
         (ui.composer && ui.composer.id === item.id ? composerHtml(item) : '') + error + '</li>';
     }
 
@@ -1235,7 +1297,7 @@
         pollStatus(id, gen).then(settle, function statusUnavailable() { settle(null); });
       }, function onFailed(error) {
         if (gen !== ui.generation) return;
-        var code = String((error && error.code) || '');
+        var code = errorKind(error);
         var details = error && error.details && typeof error.details === 'object' ? error.details : {};
         delete ui.rulings[id];
         if (VALIDATION_CODES.indexOf(code) !== -1) {
@@ -1269,7 +1331,21 @@
           render();
           return;
         }
-        ui.actionError = { id: id, message: (error && error.message ? error.message : 'Not recorded.') + '' };
+        if (code === 'tool_unavailable') {
+          // This chat can't reach the decide tool: hand every item to OrgX instead of offering Retry again.
+          ui.chatCannotDecide = true;
+          ui.tokens = {};
+          eachCopy(id, function mark(copy) { copy.decide_in_orgx_reason = copy.decide_in_orgx_reason || 'chat_unavailable'; });
+          announce('Not sent. This chat can’t settle it right now; decide it in OrgX.');
+          render();
+          return;
+        }
+        ui.actionError = {
+          id: id,
+          message: code === 'network'
+            ? 'Couldn’t reach OrgX. Nothing changed; try again.'
+            : safeErrorText(error, 'Not recorded. Nothing changed; try again.'),
+        };
         render();
         // The token was spent; a fresh snapshot brings a new one.
         if (!isGallery) fetchSnapshot(ui.snapshot && ui.snapshot.selection.status === 'selected' && ui.snapshot.focus ? ui.snapshot.focus.id : null, 'refresh');
@@ -1713,6 +1789,22 @@
           s.focus.widget_actions = s.queue[0].widget_actions = galleryActions({ labels: { approve: 'Approve', reject: 'Request changes' }, reject_requires_reason: true });
           ui.composer = { id: IDS.d1, draft: 'The export line still says CSV only.', focus: false, opener: IDS.d1 };
           break;
+        case 'chat-unavailable':
+          // The host said the decide tool isn't there (tool_unavailable): hand off, no Retry loop.
+          ui.chatCannotDecide = true;
+          s.queue[0].decide_in_orgx_reason = s.focus.decide_in_orgx_reason = 'chat_unavailable';
+          break;
+        case 'no-recommendation': {
+          // A review packet with no recommendation and a long question (live QA, 2026-10-02).
+          var question = 'The OrgX floor stopped a merge action in an agent-cli session and is waiting for you. Agent’s reason: please review PR #3239. Required GitHub CI did not start because the Actions budget is exhausted. Approve to let exactly this action run once in the next 24 hours.';
+          s.queue[0].title = question.slice(0, 159) + '…';
+          s.focus.question = question;
+          s.focus.recommendation = { status: 'unavailable', action: null };
+          s.focus.evidence = [];
+          s.focus.evidence_total = 0;
+          s.focus.consequence_if_approved = null;
+          break;
+        }
         case 'decide-reason':
           s.queue[0].title = s.focus.question = 'Connect the production Stripe key for the billing agent.';
           s.queue[0].decide_in_orgx_reason = s.focus.decide_in_orgx_reason = 'credential_required';

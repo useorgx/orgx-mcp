@@ -61,8 +61,11 @@
   --ox-control-glint-start: rgba(255, 255, 255, 0.72);
   --ox-control-glint-end: rgba(255, 255, 255, 0.08);
 
-  --ox-focus-ring: rgba(var(--ox-primary-rgb), 0.24);
-  --ox-focus-border: rgba(var(--ox-primary-rgb), 0.58);
+  /* Focus is the kit lime in every widget, never the accent. */
+  --ox-focus-color: #4d7c0f;
+  --ox-focus: var(--ox-focus-color);
+  --ox-focus-ring: rgba(77, 124, 15, 0.22);
+  --ox-focus-border: var(--ox-focus);
   --ox-skeleton-low: rgba(100, 116, 139, 0.1);
   --ox-skeleton-high: rgba(100, 116, 139, 0.2);
 
@@ -189,8 +192,10 @@
     --ox-control-glint-start: rgba(255, 255, 255, 0.14);
     --ox-control-glint-end: rgba(255, 255, 255, 0.02);
 
-    --ox-focus-ring: rgba(var(--ox-primary-rgb), 0.22);
-    --ox-focus-border: rgba(var(--ox-primary-rgb), 0.62);
+    --ox-focus-color: rgba(191, 255, 0, 0.8);
+    --ox-focus: var(--ox-focus-color);
+    --ox-focus-ring: rgba(191, 255, 0, 0.22);
+    --ox-focus-border: var(--ox-focus);
     --ox-skeleton-low: rgba(148, 163, 184, 0.08);
     --ox-skeleton-high: rgba(148, 163, 184, 0.18);
   }
@@ -269,8 +274,10 @@
   --ox-control-glint-start: rgba(255, 255, 255, 0.14);
   --ox-control-glint-end: rgba(255, 255, 255, 0.02);
 
-  --ox-focus-ring: rgba(var(--ox-primary-rgb), 0.22);
-  --ox-focus-border: rgba(var(--ox-primary-rgb), 0.62);
+  --ox-focus-color: rgba(191, 255, 0, 0.8);
+  --ox-focus: var(--ox-focus-color);
+  --ox-focus-ring: rgba(191, 255, 0, 0.22);
+  --ox-focus-border: var(--ox-focus);
   --ox-skeleton-low: rgba(148, 163, 184, 0.08);
   --ox-skeleton-high: rgba(148, 163, 184, 0.18);
 }
@@ -358,14 +365,42 @@ textarea::placeholder {
   background: rgba(var(--ox-primary-rgb), 0.2);
 }
 
-:where(a, button, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid var(--ox-focus-border);
+/* One focus ring: the kit's lime action ring, keyboard only. Widgets may place it,
+ * not recolour it. A pointer press (data-ox-input, interaction-kit.js) hides it,
+ * shadow DOM included; text fields keep theirs. */
+:focus-visible {
+  outline: 2px solid var(--ox-focus);
   outline-offset: 2px;
 }
 
+:focus-visible,
+:focus-visible::before,
+:focus-visible::after {
+  outline-color: var(--ox-focus) !important;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+:root[data-ox-input="pointer"] {
+  --ox-focus: transparent;
+  --ox-focus-ring: transparent;
+}
+
+:root[data-ox-input="pointer"] :is(input, textarea, select, [contenteditable]):focus-visible {
+  outline-color: var(--ox-focus-color) !important;
+}
+
+/* interaction-kit.js announcements: screen readers only. */
+[data-orgx-live-region] {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
 @media (forced-colors: active) {
-  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-    outline: 2px solid CanvasText;
+  :focus-visible {
+    outline: 2px solid CanvasText !important;
   }
 
   .ox-card::after,

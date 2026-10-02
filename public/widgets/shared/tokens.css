@@ -236,7 +236,7 @@ body {
 
 /* Focus styles for accessibility */
 .focusable:focus-visible {
-  outline: 2px solid var(--app-color-primary);
+  outline: 2px solid var(--ox-focus, rgba(191, 255, 0, 0.8));
   outline-offset: 2px;
 }
 
