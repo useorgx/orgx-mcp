@@ -10,6 +10,7 @@ import {
   PANEL_EVIDENCE_TITLE_MAX,
   PANEL_OPTION_LABEL_MAX,
   PANEL_TITLE_MAX,
+  normalizeAppProof,
   summarizePanelProof,
   type PanelSurfaceHost,
 } from '../src/panelSurface';
@@ -312,6 +313,66 @@ describe('panel proof: accepted means approved by a person', () => {
     expect(snapshot.proof.last_accepted).toBeNull();
     expect(snapshot.proof.completed_unaccepted).toBe(1);
     expect(snapshot.degraded).toEqual(['proof_unavailable']);
+  });
+});
+
+describe('panel proof from the app acceptance ledger', () => {
+  const base = { workspace: { id: SESSION_WS, name: 'Acme' }, decisions: [] as unknown[] };
+
+  it('prefers the ledger proof over the artifact read and rebuilds the link', () => {
+    const snapshot = buildPanelSnapshot({
+      ...base,
+      artifacts: [artifact(ART_JUDGE, 'approved', 'system:precision-judge', null)],
+      appProof: {
+        last_accepted: {
+          artifact_id: ART_HUMAN,
+          title: 'Release checklist v3',
+          accepted_at: '2026-09-30T00:00:00.000Z',
+          accepted_by: 'you',
+          url: 'https://evil.example/phish',
+        },
+        completed_unaccepted: 2,
+      },
+    });
+    expect(snapshot.proof).toEqual({
+      last_accepted: {
+        artifact_id: ART_HUMAN,
+        title: 'Release checklist v3',
+        accepted_at: '2026-09-30T00:00:00.000Z',
+        accepted_by: 'you',
+        url: `https://useorgx.com/artifacts/${ART_HUMAN}`,
+      },
+      completed_unaccepted: 2,
+    });
+    expect(snapshot.degraded).toEqual([]);
+  });
+
+  it('says proof_unavailable when the app could not read the ledger', () => {
+    const snapshot = buildPanelSnapshot({
+      ...base,
+      artifacts: [artifact(ART_HUMAN, 'approved', ORGX_USER, '2026-09-30T00:00:00.000Z')],
+      appProof: null,
+    });
+    expect(snapshot.proof.last_accepted).toBeNull();
+    expect(snapshot.degraded).toEqual(['proof_unavailable']);
+  });
+
+  it('treats an unknown count as zero and a malformed record as unavailable', () => {
+    expect(normalizeAppProof({ last_accepted: null, completed_unaccepted: null })).toEqual({
+      last_accepted: null,
+      completed_unaccepted: 0,
+    });
+    expect(normalizeAppProof({ last_accepted: { artifact_id: 'not-a-uuid' } })).toBeNull();
+    expect(normalizeAppProof({ last_accepted: 'yes' })).toBeNull();
+  });
+
+  it('falls back to the artifact read when the app sends no proof', () => {
+    const snapshot = buildPanelSnapshot({
+      ...base,
+      artifacts: [artifact(ART_HUMAN, 'approved', ORGX_USER, '2026-09-30T00:00:00.000Z')],
+      viewerUserIds: [ORGX_USER],
+    });
+    expect(snapshot.proof.last_accepted).toMatchObject({ artifact_id: ART_HUMAN, accepted_by: 'you' });
   });
 });
 
