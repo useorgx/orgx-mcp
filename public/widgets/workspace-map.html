@@ -5,8 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Workspace Map - OrgX</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Crect x='14' y='14' width='14' height='14' rx='3' fill='none' stroke='%23bfff00' stroke-width='5'/%3E%3Crect x='36' y='14' width='14' height='14' rx='3' fill='none' stroke='%23bfff00' stroke-width='5'/%3E%3Crect x='14' y='36' width='14' height='14' rx='3' fill='none' stroke='%23bfff00' stroke-width='5'/%3E%3Crect x='36' y='36' width='14' height='14' rx='3' fill='%23bfff00'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="shared/kit/ox-tokens.css" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
+  <script src="shared/kit/ox-elements.js"></script>
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/interaction-kit.js"></script>
@@ -15,135 +17,245 @@
   <script src="shared/live-panel.js"></script>
   <style>
     /*
-     * Workspace map — the orgx_bootstrap result as one card: which workspace
-     * this session is bound to, what it may do, and every OrgX surface with
-     * what this session can do to it. The same map the web app's sidebar draws,
-     * so a person and an agent point at the same places.
+     * Workspace map — the orgx_bootstrap result: which workspace this session
+     * is bound to, and every OrgX surface with what this session can do to
+     * it. It is the first card of a session, so it also carries the session
+     * states from canvas F8a/F8b: signed out, first use, degraded (a snapshot
+     * with Retry), another workspace, and waiting on OrgX after sign-in.
      */
     :root {
       --ox-primary-rgb: 191, 255, 0;
-      --wm-gap: 12px;
+    }
+
+    .wm-page {
+      padding: 10px;
     }
 
     .wm {
-      display: grid;
-      gap: 16px;
-      padding: 18px;
-      font-family: var(--ox-font);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--ox-border);
+      border-radius: 16px;
+      background: var(--ox-panel);
+      box-shadow: var(--ox-shadow);
       color: var(--ox-text);
+      font-family: var(--ox-font);
     }
 
-    .wm-kicker {
-      font-family: var(--ox-mono);
-      font-size: 11px;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--ox-text-muted);
+    .wm::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 16px;
+      right: 16px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(var(--wm-edge, var(--ox-edge-teal-rgb)), 0.75), transparent);
     }
+
+    .wm[data-edge='mute'] { --wm-edge: var(--ox-edge-mute-rgb); }
+    .wm[data-edge='amber'] { --wm-edge: var(--ox-edge-amber-rgb); }
+
+    .wm-strip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 48px;
+      padding: 0 8px 0 16px;
+      border-bottom: 1px solid var(--ox-border);
+      background: rgba(var(--ox-warning-rgb), 0.08);
+      font-size: 12.5px;
+    }
+
+    .wm-strip svg { width: 14px; height: 14px; flex: none; color: var(--ox-warning); }
+    .wm-strip span { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+    .wm-linkbtn {
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 44px;
+      padding: 0 8px;
+      border: 0;
+      border-radius: 9px;
+      background: none;
+      color: var(--ox-text);
+      font: inherit;
+      font-size: 12.5px;
+      font-weight: 650;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .wm-linkbtn:hover { background: var(--ox-hover); }
+    .wm-linkbtn svg { width: 12px; height: 12px; color: var(--ox-text-muted); }
+    .wm-linkbtn[aria-disabled='true'] { opacity: 0.55; cursor: default; }
 
     .wm-head {
       display: flex;
-      flex-wrap: wrap;
-      align-items: flex-end;
-      justify-content: space-between;
-      gap: 10px;
+      flex-direction: column;
+      gap: 4px;
+      padding: 16px 18px 6px;
+    }
+
+    .wm-kicker,
+    .wm-meta {
+      font-family: var(--ox-mono);
+      font-size: 11.5px;
+      font-weight: 500;
+      line-height: 1.3;
+      color: var(--ox-text-muted);
+      font-variant-numeric: tabular-nums;
     }
 
     .wm-head h1 {
-      margin: 4px 0 0;
-      font-size: 20px;
-      font-weight: 650;
-      letter-spacing: -0.02em;
-    }
-
-    .wm-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-
-    .wm-chip {
-      padding: 4px 9px;
-      border: 1px solid var(--ox-border);
-      border-radius: 999px;
-      font-size: 12px;
-      color: var(--ox-text-muted);
-    }
-
-    .wm-chip b {
-      color: var(--ox-text);
-      font-weight: 600;
-    }
-
-    .wm-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: var(--wm-gap);
       margin: 0;
-      padding: 0;
+      font-size: 17px;
+      font-weight: 650;
+      line-height: 1.3;
+      letter-spacing: -0.015em;
+      overflow-wrap: anywhere;
+    }
+
+    .wm-list {
+      margin: 0;
+      padding: 0 18px 8px;
       list-style: none;
     }
 
+    /* A surface is a row, not a card inside the card. */
     .wm-surface {
       display: grid;
-      gap: 8px;
-      align-content: start;
-      padding: 12px 14px;
-      border: 1px solid var(--ox-border);
-      border-radius: 12px;
-      background: var(--ox-panel);
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      column-gap: 12px;
+      min-height: 56px;
+      padding: 10px 0;
+      border-top: 1px solid var(--ox-border);
     }
 
-    .wm-surface[data-idle='true'] {
-      opacity: 0.7;
-    }
+    .wm-surface:first-child { border-top: 0; }
 
-    .wm-surface__top {
+    .wm-surface__copy {
       display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 8px;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
     }
 
     .wm-surface h2 {
       margin: 0;
       font-size: 14px;
-      font-weight: 650;
+      font-weight: 600;
+      line-height: 1.3;
     }
 
     .wm-surface p {
       margin: 0;
-      font-size: 12px;
-      line-height: 1.5;
+      font-size: 12.5px;
+      line-height: 1.45;
       color: var(--ox-text-muted);
     }
 
+    .wm-surface[data-idle='true'] h2 { color: var(--ox-text-2); }
+
+    /* A limit is information, not a request: it stays quiet. */
     .wm-tools {
-      font-size: 11px;
+      font-size: 12px;
+      line-height: 1.4;
+      color: var(--ox-text-2);
+    }
+
+    /* Session states (F8a/F8b): one centred column, one primary at most. */
+    .wm-state {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 26px 22px 24px;
+    }
+
+    .wm-state svg.lock { width: 16px; height: 16px; color: var(--ox-text-muted); }
+
+    .wm-state h1 {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 650;
+      line-height: 1.3;
+      letter-spacing: -0.015em;
+      text-wrap: balance;
+    }
+
+    .wm-state p {
+      margin: 0;
+      font-size: 12.5px;
       line-height: 1.5;
       color: var(--ox-text-muted);
     }
 
-    .wm-open {
-      font-size: 12px;
-      white-space: nowrap;
+    .wm-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 48px;
+      padding: 0 16px;
+      border: 1px solid var(--ox-border-strong);
+      border-radius: 12px;
+      background: transparent;
+      color: var(--ox-text);
+      font: inherit;
+      font-size: 14px;
+      font-weight: 650;
+      cursor: pointer;
     }
 
-    .wm-empty {
-      padding: 18px;
-      font-size: 13px;
-      color: var(--ox-text-muted);
+    .wm-btn.primary {
+      border-color: transparent;
+      background: rgb(251, 191, 36);
+      color: #1a1204;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    }
+
+    :root[data-theme='light'] .wm-btn.primary { border-color: #e9a800; }
+
+    .wm-btn[aria-disabled='true'] { opacity: 0.6; cursor: default; }
+
+    .wm ox-footer {
+      --ox-primary-rgb: 251, 191, 36;
+      --ox-primary: rgb(251, 191, 36);
+    }
+
+    .wm-sk {
+      display: block;
+      height: 12px;
+      border-radius: 4px;
+      background: var(--ox-skeleton);
+    }
+
+    @media (max-width: 420px) {
+      .wm-page { padding: 6px; }
+      .wm-head { padding: 14px 14px 4px; }
+      .wm-list { padding: 0 14px 6px; }
+      .wm-state { padding: 22px 18px 20px; }
+      .wm::after { left: 14px; right: 14px; }
     }
   </style>
   <link rel="stylesheet" href="shared/widget-theme.css" />
 </head>
 <body>
-  <div class="container" id="content">
-    <div class="skeleton-wrapper" style="display:grid; gap:12px; padding:18px;">
-      <div class="skeleton-line" style="width:40%; height:18px;"></div>
-      <div class="skeleton-line" style="width:100%; height:64px; border-radius:12px;"></div>
-      <div class="skeleton-line" style="width:100%; height:64px; border-radius:12px;"></div>
-    </div>
+  <div class="container wm-page" id="content">
+    <section class="wm" data-edge="mute" aria-busy="true" aria-label="Loading the workspace map">
+      <div class="wm-head"><span class="wm-sk" style="width:90px"></span><span class="wm-sk" style="height:18px;width:46%"></span></div>
+      <div class="wm-list">
+        <div class="wm-surface"><span class="wm-sk" style="width:70%"></span></div>
+        <div class="wm-surface"><span class="wm-sk" style="width:58%"></span></div>
+        <div class="wm-surface"><span class="wm-sk" style="width:64%"></span></div>
+      </div>
+      <ox-footer variant="reads" state="loading"></ox-footer>
+    </section>
   </div>
   <script>
     var params = new URLSearchParams(window.location.search);
@@ -151,6 +263,8 @@
       var theme = params.get('theme');
       if (theme) document.documentElement.setAttribute('data-theme', theme);
     })();
+
+    var ORGX_URL = 'https://useorgx.com';
 
     var escapeHtml = function (value) {
       if (value === null || value === undefined) return '';
@@ -161,6 +275,12 @@
 
     var asArray = function (value) {
       return Array.isArray(value) ? value : [];
+    };
+
+    var ICON = {
+      ext: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
+      alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>',
+      lock: '<svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>'
     };
 
     var DEMO = {
@@ -177,13 +297,36 @@
         { id: 'decisions', name: 'Decisions', url: 'https://useorgx.com/decisions', purpose: 'Choices waiting on a named person, with options and evidence.', read: ['orgx_search', 'orgx_inspect'], control: ['orgx_decide'] },
         { id: 'initiatives', name: 'Initiatives', url: 'https://useorgx.com/initiatives', purpose: 'Outcomes broken into workstreams, milestones, and tasks.', read: ['orgx_inspect'], control: ['orgx_plan', 'orgx_write'] },
         { id: 'work-ledger', name: 'Work Ledger', url: 'https://useorgx.com/work-ledger', purpose: 'The record of agent work across clients.', read: ['orgx_search'], control: ['orgx_submit_receipt', 'orgx_attach'] },
-        { id: 'quality', name: 'Quality Studio', url: 'https://useorgx.com/settings/quality', purpose: 'The checks an artifact must pass before it ships.', read: ['orgx_inspect'], control: ['orgx_expect'] },
+        { id: 'quality', name: 'Quality Studio', url: 'https://useorgx.com/settings/quality', purpose: 'The checks an artifact must pass before it ships.', read: ['orgx_inspect'], control: [] },
         { id: 'execution', name: 'Execution', url: 'https://useorgx.com/settings/execution', purpose: 'Route priority, capacity, spend limits, and readiness.', read: [], control: [] }
       ]
     };
 
+    var FIRST_USE = { profile: 'v2', visible_tools_count: 0, granted_scopes: [], workspace: { id: 'ws-acme', name: 'Acme' }, surfaces: [] };
+
     var state = params.get('state') || (params.get('demo') === 'true' ? 'populated' : null);
-    var data = state === 'populated' ? DEMO : state === 'empty' ? { surfaces: [] } : null;
+    var FIXTURES = {
+      populated: DEMO,
+      degraded: DEMO,
+      empty: { surfaces: [] },
+      'signed-out': { surfaces: [] },
+      waiting: { surfaces: [] },
+      'first-use': FIRST_USE,
+      'other-workspace': DEMO
+    };
+    var data = Object.prototype.hasOwnProperty.call(FIXTURES, state) ? FIXTURES[state] : null;
+    var isFixture = !!data;
+
+    /*
+     * Session state beyond the payload.
+     *   phase      null | 'waiting' (sent to OrgX to sign in) | 'other-workspace'
+     *   degraded   a check failed; the last map stays as a snapshot
+     */
+    var view = { payload: null, asOf: null, phase: null, degraded: false, checking: false };
+
+    var hhmm = function (date) {
+      return date ? date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+    };
 
     /*
      * What the card says about a surface.
@@ -206,58 +349,208 @@
       return 'Open it in OrgX; this session does not touch it.';
     };
 
+    var shell = function (edge, inner, footer) {
+      return '<section class="wm" data-edge="' + edge + '" aria-label="OrgX workspace map">' + inner + (footer || '') + '</section>';
+    };
+
+    var renderSignedOut = function () {
+      if (view.phase === 'waiting') {
+        return shell('mute',
+          '<div class="wm-state">' +
+          '<h1>Waiting for you to sign in to OrgX.</h1>' +
+          '<p>Finish signing in there. This card checks again when you come back, or now.</p>' +
+          '<button type="button" class="wm-linkbtn" style="align-self:flex-start;padding:0" data-action="sign-in">Open OrgX again ' + ICON.ext + '</button>' +
+          '</div>',
+          '<ox-footer variant="confirms-in-orgx" state="waiting" heading="Opened in OrgX" detail="' +
+            (view.checking ? 'checking…' : 'waiting for you there') + '" action-label="Check now"></ox-footer>');
+      }
+      return shell('mute',
+        '<div class="wm-state">' + ICON.lock +
+        '<h1>Sign in to an OrgX workspace to see what needs you.</h1>' +
+        '<p>No workspace is bound yet, so there is nothing to map. OrgX shows decisions waiting on you and the work you accepted. It reads only the workspace you sign in to.</p>' +
+        '<button type="button" class="wm-btn primary" data-action="sign-in">Sign in to OrgX</button>' +
+        '</div>');
+    };
+
+    var renderOtherWorkspace = function () {
+      return shell('mute',
+        '<div class="wm-state">' +
+        '<h1>This item is in a workspace this account can’t open.</h1>' +
+        '<p>Nothing about it is shown here or shared with the chat.</p>' +
+        '<button type="button" class="wm-btn" data-action="back"' + (view.checking ? ' aria-disabled="true"' : '') + '>' +
+        (view.checking ? 'Loading your workspace…' : 'Back to what needs you') + '</button>' +
+        '</div>');
+    };
+
+    var renderFirstUse = function (workspace) {
+      return shell('teal',
+        '<div class="wm-state">' +
+        '<span class="wm-meta">' + escapeHtml(workspace.name || workspace.id) + ' · synced ' + escapeHtml(hhmm(view.asOf)) + '</span>' +
+        '<h1>Nothing to map yet.</h1>' +
+        '<p>This session cannot read or change any part of OrgX yet. When it can, each place appears here with what it can do.</p>' +
+        '<button type="button" class="wm-linkbtn" style="align-self:flex-start;padding:0" data-action="open" data-url="' + ORGX_URL + '">Open OrgX ' + ICON.ext + '</button>' +
+        '</div>');
+    };
+
     var render = function (payload) {
       var content = document.getElementById('content');
-      if (!payload) {
-        if (state === 'loading' || !state) return;
+      if (payload !== undefined) {
+        if (!payload) {
+          if (state === 'loading' || !state) return;
+        }
+        view.payload = payload;
+        view.asOf = isFixture ? new Date('2026-09-30T13:58:00') : new Date();
+        view.degraded = false;
+        if (view.phase === 'waiting' && payload && payload.workspace) view.phase = null;
       }
-      var surfaces = asArray(payload && payload.surfaces);
-      if (!surfaces.length) {
-        content.innerHTML =
-          '<div class="wm-empty">No workspace is bound yet, so there is nothing to map. Sign in to an OrgX workspace and the surfaces appear here.</div>';
+      payload = view.payload;
+      if (view.phase === 'other-workspace') {
+        content.innerHTML = renderOtherWorkspace();
         return;
       }
-      var workspace = payload.workspace && typeof payload.workspace === 'object' ? payload.workspace : null;
+      var surfaces = asArray(payload && payload.surfaces);
+      var workspace = payload && payload.workspace && typeof payload.workspace === 'object' ? payload.workspace : null;
+      if (!workspace && (!surfaces.length || view.phase === 'waiting')) {
+        content.innerHTML = renderSignedOut();
+        return;
+      }
+      if (!surfaces.length) {
+        content.innerHTML = renderFirstUse(workspace);
+        return;
+      }
+      if (!workspace) {
+        content.innerHTML = renderSignedOut();
+        return;
+      }
       var toolsCount = typeof payload.visible_tools_count === 'number'
         ? payload.visible_tools_count
         : asArray(payload.visible_tools).length;
       var scopes = asArray(payload.granted_scopes);
 
-      var cards = surfaces.map(function (surface) {
+      var rows = surfaces.map(function (surface) {
         var read = asArray(surface.read);
         var control = asArray(surface.control);
         var idle = !read.length && !control.length;
         var limit = capabilityLine(read, control);
         var url = typeof surface.url === 'string' ? surface.url : '';
         return '<li class="wm-surface" data-idle="' + (idle ? 'true' : 'false') + '">' +
-          '<div class="wm-surface__top"><h2>' + escapeHtml(surface.name) + '</h2>' +
-          (url
-            ? '<a class="wm-open ox-link-btn" href="' + escapeHtml(url) + '" target="_blank" rel="noreferrer" onclick=\'return openWidgetLink(' + JSON.stringify(url) + ', event)\'>Open</a>'
-            : '') +
-          '</div>' +
+          '<div class="wm-surface__copy"><h2>' + escapeHtml(surface.name) + '</h2>' +
           '<p>' + escapeHtml(surface.purpose) + '</p>' +
           (limit ? '<div class="wm-tools">' + escapeHtml(limit) + '</div>' : '') +
+          '</div>' +
+          (url
+            ? '<button type="button" class="wm-open wm-linkbtn" data-action="open" data-url="' + escapeHtml(url) + '" aria-label="Open ' + escapeHtml(surface.name) + ' in OrgX">Open ' + ICON.ext + '</button>'
+            : '<span></span>') +
           '</li>';
       }).join('');
 
-      content.innerHTML =
-        '<section class="wm" aria-label="OrgX workspace map">' +
-        '<div class="wm-head"><div>' +
-        '<div class="wm-kicker">OrgX workspace</div>' +
-        '<h1>' + escapeHtml(workspace ? (workspace.name || workspace.id) : 'No workspace bound') + '</h1>' +
-        '</div><div class="wm-chips">' +
-        '<span class="wm-chip"><b>' + escapeHtml(toolsCount) + '</b> tools</span>' +
-        '<span class="wm-chip"><b>' + escapeHtml(scopes.length) + '</b> scopes</span>' +
-        (payload.profile ? '<span class="wm-chip">profile <b>' + escapeHtml(payload.profile) + '</b></span>' : '') +
-        '</div></div>' +
-        '<ul class="wm-grid">' + cards + '</ul>' +
-        '</section>';
+      var footer = view.checking
+        ? '<ox-footer variant="reads" state="refreshing" heading="Checking" detail="keeps what you see"></ox-footer>'
+        : view.degraded
+          // The strip above carries Retry; the footer keeps the way into OrgX.
+          ? '<ox-footer variant="reads" state="stale" heading="Last synced ' + escapeHtml(hhmm(view.asOf)) + '" detail="' +
+            escapeHtml(surfaces.length + ' places in OrgX') + '" action-label="Open OrgX ↗"></ox-footer>'
+          : '<ox-footer variant="reads" state="fresh" heading="Synced ' + escapeHtml(hhmm(view.asOf)) + '" detail="' +
+            escapeHtml(surfaces.length + ' places in OrgX') + '" action-label="Open OrgX ↗"></ox-footer>';
+
+      content.innerHTML = shell(view.degraded ? 'mute' : 'teal',
+        (view.degraded
+          ? '<div class="wm-strip" role="alert">' + ICON.alert + '<span>OrgX did not respond</span>' +
+            '<button type="button" class="wm-linkbtn" data-action="retry">Retry</button></div>'
+          : '') +
+        '<div class="wm-head">' +
+        '<span class="wm-kicker">' + (view.degraded ? 'Showing the snapshot from ' + escapeHtml(hhmm(view.asOf)) : 'OrgX workspace') + '</span>' +
+        '<h1>' + escapeHtml(workspace.name || workspace.id) + '</h1>' +
+        '<span class="wm-meta">' + escapeHtml(toolsCount) + ' tools · ' + escapeHtml(scopes.length) + ' scopes' +
+        (payload.profile ? ' · profile ' + escapeHtml(payload.profile) : '') + '</span>' +
+        '</div>' +
+        '<ul class="wm-list">' + rows + '</ul>',
+        footer);
     };
+
+    // ── Links and checks ────────────────────────────────────────────────
+
+    var isStandalone = function () {
+      return !window.OrgXWidgetRuntime || window.OrgXWidgetRuntime.detectProtocol() === 'standalone';
+    };
+
+    // Raw anchors are not allowed in MCP widgets: links go through the host.
+    var openLink = function (url) {
+      if (!url) return;
+      if (isStandalone()) {
+        try { window.open(url, '_blank', 'noopener,noreferrer'); } catch (_) { /* preview only */ }
+        return;
+      }
+      openWidgetLink(url);
+    };
+
+    var SCOPE_ERRORS = /context_scope_mismatch|workspace_forbidden|workspace_access_denied|forbidden|not_member/;
+
+    /*
+     * Ask OrgX for the map again: after sign-in, on Retry, or to go back to
+     * your own workspace. The last map stays on screen until the answer lands.
+     */
+    var recheck = function (args) {
+      if (view.checking) return;
+      view.checking = true;
+      render();
+      Promise.resolve()
+        .then(function () { return callTool('orgx_bootstrap', args || {}); })
+        .then(function (result) {
+          var next = window.OrgXWidgetRuntime.extractStructuredWidgetData(result, true);
+          view.checking = false;
+          if (view.phase === 'other-workspace') view.phase = null;
+          render(next || {});
+        })
+        .catch(function (error) {
+          view.checking = false;
+          if (error && SCOPE_ERRORS.test(String(error.code || ''))) view.phase = 'other-workspace';
+          else if (view.phase !== 'waiting') view.degraded = true;
+          render();
+        });
+    };
+
+    var currentWorkspaceArgs = function () {
+      var ws = view.payload && view.payload.workspace;
+      return ws && ws.id ? { workspace_id: ws.id } : {};
+    };
+
+    document.addEventListener('click', function (event) {
+      var button = event.target && event.target.closest ? event.target.closest('[data-action]') : null;
+      if (!button || button.getAttribute('aria-disabled') === 'true') return;
+      var action = button.getAttribute('data-action');
+      if (action === 'open') openLink(button.getAttribute('data-url'));
+      else if (action === 'sign-in') {
+        openLink(ORGX_URL);
+        view.phase = 'waiting';
+        render();
+      } else if (action === 'retry') recheck(currentWorkspaceArgs());
+      else if (action === 'back') recheck({});
+    });
+
+    document.addEventListener('ox-action', function (event) {
+      var footer = event.target;
+      var footerState = footer && footer.getAttribute ? footer.getAttribute('state') : '';
+      if (footerState === 'waiting') recheck({});
+      else openLink(ORGX_URL);
+    });
+
+    // Back from signing in: check once. Never while hidden.
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible' && view.phase === 'waiting' && !isFixture) recheck({});
+    });
 
     if (state === 'loading') {
       // Keep the skeleton.
     } else if (data) {
+      if (state === 'waiting') view.phase = 'waiting';
+      if (state === 'other-workspace') view.phase = 'other-workspace';
       render(data);
+      if (state === 'degraded') {
+        view.asOf = new Date('2026-09-30T13:44:00');
+        view.degraded = true;
+        render();
+      }
     } else {
       initWidget({
         live: { anchor: '#content', widget: 'workspace-map', emptyLabel: 'No workstreams running' },
