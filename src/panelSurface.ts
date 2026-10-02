@@ -17,10 +17,11 @@
  *   (never in structuredContent), exactly like the decisions widget.
  * - Assume the model can see structuredContent: no tokens, evidence bodies,
  *   notes, emails or costs, and every title is clipped.
- * - "Accepted" means status `approved` AND a human `approved_by_user_id`.
- *   `system:*`, a null approver and `in_review` are "completed, not yet
- *   accepted". When the API does not return `approved_by_user_id` at all,
- *   the snapshot says `proof_unavailable` instead of guessing.
+ * - "Accepted" comes from the app's acceptance ledger when the decisions read
+ *   carries `proof` (a human accepted ruling on a work artifact). Older apps
+ *   without it fall back to the artifact read: status `approved` AND a human
+ *   `approved_by_user_id`. Either way, a proof that can't be read says
+ *   `proof_unavailable` instead of guessing.
  *
  * Registration lives here; index.ts wires it with one call.
  */
@@ -512,6 +513,38 @@ export function summarizePanelProof(
   };
 }
 
+const UUID_ANY_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The app's ledger-backed proof (`acceptance_records`: accepted by a human
+ * on a work artifact). Null means the app could not read it; a malformed
+ * value is treated the same, never shown as accepted. The link is rebuilt
+ * from the id so the panel only opens canonical OrgX routes.
+ */
+export function normalizeAppProof(value: unknown): PanelSnapshot['proof'] | null {
+  const proof = asRecord(value);
+  if (!proof) return null;
+  const count = proof.completed_unaccepted;
+  const completedUnaccepted =
+    typeof count === 'number' && Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
+  const last = asRecord(proof.last_accepted);
+  if (proof.last_accepted !== null && proof.last_accepted !== undefined && !last) return null;
+  if (!last) return { last_accepted: null, completed_unaccepted: completedUnaccepted };
+  const id = str(last.artifact_id);
+  if (!id || !UUID_ANY_RE.test(id)) return null;
+  const acceptedBy = last.accepted_by === 'you' ? 'you' : 'workspace_member';
+  return {
+    last_accepted: {
+      artifact_id: id,
+      title: clipText(last.title, PANEL_TITLE_MAX) ?? 'Untitled artifact',
+      accepted_at: str(last.accepted_at),
+      accepted_by: acceptedBy,
+      url: buildEntityLink('artifact', id).url,
+    },
+    completed_unaccepted: completedUnaccepted,
+  };
+}
+
 export interface BuildPanelSnapshotInput {
   now?: Date;
   workspace: { id: string; name: string | null } | null;
@@ -519,6 +552,12 @@ export interface BuildPanelSnapshotInput {
   decisions: unknown[] | null;
   /** Artifact records, or null if the read failed or was skipped. */
   artifacts: unknown[] | null;
+  /**
+   * The app's `proof` from the pending-decisions read (acceptance ledger).
+   * Undefined when the app did not send one (older app): fall back to the
+   * artifact read. Null when the app could not read it: proof_unavailable.
+   */
+  appProof?: unknown;
   focus?: { type: 'decision'; id: string } | null;
   viewerUserIds?: ReadonlyArray<string | null | undefined>;
 }
@@ -582,7 +621,11 @@ export function buildPanelSnapshot(input: BuildPanelSnapshotInput): PanelSnapsho
     .sort((a, b) => timeOf(a) - timeOf(b))[0] ?? null;
 
   let proof: PanelSnapshot['proof'] = { last_accepted: null, completed_unaccepted: 0 };
-  if (input.artifacts === null) {
+  const ledgerProof = input.appProof === undefined ? undefined : normalizeAppProof(input.appProof);
+  if (ledgerProof !== undefined) {
+    if (ledgerProof === null) degraded.push('proof_unavailable');
+    else proof = ledgerProof;
+  } else if (input.artifacts === null) {
     degraded.push('proof_unavailable');
   } else {
     const summary = summarizePanelProof(input.artifacts, {
@@ -707,6 +750,7 @@ export async function handlePanelSnapshot(
     let decisions: unknown[] | null = null;
     let artifacts: unknown[] | null = null;
     let approvalMeta: Record<string, unknown> | null = null;
+    let appProof: unknown = undefined;
 
     if (workspace) {
       const workspaceId = workspace.id;
@@ -718,6 +762,7 @@ export async function handlePanelSnapshot(
         const split = splitWidgetApprovalMeta(asRecord(decisionRead.value?.data) ?? {});
         decisions = Array.isArray(split.data.decisions) ? split.data.decisions : [];
         approvalMeta = split.meta;
+        if ('proof' in split.data) appProof = split.data.proof;
       }
       if (artifactRead.status === 'fulfilled' && Array.isArray(artifactRead.value)) {
         artifacts = artifactRead.value;
@@ -729,6 +774,7 @@ export async function handlePanelSnapshot(
       workspace,
       decisions,
       artifacts,
+      appProof,
       focus,
       viewerUserIds: host.viewerUserIds(),
     });
