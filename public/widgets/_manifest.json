@@ -39,7 +39,8 @@
     "work-ledger": "0,201,167",
     "index": "17,24,39",
     "workspace-map": "191,255,0",
-    "orgx-panel": "191,255,0"
+    "orgx-panel": "191,255,0",
+    "proof-receipt": "0,201,167"
   },
   "widgets": {
     "agent-status": {
@@ -137,8 +138,8 @@
     },
     "index": {
       "file": "public/widgets/index.html",
-      "bytes": 25880,
-      "hash": "2530580ec644",
+      "bytes": 26200,
+      "hash": "1cf43699ea33",
       "primaryRgb": "17,24,39",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -237,6 +238,23 @@
       "protocolBridge": "official-sdk",
       "demoOnly": false
     },
+    "proof-receipt": {
+      "file": "public/widgets/proof-receipt.html",
+      "bytes": 29304,
+      "hash": "6c4f03c80560",
+      "primaryRgb": "0,201,167",
+      "sharedRefs": [
+        "shared/agent-identity.js",
+        "shared/kit/ox-elements.js",
+        "shared/kit/ox-tokens.css",
+        "shared/mcp-apps-sdk.umd.js",
+        "shared/widget-foundation.css",
+        "shared/widget-runtime.js",
+        "shared/widget-theme.css"
+      ],
+      "protocolBridge": "official-sdk",
+      "demoOnly": false
+    },
     "scaffold-streaming": {
       "file": "public/widgets/scaffold-streaming.html",
       "bytes": 42641,
@@ -290,8 +308,8 @@
     },
     "task-spawned": {
       "file": "public/widgets/task-spawned.html",
-      "bytes": 39280,
-      "hash": "6a2f15367df4",
+      "bytes": 51658,
+      "hash": "514598bc77e5",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -313,8 +331,8 @@
     },
     "work-ledger": {
       "file": "public/widgets/work-ledger.html",
-      "bytes": 25525,
-      "hash": "b3f70fc9e369",
+      "bytes": 45434,
+      "hash": "594ca959899e",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/interaction-kit.css",

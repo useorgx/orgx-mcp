@@ -647,6 +647,18 @@
       "name": "Plan Session Live Widget (Skybridge)",
       "description": "ChatGPT Apps SDK widget for live tracked planning sessions and co-authored agent reasoning",
       "mimeType": "text/html+skybridge"
+    },
+    {
+      "uri": "ui://widget/proof-receipt.html",
+      "name": "Receipt Widget",
+      "description": "Widget showing a submitted receipt: how far the proof got, the evidence, what is missing, and the next move",
+      "mimeType": "text/html;profile=mcp-app"
+    },
+    {
+      "uri": "ui://widget/proof-receipt.skybridge.html",
+      "name": "Receipt Widget (Skybridge)",
+      "description": "ChatGPT Apps SDK widget showing a submitted receipt: how far the proof got, the evidence, what is missing, and the next move",
+      "mimeType": "text/html+skybridge"
     }
 ,
     {
