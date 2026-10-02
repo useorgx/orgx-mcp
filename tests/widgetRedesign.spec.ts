@@ -32,16 +32,24 @@ describe("OrgX compact widget redesign", () => {
     expect(html).not.toContain('data-view-tab="raw"');
   });
 
-  it("renders task spawn as a compact dispatch receipt and proof spine", () => {
+  it("renders task spawn as a Q2 card with receipts and a queues-work footer", () => {
     const html = widget("task-spawned");
-    expect(html).toContain('class="dispatch-spine"');
-    expect(html).toContain("Owner");
-    expect(html).toContain("Execution surface");
+    expect(html).toContain("<ox-footer");
+    expect(html).toContain("variant: 'queues-work'");
+    expect(html).toContain("<ox-receipt-row");
+    expect(html).toContain("<ox-state-chip");
     expect(html).toContain("Receipt");
     expect(html).toContain("The execution link remains the proof boundary.");
     expect(html).toContain("Execution complete");
     expect(html).toContain("replacement itself must be atomic");
     expect(html).not.toContain("skeleton.style.opacity = '0'");
+  });
+
+  it("asks orgx_command_status for spawned runs instead of guessing", () => {
+    const html = widget("task-spawned");
+    expect(html).toContain("callTool('orgx_command_status', { kind: 'run', id: runId })");
+    expect(html).toContain("next_poll_after_ms");
+    expect(html).toContain("UUID_RE.test(runId)");
   });
 
   it("compresses search into one leading match and quiet continuation rows", () => {

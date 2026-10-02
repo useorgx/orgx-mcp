@@ -88,6 +88,10 @@ export const WIDGET_URIS = {
     'ui://widget/workspace-map.html',
     WIDGET_BUILD_VERSION
   ), // orgx_bootstrap: workspace, scopes, and every OrgX surface with its tools
+  orgxPanel: withWidgetResourceVersion(
+    'ui://widget/orgx-panel.html',
+    WIDGET_BUILD_VERSION
+  ), // orgx_panel_snapshot: the ChatGPT sidebar (global) and thread panel
 } as const;
 
 export const OUTPUT_TEMPLATE_URIS = {
@@ -104,6 +108,7 @@ export const OUTPUT_TEMPLATE_URIS = {
   entityCard: toSkybridgeResourceUri(WIDGET_URIS.entityCard),
   workLedger: toSkybridgeResourceUri(WIDGET_URIS.workLedger),
   workspaceMap: toSkybridgeResourceUri(WIDGET_URIS.workspaceMap),
+  orgxPanel: toSkybridgeResourceUri(WIDGET_URIS.orgxPanel),
 } as const;
 
 export const WIDGET_RESOURCES = [
@@ -166,6 +171,16 @@ export const WIDGET_RESOURCES = [
     name: 'plan-session-live-widget',
     uri: WIDGET_URIS.planSessionLive,
     title: 'Plan Session Live Widget',
+  },
+  {
+    name: 'orgx-panel-widget',
+    uri: WIDGET_URIS.orgxPanel,
+    title: 'OrgX Panel',
+    // OpenAI UI extension: the panel opens inline (sidebar, beside a thread)
+    // and can expand to fullscreen. Merged into the shared content _meta.
+    contentMeta: {
+      'openai/ui': { availableDisplayModes: ['inline', 'fullscreen'] },
+    },
   },
 ] as const;
 

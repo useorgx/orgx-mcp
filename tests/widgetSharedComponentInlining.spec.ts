@@ -225,6 +225,27 @@ describe('MCP Apps shared-component inlining', () => {
         resource.name
       ).toHaveLength(1);
 
+      if (resource.name === 'orgx-panel-widget') {
+        // The panel is fully self-contained: kit, theme, runtime and the
+        // OpenAI extensions shim are inlined, in load order, and nothing
+        // under shared/ is fetched.
+        const order = [
+          'shared/kit/ox-tokens.css',
+          'shared/kit/ox-elements.js',
+          'shared/mcp-apps-sdk.umd.js',
+          'shared/widget-runtime.js',
+          'shared/openai-extensions.js',
+          'shared/widget-theme.css',
+        ];
+        for (const path of order) {
+          expect(document.querySelectorAll(`[data-inline-asset="${path}"]`), path).toHaveLength(1);
+        }
+        const positions = order.map((path) => sanitized.indexOf(`data-inline-asset="${path}"`));
+        expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+        expect(document.querySelectorAll('[data-inline-asset="interaction-kit.js"]')).toHaveLength(1);
+        expect(sanitized).not.toMatch(/(?:src|href)=["'][^"']*shared\//);
+      }
+
       if (resource.name === 'morning-brief-widget') {
         expect(
           document.querySelectorAll(

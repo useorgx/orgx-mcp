@@ -5,8 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Initiative Scaffolded - OrgX</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='18' fill='none' stroke='%236366f1' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='9' fill='none' stroke='%236366f1' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='3' fill='%236366f1'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="shared/kit/ox-tokens.css" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
+  <script src="shared/kit/ox-elements.js"></script>
+  <script src="shared/agent-identity.js"></script>
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/interaction-kit.js"></script>
@@ -23,2251 +26,187 @@
     })();
   </script>
   <style>
-      :root, :root[data-theme="light"] {
-        --ox-bg: #f8fafc;
-        --ox-panel: #ffffff;
-        --ox-border: rgba(0, 0, 0, 0.08);
-        --ox-border-strong: rgba(0, 0, 0, 0.15);
-        --ox-tree: #cfd6e0;
-        --ox-text: #0f172a;
-        --ox-text-muted: #64748b;
-        --ox-well-bg: #f1f5f9;
-        --ox-well-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
-        --scaffold-shell-surface: rgba(255, 255, 255, 0.94);
-        --scaffold-shell-shadow: 0 28px 48px -28px rgba(15, 23, 42, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.78);
-        --scaffold-shell-outline: rgba(15, 23, 42, 0.08);
-        --scaffold-shell-highlight: rgba(255, 255, 255, 0.7);
-        --scaffold-stage-surface: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(241, 245, 249, 0.96));
-        --scaffold-stage-sheen: radial-gradient(circle at 50% 0%, rgba(var(--ox-primary-rgb), 0.08), transparent 36%);
-        --scaffold-control-highlight: rgba(255, 255, 255, 0.62);
-        --scaffold-chip-surface: rgba(248, 250, 252, 0.92);
-        --scaffold-lane-track-surface: rgba(148, 163, 184, 0.18);
-        --scaffold-lane-label: rgba(51, 65, 85, 0.62);
-        --scaffold-cell-surface: rgba(255, 255, 255, 0.74);
-        --scaffold-agent-label: rgba(51, 65, 85, 0.72);
-        --scaffold-tip-surface: rgba(255, 255, 255, 0.76);
-        --scaffold-tip-copy: rgba(51, 65, 85, 0.76);
-        --scaffold-caption-copy: rgba(51, 65, 85, 0.76);
-        --scaffold-dot-surface: rgba(148, 163, 184, 0.34);
-      }
-      
-      @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) {
-          --ox-bg: #02040a;
-          --ox-panel: rgba(10, 15, 22, 0.95);
-          --ox-border: rgba(255, 255, 255, 0.08);
-          --ox-border-strong: rgba(255, 255, 255, 0.15);
-          --ox-tree: #3a4049;
-          --ox-text: #f8fafc;
-          --ox-text-muted: rgba(255, 255, 255, 0.5);
-          --ox-well-bg: rgba(0,0,0,0.3);
-          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
-          --scaffold-shell-surface: rgba(4, 9, 16, 0.94);
-          --scaffold-shell-shadow: 0 30px 56px -24px rgba(0, 0, 0, 0.58), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-          --scaffold-shell-outline: rgba(255, 255, 255, 0.035);
-          --scaffold-shell-highlight: rgba(255, 255, 255, 0.05);
-          --scaffold-stage-surface: rgba(0, 0, 0, 0.24);
-          --scaffold-stage-sheen: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.05), transparent 34%);
-          --scaffold-control-highlight: rgba(255, 255, 255, 0.05);
-          --scaffold-chip-surface: rgba(0, 0, 0, 0.3);
-          --scaffold-lane-track-surface: rgba(255, 255, 255, 0.05);
-          --scaffold-lane-label: rgba(255, 255, 255, 0.34);
-          --scaffold-cell-surface: rgba(255, 255, 255, 0.03);
-          --scaffold-agent-label: rgba(255, 255, 255, 0.42);
-          --scaffold-tip-surface: rgba(255, 255, 255, 0.025);
-          --scaffold-tip-copy: rgba(255, 255, 255, 0.42);
-          --scaffold-caption-copy: rgba(255, 255, 255, 0.4);
-          --scaffold-dot-surface: rgba(255, 255, 255, 0.1);
-        }
-      }
-      
-      :root[data-theme="dark"] {
-          --ox-bg: #02040a;
-          --ox-panel: rgba(10, 15, 22, 0.95);
-          --ox-border: rgba(255, 255, 255, 0.08);
-          --ox-border-strong: rgba(255, 255, 255, 0.15);
-          --ox-tree: #3a4049;
-          --ox-text: #f8fafc;
-          --ox-text-muted: rgba(255, 255, 255, 0.5);
-          --ox-well-bg: rgba(0,0,0,0.3);
-          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
-          --scaffold-shell-surface: rgba(4, 9, 16, 0.94);
-          --scaffold-shell-shadow: 0 30px 56px -24px rgba(0, 0, 0, 0.58), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-          --scaffold-shell-outline: rgba(255, 255, 255, 0.035);
-          --scaffold-shell-highlight: rgba(255, 255, 255, 0.05);
-          --scaffold-stage-surface: rgba(0, 0, 0, 0.24);
-          --scaffold-stage-sheen: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.05), transparent 34%);
-          --scaffold-control-highlight: rgba(255, 255, 255, 0.05);
-          --scaffold-chip-surface: rgba(0, 0, 0, 0.3);
-          --scaffold-lane-track-surface: rgba(255, 255, 255, 0.05);
-          --scaffold-lane-label: rgba(255, 255, 255, 0.34);
-          --scaffold-cell-surface: rgba(255, 255, 255, 0.03);
-          --scaffold-agent-label: rgba(255, 255, 255, 0.42);
-          --scaffold-tip-surface: rgba(255, 255, 255, 0.025);
-          --scaffold-tip-copy: rgba(255, 255, 255, 0.42);
-          --scaffold-caption-copy: rgba(255, 255, 255, 0.4);
-          --scaffold-dot-surface: rgba(255, 255, 255, 0.1);
-      }
-      
-      :root {
-        --ox-lime: #a3e635; /* Will be overwritten by specific widgets */
-        --ox-teal: #0d9488;
-        --ox-danger: #e11d48;
-        --ox-warning: #d97706;
-        --ox-iris: #4f46e5;
-        --ox-grid: rgba(0, 0, 0, 0.03);
-        --ox-shadow: 0 12px 32px -12px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.04);
-        --ox-font: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
-        --ox-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
-      }
-      
-      @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) {
-          --ox-lime: #D4ED31;
-          --ox-teal: #00C9A7;
-          --ox-danger: #F43F5E;
-          --ox-warning: #FBBF24;
-          --ox-iris: #6366f1;
-          --ox-grid: rgba(255, 255, 255, 0.02);
-          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
-        }
-      }
-      
-      :root[data-theme="dark"] {
-          --ox-lime: #D4ED31;
-          --ox-teal: #00C9A7;
-          --ox-danger: #F43F5E;
-          --ox-warning: #FBBF24;
-          --ox-iris: #6366f1;
-          --ox-grid: rgba(255, 255, 255, 0.02);
-          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
-      }
-
-      /* Smooth UX Transitions */
-      @keyframes fadeSlideUp {
-        from { opacity: 0; transform: translateY(16px) scale(0.98); filter: blur(4px); }
-        to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
-      }
-      .animate-in { opacity: 0; animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-      .delay-1 { animation-delay: 0.1s; }
-      .delay-2 { animation-delay: 0.2s; }
-      .delay-3 { animation-delay: 0.3s; }
-      .scaffold-state {
-        --scaffold-ease: cubic-bezier(0.16, 1, 0.3, 1);
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-        position: relative;
-        padding: 20px;
-        border-radius: 22px;
-        overflow: hidden;
-        background:
-          linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.05), transparent 48%),
-          var(--scaffold-shell-surface);
-        border: 1px solid rgba(var(--ox-primary-rgb), 0.11);
-        box-shadow: var(--scaffold-shell-shadow);
-      }
-
-      .scaffold-state::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background:
-          radial-gradient(circle at 50% 0%, rgba(var(--ox-primary-rgb), 0.16), transparent 52%),
-          linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.08), transparent 40%);
-        opacity: 0.9;
-        z-index: -2;
-      }
-
-      .scaffold-state::after {
-        content: "";
-        position: absolute;
-        inset: 1px;
-        border-radius: 21px;
-        border: 1px solid var(--scaffold-shell-outline);
-        pointer-events: none;
-        z-index: -1;
-      }
-
-      .scaffold-state__chrome {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        flex-wrap: wrap;
-      }
-
-      .scaffold-state__eyebrow {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        font-family: var(--ox-mono);
-        font-size: 0.58rem;
-        font-weight: 700;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
-        color: var(--ox-text-muted);
-      }
-
-      .scaffold-state__eyebrow::before {
-        content: "";
-        width: 7px;
-        height: 7px;
-        border-radius: 999px;
-        background: linear-gradient(135deg, rgb(var(--ox-primary-rgb)), rgba(var(--ox-primary-rgb), 0.18));
-        box-shadow: 0 0 16px rgba(var(--ox-primary-rgb), 0.42);
-        animation: scaffoldPulse 2.4s ease-in-out infinite;
-      }
-
-      .scaffold-state__status {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        min-height: 30px;
-        padding: 0 12px;
-        border-radius: 999px;
-        font-family: var(--ox-mono);
-        font-size: 0.6rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: rgb(var(--ox-primary-rgb));
-        background: rgba(var(--ox-primary-rgb), 0.1);
-        border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
-        box-shadow: inset 0 1px 0 var(--scaffold-control-highlight);
-      }
-
-      .scaffold-state--awaiting .scaffold-state__status {
-        color: var(--ox-warning);
-        background: rgba(217, 119, 6, 0.12);
-        border-color: rgba(217, 119, 6, 0.2);
-      }
-
-      .scaffold-state__status-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 999px;
-        background: currentColor;
-        box-shadow: 0 0 10px currentColor;
-        animation: scaffoldPulse 1.6s ease-in-out infinite;
-      }
-
-      @keyframes scaffoldPulse {
-        0%, 100% { transform: scale(1); opacity: 1; }
-        50% { transform: scale(0.65); opacity: 0.42; }
-      }
-
-      .scaffold-state__stage {
-        position: relative;
-        min-height: 214px;
-        border-radius: 18px;
-        overflow: hidden;
-        background: var(--scaffold-stage-surface);
-        border: 1px solid rgba(var(--ox-primary-rgb), 0.08);
-      }
-
-      .scaffold-state__stage::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background:
-          linear-gradient(var(--ox-grid) 1px, transparent 1px),
-          linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px);
-        background-size: 22px 22px;
-        opacity: 0.52;
-        mask-image: radial-gradient(ellipse 78% 74% at 50% 48%, black 28%, transparent 100%);
-      }
-
-      .scaffold-state__stage::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: var(--scaffold-stage-sheen);
-        pointer-events: none;
-      }
-
-      .scaffold-state__glow {
-        position: absolute;
-        border-radius: 999px;
-        pointer-events: none;
-        filter: blur(12px);
-        opacity: 0.88;
-      }
-
-      .scaffold-state__glow--one {
-        top: 20px;
-        left: 18px;
-        width: 108px;
-        height: 108px;
-        background: radial-gradient(circle, rgba(var(--ox-primary-rgb), 0.18), transparent 72%);
-        animation: scaffoldFloat 8.2s ease-in-out infinite;
-      }
-
-      .scaffold-state__glow--two {
-        right: 30px;
-        bottom: 26px;
-        width: 134px;
-        height: 134px;
-        background: radial-gradient(circle, rgba(20, 184, 166, 0.12), transparent 74%);
-        animation: scaffoldFloat 9.6s ease-in-out infinite reverse;
-      }
-
-      @keyframes scaffoldFloat {
-        0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-        50% { transform: translate3d(0, -12px, 0) scale(1.04); }
-      }
-
-      .scaffold-state__scene {
-        position: absolute;
-        inset: 16px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0;
-        transform: translate3d(0, 10px, 0) scale(0.975);
-        filter: blur(3px);
-        transition:
-          opacity 0.55s var(--scaffold-ease),
-          transform 0.55s var(--scaffold-ease),
-          filter 0.55s var(--scaffold-ease);
-        pointer-events: none;
-      }
-
-      .scaffold-state__scene.active {
-        opacity: 1;
-        transform: translate3d(0, 0, 0) scale(1);
-        filter: blur(0);
-        pointer-events: auto;
-      }
-
-      .scaffold-state__icon-tile {
-        --scene-rgb: var(--ox-primary-rgb);
-        position: relative;
-        width: 56px;
-        height: 56px;
-        border-radius: 16px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: rgb(var(--scene-rgb));
-        background: rgba(var(--scene-rgb), 0.12);
-        border: 1px solid rgba(var(--scene-rgb), 0.18);
-        box-shadow:
-          inset 0 1px 0 var(--scaffold-control-highlight),
-          0 18px 28px -24px rgba(var(--scene-rgb), 0.6);
-      }
-
-      .scaffold-state__icon-tile::after {
-        content: "";
-        position: absolute;
-        inset: -10px;
-        border-radius: 24px;
-        background: radial-gradient(circle, rgba(var(--scene-rgb), 0.14), transparent 72%);
-        opacity: 0;
-        transition: opacity 0.45s ease;
-      }
-
-      .scaffold-state__scene.active .scaffold-state__icon-tile::after {
-        opacity: 1;
-      }
-
-      .scaffold-state__icon-tile svg {
-        position: relative;
-        z-index: 1;
-      }
-
-      .scaffold-state__chip-group {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 12px;
-        max-width: 320px;
-      }
-
-      .scaffold-state__chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        min-height: 38px;
-        padding: 0 14px;
-        border-radius: 12px;
-        background: var(--scaffold-chip-surface);
-        border: 1px solid rgba(var(--chip-rgb), 0.16);
-        color: rgb(var(--chip-rgb));
-        font-size: 0.68rem;
-        font-weight: 650;
-        letter-spacing: 0.04em;
-        box-shadow: inset 0 1px 0 var(--scaffold-control-highlight);
-        opacity: 0;
-        transform: translateY(8px);
-      }
-
-      .scaffold-state__scene.active .scaffold-state__chip {
-        animation: scaffoldLiftIn 0.48s var(--scaffold-ease) forwards;
-        animation-delay: var(--chip-delay, 0ms);
-      }
-
-      @keyframes scaffoldLiftIn {
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      .scaffold-state__chip svg {
-        flex: none;
-      }
-
-      .scaffold-state__lane-stack {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        width: min(280px, 100%);
-      }
-
-      .scaffold-state__lane {
-        display: grid;
-        grid-template-columns: auto 1fr auto;
-        align-items: center;
-        gap: 12px;
-      }
-
-      .scaffold-state__lane-marker {
-        width: 12px;
-        height: 12px;
-        border-radius: 4px;
-        transform: rotate(45deg);
-        background: rgb(var(--lane-rgb));
-        box-shadow: 0 0 14px rgba(var(--lane-rgb), 0.2);
-        opacity: 0;
-      }
-
-      .scaffold-state__scene.active .scaffold-state__lane-marker {
-        animation: scaffoldMarkerIn 0.34s var(--scaffold-ease) forwards;
-        animation-delay: var(--lane-delay, 0ms);
-      }
-
-      @keyframes scaffoldMarkerIn {
-        to { opacity: 1; transform: rotate(45deg) scale(1); }
-      }
-
-      .scaffold-state__lane-track {
-        position: relative;
-        height: 7px;
-        border-radius: 999px;
-        overflow: hidden;
-        background: var(--scaffold-lane-track-surface);
-      }
-
-      .scaffold-state__lane-fill {
-        position: absolute;
-        inset: 0 auto 0 0;
-        width: 0;
-        border-radius: inherit;
-        background: linear-gradient(90deg, rgba(var(--lane-rgb), 0.88), rgba(var(--lane-rgb), 0.52));
-        box-shadow: 0 0 18px rgba(var(--lane-rgb), 0.18);
-      }
-
-      .scaffold-state__scene.active .scaffold-state__lane-fill {
-        animation: scaffoldLaneFill 1.6s var(--scaffold-ease) forwards;
-        animation-delay: calc(var(--lane-delay, 0ms) + 100ms);
-      }
-
-      @keyframes scaffoldLaneFill {
-        to { width: var(--lane-fill, 50%); }
-      }
-
-      .scaffold-state__lane-label {
-        font-family: var(--ox-mono);
-        font-size: 0.54rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--scaffold-lane-label);
-      }
-
-      .scaffold-state__task-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 8px;
-      }
-
-      .scaffold-state__task-cell {
-        width: 38px;
-        height: 38px;
-        border-radius: 11px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--scaffold-cell-surface);
-        border: 1px solid rgba(var(--cell-rgb), 0.14);
-        color: rgb(var(--cell-rgb));
-        opacity: 0;
-        transform: scale(0.82);
-      }
-
-      .scaffold-state__scene.active .scaffold-state__task-cell {
-        animation: scaffoldCellIn 0.36s var(--scaffold-ease) forwards;
-        animation-delay: var(--cell-delay, 0ms);
-      }
-
-      @keyframes scaffoldCellIn {
-        to {
-          opacity: 1;
-          transform: scale(1);
-        }
-      }
-
-      .scaffold-state__task-cell--pending svg {
-        opacity: 0.54;
-      }
-
-      .scaffold-state__agent-row {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 10px;
-        max-width: 320px;
-      }
-
-      .scaffold-state__agent {
-        width: 64px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 6px;
-        opacity: 0;
-        transform: translateY(10px);
-      }
-
-      .scaffold-state__scene.active .scaffold-state__agent {
-        animation: scaffoldLiftIn 0.42s var(--scaffold-ease) forwards;
-        animation-delay: var(--agent-delay, 0ms);
-      }
-
-      .scaffold-state__agent-shell {
-        position: relative;
-        width: 42px;
-        height: 42px;
-      }
-
-      .scaffold-state__agent-avatar {
-        width: 42px;
-        height: 42px;
-        border-radius: 13px;
-        overflow: hidden;
-        border: 1px solid rgba(var(--agent-rgb), 0.18);
-        background: rgba(var(--agent-rgb), 0.1);
-        color: rgb(var(--agent-rgb));
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: var(--ox-mono);
-        font-size: 0.74rem;
-        font-weight: 700;
-        box-shadow:
-          0 12px 24px -22px rgba(var(--agent-rgb), 0.78),
-          inset 0 1px 0 var(--scaffold-control-highlight);
-      }
-
-      .scaffold-state__agent-avatar img {
-        display: block;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-
-      .scaffold-state__agent-shell .domain-badge {
-        position: absolute;
-        right: -3px;
-        bottom: -2px;
-      }
-
-      .scaffold-state__agent-label {
-        font-size: 0.54rem;
-        font-weight: 600;
-        line-height: 1.2;
-        text-align: center;
-        color: var(--scaffold-agent-label);
-      }
-
-      .scaffold-state__tip-list {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        width: min(280px, 100%);
-      }
-
-      .scaffold-state__tip {
-        display: grid;
-        grid-template-columns: auto 1fr;
-        align-items: center;
-        gap: 10px;
-        padding: 10px 13px;
-        border-radius: 12px;
-        background: var(--scaffold-tip-surface);
-        border: 1px solid rgba(var(--tip-rgb), 0.1);
-        opacity: 0;
-        transform: translateX(-8px);
-      }
-
-      .scaffold-state__scene.active .scaffold-state__tip {
-        animation: scaffoldTipIn 0.42s var(--scaffold-ease) forwards;
-        animation-delay: var(--tip-delay, 0ms);
-      }
-
-      @keyframes scaffoldTipIn {
-        to {
-          opacity: 1;
-          transform: translateX(0);
-        }
-      }
-
-      .scaffold-state__tip-icon {
-        width: 30px;
-        height: 30px;
-        border-radius: 9px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(var(--tip-rgb), 0.1);
-        color: rgb(var(--tip-rgb));
-      }
-
-      .scaffold-state__tip-copy {
-        font-size: 0.66rem;
-        line-height: 1.45;
-        color: var(--scaffold-tip-copy);
-      }
-
-      .scaffold-state__tip-copy strong {
-        color: var(--ox-text);
-        font-weight: 650;
-      }
-
-      .scaffold-state__caption {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        min-height: 76px;
-        text-align: center;
-      }
-
-      .scaffold-state__caption-title {
-        font-size: 0.98rem;
-        font-weight: 700;
-        letter-spacing: -0.025em;
-        color: var(--ox-text);
-        transition: opacity 0.24s ease, transform 0.24s ease;
-      }
-
-      .scaffold-state__caption-desc {
-        max-width: 320px;
-        margin: 0 auto;
-        font-size: 0.7rem;
-        line-height: 1.5;
-        color: var(--scaffold-caption-copy);
-        transition: opacity 0.24s ease, transform 0.24s ease;
-      }
-
-      .scaffold-state__caption-title.is-fading,
-      .scaffold-state__caption-desc.is-fading {
-        opacity: 0;
-        transform: translateY(4px);
-      }
-
-      .scaffold-state__dots {
-        display: flex;
-        justify-content: center;
-        gap: 0;
-      }
-
-      .scaffold-state__dot {
-        width: 44px;
-        min-width: 44px;
-        height: 44px;
-        flex: 0 0 44px;
-        border: 0;
-        padding: 0;
-        cursor: pointer;
-        display: grid;
-        place-items: center;
-        background: transparent;
-      }
-
-      .scaffold-state__dot::before {
-        content: '';
-        width: 6px;
-        height: 6px;
-        border-radius: 999px;
-        background: var(--scaffold-dot-surface);
-        transition:
-          width 0.32s var(--scaffold-ease),
-          background-color 0.32s var(--scaffold-ease),
-          box-shadow 0.32s var(--scaffold-ease);
-      }
-
-      .scaffold-state__dot.active::before {
-        width: 20px;
-        border-radius: 4px;
-        background: rgb(var(--ox-primary-rgb));
-        box-shadow: 0 0 12px rgba(var(--ox-primary-rgb), 0.38);
-      }
-
-      .scaffold-state__dot.done::before {
-        background: rgba(var(--ox-primary-rgb), 0.36);
-      }
-
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: var(--ox-font); background: var(--ox-bg); color: var(--ox-text); padding: 24px 16px; -webkit-font-smoothing: antialiased; min-height: auto; }
-    body::before { content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at 50% 0%, rgba(var(--ox-primary-rgb), 0.08), transparent 60%), linear-gradient(var(--ox-grid) 1px, transparent 1px), linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px); background-size: 100% 100%, 20px 20px, 20px 20px; z-index: -1; pointer-events: none; }
-    .container { max-width: 540px; margin: 0 auto; position: relative; }
-
-    .widget-build-marker {
-      position: absolute;
-      left: 10px;
-      bottom: 8px;
-      z-index: 32;
-      font-family: var(--ox-mono);
-      font-size: 0.46rem;
-      font-weight: 600;
-      line-height: 1;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: rgba(15, 23, 42, 0.26);
-      opacity: 0.72;
-      pointer-events: none;
-      user-select: none;
-      white-space: nowrap;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      :root:not([data-theme="light"]) .widget-build-marker {
-        color: rgba(255, 255, 255, 0.2);
-      }
-    }
-
-    :root[data-theme="dark"] .widget-build-marker {
-      color: rgba(255, 255, 255, 0.2);
-    }
-
-    :root[data-embed="og-wide-scaffold"] body {
-      min-height: auto;
-      min-width: 640px;
-      padding: 20px 18px;
-    }
-
-    :root[data-embed="og-wide-scaffold"] .container {
-      max-width: 640px;
-    }
-
-    :root[data-embed="og-wide-scaffold"] .ox-card-inner {
-      padding: 22px;
-    }
-
-    :root[data-embed="og-wide-scaffold"] .ws-title {
-      font-size: 0.95rem;
-    }
-    
-    .ox-card { background: var(--ox-panel); border: 1px solid var(--ox-border); border-radius: 16px; box-shadow: var(--ox-shadow); position: relative; overflow: hidden; margin-bottom: 16px; }
-    .ox-card-inner { padding: 24px; }
-    .ox-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(var(--ox-primary-rgb), 0.5), transparent); opacity: 0.8; }
-    .ox-eyebrow { font-family: var(--ox-mono); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ox-text-muted); font-weight: 600; }
-    .ox-title { font-size: 1.15rem; font-weight: 600; letter-spacing: -0.02em; color: var(--ox-text); line-height: 1.3; }
-    
-
+    /* Creation mode keeps its iris identity; canvas Q7 and Z1 supply the shape. */
     :root { --ox-primary: #6366f1; --ox-primary-rgb: 99, 102, 241; }
 
-    /* Hierarchy Specifics */
-    .h-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--ox-border); transition: border-color 260ms var(--widget-motion-curve); }
-    .h-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-    .h-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .h-icon { width: 48px; height: 48px; border-radius: 12px; background: rgba(var(--ox-primary-rgb), 0.1); border: 1px solid rgba(var(--ox-primary-rgb), 0.2); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); transition: background 260ms var(--widget-motion-curve), border-color 260ms var(--widget-motion-curve), box-shadow 260ms var(--widget-motion-curve); }
-    .h-header.is-launched { border-bottom-color: rgba(var(--ox-primary-rgb), 0.18); }
-    .h-header.is-launched .h-icon {
-      background: rgba(var(--ox-primary-rgb), 0.14);
-      border-color: rgba(var(--ox-primary-rgb), 0.34);
-      box-shadow: 0 0 24px rgba(var(--ox-primary-rgb), 0.24);
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 12px 12px 18px;
+      min-height: 100vh;
+      overflow-x: hidden;
+      font-family: var(--ox-font);
+      -webkit-font-smoothing: antialiased;
     }
-    
-    .section-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 12px;
-    }
+    .container { max-width: 640px; margin: 0 auto; position: relative; }
 
-    .section-kicker { margin: 0; }
+    /* The footer's primary is the one amber action, whatever the widget accent. */
+    ox-footer { --ox-primary: #fbbf24; }
 
-    .section-toggle-all {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      min-height: 44px;
-      padding: 0 12px;
-      border-radius: 999px;
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
-      background: rgba(var(--ox-primary-rgb), 0.08);
-      color: var(--ox-text);
-      font-family: var(--ox-mono);
-      font-size: 0.61rem;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      cursor: pointer;
-      transition:
-        border-color var(--widget-motion-fast) var(--widget-motion-curve),
-        background var(--widget-motion-fast) var(--widget-motion-curve),
-        color var(--widget-motion-fast) var(--widget-motion-curve),
-        transform var(--widget-motion-fast) var(--widget-motion-curve);
-    }
-
-    .section-toggle-all:hover,
-    .section-toggle-all:focus-visible {
-      border-color: rgba(var(--ox-primary-rgb), 0.24);
-      background: rgba(var(--ox-primary-rgb), 0.12);
-      color: var(--ox-primary);
-      transform: translateY(-1px);
-    }
-
-    .section-toggle-all__glyph {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      transition: transform var(--widget-motion-base) var(--widget-motion-curve);
-    }
-
-    .section-toggle-all[data-expanded="false"] .section-toggle-all__glyph {
-      transform: rotate(-90deg);
-    }
-
-    .node-list {
-      --ms-indent: 38px;
-      --tk-indent: 60px;
-      --tree-outer-x: 12px;
-      --tree-inner-x: 30px;
-      --tree-elbow-rise: 10px;
-      --tree-elbow-run-outer: 24px;
-      --tree-elbow-run-inner: 24px;
-      --tree-stroke: 1.5px;
-      --tree-gap: 12px;
+    /* One card: header line, initiative, its workstreams, one footer. */
+    .wcard.ox-card {
+      position: relative;
       display: flex;
       flex-direction: column;
-      gap: 28px;
-    }
-
-    .ws-block {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      padding-block: 2px;
-      position: relative;
-      z-index: 0;
-    }
-
-    .ws-block:hover,
-    .ws-block:focus-within {
-      z-index: 16;
-    }
-
-    /* Workstream emergence — the second tier of the staggered cascade
-     * (initiative header → workstream cards → milestones → tasks). Each
-     * card arrives on the entry curve, hierarchy-ordered, so the breakdown
-     * structure materializes calmly rather than appearing all at once. */
-    .ws-block.is-emerging {
-      animation: wsBlockEmerge var(--ox-dur-slow, 400ms) var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) both;
-      animation-delay: var(--ws-emerge-delay, 0ms);
-    }
-
-    @keyframes wsBlockEmerge {
-      from {
-        opacity: 0;
-        transform: translateY(14px) scale(0.985);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
-    }
-    .node-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 12px;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      position: relative;
-      overflow: hidden;
-      z-index: 1;
-    }
-    
-    
-    .node-item.ws { background: rgba(255,255,255,0.02); font-weight: 600; color: var(--ox-text); }
-    @media (prefers-color-scheme: light) {
-      :root:not([data-theme='dark']) .node-item.ws {
-        background: rgba(0,0,0,0.03);
-      }
-    }
-
-    .node-item.ws {
-      --ws-rgb: var(--ox-primary-rgb);
-      position: relative;
-      display: grid;
-      grid-template-columns: minmax(0, 1fr);
-      align-items: center;
-      gap: 14px;
-      max-height: none;
+      margin: 0;
       overflow: visible;
-      padding: 16px;
-      border-radius: 14px;
-      border: 1px solid rgba(var(--ws-rgb), 0.14);
-      background:
-        linear-gradient(180deg, rgba(var(--ws-rgb), 0.078), rgba(255,255,255,0.015)),
-        rgba(255,255,255,0.02);
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.05),
-        0 18px 36px -30px rgba(var(--ws-rgb), 0.52);
-      transition:
-        border-color var(--widget-motion-base) var(--widget-motion-curve),
-        transform var(--widget-motion-base) var(--widget-motion-curve),
-        box-shadow var(--widget-motion-base) var(--widget-motion-curve),
-        background var(--widget-motion-base) var(--widget-motion-curve);
-    }
-
-    .node-item.ws:hover {
-      border-color: rgba(var(--ws-rgb), 0.22);
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.05),
-        0 24px 42px -32px rgba(var(--ws-rgb), 0.58);
-      transform: translateY(-1px);
-    }
-
-    .node-item.ws::before {
-      content: none;
-    }
-
-    .ws-shell {
-      grid-column: 1 / -1;
-      min-width: 0;
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .ws-copy {
-      min-width: 0;
-      display: block;
-    }
-
-    .ws-topline {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      align-items: center;
-      gap: 12px;
-      min-width: 0;
-    }
-
-    .ws-node-icon {
-      width: 20px;
-      height: 20px;
-      flex: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 999px;
-      color: rgb(var(--ws-rgb));
-      background: rgba(var(--ws-rgb), 0.1);
-      border: 1px solid rgba(var(--ws-rgb), 0.18);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
-    }
-
-    .ws-node-icon svg {
-      width: 12px;
-      height: 12px;
-    }
-
-    .ws-title-stack {
-      min-width: 0;
-      display: grid;
-      gap: 6px;
-      align-content: center;
-    }
-
-    .ws-title {
-      font-size: 0.96rem;
-      line-height: 1.14;
-      color: var(--ox-text);
-      letter-spacing: -0.02em;
-      min-width: 0;
-      font-weight: 600;
-    }
-
-    .ws-meta {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    /* Child-count hint shown next to the ID badge when the workstream is
-     * collapsed — telegraphs "structure inside" without forcing the user
-     * to expand. Mono voice so it doesn't compete with the label. */
-    .ws-child-count {
-      font-family: var(--ox-mono);
-      font-size: 0.64rem;
-      font-weight: 500;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--ox-text-muted);
-    }
-    .ws-block:not(.is-collapsed) .ws-child-count {
-      opacity: 0.5;
-    }
-
-    .ws-execution {
-      display: inline-flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 12px;
-      padding-left: 12px;
-      flex-wrap: nowrap;
-    }
-
-    .node-item.ws .badge-id {
-      align-self: flex-start;
-    }
-
-    .node-item.ws > .ws-children {
-      grid-column: 1 / -1;
-    }
-
-    .agent-presence {
-      position: relative;
-      width: 44px;
-      height: 44px;
-      flex: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 12px;
-      outline: none;
-      cursor: default;
-      z-index: 4;
-    }
-
-    .agent-presence:focus-visible {
-      box-shadow: 0 0 0 2px rgba(var(--agent-domain-rgb, var(--ox-primary-rgb)), 0.2);
-    }
-
-    .agent-avatar {
-      width: 100%;
-      height: 100%;
-      border-radius: 9px;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(var(--agent-domain-rgb, var(--ox-primary-rgb)), 0.12);
-      border: 1px solid rgba(var(--agent-domain-rgb, var(--ox-primary-rgb)), 0.22);
-      color: rgb(var(--agent-domain-rgb, var(--ox-primary-rgb)));
-      font-family: var(--ox-mono);
-      font-size: 0.76rem;
-      font-weight: 700;
-      box-shadow:
-        0 10px 18px -12px rgba(var(--agent-domain-rgb, var(--ox-primary-rgb)), 0.38),
-        inset 0 1px 0 rgba(255,255,255,0.05);
-    }
-
-    .agent-avatar img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .domain-badge {
-      position: absolute;
-      right: -3px;
-      bottom: -3px;
-      width: 15px;
-      height: 15px;
-      border-radius: 999px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       background: var(--ox-panel);
       border: 1px solid var(--ox-border);
-      color: rgb(var(--agent-domain-rgb, var(--ox-primary-rgb)));
-      box-shadow: 0 6px 14px -10px rgba(0,0,0,0.55);
+      border-radius: 16px;
+      box-shadow: var(--ox-shadow);
+      --edge-rgb: 100, 116, 139;
     }
-
-    .domain-badge svg {
-      width: 9px;
-      height: 9px;
-    }
-
-    .agent-presence__tooltip {
-      position: absolute;
-      right: -6px;
-      bottom: calc(100% + 12px);
-      min-width: max-content;
-      max-width: 180px;
-      padding: 9px 11px 10px;
-      display: grid;
-      gap: 3px;
-      border-radius: 12px;
-      border: 1px solid rgba(var(--agent-domain-rgb, var(--ox-primary-rgb)), 0.18);
-      background:
-        linear-gradient(180deg, rgba(var(--agent-domain-rgb, var(--ox-primary-rgb)), 0.08), rgba(7, 10, 18, 0)),
-        rgba(7, 10, 18, 0.96);
-      box-shadow:
-        0 18px 36px -26px rgba(0,0,0,0.8),
-        0 12px 24px -18px rgba(var(--agent-domain-rgb, var(--ox-primary-rgb)), 0.35);
-      opacity: 0;
-      transform: translateY(4px) scale(0.985);
-      transform-origin: bottom right;
-      pointer-events: none;
-      transition:
-        opacity var(--widget-motion-fast) var(--widget-motion-curve),
-        transform var(--widget-motion-fast) var(--widget-motion-curve);
-      z-index: 40;
-    }
-
-    .agent-presence__tooltip::before {
+    .wcard.ox-card::after {
       content: "";
       position: absolute;
-      bottom: -6px;
-      right: 14px;
-      width: 12px;
-      height: 12px;
-      border-right: 1px solid rgba(var(--agent-domain-rgb, var(--ox-primary-rgb)), 0.18);
-      border-bottom: 1px solid rgba(var(--agent-domain-rgb, var(--ox-primary-rgb)), 0.18);
-      background: rgba(7, 10, 18, 0.96);
-      transform: rotate(45deg);
-    }
-
-    .agent-presence:hover .agent-presence__tooltip,
-    .agent-presence:focus-visible .agent-presence__tooltip,
-    .agent-presence:focus-within .agent-presence__tooltip {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-
-    .agent-presence__tooltip-name {
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: -0.01em;
-      color: var(--ox-text);
-      line-height: 1.1;
-    }
-
-    .agent-presence__tooltip-meta {
-      font-family: var(--ox-mono);
-      font-size: 0.58rem;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: rgba(var(--agent-domain-rgb, var(--ox-primary-rgb)), 0.84);
-      line-height: 1.2;
-    }
-
-    .progress-ring {
-      --progress-rgb: var(--ox-primary-rgb);
-      position: relative;
-      width: 36px;
-      height: 36px;
-      flex: none;
-      color: var(--ox-text);
-    }
-
-    .progress-ring svg {
-      width: 100%;
-      height: 100%;
-      display: block;
-      transform: rotate(-90deg);
-    }
-
-    .progress-ring-track {
-      fill: none;
-      stroke: rgba(var(--progress-rgb), 0.16);
-      stroke-width: 2.5;
-    }
-
-    .progress-ring-bar {
-      fill: none;
-      stroke: rgb(var(--progress-rgb));
-      stroke-width: 2.5;
-      stroke-linecap: round;
-      transition: stroke-dashoffset 180ms ease, stroke 180ms ease;
-    }
-
-    .progress-ring__value {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: var(--ox-mono);
-      font-size: 0.56rem;
-      font-weight: 700;
-      letter-spacing: -0.03em;
-      color: var(--ox-text);
-    }
-
-    .progress-ring__value span {
-      font-size: 0.42rem;
-      opacity: 0.68;
-      margin-left: 1px;
-    }
-
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      min-height: 24px;
-      padding: 0 8px;
-      border-radius: 999px;
-      font-size: 0.61rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      font-family: var(--ox-mono);
-      border: 1px solid currentColor;
-      white-space: nowrap;
-      align-self: center;
-    }
-
-    .status-badge svg {
-      flex: none;
-    }
-
-    .status-badge.active {
-      color: var(--ox-teal);
-      background: rgba(13, 148, 136, 0.12);
-      border-color: rgba(13, 148, 136, 0.24);
-    }
-
-    .status-badge.pending,
-    .status-badge.ready,
-    .status-badge.not-started {
-      color: var(--ox-warning);
-      background: rgba(217, 119, 6, 0.12);
-      border-color: rgba(217, 119, 6, 0.22);
-    }
-
-    .status-badge.complete {
-      color: var(--ox-lime);
-      background: rgba(163, 230, 53, 0.14);
-      border-color: rgba(163, 230, 53, 0.24);
-    }
-
-    .status-badge.blocked,
-    .status-badge.failed {
-      color: var(--ox-danger);
-      background: rgba(225, 29, 72, 0.12);
-      border-color: rgba(225, 29, 72, 0.24);
-    }
-
-    .status-badge.paused {
-      color: var(--ox-text-muted);
-      background: rgba(100, 116, 139, 0.12);
-      border-color: rgba(100, 116, 139, 0.22);
-    }
-    
-    .node-item.ms,
-    .node-item.tk {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      min-height: 34px;
-      padding: 9px 12px 9px 0;
-      background: transparent;
-      max-height: none;
-      overflow: visible;
-    }
-
-    .node-item.ms {
-      padding-left: var(--ms-indent);
-      color: var(--ox-text);
-      font-weight: 500;
-    }
-
-    .node-item.tk {
-      padding-left: var(--tk-indent);
-      color: var(--ox-text-muted);
-      font-size: 0.85rem;
-    }
-
-    .ws-children {
-      display: grid;
-      grid-template-rows: 1fr;
-      transition: grid-template-rows 240ms cubic-bezier(0.16, 1, 0.3, 1);
-      min-height: 0;
-      overflow: hidden;
-    }
-
-    .ws-children.is-collapsed {
-      grid-template-rows: 0fr;
-    }
-
-    .ws-children-inner {
-      position: relative;
-      min-height: 0;
-      overflow: hidden;
-      padding-top: 14px;
-      padding-bottom: 6px;
-      display: flex;
-      flex-direction: column;
-      gap: var(--tree-gap);
-      transition:
-        opacity 220ms ease,
-        transform 320ms cubic-bezier(0.16, 1, 0.3, 1),
-        padding-top 240ms cubic-bezier(0.16, 1, 0.3, 1),
-        padding-bottom 240ms cubic-bezier(0.16, 1, 0.3, 1),
-        gap 240ms cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .ws-children.is-collapsed .ws-children-inner {
-      opacity: 0;
-      transform: translateY(-8px);
-      padding-top: 0;
-      padding-bottom: 0;
-      gap: 0;
-      pointer-events: none;
-    }
-
-    .ws-block.is-collapsed .node-item.ws {
-      row-gap: 0;
-      padding-top: 12px;
-      padding-bottom: 12px;
-    }
-
-    .ms-block,
-    .ms-tasks {
-      display: flex;
-      flex-direction: column;
-      gap: var(--tree-gap);
-      position: relative;
-    }
-
-    .tree-overlay {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    .tree-overlay svg {
-      width: 100%;
-      height: 100%;
-      display: block;
-      overflow: visible;
-    }
-
-    .tree-overlay path {
-      fill: none;
-      stroke: var(--ox-tree);
-      stroke-width: var(--tree-stroke);
-      stroke-linecap: butt;
-      stroke-linejoin: round;
-      vector-effect: non-scaling-stroke;
-    }
-
-    .tree-overlay path.is-drawing {
-      animation: treeDrawIn var(--draw-duration, 360ms) var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) forwards;
-      animation-delay: var(--draw-delay, 0ms);
-      stroke-dasharray: var(--path-length, 0);
-      stroke-dashoffset: var(--path-length, 0);
-    }
-
-    @keyframes treeDrawIn {
-      from { stroke-dashoffset: var(--path-length, 0); }
-      to { stroke-dashoffset: 0; }
-    }
-
-    .node-item.ms.row-enter,
-    .node-item.tk.row-enter {
-      animation: hierarchyRowEnter 420ms var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) both;
-      animation-delay: var(--enter-delay, 0ms);
-    }
-
-    @keyframes hierarchyRowEnter {
-      from {
-        opacity: 0;
-        transform: translateY(-10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .node-item.ms .node-icon { color: var(--ox-warning); }
-    .node-item.tk .node-icon { color: var(--ox-lime); }
-
-    .tree-rail {
-      position: absolute;
-      left: 0;
-      top: 0;
-      bottom: 0;
-      pointer-events: none;
-    }
-
-    .node-item.ms .tree-rail {
-      width: var(--ms-indent);
-    }
-
-    .node-item.tk .tree-rail {
-      width: var(--tk-indent);
-    }
-
-    .tree-line,
-    .tree-elbow {
-      position: absolute;
-    }
-
-    .tree-line {
-      width: var(--tree-stroke);
-      background: var(--ox-border-strong);
-    }
-
-    .tree-line--outer {
-      left: calc(var(--tree-outer-x) - (var(--tree-stroke) / 2));
-    }
-    .tree-line--inner {
-      left: calc(var(--tree-inner-x) - (var(--tree-stroke) / 2));
-    }
-    .tree-line--top {
-      top: 0;
-      bottom: calc(50% - var(--tree-elbow-rise));
-    }
-    .tree-line--bottom {
-      top: 50%;
-      bottom: calc(-1 * var(--tree-gap));
-    }
-
-    .tree-elbow {
-      top: calc(50% - var(--tree-elbow-rise));
-      height: var(--tree-elbow-rise);
-    }
-
-    .tree-elbow--outer {
-      left: var(--tree-outer-x);
-      width: var(--tree-elbow-run-outer);
-    }
-
-    .tree-elbow--inner {
-      left: var(--tree-inner-x);
-      width: var(--tree-elbow-run-inner);
-    }
-
-    .tree-elbow svg {
-      display: block;
-      width: 100%;
-      height: 100%;
-      overflow: visible;
-    }
-
-    .tree-elbow path {
-      fill: none;
-      stroke: var(--ox-border-strong);
-      stroke-width: var(--tree-stroke);
-      stroke-linecap: butt;
-      stroke-linejoin: round;
-    }
-
-    .tree-label {
-      flex: 1 1 auto;
-      min-width: 0;
-      line-height: 1.38;
-    }
-
-    
-    .badge-id { font-family: var(--ox-mono); font-size: 0.53rem; padding: 2px 6px; border-radius: 999px; border: 1px solid var(--ox-border); color: var(--ox-text-muted); letter-spacing: 0.05em; line-height: 1; white-space: nowrap; }
-    .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary); font-family: var(--ox-mono); font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; border: 1px solid rgba(var(--ox-primary-rgb), 0.2); width: fit-content; transition: background 240ms var(--widget-motion-curve), border-color 240ms var(--widget-motion-curve), color 240ms var(--widget-motion-curve); }
-    .status-pill.is-live {
-      background: rgba(var(--ox-primary-rgb), 0.14);
-      border-color: rgba(var(--ox-primary-rgb), 0.34);
-    }
-    .status-pill.is-live .status-dot {
-      animation: none;
-      box-shadow: 0 0 10px currentColor;
-    }
-    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; animation: pulse 2s infinite; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-  
-    .node-toggle {
-      width: 44px;
-      min-width: 44px;
-      height: 44px;
-      margin-right: 0;
-      color: var(--ox-text-muted);
-      transition:
-        color var(--widget-motion-fast) var(--widget-motion-curve),
-        border-color var(--widget-motion-fast) var(--widget-motion-curve),
-        background var(--widget-motion-fast) var(--widget-motion-curve);
-    }
-
-    .node-toggle[aria-expanded="true"] {
-      color: rgb(var(--ws-rgb, var(--ox-primary-rgb)));
-      background: rgba(var(--ws-rgb, var(--ox-primary-rgb)), 0.08);
-      border-color: rgba(var(--ws-rgb, var(--ox-primary-rgb)), 0.18);
-    }
-
-    .node-toggle__glyph {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      transition: transform var(--widget-motion-base) var(--widget-motion-curve);
-    }
-
-    .node-toggle[aria-expanded="false"] .node-toggle__glyph {
-      transform: rotate(-90deg);
-    }
-
-    /* ─── launch-strip ────────────────────────────────────────
-     * Single focal strip with four states: progressing → ready →
-     * committing → launched. Replaces the prior three-element bay
-     * (ring + body stack + boxy CTA) where each fought for attention.
-     *
-     * Hierarchy discipline:
-     *   - progressing: quiet strip, thin progress bar, concise "awaiting" line
-     *   - ready:       strip border picks up iris, full-width hold target
-     *                  with progress-fill replacing separate "hold" hint
-     *   - launching:   CTA dissolves back into the strip; one soft pulse
-     *   - launched:    the element itself transforms — iris mutes, a single
-     *                  next-step deep link replaces the CTA. Success is not
-     *                  a text swap; it is a structural change.
-     */
-    .launch-strip {
-      margin-top: 28px;
-      padding: 16px 18px;
-      border-radius: 14px;
-      border: 1px solid var(--ox-border);
-      background: var(--ox-panel);
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      transition:
-        background 320ms var(--widget-motion-curve),
-        border-color 320ms var(--widget-motion-curve);
-    }
-    .launch-strip__head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      min-height: 14px;
-    }
-    .launch-strip__eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-family: var(--ox-mono);
-      font-size: 0.62rem;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--ox-text-muted);
-      transition: color 240ms var(--widget-motion-curve);
-    }
-    .launch-strip__eyebrow svg { opacity: 0.85; }
-    .launch-strip__count {
-      font-size: 0.8rem;
-      color: var(--ox-text);
-      font-weight: 500;
-    }
-    .launch-strip__progress {
-      position: relative;
-      height: 3px;
-      border-radius: 2px;
-      background: var(--ox-well-bg);
-      overflow: hidden;
-    }
-    .launch-strip__progress-fill {
-      position: absolute;
-      inset: 0 auto 0 0;
-      height: 100%;
-      background: rgba(var(--ox-primary-rgb), 0.55);
-      border-radius: 2px;
-      transition: width 420ms cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .launch-strip__missing {
-      font-size: 0.78rem;
-      line-height: 1.5;
-      color: var(--ox-text-muted);
-    }
-    .launch-strip__missing strong {
-      color: var(--ox-text);
-      font-weight: 500;
-    }
-
-    /* Ready — border picks up iris, CTA emerges. */
-    .launch-strip.is-ready {
-      border-color: rgba(var(--ox-primary-rgb), 0.38);
-      background:
-        linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.04), transparent 70%),
-        var(--ox-panel);
-    }
-    .launch-strip.is-ready .launch-strip__eyebrow { color: var(--ox-primary); }
-
-    .launch-strip__cta {
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      width: 100%;
-      /* Card-height target: hold-to-launch is the primary decision on the
-       * whole surface; give it thumb-comfortable height and touch hints.
-       * touch-action: manipulation suppresses double-tap-zoom + scroll
-       * conflict on mobile; user-select: none prevents the hold from
-       * triggering the OS text-selection menu mid-press. */
-      min-height: 64px;
-      padding: 14px 18px;
-      border-radius: 12px;
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.42);
-      background: rgba(var(--ox-primary-rgb), 0.08);
-      color: var(--ox-primary);
-      font-family: inherit;
-      font-weight: 600;
-      font-size: 0.95rem;
-      letter-spacing: -0.005em;
-      cursor: pointer;
-      overflow: hidden;
-      touch-action: manipulation;
-      user-select: none;
-      -webkit-user-select: none;
-      -webkit-tap-highlight-color: transparent;
-      transition:
-        background 200ms var(--widget-motion-curve),
-        border-color 200ms var(--widget-motion-curve),
-        transform 120ms var(--widget-motion-curve);
-    }
-    .launch-strip__cta:hover { background: rgba(var(--ox-primary-rgb), 0.12); }
-    .launch-strip__cta.is-holding { transform: scale(0.995); }
-    .launch-strip__cta:focus-visible {
-      outline: 2px solid rgba(var(--ox-primary-rgb), 0.55);
-      outline-offset: 3px;
-    }
-    .launch-strip__cta-sub {
-      display: block;
-      margin-top: 2px;
-      font-family: var(--ox-mono);
-      font-size: 0.62rem;
-      font-weight: 500;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: rgba(var(--ox-primary-rgb), 0.7);
-    }
-    .launch-strip__cta-fill {
-      position: absolute;
-      inset: 0 auto 0 0;
-      width: 0%;
-      background: rgba(var(--ox-primary-rgb), 0.22);
-      pointer-events: none;
-      transition: width 80ms linear;
-    }
-    .launch-strip__cta.is-holding .launch-strip__cta-fill {
-      transition: width 820ms linear;
-      width: 100%;
-    }
-    .launch-strip__cta-label {
-      position: relative;
-      z-index: 1;
-      display: inline-flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 0;
-      line-height: 1.2;
-    }
-    .launch-strip__cta-arrow {
-      position: relative;
-      z-index: 1;
-      opacity: 0.65;
-      transition: transform 200ms var(--widget-motion-curve), opacity 200ms;
-    }
-    .launch-strip__cta:hover .launch-strip__cta-arrow {
-      opacity: 1;
-      transform: translateX(2px);
-    }
-
-    /* Launching — CTA gone, strip hosts a single soft pulse. */
-    .launch-strip.is-launching {
-      border-color: rgba(var(--ox-primary-rgb), 0.28);
-    }
-    .launch-strip.is-launching .launch-strip__progress-fill {
-      width: 100%;
-      animation: launchStripPulse 1200ms ease-in-out infinite;
-    }
-    @keyframes launchStripPulse {
-      0%, 100% { opacity: 0.4; }
-      50%      { opacity: 0.9; }
-    }
-
-    /* Launched — element transforms: iris fades to quiet, a single
-     * next-step link takes the commit slot. No residual CTA. */
-    .launch-strip.is-launched {
-      border-color: rgba(var(--ox-primary-rgb), 0.18);
-      background: rgba(var(--ox-primary-rgb), 0.04);
-    }
-    .launch-strip.is-launched .launch-strip__eyebrow {
-      color: rgba(var(--ox-primary-rgb), 0.85);
-    }
-    .launch-strip__detail {
-      font-size: 0.8rem;
-      line-height: 1.5;
-      color: var(--ox-text-muted);
-    }
-    .launch-strip__next {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      align-self: flex-end;
-      padding: 6px 10px;
-      margin: -6px -10px;
-      border-radius: 8px;
-      font-size: 0.84rem;
-      font-weight: 500;
-      color: var(--ox-primary);
-      text-decoration: none;
-      transition: background 160ms var(--widget-motion-curve);
-    }
-    .launch-strip__next:hover { background: rgba(var(--ox-primary-rgb), 0.08); }
-    .launch-strip__next svg {
-      opacity: 0.7;
-      transition: transform 200ms var(--widget-motion-curve), opacity 200ms;
-    }
-    .launch-strip__next:hover svg { opacity: 1; transform: translateX(2px); }
-
-    /* ─── Launched — Creation-mode emergence ───────────────────────
-     *
-     * This is the one place OrgX celebrates. Controlled emergence:
-     * iris particles rise from below, the workstream rail pulses each
-     * lane online in sequence, and the primary CTA expands to a
-     * card-height button. No confetti. Signal coming online, not a
-     * party popper. (per orgx-design/references/philosophy.md)
-     * ─────────────────────────────────────────────────────────── */
-    .launch-strip.is-launched {
-      position: relative;
-      overflow: hidden;
-      padding-bottom: 18px;
-    }
-    .launch-strip__emergence {
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      z-index: 1;
-    }
-    .launch-strip__stage {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      overflow: hidden;
-      border-radius: inherit;
-      z-index: 0;
-    }
-    .launch-strip__stage::before {
-      content: '';
-      position: absolute;
-      inset: -40% -20% auto -20%;
-      height: 70%;
-      background: radial-gradient(
-          ellipse 60% 70% at 50% 100%,
-          rgba(var(--ox-primary-rgb), 0.22),
-          transparent 70%
-        );
-      opacity: 0;
-      animation: launchStageGlow 6800ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-    @keyframes launchStageGlow {
-      0%   { opacity: 0; transform: translateY(20%); }
-      20%  { opacity: 1; transform: translateY(0); }
-      100% { opacity: 0.35; transform: translateY(0); }
-    }
-    .launch-strip__particle {
-      position: absolute;
-      bottom: -14px;
-      width: 3px;
-      height: 3px;
-      border-radius: 50%;
-      background: rgb(var(--ox-primary-rgb));
-      filter: blur(0.5px);
-      box-shadow: 0 0 12px 2px rgba(var(--ox-primary-rgb), 0.55);
-      opacity: 0;
-      animation: launchParticleRise 7200ms cubic-bezier(0.16, 1, 0.3, 1) infinite;
-    }
-    @keyframes launchParticleRise {
-      0%   { transform: translateY(0) scale(0.6); opacity: 0; }
-      12%  { opacity: 0.9; }
-      85%  { opacity: 0.4; }
-      100% { transform: translateY(-140px) scale(1); opacity: 0; }
-    }
-    .launch-strip__horizon {
-      position: absolute;
-      left: 12%;
-      right: 12%;
-      bottom: 24%;
+      top: 0; left: 16px; right: 16px;
       height: 1px;
-      background: linear-gradient(
-          90deg,
-          transparent,
-          rgba(var(--ox-primary-rgb), 0.45) 40%,
-          rgba(var(--ox-primary-rgb), 0.45) 60%,
-          transparent
-        );
-      opacity: 0;
-      animation: launchHorizonDrift 7200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      opacity: 1;
+      background: linear-gradient(90deg, transparent, rgba(var(--edge-rgb), .7), transparent);
+      pointer-events: none;
     }
-    @keyframes launchHorizonDrift {
-      0%   { opacity: 0; transform: translateY(6px); }
-      22%  { opacity: 1; }
-      100% { opacity: 0.55; transform: translateY(-2px); }
+    .wcard[data-edge="amber"] { --edge-rgb: 251, 191, 36; }
+    .wcard[data-edge="teal"] { --edge-rgb: 0, 201, 167; }
+    .wcard[data-edge="red"] { --edge-rgb: 244, 63, 94; }
+    .hd { display: flex; align-items: center; gap: 10px; padding: 14px 18px 0; min-width: 0; }
+    .hd > ox-glyph { --ox-glyph-size: 18px; flex: none; }
+    .kind {
+      font-size: 11px; font-weight: 600; line-height: 1;
+      letter-spacing: .04em; text-transform: uppercase;
+      color: var(--ox-text-muted); white-space: nowrap;
     }
+    .sp { flex: 1; }
+    .meta { font-size: 11.5px; line-height: 1.3; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .bd { padding: 12px 18px 6px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+    .title-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; min-width: 0; }
+    .pk-q {
+      margin: 0; font-size: 22px; font-weight: 700; line-height: 1.18;
+      letter-spacing: -.025em; color: var(--ox-text);
+      text-wrap: balance; overflow-wrap: anywhere;
+    }
+    .badge-id {
+      display: inline-flex; align-items: center; height: 20px; padding: 0 6px;
+      border-radius: 6px; border: 1px solid var(--ox-border-strong);
+      font: 500 10.5px/1 var(--ox-mono); color: var(--ox-text-muted);
+      letter-spacing: .02em; white-space: nowrap;
+    }
+    .note { margin: 0; font-size: 13px; line-height: 1.45; color: var(--ox-text-muted); text-wrap: pretty; }
 
-    .launch-strip__streams {
+    /* Z1: the status mix as one segmented bar, with its count beneath. */
+    .mix { display: flex; flex-direction: column; gap: 6px; }
+    .segbar { display: flex; gap: 2px; height: 10px; border-radius: 999px; overflow: hidden; }
+    .segbar i { display: block; height: 100%; min-width: 6px; border-radius: 2px; }
+    .segbar .s-done { background: var(--ox-teal); }
+    .segbar .s-run { background: rgba(var(--ox-teal-rgb, 0, 201, 167), .3); box-shadow: inset 0 0 0 1px var(--ox-teal); }
+    .segbar .s-ready { background: rgba(148, 163, 184, .7); }
+    .segbar .s-block { background: var(--ox-danger); }
+    .segbar .s-idle { background: transparent; box-shadow: inset 0 0 0 1px var(--ox-border-strong); }
+
+    .sec { display: flex; align-items: center; gap: 10px; min-height: 36px; border-bottom: 1px solid var(--ox-border); }
+    .sec-label { font: 600 10.5px/1 var(--ox-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ox-text-muted); }
+    .section-toggle-all {
+      margin-left: auto; min-height: 36px; padding: 0 10px; border: 0; border-radius: 9px;
+      background: none; color: var(--ox-text-2); font-family: inherit; font-size: 12.5px; font-weight: 600; line-height: 1; cursor: pointer;
+    }
+    .section-toggle-all:hover { background: var(--ox-hover); color: var(--ox-text); }
+
+    /* Workstream rows: the row is the unit; nothing inside it is a card. */
+    .node-list { display: flex; flex-direction: column; margin-top: -12px; }
+    .ws { border-bottom: 1px solid var(--ox-border); }
+    .ws:last-child { border-bottom: 0; }
+    .ws-row {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 8px 12px;
-      margin-top: 2px;
-    }
-    .launch-strip__stream {
-      display: flex;
+      grid-template-columns: 20px minmax(0, 1fr) auto auto 44px;
+      grid-template-areas: "g c a s t";
       align-items: center;
-      gap: 8px;
-      padding: 7px 10px;
-      border-radius: 10px;
-      background: rgba(var(--ox-primary-rgb), 0.06);
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.12);
-      font-size: 0.78rem;
-      color: var(--ox-text);
-      opacity: 0;
-      transform: translateY(6px);
-      animation: launchStreamActivate 560ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      animation-delay: var(--stream-delay, 0ms);
+      column-gap: 12px;
+      min-height: 62px;
+      padding: 8px 0;
     }
-    @keyframes launchStreamActivate {
-      0%   { opacity: 0; transform: translateY(6px); }
-      100% { opacity: 1; transform: translateY(0); }
+    .ws-row > ox-glyph { grid-area: g; --ox-glyph-size: 18px; }
+    .ws-copy { grid-area: c; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .ws-title { font-size: 14.5px; font-weight: 650; color: var(--ox-text); line-height: 1.3; overflow-wrap: anywhere; }
+    .ws-sub { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ox-text-muted); min-width: 0; flex-wrap: wrap; }
+    .ws-agent { grid-area: a; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ox-text-muted); white-space: nowrap; }
+    .ws-state { grid-area: s; display: inline-flex; align-items: center; gap: 8px; justify-self: end; }
+    .ws-pct { width: 4ch; text-align: right; font: 500 11.5px/1 var(--ox-mono); color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
+    .node-toggle {
+      grid-area: t; width: 44px; height: 44px; display: grid; place-items: center;
+      border: 0; border-radius: 10px; background: none; color: var(--ox-text-muted); cursor: pointer;
     }
-    .launch-strip__stream-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: rgb(var(--ox-primary-rgb));
-      box-shadow: 0 0 8px 1px rgba(var(--ox-primary-rgb), 0.6);
-      animation: launchStreamPulse 2400ms cubic-bezier(0.16, 1, 0.3, 1) infinite;
-      animation-delay: var(--stream-delay, 0ms);
-      flex-shrink: 0;
+    .node-toggle:hover { background: var(--ox-hover); color: var(--ox-text); }
+    .node-toggle svg { transition: transform 160ms var(--ox-ease, ease); }
+    .node-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+    .ws-children { padding: 0 0 12px 32px; display: flex; flex-direction: column; gap: 2px; }
+    .ws-children[hidden] { display: none; }
+    .node-item { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; align-items: center; column-gap: 10px; min-height: 30px; font-size: 13px; color: var(--ox-text-2); }
+    .node-item ox-glyph { --ox-glyph-size: 15px; }
+    .node-item.ms { color: var(--ox-text); font-weight: 600; }
+    .node-item.tk { padding-left: 22px; grid-template-columns: 14px minmax(0, 1fr) auto; }
+    .node-item.more { color: var(--ox-text-muted); }
+    .tree-label { min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; line-height: 1.35; padding: 4px 0; }
+
+    .gaps { display: flex; flex-direction: column; }
+
+    /* The footer's text action: open the initiative in OrgX in every state. */
+    .ft-link {
+      min-height: 36px; padding: 0 12px; border: 0; border-radius: 9px; background: none;
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--ox-text-2); font-family: inherit; font-size: 12.5px; font-weight: 650; line-height: 1; white-space: nowrap; cursor: pointer;
     }
-    @keyframes launchStreamPulse {
-      0%, 100% { opacity: 0.6; transform: scale(0.85); }
-      50%      { opacity: 1;   transform: scale(1.05); }
+    .ft-link:hover { background: var(--ox-hover); color: var(--ox-text); }
+    .ft-link svg { width: 12px; height: 12px; }
+
+    /* Loading keeps the populated footprint so the card never jumps. */
+    .sk { display: block; height: 10px; border-radius: 4px; background: var(--ox-skeleton, rgba(127, 127, 127, .12)); }
+
+    :root[data-embed="og-wide-scaffold"] body { min-height: auto; min-width: 640px; padding: 20px 18px; }
+    :root[data-embed="og-wide-scaffold"] .container { max-width: 640px; }
+
+    @media (max-width: 480px) {
+      .hd { padding: 12px 14px 0; }
+      .bd { padding: 10px 14px 4px; }
+      .pk-q { font-size: 19px; }
+      .ws-row {
+        grid-template-columns: 20px minmax(0, 1fr) auto 44px;
+        grid-template-areas: "g c a t" ". s s t";
+        row-gap: 6px;
+      }
+      .ws-state { justify-self: start; }
+      .ws-agent b { display: none; }
+      .ws-children { padding-left: 18px; }
+      .hd .meta { display: none; }
     }
-    .launch-strip__stream-label {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .launch-strip__primary {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 16px 20px;
-      border-radius: 12px;
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.35);
-      background: rgba(var(--ox-primary-rgb), 0.1);
-      color: var(--ox-primary);
-      font-weight: 600;
-      font-size: 0.95rem;
-      cursor: pointer;
-      text-decoration: none;
-      touch-action: manipulation;
-      -webkit-tap-highlight-color: transparent;
-      transition: background 160ms var(--widget-motion-curve),
-                  border-color 160ms var(--widget-motion-curve),
-                  transform 160ms var(--widget-motion-curve);
-      min-height: 64px;
-      opacity: 0;
-      transform: translateY(4px);
-      animation: launchStreamActivate 560ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      animation-delay: var(--stream-delay, 0ms);
-    }
-    .launch-strip__primary:hover {
-      background: rgba(var(--ox-primary-rgb), 0.16);
-      border-color: rgba(var(--ox-primary-rgb), 0.55);
-      transform: translateY(-1px);
-    }
-    .launch-strip__primary:focus-visible {
-      outline: 2px solid rgb(var(--ox-primary-rgb));
-      outline-offset: 2px;
-    }
-    .launch-strip__primary-copy {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      min-width: 0;
-    }
-    .launch-strip__primary-title { font-size: 0.95rem; font-weight: 600; }
-    .launch-strip__primary-sub {
-      font-size: 0.74rem;
-      font-weight: 400;
-      color: rgba(var(--ox-primary-rgb), 0.75);
-      letter-spacing: 0.01em;
-    }
-    .launch-strip__primary-arrow {
-      flex-shrink: 0;
-      transition: transform 200ms var(--widget-motion-curve);
-    }
-    .launch-strip__primary:hover .launch-strip__primary-arrow {
-      transform: translateX(3px);
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .launch-strip__cta.is-holding .launch-strip__cta-fill { transition-duration: 300ms; }
-      .launch-strip.is-launching .launch-strip__progress-fill {
-        animation: none;
-        opacity: 0.7;
-      }
-      .launch-strip__progress-fill { transition-duration: 160ms; }
-      .launch-strip__stage::before,
-      .launch-strip__particle,
-      .launch-strip__horizon,
-      .launch-strip__stream-dot { animation: none; opacity: 0.7; }
-      .launch-strip__stream,
-      .launch-strip__primary { animation: none; opacity: 1; transform: none; }
-    }
-
-    .widget-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--ox-border); gap: 12px; }
-    .deep-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      min-height: 44px;
-      padding-inline: 14px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--ox-primary);
-    }
-    .deep-link svg { width: 14px; height: 14px; }
-
-    @media (max-width: 560px) {
-      .section-head {
-        align-items: stretch;
-        flex-direction: column;
-      }
-
-      .section-toggle-all {
-        width: 100%;
-        justify-content: center;
-      }
-
-      /* Launch strip: thumbable CTA + tight eyebrow row. The hold-to-launch
-       * is the surface's primary decision and needs thumb-comfortable
-       * height on mobile; 72px vertical is card-height at this width. */
-      .launch-strip {
-        margin-top: 22px;
-        padding: 14px 14px 16px;
-      }
-      .launch-strip__cta {
-        min-height: 72px;
-        padding: 14px 16px;
-        font-size: 1rem;
-      }
-      .launch-strip__cta-sub { font-size: 0.6rem; }
-      .launch-strip__primary {
-        min-height: 72px;
-        padding: 16px 18px;
-        font-size: 1rem;
-      }
-      /* Child counts (5 milestones · 12 tasks) hide on narrow width — the
-       * row is already tight, and the toggle glyph telegraphs "more here". */
-      .ws-child-count { display: none; }
-
-      .node-list {
-        --tree-gap: 11px;
-        gap: 20px;
-      }
-
-      .widget-footer {
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      .deep-link {
-        width: 100%;
-      }
-
-      .widget-build-marker {
-        left: 8px;
-        bottom: 6px;
-        font-size: 0.42rem;
-      }
-
-      .node-item.ws {
-        gap: 12px;
-        padding: 14px 12px;
-      }
-
-      .ws-children-inner {
-        padding-top: 12px;
-        padding-bottom: 4px;
-      }
-
-      .ws-shell {
-        grid-template-columns: minmax(0, 1fr);
-        gap: 14px;
-      }
-
-      .ws-topline {
-        gap: 10px;
-        align-items: start;
-      }
-
-      .ws-execution {
-        justify-content: flex-start;
-        padding-left: 30px;
-        gap: 8px;
-        flex-wrap: wrap;
-      }
-
-      .progress-ring {
-        width: 32px;
-        height: 32px;
-      }
-
-      .status-badge {
-        min-height: 26px;
-        padding-inline: 9px;
-      }
-
-      .scaffold-state {
-        padding: 20px;
-        border-radius: 20px;
-        gap: 18px;
-      }
-
-      .scaffold-state__stage {
-        min-height: 230px;
-      }
-
-      .scaffold-state__scene {
-        inset: 14px;
-      }
-
-      .scaffold-state__icon-tile {
-        width: 54px;
-        height: 54px;
-      }
-
-      .scaffold-state__chip-group {
-        gap: 10px;
-      }
-
-      .scaffold-state__chip {
-        min-width: 0;
-        padding: 8px 12px;
-        font-size: 0.61rem;
-      }
-
-      .scaffold-state__lane-stack {
-        width: min(236px, 100%);
-        gap: 10px;
-      }
-
-      .scaffold-state__lane {
-        gap: 10px;
-      }
-
-      .scaffold-state__lane-track {
-        width: 146px;
-      }
-
-      .scaffold-state__task-grid {
-        gap: 7px;
-      }
-
-      .scaffold-state__task-cell {
-        width: 34px;
-        height: 34px;
-        border-radius: 10px;
-      }
-
-      .scaffold-state__agent-row {
-        gap: 9px;
-      }
-
-      .scaffold-state__agent {
-        width: 58px;
-      }
-
-      .scaffold-state__tip-list {
-        width: 100%;
-      }
-
-      .scaffold-state__caption {
-        min-height: 72px;
-      }
-    }
-
     @media (max-width: 420px) {
-      .node-item.ws {
-        padding-right: 12px;
-      }
-
-      .ws-topline {
-        grid-template-columns: auto minmax(0, 1fr) auto;
-        gap: 9px;
-      }
-
-      .ws-title {
-        font-size: 0.88rem;
-        line-height: 1.22;
-      }
-
-      .agent-presence {
-        width: 44px;
-        height: 44px;
-      }
-
-      .agent-presence__tooltip {
-        right: -4px;
-        max-width: 160px;
-        bottom: calc(100% + 10px);
-      }
-
-      .ws-execution {
-        padding-left: 29px;
-      }
-
-      .scaffold-state {
-        padding: 18px;
-        gap: 16px;
-      }
-
-      .scaffold-state__stage {
-        min-height: 212px;
-      }
-
-      .scaffold-state__scene {
-        inset: 12px;
-      }
-
-      .scaffold-state__icon-tile {
-        width: 50px;
-        height: 50px;
-        border-radius: 16px;
-      }
-
-      .scaffold-state__chip-group {
-        gap: 8px;
-      }
-
-      .scaffold-state__chip {
-        padding: 8px 11px;
-        font-size: 0.58rem;
-        gap: 7px;
-      }
-
-      .scaffold-state__lane {
-        gap: 8px;
-      }
-
-      .scaffold-state__lane-marker {
-        width: 20px;
-        height: 20px;
-      }
-
-      .scaffold-state__lane-track {
-        width: 132px;
-      }
-
-      .scaffold-state__lane-label {
-        font-size: 0.5rem;
-      }
-
-      .scaffold-state__task-grid {
-        gap: 6px;
-      }
-
-      .scaffold-state__task-cell {
-        width: 31px;
-        height: 31px;
-        border-radius: 9px;
-      }
-
-      .scaffold-state__agent-row {
-        gap: 8px;
-        max-width: 280px;
-      }
-
-      .scaffold-state__agent {
-        width: 54px;
-      }
-
-      .scaffold-state__agent-shell,
-      .scaffold-state__agent-avatar {
-        width: 38px;
-        height: 38px;
-      }
-
-      .scaffold-state__agent-label {
-        font-size: 0.51rem;
-      }
-
-      .scaffold-state__tip {
-        padding: 9px 11px;
-        gap: 9px;
-      }
-
-      .scaffold-state__tip-icon {
-        width: 28px;
-        height: 28px;
-      }
-
-      .scaffold-state__tip-copy {
-        font-size: 0.63rem;
-      }
-
-      .scaffold-state__caption {
-        min-height: 68px;
-      }
-
-      .scaffold-state__caption-title {
-        font-size: 0.92rem;
-      }
-
-      .scaffold-state__caption-desc {
-        font-size: 0.67rem;
-      }
+      .ft-link .ft-long { display: none; }
+      .ft-link { padding: 0 8px; }
     }
   </style>
   <link rel="stylesheet" href="shared/widget-theme.css" />
 </head>
 <body>
-  <div class="container" id="content"></div>
+  <div class="container" id="content">
+    <article class="wcard ox-card" aria-busy="true" aria-label="Loading initiative">
+      <div class="hd"><span class="sk" style="width:36%"></span></div>
+      <div class="bd">
+        <span class="sk" style="width:70%;height:24px"></span>
+        <span class="sk" style="width:100%"></span>
+        <span class="sk" style="width:100%;height:62px"></span>
+        <span class="sk" style="width:100%;height:62px"></span>
+      </div>
+      <ox-footer variant="reads" state="loading"></ox-footer>
+    </article>
+  </div>
   <script>
     var queryParams = new URLSearchParams(window.location.search);
     var widgetBuildVersion = (queryParams.get('v') || queryParams.get('version') || 'dev').trim() || 'dev';
-
-    var escapeMarkerHtml = (str) => {
-      const div = document.createElement('div');
-      div.textContent = str;
-      return div.innerHTML;
-    };
-
-    var renderWidgetBuildMarker = () => {
-      var version = escapeMarkerHtml(widgetBuildVersion);
-      return '<div class="widget-build-marker" aria-hidden="true" title="Widget build ' + version + '">w ' + version + '</div>';
-    };
+    // The build stays inspectable without printing engineering status on the card.
+    document.documentElement.setAttribute('data-widget-build', widgetBuildVersion);
 
     var injectHtml = (html) => {
       const content = document.getElementById('content');
-      content.innerHTML = html + renderWidgetBuildMarker();
+      content.innerHTML = html;
     };
-
     function _detectProtocol(){return window.OrgXWidgetRuntime.detectProtocol();}
     function _extractData(out){return _extractDataDepth(out,0);}
     function _extractDataDepth(out,depth){if(out==null||depth>4)return null;if(typeof out==='object'&&out.structuredContent)return out.structuredContent;if(typeof out==='object'&&out.result)return _extractDataDepth(out.result,depth+1);if(typeof out==='object'&&out.toolOutput)return _extractDataDepth(out.toolOutput,depth+1);if(typeof out==='object'&&out.output)return _extractDataDepth(out.output,depth+1);if(typeof out==='object'&&Array.isArray(out.content)){for(var i=0;i<out.content.length;i++){var item=out.content[i];if(item&&item.type==='text'&&item.text){try{return JSON.parse(item.text);}catch(e){continue;}}}}if(typeof out==='string'){try{return JSON.parse(out);}catch(e){return{text:out};}}return out;}
@@ -2279,170 +218,15 @@
     function _syncSizeDuringTransition(duration){if(_detectProtocol()==='standalone')return;var span=Math.max(280,Number(duration)||0);var now=(window.performance&&typeof window.performance.now==='function')?window.performance.now():Date.now();_sizeTransitionUntil=Math.max(_sizeTransitionUntil,now+span);if(_sizeTransitionRaf)return;var tick=function(ts){_sendSize();if(ts<_sizeTransitionUntil){_sizeTransitionRaf=window.requestAnimationFrame(tick);return;}_sizeTransitionRaf=0;_sizeTransitionUntil=0;_sendSize();};_sizeTransitionRaf=window.requestAnimationFrame(tick);}
     var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+c+'</svg>';};
     var icons = {
-
       chevronDown: function(s){return _svg('<polyline points="6 9 12 15 18 9"></polyline>',s);},
-      chevronRight: function(s){return _svg('<polyline points="9 18 15 12 9 6"></polyline>',s);},
-
-      folder: function(s){return _svg('<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>',s);},
-      flag: function(s){return _svg('<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line>',s);},
-      check: function(s){return _svg('<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>',s);},
-      layout: function(s){return _svg('<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line>',s);},
-      initiative: function(s){return _svg('<circle cx="12" cy="12" r="9" fill="currentColor" fill-opacity="0.1"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"></circle>',s);},
-      workstream: function(s){return _svg('<rect x="2" y="2" width="20" height="20" rx="6" fill="currentColor" fill-opacity="0.1" stroke="none"></rect><path d="M6 6c3 0 5 6 8 6"></path><path d="M6 18c3 0 5-6 8-6"></path><path d="M6 12h12"></path><path d="m14 8 4 4-4 4"></path><circle cx="6" cy="6" r="1.5" fill="currentColor" stroke="none"></circle><circle cx="6" cy="12" r="1.5" fill="currentColor" stroke="none"></circle><circle cx="6" cy="18" r="1.5" fill="currentColor" stroke="none"></circle>',s);},
-      milestone: function(s){return _svg('<path d="M5 3v18"></path><path d="m5 4 12 1-2 4 2 4-12-1z" fill="currentColor" fill-opacity="0.1"></path>',s);},
-      task: function(s){return _svg('<rect x="4" y="4" width="16" height="16" rx="4" fill="currentColor" fill-opacity="0.12"></rect><path d="M9 12.2 11 14.2 15.2 10"></path>',s);}
-      ,play: function(s){return _svg('<polygon points="10 8 17 12 10 16 10 8" fill="currentColor" stroke="none"></polygon>',s);}
-      ,clock: function(s){return _svg('<circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path>',s);}
-      ,pause: function(s){return _svg('<rect x="8" y="7" width="3" height="10" rx="1" fill="currentColor" stroke="none"></rect><rect x="13" y="7" width="3" height="10" rx="1" fill="currentColor" stroke="none"></rect>',s);}
-      ,alert: function(s){return _svg('<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>',s);}
-      ,checkCircle: function(s){return _svg('<circle cx="12" cy="12" r="9"></circle><path d="m8.5 12.5 2.2 2.2 4.8-5"></path>',s);}
-      ,code: function(s){return _svg('<polyline points="9 8 5 12 9 16"></polyline><polyline points="15 8 19 12 15 16"></polyline>',s);}
-      ,spark: function(s){return _svg('<path d="m12 4 1.3 4.2L17.5 9.5l-4.2 1.3L12 15l-1.3-4.2L6.5 9.5l4.2-1.3z" fill="currentColor" stroke="none"></path>',s);}
-      ,megaphone: function(s){return _svg('<path d="M3 11v2"></path><path d="M6 10v4"></path><path d="M9 9v6"></path><path d="M9 10c5 0 8-4 8-4v12s-3-4-8-4"></path>',s);}
-      ,trend: function(s){return _svg('<path d="M5 15 10 10 13 13 19 7"></path><path d="M15 7h4v4"></path>',s);}
-      ,gear: function(s){return _svg('<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V20a2 2 0 0 1-4 0v-.2a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H4a2 2 0 0 1 0-4h.2a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2 1 1 0 0 0 .6-.9V4a2 2 0 0 1 4 0v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1 1 1 0 0 0 .9.6H20a2 2 0 0 1 0 4h-.2a1 1 0 0 0-.4.1"></path>',s);}
-      ,nodes: function(s){return _svg('<circle cx="6" cy="12" r="2" fill="currentColor" stroke="none"></circle><circle cx="18" cy="7" r="2" fill="currentColor" stroke="none"></circle><circle cx="18" cy="17" r="2" fill="currentColor" stroke="none"></circle><path d="M8 12h6"></path><path d="M16.2 8.3 12.8 11"></path><path d="M16.2 15.7 12.8 13"></path>',s);}
+      external: function(s){return _svg('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>',s);},
+      clock: function(s){return _svg('<circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path>',s);},
+      play: function(s){return _svg('<polygon points="10 8 17 12 10 16 10 8" fill="currentColor" stroke="none"></polygon>',s);},
+      pause: function(s){return _svg('<rect x="8" y="7" width="3" height="10" rx="1" fill="currentColor" stroke="none"></rect><rect x="13" y="7" width="3" height="10" rx="1" fill="currentColor" stroke="none"></rect>',s);},
+      alert: function(s){return _svg('<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>',s);},
+      checkCircle: function(s){return _svg('<circle cx="12" cy="12" r="9"></circle><path d="m8.5 12.5 2.2 2.2 4.8-5"></path>',s);}
     };
-    var DOMAIN_ACCENTS = {
-      product: '22, 163, 74',
-      engineering: '6, 182, 212',
-      marketing: '249, 115, 22',
-      sales: '168, 85, 247',
-      operations: '245, 158, 11',
-      design: '236, 72, 153',
-      orchestrator: '20, 184, 166'
-    };
-    var getDomainRgb = (domain) => {
-      var key = typeof domain === 'string' ? domain.trim().toLowerCase() : '';
-      return DOMAIN_ACCENTS[key] || DOMAIN_ACCENTS.orchestrator;
-    };
-    var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
-    var renderScaffoldState = (mode) => {
-      var awaiting = mode === 'awaiting' || mode === 'empty';
-      var errored = mode === 'error';
-      var stateClass = errored ? 'error' : awaiting ? 'awaiting' : 'loading';
-      var statusLabel = errored ? 'Needs attention' : awaiting ? 'Listening' : 'Composing';
-      var stateEyebrow = errored ? 'Scaffold unavailable' : awaiting ? 'Scaffold Launchpad' : 'Initiative Composer';
-      var stateTitle = errored ? 'Scaffold could not load' : awaiting ? 'Scaffold standing by' : 'Initiative signal locked';
-      var stateDesc = errored
-        ? 'The scaffold session is unavailable. Retry from the live initiative view when the execution surface is ready.'
-        : awaiting
-        ? 'The launchpad is listening for the first scaffold payload so it can expand the initiative in place.'
-        : 'OrgX is translating the initiative brief into a clean execution spine before the hierarchy drops in.';
-      var workstreamChips = [
-        { label: 'Narrative lock', rgb: DOMAIN_ACCENTS.product },
-        { label: 'Search proof', rgb: DOMAIN_ACCENTS.engineering },
-        { label: 'Launch assets', rgb: DOMAIN_ACCENTS.marketing }
-      ];
-      var milestoneLanes = [
-        { label: 'Story approved', fill: '76%', rgb: DOMAIN_ACCENTS.product, delay: 80 },
-        { label: 'Query validated', fill: '58%', rgb: DOMAIN_ACCENTS.engineering, delay: 220 },
-        { label: 'Preview ship', fill: '38%', rgb: DOMAIN_ACCENTS.marketing, delay: 360 }
-      ];
-      var taskCells = [
-        { rgb: DOMAIN_ACCENTS.product, done: true },
-        { rgb: DOMAIN_ACCENTS.engineering, done: false },
-        { rgb: DOMAIN_ACCENTS.marketing, done: false },
-        { rgb: DOMAIN_ACCENTS.product, done: true },
-        { rgb: DOMAIN_ACCENTS.design, done: false },
-        { rgb: DOMAIN_ACCENTS.engineering, done: true },
-        { rgb: DOMAIN_ACCENTS.marketing, done: false },
-        { rgb: DOMAIN_ACCENTS.operations, done: false },
-        { rgb: DOMAIN_ACCENTS.design, done: true },
-        { rgb: DOMAIN_ACCENTS.product, done: false },
-        { rgb: DOMAIN_ACCENTS.engineering, done: false },
-        { rgb: DOMAIN_ACCENTS.marketing, done: true }
-      ];
-      var agents = [
-        { name: 'Pace', domain: 'product', label: 'Product' },
-        { name: 'Eli', domain: 'engineering', label: 'Engineering' },
-        { name: 'Dana', domain: 'design', label: 'Design' },
-        { name: 'Mark', domain: 'marketing', label: 'Marketing' }
-      ];
-      var tips = [
-        { rgb: DOMAIN_ACCENTS.orchestrator, icon: icons.nodes(14), strong: 'Orchestrate from any client', copy: 'Claude, ChatGPT, or Cursor can kick off the same initiative scaffold.' },
-        { rgb: DOMAIN_ACCENTS.engineering, icon: icons.code(14), strong: 'Agent tasks stay precise', copy: 'Each workstream decomposes into milestone checkpoints and session-sized tasks.' },
-        { rgb: DOMAIN_ACCENTS.marketing, icon: icons.checkCircle(14), strong: 'Approval stays in the loop', copy: 'Agents pause for decisions and keep the latest status visible as the hierarchy settles.' }
-      ];
-      return `<div class="ox-card animate-in"><div class="ox-card-inner"><section class="scaffold-state scaffold-state--${stateClass}" data-scaffold-state data-scaffold-interval="4200" data-current-scene="0">
-        <div class="scaffold-state__chrome">
-          <div class="scaffold-state__eyebrow">${stateEyebrow}</div>
-          <div class="scaffold-state__status">
-            <span class="scaffold-state__status-dot"></span>
-            <span>${statusLabel}</span>
-          </div>
-        </div>
-        <div class="scaffold-state__stage">
-          <div class="scaffold-state__glow scaffold-state__glow--one" aria-hidden="true"></div>
-          <div class="scaffold-state__glow scaffold-state__glow--two" aria-hidden="true"></div>
-          <div class="scaffold-state__scene active" data-scaffold-scene data-caption-title="${escapeHtml(stateTitle)}" data-caption-desc="${escapeHtml(stateDesc)}">
-            <div class="scaffold-state__icon-tile" style="--scene-rgb:${DOMAIN_ACCENTS.orchestrator};">${icons.initiative(24)}</div>
-          </div>
-          <div class="scaffold-state__scene" data-scaffold-scene data-caption-title="Workstreams split into lanes" data-caption-desc="Parallel streams form first so the milestone and task structure can inherit clean ownership and pacing.">
-            <div class="scaffold-state__chip-group">
-              ${workstreamChips.map(function(chip, index) {
-                return `<div class="scaffold-state__chip" style="--chip-rgb:${chip.rgb}; --chip-delay:${index * 120}ms;">${icons.workstream(12)}<span>${escapeHtml(chip.label)}</span></div>`;
-              }).join('')}
-            </div>
-          </div>
-          <div class="scaffold-state__scene" data-scaffold-scene data-caption-title="Milestones pin the checkpoints" data-caption-desc="Each stream gets a milestone spine so handoffs, approvals, and readiness thresholds have a visible cadence.">
-            <div class="scaffold-state__lane-stack">
-              ${milestoneLanes.map(function(lane) {
-                return `<div class="scaffold-state__lane">
-                  <span class="scaffold-state__lane-marker" style="--lane-rgb:${lane.rgb}; --lane-delay:${lane.delay}ms;"></span>
-                  <span class="scaffold-state__lane-track">
-                    <span class="scaffold-state__lane-fill" style="--lane-rgb:${lane.rgb}; --lane-delay:${lane.delay}ms; --lane-fill:${lane.fill};"></span>
-                  </span>
-                  <span class="scaffold-state__lane-label">${escapeHtml(lane.label)}</span>
-                </div>`;
-              }).join('')}
-            </div>
-          </div>
-          <div class="scaffold-state__scene" data-scaffold-scene data-caption-title="Tasks resolve into agent-sized slices" data-caption-desc="The final pass breaks each milestone into tightly scoped tasks so the handoff into execution feels instant instead of noisy.">
-            <div class="scaffold-state__task-grid">
-              ${taskCells.map(function(cell, index) {
-                return `<div class="scaffold-state__task-cell${cell.done ? '' : ' scaffold-state__task-cell--pending'}" style="--cell-rgb:${cell.rgb}; --cell-delay:${index * 55}ms;">${cell.done ? icons.checkCircle(12) : icons.task(12)}</div>`;
-              }).join('')}
-            </div>
-          </div>
-          <div class="scaffold-state__scene" data-scaffold-scene data-caption-title="Specialist agents line up behind each stream" data-caption-desc="Real OrgX domain agents attach to the scaffold so the widget immediately reflects who owns each lane.">
-            <div class="scaffold-state__agent-row">
-              ${agents.map(function(agent, index) {
-                var rgb = getDomainRgb(agent.domain);
-                return `<div class="scaffold-state__agent" style="--agent-delay:${index * 110}ms;">
-                  <div class="scaffold-state__agent-shell">
-                    <span class="scaffold-state__agent-avatar" style="--agent-rgb:${rgb};">${renderAvatar(agent.name, agent.domain)}</span>
-                    ${renderDomainIcon(agent.domain)}
-                  </div>
-                  <span class="scaffold-state__agent-label">${escapeHtml(agent.label)}</span>
-                </div>`;
-              }).join('')}
-            </div>
-          </div>
-          <div class="scaffold-state__scene" data-scaffold-scene data-caption-title="${escapeHtml(stateTitle)}" data-caption-desc="${escapeHtml(stateDesc)}">
-            <div class="scaffold-state__tip-list">
-              ${tips.map(function(tip, index) {
-                return `<div class="scaffold-state__tip" style="--tip-rgb:${tip.rgb}; --tip-delay:${index * 140}ms;">
-                  <span class="scaffold-state__tip-icon">${tip.icon}</span>
-                  <span class="scaffold-state__tip-copy"><strong>${escapeHtml(tip.strong)}</strong> ${escapeHtml(tip.copy)}</span>
-                </div>`;
-              }).join('')}
-            </div>
-          </div>
-        </div>
-        <div class="scaffold-state__caption">
-          <div class="scaffold-state__caption-title" data-scaffold-caption-title>${escapeHtml(stateTitle)}</div>
-          <div class="scaffold-state__caption-desc" data-scaffold-caption-desc>${escapeHtml(stateDesc)}</div>
-        </div>
-        <div class="scaffold-state__dots">
-          ${new Array(6).fill(null).map(function(_, index) {
-            var stateClass = index === 0 ? ' active' : '';
-            var label = ['Initiative', 'Workstreams', 'Milestones', 'Tasks', 'Agents', 'Control'][index] || ('Scene ' + (index + 1));
-            return `<button type="button" class="scaffold-state__dot${stateClass}" data-scaffold-dot data-scaffold-index="${index}" aria-label="Show ${escapeHtml(label)} scene" aria-pressed="${index === 0 ? 'true' : 'false'}"></button>`;
-          }).join('')}
-        </div>
-      </section></div></div>`;
-    };
+    var escapeHtml = (str) => { if (str === null || str === undefined || str === '') return ''; const div = document.createElement('div'); div.textContent = String(str); return div.innerHTML; };
     var readLabel = (item, fallback) => {
       if (!item || typeof item !== 'object') return fallback || '';
       if (typeof item.title === 'string' && item.title.trim()) return item.title.trim();
@@ -2549,56 +333,6 @@
       return '<span class="badge-id"' + title + '>' + escapeHtml(displayId) + '</span>';
     };
     var WIDGET_ASSET_BASE = 'https://mcp.useorgx.com/widgets/shared/';
-    var getAvatarUrl = (name, domain) => {
-      var n = normalizeTextKey(name);
-      var d = normalizeTextKey(domain);
-      if (n.includes('pace') || n.includes('product') || d === 'product') return WIDGET_ASSET_BASE + 'product_orchestrator.png';
-      if (n.includes('eli') || n.includes('engineer') || d === 'engineering') return WIDGET_ASSET_BASE + 'engineering_autopilot.png';
-      if (n.includes('mark') || n.includes('market') || d === 'marketing') return WIDGET_ASSET_BASE + 'launch_captain.png';
-      if (n.includes('sage') || n.includes('sale') || d === 'sales') return WIDGET_ASSET_BASE + 'pipeline_intelligence.png';
-      if (n.includes('orion') || n.includes('op') || d === 'operations') return WIDGET_ASSET_BASE + 'control_tower.png';
-      if (n.includes('dana') || n.includes('design') || d === 'design') return WIDGET_ASSET_BASE + 'design_codex.png';
-      if (n.includes('xandy') || n.includes('orchestrator') || d === 'orchestrator') return WIDGET_ASSET_BASE + 'xandy_orchestrator.png';
-      return null;
-    };
-    var renderAvatar = (name, domain) => {
-      var url = getAvatarUrl(name, domain);
-      if (url) return '<img src="' + url + '" alt="' + escapeHtml(name || domain || 'Agent') + '" loading="lazy" onerror="this.style.display=\'none\'; this.parentNode.textContent=\'' + escapeHtml(((typeof name === 'string' && name.trim() ? name.trim() : titleCase(domain || 'Agent')).charAt(0).toUpperCase() || '?')) + '\';" />';
-      var label = typeof name === 'string' && name.trim() ? name.trim() : titleCase(domain || 'Agent');
-      return escapeHtml(label.charAt(0).toUpperCase() || '?');
-    };
-    var getDomainTone = (domain) => {
-      var key = normalizeTextKey(domain);
-      if (['engineering', 'design', 'product', 'marketing', 'sales', 'operations', 'orchestrator'].includes(key)) return key;
-      return 'orchestrator';
-    };
-    var getDomainRgb = (domain) => {
-      return DOMAIN_ACCENTS[getDomainTone(domain)] || DOMAIN_ACCENTS.orchestrator;
-    };
-    var renderDomainIcon = (domain) => {
-      var key = getDomainTone(domain);
-      var rgb = getDomainRgb(domain);
-      var icon = icons.nodes(9);
-      if (key === 'engineering') icon = icons.code(9);
-      else if (key === 'design') icon = icons.spark(9);
-      else if (key === 'product') icon = icons.initiative(9);
-      else if (key === 'marketing') icon = icons.megaphone(9);
-      else if (key === 'sales') icon = icons.trend(9);
-      else if (key === 'operations') icon = icons.gear(9);
-      return '<span class="domain-badge" style="--agent-domain-rgb:' + escapeHtml(rgb) + ';" aria-hidden="true">' + icon + '</span>';
-    };
-    var renderAgentPresence = (execution) => {
-      var name = execution && execution.agent_name ? execution.agent_name : 'Unassigned';
-      var domain = execution && execution.domain ? execution.domain : 'orchestrator';
-      return '<span class="agent-presence" style="--agent-domain-rgb:' + escapeHtml(getDomainRgb(domain)) + ';" tabindex="0" aria-label="' + escapeHtml(name + ' · ' + titleCase(domain)) + '">' +
-        '<span class="agent-avatar">' + renderAvatar(name, domain) + '</span>' +
-        renderDomainIcon(domain) +
-        '<span class="agent-presence__tooltip" role="tooltip">' +
-          '<span class="agent-presence__tooltip-name">' + escapeHtml(name) + '</span>' +
-          '<span class="agent-presence__tooltip-meta">' + escapeHtml(titleCase(domain)) + ' lead</span>' +
-        '</span>' +
-        '</span>';
-    };
     var classifyStatus = (status) => {
       var normalized = normalizeTextKey(status);
       if (!normalized || normalized === 'not_started' || normalized === 'not started') return { tone: 'not-started', label: 'Not started', shortLabel: 'Idle', icon: icons.clock(12) };
@@ -2616,19 +350,6 @@
         return statusKey === 'complete' || statusKey === 'completed' || statusKey === 'done' ? 100 : 0;
       }
       return Math.max(0, Math.min(100, Math.round(raw)));
-    };
-    var renderProgressRing = (progress, domainRgb) => {
-      var safeProgress = Math.max(0, Math.min(100, Math.round(progress || 0)));
-      var radius = 15;
-      var circumference = 2 * Math.PI * radius;
-      var offset = circumference - (safeProgress / 100) * circumference;
-      return '<span class="progress-ring" style="--progress-rgb:' + escapeHtml(domainRgb || '94, 234, 212') + ';" aria-label="' + escapeHtml(String(safeProgress)) + '% complete">' +
-        '<svg viewBox="0 0 36 36" aria-hidden="true">' +
-          '<circle class="progress-ring-track" cx="18" cy="18" r="' + radius + '"></circle>' +
-          '<circle class="progress-ring-bar" cx="18" cy="18" r="' + radius + '" style="stroke-dasharray:' + circumference.toFixed(2) + ';stroke-dashoffset:' + offset.toFixed(2) + ';"></circle>' +
-        '</svg>' +
-        '<span class="progress-ring__value">' + escapeHtml(String(safeProgress)) + '<span>%</span></span>' +
-      '</span>';
     };
     var enrichHierarchy = (hierarchy, raw) => {
       var assignments = raw && raw.agent_assignment && Array.isArray(raw.agent_assignment.assignments)
@@ -2678,162 +399,6 @@
         });
       });
     };
-    var renderTreeRail = (connector) => {
-      if (!connector || typeof connector !== 'object') return '';
-      var elbowSvg = '<svg viewBox="0 0 24 10" preserveAspectRatio="none" aria-hidden="true"><path d="M0 0 A10 10 0 0 0 10 10 H24"></path></svg>';
-      var parts = ['<span class="tree-rail" aria-hidden="true">'];
-      if (connector.outerTop) parts.push('<span class="tree-line tree-line--outer tree-line--top"></span>');
-      if (connector.outerBottom) parts.push('<span class="tree-line tree-line--outer tree-line--bottom"></span>');
-      if (connector.innerTop) parts.push('<span class="tree-line tree-line--inner tree-line--top"></span>');
-      if (connector.innerBottom) parts.push('<span class="tree-line tree-line--inner tree-line--bottom"></span>');
-      if (connector.outerElbow) parts.push('<span class="tree-elbow tree-elbow--outer">' + elbowSvg + '</span>');
-      if (connector.innerElbow) parts.push('<span class="tree-elbow tree-elbow--inner">' + elbowSvg + '</span>');
-      parts.push('</span>');
-      return parts.join('');
-    };
-    var getTreeMetrics = () => {
-      var compact = window.matchMedia('(max-width: 420px)').matches;
-      return compact
-        ? { outerX: 10, innerX: 26, rise: 9, outerRun: 22, innerRun: 22 }
-        : { outerX: 12, innerX: 30, rise: 10, outerRun: 24, innerRun: 24 };
-    };
-    var createTreePath = (d, delay, duration) => ({ d: d, delay: delay || 0, duration: duration || 0 });
-    var buildConnectorPath = (x, fromY, startY, rise, run, delay, duration) => {
-      if (!(startY >= fromY)) return null;
-      return createTreePath(
-        'M ' + x + ' ' + fromY + ' V ' + startY + ' A ' + rise + ' ' + rise + ' 0 0 0 ' + (x + rise) + ' ' + (startY + rise) + ' H ' + (x + run),
-        delay,
-        duration
-      );
-    };
-    var readHierarchyBaseDelay = (children) => {
-      if (!children || !children.dataset) return 0;
-      var raw = Number(children.dataset.drawBaseDelay || 0);
-      return Number.isFinite(raw) ? raw : 0;
-    };
-    var getMilestoneEnterDelay = (groupDelay, milestoneIndex) => groupDelay + 60 + milestoneIndex * 210;
-    var getTaskEnterDelay = (groupDelay, milestoneIndex, taskIndex) => groupDelay + 145 + milestoneIndex * 210 + taskIndex * 95;
-    var animateHierarchyRows = (children, baseDelay) => {
-      var groupDelay = typeof baseDelay === 'number' ? baseDelay : readHierarchyBaseDelay(children);
-      var milestones = Array.from(children.querySelectorAll('[data-ms-block]'));
-      milestones.forEach((block, milestoneIndex) => {
-        var milestoneRow = block.querySelector('[data-ms-row]');
-        if (milestoneRow) {
-          milestoneRow.style.setProperty('--enter-delay', getMilestoneEnterDelay(groupDelay, milestoneIndex) + 'ms');
-          milestoneRow.classList.remove('row-enter');
-          void milestoneRow.offsetWidth;
-          milestoneRow.classList.add('row-enter');
-        }
-        Array.from(block.querySelectorAll('[data-tk-row]')).forEach((taskRow, taskIndex) => {
-          taskRow.style.setProperty('--enter-delay', getTaskEnterDelay(groupDelay, milestoneIndex, taskIndex) + 'ms');
-          taskRow.classList.remove('row-enter');
-          void taskRow.offsetWidth;
-          taskRow.classList.add('row-enter');
-        });
-      });
-    };
-    var layoutTreeOverlays = (animate) => {
-      var metrics = getTreeMetrics();
-      var milestoneDrawMs = 300;
-      var taskDrawMs = 260;
-      document.querySelectorAll('[data-ws-children]').forEach((children) => {
-        var inner = children.querySelector('[data-ws-children-inner]');
-        var overlay = children.querySelector('[data-tree-overlay]');
-        if (!inner || !overlay) return;
-        if (children.classList.contains('is-collapsed')) {
-          overlay.innerHTML = '';
-          return;
-        }
-        var bounds = inner.getBoundingClientRect();
-        if (!bounds.width || !bounds.height) {
-          overlay.innerHTML = '';
-          return;
-        }
-        var milestones = Array.from(inner.querySelectorAll('[data-ms-block]')).map((block) => {
-          return {
-            block: block,
-            row: block.querySelector('[data-ms-row]'),
-            tasks: Array.from(block.querySelectorAll('[data-tk-row]')),
-          };
-        }).filter((entry) => entry.row);
-        if (!milestones.length) {
-          overlay.innerHTML = '';
-          return;
-        }
-        var baseDelay = readHierarchyBaseDelay(children);
-        var paths = [];
-        var milestonePoints = milestones.map((entry) => {
-          var rect = entry.row.getBoundingClientRect();
-          var mid = rect.top - bounds.top + rect.height / 2;
-          return { entry: entry, mid: mid, start: mid - metrics.rise };
-        });
-        var outerAnchorY = 0;
-        milestonePoints.forEach((point, index) => {
-          var milestoneDelay = getMilestoneEnterDelay(baseDelay, index);
-          var milestonePath = buildConnectorPath(
-            metrics.outerX,
-            outerAnchorY,
-            point.start,
-            metrics.rise,
-            metrics.outerRun,
-            milestoneDelay,
-            milestoneDrawMs
-          );
-          if (milestonePath) paths.push(milestonePath);
-          outerAnchorY = point.start + metrics.rise;
-          if (!point.entry.tasks.length) return;
-          var taskPoints = point.entry.tasks.map((row) => {
-            var rect = row.getBoundingClientRect();
-            var mid = rect.top - bounds.top + rect.height / 2;
-            return { mid: mid, start: mid - metrics.rise };
-          });
-          var innerAnchorY = point.mid;
-          taskPoints.forEach((taskPoint, taskIndex) => {
-            var taskPath = buildConnectorPath(
-              metrics.innerX,
-              innerAnchorY,
-              taskPoint.start,
-              metrics.rise,
-              metrics.innerRun,
-              getTaskEnterDelay(baseDelay, index, taskIndex),
-              taskDrawMs
-            );
-            if (taskPath) paths.push(taskPath);
-            innerAnchorY = taskPoint.start + metrics.rise;
-          });
-        });
-        overlay.innerHTML = '<svg viewBox="0 0 ' + Math.ceil(bounds.width) + ' ' + Math.ceil(bounds.height) + '" preserveAspectRatio="none" aria-hidden="true">' + paths.map((path, index) => {
-          var delay = path.delay || 0;
-          var duration = path.duration || 0;
-          return '<path d="' + path.d + '" data-path-index="' + index + '" style="--draw-delay:' + delay + 'ms;--draw-duration:' + duration + 'ms"></path>';
-        }).join('') + '</svg>';
-        if (animate) {
-          Array.from(overlay.querySelectorAll('path')).forEach((path) => {
-            var length = path.getTotalLength ? path.getTotalLength() : 0;
-            path.style.setProperty('--path-length', String(length));
-            path.classList.remove('is-drawing');
-            void path.getBoundingClientRect();
-            path.classList.add('is-drawing');
-          });
-        }
-      });
-    };
-    var queueTreeLayout = (() => {
-      var raf = 0;
-      var shouldAnimate = false;
-      return (animate) => {
-        shouldAnimate = shouldAnimate || !!animate;
-        if (raf) window.cancelAnimationFrame(raf);
-        raf = window.requestAnimationFrame(() => {
-          raf = window.requestAnimationFrame(() => {
-            var animateNow = shouldAnimate;
-            shouldAnimate = false;
-            layoutTreeOverlays(animateNow);
-          });
-        });
-      };
-    })();
-
     var normalizeScaffoldData = (raw) => {
       if (!raw || typeof raw !== 'object') return null;
       var initiative = raw.initiative || (raw.hierarchy && raw.hierarchy.initiative) || null;
@@ -3081,6 +646,22 @@
         data.hierarchy.initiative = Object.assign({}, data.hierarchy.initiative, { status: demoStatusOverride });
       }
     }
+    // Gallery fixtures by name. status= still overrides; these map the
+    // shared state vocabulary onto an initiative status.
+    var FIXTURE_STATUS = { draft: 'scaffolded', 'not-ready': 'scaffolded', launched: 'scaffolded', 'launch-failed': 'scaffolded', resolved: 'completed', completed: 'completed', blocked: 'paused', paused: 'paused' };
+    if (isDemo && data && !demoStatusOverride && FIXTURE_STATUS[demoState]) {
+      data = JSON.parse(JSON.stringify(data));
+      data.initiative = Object.assign({}, data.initiative || {}, { status: FIXTURE_STATUS[demoState] });
+      if (data.hierarchy && data.hierarchy.initiative) {
+        data.hierarchy.initiative = Object.assign({}, data.hierarchy.initiative, { status: FIXTURE_STATUS[demoState] });
+      }
+      if (FIXTURE_STATUS[demoState] === 'scaffolded' && data.streams && Array.isArray(data.streams.items)) {
+        data.streams.items = data.streams.items.map(function(item) { return Object.assign({}, item, { status: 'ready', progress_pct: 0 }); });
+      }
+      if (demoState === 'not-ready' && data.hierarchy && Array.isArray(data.hierarchy.workstreams)) {
+        data.hierarchy.workstreams = data.hierarchy.workstreams.slice(0, 1);
+      }
+    }
     var isLoading = !isDemo;
 
     var isLoadingOverride = queryParams.get('loading') === 'true';
@@ -3113,163 +694,6 @@
       }, 6500);
     }
 
-    var scaffoldStateCycleTimer = 0;
-    var scaffoldStateCaptionTimer = 0;
-    var scaffoldStateCurrentIndex = 0;
-
-    var stopScaffoldStateAnimation = () => {
-      if (scaffoldStateCycleTimer) {
-        window.clearInterval(scaffoldStateCycleTimer);
-        scaffoldStateCycleTimer = 0;
-      }
-      if (scaffoldStateCaptionTimer) {
-        window.clearTimeout(scaffoldStateCaptionTimer);
-        scaffoldStateCaptionTimer = 0;
-      }
-    };
-
-    var setScaffoldStateFrame = (root, nextIndex, options) => {
-      if (!root) return;
-      var scenes = Array.from(root.querySelectorAll('[data-scaffold-scene]'));
-      if (!scenes.length) return;
-      var safeIndex = Number(nextIndex);
-      if (!Number.isFinite(safeIndex)) safeIndex = 0;
-      safeIndex = ((safeIndex % scenes.length) + scenes.length) % scenes.length;
-      var immediate = !!(options && options.immediate);
-      var titleEl = root.querySelector('[data-scaffold-caption-title]');
-      var descEl = root.querySelector('[data-scaffold-caption-desc]');
-      var dots = Array.from(root.querySelectorAll('[data-scaffold-dot]'));
-      var activeScene = scenes[safeIndex];
-      var applyFrame = function() {
-        scenes.forEach(function(scene, index) {
-          scene.classList.toggle('active', index === safeIndex);
-        });
-        if (titleEl) {
-          titleEl.textContent = activeScene.getAttribute('data-caption-title') || '';
-          titleEl.classList.remove('is-fading');
-        }
-        if (descEl) {
-          descEl.textContent = activeScene.getAttribute('data-caption-desc') || '';
-          descEl.classList.remove('is-fading');
-        }
-        dots.forEach(function(dot, index) {
-          dot.classList.toggle('active', index === safeIndex);
-          dot.classList.toggle('done', index < safeIndex);
-          dot.setAttribute('aria-pressed', String(index === safeIndex));
-        });
-        scaffoldStateCurrentIndex = safeIndex;
-        root.dataset.currentScene = String(safeIndex);
-        _scheduleSizeSync([0, 90, 220, 420]);
-        _syncSizeDuringTransition(460);
-      };
-      if (immediate || !titleEl || !descEl) {
-        applyFrame();
-        return;
-      }
-      titleEl.classList.add('is-fading');
-      descEl.classList.add('is-fading');
-      if (scaffoldStateCaptionTimer) window.clearTimeout(scaffoldStateCaptionTimer);
-      scaffoldStateCaptionTimer = window.setTimeout(applyFrame, 170);
-    };
-
-    var initScaffoldStateAnimation = () => {
-      stopScaffoldStateAnimation();
-      var root = document.querySelector('[data-scaffold-state]');
-      if (!root) return;
-      var scenes = Array.from(root.querySelectorAll('[data-scaffold-scene]'));
-      if (!scenes.length) return;
-      var interval = Math.max(3000, Number(root.getAttribute('data-scaffold-interval')) || 4200);
-      var restartTimer = function() {
-        if (scaffoldStateCycleTimer) window.clearInterval(scaffoldStateCycleTimer);
-        scaffoldStateCycleTimer = window.setInterval(function() {
-          setScaffoldStateFrame(root, scaffoldStateCurrentIndex + 1);
-        }, interval);
-      };
-      Array.from(root.querySelectorAll('[data-scaffold-dot]')).forEach(function(dot) {
-        dot.addEventListener('click', function() {
-          var targetIndex = Number(dot.getAttribute('data-scaffold-index'));
-          if (!Number.isFinite(targetIndex)) return;
-          setScaffoldStateFrame(root, targetIndex);
-          restartTimer();
-        });
-      });
-      setScaffoldStateFrame(root, Number(root.dataset.currentScene) || 0, { immediate: true });
-      restartTimer();
-      _scheduleSizeSync([24, 180, 420, 760]);
-      _syncSizeDuringTransition(520);
-    };
-
-
-    
-    var syncToggleAllControl = () => {
-      var control = document.querySelector('[data-toggle-all]');
-      if (!control) return;
-      var toggles = Array.from(document.querySelectorAll('.node-toggle'));
-      var allExpanded = toggles.length > 0 && toggles.every((toggle) => toggle.getAttribute('data-expanded') === 'true');
-      control.setAttribute('data-expanded', String(allExpanded));
-      control.setAttribute('aria-label', allExpanded ? 'Collapse all workstreams' : 'Expand all workstreams');
-      var label = control.querySelector('[data-toggle-all-label]');
-      if (label) label.textContent = allExpanded ? 'Collapse all' : 'Expand all';
-    };
-
-    var setWorkstreamExpanded = (btn, nextExpanded, options) => {
-       const opts = options || {};
-       const block = btn.closest('[data-ws-block]');
-       const children = block ? block.querySelector('[data-ws-children]') : null;
-       if (!children) return;
-       if (children.__collapseTimer) {
-         window.clearTimeout(children.__collapseTimer);
-         children.__collapseTimer = null;
-       }
-       btn.setAttribute('data-expanded', String(nextExpanded));
-       btn.setAttribute('aria-expanded', String(nextExpanded));
-       children.setAttribute('aria-hidden', String(!nextExpanded));
-       block.classList.toggle('is-collapsed', !nextExpanded);
-       if (nextExpanded) {
-         children.hidden = false;
-         window.requestAnimationFrame(() => {
-           children.classList.remove('is-collapsed');
-         });
-       } else {
-         children.classList.add('is-collapsed');
-         children.__collapseTimer = window.setTimeout(() => {
-           if (children.classList.contains('is-collapsed')) children.hidden = true;
-         }, 260);
-       }
-       if (nextExpanded) animateHierarchyRows(children);
-       if (!opts.skipLayoutSync) {
-         queueTreeLayout(nextExpanded);
-         window.setTimeout(() => queueTreeLayout(false), 620);
-         _scheduleSizeSync([24, 160, 320, 640, 860]);
-         _syncSizeDuringTransition(420);
-       }
-       if (!opts.skipToggleSync) syncToggleAllControl();
-    };
-
-    window.toggleNode = (btn) => {
-       const isExpanded = btn.getAttribute('data-expanded') === 'true';
-       setWorkstreamExpanded(btn, !isExpanded);
-    };
-
-    window.toggleAllWorkstreams = (btn) => {
-       const toggles = Array.from(document.querySelectorAll('.node-toggle'));
-       if (!toggles.length) return;
-       const shouldExpand = toggles.some((toggle) => toggle.getAttribute('data-expanded') !== 'true');
-       toggles.forEach((toggle) => setWorkstreamExpanded(toggle, shouldExpand, { skipLayoutSync: true, skipToggleSync: true }));
-       syncToggleAllControl();
-       queueTreeLayout(shouldExpand);
-       window.setTimeout(() => queueTreeLayout(false), 620);
-       _scheduleSizeSync([24, 120, 240, 520, 860]);
-       _syncSizeDuringTransition(480);
-    };
-
-    /* ─── launch-readiness (Phase 3 cinematic) ───────────────────
-     * Rendered after the tree whenever the scaffold is in a
-     * pre-launch state (status draft/scaffolded). Computes 5 gates
-     * from the scaffold data and composes a ring-driven CTA that
-     * calls orgx_act launch via the MCP host when the user
-     * holds the button.
-     */
     var computeLaunchReadiness = (scaffold) => {
       const sections = (scaffold && scaffold.sections) || [];
       const initiative = (scaffold && scaffold.initiative) || {};
@@ -3337,390 +761,481 @@
         tone: 'scaffolded',
       };
     };
-    var applyInitiativeHeaderState = (state) => {
-      const nextState = state || getInitiativeViewState(null);
-      const header = document.querySelector('[data-scaffold-header]');
-      const kicker = document.querySelector('[data-scaffold-kicker]');
-      const statusPill = document.querySelector('[data-scaffold-status-pill]');
-      const statusLabel = document.querySelector('[data-scaffold-status-label]');
-      if (header) header.classList.toggle('is-launched', nextState.tone === 'live');
-      if (kicker) kicker.textContent = nextState.header;
-      if (statusPill) {
-        statusPill.classList.toggle('is-live', nextState.tone === 'live');
-        statusPill.setAttribute('aria-label', 'Initiative status: ' + nextState.status);
-      }
-      if (statusLabel) statusLabel.textContent = nextState.status;
-      if (typeof document !== 'undefined') document.title = nextState.header + ' - OrgX';
+
+    if (window.OrgXElements) {
+      window.OrgXElements.avatarConfig.baseUrl = _detectProtocol() === 'standalone'
+        ? new URL('shared/avatars', window.location.href).toString()
+        : WIDGET_ASSET_BASE + 'avatars';
+    }
+
+    var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    /* Workstream status, in the kit's lifecycle words. */
+    var WORKSTREAM_CHIPS = {
+      'not-started': { state: 'offline', label: 'Not started', seg: 's-idle' },
+      ready: { state: 'queued', label: 'Ready', seg: 's-ready' },
+      pending: { state: 'queued', label: null, seg: 's-ready' },
+      active: { state: 'running', label: 'Active', seg: 's-run' },
+      complete: { state: 'succeeded', label: null, seg: 's-done' },
+      blocked: { state: 'blocked', label: null, seg: 's-block' },
+      failed: { state: 'failed_step', label: null, seg: 's-block' },
+      paused: { state: 'handed_off', label: 'Paused', seg: 's-ready' }
     };
+    var chipFor = (status) => WORKSTREAM_CHIPS[(status && status.tone) || 'pending'] || WORKSTREAM_CHIPS.pending;
 
-    // SVG atoms reused by the strip in multiple states.
-    var LAUNCH_STRIP_CHECK_SVG =
-      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>';
-    var LAUNCH_STRIP_ARROW_SVG =
-      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+    var countTasks = (section) => typeof section.task_count === 'number'
+      ? section.task_count
+      : (section.milestones || []).reduce((n, m) => n + (typeof m.task_count === 'number' ? m.task_count : (Array.isArray(m.tasks) ? m.tasks.length : 0)), 0);
+    var plural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
 
-    var renderReadyStripBody = (r) => `
-        <div class="launch-strip__head">
-          <span class="launch-strip__eyebrow">${LAUNCH_STRIP_CHECK_SVG}Ready</span>
-          <span class="launch-strip__count">All ${r.total} checks green</span>
-        </div>
-        <button type="button" class="launch-strip__cta" data-launch-cta aria-label="Hold to launch initiative — activates workstreams and agents">
-          <span class="launch-strip__cta-fill" aria-hidden="true"></span>
-          <span class="launch-strip__cta-label">
-            <span>Hold to launch</span>
-            <span class="launch-strip__cta-sub">Activates workstreams and agents</span>
-          </span>
-          <span class="launch-strip__cta-arrow">${LAUNCH_STRIP_ARROW_SVG}</span>
-        </button>`;
+    var liveUrlFor = (scaffold) => (data && data.live_url) || (scaffold && scaffold.initiative && scaffold.initiative.raw_id
+      ? 'https://useorgx.com/live/' + encodeURIComponent(scaffold.initiative.raw_id)
+      : 'https://useorgx.com/live?view=mission-control');
 
-    var renderLaunchBay = (scaffold) => {
-      if (!scaffold || !scaffold.initiative) return '';
-      if (!isDraftStatus(scaffold.initiative.status)) return '';
+    /* ── Launch: the one move this card makes ─────────────────────────
+       Hold to launch calls orgx_act launch, exactly as before. When the
+       result names a command or run, the footer follows it through
+       orgx_command_status (respecting next_poll_after_ms, stopping when
+       it is null) instead of declaring the initiative live on its own. */
+    var launch = { phase: 'idle', error: null, kind: null, id: null, status: null, timer: null, failures: 0 };
+    var currentScaffold = null;
+    var expandedWorkstreams = {};
 
-      const r = computeLaunchReadiness(scaffold);
-      const pct = Math.round((r.pass / r.total) * 100);
+    var DEMO_COMMAND_ID = '3a9e6f2c-7d41-4b8e-9c15-0f2d8b6a4e71';
+    var demoStatusSequence = [
+      { state: 'queued', next_poll_after_ms: 1500 },
+      { state: 'running', outcome: 'activating 3 workstreams', next_poll_after_ms: 1500 },
+      { state: 'succeeded', outcome: '3 workstreams running', next_poll_after_ms: null }
+    ];
+    var demoStatusIndex = 0;
 
-      if (r.ready) {
-        return `<div class="launch-strip is-ready" data-launch-strip aria-live="polite">${renderReadyStripBody(r)}</div>`;
-      }
-
-      // Progressing — show what's outstanding in one quiet line. No pills, no
-      // ring, no kicker. The progress bar and the missing-check summary are
-      // enough signal; the user doesn't need five shapes to understand state.
-      const missingLabels = r.checks.filter(c => !c.ok).map(c => escapeHtml(c.label));
-      const missingLine = missingLabels.length
-        ? `<div class="launch-strip__missing">Awaiting: ${missingLabels.join(' · ')}</div>`
-        : '';
-
-      return `
-        <div class="launch-strip" data-launch-strip aria-live="polite">
-          <div class="launch-strip__head">
-            <span class="launch-strip__eyebrow">Readiness</span>
-            <span class="launch-strip__count">${r.pass} of ${r.total}</span>
-          </div>
-          <div class="launch-strip__progress" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100">
-            <div class="launch-strip__progress-fill" style="width: ${pct}%"></div>
-          </div>
-          ${missingLine}
-        </div>
-      `;
-    };
-
-    var bindLaunchCta = (scaffold) => {
-      const strip = document.querySelector('[data-launch-strip]');
-      const cta = strip && strip.querySelector('[data-launch-cta]');
-      if (!cta || cta.disabled) return;
-      let timer = null;
-      let committed = false;
-
-      const transitionToLaunching = () => {
-        if (!strip) return;
-        strip.classList.remove('is-ready');
-        strip.classList.add('is-launching');
-        strip.innerHTML = `
-          <div class="launch-strip__head">
-            <span class="launch-strip__eyebrow">Committing…</span>
-          </div>
-          <div class="launch-strip__progress" role="progressbar" aria-valuetext="Committing">
-            <div class="launch-strip__progress-fill"></div>
-          </div>
-        `;
-      };
-
-      const transitionToLaunched = () => {
-        if (!strip) return;
-        applyInitiativeHeaderState(getInitiativeViewState(scaffold && scaffold.initiative, 'launched'));
-        const initiativeId = (scaffold && scaffold.initiative && (scaffold.initiative.raw_id || scaffold.initiative.id)) || '';
-        // Absolute URL. The widget runs inside claudemcpcontent.com in
-        // MCP sandboxes, so a relative /live/… path resolves to the wrong
-        // origin and the link silently 404s. Prefer server-provided live_url,
-        // then construct one against the OrgX web origin.
-        const liveUrl = (scaffold && scaffold.live_url) ||
-          (initiativeId
-            ? `https://useorgx.com/live/${encodeURIComponent(initiativeId)}`
-            : 'https://useorgx.com/command');
-
-        // Build the workstream rail for the emergence reveal. Each stream
-        // activates on a 180ms stagger so the user sees parallel capacity
-        // coming online, not a static "done" label.
-        const sections = Array.isArray(scaffold && scaffold.sections) ? scaffold.sections : [];
-        const streamCount = Math.min(sections.length, 6);
-        const streams = sections.slice(0, streamCount).map((s, i) => {
-          const label = (s && (s.title || s.name)) || ('Stream ' + (i + 1));
-          const delay = 380 + (i * 180);
-          return `
-            <div class="launch-strip__stream" style="--stream-delay: ${delay}ms">
-              <span class="launch-strip__stream-dot" aria-hidden="true"></span>
-              <span class="launch-strip__stream-label">${escapeHtml(label)}</span>
-            </div>`;
-        }).join('');
-        const ctaDelay = 380 + (streamCount * 180) + 140;
-
-        strip.classList.remove('is-launching', 'is-ready');
-        strip.classList.add('is-launched');
-        strip.setAttribute('aria-label', 'Initiative launched');
-        strip.innerHTML = `
-          <div class="launch-strip__stage" aria-hidden="true">
-            <span class="launch-strip__particle" style="left:18%; animation-delay:0ms"></span>
-            <span class="launch-strip__particle" style="left:36%; animation-delay:1200ms"></span>
-            <span class="launch-strip__particle" style="left:58%; animation-delay:2400ms"></span>
-            <span class="launch-strip__particle" style="left:78%; animation-delay:3600ms"></span>
-            <span class="launch-strip__horizon"></span>
-          </div>
-          <div class="launch-strip__emergence">
-            <div class="launch-strip__head">
-              <span class="launch-strip__eyebrow">${LAUNCH_STRIP_CHECK_SVG}Launched · just now</span>
-              <span class="launch-strip__count">${streamCount ? sections.length + ' workstreams activating' : 'Initiative live'}</span>
-            </div>
-            ${streams ? `<div class="launch-strip__streams">${streams}</div>` : ''}
-            <a class="launch-strip__primary" href="${escapeHtml(liveUrl)}" target="_blank" rel="noreferrer" data-launch-next style="--stream-delay: ${ctaDelay}ms">
-              <span class="launch-strip__primary-copy">
-                <span class="launch-strip__primary-title">Open mission control</span>
-                <span class="launch-strip__primary-sub">Live streams · agents · decisions</span>
-              </span>
-              <span class="launch-strip__primary-arrow" aria-hidden="true">${LAUNCH_STRIP_ARROW_SVG}</span>
-            </a>
-          </div>
-        `;
-        const next = strip.querySelector('[data-launch-next]');
-        if (next) {
-          next.addEventListener('click', (evt) => {
-            evt.preventDefault();
-            const target = next.getAttribute('href') || liveUrl;
-            if (typeof openWidgetLink === 'function') {
-              openWidgetLink(target, evt);
-            } else if (typeof window !== 'undefined') {
-              window.open(target, '_blank', 'noopener,noreferrer');
-            }
-          });
-        }
-      };
-
-      const revertToReady = () => {
-        if (!strip) return;
-        strip.classList.remove('is-launching');
-        strip.classList.add('is-ready');
-        strip.innerHTML = renderReadyStripBody(computeLaunchReadiness(scaffold));
-        bindLaunchCta(scaffold);
-      };
-
-      const start = (e) => {
-        if (committed) return;
-        if (e) e.preventDefault();
-        cta.classList.add('is-holding');
-        timer = setTimeout(async () => {
-          committed = true;
-          cta.classList.remove('is-holding');
-          transitionToLaunching();
-          try {
-            await window.OrgXWidgetRuntime.callTool('orgx_act', {
-              type: 'initiative',
-              id: scaffold.initiative.raw_id || scaffold.initiative.id,
-              action: 'launch',
-            });
-            transitionToLaunched();
-          } catch (err) {
-            console.warn('[scaffold:launch] failed', err);
-            committed = false;
-            revertToReady();
-          }
-        }, 820);
-      };
-
-      const cancel = () => {
-        if (timer) { clearTimeout(timer); timer = null; }
-        if (!committed) cta.classList.remove('is-holding');
-      };
-
-      cta.addEventListener('pointerdown', start);
-      cta.addEventListener('pointerup', cancel);
-      cta.addEventListener('pointerleave', cancel);
-      cta.addEventListener('pointercancel', cancel);
-      cta.addEventListener('keydown', (e) => {
-        if ((e.key === 'Enter' || e.key === ' ') && !committed) {
-          e.preventDefault();
-          start(e);
-        }
+    var callLaunch = (scaffold) => {
+      if (isDemo && demoState === 'launched') return Promise.resolve({ structuredContent: { ok: true, command_id: DEMO_COMMAND_ID } });
+      if (isDemo && demoState === 'launch-failed') return Promise.reject(new Error('OrgX could not launch it. Nothing changed.'));
+      return window.OrgXWidgetRuntime.callTool('orgx_act', {
+        type: 'initiative',
+        id: scaffold.initiative.raw_id || scaffold.initiative.id,
+        action: 'launch',
       });
-      cta.addEventListener('keyup', cancel);
     };
 
-    var render = () => {
-      stopScaffoldStateAnimation();
-      if (isLoading) {
-        injectHtml(renderScaffoldState('loading'));
-        initScaffoldStateAnimation();
-        return;
+    var readCommandRef = (out) => {
+      if (!out || typeof out !== 'object') return null;
+      var candidates = [
+        ['command', out.command_id || out.commandId || (out.command && out.command.id)],
+        ['run', out.run_id || out.runId]
+      ];
+      for (var i = 0; i < candidates.length; i += 1) {
+        if (typeof candidates[i][1] === 'string' && UUID_RE.test(candidates[i][1])) return { kind: candidates[i][0], id: candidates[i][1] };
       }
-      var scaffold = normalizeScaffoldData(data);
-      if(!scaffold || !scaffold.initiative) {
-        injectHtml(renderScaffoldState(demoState === 'error' ? 'error' : 'awaiting'));
-        initScaffoldStateAnimation();
-        return;
-      }
+      return null;
+    };
 
-      const sections = scaffold.sections || [];
-      const renderTask = (task) => {
-        return `<div class="node-item tk" data-tk-row>
-          <span class="node-icon" style="display:flex; align-items:center;">${icons.task(14)}</span>
+    var fetchLaunchStatus = () => {
+      if (isDemo && demoState === 'launched') {
+        var step = demoStatusSequence[Math.min(demoStatusIndex++, demoStatusSequence.length - 1)];
+        return Promise.resolve(Object.assign({ kind: launch.kind, id: launch.id }, step));
+      }
+      return Promise.resolve(window.OrgXWidgetRuntime.callTool('orgx_command_status', { kind: launch.kind, id: launch.id }))
+        .then((result) => window.OrgXWidgetRuntime.extractStructuredWidgetData(result, true));
+    };
+
+    var stopLaunchPolling = () => {
+      if (launch.timer) window.clearTimeout(launch.timer);
+      launch.timer = null;
+    };
+
+    var scheduleLaunchCheck = (ms) => {
+      stopLaunchPolling();
+      launch.timer = window.setTimeout(checkLaunchStatus, Math.max(0, ms));
+    };
+
+    var checkLaunchStatus = () => {
+      var id = launch.id;
+      if (!id) return;
+      launch.timer = null;
+      fetchLaunchStatus().then((status) => {
+        if (launch.id !== id) return;
+        launch.failures = 0;
+        if (!status || typeof status.state !== 'string' || status.state === 'not_found') {
+          launch.status = null;
+          refreshChrome();
+          return;
+        }
+        launch.status = status;
+        refreshChrome();
+        if (typeof status.next_poll_after_ms === 'number' && isFinite(status.next_poll_after_ms)) {
+          scheduleLaunchCheck(Math.max(1000, status.next_poll_after_ms));
+        }
+      }).catch(() => {
+        if (launch.id !== id) return;
+        launch.failures += 1;
+        if (launch.failures < 3) scheduleLaunchCheck(4000 * launch.failures);
+      });
+    };
+
+    var launchInitiative = () => {
+      var scaffold = currentScaffold;
+      if (!scaffold || !scaffold.initiative || launch.phase === 'sending') return;
+      stopLaunchPolling();
+      launch = { phase: 'sending', error: null, kind: null, id: null, status: null, timer: null, failures: 0 };
+      refreshChrome();
+      callLaunch(scaffold).then((result) => {
+        var out = window.OrgXWidgetRuntime.extractStructuredWidgetData(result, true);
+        var ref = readCommandRef(out);
+        launch = { phase: 'accepted', error: null, kind: ref && ref.kind, id: ref && ref.id, status: null, timer: null, failures: 0 };
+        refreshChrome();
+        if (ref) scheduleLaunchCheck(isDemo ? 700 : 0);
+      }).catch((err) => {
+        console.warn('[scaffold:launch] failed', err);
+        launch = { phase: 'failed', error: (err && err.message) || 'Nothing changed. Try again.', kind: null, id: null, status: null, timer: null, failures: 0 };
+        refreshChrome();
+      });
+    };
+
+    /* One description of the card's state; header, edge and footer read it. */
+    var describeScaffold = (scaffold) => {
+      var sections = scaffold.sections || [];
+      var viewState = getInitiativeViewState(scaffold.initiative);
+      var draft = isDraftStatus(scaffold.initiative.status);
+      var readiness = computeLaunchReadiness(scaffold);
+      var activeCount = sections.filter((s) => s.execution && s.execution.status && s.execution.status.tone === 'active').length;
+      var streamsLine = plural(sections.length, 'workstream');
+      var openLabel = 'Open Live View';
+      var footer;
+      var kind = viewState.tone === 'live' ? 'Live' : viewState.tone === 'complete' ? 'Complete' : viewState.tone === 'paused' ? 'Paused' : 'Scaffolded';
+      var edge = viewState.tone === 'live' || viewState.tone === 'complete' ? 'teal' : 'mute';
+
+      if (launch.phase === 'sending') {
+        footer = { variant: 'finishes-here', state: 'sending', heading: 'Launching', detail: 'committing in OrgX', primary: 'Launching…' };
+        kind = 'Launching';
+        edge = 'amber';
+      } else if (launch.phase === 'failed' || (launch.status && launch.status.state === 'failed')) {
+        footer = { variant: 'finishes-here', state: 'failed', heading: 'Not launched', detail: (launch.status && launch.status.outcome) || launch.error || 'Nothing changed. Try again.', primary: 'Retry', hold: true };
+        kind = 'Scaffolded';
+        edge = 'red';
+      } else if (launch.phase === 'accepted') {
+        var st = launch.status && launch.status.state;
+        var outcome = launch.status && launch.status.outcome;
+        openLabel = 'Open mission control';
+        if (st === 'succeeded') {
+          footer = { variant: 'queues-work', state: 'done', heading: 'Launched', detail: outcome || streamsLine + ' activating' };
+          kind = 'Live';
+          edge = 'teal';
+        } else if (st === 'cancelled') {
+          footer = { variant: 'confirms-in-orgx', state: 'rejected', heading: 'Launch cancelled', detail: outcome || 'nothing started' };
+          edge = 'mute';
+        } else if (st === 'queued' || st === 'held') {
+          footer = { variant: 'queues-work', state: 'queued', heading: 'Launch queued', detail: outcome || 'waiting to start' };
+          kind = 'Launching';
+          edge = 'teal';
+        } else if (st === 'running') {
+          footer = { variant: 'queues-work', state: 'running', heading: 'Launching workstreams', detail: outcome || streamsLine + ' activating' };
+          kind = 'Launching';
+          edge = 'teal';
+        } else {
+          // OrgX accepted the launch; without a command id there is nothing
+          // further to poll, so the card says accepted, not live.
+          footer = { variant: 'queues-work', state: 'running', heading: 'Launch accepted', detail: launch.id ? 'checking status' : streamsLine + ' activating' };
+          kind = 'Launching';
+          edge = 'teal';
+        }
+      } else if (draft) {
+        if (readiness.ready) {
+          footer = { variant: 'queues-work', state: 'needs-you', heading: 'Ready to launch', detail: 'all ' + readiness.total + ' checks green · starts ' + streamsLine, primary: 'Hold to launch', hold: true };
+          kind = 'Ready to launch';
+          edge = 'amber';
+        } else {
+          var missing = readiness.checks.filter((c) => !c.ok).map((c) => c.label);
+          // Nothing to press yet: the gaps above say what is missing.
+          footer = { variant: 'reads', state: 'stale', heading: 'Not ready to launch', detail: 'awaiting: ' + missing.join(' · ') };
+          kind = 'Scaffolded';
+          edge = 'mute';
+        }
+      } else if (viewState.tone === 'live') {
+        footer = { variant: 'reads', state: 'fresh', heading: 'Live', detail: activeCount + ' of ' + sections.length + ' active' };
+      } else if (viewState.tone === 'complete') {
+        footer = { variant: 'reads', state: 'caught-up', heading: 'Complete', detail: 'every workstream is done' };
+      } else if (viewState.tone === 'paused') {
+        footer = { variant: 'confirms-in-orgx', state: 'waiting', heading: 'Paused', detail: 'resume it in OrgX' };
+      } else {
+        footer = { variant: 'reads', state: 'fresh', heading: viewState.status, detail: streamsLine };
+      }
+      return { kind: kind, edge: edge, footer: footer, openLabel: openLabel, readiness: readiness, draft: draft, viewState: viewState };
+    };
+
+    var applyFooter = (ft, view) => {
+      if (!ft) return;
+      var f = view.footer;
+      ft.setAttribute('variant', f.variant);
+      ft.setAttribute('heading', f.heading || '');
+      ft.setAttribute('detail', f.detail || '');
+      if (f.primary) ft.setAttribute('primary-label', f.primary); else ft.removeAttribute('primary-label');
+      ft.toggleAttribute('hold', !!f.hold);
+      ft.toggleAttribute('disabled', !!f.disabled);
+      ft.setAttribute('state', f.state);
+      var link = ft.querySelector('[data-open-live-view]');
+      if (link) setOpenLabel(link, view.openLabel);
+    };
+
+    // "Open" always shows; the rest of the label yields under 420px.
+    var openLabelHtml = (label) => {
+      var rest = String(label).replace(/^Open\s*/, '');
+      return '<span>Open</span>' + (rest ? '<span class="ft-long"> ' + escapeHtml(rest) + '</span>' : '');
+    };
+    var setOpenLabel = (link, label) => {
+      var holder = link.querySelector('[data-open-label]');
+      if (holder) holder.innerHTML = openLabelHtml(label);
+      link.setAttribute('aria-label', label + ', opens OrgX');
+    };
+
+    var refreshChrome = () => {
+      if (!currentScaffold) return;
+      var view = describeScaffold(currentScaffold);
+      var card = document.querySelector('[data-scaffold-card]');
+      if (card) card.setAttribute('data-edge', view.edge);
+      var kind = document.querySelector('[data-scaffold-kicker]');
+      if (kind) kind.textContent = view.kind;
+      var glyph = document.querySelector('[data-scaffold-glyph]');
+      if (glyph) {
+        if (view.edge === 'mute') glyph.removeAttribute('tone');
+        else glyph.setAttribute('tone', view.edge);
+      }
+      applyFooter(document.getElementById('scaffoldFooter'), view);
+      if (typeof document !== 'undefined') document.title = view.viewState.header + ' - OrgX';
+      _scheduleSizeSync([24, 180]);
+    };
+
+    var syncToggleAllControl = () => {
+      var control = document.querySelector('[data-toggle-all]');
+      if (!control) return;
+      var toggles = Array.from(document.querySelectorAll('.node-toggle'));
+      var allExpanded = toggles.length > 0 && toggles.every((toggle) => toggle.getAttribute('aria-expanded') === 'true');
+      control.setAttribute('data-expanded', String(allExpanded));
+      control.setAttribute('aria-label', allExpanded ? 'Collapse all workstreams' : 'Expand all workstreams');
+      control.textContent = allExpanded ? 'Collapse all' : 'Expand all';
+    };
+
+    var setWorkstreamExpanded = (btn, nextExpanded) => {
+      var block = btn.closest('[data-ws-block]');
+      var children = block ? block.querySelector('[data-ws-children]') : null;
+      if (!children) return;
+      btn.setAttribute('data-expanded', String(nextExpanded));
+      btn.setAttribute('aria-expanded', String(nextExpanded));
+      children.hidden = !nextExpanded;
+      var key = block.getAttribute('data-ws-key');
+      if (key) expandedWorkstreams[key] = nextExpanded;
+    };
+
+    window.toggleNode = (btn) => {
+      setWorkstreamExpanded(btn, btn.getAttribute('aria-expanded') !== 'true');
+      syncToggleAllControl();
+      _scheduleSizeSync([24, 160]);
+    };
+
+    window.toggleAllWorkstreams = () => {
+      var toggles = Array.from(document.querySelectorAll('.node-toggle'));
+      if (!toggles.length) return;
+      var shouldExpand = toggles.some((toggle) => toggle.getAttribute('aria-expanded') !== 'true');
+      toggles.forEach((toggle) => setWorkstreamExpanded(toggle, shouldExpand));
+      syncToggleAllControl();
+      _scheduleSizeSync([24, 160, 320]);
+    };
+
+    var renderAgent = (execution) => {
+      var name = execution && execution.agent_name ? execution.agent_name : 'Unassigned';
+      var identity = window.OrgXAgentIdentity;
+      var key = identity ? identity.resolveAgentKey(execution && execution.agent_id, name, execution && execution.domain) : null;
+      var chip = chipFor(execution && execution.status);
+      var form = identity ? identity.formForState(chip.state) : 'base';
+      return '<span class="ws-agent">' + (key ? '<ox-avatar agent="' + key + '" form="' + form + '" size="24" name="' + escapeHtml(name) + '"></ox-avatar>' : '') + '<b>' + escapeHtml(name) + '</b></span>';
+    };
+
+    var renderTask = (task) => {
+      return `<div class="node-item tk" data-tk-row>
+          <ox-glyph kind="task"></ox-glyph>
           <span class="tree-label">${escapeHtml(readLabel(task, 'Untitled'))}</span>
           ${renderIdBadge(task.display_id, task.raw_id)}
         </div>`;
-      };
-      const renderMilestone = (milestone) => {
-        const omittedTaskCount = typeof milestone.omitted_task_count === 'number' ? milestone.omitted_task_count : 0;
-        const omittedTaskRow = omittedTaskCount > 0
-          ? `<div class="node-item tk" data-tk-row>
-              <span class="node-icon" style="display:flex; align-items:center;">${icons.chevronRight(14)}</span>
-              <span class="tree-label">${escapeHtml(omittedTaskCount + ' more task' + (omittedTaskCount === 1 ? '' : 's') + ' in Live View')}</span>
-            </div>`
-          : '';
-        return `<div class="ms-block" data-ms-block>
+    };
+    var renderMilestone = (milestone) => {
+      var omittedTaskCount = typeof milestone.omitted_task_count === 'number' ? milestone.omitted_task_count : 0;
+      var omittedTaskRow = omittedTaskCount > 0
+        ? `<div class="node-item tk more" data-tk-row><span></span><span class="tree-label">${escapeHtml(plural(omittedTaskCount, 'more task') + ' in Live View')}</span></div>`
+        : '';
+      return `<div class="ms-block" data-ms-block>
           <div class="node-item ms" data-ms-row>
-            <span class="node-icon" style="display:flex; align-items:center;">${icons.milestone(14)}</span>
+            <ox-glyph kind="milestone"></ox-glyph>
             <span class="tree-label">${escapeHtml(readLabel(milestone, 'Untitled'))}</span>
             ${renderIdBadge(milestone.display_id, milestone.raw_id)}
           </div>
-          ${milestone.tasks && milestone.tasks.length || omittedTaskRow ? `<div class="ms-tasks">${(milestone.tasks || []).map(renderTask).join('')}${omittedTaskRow}</div>` : ''}
+          ${(milestone.tasks || []).map(renderTask).join('')}${omittedTaskRow}
         </div>`;
-      };
-      const listHtml = sections.map((section) => {
-          var execution = section.execution || {};
-          var status = execution.status || classifyStatus('not_started');
-          var progress = typeof execution.progress_pct === 'number' ? execution.progress_pct : 0;
-          var domainKey = execution.domain || 'orchestrator';
-          var domainRgb = getDomainRgb(domainKey);
-        // Default-collapsed: on first render the workstream children are
-        // hidden. Without this the launch CTA sits below 5+ expanded
-        // workstream trees on mobile and the user has to scroll to find
-        // the decision. The tree is there for structural reassurance, not
-        // immediate inspection — users can expand individual rows or all
-        // rows via the section-level toggle.
-        var childMilestoneCount = Array.isArray(section.milestones) ? section.milestones.length : 0;
-        var childTaskCount = typeof section.task_count === 'number'
-          ? section.task_count
-          : Array.isArray(section.milestones)
-          ? section.milestones.reduce((n, m) => n + (typeof m.task_count === 'number' ? m.task_count : (Array.isArray(m.tasks) ? m.tasks.length : 0)), 0)
-          : 0;
-        var childSummaryBits = [];
-        if (childMilestoneCount > 0) childSummaryBits.push(childMilestoneCount + ' milestone' + (childMilestoneCount === 1 ? '' : 's'));
-        if (childTaskCount > 0) childSummaryBits.push(childTaskCount + ' task' + (childTaskCount === 1 ? '' : 's'));
-        var childSummary = childSummaryBits.join(' · ');
-        return `<div class="ws-block is-collapsed" data-ws-block>
-        <div class="node-item ws" style="--ws-rgb: ${domainRgb};">
-          <div class="ws-shell">
-            <div class="ws-copy">
-              <div class="ws-topline">
-                <span class="ws-node-icon" aria-hidden="true">${icons.workstream(14)}</span>
-                <div class="ws-title-stack">
-                  <span class="ws-title">${escapeHtml(readLabel(section, 'Untitled'))}</span>
-                  <span class="ws-meta">${renderIdBadge(section.display_id, section.raw_id)}${childSummary ? `<span class="ws-child-count" aria-hidden="true">${escapeHtml(childSummary)}</span>` : ''}</span>
-                </div>
-                ${renderAgentPresence(execution)}
-              </div>
-            </div>
-            <div class="ws-execution">
-              ${renderProgressRing(progress, domainRgb)}
-              <span class="status-badge ${escapeHtml(status.tone)}" aria-label="${escapeHtml(status.label)}">${status.icon}<span>${escapeHtml(status.shortLabel || status.label)}</span></span>
-              <button type="button" class="node-toggle ox-icon-btn ox-icon-btn--sm" onclick="toggleNode(this)" data-expanded="false" aria-expanded="false" aria-label="Expand workstream"><span class="node-toggle__glyph">${icons.chevronDown(12)}</span></button>
-            </div>
-          </div>
-          <div class="ws-children is-collapsed" data-ws-children aria-hidden="true" hidden>
-            <div class="ws-children-inner" data-ws-children-inner>
-              <div class="tree-overlay" data-tree-overlay aria-hidden="true"></div>
-              ${(section.milestones || []).map(renderMilestone).join('')}
-            </div>
-          </div>
-        </div>
-      </div>`;
-      }).join('');
+    };
 
-      const initiativeUrl = data.live_url || (data.initiative.id ? `https://useorgx.com/live/${encodeURIComponent(data.initiative.id)}` : 'https://useorgx.com/live?view=mission-control');
-      const initiativeViewState = getInitiativeViewState(scaffold.initiative);
-      const headerStateClass = initiativeViewState.tone === 'live' ? ' is-launched' : '';
-      const statusStateClass = initiativeViewState.tone === 'live' ? ' is-live' : '';
-      if (typeof document !== 'undefined') document.title = initiativeViewState.header + ' - OrgX';
+    var renderWorkstream = (section, index) => {
+      var execution = section.execution || {};
+      var status = execution.status || classifyStatus('not_started');
+      var chip = chipFor(status);
+      var progress = typeof execution.progress_pct === 'number' ? execution.progress_pct : 0;
+      var milestoneCount = Array.isArray(section.milestones) ? section.milestones.length : 0;
+      var taskCount = countTasks(section);
+      var summary = [milestoneCount ? plural(milestoneCount, 'milestone') : '', taskCount ? plural(taskCount, 'task') : ''].filter(Boolean).join(' · ');
+      var key = section.raw_id || section.display_id || String(index);
+      var open = !!expandedWorkstreams[key];
+      var tone = chip.state === 'running' || chip.state === 'succeeded' ? 'teal' : chip.state === 'blocked' || chip.state === 'failed_step' ? 'red' : '';
+      var childId = 'ws-children-' + index;
+      var title = readLabel(section, 'Untitled');
+      return `<div class="ws" data-ws-block data-ws-key="${escapeHtml(key)}">
+          <div class="ws-row">
+            <ox-glyph kind="workstream"${tone ? ' tone="' + tone + '"' : ''}></ox-glyph>
+            <div class="ws-copy">
+              <span class="ws-title">${escapeHtml(title)}</span>
+              <span class="ws-sub">${renderIdBadge(section.display_id, section.raw_id)}${summary ? '<span>' + escapeHtml(summary) + '</span>' : ''}</span>
+            </div>
+            ${renderAgent(execution)}
+            <span class="ws-state">
+              <ox-state-chip state="${chip.state}"${chip.label ? ' label="' + escapeHtml(chip.label) + '"' : ''} reserve="running queued succeeded blocked"></ox-state-chip>
+              <span class="ws-pct" aria-label="${escapeHtml(String(progress))}% complete">${escapeHtml(String(progress))}%</span>
+            </span>
+            <button type="button" class="node-toggle" data-expanded="${open}" aria-expanded="${open}" aria-controls="${childId}" aria-label="Show milestones and tasks in ${escapeHtml(title)}">${icons.chevronDown(16)}</button>
+          </div>
+          <div class="ws-children" id="${childId}" data-ws-children${open ? '' : ' hidden'}>
+            ${(section.milestones || []).map(renderMilestone).join('')}
+          </div>
+        </div>`;
+    };
+
+    var renderMix = (sections) => {
+      if (!sections.length) return '';
+      var total = sections.reduce((n, s) => n + Math.max(1, countTasks(s)), 0);
+      var counts = {};
+      var segs = sections.map((s) => {
+        var chip = chipFor(s.execution && s.execution.status);
+        var label = (chip.label || (s.execution && s.execution.status && s.execution.status.label) || 'Queued').toLowerCase();
+        counts[label] = (counts[label] || 0) + 1;
+        var width = (Math.max(1, countTasks(s)) / total) * 100;
+        return '<i class="' + chip.seg + '" style="flex:' + width.toFixed(2) + ' 1 0"></i>';
+      }).join('');
+      var tasks = sections.reduce((n, s) => n + countTasks(s), 0);
+      var mixLine = Object.keys(counts).map((k) => counts[k] + ' ' + k).join(' · ');
+      return `<div class="mix">
+          <div class="segbar" role="img" aria-label="${escapeHtml(mixLine)}">${segs}</div>
+          <span class="meta">${escapeHtml(plural(tasks, 'task') + ' · ' + mixLine)}</span>
+        </div>`;
+    };
+
+    var READINESS_NEEDS = { workstreams: 'needs at least 2', milestones: 'needs at least 1', tasks: 'needs at least 1', assignees: 'every workstream needs an owner', objective: 'name the initiative' };
+    var renderReadinessGaps = (view) => {
+      if (!view.draft || view.readiness.ready || launch.phase !== 'idle') return '';
+      var rows = view.readiness.checks.filter((c) => !c.ok).map((c) =>
+        '<ox-receipt-row status="fail" label="' + escapeHtml(c.label) + '" detail="' + escapeHtml(c.detail + ' · ' + (READINESS_NEEDS[c.id] || 'needed to launch')) + '"></ox-receipt-row>'
+      ).join('');
+      return '<div class="gaps" role="list" aria-label="Launch readiness gaps">' + rows + '</div>';
+    };
+
+    var renderEmptyCard = (mode) => {
+      var errored = mode === 'error';
+      return `<article class="wcard ox-card" data-scaffold-card data-edge="${errored ? 'red' : 'mute'}">
+          <div class="hd"><ox-glyph kind="initiative"${errored ? ' tone="red"' : ''}></ox-glyph><span class="kind">Initiative</span></div>
+          <div class="bd" style="padding-bottom:16px">
+            <h2 class="pk-q">${errored ? 'The scaffold could not load' : 'Nothing scaffolded yet'}</h2>
+            <p class="note">${errored
+              ? 'OrgX did not return the initiative. Nothing was created from this view.'
+              : 'OrgX has not returned an initiative for this request. The hierarchy appears here once it does.'}</p>
+          </div>
+          ${errored ? `<ox-footer variant="reads" state="failed" heading="Couldn’t load the scaffold" detail="nothing to show yet"><button type="button" slot="action" class="ft-link" data-open-live-view data-href="https://useorgx.com/live?view=mission-control" aria-label="Open OrgX, opens OrgX"><span data-open-label>${openLabelHtml('Open OrgX')}</span>${icons.external(12)}</button></ox-footer>` : ''}
+        </article>`;
+    };
+
+    var render = () => {
+      if (isLoading) {
+        injectHtml(`<article class="wcard ox-card" aria-busy="true" aria-label="Loading initiative">
+            <div class="hd"><span class="sk" style="width:36%"></span></div>
+            <div class="bd"><span class="sk" style="width:70%;height:24px"></span><span class="sk" style="width:100%"></span><span class="sk" style="width:100%;height:62px"></span><span class="sk" style="width:100%;height:62px"></span></div>
+            <ox-footer variant="reads" state="loading"></ox-footer>
+          </article>`);
+        return;
+      }
+      var scaffold = normalizeScaffoldData(data);
+      if (!scaffold || !scaffold.initiative) {
+        currentScaffold = null;
+        injectHtml(renderEmptyCard(demoState === 'error' ? 'error' : 'awaiting'));
+        bindOpenLinks();
+        _scheduleSizeSync([24, 240]);
+        return;
+      }
+      currentScaffold = scaffold;
+      var sections = scaffold.sections || [];
+      var view = describeScaffold(scaffold);
+      var initiativeUrl = liveUrlFor(scaffold);
+      var milestoneTotal = sections.reduce((n, s) => n + ((s.milestones || []).length), 0);
 
       injectHtml(`
-        <div class="ox-card animate-in">
-          <div class="ox-card-inner">
-            <div class="h-header${headerStateClass}" data-scaffold-header>
-              <div class="h-icon">${icons.initiative(24)}</div>
-              <div class="h-copy">
-                <div class="ox-eyebrow" style="margin-bottom:4px;" data-scaffold-kicker>${escapeHtml(initiativeViewState.header)}</div>
-                <div class="h-title-row">
-                  <h2 class="ox-title" style="font-size:1.3rem;">${escapeHtml(scaffold.initiative.title)}</h2>
-                  ${renderIdBadge(scaffold.initiative.display_id, scaffold.initiative.raw_id)}
-                </div>
-                <div class="status-pill${statusStateClass}" data-scaffold-status-pill aria-label="Initiative status: ${escapeHtml(initiativeViewState.status)}">
-                  <div class="status-dot"></div> <span data-scaffold-status-label>${escapeHtml(initiativeViewState.status)}</span>
-                </div>
-              </div>
+        <article class="wcard ox-card" data-scaffold-card data-edge="${view.edge}" data-scaffold-header>
+          <div class="hd">
+            <ox-glyph kind="initiative" data-scaffold-glyph${view.edge !== 'mute' ? ' tone="' + view.edge + '"' : ''}></ox-glyph>
+            <span class="kind" data-scaffold-kicker>${escapeHtml(view.kind)}</span>
+            <span class="sp"></span>
+            <span class="meta">${escapeHtml(plural(sections.length, 'workstream') + ' · ' + plural(milestoneTotal, 'milestone'))}</span>
+          </div>
+          <div class="bd">
+            <div class="title-row">
+              <h2 class="pk-q">${escapeHtml(scaffold.initiative.title)}</h2>
+              ${renderIdBadge(scaffold.initiative.display_id, scaffold.initiative.raw_id)}
             </div>
-            
-            <div class="section-head">
-              <div class="ox-eyebrow section-kicker">Work Breakdown Structure</div>
-              <button type="button" class="section-toggle-all" data-toggle-all data-expanded="false" onclick="toggleAllWorkstreams(this)" aria-label="Expand all workstreams">
-                <span data-toggle-all-label>Expand all</span>
-                <span class="section-toggle-all__glyph">${icons.chevronDown(12)}</span>
-              </button>
+            ${renderMix(sections)}
+            ${renderReadinessGaps(view)}
+            ${sections.length ? `<div class="sec">
+              <span class="sec-label">Workstreams</span>
+              <button type="button" class="section-toggle-all" data-toggle-all data-expanded="false" aria-label="Expand all workstreams">Expand all</button>
             </div>
-            <div class="node-list">
-              ${listHtml}
-            </div>
-            ${renderLaunchBay(scaffold)}
-            <div class="widget-footer">
-              <span style="font-size:0.7rem; font-family:var(--ox-mono); color:var(--ox-text-muted); text-transform:uppercase; letter-spacing:0.05em;">Synced</span>
-              <a href="${initiativeUrl}" target="_blank" rel="noreferrer" class="deep-link ox-link-btn ox-link-btn--quiet" data-open-live-view>
-                Open Live View
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-              </a>
-            </div>
-</div>
-        </div>
+            <div class="node-list">${sections.map(renderWorkstream).join('')}</div>` : '<p class="note">No workstreams yet.</p>'}
+          </div>
+          <ox-footer id="scaffoldFooter" variant="${view.footer.variant}" state="${view.footer.state}">
+            <button type="button" slot="action" class="ft-link" data-open-live-view data-href="${escapeHtml(initiativeUrl)}" aria-label="${escapeHtml(view.openLabel)}, opens OrgX"><span data-open-label>${openLabelHtml(view.openLabel)}</span>${icons.external(12)}</button>
+          </ox-footer>
+        </article>
       `);
-      // Workstream emergence — calm, hierarchy-ordered cascade. The
-      // initiative header (.ox-card.animate-in) settles first; each
-      // workstream card then materializes on the entry curve in sequence
-      // (~80ms steps after a short lead), so the breakdown structure
-      // arrives top-down rather than all at once.
-      const workstreamBlocks = Array.from(document.querySelectorAll('[data-ws-block]'));
-      workstreamBlocks.forEach((block, index) => {
-        block.style.setProperty('--ws-emerge-delay', (180 + index * 80) + 'ms');
-        block.classList.add('is-emerging');
-      });
-      const workstreamChildren = Array.from(document.querySelectorAll('[data-ws-children]'));
-      workstreamChildren.forEach((children, index) => {
-        const baseDelay = index * 210;
-        children.dataset.drawBaseDelay = String(baseDelay);
-        animateHierarchyRows(children, baseDelay);
-      });
-      syncToggleAllControl();
-      queueTreeLayout(true);
-      window.setTimeout(() => queueTreeLayout(false), 760 + Math.max(0, workstreamChildren.length - 1) * 210);
-      _scheduleSizeSync([24, 240, 760, 1020]);
-      bindLaunchCta(scaffold);
-
-      // Route the footer "Open Live View" anchor through openWidgetLink —
-      // inside the claude.ai MCP sandbox, plain `target="_blank"` is blocked
-      // by iframe sandbox flags, so the click silently does nothing. The SDK
-      // hook dispatches a ui/open-link postMessage to the host, which actually
-      // opens the URL.
-      const openLiveAnchor = document.querySelector('[data-open-live-view]');
-      if (openLiveAnchor) {
-        openLiveAnchor.addEventListener('click', (evt) => {
-          evt.preventDefault();
-          const target = openLiveAnchor.getAttribute('href');
-          if (typeof openWidgetLink === 'function') {
-            openWidgetLink(target, evt);
-          } else if (typeof window !== 'undefined') {
-            window.open(target, '_blank', 'noopener,noreferrer');
-          }
+      var footer = document.getElementById('scaffoldFooter');
+      applyFooter(footer, view);
+      if (footer) {
+        footer.addEventListener('ox-primary', () => {
+          var state = footer.getAttribute('state');
+          if (state === 'needs-you' || state === 'failed') launchInitiative();
         });
+      }
+      if (typeof document !== 'undefined') document.title = view.viewState.header + ' - OrgX';
+      Array.from(document.querySelectorAll('.node-toggle')).forEach((btn) => {
+        btn.addEventListener('click', () => window.toggleNode(btn));
+      });
+      var toggleAll = document.querySelector('[data-toggle-all]');
+      if (toggleAll) toggleAll.addEventListener('click', () => window.toggleAllWorkstreams(toggleAll));
+      syncToggleAllControl();
+      bindOpenLinks();
+      _scheduleSizeSync([24, 240, 760]);
+      if (isDemo && launch.phase === 'idle' && (demoState === 'launched' || demoState === 'launch-failed') && !render.autoLaunched) {
+        // Gallery only: play the launch so the footer's states can be seen.
+        render.autoLaunched = true;
+        window.setTimeout(launchInitiative, 400);
       }
     };
 
-    window.addEventListener('resize', function(){ queueTreeLayout(false); _scheduleSizeSync([24, 180]); });
+    // Route "Open Live View" through openWidgetLink: inside the MCP sandbox a
+    // plain target="_blank" is blocked, so the host has to open the URL.
+    var bindOpenLinks = () => {
+      Array.from(document.querySelectorAll('[data-open-live-view]')).forEach((button) => {
+        button.addEventListener('click', (evt) => {
+          evt.preventDefault();
+          var target = button.getAttribute('data-href');
+          if (!target) return;
+          var proceed = typeof openWidgetLink === 'function' ? openWidgetLink(target, evt) : true;
+          if (proceed !== false && typeof window !== 'undefined') window.open(target, '_blank', 'noopener,noreferrer');
+        });
+      });
+    };
+
+    window.addEventListener('resize', function(){ _scheduleSizeSync([24, 180]); });
 
     if(isDemo) applyBootPayload();
     else initWidget({

@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-10-02T00:37:49.555Z",
-  "sourceHash": "989cf419cd5941a3",
+  "generatedAt": "2026-10-02T01:30:22.456Z",
+  "sourceHash": "1b4de35e986d46a1",
   "version": "1.0.0",
-  "totalTools": 91,
+  "totalTools": 92,
   "categories": [
     "Agents",
     "Billing",
@@ -1663,6 +1663,49 @@
       "readOnly": true,
       "source": "chatgpt",
       "profiles": []
+    },
+    {
+      "id": "orgx_panel_snapshot",
+      "title": "OrgX panel",
+      "description": "App-only: the OrgX panel in the ChatGPT sidebar and beside a conversation. Returns what needs your decision (at most three, most urgent first), the review packet for one of them, and the last output a person accepted. USE WHEN: the OrgX panel opens or refreshes. NEXT: the panel shows Approve and Send back when the decision can be settled there, otherwise it links to the decision in OrgX. DO NOT USE: from a model; models read decisions with orgx_search. Read-only.",
+      "category": "Decisions",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "focus": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "decision",
+                "description": "Only decisions can be selected"
+              },
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "Decision UUID"
+              }
+            },
+            "required": [
+              "type",
+              "id"
+            ],
+            "additionalProperties": false,
+            "description": "Optional decision to show as the review packet. Defaults to the most urgent pending decision."
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "initiatives:read"
+      ],
+      "readOnly": true,
+      "source": "inline",
+      "profiles": [
+        "v2",
+        "chatgpt"
+      ]
     },
     {
       "id": "reject_decision",

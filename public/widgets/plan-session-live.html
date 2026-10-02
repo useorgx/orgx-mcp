@@ -6,9 +6,11 @@
   <title>Plan Session — OrgX</title>
 
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2302040a'/%3E%3Cpath d='M18 20h28M18 30h28M18 40h20' stroke='%236366f1' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="shared/kit/ox-tokens.css" />
   <link rel="stylesheet" href="shared/tokens.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
+  <script src="shared/kit/ox-elements.js"></script>
 
   <script>
     (function syncPreviewContext() {
@@ -19,976 +21,182 @@
   </script>
 
   <style>
-    :root,
-    :root[data-theme="light"] {
-      --ox-bg: #f8fafc;
-      --ox-panel: rgba(255, 255, 255, 0.97);
-      --ox-border: rgba(15, 23, 42, 0.08);
-      --ox-border-strong: rgba(15, 23, 42, 0.15);
-      --ox-text: #0f172a;
-      --ox-text-muted: #64748b;
-      --ox-text-dim: #94a3b8;
-      --ox-well-bg: rgba(241, 245, 249, 0.84);
-      --ox-well-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
-      --ox-grid: rgba(15, 23, 42, 0.03);
-      --ox-shadow:
-        0 24px 54px -36px rgba(15, 23, 42, 0.24),
-        0 8px 24px -22px rgba(15, 23, 42, 0.2);
-    }
+    /* Creation mode keeps its iris identity; canvas Q4 and Q5 supply the shape. */
+    :root { --ox-primary: #6366f1; --ox-primary-rgb: 99, 102, 241; }
 
-    @media (prefers-color-scheme: dark) {
-      :root:not([data-theme="light"]) {
-        --ox-bg: #02040a;
-        --ox-panel: rgba(10, 15, 22, 0.96);
-        --ox-border: rgba(255, 255, 255, 0.075);
-        --ox-border-strong: rgba(255, 255, 255, 0.16);
-        --ox-text: #f8fafc;
-        --ox-text-muted: rgba(255, 255, 255, 0.52);
-        --ox-text-dim: rgba(255, 255, 255, 0.3);
-        --ox-well-bg: rgba(0, 0, 0, 0.26);
-        --ox-well-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
-        --ox-grid: rgba(255, 255, 255, 0.018);
-        --ox-shadow:
-          0 24px 56px -20px rgba(0, 0, 0, 0.64),
-          inset 0 1px 0 rgba(255, 255, 255, 0.045);
-      }
-    }
-
-    :root[data-theme="dark"] {
-      --ox-bg: #02040a;
-      --ox-panel: rgba(10, 15, 22, 0.96);
-      --ox-border: rgba(255, 255, 255, 0.075);
-      --ox-border-strong: rgba(255, 255, 255, 0.16);
-      --ox-text: #f8fafc;
-      --ox-text-muted: rgba(255, 255, 255, 0.52);
-      --ox-text-dim: rgba(255, 255, 255, 0.3);
-      --ox-well-bg: rgba(0, 0, 0, 0.26);
-      --ox-well-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
-      --ox-grid: rgba(255, 255, 255, 0.018);
-      --ox-shadow:
-        0 24px 56px -20px rgba(0, 0, 0, 0.64),
-        inset 0 1px 0 rgba(255, 255, 255, 0.045);
-    }
-
-    :root {
-      --ox-primary: #6366f1;
-      --ox-primary-rgb: 99, 102, 241;
-      --ox-primary-contrast: #ffffff;
-      --ox-lime: #84cc16;
-      --ox-warning: #d97706;
-      --ox-danger: #e11d48;
-      --plan-shell-max: 760px;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      :root:not([data-theme="light"]) {
-        --ox-primary: #818cf8;
-        --ox-primary-rgb: 129, 140, 248;
-        --ox-lime: #d4ed31;
-        --ox-warning: #fbbf24;
-        --ox-danger: #f43f5e;
-      }
-    }
-
-    :root[data-theme="dark"] {
-      --ox-primary: #818cf8;
-      --ox-primary-rgb: 129, 140, 248;
-      --ox-lime: #d4ed31;
-      --ox-warning: #fbbf24;
-      --ox-danger: #f43f5e;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
+    * { box-sizing: border-box; }
     body {
-      min-height: 100vh;
       margin: 0;
-      padding: 28px 16px;
+      padding: 12px 12px 18px;
+      min-height: 100vh;
       overflow-x: hidden;
-      background: var(--ox-bg);
-      color: var(--ox-text);
       font-family: var(--ox-font);
       -webkit-font-smoothing: antialiased;
     }
+    .container { max-width: 680px; margin: 0 auto; position: relative; }
+    [hidden] { display: none !important; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-    body::before {
+    /* The footer's primary is the one amber action, whatever the widget accent. */
+    ox-footer { --ox-primary: #fbbf24; }
+
+    .wcard {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      background: var(--ox-panel);
+      border: 1px solid var(--ox-border);
+      border-radius: 16px;
+      box-shadow: var(--ox-shadow);
+      --edge-rgb: 100, 116, 139;
+    }
+    .wcard::after {
       content: "";
-      position: fixed;
-      inset: 0;
-      z-index: -1;
+      position: absolute;
+      top: 0; left: 16px; right: 16px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(var(--edge-rgb), .7), transparent);
       pointer-events: none;
-      background:
-        radial-gradient(
-          ellipse 72% 48% at 50% -10%,
-          rgba(var(--ox-primary-rgb), 0.085),
-          transparent 68%
-        ),
-        linear-gradient(var(--ox-grid) 1px, transparent 1px),
-        linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px);
-      background-size: 100% 100%, 20px 20px, 20px 20px;
     }
-
-    button,
-    select,
-    textarea {
-      font: inherit;
+    .wcard[data-edge="amber"] { --edge-rgb: 251, 191, 36; }
+    .wcard[data-edge="teal"] { --edge-rgb: 0, 201, 167; }
+    .wcard[data-edge="red"] { --edge-rgb: 244, 63, 94; }
+    .hd { display: flex; align-items: center; gap: 10px; padding: 14px 18px 0; min-width: 0; }
+    .hd > ox-glyph { --ox-glyph-size: 18px; flex: none; }
+    .kind {
+      font-size: 11px; font-weight: 600; line-height: 1;
+      letter-spacing: .04em; text-transform: uppercase;
+      color: var(--ox-text-muted); white-space: nowrap;
     }
-
-    .container {
-      width: 100%;
-      max-width: var(--plan-shell-max);
-      margin: 0 auto;
+    .src { font-size: 12.5px; color: var(--ox-text-muted); white-space: nowrap; }
+    .src b { color: var(--ox-text-2); font-weight: 600; }
+    .sp { flex: 1; }
+    .meta { font-size: 11.5px; line-height: 1.35; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
+    .bd { padding: 10px 18px 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+    .pk-q {
+      margin: 0; font-size: 22px; font-weight: 700; line-height: 1.18;
+      letter-spacing: -.025em; color: var(--ox-text);
+      text-wrap: balance; overflow-wrap: anywhere;
     }
-
-    .plan-shell {
-      margin: 0;
+    .note { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ox-text-muted); text-wrap: pretty; }
+    /* Q4: what you said last time, in one line above the work. */
+    .last-note { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--ox-text); }
+    .last-note span { color: var(--ox-text-muted); }
+    .plan-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: -4px; flex-wrap: wrap; }
+    .plan-toggle {
+      min-height: 44px; padding: 0 10px; margin: -10px -10px -10px 0; border: 0; border-radius: 9px; background: none;
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--ox-text-2); font-family: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer;
     }
+    .plan-toggle:hover { background: var(--ox-hover); color: var(--ox-text); }
+    .plan-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
 
-    .plan-shell .ox-card {
-      margin: 0;
-    }
-
-    .plan-shell .ox-card-inner {
-      padding: 24px;
-    }
-
-    .plan-hero {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      align-items: start;
-      gap: 20px;
-    }
-
-    .plan-kicker {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      min-height: 20px;
-      color: var(--ox-text-muted);
-      font-family: var(--ox-mono);
-      font-size: 0.64rem;
-      font-weight: 700;
-      letter-spacing: 0.13em;
-      line-height: 1;
-      text-transform: uppercase;
-    }
-
-    .plan-live-dot {
-      width: 7px;
-      height: 7px;
-      flex: 0 0 auto;
-      border-radius: 999px;
-      background: var(--ox-primary);
-      box-shadow: 0 0 12px rgba(var(--ox-primary-rgb), 0.48);
-    }
-
-    [data-plan-status="active"] .plan-live-dot {
-      animation: plan-breathe 2.2s var(--ox-ease-standard) infinite;
-    }
-
-    [data-plan-status="complete"] .plan-live-dot {
-      background: var(--ox-lime);
-      box-shadow: none;
-    }
-
-    .plan-title {
-      max-width: 22ch;
-      margin: 10px 0 0;
-      color: var(--ox-text);
-      font-size: clamp(1.45rem, 4vw, 2.15rem);
-      font-weight: 700;
-      letter-spacing: -0.05em;
-      line-height: 1.04;
-      overflow-wrap: anywhere;
-    }
-
-    .plan-summary {
-      margin: 10px 0 0;
-      color: var(--ox-text-muted);
-      font-size: 0.88rem;
-      line-height: 1.55;
-    }
-
-    .plan-version {
-      display: grid;
-      min-width: 64px;
-      min-height: 64px;
-      place-items: center;
-      align-content: center;
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.2);
-      border-radius: 14px;
-      background: rgba(var(--ox-primary-rgb), 0.075);
-      color: var(--ox-primary);
-    }
-
-    .plan-version__value {
-      font-family: var(--ox-mono);
-      font-size: 1.08rem;
-      font-weight: 700;
-      letter-spacing: -0.04em;
-      line-height: 1;
-    }
-
-    .plan-version__label {
-      margin-top: 5px;
-      font-family: var(--ox-mono);
-      font-size: 0.52rem;
-      font-weight: 700;
-      letter-spacing: 0.11em;
-      line-height: 1;
-      text-transform: uppercase;
-    }
-
-    .plan-signal {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      align-items: center;
-      gap: 16px;
-      margin-top: 22px;
-      padding: 14px 0 16px;
-      border-top: 1px solid var(--ox-border);
-      border-bottom: 1px solid var(--ox-border);
-    }
-
-    .plan-signal__copy {
-      min-width: 0;
-    }
-
-    .plan-signal__question {
-      color: var(--ox-text);
-      font-size: 0.9rem;
-      font-weight: 650;
-      line-height: 1.35;
-    }
-
-    .plan-signal__meta {
-      margin-top: 4px;
-      color: var(--ox-text-muted);
-      font-family: var(--ox-mono);
-      font-size: 0.62rem;
-      letter-spacing: 0.065em;
-      line-height: 1.4;
-      text-transform: uppercase;
-    }
-
-    .plan-progress {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      width: min(180px, 30vw);
-    }
-
-    .plan-progress__segment {
-      height: 5px;
-      flex: 1 1 0;
-      overflow: hidden;
-      border-radius: 999px;
-      background: var(--ox-border);
-    }
-
-    .plan-progress__segment::after {
-      content: "";
-      display: block;
-      width: 100%;
-      height: 100%;
-      border-radius: inherit;
-      background: rgba(var(--ox-primary-rgb), 0.34);
-    }
-
-    .plan-progress__segment:first-child::after,
-    [data-plan-status="complete"] .plan-progress__segment::after {
-      background: var(--ox-primary);
-    }
-
-    .plan-progress__segment[data-empty="true"]::after {
-      background: var(--ox-border);
-    }
-
-    .plan-lenses {
-      display: inline-grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 4px;
-      margin-top: 16px;
-      padding: 3px;
-      border-radius: 12px;
-      background: var(--ox-well-bg);
-      box-shadow: var(--ox-well-shadow);
-    }
-
+    .plan-lenses { display: flex; gap: 4px; border-bottom: 1px solid var(--ox-border); }
     .plan-lens {
-      min-height: 44px;
-      padding: 0 16px;
-      border: 0;
-      border-radius: 9px;
-      background: transparent;
-      color: var(--ox-text-muted);
-      cursor: pointer;
-      font-size: 0.78rem;
-      font-weight: 650;
-      transition:
-        background var(--ox-dur-fast) var(--ox-ease-standard),
-        color var(--ox-dur-fast) var(--ox-ease-standard);
+      min-height: 44px; padding: 0 12px; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent;
+      background: none; color: var(--ox-text-muted); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
     }
+    .plan-lens[aria-selected="true"] { color: var(--ox-text); border-bottom-color: var(--ox-text); }
+    .plan-lens:hover { color: var(--ox-text); }
 
-    .plan-lens[aria-selected="true"] {
-      background: var(--ox-panel);
-      color: var(--ox-text);
-      box-shadow: 0 8px 18px -16px rgba(0, 0, 0, 0.5);
-    }
-
-    .plan-lens:focus-visible,
-    .plan-map__button:focus-visible,
-    .plan-section-select:focus-visible,
-    .plan-expand:focus-visible,
-    .plan-textarea:focus-visible {
-      outline: 2px solid rgba(var(--ox-primary-rgb), 0.72);
-      outline-offset: 2px;
-    }
-
-    .plan-panel {
-      margin-top: 18px;
-    }
-
-    .plan-workbench {
-      display: grid;
-      grid-template-columns: minmax(148px, 0.32fr) minmax(0, 1fr);
-      gap: 24px;
-      min-width: 0;
-    }
-
-    .plan-map {
-      min-width: 0;
-    }
-
-    .plan-map__label,
-    .plan-section__kicker,
-    .plan-composer__label,
-    .plan-activity__meta {
-      color: var(--ox-text-muted);
-      font-family: var(--ox-mono);
-      font-size: 0.6rem;
-      font-weight: 700;
-      letter-spacing: 0.11em;
-      line-height: 1.3;
-      text-transform: uppercase;
-    }
-
-    .plan-map__list {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      margin-top: 8px;
-    }
-
+    .plan-workbench { display: grid; grid-template-columns: minmax(150px, 190px) minmax(0, 1fr); gap: 14px; align-items: start; }
+    .plan-map { display: flex; flex-direction: column; gap: 2px; }
     .plan-map__button {
-      position: relative;
-      display: grid;
-      grid-template-columns: 28px minmax(0, 1fr);
-      align-items: center;
-      gap: 8px;
-      width: 100%;
-      min-height: 46px;
-      padding: 7px 8px;
-      overflow: hidden;
-      border: 0;
-      border-radius: 10px;
-      background: transparent;
-      color: var(--ox-text-muted);
-      cursor: pointer;
-      text-align: left;
-      transition:
-        background var(--ox-dur-fast) var(--ox-ease-standard),
-        color var(--ox-dur-fast) var(--ox-ease-standard);
+      display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; align-items: center;
+      min-height: 44px; padding: 6px 8px; border: 0; border-radius: 9px; background: none; text-align: left;
+      color: var(--ox-text-muted); font-family: inherit; font-size: 13px; cursor: pointer;
     }
-
-    .plan-map__button::before {
-      content: "";
-      position: absolute;
-      top: 9px;
-      bottom: 9px;
-      left: 0;
-      width: 2px;
-      border-radius: 999px;
-      background: var(--ox-primary);
-      opacity: 0;
-      transform: scaleY(0.45);
-      transition:
-        opacity var(--ox-dur-fast) var(--ox-ease-standard),
-        transform var(--ox-dur-fast) var(--ox-ease-standard);
-    }
-
-    .plan-map__button:hover {
-      background: rgba(var(--ox-primary-rgb), 0.06);
-      color: var(--ox-text);
-    }
-
-    .plan-map__button[aria-current="true"] {
-      background: rgba(var(--ox-primary-rgb), 0.085);
-      color: var(--ox-text);
-    }
-
-    .plan-map__button[aria-current="true"]::before {
-      opacity: 1;
-      transform: scaleY(1);
-    }
-
-    .plan-map__index {
-      color: var(--ox-text-dim);
-      font-family: var(--ox-mono);
-      font-size: 0.62rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      text-align: center;
-    }
-
-    .plan-map__button[aria-current="true"] .plan-map__index {
-      color: var(--ox-primary);
-    }
-
-    .plan-map__title {
-      min-width: 0;
-      overflow: hidden;
-      font-size: 0.76rem;
-      font-weight: 620;
-      line-height: 1.25;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .plan-section-select-wrap {
-      display: none;
-    }
-
+    .plan-map__button:hover { background: var(--ox-hover); color: var(--ox-text); }
+    .plan-map__button[aria-current="true"] { background: var(--ox-well-bg); color: var(--ox-text); font-weight: 600; }
+    .plan-map__index { font: 500 11px/1 var(--ox-mono); color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
+    .plan-map__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .plan-section-select-wrap { display: none; flex-direction: column; gap: 6px; }
+    .sec-label { font: 600 10.5px/1 var(--ox-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ox-text-muted); }
     .plan-section-select {
-      width: 100%;
-      min-height: 46px;
-      padding: 0 38px 0 12px;
-      border: 1px solid var(--ox-border);
-      border-radius: 12px;
-      background: var(--ox-well-bg);
-      color: var(--ox-text);
+      min-height: 44px; width: 100%; padding: 0 10px; border-radius: 10px;
+      border: 1px solid var(--ox-border-strong); background: var(--ox-panel); color: var(--ox-text);
+      font-family: inherit; font-size: 14px;
     }
 
-    .plan-section {
-      position: relative;
-      min-width: 0;
-      padding-left: 24px;
-    }
-
-    .plan-section::before {
-      content: "";
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      left: 0;
-      width: 1px;
-      background: var(--ox-border);
-    }
-
-    .plan-section__title {
-      max-width: 26ch;
-      margin: 8px 0 0;
-      color: var(--ox-text);
-      font-size: clamp(1.15rem, 3vw, 1.55rem);
-      font-weight: 700;
-      letter-spacing: -0.035em;
-      line-height: 1.15;
-      overflow-wrap: anywhere;
-    }
-
-    .plan-section__body-wrap {
-      position: relative;
-      max-height: 280px;
-      margin-top: 14px;
-      overflow: hidden;
-    }
-
-    .plan-section__body-wrap.is-expanded {
-      max-height: none;
-    }
-
+    /* Q4: the thing being read sits in one well; nothing nests inside it. */
+    .plan-well { background: var(--ox-well-bg); border-radius: 12px; padding: 14px 16px 10px; min-width: 0; }
+    .plan-section__title { margin: 0 0 6px; font-size: 16px; font-weight: 700; color: var(--ox-text); letter-spacing: -.01em; }
+    .plan-section__body-wrap { position: relative; max-height: 282px; overflow: hidden; }
+    .plan-section__body-wrap.is-expanded { max-height: none; }
     .plan-section__body-wrap[data-clamped="true"]:not(.is-expanded)::after {
-      content: "";
-      position: absolute;
-      right: 0;
-      bottom: 0;
-      left: 0;
-      height: 72px;
-      pointer-events: none;
-      background: linear-gradient(transparent, var(--ox-panel));
+      content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 56px; pointer-events: none;
+      background: linear-gradient(transparent, var(--ox-well-bg));
     }
-
-    .plan-section__body {
-      color: var(--ox-text-muted);
-      font-size: 0.87rem;
-      line-height: 1.65;
-      overflow-wrap: anywhere;
-    }
-
-    .plan-section__body p + p,
-    .plan-section__body p + ul,
-    .plan-section__body p + ol,
-    .plan-section__body ul + p,
-    .plan-section__body ol + p,
-    .plan-section__body ul + ul,
-    .plan-section__body ol + ol {
-      margin-top: 10px;
-    }
-
-    .plan-section__body ul,
-    .plan-section__body ol {
-      margin: 0;
-      padding-left: 20px;
-    }
-
-    .plan-section__body li + li {
-      margin-top: 7px;
-    }
-
-    .plan-section__body strong {
-      color: var(--ox-text);
-      font-weight: 650;
-    }
-
-    .plan-section__body code {
-      padding: 2px 5px;
-      border-radius: 4px;
-      background: var(--ox-well-bg);
-      color: var(--ox-text);
-      font-family: var(--ox-mono);
-      font-size: 0.82em;
-    }
-
+    .plan-section__body { font-size: 14px; line-height: 1.6; color: var(--ox-text-2); overflow-wrap: anywhere; }
+    .plan-section__body p { margin: 0 0 8px; }
+    .plan-section__body ul, .plan-section__body ol { margin: 0 0 8px; padding-left: 20px; }
+    .plan-section__body li { margin: 2px 0; }
+    .plan-section__body code { font-family: var(--ox-mono); font-size: .9em; }
     .plan-expand {
-      display: none;
-      min-height: 44px;
-      margin-top: 6px;
-      padding: 0;
-      border: 0;
-      background: transparent;
-      color: var(--ox-primary);
-      cursor: pointer;
-      font-size: 0.76rem;
-      font-weight: 650;
+      display: none; min-height: 44px; padding: 0; border: 0; background: none;
+      color: var(--ox-text-2); font-family: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer;
     }
+    .plan-expand.is-visible { display: inline-flex; align-items: center; }
 
-    .plan-expand.is-visible {
-      display: inline-flex;
-      align-items: center;
-    }
+    .plan-activity { display: flex; flex-direction: column; }
+    .plan-activity__item { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-top: 1px solid var(--ox-border); }
+    .plan-activity__item:first-child { border-top: 0; }
+    .plan-activity__item ox-glyph { --ox-glyph-size: 16px; margin-top: 2px; }
+    .plan-activity__note { font-size: 13.5px; line-height: 1.45; color: var(--ox-text); margin-bottom: 2px; }
 
-    .plan-primary-zone {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-      margin-top: 22px;
-      padding-top: 18px;
-      border-top: 1px solid var(--ox-border);
-    }
-
-    .plan-primary-copy {
-      max-width: 42ch;
-      color: var(--ox-text-muted);
-      font-size: 0.78rem;
-      line-height: 1.5;
-    }
-
-    .plan-primary-zone .ox-action-btn {
-      flex: 0 0 auto;
-    }
-
-    .plan-complete-readout {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      margin-top: 18px;
-      padding: 16px 0;
-    }
-
-    .plan-complete-readout__copy {
-      color: var(--ox-text-muted);
-      font-size: 0.8rem;
-      line-height: 1.5;
-    }
-
-    .plan-complete-readout__copy strong {
-      display: block;
-      margin-bottom: 3px;
-      color: var(--ox-text);
-      font-size: 0.88rem;
-      font-weight: 650;
-    }
-
-    .plan-composer {
-      display: none;
-      margin-top: 20px;
-      padding: 18px;
-      border-radius: 14px;
-      background: var(--ox-well-bg);
-      box-shadow: var(--ox-well-shadow);
-    }
-
-    .plan-composer.is-open {
-      display: block;
-      animation: plan-composer-in var(--ox-dur-base) var(--ox-ease-entry) both;
-    }
-
-    .plan-composer__title {
-      margin: 7px 0 0;
-      color: var(--ox-text);
-      font-size: 0.95rem;
-      font-weight: 650;
-      line-height: 1.35;
-    }
-
+    .plan-composer { display: flex; flex-direction: column; gap: 8px; }
+    .plan-composer__title { font-size: 13px; font-weight: 650; color: var(--ox-text); }
     .plan-textarea {
-      display: block;
-      width: 100%;
-      min-height: 104px;
-      margin-top: 14px;
-      padding: 12px 14px;
-      resize: vertical;
-      border: 1px solid var(--ox-border);
-      border-radius: 12px;
-      background: var(--ox-panel);
-      color: var(--ox-text);
-      line-height: 1.5;
+      width: 100%; min-height: 96px; resize: vertical; padding: 10px 12px;
+      border-radius: 10px; border: 1px solid var(--ox-border-strong); background: var(--ox-panel);
+      color: var(--ox-text); font-family: inherit; font-size: 14px; line-height: 1.5;
     }
+    .plan-textarea:focus { outline: 2px solid rgba(251, 191, 36, .55); outline-offset: 1px; }
+    .plan-feedback { min-height: 18px; font-size: 12.5px; color: var(--ox-text-muted); }
+    .plan-feedback[data-tone="error"] { color: var(--ox-danger); }
 
-    .plan-textarea::placeholder {
-      color: var(--ox-text-muted);
+    .ft-link {
+      min-height: 36px; padding: 0 12px; border: 0; border-radius: 9px; background: none;
+      display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
+      color: var(--ox-text-2); font-family: inherit; font-size: 12.5px; font-weight: 650; line-height: 1; white-space: nowrap; cursor: pointer;
     }
+    .ft-link:hover { background: var(--ox-hover); color: var(--ox-text); }
 
-    .plan-composer__toolbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-top: 12px;
+    /* Loading keeps the populated footprint so the card never jumps. */
+    .sk { display: block; height: 10px; border-radius: 4px; background: var(--ox-skeleton, rgba(127, 127, 127, .12)); }
+
+    @media (max-width: 560px) {
+      .plan-workbench { grid-template-columns: 1fr; }
+      .plan-map { display: none; }
+      .plan-section-select-wrap { display: flex; }
     }
-
-    .plan-composer__hint,
-    .plan-feedback {
-      color: var(--ox-text-muted);
-      font-size: 0.72rem;
-      line-height: 1.45;
+    @media (max-width: 420px) {
+      .ft-link .ft-long { display: none; }
+      .ft-link { padding: 0 8px; }
     }
-
-    .plan-composer__actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex: 0 0 auto;
-    }
-
-    .plan-feedback {
-      min-height: 20px;
-      margin-top: 10px;
-    }
-
-    .plan-feedback[data-tone="success"] {
-      color: var(--ox-lime);
-    }
-
-    .plan-feedback[data-tone="error"] {
-      color: var(--ox-danger);
-    }
-
-    .plan-activity {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .plan-activity__item {
-      display: grid;
-      grid-template-columns: 8px minmax(0, 1fr);
-      gap: 12px;
-      padding: 14px 0;
-      border-bottom: 1px solid var(--ox-border);
-    }
-
-    .plan-activity__item:last-child {
-      border-bottom: 0;
-    }
-
-    .plan-activity__dot {
-      width: 7px;
-      height: 7px;
-      margin-top: 5px;
-      border-radius: 999px;
-      background: var(--ox-primary);
-      box-shadow: 0 0 10px rgba(var(--ox-primary-rgb), 0.38);
-    }
-
-    .plan-activity__note {
-      margin-top: 5px;
-      color: var(--ox-text);
-      font-size: 0.84rem;
-      line-height: 1.5;
-      overflow-wrap: anywhere;
-    }
-
-    .plan-empty-activity {
-      padding: 36px 0;
-      color: var(--ox-text-muted);
-      text-align: center;
-    }
-
-    .plan-state-panel {
-      padding: 46px 20px;
-      text-align: center;
-    }
-
-    .plan-state-panel__signal {
-      display: grid;
-      width: 48px;
-      height: 48px;
-      margin: 0 auto 16px;
-      place-items: center;
-      border-radius: 14px;
-      background: rgba(var(--ox-primary-rgb), 0.09);
-      color: var(--ox-primary);
-    }
-
-    .plan-state-panel[data-tone="error"] .plan-state-panel__signal {
-      background: rgba(244, 63, 94, 0.09);
-      color: var(--ox-danger);
-    }
-
-    .plan-state-panel__title {
-      margin: 0;
-      color: var(--ox-text);
-      font-size: 1.05rem;
-      font-weight: 650;
-      line-height: 1.3;
-    }
-
-    .plan-state-panel__copy {
-      max-width: 420px;
-      margin: 8px auto 0;
-      color: var(--ox-text-muted);
-      font-size: 0.84rem;
-      line-height: 1.55;
-    }
-
-    .plan-skeleton {
-      display: grid;
-      gap: 16px;
-      padding: 6px 0 10px;
-    }
-
-    .plan-skeleton__header {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 64px;
-      gap: 20px;
-    }
-
-    .plan-skeleton__stack {
-      display: grid;
-      gap: 10px;
-    }
-
-    .plan-skeleton__line {
-      height: 14px;
-    }
-
-    .plan-skeleton__line--title {
-      width: 64%;
-      height: 30px;
-    }
-
-    .plan-skeleton__line--short {
-      width: 38%;
-    }
-
-    .plan-skeleton__version {
-      width: 64px;
-      height: 64px;
-      border-radius: 14px;
-    }
-
-    .plan-skeleton__workbench {
-      display: grid;
-      grid-template-columns: 150px minmax(0, 1fr);
-      gap: 24px;
-      margin-top: 18px;
-      padding-top: 18px;
-      border-top: 1px solid var(--ox-border);
-    }
-
-    .plan-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      margin-top: 22px;
-      padding-top: 18px;
-      border-top: 1px solid var(--ox-border);
-    }
-
-    .plan-footer__meta {
-      color: var(--ox-text-muted);
-      font-family: var(--ox-mono);
-      font-size: 0.62rem;
-      letter-spacing: 0.07em;
-      line-height: 1.45;
-      text-transform: uppercase;
-    }
-
-    .plan-footer .ox-link-btn {
-      flex: 0 0 auto;
-    }
-
-    [hidden] {
-      display: none !important;
-    }
-
-    @keyframes plan-breathe {
-      0%,
-      100% {
-        opacity: 1;
-        transform: scale(1);
-      }
-      50% {
-        opacity: 0.44;
-        transform: scale(0.78);
-      }
-    }
-
-    @keyframes plan-composer-in {
-      from {
-        opacity: 0;
-        transform: translateY(7px) scale(0.99);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
-    }
-
-    @media (max-width: 720px) {
-      body {
-        padding: 18px 12px;
-      }
-
-      .plan-shell .ox-card-inner {
-        padding: 20px;
-      }
-
-      .plan-workbench {
-        display: block;
-      }
-
-      .plan-map {
-        display: none;
-      }
-
-      .plan-section-select-wrap {
-        display: block;
-        margin-bottom: 18px;
-      }
-
-      .plan-section {
-        padding-left: 0;
-      }
-
-      .plan-section::before {
-        display: none;
-      }
-    }
-
-    @media (max-width: 520px) {
-      .plan-hero {
-        grid-template-columns: minmax(0, 1fr) 56px;
-        gap: 12px;
-      }
-
-      .plan-version {
-        min-width: 56px;
-        min-height: 56px;
-      }
-
-      .plan-signal {
-        grid-template-columns: minmax(0, 1fr);
-        gap: 10px;
-      }
-
-      .plan-progress {
-        width: 100%;
-      }
-
-      .plan-lenses {
-        display: grid;
-        width: 100%;
-      }
-
-      .plan-primary-zone,
-      .plan-complete-readout,
-      .plan-composer__toolbar,
-      .plan-footer {
-        align-items: stretch;
-        flex-direction: column;
-      }
-
-      .plan-primary-zone .ox-action-btn,
-      .plan-composer__actions,
-      .plan-composer__actions .ox-action-btn,
-      .plan-footer .ox-link-btn {
-        width: 100%;
-      }
-
-      .plan-composer__actions {
-        display: grid;
-        grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr);
-      }
-
-      .plan-footer__meta {
-        text-align: center;
-      }
-
-      .plan-skeleton__workbench {
-        grid-template-columns: 1fr;
-      }
+    @media (max-width: 480px) {
+      .hd { padding: 12px 14px 0; }
+      .bd { padding: 10px 14px 14px; }
+      .pk-q { font-size: 19px; }
+      .plan-well { padding: 12px 12px 8px; }
     }
   </style>
   <link rel="stylesheet" href="shared/widget-theme.css" />
 </head>
 <body>
   <main class="container" aria-live="polite">
-    <div class="widget-shell-card plan-shell animate-in">
-      <div class="ox-card">
-        <div class="ox-card-inner" data-widget-root>
-          <div class="plan-skeleton" data-loading role="status" aria-live="polite">
-            <span class="sr-only">Loading plan session…</span>
-            <div class="plan-skeleton__header">
-              <div class="plan-skeleton__stack">
-                <div class="ox-skeleton plan-skeleton__line plan-skeleton__line--short"></div>
-                <div class="ox-skeleton plan-skeleton__line plan-skeleton__line--title"></div>
-                <div class="ox-skeleton plan-skeleton__line"></div>
-              </div>
-              <div class="ox-skeleton plan-skeleton__version"></div>
-            </div>
-            <div class="plan-skeleton__workbench">
-              <div class="plan-skeleton__stack">
-                <div class="ox-skeleton plan-skeleton__line"></div>
-                <div class="ox-skeleton plan-skeleton__line"></div>
-                <div class="ox-skeleton plan-skeleton__line"></div>
-              </div>
-              <div class="plan-skeleton__stack">
-                <div class="ox-skeleton plan-skeleton__line plan-skeleton__line--short"></div>
-                <div class="ox-skeleton plan-skeleton__line plan-skeleton__line--title"></div>
-                <div class="ox-skeleton plan-skeleton__line"></div>
-                <div class="ox-skeleton plan-skeleton__line"></div>
-              </div>
-            </div>
-          </div>
-          <div data-content hidden></div>
+    <div class="widget-shell-card plan-shell" data-widget-root>
+      <article class="wcard" data-loading role="status" aria-live="polite">
+        <span class="sr-only">Loading plan session…</span>
+        <div class="hd"><span class="sk" style="width:30%"></span></div>
+        <div class="bd">
+          <span class="sk" style="width:72%;height:24px"></span>
+          <span class="sk" style="width:40%"></span>
+          <span class="sk" style="width:100%;height:150px;border-radius:12px"></span>
         </div>
-      </div>
+        <ox-footer variant="reads" state="loading"></ox-footer>
+      </article>
+      <div data-content hidden></div>
     </div>
   </main>
 
@@ -1189,6 +397,7 @@
           updatedAt: firstString([source.last_edit_at, source.updated_at, source.started_at]),
           domains: Array.isArray(source.domains_detected) ? source.domains_detected : [],
           demo: source.__demo === true,
+          demoSendFails: source.__demo === true && source.__send_fails === true,
         };
       }
 
@@ -1260,14 +469,21 @@
 
       function icon(name, size) {
         var paths = {
-          plan: '<path d="M4 6h16M4 12h10M4 18h16"/>',
-          arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
-          edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/>',
-          refresh: '<path d="M20 11a8.1 8.1 0 1 0 .2 4M20 4v7h-7"/>',
-          warning: '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.7 2.5 17.2A2 2 0 0 0 4.2 20h15.6a2 2 0 0 0 1.7-2.8L13.7 3.7a2 2 0 0 0-3.4 0Z"/>',
+          ext: '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/>',
+          chevron: '<path d="m6 9 6 6 6-6"/>',
         };
         return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths[name] + '</svg>';
       }
+
+      function plural(count, word) {
+        return count + ' ' + word + (count === 1 ? '' : 's');
+      }
+
+      var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+      /* The footer is the state machine (SM3 finishes-here): needs you,
+         sending, recorded, not sent. The note survives every failure. */
+      var guidance = { phase: 'idle', message: '', draft: '', commandId: null, timer: null };
 
       function renderLoading() {
         document.querySelector('[data-loading]').hidden = false;
@@ -1275,36 +491,28 @@
         window.OrgXWidgetRuntime.reportSize();
       }
 
-      function renderError(plan) {
-        var content = document.querySelector('[data-content]');
+      function showContent() {
         document.querySelector('[data-loading]').hidden = true;
+        var content = document.querySelector('[data-content]');
         content.hidden = false;
+        return content;
+      }
+
+      function renderError(plan) {
+        var content = showContent();
         content.innerHTML =
-          '<section class="plan-state-panel" data-tone="error">' +
-            '<div class="plan-state-panel__signal">' + icon('warning', 22) + '</div>' +
-            '<h1 class="plan-state-panel__title">' + escapeHtml(plan.title || 'Plan unavailable') + '</h1>' +
-            '<p class="plan-state-panel__copy">' + escapeHtml(plan.error || 'The plan data could not be read.') + ' No edits were sent. Retry the current tool call.</p>' +
-            '<button type="button" class="ox-action-btn ox-action-btn--ghost" data-retry style="margin-top:18px;">' +
-              icon('refresh', 16) + ' Retry render' +
-            '</button>' +
-          '</section>';
-        content.querySelector('[data-retry]').addEventListener('click', function retry() {
+          '<article class="wcard" data-edge="red">' +
+            '<div class="hd"><ox-glyph kind="artifact" tone="red"></ox-glyph><span class="kind">Plan</span></div>' +
+            '<div class="bd">' +
+              '<h1 class="pk-q">' + escapeHtml(plan.title || 'Plan unavailable') + '</h1>' +
+              '<p class="note">' + escapeHtml(String(plan.error || 'The plan data could not be read').replace(/[.!?]*\s*$/, '.')) + ' Retry the current tool call.</p>' +
+            '</div>' +
+            '<ox-footer variant="reads" state="failed" heading="Couldn’t load the plan" detail="no edits were sent" action-label="Retry render" data-retry></ox-footer>' +
+          '</article>';
+        content.querySelector('[data-retry]').addEventListener('ox-action', function retry() {
           window.location.reload();
         });
         window.OrgXWidgetRuntime.reportSize();
-      }
-
-      function renderProgress(plan) {
-        var count = Math.max(plan.sections.length, 1);
-        var segments = [];
-        for (var index = 0; index < count; index += 1) {
-          segments.push(
-            '<span class="plan-progress__segment"' +
-              (plan.sections.length ? '' : ' data-empty="true"') +
-            '></span>'
-          );
-        }
-        return '<div class="plan-progress" aria-hidden="true">' + segments.join('') + '</div>';
       }
 
       function renderMap(plan) {
@@ -1322,12 +530,9 @@
           );
         }).join('');
         return (
-          '<nav class="plan-map" aria-label="Plan sections">' +
-            '<div class="plan-map__label">Plan map</div>' +
-            '<div class="plan-map__list">' + buttons + '</div>' +
-          '</nav>' +
+          '<nav class="plan-map" aria-label="Plan sections">' + buttons + '</nav>' +
           '<div class="plan-section-select-wrap">' +
-            '<label class="plan-map__label" for="plan-section-select">Plan section</label>' +
+            '<label class="sec-label" for="plan-section-select">Plan section</label>' +
             '<select class="plan-section-select" id="plan-section-select" data-section-select>' + options + '</select>' +
           '</div>'
         );
@@ -1337,16 +542,14 @@
         var section = plan.sections[state.selectedSection] || plan.sections[0];
         if (!section) {
           return (
-            '<section class="plan-state-panel">' +
-              '<div class="plan-state-panel__signal">' + icon('plan', 22) + '</div>' +
-              '<h2 class="plan-state-panel__title">Plan shell ready</h2>' +
-              '<p class="plan-state-panel__copy">This session exists, but its plan content has not been written yet. Add one concrete outcome, constraint, or next move to shape the first iteration.</p>' +
+            '<section class="plan-well">' +
+              '<h2 class="plan-section__title">Plan shell ready</h2>' +
+              '<div class="plan-section__body"><p>This session exists, but its plan content has not been written yet. Add one concrete outcome, constraint, or next move to shape the first iteration.</p></div>' +
             '</section>'
           );
         }
         return (
-          '<section class="plan-section" aria-labelledby="selected-section-title">' +
-            '<div class="plan-section__kicker">' + (state.selectedSection === 0 ? 'Plan anchor' : 'Section ' + (state.selectedSection + 1)) + '</div>' +
+          '<section class="plan-well" aria-labelledby="selected-section-title">' +
             '<h2 class="plan-section__title" id="selected-section-title">' + escapeHtml(section.heading) + '</h2>' +
             '<div class="plan-section__body-wrap" data-section-body-wrap>' +
               '<div class="plan-section__body" data-section-body>' + renderMarkdownBody(section.body) + '</div>' +
@@ -1358,15 +561,15 @@
 
       function renderActivity(plan) {
         if (!plan.edits.length) {
-          return '<div class="plan-empty-activity">No guidance recorded yet. The plan is still on its first visible pass.</div>';
+          return '<p class="note">No guidance recorded yet. The plan is still on its first visible pass.</p>';
         }
-        return '<div class="plan-activity">' + plan.edits.map(function activity(edit) {
+        return '<div class="plan-activity" role="list">' + plan.edits.map(function activity(edit) {
           return (
-            '<div class="plan-activity__item">' +
-              '<span class="plan-activity__dot" aria-hidden="true"></span>' +
+            '<div class="plan-activity__item" role="listitem">' +
+              '<ox-glyph kind="question"></ox-glyph>' +
               '<div>' +
-                '<div class="plan-activity__meta">' + escapeHtml(edit.author) + ' · ' + escapeHtml(formatRelative(edit.at)) + '</div>' +
                 '<div class="plan-activity__note">' + escapeHtml(edit.note) + '</div>' +
+                '<div class="meta">' + escapeHtml(edit.author) + ' · ' + escapeHtml(formatRelative(edit.at).replace(/^updated /, '')) + '</div>' +
               '</div>' +
             '</div>'
           );
@@ -1379,126 +582,101 @@
           : 'https://useorgx.com/planning';
       }
 
-      function renderFooter(plan) {
-        var meta = [
-          plan.sections.length + (plan.sections.length === 1 ? ' section' : ' sections'),
-          plan.edits.length + (plan.edits.length === 1 ? ' edit' : ' edits'),
-          formatRelative(plan.updatedAt),
-        ].join(' · ');
-        return (
-          '<footer class="plan-footer">' +
-            '<div class="plan-footer__meta">' + escapeHtml(meta) + '</div>' +
-            '<a class="ox-link-btn ox-link-btn--ghost" data-open-plan href="' + escapeHtml(buildPlanUrl(plan)) + '">' +
-              'Open plan ' + icon('arrow', 16) +
-            '</a>' +
-          '</footer>'
-        );
-      }
-
       function renderComposer(plan) {
+        if (!state.composerOpen) return '';
         var section = plan.sections[state.selectedSection] || null;
         var context = section ? 'Guide “' + section.heading + '”' : 'Guide this plan';
         return (
-          '<section class="plan-composer' + (state.composerOpen ? ' is-open' : '') + '" data-composer aria-label="Plan guidance">' +
-            '<div class="plan-composer__label">Human guidance</div>' +
-            '<div class="plan-composer__title">' + escapeHtml(context) + '</div>' +
-            '<textarea class="plan-textarea" data-guidance-input placeholder="Add one specific change, constraint, or correction. Your words become durable context for the next iteration."></textarea>' +
-            '<div class="plan-composer__toolbar">' +
-              '<div class="plan-composer__hint">Your note stays in place if sending fails.</div>' +
-              '<div class="plan-composer__actions">' +
-                '<button type="button" class="ox-action-btn ox-action-btn--quiet" data-cancel-guidance>Cancel</button>' +
-                '<button type="button" class="ox-action-btn ox-action-btn--primary" data-send-guidance>Send guidance</button>' +
-              '</div>' +
-            '</div>' +
-            '<div class="plan-feedback" data-feedback role="status"></div>' +
+          '<section class="plan-composer" data-composer aria-label="Plan guidance">' +
+            '<label class="plan-composer__title" for="plan-guidance-input">' + escapeHtml(context) + '</label>' +
+            '<textarea class="plan-textarea" id="plan-guidance-input" data-guidance-input placeholder="Add one specific change, constraint, or correction. Your words become durable context for the next iteration.">' + escapeHtml(guidance.draft) + '</textarea>' +
+            '<div class="plan-feedback" data-feedback role="status"' + (guidance.message ? ' data-tone="error"' : '') + '>' + escapeHtml(guidance.phase === 'idle' ? guidance.message : '') + '</div>' +
           '</section>'
         );
       }
 
-      function renderPrimaryZone(plan) {
-        return (
-          '<div class="plan-primary-zone" data-primary-zone' + (state.composerOpen ? ' hidden' : '') + '>' +
-            '<div class="plan-primary-copy">Add a correction or constraint without leaving the plan. OrgX preserves it for the next agent turn.</div>' +
-            '<button type="button" class="ox-action-btn ox-action-btn--primary" data-open-guidance data-primary-action="true">' +
-              icon('edit', 16) + ' Guide this plan' +
-            '</button>' +
-          '</div>'
-        );
+      /* One footer for every state; the open-plan link stays in its action slot. */
+      function footerView(plan) {
+        var isComplete = plan.status === 'complete';
+        if (guidance.phase === 'sending') {
+          return { variant: 'finishes-here', state: 'sending', heading: 'Sending', detail: 'your guidance', primary: 'Sending…' };
+        }
+        if (guidance.phase === 'failed') {
+          return { variant: 'finishes-here', state: 'failed', heading: 'Not sent', detail: 'your note is still here', primary: 'Retry', action: 'cancel' };
+        }
+        if (state.composerOpen) {
+          return { variant: 'finishes-here', state: 'needs-you', heading: 'Finishes here', detail: 'becomes context for the next iteration', primary: 'Send', action: 'cancel' };
+        }
+        if (isComplete) {
+          return { variant: 'confirms-in-orgx', state: 'confirmed', heading: 'Accepted v' + plan.version, detail: 'ready for work · ' + plural(plan.sections.length, 'section') };
+        }
+        if (guidance.phase === 'recorded') {
+          return { variant: 'finishes-here', state: 'needs-you', heading: 'Guidance recorded', detail: guidance.message, primary: 'Guide this plan' };
+        }
+        return { variant: 'finishes-here', state: 'needs-you', heading: 'Finishes here', detail: 'add a correction or constraint', primary: 'Guide this plan' };
       }
 
-      function renderCompleteReadout(plan) {
+      function renderFooter(plan) {
+        var view = footerView(plan);
+        var action = view.action === 'cancel'
+          ? '<button type="button" slot="action" class="ft-link" data-cancel-guidance>Cancel</button>'
+          : '<a slot="action" class="ft-link" data-open-plan href="' + escapeHtml(buildPlanUrl(plan)) + '" target="_blank" rel="noreferrer" aria-label="Open plan, opens OrgX"><span>Open</span><span class="ft-long"> plan</span>' + icon('ext', 12) + '</a>';
         return (
-          '<div class="plan-complete-readout">' +
-            '<div class="plan-complete-readout__copy">' +
-              '<strong>Ready for work</strong>' +
-              'Accepted v' + plan.version + ' · ' + plan.sections.length +
-              (plan.sections.length === 1 ? ' section' : ' sections') +
-              ' · ' + plan.edits.length + (plan.edits.length === 1 ? ' edit' : ' edits') +
-            '</div>' +
-            '<button type="button" class="ox-action-btn ox-action-btn--quiet" data-toggle-complete aria-expanded="' + state.completeExpanded + '">' +
-              (state.completeExpanded ? 'Collapse accepted plan' : 'Review accepted plan') +
-            '</button>' +
-          '</div>'
+          '<ox-footer id="planFooter" variant="' + view.variant + '" state="' + view.state + '"' +
+            ' heading="' + escapeHtml(view.heading) + '" detail="' + escapeHtml(view.detail || '') + '"' +
+            (view.primary ? ' primary-label="' + escapeHtml(view.primary) + '"' : '') + '>' +
+            action +
+          '</ox-footer>'
         );
       }
 
       function renderPlan(plan) {
         state.plan = plan;
         if (state.selectedSection >= plan.sections.length) state.selectedSection = 0;
-        var content = document.querySelector('[data-content]');
-        document.querySelector('[data-loading]').hidden = true;
-        content.hidden = false;
+        var content = showContent();
 
         var isComplete = plan.status === 'complete';
-        var isEmpty = plan.sections.length === 0;
-        var stateLabel = isComplete ? 'Plan accepted' : 'Plan session · live';
-        var signalQuestion = plan.sections.length
-          ? (isComplete ? 'Accepted context for execution' : 'Current shape · ready for your guidance')
-          : 'Plan shell · waiting for its first concrete shape';
+        var lastEdit = plan.edits[0] || null;
+        var meta = [plural(plan.sections.length, 'section')].concat(plan.domains.slice(0, 3)).join(' · ');
+        var showWorkbench = !isComplete || state.completeExpanded;
+        var edge = isComplete ? 'teal' : guidance.phase === 'failed' ? 'red' : 'amber';
 
         content.innerHTML =
-          '<article data-plan-status="' + plan.status + '">' +
-            '<header class="plan-hero">' +
-              '<div>' +
-                '<div class="plan-kicker"><span class="plan-live-dot" aria-hidden="true"></span>' + stateLabel + '</div>' +
-                '<h1 class="plan-title">' + escapeHtml(plan.title) + '</h1>' +
-                '<p class="plan-summary">' +
-                  (isEmpty
-                    ? 'Start with one outcome, constraint, or next move. OrgX will keep the planning context durable.'
-                    : isComplete
-                    ? 'The planning loop is closed. This version is the durable handoff.'
-                    : 'Review the outcome, move through the plan map, or add one precise correction.') +
-                '</p>' +
-              '</div>' +
-              '<div class="plan-version" aria-label="Plan version ' + plan.version + '">' +
-                '<span class="plan-version__value">v' + plan.version + '</span>' +
-                '<span class="plan-version__label">Plan</span>' +
-              '</div>' +
-            '</header>' +
-            '<div class="plan-signal">' +
-              '<div class="plan-signal__copy">' +
-                '<div class="plan-signal__question">' + escapeHtml(signalQuestion) + '</div>' +
-                '<div class="plan-signal__meta">' +
-                  plan.sections.length + (plan.sections.length === 1 ? ' section' : ' sections') +
-                  (plan.domains.length ? ' · ' + escapeHtml(plan.domains.slice(0, 3).join(' · ')) : '') +
-                '</div>' +
-              '</div>' +
-              renderProgress(plan) +
+          '<article class="wcard" data-plan-status="' + plan.status + '" data-edge="' + edge + '">' +
+            '<div class="hd">' +
+              '<ox-glyph kind="artifact"' + (isComplete ? ' tone="teal"' : ' tone="amber"') + '></ox-glyph>' +
+              '<span class="kind">Plan</span>' +
+              '<span class="src"><b>v' + plan.version + '</b></span>' +
+              '<span class="sp"></span>' +
+              '<span class="meta">' + escapeHtml(formatRelative(plan.updatedAt)) + '</span>' +
             '</div>' +
-            (isComplete && !state.completeExpanded
-              ? ''
-              : '<div class="plan-lenses" role="tablist" aria-label="Plan views">' +
-                  '<button type="button" class="plan-lens" role="tab" data-lens="plan" aria-selected="' + (state.lens === 'plan') + '">Plan</button>' +
-                  '<button type="button" class="plan-lens" role="tab" data-lens="activity" aria-selected="' + (state.lens === 'activity') + '">Guidance · ' + plan.edits.length + '</button>' +
-                '</div>' +
-                '<div class="plan-panel" role="tabpanel">' +
-                  (state.lens === 'plan'
-                    ? (plan.sections.length
-                        ? '<div class="plan-workbench">' + renderMap(plan) + renderSelectedSection(plan) + '</div>'
-                        : renderSelectedSection(plan))
-                    : renderActivity(plan)) +
-                '</div>') +
-            (isComplete ? renderCompleteReadout(plan) : renderPrimaryZone(plan) + renderComposer(plan)) +
+            '<div class="bd">' +
+              (lastEdit && !isComplete
+                ? '<p class="last-note"><span>' + escapeHtml(lastEdit.author === 'Plan guidance' ? 'Latest guidance' : lastEdit.author === 'You' || lastEdit.author === 'Preview' ? 'Your note' : lastEdit.author + '’s note') + ', ' + escapeHtml(formatRelative(lastEdit.at).replace(/^updated /, '')) + ':</span> ' + escapeHtml(lastEdit.note) + '</p>'
+                : '') +
+              '<h1 class="pk-q">' + escapeHtml(plan.title) + '</h1>' +
+              '<div class="plan-meta"><span class="meta">' + escapeHtml(meta) + '</span>' +
+                (isComplete
+                  ? '<button type="button" class="plan-toggle" data-toggle-complete aria-expanded="' + state.completeExpanded + '">' +
+                      (state.completeExpanded ? 'Collapse accepted plan' : 'Review accepted plan') + icon('chevron', 14) +
+                    '</button>'
+                  : '') +
+              '</div>' +
+              (showWorkbench
+                ? '<div class="plan-lenses" role="tablist" aria-label="Plan views">' +
+                    '<button type="button" class="plan-lens" role="tab" data-lens="plan" aria-selected="' + (state.lens === 'plan') + '">Plan</button>' +
+                    '<button type="button" class="plan-lens" role="tab" data-lens="activity" aria-selected="' + (state.lens === 'activity') + '">Guidance · ' + plan.edits.length + '</button>' +
+                  '</div>' +
+                  '<div class="plan-panel" role="tabpanel">' +
+                    (state.lens === 'plan'
+                      ? (plan.sections.length
+                          ? '<div class="plan-workbench">' + renderMap(plan) + renderSelectedSection(plan) + '</div>'
+                          : renderSelectedSection(plan))
+                      : renderActivity(plan)) +
+                  '</div>'
+                : '') +
+              (isComplete ? '' : renderComposer(plan)) +
+            '</div>' +
             renderFooter(plan) +
           '</article>';
 
@@ -1516,51 +694,102 @@
         button.classList.toggle('is-visible', clamped);
       }
 
+      function readDraft() {
+        var input = document.querySelector('[data-guidance-input]');
+        if (input) guidance.draft = input.value;
+        return guidance.draft;
+      }
+
+      function focusComposer() {
+        var input = document.querySelector('[data-guidance-input]');
+        if (input) {
+          input.focus();
+          input.setSelectionRange(input.value.length, input.value.length);
+        }
+      }
+
       function openComposer(trigger) {
         state.composerOpen = true;
         state.trigger = trigger;
+        guidance.phase = 'idle';
+        guidance.message = '';
         renderPlan(state.plan);
-        var input = document.querySelector('[data-guidance-input]');
-        if (input) input.focus();
+        focusComposer();
       }
 
       function closeComposer(options) {
         var restoreFocus = !options || options.restoreFocus !== false;
-        var trigger = state.trigger;
         state.composerOpen = false;
+        guidance.phase = 'idle';
+        guidance.message = '';
+        guidance.draft = '';
         renderPlan(state.plan);
         if (restoreFocus) {
-          var nextTrigger = document.querySelector('[data-open-guidance]');
-          (nextTrigger || trigger)?.focus();
+          var footer = document.getElementById('planFooter');
+          if (footer && footer.focus) footer.focus();
         }
       }
 
+      function readResult(result) {
+        var runtime = window.OrgXWidgetRuntime;
+        if (runtime && typeof runtime.extractStructuredWidgetData === 'function') {
+          return runtime.extractStructuredWidgetData(result, true);
+        }
+        return result && typeof result === 'object' && result.structuredContent ? result.structuredContent : result;
+      }
+
+      // When recording the edit is itself a queued command, follow it rather
+      // than calling it recorded the moment the request returns.
+      function followCommand(commandId) {
+        return new Promise(function poll(resolve, reject) {
+          function check() {
+            Promise.resolve(window.OrgXWidgetRuntime.callTool('orgx_command_status', { kind: 'command', id: commandId }))
+              .then(function settle(result) {
+                var status = readResult(result) || {};
+                if (status.state === 'failed' || status.state === 'cancelled') {
+                  reject(new Error(status.outcome || 'guidance_not_recorded'));
+                  return;
+                }
+                if (typeof status.next_poll_after_ms === 'number' && isFinite(status.next_poll_after_ms)) {
+                  guidance.timer = window.setTimeout(check, Math.max(1000, status.next_poll_after_ms));
+                  return;
+                }
+                resolve(status);
+              })
+              .catch(reject);
+          }
+          check();
+        });
+      }
+
       async function submitGuidance() {
-        var input = document.querySelector('[data-guidance-input]');
-        var submit = document.querySelector('[data-send-guidance]');
+        var note = readDraft().trim();
         var feedback = document.querySelector('[data-feedback]');
-        var note = input ? input.value.trim() : '';
         if (!note) {
-          feedback.textContent = 'Add a specific correction or constraint first.';
-          feedback.dataset.tone = 'error';
-          input.focus();
+          if (feedback) {
+            feedback.textContent = 'Add a specific correction or constraint first.';
+            feedback.dataset.tone = 'error';
+          }
+          focusComposer();
+          unlockFooter();
           return;
         }
         if (!state.plan.id && !state.plan.demo) {
-          feedback.textContent = 'This plan has no session ID, so guidance cannot be recorded yet.';
-          feedback.dataset.tone = 'error';
+          if (feedback) {
+            feedback.textContent = 'This plan has no session ID, so guidance cannot be recorded yet.';
+            feedback.dataset.tone = 'error';
+          }
+          unlockFooter();
           return;
         }
 
         var section = state.plan.sections[state.selectedSection] || null;
         var summary = (section ? section.heading + ': ' : '') + note.replace(/\s+/g, ' ');
-        submit.disabled = true;
-        submit.setAttribute('aria-busy', 'true');
-        submit.textContent = 'Sending guidance…';
-        feedback.textContent = 'Recording durable plan context…';
-        feedback.dataset.tone = '';
+        guidance.phase = 'sending';
+        renderPlan(state.plan);
 
         try {
+          if (state.plan.demoSendFails) throw new Error('guidance_not_recorded');
           if (!state.plan.demo) {
             var result = await window.OrgXWidgetRuntime.callTool('orgx_plan', {
               action: 'record_edit',
@@ -1574,6 +803,9 @@
             ) {
               throw new Error('guidance_not_recorded');
             }
+            var out = readResult(result);
+            var commandId = out && typeof out === 'object' ? (out.command_id || out.commandId) : null;
+            if (typeof commandId === 'string' && UUID_RE.test(commandId)) await followCommand(commandId);
           }
           state.plan.edits.unshift({
             id: 'local-' + Date.now(),
@@ -1583,38 +815,46 @@
           });
           state.composerOpen = false;
           state.lens = 'activity';
+          guidance.phase = 'recorded';
+          guidance.draft = '';
+          guidance.message = state.plan.demo
+            ? 'preview only · no production plan changed'
+            : 'the next iteration has context';
           renderPlan(state.plan);
-          var liveFeedback = document.createElement('div');
-          liveFeedback.className = 'plan-feedback';
-          liveFeedback.dataset.tone = 'success';
-          liveFeedback.setAttribute('role', 'status');
-          liveFeedback.textContent = state.plan.demo
-            ? 'Preview recorded locally — no production plan changed.'
-            : 'Guidance recorded — the next iteration has context.';
-          var primaryZone = document.querySelector('[data-primary-zone]');
-          if (primaryZone) primaryZone.insertAdjacentElement('afterend', liveFeedback);
-          window.OrgXWidgetRuntime.reportSize();
         } catch (_) {
-          submit.disabled = false;
-          submit.removeAttribute('aria-busy');
-          submit.textContent = 'Retry guidance';
-          feedback.textContent = 'Guidance was not recorded. Your note is still here.';
-          feedback.dataset.tone = 'error';
-          input.focus();
+          guidance.phase = 'failed';
+          guidance.message = 'Guidance was not recorded. Your note is still here.';
+          renderPlan(state.plan);
+          focusComposer();
         }
+      }
+
+      function unlockFooter() {
+        var footer = document.getElementById('planFooter');
+        if (footer) footer.setAttribute('state', footer.getAttribute('state') || 'needs-you');
+      }
+
+      function onFooterPrimary() {
+        if (guidance.phase === 'sending') return;
+        if (state.composerOpen || guidance.phase === 'failed') {
+          submitGuidance();
+          return;
+        }
+        openComposer(document.getElementById('planFooter'));
       }
 
       function bindInteractions() {
         document.querySelectorAll('[data-lens]').forEach(function bindLens(button) {
           button.addEventListener('click', function changeLens() {
+            readDraft();
             state.lens = button.dataset.lens;
-            state.composerOpen = false;
             renderPlan(state.plan);
           });
         });
 
         document.querySelectorAll('[data-section-index]').forEach(function bindSection(button) {
           button.addEventListener('click', function selectSection() {
+            readDraft();
             state.selectedSection = Number(button.dataset.sectionIndex) || 0;
             renderPlan(state.plan);
           });
@@ -1623,6 +863,7 @@
         var select = document.querySelector('[data-section-select]');
         if (select) {
           select.addEventListener('change', function selectSection() {
+            readDraft();
             state.selectedSection = Number(select.value) || 0;
             renderPlan(state.plan);
           });
@@ -1640,14 +881,11 @@
           });
         }
 
-        var open = document.querySelector('[data-open-guidance]');
-        if (open) open.addEventListener('click', function () { openComposer(open); });
+        var footer = document.getElementById('planFooter');
+        if (footer) footer.addEventListener('ox-primary', onFooterPrimary);
 
         var cancel = document.querySelector('[data-cancel-guidance]');
         if (cancel) cancel.addEventListener('click', function () { closeComposer(); });
-
-        var send = document.querySelector('[data-send-guidance]');
-        if (send) send.addEventListener('click', submitGuidance);
 
         var completeToggle = document.querySelector('[data-toggle-complete]');
         if (completeToggle) {
@@ -1660,10 +898,15 @@
 
         var input = document.querySelector('[data-guidance-input]');
         if (input) {
+          input.addEventListener('input', function keepDraft() { guidance.draft = input.value; });
           input.addEventListener('keydown', function handleComposerKey(event) {
             if (event.key === 'Escape') {
               event.preventDefault();
               closeComposer();
+            }
+            if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+              event.preventDefault();
+              submitGuidance();
             }
           });
         }
@@ -1750,6 +993,7 @@
           ],
         };
 
+        if (name === 'not-sent') base.__send_fails = true;
         if (name === 'empty') {
           base.feature_name = 'New governed workflow';
           base.current_plan = '';
@@ -1780,7 +1024,11 @@
         renderMarkdownBody: renderMarkdownBody,
       };
 
+      var booted = false;
       document.addEventListener('DOMContentLoaded', function boot() {
+        // Boot once: a second DOMContentLoaded must not reset an open composer.
+        if (booted) return;
+        booted = true;
         var params = new URLSearchParams(window.location.search);
         var previewState = params.get('state') || '';
         var loading = params.get('loading') === 'true' || previewState === 'loading';
@@ -1789,7 +1037,7 @@
 
         if (protocol === 'standalone') {
           if (loading) renderLoading();
-          else if (demo || ['long', 'complete', 'resolved', 'error', 'degraded'].indexOf(previewState) >= 0) {
+          else if (demo || ['long', 'complete', 'resolved', 'error', 'degraded', 'not-sent'].indexOf(previewState) >= 0) {
             renderPayload(fixture(previewState || 'populated'));
           } else {
             renderPayload(fixture('empty'));

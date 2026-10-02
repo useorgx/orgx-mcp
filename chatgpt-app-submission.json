@@ -200,6 +200,18 @@
         "destructive_justification": "Read-only; nothing is changed or deleted."
       }
     },
+    "orgx_panel_snapshot": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Reads the person's pending decisions and accepted proof for the OrgX panel; it changes nothing. A ruling from the panel goes through orgx_widget_decide after an explicit click.",
+        "open_world_justification": "Reads OrgX records only.",
+        "destructive_justification": "Read-only; nothing is changed or deleted."
+      }
+    },
     "get_agent_status": {
       "annotations": {
         "readOnlyHint": false,

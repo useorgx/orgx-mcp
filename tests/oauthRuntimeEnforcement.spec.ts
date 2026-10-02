@@ -328,7 +328,9 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
     } finally {
       await closeHarness(harness);
     }
-  });
+    // First test in the file: it pays the cold import of the whole worker,
+    // which sat just under the 5 s default and now crosses it.
+  }, 20000);
 
   it('preserves an upstream workspace refusal as a read error', async () => {
     const inaccessibleWorkspaceId =

@@ -7,1120 +7,293 @@
 
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2302040a'/%3E%3Cpath d='M20 18h18l8 8v22H20z' fill='none' stroke='%23fbbf24' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M38 18v8h8' fill='none' stroke='%23fbbf24' stroke-width='4' stroke-linejoin='round'/%3E%3C/svg%3E" />
 
+  <link rel="stylesheet" href="shared/kit/ox-tokens.css" />
   <link rel="stylesheet" href="shared/tokens.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
-  <link rel="stylesheet" href="shared/components/domain-accent.css" />
+  <script src="shared/kit/ox-elements.js"></script>
+  <script src="shared/agent-identity.js"></script>
 
   <style>
-    /*
-     * artifact-review — Action widget, Escalation mode.
-     * Primary = amber (shares the attention palette with decisions).
-     * Spec: orgx-design skill, Widget Types › Action Widgets.
-     *
-     * Layout:
-     *   widget-shell (kicker + title + icon)
-     *   → artifact-preview (filmstrip + main preview)
-     *   → author attribution (agent-chip) + version badge
-     *   → decision block (approve | request changes)
-     *   → footer (deep link + last-version meta)
-     */
-
+    /* Escalation mode: amber. Canvas R2 (review final), K1/K4 (receipts) and Q5 supply the shape. */
     :root { --ox-primary: #fbbf24; --ox-primary-rgb: 251, 191, 36; }
-    @media (prefers-color-scheme: dark) {
-      :root { --ox-primary: #fbbf24; --ox-primary-rgb: 251, 191, 36; }
-    }
-    [data-theme="dark"] {
-      --ox-primary: #fbbf24;
-      --ox-primary-rgb: 251, 191, 36;
-    }
 
-    .stage {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    /* ─── artifact-preview ──────────────────────────────────────── */
-    .artifact-preview {
-      border: 1px solid var(--ox-border);
-      border-radius: 14px;
-      background: var(--ox-well-bg);
-      box-shadow: var(--ox-well-shadow);
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .artifact-preview__body {
-      position: relative;
-      min-height: 200px;
-      max-height: 420px;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      background:
-        radial-gradient(circle at 50% 0%, rgba(var(--ox-primary-rgb), 0.06), transparent 60%),
-        var(--ox-well-bg);
-    }
-
-    .artifact-preview__body img,
-    .artifact-preview__body iframe {
-      max-width: 100%;
-      max-height: 380px;
-      border-radius: 10px;
-      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
-    }
-
-    .artifact-preview__body pre {
-      width: 100%;
-      max-height: 380px;
-      overflow: auto;
+    [hidden] { display: none !important; }
+    * { box-sizing: border-box; }
+    body {
       margin: 0;
-      padding: 16px;
-      border-radius: 10px;
-      background: rgba(0, 0, 0, 0.22);
-      font-family: var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-      font-size: 0.78rem;
-      color: var(--ox-text);
-      line-height: 1.55;
-      border: 1px solid var(--ox-border);
+      padding: 12px 12px 18px;
+      min-height: 100vh;
+      overflow-x: hidden;
+      font-family: var(--ox-font);
+      -webkit-font-smoothing: antialiased;
     }
+    .widget-shell-card { max-width: 680px; margin: 0 auto; position: relative; }
 
-    .artifact-preview__markdown {
-      width: 100%;
-      max-height: 380px;
-      overflow: auto;
-      font-size: 0.88rem;
-      line-height: 1.6;
-      color: var(--ox-text);
-      padding: 4px 8px;
-    }
-    .artifact-preview__markdown h1,
-    .artifact-preview__markdown h2,
-    .artifact-preview__markdown h3 {
-      margin: 18px 0 8px;
-      line-height: 1.3;
-    }
-    .artifact-preview__markdown p { margin: 0 0 10px; }
+    /* The footer's primary is the one amber action. */
+    ox-footer { --ox-primary: #fbbf24; }
 
-    .artifact-preview__placeholder {
-      text-align: center;
-      color: var(--ox-text-muted);
-      font-size: 0.84rem;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      align-items: center;
-    }
-    .artifact-preview__placeholder svg { opacity: 0.55; }
-
-    /* ─── version filmstrip ─────────────────────────────────────── */
-    .filmstrip {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 14px;
-      border-top: 1px solid var(--ox-border);
-      background: var(--ox-panel);
-      overflow-x: auto;
-      scrollbar-width: thin;
-    }
-
-    .filmstrip__label {
-      font-family: var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-      font-size: 0.62rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--ox-text-muted);
-      margin-right: 4px;
-      flex-shrink: 0;
-    }
-
-    .filmstrip__item {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      min-height: 44px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--ox-border);
-      background: var(--ox-well-bg);
-      color: var(--ox-text-muted);
-      font-family: var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-      font-size: 0.68rem;
-      font-weight: 600;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
-        border-color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
-        background var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
-      flex-shrink: 0;
-    }
-    .filmstrip__item:hover {
-      border-color: rgba(var(--ox-primary-rgb), 0.35);
-      color: var(--ox-text);
-    }
-    .filmstrip__item.is-current {
-      color: var(--ox-primary);
-      border-color: rgba(var(--ox-primary-rgb), 0.45);
-      background: rgba(var(--ox-primary-rgb), 0.1);
-    }
-    .filmstrip__dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: currentColor;
-      opacity: 0.6;
-    }
-
-    /* ─── attribution + version badge row ──────────────────────── */
-    .attribution-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 0 4px;
-      flex-wrap: wrap;
-    }
-
-    .version-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.3);
-      background: rgba(var(--ox-primary-rgb), 0.1);
-      color: var(--ox-primary);
-      font-family: var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-      font-size: 0.64rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    /* ─── decision block ───────────────────────────────────────── */
-    .decision-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    @media (max-width: 520px) {
-      .decision-row { grid-template-columns: 1fr; }
-    }
-
-    .decision-card {
+    .wcard {
       position: relative;
-      min-height: 88px;
-      padding: 16px;
-      border-radius: 12px;
-      border: 1px solid var(--ox-border);
-      background: var(--ox-well-bg);
-      display: flex;
-      gap: 12px;
-      align-items: flex-start;
-      cursor: pointer;
-      text-align: left;
-      font: inherit;
-      color: var(--ox-text);
-      overflow: hidden;
-      transition: transform var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
-        border-color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
-        background var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
-    }
-
-    .decision-card:hover {
-      transform: translateY(-1px);
-      border-color: rgba(var(--card-color-rgb), 0.45);
-    }
-
-    .decision-card--approve {
-      --card-color-rgb: var(--ox-primary-rgb);
-    }
-
-    .decision-card--changes {
-      --card-color-rgb: 148, 163, 184; /* slate */
-    }
-
-    .decision-card__icon {
-      flex-shrink: 0;
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
-      background: rgba(var(--card-color-rgb), 0.15);
-      color: rgb(var(--card-color-rgb));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .decision-card__body {
       display: flex;
       flex-direction: column;
-      gap: 3px;
-      min-width: 0;
-      flex: 1;
+      background: var(--ox-panel);
+      border: 1px solid var(--ox-border);
+      border-radius: 16px;
+      box-shadow: var(--ox-shadow);
+      --edge-rgb: 100, 116, 139;
     }
-
-    .decision-card__title {
-      font-weight: 600;
-      font-size: 0.92rem;
-    }
-
-    .decision-card__detail {
-      font-size: 0.76rem;
-      color: var(--ox-text-muted);
-    }
-
-    /* Hold-to-approve — the approve card fills from left-to-right
-       while the user holds. Release early → resets. 100% → commits.
-       The visual affordance doubles as the weight-of-decision signal. */
-    .decision-card__hold {
+    .wcard::after {
+      content: "";
       position: absolute;
-      top: 0;
-      left: 0;
-      bottom: 0;
-      width: 0%;
-      background: rgba(var(--card-color-rgb), 0.15);
-      border-right: 1px solid rgba(var(--card-color-rgb), 0.45);
-      pointer-events: none;
-      transition: width var(--ox-dur-instant, 50ms) linear;
-    }
-    .decision-card.is-holding .decision-card__hold {
-      transition: width 800ms linear;
-      width: 100%;
-    }
-
-    /* Resolve — when a decision commits, the stage leaves decisively.
-       Approve / request-changes both accelerate out (exit curve). */
-    .stage.is-resolving {
-      animation: resolve-out var(--ox-dur-base, 250ms) var(--ox-ease-exit, cubic-bezier(0.4, 0, 1, 1)) forwards;
+      top: 0; left: 16px; right: 16px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(var(--edge-rgb), .7), transparent);
       pointer-events: none;
     }
-    @keyframes resolve-out {
-      to { opacity: 0; transform: translateY(-6px) scale(0.99); filter: blur(4px); }
+    .wcard[data-edge="amber"] { --edge-rgb: 251, 191, 36; }
+    .wcard[data-edge="teal"] { --edge-rgb: 0, 201, 167; }
+    .wcard[data-edge="red"] { --edge-rgb: 244, 63, 94; }
+    .hd { display: flex; align-items: center; gap: 10px; padding: 14px 18px 0; min-width: 0; }
+    .hd > ox-glyph { --ox-glyph-size: 18px; flex: none; }
+    .kind {
+      font-size: 11px; font-weight: 600; line-height: 1;
+      letter-spacing: .04em; text-transform: uppercase;
+      color: var(--ox-text-muted); white-space: nowrap;
     }
+    .src { min-width: 0; font-size: 12.5px; color: var(--ox-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .src b { color: var(--ox-text-2); font-weight: 600; }
+    .sp { flex: 1; }
+    .who2 { display: inline-flex; align-items: center; gap: 8px; flex: none; font-size: 12.5px; color: var(--ox-text-muted); white-space: nowrap; }
+    .who2 b { color: var(--ox-text-2); font-weight: 600; }
+    .hd-link {
+      display: inline-flex; align-items: center; gap: 5px; flex: none;
+      min-height: 44px; margin: -12px 0; padding: 0 6px;
+      color: var(--ox-text-2); font-size: 12.5px; font-weight: 650; text-decoration: none; white-space: nowrap;
+    }
+    .hd-link:hover { color: var(--ox-text); }
+    .bd { padding: 10px 18px 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+    .meta { font-size: 11.5px; line-height: 1.35; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
 
-    .decision-card__hint {
-      position: absolute;
-      top: 10px;
-      right: 12px;
-      font-family: var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-      font-size: 0.56rem;
-      color: var(--ox-text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      opacity: 1;
-    }
-
-    /* ─── composer (changes-requested) ─────────────────────────── */
-    .composer {
-      display: none;
-      flex-direction: column;
-      gap: 10px;
-      padding: 14px;
-      border: 1px solid rgba(148, 163, 184, 0.35);
-      border-radius: 12px;
-      background: rgba(148, 163, 184, 0.06);
-    }
-    .composer.is-open { display: flex; }
-
-    .composer label {
-      font-family: var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-      font-size: 0.62rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--ox-text-muted);
-    }
-
-    .composer textarea {
-      width: 100%;
-      min-height: 80px;
-      resize: vertical;
-      padding: 10px 12px;
-      border: 1px solid var(--ox-border);
-      border-radius: 10px;
-      background: var(--ox-panel);
-      color: var(--ox-text);
-      font: inherit;
-      font-size: 0.9rem;
-      line-height: 1.5;
-    }
-    .composer textarea:focus-visible {
-      outline: 2px solid rgba(148, 163, 184, 0.5);
-      outline-offset: 2px;
-    }
-
-    .composer__actions {
-      display: flex;
-      gap: 8px;
-      justify-content: flex-end;
-    }
-
-    .composer-btn {
-      padding: 8px 16px;
-      border-radius: 10px;
-      border: 1px solid var(--ox-border);
-      background: var(--ox-panel);
-      color: var(--ox-text);
-      font-weight: 600;
-      font-size: 0.82rem;
-      cursor: pointer;
-    }
-    .composer-btn--primary {
-      background: rgb(148, 163, 184);
-      color: var(--ox-bg);
-      border-color: rgb(148, 163, 184);
-    }
-
-    /* ─── footer ───────────────────────────────────────────────── */
-    .widget-foot {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding-top: 12px;
-      border-top: 1px solid var(--ox-border);
-      font-family: var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-      font-size: 0.65rem;
-      color: var(--ox-text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-    .widget-foot a {
-      display: inline-flex;
-      align-items: center;
-      min-height: 44px;
-      color: var(--ox-primary);
-      text-decoration: none;
-    }
-    .widget-foot a:hover { text-decoration: underline; }
-
-    /* ─── empty + error states ─────────────────────────────────── */
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 48px 24px;
-      text-align: center;
-      color: var(--ox-text-muted);
-    }
-    .empty-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: rgba(var(--ox-primary-rgb), 0.1);
-      color: var(--ox-primary);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 14px;
-    }
-
-    /* 2026 review-desk composition: evidence and consequence share first paint. */
-    .review-desk {
-      display: grid;
-      grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
-      gap: 20px;
-      align-items: start;
-    }
-    .review-evidence,
-    .review-control {
-      min-width: 0;
-    }
-    .review-control {
-      position: sticky;
-      top: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      padding-left: 4px;
-    }
-    .review-status {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      min-height: 44px;
-      font-family: var(--ox-mono);
-      font-size: 0.64rem;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--ox-text-muted);
-    }
-    .review-status__signal {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--ox-primary);
-      font-weight: 700;
-    }
-    .review-status__signal::before {
-      content: '';
-      width: 7px;
-      height: 7px;
-      border-radius: 999px;
-      background: currentColor;
-      box-shadow: 0 0 0 5px rgba(var(--ox-primary-rgb), 0.1);
-    }
+    /* Q5 / K1: the verdict first, the bar under it, the proof as rows. */
+    .review-desk { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+    .review-control { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+    .review-status { display: flex; align-items: center; gap: 10px; min-height: 22px; flex-wrap: wrap; }
     .review-question {
-      margin: 0;
-      color: var(--ox-text);
-      font-size: clamp(1rem, 2vw, 1.22rem);
-      line-height: 1.3;
-      letter-spacing: -0.025em;
+      margin: 0; color: var(--ox-text);
+      font-size: 20px; font-weight: 700; line-height: 1.2; letter-spacing: -.025em;
+      text-wrap: balance;
     }
-    .review-consequence {
-      margin: 0;
-      color: var(--ox-text-muted);
-      font-size: 0.82rem;
-      line-height: 1.5;
-    }
-    .quality-gauge {
-      --quality-signal: var(--ox-text-muted);
-      display: grid;
-      gap: 7px;
-      padding-block: 2px;
-    }
+    .review-summary, .review-consequence { margin: 0; color: var(--ox-text-muted); font-size: 13px; line-height: 1.5; text-wrap: pretty; }
+    .review-summary { color: var(--ox-text-2); }
+
+    .quality-gauge { --quality-signal: var(--ox-text-muted); display: grid; gap: 6px; padding-top: 4px; }
     .quality-gauge[data-quality-state="cleared"] { --quality-signal: var(--ox-teal); }
     .quality-gauge[data-quality-state="held"],
     .quality-gauge[data-quality-state="stale"] { --quality-signal: var(--ox-warning); }
     .quality-gauge[data-quality-state="error"] { --quality-signal: var(--ox-danger); }
-    .quality-gauge[data-quality-state="pending"] { --quality-signal: var(--ox-iris); }
-    .quality-gauge__track {
-      position: relative;
-      height: 7px;
-      border-radius: 999px;
-      background: var(--ox-surface-inset);
-      box-shadow: inset 0 0 0 1px var(--ox-border);
-    }
-    .quality-gauge__fill {
-      position: absolute;
-      inset: 0 auto 0 0;
-      min-width: 2px;
-      border-radius: inherit;
-      background: var(--quality-signal);
-    }
+    .quality-gauge[data-quality-state="pending"] { --quality-signal: var(--ox-text-2); }
+    .quality-gauge__track { position: relative; height: 8px; border-radius: 999px; background: var(--ox-hover, rgba(127, 127, 127, .12)); }
+    .quality-gauge__fill { position: absolute; inset: 0 auto 0 0; min-width: 2px; border-radius: inherit; background: var(--quality-signal); }
     .quality-gauge__threshold,
+    .quality-gauge__historical { position: absolute; z-index: 2; top: -4px; width: 2px; height: 16px; border-radius: 2px; }
+    .quality-gauge__threshold { background: var(--ox-text); }
     .quality-gauge__historical {
-      position: absolute;
-      z-index: 2;
-      top: -4px;
-      width: 2px;
-      height: 15px;
-      border-radius: 2px;
-    }
-    .quality-gauge__threshold {
-      background: var(--ox-text);
-      box-shadow: 0 0 0 3px var(--ox-surface-subtle);
-    }
-    .quality-gauge__historical {
-      z-index: 1;
-      width: 1px;
-      background: repeating-linear-gradient(
-        to bottom,
-        var(--ox-text-muted) 0 3px,
-        transparent 3px 5px
-      );
+      z-index: 1; width: 1px;
+      background: repeating-linear-gradient(to bottom, var(--ox-text-muted) 0 3px, transparent 3px 5px);
     }
     .quality-gauge__legend {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      color: var(--ox-text-muted);
-      font: 700 0.58rem/1.3 var(--ox-mono);
-      letter-spacing: 0.07em;
-      text-transform: uppercase;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      color: var(--ox-text-muted); font: 500 11.5px/1.3 var(--ox-mono); font-variant-numeric: tabular-nums;
     }
-    .quality-gauge__profile {
-      overflow: hidden;
-      color: var(--ox-text-muted);
-      font: 0.65rem/1.4 var(--ox-mono);
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .quality-anatomy {
-      border-block: 1px solid var(--ox-border);
-    }
+    .quality-gauge__legend span:first-child { color: var(--quality-signal); }
+    .quality-gauge__profile { overflow: hidden; color: var(--ox-text-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* K1: criteria as receipt rows, failures first. */
+    .receipts { display: flex; flex-direction: column; }
+    .receipts__more { margin: 6px 0 0; font-size: 12.5px; color: var(--ox-text-muted); }
+
+    .quality-anatomy { border-block: 1px solid var(--ox-border); }
     .quality-anatomy > summary {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 18px;
-      align-items: center;
-      gap: 8px;
-      min-height: 48px;
-      padding-block: 9px;
-      color: var(--ox-text);
-      cursor: pointer;
-      list-style: none;
+      display: grid; grid-template-columns: minmax(0, 1fr) 18px; align-items: center; gap: 8px;
+      min-height: 48px; padding-block: 9px; color: var(--ox-text); cursor: pointer; list-style: none;
     }
     .quality-anatomy > summary::-webkit-details-marker { display: none; }
-    .quality-anatomy__title {
-      display: inline-flex;
-      align-items: baseline;
-      gap: 7px;
-      min-width: 0;
-      font-size: 0.78rem;
-      font-weight: 700;
-      line-height: 1.25;
-    }
-    .quality-anatomy__freshness {
-      color: var(--ox-warning);
-      font: 700 0.52rem/1.2 var(--ox-mono);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      white-space: nowrap;
-    }
-    .quality-anatomy__flow {
-      grid-column: 1 / -1;
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      min-width: 0;
-    }
-    .quality-anatomy__flow-step {
-      display: grid;
-      gap: 2px;
-      min-width: 0;
-      color: var(--ox-text-muted);
-      font: 700 0.5rem/1.2 var(--ox-mono);
-      letter-spacing: 0.07em;
-      text-transform: uppercase;
-    }
-    .quality-anatomy__flow-step b {
-      color: var(--ox-text);
-      font-size: 0.66rem;
-      letter-spacing: 0;
-    }
-    .quality-anatomy__chevron {
-      color: var(--ox-text-muted);
-      transition: transform var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
-    }
+    .quality-anatomy__title { display: inline-flex; align-items: baseline; gap: 8px; min-width: 0; font-size: 13px; font-weight: 650; line-height: 1.25; }
+    .quality-anatomy__freshness { color: var(--ox-warning); font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+    .quality-anatomy__flow { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); min-width: 0; }
+    .quality-anatomy__flow-step { display: flex; gap: 6px; align-items: baseline; min-width: 0; color: var(--ox-text-muted); font-size: 11.5px; }
+    .quality-anatomy__flow-step b { color: var(--ox-text); font: 600 12px/1 var(--ox-mono); }
+    .quality-anatomy__chevron { color: var(--ox-text-muted); transition: transform 150ms var(--ox-ease, ease); }
     .quality-anatomy[open] .quality-anatomy__chevron { transform: rotate(180deg); }
     .quality-anatomy__equation {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      padding-block: 10px;
-      border-top: 1px solid var(--ox-border);
-      color: var(--ox-text-muted);
-      font: 700 0.54rem/1.3 var(--ox-mono);
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding-block: 10px;
+      border-top: 1px solid var(--ox-border); color: var(--ox-text-muted); font: 500 11.5px/1.35 var(--ox-mono);
     }
-    .quality-anatomy__equation span {
-      position: relative;
-      min-width: 0;
-      padding-inline-end: 9px;
-      overflow-wrap: anywhere;
-    }
-    .quality-anatomy__equation span + span::before {
-      content: "\2192";
-      position: absolute;
-      inset-inline-start: -9px;
-      color: var(--ox-text-dim);
-    }
+    .quality-anatomy__equation span { position: relative; min-width: 0; padding-inline-end: 10px; overflow-wrap: anywhere; }
+    .quality-anatomy__equation span + span::before { content: "\2192"; position: absolute; inset-inline-start: -11px; color: var(--ox-text-muted); }
     .quality-anatomy__calculation {
-      padding: 9px 10px;
-      border-top: 1px solid var(--ox-border);
-      color: var(--ox-text);
-      background: rgba(var(--ox-primary-rgb), 0.035);
-      font: 700 0.64rem/1.45 var(--ox-mono);
-      overflow-wrap: anywhere;
+      padding: 9px 0; border-top: 1px solid var(--ox-border); color: var(--ox-text);
+      font: 600 12px/1.45 var(--ox-mono); overflow-wrap: anywhere; font-variant-numeric: tabular-nums;
     }
-    .quality-anatomy__calculation span {
-      margin-inline-end: 8px;
-      color: var(--ox-text-muted);
-      font-size: 0.54rem;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-    .quality-anatomy__grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      border-top: 1px solid var(--ox-border);
-    }
-    .quality-anatomy__stage {
-      --lens-signal: var(--ox-text-muted);
-      min-width: 0;
-      padding: 11px 10px 12px;
-    }
-    .quality-anatomy__stage:nth-child(even) { border-inline-start: 1px solid var(--ox-border); }
+    .quality-anatomy__calculation span { margin-inline-end: 8px; color: var(--ox-text-muted); font-family: var(--ox-font); font-weight: 500; }
+    .quality-anatomy__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--ox-border); }
+    .quality-anatomy__stage { min-width: 0; padding: 11px 10px 12px 0; }
+    .quality-anatomy__stage:nth-child(even) { border-inline-start: 1px solid var(--ox-border); padding-inline-start: 12px; }
     .quality-anatomy__stage:nth-child(n + 3) { border-top: 1px solid var(--ox-border); }
-    .quality-anatomy__stage[data-lens="judged"] { --lens-signal: var(--ox-iris); }
-    .quality-anatomy__stage[data-lens="measured"] { --lens-signal: var(--ox-teal); }
-    .quality-anatomy__stage[data-lens="observed"] { --lens-signal: var(--ox-warning); }
-    .quality-anatomy__stage-label {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      color: var(--ox-text-muted);
-      font: 700 0.54rem/1.2 var(--ox-mono);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-    .quality-anatomy__stage-label::before {
-      content: "";
-      width: 5px;
-      height: 5px;
-      flex: 0 0 5px;
-      border-radius: 999px;
-      background: var(--lens-signal);
-    }
-    .quality-anatomy__stage-value {
-      margin-top: 7px;
-      color: var(--ox-text);
-      font-size: 0.72rem;
-      font-weight: 700;
-      line-height: 1.35;
-    }
+    .quality-anatomy__stage-label { color: var(--ox-text-muted); font: 600 10.5px/1.2 var(--ox-mono); letter-spacing: .1em; text-transform: uppercase; }
+    .quality-anatomy__stage-value { margin-top: 6px; color: var(--ox-text); font-size: 13px; font-weight: 650; line-height: 1.35; }
     .quality-anatomy__stage-detail {
-      display: -webkit-box;
-      margin-top: 3px;
-      overflow: hidden;
-      color: var(--ox-text-muted);
-      font-size: 0.66rem;
-      line-height: 1.4;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 3;
+      display: -webkit-box; margin-top: 3px; overflow: hidden; color: var(--ox-text-muted);
+      font-size: 12px; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 3;
     }
-    .quality-anatomy__note {
-      margin: 0;
-      padding: 10px 2px 11px;
-      border-top: 1px solid var(--ox-border);
-      color: var(--ox-text-muted);
-      font-size: 0.68rem;
-      line-height: 1.45;
-    }
-    .artifact-preview {
-      border-radius: 12px;
-    }
-    .artifact-preview__body {
-      min-height: 180px;
-      max-height: 260px;
-      padding: 12px;
-      cursor: zoom-in;
-      transition: max-height 220ms cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .artifact-preview.is-expanded .artifact-preview__body {
-      max-height: 560px;
-      cursor: zoom-out;
-    }
-    .artifact-preview__body img,
-    .artifact-preview__body iframe {
-      max-height: 236px;
-      box-shadow: none;
-    }
-    .artifact-preview.is-expanded .artifact-preview__body img,
-    .artifact-preview.is-expanded .artifact-preview__body iframe {
-      max-height: 536px;
-    }
-    .preview-toolbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 8px 12px;
-      border-top: 1px solid var(--ox-border);
-      background: var(--ox-panel);
-    }
-    .preview-toggle {
-      min-height: 44px;
-      border: 0;
-      background: transparent;
-      color: var(--ox-text);
-      font: 600 0.72rem var(--ox-font);
-      cursor: pointer;
-    }
-    .viewer-tabs {
-      display: flex;
-      overflow-x: auto;
-      scrollbar-width: thin;
-      padding: 4px;
-      border-bottom: 1px solid var(--ox-border);
-      background: var(--ox-panel);
-    }
+    .quality-anatomy__note { margin: 0; padding: 10px 0 11px; border-top: 1px solid var(--ox-border); color: var(--ox-text-muted); font-size: 12px; line-height: 1.45; }
+
+    /* Q4: the artifact itself, read in one well with its tabs above. */
+    .review-evidence { display: flex; flex-direction: column; min-width: 0; }
+    .viewer-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--ox-border); overflow-x: auto; scrollbar-width: none; }
     .viewer-tab {
-      position: relative;
-      min-width: 0;
-      min-height: 44px;
-      border: 0;
-      border-radius: 8px;
-      background: transparent;
-      color: var(--ox-text-muted);
-      font: 700 0.62rem var(--ox-mono);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      cursor: pointer;
-      flex: 1 0 88px;
-      transition:
-        color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
-        background var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
+      min-height: 44px; padding: 0 12px; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent;
+      background: none; color: var(--ox-text-muted); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
     }
+    .viewer-tab[aria-selected="true"] { color: var(--ox-text); border-bottom-color: var(--ox-text); }
     .viewer-tab:hover { color: var(--ox-text); }
-    .viewer-tab[aria-selected="true"] {
-      color: var(--ox-primary);
-      background: rgba(var(--ox-primary-rgb), 0.08);
+    .viewer-panel { padding-top: 12px; min-width: 0; }
+    .artifact-preview__body {
+      background: var(--ox-well-bg); border-radius: 12px; padding: 14px 16px;
+      max-height: 240px; overflow: hidden; position: relative;
+      color: var(--ox-text-2); font-size: 14px; line-height: 1.6; overflow-wrap: anywhere;
+      transition: max-height 220ms var(--ox-ease, ease);
     }
-    .viewer-tab[aria-selected="true"]::after {
-      content: '';
-      position: absolute;
-      inset: auto 20% 2px;
-      height: 2px;
-      border-radius: 999px;
-      background: currentColor;
+    .artifact-preview.is-expanded .artifact-preview__body { max-height: 640px; overflow: auto; }
+    .artifact-preview__body p { margin: 0 0 10px; }
+    .artifact-preview__body p:last-child { margin-bottom: 0; }
+    .artifact-preview__body img, .artifact-preview__body video { display: block; max-width: 100%; max-height: 220px; margin: 0 auto; border-radius: 8px; }
+    .artifact-preview.is-expanded .artifact-preview__body img,
+    .artifact-preview.is-expanded .artifact-preview__body video { max-height: 600px; }
+    .artifact-preview__body pre { margin: 0; font: 12px/1.55 var(--ox-mono); white-space: pre-wrap; color: var(--ox-text); }
+    .diff-preview span { display: block; }
+    .diff-preview .is-add { color: var(--ox-teal); }
+    .diff-preview .is-remove { color: var(--ox-danger); }
+    .structured-preview { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; margin: 0; font-size: 13px; }
+    .structured-preview dt { color: var(--ox-text-muted); text-transform: capitalize; }
+    .structured-preview dd { margin: 0; color: var(--ox-text); }
+    .artifact-preview__placeholder { display: flex; align-items: center; gap: 12px; color: var(--ox-text-muted); }
+    .preview-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 4px; }
+    .preview-toggle {
+      min-height: 44px; padding: 0; border: 0; background: none;
+      color: var(--ox-text-2); font-family: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer;
     }
-    .viewer-panel[hidden] { display: none; }
-    .viewer-panel--readout {
-      min-height: 180px;
-      padding: 16px;
-      background: var(--ox-well-bg);
+    .evidence-readout { display: flex; flex-direction: column; gap: 10px; }
+    .evidence-verdict { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+    .evidence-verdict__label { font-size: 13.5px; font-weight: 650; color: var(--ox-text); }
+    .evidence-verdict__score { font: 500 12px/1 var(--ox-mono); color: var(--ox-text-muted); }
+    .evidence-verdict__detail { flex-basis: 100%; margin: 0; font-size: 13px; line-height: 1.5; color: var(--ox-text-muted); }
+    .evidence-meter { position: relative; height: 6px; border-radius: 999px; background: var(--ox-hover, rgba(127, 127, 127, .12)); }
+    .evidence-meter__fill { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--ox-text-muted); }
+    .evidence-meter__threshold { position: absolute; top: -3px; width: 2px; height: 12px; background: var(--ox-text); }
+    .evidence-facts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; margin: 0; font-size: 13px; }
+    .evidence-facts dt { color: var(--ox-text-muted); }
+    .evidence-facts dd { margin: 0; color: var(--ox-text); overflow-wrap: anywhere; }
+    .evidence-facts a { color: var(--ox-text); }
+    .version-history { display: flex; flex-direction: column; }
+    .version-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 40px; border-top: 1px solid var(--ox-border); font-size: 13px; color: var(--ox-text-2); }
+    .version-row:first-child { border-top: 0; }
+    .version-row__number { font: 600 12px/1 var(--ox-mono); color: var(--ox-text); }
+    .version-row__state { font-size: 12px; color: var(--ox-text-muted); }
+
+    /* A held approval reads as one line, not a banner. */
+    .verification-block { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--ox-text-muted); }
+    .verification-block strong { color: var(--ox-warning); font-weight: 650; margin-right: 6px; }
+    .decision-row { display: flex; flex-direction: column; gap: 2px; font-size: 13px; line-height: 1.45; }
+    .decision-row strong { color: var(--ox-text); font-weight: 650; }
+    .decision-row span { color: var(--ox-text-muted); }
+
+    .composer { display: flex; flex-direction: column; gap: 8px; }
+    .composer label { font-size: 13px; font-weight: 650; color: var(--ox-text); }
+    .composer textarea {
+      width: 100%; min-height: 96px; resize: vertical; padding: 10px 12px;
+      border-radius: 10px; border: 1px solid var(--ox-border-strong); background: var(--ox-panel);
+      color: var(--ox-text); font-family: inherit; font-size: 14px; line-height: 1.5;
     }
-    .evidence-readout {
-      display: grid;
-      gap: 16px;
-      align-content: start;
-    }
-    .evidence-verdict {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 8px 14px;
-      align-items: end;
-    }
-    .evidence-verdict__label {
-      color: var(--ox-text);
-      font-size: 1rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-    }
-    .evidence-verdict__score {
-      color: var(--ox-text);
-      font: 700 0.78rem var(--ox-mono);
-    }
-    .evidence-verdict__detail {
-      grid-column: 1 / -1;
-      margin: 0;
-      color: var(--ox-text-muted);
-      font-size: 0.78rem;
-      line-height: 1.5;
-    }
-    .evidence-meter {
-      position: relative;
-      height: 6px;
-      overflow: hidden;
-      border-radius: 999px;
-      background: var(--ox-border);
-    }
-    .evidence-meter__fill {
-      display: block;
-      height: 100%;
-      border-radius: inherit;
-      background: var(--ox-primary);
-    }
-    .evidence-meter__threshold {
-      position: absolute;
-      inset-block: -2px;
-      width: 2px;
-      border-radius: 999px;
-      background: var(--ox-text);
-      opacity: 0.7;
-    }
-    .evidence-facts {
-      display: grid;
-      grid-template-columns: minmax(92px, 0.34fr) minmax(0, 1fr);
-      gap: 8px 12px;
-      margin: 0;
-      padding-top: 12px;
-      border-top: 1px solid var(--ox-border);
-      font-size: 0.74rem;
-      line-height: 1.45;
-    }
-    .evidence-facts dt {
-      color: var(--ox-text-muted);
-      font: 700 0.58rem var(--ox-mono);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-    .evidence-facts dd {
-      min-width: 0;
-      margin: 0;
-      color: var(--ox-text);
-      overflow-wrap: anywhere;
-    }
-    .evidence-facts a {
-      display: inline-flex;
-      align-items: center;
-      min-height: 44px;
-      color: var(--ox-primary);
-      text-decoration: none;
-    }
-    .evidence-facts a:hover { text-decoration: underline; }
-    .version-history {
-      display: grid;
-      gap: 0;
-    }
-    .version-row {
-      display: grid;
-      grid-template-columns: 44px minmax(0, 1fr) auto;
-      gap: 10px;
-      align-items: center;
-      min-height: 52px;
-      border-bottom: 1px solid var(--ox-border);
-      color: var(--ox-text-muted);
-      font-size: 0.74rem;
-    }
-    .version-row:last-child { border-bottom: 0; }
-    .version-row__number {
-      color: var(--ox-text);
-      font: 700 0.72rem var(--ox-mono);
-    }
-    .version-row__state {
-      color: var(--ox-primary);
-      font: 700 0.56rem var(--ox-mono);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-    .structured-preview {
-      width: 100%;
-      display: grid;
-      grid-template-columns: minmax(100px, 0.34fr) minmax(0, 1fr);
-      gap: 8px 14px;
-      margin: 0;
-      font-size: 0.78rem;
-      line-height: 1.5;
-    }
-    .structured-preview dt {
-      color: var(--ox-text-muted);
-      font: 700 0.6rem var(--ox-mono);
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-    }
-    .structured-preview dd {
-      min-width: 0;
-      margin: 0;
-      color: var(--ox-text);
-      overflow-wrap: anywhere;
-    }
-    .diff-preview {
-      width: 100%;
-      max-height: 380px;
-      overflow: auto;
-      margin: 0;
-      padding: 12px 0;
-      border: 1px solid var(--ox-border);
-      border-radius: 10px;
-      background: rgba(0, 0, 0, 0.22);
-      font: 0.72rem/1.55 var(--ox-mono);
-    }
-    .diff-preview span {
-      display: block;
-      min-height: 1.55em;
-      padding: 0 12px;
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-    }
-    .diff-preview .is-add { color: var(--ox-teal); background: rgba(13, 148, 136, 0.08); }
-    .diff-preview .is-remove { color: var(--ox-danger); background: rgba(225, 29, 72, 0.08); }
-    .artifact-preview__body video {
-      width: 100%;
-      max-height: 380px;
-      border-radius: 10px;
-      background: #000;
-    }
-    .decision-card:disabled {
-      cursor: not-allowed;
-      opacity: 0.62;
-      transform: none;
-    }
-    .verification-block {
-      padding: 10px 12px;
-      color: var(--ox-text-muted);
-      background: rgba(217, 119, 6, 0.06);
-      font-size: 0.74rem;
-      line-height: 1.45;
-    }
-    .verification-block strong {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      margin-bottom: 2px;
-      color: var(--ox-warning);
-    }
-    .verification-block strong::before {
-      content: '';
-      width: 7px;
-      height: 7px;
-      flex: 0 0 7px;
-      border-radius: 999px;
-      background: currentColor;
-    }
-    .filmstrip {
-      min-width: 0;
-      padding: 0;
-      border: 0;
-      background: transparent;
-    }
-    .filmstrip__label { display: none; }
-    .filmstrip__item {
-      min-width: 44px;
-      justify-content: center;
-      padding-inline: 8px;
-    }
-    .attribution-row {
-      padding: 10px 0 0;
-    }
-    .decision-row {
-      grid-template-columns: 1fr;
-      gap: 8px;
-    }
-    .decision-card {
-      min-height: 72px;
-      padding: 12px;
-      align-items: center;
-    }
-    .decision-card--approve {
-      border-color: rgba(var(--ox-primary-rgb), 0.38);
-      background: rgba(var(--ox-primary-rgb), 0.1);
-    }
-    .decision-card__hint {
-      top: 8px;
-      right: 10px;
-    }
-    .composer {
-      border-radius: 10px;
-      padding: 12px;
-    }
-    .composer__actions {
-      flex-wrap: wrap;
-    }
-    .composer-btn {
-      min-height: 44px;
-    }
-    .review-feedback {
-      min-height: 20px;
-      color: var(--ox-text-muted);
-      font-size: 0.74rem;
-      line-height: 1.4;
-    }
+    .composer textarea:focus { outline: 2px solid rgba(251, 191, 36, .55); outline-offset: 1px; }
+    .review-feedback { min-height: 0; font-size: 12.5px; line-height: 1.45; color: var(--ox-text-muted); }
+    .review-feedback:empty { display: none; }
     .review-feedback[data-tone="error"] { color: var(--ox-danger); }
-    .review-feedback[data-tone="success"] { color: var(--ox-teal); }
-    .review-receipt {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
-      gap: 12px;
-      align-items: center;
-      padding: 14px 0;
+
+    /* Footer controls live in the kit footer's slots; they match its buttons. */
+    .ft-btn {
+      position: relative; overflow: hidden;
+      min-height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid transparent;
+      display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+      background: none; color: var(--ox-text-2);
+      font-family: inherit; font-size: 12.5px; font-weight: 650; line-height: 1; cursor: pointer;
+      transition: background .16s;
     }
-    .review-receipt__icon {
-      display: grid;
-      place-items: center;
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      color: var(--ox-teal);
-      background: rgba(13, 148, 136, 0.1);
+    .ft-btn::after { content: ""; position: absolute; inset: -4px -2px; }
+    .ft-btn--text:hover:not(:disabled) { background: var(--ox-hover); color: var(--ox-text); }
+    .ft-btn--primary {
+      background: #fbbf24; color: #1a1204; border-color: var(--ox-primary-border, #e9a800);
+      box-shadow: inset 0 1px rgba(255, 255, 255, .27);
+      touch-action: manipulation; user-select: none; -webkit-user-select: none;
     }
-    .review-receipt__title {
-      color: var(--ox-text);
-      font-weight: 700;
-    }
-    .review-receipt__detail {
-      margin-top: 3px;
-      color: var(--ox-text-muted);
-      font-size: 0.78rem;
-    }
-    .review-skeleton {
-      display: grid;
-      grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr);
-      gap: 20px;
-    }
-    .review-skeleton__preview {
-      height: 250px;
-      border-radius: 12px;
-    }
-    .review-skeleton__control {
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      padding-left: 4px;
-    }
-    .skeleton-line {
-      border-radius: 4px;
-      background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb), 0.12) 50%, var(--ox-border) 75%);
-      background-size: 200% 100%;
-      animation: shimmer 2s linear infinite;
-    }
-    @keyframes shimmer {
-      from { background-position: 200% 0; }
-      to { background-position: -200% 0; }
-    }
+    .ft-btn:disabled { cursor: default; opacity: .55; }
+    .ft-btn[aria-busy="true"] { opacity: .85; }
+    .ft-btn__fill { position: absolute; inset: 0; background: var(--ox-primary-hold, #b45309); opacity: .35; transform-origin: left; transform: scaleX(0); transition: transform .16s; pointer-events: none; }
+    .ft-btn.is-holding .ft-btn__fill { transform: none; transition: transform 820ms linear; }
+    .ft-btn__label { position: relative; }
+    .ft-btn svg { width: 12px; height: 12px; position: relative; }
+
+    /* The decision leaves the surface before the receipt replaces it. */
+    .stage.is-resolving { animation: review-exit 220ms var(--ox-ease, ease) forwards; }
+    @keyframes review-exit { to { opacity: 0; transform: translateY(-4px); } }
+
+    .sk { display: block; height: 10px; border-radius: 4px; background: var(--ox-skeleton, rgba(127, 127, 127, .12)); }
+    .empty-copy { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ox-text-muted); }
+
     @media (max-width: 760px) {
-      .review-desk,
-      .review-skeleton { grid-template-columns: 1fr; }
-      .review-control,
-      .review-skeleton__control {
-        position: static;
-        padding: 16px 0 0;
-        border-top: 1px solid var(--ox-border);
-      }
-      .quality-anatomy__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      .quality-anatomy__stage:nth-child(n) { border-top: 0; }
-      .quality-anatomy__stage + .quality-anatomy__stage { border-inline-start: 1px solid var(--ox-border); }
+      .who2 b { display: none; }
     }
     @media (max-width: 520px) {
-      .artifact-preview__body { min-height: 150px; max-height: 210px; }
-      .artifact-preview__body img,
-      .artifact-preview__body iframe { max-height: 186px; }
-      .viewer-panel--readout { min-height: 150px; padding: 12px; }
-      .evidence-facts,
-      .structured-preview { grid-template-columns: 1fr; gap: 4px; }
-      .version-row { grid-template-columns: 40px minmax(0, 1fr); }
-      .version-row__state { grid-column: 2; }
-      .widget-foot { align-items: flex-start; flex-direction: column; }
-      .widget-foot a { width: 100%; }
-      .quality-anatomy__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .quality-anatomy__stage:nth-child(even) { border-inline-start: 1px solid var(--ox-border); }
-      .quality-anatomy__stage:nth-child(odd) { border-inline-start: 0; }
-      .quality-anatomy__stage:nth-child(n + 3) { border-top: 1px solid var(--ox-border); }
+      .hd { flex-wrap: wrap; row-gap: 4px; padding: 12px 14px 0; }
+      .hd .src { flex-basis: calc(100% - 28px); order: 2; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+      .bd { padding: 10px 14px 14px; }
+      .review-question { font-size: 18px; }
+      .quality-anatomy__flow { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 4px; }
+      .quality-anatomy__equation { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 6px; }
+      .quality-anatomy__grid { grid-template-columns: 1fr; }
+      .quality-anatomy__stage:nth-child(even) { border-inline-start: 0; padding-inline-start: 0; }
+      .quality-anatomy__stage:nth-child(n + 2) { border-top: 1px solid var(--ox-border); }
+      .hd-link span { display: none; }
+    }
+    @media (max-width: 420px) {
+      .ft-btn { padding: 0 8px; gap: 4px; font-size: 12px; }
     }
     @media (prefers-reduced-motion: reduce) {
-      .skeleton-line { animation: none; }
-      .artifact-preview__body,
-      .decision-card,
-      .stage.is-resolving { animation: none; transition: none; }
+      .stage.is-resolving { animation: none; }
+      .ft-btn.is-holding .ft-btn__fill { transition-timing-function: steps(4); }
+      .artifact-preview__body, .quality-anatomy__chevron { transition: none; }
     }
   </style>
   <link rel="stylesheet" href="shared/widget-theme.css" />
 </head>
 <body>
-  <div class="widget-shell-card animate-in">
-    <div class="ox-card">
-      <div class="ox-card-inner">
-        <div class="widget-hero">
-          <div class="widget-hero-copy">
-            <div class="widget-kicker">Artifact Review</div>
-            <div class="widget-title-lg" data-artifact-title>Ready when you are</div>
-            <div class="widget-subtitle" data-artifact-subtitle>Approve or request changes — production artifacts need a human signature.</div>
-          </div>
-          <div class="widget-icon-frame">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg>
-          </div>
+  <div class="widget-shell-card">
+    <div class="stage" data-stage>
+      <article class="wcard" aria-busy="true" aria-label="Loading artifact review">
+        <div class="hd"><span class="sk" style="width:44%"></span></div>
+        <div class="bd">
+          <span class="sk" style="width:80%;height:22px"></span>
+          <span class="sk" style="width:100%;height:8px"></span>
+          <span class="sk" style="width:100%;height:132px;border-radius:12px"></span>
         </div>
-
-        <div class="stage" data-stage></div>
-      </div>
+        <ox-footer variant="reads" state="loading"></ox-footer>
+      </article>
     </div>
   </div>
 
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
-  <script src="shared/components/domain-accent.js"></script>
   <script src="shared/live-machine.js"></script>
   <script src="shared/live-store.js"></script>
   <script src="shared/live-panel.js"></script>
@@ -1138,6 +311,13 @@
         'https://www.useorgx.com',
         'https://github.com',
       ];
+
+      // Previews read avatars from the same origin; hosts use the published renders.
+      if (window.OrgXElements && window.OrgXWidgetRuntime && window.OrgXWidgetRuntime.detectProtocol() === 'standalone') {
+        try {
+          window.OrgXElements.avatarConfig.baseUrl = new URL('shared/avatars', window.location.href).toString();
+        } catch (_) { /* keep the default */ }
+      }
 
       // ─── SDK shim ────────────────────────────────────────────────
       function callTool(name, args) {
@@ -2039,6 +1219,12 @@
         }
 
         return {
+          records: {
+            criteria: criteriaByPriority,
+            supportingLayers: judgedCount === 0 ? supportingLayers : [],
+            measured: measured,
+            observations: observations,
+          },
           inputCount: inputCount,
           judgedCount: judgedCount,
           measuredCount: measured.length,
@@ -2164,65 +1350,130 @@
         );
       }
 
-      function renderAttribution(artifact) {
-        const authorChip = window.OrgxDomain
-          ? window.OrgxDomain.renderAgentChip(artifact.author || { name: 'Unassigned', domain: 'orchestrator' }, { size: 'sm' })
-          : '';
-        const version = artifact.version || 1;
+      function renderAuthor(artifact, form) {
+        const author = artifact.author || {};
+        const name = firstString([author.name]) || '';
+        const identity = window.OrgXAgentIdentity;
+        const key = identity ? identity.resolveAgentKey(author.id, name, author.domain, author.role) : null;
+        if (!name && !key) return '';
         return (
-          '<div class="attribution-row">' +
-          authorChip +
-          '<span class="version-badge">v' + version + ' · ' + (artifact.status || 'in_review').replace('_', ' ') + '</span>' +
-          '</div>'
+          '<span class="who2">' +
+          (key ? '<ox-avatar agent="' + key + '" form="' + escapeAttribute(form || 'base') + '" size="20" name="' + escapeAttribute(name || key) + '"></ox-avatar>' : '') +
+          (name ? '<b>' + escapeHtml(name) + '</b>' : '') +
+          '</span>'
         );
       }
 
+      // K1: one row of proof per criterion, check and observation; what
+      // fails comes first, and the inline list stops at five rows.
+      function receiptStatus(verdict) {
+        return verdict === true ? 'met' : verdict === false ? 'fail' : 'unverified';
+      }
+
+      function renderReceipts(artifact, evidence, reviewContract) {
+        const anatomy = buildQualityAnatomy(artifact, evidence, reviewContract);
+        const records = anatomy.records;
+        const bar = evidence.threshold === null ? null : Math.round(evidence.threshold * 100);
+        const rows = [];
+        records.criteria.forEach(function (item) {
+          const score = evidenceRecordScore(item);
+          const verdict = evidenceRecordVerdict(item, evidence.threshold);
+          rows.push({
+            status: receiptStatus(verdict),
+            label: evidenceRecordLabel(item, 'Criterion'),
+            detail: 'Judged' + (verdict === false && bar !== null ? ' · below the ' + bar + ' bar' : ''),
+            value: score === null ? '' : String(Math.round(score * 100)),
+          });
+        });
+        records.supportingLayers.forEach(function (item) {
+          const score = evidenceRecordScore(item);
+          rows.push({
+            status: receiptStatus(evidenceRecordVerdict(item, evidence.threshold)),
+            label: evidenceRecordLabel(item, 'Supporting layer'),
+            detail: 'Supporting layer · not in the score',
+            value: score === null ? '' : String(Math.round(score * 100)),
+          });
+        });
+        records.measured.forEach(function (item) {
+          rows.push({
+            status: receiptStatus(evidenceRecordVerdict(item, null)),
+            label: evidenceRecordLabel(item, 'Check'),
+            detail: 'Measured',
+            value: '',
+          });
+        });
+        records.observations.forEach(function (item) {
+          const verdict = evidenceRecordVerdict(item, null);
+          rows.push({
+            status: verdict === null ? 'unverified' : receiptStatus(verdict),
+            label: evidenceRecordLabel(item, 'Observation'),
+            detail: 'Observed · no score',
+            value: '',
+          });
+        });
+        if (!rows.length) return '';
+        const rank = { fail: 0, yours: 1, pending: 2, unverified: 3, met: 4 };
+        rows.sort(function (left, right) { return rank[left.status] - rank[right.status]; });
+        // Quiet when fine: met rows collapse into a count; the rest show, five at most.
+        const open = rows.filter(function (row) { return row.status !== 'met'; });
+        const shown = open.slice(0, 5);
+        const metCount = rows.length - open.length;
+        const restOther = open.length - shown.length;
+        const moreLine = !open.length
+          ? 'All ' + rows.length + ' criteria and checks met.'
+          : metCount || restOther
+            ? [metCount ? metCount + ' met' : '', restOther ? restOther + ' more open' : ''].filter(Boolean).join(' and ') + ' in the full receipt.'
+            : '';
+        if (!shown.length) return '<p class="receipts__more">' + escapeHtml(moreLine) + '</p>';
+        return (
+          '<div class="receipts" role="list" aria-label=""' + escapeAttribute(anatomy.evidenceIsCurrent ? 'Criteria and checks' : 'Criteria and checks, context only') + '">' +
+          shown.map(function (row) {
+            return '<ox-receipt-row status="' + row.status + '" label="' + escapeAttribute(row.label) + '" detail="' + escapeAttribute(row.detail + (anatomy.evidenceIsCurrent ? '' : ' · context only')) + '"' + (row.value ? ' value="' + escapeAttribute(row.value) + '"' : '') + '></ox-receipt-row>';
+          }).join('') +
+          '</div>' +
+          (moreLine ? '<p class="receipts__more">' + escapeHtml(moreLine) + '</p>' : '')
+        );
+      }
+
+      // Reading the evidence never needs the footer; deciding does.
       function renderDecisionRow(evidence) {
         if (evidence && evidence.canReview === false) {
           return (
             '<div class="decision-row" aria-label="Read-only review">' +
-            '<div class="composer" style="display:flex">' +
             '<strong>' + escapeHtml(evidence.reviewControlsLabel || 'Review controls unavailable') + '</strong>' +
             '<span>' + escapeHtml(evidence.reviewControlsDetail || 'This evidence is readable, but no ruling can be recorded here.') + '</span>' +
-            '</div></div>'
+            '</div>'
           );
         }
         const approvalDisabled = Boolean(evidence && evidence.blocksApproval);
         return (
-          '<div class="decision-row" aria-label="Review actions">' +
-          '<button class="decision-card decision-card--approve" data-action="approve" type="button"' + (approvalDisabled ? ' disabled aria-describedby="verification-block"' : '') + '>' +
-          '<div class="decision-card__hold" aria-hidden="true"></div>' +
-          '<span class="decision-card__hint">' + (approvalDisabled ? 'evidence held' : 'hold to approve') + '</span>' +
-          '<div class="decision-card__icon">' +
-          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>' +
-          '</div>' +
-          '<div class="decision-card__body">' +
-          '<div class="decision-card__title">' + (approvalDisabled ? 'Verification blocked' : 'Approve') + '</div>' +
-          '<div class="decision-card__detail">' + (approvalDisabled ? 'Inspect the held evidence before signing off.' : 'Sign off and advance to production.') + '</div>' +
-          '</div>' +
-          '</button>' +
-          '<button class="decision-card decision-card--changes" data-action="request-changes" type="button" aria-expanded="false" aria-controls="artifact-change-composer">' +
-          '<div class="decision-card__icon">' +
-          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3l7 7-11 11H3v-7z"/></svg>' +
-          '</div>' +
-          '<div class="decision-card__body">' +
-          '<div class="decision-card__title">Request changes</div>' +
-          '<div class="decision-card__detail">File a change request — author is notified.</div>' +
-          '</div>' +
-          '</button>' +
-          '</div>' +
-          '<div class="composer" id="artifact-change-composer" data-composer>' +
+          (approvalDisabled
+            ? '<p class="verification-block" id="verification-block"><strong>Approval is held by policy</strong>' + escapeHtml(evidence.detail) + '</p>'
+            : '') +
+          '<div class="composer" id="artifact-change-composer" data-composer hidden>' +
           '<label for="composer-input">What needs to change?</label>' +
           '<textarea id="composer-input" data-composer-input placeholder="Be specific — this creates a decision entity linked to the artifact."></textarea>' +
-          '<div class="composer__actions">' +
-          '<button class="composer-btn" type="button" data-composer-cancel>Cancel</button>' +
-          '<button class="composer-btn composer-btn--primary" type="button" data-composer-submit>File decision</button>' +
           '</div>' +
-          '</div>' +
-          (approvalDisabled
-            ? '<div class="verification-block" id="verification-block"><strong>Approval is held by policy</strong>' + escapeHtml(evidence.detail) + '</div>'
-            : '') +
           '<div class="review-feedback" role="status" aria-live="polite" data-review-feedback></div>'
+        );
+      }
+
+      // The footer's slotted controls: approve, request changes, and the
+      // change-request composer's cancel and file. Rendered once per card.
+      function renderFooterControls(evidence) {
+        if (!evidence || evidence.canReview === false) return '';
+        const approvalDisabled = Boolean(evidence.blocksApproval);
+        return (
+          '<button class="ft-btn" data-action="approve" type="button"' +
+          (approvalDisabled ? ' disabled aria-describedby="verification-block"' : ' aria-describedby="approve-hint"') + '>' +
+          '<span class="ft-btn__fill" aria-hidden="true"></span><span class="ft-btn__label">Approve</span>' +
+          '</button>' +
+          '<span id="approve-hint" hidden>Press and hold to approve</span>' +
+          '<button class="ft-btn" data-action="request-changes" type="button" aria-expanded="false" aria-controls="artifact-change-composer">' +
+          '<span class="ft-btn__label">Request changes</span>' +
+          '</button>' +
+          '<button class="ft-btn ft-btn--text" type="button" data-composer-cancel hidden>Cancel</button>' +
+          '<button class="ft-btn ft-btn--primary" type="button" data-composer-submit hidden><span class="ft-btn__label">File decision</span></button>'
         );
       }
 
@@ -2234,20 +1485,81 @@
         return 'https://useorgx.com/artifacts/' + artifactId;
       }
 
-      function renderFoot(artifact) {
-        const lastVersion = Array.isArray(artifact.versions) && artifact.versions.length
-          ? artifact.versions[artifact.versions.length - 1]
-          : null;
-        const lastLabel = lastVersion && lastVersion.updated_at
-          ? 'Updated ' + formatRelative(lastVersion.updated_at)
-          : '';
+      function renderHeader(artifact, tone, form) {
         const deepLink = artifact.id ? buildArtifactLink(artifact) : null;
+        const status = String(artifact.status || 'in_review').replace(/_/g, ' ');
         return (
-          '<div class="widget-foot">' +
-          '<span>' + escapeHtml(lastLabel || 'Fresh artifact') + '</span>' +
-          (deepLink ? '<a data-deeplink href="' + deepLink + '">Open in OrgX →</a>' : '') +
+          '<div class="hd">' +
+          '<ox-glyph kind="artifact"' + (tone ? ' tone="' + tone + '"' : '') + '></ox-glyph>' +
+          '<span class="kind">Artifact</span>' +
+          '<span class="src" title="' + escapeAttribute(artifact.name || '') + '"><b>' + escapeHtml(artifact.name || 'Artifact') + '</b> · v' + escapeHtml(String(artifact.version || 1)) + ' · ' + escapeHtml(status) + '</span>' +
+          '<span class="sp"></span>' +
+          (deepLink ? '<a class="hd-link" data-deeplink href="' + escapeAttribute(deepLink) + '" aria-label="Open in OrgX"><span>Open in OrgX</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg></a>' : '') +
+          renderAuthor(artifact, form) +
           '</div>'
         );
+      }
+
+      /* ── Footer modes (SM3) ──────────────────────────────────────────
+         decide   approve (hold) + request changes, or request changes first
+                  when approval is held by policy
+         compose  file decision + cancel
+         sending  the control that was pressed stays, busy and locked
+         failed   the same controls return; the note and the review stay */
+      let footerMode = 'decide';
+      let footerAction = null;
+      function setFooterMode(mode, action, evidence) {
+        const footer = document.getElementById('reviewFooter');
+        if (!footer) return;
+        footerMode = mode;
+        footerAction = action || footerAction;
+        const held = Boolean(evidence && evidence.blocksApproval);
+        const approve = footer.querySelector('[data-action="approve"]');
+        const changes = footer.querySelector('[data-action="request-changes"]');
+        const cancel = footer.querySelector('[data-composer-cancel]');
+        const submit = footer.querySelector('[data-composer-submit]');
+        const composing = mode === 'compose' || ((mode === 'sending' || mode === 'failed') && footerAction === 'changes');
+        function place(button, slot, primary) {
+          if (!button) return;
+          button.hidden = !slot;
+          if (slot) button.setAttribute('slot', slot);
+          else button.removeAttribute('slot');
+          button.classList.toggle('ft-btn--primary', !!primary);
+          button.classList.toggle('ft-btn--text', !primary);
+        }
+        if (composing) {
+          place(approve, null);
+          place(changes, null);
+          place(cancel, 'action', false);
+          place(submit, 'primary', true);
+        } else if (held) {
+          place(approve, 'action', false);
+          place(changes, 'primary', true);
+          place(cancel, null);
+          place(submit, null);
+        } else {
+          place(approve, 'primary', true);
+          place(changes, 'action', false);
+          place(cancel, null);
+          place(submit, null);
+        }
+        const frames = {
+          decide: held
+            ? { variant: 'confirms-in-orgx', state: 'draft', heading: 'Approval held', detail: 'evidence is below the bar' }
+            : { variant: 'finishes-here', state: 'needs-you', heading: 'Finishes here', detail: 'hold Approve to sign off' },
+          compose: { variant: 'finishes-here', state: 'needs-you', heading: 'Request changes', detail: 'the author is notified' },
+          sending: footerAction === 'changes'
+            ? { variant: 'finishes-here', state: 'sending', heading: 'Filing change request', detail: 'linking guidance to the artifact' }
+            : { variant: 'finishes-here', state: 'sending', heading: 'Recording approval', detail: 'advancing the artifact' },
+          failed: footerAction === 'changes'
+            ? { variant: 'finishes-here', state: 'failed', heading: 'Not sent', detail: 'your note is preserved' }
+            : { variant: 'finishes-here', state: 'failed', heading: 'Not sent', detail: 'your review is still open' },
+        };
+        const frame = frames[mode] || frames.decide;
+        footer.setAttribute('variant', frame.variant);
+        footer.setAttribute('heading', frame.heading);
+        footer.setAttribute('detail', frame.detail);
+        footer.setAttribute('state', frame.state);
       }
 
       // ─── interactions ────────────────────────────────────────────
@@ -2280,10 +1592,13 @@
         card.addEventListener('keydown', function (e) {
           if ((e.key === 'Enter' || e.key === ' ') && !committed) {
             e.preventDefault();
-            start(e);
+            if (!e.repeat) start(e);
           }
         });
         card.addEventListener('keyup', cancel);
+        card.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+        // A failed approval hands the button back for another hold.
+        card.addEventListener('ox-rearm', function () { committed = false; });
       }
 
       // Play the decisive exit on the live stage, then re-render the
@@ -2296,6 +1611,50 @@
         const finish = function () { if (done) return; done = true; next(); };
         stage.addEventListener('animationend', finish, { once: true });
         setTimeout(finish, 320);
+      }
+
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+      function readToolResult(result) {
+        const runtime = window.OrgXWidgetRuntime;
+        if (runtime && typeof runtime.extractStructuredWidgetData === 'function') {
+          return runtime.extractStructuredWidgetData(result, true);
+        }
+        return result && typeof result === 'object' && result.structuredContent ? result.structuredContent : result;
+      }
+
+      // When the ruling comes back as a queued command or run, follow it
+      // through orgx_command_status instead of calling it done on arrival.
+      function settleCommand(result) {
+        const out = asRecord(readToolResult(result));
+        const candidates = [['command', firstString([out.command_id, out.commandId])], ['run', firstString([out.run_id, out.runId])]];
+        const ref = candidates.find(function (entry) { return UUID_RE.test(entry[1]); });
+        if (!ref) return Promise.resolve();
+        return new Promise(function (resolve, reject) {
+          function check() {
+            Promise.resolve(callTool('orgx_command_status', { kind: ref[0], id: ref[1] }))
+              .then(function (statusResult) {
+                const status = asRecord(readToolResult(statusResult));
+                if (status.state === 'failed' || status.state === 'cancelled') {
+                  reject(new Error(firstString([status.outcome]) || 'ruling_not_recorded'));
+                  return;
+                }
+                if (typeof status.next_poll_after_ms === 'number' && isFinite(status.next_poll_after_ms)) {
+                  setTimeout(check, Math.max(1000, status.next_poll_after_ms));
+                  return;
+                }
+                resolve();
+              })
+              .catch(reject);
+          }
+          check();
+        });
+      }
+
+      function setButtonLabel(button, text) {
+        if (!button) return;
+        const label = button.querySelector('.ft-btn__label');
+        (label || button).textContent = text;
       }
 
       async function approveArtifact(artifact) {
@@ -2312,19 +1671,20 @@
         if (button) {
           button.disabled = true;
           button.setAttribute('aria-busy', 'true');
-          const label = button.querySelector('.decision-card__title');
-          if (label) label.textContent = 'Approving…';
+          setButtonLabel(button, 'Approving…');
         }
+        setFooterMode('sending', 'approve', evidence);
         if (feedback) {
           feedback.dataset.tone = '';
           feedback.textContent = 'Recording approval and advancing the artifact…';
         }
         try {
-          await callTool('orgx_act', {
+          const result = await callTool('orgx_act', {
             type: 'artifact',
             id: artifact.id,
             action: 'approve',
           });
+          await settleCommand(result);
           resolveStage(function () {
             activeReviewContract = null;
             render(Object.assign({}, artifact, { status: 'approved' }));
@@ -2334,9 +1694,10 @@
           if (button) {
             button.disabled = false;
             button.removeAttribute('aria-busy');
-            const label = button.querySelector('.decision-card__title');
-            if (label) label.textContent = 'Approve';
+            setButtonLabel(button, 'Approve');
+            button.dispatchEvent(new CustomEvent('ox-rearm'));
           }
+          setFooterMode('failed', 'approve', evidence);
           if (feedback) {
             feedback.dataset.tone = 'error';
             feedback.textContent = 'Approval failed. Your review is still open; try again.';
@@ -2348,12 +1709,14 @@
         const button = document.querySelector('[data-composer-submit]');
         const input = document.querySelector('[data-composer-input]');
         const feedback = document.querySelector('[data-review-feedback]');
+        const evidence = resolveEvidence(artifact, activeReviewContract);
         if (button) {
           button.disabled = true;
           button.setAttribute('aria-busy', 'true');
-          button.textContent = 'Filing…';
+          setButtonLabel(button, 'Filing…');
         }
         if (input) input.disabled = true;
+        setFooterMode('sending', 'changes', evidence);
         if (feedback) {
           feedback.dataset.tone = '';
           feedback.textContent = 'Linking guidance to the artifact…';
@@ -2368,11 +1731,12 @@
             entity_id: artifact.id,
             initiative_id: artifact.entity_type === 'initiative' ? artifact.entity_id : undefined,
           });
-          await callTool('orgx_act', {
+          const result = await callTool('orgx_act', {
             type: 'artifact',
             id: artifact.id,
             action: 'request_changes',
           });
+          await settleCommand(result);
           resolveStage(function () {
             activeReviewContract = null;
             render(Object.assign({}, artifact, { status: 'changes_requested' }));
@@ -2382,9 +1746,10 @@
           if (button) {
             button.disabled = false;
             button.removeAttribute('aria-busy');
-            button.textContent = 'File decision';
+            setButtonLabel(button, 'File decision');
           }
           if (input) input.disabled = false;
+          setFooterMode('failed', 'changes', evidence);
           if (feedback) {
             feedback.dataset.tone = 'error';
             feedback.textContent = 'Change request failed. Your note is preserved; try again.';
@@ -2393,63 +1758,68 @@
       }
 
       // ─── render ─────────────────────────────────────────────────
+      function bindLinks(stage) {
+        const deepLink = stage.querySelector('[data-deeplink]');
+        if (deepLink) {
+          deepLink.addEventListener('click', function (e) {
+            e.preventDefault();
+            openWidgetLink(deepLink.getAttribute('href'));
+          });
+        }
+        const sourceLink = stage.querySelector('[data-source-link]');
+        if (sourceLink) {
+          sourceLink.addEventListener('click', function (event) {
+            event.preventDefault();
+            openWidgetLink(sourceLink.getAttribute('href'));
+          });
+        }
+      }
+
       function render(artifact) {
         artifact = normalizeArtifact(artifact);
         const stage = document.querySelector('[data-stage]');
-        const title = document.querySelector('[data-artifact-title]');
-        const subtitle = document.querySelector('[data-artifact-subtitle]');
+        stage.classList.remove('is-resolving');
 
         if (artifact && artifact.__loading) {
-          title.textContent = 'Loading review evidence';
-          subtitle.textContent = 'Holding the action surface until the artifact and provenance arrive.';
           stage.innerHTML = (
-            '<div class="review-skeleton" aria-label="Loading artifact review">' +
-            '<div class="skeleton-line review-skeleton__preview"></div>' +
-            '<div class="review-skeleton__control">' +
-            '<div class="skeleton-line" style="width:42%;height:10px"></div>' +
-            '<div class="skeleton-line" style="width:94%;height:24px"></div>' +
-            '<div class="skeleton-line" style="width:82%;height:14px"></div>' +
-            '<div class="skeleton-line" style="width:100%;height:72px"></div>' +
-            '<div class="skeleton-line" style="width:100%;height:72px"></div>' +
-            '</div></div>'
+            '<article class="wcard" aria-busy="true" aria-label="Loading artifact review">' +
+            '<div class="hd"><span class="sk" style="width:44%"></span></div>' +
+            '<div class="bd"><span class="sk" style="width:80%;height:22px"></span><span class="sk" style="width:100%;height:8px"></span><span class="sk" style="width:100%;height:132px;border-radius:12px"></span></div>' +
+            '<ox-footer variant="reads" state="loading"></ox-footer>' +
+            '</article>'
           );
           reportSize();
           return;
         }
 
         if (artifact && artifact.__error) {
-          title.textContent = 'Review evidence unavailable';
-          subtitle.textContent = 'No action was taken. Restore the evidence before signing off.';
           stage.innerHTML = (
-            '<div class="empty-state animate-in">' +
-            '<div class="empty-icon" style="color:var(--ox-danger);background:rgba(225,29,72,.08)">' +
-            '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 17h.01"/></svg>' +
-            '</div><strong style="color:var(--ox-text)">Evidence disconnected</strong>' +
-            '<div style="max-width:38ch;margin-top:6px">' + escapeHtml(artifact.__error) + '</div>' +
-            '<button type="button" class="composer-btn" style="margin-top:14px" onclick="location.reload()">Retry evidence</button>' +
-            '</div>'
+            '<article class="wcard" data-edge="red">' +
+            '<div class="hd"><ox-glyph kind="artifact" tone="red"></ox-glyph><span class="kind">Artifact</span></div>' +
+            '<div class="bd"><h2 class="review-question">Evidence disconnected</h2>' +
+            '<p class="empty-copy">' + escapeHtml(artifact.__error) + ' Restore the evidence before signing off.</p></div>' +
+            '<ox-footer variant="reads" state="failed" heading="Couldn’t load the evidence" detail="no action was taken" action-label="Retry evidence" data-retry-evidence></ox-footer>' +
+            '</article>'
           );
+          const retry = stage.querySelector('[data-retry-evidence]');
+          if (retry) retry.addEventListener('ox-action', function () { location.reload(); });
           reportSize();
           return;
         }
 
         if (!artifact || !artifact.id) {
-          stage.classList.remove('is-resolving');
           stage.innerHTML = (
-            '<div class="empty-state animate-in">' +
-            '<div class="empty-icon">' +
-            '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
-            '</div>' +
-            '<div>No artifacts waiting for review.</div>' +
-            '</div>'
+            '<article class="wcard" data-edge="teal">' +
+            '<div class="hd"><ox-glyph kind="artifact" tone="teal"></ox-glyph><span class="kind">Artifact review</span></div>' +
+            '<div class="bd"><h2 class="review-question">Inbox clear</h2>' +
+            '<p class="empty-copy">No artifacts waiting for review. Nothing to sign off on right now.</p></div>' +
+            '<ox-footer variant="reads" state="caught-up" heading="Nothing waits on you" detail="no artifacts in review"></ox-footer>' +
+            '</article>'
           );
-          title.textContent = 'Inbox clear';
-          subtitle.textContent = 'Nothing to sign off on right now.';
           reportSize();
           return;
         }
 
-        title.textContent = artifact.name || 'Artifact review';
         const isResolved =
           !activeReviewContract &&
           (artifact.status === 'approved' || artifact.status === 'changes_requested');
@@ -2458,29 +1828,60 @@
         const rulingRecorded = ['accepted', 'changes_requested', 'rejected'].includes(
           firstString([evidence.reviewStatus]).toLowerCase(),
         );
-        subtitle.textContent = activeReviewContract
+        const summary = activeReviewContract
           ? firstString([canonicalWorkflow.reason, canonicalWorkflow.headline]) || artifact.summary || 'Canonical review evidence attached.'
-          : isResolved
-            ? (artifact.status === 'approved' ? 'Signed off. Execution can continue from this version.' : 'Guidance filed. The author owns the next revision.')
-            : (artifact.summary || 'Production artifact awaiting approval.');
+          : (artifact.summary || 'Production artifact awaiting approval.');
 
-        stage.classList.remove('is-resolving');
         if (isResolved) {
+          const approved = artifact.status === 'approved';
           stage.innerHTML = (
-            '<div class="review-receipt animate-in">' +
-            '<div class="review-receipt__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 4 4L19 6"/></svg></div>' +
-            '<div><div class="review-receipt__title">' + (artifact.status === 'approved' ? 'Approval recorded' : 'Revision requested') + '</div>' +
-            '<div class="review-receipt__detail">v' + escapeHtml(String(artifact.version || 1)) + ' · ' + (artifact.status === 'approved' ? 'artifact advanced' : 'author notified') + '</div></div>' +
+            '<article class="wcard" data-edge="teal">' +
+            renderHeader(artifact, 'teal', 'proactive') +
+            '<div class="bd">' +
+            '<h2 class="review-question">' + (approved ? 'Approval recorded' : 'Revision requested') + '</h2>' +
+            '<p class="review-summary">' + (approved ? 'Signed off. Execution can continue from this version.' : 'Guidance filed. The author owns the next revision.') + '</p>' +
             '</div>' +
-            renderAttribution(artifact) +
-            renderFoot(artifact)
+            '<ox-footer variant="finishes-here" state="done" heading="' + (approved ? 'Approved' : 'Changes requested') + '" detail="v' + escapeAttribute(String(artifact.version || 1)) + ' · ' + (approved ? 'artifact advanced' : 'author notified') + '" action-label=""></ox-footer>' +
+            '</article>'
           );
+          bindLinks(stage);
           reportSize();
           return;
         }
 
+        const canReview = evidence.canReview !== false;
+        const held = canReview && evidence.blocksApproval;
+        const tone = rulingRecorded ? 'teal' : !canReview ? '' : held ? 'amber' : 'amber';
+        const chip = rulingRecorded
+          ? '<ox-state-chip state="confirmed" label="Human ruling recorded"></ox-state-chip>'
+          : !canReview
+            ? '<ox-state-chip state="view_only"></ox-state-chip>'
+            : held
+              ? '<ox-state-chip state="stale" label="Verification held"></ox-state-chip>'
+              : '<ox-state-chip state="needs_you" label="Needs your signature"></ox-state-chip>';
+        const footer = canReview
+          ? '<ox-footer id="reviewFooter" variant="finishes-here" state="needs-you">' + renderFooterControls(evidence) + '</ox-footer>'
+          : rulingRecorded
+            ? '<ox-footer variant="confirms-in-orgx" state="confirmed" heading="Ruling recorded" detail="evidence stays separate" action-label=""></ox-footer>'
+            : '<ox-footer variant="confirms-in-orgx" state="waiting" heading="Decided in OrgX" detail="you can read the evidence here" action-label=""></ox-footer>';
+
         stage.innerHTML = (
+          '<article class="wcard" data-edge="' + (tone || 'mute') + '">' +
+          renderHeader(artifact, tone, 'verifying') +
+          '<div class="bd">' +
           '<div class="review-desk animate-in">' +
+          '<div class="review-control">' +
+          '<div class="review-status">' + chip + (held ? '' : '<span class="meta">' + escapeHtml(evidence.label || '') + '</span>') + '</div>' +
+          '<h2 class="review-question">' + (rulingRecorded ? 'What remains unresolved after the ruling?' : evidence.canReview === false ? 'What does the current evidence establish?' : 'Does this evidence meet the bar to advance?') + '</h2>' +
+          '<p class="review-summary">' + escapeHtml(summary) + '</p>' +
+          renderQualityGauge(evidence) +
+          renderReceipts(artifact, evidence, activeReviewContract) +
+          '<p class="review-consequence">' + (rulingRecorded
+            ? 'The ruling stays recorded. Quality, modality proof, and later outcome receipts remain separate evidence states.'
+            : evidence.canReview === false
+              ? 'This view is evidence-only for your current authority; no ruling will be written.'
+              : 'Approval releases this version to the next execution step. A change request returns precise guidance to ' + escapeHtml((artifact.author && artifact.author.name) || 'the author') + '.') + '</p>' +
+          '</div>' +
           '<div class="review-evidence">' +
           '<div class="artifact-preview" data-preview>' +
           '<div class="viewer-tabs" role="tablist" aria-label="Artifact viewer">' +
@@ -2491,27 +1892,19 @@
           '<div class="viewer-panel" id="artifact-preview-panel" role="tabpanel" data-view-panel="preview">' +
           '<div class="artifact-preview__body" data-preview-body>' + renderPreview(artifact) + '</div>' +
           '<div class="preview-toolbar">' +
-          '<span style="color:var(--ox-text-muted);font:700 .58rem var(--ox-mono);letter-spacing:.08em;text-transform:uppercase">' + escapeHtml(artifact.artifact_type.replace(/[_.-]+/g, ' ')) + ' · v' + escapeHtml(String(artifact.version)) + '</span>' +
+          '<span class="meta">' + escapeHtml(artifact.artifact_type.replace(/[_.-]+/g, ' ')) + ' · v' + escapeHtml(String(artifact.version)) + '</span>' +
           '<button class="preview-toggle" type="button" data-preview-toggle aria-expanded="false">Expand evidence</button>' +
           '</div></div>' +
           '<div class="viewer-panel viewer-panel--readout" id="artifact-evidence-panel" role="tabpanel" data-view-panel="evidence" hidden>' + renderEvidence(artifact, evidence) + '</div>' +
           '<div class="viewer-panel viewer-panel--readout" id="artifact-history-panel" role="tabpanel" data-view-panel="history" hidden>' + renderHistory(artifact) + '</div>' +
           '</div>' +
-          renderAttribution(artifact) +
           '</div>' +
-          '<div class="review-control">' +
-          '<div class="review-status"><span class="review-status__signal">' + (rulingRecorded ? 'Human ruling recorded' : evidence.blocksApproval ? 'Verification held' : 'Needs your signature') + '</span><span>v' + escapeHtml(String(artifact.version || 1)) + '</span></div>' +
-          '<h2 class="review-question">' + (rulingRecorded ? 'What remains unresolved after the ruling?' : evidence.canReview === false ? 'What does the current evidence establish?' : 'Does this evidence meet the bar to advance?') + '</h2>' +
-          renderQualityGauge(evidence) +
-          '<p class="review-consequence">' + (rulingRecorded
-            ? 'The ruling stays recorded. Quality, modality proof, and later outcome receipts remain separate evidence states.'
-            : evidence.canReview === false
-              ? 'This view is evidence-only for your current authority; no ruling will be written.'
-              : 'Approval releases this version to the next execution step. A change request returns precise guidance to ' + escapeHtml((artifact.author && artifact.author.name) || 'the author') + '.') + '</p>' +
-          renderDecisionRow(evidence) +
           renderQualityAnatomy(artifact, evidence, activeReviewContract) +
-          '</div></div>' +
-          renderFoot(artifact)
+          renderDecisionRow(evidence) +
+          '</div>' +
+          '</div>' +
+          footer +
+          '</article>'
         );
 
         // Wire decisions
@@ -2523,23 +1916,29 @@
         const composerInput = stage.querySelector('[data-composer-input]');
         const composerCancel = stage.querySelector('[data-composer-cancel]');
         const composerSubmit = stage.querySelector('[data-composer-submit]');
+        if (canReview) setFooterMode('decide', null, evidence);
 
-        if (changesCard && composer) {
-          changesCard.addEventListener('click', function () {
-            composer.classList.add('is-open');
-            changesCard.setAttribute('aria-expanded', 'true');
-            if (composerInput) composerInput.focus();
-            reportSize();
-          });
+        function openComposer() {
+          if (!composer) return;
+          composer.hidden = false;
+          composer.classList.add('is-open');
+          if (changesCard) changesCard.setAttribute('aria-expanded', 'true');
+          setFooterMode('compose', 'changes', evidence);
+          if (composerInput) composerInput.focus();
+          reportSize();
         }
-        if (composerCancel) {
-          composerCancel.addEventListener('click', function () {
-            composer.classList.remove('is-open');
-            if (changesCard) changesCard.setAttribute('aria-expanded', 'false');
-            if (changesCard) changesCard.focus();
-            reportSize();
-          });
+        function closeComposer() {
+          if (!composer) return;
+          composer.hidden = true;
+          composer.classList.remove('is-open');
+          if (changesCard) changesCard.setAttribute('aria-expanded', 'false');
+          setFooterMode('decide', 'approve', evidence);
+          if (changesCard) changesCard.focus();
+          reportSize();
         }
+
+        if (changesCard && composer) changesCard.addEventListener('click', openComposer);
+        if (composerCancel) composerCancel.addEventListener('click', closeComposer);
         if (composerSubmit) {
           composerSubmit.addEventListener('click', function () {
             const notes = (composerInput.value || '').trim();
@@ -2594,35 +1993,18 @@
         stage.onkeydown = function (event) {
           if (event.key !== 'Escape' || !composer || !composer.classList.contains('is-open')) return;
           event.preventDefault();
-          composer.classList.remove('is-open');
-          if (changesCard) {
-            changesCard.setAttribute('aria-expanded', 'false');
-            changesCard.focus();
-          }
-          reportSize();
+          closeComposer();
         };
 
-        // Wire deep link
-        const deepLink = stage.querySelector('[data-deeplink]');
-        if (deepLink) {
-          deepLink.addEventListener('click', function (e) {
-            e.preventDefault();
-            openWidgetLink(deepLink.getAttribute('href'));
-          });
-        }
-        const sourceLink = stage.querySelector('[data-source-link]');
-        if (sourceLink) {
-          sourceLink.addEventListener('click', function (event) {
-            event.preventDefault();
-            openWidgetLink(sourceLink.getAttribute('href'));
-          });
-        }
-
+        bindLinks(stage);
         reportSize();
       }
 
-      // Bootstrap
+      let booted = false;
       function bootstrap() {
+        // Boot once: a second DOMContentLoaded must not wipe an open review.
+        if (booted) return;
+        booted = true;
         const fixtureParams = new URLSearchParams(window.location.search);
         const hasFixture = fixtureParams.has('state') || fixtureParams.get('demo') === 'true' || fixtureParams.get('loading') === 'true';
         if (hasFixture || window.OrgXWidgetRuntime.detectProtocol() === 'standalone') {

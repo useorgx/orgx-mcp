@@ -23,8 +23,8 @@ describe('widget gallery state contract', () => {
 
   it('maps the task card to an honest state-specific headline and action', () => {
     expect(taskSource).toContain('Execution complete');
-    expect(taskSource).toContain('Execution In Progress');
-    expect(taskSource).toContain('Execution Needs Refresh');
+    expect(taskSource).toContain("agent + ' is running'");
+    expect(taskSource).toContain("heading: 'Out of date'");
     expect(taskSource).toContain("stateMeta.state === 'completed' ? 'View result'");
   });
   it('keeps gallery fixtures deterministic and link-safe', () => {
