@@ -425,6 +425,7 @@ import {
 import { applyEntityWriteAttribution } from './entityWriteAttribution';
 import { ensureSqliteColumn } from './sqliteSchema';
 import { checkToolPlanAccess } from './toolAccessGating';
+import { resolveLegacyToolAlias } from './deprecatedTools';
 import {
   CONTRACT_TOOL_DEFINITIONS,
   INLINE_TOOL_CONTRACTS,
@@ -3902,7 +3903,15 @@ export class OrgXMcp extends McpAgent<
           _meta: meta,
         },
         async (args: Record<string, unknown>) =>
-          this.executePlanSessionTool(tool.id, args, tool.securitySchemes)
+          resolveLegacyToolAlias(tool.id)
+            ? this.executeLegacyToolAlias(
+                tool.id,
+                args,
+                tool.securitySchemes,
+                'use planning features',
+                allowedTools
+              )
+            : this.executePlanSessionTool(tool.id, args, tool.securitySchemes)
       );
     }
   }
@@ -7372,14 +7381,72 @@ export class OrgXMcp extends McpAgent<
           _meta: meta,
         },
         async (args: Record<string, unknown>) =>
-          this.executeContractTool(
-            tool.id,
-            args,
-            tool.securitySchemes,
-            allowedTools
-          )
+          resolveLegacyToolAlias(tool.id)
+            ? this.executeLegacyToolAlias(
+                tool.id,
+                args,
+                tool.securitySchemes,
+                `use ${tool.id.replace(/_/g, ' ')}`,
+                allowedTools
+              )
+            : this.executeContractTool(
+                tool.id,
+                args,
+                tool.securitySchemes,
+                allowedTools
+              )
       );
     }
+  }
+
+  /**
+   * Run a legacy tool name as a thin alias of the v2-core tool that fully
+   * covers it (LEGACY_TOOL_ALIASES in src/deprecatedTools.ts). Only the
+   * handler changes: the legacy registration keeps its name, schema, _meta
+   * and gating, and the transport adds the deprecation warning headers.
+   *
+   * The legacy auth requirement is checked first, with the same message the
+   * legacy handler produced, so an alias can never run under a weaker
+   * requirement than the name the caller used. The canonical tool then runs
+   * through its own entry point, including its invocation-time scope check.
+   * This is called only from a registration handler, never from inside
+   * executeContractTool, so a canonical tool that delegates to the legacy
+   * implementation cannot loop back here.
+   */
+  private async executeLegacyToolAlias(
+    legacyToolId: string,
+    args: Record<string, unknown>,
+    legacySecuritySchemes:
+      | readonly { type: string; scopes?: readonly string[] }[]
+      | undefined,
+    legacyFeatureDescription: string,
+    allowedTools: Set<string> | null
+  ): Promise<CallToolResult> {
+    const alias = resolveLegacyToolAlias(legacyToolId);
+    const canonical = alias
+      ? CONTRACT_TOOL_DEFINITIONS.find(
+          (tool) => tool.id === alias.canonicalToolId
+        )
+      : undefined;
+    if (!alias || !canonical) {
+      return this.toolError(`Unknown legacy tool alias: ${legacyToolId}`);
+    }
+
+    const authResponse = this.buildAuthRequiredResponse({
+      toolId: legacyToolId,
+      securitySchemes: legacySecuritySchemes,
+      userId: this.resolveUserId() ?? undefined,
+      serverUrl: this.env.MCP_SERVER_URL,
+      featureDescription: legacyFeatureDescription,
+    });
+    if (authResponse) return authResponse;
+
+    return this.executeContractTool(
+      canonical.id,
+      alias.mapArgs(args),
+      canonical.securitySchemes,
+      allowedTools
+    );
   }
 
   private toolResultGuidanceInstalled = false;

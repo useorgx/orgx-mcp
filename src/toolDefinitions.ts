@@ -480,7 +480,7 @@ export const PLAN_SESSION_TOOLS = [
     id: 'start_plan_session',
     title: 'Start Plan Session',
     description:
-      'Start a multi-agent planning session that breaks a goal into projects, tasks, owners, and agent assignments. Also known as: feature planning, roadmap planning, planning workflow. USE WHEN: user begins planning a new feature or initiative. NEXT: Use improve_plan for suggestions, record_plan_edit to track changes, complete_plan when done. DO NOT USE: for creating initiative hierarchies — use scaffold_initiative instead.',
+      'Start a multi-agent planning session that breaks a goal into projects, tasks, owners, and agent assignments. Also known as: feature planning, roadmap planning, planning workflow. USE WHEN: user begins planning a new feature or initiative. NEXT: Use improve_plan for suggestions, record_plan_edit to track changes, complete_plan when done. DO NOT USE: for creating initiative hierarchies — use scaffold_initiative instead. Alias of orgx_plan (action=start).',
     inputSchema: {
       feature_name: z
         .string()
@@ -519,7 +519,7 @@ export const PLAN_SESSION_TOOLS = [
     id: 'improve_plan',
     title: 'Improve Plan',
     description:
-      'Improve a plan with AI suggestions based on prior patterns and best practices. Also known as: plan critique, planning feedback, refine roadmap. USE WHEN: user wants feedback on a plan draft. NEXT: Apply suggestions via record_plan_edit. DO NOT USE: without an active plan session — call start_plan_session first.',
+      'Improve a plan with AI suggestions based on prior patterns and best practices. Also known as: plan critique, planning feedback, refine roadmap. USE WHEN: user wants feedback on a plan draft. NEXT: Apply suggestions via record_plan_edit. DO NOT USE: without an active plan session — call start_plan_session first. Alias of orgx_plan (action=improve).',
     inputSchema: {
       session_id: z.string().min(1).describe('Plan session ID'),
       plan_content: z
