@@ -159,9 +159,9 @@
         "destructiveHint": true
       },
       "justifications": {
-        "read_only_justification": "Approves a pending decision and changes its state.",
-        "open_world_justification": "Approval can resume or continue agent work that operates in connected systems.",
-        "destructive_justification": "Approval irreversibly resolves a pending decision and may resume execution."
+        "read_only_justification": "Requests to settle a decision; the server refuses model-driven rulings and returns the review link where the person decides.",
+        "open_world_justification": "A person's approval, made in the decisions widget or in OrgX, can resume agent work that operates in connected systems.",
+        "destructive_justification": "Kept conservative: the decision it points to irreversibly resolves when the person approves."
       }
     },
     "reject_decision": {
@@ -171,9 +171,21 @@
         "destructiveHint": true
       },
       "justifications": {
-        "read_only_justification": "Rejects or requests changes on a pending decision and changes its state.",
+        "read_only_justification": "Requests to send a decision back; the server refuses model-driven rulings and returns the review link where the person decides.",
         "open_world_justification": "Writes only to private OrgX decision records.",
         "destructive_justification": "Rejection can irreversibly resolve or redirect a pending decision."
+      }
+    },
+    "orgx_widget_decide": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Records the person's approve or send-back ruling on one ordinary decision when they click in the decisions widget.",
+        "open_world_justification": "Changes only the OrgX decision record; it does not act in external systems.",
+        "destructive_justification": "Resolves one pending decision after an explicit click; widget-only and gated by a single-use approval token the model never sees, so a model cannot call it."
       }
     },
     "get_agent_status": {

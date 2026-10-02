@@ -343,6 +343,7 @@
       data.params &&
       this.toolResultCallback
     ) {
+      rememberResultMeta(data.params);
       this.toolResultCallback(extractStructuredWidgetData(data.params));
     }
   };
@@ -377,6 +378,7 @@
       version: '2.0.0',
     });
     this.app.ontoolresult = function onToolResult(result) {
+      rememberResultMeta(result);
       if (self.toolResultCallback) {
         self.toolResultCallback(extractStructuredWidgetData(result));
       }
@@ -617,6 +619,27 @@
     return result;
   }
 
+  // Result `_meta` is handed to the widget only, never to the model. Widgets
+  // read approval tokens from it (see getToolResponseMetadata).
+  var lastResultMeta = null;
+
+  function rememberResultMeta(result) {
+    if (result && typeof result === 'object' && result._meta && typeof result._meta === 'object') {
+      lastResultMeta = result._meta;
+    }
+  }
+
+  function getToolResponseMetadata(key) {
+    var meta = null;
+    if (getProtocol() === 'chatgpt') {
+      meta = global.openai && global.openai.toolResponseMetadata;
+    } else {
+      meta = lastResultMeta;
+    }
+    if (!meta || typeof meta !== 'object') return null;
+    return key ? (meta[key] === undefined ? null : meta[key]) : meta;
+  }
+
   function callTool(name, args) {
     var activeProtocol = getProtocol();
     if (activeProtocol === 'chatgpt') {
@@ -710,6 +733,7 @@
     if (bridge && bridge.destroy) bridge.destroy();
     bridge = null;
     protocol = null;
+    lastResultMeta = null;
   }
 
   var runtime = {
@@ -723,6 +747,7 @@
     extractLifecycleRank: extractLifecycleRank,
     getErrorMessage: getErrorMessage,
     getTheme: getTheme,
+    getToolResponseMetadata: getToolResponseMetadata,
     getWidgetSessionId: getWidgetSessionId,
     initWidget: initWidget,
     openWidgetLink: openWidgetLink,

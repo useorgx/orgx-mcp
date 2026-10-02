@@ -180,7 +180,7 @@ describe('decision tools contract', () => {
     }
   });
 
-  it('preserves direct legacy decision actions behind explicit user confirmation', () => {
+  it('describes legacy decision actions truthfully: the person decides, not the model', () => {
     const approve = findTool('approve_decision');
     const reject = findTool('reject_decision');
 
@@ -194,8 +194,19 @@ describe('decision tools contract', () => {
       destructiveHint: true,
       openWorldHint: false,
     });
-    expect(approve.description).toContain('explicit confirmation');
+    expect(approve.description).toContain('A model cannot settle a decision');
+    expect(reject.description).toContain('A model cannot settle a decision');
+    expect(approve.description).toContain('review_url');
     expect(approve.description).toContain('DO NOT USE');
     expect(reject.description).toContain('DO NOT USE');
+  });
+
+  it('keeps the widget decision tool off the model surface and token-gated', () => {
+    const widgetDecide = findTool('orgx_widget_decide');
+    const meta = widgetDecide._meta as Record<string, unknown>;
+    expect(meta['openai/outputTemplate']).toBeUndefined();
+    expect(meta['openai/readOnlyHint']).toBeUndefined();
+    expect(meta['openai/widgetAccessible']).toBe(true);
+    expect(Object.keys(widgetDecide.inputSchema)).toContain('approval_token');
   });
 });

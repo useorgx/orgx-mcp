@@ -84,8 +84,8 @@
     },
     "decisions": {
       "file": "public/widgets/decisions.html",
-      "bytes": 83920,
-      "hash": "2112fc0c31c0",
+      "bytes": 86800,
+      "hash": "b7a59be62f63",
       "primaryRgb": "251,191,36",
       "sharedRefs": [
         "shared/interaction-kit.css",

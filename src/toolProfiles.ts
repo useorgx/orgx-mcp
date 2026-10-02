@@ -61,6 +61,7 @@ export const V2_CORE_PUBLIC_SURFACE = [
 export const WIDGET_AFFORDANCE_SURFACE = [
   'approve_decision',
   'reject_decision',
+  'orgx_widget_decide',
   'get_agent_status',
   'get_initiative_pulse',
   'scaffold_initiative',
@@ -107,6 +108,7 @@ export const CHATGPT_PUBLIC_SURFACE = [
   'orgx_submit_receipt',
   'approve_decision',
   'reject_decision',
+  'orgx_widget_decide',
   'get_agent_status',
   'get_initiative_pulse',
   'scaffold_initiative',

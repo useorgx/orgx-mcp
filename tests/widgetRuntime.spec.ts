@@ -70,6 +70,33 @@ describe('shared OrgX widget runtime', () => {
     });
   });
 
+  it('reads widget-only result metadata from ChatGPT', () => {
+    (window as unknown as { openai: unknown }).openai = {
+      toolResponseMetadata: { 'orgx/widgetApproval': { approval_tokens: { 'd-1': 'tok' } } },
+    };
+    const reader = runtime as unknown as { getToolResponseMetadata(key?: string): unknown };
+    expect(reader.getToolResponseMetadata('orgx/widgetApproval')).toEqual({ approval_tokens: { 'd-1': 'tok' } });
+    expect(reader.getToolResponseMetadata('missing')).toBeNull();
+  });
+
+  it('reads widget-only result metadata from an MCP Apps tool result', async () => {
+    let app: { ontoolresult?: (result: unknown) => void } | null = null;
+    class FakeApp {
+      connect = vi.fn().mockResolvedValue(undefined);
+      getHostContext = vi.fn().mockReturnValue({});
+      close = vi.fn();
+      ontoolresult?: (result: unknown) => void;
+      constructor() { app = this; }
+    }
+    Object.defineProperty(window, 'parent', { configurable: true, value: { postMessage: vi.fn() } });
+    (window as unknown as { McpApps: unknown }).McpApps = { App: FakeApp, applyDocumentTheme: vi.fn() };
+    runtime.initWidget({ render: vi.fn() });
+    await vi.waitFor(() => expect(app?.ontoolresult).toBeTypeOf('function'));
+    app!.ontoolresult!({ structuredContent: { decisions: [] }, _meta: { 'orgx/widgetApproval': { approval_tokens: { 'd-2': 'tok2' } } } });
+    const reader = runtime as unknown as { getToolResponseMetadata(key?: string): unknown };
+    expect(reader.getToolResponseMetadata('orgx/widgetApproval')).toEqual({ approval_tokens: { 'd-2': 'tok2' } });
+  });
+
   it('rejects in standalone mode so a preview never reports an action as done', async () => {
     await expect(runtime.callTool('reject_decision', { decision_id: 'd-1', reason: 'x' })).rejects.toMatchObject({
       code: 'host_unavailable',
