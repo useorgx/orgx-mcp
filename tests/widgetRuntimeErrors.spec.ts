@@ -209,3 +209,15 @@ describe('widget runtime tool-input state', () => {
     expect(runtime.getToolCallState()).toMatchObject({ resultSeen: true, awaitingResult: false });
   });
 });
+
+describe('widget runtime input tracker', () => {
+  it('marks the last input on <html> once, like interaction-kit.js', () => {
+    expect((document as unknown as { __oxInput?: number }).__oxInput).toBe(1);
+    document.dispatchEvent(new Event('pointerdown'));
+    expect(document.documentElement.getAttribute('data-ox-input')).toBe('pointer');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
+    expect(document.documentElement.getAttribute('data-ox-input')).toBe('keyboard');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', metaKey: true }));
+    expect(document.documentElement.getAttribute('data-ox-input')).toBe('keyboard');
+  });
+});

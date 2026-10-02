@@ -3,6 +3,16 @@
 
   if (global.OrgXWidgetRuntime) return;
 
+  // Last input on <html> (same tracker and guard as interaction-kit.js):
+  // widget-theme.css hides focus rings after a pointer press.
+  (function (doc) {
+    if (!doc || doc.__oxInput) return;
+    doc.__oxInput = 1;
+    var set = function (m) { doc.documentElement.setAttribute('data-ox-input', m); };
+    doc.addEventListener('pointerdown', function () { set('pointer'); }, true);
+    doc.addEventListener('keydown', function (e) { if (!e.metaKey && !e.ctrlKey && !e.altKey) set('keyboard'); }, true);
+  })(global.document || null);
+
   var protocol = null;
   var bridge = null;
   var chatGptActionsFallback = false;
