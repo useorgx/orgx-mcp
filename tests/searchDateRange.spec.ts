@@ -1,3 +1,5 @@
+import { toolCallSchema } from '../src/openaiOutputSchemas/shared';
+import { canonicalizeToolCallGuidance } from '../src/toolGuidance';
 import { describe, expect, it } from 'vitest';
 import { parseSearchDateRange } from '../src/searchDateRange';
 import { buildEntityCollectionSearchParams } from '../src/entityCollectionSearch';
@@ -24,3 +26,10 @@ describe('server-side search creation bounds', () => {
   });
 });
 
+
+
+it('preserves creation bounds through output schemas and legacy guidance', () => {
+  const dates = { created_from: '2026-10-01T00:00Z', created_to: '2026-10-02T00:00Z' };
+  expect(toolCallSchema.parse({ tool: 'orgx_search', args: { ...dates, cursor: 'next' } }).args).toEqual({ ...dates, cursor: 'next' });
+  expect(canonicalizeToolCallGuidance({ tool: 'query_org_memory', args: { query: 'launch', ...dates } }, new Set(['orgx_search']))).toEqual({ tool: 'orgx_search', args: { query: 'launch', ...dates } });
+});
