@@ -22,7 +22,7 @@ exports[`listed tool surfaces > profile "chatgpt" lists byte-identical tool desc
   "orgx_recommend": "bfe7c13b2aa280de",
   "orgx_search": "98acbeeaf89373de",
   "orgx_spawn": "140fd287f61835b1",
-  "orgx_submit_receipt": "564ef3446741f85d",
+  "orgx_submit_receipt": "a25f40eb8035253b",
   "orgx_widget_decide": "c2e495ebba68715e",
   "orgx_write": "8a606444c763a06a",
   "reject_decision": "17bcaa4c4238167c",
@@ -59,7 +59,7 @@ exports[`listed tool surfaces > profile "claude-plugin" lists byte-identical too
   "orgx_inspect": "d7d071dfdab46a92",
   "orgx_recommend": "bfe7c13b2aa280de",
   "orgx_search": "98acbeeaf89373de",
-  "orgx_submit_receipt": "564ef3446741f85d",
+  "orgx_submit_receipt": "a25f40eb8035253b",
   "orgx_tail": "0218a99218cbc731",
 }
 `;
@@ -89,7 +89,7 @@ exports[`listed tool surfaces > profile "commander" lists byte-identical tool de
   "orgx_request_question": "a363d444c8d5e3a2",
   "orgx_search": "98acbeeaf89373de",
   "orgx_spawn": "140fd287f61835b1",
-  "orgx_submit_receipt": "564ef3446741f85d",
+  "orgx_submit_receipt": "a25f40eb8035253b",
   "orgx_tail": "0218a99218cbc731",
   "orgx_write": "8a606444c763a06a",
   "scaffold_initiative": "93f1b3c5eda771cc",
@@ -119,7 +119,7 @@ exports[`listed tool surfaces > profile "executor" lists byte-identical tool des
   "orgx_request_question": "a363d444c8d5e3a2",
   "orgx_search": "98acbeeaf89373de",
   "orgx_spawn": "140fd287f61835b1",
-  "orgx_submit_receipt": "564ef3446741f85d",
+  "orgx_submit_receipt": "a25f40eb8035253b",
   "orgx_tail": "0218a99218cbc731",
   "orgx_write": "8a606444c763a06a",
 }
@@ -182,7 +182,7 @@ exports[`listed tool surfaces > profile "full" lists byte-identical tool descrip
   "orgx_request_question": "a363d444c8d5e3a2",
   "orgx_search": "98acbeeaf89373de",
   "orgx_spawn": "140fd287f61835b1",
-  "orgx_submit_receipt": "564ef3446741f85d",
+  "orgx_submit_receipt": "a25f40eb8035253b",
   "orgx_tail": "0218a99218cbc731",
   "orgx_widget_decide": "c2e495ebba68715e",
   "orgx_write": "8a606444c763a06a",
@@ -224,7 +224,7 @@ exports[`listed tool surfaces > profile "memory" lists byte-identical tool descr
   "orgx_inspect": "d7d071dfdab46a92",
   "orgx_recommend": "bfe7c13b2aa280de",
   "orgx_search": "98acbeeaf89373de",
-  "orgx_submit_receipt": "564ef3446741f85d",
+  "orgx_submit_receipt": "a25f40eb8035253b",
 }
 `;
 
@@ -309,7 +309,7 @@ exports[`listed tool surfaces > profile "v2" lists byte-identical tool descripto
   "orgx_request_question": "a363d444c8d5e3a2",
   "orgx_search": "98acbeeaf89373de",
   "orgx_spawn": "140fd287f61835b1",
-  "orgx_submit_receipt": "564ef3446741f85d",
+  "orgx_submit_receipt": "a25f40eb8035253b",
   "orgx_tail": "0218a99218cbc731",
   "orgx_widget_decide": "c2e495ebba68715e",
   "orgx_write": "8a606444c763a06a",
