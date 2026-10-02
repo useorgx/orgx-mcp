@@ -661,6 +661,8 @@ export const CHATGPT_TOOL_DEFINITIONS = [
       'openai/toolInvocation/invoking': 'Checking your decision queue...',
       'openai/toolInvocation/invoked': 'Found your pending decisions',
       'openai/readOnlyHint': true,
+      // The decisions widget refreshes itself (and its approval tokens) after a refusal.
+      'openai/widgetAccessible': true,
       ui: { resourceUri: WIDGET_URIS.decisions },
     },
   },
@@ -734,18 +736,31 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'orgx_widget_decide',
     title: 'Decide from the decisions widget',
     description:
-      'Widget-only: settles one decision after the person clicks Approve, an option, or Send back in the decisions widget or the OrgX panel. USE WHEN: the widget sends a click with its approval token from result metadata, which models never see. NEXT: the widget shows the decision as settled. DO NOT USE: from a model or without a widget approval token; use approve_decision or reject_decision to point the person to where they decide.',
+      'Widget-only: settles one pending item (a decision of any type, an agent-run approval, or an action awaiting approval) after the person clicks in the decisions widget or the OrgX panel. Sends what the item\'s widget_actions ask for: an option, several options, a typed answer or a reason. USE WHEN: the widget sends a click with its approval token from result metadata, which models never see. NEXT: the widget shows the item as settled. DO NOT USE: from a model or without a widget approval token; use approve_decision or reject_decision to point the person to where they decide.',
     inputSchema: {
-      decision_id: z.string().min(1).describe('Decision being settled'),
-      action: z.enum(['approve', 'reject']).describe('approve or reject'),
-      reason: z.string().max(2000).optional().describe('Required when rejecting'),
-      option_id: z.string().min(1).max(200).optional().describe('The option the person chose, when the decision has options'),
-      option_ids: z
-        .array(z.string().min(1).max(200))
-        .min(1)
-        .max(50)
+      decision_id: z.string().min(1).describe('Pending item being settled (decision, agent-run approval or action id)'),
+      kind: z
+        .enum(['decision', 'approval', 'action'])
         .optional()
-        .describe('The options the person chose, when the decision allows several'),
+        .describe("The item's widget_actions.kind. Defaults to decision."),
+      action: z.enum(['approve', 'reject']).describe('approve or reject'),
+      reason: z
+        .string()
+        .max(2000)
+        .optional()
+        .describe('What should change. Required when rejecting if widget_actions.reject_requires_reason, and when the chosen option requires a reason'),
+      answer: z
+        .string()
+        .max(2000)
+        .optional()
+        .describe('Typed answer when widget_actions.answer asks for one'),
+      option_id: z.string().min(1).max(120).optional().describe('The option the person chose, when widget_actions.selection.mode is single'),
+      option_ids: z
+        .array(z.string().min(1).max(120))
+        .min(1)
+        .max(12)
+        .optional()
+        .describe('The options the person chose, when widget_actions.selection.mode is multiple'),
       approval_token: z.string().min(1).max(2048).describe('Widget approval token'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },

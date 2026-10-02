@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import { CONTRACT_TOOL_DEFINITIONS } from '../src/contractTools';
+import { WIDGET_OUTPUT_SCHEMAS } from '../src/openaiOutputSchemas/widgets';
 import { CHATGPT_TOOL_DEFINITIONS, expandConsolidatedTool } from '../src/toolDefinitions';
 
 /**
@@ -221,5 +222,36 @@ describe('decision tools contract', () => {
     expect(schema.parse(base)).toEqual(base);
     const args = { ...base, option_id: 'opt-b', option_ids: ['eu'] };
     expect(expandConsolidatedTool('orgx_widget_decide', args)).toEqual({ resolvedToolId: 'widget_decide', resolvedArgs: args });
+  });
+
+  it('carries the item kind and a typed answer, within the app limits', () => {
+    const widgetDecide = findTool('orgx_widget_decide');
+    const schema = z.object(widgetDecide.inputSchema as z.ZodRawShape);
+    const base = { decision_id: 'd-1', action: 'approve', approval_token: 'tok' };
+    for (const kind of ['decision', 'approval', 'action']) {
+      expect(schema.parse({ ...base, kind })).toEqual({ ...base, kind });
+    }
+    expect(schema.safeParse({ ...base, kind: 'run' }).success).toBe(false);
+    expect(schema.parse({ ...base, answer: 'Use the staging keys.' })).toEqual({ ...base, answer: 'Use the staging keys.' });
+    expect(schema.safeParse({ ...base, answer: 'x'.repeat(2001) }).success).toBe(false);
+    expect(schema.safeParse({ ...base, reason: 'x'.repeat(2001) }).success).toBe(false);
+    expect(schema.safeParse({ ...base, option_id: 'x'.repeat(121) }).success).toBe(false);
+    expect(schema.safeParse({ ...base, option_ids: Array.from({ length: 13 }, (_, i) => `o${i}`) }).success).toBe(false);
+    const args = { ...base, kind: 'action', action: 'reject', reason: 'Wrong account', answer: 'n/a' };
+    expect(expandConsolidatedTool('orgx_widget_decide', args)).toEqual({ resolvedToolId: 'widget_decide', resolvedArgs: args });
+  });
+
+  it('describes the settled item, including its kind and route', () => {
+    const output = WIDGET_OUTPUT_SCHEMAS.orgx_widget_decide;
+    const settled = {
+      decision_id: 'a-1',
+      kind: 'action',
+      action: 'approved',
+      status: 'approved',
+      route: 'action_gateway',
+      surface: 'host_widget',
+    };
+    expect(output.parse(settled)).toEqual(settled);
+    expect(output.safeParse({ ...settled, kind: 'run' }).success).toBe(false);
   });
 });

@@ -93,8 +93,8 @@
     },
     "decisions": {
       "file": "public/widgets/decisions.html",
-      "bytes": 93114,
-      "hash": "c9a6f9bb486f",
+      "bytes": 137226,
+      "hash": "9abdd6435042",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -200,8 +200,8 @@
     },
     "orgx-panel": {
       "file": "public/widgets/orgx-panel.html",
-      "bytes": 68007,
-      "hash": "ae0e66d0f458",
+      "bytes": 96780,
+      "hash": "0ba553290022",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/interaction-kit.css",

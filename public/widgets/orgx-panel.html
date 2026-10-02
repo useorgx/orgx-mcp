@@ -193,6 +193,7 @@
     }
     .opt:hover:not([disabled]) { background: var(--ox-hover, rgba(127, 127, 127, 0.08)); border-color: var(--ox-primary); }
     .opt[disabled] { cursor: default; opacity: 0.6; }
+    .opt[data-at-max] { opacity: 0.55; }
     .opt[aria-pressed="true"] { border-color: var(--ox-primary); background: rgba(var(--ox-action-rgb, 191, 255, 0), 0.1); }
     .opt-text { flex: 1; min-width: 0; }
     .opt-go { flex: none; color: var(--ox-text-muted); font-weight: 500; }
@@ -202,6 +203,13 @@
     }
     .opt[aria-pressed="true"] .opt-box { background: var(--ox-action); border-color: var(--ox-action-border, transparent); color: var(--ox-action-fg); }
     .row .composer { flex: 1 1 100%; padding: 4px 0 8px; }
+    .opt-text { display: flex; flex-direction: column; gap: 1px; }
+    .opt-desc { font-size: 12px; font-weight: 500; color: var(--ox-text-muted); }
+    .opt-tag { flex: none; font-size: 11.5px; font-weight: 600; color: var(--ox-text-muted); }
+    .composer.field { margin-bottom: 10px; }
+    .composer .opts { margin-bottom: 2px; }
+    .composer textarea[aria-invalid="true"] { border-color: var(--ox-danger); }
+    .error-line .text-btn { min-height: 32px; font-size: 12.5px; }
 
     /* Proof: one quiet line. */
     .proof { margin-top: 14px; border-top: 1px solid var(--ox-border); }
@@ -266,7 +274,11 @@
       listOpen: false,         // thread: "Choose another item"
       evidenceOpen: false,
       composer: null,          // { id, draft }
-      selections: {},          // decisionId -> option ids toggled (multiselect)
+      selections: {},          // decisionId -> option ids picked (toggles, or the one option awaiting a reason)
+      rejectPicks: {},         // decisionId -> the option a send-back note is about
+      answers: {},             // decisionId -> typed answer
+      notes: {},               // decisionId -> why, when the chosen option asks for it
+      fieldErrors: {},         // decisionId -> { action, field, message } after a refused click
       rulings: {},             // decisionId -> { action, phase, detail, title }
       lastRuling: null,        // { action, title } after a refresh removes it
       actionError: null,       // { id, message }
@@ -323,44 +335,187 @@
       timers.push(id);
       return id;
     }
+    // Why an item is decided in OrgX: one sentence per reason the server gives.
+    var DECIDE_IN_ORGX_COPY = {
+      credential_required: 'It needs a credential, and credentials are entered only in OrgX.',
+      integration_connection_required: 'It settles when you connect the integration in OrgX.',
+      form_input_required: 'It asks for several answers. Fill them in OrgX.',
+      options_unavailable: 'Its options could not be read here. Choose in OrgX.',
+      artifact_reference_invalid: 'The artifact under review could not be opened here. Review it in OrgX.',
+      specialized_lifecycle: 'This type runs its own review in OrgX.',
+      requester_cannot_approve: 'You requested this action, so another approver decides it.',
+      widget_approvals_disabled: 'Deciding from chat is off for this workspace.',
+      action_authority_denied: 'Your role can’t approve this from chat. OrgX shows who can.',
+      token_mismatch: 'This view belongs to another account or workspace. Open it in OrgX.',
+      lifecycle_required: 'This one finishes in OrgX.',
+      // Older servers.
+      critical: 'Critical decisions are made in OrgX.',
+      choice_required: 'Choose between the options in OrgX.',
+      agent_run_approval: 'Agent run approvals are made in OrgX.',
+      protected_decision_type: 'This one needs the full review in OrgX.',
+      artifact_review_lifecycle: 'This one needs the full review in OrgX.',
+    };
     function decideInOrgxDetail(reason) {
-      switch (reason) {
-        case 'critical': return 'Critical decisions are made in OrgX.';
-        case 'choice_required': return 'Choose between the options in OrgX.';
-        case 'agent_run_approval': return 'Agent run approvals are made in OrgX.';
-        case 'protected_decision_type':
-        case 'specialized_lifecycle':
-        case 'artifact_review_lifecycle': return 'This one needs the full review in OrgX.';
-        default: return 'Approval uses your signed-in OrgX session.';
-      }
+      return DECIDE_IN_ORGX_COPY[reason] || 'Approval uses your signed-in OrgX session.';
     }
-    // What the person can do comes from the snapshot, never from the decision's type:
-    // widget_actions when the server lists them, else options (two or more), else Approve.
+    var PAST = {
+      approve: 'Approved', 'approve and continue': 'Approved', 'approve selected': 'Approved', 'grant access': 'Access granted',
+      'allow once': 'Allowed once', 'allow and continue': 'Allowed', 'send answer': 'Answer sent', 'send guidance and retry': 'Guidance sent',
+      'confirm and continue': 'Confirmed', 'confirm selection': 'Confirmed', confirm: 'Confirmed', 'accept plan': 'Plan accepted',
+      'apply edit': 'Edit applied', retry: 'Retry approved', 'retry and continue': 'Retry approved', acknowledge: 'Acknowledged',
+      'send back': 'Sent back', deny: 'Denied', decline: 'Declined', reject: 'Rejected', 'request changes': 'Changes requested', 'stop here': 'Stopped',
+    };
+    function pastTense(label, action) {
+      return PAST[String(label || '').toLowerCase()] || (action === 'approve' ? 'Approved' : 'Sent back');
+    }
+    var KINDS = ['decision', 'approval', 'action'];
+    var TEXT_MAX = 2000;
+    function has(list, value) { return Array.isArray(list) && list.indexOf(value) !== -1; }
+    function kindOf(f) {
+      var actions = f && f.widget_actions && !Array.isArray(f.widget_actions) ? f.widget_actions : null;
+      var kind = (actions && actions.kind) || (f && f.kind);
+      return KINDS.indexOf(kind) !== -1 ? kind : 'decision';
+    }
+    function toOption(o) {
+      return {
+        id: o.id, label: o.label, description: o.description || '',
+        implied: o.implied_action === 'approve' || o.implied_action === 'reject' ? o.implied_action : null,
+        requiresReason: o.requires_reason === true,
+      };
+    }
+    // What the person can do comes from the snapshot, never from the item's type:
+    // widget_actions (the app's per-item contract) when the server lists it, the older
+    // provisional list from earlier snapshots, else options (two or more) or Approve.
     function choicesFor(f) {
-      var actions = Array.isArray(f.widget_actions) && f.widget_actions.length ? f.widget_actions : null;
-      var options;
-      var approve = { label: 'Approve', option_id: null };
-      var reject = { label: 'Send back' };
-      if (actions) {
-        options = actions.filter(function isOption(a) { return a.kind === 'option' && a.option_id; })
-          .map(function toOption(a) { return { id: a.option_id, label: a.label }; });
-        var approveAction = actions.filter(function isApprove(a) { return a.kind === 'approve'; })[0];
-        var rejectAction = actions.filter(function isReject(a) { return a.kind === 'reject'; })[0];
-        if (options.length === 1 && !approveAction) approve = { label: options[0].label, option_id: options[0].id };
-        else if (approveAction) approve = { label: approveAction.label, option_id: null };
-        reject = rejectAction ? { label: rejectAction.label } : null;
-      } else {
-        options = Array.isArray(f.options) ? f.options : [];
+      var raw = f.widget_actions;
+      var kind = kindOf(f);
+      if (raw && !Array.isArray(raw) && Array.isArray(raw.actions)) {
+        var labels = raw.labels || {};
+        var rs = raw.selection && Array.isArray(raw.selection.options) && raw.selection.options.length ? raw.selection : null;
+        var options = rs ? rs.options.filter(function valid(o) { return o && o.id && o.label; }).map(toOption) : [];
+        var spec = {
+          kind: kind,
+          approve: has(raw.actions, 'approve') ? { label: labels.approve || 'Approve', optionId: '' } : null,
+          reject: has(raw.actions, 'reject') ? { label: labels.reject || 'Send back' } : null,
+          rejectRequiresReason: raw.reject_requires_reason === true,
+          answer: raw.answer && (has(raw.answer.required_for, 'approve') || has(raw.answer.required_for, 'reject'))
+            ? { approve: has(raw.answer.required_for, 'approve'), reject: has(raw.answer.required_for, 'reject'), max: Math.min(TEXT_MAX, Number(raw.answer.max_length) || TEXT_MAX) }
+            : null,
+          selection: null,
+        };
+        if (options.length) {
+          var multiple = rs.mode === 'multiple';
+          var min = multiple ? Math.min(options.length, Math.max(0, Number(rs.min) || 0) || 1) : 1;
+          spec.selection = {
+            mode: multiple ? 'multiple' : 'single', options: options, min: min,
+            max: multiple ? Math.max(min, Math.min(options.length, Number(rs.max) || options.length)) : 1,
+            requiredFor: { approve: has(rs.required_for, 'approve'), reject: has(rs.required_for, 'reject') },
+          };
+        }
+        // One option the approval needs, and it is the approval's own label: one button.
+        var only = spec.selection && spec.selection.mode === 'single' && options.length === 1 ? options[0] : null;
+        if (only && spec.approve && spec.selection.requiredFor.approve && !only.implied && !only.requiresReason && spec.approve.label === only.label) {
+          spec.approve.optionId = only.id;
+          spec.selection = null;
+        }
+        return spec;
       }
-      if (options.length >= 2) return { mode: 'options', options: options, multiselect: f.multiselect === true, reject: reject };
-      return { mode: 'approve', options: [], multiselect: false, approve: approve, reject: reject };
+      if (Array.isArray(raw) && raw.length) {
+        // Snapshots from before the contract: [{ kind: approve|reject|option, label, option_id }].
+        var legacyOptions = raw.filter(function isOption(a) { return a && a.kind === 'option' && a.option_id; })
+          .map(function opt(a) { return { id: a.option_id, label: a.label, description: '', implied: null, requiresReason: false }; });
+        var approveAction = raw.filter(function isApprove(a) { return a && a.kind === 'approve'; })[0];
+        var rejectAction = raw.filter(function isReject(a) { return a && a.kind === 'reject'; })[0];
+        var legacy = { kind: kind, approve: null, reject: rejectAction ? { label: rejectAction.label } : null, rejectRequiresReason: true, answer: null, selection: null };
+        if (legacyOptions.length === 1 && !approveAction) legacy.approve = { label: legacyOptions[0].label, optionId: legacyOptions[0].id };
+        else {
+          legacy.approve = { label: approveAction ? approveAction.label : 'Approve', optionId: '' };
+          if (legacyOptions.length >= 2) legacy.selection = { mode: 'single', options: legacyOptions, min: 1, max: 1, requiredFor: { approve: true, reject: false } };
+        }
+        return legacy;
+      }
+      var fallback = (Array.isArray(f.options) ? f.options : []).map(function opt(o) { return { id: o.id, label: o.label, description: '', implied: null, requiresReason: false }; });
+      var multi = f.multiselect === true && fallback.length >= 2;
+      return {
+        kind: kind,
+        approve: { label: multi ? 'Confirm' : 'Approve', optionId: '' },
+        reject: { label: 'Send back' },
+        rejectRequiresReason: true,
+        answer: null,
+        selection: fallback.length >= 2
+          ? { mode: multi ? 'multiple' : 'single', options: fallback, min: 1, max: multi ? fallback.length : 1, requiredFor: { approve: true, reject: false } }
+          : null,
+      };
     }
     function selectedFor(id) {
       return Array.isArray(ui.selections[id]) ? ui.selections[id] : [];
     }
+    function optionById(f, optionId) {
+      var sel = choicesFor(f).selection;
+      return sel ? sel.options.filter(function byId(o) { return o.id === optionId; })[0] || null : null;
+    }
     function optionLabel(f, optionId) {
-      var match = choicesFor(f).options.filter(function byId(o) { return o.id === optionId; })[0];
-      return match ? match.label : '';
+      var o = optionById(f, optionId);
+      if (o) return o.label;
+      var c = choicesFor(f);
+      return c.approve && c.approve.optionId === optionId ? c.approve.label : '';
+    }
+    function optionsFor(c, action) {
+      return c.selection ? c.selection.options.filter(function fits(o) { return !o.implied || o.implied === action; }) : [];
+    }
+    function rangeCopy(sel) {
+      if (sel.min === sel.max) return String(sel.min);
+      return sel.max >= sel.options.length ? (sel.min > 1 ? 'at least ' + sel.min : 'one or more') : sel.min + '–' + sel.max;
+    }
+    // What one action still needs before it can be sent, and the arguments it sends.
+    function draftFor(f, action) {
+      var c = choicesFor(f);
+      var sel = c.selection;
+      var id = f.id;
+      var args = { kind: c.kind };
+      var missing = [];
+      var picked = [];
+      if (action === 'approve' && c.approve && c.approve.optionId) {
+        picked = [c.approve.optionId];
+      } else if (sel) {
+        var allowed = optionsFor(c, action).map(function ids(o) { return o.id; });
+        var pool = action === 'reject' && sel.mode === 'single' ? (ui.rejectPicks[id] ? [ui.rejectPicks[id]] : []) : selectedFor(id);
+        picked = action === 'reject' && sel.mode === 'multiple' && !sel.requiredFor.reject
+          ? []
+          : pool.filter(function ok(oid) { return allowed.indexOf(oid) !== -1; });
+      }
+      if (picked.length) {
+        if (sel && sel.mode === 'multiple') args.option_ids = picked.slice();
+        else args.option_id = picked[0];
+      }
+      if (sel && (sel.requiredFor[action] || (sel.mode === 'multiple' && picked.length)) &&
+          (!picked.length || (sel.mode === 'multiple' && (picked.length < sel.min || picked.length > sel.max)))) {
+        missing.push('options');
+      }
+      var err = ui.fieldErrors[id];
+      var reasonNeeded = picked.some(function asks(oid) { var o = optionById(f, oid); return Boolean(o && o.requiresReason); }) ||
+        (action === 'reject' && c.rejectRequiresReason) || Boolean(err && err.action === action && err.field === 'reason');
+      var reason = String((action === 'reject' ? (ui.composer && ui.composer.id === id ? ui.composer.draft : '') : ui.notes[id]) || '').trim();
+      if (reason) args.reason = reason.slice(0, TEXT_MAX);
+      else if (reasonNeeded) missing.push('reason');
+      var answerNeeded = Boolean(c.answer && c.answer[action]);
+      if (answerNeeded) {
+        var answer = String(ui.answers[id] || '').trim();
+        if (answer) args.answer = answer.slice(0, c.answer.max);
+        else missing.push('answer');
+      }
+      return { action: action, args: args, missing: missing, picked: picked, reasonNeeded: reasonNeeded, answerNeeded: answerNeeded };
+    }
+    function missingCopy(draft, sel) {
+      if (draft.missing.indexOf('options') !== -1) return sel && sel.mode === 'multiple' ? 'choose ' + rangeCopy(sel) + ' first' : 'choose an option first';
+      if (draft.missing.indexOf('answer') !== -1) return 'type your answer first';
+      if (draft.missing.indexOf('reason') !== -1) return draft.action === 'reject' ? 'write a note first' : 'say why first';
+      return '';
+    }
+    // A row can decide in place only when approving needs nothing else.
+    function quickDecide(item) {
+      var c = choicesFor(item);
+      return Boolean(c.approve && !c.selection && !(c.answer && c.answer.approve));
     }
     function tokenFor(id) {
       var t = ui.tokens[id];
@@ -416,7 +571,8 @@
       }
       if (ui.lastRuling) {
         parts.push('<div class="notice" data-tone="teal" role="status"><p>' +
-          (ui.lastRuling.action === 'approve' ? 'Approved by you: ' : 'Sent back by you: ') + esc(ui.lastRuling.title) + '</p></div>');
+          (ui.lastRuling.elsewhere ? 'Settled in OrgX: ' : ui.lastRuling.verb ? ui.lastRuling.verb + ' by you: ' : ui.lastRuling.action === 'approve' ? 'Approved by you: ' : 'Sent back by you: ') +
+          esc(ui.lastRuling.title) + '</p></div>');
       }
       return parts.join('');
     }
@@ -440,61 +596,137 @@
       return '<div class="evidence"><p class="evidence-head"><span>' + count + '</span>' + more + '</p><ul class="ev-list" id="ev-list">' + items + '</ul></div>';
     }
 
-    function composerHtml(id, compact) {
-      var draft = ui.composer && ui.composer.id === id ? ui.composer.draft : '';
-      return '<div class="composer" data-composer="' + esc(id) + '">' +
-        '<label for="reason-' + esc(id) + '">What should change?</label>' +
-        '<textarea id="reason-' + esc(id) + '" data-reason="' + esc(id) + '" maxlength="2000" placeholder="Tell the agent what to fix or do instead.">' + esc(draft) + '</textarea>' +
+    function fieldErrorHtml(id, field, action) {
+      var err = ui.fieldErrors[id];
+      if (!err || !err.message || err.field !== field || (action && err.action !== action)) return '';
+      return '<p class="error-line" role="alert" data-error-for="' + esc(id) + '">' + esc(err.message) + '</p>';
+    }
+    function textFieldHtml(id, field, label, value, max, placeholder) {
+      var err = ui.fieldErrors[id];
+      var invalid = err && err.message && (err.field === field || (field === 'note' && err.field === 'reason'));
+      return '<div class="composer field">' +
+        '<label for="' + field + '-' + esc(id) + '">' + esc(label) + '</label>' +
+        '<textarea id="' + field + '-' + esc(id) + '" data-field="' + field + '" data-id="' + esc(id) + '" maxlength="' + (max || TEXT_MAX) + '"' +
+        (placeholder ? ' placeholder="' + esc(placeholder) + '"' : '') + (invalid ? ' aria-invalid="true"' : '') + '>' + esc(value || '') + '</textarea></div>';
+    }
+    function optionButtonsHtml(f, c, forAction) {
+      var sel = c.selection;
+      var list = forAction === 'approve' && sel.mode === 'single' ? sel.options : optionsFor(c, forAction);
+      var picked = selectedFor(f.id);
+      var label = forAction === 'reject'
+        ? (sel.mode === 'multiple' ? 'Choose ' + rangeCopy(sel) : 'Which option is this about?') + (sel.requiredFor.reject ? ' · required' : '')
+        : sel.mode === 'multiple' ? 'Choose ' + rangeCopy(sel) : sel.requiredFor.approve ? 'Choose one' : 'Or choose an option';
+      return '<div class="opts" role="group" aria-labelledby="opts-' + forAction + '-' + esc(f.id) + '"><p class="opts-label" id="opts-' + forAction + '-' + esc(f.id) + '">' + esc(label) + '</p>' +
+        list.map(function optionButton(o) {
+          var toggle = sel.mode === 'multiple' || forAction === 'reject';
+          var on = forAction === 'reject' && sel.mode === 'single' ? ui.rejectPicks[f.id] === o.id : picked.indexOf(o.id) !== -1;
+          var tag = forAction === 'approve' && o.implied === 'reject' && c.reject ? c.reject.label : o.requiresReason ? 'Asks why' : '';
+          var action = forAction === 'reject' ? 'reject-option' : sel.mode === 'multiple' ? 'toggle-option' : 'option';
+          var atMax = sel.mode === 'multiple' && !on && picked.length >= sel.max;
+          return '<button type="button" class="opt" data-action="' + action + '" data-id="' + esc(f.id) + '" data-option="' + esc(o.id) + '"' +
+            (toggle || on ? ' aria-pressed="' + (on ? 'true' : 'false') + '"' : '') + (atMax ? ' data-at-max' : '') + '>' +
+            (toggle ? '<span class="opt-box" aria-hidden="true">✓</span>' : '') +
+            '<span class="opt-text">' + esc(o.label) + (o.description ? '<span class="opt-desc">' + esc(o.description) + '</span>' : '') + '</span>' +
+            (tag ? '<span class="opt-tag">' + esc(tag) + '</span>' : '') +
+            (toggle ? '' : '<span class="opt-go" aria-hidden="true">›</span>') + '</button>';
+        }).join('') + fieldErrorHtml(f.id, 'options', forAction) + '</div>';
+    }
+
+    function composerHtml(f) {
+      var id = f.id;
+      var c = choicesFor(f);
+      var sel = c.selection;
+      var draft = draftFor(f, 'reject');
+      var value = ui.composer && ui.composer.id === id ? ui.composer.draft : '';
+      var label = c.reject ? c.reject.label : 'Send back';
+      var options = sel && (sel.requiredFor.reject || optionsFor(c, 'reject').some(function implied(o) { return o.implied === 'reject'; }))
+        ? optionButtonsHtml(f, c, 'reject') : '';
+      var answer = draft.answerNeeded ? textFieldHtml(id, 'answer', 'Your answer · required', ui.answers[id], c.answer.max) + fieldErrorHtml(id, 'answer', 'reject') : '';
+      return '<div class="composer" data-composer="' + esc(id) + '">' + options + answer +
+        '<label for="reason-' + esc(id) + '">What should change?' + (draft.reasonNeeded ? ' · required' : ' · optional') + '</label>' +
+        '<textarea id="reason-' + esc(id) + '" data-reason="' + esc(id) + '" maxlength="' + TEXT_MAX + '" placeholder="Tell the agent what to fix or do instead."' +
+        (ui.fieldErrors[id] && ui.fieldErrors[id].field === 'reason' && ui.fieldErrors[id].message ? ' aria-invalid="true"' : '') + '>' + esc(value) + '</textarea>' +
+        fieldErrorHtml(id, 'reason', 'reject') +
         '<div class="composer-row"><button type="button" class="secondary-btn" data-action="cancel-sendback" data-id="' + esc(id) + '">Cancel</button>' +
-        '<button type="button" class="secondary-btn" data-action="submit-sendback" data-id="' + esc(id) + '"' + (draft.trim() ? '' : ' disabled') + '>Send back</button></div>' +
-        (compact ? '' : '') + '</div>';
+        '<button type="button" class="secondary-btn" data-action="submit-sendback" data-id="' + esc(id) + '"' + (draft.missing.length ? ' disabled' : '') + '>' + esc(label) + '</button></div></div>';
+    }
+
+    // The footer for an item this panel can decide: heading, detail, primary and disabled.
+    function footerSpec(f) {
+      var c = choicesFor(f);
+      var sel = c.selection;
+      if (!c.approve) return { heading: 'Decide here', detail: 'recorded in OrgX', primary: '', disabled: false };
+      var draft = draftFor(f, 'approve');
+      var ready = !draft.missing.length;
+      var detail = ready ? 'recorded in OrgX' : missingCopy(draft, sel);
+      if (sel && sel.mode === 'multiple') {
+        var n = draft.picked.length;
+        return { heading: n ? n + ' chosen' : 'Choose ' + rangeCopy(sel), detail: n || ready ? detail : 'recorded in OrgX', primary: c.approve.label === 'Confirm' && n ? 'Confirm ' + n : c.approve.label, disabled: !ready };
+      }
+      if (sel && !draft.picked.length && sel.requiredFor.approve) return { heading: 'Choose one', detail: 'recorded in OrgX', primary: '', disabled: false };
+      if (sel && draft.picked.length) return { heading: 'You picked ' + optionLabel(f, draft.picked[0]), detail: detail, primary: c.approve.label, disabled: !ready };
+      return { heading: 'Decide here', detail: detail, primary: c.approve.label, disabled: !ready };
+    }
+    function syncFooter(id) {
+      var item = findItem(id);
+      var footer = root.querySelector('ox-footer[data-id="' + id + '"]');
+      if (item && footer && footer.getAttribute('state') === 'needs-you') {
+        var spec = footerSpec(item);
+        footer.setAttribute('heading', spec.heading);
+        footer.setAttribute('detail', spec.detail);
+        footer.setAttribute('primary-label', spec.primary);
+        footer.toggleAttribute('disabled', spec.disabled);
+      }
+      var submit = root.querySelector('[data-action="submit-sendback"][data-id="' + id + '"]');
+      if (submit && item) submit.disabled = draftFor(item, 'reject').missing.length > 0;
     }
 
     function footerFor(f) {
       var ruling = ui.rulings[f.id];
       if (ruling) {
+        var approvedLabel = pastTense(ruling.approveLabel, 'approve');
+        var rejectedLabel = pastTense(ruling.rejectLabel, 'reject');
+        var settledApproved = /approv|accept|confirm|grant|allow/.test(ruling.status || '');
+        var settledDeclined = /declin|reject|deni|denied|sent_back|cancel/.test(ruling.status || '');
         var frames = {
-          saving: { state: 'saving', heading: ruling.action === 'approve' ? 'Recording your approval' : 'Sending it back', detail: 'nothing else changes yet' },
+          saving: { state: 'saving', heading: ruling.action === 'approve' ? 'Recording your approval' : 'Recording it', detail: 'nothing else changes yet' },
           waiting: { state: 'waiting', heading: 'Recorded', detail: 'checking status in OrgX', action: 'Check now' },
-          confirmed: { state: 'confirmed', heading: ruling.choice ? 'You chose ' + ruling.choice : 'Approved by you', detail: ruling.detail || 'the agent can continue', action: 'Receipt ↗' },
-          rejected: { state: 'rejected', heading: 'Sent back by you', detail: ruling.detail || 'the agent reworks it', action: 'Receipt ↗' },
+          confirmed: { state: 'confirmed', heading: ruling.choice ? 'You chose ' + ruling.choice : approvedLabel + ' by you', detail: ruling.detail || 'the agent can continue', action: 'Receipt ↗' },
+          rejected: { state: 'rejected', heading: rejectedLabel + ' by you', detail: ruling.detail || 'the agent reworks it', action: 'Receipt ↗' },
+          elsewhere: settledApproved
+            ? { state: 'confirmed', heading: 'Already approved in OrgX', detail: 'nothing of yours was applied', action: 'Receipt ↗' }
+            : { state: 'rejected', heading: settledDeclined ? 'Already declined in OrgX' : 'Already settled in OrgX', detail: 'nothing of yours was applied', action: 'Receipt ↗' },
         };
         var fr = frames[ruling.phase] || frames.saving;
         return '<ox-footer variant="confirms-in-orgx" state="' + fr.state + '" heading="' + esc(fr.heading) + '" detail="' + esc(fr.detail) + '"' +
           (fr.action ? ' action-label="' + esc(fr.action) + '"' : '') + ' data-id="' + esc(f.id) + '"></ox-footer>';
       }
-      if (ui.composer && ui.composer.id === f.id) return composerHtml(f.id);
+      if (ui.composer && ui.composer.id === f.id) return composerHtml(f);
       if (tokenFor(f.id)) {
         var c = choicesFor(f);
         var sendBack = c.reject
           ? '<button type="button" slot="action" class="ft-action" data-action="sendback" data-id="' + esc(f.id) + '">' + esc(c.reject.label) + '</button>'
           : '';
-        if (c.mode === 'options') {
-          var picked = selectedFor(f.id);
-          var opts = '<div class="opts" role="group" aria-labelledby="opts-' + esc(f.id) + '"><p class="opts-label" id="opts-' + esc(f.id) + '">' +
-            (c.multiselect ? 'Choose the options to approve' : 'Choose one') + '</p>' +
-            c.options.map(function optionButton(o) {
-              if (c.multiselect) {
-                var on = picked.indexOf(o.id) !== -1;
-                return '<button type="button" class="opt" data-action="toggle-option" data-id="' + esc(f.id) + '" data-option="' + esc(o.id) + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
-                  '<span class="opt-box" aria-hidden="true">✓</span><span class="opt-text">' + esc(o.label) + '</span></button>';
-              }
-              return '<button type="button" class="opt" data-action="option" data-id="' + esc(f.id) + '" data-option="' + esc(o.id) + '">' +
-                '<span class="opt-text">' + esc(o.label) + '</span><span class="opt-go" aria-hidden="true">›</span></button>';
-            }).join('') + '</div>';
-          if (c.multiselect) {
-            var n = picked.length;
-            return opts + '<ox-footer variant="confirms-in-orgx" state="needs-you" heading="' + esc(n ? n + ' chosen' : 'Choose one or more') +
-              '" detail="recorded in OrgX" primary-label="' + esc(n ? 'Confirm ' + n : 'Confirm') + '"' + (n ? '' : ' disabled') + ' data-id="' + esc(f.id) + '">' + sendBack + '</ox-footer>';
-          }
-          // An empty primary-label keeps the kit from showing its default primary: the options are the actions.
-          return opts + '<ox-footer variant="confirms-in-orgx" state="needs-you" heading="Choose one" detail="recorded in OrgX" primary-label="" data-id="' + esc(f.id) + '">' + sendBack + '</ox-footer>';
+        var body = '';
+        if (c.selection && c.approve) body += optionButtonsHtml(f, c, 'approve');
+        var draft = c.approve ? draftFor(f, 'approve') : null;
+        if (draft && draft.answerNeeded) {
+          body += textFieldHtml(f.id, 'answer', 'Your answer · required', ui.answers[f.id], c.answer.max, 'Type the answer the agent needs to continue.') + fieldErrorHtml(f.id, 'answer', 'approve');
         }
-        return '<ox-footer variant="confirms-in-orgx" state="needs-you" heading="Decide here" detail="recorded in OrgX" primary-label="' + esc(c.approve.label) + '" data-id="' + esc(f.id) + '">' +
-          sendBack + '</ox-footer>';
+        if (draft && draft.reasonNeeded) {
+          var pickedLabel = draft.picked.length ? optionLabel(f, draft.picked[0]) : '';
+          body += textFieldHtml(f.id, 'note', pickedLabel ? 'Why ' + pickedLabel + '? · required' : 'Why? · required', ui.notes[f.id], TEXT_MAX, 'One line on why this one.') + fieldErrorHtml(f.id, 'reason', 'approve');
+        }
+        body += fieldErrorHtml(f.id, 'form');
+        var spec = footerSpec(f);
+        // An empty primary-label keeps the kit from showing its default primary: the options are the actions.
+        return body + '<ox-footer variant="confirms-in-orgx" state="needs-you" heading="' + esc(spec.heading) + '" detail="' + esc(spec.detail) +
+          '" primary-label="' + esc(spec.primary) + '"' + (spec.disabled ? ' disabled' : '') + ' data-id="' + esc(f.id) + '">' + sendBack + '</ox-footer>';
       }
-      return '<button type="button" class="primary-btn" data-action="open" data-url="' + esc(f.url) + '">Decide in OrgX <span aria-hidden="true">↗</span><span class="sr-only">(opens OrgX)</span></button>' +
-        '<p class="handoff-detail">' + esc(decideInOrgxDetail(f.decide_in_orgx_reason)) + '</p>';
+      var reason = f.decide_in_orgx_reason;
+      return '<button type="button" class="primary-btn" data-action="open" data-url="' + esc(f.url) + '">' +
+        (reason === 'requester_cannot_approve' ? 'Open in OrgX' : 'Decide in OrgX') + ' <span aria-hidden="true">↗</span><span class="sr-only">(opens OrgX)</span></button>' +
+        '<p class="handoff-detail">' + esc(decideInOrgxDetail(reason)) + '</p>';
     }
 
     function shareHtml(f) {
@@ -512,10 +744,15 @@
       return '<div class="share-row"><button type="button" class="text-btn" data-action="share" data-id="' + esc(f.id) + '">Share with chat</button></div>';
     }
 
+    function actionErrorHtml(style) {
+      var e = ui.actionError;
+      return '<p class="error-line" role="alert"' + (style ? ' style="' + style + '"' : '') + '>' + esc(e.message) +
+        (e.refresh ? ' <button type="button" class="text-btn" data-action="refresh">Refresh</button>' : '') + '</p>';
+    }
+
     function packetHtml(f, headingTag) {
-      var metaBits = [ago(f.waiting_since), f.initiative_title].filter(Boolean);
-      var error = ui.actionError && ui.actionError.id === f.id
-        ? '<p class="error-line" role="alert">' + esc(ui.actionError.message) + '</p>' : '';
+      var metaBits = [f.kind === 'action' ? 'Action approval' : f.kind === 'approval' ? 'Agent run approval' : '', ago(f.waiting_since), f.initiative_title].filter(Boolean);
+      var error = ui.actionError && ui.actionError.id === f.id ? actionErrorHtml() : '';
       var changed = ui.changedSince
         ? '<div class="notice" role="status"><p>Changed since ' + esc(ui.changedSince) + '</p></div>' : '';
       var facts = [];
@@ -544,21 +781,26 @@
       var meta = [urgencyLabel(item.urgency), ago(item.waiting_since), item.initiative_title].filter(Boolean).join(' · ');
       var acts = '';
       if (ruling) {
-        var chip = ruling.phase === 'confirmed' ? 'confirmed' : ruling.phase === 'rejected' ? 'rejected' : 'sending';
-        var label = ruling.phase === 'confirmed' ? 'Approved' : ruling.phase === 'rejected' ? 'Sent back' : 'Recording';
-        acts = '<div class="row-acts"><ox-state-chip state="' + chip + '" label="' + label + '"></ox-state-chip></div>';
-      } else if (tokenFor(item.id) && item.option_count >= 2) {
-        // Options are chosen in the packet, where they are listed.
-        acts = '<div class="row-acts"><button type="button" class="mini approve" data-action="select" data-id="' + esc(item.id) + '" aria-label="Choose: ' + esc(item.title) + '">Choose</button></div>';
+        var chip = ruling.phase === 'confirmed' ? 'confirmed' : ruling.phase === 'rejected' ? 'rejected' : ruling.phase === 'elsewhere' ? 'superseded' : 'sending';
+        var label = ruling.phase === 'confirmed' ? pastTense(ruling.approveLabel, 'approve')
+          : ruling.phase === 'rejected' ? pastTense(ruling.rejectLabel, 'reject')
+          : ruling.phase === 'elsewhere' ? 'Settled in OrgX' : 'Recording';
+        acts = '<div class="row-acts"><ox-state-chip state="' + chip + '" label="' + esc(label) + '"></ox-state-chip></div>';
+      } else if (tokenFor(item.id) && !quickDecide(item)) {
+        // Options and typed answers are given in the packet, where they are listed.
+        var c0 = choicesFor(item);
+        var open = c0.selection ? 'Choose' : c0.answer ? 'Answer' : 'Open';
+        acts = '<div class="row-acts"><button type="button" class="mini approve" data-action="select" data-id="' + esc(item.id) + '" aria-label="' + esc(open + ': ' + item.title) + '">' + open + '</button></div>';
       } else if (tokenFor(item.id) && !(ui.composer && ui.composer.id === item.id)) {
-        acts = '<div class="row-acts"><button type="button" class="mini approve" data-action="approve" data-id="' + esc(item.id) + '" aria-label="Approve: ' + esc(item.title) + '">Approve</button>' +
-          '<button type="button" class="mini" data-action="sendback" data-id="' + esc(item.id) + '" aria-label="Send back: ' + esc(item.title) + '">Send back</button></div>';
+        var c = choicesFor(item);
+        acts = '<div class="row-acts"><button type="button" class="mini approve" data-action="approve" data-id="' + esc(item.id) + '" aria-label="' + esc(c.approve.label + ': ' + item.title) + '">' + esc(c.approve.label) + '</button>' +
+          (c.reject ? '<button type="button" class="mini" data-action="sendback" data-id="' + esc(item.id) + '" aria-label="' + esc(c.reject.label + ': ' + item.title) + '">' + esc(c.reject.label) + '</button>' : '') + '</div>';
       }
-      var error = ui.actionError && ui.actionError.id === item.id
-        ? '<p class="error-line" role="alert" style="flex:1 1 100%">' + esc(ui.actionError.message) + '</p>' : '';
+      var error = ui.actionError && ui.actionError.id === item.id ? actionErrorHtml('flex:1 1 100%') : '';
+      var kindTag = item.kind === 'action' ? 'Action · ' : item.kind === 'approval' ? 'Run approval · ' : '';
       return '<li class="row" data-row="' + esc(item.id) + '"><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '" aria-label="' + esc(item.title + '. ' + meta) + '">' +
-        '<span class="row-title">' + esc(item.title) + '</span><span class="row-meta">' + esc(meta) + '</span></button>' + acts +
-        (ui.composer && ui.composer.id === item.id ? composerHtml(item.id, true) : '') + error + '</li>';
+        '<span class="row-title">' + esc(item.title) + '</span><span class="row-meta">' + esc(kindTag + meta) + '</span></button>' + acts +
+        (ui.composer && ui.composer.id === item.id ? composerHtml(item) : '') + error + '</li>';
     }
 
     function proofHtml(s, calm) {
@@ -734,8 +976,12 @@
       if (meta !== undefined) adoptTokens(meta);
       // Drop rulings for decisions that are gone; keep a one-line receipt.
       Object.keys(ui.rulings).forEach(function prune(id) {
-        if (!findItem(id) && (ui.rulings[id].phase === 'confirmed' || ui.rulings[id].phase === 'rejected')) {
-          ui.lastRuling = { action: ui.rulings[id].action, title: ui.rulings[id].title };
+        var r = ui.rulings[id];
+        if (!findItem(id) && (r.phase === 'confirmed' || r.phase === 'rejected' || r.phase === 'elsewhere')) {
+          ui.lastRuling = {
+            action: r.action, title: r.title, elsewhere: r.phase === 'elsewhere',
+            verb: r.phase === 'confirmed' ? pastTense(r.approveLabel, 'approve') : r.phase === 'rejected' ? pastTense(r.rejectLabel, 'reject') : '',
+          };
           delete ui.rulings[id];
         }
       });
@@ -874,8 +1120,56 @@
       return once();
     }
 
-    // choice: { option_id, label } or { option_ids, label } when the person picked options.
-    function rule(id, action, reason, choice) {
+    // Every refusal code orgx_widget_decide can return, and what the panel says for it.
+    var VALIDATION_CODES = ['reason_required', 'answer_required', 'answer_not_accepted', 'option_required', 'options_not_accepted',
+      'option_unavailable', 'option_action_mismatch', 'selection_out_of_range', 'invalid_decision_option_material'];
+    var VALIDATION_COPY = {
+      reason_required: 'Say what should change.',
+      answer_required: 'Type an answer to send.',
+      answer_not_accepted: 'This one no longer takes an answer. Decide with the buttons.',
+      option_required: 'Choose an option first.',
+      options_not_accepted: 'The options changed. Choose again.',
+      option_unavailable: 'That option is no longer available. Choose again.',
+      option_action_mismatch: 'That option goes with the other button.',
+      selection_out_of_range: 'Choose a number of options the decision allows.',
+      invalid_decision_option_material: 'That choice is not valid for this decision. Choose again.',
+    };
+    var STALE_COPY = {
+      widget_approval_token_expired: 'This view is out of date. Refresh to decide.',
+      widget_approval_token_invalid: 'This view is out of date. Refresh to decide.',
+      widget_view_out_of_date: 'This view is out of date. Refresh to decide.',
+      widget_decision_conflict: 'Changed since you opened it',
+      widget_decision_not_found: 'No longer open here. It may be settled or moved.',
+    };
+    var IN_ORGX_CODES = {
+      widget_approval_ineligible: '',
+      widget_approval_disabled: 'widget_approvals_disabled',
+      action_authority_denied: 'action_authority_denied',
+      widget_approval_token_mismatch: 'token_mismatch',
+      widget_decision_lifecycle_required: 'lifecycle_required',
+    };
+    function refusalCopy(error, fallback) {
+      var message = error && typeof error.message === 'string' ? error.message.trim() : '';
+      return message && !/tool request failed|tool execution failed/i.test(message) && message.length <= 160 ? message : fallback;
+    }
+    // The same item can sit in the queue and in focus; both copies follow the server.
+    function eachCopy(id, fn) {
+      var s = ui.snapshot;
+      if (!s) return;
+      if (s.focus && s.focus.id === id) fn(s.focus);
+      s.queue.forEach(function each(item) { if (item.id === id) fn(item); });
+    }
+    function pruneDrafts(id) {
+      var item = findItem(id);
+      if (!item) return;
+      var c = choicesFor(item);
+      var ids = c.selection ? c.selection.options.map(function oid(o) { return o.id; }) : [];
+      ui.selections[id] = selectedFor(id).filter(function keep(oid) { return ids.indexOf(oid) !== -1; });
+      if (ui.rejectPicks[id] && ids.indexOf(ui.rejectPicks[id]) === -1) delete ui.rejectPicks[id];
+      if (!c.answer) delete ui.answers[id];
+    }
+
+    function rule(id, action) {
       if (ui.rulings[id]) return;
       var token = tokenFor(id);
       var item = findItem(id);
@@ -884,17 +1178,31 @@
         render();
         return;
       }
+      var c = choicesFor(item);
+      var draft = draftFor(item, action);
+      if (draft.missing.length) { syncFooter(id); return; }
       var gen = ui.generation;
       var title = item.title || item.question || 'Decision';
+      var note = action === 'reject' && ui.composer && ui.composer.id === id ? ui.composer.draft : '';
+      var choice = action === 'approve' && draft.picked.length
+        ? draft.picked.map(function label(oid) { return optionLabel(item, oid); }).filter(Boolean).join(', ')
+        : null;
       ui.actionError = null;
+      delete ui.fieldErrors[id];
       ui.composer = null;
-      ui.rulings[id] = { action: action, phase: 'saving', title: title, choice: choice && choice.label ? choice.label : null };
-      delete ui.tokens[id]; // single use
+      ui.rulings[id] = {
+        action: action, phase: 'saving', title: title, choice: choice || null, kind: c.kind,
+        approveLabel: c.approve ? c.approve.label : '', rejectLabel: c.reject ? c.reject.label : '',
+      };
+      delete ui.tokens[id]; // spent here; a refusal that leaves the item open hands it back
       render();
-      var args = { decision_id: id, action: action, approval_token: token };
-      if (action === 'reject') args.reason = reason;
-      if (action === 'approve' && choice && choice.option_id) args.option_id = choice.option_id;
-      if (action === 'approve' && choice && choice.option_ids && choice.option_ids.length) args.option_ids = choice.option_ids.slice();
+      var args = Object.assign({ decision_id: id, action: action, approval_token: token }, draft.args);
+      function doneDetail(status) {
+        if (!status) return 'recorded; status not available yet';
+        if (c.kind === 'action') return action === 'approve' ? 'the action can run' : 'the action does not run';
+        if (c.kind === 'approval') return action === 'approve' ? 'the run continues' : 'the run stops at this step';
+        return action === 'approve' ? 'the agent can continue' : 'the agent reworks it';
+      }
       function settle(status) {
         if (gen !== ui.generation || !ui.rulings[id]) return;
         if (status && status.state === 'failed') {
@@ -905,27 +1213,90 @@
           return;
         }
         ui.rulings[id].phase = action === 'approve' ? 'confirmed' : 'rejected';
-        ui.rulings[id].detail = status
-          ? (action === 'approve' ? 'the agent can continue' : 'the agent reworks it')
-          : 'recorded; status not available yet';
-        announce((action === 'approve' ? 'Approved: ' : 'Sent back: ') + title);
+        ui.rulings[id].detail = doneDetail(status);
+        delete ui.answers[id];
+        delete ui.notes[id];
+        announce(pastTense(action === 'approve' ? ui.rulings[id].approveLabel : ui.rulings[id].rejectLabel, action) + ': ' + title);
         render();
         later(function refreshAfterRuling() { fetchSnapshot(null, 'ruling'); }, 900);
       }
-      R.callTool('orgx_widget_decide', args).then(function onDecided() {
+      R.callTool('orgx_widget_decide', args).then(function onDecided(result) {
         if (gen !== ui.generation) return;
+        if (c.kind !== 'decision') {
+          // Agent-run approvals and actions settle in the call itself; there is no decision status to read.
+          var data = R.extractStructuredWidgetData ? R.extractStructuredWidgetData(result, true) : null;
+          settle({ state: 'succeeded', status: data && data.status });
+          return;
+        }
         ui.rulings[id].phase = 'waiting';
         render();
         // The ruling is recorded. A status read that fails does not undo it.
         pollStatus(id, gen).then(settle, function statusUnavailable() { settle(null); });
       }, function onFailed(error) {
         if (gen !== ui.generation) return;
+        var code = String((error && error.code) || '');
+        var details = error && error.details && typeof error.details === 'object' ? error.details : {};
         delete ui.rulings[id];
+        if (VALIDATION_CODES.indexOf(code) !== -1) {
+          // Still open, same token: put the message on the field and render the item's current contract.
+          ui.tokens[id] = token;
+          if (details.widget_actions && typeof details.widget_actions === 'object') {
+            eachCopy(id, function adopt(copy) { copy.widget_actions = details.widget_actions; });
+            pruneDrafts(id);
+          }
+          var field = code === 'reason_required' ? 'reason' : code === 'answer_required' ? 'answer' : code === 'answer_not_accepted' ? 'form' : 'options';
+          ui.fieldErrors[id] = { action: action, field: field, message: refusalCopy(error, VALIDATION_COPY[code]) };
+          if (action === 'reject') ui.composer = { id: id, draft: note, focus: field === 'reason', opener: id };
+          render();
+          return;
+        }
+        if (STALE_COPY[code]) {
+          ui.actionError = { id: id, message: STALE_COPY[code], refresh: true };
+          render();
+          return;
+        }
+        if (code === 'decision_already_resolved') {
+          ui.rulings[id] = { action: action, phase: 'elsewhere', title: title, status: String(details.status || '').toLowerCase() };
+          announce('Already settled in OrgX: ' + title);
+          render();
+          if (!isGallery) fetchSnapshot(null, 'refresh');
+          return;
+        }
+        if (Object.prototype.hasOwnProperty.call(IN_ORGX_CODES, code)) {
+          var reason = code === 'widget_approval_ineligible' ? String(details.reason || '') : IN_ORGX_CODES[code];
+          eachCopy(id, function mark(copy) { copy.decide_in_orgx_reason = reason || copy.decide_in_orgx_reason || 'lifecycle_required'; });
+          render();
+          return;
+        }
         ui.actionError = { id: id, message: (error && error.message ? error.message : 'Not recorded.') + '' };
         render();
-        // The token was single-use; a fresh snapshot brings a new one.
+        // The token was spent; a fresh snapshot brings a new one.
         if (!isGallery) fetchSnapshot(ui.snapshot && ui.snapshot.selection.status === 'selected' && ui.snapshot.focus ? ui.snapshot.focus.id : null, 'refresh');
       });
+    }
+
+    // An option click: approve with it in one click, unless it implies sending back or the
+    // approval still needs a reason or an answer (then it is picked and the panel asks for that).
+    function chooseOption(id, optionId) {
+      var item = findItem(id);
+      if (!item || ui.rulings[id]) return;
+      var c = choicesFor(item);
+      var option = optionById(item, optionId);
+      if (!option) return;
+      if (option.implied === 'reject') {
+        ui.rejectPicks[id] = optionId;
+        if (!c.reject) return;
+        if (!draftFor(item, 'reject').missing.length) { rule(id, 'reject'); return; }
+        ui.composer = { id: id, draft: '', focus: true, opener: id };
+        render();
+        return;
+      }
+      if (!c.approve) return;
+      var already = selectedFor(id)[0] === optionId;
+      ui.selections[id] = already ? [] : [optionId];
+      if (!already && !draftFor(item, 'approve').missing.length) { rule(id, 'approve'); return; }
+      render();
+      if (!already) focusFirst('textarea[data-field][data-id="' + id + '"]');
     }
 
     function checkNow(id) {
@@ -970,19 +1341,15 @@
         case 'open': event.preventDefault(); openUrl(el.getAttribute('data-url'), event); break;
         case 'select': selectDecision(id); break;
         case 'approve': approve(id); break;
-        case 'option': {
-          var optionId = el.getAttribute('data-option');
-          var holder = findItem(id);
-          rule(id, 'approve', undefined, { option_id: optionId, label: holder ? optionLabel(holder, optionId) : '' });
-          break;
-        }
+        case 'option': chooseOption(id, el.getAttribute('data-option')); break;
         case 'toggle-option': toggleOption(id, el.getAttribute('data-option')); break;
+        case 'reject-option': pickRejectOption(id, el.getAttribute('data-option')); break;
         case 'sendback': ui.composer = { id: id, draft: '', focus: true, opener: id }; ui.actionError = null; render(); break;
         case 'cancel-sendback': closeComposer(); break;
         case 'submit-sendback': {
           var area = root.querySelector('textarea[data-reason="' + id + '"]');
-          var reason = area ? area.value.trim() : '';
-          if (reason) rule(id, 'reject', reason);
+          if (ui.composer && ui.composer.id === id && area) ui.composer.draft = area.value;
+          rule(id, 'reject');
           break;
         }
         case 'evidence': ui.evidenceOpen = !ui.evidenceOpen; render(); break;
@@ -1005,43 +1372,60 @@
 
     root.addEventListener('input', function onInput(event) {
       var area = event.target;
-      if (!area || !area.matches || !area.matches('textarea[data-reason]')) return;
-      if (ui.composer) ui.composer.draft = area.value;
-      var submit = root.querySelector('[data-action="submit-sendback"][data-id="' + area.getAttribute('data-reason') + '"]');
-      if (submit) submit.disabled = !area.value.trim();
+      if (!area || !area.matches) return;
+      var id = null;
+      if (area.matches('textarea[data-reason]')) {
+        id = area.getAttribute('data-reason');
+        if (ui.composer && ui.composer.id === id) ui.composer.draft = area.value;
+        if (ui.fieldErrors[id] && ui.fieldErrors[id].field === 'reason') clearFieldError(id);
+      } else if (area.matches('textarea[data-field]')) {
+        id = area.getAttribute('data-id');
+        var field = area.getAttribute('data-field');
+        if (field === 'answer') ui.answers[id] = area.value;
+        if (field === 'note') ui.notes[id] = area.value;
+        var err = ui.fieldErrors[id];
+        if (err && (err.field === field || (field === 'note' && err.field === 'reason'))) clearFieldError(id);
+      }
+      if (id) syncFooter(id);
     });
+    // Typing answers the inline message; the requirement it raised stays until the item is sent.
+    function clearFieldError(id) {
+      if (ui.fieldErrors[id]) ui.fieldErrors[id].message = '';
+      Array.prototype.forEach.call(root.querySelectorAll('[data-error-for="' + id + '"]'), function drop(node) { node.remove(); });
+      Array.prototype.forEach.call(root.querySelectorAll('textarea[aria-invalid][data-id="' + id + '"], textarea[aria-invalid][data-reason="' + id + '"]'), function valid(node) { node.removeAttribute('aria-invalid'); });
+    }
 
     root.addEventListener('ox-primary', function onPrimary(event) {
       var footer = event.target.closest('ox-footer');
       var id = footer && footer.getAttribute('data-id');
       if (!id || footer.getAttribute('state') !== 'needs-you') return;
-      var item = findItem(id);
-      var c = item ? choicesFor(item) : null;
-      if (c && c.mode === 'options' && c.multiselect) confirmOptions(id);
-      else if (!c || c.mode === 'approve') approve(id);
+      rule(id, 'approve');
     });
 
     function approve(id) {
-      var item = findItem(id);
-      var c = item ? choicesFor(item) : null;
-      var choice = c && c.mode === 'approve' && c.approve.option_id ? { option_id: c.approve.option_id, label: c.approve.label } : undefined;
-      rule(id, 'approve', undefined, choice);
+      rule(id, 'approve');
     }
     function toggleOption(id, optionId) {
       var item = findItem(id);
       if (!item || ui.rulings[id]) return;
+      var sel = choicesFor(item).selection;
+      if (!sel) return;
       var current = selectedFor(id);
       var next = current.indexOf(optionId) === -1 ? current.concat(optionId) : current.filter(function keep(x) { return x !== optionId; });
-      ui.selections[id] = choicesFor(item).options.map(function ids(o) { return o.id; })
+      if (next.length > sel.max) return;
+      ui.selections[id] = sel.options.map(function ids(o) { return o.id; })
         .filter(function picked(oid) { return next.indexOf(oid) !== -1; });
+      if (ui.fieldErrors[id] && ui.fieldErrors[id].field === 'options') delete ui.fieldErrors[id];
       render();
     }
-    function confirmOptions(id) {
+    function pickRejectOption(id, optionId) {
       var item = findItem(id);
-      var ids = selectedFor(id);
-      if (!item || !ids.length) return;
-      var labels = ids.map(function label(oid) { return optionLabel(item, oid); }).filter(Boolean);
-      rule(id, 'approve', undefined, { option_ids: ids, label: labels.join(', ') });
+      if (!item || ui.rulings[id]) return;
+      var sel = choicesFor(item).selection;
+      if (sel && sel.mode === 'multiple') { toggleOption(id, optionId); return; }
+      ui.rejectPicks[id] = ui.rejectPicks[id] === optionId ? '' : optionId;
+      if (ui.fieldErrors[id] && ui.fieldErrors[id].field === 'options') delete ui.fieldErrors[id];
+      render();
     }
     root.addEventListener('ox-action', function onFooterAction(event) {
       var footer = event.target.closest('ox-footer');
@@ -1108,9 +1492,9 @@
     };
     function decisionUrl(id) { return 'https://useorgx.com/initiatives/' + IDS.init + '?focus=decisions&decision=' + id; }
     var FIXTURE_QUEUE = [
-      { id: IDS.d1, version: isoAgo(2 * D), title: 'Ship release 4.2 to production?', urgency: 'critical', waiting_since: isoAgo(2 * D), initiative_title: 'Release initiative', blocked: false, decide_in_orgx_reason: null, option_count: 0, url: decisionUrl(IDS.d1) },
-      { id: IDS.d2, version: isoAgo(5 * H), title: 'Rotate billing API keys?', urgency: 'high', waiting_since: isoAgo(5 * H), initiative_title: 'Billing hardening', blocked: false, decide_in_orgx_reason: null, option_count: 0, url: decisionUrl(IDS.d2) },
-      { id: IDS.d3, version: isoAgo(26 * H), title: 'Publish the onboarding checklist v2?', urgency: 'medium', waiting_since: isoAgo(26 * H), initiative_title: 'Activation', blocked: false, decide_in_orgx_reason: null, option_count: 0, url: decisionUrl(IDS.d3) },
+      { id: IDS.d1, version: isoAgo(2 * D), title: 'Ship release 4.2 to production?', urgency: 'critical', waiting_since: isoAgo(2 * D), initiative_title: 'Release initiative', blocked: false, decide_in_orgx_reason: null, option_count: 0, kind: 'decision', widget_actions: null, url: decisionUrl(IDS.d1) },
+      { id: IDS.d2, version: isoAgo(5 * H), title: 'Rotate billing API keys?', urgency: 'high', waiting_since: isoAgo(5 * H), initiative_title: 'Billing hardening', blocked: false, decide_in_orgx_reason: null, option_count: 0, kind: 'decision', widget_actions: null, url: decisionUrl(IDS.d2) },
+      { id: IDS.d3, version: isoAgo(26 * H), title: 'Publish the onboarding checklist v2?', urgency: 'medium', waiting_since: isoAgo(26 * H), initiative_title: 'Activation', blocked: false, decide_in_orgx_reason: null, option_count: 0, kind: 'decision', widget_actions: null, url: decisionUrl(IDS.d3) },
     ];
     function galleryFocus(item) {
       var packets = {};
@@ -1178,6 +1562,9 @@
       var t = {};
       s.queue.forEach(function add(item) { t[item.id] = 'gallery-token'; });
       return t;
+    }
+    function galleryActions(extra) {
+      return Object.assign({ kind: 'decision', actions: ['approve', 'reject'], labels: { approve: 'Approve', reject: 'Send back' }, reject_requires_reason: true, answer: null, selection: null }, extra);
     }
     function runGallery() {
       var name = params.get('state') || 'needs-you';
@@ -1266,6 +1653,71 @@
             { id: 'apac', label: 'APAC (Singapore)' },
           ];
           ui.selections[IDS.d1] = ['eu', 'us'];
+          break;
+        case 'external-question':
+        case 'validation-error':
+          s.queue[0].title = s.focus.question = 'Which staging database should the 4.2 migration run against?';
+          s.focus.recommendation = { status: 'ready', action: 'staging-eu-2 (last night’s snapshot)' };
+          s.focus.consequence_if_approved = 'Eli runs the migration against your answer and resumes the release.';
+          s.focus.evidence = [];
+          s.focus.evidence_total = 0;
+          s.focus.widget_actions = s.queue[0].widget_actions = galleryActions({
+            labels: { approve: 'Send answer', reject: 'Decline' }, reject_requires_reason: false,
+            answer: { required_for: ['approve'], max_length: 2000 },
+          });
+          if (name === 'validation-error') ui.fieldErrors[IDS.d1] = { action: 'approve', field: 'answer', message: 'Type an answer to send.' };
+          break;
+        case 'option-multiselect':
+          s.queue[0].title = s.focus.question = 'Which regions get release 4.2 first?';
+          s.focus.recommendation = { status: 'ready', action: 'EU and US' };
+          s.focus.consequence_if_approved = 'Release 4.2 reaches the chosen regions first.';
+          s.focus.evidence = [];
+          s.focus.evidence_total = 0;
+          s.queue[0].option_count = 3;
+          s.focus.widget_actions = s.queue[0].widget_actions = galleryActions({
+            labels: { approve: 'Confirm selection', reject: 'Request changes' },
+            selection: {
+              mode: 'multiple', min: 1, max: 2, required_for: ['approve', 'reject'],
+              options: [
+                { id: 'eu', label: 'EU (Frankfurt)', description: '1,284 workspaces', implied_action: null, requires_reason: false },
+                { id: 'us', label: 'US (Virginia)', description: '2,031 workspaces', implied_action: null, requires_reason: false },
+                { id: 'apac', label: 'APAC (Singapore)', description: 'On-call is thin this week', implied_action: null, requires_reason: false },
+              ],
+            },
+          });
+          ui.selections[IDS.d1] = ['eu', 'us'];
+          break;
+        case 'access-request':
+          s.queue[0].title = s.focus.question = 'Mara Lin asks for edit access to Billing hardening.';
+          s.focus.recommendation = null;
+          s.focus.consequence_if_approved = 'Mara can edit the initiative and its tasks.';
+          s.focus.evidence = [];
+          s.focus.evidence_total = 0;
+          s.focus.widget_actions = s.queue[0].widget_actions = galleryActions({ labels: { approve: 'Grant access', reject: 'Deny' }, reject_requires_reason: false });
+          break;
+        case 'gateway-action':
+          s.queue[0].title = s.focus.question = 'send_email (gmail.send)';
+          s.queue[0].kind = s.focus.kind = 'action';
+          s.queue[0].initiative_title = s.focus.initiative_title = null;
+          s.focus.recommendation = null;
+          s.focus.consequence_if_approved = null;
+          s.focus.evidence = [];
+          s.focus.evidence_total = 0;
+          s.focus.widget_actions = s.queue[0].widget_actions = galleryActions({ kind: 'action', labels: { approve: 'Approve', reject: 'Deny' }, reject_requires_reason: false });
+          break;
+        case 'artifact-review':
+          s.queue[0].title = s.focus.question = 'Review the 4.2 release notes before they publish.';
+          s.focus.recommendation = { status: 'ready', action: 'Approve' };
+          s.focus.consequence_if_approved = 'The notes publish with the 4.2 tag.';
+          s.focus.widget_actions = s.queue[0].widget_actions = galleryActions({ labels: { approve: 'Approve', reject: 'Request changes' }, reject_requires_reason: true });
+          ui.composer = { id: IDS.d1, draft: 'The export line still says CSV only.', focus: false, opener: IDS.d1 };
+          break;
+        case 'decide-reason':
+          s.queue[0].title = s.focus.question = 'Connect the production Stripe key for the billing agent.';
+          s.queue[0].decide_in_orgx_reason = s.focus.decide_in_orgx_reason = 'credential_required';
+          s.focus.evidence = [];
+          s.focus.evidence_total = 0;
+          delete tokens[IDS.d1];
           break;
         default:
           break;

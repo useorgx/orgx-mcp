@@ -3,6 +3,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AUTHORIZATION_PRESETS } from '../src/authorizationPolicy';
+import { WIDGET_OUTPUT_SCHEMAS } from '../src/openaiOutputSchemas/widgets';
 import { createEmptyMcpActivationState } from '../src/mcpActivationTracker';
 import {
   buildPanelSnapshot,
@@ -217,11 +218,92 @@ describe('buildPanelSnapshot', () => {
       })],
       artifacts: [],
     });
-    expect(second.focus!.widget_actions).toEqual([
-      { kind: 'option', label: 'Ship it', option_id: 'ship' },
-      { kind: 'reject', label: 'Push back', option_id: null },
-    ]);
+    // The provisional list becomes the contract: one option is the approval, Push back keeps its label.
+    expect(second.focus!.widget_actions).toEqual({
+      kind: 'decision',
+      actions: ['approve', 'reject'],
+      labels: { approve: 'Ship it', reject: 'Push back' },
+      reject_requires_reason: true,
+      answer: null,
+      selection: {
+        mode: 'single',
+        options: [{ id: 'ship', label: 'Ship it', description: null, implied_action: null, requires_reason: false }],
+        min: 1,
+        max: 1,
+        required_for: ['approve'],
+      },
+    });
     expect(second.focus!.multiselect).toBe(false);
+  });
+
+  it('carries the app widget_actions contract, clipped, with the item kind', () => {
+    const contract = {
+      kind: 'decision',
+      actions: ['approve', 'reject'],
+      labels: { approve: 'Confirm selection', reject: `Request changes ${'x'.repeat(80)}` },
+      reject_requires_reason: true,
+      answer: { required_for: ['approve', 'bogus'], max_length: 5000 },
+      selection: {
+        mode: 'multiple',
+        options: [
+          { id: 'eu', label: 'EU', description: 'd'.repeat(400), implied_action: null, requires_reason: false },
+          { id: 'us', label: 'US', description: null, implied_action: 'approve', requires_reason: true },
+          { id: 'x'.repeat(121), label: 'Too long an id', description: null, implied_action: null, requires_reason: false },
+          { id: 'stop', label: 'Stop', description: null, implied_action: 'reject', requires_reason: false },
+        ],
+        min: 1,
+        max: 9,
+        required_for: ['approve', 'reject'],
+      },
+    };
+    const snapshot = buildPanelSnapshot({
+      workspace: { id: SESSION_WS, name: 'Acme' },
+      decisions: [decision(D2, 'critical', '2026-09-30T10:00:00.000Z', { widget_actions: contract })],
+      artifacts: [],
+    });
+    const actions = snapshot.focus!.widget_actions!;
+    expect(snapshot.focus!.kind).toBe('decision');
+    expect(actions.labels.approve).toBe('Confirm selection');
+    expect(Array.from(actions.labels.reject).length).toBeLessThanOrEqual(40);
+    expect(actions.answer).toEqual({ required_for: ['approve'], max_length: 2000 });
+    expect(actions.selection!.options.map((o) => o.id)).toEqual(['eu', 'us', 'stop']);
+    expect(Array.from(actions.selection!.options[0]!.description!).length).toBeLessThanOrEqual(140);
+    expect(actions.selection!.options[1]).toMatchObject({ implied_action: 'approve', requires_reason: true });
+    expect(actions.selection).toMatchObject({ mode: 'multiple', min: 1, max: 3, required_for: ['approve', 'reject'] });
+    expect(snapshot.queue[0]!.widget_actions).toEqual(actions);
+    expect(snapshot.queue[0]!.option_count).toBe(3);
+    expect(WIDGET_OUTPUT_SCHEMAS.orgx_panel_snapshot.safeParse(snapshot).success).toBe(true);
+  });
+
+  it('includes agent-run approvals and gateway actions with their own kind and link', () => {
+    const RUN = 'e5555555-5555-4555-8555-555555555555';
+    const ACTION = 'f6666666-6666-4666-8666-666666666666';
+    const snapshot = buildPanelSnapshot({
+      workspace: { id: SESSION_WS, name: 'Acme' },
+      decisions: [
+        { id: D2, type: 'approval', agent_name: 'Agent', summary: 'Resume the import run?', urgency: 'high', created_at: '2026-09-30T10:00:00.000Z', context: { run_id: RUN } },
+        {
+          id: ACTION,
+          type: 'action',
+          agent_name: 'Mark',
+          summary: 'send_email (gmail.send)',
+          urgency: 'critical',
+          created_at: '2026-09-30T11:00:00.000Z',
+          context: { mission_id: 'm-1' },
+          options: [],
+          widget_actions: { kind: 'action', actions: ['approve', 'reject'], labels: { approve: 'Approve', reject: 'Deny' }, reject_requires_reason: false, answer: null, selection: null },
+        },
+      ],
+      artifacts: [],
+    });
+    expect(snapshot.queue.map((item) => [item.title, item.kind, item.url])).toEqual([
+      ['send_email (gmail.send)', 'action', 'https://useorgx.com/decisions?status=pending'],
+      ['Resume the import run?', 'approval', `https://useorgx.com/agents/runs/${RUN}`],
+    ]);
+    expect(snapshot.focus).toMatchObject({ id: ACTION, kind: 'action', question: 'send_email (gmail.send)' });
+    expect(snapshot.focus!.widget_actions!.labels.reject).toBe('Deny');
+    expect(snapshot.queue[1]!.widget_actions).toBeNull();
+    expect(WIDGET_OUTPUT_SCHEMAS.orgx_panel_snapshot.safeParse(snapshot).success).toBe(true);
   });
 
   it('never carries evidence bodies, rationale, notes, emails, costs or tokens', () => {
@@ -562,4 +644,59 @@ describe('orgx_panel_snapshot on the worker', () => {
     expect((result._meta as Record<string, unknown>)['mcp/www_authenticate']).toBeDefined();
     expect(apiMocks.callOrgxApiJson.mock.calls.some((call) => call[1] === '/api/tools/execute')).toBe(false);
   });
+});
+
+describe('orgx_widget_decide refusals on the worker', () => {
+  afterEach(() => {
+    apiMocks.callOrgxApiJson.mockReset();
+    vi.restoreAllMocks();
+  });
+
+  const widgetActions = {
+    kind: 'decision',
+    actions: ['approve', 'reject'],
+    labels: { approve: 'Send answer', reject: 'Decline' },
+    reject_requires_reason: false,
+    answer: { required_for: ['approve'], max_length: 2000 },
+    selection: null,
+  };
+
+  it('passes the app refusal code and widget_actions through to the widget, and sends kind and answer', async () => {
+    const { client } = await createWorker();
+    const execute = apiMocks.callOrgxApiJson.getMockImplementation()!;
+    apiMocks.callOrgxApiJson.mockImplementation(async (env: unknown, path: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? '{}'));
+      if (path === '/api/tools/execute' && body.tool_id === 'widget_decide') {
+        return Response.json({ ok: false, error: 'Type an answer to send.', data: { code: 'answer_required', widget_actions: widgetActions } });
+      }
+      return execute(env, path, init);
+    });
+    const result = await client.callTool({
+      name: 'orgx_widget_decide',
+      arguments: { decision_id: D2, kind: 'decision', action: 'approve', answer: '', approval_token: 'tok' },
+    });
+    expect(result.isError).toBe(true);
+    expect(result.structuredContent).toMatchObject({
+      error: { code: 'answer_required', message: 'Type an answer to send.', details: { widget_actions: widgetActions } },
+    });
+    const call = apiMocks.callOrgxApiJson.mock.calls.find((entry) => JSON.parse(String(entry[2]?.body ?? '{}')).tool_id === 'widget_decide');
+    expect(JSON.parse(String(call![2]!.body)).args).toMatchObject({ decision_id: D2, kind: 'decision', action: 'approve', approval_token: 'tok' });
+  }, 20000);
+
+  it('reads the code from the message when the app drops data on failure', async () => {
+    const { client } = await createWorker();
+    const execute = apiMocks.callOrgxApiJson.getMockImplementation()!;
+    apiMocks.callOrgxApiJson.mockImplementation(async (env: unknown, path: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? '{}'));
+      if (path === '/api/tools/execute' && body.tool_id === 'widget_decide') {
+        return Response.json({ ok: false, error: 'This decision was already settled.' });
+      }
+      return execute(env, path, init);
+    });
+    const result = await client.callTool({
+      name: 'orgx_widget_decide',
+      arguments: { decision_id: D2, kind: 'action', action: 'approve', approval_token: 'tok' },
+    });
+    expect(result.structuredContent).toMatchObject({ error: { code: 'decision_already_resolved' } });
+  }, 20000);
 });

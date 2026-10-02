@@ -50,6 +50,11 @@ export const PANEL_TEXT_MAX = 280;
 /** Options the panel can render as buttons for one decision. */
 export const PANEL_OPTION_LIMIT = 12;
 export const PANEL_OPTION_LABEL_MAX = 80;
+export const PANEL_OPTION_ID_MAX = 120;
+export const PANEL_OPTION_DESCRIPTION_MAX = 140;
+export const PANEL_ACTION_LABEL_MAX = 40;
+/** The longest typed answer or reason the app accepts. */
+export const PANEL_ANSWER_MAX = 2000;
 /** Pending decisions read per snapshot: enough to find a selected item. */
 export const PANEL_DECISION_READ_LIMIT = 25;
 export const PANEL_ARTIFACT_READ_LIMIT = 50;
@@ -118,6 +123,10 @@ export interface PanelQueueItem {
   decide_in_orgx_reason: string | null;
   /** How many options the server offers; a row with options opens the packet to choose. */
   option_count: number;
+  /** What the item is: a decision, an agent-run approval, or an action awaiting approval. */
+  kind: PanelItemKind;
+  /** What the person can do here, as the server lists it (null: Decide in OrgX or an older app). */
+  widget_actions: PanelWidgetActions | null;
   url: string;
 }
 
@@ -127,19 +136,45 @@ export interface PanelOption {
   label: string;
 }
 
-/**
- * One action the pending list says the person can take here. The panel
- * renders these instead of deciding from the decision's type.
- */
-export interface PanelWidgetAction {
-  kind: 'approve' | 'reject' | 'option';
+export type PanelItemKind = 'decision' | 'approval' | 'action';
+export type PanelDecideAction = 'approve' | 'reject';
+
+/** One option the server lets the person choose. */
+export interface PanelActionOption {
+  id: string;
   label: string;
-  option_id: string | null;
+  description: string | null;
+  /** The only action this option can be chosen with, when it implies one. */
+  implied_action: PanelDecideAction | null;
+  /** Choosing it needs a reason. */
+  requires_reason: boolean;
+}
+
+/**
+ * What the person can do with one pending item, exactly as the app's
+ * `widget_actions` contract lists it (clipped). The panel renders this
+ * instead of deciding from the item's type, and echoes `kind` back.
+ */
+export interface PanelWidgetActions {
+  kind: PanelItemKind;
+  actions: PanelDecideAction[];
+  labels: { approve: string; reject: string };
+  reject_requires_reason: boolean;
+  answer: { required_for: PanelDecideAction[]; max_length: number } | null;
+  selection: {
+    mode: 'single' | 'multiple';
+    options: PanelActionOption[];
+    min: number;
+    max: number;
+    required_for: PanelDecideAction[];
+  } | null;
 }
 
 export interface PanelFocus {
   type: 'decision';
   id: string;
+  /** What the item is: a decision, an agent-run approval, or an action awaiting approval. */
+  kind: PanelItemKind;
   version: string;
   question: string;
   urgency: PanelUrgency;
@@ -159,8 +194,8 @@ export interface PanelFocus {
   options: PanelOption[];
   /** True when the person may choose several options and confirm them together. */
   multiselect: boolean;
-  /** The actions the server lists for this decision, when it lists them; preferred over options. */
-  widget_actions: PanelWidgetAction[] | null;
+  /** What the person can do here, as the server lists it; preferred over options. */
+  widget_actions: PanelWidgetActions | null;
   url: string;
 }
 
@@ -257,7 +292,9 @@ interface NormalizedDecision {
   decideInOrgxReason: string | null;
   options: PanelOption[];
   multiselect: boolean;
-  widgetActions: PanelWidgetAction[] | null;
+  kind: PanelItemKind;
+  runId: string | null;
+  widgetActions: PanelWidgetActions | null;
   packet: Record<string, unknown> | null;
 }
 
@@ -300,34 +337,146 @@ export function isPanelMultiselect(record: Record<string, unknown>): boolean {
   );
 }
 
-/** The server's list of actions for a decision, or null when it sends none. */
-export function normalizePanelWidgetActions(value: unknown): PanelWidgetAction[] | null {
-  const list = Array.isArray(value) ? value : asRecord(value)?.actions;
-  if (!Array.isArray(list)) return null;
-  const actions: PanelWidgetAction[] = [];
+const DECIDE_ACTIONS: PanelDecideAction[] = ['approve', 'reject'];
+
+function decideActions(value: unknown): PanelDecideAction[] {
+  return Array.isArray(value)
+    ? DECIDE_ACTIONS.filter((action) => value.includes(action))
+    : [];
+}
+
+function count(value: unknown): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null;
+}
+
+function itemKind(value: unknown): PanelItemKind | null {
+  return value === 'decision' || value === 'approval' || value === 'action' ? value : null;
+}
+
+/** The pending list's `type`: agent-run approvals and gateway actions ride along with decisions. */
+function kindFromType(record: Record<string, unknown>): PanelItemKind {
+  const type = typeof record.type === 'string' ? record.type.trim().toLowerCase() : '';
+  return type === 'approval' ? 'approval' : type === 'action' ? 'action' : 'decision';
+}
+
+function contractOptions(value: unknown): PanelActionOption[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  const options: PanelActionOption[] = [];
+  for (const raw of value) {
+    const record = asRecord(raw);
+    const id = record ? str(record.id) : null;
+    const label = record ? clipText(record.label, PANEL_OPTION_LABEL_MAX) : null;
+    if (!record || !id || id.length > PANEL_OPTION_ID_MAX || !label || seen.has(id)) continue;
+    seen.add(id);
+    const implied = record.implied_action;
+    options.push({
+      id,
+      label,
+      description: clipText(record.description, PANEL_OPTION_DESCRIPTION_MAX),
+      implied_action: implied === 'approve' || implied === 'reject' ? implied : null,
+      requires_reason: record.requires_reason === true,
+    });
+    if (options.length >= PANEL_OPTION_LIMIT) break;
+  }
+  return options;
+}
+
+/** The app contract: { kind, actions: ['approve','reject'], labels, ... }. */
+function fromContract(record: Record<string, unknown>, fallbackKind: PanelItemKind): PanelWidgetActions | null {
+  const actions = decideActions(record.actions);
+  if (!actions.length) return null;
+  const labels = asRecord(record.labels) ?? {};
+  const answer = asRecord(record.answer);
+  const answerFor = answer ? decideActions(answer.required_for) : [];
+  const selection = asRecord(record.selection);
+  const options = selection ? contractOptions(selection.options) : [];
+  const multiple = selection?.mode === 'multiple';
+  const min = multiple ? Math.min(options.length, count(selection?.min) ?? 1) : 1;
+  const max = multiple ? Math.max(min, Math.min(options.length, count(selection?.max) || options.length)) : 1;
+  return {
+    kind: itemKind(record.kind) ?? fallbackKind,
+    actions,
+    labels: {
+      approve: clipText(labels.approve, PANEL_ACTION_LABEL_MAX) ?? 'Approve',
+      reject: clipText(labels.reject, PANEL_ACTION_LABEL_MAX) ?? 'Send back',
+    },
+    reject_requires_reason: record.reject_requires_reason === true,
+    answer: answerFor.length
+      ? { required_for: answerFor, max_length: Math.min(PANEL_ANSWER_MAX, count(answer?.max_length) || PANEL_ANSWER_MAX) }
+      : null,
+    selection: options.length
+      ? { mode: multiple ? 'multiple' : 'single', options, min, max, required_for: decideActions(selection?.required_for) }
+      : null,
+  };
+}
+
+/**
+ * The provisional shape, a list of { action|kind, option_id, label }: options
+ * approve with one click, Approve and Send back keep their labels, and a
+ * single option with nothing else is the approval.
+ */
+function fromProvisional(list: unknown[], fallbackKind: PanelItemKind, multiselect: boolean): PanelWidgetActions | null {
+  const options: PanelActionOption[] = [];
+  let approve: string | null = null;
+  let reject: string | null = null;
   for (const raw of list) {
     const record = asRecord(raw);
     if (!record) continue;
     const verb = (str(record.action) ?? str(record.kind) ?? str(record.type) ?? '').toLowerCase();
     const optionId = str(record.option_id) ?? str(record.optionId);
-    const kind: PanelWidgetAction['kind'] | null = /reject|decline|send_back|sendback|request_changes/.test(verb)
-      ? 'reject'
-      : optionId || verb === 'option' || verb === 'choose' || verb === 'select'
-        ? 'option'
-        : /approve|accept|confirm/.test(verb)
-          ? 'approve'
-          : null;
-    if (!kind) continue;
-    const resolvedOption = kind === 'option' ? optionId ?? str(record.id) : null;
-    if (kind === 'option' && !resolvedOption) continue;
-    const label =
-      clipText(record.label ?? record.title ?? record.name, PANEL_OPTION_LABEL_MAX) ??
-      (kind === 'reject' ? 'Send back' : kind === 'approve' ? 'Approve' : null);
-    if (!label) continue;
-    actions.push({ kind, label, option_id: resolvedOption });
-    if (actions.length >= PANEL_OPTION_LIMIT + 2) break;
+    const label = clipText(record.label ?? record.title ?? record.name, PANEL_OPTION_LABEL_MAX);
+    if (/reject|decline|send_back|sendback|request_changes/.test(verb)) {
+      reject = reject ?? label ?? 'Send back';
+    } else if (optionId || verb === 'option' || verb === 'choose' || verb === 'select') {
+      const id = optionId ?? str(record.id);
+      if (!id || id.length > PANEL_OPTION_ID_MAX || !label || options.some((o) => o.id === id)) continue;
+      if (options.length < PANEL_OPTION_LIMIT) {
+        options.push({ id, label, description: null, implied_action: null, requires_reason: false });
+      }
+    } else if (/approve|accept|confirm/.test(verb)) {
+      approve = approve ?? label ?? 'Approve';
+    }
   }
-  return actions.length ? actions : null;
+  if (!options.length && !approve && !reject) return null;
+  const multiple = multiselect && options.length >= 2;
+  return {
+    kind: fallbackKind,
+    actions: options.length || approve ? (reject ? ['approve', 'reject'] : ['approve']) : ['reject'],
+    labels: {
+      approve: clipText(approve ?? (options.length === 1 ? options[0]!.label : multiple ? 'Confirm' : 'Approve'), PANEL_ACTION_LABEL_MAX) ?? 'Approve',
+      reject: clipText(reject ?? 'Send back', PANEL_ACTION_LABEL_MAX) ?? 'Send back',
+    },
+    reject_requires_reason: true,
+    answer: null,
+    selection: options.length
+      ? {
+          mode: multiple ? 'multiple' : 'single',
+          options,
+          min: 1,
+          max: multiple ? options.length : 1,
+          required_for: options.length >= 2 || !approve ? ['approve'] : [],
+        }
+      : null,
+  };
+}
+
+/**
+ * What the person can do with one item: the app's `widget_actions` contract
+ * (clipped), the older provisional list converted to it, or null when the
+ * pending list sends neither (the panel then falls back to options).
+ */
+export function normalizePanelWidgetActions(
+  value: unknown,
+  context: { kind?: PanelItemKind; multiselect?: boolean } = {}
+): PanelWidgetActions | null {
+  const kind = context.kind ?? 'decision';
+  const record = asRecord(value);
+  if (record && Array.isArray(record.actions) && record.actions.every((action) => typeof action === 'string')) {
+    return fromContract(record, kind);
+  }
+  const list = Array.isArray(value) ? value : record && Array.isArray(record.actions) ? record.actions : null;
+  return list ? fromProvisional(list, kind, context.multiselect === true) : null;
 }
 
 function normalizeDecision(input: unknown): NormalizedDecision | null {
@@ -346,6 +495,10 @@ function normalizeDecision(input: unknown): NormalizedDecision | null {
     str(context.initiative_id) ?? str(initiativeRef?.id) ?? null;
   const summary = str(record.summary) ?? str(record.title) ?? 'Decision';
   const createdAt = str(record.created_at);
+  const multiselect = isPanelMultiselect(record);
+  const typeKind = kindFromType(record);
+  const widgetActions = normalizePanelWidgetActions(record.widget_actions, { kind: typeKind, multiselect });
+  const runId = str(context.run_id);
   return {
     id,
     version: str(packet?.updatedAt) ?? str(record.updated_at) ?? createdAt ?? id,
@@ -360,13 +513,18 @@ function normalizeDecision(input: unknown): NormalizedDecision | null {
     options: normalizePanelOptions(
       Array.isArray(record.options) && record.options.length ? record.options : packet?.options
     ),
-    multiselect: isPanelMultiselect(record),
-    widgetActions: normalizePanelWidgetActions(record.widget_actions),
+    multiselect,
+    kind: widgetActions?.kind ?? typeKind,
+    runId: runId && UUID_RE.test(runId) ? runId : null,
+    widgetActions,
     packet,
   };
 }
 
+/** Agent-run approvals open their run; actions awaiting approval open the pending queue. */
 function decisionUrl(decision: NormalizedDecision): string {
+  if (decision.kind === 'approval' && decision.runId) return buildEntityLink('run', decision.runId).url;
+  if (decision.kind === 'action') return 'https://useorgx.com/decisions?status=pending';
   return buildEntityLink('decision', decision.id, {
     initiativeId: decision.initiativeId ?? undefined,
   }).url;
@@ -383,8 +541,10 @@ function toQueueItem(decision: NormalizedDecision): PanelQueueItem {
     blocked: decision.blocked,
     decide_in_orgx_reason: decision.decideInOrgxReason,
     option_count: decision.widgetActions
-      ? decision.widgetActions.filter((action) => action.kind === 'option').length
+      ? decision.widgetActions.selection?.options.length ?? 0
       : decision.options.length,
+    kind: decision.kind,
+    widget_actions: decision.widgetActions,
     url: decisionUrl(decision),
   };
 }
@@ -400,6 +560,7 @@ function toFocus(decision: NormalizedDecision): PanelFocus {
   return {
     type: 'decision',
     id: decision.id,
+    kind: decision.kind,
     version: decision.version,
     question: clipText(decision.question, PANEL_QUESTION_MAX) ?? 'Decision',
     urgency: decision.urgency,

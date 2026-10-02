@@ -208,6 +208,7 @@
     }
     .dq-opt:hover:not(:disabled) { background: var(--ox-hover); border-color: var(--ox-primary); }
     .dq-opt:disabled { cursor: default; opacity: 0.6; }
+    .dq-opt[data-at-max] { opacity: 0.55; }
     .dq-opt[aria-pressed="true"], .dq-opt[data-chosen] { border-color: var(--ox-primary); background: rgba(var(--ox-action-rgb), 0.1); opacity: 1; }
     .dq-opt-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
     .dq-opt-label { font-size: 14px; font-weight: 650; line-height: 1.3; overflow-wrap: anywhere; }
@@ -231,6 +232,21 @@
     }
     .reject-textarea::placeholder { color: var(--ox-placeholder, var(--ox-text-muted)); }
     .reject-textarea:focus-visible { outline: 2px solid var(--ox-focus, var(--ox-warning)); outline-offset: 1px; }
+    .reject-textarea.is-short { min-height: 56px; }
+    .reject-textarea[aria-invalid="true"] { border-color: var(--ox-danger); }
+    .reject-textarea[readonly] { opacity: 0.7; }
+    .reject-composer .dq-options { margin-bottom: 4px; }
+
+    /* Typed answers and reasons the server asks for; one inline line when a click was refused. */
+    .dq-field { display: flex; flex-direction: column; gap: 8px; }
+    .dq-field label { font-size: 12.5px; color: var(--ox-text-muted); }
+    .dq-counter { font: 500 11px/1.2 var(--ox-mono); color: var(--ox-text-muted); align-self: flex-end; min-height: 0; }
+    .dq-counter:empty { display: none; }
+    .dq-field-error {
+      margin: -4px 0 0; font-size: 12.5px; line-height: 1.4; font-weight: 600;
+      color: var(--ox-danger-text, var(--ox-danger));
+    }
+    .dq-options .dq-field-error { margin-top: 2px; }
 
     /* Slotted footer text action (Reject / Cancel) styled like the kit's text action. */
     .dq-text-btn {
@@ -260,6 +276,17 @@
     .dq-row .meta, .dq-meta { font: 500 11.5px/1.3 var(--ox-mono); color: var(--ox-text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
     .dq-row .chev { width: 14px; height: 14px; color: var(--ox-text-muted); flex: none; }
     .dq-more { padding: 6px 14px; }
+
+    /* Approve N ready: one quiet line, then one result row per item. */
+    .dq-batch {
+      display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; min-height: 44px;
+      padding: 4px 4px 4px 14px; border-radius: 12px; border: 1px dashed var(--ox-border-strong);
+    }
+    .dq-batch-copy { flex: 1 1 0; min-width: 0; font-size: 12.5px; color: var(--ox-text-2); }
+    .dq-batch-btn { color: var(--ox-text); }
+    .dq-batch.is-result { display: block; padding: 6px 14px 4px; border-style: solid; }
+    .dq-batch-head { display: flex; align-items: center; gap: 8px; min-height: 36px; }
+    .dq-batch-head .dq-batch-copy { font-weight: 600; color: var(--ox-text); }
 
     .dq-history { display: flex; flex-direction: column; padding: 0 2px; }
     .dq-history-label { font-size: 12.5px; color: var(--ox-text-muted); padding: 4px 12px 2px; }
@@ -372,7 +399,11 @@
     // Option fixtures: a decision whose options come from the server (one click each), and one that allows several.
     var OPTION_FIXTURES = ['options', 'multiselect'];
     var isOptionFixture = OPTION_FIXTURES.includes(fixtureState);
-    var isDemo = ['urgent', 'populated', 'long', 'resolved'].includes(fixtureState) || isFooterFixture || isOptionFixture;
+    // Contract fixtures: one item per kind of widget_actions the app sends, plus refusals and the batch.
+    var CONTRACT_FIXTURES = ['external-question', 'option-multiselect', 'access-request', 'gateway-action', 'artifact-review',
+      'validation-error', 'decide-reason', 'batch-ready', 'batch-result'];
+    var isContractFixture = CONTRACT_FIXTURES.includes(fixtureState);
+    var isDemo = ['urgent', 'populated', 'long', 'resolved'].includes(fixtureState) || isFooterFixture || isOptionFixture || isContractFixture;
     var demoNow = Date.now();
     var data = isDemo ? {
       summary: { critical: 1, high: 2 },
@@ -476,8 +507,73 @@
         ],
       });
     }
+    var demoActions = (extra) => Object.assign({ kind: 'decision', actions: ['approve', 'reject'], labels: { approve: 'Approve', reject: 'Send back' }, reject_requires_reason: true, answer: null, selection: null }, extra);
+    var CONTRACT_ITEMS = {
+      'external-question': {
+        id: 'c1', urgency: 'high', agent_name: 'Eli - Engineering', type: 'decision_queue', sourceLabel: 'Release 4.2',
+        summary: 'Which staging database should the 4.2 migration run against?',
+        created_at: new Date(demoNow - 12 * 60 * 1000).toISOString(),
+        recommendation: 'staging-eu-2 has last night’s snapshot; staging-us-1 is two days behind.',
+        widget_actions: demoActions({ labels: { approve: 'Send answer', reject: 'Decline' }, reject_requires_reason: false, answer: { required_for: ['approve'], max_length: 2000 } }),
+      },
+      'option-multiselect': {
+        id: 'c2', urgency: 'medium', agent_name: 'Sage - Sales', type: 'decision_queue', sourceLabel: 'Founder launch',
+        summary: 'Which regions get release 4.2 first?',
+        created_at: new Date(demoNow - 40 * 60 * 1000).toISOString(),
+        recommendation: 'EU and US carry 92% of active workspaces.',
+        widget_actions: demoActions({
+          labels: { approve: 'Confirm selection', reject: 'Request changes' },
+          selection: {
+            mode: 'multiple', min: 1, max: 2, required_for: ['approve', 'reject'],
+            options: [
+              { id: 'eu', label: 'EU (Frankfurt)', description: '1,284 workspaces', implied_action: null, requires_reason: false },
+              { id: 'us', label: 'US (Virginia)', description: '2,031 workspaces', implied_action: null, requires_reason: false },
+              { id: 'apac', label: 'APAC (Singapore)', description: '288 workspaces · on-call is thin this week', implied_action: null, requires_reason: false },
+            ],
+          },
+        }),
+      },
+      'access-request': {
+        id: 'c3', urgency: 'high', agent_name: 'OrgX System', type: 'decision_queue',
+        summary: 'Mara Lin asks for edit access to the Billing hardening initiative.',
+        created_at: new Date(demoNow - 25 * 60 * 1000).toISOString(),
+        context: 'Mara owns the invoice export fix that is blocked on this initiative.',
+        widget_actions: demoActions({ labels: { approve: 'Grant access', reject: 'Deny' }, reject_requires_reason: false }),
+      },
+      'gateway-action': {
+        id: 'c4', urgency: 'high', agent_name: 'Mark', type: 'action', short_id: 'c4c4c4c4',
+        summary: 'send_email (gmail.send)',
+        created_at: new Date(demoNow - 6 * 60 * 1000).toISOString(),
+        context: { mission_id: 'm-42' },
+        options: [],
+        widget_actions: demoActions({ kind: 'action', labels: { approve: 'Approve', reject: 'Deny' }, reject_requires_reason: false }),
+      },
+      'artifact-review': {
+        id: 'c5', urgency: 'medium', agent_name: 'Pace - Product', type: 'decision_queue', sourceLabel: 'Release 4.2',
+        summary: 'Review the 4.2 release notes before they publish.',
+        created_at: new Date(demoNow - 2 * 60 * 60 * 1000).toISOString(),
+        recommendation: 'Approve; the export line was corrected in v3.',
+        if_approved: 'The notes publish with the 4.2 tag.',
+        if_rejected: 'Pace revises against your note.',
+        widget_actions: demoActions({ labels: { approve: 'Approve', reject: 'Request changes' }, reject_requires_reason: true }),
+      },
+      'decide-reason': {
+        id: 'c6', urgency: 'high', agent_name: 'Eli - Engineering', type: 'decision_queue',
+        summary: 'Connect the production Stripe key for the billing agent.',
+        created_at: new Date(demoNow - 3 * 60 * 60 * 1000).toISOString(),
+        widget_actionable: false, widget_actions: null, decide_in_orgx_reason: 'credential_required',
+      },
+    };
+    CONTRACT_ITEMS['validation-error'] = Object.assign({}, CONTRACT_ITEMS['external-question'], { id: 'c7' });
+    if (isContractFixture && data) {
+      if (fixtureState === 'batch-ready' || fixtureState === 'batch-result') {
+        data.decisions.push(Object.assign({}, CONTRACT_ITEMS['gateway-action']), Object.assign({}, CONTRACT_ITEMS['access-request']));
+      } else {
+        data.decisions.push(Object.assign({}, CONTRACT_ITEMS[fixtureState]));
+      }
+    }
     // Demo-only stand-ins for the widget approval tokens a real result carries in its _meta.
-    var demoApprovalTokens = isDemo ? { d2: 'demo-approval-token', d3: 'demo-approval-token', d4: 'demo-approval-token', d5: 'demo-approval-token' } : null;
+    var demoApprovalTokens = isDemo ? { d2: 'demo-approval-token', d3: 'demo-approval-token', d4: 'demo-approval-token', d5: 'demo-approval-token', c1: 'demo-approval-token', c2: 'demo-approval-token', c3: 'demo-approval-token', c4: 'demo-approval-token', c5: 'demo-approval-token', c7: 'demo-approval-token' } : null;
     if (fixtureState === 'long' && data) {
       data.decisions[0].summary = 'Approve the founder continuity launch story, linked artifact evidence, decision provenance language, responsive social preview, CTA hierarchy, and cross-agent continuation receipt before the scheduled release window';
       data.decisions[0].context += ' This long-content fixture verifies wrapping and disclosure behavior across compact hosts.';
@@ -520,6 +616,14 @@
 
     var rejectComposerId = null;
     var rejectDrafts = {};
+    // Typed answers, the reason an option asks for, and the option a send-back note is about.
+    var answerDrafts = {};
+    var approveNotes = {};
+    var rejectPicks = {};
+    // Inline messages for a refused click: { action, field, code, message }.
+    var fieldErrors = {};
+    // Approval tokens from a refresh this widget ran (the host's metadata keeps the first result's).
+    var refreshedTokens = null;
     // Multiselect toggles per decision, and the choice that went with each ruling (for Retry and the receipt).
     var optionSelections = {};
     var decisionChoices = {};
@@ -549,6 +653,15 @@
       if (restoredDecisionState.optionSelections && typeof restoredDecisionState.optionSelections === 'object') {
         optionSelections = restoredDecisionState.optionSelections;
       }
+      if (restoredDecisionState.answerDrafts && typeof restoredDecisionState.answerDrafts === 'object') {
+        answerDrafts = restoredDecisionState.answerDrafts;
+      }
+      if (restoredDecisionState.approveNotes && typeof restoredDecisionState.approveNotes === 'object') {
+        approveNotes = restoredDecisionState.approveNotes;
+      }
+      if (restoredDecisionState.rejectPicks && typeof restoredDecisionState.rejectPicks === 'object') {
+        rejectPicks = restoredDecisionState.rejectPicks;
+      }
     }
 
     if (isFooterFixture) {
@@ -569,6 +682,11 @@
         lastResolution = { action: 'approved', summary: 'Lock the launch search relevance threshold at 0.82?', agent_name: 'Eli - Engineering' };
       }
     }
+    if (isContractFixture) {
+      currentPage = fixtureState === 'batch-ready' ? 2 : 4;
+      if (fixtureState === 'option-multiselect') optionSelections.c2 = ['eu', 'us'];
+      if (fixtureState === 'validation-error') fieldErrors.c7 = { action: 'approve', field: 'answer', code: 'answer_required', message: 'Type an answer to send.' };
+    }
     if (isOptionFixture) {
       currentPage = 4;
       if (fixtureState === 'multiselect') optionSelections.d5 = ['ch-linkedin', 'ch-newsletter'];
@@ -587,6 +705,9 @@
         rejectDrafts,
         lastResolution,
         optionSelections,
+        answerDrafts,
+        approveNotes,
+        rejectPicks,
       });
     };
 
@@ -600,7 +721,8 @@
 
     var publishDecisionResolution = async (decision, resolution) => {
       if (!window.OrgXWidgetRuntime || !resolution) return;
-      const verb = resolution.action === 'approved' ? (resolution.choice ? 'approved with ' + resolution.choice : 'approved') : 'sent back';
+      const base = resolution.verb || (resolution.action === 'approved' ? 'approved' : 'sent back');
+      const verb = resolution.action === 'approved' && resolution.choice ? base + ' with ' + resolution.choice : base;
       const owner = resolution.agent_name || 'the assigned agent';
       const summary = resolution.summary || 'Decision';
       const context = {
@@ -631,6 +753,10 @@
     // Approval tokens arrive in widget-only result metadata. A decision without
     // one is decided in OrgX: the widget never pretends it can settle it.
     var getApprovalToken = (decisionId) => {
+      if (refreshedTokens) {
+        const fresh = refreshedTokens[decisionId];
+        return typeof fresh === 'string' && fresh ? fresh : null;
+      }
       const meta = window.OrgXWidgetRuntime && window.OrgXWidgetRuntime.getToolResponseMetadata
         ? window.OrgXWidgetRuntime.getToolResponseMetadata('orgx/widgetApproval')
         : null;
@@ -640,24 +766,40 @@
       return demoApprovalTokens && demoApprovalTokens[decisionId] ? demoApprovalTokens[decisionId] : null;
     };
 
-    var decideInOrgxDetail = (decision) => {
-      switch (decision && decision.decide_in_orgx_reason) {
-        case 'critical': return 'Critical decisions are made in OrgX.';
-        case 'choice_required': return 'Choose between the options in OrgX.';
-        case 'agent_run_approval': return 'Agent run approvals are made in OrgX.';
-        case 'protected_decision_type':
-        case 'specialized_lifecycle':
-        case 'artifact_review_lifecycle': return 'This one needs the full review in OrgX.';
-        default: return 'Open it in OrgX to decide.';
-      }
+    // Why this one is decided in OrgX: one sentence per reason the server gives.
+    var DECIDE_IN_ORGX_COPY = {
+      credential_required: 'It needs a credential, and credentials are entered only in OrgX.',
+      integration_connection_required: 'It settles when you connect the integration in OrgX.',
+      form_input_required: 'It asks for several answers. Fill them in OrgX.',
+      options_unavailable: 'Its options could not be read here. Choose in OrgX.',
+      artifact_reference_invalid: 'The artifact under review could not be opened here. Review it in OrgX.',
+      specialized_lifecycle: 'This type runs its own review in OrgX.',
+      requester_cannot_approve: 'You requested this action, so another approver decides it.',
+      widget_approvals_disabled: 'Deciding from chat is off for this workspace.',
+      action_authority_denied: 'Your role can’t approve this from chat. OrgX shows who can.',
+      token_mismatch: 'This view belongs to another account or workspace. Open it in OrgX.',
+      lifecycle_required: 'This one finishes in OrgX.',
+      // Older servers.
+      critical: 'Critical decisions are made in OrgX.',
+      choice_required: 'Choose between the options in OrgX.',
+      agent_run_approval: 'Agent run approvals are made in OrgX.',
+      protected_decision_type: 'This one needs the full review in OrgX.',
+      artifact_review_lifecycle: 'This one needs the full review in OrgX.',
     };
+    var decideInOrgxDetail = (decision) => DECIDE_IN_ORGX_COPY[decision && decision.decide_in_orgx_reason] || 'Open it in OrgX to decide.';
 
     var buildDecisionSurfaceUrl = (decision) => {
       if (!decision || !decision.id) return ORGX_BASE_URL + '/decisions';
       if (typeof decision.url === 'string' && decision.url.trim()) return decision.url.trim();
       if (typeof decision.link === 'string' && decision.link.trim()) return decision.link.trim();
-      if (typeof decision.initiative_id === 'string' && decision.initiative_id.trim()) {
-        return ORGX_BASE_URL + '/initiatives/' + encodeURIComponent(decision.initiative_id.trim()) + '?focus=decisions&decision=' + encodeURIComponent(decision.id);
+      const refs = decision.context_refs || {};
+      const kind = kindFromType(decision);
+      // Agent-run approvals open their run; actions waiting on approval open the decision queue.
+      if (kind === 'approval' && UUID_RE.test(firstString(refs.run_id))) return ORGX_BASE_URL + '/agents/runs/' + encodeURIComponent(refs.run_id);
+      if (kind === 'action') return buildDecisionsUrl();
+      const initiativeId = firstString(decision.initiative_id, refs.initiative_id);
+      if (initiativeId) {
+        return ORGX_BASE_URL + '/initiatives/' + encodeURIComponent(initiativeId) + '?focus=decisions&decision=' + encodeURIComponent(decision.id);
       }
       return ORGX_BASE_URL + '/decisions/' + encodeURIComponent(decision.id);
     };
@@ -701,7 +843,7 @@
         if ((depth || 0) > 2) return '';
         var objectParts = [];
         var preferredKeys = ['summary', 'text', 'message', 'title', 'description', 'reason', 'note', 'content', 'detail', 'details', 'body', 'why', 'impact', 'recommendation'];
-        var hiddenKeys = ['id', 'uuid', 'created_at', 'createdAt', 'updated_at', 'updatedAt', 'decision_id', 'entity_id', 'initiative_id', 'workstream_id', 'milestone_id', 'task_id'];
+        var hiddenKeys = ['id', 'uuid', 'created_at', 'createdAt', 'updated_at', 'updatedAt', 'decision_id', 'entity_id', 'initiative_id', 'workstream_id', 'milestone_id', 'task_id', 'run_id', 'mission_id', 'policy_key'];
         var orderedKeys = preferredKeys.filter((key) => key in value);
         Object.keys(value).forEach((key) => {
           if (orderedKeys.includes(key) || hiddenKeys.includes(key)) return;
@@ -759,11 +901,22 @@
     }
 
     /* ------------------------------------------------------------- choices -- */
-    // What the person can do here comes from the server, never from the decision's type:
-    // widget_actions when the payload lists them, else options (two or more), else Approve.
-    // Send back is always there for a decision with a token.
+    // What the person can do here comes from the server, never from the decision's type.
+    // widget_actions is the app's per-item contract: the two buttons and their labels, the
+    // options (one or several, each maybe implying approve or reject, maybe needing a reason),
+    // a typed answer, and whether rejecting needs a reason. Older payloads still render: the
+    // provisional list of actions, or options without widget_actions (two or more are buttons).
+    var ITEM_KINDS = ['decision', 'approval', 'action'];
+    var DECIDE_ACTIONS = ['approve', 'reject'];
+    var OPTION_LIMIT = 12;
+    var OPTION_ID_MAX = 120;
+    var TEXT_MAX = 2000;
+    var kindFromType = (decision) => {
+      const type = firstString(decision && decision.type).toLowerCase();
+      return type === 'approval' ? 'approval' : type === 'action' ? 'action' : 'decision';
+    };
     var normalizeOption = (item, index) => {
-      if (typeof item === 'string') return item.trim() ? { id: 'option-' + (index + 1), label: item.trim(), description: '', recommended: false } : null;
+      if (typeof item === 'string') return item.trim() ? { id: 'option-' + (index + 1), label: item.trim(), description: '', recommended: false, implied: null, requiresReason: false } : null;
       if (!item || typeof item !== 'object') return null;
       const label = firstString(item.label, item.title, item.name, item.action);
       if (!label) return null;
@@ -772,35 +925,16 @@
         label,
         description: firstString(item.description, item.detail),
         recommended: item.recommended === true || item.is_recommended === true,
+        implied: item.implied_action === 'approve' || item.implied_action === 'reject' ? item.implied_action : null,
+        requiresReason: item.requires_reason === true,
       };
     };
     var normalizeOptions = (value) => {
       if (!Array.isArray(value)) return [];
       const seen = new Set();
-      return value.map(normalizeOption).filter((o) => o && !seen.has(o.id) && seen.add(o.id)).slice(0, 12);
-    };
-    var actionKind = (item) => {
-      const verb = firstString(item.action, item.kind, item.type, item.verb).toLowerCase();
-      if (/reject|decline|send_back|sendback|request_changes/.test(verb)) return 'reject';
-      if (firstString(item.option_id, item.optionId) || ['option', 'choose', 'select'].includes(verb)) return 'option';
-      if (/approve|accept|confirm/.test(verb)) return 'approve';
-      return '';
-    };
-    var normalizeWidgetActions = (value) => {
-      const list = Array.isArray(value) ? value : value && Array.isArray(value.actions) ? value.actions : null;
-      if (!list) return null;
-      const out = [];
-      list.forEach((item) => {
-        if (!item || typeof item !== 'object') return;
-        const kind = actionKind(item);
-        if (!kind) return;
-        const optionId = kind === 'option' ? firstString(item.option_id, item.optionId, item.id) : '';
-        if (kind === 'option' && !optionId) return;
-        const label = firstString(item.label, item.title, item.name) || (kind === 'reject' ? 'Send back' : kind === 'approve' ? 'Approve' : '');
-        if (!label) return;
-        out.push({ kind, label, option_id: optionId, description: firstString(item.description, item.detail), recommended: item.recommended === true });
-      });
-      return out.length ? out : null;
+      return value.map(normalizeOption)
+        .filter((o) => o && o.id.length <= OPTION_ID_MAX && !seen.has(o.id) && seen.add(o.id))
+        .slice(0, OPTION_LIMIT);
     };
     var readCount = (...values) => {
       for (const v of values) {
@@ -811,43 +945,190 @@
     };
     var isMultiselect = (decision, actionsRaw) => {
       const mode = firstString(decision.selection, decision.selection_mode, decision.selectionMode, decision.shape,
-        actionsRaw && !Array.isArray(actionsRaw) ? actionsRaw.selection : '').toLowerCase();
+        actionsRaw && !Array.isArray(actionsRaw) && typeof actionsRaw.selection === 'string' ? actionsRaw.selection : '').toLowerCase();
       return decision.multiselect === true || decision.multi_select === true || decision.allow_multiple === true ||
         Boolean(actionsRaw && !Array.isArray(actionsRaw) && actionsRaw.multiselect === true) ||
         ['multi', 'multiple', 'multiselect', 'option_multiselect'].includes(mode);
     };
-    var resolveChoices = (decision, packet) => {
-      const actionsRaw = decision.widget_actions;
-      const actions = normalizeWidgetActions(actionsRaw);
-      const multiselect = isMultiselect(decision, actionsRaw);
+    var actionSet = (value) => {
+      const list = Array.isArray(value) ? value : [];
+      return { approve: list.includes('approve'), reject: list.includes('reject') };
+    };
+    // Options without a contract: one click approves; several are toggles and need at least one.
+    var selectionFrom = (decision, options) => {
       const shape = decision.shape_context && typeof decision.shape_context === 'object' ? decision.shape_context : {};
-      let options;
-      let approve = { label: 'Approve', option_id: '' };
-      let reject = { label: 'Send back' };
-      if (actions) {
-        options = actions.filter((a) => a.kind === 'option').map((a) => ({ id: a.option_id, label: a.label, description: a.description, recommended: a.recommended }));
-        const approveAction = actions.find((a) => a.kind === 'approve');
-        const rejectAction = actions.find((a) => a.kind === 'reject');
+      if (!isMultiselect(decision, decision.widget_actions)) {
+        return { mode: 'single', options, min: 1, max: 1, requiredFor: { approve: true, reject: false } };
+      }
+      const max = readCount(decision.max_select, decision.maxSelect, shape.max_select, shape.maxSelect);
+      const min = readCount(decision.min_select, decision.minSelect, shape.min_select, shape.minSelect);
+      const lo = Math.min(options.length, Math.max(1, min || 1));
+      return { mode: 'multiple', options, min: lo, max: Math.max(lo, Math.min(options.length, max || options.length)), requiredFor: { approve: true, reject: false } };
+    };
+
+    // The app contract: { kind, actions, labels, reject_requires_reason, answer, selection }.
+    var isContractActions = (value) => Boolean(value && typeof value === 'object' && !Array.isArray(value) &&
+      Array.isArray(value.actions) && value.actions.every((a) => typeof a === 'string'));
+    var fromContract = (value, decision) => {
+      const allowed = actionSet(value.actions);
+      if (!allowed.approve && !allowed.reject) return null;
+      const labels = value.labels && typeof value.labels === 'object' ? value.labels : {};
+      const rawAnswer = value.answer && typeof value.answer === 'object' ? value.answer : null;
+      const answerFor = rawAnswer ? actionSet(rawAnswer.required_for) : null;
+      const rawSelection = value.selection && typeof value.selection === 'object' ? value.selection : null;
+      const options = rawSelection ? normalizeOptions(rawSelection.options) : [];
+      let selection = null;
+      if (rawSelection && options.length) {
+        const multiple = rawSelection.mode === 'multiple';
+        const min = multiple ? Math.min(options.length, readCount(rawSelection.min) ?? 1) : 1;
+        const max = multiple ? Math.max(min, Math.min(options.length, readCount(rawSelection.max) || options.length)) : 1;
+        selection = { mode: multiple ? 'multiple' : 'single', options, min, max, requiredFor: actionSet(rawSelection.required_for) };
+      }
+      return {
+        source: 'server',
+        kind: ITEM_KINDS.includes(value.kind) ? value.kind : kindFromType(decision),
+        approve: allowed.approve ? { label: firstString(labels.approve) || 'Approve', optionId: '' } : null,
+        reject: allowed.reject ? { label: firstString(labels.reject) || 'Send back' } : null,
+        rejectRequiresReason: value.reject_requires_reason === true,
+        answer: answerFor && (answerFor.approve || answerFor.reject)
+          ? { approve: answerFor.approve, reject: answerFor.reject, max: Math.min(TEXT_MAX, readCount(rawAnswer.max_length) || TEXT_MAX) }
+          : null,
+        selection,
+      };
+    };
+
+    // The provisional shape: a list of { action, option_id, label }.
+    var actionKind = (item) => {
+      const verb = firstString(item.action, item.kind, item.type, item.verb).toLowerCase();
+      if (/reject|decline|send_back|sendback|request_changes/.test(verb)) return 'reject';
+      if (firstString(item.option_id, item.optionId) || ['option', 'choose', 'select'].includes(verb)) return 'option';
+      if (/approve|accept|confirm/.test(verb)) return 'approve';
+      return '';
+    };
+    var fromProvisional = (value, decision) => {
+      const list = Array.isArray(value) ? value : value && Array.isArray(value.actions) ? value.actions : null;
+      if (!list) return null;
+      const options = [];
+      let approveAction = null;
+      let rejectAction = null;
+      list.forEach((item) => {
+        if (!item || typeof item !== 'object') return;
+        const kind = actionKind(item);
+        const label = firstString(item.label, item.title, item.name);
+        if (kind === 'option') {
+          const id = firstString(item.option_id, item.optionId, item.id);
+          if (id && label && id.length <= OPTION_ID_MAX && !options.some((o) => o.id === id)) {
+            options.push({ id, label, description: firstString(item.description, item.detail), recommended: item.recommended === true, implied: null, requiresReason: false });
+          }
+        } else if (kind === 'approve' && !approveAction) approveAction = { label: label || 'Approve' };
+        else if (kind === 'reject' && !rejectAction) rejectAction = { label: label || 'Send back' };
+      });
+      if (!options.length && !approveAction && !rejectAction) return null;
+      const spec = { source: 'legacy', kind: kindFromType(decision), approve: null, reject: rejectAction, rejectRequiresReason: true, answer: null, selection: null };
+      if (options.length === 1 && !approveAction) {
         // One option and nothing else: it is the approval.
-        if (options.length === 1 && !approveAction) approve = { label: options[0].label, option_id: options[0].id };
-        else if (approveAction) approve = { label: approveAction.label, option_id: '' };
-        else approve = null;
-        reject = rejectAction ? { label: rejectAction.label } : null;
-      } else {
-        options = normalizeOptions(Array.isArray(decision.options) && decision.options.length ? decision.options : packet && packet.options);
+        spec.approve = { label: options[0].label, optionId: options[0].id };
+      } else if (options.length >= 2) {
+        spec.selection = selectionFrom(decision, options.slice(0, OPTION_LIMIT));
+        spec.approve = { label: approveAction ? approveAction.label : spec.selection.mode === 'multiple' ? 'Confirm' : 'Approve', optionId: '' };
+      } else if (approveAction) {
+        spec.approve = { label: approveAction.label, optionId: '' };
       }
-      if (options.length >= 2) {
-        const max = readCount(decision.max_select, decision.maxSelect, shape.max_select, shape.maxSelect);
-        const min = readCount(decision.min_select, decision.minSelect, shape.min_select, shape.minSelect);
-        return { mode: 'options', options, multiselect, min: Math.max(1, min || 1), max: max || options.length, approve: null, reject };
-      }
-      return { mode: 'approve', options: [], multiselect: false, min: 0, max: 0, approve: approve || { label: 'Approve', option_id: '' }, reject };
+      return spec;
+    };
+
+    // No widget_actions at all: options (two or more) or a plain Approve, and Send back.
+    var fromOptions = (decision, packet) => {
+      const options = normalizeOptions(Array.isArray(decision.options) && decision.options.length ? decision.options : packet && packet.options)
+        .map((o) => ({ ...o, implied: null, requiresReason: false }));
+      const selection = options.length >= 2 ? selectionFrom(decision, options) : null;
+      return {
+        source: 'fallback',
+        kind: kindFromType(decision),
+        approve: { label: selection && selection.mode === 'multiple' ? 'Confirm' : 'Approve', optionId: '' },
+        reject: { label: 'Send back' },
+        rejectRequiresReason: true,
+        answer: null,
+        selection,
+      };
+    };
+
+    var resolveChoices = (decision, packet) => {
+      const raw = decision.widget_actions;
+      return (isContractActions(raw) ? fromContract(raw, decision) : fromProvisional(raw, decision)) || fromOptions(decision, packet);
     };
     var choicesFor = (d) => d.choices || resolveChoices(d, null);
     var selectedFor = (id) => (Array.isArray(optionSelections[id]) ? optionSelections[id] : []);
+    var optionById = (d, optionId) => {
+      const s = choicesFor(d).selection;
+      return s ? s.options.find((o) => o.id === optionId) || null : null;
+    };
     var optionLabel = (d, optionId) => {
-      const o = choicesFor(d).options.find((opt) => opt.id === optionId);
-      return o ? o.label : '';
+      const o = optionById(d, optionId);
+      if (o) return o.label;
+      const c = choicesFor(d);
+      return c.approve && c.approve.optionId === optionId ? c.approve.label : '';
+    };
+    // Options an action can carry: an option that implies the other action never rides along.
+    var optionsFor = (c, action) => (c.selection ? c.selection.options.filter((o) => !o.implied || o.implied === action) : []);
+    var rangeCopy = (sel) => sel.min === sel.max
+      ? String(sel.min)
+      : sel.max >= sel.options.length ? (sel.min > 1 ? 'at least ' + sel.min : 'one or more') : sel.min + '–' + sel.max;
+
+    // What one action still needs before it can be sent, and the arguments it sends.
+    var draftFor = (d, action) => {
+      const c = choicesFor(d);
+      const id = d.id;
+      const sel = c.selection;
+      const args = { kind: c.kind };
+      const missing = [];
+      let picked = [];
+      if (action === 'approve' && c.approve && c.approve.optionId) {
+        picked = [c.approve.optionId];
+      } else if (sel) {
+        const allowed = new Set(optionsFor(c, action).map((o) => o.id));
+        const pool = action === 'reject' && sel.mode === 'single' ? (rejectPicks[id] ? [rejectPicks[id]] : []) : selectedFor(id);
+        // Several options ride with a rejection only when the server asks for them.
+        picked = action === 'reject' && sel.mode === 'multiple' && !sel.requiredFor.reject ? [] : pool.filter((oid) => allowed.has(oid));
+      }
+      if (picked.length) {
+        if (sel && sel.mode === 'multiple') args.option_ids = picked.slice();
+        else args.option_id = picked[0];
+      }
+      if (sel && (sel.requiredFor[action] || (sel.mode === 'multiple' && picked.length)) &&
+          (!picked.length || (sel.mode === 'multiple' && (picked.length < sel.min || picked.length > sel.max)))) {
+        missing.push('options');
+      }
+      const err = fieldErrors[id];
+      const reasonNeeded = picked.some((oid) => { const o = optionById(d, oid); return Boolean(o && o.requiresReason); }) ||
+        (action === 'reject' && c.rejectRequiresReason) ||
+        Boolean(err && err.action === action && err.field === 'reason');
+      const reason = ((action === 'reject' ? rejectDrafts[id] : approveNotes[id]) || '').trim();
+      if (reason) args.reason = reason.slice(0, TEXT_MAX);
+      else if (reasonNeeded) missing.push('reason');
+      const answerNeeded = Boolean(c.answer && c.answer[action]);
+      if (answerNeeded) {
+        const answer = (answerDrafts[id] || '').trim();
+        if (answer) args.answer = answer.slice(0, c.answer.max);
+        else missing.push('answer');
+      }
+      return { action, args, missing, picked, reasonNeeded, answerNeeded };
+    };
+    var missingCopy = (draft, sel) => {
+      if (draft.missing.includes('options')) return sel && sel.mode === 'multiple' ? 'choose ' + rangeCopy(sel) + ' first' : 'choose an option first';
+      if (draft.missing.includes('answer')) return 'type your answer first';
+      if (draft.missing.includes('reason')) return draft.action === 'reject' ? 'write a note first' : 'say why first';
+      return '';
+    };
+
+    // What kind of item this is, in words: the pending list mixes decisions, agent-run approvals and actions.
+    var typeLabel = (decision) => {
+      const type = firstString(decision.type, decision.entity_type);
+      const kind = kindFromType(decision);
+      if (kind === 'approval') return 'Agent run approval';
+      if (kind === 'action') return 'Action approval';
+      if (!type || ['decision', 'decision_queue', 'decision_request'].includes(type.toLowerCase())) return '';
+      return /[_-]/.test(type) && type === type.toLowerCase() ? humanizeDecisionKey(type).replace(/^./, (c) => c.toUpperCase()) : type;
     };
 
     var normalizeDecision = (decision, index) => {
@@ -924,6 +1205,8 @@
         agent_name: isSystemDecision ? 'OrgX System' : rawOwner,
         is_system: isSystemDecision,
         type: firstString(decision.type, decision.entity_type) || 'Decision',
+        type_label: typeLabel(decision),
+        context_refs: decision.context && typeof decision.context === 'object' && !Array.isArray(decision.context) ? decision.context : {},
         source_label: firstString(decision.sourceLabel, decision.source_label, decision.initiative_title, decision.initiative_name),
         summary,
         urgency,
@@ -987,7 +1270,7 @@
     // A decision is settled here once OrgX confirmed it (or recorded it and could not confirm yet).
     var isSettled = (d) => {
       const st = actionStates[d.id];
-      return Boolean(st && (st.phase === 'done' || st.phase === 'waiting'));
+      return Boolean(st && (st.phase === 'done' || st.phase === 'waiting' || st.phase === 'elsewhere'));
     };
     var pendingDecisions = () => (data && Array.isArray(data.decisions) ? data.decisions.filter((d) => !isSettled(d)) : []);
 
@@ -1044,38 +1327,78 @@
     /* ---------------------------------------------------------------- footer -- */
     // SM3 finishes-here: one click approves (or picks an option), the outcome lands in the same row.
     // There is no server-side hold for decisions yet, so the footer never offers Undo.
+    // Past tense for the server's labels: "Grant access" lands as "Access granted".
+    var PAST = {
+      approve: 'Approved', 'approve and continue': 'Approved', 'approve selected': 'Approved', 'grant access': 'Access granted',
+      'allow once': 'Allowed once', 'allow and continue': 'Allowed', 'send answer': 'Answer sent', 'send guidance and retry': 'Guidance sent',
+      'confirm and continue': 'Confirmed', 'confirm selection': 'Confirmed', confirm: 'Confirmed', 'accept plan': 'Plan accepted',
+      'apply edit': 'Edit applied', retry: 'Retry approved', 'retry and continue': 'Retry approved', acknowledge: 'Acknowledged',
+      'send back': 'Sent back', deny: 'Denied', decline: 'Declined', reject: 'Rejected', 'request changes': 'Changes requested', 'stop here': 'Stopped',
+    };
+    var pastTense = (d, action) => {
+      const c = choicesFor(d);
+      const label = action === 'approve' ? (c.approve && c.approve.label) : (c.reject && c.reject.label);
+      return PAST[String(label || '').toLowerCase()] || (action === 'approve' ? 'Approved' : 'Sent back');
+    };
+    var doneDetail = (d, action, who) => {
+      const kind = choicesFor(d).kind;
+      if (kind === 'action') return action === 'approve' ? 'the action can run' : 'the action does not run';
+      if (kind === 'approval') return action === 'approve' ? who + ' continues the run' : who + ' stops at this step';
+      return action === 'approve' ? who + ' continues' : who + ' reworks it against your note';
+    };
     var footerSpec = (d) => {
       const who = getDecisionOwner(d).name;
       const st = actionStates[d.id];
       const c = choicesFor(d);
       const base = { variant: 'finishes-here', heading: '', detail: '', primary: '', action: '', disabled: false, slot: '' };
       if (!st) {
+        const sel = c.selection;
         if (rejectComposerId === d.id) {
-          const hasNote = Boolean((rejectDrafts[d.id] || '').trim());
-          return { ...base, state: 'needs-you', heading: 'Send back', detail: hasNote ? 'your note goes to ' + who : 'write a note first', primary: 'Send back', disabled: !hasNote, slot: 'cancel' };
+          const draft = draftFor(d, 'reject');
+          const ready = !draft.missing.length;
+          const label = c.reject ? c.reject.label : 'Send back';
+          return { ...base, state: 'needs-you', heading: label, detail: ready ? (draft.args.reason ? 'your note goes to ' + who : 'recorded in OrgX') : missingCopy(draft, sel), primary: label, disabled: !ready, slot: 'cancel' };
         }
         const slot = c.reject ? 'reject' : '';
-        if (c.mode === 'options' && c.multiselect) {
-          const n = selectedFor(d.id).length;
-          const range = c.min === c.max ? String(c.min) : c.max >= c.options.length ? (c.min > 1 ? 'at least ' + c.min : 'one or more') : c.min + '–' + c.max;
-          return { ...base, state: 'needs-you', heading: n ? n + ' chosen' : 'Choose ' + range, detail: 'recorded in OrgX', primary: n ? 'Confirm ' + n : 'Confirm', disabled: n < c.min || n > c.max, slot };
+        if (!c.approve) return { ...base, state: 'needs-you', heading: 'Decide here', detail: 'recorded in OrgX', slot };
+        const draft = draftFor(d, 'approve');
+        const ready = !draft.missing.length;
+        const detail = ready ? 'recorded in OrgX' : missingCopy(draft, sel);
+        if (sel && sel.mode === 'multiple') {
+          const n = draft.picked.length;
+          const label = c.approve.label === 'Confirm' && n ? 'Confirm ' + n : c.approve.label;
+          return { ...base, state: 'needs-you', heading: n ? n + ' chosen' : 'Choose ' + rangeCopy(sel), detail: n || ready ? detail : 'recorded in OrgX', primary: label, disabled: !ready, slot };
         }
-        if (c.mode === 'options') {
+        if (sel && !draft.picked.length && sel.requiredFor.approve) {
           return { ...base, state: 'needs-you', heading: 'Choose one', detail: 'recorded in OrgX', slot };
         }
-        return { ...base, state: 'needs-you', heading: 'Finishes here', detail: 'recorded in OrgX', primary: c.approve.label, slot };
+        if (sel && draft.picked.length) {
+          return { ...base, state: 'needs-you', heading: 'You picked ' + optionLabel(d, draft.picked[0]), detail, primary: c.approve.label, disabled: !ready, slot };
+        }
+        return { ...base, state: 'needs-you', heading: 'Finishes here', detail, primary: c.approve.label, disabled: !ready, slot };
       }
       const approving = st.action === 'approve';
       const choice = decisionChoices[d.id];
       switch (st.phase) {
         case 'sending':
-          return { ...base, state: 'sending', heading: approving ? 'Approving' : 'Sending back', detail: 'recording it in OrgX', primary: approving ? 'Approving…' : 'Sending…' };
+          return { ...base, state: 'sending', heading: approving ? 'Approving' : 'Sending', detail: 'recording it in OrgX', primary: approving ? 'Approving…' : 'Sending…' };
         case 'confirming':
           return { ...base, state: 'running', heading: 'Confirming in OrgX', detail: st.detail || 'checking it settled' };
         case 'done':
-          return { ...base, state: 'done', heading: approving ? (choice && choice.label ? 'You chose ' + choice.label : 'Approved by you') : 'Sent back to ' + who, detail: st.detail || (approving ? who + ' continues' : who + ' reworks it against your note'), action: 'Receipt ↗' };
+          return { ...base, state: 'done', heading: approving && choice && choice.label ? 'You chose ' + choice.label : pastTense(d, st.action) + ' by you', detail: st.detail || doneDetail(d, st.action, who), action: 'Receipt ↗' };
         case 'waiting':
           return { ...base, variant: 'confirms-in-orgx', state: 'waiting', heading: 'Recorded in OrgX', detail: st.detail || 'not confirmed yet', action: 'Check now' };
+        case 'elsewhere': {
+          // Someone settled it first (here or in OrgX). Nothing of yours was applied.
+          const status = st.status || '';
+          const approved = /approv|accept|confirm|grant|allow/.test(status);
+          const declined = /declin|reject|deni|denied|sent_back|cancel/.test(status);
+          return approved
+            ? { ...base, state: 'done', heading: 'Already approved in OrgX', detail: 'nothing of yours was applied', action: 'Open ↗' }
+            : { ...base, variant: 'confirms-in-orgx', state: 'rejected', heading: declined ? 'Already declined in OrgX' : 'Already settled in OrgX', detail: 'nothing of yours was applied', action: 'Open ↗' };
+        }
+        case 'stale':
+          return { ...base, variant: 'reads', state: st.refreshing ? 'refreshing' : 'stale', heading: st.refreshing ? 'Refreshing' : st.heading || 'This view is out of date', detail: st.refreshing ? 'getting the current version' : st.detail || 'Refresh to decide', action: st.refreshing ? '' : 'Refresh' };
         case 'unsettled':
           return { ...base, state: 'failed', heading: st.heading || 'Didn’t go through', detail: st.detail || 'nothing changed here', primary: 'Decide in OrgX ↗' };
         case 'failed':
@@ -1169,13 +1492,16 @@
 
     var statusLineHtml = (d) => {
       const st = actionStates[d.id];
-      const ctx = d.source_label || (d.type && d.type.toLowerCase() !== 'decision' ? d.type : '');
+      const ctx = d.source_label || d.type_label || '';
       const ctxHtml = ctx ? `<span class="ctx-wrap"><span aria-hidden="true">·</span><span class="ctx">${escapeHtml(ctx)}</span></span>` : '';
       const urgency = d.urgency === 'critical'
         ? '<span class="urg urg-critical">Critical</span>'
         : d.urgency === 'high' ? '<span class="urg">High</span>' : '';
       if (st && st.phase === 'done') {
-        return `<span class="done"><ox-glyph kind="decision" tone="teal"></ox-glyph>${st.action === 'approve' ? 'Approved' : 'Sent back'} by you · just now</span>${ctxHtml}`;
+        return `<span class="done"><ox-glyph kind="decision" tone="teal"></ox-glyph>${escapeHtml(pastTense(d, st.action))} by you · just now</span>${ctxHtml}`;
+      }
+      if (st && st.phase === 'elsewhere') {
+        return `<span class="done"><ox-glyph kind="decision" tone="teal"></ox-glyph>Settled in OrgX</span>${ctxHtml}`;
       }
       const age = shortAge(d.created_at);
       return `<span class="need"><ox-glyph kind="decision" tone="amber"></ox-glyph>Needs you${age && age !== 'now' ? ' · ' + age : ''}</span>${ctxHtml}${urgency}`;
@@ -1228,8 +1554,6 @@
     };
 
     var settleFromStatus = (id, action, status) => {
-      const d = getDecisionById(id);
-      const who = d ? getDecisionOwner(d).name : 'The agent';
       const outcome = status && typeof status.outcome === 'string' && status.outcome.trim() ? status.outcome.trim() : '';
       if (status.state === 'succeeded') return setPhase(id, { phase: 'done', action, detail: outcome });
       if (status.state === 'failed') return setPhase(id, { phase: 'unsettled', action, heading: 'Didn’t go through', detail: outcome || 'OrgX reported a failure' });
@@ -1247,136 +1571,333 @@
       settleFromStatus(id, action, status);
     };
 
-    // choice: { option_id, label } for one option, { option_ids, label } for several, or null for a plain Approve.
-    var runDecision = async (id, action, reason, choice) => {
+    /* ----------------------------------------------------------- refusals -- */
+    // Every refusal code orgx_widget_decide can return, and what this card says for it.
+    var VALIDATION_CODES = ['reason_required', 'answer_required', 'answer_not_accepted', 'option_required', 'options_not_accepted',
+      'option_unavailable', 'option_action_mismatch', 'selection_out_of_range', 'invalid_decision_option_material'];
+    var VALIDATION_COPY = {
+      reason_required: 'Say what should change.',
+      answer_required: 'Type an answer to send.',
+      answer_not_accepted: 'This one no longer takes an answer. Decide with the buttons.',
+      option_required: 'Choose an option first.',
+      options_not_accepted: 'The options changed. Choose again.',
+      option_unavailable: 'That option is no longer available. Choose again.',
+      option_action_mismatch: 'That option goes with the other button.',
+      selection_out_of_range: 'Choose a number of options the decision allows.',
+      invalid_decision_option_material: 'That choice is not valid for this decision. Choose again.',
+    };
+    var OUT_OF_DATE_CODES = ['widget_approval_token_expired', 'widget_approval_token_invalid', 'widget_view_out_of_date'];
+    var IN_ORGX_CODES = {
+      decide_in_orgx: '',
+      widget_approval_ineligible: '',
+      widget_approval_disabled: 'widget_approvals_disabled',
+      action_authority_denied: 'action_authority_denied',
+      widget_approval_token_mismatch: 'token_mismatch',
+      widget_decision_lifecycle_required: 'lifecycle_required',
+    };
+    var fieldForCode = (code) => code === 'reason_required' ? 'reason' : code === 'answer_required' ? 'answer' : code === 'answer_not_accepted' ? 'form' : 'options';
+    var refusalCopy = (error, fallback) => {
+      const message = error && typeof error.message === 'string' ? error.message.trim() : '';
+      return message && !/tool request failed|tool execution failed/i.test(message) && message.length <= 160 ? message : fallback;
+    };
+    // Drop picks the current contract no longer offers.
+    var pruneSelections = (d) => {
+      const c = choicesFor(d);
+      const ids = new Set(c.selection ? c.selection.options.map((o) => o.id) : []);
+      if (optionSelections[d.id]) optionSelections[d.id] = selectedFor(d.id).filter((oid) => ids.has(oid));
+      if (rejectPicks[d.id] && !ids.has(rejectPicks[d.id])) delete rejectPicks[d.id];
+      if (!c.answer) delete answerDrafts[d.id];
+    };
+
+    var handleRefusal = (id, action, error, opts) => {
+      const code = String((error && error.code) || '');
+      const details = error && error.details && typeof error.details === 'object' ? error.details : {};
+      const d = getDecisionById(id);
+      if (VALIDATION_CODES.includes(code)) {
+        // The server sends the item's current widget_actions with every validation refusal.
+        if (d && details.widget_actions && typeof details.widget_actions === 'object') {
+          d.widget_actions = details.widget_actions;
+          d.choices = resolveChoices(d, d.review_packet);
+          pruneSelections(d);
+        }
+        const field = fieldForCode(code);
+        fieldErrors[id] = { action, field, code, message: refusalCopy(error, VALIDATION_COPY[code]) };
+        if (action === 'reject') rejectComposerId = id;
+        delete actionStates[id];
+        render();
+        return;
+      }
+      if (OUT_OF_DATE_CODES.includes(code)) {
+        return setPhase(id, { phase: 'stale', action, heading: 'This view is out of date', detail: 'Refresh to decide' });
+      }
+      if (code === 'widget_decision_conflict') {
+        return setPhase(id, { phase: 'stale', action, heading: 'Changed since you opened it', detail: 'nothing of yours was applied' });
+      }
+      if (code === 'widget_decision_not_found') {
+        return setPhase(id, { phase: 'stale', action, heading: 'No longer open here', detail: 'it may be settled or moved' });
+      }
+      if (code === 'decision_already_resolved') {
+        setPhase(id, { phase: 'elsewhere', action, status: firstString(details.status).toLowerCase() });
+        if (!(opts && opts.batch)) void refreshQueue(id);
+        return;
+      }
+      if (Object.prototype.hasOwnProperty.call(IN_ORGX_CODES, code)) {
+        const reason = code === 'widget_approval_ineligible' ? firstString(details.reason) : IN_ORGX_CODES[code];
+        if (d && reason) d.decide_in_orgx_reason = reason;
+        return setPhase(id, { phase: 'unsettled', action, heading: 'Decide in OrgX', detail: decideInOrgxDetail(d) });
+      }
+      // Older servers: no code, only a message.
+      if (/conflict|already|superseded|not_pending/i.test(code)) {
+        return setPhase(id, { phase: 'elsewhere', action, status: '' });
+      }
+      if (/expired|approval_token|invalid_token/i.test(code)) {
+        return setPhase(id, { phase: 'stale', action, heading: 'This view is out of date', detail: 'Refresh to decide' });
+      }
+      setPhase(id, { phase: 'failed', action, detail: shortError(error, action === 'approve' ? 'nothing changed · try again' : 'your note is kept · try again') });
+    };
+
+    // A fresh pending list (and fresh approval tokens) from OrgX. Decisions settled here stay
+    // in "Decided here"; out-of-date cards start over from what OrgX says now.
+    var refreshQueue = async (focusId) => {
+      const runtime = rt();
+      const stale = Object.keys(actionStates).filter((id) => actionStates[id].phase === 'stale');
+      stale.forEach((id) => setPhase(id, { ...actionStates[id], refreshing: true }));
+      let result = null;
+      try {
+        result = runtime && runtime.callToolResult ? await runtime.callToolResult('get_pending_decisions', {}) : null;
+      } catch (_) {
+        result = null;
+      }
+      const next = result && result.data && typeof result.data === 'object' && Array.isArray(result.data.decisions) ? result.data : null;
+      if (!next) {
+        stale.forEach((id) => {
+          if (actionStates[id] && actionStates[id].phase === 'stale') {
+            setPhase(id, { phase: 'unsettled', action: actionStates[id].action, heading: 'Couldn’t refresh', detail: 'decide it in OrgX' });
+          }
+        });
+        return false;
+      }
+      const approval = result.meta && result.meta['orgx/widgetApproval'];
+      refreshedTokens = approval && approval.approval_tokens && typeof approval.approval_tokens === 'object' ? { ...approval.approval_tokens } : {};
+      const previous = data && Array.isArray(data.decisions) ? data.decisions : [];
+      const kept = previous.filter((d) => isSettled(d));
+      const fresh = normalizeDecisionQueue({ ...next, __normalized: false });
+      const ids = new Set(fresh.decisions.map((d) => d.id));
+      // Cards settled here stay settled; anything else starts over from what OrgX says now.
+      Object.keys(actionStates).forEach((id) => {
+        if (!isSettled({ id })) delete actionStates[id];
+      });
+      Object.keys(fieldErrors).forEach((id) => delete fieldErrors[id]);
+      data = { ...fresh, decisions: fresh.decisions.concat(kept.filter((d) => !ids.has(d.id) && isSettled(d))) };
+      const pendingNow = pendingDecisions();
+      const focusIndex = data.decisions.findIndex((d) => d.id === focusId && !isSettled(d));
+      const firstPending = data.decisions.findIndex((d) => !isSettled(d));
+      const index = focusIndex >= 0 ? focusIndex : pendingNow.length ? firstPending : data.decisions.findIndex((d) => d.id === focusId);
+      currentPage = Math.max(1, index + 1);
+      syncedAt = new Date();
+      render();
+      return true;
+    };
+
+    /* ------------------------------------------------------------ deciding -- */
+    var runDecision = async (id, action) => {
       if (pendingDecisionId) return;
       const decision = getDecisionById(id);
+      if (!decision) return;
+      const draft = draftFor(decision, action);
+      if (draft.missing.length) { syncFooter(id); return; }
       pendingDecisionId = id;
-      decisionChoices[id] = action === 'approve' ? choice || null : null;
+      const label = draft.picked.map((oid) => optionLabel(decision, oid)).filter(Boolean).join(', ');
+      decisionChoices[id] = action === 'approve' && draft.picked.length ? { option_id: draft.args.option_id || '', option_ids: draft.args.option_ids || [], label } : null;
+      delete fieldErrors[id];
       setPageButtonsDisabled(true);
       setPhase(id, { phase: 'sending', action });
 
       try {
         const approvalToken = getApprovalToken(id);
         if (!approvalToken) throw Object.assign(new Error('This decision has to be made in OrgX.'), { code: 'decide_in_orgx' });
-        if (action === 'approve') {
-          const args = { decision_id: id, action: 'approve', approval_token: approvalToken };
-          if (choice && choice.option_id) args.option_id = choice.option_id;
-          if (choice && Array.isArray(choice.option_ids) && choice.option_ids.length) args.option_ids = choice.option_ids.slice();
-          await callTool('orgx_widget_decide', args);
-          lastResolution = {
-            action: 'approved',
-            summary: decision && decision.summary ? decision.summary : 'This decision',
-            agent_name: decision && decision.agent_name ? decision.agent_name : 'the assigned agent',
-            choice: choice && choice.label ? choice.label : null
-          };
-        } else {
-          await callTool('orgx_widget_decide', { decision_id: id, action: 'reject', reason, approval_token: approvalToken });
-          lastResolution = {
-            action: 'rejected',
-            summary: decision && decision.summary ? decision.summary : 'This decision',
-            agent_name: decision && decision.agent_name ? decision.agent_name : 'the assigned agent',
-            note: reason
-          };
-        }
+        await callTool('orgx_widget_decide', { decision_id: id, action, ...draft.args, approval_token: approvalToken });
+        lastResolution = {
+          action: action === 'approve' ? 'approved' : 'rejected',
+          verb: pastTense(decision, action).toLowerCase(),
+          summary: decision.summary || 'This decision',
+          agent_name: decision.agent_name || 'the assigned agent',
+          choice: action === 'approve' && label ? label : null,
+          note: draft.args.reason || null,
+        };
         if (rejectComposerId === id) rejectComposerId = null;
         void publishDecisionResolution(decision, lastResolution);
-        await watchDecision(id, action);
+        if (draft.args.kind === 'decision') {
+          await watchDecision(id, action);
+        } else {
+          // Agent-run approvals and actions settle in the call itself; there is no decision status to read.
+          setPhase(id, { phase: 'done', action });
+        }
         // The composer closes once OrgX has the note.
         if (action === 'reject') render();
-        if (actionStates[id] && actionStates[id].phase === 'done') delete rejectDrafts[id];
+        if (actionStates[id] && actionStates[id].phase === 'done') {
+          delete rejectDrafts[id];
+          delete answerDrafts[id];
+          delete approveNotes[id];
+        }
         scheduleDecisionStatePersistence();
       } catch (error) {
-        const code = String((error && error.code) || '');
-        if (code === 'decide_in_orgx') {
-          setPhase(id, { phase: 'unsettled', action, heading: 'Decide in OrgX', detail: decideInOrgxDetail(decision) });
-        } else if (/conflict|already|superseded|not_pending/i.test(code)) {
-          // Q8: someone else ruled first. Nothing of yours was applied.
-          setPhase(id, { phase: 'unsettled', action, heading: 'Already decided', detail: 'nothing of yours was applied' });
-        } else if (/expired|approval_token|invalid_token/i.test(code)) {
-          setPhase(id, { phase: 'unsettled', action, heading: 'Decide in OrgX', detail: 'this approval expired here' });
-        } else {
-          setPhase(id, { phase: 'failed', action, detail: shortError(error, action === 'approve' ? 'nothing changed · try again' : 'your note is kept · try again') });
-        }
+        handleRefusal(id, action, error);
       } finally {
         pendingDecisionId = null;
         setPageButtonsDisabled(false);
       }
     };
 
+    // choice (optional): { option_id } or { option_ids } the caller already picked.
     window.approveDecision = async (id, choice) => {
       if (pendingDecisionId) return;
-      const d = getDecisionById(id);
-      const c = d ? choicesFor(d) : null;
-      // A server-listed approve that carries an option records that option.
-      const fallback = c && c.mode === 'approve' && c.approve.option_id ? { option_id: c.approve.option_id, label: c.approve.label } : null;
-      await runDecision(id, 'approve', undefined, choice || fallback);
+      if (choice && choice.option_id) optionSelections[id] = [choice.option_id];
+      if (choice && Array.isArray(choice.option_ids)) optionSelections[id] = choice.option_ids.slice();
+      await runDecision(id, 'approve');
     };
 
-    // One option, one click: the choice is the approval.
+    // An option click: approve with it in one click, unless it implies sending back or the
+    // approval still needs a reason or an answer (then it is picked and the card asks for that).
     window.chooseOption = (id, optionId) => {
       const d = getDecisionById(id);
       if (!d || pendingDecisionId || actionStates[id]) return;
       const c = choicesFor(d);
-      if (c.mode !== 'options') return;
-      if (c.multiselect) { window.toggleOption(id, optionId); return; }
-      void window.approveDecision(id, { option_id: optionId, label: optionLabel(d, optionId) });
+      const sel = c.selection;
+      const option = optionById(d, optionId);
+      if (!sel || !option) return;
+      if (sel.mode === 'multiple') { window.toggleOption(id, optionId); return; }
+      if (option.implied === 'reject') {
+        rejectPicks[id] = optionId;
+        if (!c.reject) return;
+        if (!draftFor(d, 'reject').missing.length) { void runDecision(id, 'reject'); return; }
+        rejectComposerId = id;
+        scheduleDecisionStatePersistence();
+        render();
+        focusField(id, 'reject-note');
+        return;
+      }
+      if (!c.approve) return;
+      const already = selectedFor(id)[0] === optionId;
+      optionSelections[id] = already ? [] : [optionId];
+      const draft = draftFor(d, 'approve');
+      if (!already && !draft.missing.length) { void runDecision(id, 'approve'); return; }
+      scheduleDecisionStatePersistence();
+      render();
+      if (!already) focusField(id, draft.missing.includes('answer') ? 'answer' : 'approve-note');
     };
 
-    // Option buttons are delegated: their ids come from the server and never reach an inline handler.
-    document.getElementById('content').addEventListener('click', (event) => {
-      const button = event.target && event.target.closest ? event.target.closest('.dq-opt[data-option-id]') : null;
-      if (!button || button.disabled) return;
-      window.chooseOption(button.getAttribute('data-decision-id'), button.getAttribute('data-option-id'));
-    });
+    // In the send-back note: which option the note is about.
+    window.pickRejectOption = (id, optionId) => {
+      const d = getDecisionById(id);
+      if (!d || pendingDecisionId || actionStates[id]) return;
+      const sel = choicesFor(d).selection;
+      if (sel && sel.mode === 'multiple') { window.toggleOption(id, optionId); return; }
+      rejectPicks[id] = rejectPicks[id] === optionId ? '' : optionId;
+      render();
+    };
 
     window.toggleOption = (id, optionId) => {
       const d = getDecisionById(id);
       if (!d || pendingDecisionId || actionStates[id]) return;
-      const c = choicesFor(d);
+      const sel = choicesFor(d).selection;
+      if (!sel) return;
       const current = selectedFor(id);
       const next = current.includes(optionId) ? current.filter((x) => x !== optionId) : current.concat(optionId);
-      if (next.length > c.max) return;
-      optionSelections[id] = c.options.map((o) => o.id).filter((oid) => next.includes(oid));
+      if (next.length > sel.max) return;
+      const action = rejectComposerId === id ? 'reject' : 'approve';
+      const neededNote = draftFor(d, action).reasonNeeded;
+      optionSelections[id] = sel.options.map((o) => o.id).filter((oid) => next.includes(oid));
+      const hadError = Boolean(fieldErrors[id] && fieldErrors[id].field === 'options');
+      if (hadError) delete fieldErrors[id];
       scheduleDecisionStatePersistence();
-      syncFooter(id);
+      // A pick that needs a reason adds the reason field; otherwise only the toggles and footer move.
+      if (hadError || draftFor(d, action).reasonNeeded !== neededNote) render();
+      else syncFooter(id);
     };
 
     window.confirmOptions = (id) => {
       const d = getDecisionById(id);
       if (!d || pendingDecisionId) return;
-      const c = choicesFor(d);
-      const ids = selectedFor(id);
-      if (ids.length < c.min || ids.length > c.max) return;
-      const labels = ids.map((oid) => optionLabel(d, oid)).filter(Boolean);
-      void window.approveDecision(id, { option_ids: ids, label: labels.join(', ') });
+      void runDecision(id, 'approve');
+    };
+
+    // Option buttons and fields are delegated: their ids come from the server and never reach an inline handler.
+    document.getElementById('content').addEventListener('click', (event) => {
+      const button = event.target && event.target.closest ? event.target.closest('.dq-opt[data-option-id]') : null;
+      if (!button || button.disabled) return;
+      const id = button.getAttribute('data-decision-id');
+      const optionId = button.getAttribute('data-option-id');
+      if (button.getAttribute('data-for') === 'reject') window.pickRejectOption(id, optionId);
+      else window.chooseOption(id, optionId);
+    });
+    document.getElementById('content').addEventListener('input', (event) => {
+      const field = event.target && event.target.getAttribute ? event.target.getAttribute('data-field') : null;
+      const id = field ? event.target.getAttribute('data-decision-id') : null;
+      if (!field || !id) return;
+      if (field === 'reject-note') { window.syncRejectDraft(id, event.target); return; }
+      if (field === 'answer') answerDrafts[id] = event.target.value;
+      if (field === 'approve-note') approveNotes[id] = event.target.value;
+      if (fieldErrors[id] && (fieldErrors[id].field === field || (field === 'approve-note' && fieldErrors[id].field === 'reason'))) clearFieldError(id);
+      syncCounter(event.target);
+      scheduleDecisionStatePersistence();
+      syncFooter(id);
+    });
+
+    // Typing answers the inline message; the requirement it raised stays until the item is sent.
+    var clearFieldError = (id) => {
+      if (fieldErrors[id]) fieldErrors[id].message = '';
+      document.querySelectorAll(`[data-error-for="${CSS.escape(id)}"]`).forEach((node) => node.remove());
+    };
+
+    var syncCounter = (field) => {
+      const counter = field && field.id ? document.querySelector(`[data-counter-for="${CSS.escape(field.id)}"]`) : null;
+      if (!counter) return;
+      const max = Number(field.getAttribute('maxlength')) || TEXT_MAX;
+      const left = max - field.value.length;
+      counter.textContent = left <= 200 ? left + ' left' : '';
+    };
+
+    var focusField = (id, field) => {
+      window.requestAnimationFrame(() => {
+        const el = document.getElementById(field + '-' + id);
+        if (el && !el.readOnly) el.focus();
+      });
     };
 
     // Toggles, the chosen option and the disabled state follow the footer.
     var syncOptions = (id) => {
-      const group = document.querySelector(`.dq-options[data-options-for="${CSS.escape(id)}"]`);
-      if (!group) return;
+      const d = getDecisionById(id);
       const locked = Boolean(actionStates[id]) || Boolean(pendingDecisionId);
       const picked = selectedFor(id);
       const chosen = decisionChoices[id];
-      group.querySelectorAll('.dq-opt').forEach((btn) => {
-        const oid = btn.getAttribute('data-option-id');
-        btn.disabled = locked;
-        if (btn.hasAttribute('aria-pressed')) btn.setAttribute('aria-pressed', picked.includes(oid) ? 'true' : 'false');
-        const isChosen = Boolean(chosen && (chosen.option_id === oid || (chosen.option_ids || []).includes(oid)) && actionStates[id]);
-        btn.toggleAttribute('data-chosen', isChosen);
+      document.querySelectorAll(`.dq-options[data-options-for="${CSS.escape(id)}"]`).forEach((group) => {
+        const forReject = group.getAttribute('data-for') === 'reject';
+        group.querySelectorAll('.dq-opt').forEach((btn) => {
+          const oid = btn.getAttribute('data-option-id');
+          btn.disabled = locked;
+          const on = forReject && d && choicesFor(d).selection && choicesFor(d).selection.mode === 'single' ? rejectPicks[id] === oid : picked.includes(oid);
+          if (btn.hasAttribute('aria-pressed')) btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+          const sel = d ? choicesFor(d).selection : null;
+          btn.toggleAttribute('data-at-max', Boolean(sel && sel.mode === 'multiple' && !on && picked.length >= sel.max));
+          const isChosen = Boolean(chosen && (chosen.option_id === oid || (chosen.option_ids || []).includes(oid)) && actionStates[id]);
+          btn.toggleAttribute('data-chosen', isChosen);
+        });
+      });
+      document.querySelectorAll(`[data-field][data-decision-id="${CSS.escape(id)}"]`).forEach((field) => {
+        field.readOnly = Boolean(actionStates[id]);
       });
     };
 
     window.submitReject = async (id) => {
-      const reason = (rejectDrafts[id] || '').trim();
-      if (!reason || pendingDecisionId) return;
-      await runDecision(id, 'reject', reason);
+      if (pendingDecisionId) return;
+      await runDecision(id, 'reject');
     };
 
     window.toggleRejectComposer = (id, trigger) => {
       if (pendingDecisionId) return;
       rejectComposerId = rejectComposerId === id ? null : id;
+      if (fieldErrors[id] && fieldErrors[id].action === 'reject' && rejectComposerId !== id) delete fieldErrors[id];
       scheduleDecisionStatePersistence();
       render();
       window.requestAnimationFrame(() => {
@@ -1393,10 +1914,10 @@
 
     window.syncRejectDraft = (id, textarea) => {
       rejectDrafts[id] = textarea.value;
+      if (fieldErrors[id] && fieldErrors[id].field === 'reason') clearFieldError(id);
+      syncCounter(textarea);
       scheduleDecisionStatePersistence();
-      const footer = document.querySelector(`ox-footer[data-decision-id="${CSS.escape(id)}"]`);
-      const hasNote = Boolean(textarea.value.trim());
-      if (footer && footer.hasAttribute('disabled') === hasNote) syncFooter(id);
+      syncFooter(id);
     };
 
     window.selectDecision = (id) => {
@@ -1432,16 +1953,13 @@
       const st = actionStates[id];
       if (!d) return;
       if (!st) {
-        const c = choicesFor(d);
         if (rejectComposerId === id) void window.submitReject(id);
-        else if (c.mode === 'options' && c.multiselect) window.confirmOptions(id);
-        else if (c.mode === 'approve') void window.approveDecision(id);
+        else void runDecision(id, 'approve');
         return;
       }
       if (st.phase === 'failed') {
         delete actionStates[id];
-        if (st.action === 'reject') void window.submitReject(id);
-        else void window.approveDecision(id, decisionChoices[id] || undefined);
+        void runDecision(id, st.action);
         return;
       }
       if (st.phase === 'unsettled') {
@@ -1461,8 +1979,9 @@
       const d = getDecisionById(id);
       const st = actionStates[id];
       if (!d || !st) return;
-      if (st.phase === 'done') openExternal(buildDecisionSurfaceUrl(d));
+      if (st.phase === 'done' || st.phase === 'elsewhere') openExternal(buildDecisionSurfaceUrl(d));
       if (st.phase === 'waiting') void watchDecision(id, st.action);
+      if (st.phase === 'stale' && !st.refreshing) void refreshQueue(id);
     });
 
     document.addEventListener('ox-open', (event) => {
@@ -1474,6 +1993,127 @@
     document.addEventListener('ox-action', (event) => {
       const footer = event.target && event.target.closest ? event.target.closest('ox-footer[data-queue-retry]') : null;
       if (footer) location.reload();
+    });
+
+
+    /* -------------------------------------------------------------- batch -- */
+    // Q7: finish what can, in one move. Items that are a plain approve (a token, no options,
+    // no typed answer) can be approved together: one call per item, in order, each with its
+    // own token and kind. Every item reports its own result; the batch never claims more.
+    // There is no server-side undo for decisions, so none is offered.
+    var batchState = null; // { ids, results: { id: { status, text } }, running }
+    if (fixtureState === 'batch-result') {
+      actionStates.d2 = { phase: 'done', action: 'approve' };
+      actionStates.d3 = { phase: 'done', action: 'approve' };
+      actionStates.c3 = { phase: 'done', action: 'approve' };
+      actionStates.c4 = { phase: 'stale', action: 'approve', heading: 'Changed since you opened it', detail: 'nothing of yours was applied' };
+      batchState = {
+        ids: ['d2', 'd3', 'c4', 'c3'],
+        running: false,
+        results: {
+          d2: { status: 'settled', text: 'Approved by you' },
+          d3: { status: 'settled', text: 'Approved by you' },
+          c4: { status: 'changed', text: 'Changed since you opened it' },
+          c3: { status: 'settled', text: 'Access granted by you' },
+        },
+      };
+    }
+    var batchEligible = (d) => {
+      if (!d || isSettled(d) || actionStates[d.id] || !getApprovalToken(d.id)) return false;
+      const c = choicesFor(d);
+      return Boolean(c.approve && !c.selection && !(c.answer && c.answer.approve));
+    };
+    var batchResultFor = (d, error) => {
+      const code = String((error && error.code) || '');
+      if (VALIDATION_CODES.includes(code)) return { status: 'failed', text: refusalCopy(error, VALIDATION_COPY[code]) + ' Open it to decide.' };
+      if (OUT_OF_DATE_CODES.includes(code)) return { status: 'changed', text: 'This view is out of date. Refresh to decide.' };
+      if (code === 'widget_decision_conflict') return { status: 'changed', text: 'Changed since you opened it' };
+      if (code === 'widget_decision_not_found') return { status: 'changed', text: 'No longer open here' };
+      if (code === 'decision_already_resolved') return { status: 'changed', text: 'Already settled in OrgX' };
+      if (Object.prototype.hasOwnProperty.call(IN_ORGX_CODES, code)) return { status: 'orgx', text: decideInOrgxDetail(d) };
+      return { status: 'failed', text: 'Not sent · ' + shortError(error, 'try again') };
+    };
+    window.approveReady = async () => {
+      if (pendingDecisionId || (batchState && batchState.running)) return;
+      const items = pendingDecisions().filter(batchEligible);
+      if (items.length < 2) return;
+      batchState = { ids: items.map((d) => d.id), results: {}, running: true };
+      pendingDecisionId = '__batch__';
+      setPageButtonsDisabled(true);
+      render();
+      for (const d of items) {
+        batchState.results[d.id] = { status: 'sending', text: 'Approving' };
+        const draft = draftFor(d, 'approve');
+        setPhase(d.id, { phase: 'sending', action: 'approve' });
+        render();
+        try {
+          const token = getApprovalToken(d.id);
+          if (!token) throw Object.assign(new Error('This decision has to be made in OrgX.'), { code: 'decide_in_orgx' });
+          await callTool('orgx_widget_decide', { decision_id: d.id, action: 'approve', ...draft.args, approval_token: token });
+          batchState.results[d.id] = { status: 'settled', text: pastTense(d, 'approve') + ' by you' };
+          if (draft.args.kind === 'decision') void watchDecision(d.id, 'approve');
+          else setPhase(d.id, { phase: 'done', action: 'approve' });
+        } catch (error) {
+          delete actionStates[d.id];
+          handleRefusal(d.id, 'approve', error, { batch: true });
+          batchState.results[d.id] = batchResultFor(getDecisionById(d.id) || d, error);
+        }
+      }
+      batchState.running = false;
+      pendingDecisionId = null;
+      setPageButtonsDisabled(false);
+      const settled = batchState.ids.filter((id) => batchState.results[id].status === 'settled');
+      if (settled.length) {
+        const first = getDecisionById(settled[0]);
+        lastResolution = { action: 'approved', verb: 'approved', summary: settled.length === 1 && first ? first.summary : settled.length + ' decisions', agent_name: 'the assigned agents' };
+        scheduleDecisionStatePersistence();
+      }
+      render();
+    };
+    var batchSummary = (state) => {
+      const count = (status) => state.ids.filter((id) => state.results[id] && state.results[id].status === status).length;
+      if (state.running) return 'Approving ' + (state.ids.filter((id) => state.results[id] && state.results[id].status !== 'sending').length + 1) + ' of ' + state.ids.length;
+      const parts = [];
+      if (count('settled')) parts.push(count('settled') + ' approved');
+      if (count('failed')) parts.push(count('failed') + ' not sent');
+      if (count('changed')) parts.push(count('changed') + ' changed since you opened ' + (count('changed') === 1 ? 'it' : 'them'));
+      if (count('orgx')) parts.push(count('orgx') + ' to decide in OrgX');
+      return parts.join(' · ');
+    };
+    var BATCH_ROW = {
+      sending: { status: 'pending', value: 'Sending' },
+      settled: { status: 'met', value: 'Approved' },
+      failed: { status: 'fail', value: 'Not sent' },
+      changed: { status: 'yours', value: 'Changed' },
+      orgx: { status: 'yours', value: 'In OrgX' },
+    };
+    var batchHtml = () => {
+      if (isOgDecisionEmbed) return '';
+      if (batchState) {
+        const rows = batchState.ids.map((id) => {
+          const d = getDecisionById(id);
+          const result = batchState.results[id] || { status: 'sending', text: 'Waiting its turn' };
+          const row = BATCH_ROW[result.status] || BATCH_ROW.sending;
+          const summary = d ? d.summary : 'Decision';
+          return `<ox-receipt-row status="${row.status}" label="${escapeHtml(summary)}" detail="${escapeHtml(result.text || '')}" value="${row.value}"${d ? ` href="${escapeHtml(buildDecisionSurfaceUrl(d))}"` : ''}></ox-receipt-row>`;
+        }).join('');
+        return `<section class="dq-batch is-result" aria-label="Approved together" aria-busy="${batchState.running ? 'true' : 'false'}">
+          <div class="dq-batch-head"><span class="dq-batch-copy" role="status">${escapeHtml(batchSummary(batchState))}</span>${batchState.running ? '' : '<button type="button" class="dq-text-btn" data-action="batch-dismiss">Done</button>'}</div>
+          <div role="list">${rows}</div>
+        </section>`;
+      }
+      const ready = pendingDecisions().filter(batchEligible);
+      if (ready.length < 2) return '';
+      return `<div class="dq-batch">
+        <span class="dq-batch-copy">${ready.length} need only your approval</span>
+        <button type="button" class="dq-text-btn dq-batch-btn page-btn" data-action="approve-ready">Approve ${ready.length} ready</button>
+      </div>`;
+    };
+    document.getElementById('content').addEventListener('click', (event) => {
+      const button = event.target && event.target.closest ? event.target.closest('[data-action="approve-ready"], [data-action="batch-dismiss"]') : null;
+      if (!button || button.disabled) return;
+      if (button.getAttribute('data-action') === 'approve-ready') { void window.approveReady(); return; }
+      if (batchState && !batchState.running) { batchState = null; render(); }
     });
 
     /* ---------------------------------------------------------------- render -- */
@@ -1499,12 +2139,17 @@
       const evidence = d.evidence_items || [];
       const shownEvidence = evidence.slice(0, 2);
       const hasCons = Boolean(d.if_approved || d.if_rejected);
-      const recLine = d.recommendation
+      let recLine = d.recommendation
         ? `<div>
             <div class="dq-rec">${renderAvatar(owner.isSystem ? 'OrgX System' : owner.label, 22, owner.isSystem)}<span>${escapeHtml(owner.name)} recommends</span>${owner.role ? `<span class="role">· ${escapeHtml(owner.role)} agent</span>` : ''}</div>
             <div class="dq-why">${escapeHtml(d.recommendation)}</div>
           </div>`
         : '';
+      // Actions and run approvals carry no recommendation: say who is asking.
+      const kind = kindFromType(d);
+      if (!recLine && kind !== 'decision' && !owner.isSystem) {
+        recLine = `<div><div class="dq-rec">${renderAvatar(owner.label, 22, false)}<span>${escapeHtml(owner.name)}</span><span class="role">${kind === 'action' ? 'wants to run this action' : 'is paused until you approve'}</span></div></div>`;
+      }
       const evidenceHtml = shownEvidence.length
         ? `<div class="dq-evidence" role="list">
             ${shownEvidence.map((item) => `<ox-receipt-row status="${escapeHtml(item.status)}" label="${escapeHtml(item.label)}"${item.at ? ` value="${escapeHtml(timeAgo(item.at))}"` : ''}${item.url ? ` href="${escapeHtml(item.url)}"` : ''}>${escapeHtml(item.label)}</ox-receipt-row>`).join('')}
@@ -1528,7 +2173,7 @@
             ${d.tradeoffs && d.tradeoffs.length ? `<div class="decision-tradeoffs">${d.tradeoffs.map(t => `<div class="decision-tradeoff"><strong>${escapeHtml(t.option)}</strong>${escapeHtml(t.detail)}</div>`).join('')}</div>` : ''}
             <div class="params-well">
               ${d.packet_id ? `<span class="param-chip" title="${escapeHtml(d.packet_id)}">From review packet <strong>${escapeHtml(d.packet_id.slice(-18))}</strong></span>` : ''}
-              <span class="param-chip">Type <strong>${escapeHtml(d.type)}</strong></span>
+              <span class="param-chip">Type <strong>${escapeHtml(d.type_label || 'Decision')}</strong></span>
               <span class="param-chip">Raised <strong>${escapeHtml(timeAgo(d.created_at) || '—')}</strong></span>
               ${d.provider && d.model ? `<span class="param-chip">Model <strong>${escapeHtml(d.provider + '/' + d.model)}</strong></span>` : ''}
               ${d.duplicate_count ? `<span class="param-chip">Collapsed <strong>${escapeHtml(String(d.duplicate_count))} duplicate${d.duplicate_count === 1 ? '' : 's'}</strong></span>` : ''}
@@ -1537,41 +2182,97 @@
             </div>
           </div>
         </details>`;
-      const composerHtml = canDecideHere && isRejecting ? `
-        <div class="reject-composer" id="reject-composer-${escapeHtml(d.id)}">
-          <label for="reject-note-${escapeHtml(d.id)}">Note for ${escapeHtml(owner.name)} · required</label>
-          <textarea
-            id="reject-note-${escapeHtml(d.id)}"
-            class="reject-textarea"
-            placeholder="What changed, which constraint was missed, or which path you want instead."
-            oninput="syncRejectDraft('${escapeHtml(d.id)}', this)"${noteLocked ? ' readonly' : ''}
-          >${escapeHtml(rejectValue)}</textarea>
-        </div>` : '';
       const choices = choicesFor(d);
+      const sel = choices.selection;
       const st = actionStates[d.id];
       const chosen = decisionChoices[d.id];
       const picked = selectedFor(d.id);
-      const optionsLocked = Boolean(st) || Boolean(pendingDecisionId);
-      const optionsHtml = canDecideHere && choices.mode === 'options' && !isRejecting ? `
-        <div class="dq-options" role="group" aria-labelledby="dq-opts-${escapeHtml(d.id)}" data-options-for="${escapeHtml(d.id)}">
-          <span class="dq-options-label" id="dq-opts-${escapeHtml(d.id)}">${choices.multiselect ? 'Choose the options to approve' : 'Choose one · recorded in OrgX'}</span>
-          ${choices.options.map((o) => {
-            const isChosen = Boolean(st && chosen && (chosen.option_id === o.id || (chosen.option_ids || []).includes(o.id)));
-            const pressed = choices.multiselect ? ` aria-pressed="${picked.includes(o.id) ? 'true' : 'false'}"` : '';
-            return `<button type="button" class="dq-opt" data-decision-id="${escapeHtml(d.id)}" data-option-id="${escapeHtml(o.id)}"${pressed}${isChosen ? ' data-chosen' : ''}${optionsLocked ? ' disabled' : ''}>
-              ${choices.multiselect ? `<span class="dq-opt-box" aria-hidden="true">${icons.check(12)}</span>` : ''}
+      const locked = Boolean(st) || Boolean(pendingDecisionId);
+      const err = fieldErrors[d.id] && fieldErrors[d.id].message ? fieldErrors[d.id] : null;
+      const errorHtml = (field, action) => err && err.field === field && (!action || err.action === action)
+        ? `<p class="dq-field-error" role="alert" data-error-for="${escapeHtml(d.id)}">${escapeHtml(err.message)}</p>`
+        : '';
+      const fieldHtml = (field, label, value, opts) => `
+        <div class="dq-field">
+          <label for="${field}-${escapeHtml(d.id)}">${escapeHtml(label)}</label>
+          <textarea
+            id="${field}-${escapeHtml(d.id)}"
+            class="reject-textarea${opts.short ? ' is-short' : ''}"
+            data-field="${field}"
+            data-decision-id="${escapeHtml(d.id)}"
+            maxlength="${opts.max || TEXT_MAX}"
+            placeholder="${escapeHtml(opts.placeholder || '')}"${opts.invalid ? ' aria-invalid="true"' : ''}${locked ? ' readonly' : ''}
+          >${escapeHtml(value)}</textarea>
+          <span class="dq-counter" data-counter-for="${field}-${escapeHtml(d.id)}" aria-live="polite"></span>
+        </div>`;
+      const optionButton = (o, forAction, pressed) => {
+        const isChosen = Boolean(st && chosen && (chosen.option_id === o.id || (chosen.option_ids || []).includes(o.id)));
+        const toggle = forAction === 'reject' || (sel && sel.mode === 'multiple');
+        const tag = forAction === 'approve' && o.implied === 'reject' && choices.reject
+          ? choices.reject.label
+          : o.recommended ? 'Recommended' : o.requiresReason ? 'Asks why' : '';
+        const atMax = sel && sel.mode === 'multiple' && !pressed && picked.length >= sel.max;
+        return `<button type="button" class="dq-opt" data-decision-id="${escapeHtml(d.id)}" data-option-id="${escapeHtml(o.id)}" data-for="${forAction}"${toggle || pressed ? ` aria-pressed="${pressed ? 'true' : 'false'}"` : ''}${isChosen ? ' data-chosen' : ''}${atMax ? ' data-at-max' : ''}${locked ? ' disabled' : ''}>
+              ${toggle ? `<span class="dq-opt-box" aria-hidden="true">${icons.check(12)}</span>` : ''}
               <span class="dq-opt-text"><span class="dq-opt-label">${escapeHtml(o.label)}</span>${o.description ? `<span class="dq-opt-desc">${escapeHtml(o.description)}</span>` : ''}</span>
-              ${o.recommended ? '<span class="dq-opt-tag">Recommended</span>' : ''}
-              ${choices.multiselect ? '' : `<span class="dq-opt-go" aria-hidden="true">${icons.chevron(14)}</span>`}
+              ${tag ? `<span class="dq-opt-tag">${escapeHtml(tag)}</span>` : ''}
+              ${toggle ? '' : `<span class="dq-opt-go" aria-hidden="true">${icons.chevron(14)}</span>`}
             </button>`;
-          }).join('')}
+      };
+      // Approving: one button per option (or toggles when several can be chosen).
+      const approveOptions = sel && choices.approve && !isRejecting
+        ? (sel.mode === 'multiple' ? optionsFor(choices, 'approve') : sel.options)
+        : [];
+      const optionsHtml = canDecideHere && approveOptions.length ? `
+        <div class="dq-options" role="group" aria-labelledby="dq-opts-${escapeHtml(d.id)}" data-options-for="${escapeHtml(d.id)}" data-for="approve">
+          <span class="dq-options-label" id="dq-opts-${escapeHtml(d.id)}">${sel.mode === 'multiple'
+            ? 'Choose ' + escapeHtml(rangeCopy(sel)) + ' · recorded in OrgX'
+            : sel.requiredFor.approve ? 'Choose one · recorded in OrgX' : 'Or choose an option'}</span>
+          ${approveOptions.map((o) => optionButton(o, 'approve', picked.includes(o.id))).join('')}
+          ${errorHtml('options', 'approve')}
         </div>` : '';
+      const approveDraft = canDecideHere && choices.approve && !isRejecting ? draftFor(d, 'approve') : null;
+      const pickedLabel = approveDraft && approveDraft.picked.length ? optionLabel(d, approveDraft.picked[0]) : '';
+      const answerHtml = approveDraft && approveDraft.answerNeeded
+        ? fieldHtml('answer', 'Your answer · required', answerDrafts[d.id] || '', { max: choices.answer.max, placeholder: 'Type the answer ' + owner.name + ' needs to continue.', invalid: Boolean(err && err.field === 'answer') }) + errorHtml('answer', 'approve')
+        : '';
+      const approveNoteHtml = approveDraft && approveDraft.reasonNeeded
+        ? fieldHtml('approve-note', pickedLabel ? 'Why ' + pickedLabel + '? · required' : 'Why? · required', approveNotes[d.id] || '', { short: true, placeholder: 'One line on why this one.', invalid: Boolean(err && err.field === 'reason') }) + errorHtml('reason', 'approve')
+        : '';
+      // Sending back: the note, and which option it is about when the server asks for one.
+      const rejectDraft = canDecideHere && isRejecting ? draftFor(d, 'reject') : null;
+      const rejectOptions = rejectDraft && sel && (sel.requiredFor.reject || optionsFor(choices, 'reject').some((o) => o.implied === 'reject'))
+        ? optionsFor(choices, 'reject')
+        : [];
+      const rejectLabel = choices.reject ? choices.reject.label : 'Send back';
+      const composerHtml = rejectDraft ? `
+        <div class="reject-composer" id="reject-composer-${escapeHtml(d.id)}">
+          ${rejectOptions.length ? `
+          <div class="dq-options" role="group" aria-labelledby="dq-ropts-${escapeHtml(d.id)}" data-options-for="${escapeHtml(d.id)}" data-for="reject">
+            <span class="dq-options-label" id="dq-ropts-${escapeHtml(d.id)}">${sel.mode === 'multiple' ? 'Choose ' + escapeHtml(rangeCopy(sel)) : 'Which option is this about?'}${sel.requiredFor.reject ? ' · required' : ''}</span>
+            ${rejectOptions.map((o) => optionButton(o, 'reject', sel.mode === 'multiple' ? picked.includes(o.id) : rejectPicks[d.id] === o.id)).join('')}
+            ${errorHtml('options', 'reject')}
+          </div>` : ''}
+          ${rejectDraft.answerNeeded ? fieldHtml('answer', 'Your answer · required', answerDrafts[d.id] || '', { max: choices.answer.max, invalid: Boolean(err && err.field === 'answer') }) + errorHtml('answer', 'reject') : ''}
+          <label for="reject-note-${escapeHtml(d.id)}">${escapeHtml(rejectLabel)} · note for ${escapeHtml(owner.name)}${rejectDraft.reasonNeeded ? ' · required' : ' · optional'}</label>
+          <textarea
+            id="reject-note-${escapeHtml(d.id)}"
+            class="reject-textarea"
+            data-field="reject-note"
+            data-decision-id="${escapeHtml(d.id)}"
+            maxlength="${TEXT_MAX}"
+            placeholder="What changed, which constraint was missed, or which path you want instead."${err && err.field === 'reason' ? ' aria-invalid="true"' : ''}${noteLocked ? ' readonly' : ''}
+          >${escapeHtml(rejectValue)}</textarea>
+          <span class="dq-counter" data-counter-for="reject-note-${escapeHtml(d.id)}" aria-live="polite"></span>
+          ${errorHtml('reason', 'reject')}
+        </div>` : '';
+      const formErrorHtml = errorHtml('form');
       const handoffHtml = canDecideHere ? '' : `
         <a ${linkAttrs(decisionUrl)} class="decide-in-orgx decision-action-btn">
           <span class="ic">${icons.ext(16)}</span>
           <span>
-            <span class="t">Decide in OrgX</span>
-            <span class="d">${escapeHtml(decideInOrgxDetail(d))} Approve or reject in your signed-in session.</span>
+            <span class="t">${d.decide_in_orgx_reason === 'requester_cannot_approve' ? 'Open in OrgX' : 'Decide in OrgX'}</span>
+            <span class="d">${escapeHtml(decideInOrgxDetail(d))}</span>
           </span>
         </a>`;
       return `
@@ -1584,8 +2285,11 @@
           ${evidenceHtml || (isOgDecisionEmbed ? '' : `<a class="dq-all decision-open-link" ${linkAttrs(decisionUrl)}>Open in OrgX ${icons.ext(12)}</a>`)}
           ${consHtml}
           ${optionsHtml}
+          ${answerHtml}
+          ${approveNoteHtml}
           ${detailsHtml}
           ${composerHtml}
+          ${formErrorHtml}
           ${handoffHtml}
         </div>
         ${canDecideHere ? footerHtml(d) : ''}`;
@@ -1611,14 +2315,15 @@
 
     var historyHtml = (current) => {
       if (isOgDecisionEmbed || !data || !Array.isArray(data.decisions)) return '';
-      const settled = data.decisions.filter((d) => d.id !== current.id && isSettled(d));
+      const settled = data.decisions.filter((d) => d.id !== current.id && isSettled(d) && !(batchState && batchState.ids.includes(d.id)));
       if (!settled.length) return '';
       return `<div class="dq-history" role="list" aria-label="Decided here">
         <div class="dq-history-label">Decided here</div>
         ${settled.map((d) => {
           const st = actionStates[d.id];
-          const verb = st.phase === 'waiting' ? 'Recorded' : st.action === 'approve' ? 'Approved' : 'Sent back';
-          return `<ox-receipt-row status="${st.phase === 'waiting' ? 'pending' : 'met'}" label="${escapeHtml(verb + ' · ' + d.summary)}" value="by you" href="${escapeHtml(buildDecisionSurfaceUrl(d))}">${escapeHtml(verb + ' · ' + d.summary)}</ox-receipt-row>`;
+          const verb = st.phase === 'waiting' ? 'Recorded' : st.phase === 'elsewhere' ? 'Settled in OrgX' : pastTense(d, st.action);
+          const by = st.phase === 'elsewhere' ? 'not by you' : 'by you';
+          return `<ox-receipt-row status="${st.phase === 'waiting' ? 'pending' : 'met'}" label="${escapeHtml(verb + ' · ' + d.summary)}" value="${by}" href="${escapeHtml(buildDecisionSurfaceUrl(d))}">${escapeHtml(verb + ' · ' + d.summary)}</ox-receipt-row>`;
         }).join('')}
       </div>`;
     };
@@ -1626,7 +2331,7 @@
     var lastDecidedHtml = (current) => {
       if (!lastResolution || isOgDecisionEmbed || (current && isSettled(current))) return '';
       const decisionsUrl = buildDecisionsUrl();
-      return `<a class="dq-last" ${linkAttrs(decisionsUrl)}><span>Last decided</span><span class="t2">${escapeHtml(lastResolution.summary)} · ${lastResolution.action === 'approved' ? 'approved' : 'sent back'} by you</span>${icons.ext(12)}</a>`;
+      return `<a class="dq-last" ${linkAttrs(decisionsUrl)}><span>Last decided</span><span class="t2">${escapeHtml(lastResolution.summary)} · ${escapeHtml(lastResolution.verb || (lastResolution.action === 'approved' ? 'approved' : 'sent back'))} by you</span>${icons.ext(12)}</a>`;
     };
 
     var focusedFooterId = () => {
@@ -1681,7 +2386,7 @@
             return { edge: 'amber', title: 'Newer than this snapshot', copy: `The live queue above has ${liveRows} item${liveRows === 1 ? '' : 's'} that arrived after this result was produced.`, line: 'Decisions arrived after this result', tone: 'needs-you' };
           }
           return { edge: 'teal', title: 'All caught up', copy: lastResolution
-            ? `${lastResolution.summary} was ${lastResolution.action === 'approved' ? 'approved' : 'sent back'} by you. New decisions appear here when work needs you.`
+            ? `${lastResolution.summary} was ${lastResolution.verb || (lastResolution.action === 'approved' ? 'approved' : 'sent back')} by you. New decisions appear here when work needs you.`
             : 'New decisions appear here when work needs you.', line: '', tone: '' };
         })();
         injectHtml(`<div class="decision-shell animate-in"><div class="decision-card"><article class="ox-card" data-edge="${calmCopy.edge}">
@@ -1717,7 +2422,7 @@
           </article>
         </div>`).join('');
 
-      injectHtml(`<div class="decision-shell" data-page-direction="${activeDirection}">${cardsHtml}${queueHtml(current)}${historyHtml(current)}${historyHtml(current) ? '' : lastDecidedHtml(current)}</div>`);
+      injectHtml(`<div class="decision-shell" data-page-direction="${activeDirection}">${cardsHtml}${batchHtml()}${queueHtml(current)}${historyHtml(current)}${historyHtml(current) || batchState ? '' : lastDecidedHtml(current)}</div>`);
     };
 
     document.addEventListener('keydown', (event) => {

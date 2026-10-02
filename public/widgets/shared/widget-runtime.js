@@ -102,6 +102,10 @@
       if (decodedError && typeof decodedError === 'object' && typeof decodedError.code === 'string') {
         failure.code = decodedError.code;
       }
+      // Refusal details a widget acts on (for example a decision's current widget_actions).
+      if (decodedError && typeof decodedError === 'object' && decodedError.details && typeof decodedError.details === 'object') {
+        failure.details = decodedError.details;
+      }
       return failure;
     }
     if (result && result.structuredContent !== undefined) {
@@ -176,6 +180,8 @@
   function toolFailureError(data) {
     var error = new Error(getErrorMessage(data.error || data, 'The tool request failed.'));
     error.code = (data.error && typeof data.error === 'object' && data.error.code) || data.code || 'tool_failed';
+    var details = (data.error && typeof data.error === 'object' && data.error.details) || data.details;
+    if (details && typeof details === 'object') error.details = details;
     error.result = data;
     return error;
   }
