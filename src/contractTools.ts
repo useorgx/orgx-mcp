@@ -20,6 +20,7 @@ import {
 import { FLYWHEEL_TOOL_DEFINITIONS } from './flywheelTools';
 import { WORK_LEASE_DESCRIPTION, workLeaseInputSchema } from './workLeases';
 import { ControllerDomainSchema } from './controllerStatusContract';
+import { PANEL_SNAPSHOT_TOOL_CONTRACT, PANEL_TOOL_META } from './panelSurface';
 
 export const V2_ORGX_TOOL_IDS = [
   'orgx_bootstrap',
@@ -1278,6 +1279,11 @@ export const INLINE_TOOL_CONTRACTS = {
       run_id: z.string().min(1).describe('Agent run UUID to resume.'),
       note: z.string().optional().describe('Optional audit note.'),
     },
+  },
+  // App-only OrgX panel (registered from src/panelSurface.ts).
+  orgx_panel_snapshot: {
+    ...PANEL_SNAPSHOT_TOOL_CONTRACT,
+    _meta: PANEL_TOOL_META as unknown as Record<string, unknown>,
   },
   review_artifact: {
     id: 'review_artifact',

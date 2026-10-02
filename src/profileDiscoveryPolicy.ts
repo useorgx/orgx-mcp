@@ -31,7 +31,7 @@ export interface ProfileDiscoveryAuthorization {
  * fallback (unknown profile names) shares that restricted discovery because
  * it exposes the same seven read tools. The ChatGPT review profile keeps its
  * authorized initiative resource and full widget set, but suppresses legacy
- * prompts and skill packs whose required tools are not in its 25-tool surface.
+ * prompts and skill packs whose required tools are not in its 26-tool surface.
  */
 export function resolveProfileDiscoveryPolicy(
   profileName: string | undefined | null,

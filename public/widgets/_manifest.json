@@ -16,6 +16,7 @@
     "shared/live-panel.js",
     "shared/live-store.js",
     "shared/mcp-apps-sdk.umd.js",
+    "shared/openai-extensions.js",
     "shared/tokens.css",
     "shared/utils.js",
     "shared/widget-foundation.css",
@@ -37,7 +38,8 @@
     "entity-card": "0,201,167",
     "work-ledger": "0,201,167",
     "index": "17,24,39",
-    "workspace-map": "191,255,0"
+    "workspace-map": "191,255,0",
+    "orgx-panel": "251,191,36"
   },
   "widgets": {
     "agent-status": {
@@ -177,6 +179,24 @@
         "shared/mcp-apps-sdk.umd.js",
         "shared/tokens.css",
         "shared/widget-foundation.css",
+        "shared/widget-runtime.js",
+        "shared/widget-theme.css"
+      ],
+      "protocolBridge": "official-sdk",
+      "demoOnly": false
+    },
+    "orgx-panel": {
+      "file": "public/widgets/orgx-panel.html",
+      "bytes": 58763,
+      "hash": "8edbe4b55731",
+      "primaryRgb": "251,191,36",
+      "sharedRefs": [
+        "shared/interaction-kit.css",
+        "shared/interaction-kit.js",
+        "shared/kit/ox-elements.js",
+        "shared/kit/ox-tokens.css",
+        "shared/mcp-apps-sdk.umd.js",
+        "shared/openai-extensions.js",
         "shared/widget-runtime.js",
         "shared/widget-theme.css"
       ],

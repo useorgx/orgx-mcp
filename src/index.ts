@@ -50,6 +50,7 @@ import {
   WIDGET_APPROVAL_SOURCE_TOOLS,
   splitWidgetApprovalMeta,
 } from './widgetApprovalMeta';
+import { registerPanelSurface, type PanelSurfaceHost } from './panelSurface';
 import {
   resolveSessionUserEmail,
   resolveSessionUserId,
@@ -587,6 +588,9 @@ const SUBMITTED_INFORMATIONAL_TOOL_EXECUTIONS = new Set([
   'check_execution_readiness',
   'recommend_next_action',
   'resume_plan_session',
+  // The OrgX panel opens on its own (sidebar, beside a thread); opening it
+  // must not touch session context, re-entry state or diagnostics.
+  'orgx_panel_snapshot',
 ]);
 
 // Canonical Supabase user UUID shape. Used to guard the orgx_user_id we forward
@@ -3038,6 +3042,73 @@ export class OrgXMcp extends McpAgent<
     }
 
     return nextArgs;
+  }
+
+  /**
+   * Read-only adapter for the OrgX panel. It exposes the session workspace,
+   * the pending-decisions read (with the widget approval channel) and the
+   * artifact read, and nothing that changes session state: no
+   * maybeUpdateSessionInitiativeContext, no live grant, no saved workspace.
+   */
+  private panelSurfaceHost(): PanelSurfaceHost {
+    const userId = () => this.props?.userId ?? this.sessionAuth.userId ?? null;
+    const actor = (id: string | null) =>
+      id
+        ? {
+            userId: id,
+            userEmail: this.resolveUserEmail(),
+            ...this.delegationClaims(),
+            orgxUserId: this.resolveOrgxUserId(id),
+          }
+        : undefined;
+    return {
+      authRequired: () =>
+        this.buildAuthRequiredResponse({
+          toolId: 'orgx_panel_snapshot',
+          securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
+          userId: userId() ?? undefined,
+          serverUrl: this.env.MCP_SERVER_URL,
+          featureDescription: 'see your OrgX workspace',
+        }),
+      viewerUserIds: () => [userId(), this.resolveOrgxUserId(userId())],
+      sessionWorkspace: () =>
+        this.sessionContext?.workspaceId
+          ? {
+              id: this.sessionContext.workspaceId,
+              name: this.sessionContext.workspaceName ?? null,
+            }
+          : null,
+      inferWorkspace: () => this.inferSessionWorkspace(userId()),
+      fetchPendingDecisions: async ({ workspaceId, limit }) => {
+        const id = userId();
+        const response = await callOrgxApiJson(
+          this.env,
+          '/api/tools/execute',
+          {
+            method: 'POST',
+            body: JSON.stringify({
+              tool_id: 'get_pending_decisions',
+              args: { workspace_id: workspaceId, limit, _widget_meta_channel: true },
+              user_id: id ? this.resolveOrgxUserId(id) ?? id : null,
+            }),
+          },
+          actor(id)
+        );
+        return (await response.json()) as {
+          ok?: boolean;
+          data?: Record<string, unknown>;
+          error?: unknown;
+        };
+      },
+      fetchArtifacts: ({ workspaceId, limit }) =>
+        this.fetchEntityCollection({
+          type: 'artifact',
+          userId: userId(),
+          workspaceId,
+          limit,
+        }),
+      run: (runner) => this.withOrgx(runner, 'orgx_panel_snapshot'),
+    };
   }
 
   private maybeUpdateSessionInitiativeContext(params: {
@@ -7353,6 +7424,9 @@ export class OrgXMcp extends McpAgent<
 
     // Register additive contract/introspection tools and safe wrappers
     this.registerContractTools(allowedTools);
+
+    // OrgX panel (ChatGPT sidebar + thread entrypoints): src/panelSurface.ts.
+    registerPanelSurface(this.server, allowedTools, this.panelSurfaceHost(), (shape) => this.withClientContext(shape));
 
     // Note: previously registered legacy unprefixed aliases (bootstrap,
     // inspect, search, attach, act, write, submit_receipt, emit_activity)
@@ -14040,6 +14114,16 @@ export class OrgXMcp extends McpAgent<
 
     for (const widget of WIDGET_RESOURCES) {
       if (allowedWidgetUris && !allowedWidgetUris.has(widget.uri)) continue;
+      // A widget may add host-specific content _meta (the panel's
+      // openai/ui display modes) on top of the shared CSP/domain contract.
+      const extraContentMeta =
+        'contentMeta' in widget ? (widget.contentMeta as Record<string, unknown>) : null;
+      const widgetMcpAppsMeta = extraContentMeta
+        ? { ...mcpAppsContentMeta, ...extraContentMeta }
+        : mcpAppsContentMeta;
+      const widgetSkybridgeMeta = extraContentMeta
+        ? { ...skybridgeContentMeta, ...extraContentMeta }
+        : skybridgeContentMeta;
 
       registerAppResource(
         this.server,
@@ -14047,14 +14131,14 @@ export class OrgXMcp extends McpAgent<
         widget.uri,
         {
           description: widget.title,
-          _meta: mcpAppsContentMeta,
+          _meta: widgetMcpAppsMeta,
         },
         async () =>
           this.buildWidgetResourceResponse(
             widget.uri,
             widget.title,
             RESOURCE_MIME_TYPE,
-            mcpAppsContentMeta
+            widgetMcpAppsMeta
           )
       );
 
@@ -14065,14 +14149,14 @@ export class OrgXMcp extends McpAgent<
         {
           description: `${widget.title} (version-tolerant)`,
           mimeType: RESOURCE_MIME_TYPE,
-          _meta: mcpAppsContentMeta,
+          _meta: widgetMcpAppsMeta,
         },
         async (uri) =>
           this.buildWidgetResourceResponse(
             uri.toString(),
             widget.title,
             RESOURCE_MIME_TYPE,
-            mcpAppsContentMeta
+            widgetMcpAppsMeta
           )
       );
 
@@ -14083,14 +14167,14 @@ export class OrgXMcp extends McpAgent<
         {
           description: `${widget.title} (ChatGPT)`,
           mimeType: SKYBRIDGE_MIME_TYPE,
-          _meta: skybridgeContentMeta,
+          _meta: widgetSkybridgeMeta,
         },
         async () =>
           this.buildWidgetResourceResponse(
             widget.uri,
             widget.title,
             SKYBRIDGE_MIME_TYPE,
-            skybridgeContentMeta,
+            widgetSkybridgeMeta,
             outputTemplateUri
           )
       );
@@ -14103,14 +14187,14 @@ export class OrgXMcp extends McpAgent<
         {
           description: `${widget.title} (ChatGPT, version-tolerant)`,
           mimeType: SKYBRIDGE_MIME_TYPE,
-          _meta: skybridgeContentMeta,
+          _meta: widgetSkybridgeMeta,
         },
         async (uri) =>
           this.buildWidgetResourceResponse(
             toWidgetHtmlResourceUri(uri.toString()),
             widget.title,
             SKYBRIDGE_MIME_TYPE,
-            skybridgeContentMeta,
+            widgetSkybridgeMeta,
             uri.toString()
           )
       );

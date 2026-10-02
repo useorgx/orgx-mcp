@@ -12,6 +12,7 @@ import {
 } from '../src/toolDefinitions';
 import { CONTRACT_TOOL_DEFINITIONS } from '../src/contractTools';
 import { FLYWHEEL_TOOL_DEFINITIONS } from '../src/flywheelTools';
+import { PANEL_SNAPSHOT_TOOL_CONTRACT } from '../src/panelSurface';
 import {
   TOOL_PROFILES,
   WIDGET_AFFORDANCE_SURFACE,
@@ -90,6 +91,9 @@ function collectAllTools(): Map<string, string> {
   for (const id of collectInlineRegisteredToolIds()) {
     if (!map.has(id)) map.set(id, '');
   }
+  // Registered from src/panelSurface.ts (one call in index.ts); its
+  // description is locked like any definition-backed tool.
+  map.set(PANEL_SNAPSHOT_TOOL_CONTRACT.id, PANEL_SNAPSHOT_TOOL_CONTRACT.description);
   return map;
 }
 

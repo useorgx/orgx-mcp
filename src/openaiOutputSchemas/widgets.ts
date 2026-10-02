@@ -74,6 +74,92 @@ export const WIDGET_OUTPUT_SCHEMAS = {
     })
     .strict(),
 
+  orgx_panel_snapshot: z
+    .object({
+      schema: z.literal('orgx.panel.v1'),
+      generated_at: z.string(),
+      state: z.enum(['ok', 'no_workspace', 'degraded']),
+      workspace: z
+        .object({ id: z.string(), name: z.string().nullable() })
+        .strict()
+        .nullable(),
+      attention: z
+        .object({
+          pending: z.number(),
+          oldest_at: z.string().nullable(),
+          blocking: z.boolean(),
+        })
+        .strict(),
+      queue: z.array(
+        z
+          .object({
+            id: z.string(),
+            version: z.string(),
+            title: z.string(),
+            urgency: z.enum(['low', 'medium', 'high', 'critical']),
+            waiting_since: z.string().nullable(),
+            initiative_title: z.string().nullable(),
+            blocked: z.boolean(),
+            decide_in_orgx_reason: z.string().nullable(),
+            url: z.string(),
+          })
+          .strict()
+      ),
+      focus: z
+        .object({
+          type: z.literal('decision'),
+          id: z.string(),
+          version: z.string(),
+          question: z.string(),
+          urgency: z.enum(['low', 'medium', 'high', 'critical']),
+          waiting_since: z.string().nullable(),
+          initiative_title: z.string().nullable(),
+          recommendation: z
+            .object({
+              status: z.enum(['ready', 'unverified', 'unavailable']),
+              action: z.string().nullable(),
+            })
+            .strict()
+            .nullable(),
+          evidence: z.array(
+            z
+              .object({ title: z.string(), source_url: z.string().nullable() })
+              .strict()
+          ),
+          evidence_total: z.number(),
+          consequence_if_approved: z.string().nullable(),
+          consequence_if_rejected: z.string().nullable(),
+          blocked: z.boolean(),
+          decide_in_orgx_reason: z.string().nullable(),
+          url: z.string(),
+        })
+        .strict()
+        .nullable(),
+      selection: z
+        .object({
+          requested_id: z.string().nullable(),
+          status: z.enum(['default', 'selected', 'unavailable']),
+        })
+        .strict(),
+      proof: z
+        .object({
+          last_accepted: z
+            .object({
+              artifact_id: z.string(),
+              title: z.string(),
+              accepted_at: z.string().nullable(),
+              accepted_by: z.enum(['you', 'workspace_member']),
+              url: z.string(),
+            })
+            .strict()
+            .nullable(),
+          completed_unaccepted: z.number(),
+        })
+        .strict(),
+      degraded: z.array(z.string()),
+    })
+    .strict(),
+
   get_agent_status: z
     .object({
       agents: z.array(agentSchema),

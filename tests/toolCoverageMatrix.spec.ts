@@ -1,3 +1,4 @@
+import { PANEL_TOOL_ID } from '../src/panelSurface';
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve as resolvePath } from 'node:path';
@@ -115,6 +116,11 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     tier: 'contract_and_unit',
     evidence: ['tests/decisionToolsContract.spec.ts', 'tests/openaiOutputSchemas.spec.ts'],
     remaining: 'Exercise a live status read once the app side (hopeatina/orgx#3267) is deployed.',
+  },
+  orgx_panel_snapshot: {
+    tier: 'contract_and_unit',
+    evidence: ['tests/panelSnapshot.spec.ts', 'tests/panelToolRegistration.spec.ts', 'tests/openaiOutputSchemas.spec.ts'],
+    remaining: 'Open the panel from the ChatGPT sidebar and beside a thread once the host ships the OpenAI UI entrypoints, and record the observed tool result.',
   },
   orgx_widget_decide: {
     tier: 'contract_and_unit',
@@ -621,6 +627,8 @@ function collectAllToolIds(): string[] {
     }
   }
   for (const id of collectInlineRegisteredToolIds()) ids.add(id);
+  // Registered from src/panelSurface.ts (one call in index.ts).
+  ids.add(PANEL_TOOL_ID);
   return [...ids].sort();
 }
 

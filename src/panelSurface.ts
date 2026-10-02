@@ -1,0 +1,654 @@
+/**
+ * OrgX panel — the ChatGPT sidebar (global) and thread entrypoint.
+ *
+ * One app-only tool, `orgx_panel_snapshot`, returns `orgx.panel.v1`: what
+ * needs the owner's decision (at most three, most urgent first), the review
+ * packet for one of them, and one line of accepted proof. The panel resource
+ * (`ui://widget/orgx-panel.html`) renders it.
+ *
+ * Rules this module keeps (docs/design/devday-plugin-extensions.md §4.1 and
+ * the coordinator decisions that override it):
+ *
+ * - Scope comes from the MCP session only. The tool has no workspace_id
+ *   argument, and any injected one is ignored.
+ * - It reads; it never changes session context, never mints a live grant and
+ *   never writes model context. A ruling goes through `orgx_widget_decide`
+ *   with a single-use approval token that travels in the result `_meta`
+ *   (never in structuredContent), exactly like the decisions widget.
+ * - Assume the model can see structuredContent: no tokens, evidence bodies,
+ *   notes, emails or costs, and every title is clipped.
+ * - "Accepted" means status `approved` AND a human `approved_by_user_id`.
+ *   `system:*`, a null approver and `in_review` are "completed, not yet
+ *   accepted". When the API does not return `approved_by_user_id` at all,
+ *   the snapshot says `proof_unavailable` instead of guessing.
+ *
+ * Registration lives here; index.ts wires it with one call.
+ */
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { registerAppTool } from '@modelcontextprotocol/ext-apps/server';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+
+import { buildEntityLink } from './deepLinks';
+import { SECURITY_SCHEMES, WIDGET_URIS } from './toolDefinitions';
+import {
+  WIDGET_APPROVAL_META_KEY,
+  splitWidgetApprovalMeta,
+} from './widgetApprovalMeta';
+import { normalizeArtifactRecord } from './widgetArtifactProof';
+
+export const PANEL_SNAPSHOT_SCHEMA = 'orgx.panel.v1' as const;
+export const PANEL_TOOL_ID = 'orgx_panel_snapshot' as const;
+
+export const PANEL_QUEUE_LIMIT = 3;
+export const PANEL_EVIDENCE_LIMIT = 5;
+export const PANEL_TITLE_MAX = 160;
+export const PANEL_QUESTION_MAX = 500;
+export const PANEL_EVIDENCE_TITLE_MAX = 80;
+export const PANEL_TEXT_MAX = 280;
+/** Pending decisions read per snapshot: enough to find a selected item. */
+export const PANEL_DECISION_READ_LIMIT = 25;
+export const PANEL_ARTIFACT_READ_LIMIT = 50;
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const PANEL_FOCUS_SCHEMA = z
+  .object({
+    type: z.literal('decision').describe('Only decisions can be selected'),
+    id: z.string().uuid().describe('Decision UUID'),
+  })
+  .strict();
+
+/**
+ * The tool contract. App-only (`ui.visibility: ["app"]`): hosts that honor
+ * visibility never show it to the model; ChatGPT opens it from the sidebar
+ * (global) and beside a conversation (thread).
+ */
+export const PANEL_SNAPSHOT_TOOL_CONTRACT = {
+  id: PANEL_TOOL_ID,
+  title: 'OrgX panel',
+  description:
+    'App-only: the OrgX panel in the ChatGPT sidebar and beside a conversation. Returns what needs your decision (at most three, most urgent first), the review packet for one of them, and the last output a person accepted. USE WHEN: the OrgX panel opens or refreshes. NEXT: the panel shows Approve and Send back when the decision can be settled there, otherwise it links to the decision in OrgX. DO NOT USE: from a model; models read decisions with orgx_search. Read-only.',
+  inputSchema: {
+    focus: PANEL_FOCUS_SCHEMA.optional().describe(
+      'Optional decision to show as the review packet. Defaults to the most urgent pending decision.'
+    ),
+  },
+  annotations: {
+    readOnlyHint: true,
+    destructiveHint: false,
+    openWorldHint: false,
+  },
+  securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
+} as const;
+
+export const PANEL_TOOL_META = {
+  ui: { resourceUri: WIDGET_URIS.orgxPanel, visibility: ['app'] as string[] },
+  // Legacy alias for hosts that predate ui.visibility.
+  'openai/visibility': 'private',
+  'openai/widgetAccessible': true,
+  'openai/ui': {
+    entrypoints: [{ type: 'global' }, { type: 'thread' }],
+  },
+  'openai/toolInvocation/invoking': 'Opening OrgX...',
+  'openai/toolInvocation/invoked': 'OrgX is open',
+  'mcp/securitySchemes': SECURITY_SCHEMES.entityReadRequiresAuth,
+} as const;
+
+// ---------------------------------------------------------------------------
+// Snapshot types
+// ---------------------------------------------------------------------------
+
+export type PanelUrgency = 'low' | 'medium' | 'high' | 'critical';
+
+export interface PanelQueueItem {
+  id: string;
+  version: string;
+  title: string;
+  urgency: PanelUrgency;
+  waiting_since: string | null;
+  initiative_title: string | null;
+  blocked: boolean;
+  /** Present only when OrgX says this one has to be decided in the app. */
+  decide_in_orgx_reason: string | null;
+  url: string;
+}
+
+export interface PanelFocus {
+  type: 'decision';
+  id: string;
+  version: string;
+  question: string;
+  urgency: PanelUrgency;
+  waiting_since: string | null;
+  initiative_title: string | null;
+  recommendation: {
+    status: 'ready' | 'unverified' | 'unavailable';
+    action: string | null;
+  } | null;
+  evidence: Array<{ title: string; source_url: string | null }>;
+  evidence_total: number;
+  consequence_if_approved: string | null;
+  consequence_if_rejected: string | null;
+  blocked: boolean;
+  decide_in_orgx_reason: string | null;
+  url: string;
+}
+
+export interface PanelSnapshot {
+  schema: typeof PANEL_SNAPSHOT_SCHEMA;
+  generated_at: string;
+  state: 'ok' | 'no_workspace' | 'degraded';
+  workspace: { id: string; name: string | null } | null;
+  attention: { pending: number; oldest_at: string | null; blocking: boolean };
+  queue: PanelQueueItem[];
+  focus: PanelFocus | null;
+  selection: {
+    requested_id: string | null;
+    status: 'default' | 'selected' | 'unavailable';
+  };
+  proof: {
+    last_accepted: {
+      artifact_id: string;
+      title: string;
+      accepted_at: string | null;
+      accepted_by: 'you' | 'workspace_member';
+      url: string;
+    } | null;
+    completed_unaccepted: number;
+  };
+  degraded: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Pure helpers
+// ---------------------------------------------------------------------------
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function str(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+/** Clip on a code-point boundary and mark the cut with an ellipsis. */
+export function clipText(value: unknown, max: number): string | null {
+  const text = str(value);
+  if (!text) return null;
+  const collapsed = text.replace(/\s+/g, ' ');
+  const chars = Array.from(collapsed);
+  if (chars.length <= max) return collapsed;
+  return `${chars.slice(0, Math.max(1, max - 1)).join('').trimEnd()}…`;
+}
+
+function httpsUrlOrNull(value: unknown): string | null {
+  const raw = str(value);
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    return url.protocol === 'https:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+const URGENCY_RANK: Record<PanelUrgency, number> = {
+  critical: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+};
+
+function normalizeUrgency(value: unknown): PanelUrgency {
+  const slug = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  return slug === 'critical' || slug === 'high' || slug === 'low'
+    ? slug
+    : 'medium';
+}
+
+function timeOf(value: string | null): number {
+  if (!value) return Number.POSITIVE_INFINITY;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
+}
+
+interface NormalizedDecision {
+  id: string;
+  version: string;
+  title: string;
+  question: string;
+  urgency: PanelUrgency;
+  createdAt: string | null;
+  initiativeId: string | null;
+  initiativeTitle: string | null;
+  blocked: boolean;
+  decideInOrgxReason: string | null;
+  packet: Record<string, unknown> | null;
+}
+
+function normalizeDecision(input: unknown): NormalizedDecision | null {
+  const record = asRecord(input);
+  if (!record) return null;
+  const id = str(record.id);
+  if (!id || !UUID_RE.test(id)) return null;
+  const packet = asRecord(record.review_packet);
+  const context = asRecord(record.context) ?? {};
+  const current = asRecord(packet?.current) ?? {};
+  const references = Array.isArray(packet?.references) ? packet!.references : [];
+  const initiativeRef = references
+    .map(asRecord)
+    .find((ref) => ref && ref.type === 'initiative');
+  const initiativeId =
+    str(context.initiative_id) ?? str(initiativeRef?.id) ?? null;
+  const summary = str(record.summary) ?? str(record.title) ?? 'Decision';
+  const createdAt = str(record.created_at);
+  return {
+    id,
+    version: str(packet?.updatedAt) ?? str(record.updated_at) ?? createdAt ?? id,
+    title: summary,
+    question: str(packet?.question) ?? summary,
+    urgency: normalizeUrgency(record.urgency),
+    createdAt,
+    initiativeId: initiativeId && UUID_RE.test(initiativeId) ? initiativeId : null,
+    initiativeTitle: clipText(initiativeRef?.label, PANEL_TITLE_MAX),
+    blocked: current.blocked === true,
+    decideInOrgxReason: str(record.decide_in_orgx_reason),
+    packet,
+  };
+}
+
+function decisionUrl(decision: NormalizedDecision): string {
+  return buildEntityLink('decision', decision.id, {
+    initiativeId: decision.initiativeId ?? undefined,
+  }).url;
+}
+
+function toQueueItem(decision: NormalizedDecision): PanelQueueItem {
+  return {
+    id: decision.id,
+    version: decision.version,
+    title: clipText(decision.title, PANEL_TITLE_MAX) ?? 'Decision',
+    urgency: decision.urgency,
+    waiting_since: decision.createdAt,
+    initiative_title: decision.initiativeTitle,
+    blocked: decision.blocked,
+    decide_in_orgx_reason: decision.decideInOrgxReason,
+    url: decisionUrl(decision),
+  };
+}
+
+function toFocus(decision: NormalizedDecision): PanelFocus {
+  const packet = decision.packet ?? {};
+  const rec = asRecord(packet.recommendation);
+  const recStatus = str(rec?.status);
+  const evidence = (Array.isArray(packet.evidence) ? packet.evidence : [])
+    .map(asRecord)
+    .filter((item): item is Record<string, unknown> => Boolean(item));
+  const consequences = asRecord(packet.consequences) ?? {};
+  return {
+    type: 'decision',
+    id: decision.id,
+    version: decision.version,
+    question: clipText(decision.question, PANEL_QUESTION_MAX) ?? 'Decision',
+    urgency: decision.urgency,
+    waiting_since: decision.createdAt,
+    initiative_title: decision.initiativeTitle,
+    recommendation: rec
+      ? {
+          status:
+            recStatus === 'ready' || recStatus === 'unverified'
+              ? recStatus
+              : 'unavailable',
+          action: clipText(rec.action, PANEL_TITLE_MAX),
+        }
+      : null,
+    evidence: evidence.slice(0, PANEL_EVIDENCE_LIMIT).map((item) => ({
+      title: clipText(item.title, PANEL_EVIDENCE_TITLE_MAX) ?? 'Evidence',
+      source_url: httpsUrlOrNull(item.sourceUrl ?? item.source_url),
+    })),
+    evidence_total: evidence.length,
+    consequence_if_approved: clipText(consequences.approve, PANEL_TEXT_MAX),
+    consequence_if_rejected: clipText(consequences.reject, PANEL_TEXT_MAX),
+    blocked: decision.blocked,
+    decide_in_orgx_reason: decision.decideInOrgxReason,
+    url: decisionUrl(decision),
+  };
+}
+
+function isHumanApprover(value: unknown): value is string {
+  const approver = str(value);
+  return Boolean(approver && !approver.toLowerCase().startsWith('system:'));
+}
+
+export interface PanelProofSummary {
+  last_accepted: PanelSnapshot['proof']['last_accepted'];
+  completed_unaccepted: number;
+  /** False when an approved record lacks approved_by_user_id, so acceptance is unknown. */
+  approver_known: boolean;
+}
+
+/**
+ * Accepted = status approved AND a human approved_by_user_id. Everything
+ * else that is finished (in_review, eval_passed, approved by system:* or by
+ * nobody) is "completed, not yet accepted". `summarizeArtifacts().delivered`
+ * is deliberately not reused: it counts in_review as delivered.
+ */
+export function summarizePanelProof(
+  records: unknown[],
+  viewer: { userIds: ReadonlyArray<string | null | undefined> }
+): PanelProofSummary {
+  const viewerIds = new Set(
+    viewer.userIds.filter((id): id is string => typeof id === 'string' && id.length > 0)
+  );
+  let approverMissing = false;
+  let completedUnaccepted = 0;
+  let best: { record: Record<string, unknown>; at: number; acceptedAt: string | null } | null = null;
+
+  for (const raw of records) {
+    const record = asRecord(raw);
+    if (!record) continue;
+    const normalized = normalizeArtifactRecord(record);
+    if (!normalized?.id) continue;
+    const status = normalized.status.toLowerCase();
+    const hasApproverField = Object.prototype.hasOwnProperty.call(
+      record,
+      'approved_by_user_id'
+    );
+    // Acceptance is unknowable for an approved record without the field.
+    if (status === 'approved' && !hasApproverField) approverMissing = true;
+
+    if (status === 'in_review' || status === 'eval_passed') {
+      completedUnaccepted += 1;
+      continue;
+    }
+    if (status !== 'approved') continue;
+    if (!hasApproverField) continue;
+    if (!isHumanApprover(record.approved_by_user_id)) {
+      completedUnaccepted += 1;
+      continue;
+    }
+    const acceptedAt = str(record.approved_at) ?? str(record.updated_at) ?? null;
+    const at = acceptedAt ? Date.parse(acceptedAt) : 0;
+    const score = Number.isFinite(at) ? at : 0;
+    if (!best || score > best.at) best = { record, at: score, acceptedAt };
+  }
+
+  if (approverMissing) {
+    return { last_accepted: null, completed_unaccepted: completedUnaccepted, approver_known: false };
+  }
+
+  const lastAccepted = best
+    ? (() => {
+        const normalized = normalizeArtifactRecord(best!.record)!;
+        const approver = str(best!.record.approved_by_user_id)!;
+        return {
+          artifact_id: normalized.id!,
+          title: clipText(normalized.title, PANEL_TITLE_MAX) ?? 'Untitled artifact',
+          accepted_at: best!.acceptedAt,
+          accepted_by: viewerIds.has(approver) ? ('you' as const) : ('workspace_member' as const),
+          url: buildEntityLink('artifact', normalized.id!).url,
+        };
+      })()
+    : null;
+
+  return {
+    last_accepted: lastAccepted,
+    completed_unaccepted: completedUnaccepted,
+    approver_known: true,
+  };
+}
+
+export interface BuildPanelSnapshotInput {
+  now?: Date;
+  workspace: { id: string; name: string | null } | null;
+  /** The `decisions` array from the pending-decisions read, or null if it failed. */
+  decisions: unknown[] | null;
+  /** Artifact records, or null if the read failed or was skipped. */
+  artifacts: unknown[] | null;
+  focus?: { type: 'decision'; id: string } | null;
+  viewerUserIds?: ReadonlyArray<string | null | undefined>;
+}
+
+/** Pure: builds `orgx.panel.v1` from the two reads. */
+export function buildPanelSnapshot(input: BuildPanelSnapshotInput): PanelSnapshot {
+  const generatedAt = (input.now ?? new Date()).toISOString();
+  const degraded: string[] = [];
+  const requestedId =
+    input.focus && input.focus.type === 'decision' && UUID_RE.test(input.focus.id)
+      ? input.focus.id.toLowerCase()
+      : null;
+
+  if (!input.workspace) {
+    return {
+      schema: PANEL_SNAPSHOT_SCHEMA,
+      generated_at: generatedAt,
+      state: 'no_workspace',
+      workspace: null,
+      attention: { pending: 0, oldest_at: null, blocking: false },
+      queue: [],
+      focus: null,
+      selection: {
+        requested_id: requestedId,
+        status: requestedId ? 'unavailable' : 'default',
+      },
+      proof: { last_accepted: null, completed_unaccepted: 0 },
+      degraded: [],
+    };
+  }
+
+  const decisions = (input.decisions ?? [])
+    .map(normalizeDecision)
+    .filter((d): d is NormalizedDecision => Boolean(d))
+    .sort(
+      (a, b) =>
+        URGENCY_RANK[a.urgency] - URGENCY_RANK[b.urgency] ||
+        Number(b.blocked) - Number(a.blocked) ||
+        timeOf(a.createdAt) - timeOf(b.createdAt)
+    );
+  if (input.decisions === null) degraded.push('decisions_unavailable');
+
+  let selectionStatus: PanelSnapshot['selection']['status'] = 'default';
+  let focusDecision: NormalizedDecision | null = decisions[0] ?? null;
+  if (requestedId) {
+    const selected = decisions.find((d) => d.id.toLowerCase() === requestedId);
+    if (selected) {
+      focusDecision = selected;
+      selectionStatus = 'selected';
+    } else {
+      // Unknown or other-workspace selection: never show a different item as
+      // if it were the selected one.
+      focusDecision = null;
+      selectionStatus = 'unavailable';
+    }
+  }
+
+  const oldest = decisions
+    .map((d) => d.createdAt)
+    .filter((v): v is string => Boolean(v))
+    .sort((a, b) => timeOf(a) - timeOf(b))[0] ?? null;
+
+  let proof: PanelSnapshot['proof'] = { last_accepted: null, completed_unaccepted: 0 };
+  if (input.artifacts === null) {
+    degraded.push('proof_unavailable');
+  } else {
+    const summary = summarizePanelProof(input.artifacts, {
+      userIds: input.viewerUserIds ?? [],
+    });
+    proof = {
+      last_accepted: summary.last_accepted,
+      completed_unaccepted: summary.completed_unaccepted,
+    };
+    if (!summary.approver_known) degraded.push('proof_unavailable');
+  }
+
+  return {
+    schema: PANEL_SNAPSHOT_SCHEMA,
+    generated_at: generatedAt,
+    state: input.decisions === null ? 'degraded' : 'ok',
+    workspace: {
+      id: input.workspace.id,
+      name: clipText(input.workspace.name, 80),
+    },
+    attention: {
+      pending: decisions.length,
+      oldest_at: oldest,
+      blocking: decisions.some((d) => d.blocked),
+    },
+    queue: decisions.slice(0, PANEL_QUEUE_LIMIT).map(toQueueItem),
+    focus: focusDecision ? toFocus(focusDecision) : null,
+    selection: { requested_id: requestedId, status: selectionStatus },
+    proof,
+    degraded,
+  };
+}
+
+/**
+ * Keep only approval tokens for decisions the panel can show, so the widget
+ * meta never carries tokens for items it cannot act on.
+ */
+export function selectPanelApprovalMeta(
+  meta: Record<string, unknown> | null,
+  snapshot: PanelSnapshot
+): Record<string, unknown> | null {
+  const tokens = asRecord(meta?.approval_tokens);
+  if (!tokens) return null;
+  const visible = new Set<string>(snapshot.queue.map((item) => item.id));
+  if (snapshot.focus) visible.add(snapshot.focus.id);
+  const kept: Record<string, string> = {};
+  for (const [id, token] of Object.entries(tokens)) {
+    if (visible.has(id) && typeof token === 'string' && token) kept[id] = token;
+  }
+  return {
+    approval_tokens: kept,
+    ...(typeof meta?.token_ttl_seconds === 'number'
+      ? { token_ttl_seconds: meta.token_ttl_seconds }
+      : {}),
+  };
+}
+
+export function summarizePanelSnapshot(snapshot: PanelSnapshot): string {
+  if (snapshot.state === 'no_workspace') {
+    return 'OrgX panel: no workspace is selected for this session.';
+  }
+  if (snapshot.state === 'degraded') {
+    return 'OrgX panel: the decision queue could not be read right now.';
+  }
+  const pending = snapshot.attention.pending;
+  return pending === 0
+    ? 'OrgX panel: nothing needs your decision.'
+    : `OrgX panel: ${pending} need${pending === 1 ? 's' : ''} your decision.`;
+}
+
+// ---------------------------------------------------------------------------
+// Handler and registration
+// ---------------------------------------------------------------------------
+
+export interface PanelSurfaceHost {
+  /** The existing auth-required response, or null when the caller may read. */
+  authRequired(): CallToolResult | null;
+  /** IDs that identify the viewer as an approver (session id and OrgX UUID). */
+  viewerUserIds(): Array<string | null | undefined>;
+  /** The MCP session's workspace, if it carries one. */
+  sessionWorkspace(): { id: string; name: string | null } | null;
+  /** Read-only inference of the caller's active workspace. Never persisted. */
+  inferWorkspace(): Promise<{ id: string; name: string | null } | null>;
+  /**
+   * The pending-decisions read `get_pending_decisions` uses, with the widget
+   * meta channel requested. Returns the app payload (`{ok, data, error}`).
+   */
+  fetchPendingDecisions(params: {
+    workspaceId: string;
+    limit: number;
+  }): Promise<{ ok?: boolean; data?: Record<string, unknown>; error?: unknown }>;
+  /** The artifact read behind fetchEntityCollection({type:'artifact'}). */
+  fetchArtifacts(params: {
+    workspaceId: string;
+    limit: number;
+  }): Promise<Array<Record<string, unknown>>>;
+  /** The worker's tool wrapper (error mapping, session bookkeeping). */
+  run(runner: () => Promise<CallToolResult>): Promise<CallToolResult>;
+  now?(): Date;
+}
+
+export async function handlePanelSnapshot(
+  host: PanelSurfaceHost,
+  args: Record<string, unknown>
+): Promise<CallToolResult> {
+  const auth = host.authRequired();
+  if (auth) return auth;
+
+  return host.run(async () => {
+    const parsedFocus = PANEL_FOCUS_SCHEMA.safeParse(args?.focus);
+    const focus = parsedFocus.success ? parsedFocus.data : null;
+
+    let workspace = host.sessionWorkspace();
+    if (!workspace) {
+      try {
+        workspace = await host.inferWorkspace();
+      } catch {
+        workspace = null;
+      }
+    }
+
+    let decisions: unknown[] | null = null;
+    let artifacts: unknown[] | null = null;
+    let approvalMeta: Record<string, unknown> | null = null;
+
+    if (workspace) {
+      const workspaceId = workspace.id;
+      const [decisionRead, artifactRead] = await Promise.allSettled([
+        host.fetchPendingDecisions({ workspaceId, limit: PANEL_DECISION_READ_LIMIT }),
+        host.fetchArtifacts({ workspaceId, limit: PANEL_ARTIFACT_READ_LIMIT }),
+      ]);
+      if (decisionRead.status === 'fulfilled' && decisionRead.value?.ok !== false) {
+        const split = splitWidgetApprovalMeta(asRecord(decisionRead.value?.data) ?? {});
+        decisions = Array.isArray(split.data.decisions) ? split.data.decisions : [];
+        approvalMeta = split.meta;
+      }
+      if (artifactRead.status === 'fulfilled' && Array.isArray(artifactRead.value)) {
+        artifacts = artifactRead.value;
+      }
+    }
+
+    const snapshot = buildPanelSnapshot({
+      now: host.now?.(),
+      workspace,
+      decisions,
+      artifacts,
+      focus,
+      viewerUserIds: host.viewerUserIds(),
+    });
+    const widgetMeta = selectPanelApprovalMeta(approvalMeta, snapshot);
+
+    return {
+      content: [{ type: 'text', text: summarizePanelSnapshot(snapshot) }],
+      structuredContent: snapshot as unknown as Record<string, unknown>,
+      ...(widgetMeta ? { _meta: { [WIDGET_APPROVAL_META_KEY]: widgetMeta } } : {}),
+    } as CallToolResult;
+  });
+}
+
+export function registerPanelSurface(
+  server: McpServer,
+  allowedTools: ReadonlySet<string> | null,
+  host: PanelSurfaceHost,
+  withClientContext: <T extends Record<string, unknown>>(shape: T) => T = (shape) => shape
+): void {
+  if (allowedTools && !allowedTools.has(PANEL_TOOL_ID)) return;
+  registerAppTool(
+    server,
+    PANEL_TOOL_ID,
+    {
+      title: PANEL_SNAPSHOT_TOOL_CONTRACT.title,
+      description: PANEL_SNAPSHOT_TOOL_CONTRACT.description,
+      inputSchema: withClientContext({ ...PANEL_SNAPSHOT_TOOL_CONTRACT.inputSchema }),
+      annotations: { ...PANEL_SNAPSHOT_TOOL_CONTRACT.annotations },
+      _meta: PANEL_TOOL_META as unknown as Record<string, unknown>,
+    } as Parameters<typeof registerAppTool>[2],
+    async (args: Record<string, unknown>) => handlePanelSnapshot(host, args)
+  );
+}
