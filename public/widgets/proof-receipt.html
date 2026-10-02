@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en" data-accent="teal">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Receipt - OrgX</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Cpath d='M20 34l8 8 16-18' fill='none' stroke='%2300c9a7' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="shared/kit/ox-tokens.css" />
+  <link rel="stylesheet" href="shared/widget-foundation.css" />
+  <script src="shared/kit/ox-elements.js"></script>
+  <script src="shared/agent-identity.js"></script>
+  <script src="shared/mcp-apps-sdk.umd.js"></script>
+  <script src="shared/widget-runtime.js"></script>
+  <style>
+    /*
+     * Receipt — the orgx_submit_receipt result as canvas Q5 "the proof, the
+     * gap, the next move": a ladder that says how far the claim got
+     * (recorded, evidence, verified, outcome), the headline verdict, the
+     * evidence that was attached, what is missing before it counts as
+     * proof, and what to do next. Read-only: a receipt is a record, so the
+     * only actions open the evidence and the anchored work in OrgX.
+     */
+    :root { --ox-primary-rgb: 0, 201, 167; }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 10px;
+      overflow-x: hidden;
+      font-family: var(--ox-font);
+      -webkit-font-smoothing: antialiased;
+    }
+    .container { max-width: 680px; margin: 0 auto; }
+
+    .rc {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      border: 1px solid var(--ox-border);
+      border-radius: 16px;
+      background: var(--ox-panel);
+      box-shadow: var(--ox-shadow);
+      color: var(--ox-text);
+      --edge-rgb: var(--ox-edge-teal-rgb);
+    }
+    .rc::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 16px; right: 16px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(var(--edge-rgb), .75), transparent);
+      pointer-events: none;
+    }
+    .rc[data-edge='amber'] { --edge-rgb: var(--ox-edge-amber-rgb); }
+    .rc[data-edge='red'] { --edge-rgb: var(--ox-edge-red-rgb); }
+    .rc[data-edge='mute'] { --edge-rgb: var(--ox-edge-mute-rgb); }
+
+    .hd { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 14px 18px 0; }
+    .hd > ox-glyph { --ox-glyph-size: 18px; flex: none; }
+    .kind {
+      flex: none;
+      font-size: 11px; font-weight: 600; line-height: 1;
+      letter-spacing: .04em; text-transform: uppercase;
+      color: var(--ox-text-muted);
+    }
+    .src {
+      min-width: 0;
+      overflow: hidden;
+      font-size: 12.5px;
+      color: var(--ox-text-muted);
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .src b { color: var(--ox-text-2); font-weight: 600; }
+    .sp { flex: 1; }
+    .who {
+      display: inline-flex; align-items: center; gap: 8px; flex: none;
+      font-size: 12.5px; color: var(--ox-text-muted); white-space: nowrap;
+    }
+    .who b { color: var(--ox-text-2); font-weight: 600; }
+
+    .bd { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 12px 18px 16px; }
+    .bd > * { min-width: 0; }
+
+    /* The ladder: how far the claim got. */
+    .rail {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+      margin: 0; padding: 0; list-style: none;
+      font: 600 11.5px/1 var(--ox-mono);
+      color: var(--ox-text-muted);
+    }
+    .rail li { display: inline-flex; align-items: center; gap: 6px; }
+    .rail li + li::before {
+      content: '';
+      width: 12px; height: 1px;
+      background: var(--ox-border-strong);
+    }
+    .rail .d {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border: 1.5px solid rgba(var(--ox-mute-rgb), .6);
+      border-radius: 999px;
+    }
+    .rail [data-tone='ok'] { color: var(--ox-text-2); }
+    .rail [data-tone='ok'] .d { border-color: var(--ox-teal); background: var(--ox-teal); }
+    .rail [data-tone='warn'] { color: var(--ox-warning); }
+    .rail [data-tone='warn'] .d { border-color: var(--ox-warning); background: var(--ox-warning); }
+    .rail [data-tone='fail'] { color: var(--ox-danger); }
+    .rail [data-tone='fail'] .d { border-color: var(--ox-danger); background: var(--ox-danger); }
+
+    .pk-q {
+      margin: 0;
+      font-size: 20px; font-weight: 700; line-height: 1.2;
+      letter-spacing: -.025em;
+      text-wrap: balance; overflow-wrap: anywhere;
+    }
+    .prov {
+      margin: -6px 0 0;
+      font: 500 11.5px/1.45 var(--ox-mono);
+      color: var(--ox-text-muted);
+    }
+    .claim {
+      margin: 0;
+      font-size: 14px; line-height: 1.5;
+      color: var(--ox-text-2);
+      overflow-wrap: anywhere;
+    }
+    .lbl {
+      margin: 0;
+      font: 600 10.5px/1.2 var(--ox-mono);
+      letter-spacing: .12em; text-transform: uppercase;
+      color: var(--ox-text-muted);
+    }
+    .sec { display: flex; flex-direction: column; gap: 4px; }
+    .rows { display: block; }
+    .more, .note {
+      margin: 0;
+      font-size: 12.5px; line-height: 1.45;
+      color: var(--ox-text-muted);
+      overflow-wrap: anywhere;
+    }
+    .more-btn {
+      align-self: flex-start;
+      min-height: 44px;
+      margin: -4px 0 -10px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      font: 600 13px/1.2 var(--ox-font);
+      color: var(--ox-text);
+      cursor: pointer;
+    }
+    .more-btn:focus-visible {
+      outline: 2px solid var(--ox-focus);
+      outline-offset: 2px;
+      border-radius: 6px;
+    }
+    .next {
+      margin: 0;
+      font-size: 13.5px; line-height: 1.45;
+      color: var(--ox-text);
+    }
+    .next b { font-weight: 650; }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px; height: 1px;
+      margin: -1px; padding: 0;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .sk { display: block; height: 10px; border-radius: 4px; background: var(--ox-skeleton); }
+    .empty { padding: 18px; display: flex; flex-direction: column; gap: 6px; }
+    .empty b { font-size: 15px; }
+    .empty span { font-size: 13px; line-height: 1.45; color: var(--ox-text-muted); }
+
+    @media (max-width: 480px) {
+      body { padding: 6px; }
+      .hd { flex-wrap: wrap; row-gap: 6px; padding: 12px 14px 0; }
+      .bd { padding: 10px 14px 14px; }
+      .rc::after { left: 14px; right: 14px; }
+      .pk-q { font-size: 18px; }
+    }
+  </style>
+  <link rel="stylesheet" href="shared/widget-theme.css" />
+</head>
+<body>
+  <div class="container" id="content">
+    <article class="rc" data-edge="mute" aria-busy="true" aria-label="Loading the receipt">
+      <div class="hd"><span class="sk" style="width:40%"></span></div>
+      <div class="bd">
+        <span class="sk" style="width:55%"></span>
+        <span class="sk" style="width:82%;height:22px"></span>
+        <span class="sk" style="width:100%;height:44px"></span>
+      </div>
+      <ox-footer variant="reads" state="loading"></ox-footer>
+    </article>
+  </div>
+  <script>
+    var params = new URLSearchParams(window.location.search);
+    (function () {
+      var theme = params.get('theme');
+      if (theme) document.documentElement.setAttribute('data-theme', theme);
+    })();
+
+    var ORGX = 'https://useorgx.com';
+    var EVIDENCE_LIMIT = 12;
+    // Four rows inline (K1); the rest open in place, beyond twelve in OrgX.
+    var INLINE_EVIDENCE = 4;
+    var showAllEvidence = false;
+    /*
+     * Links open only on the resource's declared redirect origins. Evidence
+     * elsewhere (a deploy preview, a CI host) is shown as its host, not as a
+     * link the sandbox would refuse.
+     */
+    var LINK_ORIGINS = ['https://useorgx.com', 'https://www.useorgx.com', 'https://mcp.useorgx.com', 'https://github.com'];
+
+    var escapeHtml = function (value) {
+      if (value === null || value === undefined) return '';
+      var div = document.createElement('div');
+      div.textContent = String(value);
+      return div.innerHTML;
+    };
+    var str = function (value) {
+      return typeof value === 'string' && value.trim() ? value.trim() : '';
+    };
+    var asArray = function (value) { return Array.isArray(value) ? value : []; };
+    var record = function (value) { return value && typeof value === 'object' && !Array.isArray(value) ? value : {}; };
+    var plural = function (n, one, many) { return n + ' ' + (n === 1 ? one : many); };
+
+    var linkable = function (url) {
+      try {
+        return LINK_ORIGINS.indexOf(new URL(url).origin) !== -1;
+      } catch (_) {
+        return false;
+      }
+    };
+
+    var hostOf = function (url) {
+      try { return new URL(url).host; } catch (_) { return ''; }
+    };
+
+    var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    var shortId = function (id) {
+      var value = str(id);
+      return UUID_RE.test(value) ? value.slice(0, 8) : value.slice(0, 12);
+    };
+
+    // The anchored work in OrgX: the entity the receipt proves, else its artifact.
+    var anchorUrl = function (anchor) {
+      var type = str(anchor.entity_type).toLowerCase();
+      var id = str(anchor.entity_id);
+      if (id && UUID_RE.test(id)) {
+        if (type === 'initiative') return ORGX + '/live/' + encodeURIComponent(id);
+        if (type === 'decision') return ORGX + '/decisions/' + encodeURIComponent(id);
+        if (type === 'task' || type === 'workstream' || type === 'milestone') {
+          return ORGX + '/live?view=mission-control&' + type + '=' + encodeURIComponent(id);
+        }
+      }
+      var artifact = str(anchor.artifact_id);
+      if (artifact && UUID_RE.test(artifact)) return ORGX + '/artifacts/' + encodeURIComponent(artifact);
+      return ORGX + '/work-ledger';
+    };
+
+    var anchorLabel = function (anchor, proof) {
+      var type = str(anchor.entity_type).toLowerCase();
+      if (type && str(anchor.entity_id)) return type + ' ' + shortId(anchor.entity_id);
+      if (str(anchor.artifact_id)) return (str(proof.artifact_type) || 'artifact').replace(/_/g, ' ') + ' ' + shortId(anchor.artifact_id);
+      return '';
+    };
+
+    var RECEIPT_TYPES = { proof: 'Proof', outcome: 'Outcome', quality: 'Quality', attribution: 'Attribution', learning: 'Learning' };
+
+    // loop_validation.missing names fields; say what is missing instead.
+    var GAP_COPY = {
+      artifact_type: 'The artifact type is not stated',
+      agent_type: 'The agent that did the work is not named',
+      business_outcome: 'No business outcome is stated',
+      verification_status: 'Verification was not reported',
+      evidence_or_artifact_id: 'No evidence or artifact is attached',
+      validation_rung: 'The validation rung is not named',
+      'model_tier=standard': 'Validation runs must use the standard tier',
+      'budget_mode=cheapest_valid': 'Validation runs must use the cheapest valid budget'
+    };
+    var gapCopy = function (field) {
+      return GAP_COPY[field] || String(field).replace(/_/g, ' ');
+    };
+    // What the next receipt has to carry, for the "Next" line.
+    var NEED_COPY = {
+      artifact_type: 'the artifact type',
+      agent_type: 'the agent that did the work',
+      business_outcome: 'the business outcome',
+      verification_status: 'the verification result',
+      evidence_or_artifact_id: 'evidence or an artifact',
+      validation_rung: 'the validation rung',
+      'model_tier=standard': 'a standard-tier run',
+      'budget_mode=cheapest_valid': 'a cheapest-valid budget'
+    };
+    var WARNING_COPY = {
+      'evidence should include a verifiable URL or artifact_id': 'No evidence links to something you can check'
+    };
+    var joinAnd = function (items) {
+      return items.length < 2 ? items.join('') : items.slice(0, -1).join(', ') + ' and ' + items[items.length - 1];
+    };
+    var sentence = function (value) {
+      var text = str(value);
+      return text ? text.charAt(0).toUpperCase() + text.slice(1).replace(/\.$/, '') : '';
+    };
+
+    var shortTime = function (value) {
+      if (typeof value !== 'string') return '';
+      var date = new Date(value);
+      if (isNaN(date.getTime())) return '';
+      return new Date().toDateString() === date.toDateString()
+        ? date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
+        : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    };
+
+    var row = function (attrs) {
+      return '<ox-receipt-row' + Object.keys(attrs).map(function (key) {
+        var value = attrs[key];
+        return value === null || value === undefined || value === '' ? '' : ' ' + key + '="' + escapeHtml(value) + '"';
+      }).join('') + '></ox-receipt-row>';
+    };
+
+    /*
+     * One reading of the receipt. Every visible signal (edge, glyph tone,
+     * ladder, headline) comes from here, so they never disagree.
+     */
+    var describe = function (payload) {
+      var proof = record(payload.proof);
+      var anchor = record(proof.anchor);
+      var lv = record(payload.loop_validation);
+      var status = str(proof.status) || 'completed';
+      var verification = str(payload.verification_status).toLowerCase();
+      var evidence = asArray(proof.evidence);
+      var total = typeof proof.evidence_total === 'number' ? proof.evidence_total : evidence.length;
+      var linked = evidence.filter(function (item) { return item && str(item.url); }).length + (str(anchor.artifact_id) ? 1 : 0);
+      var notesCount = evidence.filter(function (item) { return item && item.kind === 'note'; }).length;
+      var proofItems = Math.max(0, total - notesCount);
+      var gaps = asArray(lv.missing).map(function (field) { return { status: 'unverified', label: gapCopy(field) }; })
+        .concat(asArray(lv.warnings).map(function (warning) { return { status: 'unverified', label: WARNING_COPY[warning] || sentence(warning) }; }));
+      if (verification === 'failed') gaps.unshift({ status: 'fail', label: 'Verification failed' });
+      if (verification === 'blocked') gaps.unshift({ status: 'unverified', label: 'Verification is blocked' });
+
+      var view;
+      if (status === 'failed' || status === 'cancelled') {
+        view = {
+          edge: status === 'failed' ? 'red' : 'mute',
+          tone: status === 'failed' ? 'red' : '',
+          headline: 'Recorded as ' + status + '. It does not claim the work shipped.'
+        };
+      } else if (status === 'in_progress') {
+        view = { edge: 'mute', tone: '', headline: 'Recorded while the work is still in progress. Not proof yet.' };
+      } else if (verification === 'failed') {
+        view = { edge: 'red', tone: 'red', headline: 'Proof recorded. Verification failed.' };
+      } else if (verification === 'passed' && lv.promotable === true && !gaps.length) {
+        view = { edge: 'teal', tone: 'teal', headline: 'Verified, with ' + plural(proofItems, 'piece', 'pieces') + ' of evidence.' };
+      } else if (verification === 'passed') {
+        view = { edge: 'amber', tone: 'amber', headline: 'Verified, with ' + plural(gaps.length, 'gap', 'gaps') + ' before it counts as proof.' };
+      } else if (verification === 'blocked') {
+        view = { edge: 'amber', tone: 'amber', headline: 'Recorded. Verification is blocked.' };
+      } else {
+        view = { edge: 'amber', tone: 'amber', headline: 'Recorded, not verified yet.' };
+      }
+
+      view.rail = [
+        ['Recorded', 'ok'],
+        ['Evidence', linked ? 'ok' : proofItems ? 'warn' : ''],
+        ['Verified', verification === 'passed' ? 'ok' : verification === 'failed' ? 'fail' : verification === 'blocked' ? 'warn' : ''],
+        ['Outcome', str(proof.business_outcome) ? 'ok' : '']
+      ];
+      view.proof = proof;
+      view.anchor = anchor;
+      view.evidence = evidence;
+      view.total = total;
+      view.gaps = gaps;
+      view.next = str(lv.next_required_action);
+      view.verification = verification;
+      return view;
+    };
+
+    /*
+     * The server names the next step for the agent (loop_validation
+     * next_required_action); the card says the same step in plain words.
+     */
+    var nextMove = function (view, lv) {
+      var status = str(view.proof.status) || 'completed';
+      if (status !== 'completed') return '';
+      if (!view.gaps.length && view.verification === 'passed') return '';
+      var missing = asArray(lv.missing);
+      if (missing.length) {
+        return 'The agent submits a receipt with ' + joinAnd(missing.map(function (field) { return NEED_COPY[field] || gapCopy(field).toLowerCase(); })) + '.';
+      }
+      if (view.verification === 'failed') return 'The agent fixes what failed and submits a passing verification.';
+      if (view.verification === 'blocked') return 'Unblock verification, then the agent submits the result.';
+      if (view.verification !== 'passed') return 'The agent runs verification and submits the result.';
+      return view.next ? sentence(view.next) + '.' : '';
+    };
+
+    var evidenceRows = function (view) {
+      var items = view.evidence.filter(function (item) { return item && item.kind !== 'note'; });
+      return (showAllEvidence ? items : items.slice(0, INLINE_EVIDENCE)).map(function (item) {
+        var url = str(item.url);
+        var canOpen = url && linkable(url);
+        return row({
+          status: 'met',
+          label: str(item.label),
+          value: str(item.value),
+          // Evidence the sandbox cannot open keeps its host in view.
+          detail: item.kind === 'metric' ? 'Measured' : url && !canOpen && str(item.label).indexOf(hostOf(url)) === -1 ? hostOf(url) : '',
+          href: canOpen ? url : ''
+        });
+      }).join('');
+    };
+
+    var lastPayload = null;
+    var currentAnchorUrl = ORGX + '/work-ledger';
+
+    var render = function (payload) {
+      var content = document.getElementById('content');
+      if (!payload) return;
+      lastPayload = payload;
+      var hasRecord = str(payload.receipt_id) || str(payload.id) || payload.receipt || payload.data;
+      if (!hasRecord && !payload.proof) {
+        content.innerHTML = '<article class="rc" data-edge="mute"><div class="empty"><b>No receipt recorded</b>' +
+          '<span>OrgX did not return a receipt for this request, so nothing here claims the work was proven.</span></div></article>';
+        return;
+      }
+      var view = describe(payload);
+      var proof = view.proof;
+      currentAnchorUrl = anchorUrl(view.anchor);
+      var identity = window.OrgXAgentIdentity;
+      var agentName = str(proof.agent_type);
+      var agentKey = identity && agentName ? identity.resolveAgentKey(agentName) : null;
+      var displayAgent = agentKey ? agentKey.charAt(0).toUpperCase() + agentKey.slice(1) : agentName.replace(/[-_]agent$/i, '').replace(/[-_]/g, ' ');
+      var typeLabel = RECEIPT_TYPES[str(proof.receipt_type).toLowerCase()] || (str(proof.receipt_type) ? sentence(str(proof.receipt_type).replace(/_/g, ' ')) : 'Receipt');
+      var where = anchorLabel(view.anchor, proof);
+      var notes = view.evidence.filter(function (item) { return item && item.kind === 'note'; });
+      var proofCount = view.evidence.length - notes.length;
+      var hidden = Math.max(0, view.total - view.evidence.length);
+      var folded = showAllEvidence ? 0 : Math.max(0, proofCount - INLINE_EVIDENCE);
+      var recordedAt = shortTime(payload.imported_at || payload.created_at);
+      var id = str(payload.receipt_id) || str(payload.id);
+      var provParts = [
+        displayAgent ? 'Made by ' + displayAgent + (str(proof.model_tier) ? ' on the ' + str(proof.model_tier) + ' tier' : '') : '',
+        str(proof.artifact_type) ? str(proof.artifact_type).replace(/_/g, ' ') : ''
+      ].filter(Boolean);
+      var next = nextMove(view, record(payload.loop_validation));
+
+      content.innerHTML =
+        '<article class="rc" data-edge="' + view.edge + '" data-verdict="' + escapeHtml(view.verification || 'unreported') + '" aria-label="OrgX receipt">' +
+        '<div class="hd"><ox-glyph kind="receipt"' + (view.tone ? ' tone="' + view.tone + '"' : '') + '></ox-glyph>' +
+        '<span class="kind">Receipt</span>' +
+        '<span class="src"><b>' + escapeHtml(typeLabel) + '</b>' + (where ? ' · ' + escapeHtml(where) : '') + '</span>' +
+        '<span class="sp"></span>' +
+        (displayAgent
+          ? '<span class="who">' + (agentKey ? '<ox-avatar agent="' + agentKey + '" form="' + (view.edge === 'teal' ? 'proactive' : 'verifying') + '" size="20" name="' + escapeHtml(displayAgent) + '"></ox-avatar>' : '') + '<b>' + escapeHtml(displayAgent) + '</b></span>'
+          : '') +
+        '</div>' +
+        '<div class="bd">' +
+        '<ol class="rail" aria-label="How far the proof got">' + view.rail.map(function (step) {
+          return '<li' + (step[1] ? ' data-tone="' + step[1] + '"' : '') + '><i class="d" aria-hidden="true"></i>' + step[0] +
+            '<span class="visually-hidden">' + (step[1] === 'ok' ? ', done' : step[1] === 'fail' ? ', failed' : step[1] === 'warn' ? ', partly' : ', not yet') + '</span></li>';
+        }).join('') + '</ol>' +
+        '<h1 class="pk-q">' + escapeHtml(view.headline) + '</h1>' +
+        (provParts.length ? '<p class="prov">' + escapeHtml(provParts.join(' · ')) + '</p>' : '') +
+        (str(payload.summary) ? '<p class="claim">' + escapeHtml(str(payload.summary)) + '</p>' : '') +
+        (proofCount
+          ? '<div class="sec"><p class="lbl">Evidence</p><div class="rows" role="list">' + evidenceRows(view) + '</div>' +
+            (folded ? '<button type="button" class="more-btn" data-evidence="all" aria-expanded="false">Show ' + folded + ' more</button>' : '') +
+            ((showAllEvidence || !folded) && hidden ? '<p class="more">+' + plural(hidden, 'more piece', 'more pieces') + ' of evidence in OrgX</p>' : '') + '</div>'
+          : '') +
+        (notes.length ? '<p class="note">Note: ' + escapeHtml(str(notes[0].label)) + '</p>' : '') +
+        (view.gaps.length
+          ? '<div class="sec"><p class="lbl">Before it counts as proof</p><div class="rows" role="list">' +
+            view.gaps.map(function (gap) { return row({ status: gap.status, label: gap.label }); }).join('') + '</div></div>'
+          : '') +
+        (str(proof.business_outcome) ? '<p class="next"><b>Outcome:</b> ' + escapeHtml(str(proof.business_outcome)) + '</p>' : '') +
+        (next ? '<p class="next"><b>Next:</b> ' + escapeHtml(next) + '</p>' : '') +
+        '</div>' +
+        '<ox-footer variant="reads" state="fresh" heading="' + escapeHtml(recordedAt ? 'Recorded ' + recordedAt : 'Recorded') + '" detail="' +
+        escapeHtml([
+          payload.idempotent === true ? 'already on file' : '',
+          payload.path === 'v1' ? 'hash-chained' : payload.path === 'legacy' ? 'receipts ledger' : '',
+          id ? 'receipt ' + shortId(id) : ''
+        ].filter(Boolean).join(' · ')) + '" action-label="Open in OrgX ↗"></ox-footer>' +
+        '</article>';
+    };
+
+    var isStandalone = function () {
+      return !window.OrgXWidgetRuntime || window.OrgXWidgetRuntime.detectProtocol() === 'standalone';
+    };
+    var openLink = function (url) {
+      if (!url) return;
+      if (isStandalone()) {
+        try { window.open(url, '_blank', 'noopener,noreferrer'); } catch (_) { /* preview only */ }
+        return;
+      }
+      openWidgetLink(url);
+    };
+
+    // Raw anchors are not allowed in MCP widgets: every link goes through the host.
+    document.addEventListener('ox-open', function (event) {
+      event.preventDefault();
+      openLink(event.detail && event.detail.href);
+    });
+    document.addEventListener('ox-action', function () { openLink(currentAnchorUrl); });
+    document.getElementById('content').addEventListener('click', function (event) {
+      var target = event.target && event.target.closest ? event.target.closest('[data-evidence]') : null;
+      if (!target || !lastPayload) return;
+      showAllEvidence = true;
+      render(lastPayload);
+    });
+
+    if (window.OrgXElements && window.OrgXWidgetRuntime && window.OrgXWidgetRuntime.detectProtocol() === 'standalone') {
+      try { window.OrgXElements.avatarConfig.baseUrl = new URL('shared/avatars', window.location.href).toString(); } catch (_) { /* default base */ }
+    }
+
+    /* ── Gallery fixtures (?state=) ─────────────────────────────────── */
+    var LV_OK = { rung: null, applies: false, promotable: true, missing: [], warnings: [], next_required_action: null };
+    var base = function (overrides) {
+      var payload = {
+        _v2_tool: 'orgx_submit_receipt',
+        path: 'v1',
+        ok: true,
+        receipt_id: '3f9c1d2e-8a7b-4c6d-9e0f-1a2b3c4d5e6f',
+        external_receipt_id: 'awr_01JABCDEF',
+        schema_version: 'agent-work-receipt/v0.1',
+        idempotent: false,
+        imported_at: new Date().toISOString(),
+        summary: 'Merged PR 2291: bounded retries cut checkout p95 from 1.4 s to 812 ms.',
+        verification_status: 'passed',
+        proof: {
+          receipt_type: 'proof',
+          status: 'completed',
+          anchor: { entity_type: 'task', entity_id: '7f3c2a10-5b1e-4c3d-9a8f-2e6b4d1c0a99', artifact_id: null },
+          artifact_type: 'pull_request',
+          agent_type: 'engineering-agent',
+          business_outcome: 'Checkout completes in under a second for most customers.',
+          model_tier: 'standard',
+          evidence: [
+            { kind: 'pr', label: 'PR 2291 · acme/checkout', url: 'https://github.com/acme/checkout/pull/2291', value: null },
+            { kind: 'test_run', label: 'Test run · github.com/runs/1182', url: 'https://github.com/acme/checkout/actions/runs/1182', value: null },
+            { kind: 'deploy', label: 'Deploy · checkout-git-2291.vercel.app', url: 'https://checkout-git-2291.vercel.app/', value: null },
+            { kind: 'metric', label: 'p95 latency', url: null, value: '812 ms' }
+          ],
+          evidence_total: 4
+        },
+        loop_validation: LV_OK
+      };
+      return Object.assign(payload, overrides || {});
+    };
+    var withProof = function (overrides, proof) {
+      var payload = base(overrides);
+      payload.proof = Object.assign({}, payload.proof, proof || {});
+      return payload;
+    };
+    var many = withProof({}, {
+      evidence: Array.from({ length: EVIDENCE_LIMIT }, function (_, i) {
+        return { kind: 'pr', label: 'PR ' + (2280 + i) + ' · acme/checkout', url: 'https://github.com/acme/checkout/pull/' + (2280 + i), value: null };
+      }),
+      evidence_total: 19
+    });
+    var FIXTURES = {
+      proven: base(),
+      gap: withProof({
+        loop_validation: { rung: null, applies: false, promotable: false, missing: ['business_outcome'], warnings: [], next_required_action: 'Add missing loop receipt fields: business_outcome.' }
+      }, { business_outcome: null }),
+      unverified: withProof({
+        verification_status: undefined,
+        summary: 'Drafted the 4.2 release note and attached it to the launch milestone.',
+        loop_validation: { rung: null, applies: false, promotable: false, missing: ['verification_status'], warnings: ['evidence should include a verifiable URL or artifact_id'], next_required_action: 'Add missing loop receipt fields: verification_status.' }
+      }, {
+        anchor: { entity_type: 'milestone', entity_id: '0a1b2c3d-4e5f-4061-8728-394a5b6c7d8e', artifact_id: null },
+        artifact_type: 'document', agent_type: 'marketing', business_outcome: null,
+        evidence: [{ kind: 'note', label: 'Shared in #launch for review; no link yet.', url: null, value: null }],
+        evidence_total: 1
+      }),
+      failed: withProof({
+        verification_status: 'failed',
+        summary: 'Retry path change merged; the timeout regression test fails under provider latency.',
+        loop_validation: { rung: null, applies: false, promotable: false, missing: [], warnings: [], next_required_action: 'Submit a passed verification receipt before promotion.' }
+      }),
+      'work-failed': withProof({
+        verification_status: 'not_run',
+        summary: 'Migration dry run stopped: the staging snapshot was missing.',
+        loop_validation: { rung: null, applies: false, promotable: false, missing: [], warnings: [], next_required_action: 'Submit a passed verification receipt before promotion.' }
+      }, { status: 'failed', business_outcome: null, evidence: [], evidence_total: 0 }),
+      legacy: withProof({ path: 'legacy', fallback_reason: 'missing_workspace_id', receipt_id: undefined, id: 'rcpt_8812', created_at: new Date(Date.now() - 86400000 * 2).toISOString(), imported_at: undefined }),
+      replayed: base({ idempotent: true }),
+      many: many,
+      empty: {}
+    };
+    // The gallery's shared state names map onto the closest honest fixture.
+    FIXTURES.populated = FIXTURES.proven;
+    FIXTURES.resolved = FIXTURES.proven;
+    FIXTURES.blocked = FIXTURES.gap;
+    FIXTURES.stale = FIXTURES.unverified;
+    FIXTURES.error = FIXTURES.failed;
+    FIXTURES.long = FIXTURES.many;
+
+    var state = params.get('state') || (params.get('demo') === 'true' ? 'proven' : null);
+    if (state === 'loading') {
+      // Keep the skeleton.
+    } else if (state && Object.prototype.hasOwnProperty.call(FIXTURES, state)) {
+      render(FIXTURES[state]);
+    } else {
+      initWidget({ render: render });
+    }
+  </script>
+</body>
+</html>

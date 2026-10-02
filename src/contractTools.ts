@@ -527,8 +527,10 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     _meta: {
+      'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.proofReceipt,
       'openai/toolInvocation/invoking': 'Submitting OrgX receipt...',
       'openai/toolInvocation/invoked': 'OrgX receipt submitted',
+      ui: { resourceUri: WIDGET_URIS.proofReceipt },
     },
   },
   {

@@ -10,11 +10,12 @@
     "morning-brief": 610304,
     "orgx-panel": 515072,
     "plan-session-live": 560128,
+    "proof-receipt": 438272,
     "scaffold-streaming": 417792,
     "scaffolded-initiative": 582656,
     "search-results": 461824,
-    "task-spawned": 564224,
-    "work-ledger": 540672,
+    "task-spawned": 576512,
+    "work-ledger": 561152,
     "workspace-map": 534528
   }
 }

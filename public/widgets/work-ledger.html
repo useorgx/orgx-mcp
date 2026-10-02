@@ -61,6 +61,8 @@
 
     .wl[data-edge='amber'] { --wl-edge: var(--ox-edge-amber-rgb); }
     .wl[data-edge='mute'] { --wl-edge: var(--ox-edge-mute-rgb); }
+    .wl[data-edge='red'] { --wl-edge: var(--ox-edge-red-rgb); }
+    .wl[data-view='explore'] { max-width: 1100px; margin: 0 auto; }
 
     .wl-hd {
       display: flex;
@@ -218,12 +220,232 @@
 
     .wl-strip-sk .wl-sk { width: 76px; height: 20px; }
 
+    /* "Explore all": the one way from the card into every entry. */
+    .wl-explore {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      align-self: flex-start;
+      min-height: 44px;
+      margin: -6px 0 -10px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      font: 600 13px/1.2 var(--ox-font);
+      color: var(--ox-text);
+      cursor: pointer;
+    }
+
+    .wl-explore span { font-weight: 500; color: var(--ox-text-muted); }
+
+    .wl button:focus-visible {
+      outline: 2px solid var(--ox-focus);
+      outline-offset: 2px;
+      border-radius: 6px;
+    }
+
+    /*
+     * Explorer (canvas K2, restacked at phone width per M2): every entry in
+     * the window, worst first. Chips filter by proof, the category bar
+     * focuses one kind, and verified entries fold into a count per group.
+     */
+    .kx-back {
+      flex: none;
+      min-height: 44px;
+      margin: -12px -8px -12px auto;
+      padding: 0 8px;
+      border: 0;
+      background: transparent;
+      font: 600 12.5px/1 var(--ox-font);
+      color: var(--ox-text-2);
+      cursor: pointer;
+    }
+
+    .kx-top {
+      display: flex;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 12px 16px;
+    }
+
+    .kx-h {
+      flex: 1 1 320px;
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+      text-wrap: balance;
+    }
+
+    .kx-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .kx-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 32px;
+      padding: 0 10px;
+      border: 1px solid var(--ox-border);
+      border-radius: 8px;
+      background: transparent;
+      font: 500 12.5px/1 var(--ox-font);
+      color: var(--ox-text-2);
+      cursor: pointer;
+    }
+
+    .kx-chip b {
+      font: 600 11.5px/1 var(--ox-mono);
+      color: var(--ox-text);
+    }
+
+    .kx-chip[aria-pressed='true'] {
+      border-color: var(--ox-border-strong);
+      background: var(--ox-hover);
+      color: var(--ox-text);
+    }
+
+    .sw {
+      display: inline-block;
+      flex: none;
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+    }
+
+    .s-fail { background: var(--ox-danger); }
+    .s-yours { background: var(--ox-warning); }
+    .s-met { background: var(--ox-teal); }
+    .s-unverified {
+      background: repeating-linear-gradient(135deg, rgba(var(--ox-mute-rgb), 0.85) 0 2px, rgba(var(--ox-mute-rgb), 0.25) 2px 4px);
+    }
+    .s-all { background: var(--ox-text-muted); }
+
+    .kx-cats {
+      display: flex;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .kx-cat {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+      min-height: 44px;
+      padding: 4px 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .kx-cat[data-dim] { opacity: 0.38; }
+
+    .kx-cells {
+      display: flex;
+      gap: 2px;
+      height: 16px;
+      min-width: 0;
+    }
+
+    .kx-cells i {
+      flex: 1 1 0;
+      min-width: 3px;
+      border-radius: 2px;
+    }
+
+    .kx-cat-name {
+      overflow: hidden;
+      font-size: 12px;
+      color: var(--ox-text-2);
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .kx-cat[aria-pressed='true'] .kx-cat-name { color: var(--ox-text); font-weight: 600; }
+
+    .kx-cat-n {
+      font: 500 11px/1 var(--ox-mono);
+      color: var(--ox-text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .kx-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .kx-grp-h {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 8px 0 6px;
+      border-bottom: 1px solid var(--ox-border);
+      font-size: 12px;
+      color: var(--ox-text-muted);
+    }
+
+    .kx-grp-h b {
+      font-size: 13.5px;
+      font-weight: 650;
+      color: var(--ox-text);
+    }
+
+    .kx-grp-h .kx-note { margin-left: auto; }
+
+    .kx-more {
+      min-height: 44px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      font: 500 12px/1 var(--ox-mono);
+      color: var(--ox-text-muted);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .kx-empty {
+      margin: 0;
+      padding: 10px 0;
+      font-size: 13px;
+      color: var(--ox-text-muted);
+    }
+
+    /* M2: on a phone the category bar restacks into a list, worst first. */
+    @media (max-width: 560px) {
+      .kx-h { font-size: 18px; }
+      .kx-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+      .kx-chip { flex: none; }
+      .kx-cats { flex-direction: column; gap: 0; }
+      .kx-cat {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 110px 44px;
+        align-items: center;
+        gap: 10px;
+        flex: none !important;
+        padding: 6px 0;
+        border-bottom: 1px solid var(--ox-border);
+      }
+      .kx-cat-name { order: 1; font-size: 13px; color: var(--ox-text); }
+      .kx-cells { order: 2; height: 10px; }
+      .kx-cat-n { order: 3; text-align: right; }
+    }
+
     @media (max-width: 420px) {
       .wl-page { padding: 6px; }
       .wl-hd { padding: 12px 14px 0; }
       .wl-bd { padding: 10px 14px 14px; }
       .wl::after { left: 14px; right: 14px; }
       .wl-stats { gap: 6px 14px; }
+      .wl[data-view='explore'] .wl-src { display: none; }
     }
   </style>
   <link rel="stylesheet" href="shared/widget-theme.css" />
@@ -290,9 +512,16 @@
             { label: 'Cursor', evidenceLabel: 'Observed', sessions: 3, artifacts: 1, decisions: 1, pullRequests: 0 }
           ],
           events: [
-            { kind: 'decision', title: 'Ship annual pricing at launch', sourceLabel: 'Claude Code', occurredAt: '2026-09-24T16:10:00Z' },
-            { kind: 'pull_request', title: 'Checkout: proration for annual plans', sourceLabel: 'Codex', occurredAt: '2026-09-24T14:02:00Z' },
-            { kind: 'artifact', title: 'Pricing page copy v3', sourceLabel: 'Claude Code', occurredAt: '2026-09-23T19:40:00Z' }
+            { id: 'decision:d1', kind: 'decision', title: 'Ship annual pricing at launch', sourceLabel: 'Claude Code', status: 'pending', proofState: 'needs_review', occurredAt: '2026-09-24T16:10:00Z', url: '/decisions/6d0c2b1e-0f6b-4a8e-9b1c-2f5d7a9e3c11' },
+            { id: 'pull-request:p1', kind: 'pull_request', title: 'Checkout: proration for annual plans', sourceLabel: 'Codex', status: 'merged', proofState: 'verified', occurredAt: '2026-09-24T14:02:00Z', url: 'https://github.com/acme/checkout/pull/2291' },
+            { id: 'artifact:a1', kind: 'artifact', title: 'Pricing page copy v3', sourceLabel: 'Claude Code', status: 'in_review', proofState: 'recorded', occurredAt: '2026-09-23T19:40:00Z', url: '/artifacts/5e1f0a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b' },
+            { id: 'run:r1', kind: 'run', title: 'Proration migration dry run', sourceLabel: 'Codex', status: 'failed', proofState: 'failed', occurredAt: '2026-09-23T15:12:00Z', url: '/console/runs/9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d' },
+            { id: 'pull-request:p2', kind: 'pull_request', title: 'Annual plan toggle on checkout', sourceLabel: 'Claude Code', status: 'merged', proofState: 'verified', occurredAt: '2026-09-23T11:30:00Z', url: 'https://github.com/acme/checkout/pull/2288' },
+            { id: 'artifact:a2', kind: 'artifact', title: 'Launch email: annual plans', sourceLabel: 'Cursor', status: 'approved', proofState: 'verified', occurredAt: '2026-09-22T18:05:00Z', url: '/artifacts/1b2c3d4e-5f60-4718-9a2b-3c4d5e6f7081' },
+            { id: 'decision:d2', kind: 'decision', title: 'Keep monthly price unchanged', sourceLabel: 'Claude Code', status: 'approved', proofState: 'recorded', occurredAt: '2026-09-22T10:00:00Z', url: '/decisions/0a1b2c3d-4e5f-4061-8728-394a5b6c7d8e' },
+            { id: 'run:r2', kind: 'run', title: 'Pricing page build', sourceLabel: 'Claude Code', status: 'completed', proofState: 'verified', occurredAt: '2026-09-21T16:44:00Z', url: '/console/runs/2b3c4d5e-6f70-4182-9a3b-4c5d6e7f8091' },
+            { id: 'progress:g1', kind: 'progress', title: 'Annual pricing work graph updated', sourceLabel: 'Claude Code', status: 'verified', proofState: 'verified', occurredAt: '2026-09-21T15:00:00Z', url: '/live/7c8d9e0f-1a2b-4c3d-8e4f-5a6b7c8d9e0f' },
+            { id: 'pull-request:p3', kind: 'pull_request', title: 'Tax rounding for annual invoices', sourceLabel: 'Codex', status: 'open', proofState: 'recorded', occurredAt: '2026-09-20T13:20:00Z', url: null }
           ]
         },
         flywheel: {
@@ -381,7 +610,8 @@
     };
 
     var state = params.get('state') || (params.get('demo') === 'true' ? 'populated' : null);
-    var FIXTURES = { populated: DEMO, messy: MESSY, calm: CALM, offline: MESSY, empty: {} };
+    // The gallery's shared state names map onto the closest honest fixture.
+    var FIXTURES = { populated: DEMO, explore: DEMO, messy: MESSY, long: MESSY, calm: CALM, resolved: CALM, offline: MESSY, empty: {} };
     var data = Object.prototype.hasOwnProperty.call(FIXTURES, state) ? FIXTURES[state] : null;
     // Offline (K4): the last copy stays, the footer says it could not refresh.
     var refreshFailed = state === 'offline';
@@ -431,10 +661,14 @@
           return;
         }
         out.push({
+          id: event.id,
           kind: event.kind,
           title: event.title,
           sourceLabel: event.sourceLabel,
           occurredAt: event.occurredAt,
+          status: event.status,
+          proofState: event.proofState,
+          url: event.url,
           repeats: 1
         });
       });
@@ -470,9 +704,62 @@
       return /verif/i.test(String(label || '')) ? 'verified' : 'observed';
     };
 
-    // Entries that carry their own record read as met; bare activity reads unverified.
-    var entryStatus = function (kind) {
-      return /^(decision|artifact|pull_request|receipt|run)$/.test(String(kind || '')) ? 'met' : 'unverified';
+    /*
+     * The chronicle states each entry's proof (proofState): verified reads
+     * met, needs_review is the person's call, recorded has no proof yet, and
+     * failed failed. Older payloads without it fall back to the kind: an
+     * entry that carries its own record reads met, bare activity unverified.
+     */
+    var PROOF_STATUS = { verified: 'met', needs_review: 'yours', recorded: 'unverified', failed: 'fail' };
+    var STATUS_RANK = { fail: 0, yours: 1, unverified: 2, met: 3 };
+    var entryStatus = function (event) {
+      var proof = event && PROOF_STATUS[event.proofState];
+      if (proof) return proof;
+      return /^(decision|artifact|pull_request|receipt|run)$/.test(String(event && event.kind || '')) ? 'met' : 'unverified';
+    };
+
+    /*
+     * Entry links: OrgX paths open on useorgx.com. Absolute links must be
+     * https on an origin the widget may open (the resource's declared
+     * redirect domains); anything else stays a plain row.
+     */
+    var LINK_ORIGINS = ['https://useorgx.com', 'https://www.useorgx.com', 'https://mcp.useorgx.com', 'https://github.com'];
+    var entryHref = function (event) {
+      var url = event && typeof event.url === 'string' ? event.url.trim() : '';
+      if (!url) return '';
+      if (/^\/[^/]/.test(url)) return 'https://useorgx.com' + url;
+      try {
+        return LINK_ORIGINS.indexOf(new URL(url).origin) !== -1 ? url : '';
+      } catch (_) {
+        return '';
+      }
+    };
+
+    var KIND_LABEL = {
+      decision: 'Decisions',
+      artifact: 'Artifacts',
+      pull_request: 'Pull requests',
+      run: 'Runs',
+      progress: 'Progress',
+      receipt: 'Receipts'
+    };
+    var kindLabel = function (kind) {
+      return KIND_LABEL[kind] || 'Activity';
+    };
+
+    var humanStatus = function (value) {
+      var text = typeof value === 'string' ? value.trim().replace(/_/g, ' ') : '';
+      return text && !/^(recorded|verified|unknown)$/i.test(text) ? text : '';
+    };
+
+    var entryRow = function (event, className) {
+      return row({
+        class: className,
+        status: entryStatus(event),
+        label: String(event.title || '') + (event.repeats > 1 ? ' ×' + event.repeats : ''),
+        detail: [event.sourceLabel, humanStatus(event.status), shortDate(event.occurredAt)].filter(Boolean).join(' · '),
+        href: entryHref(event)
+      });
     };
 
     var row = function (attrs) {
@@ -502,6 +789,186 @@
       openWidgetLink(url);
     };
 
+    /*
+     * Explorer state. The card is the summary; "Explore all" asks the host
+     * for fullscreen and draws every entry in the window, worst first.
+     */
+    var view = state === 'explore' ? 'explore' : 'summary';
+    var explore = { filter: null, kind: null, open: {} };
+
+    var exploreButton = function (events) {
+      var attention = events.filter(function (event) { return entryStatus(event) !== 'met'; }).length;
+      return '<button type="button" class="wl-explore" data-explore="open">Explore all ' + events.length +
+        ' ' + (events.length === 1 ? 'entry' : 'entries') +
+        (attention ? ' <span>· ' + attention + ' need' + (attention === 1 ? 's' : '') + ' attention</span>' : '') +
+        '</button>';
+    };
+
+    var FILTERS = [
+      ['open', 'Needs attention', 's-fail'],
+      ['fail', 'Failed', 's-fail'],
+      ['yours', 'Needs review', 's-yours'],
+      ['unverified', 'No proof yet', 's-unverified'],
+      ['met', 'Verified', 's-met'],
+      ['all', 'All', 's-all']
+    ];
+
+    var passes = function (filter, status) {
+      if (filter === 'all') return true;
+      if (filter === 'open') return status !== 'met';
+      return status === filter;
+    };
+
+    var worstFirst = function (a, b) {
+      return STATUS_RANK[a.status] - STATUS_RANK[b.status] || Date.parse(b.event.occurredAt || 0) - Date.parse(a.event.occurredAt || 0);
+    };
+
+    var plural = function (n, one, many) {
+      return n + ' ' + (n === 1 ? one : many);
+    };
+
+    var renderExplorer = function (chronicle) {
+      var entries = collapseEvents(asArray(chronicle.continuity && chronicle.continuity.events)).map(function (event) {
+        return { event: event, status: entryStatus(event), kind: kindLabel(event.kind) };
+      });
+      var tally = { fail: 0, yours: 0, unverified: 0, met: 0 };
+      entries.forEach(function (entry) { tally[entry.status] += 1; });
+      var attention = tally.fail + tally.yours + tally.unverified;
+      var filter = explore.filter || (attention ? 'open' : 'all');
+      var period = PERIOD_LABEL[chronicle.period] || 'This window';
+      var asOf = shortTime(chronicle.generatedAt);
+
+      // Kinds, worst first: the most failures, then reviews, then unproven.
+      var kinds = [];
+      entries.forEach(function (entry) {
+        var group = kinds.filter(function (k) { return k.name === entry.kind; })[0];
+        if (!group) { group = { name: entry.kind, items: [], tally: { fail: 0, yours: 0, unverified: 0, met: 0 } }; kinds.push(group); }
+        group.items.push(entry);
+        group.tally[entry.status] += 1;
+      });
+      kinds.forEach(function (group) { group.items.sort(worstFirst); });
+      kinds.sort(function (a, b) {
+        return b.tally.fail - a.tally.fail || b.tally.yours - a.tally.yours || b.tally.unverified - a.tally.unverified || b.items.length - a.items.length;
+      });
+      if (explore.kind && !kinds.some(function (k) { return k.name === explore.kind; })) explore.kind = null;
+
+      var headline = entries.length
+        ? tally.met + ' of ' + entries.length + ' verified.' + (attention
+          ? ' ' + [
+              tally.fail ? tally.fail + ' failed' : '',
+              tally.yours ? plural(tally.yours, 'waits', 'wait') + ' on your review' : '',
+              tally.unverified ? tally.unverified + (tally.unverified === 1 ? ' has' : ' have') + ' no proof yet' : ''
+            ].filter(Boolean).join(', ') + '.'
+          : ' Nothing needs attention.')
+        : 'Nothing recorded in this window yet.';
+
+      // Zero-count filters are not drawn; All always is.
+      var chips = FILTERS.filter(function (f) {
+        var n = f[0] === 'all' ? entries.length : f[0] === 'open' ? attention : tally[f[0]];
+        return f[0] === 'all' || n > 0;
+      }).map(function (f) {
+        var n = f[0] === 'all' ? entries.length : f[0] === 'open' ? attention : tally[f[0]];
+        return '<button type="button" class="kx-chip" data-filter="' + f[0] + '" aria-pressed="' + (filter === f[0]) + '"><i class="sw ' + f[2] + '"></i>' + f[1] + ' <b>' + n + '</b></button>';
+      }).join('');
+
+      var cats = kinds.map(function (group) {
+        var on = explore.kind === group.name;
+        return '<button type="button" class="kx-cat" data-kind="' + escapeHtml(group.name) + '" aria-pressed="' + on + '"' +
+          (explore.kind && !on ? ' data-dim' : '') + ' style="flex:' + group.items.length + ' 1 0"' +
+          ' aria-label="' + escapeHtml(group.name + ': ' + group.tally.met + ' of ' + group.items.length + ' verified') + '">' +
+          '<span class="kx-cells" aria-hidden="true">' + group.items.map(function (entry) { return '<i class="s-' + entry.status + '"></i>'; }).join('') + '</span>' +
+          '<span class="kx-cat-name">' + escapeHtml(group.name) + '</span>' +
+          '<span class="kx-cat-n">' + group.tally.met + '/' + group.items.length + '</span></button>';
+      }).join('');
+
+      var shown = 0;
+      var allMet = [];
+      var groups = kinds.filter(function (group) { return !explore.kind || group.name === explore.kind; }).map(function (group) {
+        var visible = group.items.filter(function (entry) { return passes(filter, entry.status); });
+        var folded = filter === 'open' ? group.items.filter(function (entry) { return entry.status === 'met'; }) : [];
+        var open = !!explore.open[group.name];
+        var rows = visible.concat(open ? folded : []);
+        // A kind with nothing left to look at is not a section (rule 4).
+        if (!rows.length) {
+          if (folded.length) allMet.push(group.name.toLowerCase());
+          return '';
+        }
+        shown += rows.length;
+        return '<section class="kx-grp" aria-label="' + escapeHtml(group.name) + '">' +
+          '<div class="kx-grp-h"><b>' + escapeHtml(group.name) + '</b><span>' + group.tally.met + ' of ' + group.items.length + ' verified</span>' +
+          (group.tally.fail ? '<span class="kx-note">' + plural(group.tally.fail, 'failure', 'failures') + ' here</span>' : '') + '</div>' +
+          '<div class="wl-rows" role="list">' + rows.map(function (entry) { return entryRow(entry.event, 'kx-entry'); }).join('') + '</div>' +
+          (folded.length
+            ? '<button type="button" class="kx-more" data-fold="' + escapeHtml(group.name) + '" aria-expanded="' + open + '">' +
+              (open ? 'Hide ' + folded.length + ' verified' : folded.length + ' verified · show') + '</button>'
+            : '') +
+          '</section>';
+      }).join('');
+
+      var edge = refreshFailed ? 'mute' : tally.fail ? 'red' : attention ? 'amber' : 'teal';
+      return '<article class="wl" data-view="explore" data-edge="' + edge + '" aria-label="Every Work Ledger entry">' +
+        '<div class="wl-hd"><ox-glyph kind="receipt"' + (attention && !refreshFailed ? ' tone="amber"' : '') + '></ox-glyph>' +
+        '<span class="wl-kind">Work Ledger</span>' +
+        '<span class="wl-src"><b>' + escapeHtml(chronicle.workspaceName || 'This workspace') + '</b> · ' + escapeHtml(period) + '</span>' +
+        '<button type="button" class="kx-back" data-explore="close">Back to summary</button>' +
+        '</div>' +
+        '<div class="wl-bd">' +
+        '<div class="kx-top"><h1 class="kx-h">' + escapeHtml(headline) + '</h1>' +
+        (entries.length ? '<div class="kx-chips" role="group" aria-label="Filter by proof">' + chips + '</div>' : '') + '</div>' +
+        (kinds.length > 1 ? '<div class="kx-cats" role="group" aria-label="Focus one kind">' + cats + '</div>' : '') +
+        '<div class="kx-list">' + (groups || '<p class="kx-empty">Nothing matches this filter.</p>') +
+        (allMet.length ? '<button type="button" class="kx-more" data-filter="all">All ' + escapeHtml(allMet.join(', ')) + ' verified · show all</button>' : '') +
+        '</div>' +
+        '</div>' +
+        (refreshing
+          ? '<ox-footer variant="reads" state="refreshing" heading="Refreshing" detail="keeps what you see"></ox-footer>'
+          : refreshFailed
+          ? '<ox-footer variant="reads" state="failed" heading="Couldn’t refresh" detail="' + escapeHtml(asOf ? 'showing what we had at ' + asOf : 'showing the last copy') + '" action-label="Retry"></ox-footer>'
+          : '<ox-footer variant="reads" state="fresh" heading="' + escapeHtml(asOf ? 'As of ' + asOf : 'From this request') + '" detail="' +
+            escapeHtml('showing ' + shown + ' of ' + entries.length) + '" action-label="Open Work Ledger ↗"></ox-footer>') +
+        '</article>';
+    };
+
+    var requestMode = function (mode) {
+      var runtime = window.OrgXWidgetRuntime;
+      if (!runtime || !runtime.requestDisplayMode) return;
+      // The host may refuse or not support it; the explorer works inline too.
+      Promise.resolve().then(function () { return runtime.requestDisplayMode(mode); }).catch(function () {});
+    };
+
+    var setView = function (next) {
+      if (view === next) return;
+      view = next;
+      if (next === 'explore') explore = { filter: null, kind: null, open: {} };
+      requestMode(next === 'explore' ? 'fullscreen' : 'inline');
+      render(lastPayload);
+      var focus = document.querySelector(next === 'explore' ? '.kx-back' : '.wl-explore');
+      if (focus && focus.focus) focus.focus();
+    };
+
+    // Bound to this widget's own root, so a remount never answers twice.
+    document.getElementById('content').addEventListener('click', function (event) {
+      var target = event.target && event.target.closest ? event.target.closest('button') : null;
+      if (!target) return;
+      var toggle = target.getAttribute('data-explore');
+      if (toggle) {
+        setView(toggle === 'open' ? 'explore' : 'summary');
+        return;
+      }
+      if (view !== 'explore') return;
+      var filter = target.getAttribute('data-filter');
+      var kind = target.getAttribute('data-kind');
+      var fold = target.getAttribute('data-fold');
+      if (filter) explore.filter = filter;
+      else if (kind) explore.kind = explore.kind === kind ? null : kind;
+      else if (fold) explore.open[fold] = !explore.open[fold];
+      else return;
+      var key = filter ? '[data-filter="' + filter + '"]' : kind ? '[data-kind="' + kind + '"]' : '[data-fold="' + fold + '"]';
+      render(lastPayload);
+      var again = document.querySelector('.wl ' + key);
+      if (again && again.focus) again.focus();
+    });
+
     var footerFor = function (chronicle, period) {
       var asOf = shortTime(chronicle.generatedAt);
       if (refreshing) {
@@ -522,6 +989,10 @@
         if (state === 'loading' || !state) return;
       }
       lastPayload = payload;
+      if (view === 'explore' && payload && payload.chronicle && typeof payload.chronicle === 'object') {
+        content.innerHTML = renderExplorer(payload.chronicle);
+        return;
+      }
       var chronicle = payload && payload.chronicle && typeof payload.chronicle === 'object'
         ? payload.chronicle
         : null;
@@ -598,15 +1069,8 @@
           : '') +
         (events.length
           ? '<div class="wl-section"><p class="wl-lbl">Latest entries</p><div class="wl-rows" role="list">' +
-            events.slice(0, INLINE_ROWS).map(function (event) {
-              return row({
-                class: 'wl-entry',
-                status: entryStatus(event.kind),
-                label: String(event.title || '') + (event.repeats > 1 ? ' ×' + event.repeats : ''),
-                detail: [event.sourceLabel, shortDate(event.occurredAt)].filter(Boolean).join(' · ')
-              });
-            }).join('') +
-            '</div>' + moreLine(events.length - INLINE_ROWS, 'entry', 'entries') + '</div>'
+            events.slice(0, INLINE_ROWS).map(function (event) { return entryRow(event, 'wl-entry'); }).join('') +
+            '</div>' + (events.length > INLINE_ROWS ? exploreButton(events) : '') + '</div>'
           : '') +
         (flywheel.length
           ? '<div class="wl-section"><p class="wl-lbl">Flywheel</p><ul class="wl-flywheel">' +

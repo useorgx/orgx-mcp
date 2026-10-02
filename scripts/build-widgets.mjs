@@ -65,6 +65,7 @@ const CANONICAL_PRIMARIES = {
   index: '17,24,39',
   'workspace-map': '191,255,0',
   'orgx-panel': '191,255,0',
+  'proof-receipt': '0,201,167',
 };
 
 // Widgets that are demo-only (gallery / preview) and therefore exempt
