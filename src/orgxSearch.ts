@@ -140,6 +140,8 @@ const SEARCH_ARG_KEYS = [
   'query',
   'type',
   'status',
+  'created_from',
+  'created_to',
   'initiative_id',
   'workspace_id',
   'limit',

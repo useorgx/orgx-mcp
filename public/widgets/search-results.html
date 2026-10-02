@@ -800,20 +800,43 @@
     var filters = { type: '', from: '', to: '' };
     var filterError = '';
     var filterOpen = false;
-    window.applySearchFilters = function(event) {
+    var searchRequest = null;
+    window.applySearchFilters = async function(event) {
       event.preventDefault();
+      if (retrying) return;
       var form = event.currentTarget;
       var next = { type: form.elements.namedItem('type').value, from: form.elements.namedItem('from').value, to: form.elements.namedItem('to').value };
-      filterError = next.from && next.to && new Date(next.from) > new Date(next.to) ? 'Choose an end time after the start time.' : '';
-      if (!filterError) filters = next;
+      filterError = next.from && next.to && new Date(next.from) > new Date(next.to) ? 'Choose an end time at or after the start time.' : '';
       filterOpen = true;
-      currentPage = 1;
-      render();
+      if (filterError) { render(); return; }
+      var original = searchRequest || (window.openai && window.openai.toolInput);
+      if (!original || typeof original !== 'object') { filterError = 'Ask ChatGPT to search with a type and creation-date range.'; render(); return; }
+      var args = Object.assign({}, original);
+      delete args.offset; delete args.cursor; delete args.created_from; delete args.created_to; delete args.type;
+      if (args.scope && args.scope !== 'entities' && args.scope !== 'work_ledger') delete args.scope;
+      if (next.type) args.type = next.type;
+      if (next.from) args.created_from = new Date(next.from).toISOString();
+      if (next.to) args.created_to = new Date(next.to).toISOString();
+      if (!args.type && !args.query) { filterError = 'Choose a type to browse records.'; render(); return; }
+      filters = next; searchRequest = args; retrying = true; currentPage = 1; render();
+      try {
+        var result = await callTool('orgx_search', args);
+        var payload = window.OrgXWidgetRuntime.extractSearchWidgetData(result);
+        if (!payload || payload.error || result.isError || !Array.isArray(payload.results)) throw new Error('incomplete_response');
+        applyBootPayload(payload);
+      } catch (_) { window.OrgXWidgetRuntime.reportSearchWidgetEvent('page_error'); filterError = 'Filtered search is unavailable. Your previous results are still shown. Try again.'; }
+      finally { retrying = false; render(); }
     };
-    window.clearSearchFilters = function() { filters = { type: '', from: '', to: '' }; filterError = ''; currentPage = 1; render(); };
+    window.clearSearchFilters = function() {
+      var form = document.querySelector('.sr-filters').closest('form');
+      form.elements.namedItem('type').value = '';
+      form.elements.namedItem('from').value = '';
+      form.elements.namedItem('to').value = '';
+      window.applySearchFilters({ preventDefault: function() {}, currentTarget: form });
+    };
     window.retrySearch = async function() {
       if (retrying) return;
-      var args = window.openai && window.openai.toolInput;
+      var args = searchRequest || (window.openai && window.openai.toolInput);
       if (!args || typeof args !== 'object') {
         try { await window.OrgXWidgetRuntime.sendFollowUpMessage('Retry the most recent OrgX search using its original query and filters.'); }
         catch (_) { bootError = 'Ask ChatGPT to retry this search. This card cannot start a request here.'; render(); }
@@ -830,25 +853,23 @@
       finally { retrying = false; render(); }
     };
 
-    var filterResults = function(results) {
-      return results.filter(function(item) {
-        if (filters.type && item.type !== filters.type) return false;
-        var at = item.at ? new Date(item.at).getTime() : NaN;
-        if ((filters.from || filters.to) && !Number.isFinite(at)) return false;
-        return (!filters.from || at >= new Date(filters.from).getTime()) && (!filters.to || at <= new Date(filters.to).getTime());
-      });
-    };
+    var filterResults = function(results) { return results; };
     var searchTools = function(results) {
-      var types = Array.from(new Set(results.map(r => r.type))).sort();
-      return `<details class="sr-tools" ${filterOpen ? 'open' : ''} ontoggle="filterOpen=this.open"><summary>Filter loaded results</summary>
-        <p>Type and updated date/time narrow the results already loaded. Load more results to include another page. Times use your device’s timezone.</p>
+      if (!searchRequest && window.openai && window.openai.toolInput) {
+        searchRequest = Object.assign({}, window.openai.toolInput);
+        var localTime = function(value) { var d = new Date(value); return Number.isFinite(d.getTime()) ? new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''; };
+        filters = { type: searchRequest.type || '', from: searchRequest.created_from ? localTime(searchRequest.created_from) : '', to: searchRequest.created_to ? localTime(searchRequest.created_to) : '' };
+      }
+      var types = ['initiative', 'workstream', 'milestone', 'task', 'decision', 'artifact', 'objective', 'project', 'workspace'];
+      return `<details class="sr-tools" ${filterOpen ? 'open' : ''} ontoggle="filterOpen=this.open"><summary>Search filters</summary>
+        <p>Type and creation dates start a new search, before ranking and result limits. Dates include both endpoints and use your device’s time zone. Retention limits still apply.</p>
         <form onsubmit="applySearchFilters(event)"><div class="sr-filters">
           <label>Type<select name="type"><option value="">All types</option>${types.map(type => `<option value="${escapeHtml(type)}" ${filters.type === type ? 'selected' : ''}>${escapeHtml(kindLabel(type))}</option>`).join('')}</select></label>
-          <label>Updated from<input name="from" type="datetime-local" value="${escapeHtml(filters.from)}"></label>
-          <label>Updated to<input name="to" type="datetime-local" value="${escapeHtml(filters.to)}"></label>
-        </div><div class="sr-filter-actions"><button class="page-btn" type="submit">Apply filters</button><button class="page-btn" type="button" onclick="clearSearchFilters()">Clear</button></div>
+          <label>Created from<input name="from" type="datetime-local" value="${escapeHtml(filters.from)}"></label>
+          <label>Created to<input name="to" type="datetime-local" value="${escapeHtml(filters.to)}"></label>
+        </div><div class="sr-filter-actions"><button class="page-btn" type="submit" ${retrying ? 'disabled' : ''}>Apply filters</button><button class="page-btn" type="button" onclick="clearSearchFilters()">Clear</button></div>
         ${filterError ? `<p role="alert">${escapeHtml(filterError)}</p>` : ''}</form></details>
-        <details class="sr-tools"><summary>How search works</summary><p>A phrase searches organizational memory. Ask for an entity type, status, workspace or initiative to narrow the request. Typed searches can load more pages; memory searches return a ranked selection. Date/time controls here filter loaded results.</p></details>`;
+        <details class="sr-tools"><summary>How search works</summary><p>A phrase searches organizational memory. Ask for an entity type, status, workspace or initiative to narrow the request. Typed searches can load more pages; memory searches return a ranked selection. Creation-date controls apply to the full search before results are loaded.</p></details>`;
     };
     window.loadMoreResults = async () => {
       if (loadingMore || !data || !data.next_call || data.next_call.tool !== 'orgx_search') return;

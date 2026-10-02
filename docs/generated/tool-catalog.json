@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-02T01:30:22.456Z",
-  "sourceHash": "1b4de35e986d46a1",
+  "generatedAt": "2026-10-02T13:26:08.841Z",
+  "sourceHash": "9bd186394fd2072e",
   "version": "1.0.0",
   "totalTools": 92,
   "categories": [
@@ -3673,6 +3673,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
+          "created_from": {
+            "type": "string",
+            "description": "Inclusive creation timestamp, ISO 8601 with a timezone. Applied before ranking/pagination."
+          },
+          "created_to": {
+            "type": "string",
+            "description": "Inclusive creation timestamp, ISO 8601 with a timezone. Retention rules still apply."
+          },
           "query": {
             "type": "string",
             "description": "Search query for memory or title/text matching"
@@ -4359,6 +4367,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
+          "created_from": {
+            "type": "string",
+            "description": "Inclusive ISO creation timestamp with timezone. Retention limits still apply."
+          },
+          "created_to": {
+            "type": "string",
+            "description": "Inclusive ISO creation timestamp with timezone. Applied before ranking and result limits."
+          },
           "query": {
             "type": "string",
             "minLength": 1,

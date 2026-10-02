@@ -117,28 +117,27 @@ describe('search delivery through the real ChatGPT widget', () => {
     expect(dom.window.document.querySelector('.sr-hd ox-glyph[kind="question"]')).toBeNull();
     expect(text()).toContain('How search works');
   });
-  it('filters loaded rows by type and an inclusive date/time range, and can clear filters', async () => {
-    boot({ results: [
-      { title: 'Recent task', type: 'task', updated_at: '2026-10-02T09:00:00' },
-      { title: 'Old task', type: 'task', updated_at: '2026-09-01T09:00:00' },
-      { title: 'Recent initiative', type: 'initiative', updated_at: '2026-10-02T09:00:00' },
-      { title: 'Undated task', type: 'task' },
-    ] });
+  it('starts a new filtered search with inclusive ISO bounds and resets pagination', async () => {
+    const callTool = vi.fn().mockResolvedValue({ structuredContent: { results: [{ title: 'Filtered task', type: 'task' }] } });
+    boot({ results: [{ title: 'Old task', type: 'task' }] }, undefined, callTool);
+    (dom.window as any).openai.toolInput = { query: 'launch', type: 'initiative', cursor: 'old-page', offset: 2, limit: 1 };
     await vi.advanceTimersByTimeAsync(250);
     const form = dom.window.document.querySelector('form')!;
     (form.elements.namedItem('type') as HTMLSelectElement).value = 'task';
     (form.elements.namedItem('from') as HTMLInputElement).value = '2026-10-02T09:00';
     (form.elements.namedItem('to') as HTMLInputElement).value = '2026-10-02T09:00';
-    // outside-only jsdom does not evaluate HTML event-handler attributes.
-    form.addEventListener('submit', (dom.window as any).applySearchFilters);
-    form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
-    expect(text()).toContain('Recent task');
-    expect(text()).not.toContain('Old task');
-    expect(text()).not.toContain('Recent initiative');
-    expect(text()).not.toContain('Undated task');
-    expect(text()).toContain('1 of 4 loaded');
-    (dom.window as any).clearSearchFilters();
-    expect(text()).toContain('Old task');
+    await (dom.window as any).applySearchFilters({ preventDefault() {}, currentTarget: form });
+    expect(callTool).toHaveBeenCalledWith('orgx_search', { query: 'launch', type: 'task', limit: 1,
+      created_from: new Date('2026-10-02T09:00').toISOString(), created_to: new Date('2026-10-02T09:00').toISOString() });
+    expect(text()).toContain('Filtered task'); expect(text()).not.toContain('Old task');
+  });
+  it('preserves loaded results when the filtered request fails', async () => {
+    const callTool = vi.fn().mockRejectedValue(new Error('transport unavailable'));
+    boot(payload, undefined, callTool); (dom.window as any).openai.toolInput = { query: 'launch' };
+    await vi.advanceTimersByTimeAsync(250);
+    const form = dom.window.document.querySelector('form')!;
+    await (dom.window as any).applySearchFilters({ preventDefault() {}, currentTarget: form });
+    expect(text()).toContain('Launch plan'); expect(text()).toContain('previous results are still shown');
   });
   it('retries the original request after a delivery timeout and renders the recovered result', async () => {
     const callTool = vi.fn().mockResolvedValue({ structuredContent: payload });
