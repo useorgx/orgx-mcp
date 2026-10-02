@@ -5,6 +5,7 @@
 
   var protocol = null;
   var bridge = null;
+  var chatGptActionsFallback = false;
   var explicitTheme = null;
   var themeSource = 'system';
 
@@ -160,6 +161,11 @@
       }
       if (value.data && typeof value.data === 'object' && !Array.isArray(value.data)) {
         value = extractStructuredWidgetData(value.data, true);
+        continue;
+      }
+      var nested = value.result || value.output || value.toolOutput;
+      if (nested && nested !== value) {
+        value = extractStructuredWidgetData(nested, true);
         continue;
       }
       break;
@@ -662,7 +668,10 @@
       reportSize();
     }
 
+    var chatGptStarted = false;
     function startChatGPT() {
+      if (chatGptStarted) return;
+      chatGptStarted = true;
       applyTheme(global.openai && global.openai.theme, 'host');
       var initialOutput = global.openai && global.openai.toolOutput;
       if (initialOutput !== null && initialOutput !== undefined || options.getData) receiveResult(initialOutput);
@@ -693,6 +702,12 @@
       startChatGPT();
     } else if (activeProtocol === 'mcp-apps-sdk' || activeProtocol === 'mcp-apps') {
       render(null);
+      // Some ChatGPT clients deliver globals but never complete the SDK
+      // handshake; others deliver only SDK notifications. Observe both.
+      if (chatGptFallback && options.observeChatGPTGlobals === true) {
+        chatGptActionsFallback = true;
+        startChatGPT();
+      }
       var activeBridge = getBridge(activeProtocol === 'mcp-apps-sdk');
       activeBridge.toolResultCallback = function onToolResult(result) {
         receiveResult(result);
@@ -747,7 +762,7 @@
     if (getProtocol() === 'chatgpt') {
       meta = global.openai && global.openai.toolResponseMetadata;
     } else {
-      meta = lastResultMeta;
+      meta = lastResultMeta || (global.openai && global.openai.toolResponseMetadata);
     }
     if (!meta || typeof meta !== 'object') return null;
     return key ? (meta[key] === undefined ? null : meta[key]) : meta;
@@ -770,7 +785,7 @@
 
   function callTool(name, args) {
     var activeProtocol = getProtocol();
-    if (activeProtocol === 'chatgpt') {
+    if (activeProtocol === 'chatgpt' || (chatGptActionsFallback && (!bridge || !bridge.connected) && global.openai && global.openai.callTool)) {
       if (!global.openai || !global.openai.callTool) return Promise.reject(hostUnavailableError(name));
       return Promise.resolve(global.openai.callTool(name, args || {})).then(rejectToolFailure);
     }

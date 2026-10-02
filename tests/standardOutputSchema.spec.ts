@@ -18,6 +18,23 @@ async function connect(server: McpServer) {
 }
 
 describe('truthful tool output schemas', () => {
+  it('delivers search widget metadata through the actual MCP output validator', async () => {
+    const server = new McpServer({ name: 'orgx-search-delivery', version: '1.0.0' });
+    installToolResultGuidanceWrapper(server, null, undefined, async () => ({ meta: { endpoint: 'https://mcp.useorgx.com/telemetry/search-widget', grant: 'test-only' } }));
+    server.registerTool('orgx_search', { inputSchema: {} }, async () => ({
+      content: [{ type: 'text' as const, text: 'One result' }],
+      structuredContent: { _v2_tool: 'orgx_search', type: 'initiative', search_mode: 'typed_collection', query: null, count: 1,
+        results: [{ id: 'i-1', title: 'Launch plan', type: 'initiative' }], pagination: { limit: 1, has_more: false }, next_call: null },
+    }));
+    const client = await connect(server);
+    try {
+      const result = await client.callTool({ name: 'orgx_search', arguments: {} });
+      expect(result.isError).not.toBe(true);
+      expect(result.structuredContent).toMatchObject({ results: [{ title: 'Launch plan' }] });
+      expect(result.structuredContent).not.toHaveProperty('search_widget_health');
+      expect(result._meta).toHaveProperty('orgx/searchPayload');
+    } finally { await Promise.allSettled([client.close(), server.close()]); }
+  });
   it('does not invent an outputSchema for a tool without an exact contract', async () => {
     const server = new McpServer({
       name: 'orgx-no-catch-all-output-schema',
