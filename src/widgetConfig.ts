@@ -265,8 +265,14 @@ export const MCP_APPS_SHARED_COMPONENT_PATHS: ReadonlyArray<string> = [
   // OrgX design kit (vendored from @useorgx/orgx-ui-kit by
   // scripts/sync-ui-kit.mjs). Widgets load ox-tokens.css first so their own
   // theme still wins for shared names until each widget is rebuilt on the kit.
+  // Elements: either ox-elements.js (all) or ox-elements-core.js followed by
+  // the add-ons the widget uses; scripts/build-widgets.mjs checks the choice.
   'shared/kit/ox-tokens.css',
   'shared/kit/ox-elements.js',
+  'shared/kit/ox-elements-core.js',
+  'shared/kit/ox-elements-footer.js',
+  'shared/kit/ox-elements-glyph.js',
+  'shared/kit/ox-elements-avatar.js',
   'shared/agent-identity.js',
   'shared/tokens.css',
   'shared/widget-theme.css',

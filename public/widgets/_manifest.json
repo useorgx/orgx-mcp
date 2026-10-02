@@ -10,6 +10,10 @@
     "shared/icons.js",
     "shared/interaction-kit.css",
     "shared/interaction-kit.js",
+    "shared/kit/ox-elements-avatar.js",
+    "shared/kit/ox-elements-core.js",
+    "shared/kit/ox-elements-footer.js",
+    "shared/kit/ox-elements-glyph.js",
     "shared/kit/ox-elements.js",
     "shared/kit/ox-tokens.css",
     "shared/live-machine.js",
@@ -39,13 +43,14 @@
     "work-ledger": "0,201,167",
     "index": "17,24,39",
     "workspace-map": "191,255,0",
-    "orgx-panel": "191,255,0"
+    "orgx-panel": "191,255,0",
+    "proof-receipt": "0,201,167"
   },
   "widgets": {
     "agent-status": {
       "file": "public/widgets/agent-status.html",
-      "bytes": 62564,
-      "hash": "12ff884f8466",
+      "bytes": 62687,
+      "hash": "13ac68e551d5",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -54,7 +59,9 @@
         "shared/components/liveness-indicator.js",
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
-        "shared/kit/ox-elements.js",
+        "shared/kit/ox-elements-avatar.js",
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js",
         "shared/kit/ox-tokens.css",
         "shared/live-machine.js",
         "shared/live-panel.js",
@@ -67,6 +74,17 @@
         "shared/widget-theme.css"
       ],
       "protocolBridge": "official-sdk",
+      "kitElements": [
+        "ox-state-chip",
+        "ox-attention-line",
+        "ox-footer",
+        "ox-avatar"
+      ],
+      "kitBundles": [
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js",
+        "shared/kit/ox-elements-avatar.js"
+      ],
       "demoOnly": false
     },
     "artifact-review": {
@@ -89,6 +107,16 @@
         "shared/widget-theme.css"
       ],
       "protocolBridge": "official-sdk",
+      "kitElements": [
+        "ox-state-chip",
+        "ox-receipt-row",
+        "ox-footer",
+        "ox-glyph",
+        "ox-avatar"
+      ],
+      "kitBundles": [
+        "shared/kit/ox-elements.js"
+      ],
       "demoOnly": false
     },
     "decisions": {
@@ -111,6 +139,16 @@
         "shared/widget-theme.css"
       ],
       "protocolBridge": "official-sdk",
+      "kitElements": [
+        "ox-attention-line",
+        "ox-receipt-row",
+        "ox-footer",
+        "ox-glyph",
+        "ox-avatar"
+      ],
+      "kitBundles": [
+        "shared/kit/ox-elements.js"
+      ],
       "demoOnly": false
     },
     "entity-card": {
@@ -133,12 +171,22 @@
         "shared/widget-theme.css"
       ],
       "protocolBridge": "official-sdk",
+      "kitElements": [
+        "ox-state-chip",
+        "ox-receipt-row",
+        "ox-footer",
+        "ox-glyph",
+        "ox-avatar"
+      ],
+      "kitBundles": [
+        "shared/kit/ox-elements.js"
+      ],
       "demoOnly": false
     },
     "index": {
       "file": "public/widgets/index.html",
-      "bytes": 25880,
-      "hash": "2530580ec644",
+      "bytes": 26200,
+      "hash": "1cf43699ea33",
       "primaryRgb": "17,24,39",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -147,6 +195,8 @@
         "shared/widget-theme.css"
       ],
       "protocolBridge": "standalone",
+      "kitElements": [],
+      "kitBundles": [],
       "demoOnly": true
     },
     "initiative-pulse": {
@@ -172,6 +222,16 @@
         "shared/widget-theme.css"
       ],
       "protocolBridge": "official-sdk",
+      "kitElements": [
+        "ox-state-chip",
+        "ox-attention-line",
+        "ox-footer",
+        "ox-glyph",
+        "ox-avatar"
+      ],
+      "kitBundles": [
+        "shared/kit/ox-elements.js"
+      ],
       "demoOnly": false
     },
     "morning-brief": {
@@ -196,17 +256,29 @@
         "shared/widget-theme.css"
       ],
       "protocolBridge": "official-sdk",
+      "kitElements": [
+        "ox-state-chip",
+        "ox-attention-line",
+        "ox-receipt-row",
+        "ox-footer",
+        "ox-glyph",
+        "ox-avatar"
+      ],
+      "kitBundles": [
+        "shared/kit/ox-elements.js"
+      ],
       "demoOnly": false
     },
     "orgx-panel": {
       "file": "public/widgets/orgx-panel.html",
-      "bytes": 68007,
-      "hash": "ae0e66d0f458",
+      "bytes": 68071,
+      "hash": "b6b2dcde3166",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
-        "shared/kit/ox-elements.js",
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js",
         "shared/kit/ox-tokens.css",
         "shared/mcp-apps-sdk.umd.js",
         "shared/openai-extensions.js",
@@ -214,16 +286,28 @@
         "shared/widget-theme.css"
       ],
       "protocolBridge": "official-sdk",
+      "kitElements": [
+        "ox-state-chip",
+        "ox-attention-line",
+        "ox-receipt-row",
+        "ox-footer"
+      ],
+      "kitBundles": [
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js"
+      ],
       "demoOnly": false
     },
     "plan-session-live": {
       "file": "public/widgets/plan-session-live.html",
-      "bytes": 47579,
-      "hash": "652b88ac9f05",
+      "bytes": 47701,
+      "hash": "709fe3ad4c45",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/interaction-kit.css",
-        "shared/kit/ox-elements.js",
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js",
+        "shared/kit/ox-elements-glyph.js",
         "shared/kit/ox-tokens.css",
         "shared/live-machine.js",
         "shared/live-panel.js",
@@ -235,6 +319,41 @@
         "shared/widget-theme.css"
       ],
       "protocolBridge": "official-sdk",
+      "kitElements": [
+        "ox-footer",
+        "ox-glyph"
+      ],
+      "kitBundles": [
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js",
+        "shared/kit/ox-elements-glyph.js"
+      ],
+      "demoOnly": false
+    },
+    "proof-receipt": {
+      "file": "public/widgets/proof-receipt.html",
+      "bytes": 29304,
+      "hash": "6c4f03c80560",
+      "primaryRgb": "0,201,167",
+      "sharedRefs": [
+        "shared/agent-identity.js",
+        "shared/kit/ox-elements.js",
+        "shared/kit/ox-tokens.css",
+        "shared/mcp-apps-sdk.umd.js",
+        "shared/widget-foundation.css",
+        "shared/widget-runtime.js",
+        "shared/widget-theme.css"
+      ],
+      "protocolBridge": "official-sdk",
+      "kitElements": [
+        "ox-receipt-row",
+        "ox-footer",
+        "ox-glyph",
+        "ox-avatar"
+      ],
+      "kitBundles": [
+        "shared/kit/ox-elements.js"
+      ],
       "demoOnly": false
     },
     "scaffold-streaming": {
@@ -248,6 +367,8 @@
         "shared/widget-theme.css"
       ],
       "protocolBridge": "official-sdk",
+      "kitElements": [],
+      "kitBundles": [],
       "demoOnly": true
     },
     "scaffolded-initiative": {
@@ -270,15 +391,27 @@
         "shared/widget-theme.css"
       ],
       "protocolBridge": "official-sdk",
+      "kitElements": [
+        "ox-state-chip",
+        "ox-receipt-row",
+        "ox-footer",
+        "ox-glyph",
+        "ox-avatar"
+      ],
+      "kitBundles": [
+        "shared/kit/ox-elements.js"
+      ],
       "demoOnly": false
     },
     "search-results": {
       "file": "public/widgets/search-results.html",
-      "bytes": 56485,
-      "hash": "b0a191096f48",
+      "bytes": 56607,
+      "hash": "253574b5da7c",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
-        "shared/kit/ox-elements.js",
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js",
+        "shared/kit/ox-elements-glyph.js",
         "shared/kit/ox-tokens.css",
         "shared/mcp-apps-sdk.umd.js",
         "shared/widget-foundation.css",
@@ -286,12 +419,22 @@
         "shared/widget-theme.css"
       ],
       "protocolBridge": "official-sdk",
+      "kitElements": [
+        "ox-attention-line",
+        "ox-footer",
+        "ox-glyph"
+      ],
+      "kitBundles": [
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js",
+        "shared/kit/ox-elements-glyph.js"
+      ],
       "demoOnly": false
     },
     "task-spawned": {
       "file": "public/widgets/task-spawned.html",
-      "bytes": 39280,
-      "hash": "6a2f15367df4",
+      "bytes": 51658,
+      "hash": "514598bc77e5",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -309,17 +452,29 @@
         "shared/widget-theme.css"
       ],
       "protocolBridge": "official-sdk",
+      "kitElements": [
+        "ox-state-chip",
+        "ox-receipt-row",
+        "ox-footer",
+        "ox-glyph",
+        "ox-avatar"
+      ],
+      "kitBundles": [
+        "shared/kit/ox-elements.js"
+      ],
       "demoOnly": false
     },
     "work-ledger": {
       "file": "public/widgets/work-ledger.html",
-      "bytes": 25525,
-      "hash": "b3f70fc9e369",
+      "bytes": 45556,
+      "hash": "5f1098d03d31",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
-        "shared/kit/ox-elements.js",
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js",
+        "shared/kit/ox-elements-glyph.js",
         "shared/kit/ox-tokens.css",
         "shared/live-machine.js",
         "shared/live-panel.js",
@@ -330,17 +485,29 @@
         "shared/widget-theme.css"
       ],
       "protocolBridge": "official-sdk",
+      "kitElements": [
+        "ox-attention-line",
+        "ox-receipt-row",
+        "ox-footer",
+        "ox-glyph"
+      ],
+      "kitBundles": [
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js",
+        "shared/kit/ox-elements-glyph.js"
+      ],
       "demoOnly": false
     },
     "workspace-map": {
       "file": "public/widgets/workspace-map.html",
-      "bytes": 22457,
-      "hash": "cb8d8af75df8",
+      "bytes": 22521,
+      "hash": "816ab6c5a4dc",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
-        "shared/kit/ox-elements.js",
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js",
         "shared/kit/ox-tokens.css",
         "shared/live-machine.js",
         "shared/live-panel.js",
@@ -351,6 +518,13 @@
         "shared/widget-theme.css"
       ],
       "protocolBridge": "official-sdk",
+      "kitElements": [
+        "ox-footer"
+      ],
+      "kitBundles": [
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js"
+      ],
       "demoOnly": false
     }
   }

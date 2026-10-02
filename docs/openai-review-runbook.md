@@ -81,6 +81,16 @@ workspace argument. Approve and Send back in the panel call
 `orgx_widget_decide` with a single-use token from the result `_meta`, which
 the model never sees.
 
+`orgx_submit_receipt` renders the Receipt widget
+(`ui://widget/proof-receipt.html`): how far the proof got (recorded,
+evidence, verified, outcome), the attached evidence, what is missing before it
+counts as proof, and the next move. Its result carries `proof`, a bounded echo
+of the submitted input only (receipt type, status, anchor ids, artifact and
+agent type, stated outcome, model tier, and at most twelve evidence rows with
+http(s) URLs), so the widget never infers what was claimed. The widget is
+read-only; evidence and the anchored work open through the host, and only on
+the declared OrgX and GitHub origins.
+
 The consolidated `orgx_decide` and `approve_agent_work` routers also use
 `readOnlyHint: false`, `openWorldHint: false`, and `destructiveHint: false`.
 Their create/remember/list paths can write private state or record usage, while
