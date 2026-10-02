@@ -52,9 +52,11 @@ describe("OrgX compact widget redesign", () => {
     expect(html).toContain("UUID_RE.test(runId)");
   });
 
-  it("compresses search into one leading match and quiet continuation rows", () => {
+  it("draws search rows uniformly, with quiet continuation rows", () => {
     const html = widget("search-results");
-    expect(html).toContain(".result-card:first-child");
+    // No permanently outlined first row and no hover that sticks on touch.
+    expect(html).not.toContain(".result-card:first-child");
+    expect(html).toContain("@media (hover: hover)");
     expect(html).toContain("-webkit-line-clamp: 2");
     expect(html).toContain("Organizational memory is temporarily unavailable");
     expect(html).toContain("completed launch proof");
