@@ -450,6 +450,18 @@ export const WIDGET_OUTPUT_SCHEMAS = {
         low: z.number(),
       }),
       message: z.string(),
+      // The app adds acceptance-ledger proof on the widget read channel.
+      // Failed reads and bounded counts are explicitly nullable.
+      proof: z.object({
+        last_accepted: z.object({
+          artifact_id: z.string(),
+          title: z.string(),
+          accepted_at: z.string(),
+          accepted_by: z.enum(['you', 'workspace_member']),
+          url: z.string(),
+        }).strict().nullable(),
+        completed_unaccepted: z.number().nullable(),
+      }).strict().nullable().optional(),
     })
     .strict(),
 
