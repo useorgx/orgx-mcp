@@ -22,6 +22,42 @@ import {
   workspaceInfluenceSchema,
 } from './presentation';
 
+const decideActionSchema = z.enum(['approve', 'reject']);
+const panelItemKindSchema = z.enum(['decision', 'approval', 'action']);
+/** The app's per-item widget_actions contract, as the panel carries it (clipped). */
+const panelWidgetActionsSchema = z
+  .object({
+    kind: panelItemKindSchema,
+    actions: z.array(decideActionSchema),
+    labels: z.object({ approve: z.string(), reject: z.string() }).strict(),
+    reject_requires_reason: z.boolean(),
+    answer: z
+      .object({ required_for: z.array(decideActionSchema), max_length: z.number() })
+      .strict()
+      .nullable(),
+    selection: z
+      .object({
+        mode: z.enum(['single', 'multiple']),
+        options: z.array(
+          z
+            .object({
+              id: z.string(),
+              label: z.string(),
+              description: z.string().nullable(),
+              implied_action: decideActionSchema.nullable(),
+              requires_reason: z.boolean(),
+            })
+            .strict()
+        ),
+        min: z.number(),
+        max: z.number(),
+        required_for: z.array(decideActionSchema),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict();
+
 export const WIDGET_OUTPUT_SCHEMAS = {
   approve_decision: z
     .object({
@@ -53,8 +89,10 @@ export const WIDGET_OUTPUT_SCHEMAS = {
   orgx_widget_decide: z
     .object({
       decision_id: z.string().optional(),
+      kind: z.enum(['decision', 'approval', 'action']).optional(),
       action: z.enum(['approved', 'rejected']).optional(),
       status: z.string().optional(),
+      route: z.string().optional(),
       surface: z.string().optional(),
       option_id: z.string().nullable().optional(),
       option_ids: z.array(z.string()).nullable().optional(),
@@ -104,6 +142,8 @@ export const WIDGET_OUTPUT_SCHEMAS = {
             blocked: z.boolean(),
             decide_in_orgx_reason: z.string().nullable(),
             option_count: z.number(),
+            kind: panelItemKindSchema,
+            widget_actions: panelWidgetActionsSchema.nullable(),
             url: z.string(),
           })
           .strict()
@@ -112,6 +152,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
         .object({
           type: z.literal('decision'),
           id: z.string(),
+          kind: panelItemKindSchema,
           version: z.string(),
           question: z.string(),
           urgency: z.enum(['low', 'medium', 'high', 'critical']),
@@ -136,17 +177,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
           decide_in_orgx_reason: z.string().nullable(),
           options: z.array(z.object({ id: z.string(), label: z.string() }).strict()),
           multiselect: z.boolean(),
-          widget_actions: z
-            .array(
-              z
-                .object({
-                  kind: z.enum(['approve', 'reject', 'option']),
-                  label: z.string(),
-                  option_id: z.string().nullable(),
-                })
-                .strict()
-            )
-            .nullable(),
+          widget_actions: panelWidgetActionsSchema.nullable(),
           url: z.string(),
         })
         .strict()

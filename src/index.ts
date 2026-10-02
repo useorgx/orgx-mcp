@@ -50,6 +50,7 @@ import {
   WIDGET_APPROVAL_META_KEY,
   WIDGET_APPROVAL_SOURCE_TOOLS,
   splitWidgetApprovalMeta,
+  widgetDecideFailure,
 } from './widgetApprovalMeta';
 import { registerPanelSurface, type PanelSurfaceHost } from './panelSurface';
 import {
@@ -3513,6 +3514,11 @@ export class OrgXMcp extends McpAgent<
               resolvedToolId === 'approve_decision' ? 'approve' : 'reject'
             );
             return this.toolError(required.message, required.options);
+          }
+          if (resolvedToolId === 'widget_decide') {
+            // The widget maps each refusal code to its own copy and re-renders
+            // validation errors from the returned widget_actions.
+            return this.toolError(errorMessage, widgetDecideFailure(errorMessage, result.data));
           }
           if (isWidgetTool) {
             return this.widgetToolError(
