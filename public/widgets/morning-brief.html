@@ -5,897 +5,181 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Morning Brief - OrgX</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='12' fill='%2300D4AA'/%3E%3Cg stroke='%2300D4AA' stroke-width='4' stroke-linecap='round'%3E%3Cpath d='M32 6v10'/%3E%3Cpath d='M32 48v10'/%3E%3Cpath d='M6 32h10'/%3E%3Cpath d='M48 32h10'/%3E%3Cpath d='M13 13l7 7'/%3E%3Cpath d='M44 44l7 7'/%3E%3Cpath d='M13 51l7-7'/%3E%3Cpath d='M44 20l7-7'/%3E%3C/g%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="shared/kit/ox-tokens.css" />
   <link rel="stylesheet" href="shared/tokens.css" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
+  <script src="shared/kit/ox-elements.js"></script>
+  <script src="shared/agent-identity.js"></script>
   <script src="shared/interaction-kit.js"></script>
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <style>
+    /* Canvas: F6 (digest now, events later) and F2 (calm). Surfaces, text and status
+       colors come from the kit tokens and the widget theme; this sheet lays the brief out. */
+    :root { --ox-primary-rgb: 0, 201, 167; }
 
-    :root,
-    :root[data-theme='light'] {
-      --ox-bg: #f8fafc;
-      --ox-panel: rgba(255, 255, 255, 0.96);
-      --ox-border: rgba(15, 23, 42, 0.08);
-      --ox-border-strong: rgba(15, 23, 42, 0.14);
-      --ox-text: #0f172a;
-      --ox-text-muted: #64748b;
-      --ox-text-dim: #94a3b8;
-      --ox-well-bg: rgba(241, 245, 249, 0.92);
-      --ox-well-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
-      --ox-shadow: 0 24px 48px -28px rgba(15, 23, 42, 0.18),
-        0 12px 28px -24px rgba(15, 23, 42, 0.18);
-      --ox-grid: rgba(15, 23, 42, 0.035);
+    /* The kit's primaries stay the needs-you amber inside this teal widget. */
+    ox-footer, ox-attention-line, ox-state-chip, ox-receipt-row, ox-glyph, ox-avatar {
+      --ox-primary: rgb(251, 191, 36);
     }
 
-    @media (prefers-color-scheme: dark) {
-      :root:not([data-theme='light']) {
-        --ox-bg: #02040a;
-        --ox-panel: rgba(10, 15, 22, 0.95);
-        --ox-border: rgba(255, 255, 255, 0.07);
-        --ox-border-strong: rgba(255, 255, 255, 0.14);
-        --ox-text: #f1f5f9;
-        --ox-text-muted: rgba(255, 255, 255, 0.46);
-        --ox-text-dim: rgba(255, 255, 255, 0.24);
-        --ox-well-bg: rgba(17, 24, 39, 0.72);
-        --ox-well-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-        --ox-shadow: 0 20px 50px -14px rgba(0, 0, 0, 0.6),
-          inset 0 1px 0 rgba(255, 255, 255, 0.04);
-        --ox-grid: rgba(255, 255, 255, 0.018);
-      }
-    }
-
-    :root[data-theme='dark'] {
-      --ox-bg: #02040a;
-      --ox-panel: rgba(10, 15, 22, 0.95);
-      --ox-border: rgba(255, 255, 255, 0.07);
-      --ox-border-strong: rgba(255, 255, 255, 0.14);
-      --ox-text: #f1f5f9;
-      --ox-text-muted: rgba(255, 255, 255, 0.46);
-      --ox-text-dim: rgba(255, 255, 255, 0.24);
-      --ox-well-bg: rgba(17, 24, 39, 0.72);
-      --ox-well-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-      --ox-shadow: 0 20px 50px -14px rgba(0, 0, 0, 0.6),
-        inset 0 1px 0 rgba(255, 255, 255, 0.04);
-      --ox-grid: rgba(255, 255, 255, 0.018);
-    }
-
-    :root {
-      --ox-primary: #00d4aa;
-      --ox-primary-rgb: 0, 201, 167;
-      --ox-warning: #fbbf24;
-      --ox-warning-rgb: 251, 191, 36;
-      --ox-danger: #f43f5e;
-      --ox-danger-rgb: 244, 63, 94;
-      --ox-lime: #d4ed31;
-      --ox-font: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
-      --ox-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
-      --brief-shell-max: 468px;
-      /* Settled UI / hover / press — route through the foundation's standard curve. */
-      --brief-ease: var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: var(--ox-font);
       background: var(--ox-bg);
       color: var(--ox-text);
-      padding: 28px 16px;
-      min-height: 100vh;
+      padding: 16px;
       -webkit-font-smoothing: antialiased;
-      position: relative;
+      overflow-x: hidden;
     }
 
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background:
-        radial-gradient(
-          ellipse 72% 52% at 50% -8%,
-          rgba(var(--ox-primary-rgb), 0.085),
-          transparent 68%
-        ),
-        linear-gradient(var(--ox-grid) 1px, transparent 1px),
-        linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px);
-      background-size: 100% 100%, 20px 20px, 20px 20px;
-      pointer-events: none;
-      z-index: -1;
-    }
+    button { font: inherit; color: inherit; }
 
-    .container {
-      max-width: var(--brief-shell-max);
-      margin: 0 auto;
-    }
+    .container { max-width: 640px; margin: 0 auto; }
 
-    @keyframes brief-enter {
-      from {
-        opacity: 0;
-        transform: translateY(14px) scale(0.985);
-        filter: blur(3px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-        filter: blur(0);
-      }
-    }
+    @keyframes briefIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .animate-in { animation: briefIn var(--ox-dur-medium, 220ms) var(--ox-ease-out, ease-out) both; }
 
-    @keyframes brief-breathe {
-      0%,
-      100% {
-        opacity: 1;
-        transform: scale(1);
-      }
-      50% {
-        opacity: 0.45;
-        transform: scale(0.82);
-      }
-    }
-
-    .animate-in {
-      opacity: 0;
-      /* Arriving content decelerates in — entry curve. */
-      animation: brief-enter var(--ox-dur-slower, 600ms)
-        var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) forwards;
-    }
-
-    /* Calm staggered entrance for brief sections + list items. */
-    .brief-stagger {
-      opacity: 0;
-      animation: brief-enter var(--ox-dur-slow, 400ms)
-        var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) forwards;
-      animation-delay: calc(var(--i, 0) * 60ms);
-    }
-
-    .brief-shell {
-      margin-bottom: 0;
-    }
-
+    .widget-shell-card { margin: 0; }
     .brief-shell .ox-card {
-      margin-bottom: 0;
-      border-radius: 20px;
-      border: 1px solid var(--ox-border);
+      position: relative;
       background: var(--ox-panel);
-      box-shadow: var(--ox-shadow);
-      overflow: hidden;
-      position: relative;
-    }
-
-    .brief-shell .ox-card::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 1px;
-      background: linear-gradient(
-        90deg,
-        transparent 8%,
-        rgba(var(--ox-primary-rgb), 0.45) 50%,
-        transparent 92%
-      );
-    }
-
-    .brief-hero {
-      position: relative;
-      padding: 28px 28px 22px;
-      overflow: hidden;
-    }
-
-    .brief-hero::before {
-      content: '';
-      position: absolute;
-      top: -42px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 288px;
-      height: 184px;
-      background: radial-gradient(
-        ellipse,
-        rgba(var(--ox-primary-rgb), 0.09),
-        transparent 68%
-      );
-      pointer-events: none;
-    }
-
-    .hero-kicker {
-      position: relative;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-family: var(--ox-mono);
-      font-size: 0.56rem;
-      font-weight: 700;
-      line-height: 1;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      color: var(--ox-primary);
-    }
-
-    .hero-kicker-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 999px;
-      background: currentColor;
-      box-shadow: 0 0 10px rgba(var(--ox-primary-rgb), 0.5);
-      animation: brief-breathe 2.8s ease-in-out infinite;
-    }
-
-    .hero-row {
-      position: relative;
-      display: flex;
-      align-items: flex-end;
-      gap: 18px;
-      flex-wrap: wrap;
-      margin-top: 20px;
-    }
-
-    .hero-value-block {
-      min-width: 0;
-    }
-
-    .hero-value-line {
-      display: flex;
-      align-items: baseline;
-      gap: 4px;
-    }
-
-    .hero-value {
-      font-family: var(--ox-mono);
-      font-size: clamp(3.1rem, 9vw, 3.7rem);
-      font-weight: 700;
-      letter-spacing: -0.08em;
-      line-height: 0.88;
-      color: var(--ox-text);
-      position: relative;
-    }
-
-    .hero-value::after {
-      content: '';
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: -5px;
-      height: 3px;
-      border-radius: 999px;
-      background: linear-gradient(
-        90deg,
-        var(--ox-primary),
-        rgba(var(--ox-primary-rgb), 0.16)
-      );
-      opacity: 0.72;
-    }
-
-    .hero-value-suffix {
-      font-size: 1.8rem;
-      font-weight: 600;
-      line-height: 1;
-      letter-spacing: -0.04em;
-      color: var(--ox-text-muted);
-    }
-
-    .hero-context {
-      font-size: 0.78rem;
-      line-height: 1.45;
-      color: var(--ox-text-muted);
-    }
-
-    .hero-context strong {
-      color: var(--ox-text);
-      font-weight: 600;
-    }
-
-    .hero-summary-text {
-      margin-top: 16px;
-      font-size: 0.76rem;
-      line-height: 1.55;
-      letter-spacing: 0.005em;
-      color: var(--ox-text-dim);
-      position: relative;
-    }
-
-    .hero-summary-text span {
-      color: var(--ox-text-muted);
-      font-weight: 500;
-    }
-
-    .hero-pill-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 18px;
-    }
-
-    .hero-pill {
-      border-color: var(--ox-border);
-      background: rgba(255, 255, 255, 0.03);
-      color: var(--ox-text-muted);
-    }
-
-    .action-strip {
-      padding: 4px 16px 16px;
-    }
-
-    .action-card {
-      background: transparent;
-      border-radius: 14px;
-    }
-
-    .metric-rail {
-      border-top: 1px solid var(--ox-border);
-    }
-
-    .metric-rail .app-metric-button {
-      min-height: 78px;
-      padding: 14px 8px 16px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-      position: relative;
-    }
-
-    .metric-rail .app-metric-button::after {
-      content: '';
-      position: absolute;
-      left: 16px;
-      right: 16px;
-      bottom: 0;
-      height: 2.5px;
-      border-radius: 999px;
-      background: rgba(var(--ox-primary-rgb), 0.18);
-      transform: scaleX(0.5);
-      transform-origin: center;
-      opacity: 0.6;
-      transition:
-        transform 0.3s var(--brief-ease),
-        opacity 0.2s ease,
-        background 0.2s ease;
-    }
-
-    .metric-rail .app-metric-button:hover::after {
-      transform: scaleX(0.8);
-      opacity: 0.82;
-    }
-
-    .metric-rail .app-metric-button[aria-pressed='true']::after {
-      background: var(--ox-primary);
-      transform: scaleX(1);
-      opacity: 1;
-      box-shadow: 0 0 10px rgba(var(--ox-primary-rgb), 0.32);
-    }
-
-    .metric-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--ox-text-dim);
-      transition:
-        transform 0.2s var(--brief-ease),
-        color 0.2s ease;
-    }
-
-    .metric-rail .app-metric-button[aria-pressed='true'] .metric-icon {
-      color: var(--ox-primary);
-      transform: scale(1.05);
-    }
-
-    .metric-value {
-      font-family: var(--ox-mono);
-      font-size: 1.12rem;
-      font-weight: 700;
-      line-height: 1;
-      letter-spacing: -0.04em;
-      color: var(--ox-text);
-      transition: color 0.2s ease;
-    }
-
-    .metric-rail .app-metric-button[aria-pressed='true'] .metric-value {
-      color: var(--ox-primary);
-    }
-
-    .metric-label {
-      font-family: var(--ox-mono);
-      font-size: 0.48rem;
-      font-weight: 700;
-      line-height: 1;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--ox-text-dim);
-      transition: color 0.2s ease;
-    }
-
-    .metric-rail .app-metric-button[aria-pressed='true'] .metric-label {
-      color: var(--ox-text-muted);
-    }
-
-    .brief-section .app-accordion-trigger {
-      padding-left: 24px;
-      padding-right: 24px;
-      background: transparent;
-    }
-
-    .brief-section-icon {
-      width: 24px;
-      height: 24px;
-      border-radius: 7px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(var(--ox-primary-rgb), 0.07);
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.12);
-      color: var(--ox-primary);
-      flex-shrink: 0;
-      transition:
-        background 0.2s ease,
-        border-color 0.2s ease,
-        transform 0.2s ease;
-    }
-
-    .brief-section.is-open .brief-section-icon {
-      background: rgba(var(--ox-primary-rgb), 0.12);
-      border-color: rgba(var(--ox-primary-rgb), 0.2);
-      transform: scale(1.04);
-    }
-
-    .brief-section .app-accordion-trigger-badge {
-      font-family: var(--ox-mono);
-      letter-spacing: 0.02em;
-    }
-
-    .brief-section .app-accordion-body {
-      padding-left: 24px;
-      padding-right: 24px;
-    }
-
-    .priority-list,
-    .receipt-list,
-    .output-list,
-    .attention-list {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .priority-row {
-      display: flex;
-      align-items: stretch;
-      gap: 14px;
-      padding: 13px 0;
-    }
-
-    .priority-row + .priority-row {
-      border-top: 1px solid var(--ox-border);
-    }
-
-    .priority-bar {
-      width: 3px;
-      border-radius: 999px;
-      flex-shrink: 0;
-      opacity: 0.8;
-      background: var(--priority-color, var(--ox-primary));
-      box-shadow: 0 0 14px color-mix(in srgb, var(--priority-color, var(--ox-primary)) 28%, transparent);
-    }
-
-    .priority-body {
-      min-width: 0;
-      flex: 1;
-    }
-
-    .priority-domain {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-family: var(--ox-mono);
-      font-size: 0.52rem;
-      font-weight: 700;
-      line-height: 1;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--ox-text-muted);
-      margin-bottom: 5px;
-    }
-
-    .priority-domain::before {
-      content: '';
-      width: 5px;
-      height: 5px;
-      border-radius: 999px;
-      background: var(--priority-color, var(--ox-primary));
-      opacity: 1;
-    }
-
-    .priority-title {
-      font-size: 0.82rem;
-      font-weight: 600;
-      line-height: 1.35;
-      letter-spacing: -0.01em;
-      color: var(--ox-text);
-    }
-
-    .priority-note {
-      margin-top: 3px;
-      font-size: 0.68rem;
-      line-height: 1.45;
-      color: var(--ox-text-dim);
-    }
-
-    .receipt-row .app-list-row-title {
-      color: var(--ox-text-muted);
-      font-weight: 500;
-    }
-
-    .receipt-value {
-      font-family: var(--ox-mono);
-      font-size: 0.8rem;
-      font-weight: 700;
-      line-height: 1;
-      letter-spacing: -0.02em;
-      color: var(--ox-primary);
-      text-shadow: 0 0 14px rgba(var(--ox-primary-rgb), 0.25);
-      white-space: nowrap;
-    }
-
-    .output-meta {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 4px;
-    }
-
-    .output-chip {
-      display: inline-flex;
-      align-items: center;
-      min-height: 20px;
-      padding: 0 6px;
-      border-radius: 4px;
       border: 1px solid var(--ox-border);
-      background: rgba(255, 255, 255, 0.03);
-      color: var(--ox-text-dim);
-      font-family: var(--ox-mono);
-      font-size: 0.5rem;
-      font-weight: 600;
-      line-height: 1;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
-
-    .output-status {
-      flex-shrink: 0;
-      min-height: 30px;
-      padding: 0 10px;
-      border-radius: 8px;
-      border: 1px solid var(--ox-border);
-      background: rgba(255, 255, 255, 0.04);
-      color: var(--ox-text-muted);
-      font-family: var(--ox-mono);
-      font-size: 0.52rem;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      white-space: nowrap;
-    }
-
-    .output-status[data-tone='approved'] {
-      color: var(--ox-primary);
-      background: rgba(var(--ox-primary-rgb), 0.08);
-      border-color: rgba(var(--ox-primary-rgb), 0.16);
-    }
-
-    .output-link {
-      flex-shrink: 0;
-      min-height: 44px;
-      padding: 0 10px;
-      border-radius: 8px;
-      border: 1px solid rgba(var(--ox-warning-rgb), 0.18);
-      background: rgba(var(--ox-warning-rgb), 0.08);
-      color: var(--ox-warning);
-      font-family: var(--ox-mono);
-      font-size: 0.52rem;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      cursor: pointer;
-      transition:
-        transform 0.18s var(--brief-ease),
-        background 0.18s ease,
-        border-color 0.18s ease;
-      white-space: nowrap;
-    }
-
-    .output-link:hover {
-      transform: translateY(-1px);
-      background: rgba(var(--ox-warning-rgb), 0.14);
-      border-color: rgba(var(--ox-warning-rgb), 0.28);
-    }
-
-    .attention-row {
-      align-items: start;
-    }
-
-    .attention-main {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      min-width: 0;
-    }
-
-    .attention-dot {
-      width: 9px;
-      height: 9px;
-      margin-top: 5px;
-      border-radius: 999px;
-      background: currentColor;
-      color: var(--ox-danger);
-      box-shadow: 0 0 18px rgba(var(--ox-danger-rgb), 0.28);
-      flex-shrink: 0;
-    }
-
-    .attention-row[data-tone='review'] .attention-dot,
-    .attention-row[data-tone='warning'] .attention-dot {
-      color: var(--ox-warning);
-      box-shadow: 0 0 18px rgba(var(--ox-warning-rgb), 0.28);
-    }
-
-    .attention-chip {
-      display: inline-flex;
-      align-items: center;
-      min-height: 22px;
-      padding: 0 8px;
-      border-radius: 999px;
-      border: 1px solid var(--ox-border);
-      background: rgba(255, 255, 255, 0.03);
-      color: var(--ox-text-muted);
-      font-family: var(--ox-mono);
-      font-size: 0.5rem;
-      font-weight: 700;
-      line-height: 1;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      white-space: nowrap;
-    }
-
-    .narrative-note {
-      margin-top: 14px;
-      padding: 14px 16px;
-      border-radius: 12px;
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
-      background: rgba(var(--ox-primary-rgb), 0.06);
-      color: var(--ox-text-muted);
-      font-size: 0.72rem;
-      line-height: 1.5;
-    }
-
-    .brief-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 14px 24px;
-      border-top: 1px solid var(--ox-border);
-    }
-
-    .footer-time {
-      font-family: var(--ox-mono);
-      font-size: 0.5rem;
-      font-weight: 700;
-      line-height: 1;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--ox-text-dim);
-    }
-
-    .footer-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      min-height: 44px;
-      color: var(--ox-text-muted);
-      text-decoration: none;
-      font-size: 0.6rem;
-      font-weight: 600;
-      line-height: 1;
-      transition:
-        color 0.18s ease,
-        gap 0.18s ease;
-    }
-
-    .footer-link:hover {
-      color: var(--ox-primary);
-      gap: 7px;
-    }
-
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 72px 24px;
-      text-align: center;
-      border: 1px dashed var(--ox-border-strong);
-      border-radius: 18px;
-      background: rgba(var(--ox-primary-rgb), 0.03);
-    }
-
-    .empty-icon {
-      width: 52px;
-      height: 52px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
       border-radius: 16px;
-      background: rgba(var(--ox-primary-rgb), 0.1);
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
-      color: var(--ox-primary);
-      box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.22);
-      margin-bottom: 16px;
-    }
-
-    .empty-title {
-      font-size: 1rem;
-      font-weight: 600;
-      line-height: 1.3;
-      color: var(--ox-text);
-    }
-
-    .empty-desc {
-      margin-top: 8px;
-      max-width: 280px;
-      font-size: 0.86rem;
-      line-height: 1.5;
-      color: var(--ox-text-muted);
-    }
-
-    .deep-link { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; padding: 8px 12px; }
-
-    .skeleton-shell {
-      background: var(--ox-panel);
-      border: 1px solid var(--ox-border);
-      border-radius: 20px;
       box-shadow: var(--ox-shadow);
       overflow: hidden;
+      --edge-rgb: var(--ox-edge-teal-rgb);
     }
-
-    .skeleton-hero,
-    .skeleton-actions,
-    .skeleton-rail,
-    .skeleton-section {
-      position: relative;
-      overflow: hidden;
+    .brief-shell .ox-card::after {
+      content: "";
+      position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(var(--edge-rgb), 0.75), transparent);
     }
+    .brief-shell .ox-card[data-edge="amber"] { --edge-rgb: var(--ox-edge-amber-rgb); }
+    .brief-shell .ox-card[data-edge="red"] { --edge-rgb: var(--ox-edge-red-rgb); }
+    .brief-shell .ox-card[data-edge="mute"] { --edge-rgb: var(--ox-edge-mute-rgb); }
 
-    .skeleton-line {
-      border-radius: 999px;
-      background: linear-gradient(
-        90deg,
-        rgba(var(--ox-primary-rgb), 0.08) 0%,
-        rgba(var(--ox-primary-rgb), 0.18) 50%,
-        rgba(var(--ox-primary-rgb), 0.08) 100%
-      );
-      background-size: 200% 100%;
-      animation: skeleton-shimmer 1.8s linear infinite;
+    .brief-head { border-bottom: 1px solid var(--ox-border); --ox-attention-padding: 0 20px; }
+
+    /* The digest: what waits on you now, then what landed. */
+    .brief-digest { padding: 16px 22px 18px; display: flex; flex-direction: column; gap: 12px; }
+    .brief-summary { font-size: 14px; line-height: 1.5; color: var(--ox-text-2); text-wrap: pretty; }
+
+    .brief-shell .app-action-stack { display: flex; flex-direction: column; gap: 0; }
+    .brief-shell .app-action-card {
+      display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px;
+      padding: 10px 0; margin: 0; border: 0; border-top: 1px solid var(--ox-border); border-radius: 0;
+      background: transparent; box-shadow: none; color: var(--ox-text); text-decoration: none;
+      transform: none; overflow: visible; cursor: pointer;
     }
-
-    @keyframes skeleton-shimmer {
-      0% {
-        background-position: -200% 0;
-      }
-      100% {
-        background-position: 200% 0;
-      }
+    .brief-shell .app-action-card:first-child { border-top: 0; }
+    .brief-shell .app-action-card::before { display: none; }
+    .brief-shell .app-action-card:hover { transform: none; box-shadow: none; }
+    .brief-shell .app-action-card:hover .app-action-card-title { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--ox-border-strong); }
+    .ev-dot { width: 7px; height: 7px; border-radius: 999px; flex: none; background: var(--ox-warning); }
+    .app-action-card[data-tone="attention"] .ev-dot { background: var(--ox-danger); }
+    .brief-shell .app-action-card-body { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
+    .brief-shell .app-action-card-title { font-size: 14px; font-weight: 600; line-height: 1.35; color: var(--ox-text); white-space: nowrap; }
+    .brief-shell .app-action-card-detail { margin: 0; font-size: 12.5px; color: var(--ox-text-muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .brief-shell .app-action-card-cta {
+      display: inline-flex; align-items: center; gap: 6px; flex: none; min-height: 0; padding: 0;
+      border: 0; border-radius: 0; background: none; color: var(--ox-text-muted);
+      font: 500 11.5px/1.3 var(--ox-mono); letter-spacing: 0; text-transform: none;
     }
+    .brief-shell .app-action-card-cta svg { width: 12px; height: 12px; }
 
-    .skeleton-hero {
-      padding: 28px 28px 22px;
+    .landed { display: flex; flex-direction: column; }
+
+    /* Detail on demand: the four sections, opened from the rail or their own row. */
+    .brief-shell .app-metric-rail {
+      display: flex; flex-wrap: wrap; gap: 0 4px; padding: 0 14px; min-height: 44px; align-items: stretch;
+      border-top: 1px solid var(--ox-border); background: none; border-radius: 0;
     }
-
-    .skeleton-actions {
-      padding: 4px 16px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+    .brief-shell .app-metric-button {
+      display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 8px;
+      border: 0; border-bottom: 2px solid transparent; border-radius: 0; margin-bottom: -1px;
+      background: transparent; color: var(--ox-text-muted); cursor: pointer; font-size: 13px; font-weight: 600;
     }
+    .brief-shell .app-metric-button:hover { color: var(--ox-text); background: none; }
+    .brief-shell .app-metric-button[aria-pressed="true"] { color: var(--ox-text); border-bottom-color: var(--ox-text-2); background: none; }
+    .metric-value { font: 600 12px/1 var(--ox-mono); color: var(--ox-text-2); font-variant-numeric: tabular-nums; }
+    .metric-label { order: -1; }
+    .brief-shell .app-metric-button.is-empty { opacity: 0.6; }
 
-    .skeleton-action-card {
-      border-radius: 14px;
-      border: 1px solid var(--ox-border);
-      padding: 13px 14px;
-      background: rgba(255, 255, 255, 0.02);
+    .brief-shell .app-accordion-section { border-top: 1px solid var(--ox-border); }
+    .brief-shell .app-accordion-trigger {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%;
+      min-height: 44px; padding: 0 22px; background: transparent; border: 0; cursor: pointer; text-align: left;
     }
-
-    .skeleton-rail {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      border-top: 1px solid var(--ox-border);
+    .brief-shell .app-accordion-trigger:hover { background: var(--ox-hover); }
+    .brief-shell .app-accordion-trigger-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .brief-shell .app-accordion-trigger-title { font-size: 13px; font-weight: 600; color: var(--ox-text-2); }
+    .brief-shell .app-accordion-trigger-badge {
+      min-height: 0; padding: 0; border-radius: 0; background: none;
+      font: 500 11.5px/1.3 var(--ox-mono); color: var(--ox-text-muted);
     }
+    .brief-shell .app-accordion-chevron { width: 14px; height: 14px; color: var(--ox-text-muted); display: grid; place-items: center; }
+    .brief-shell .app-accordion-body { padding: 0 22px; }
+    .brief-shell .app-accordion-section.is-open .app-accordion-body { padding: 0 22px 14px; max-height: 1200px; }
+    .brief-shell .app-accordion-section.is-open .app-accordion-trigger-title { color: var(--ox-text); }
 
-    .skeleton-rail-cell {
-      min-height: 78px;
-      padding: 16px 12px;
-      border-right: 1px solid var(--ox-border);
+    .brief-shell .app-list-row { padding: 10px 0; gap: 10px; }
+    .brief-shell .app-list-row + .app-list-row { border-top: 1px solid var(--ox-border); }
+    .brief-shell .app-list-row-title { font-size: 13.5px; font-weight: 600; color: var(--ox-text); }
+    .brief-shell .app-list-row-detail { font-size: 12.5px; line-height: 1.45; color: var(--ox-text-muted); }
+
+    .priority-row { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 0; }
+    .priority-row + .priority-row { border-top: 1px solid var(--ox-border); }
+    .priority-who { width: 22px; height: 22px; display: grid; place-items: center; color: var(--ox-text-muted); }
+    .priority-who ox-glyph { --ox-glyph-size: 16px; }
+    .priority-domain { font: 500 11.5px/1.3 var(--ox-mono); color: var(--ox-text-muted); }
+    .priority-title { font-size: 13.5px; font-weight: 600; line-height: 1.35; margin-top: 1px; }
+    .priority-note { font-size: 12.5px; line-height: 1.45; color: var(--ox-text-2); margin-top: 2px; }
+
+    .output-row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+    .output-meta { display: flex; align-items: center; gap: 6px; font: 500 11.5px/1.3 var(--ox-mono); color: var(--ox-text-muted); margin-top: 2px; }
+    .output-meta ox-avatar { margin-right: 2px; }
+    .output-link {
+      min-height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--ox-border-strong);
+      background: transparent; color: var(--ox-text); font-size: 12.5px; font-weight: 650; cursor: pointer; white-space: nowrap;
     }
+    .output-link:hover { background: var(--ox-hover); }
 
-    .skeleton-rail-cell:last-child {
-      border-right: 0;
-    }
+    .value-line { font: 500 11.5px/1.5 var(--ox-mono); color: var(--ox-text-muted); padding-top: 8px; font-variant-numeric: tabular-nums; }
 
-    .skeleton-section {
-      border-top: 1px solid var(--ox-border);
-      padding: 16px 24px 18px;
-    }
+    .attention-row { display: grid; grid-template-columns: 7px minmax(0, 1fr) auto; gap: 10px; align-items: start; }
+    .attention-row .ev-dot { margin-top: 6px; }
+    .attention-row[data-tone="attention"] .ev-dot { background: var(--ox-danger); }
+    .attention-chip { font: 500 11.5px/1.3 var(--ox-mono); color: var(--ox-text-muted); padding-top: 2px; white-space: nowrap; }
+    .narrative-note { font-size: 12.5px; color: var(--ox-text-muted); padding-top: 8px; }
 
-    .skeleton-row {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      padding: 12px 0;
-    }
+    .brief-calm { padding: 16px 22px 18px; display: flex; flex-direction: column; gap: 4px; }
+    .brief-calm-title { font-size: 17px; font-weight: 650; letter-spacing: -0.015em; }
+    .brief-calm-copy { font-size: 13.5px; line-height: 1.5; color: var(--ox-text-2); }
 
-    .skeleton-row + .skeleton-row {
-      border-top: 1px solid var(--ox-border);
+    .sk { display: block; border-radius: 6px; background: var(--ox-skeleton, rgba(127, 127, 127, 0.12)); }
+
+    .focusable:focus-visible, .app-action-card:focus-visible, .app-metric-button:focus-visible, .app-accordion-trigger:focus-visible, .output-link:focus-visible {
+      outline: 2px solid var(--ox-focus, var(--ox-teal)); outline-offset: -2px; border-radius: 8px;
     }
 
     @media (max-width: 480px) {
-      body {
-        padding: 18px 10px;
-      }
+      body { padding: 12px; }
+      .brief-digest, .brief-calm { padding: 14px 16px 16px; }
+      .brief-head { --ox-attention-padding: 0 16px; }
+      .brief-shell .app-accordion-trigger { padding: 0 16px; }
+      .brief-shell .app-accordion-body, .brief-shell .app-accordion-section.is-open .app-accordion-body { padding-left: 16px; padding-right: 16px; }
+      .brief-shell .app-metric-rail { padding: 0 8px; gap: 0; }
+      .brief-shell .app-metric-button { padding: 0 5px; gap: 5px; font-size: 12.5px; }
+      .brief-shell .app-action-card-body { flex-direction: column; gap: 1px; align-items: stretch; }
+      .brief-shell .app-action-card-title { white-space: normal; }
+    }
 
-      .brief-hero {
-        padding: 24px 20px 18px;
-      }
-
-      .hero-row {
-        gap: 12px;
-      }
-
-      .hero-value {
-        font-size: 2.85rem;
-      }
-
-      .action-strip {
-        padding-left: 12px;
-        padding-right: 12px;
-      }
-
-      .brief-section .app-accordion-trigger,
-      .brief-section .app-accordion-body,
-      .brief-footer {
-        padding-left: 18px;
-        padding-right: 18px;
-      }
-
-      .metric-rail {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .metric-rail .app-metric-button:nth-child(odd) {
-        border-right: 1px solid var(--ox-border);
-      }
-
-      .metric-rail .app-metric-button:nth-child(-n + 2) {
-        border-bottom: 1px solid var(--ox-border);
-      }
-
-      .hero-pill-row {
-        gap: 6px;
-      }
-
-      .hero-pill {
-        font-size: 0.6rem;
-      }
-
-      .brief-footer {
-        flex-direction: column;
-        align-items: flex-start;
-      }
+    @media (prefers-reduced-motion: reduce) {
+      .animate-in { animation: none; }
+      .brief-shell .app-accordion-body { transition: none; }
     }
   </style>
   <link rel="stylesheet" href="shared/widget-theme.css" />
@@ -917,14 +201,22 @@
 
     const { detectProtocol, initWidget, openWidgetLink } = window.OrgXWidgetRuntime;
 
+
+    // Previews served next to the widgets read avatars from the same origin;
+    // host sandboxes use the kit default (mcp.useorgx.com).
+    if (window.OrgXElements && detectProtocol() === 'standalone') {
+      window.OrgXElements.avatarConfig.baseUrl = new URL('shared/avatars', window.location.href).toString();
+    }
+
     const params = new URLSearchParams(window.location.search);
     const requestedTheme = params.get('theme');
     if (requestedTheme) {
       document.documentElement.setAttribute('data-theme', requestedTheme);
     }
 
-    const isDemo = params.get('demo') === 'true';
-    const isLoadingOverride = params.get('loading') === 'true';
+    // Gallery previews (?gallery=true&state=…) read the same fixtures as ?demo=true.
+    const isDemo = params.get('demo') === 'true' || params.get('gallery') === 'true';
+    const isLoadingOverride = params.get('loading') === 'true' || params.get('state') === 'loading';
     const bootStartedAt = Date.now();
     const MIN_LOADING_MS = 220;
     const FALLBACK_REVIEW_URL = 'https://useorgx.com/live?view=mission-control';
@@ -932,7 +224,7 @@
     const state = {
       brief: null,
       isLoading: !isDemo || isLoadingOverride,
-      activeSection: 'priorities',
+      activeSection: null,
       error: false,
     };
 
@@ -1052,7 +344,7 @@
     let demoBriefVariant = demoBrief;
     if (isDemo && demoState !== 'populated') {
       demoBriefVariant = JSON.parse(JSON.stringify(demoBrief));
-      if (demoState === 'completed' || demoState === 'resolved') {
+      if (demoState === 'completed' || demoState === 'resolved' || demoState === 'calm') {
         demoBriefVariant.summary = 'All planned work closed cleanly. The latest receipts are attached and there is nothing waiting on you.';
         demoBriefVariant.session_summary.completed = 6;
         demoBriefVariant.session_summary.failed = 0;
@@ -1080,6 +372,7 @@
     }
 
     state.error = demoError;
+
 
     function asArray(value) {
       return Array.isArray(value) ? value : [];
@@ -1148,6 +441,23 @@
         hour: 'numeric',
         minute: '2-digit',
       })}`;
+    }
+
+    function formatShortDay(value) {
+      const date = value ? new Date(value) : new Date();
+      if (Number.isNaN(date.getTime())) return '';
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    function formatClock(value) {
+      const date = value ? new Date(value) : new Date();
+      if (Number.isNaN(date.getTime())) return '';
+      return String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
+    }
+
+    function isOlderThan(value, hours) {
+      const time = value ? new Date(value).getTime() : NaN;
+      return Number.isFinite(time) && Date.now() - time > hours * 3600 * 1000;
     }
 
     function extractMetricDisplay(rawValue) {
@@ -1379,7 +689,7 @@
               reviewItems.map((item) => item.name || item.title || 'Review item'),
               2
             ) || 'Agent output is waiting for an operator call.',
-          cta: 'Review',
+          cta: 'Review in OrgX',
           url: reviewActionUrl,
           section: 'output',
         });
@@ -1439,7 +749,25 @@
         narrativeAvailable:
           typeof payload.brief_markdown === 'string' && payload.brief_markdown.trim().length > 0,
         footerUrl,
-        footerLabel: reviewActionUrl ? 'Open review queue' : 'Open latest output',
+        footerLabel: reviewActionUrl ? 'Review queue' : 'Latest output',
+        pendingDecisions,
+        blockedWork,
+        isPartial,
+        isStale: exceptions.some((item) => String(asObject(item).exception_type || asObject(item).type || '').toLowerCase().includes('stale')) || isOlderThan(payload.generated_at || payload.created_at || workspacePulse.generatedAt, 18),
+        shortDateLabel: formatShortDay(payload.generated_at || payload.created_at || workspacePulse.generatedAt),
+        clockLabel: formatClock(payload.generated_at || payload.created_at || workspacePulse.generatedAt),
+        acceptedOutputs: outputRows.filter((artifact) => !isReviewable(artifact, reviewIds)),
+        doneLine: [
+          asNumber(sessionSummary.completed) ? `${asNumber(sessionSummary.completed)} done overnight` : '',
+          asNumber(sessionSummary.receipts_produced) ? pluralize(asNumber(sessionSummary.receipts_produced), 'receipt') : '',
+          asNumber(sessionSummary.failed) ? `${asNumber(sessionSummary.failed)} failed` : '',
+        ].filter(Boolean).join(' · '),
+        valueLine: isPartial ? '' : [
+          valueDelivered ? `${formatCurrency(valueDelivered)} value delivered` : '',
+          timeSaved ? `${timeSaved.toFixed(timeSaved >= 10 ? 0 : 1)} hours saved (modeled)` : '',
+          roiDisplay !== 'N/A' ? `ROI ${roiDisplay}` : '',
+          decisionsResolved > 0 ? `${pluralize(decisionsResolved, 'decision')} resolved` : '',
+        ].filter(Boolean).join(' · '),
         counts: {
           priorities: priorities.length,
           output: outputRows.length,
@@ -1461,87 +789,48 @@
       };
     }
 
+
     function sectionAvailability(brief) {
       return {
         priorities: brief.priorities.length > 0,
         output: brief.outputRows.length > 0,
         receipts: brief.topReceipts.length > 0,
-        attention: brief.attentionSignals.length > 0 || brief.narrativeAvailable,
+        attention: brief.attentionSignals.length > 0,
       };
     }
 
+    // F6: the digest leads; the sections stay closed until asked for.
     function ensureActiveSection(brief) {
       const availability = sectionAvailability(brief);
-      if (state.activeSection && availability[state.activeSection]) return;
-      state.activeSection =
-        ['priorities', 'output', 'receipts', 'attention'].find(
-          (section) => availability[section]
-        ) || null;
+      if (!state.activeSection || availability[state.activeSection]) return;
+      state.activeSection = null;
+    }
+
+    function agentFor(...values) {
+      const identity = window.OrgXAgentIdentity;
+      return identity && identity.resolveAgentKey ? identity.resolveAgentKey(...values) : null;
+    }
+
+    function avatarHtml(agentKey, name, size = 20) {
+      if (!agentKey) return '';
+      return `<ox-avatar agent="${escapeHtml(agentKey)}" form="base" size="${size}"${name ? ` name="${escapeHtml(name)}"` : ''}></ox-avatar>`;
     }
 
     function renderSkeleton() {
       content.innerHTML = `
-        <div class="skeleton-shell animate-in">
-          <div class="skeleton-hero">
-            <div class="skeleton-line" style="width: 132px; height: 10px;"></div>
-            <div style="display: flex; align-items: flex-end; gap: 18px; margin-top: 22px; flex-wrap: wrap;">
-              <div class="skeleton-line" style="width: 164px; height: 58px;"></div>
-              <div style="display: flex; flex-direction: column; gap: 8px; min-width: 120px;">
-                <div class="skeleton-line" style="width: 128px; height: 14px;"></div>
-                <div class="skeleton-line" style="width: 144px; height: 12px;"></div>
-              </div>
+        <div class="brief-shell widget-shell-card" aria-busy="true">
+          <div class="ox-card">
+            <div class="brief-head" style="height:44px;display:flex;align-items:center;gap:10px;padding:0 20px">
+              <span class="sk" style="width:8px;height:8px;border-radius:50%"></span>
+              <span class="sk" style="width:42%;height:12px"></span>
             </div>
-            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 18px;">
-              <div class="skeleton-line" style="width: 100%; height: 12px;"></div>
-              <div class="skeleton-line" style="width: 86%; height: 12px;"></div>
+            <div class="brief-digest">
+              <span class="sk" style="width:92%;height:13px"></span>
+              <span class="sk" style="width:74%;height:13px"></span>
+              <span class="sk" style="width:60%;height:14px;margin-top:8px"></span>
+              <span class="sk" style="width:52%;height:14px"></span>
             </div>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px;">
-              <div class="skeleton-line" style="width: 112px; height: 28px;"></div>
-              <div class="skeleton-line" style="width: 104px; height: 28px;"></div>
-              <div class="skeleton-line" style="width: 122px; height: 28px;"></div>
-            </div>
-          </div>
-          <div class="skeleton-actions">
-            <div class="skeleton-action-card">
-              <div class="skeleton-line" style="width: 65%; height: 12px; margin-bottom: 8px;"></div>
-              <div class="skeleton-line" style="width: 90%; height: 10px;"></div>
-            </div>
-            <div class="skeleton-action-card">
-              <div class="skeleton-line" style="width: 58%; height: 12px; margin-bottom: 8px;"></div>
-              <div class="skeleton-line" style="width: 84%; height: 10px;"></div>
-            </div>
-          </div>
-          <div class="skeleton-rail">
-            ${Array.from({ length: 4 })
-              .map(
-                () => `
-                  <div class="skeleton-rail-cell">
-                    <div class="skeleton-line" style="width: 18px; height: 18px; margin: 0 auto 10px;"></div>
-                    <div class="skeleton-line" style="width: 56px; height: 18px; margin: 0 auto 8px;"></div>
-                    <div class="skeleton-line" style="width: 44px; height: 8px; margin: 0 auto;"></div>
-                  </div>
-                `
-              )
-              .join('')}
-          </div>
-          <div class="skeleton-section">
-            <div class="skeleton-line" style="width: 168px; height: 12px; margin-bottom: 14px;"></div>
-            <div class="skeleton-row">
-              <div class="skeleton-line" style="width: 3px; height: 44px; flex-shrink: 0;"></div>
-              <div style="display: flex; flex-direction: column; gap: 8px; flex: 1;">
-                <div class="skeleton-line" style="width: 76px; height: 10px;"></div>
-                <div class="skeleton-line" style="width: 74%; height: 14px;"></div>
-                <div class="skeleton-line" style="width: 92%; height: 11px;"></div>
-              </div>
-            </div>
-            <div class="skeleton-row">
-              <div class="skeleton-line" style="width: 3px; height: 44px; flex-shrink: 0;"></div>
-              <div style="display: flex; flex-direction: column; gap: 8px; flex: 1;">
-                <div class="skeleton-line" style="width: 70px; height: 10px;"></div>
-                <div class="skeleton-line" style="width: 66%; height: 14px;"></div>
-                <div class="skeleton-line" style="width: 88%; height: 11px;"></div>
-              </div>
-            </div>
+            <ox-footer variant="reads" state="loading"></ox-footer>
           </div>
         </div>
       `;
@@ -1549,10 +838,14 @@
 
     function renderEmptyState() {
       content.innerHTML = `
-        <div class="empty-state animate-in">
-          <div class="empty-icon">${icons.status(24)}</div>
-          <div class="empty-title">Nothing needs you</div>
-          <div class="empty-desc">No brief has landed yet. When the next autonomous session finishes, the morning readout will appear here.</div>
+        <div class="brief-shell widget-shell-card animate-in">
+          <div class="ox-card" data-edge="teal">
+            <div class="brief-head"><ox-attention-line tone="calm" count="0"><span>No brief yet</span></ox-attention-line></div>
+            <div class="brief-calm">
+              <div class="brief-calm-title">Nothing needs you</div>
+              <div class="brief-calm-copy">No brief has landed yet. When the next autonomous session finishes, the morning readout will appear here.</div>
+            </div>
+          </div>
         </div>
       `;
     }
@@ -1563,30 +856,16 @@
       }
 
       return brief.priorities
-        .map((priority, index) => {
-          const domain = String(priority.domain || 'Execution').toLowerCase();
-          const colors = {
-            engineering: '#06b6d4',
-            marketing: '#f97316',
-            product: '#16a34a',
-            design: '#8b5cf6',
-            sales: '#ef4444',
-            execution: 'var(--ox-primary)',
-          };
-          const priorityColor = colors[domain] || 'var(--ox-primary)';
+        .map((priority) => {
+          const domain = titleCase(priority.domain || 'Execution');
+          const agentKey = agentFor(priority.agent_name, priority.domain);
           return `
-            <div class="priority-row brief-stagger" style="--i:${index};">
-              <div class="priority-bar" style="--priority-color:${priorityColor};"></div>
+            <div class="priority-row">
+              <div class="priority-who">${agentKey ? avatarHtml(agentKey, '', 22) : '<ox-glyph kind="task"></ox-glyph>'}</div>
               <div class="priority-body">
-                <div class="priority-domain" style="--priority-color:${priorityColor};">${escapeHtml(
-                  titleCase(priority.domain || 'Execution')
-                )}</div>
-                <div class="priority-title">${escapeHtml(
-                  priority.title || 'Priority item'
-                )}</div>
-                <div class="priority-note">${escapeHtml(
-                  priority.reason || 'No rationale provided.'
-                )}</div>
+                <div class="priority-domain">${escapeHtml(domain)}</div>
+                <div class="priority-title">${escapeHtml(priority.title || 'Priority item')}</div>
+                <div class="priority-note">${escapeHtml(priority.reason || 'No rationale provided.')}</div>
               </div>
             </div>
           `;
@@ -1604,15 +883,12 @@
       );
 
       return brief.outputRows
-        .map((artifact, index) => {
+        .map((artifact) => {
           const row = asObject(artifact);
-          const status = titleCase(String(row.status || 'draft'));
+          const status = String(row.status || 'draft').toLowerCase();
           const url = artifactUrl(row);
           const reviewable = isReviewable(row, reviewIds);
-          const type = titleCase(String(row.artifact_type || row.type || 'artifact')).replace(
-            /\s+/g,
-            '.'
-          );
+          const type = titleCase(String(row.artifact_type || row.type || 'artifact')).replace(/\s+/g, '.');
           const summary =
             row.summary ||
             row.description ||
@@ -1620,29 +896,25 @@
               ? 'Ready for an operator review before execution continues.'
               : 'Captured as proof from the latest autonomous run.');
           const actionLabel = artifactLabel(row, reviewable ? 'Review' : 'Open');
+          const author = row.created_by_name || row.created_by || 'OrgX agent';
+          const agentKey = agentFor(author);
+          const chip = reviewable
+            ? '<ox-state-chip state="needs_you" label="Your review"></ox-state-chip>'
+            : status === 'approved' || status === 'accepted' || status === 'done'
+              ? '<ox-state-chip state="succeeded" label="Accepted"></ox-state-chip>'
+              : `<ox-state-chip state="${escapeHtml(status)}"></ox-state-chip>`;
 
           return `
-            <div class="app-list-row brief-stagger" style="--i:${index};">
+            <div class="app-list-row output-row">
               <div class="app-list-row-body">
-                <div class="app-list-row-title">${escapeHtml(
-                  row.title || row.name || 'Untitled artifact'
-                )}</div>
+                <div class="app-list-row-title">${escapeHtml(row.title || row.name || 'Untitled artifact')}</div>
                 <div class="app-list-row-detail">${escapeHtml(summary)}</div>
-                <div class="output-meta">
-                  <span class="output-chip">${escapeHtml(type)}</span>
-                  <span class="output-chip">${escapeHtml(
-                    row.created_by_name || row.created_by || 'OrgX agent'
-                  )}</span>
-                </div>
+                <div class="output-meta">${avatarHtml(agentKey, author, 16)}<span>${escapeHtml(author)}</span><span aria-hidden="true">·</span><span>${escapeHtml(type)}</span></div>
               </div>
               ${
                 reviewable && url
-                  ? `<button type="button" class="output-link focusable" data-action="open-link" data-url="${escapeHtml(url)}">${escapeHtml(
-                      actionLabel
-                    )}</button>`
-                  : `<span class="output-status" data-tone="${
-                      reviewable ? 'review' : 'approved'
-                    }">${escapeHtml(reviewable ? 'Review' : status)}</span>`
+                  ? `<button type="button" class="output-link focusable" data-action="open-link" data-url="${escapeHtml(url)}">${escapeHtml(actionLabel)} ↗</button>`
+                  : chip
               }
             </div>
           `;
@@ -1655,35 +927,26 @@
         return '<div class="app-list-row-detail">No attributed receipts were included in this cycle.</div>';
       }
 
-      return brief.topReceipts
-        .map((receipt, index) => {
+      const rows = brief.topReceipts
+        .map((receipt) => {
           const value = formatCurrency(receipt.attributed_value_usd) || 'Captured';
-          return `
-            <div class="app-list-row receipt-row brief-stagger" style="--i:${index};">
-              <div class="app-list-row-body">
-                <div class="app-list-row-title">${escapeHtml(
-                  receipt.intent || 'Execution receipt'
-                )}</div>
-              </div>
-              <div class="receipt-value">${escapeHtml(value)}</div>
-            </div>
-          `;
+          const url = typeof receipt.url === 'string' && receipt.url ? receipt.url : '';
+          return `<ox-receipt-row status="met" label="${escapeHtml(receipt.intent || 'Execution receipt')}" value="${escapeHtml(value)}"${url ? ` href="${escapeHtml(url)}"` : ''}></ox-receipt-row>`;
         })
         .join('');
+      return `<div class="receipt-stack" role="list">${rows}</div>${brief.valueLine ? `<div class="value-line">${escapeHtml(brief.valueLine)}</div>` : ''}`;
     }
 
     function renderAttentionRows(brief) {
       const rows = brief.attentionSignals
-        .map((item, index) => {
+        .map((item) => {
           const tone = item.tone === 'warning' ? 'review' : 'attention';
           return `
-            <div class="app-list-row attention-row brief-stagger" style="--i:${index};" data-tone="${tone}">
-              <div class="attention-main">
-                <div class="attention-dot"></div>
-                <div class="app-list-row-body">
-                  <div class="app-list-row-title">${escapeHtml(item.title)}</div>
-                  <div class="app-list-row-detail">${escapeHtml(item.description)}</div>
-                </div>
+            <div class="app-list-row attention-row" data-tone="${tone}">
+              <span class="ev-dot" aria-hidden="true"></span>
+              <div class="app-list-row-body">
+                <div class="app-list-row-title">${escapeHtml(item.title)}</div>
+                <div class="app-list-row-detail">${escapeHtml(item.description)}</div>
               </div>
               <div class="attention-chip">${escapeHtml(item.meta || 'Attention')}</div>
             </div>
@@ -1692,7 +955,7 @@
         .join('');
 
       const narrative = brief.narrativeAvailable
-        ? `<div class="narrative-note">A narrative brief is available in the payload for downstream clients that want the full written summary.</div>`
+        ? `<div class="narrative-note">The full written brief is available to the assistant in this conversation.</div>`
         : '';
 
       if (!rows && !narrative) {
@@ -1702,250 +965,145 @@
       return rows + narrative;
     }
 
+    // The opening line: amber when something waits on you, red when work is blocked, calm otherwise.
+    function attentionLine(brief) {
+      const parts = [];
+      if (brief.pendingDecisions > 0) parts.push(pluralize(brief.pendingDecisions, 'decision'));
+      if (brief.reviewItems.length > 0) parts.push(pluralize(brief.reviewItems.length, 'review'));
+      const single = parts.length === 1 && brief.pendingDecisions + brief.reviewItems.length === 1;
+      const waiting = parts.length ? `${parts.join(' and ')} ${single ? 'waits' : 'wait'} on you` : '';
+      const blocked = brief.blockedWork > 0 ? `${brief.blockedWork} blocked` : '';
+      const flagged = !waiting && !blocked && brief.exceptions.length > 0 ? `${pluralize(brief.exceptions.length, 'exception')} flagged` : '';
+      const sentence = [waiting, blocked, flagged].filter(Boolean).join(' · ');
+      const count = brief.pendingDecisions + brief.reviewItems.length + brief.blockedWork + (flagged ? brief.exceptions.length : 0);
+      if (!sentence) return { tone: 'calm', count: 0, sentence: '', edge: 'teal' };
+      return { tone: brief.blockedWork > 0 ? 'blocking' : 'needs-you', count, sentence, edge: brief.blockedWork > 0 ? 'red' : 'amber' };
+    }
+
+    // SM3 reads footer: when the brief was read, and the one place to go next.
+    function footerFor(brief, line) {
+      const action = brief.footerUrl ? `${brief.footerLabel} ↗` : '';
+      if (brief.isPartial) {
+        return { state: 'stale', heading: 'Partial brief', detail: 'some sources are still refreshing', action };
+      }
+      if (brief.isStale) {
+        return { state: 'stale', heading: 'Out of date', detail: `as of ${brief.clockLabel}`, action };
+      }
+      if (line.tone === 'calm') {
+        // The caught-up frame has no text action; fresh carries the same check and keeps the link.
+        return { state: action ? 'fresh' : 'caught-up', heading: 'Nothing waits on you', detail: brief.doneLine || brief.timeLabel.toLowerCase(), action };
+      }
+      return { state: 'fresh', heading: `Generated ${brief.clockLabel}`, detail: brief.doneLine || 'up to date', action };
+    }
+
     function renderBrief(brief) {
       ensureActiveSection(brief);
-
-      const heroMetric = brief.heroMetric;
-      const outputAction = brief.actions[0];
-      const attentionAction = brief.actions[1];
+      const line = attentionLine(brief);
+      const footer = footerFor(brief, line);
+      const landed = brief.acceptedOutputs.slice(0, 2);
+      // Every section keeps its control (owner requirement); empty ones render dimmed.
+      const has = sectionAvailability(brief);
+      const available = { priorities: true, output: true, receipts: true, attention: true };
 
       content.innerHTML = `
         <div class="brief-shell widget-shell-card animate-in">
-          <div class="ox-card app-flat-card">
-            <div class="brief-hero">
-              <div class="hero-kicker">
-                <span class="hero-kicker-dot"></span>
-                Morning Brief / ${escapeHtml(brief.dateLabel)}
-              </div>
-              <div class="hero-row">
-                <div class="hero-value-block">
-                  <div class="hero-value-line">
-                    <div class="hero-value" id="hero-value">${escapeHtml(heroMetric.valueText)}</div>
-                    ${
-                      heroMetric.suffix
-                        ? `<div class="hero-value-suffix">${escapeHtml(heroMetric.suffix)}</div>`
-                        : ''
-                    }
-                  </div>
-                </div>
-                <div class="hero-context">
-                  ${escapeHtml(heroMetric.label)}<br />
-                  <strong>${escapeHtml(brief.heroSupportLine)}</strong><br />
-                  ${escapeHtml(brief.heroSupportMeta)}
-                </div>
-              </div>
-              <div class="hero-summary-text">${escapeHtml(brief.summary)}</div>
-              <div class="hero-pill-row">
-                ${brief.heroPills
-                  .map((pill) => `<span class="widget-note-pill hero-pill">${escapeHtml(pill)}</span>`)
-                  .join('')}
-              </div>
+          <div class="ox-card app-flat-card" data-edge="${line.edge}">
+            <div class="brief-head">
+              <ox-attention-line tone="${line.tone}" count="${line.count}">${
+                line.sentence ? `<span>${escapeHtml(line.sentence)}</span>` : ''
+              }<span slot="meta">${escapeHtml(brief.shortDateLabel)} · ${escapeHtml(brief.clockLabel)}</span></ox-attention-line>
             </div>
 
-            ${
-              brief.actions.length
-                ? `
-                  <div class="action-strip app-action-stack">
-                    ${brief.actions
-                      .map((action) => {
-                        const href = action.url || `#section-${action.section}`;
-                        const dataAction = action.url ? 'open-link' : 'open-section';
-                        const extraAttrs = action.url
-                          ? `data-url="${escapeHtml(action.url)}"`
-                          : `data-section="${escapeHtml(action.section)}"`;
-                        return `
-                          <a href="${escapeHtml(href)}" class="action-card app-action-card focusable" data-tone="${escapeHtml(
-                            action.tone
-                          )}" data-action="${dataAction}" ${extraAttrs}>
-                            <div class="app-action-card-icon">${action.icon}</div>
-                            <div class="app-action-card-body">
-                              <div class="app-action-card-title">${escapeHtml(action.title)}</div>
-                              <div class="app-action-card-detail">${escapeHtml(action.detail)}</div>
-                            </div>
-                            <span class="app-action-card-cta">${escapeHtml(action.cta)} ${icons.chevronRight(12)}</span>
-                          </a>
-                        `;
-                      })
-                      .join('')}
-                  </div>
-                `
-                : ''
-            }
-
-            <div class="metric-rail app-metric-rail">
-              <button type="button" class="app-metric-button focusable" data-action="open-section" data-section="priorities" aria-pressed="${
-                state.activeSection === 'priorities'
-              }" aria-controls="panel-priorities">
-                <span class="metric-icon">${icons.flag(15)}</span>
-                <span class="metric-value">${escapeHtml(brief.metricDisplays.priorities)}</span>
-                <span class="metric-label">Priorities</span>
-              </button>
-              <button type="button" class="app-metric-button focusable" data-action="open-section" data-section="output" aria-pressed="${
-                state.activeSection === 'output'
-              }" aria-controls="panel-output">
-                <span class="metric-icon">${icons.document(15)}</span>
-                <span class="metric-value">${escapeHtml(brief.metricDisplays.output)}</span>
-                <span class="metric-label">Output</span>
-              </button>
-              <button type="button" class="app-metric-button focusable" data-action="open-section" data-section="receipts" aria-pressed="${
-                state.activeSection === 'receipts'
-              }" aria-controls="panel-receipts">
-                <span class="metric-icon">${icons.chart(15)}</span>
-                <span class="metric-value">${escapeHtml(brief.metricDisplays.receipts)}</span>
-                <span class="metric-label">Receipts</span>
-              </button>
-              <button type="button" class="app-metric-button focusable" data-action="open-section" data-section="attention" aria-pressed="${
-                state.activeSection === 'attention'
-              }" aria-controls="panel-attention">
-                <span class="metric-icon">${icons.warning(15)}</span>
-                <span class="metric-value">${escapeHtml(brief.metricDisplays.attention)}</span>
-                <span class="metric-label">Attention</span>
-              </button>
-            </div>
-
-            <section class="brief-section app-accordion-section ${
-              state.activeSection === 'priorities' ? 'is-open' : ''
-            }" id="section-priorities">
-              <button type="button" class="app-accordion-trigger focusable" id="trigger-priorities" data-action="toggle-section" data-section="priorities" aria-expanded="${
-                state.activeSection === 'priorities'
-              }" aria-controls="panel-priorities">
-                <span class="app-accordion-trigger-left">
-                  <span class="brief-section-icon">${icons.flag(12)}</span>
-                  <span class="app-accordion-trigger-title">Top Priorities</span>
-                  <span class="app-accordion-trigger-badge">${escapeHtml(
-                    String(brief.counts.priorities)
-                  )}</span>
-                </span>
-                <span class="app-accordion-chevron">${icons.chevronDown(14)}</span>
-              </button>
-              <div class="app-accordion-body" id="panel-priorities" role="region" aria-labelledby="trigger-priorities" aria-hidden="${
-                state.activeSection !== 'priorities'
-              }">
-                <div class="priority-list">${renderPriorityRows(brief)}</div>
-              </div>
-            </section>
-
-            <section class="brief-section app-accordion-section ${
-              state.activeSection === 'output' ? 'is-open' : ''
-            }" id="section-output">
-              <button type="button" class="app-accordion-trigger focusable" id="trigger-output" data-action="toggle-section" data-section="output" aria-expanded="${
-                state.activeSection === 'output'
-              }" aria-controls="panel-output">
-                <span class="app-accordion-trigger-left">
-                  <span class="brief-section-icon">${icons.document(12)}</span>
-                  <span class="app-accordion-trigger-title">Overnight Output</span>
-                  <span class="app-accordion-trigger-badge">${escapeHtml(
-                    String(brief.counts.output)
-                  )}</span>
-                </span>
-                <span class="app-accordion-chevron">${icons.chevronDown(14)}</span>
-              </button>
-              <div class="app-accordion-body" id="panel-output" role="region" aria-labelledby="trigger-output" aria-hidden="${
-                state.activeSection !== 'output'
-              }">
-                <div class="output-list app-list-stack">${renderOutputRows(brief)}</div>
-              </div>
-            </section>
-
-            <section class="brief-section app-accordion-section ${
-              state.activeSection === 'receipts' ? 'is-open' : ''
-            }" id="section-receipts">
-              <button type="button" class="app-accordion-trigger focusable" id="trigger-receipts" data-action="toggle-section" data-section="receipts" aria-expanded="${
-                state.activeSection === 'receipts'
-              }" aria-controls="panel-receipts">
-                <span class="app-accordion-trigger-left">
-                  <span class="brief-section-icon">${icons.chart(12)}</span>
-                  <span class="app-accordion-trigger-title">Value Receipts</span>
-                  <span class="app-accordion-trigger-badge">${escapeHtml(
-                    brief.metricDisplays.receipts
-                  )}</span>
-                </span>
-                <span class="app-accordion-chevron">${icons.chevronDown(14)}</span>
-              </button>
-              <div class="app-accordion-body" id="panel-receipts" role="region" aria-labelledby="trigger-receipts" aria-hidden="${
-                state.activeSection !== 'receipts'
-              }">
-                <div class="receipt-list app-list-stack">${renderReceiptRows(brief)}</div>
-              </div>
-            </section>
-
-            <section class="brief-section app-accordion-section ${
-              state.activeSection === 'attention' ? 'is-open' : ''
-            }" id="section-attention">
-              <button type="button" class="app-accordion-trigger focusable" id="trigger-attention" data-action="toggle-section" data-section="attention" aria-expanded="${
-                state.activeSection === 'attention'
-              }" aria-controls="panel-attention">
-                <span class="app-accordion-trigger-left">
-                  <span class="brief-section-icon">${icons.warning(12)}</span>
-                  <span class="app-accordion-trigger-title">Needs Attention</span>
-                  <span class="app-accordion-trigger-badge">${escapeHtml(
-                    String(brief.counts.attention)
-                  )}</span>
-                </span>
-                <span class="app-accordion-chevron">${icons.chevronDown(14)}</span>
-              </button>
-              <div class="app-accordion-body" id="panel-attention" role="region" aria-labelledby="trigger-attention" aria-hidden="${
-                state.activeSection !== 'attention'
-              }">
-                <div class="attention-list app-list-stack">${renderAttentionRows(brief)}</div>
-              </div>
-            </section>
-
-            <div class="brief-footer">
-              <span class="footer-time">${escapeHtml(brief.timeLabel)}</span>
+            <div class="brief-digest">
+              <p class="brief-summary">${escapeHtml(brief.summary)}</p>
               ${
-                brief.footerUrl
-                  ? `<a href="${escapeHtml(
-                      brief.footerUrl
-                    )}" class="footer-link focusable" data-action="open-link" data-url="${escapeHtml(
-                      brief.footerUrl
-                    )}">${escapeHtml(brief.footerLabel)} ${icons.link(11)}</a>`
+                brief.actions.length
+                  ? `
+                    <div class="action-strip app-action-stack">
+                      ${brief.actions
+                        .map((action) => {
+                          const href = action.url || `#section-${action.section}`;
+                          const dataAction = action.url ? 'open-link' : 'open-section';
+                          const extraAttrs = action.url
+                            ? `data-url="${escapeHtml(action.url)}"`
+                            : `data-section="${escapeHtml(action.section)}" aria-controls="panel-${escapeHtml(action.section)}"`;
+                          return `
+                            <a href="${escapeHtml(href)}" class="action-card app-action-card focusable" data-tone="${escapeHtml(action.tone)}" data-action="${dataAction}" ${extraAttrs}>
+                              <span class="ev-dot" aria-hidden="true"></span>
+                              <span class="app-action-card-body">
+                                <span class="app-action-card-title">${escapeHtml(action.title)}</span>
+                                <span class="app-action-card-detail">${escapeHtml(action.detail)}</span>
+                              </span>
+                              <span class="app-action-card-cta">${escapeHtml(action.cta)} ${action.url ? '<span aria-hidden="true">↗</span>' : icons.chevronDown(12)}</span>
+                            </a>
+                          `;
+                        })
+                        .join('')}
+                    </div>
+                  `
+                  : ''
+              }
+              ${
+                landed.length
+                  ? `<div class="landed" role="list" aria-label="Landed overnight">${landed
+                      .map((artifact) => {
+                        const row = asObject(artifact);
+                        const url = artifactUrl(row);
+                        const status = String(row.status || '').toLowerCase();
+                        const verb = status === 'approved' || status === 'accepted' ? 'accepted' : titleCase(status || 'landed').toLowerCase();
+                        return `<ox-receipt-row status="met" label="${escapeHtml((row.title || row.name || 'Artifact') + ' · ' + verb)}" value="${escapeHtml(row.created_by_name || '')}"${url ? ` href="${escapeHtml(url)}"` : ''}></ox-receipt-row>`;
+                      })
+                      .join('')}</div>`
                   : ''
               }
             </div>
+
+            <div class="metric-rail app-metric-rail" aria-label="Brief sections">${
+              available.priorities ? `<button type="button" class="app-metric-button focusable${has.priorities ? '' : ' is-empty'}" data-action="open-section" data-section="priorities" aria-pressed="${state.activeSection === 'priorities'}" aria-controls="panel-priorities"><span class="metric-value">${escapeHtml(brief.metricDisplays.priorities)}</span><span class="metric-label">Priorities</span></button>` : ''}${
+              available.output ? `<button type="button" class="app-metric-button focusable${has.output ? '' : ' is-empty'}" data-action="open-section" data-section="output" aria-pressed="${state.activeSection === 'output'}" aria-controls="panel-output"><span class="metric-value">${escapeHtml(brief.metricDisplays.output)}</span><span class="metric-label">Output</span></button>` : ''}${
+              available.receipts ? `<button type="button" class="app-metric-button focusable${has.receipts ? '' : ' is-empty'}" data-action="open-section" data-section="receipts" aria-pressed="${state.activeSection === 'receipts'}" aria-controls="panel-receipts"><span class="metric-value">${escapeHtml(brief.metricDisplays.receipts)}</span><span class="metric-label">Receipts</span></button>` : ''}${
+              available.attention ? `<button type="button" class="app-metric-button focusable${has.attention ? '' : ' is-empty'}" data-action="open-section" data-section="attention" aria-pressed="${state.activeSection === 'attention'}" aria-controls="panel-attention"><span class="metric-value">${escapeHtml(brief.metricDisplays.attention)}</span><span class="metric-label">Flags</span></button>` : ''}</div>
+
+            ${available.priorities ? sectionHtml('priorities', 'Top priorities', String(brief.counts.priorities), `<div class="priority-list">${renderPriorityRows(brief)}</div>`) : ''}
+            ${available.output ? sectionHtml('output', 'Overnight output', String(brief.counts.output), `<div class="output-list app-list-stack">${renderOutputRows(brief)}</div>`) : ''}
+            ${available.receipts ? sectionHtml('receipts', 'Value receipts', brief.metricDisplays.receipts, `<div class="receipt-list app-list-stack">${renderReceiptRows(brief)}</div>`) : ''}
+            ${available.attention ? sectionHtml('attention', 'Needs attention', String(brief.counts.attention), `<div class="attention-list app-list-stack">${renderAttentionRows(brief)}</div>`) : ''}
+
+            <ox-footer variant="reads" class="brief-footer" state="${footer.state}" heading="${escapeHtml(footer.heading)}" detail="${escapeHtml(footer.detail)}" action-label="${escapeHtml(footer.action)}"${
+              brief.footerUrl ? ` data-url="${escapeHtml(brief.footerUrl)}"` : ''
+            }></ox-footer>
           </div>
         </div>
       `;
-
-      animateHeroValue(heroMetric);
     }
 
-    function animateHeroValue(metric) {
-      const el = document.getElementById('hero-value');
-      if (!el || metric.numeric === null || !Number.isFinite(metric.numeric)) return;
-
-      const target = metric.numeric;
-      const suffix = metric.suffix || '';
-      const duration = 1200;
-      let start = null;
-
-      function step(timestamp) {
-        if (!start) start = timestamp;
-        const progress = Math.min((timestamp - start) / duration, 1);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        const current = Math.round(eased * target);
-        el.textContent = current.toLocaleString('en-US');
-        if (progress < 1) {
-          window.requestAnimationFrame(step);
-        }
-      }
-
-      el.textContent = '0';
-      window.setTimeout(() => {
-        window.requestAnimationFrame(step);
-      }, 180);
-
-      const suffixEl = document.querySelector('.hero-value-suffix');
-      if (suffixEl) suffixEl.textContent = suffix;
+    function sectionHtml(section, title, badge, body) {
+      const open = state.activeSection === section;
+      return `
+            <section class="brief-section app-accordion-section ${open ? 'is-open' : ''}" id="section-${section}">
+              <button type="button" class="app-accordion-trigger focusable" id="trigger-${section}" data-action="toggle-section" data-section="${section}" aria-expanded="${open}" aria-controls="panel-${section}">
+                <span class="app-accordion-trigger-left">
+                  <span class="app-accordion-trigger-title">${escapeHtml(title)}</span>
+                  <span class="app-accordion-trigger-badge">${escapeHtml(badge)}</span>
+                </span>
+                <span class="app-accordion-chevron">${icons.chevronDown(14)}</span>
+              </button>
+              <div class="app-accordion-body" id="panel-${section}" role="region" aria-labelledby="trigger-${section}" aria-hidden="${!open}">
+                ${body}
+              </div>
+            </section>`;
     }
 
     function renderErrorState() {
       content.innerHTML = `
-        <div class="empty-state error-state animate-in">
-          <div class="empty-icon">${icons.status(24)}</div>
-          <div class="empty-title">Morning brief unavailable</div>
-          <div class="empty-desc">The latest brief could not be loaded. Open live view to retry when the workspace is reachable.</div>
-          <button type="button" class="deep-link focusable" data-action="open-link" data-url="${FALLBACK_REVIEW_URL}">Open live view ↗</button>
+        <div class="brief-shell widget-shell-card animate-in">
+          <div class="ox-card" data-edge="red">
+            <div class="brief-calm" role="alert">
+              <div class="brief-calm-title">Morning brief unavailable</div>
+              <div class="brief-calm-copy">The latest brief could not be loaded. Open live view to retry when the workspace is reachable.</div>
+            </div>
+            <ox-footer variant="reads" class="brief-footer" state="failed" heading="Couldn’t load" detail="nothing was changed" action-label="Live view ↗" data-url="${FALLBACK_REVIEW_URL}"></ox-footer>
+          </div>
         </div>
       `;
     }
@@ -2016,6 +1174,21 @@
         openWidgetLink(trigger.dataset.url, event);
       }
     }
+
+    // The footer's text action (Open review queue, Open live view) leaves through the host.
+    function openFooterLink(event) {
+      const footer = event.target && event.target.closest ? event.target.closest('ox-footer[data-url]') : null;
+      if (!footer) return;
+      const url = footer.getAttribute('data-url');
+      if (openWidgetLink(url, event) === false) return;
+      try { window.open(url, '_blank', 'noopener,noreferrer'); } catch (_) { /* host owns recovery */ }
+    }
+    content.addEventListener('ox-action', openFooterLink);
+
+    // Receipt rows route through the host instead of navigating the sandbox.
+    content.addEventListener('ox-open', (event) => {
+      if (event.detail && event.detail.href) openWidgetLink(event.detail.href, event);
+    });
 
     function settleBrief(payload) {
       const commit = () => {

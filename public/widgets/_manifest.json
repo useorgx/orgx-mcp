@@ -164,13 +164,16 @@
     },
     "morning-brief": {
       "file": "public/widgets/morning-brief.html",
-      "bytes": 70449,
-      "hash": "6e40d2a72d9e",
+      "bytes": 58038,
+      "hash": "7d779b11c0aa",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
+        "shared/agent-identity.js",
         "shared/icons.js",
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
+        "shared/kit/ox-elements.js",
+        "shared/kit/ox-tokens.css",
         "shared/live-machine.js",
         "shared/live-panel.js",
         "shared/live-store.js",
