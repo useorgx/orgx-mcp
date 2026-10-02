@@ -5,8 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Entity Card - OrgX</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Crect x='14' y='16' width='36' height='32' rx='5' fill='none' stroke='%2300c9a7' stroke-width='5'/%3E%3Cpath d='M22 28h20M22 37h12' stroke='%2300c9a7' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="shared/kit/ox-tokens.css" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
+  <script src="shared/kit/ox-elements.js"></script>
+  <script src="shared/agent-identity.js"></script>
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/interaction-kit.js"></script>
@@ -17,233 +20,323 @@
     /*
      * Entity card — the orgx_inspect result as one object, not a list: type,
      * status, the facts that matter, what it links to, and, for work that
-     * carries evidence, the proof record. The proof record uses the same rows,
-     * markers, and verdicts as the web app's ProofRecord, so an agent and a
-     * person read the same object.
+     * carries evidence, the proof record (canvas F3 "shared, then changed",
+     * F7 "back from OrgX"). The card says when it was true. When the person
+     * comes back from OrgX it checks again: a newer version shows "Chat has
+     * the 13:58 version · Update chat"; a ruling made there shows as theirs.
      */
     :root {
       --ox-primary-rgb: 0, 201, 167;
-      --ec-amber: #f59e0b;
+    }
+
+    .ec-page {
+      padding: 10px;
     }
 
     .ec {
-      display: grid;
-      gap: 16px;
-      padding: 18px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--ox-border);
+      border-radius: 16px;
+      background: var(--ox-panel);
+      box-shadow: var(--ox-shadow);
+      color: var(--ox-text);
       font-family: var(--ox-font);
+    }
+
+    /* One edge says how the card stands: amber needs you, teal accepted or
+       moving, mute when nothing is asked of you. */
+    .ec::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 16px;
+      right: 16px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(var(--ec-edge, var(--ox-edge-mute-rgb)), 0.75), transparent);
+      transition: background var(--ox-dur-edge, 600ms);
+    }
+
+    .ec[data-edge='amber'] { --ec-edge: var(--ox-edge-amber-rgb); }
+    .ec[data-edge='teal'] { --ec-edge: var(--ox-edge-teal-rgb); }
+    .ec[data-edge='red'] { --ec-edge: var(--ox-edge-red-rgb); }
+
+    /* Host strip: what the chat holds versus what OrgX holds now. */
+    .ec-strip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 48px;
+      padding: 0 8px 0 16px;
+      border-bottom: 1px solid var(--ox-border);
+      background: var(--ox-hover);
+      font-size: 12.5px;
       color: var(--ox-text);
     }
 
-    .ec-kicker {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-      font-family: var(--ox-mono);
-      font-size: 11px;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
+    .ec-strip[data-tone='stale'] {
+      background: rgba(var(--ox-warning-rgb), 0.08);
+    }
+
+    .ec-strip svg {
+      width: 14px;
+      height: 14px;
+      flex: none;
       color: var(--ox-text-muted);
     }
 
-    .ec-status {
-      padding: 2px 8px;
-      border: 1px solid var(--ox-border);
-      border-radius: 999px;
-      letter-spacing: 0.08em;
+    .ec-strip[data-tone='stale'] svg { color: var(--ox-warning); }
+
+    .ec-strip span {
+      min-width: 0;
+      flex: 1;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .ec-linkbtn {
+      flex: none;
+      min-height: 44px;
+      padding: 0 8px;
+      border: 0;
+      border-radius: 9px;
+      background: none;
       color: var(--ox-text);
-    }
-
-    .ec-head {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    .ec-head h1 {
-      margin: 6px 0 0;
-      font-size: 20px;
+      font: inherit;
+      font-size: 12.5px;
       font-weight: 650;
-      line-height: 1.25;
-      letter-spacing: -0.02em;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .ec-linkbtn:hover { background: var(--ox-hover); }
+    .ec-linkbtn[aria-disabled='true'] { opacity: 0.55; cursor: default; }
+
+    .ec-hd {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      padding: 14px 18px 0;
+      font-size: 12.5px;
+      color: var(--ox-text-muted);
+    }
+
+    .ec-hd ox-glyph { --ox-glyph-size: 16px; flex: none; }
+
+    .ec-kind {
+      flex: none;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .ec-asof {
+      margin-left: auto;
+      flex: none;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .ec-bd {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-width: 0;
+      padding: 10px 18px 16px;
+      transition: opacity var(--ox-dur-standard, 180ms);
+    }
+
+    .ec-bd > * { min-width: 0; }
+
+    /* Waiting on a ruling in OrgX: what you are looking at is not live here. */
+    .ec[data-waiting='true'] .ec-body-dim { opacity: 0.55; }
+
+    .ec-title {
+      margin: 0;
+      font-size: 19px;
+      font-weight: 700;
+      line-height: 1.2;
+      letter-spacing: -0.025em;
+      text-wrap: balance;
     }
 
     .ec-summary {
-      margin: 0;
-      font-size: 13px;
-      line-height: 1.55;
-      color: var(--ox-text-muted);
+      margin: -6px 0 0;
+      font-size: 13.5px;
+      line-height: 1.5;
+      color: var(--ox-text-2);
+    }
+
+    .ec-dim-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
     }
 
     .ec-facts {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-      gap: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 18px;
       margin: 0;
     }
 
     .ec-facts div {
-      padding: 10px 12px;
-      border: 1px solid var(--ox-border);
-      border-radius: 10px;
-      background: var(--ox-panel);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      font-size: 13px;
     }
 
     .ec-facts dt {
-      font-family: var(--ox-mono);
-      font-size: 11px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
       color: var(--ox-text-muted);
     }
 
     .ec-facts dd {
-      margin: 4px 0 0;
-      font-size: 14px;
-      font-weight: 600;
-    }
-
-    .ec-proof {
-      border: 1px solid var(--ox-border);
-      border-radius: 12px;
-      background: var(--ox-panel);
-      overflow: hidden;
-    }
-
-    .ec-proof__head {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      gap: 8px;
-      padding: 12px 14px;
-      border-bottom: 1px solid var(--ox-divider);
-    }
-
-    .ec-proof__head span {
-      font-family: var(--ox-mono);
-      font-size: 11px;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--ox-text-muted);
-    }
-
-    .ec-verdict {
-      font-size: 13px;
-      font-weight: 650;
-    }
-
-    .ec-verdict[data-verdict='accepted'] { color: var(--ox-teal); }
-    .ec-verdict[data-verdict='verifying'] { color: var(--ox-iris); }
-    .ec-verdict[data-verdict='needs-you'] { color: var(--ox-warning); }
-    .ec-verdict[data-verdict='open'] { color: var(--ox-text-muted); }
-
-    .ec-proof ul {
-      margin: 0;
-      padding: 4px 14px 8px;
-      list-style: none;
-    }
-
-    .ec-proof li {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 8px 0;
-      font-size: 13px;
-      border-bottom: 1px solid var(--ox-divider);
-    }
-
-    .ec-proof li:last-child {
-      border-bottom: 0;
-    }
-
-    .ec-proof li span {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      color: var(--ox-text-muted);
-    }
-
-    .ec-proof li b {
-      font-weight: 650;
+      gap: 6px;
+      margin: 0;
+      font-weight: 600;
       font-variant-numeric: tabular-nums;
     }
 
-    .ec-marker {
-      width: 6px;
-      height: 6px;
-      border-radius: 2px;
-      background: var(--ox-text-dim);
+    .ec-section {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
     }
 
-    .ec-marker[data-kind='decision'] { background: var(--ec-amber); }
-    .ec-marker[data-kind='artifact'] { background: var(--ox-teal); }
-    .ec-marker[data-kind='check'] { background: var(--ox-iris); }
+    .ec-section__hd {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 24px;
+    }
 
-    .ec-related h2 {
-      margin: 0 0 8px;
+    .ec-lbl {
+      margin: 0;
       font-family: var(--ox-mono);
-      font-size: 11px;
-      font-weight: 500;
-      letter-spacing: 0.14em;
+      font-size: 10.5px;
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
       color: var(--ox-text-muted);
     }
 
-    .ec-related ul {
-      display: grid;
-      gap: 6px;
+    .ec-linked {
       margin: 0;
       padding: 0;
       list-style: none;
-      font-size: 13px;
     }
 
-    .ec-related li span {
-      margin-right: 8px;
-      font-family: var(--ox-mono);
-      font-size: 11px;
+    .ec-linked li {
+      display: grid;
+      grid-template-columns: 20px minmax(0, 1fr) auto;
+      align-items: center;
+      column-gap: 10px;
+      min-height: 40px;
+      border-top: 1px solid var(--ox-border);
+      font-size: 13.5px;
+    }
+
+    .ec-linked li:first-child { border-top: 0; }
+
+    .ec-linked ox-glyph { --ox-glyph-size: 16px; justify-self: center; }
+
+    .ec-linked .t {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .ec-linked .k {
+      font-size: 12px;
       color: var(--ox-text-muted);
     }
 
-    .ec-open {
-      font-size: 12px;
-      white-space: nowrap;
+    .ec-again {
+      align-self: flex-start;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 44px;
+      padding: 0;
+      border: 0;
+      background: none;
+      color: var(--ox-text-2);
+      font: inherit;
+      font-size: 12.5px;
+      cursor: pointer;
+    }
+
+    .ec-again svg { width: 12px; height: 12px; }
+
+    .ec ox-footer {
+      /* The primary is always the canvas amber, whatever the widget accent. */
+      --ox-primary-rgb: 251, 191, 36;
+      --ox-primary: rgb(251, 191, 36);
     }
 
     /*
      * The empty state is what a person sees when a lookup finds nothing, so it
      * reads as a sentence about their work rather than as an instruction to
      * the agent. It used to say "Call orgx_inspect with a type and id from
-     * orgx_search", which is a note to a tool caller printed at a human, and
-     * it inherited no styling either — bare text in the browser's default
-     * serif, which is what made it look broken rather than empty.
+     * orgx_search", which is a note to a tool caller printed at a human.
      */
     .ec-empty {
-      display: grid;
+      display: flex;
+      flex-direction: column;
       gap: 6px;
-      justify-items: start;
-      padding: 22px 18px 24px;
+      padding: 18px 18px 20px;
       font-size: 13px;
+      line-height: 1.5;
       color: var(--ox-text-muted);
     }
 
     .ec-empty b {
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 650;
       color: var(--ox-text);
+    }
+
+    .ec-sk {
+      display: block;
+      height: 12px;
+      border-radius: 4px;
+      background: var(--ox-skeleton);
+    }
+
+    @media (max-width: 420px) {
+      .ec-page { padding: 6px; }
+      .ec-hd { padding: 12px 14px 0; }
+      .ec-bd { padding: 10px 14px 14px; }
+      .ec::after { left: 14px; right: 14px; }
+      .ec-strip { padding-left: 14px; }
+      .ec-title { font-size: 18px; }
     }
   </style>
   <link rel="stylesheet" href="shared/widget-theme.css" />
 </head>
 <body>
-  <div class="container" id="content">
-    <div class="skeleton-wrapper" style="display:grid; gap:12px; padding:18px;">
-      <div class="skeleton-line" style="width:30%; height:12px;"></div>
-      <div class="skeleton-line" style="width:70%; height:20px;"></div>
-      <div class="skeleton-line" style="width:100%; height:96px; border-radius:12px;"></div>
-    </div>
+  <div class="container ec-page" id="content">
+    <article class="ec" aria-busy="true" aria-label="Loading">
+      <div class="ec-hd"><span class="ec-sk" style="width:90px"></span></div>
+      <div class="ec-bd">
+        <span class="ec-sk" style="height:20px;width:70%"></span>
+        <span class="ec-sk" style="width:92%"></span>
+        <span class="ec-sk" style="width:60%"></span>
+      </div>
+      <ox-footer variant="reads" state="loading"></ox-footer>
+    </article>
   </div>
   <script>
     var params = new URLSearchParams(window.location.search);
@@ -263,11 +356,17 @@
       return Array.isArray(value) ? value : [];
     };
 
-    var VERDICT_LABEL = {
-      accepted: 'Accepted',
-      verifying: 'Verifying',
-      'needs-you': 'Needs you',
-      open: 'Open'
+    var ICON = {
+      share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l5 5-5 5"/><path d="M20 10h-9a7 7 0 0 0-7 7v2"/></svg>',
+      alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>',
+      ext: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>'
+    };
+
+    var VERDICT = {
+      accepted: { state: 'succeeded', label: 'Accepted', edge: 'teal' },
+      verifying: { state: 'verifying', label: '', edge: 'teal' },
+      'needs-you': { state: 'needs_you', label: '', edge: 'amber' },
+      open: { state: 'planned', label: 'Open', edge: 'mute' }
     };
 
     var DEMO = {
@@ -301,11 +400,98 @@
       }
     };
 
+    // A decision waiting on the person (F3, F8b at 375 px).
+    var DECISION = {
+      _v2_tool: 'orgx_inspect',
+      type: 'decision',
+      id: '7d3f0c2e-5b1a-4c8e-9f21-0a6b3e4d2c11',
+      card: {
+        type: 'decision',
+        id: '7d3f0c2e-5b1a-4c8e-9f21-0a6b3e4d2c11',
+        title: 'Ship release 4.2 to production?',
+        status: 'pending',
+        summary: 'Eli, the engineering agent, recommends approving. CI and the load test passed. The rollback plan is on v3.',
+        url: 'https://useorgx.com/decisions/7d3f0c2e-5b1a-4c8e-9f21-0a6b3e4d2c11',
+        facts: [
+          { label: 'Owner', value: 'Eli' },
+          { label: 'Updated', value: '2026-09-30' }
+        ],
+        proof: null,
+        related: [
+          { type: 'initiative', title: 'Release 4.2' },
+          { type: 'artifact', title: 'Rollback plan v3' }
+        ]
+      }
+    };
+
+    // Previews served next to the widgets read avatars from the same origin;
+    // host sandboxes use the kit default (mcp.useorgx.com).
+    if (window.OrgXElements && window.OrgXWidgetRuntime && window.OrgXWidgetRuntime.detectProtocol() === 'standalone') {
+      window.OrgXElements.avatarConfig.baseUrl = new URL('shared/avatars', window.location.href).toString();
+    }
+
+    var clone = function (value) {
+      return JSON.parse(JSON.stringify(value));
+    };
+
     var state = params.get('state') || (params.get('demo') === 'true' ? 'populated' : null);
-    var data = state === 'populated' ? DEMO : state === 'empty' ? {} : null;
+    var FIXTURES = {
+      populated: DEMO,
+      decision: DECISION,
+      changed: DEMO,
+      waiting: DECISION,
+      returned: DECISION,
+      degraded: DECISION,
+      empty: {}
+    };
+    var data = Object.prototype.hasOwnProperty.call(FIXTURES, state) ? clone(FIXTURES[state]) : null;
+    var isFixture = !!data;
+
+    /*
+     * What the widget knows beyond the card itself.
+     *   chatCard   the card the chat was handed (what the model believes)
+     *   chatAsOf   when the chat got it
+     *   ruling     null | 'waiting' | 'approved' | 'rejected' | 'missing'
+     *   strip      null | 'changed' | 'pending-in-chat' | 'degraded'
+     */
+    var view = {
+      card: null,
+      chatCard: null,
+      chatAsOf: null,
+      liveAsOf: null,
+      ruling: null,
+      strip: null,
+      checking: false,
+      leftForOrgx: false,
+      polls: 0,
+      pollTimer: null
+    };
+
+    var FIXTURE_TIME = new Date('2026-09-30T13:58:00');
+
+    var hhmm = function (date) {
+      return date ? date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+    };
 
     var humanize = function (value) {
       return String(value || '').replace(/_/g, ' ');
+    };
+
+    var titleCase = function (value) {
+      var text = humanize(value);
+      return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
+    };
+
+    var GLYPHS = ['goal', 'initiative', 'workstream', 'milestone', 'task', 'run', 'decision', 'question', 'artifact', 'receipt'];
+    var glyphKind = function (type) {
+      var t = String(type || '').toLowerCase();
+      if (t === 'objective') return 'goal';
+      if (t === 'agent_run') return 'run';
+      return GLYPHS.indexOf(t) === -1 ? 'artifact' : t;
+    };
+
+    var isUuid = function (value) {
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || ''));
     };
 
     // Older servers send no card; draw what the raw entity gives us.
@@ -326,72 +512,418 @@
       };
     };
 
+    /*
+     * The status as a state chip, in the canvas words. Unknown statuses keep
+     * their own word on a quiet chip rather than being forced into a state.
+     */
+    var chipFor = function (card) {
+      var s = String(card.status || '').toLowerCase();
+      var isDecision = card.type === 'decision';
+      if (view.ruling === 'approved') return { state: 'confirmed', label: 'Approved by you', edge: 'teal' };
+      if (view.ruling === 'rejected') return { state: 'rejected', label: 'Rejected by you', edge: 'mute' };
+      if (view.ruling === 'waiting') return { state: 'handed_off', label: '', edge: 'mute' };
+      if (['needs_you', 'needs_input', 'awaiting_approval', 'pending_approval'].indexOf(s) !== -1 ||
+          (isDecision && ['pending', 'open', 'proposed'].indexOf(s) !== -1)) {
+        return { state: 'needs_you', label: '', edge: 'amber' };
+      }
+      if (s === 'blocked') return { state: 'blocked', label: '', edge: 'red' };
+      if (['in_progress', 'active', 'running', 'executing'].indexOf(s) !== -1) return { state: 'running', label: '', edge: 'teal' };
+      if (['in_review', 'review', 'submitted', 'verifying', 'pending_review'].indexOf(s) !== -1) return { state: 'verifying', label: '', edge: 'teal' };
+      if (['approved', 'accepted'].indexOf(s) !== -1) return { state: 'confirmed', label: titleCase(s), edge: 'teal' };
+      if (['completed', 'complete', 'done', 'shipped', 'published'].indexOf(s) !== -1) return { state: 'succeeded', label: '', edge: 'teal' };
+      if (s === 'rejected') return { state: 'rejected', label: 'Rejected', edge: 'mute' };
+      if (s === 'cancelled' || s === 'canceled') return { state: 'cancelled', label: '', edge: 'mute' };
+      if (!s) return null;
+      return { state: 'planned', label: titleCase(s), edge: 'mute' };
+    };
+
+    var needsRuling = function (card) {
+      var chip = chipFor(card);
+      return card.type === 'decision' && chip && chip.state === 'needs_you';
+    };
+
+    /*
+     * One proof row per count, stated as proof: met when the work is accepted,
+     * checking while it is verified, your call when it waits on you, a failed
+     * evaluation as a failure, anything else unverified.
+     */
+    var proofStatus = function (row, verdict) {
+      var kind = row.kind || 'neutral';
+      if (row.label === 'Evaluation') {
+        var v = String(row.value || '').toLowerCase();
+        if (v === 'failed' || v === 'rejected') return 'fail';
+        if (v === 'passed' || v === 'accepted' || v === 'completed') return 'met';
+        return 'pending';
+      }
+      if (verdict === 'accepted') return 'met';
+      // Verifying: the counts are not judged one by one yet, and a column of
+      // spinners would move without saying anything (SM5: lists stay still).
+      if (verdict === 'verifying') return 'unverified';
+      if (verdict === 'needs-you') return kind === 'decision' || kind === 'neutral' ? 'yours' : 'unverified';
+      return 'unverified';
+    };
+
+    var attrs = function (map) {
+      return Object.keys(map).map(function (key) {
+        var value = map[key];
+        return value === null || value === undefined || value === '' ? '' : ' ' + key + '="' + escapeHtml(value) + '"';
+      }).join('');
+    };
+
+    var agentFor = function (value) {
+      var identity = window.OrgXAgentIdentity;
+      return identity && typeof identity.resolveAgentKey === 'function' ? identity.resolveAgentKey(value) : null;
+    };
+
+    var formFor = function (chipState) {
+      var identity = window.OrgXAgentIdentity;
+      return identity && typeof identity.formForState === 'function' ? identity.formForState(chipState) : 'base';
+    };
+
+    var stripHtml = function () {
+      if (view.strip === 'changed') {
+        return '<div class="ec-strip" role="status">' + ICON.share +
+          '<span>Chat has the ' + escapeHtml(hhmm(view.chatAsOf)) + ' version</span>' +
+          '<button type="button" class="ec-linkbtn" data-action="update-chat">Update chat</button></div>';
+      }
+      if (view.strip === 'pending-in-chat') {
+        return '<div class="ec-strip" role="status">' + ICON.share +
+          '<span>Chat still has this as pending</span>' +
+          '<button type="button" class="ec-linkbtn" data-action="update-chat">Update chat</button></div>';
+      }
+      if (view.strip === 'degraded') {
+        return '<div class="ec-strip" data-tone="stale" role="alert">' + ICON.alert +
+          '<span>OrgX did not respond</span>' +
+          '<button type="button" class="ec-linkbtn" data-action="retry"' + (view.checking ? ' aria-disabled="true"' : '') + '>' +
+          (view.checking ? 'Checking…' : 'Retry') + '</button></div>';
+      }
+      return '';
+    };
+
+    var footerHtml = function (card, url) {
+      var link = url ? ' ↗' : '';
+      if (view.ruling === 'waiting') {
+        return '<ox-footer variant="confirms-in-orgx" state="waiting" heading="Opened in OrgX" detail="' +
+          (view.checking ? 'checking…' : 'waiting for you there') + '" action-label="Check now"></ox-footer>';
+      }
+      if (view.ruling === 'approved' || view.ruling === 'rejected') {
+        return '<ox-footer variant="confirms-in-orgx" state="' + (view.ruling === 'approved' ? 'confirmed' : 'rejected') + '"' +
+          ' heading="' + (view.ruling === 'approved' ? 'Approved by you' : 'Rejected by you') + '"' +
+          ' detail="recorded in OrgX"' +
+          (url ? ' action-label="Open the record' + link + '"' : ' action-label=""') + '></ox-footer>';
+      }
+      if (needsRuling(card) && url) {
+        return '<ox-footer variant="confirms-in-orgx" state="needs-you" heading="Needs your ruling"' +
+          ' detail="approve or reject" primary-label="Decide in OrgX' + link + '"></ox-footer>';
+      }
+      var asOf = view.liveAsOf || view.chatAsOf;
+      return '<ox-footer variant="reads" state="fresh" heading="' + escapeHtml(asOf ? 'As of ' + hhmm(asOf) : 'From this request') + '"' +
+        ' detail="' + escapeHtml(titleCase(card.type)) + '"' +
+        (url ? ' action-label="Open in OrgX' + link + '"' : ' action-label=""') + '></ox-footer>';
+    };
+
     var render = function (payload) {
       var content = document.getElementById('content');
-      if (!payload) {
-        if (state === 'loading' || !state) return;
+      if (payload !== undefined) {
+        if (!payload) {
+          if (state === 'loading' || !state) return;
+        }
+        var incoming = cardFrom(payload);
+        view.card = incoming;
+        view.chatCard = incoming;
+        view.chatAsOf = isFixture ? FIXTURE_TIME : new Date();
+        view.liveAsOf = null;
+        view.strip = null;
+        view.ruling = null;
       }
-      var card = cardFrom(payload);
+      var card = view.card;
       if (!card) {
         content.innerHTML =
+          '<article class="ec" aria-label="OrgX">' +
           '<div class="ec-empty">' +
           '<b>Nothing to show here</b>' +
           '<span>This result did not carry an entity to display. Search for the ' +
           'initiative, task, or artifact you meant and open it again.</span>' +
-          '</div>';
+          '</div></article>';
         return;
       }
       var url = typeof card.url === 'string' ? card.url : '';
       var facts = asArray(card.facts);
       var related = asArray(card.related);
       var proof = card.proof && typeof card.proof === 'object' ? card.proof : null;
-      var verdict = proof && VERDICT_LABEL[proof.verdict] ? proof.verdict : 'open';
+      var verdict = proof && VERDICT[proof.verdict] ? proof.verdict : 'open';
+      var chip = chipFor(card);
+      var edge = view.strip === 'degraded' ? 'mute' : chip ? chip.edge : 'mute';
+      var asOf = view.liveAsOf || view.chatAsOf;
+
+      var factsHtml = facts.length
+        ? '<dl class="ec-facts">' + facts.map(function (fact) {
+            var agent = fact.label === 'Owner' ? agentFor(fact.value) : null;
+            return '<div><dt>' + escapeHtml(fact.label) + '</dt><dd>' +
+              (agent ? '<ox-avatar' + attrs({ agent: agent, form: formFor(chip ? chip.state : ''), size: '20', name: fact.value }) + '></ox-avatar>' : '') +
+              escapeHtml(fact.value) + '</dd></div>';
+          }).join('') + '</dl>'
+        : '';
+
+      var proofHtml = proof && asArray(proof.rows).length
+        ? '<section class="ec-section ec-proof" aria-label="Proof record">' +
+          '<div class="ec-section__hd"><p class="ec-lbl">Proof record</p>' +
+          // The verdict chip only speaks when it says something the status does not.
+          (chip && chip.state === VERDICT[verdict].state ? '<span class="ec-verdict" data-verdict="' + escapeHtml(verdict) + '" hidden></span>' : '<ox-state-chip class="ec-verdict" data-verdict="' + escapeHtml(verdict) + '"' +
+          attrs({ state: VERDICT[verdict].state, label: VERDICT[verdict].label, reserve: 'verifying needs_you succeeded' }) + '></ox-state-chip>') + '</div>' +
+          '<div role="list">' +
+          asArray(proof.rows).map(function (row) {
+            return '<ox-receipt-row' + attrs({
+              'data-kind': row.kind || 'neutral',
+              status: proofStatus(row, verdict),
+              label: row.label,
+              value: row.value
+            }) + '></ox-receipt-row>';
+          }).join('') +
+          '</div></section>'
+        : '';
+
+      var relatedHtml = related.length
+        ? '<section class="ec-section ec-related" aria-label="Linked"><div class="ec-section__hd"><p class="ec-lbl">Linked</p></div>' +
+          '<ul class="ec-linked">' +
+          related.map(function (item) {
+            return '<li><ox-glyph kind="' + glyphKind(item.type) + '"></ox-glyph>' +
+              '<span class="t">' + escapeHtml(item.title) + '</span>' +
+              '<span class="k">' + escapeHtml(titleCase(item.type)) + '</span></li>';
+          }).join('') +
+          '</ul></section>'
+        : '';
 
       content.innerHTML =
-        '<article class="ec" aria-label="OrgX ' + escapeHtml(humanize(card.type)) + '">' +
-        '<div class="ec-head"><div>' +
-        '<div class="ec-kicker"><span>' + escapeHtml(humanize(card.type)) + '</span>' +
-        (card.status ? '<span class="ec-status">' + escapeHtml(humanize(card.status)) + '</span>' : '') +
-        '</div>' +
-        '<h1>' + escapeHtml(card.title) + '</h1>' +
-        '</div>' +
-        (url
-          ? '<a class="ec-open ox-link-btn" href="' + escapeHtml(url) + '" target="_blank" rel="noreferrer" onclick=\'return openWidgetLink(' + JSON.stringify(url) + ', event)\'>Open in OrgX</a>'
+        '<article class="ec" data-edge="' + edge + '" data-waiting="' + (view.ruling === 'waiting') + '" aria-label="OrgX ' + escapeHtml(humanize(card.type)) + '">' +
+        stripHtml() +
+        '<div class="ec-hd"><ox-glyph kind="' + glyphKind(card.type) + '"' + (chip && chip.edge === 'amber' ? ' tone="amber"' : '') + '></ox-glyph>' +
+        '<span class="ec-kind">' + escapeHtml(humanize(card.type)) + '</span>' +
+        (chip
+          ? '<ox-state-chip class="ec-status"' + attrs({ state: chip.state, label: chip.label, reserve: card.type === 'decision' ? 'needs_you handed_off' : '' }) + '></ox-state-chip>'
           : '') +
+        (asOf ? '<span class="ec-asof">' + (view.strip === 'degraded' ? 'snapshot ' : 'as of ') + escapeHtml(hhmm(asOf)) + '</span>' : '') +
         '</div>' +
+        '<div class="ec-bd"><div class="ec-dim-wrap ec-body-dim">' +
+        '<h1 class="ec-title">' + escapeHtml(card.title) + '</h1>' +
         (card.summary ? '<p class="ec-summary">' + escapeHtml(card.summary) + '</p>' : '') +
-        (facts.length
-          ? '<dl class="ec-facts">' +
-            facts.map(function (fact) {
-              return '<div><dt>' + escapeHtml(fact.label) + '</dt><dd>' + escapeHtml(fact.value) + '</dd></div>';
-            }).join('') +
-            '</dl>'
+        factsHtml + proofHtml + relatedHtml +
+        '</div>' +
+        (view.ruling === 'waiting' && url
+          ? '<button type="button" class="ec-again" data-action="open">Open in OrgX again ' + ICON.ext + '</button>'
           : '') +
-        (proof && asArray(proof.rows).length
-          ? '<section class="ec-proof" aria-label="Proof record">' +
-            '<div class="ec-proof__head"><span>Proof record</span>' +
-            '<b class="ec-verdict" data-verdict="' + escapeHtml(verdict) + '">' + escapeHtml(VERDICT_LABEL[verdict]) + '</b></div>' +
-            '<ul>' +
-            asArray(proof.rows).map(function (row) {
-              return '<li><span><i class="ec-marker" data-kind="' + escapeHtml(row.kind || 'neutral') + '"></i>' +
-                escapeHtml(row.label) + '</span><b>' + escapeHtml(row.value) + '</b></li>';
-            }).join('') +
-            '</ul></section>'
-          : '') +
-        (related.length
-          ? '<section class="ec-related"><h2>Linked</h2><ul>' +
-            related.map(function (item) {
-              return '<li><span>' + escapeHtml(humanize(item.type)) + '</span>' + escapeHtml(item.title) + '</li>';
-            }).join('') +
-            '</ul></section>'
-          : '') +
+        '</div>' +
+        footerHtml(card, url) +
         '</article>';
+    };
+
+    // ── Links and checks ────────────────────────────────────────────────
+
+    var isStandalone = function () {
+      return !window.OrgXWidgetRuntime || window.OrgXWidgetRuntime.detectProtocol() === 'standalone';
+    };
+
+    // Raw anchors are not allowed in MCP widgets: links go through the host.
+    var openLink = function (url) {
+      if (!url) return;
+      if (isStandalone()) {
+        try { window.open(url, '_blank', 'noopener,noreferrer'); } catch (_) { /* preview only */ }
+        return;
+      }
+      openWidgetLink(url);
+    };
+
+    var unpack = function (result) {
+      return window.OrgXWidgetRuntime.extractStructuredWidgetData(result, true);
+    };
+
+    var signature = function (card) {
+      if (!card) return '';
+      return JSON.stringify([card.title, card.status, card.summary, card.facts, card.proof, card.related]);
+    };
+
+    var stopPolling = function () {
+      if (view.pollTimer) window.clearTimeout(view.pollTimer);
+      view.pollTimer = null;
+    };
+
+    /*
+     * Read the entity again. A newer version replaces what you see and the
+     * strip says the chat still holds the older one; nothing is sent to the
+     * chat until you press Update chat.
+     */
+    var reinspect = function () {
+      var card = view.card;
+      if (!card || view.checking) return Promise.resolve();
+      view.checking = true;
+      render();
+      return Promise.resolve()
+        .then(function () { return callTool('orgx_inspect', { type: card.type, id: card.id }); })
+        .then(function (result) {
+          var next = cardFrom(unpack(result));
+          if (!next) throw new Error('No entity in the response.');
+          view.checking = false;
+          view.liveAsOf = new Date();
+          var changed = signature(next) !== signature(view.chatCard);
+          view.card = next;
+          if (view.strip === 'degraded') view.strip = null;
+          if (changed) view.strip = 'changed';
+          if (view.ruling === 'waiting' && !needsRuling(next)) {
+            var s = String(next.status || '').toLowerCase();
+            view.ruling = s === 'rejected' ? 'rejected' : 'approved';
+            view.strip = 'pending-in-chat';
+          }
+          render();
+        })
+        .catch(function () {
+          view.checking = false;
+          view.strip = 'degraded';
+          render();
+        });
+    };
+
+    /*
+     * A ruling made in OrgX: ask the server what happened rather than guess.
+     * orgx_command_status says how long to wait before asking again
+     * (next_poll_after_ms) and returns null once the state is final.
+     */
+    var checkRuling = function () {
+      var card = view.card;
+      if (!card || view.checking) return;
+      if (!isUuid(card.id)) {
+        reinspect();
+        return;
+      }
+      stopPolling();
+      view.checking = true;
+      render();
+      Promise.resolve()
+        .then(function () { return callTool('orgx_command_status', { kind: 'decision', id: card.id }); })
+        .then(function (result) {
+          var status = unpack(result) || {};
+          view.checking = false;
+          if (view.strip === 'degraded') view.strip = null;
+          var outcome = String(status.outcome || '').toLowerCase();
+          if (status.state === 'succeeded') {
+            view.ruling = /reject|declin|send.?back/.test(outcome) ? 'rejected' : 'approved';
+            view.strip = 'pending-in-chat';
+            view.liveAsOf = new Date();
+          } else if (status.state === 'cancelled' || status.state === 'failed') {
+            view.ruling = 'rejected';
+            view.strip = 'pending-in-chat';
+            view.liveAsOf = new Date();
+          } else if (status.state === 'not_found') {
+            view.ruling = null;
+            view.strip = 'degraded';
+          }
+          render();
+          var wait = status.next_poll_after_ms;
+          if (view.ruling === 'waiting' && typeof wait === 'number' && view.polls < 30 && document.visibilityState !== 'hidden') {
+            view.polls += 1;
+            view.pollTimer = window.setTimeout(checkRuling, Math.max(1000, wait));
+          }
+        })
+        .catch(function () {
+          view.checking = false;
+          view.strip = 'degraded';
+          render();
+        });
+    };
+
+    var openInOrgx = function () {
+      var card = view.card;
+      var url = card && typeof card.url === 'string' ? card.url : '';
+      if (!url) return;
+      openLink(url);
+      view.leftForOrgx = true;
+      if (view.ruling === null && needsRuling(card)) {
+        view.ruling = 'waiting';
+        view.polls = 0;
+        render();
+      }
+    };
+
+    var updateChat = function () {
+      var card = view.card;
+      if (!card) return;
+      var verb = view.ruling === 'approved' ? 'was approved in OrgX' : view.ruling === 'rejected' ? 'was rejected in OrgX' : 'changed in OrgX';
+      Promise.resolve(window.OrgXWidgetRuntime.updateModelContext({
+        content: [{ type: 'text', text: (card.title || 'This item') + ' ' + verb + '. Current status: ' + humanize(card.status || 'unknown') + '.' }],
+        structuredContent: {
+          type: 'orgx.entity.updated',
+          entity_type: card.type,
+          entity_id: card.id,
+          ruling: view.ruling,
+          card: card,
+          widget_session_id: window.OrgXWidgetRuntime.getWidgetSessionId()
+        }
+      })).then(function () {
+        view.chatCard = card;
+        view.chatAsOf = new Date();
+        view.strip = null;
+        render();
+      }).catch(function () {
+        view.strip = 'degraded';
+        render();
+      });
+    };
+
+    // Footer events: the primary decides in OrgX; the text action opens the
+    // record, or checks again while a ruling is pending there.
+    document.addEventListener('ox-primary', function () {
+      openInOrgx();
+    });
+    document.addEventListener('ox-action', function (event) {
+      var footer = event.target;
+      if (footer && footer.getAttribute && footer.getAttribute('state') === 'waiting') checkRuling();
+      else openInOrgx();
+    });
+    document.addEventListener('ox-open', function (event) {
+      event.preventDefault();
+      openLink(event.detail && event.detail.href);
+    });
+    document.addEventListener('click', function (event) {
+      var button = event.target && event.target.closest ? event.target.closest('[data-action]') : null;
+      if (!button || button.getAttribute('aria-disabled') === 'true') return;
+      var action = button.getAttribute('data-action');
+      if (action === 'update-chat') updateChat();
+      else if (action === 'retry') (view.ruling === 'waiting' ? checkRuling : reinspect)();
+      else if (action === 'open') openInOrgx();
+    });
+
+    // Back from OrgX: check once, the way F7 does. Never while hidden.
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState !== 'visible' || !view.leftForOrgx || isFixture) return;
+      view.leftForOrgx = false;
+      if (view.ruling === 'waiting') checkRuling();
+      else reinspect();
+    });
+
+    var applyFixture = function () {
+      render(data);
+      if (state === 'changed') {
+        view.card.status = 'completed';
+        view.card.proof.verdict = 'accepted';
+        view.card.facts[2].value = '100%';
+        view.liveAsOf = new Date('2026-09-30T14:20:00');
+        view.strip = 'changed';
+      } else if (state === 'waiting') {
+        view.ruling = 'waiting';
+      } else if (state === 'returned') {
+        view.ruling = 'approved';
+        view.strip = 'pending-in-chat';
+        view.liveAsOf = new Date('2026-09-30T14:20:00');
+      } else if (state === 'degraded') {
+        view.chatAsOf = new Date('2026-09-30T13:44:00');
+        view.strip = 'degraded';
+      }
+      render();
     };
 
     if (state === 'loading') {
       // Keep the skeleton.
     } else if (data) {
-      render(data);
+      applyFixture();
     } else {
       initWidget({
         live: { anchor: '#content', widget: 'entity-card', emptyLabel: 'No agents running on this work' },

@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Search Results - OrgX</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='28' cy='28' r='14' fill='none' stroke='%2300C9A7' stroke-width='6'/%3E%3Cpath d='M39 39l12 12' stroke='%2300C9A7' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="shared/kit/ox-tokens.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
+  <script src="shared/kit/ox-elements.js"></script>
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script>
@@ -18,594 +20,325 @@
     })();
   </script>
   <style>
-      :root, :root[data-theme="light"] {
-        --ox-bg: #f8fafc;
-        --ox-panel: #ffffff;
-        --ox-border: rgba(0, 0, 0, 0.08);
-        --ox-border-strong: rgba(0, 0, 0, 0.15);
-        --ox-text: #0f172a;
-        --ox-text-muted: #64748b;
-        --ox-well-bg: #f1f5f9;
-        --ox-well-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
-      }
-      
-      @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) {
-          --ox-bg: #02040a;
-          --ox-panel: rgba(10, 15, 22, 0.95);
-          --ox-border: rgba(255, 255, 255, 0.08);
-          --ox-border-strong: rgba(255, 255, 255, 0.15);
-          --ox-text: #f8fafc;
-          --ox-text-muted: rgba(255, 255, 255, 0.5);
-          --ox-well-bg: rgba(0,0,0,0.3);
-          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
-        }
-      }
-      
-      :root[data-theme="dark"] {
-          --ox-bg: #02040a;
-          --ox-panel: rgba(10, 15, 22, 0.95);
-          --ox-border: rgba(255, 255, 255, 0.08);
-          --ox-border-strong: rgba(255, 255, 255, 0.15);
-          --ox-text: #f8fafc;
-          --ox-text-muted: rgba(255, 255, 255, 0.5);
-          --ox-well-bg: rgba(0,0,0,0.3);
-          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
-      }
-      
-      :root {
-        --ox-lime: #a3e635; /* Will be overwritten by specific widgets */
-        --ox-teal: #0d9488;
-        --ox-danger: #e11d48;
-        --ox-warning: #d97706;
-        --ox-iris: #4f46e5;
-        --ox-grid: rgba(0, 0, 0, 0.03);
-        --ox-shadow: 0 12px 32px -12px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.04);
-        --ox-font: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
-        --ox-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
-      }
-      
-      @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) {
-          --ox-lime: #D4ED31;
-          --ox-teal: #00C9A7;
-          --ox-danger: #F43F5E;
-          --ox-warning: #FBBF24;
-          --ox-iris: #6366f1;
-          --ox-grid: rgba(255, 255, 255, 0.02);
-          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
-        }
-      }
-      
-      :root[data-theme="dark"] {
-          --ox-lime: #D4ED31;
-          --ox-teal: #00C9A7;
-          --ox-danger: #F43F5E;
-          --ox-warning: #FBBF24;
-          --ox-iris: #6366f1;
-          --ox-grid: rgba(255, 255, 255, 0.02);
-          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
-      }
-
-      /* Smooth UX Transitions */
-      .skeleton-wrapper { transition: opacity var(--ox-dur-slow, 400ms) var(--ox-ease-exit, cubic-bezier(0.4, 0, 1, 1)); }
-      @keyframes fadeSlideUp {
-        from { opacity: 0; transform: translateY(16px) scale(0.98); filter: blur(4px); }
-        to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
-      }
-      /* Arrivals decelerate in (entry curve). */
-      .animate-in { opacity: 0; animation: fadeSlideUp var(--ox-dur-slower, 600ms) var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) forwards; }
-      .delay-1 { animation-delay: 0.1s; }
-      .delay-2 { animation-delay: 0.2s; }
-      .delay-3 { animation-delay: 0.3s; }
-
-      /* Result rows arrive in a calm stagger after the card settles. */
-      .result-list > .result-card,
-      .result-list--recommendations > .result-card {
-        opacity: 0;
-        animation: fadeSlideUp var(--ox-dur-slow, 400ms) var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) forwards;
-        animation-delay: calc(120ms + var(--i, 0) * 60ms);
-      }
-      
-      .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 24px; text-align: center; background: var(--ox-well-bg); border: 1px dashed var(--ox-border-strong); border-radius: 16px; margin: 16px 0; }
-      .empty-icon { width: 48px; height: 48px; border-radius: 50%; background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
-      .empty-icon svg { width: 24px; height: 24px; }
-      .empty-title { font-size: 1.1rem; font-weight: 600; color: var(--ox-text); margin-bottom: 8px; }
-      .empty-desc { font-size: 0.9rem; color: var(--ox-text-muted); line-height: 1.5; max-width: 280px; }
-
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-
-      body {
-        font-family: var(--ox-font);
-        background: var(--ox-bg);
-        color: var(--ox-text);
-        padding: 24px 16px;
-        -webkit-font-smoothing: antialiased;
-        min-height: auto;
-      }
-
-      body::before {
-        content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        background: radial-gradient(circle at 50% 0%, rgba(var(--ox-primary-rgb), 0.08), transparent 60%),
-                    linear-gradient(var(--ox-grid) 1px, transparent 1px),
-                    linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px);
-        background-size: 100% 100%, 20px 20px, 20px 20px;
-        z-index: -1; pointer-events: none;
-      }
-
-      .container { max-width: 700px; margin: 0 auto; position: relative; }
-
-      :root[data-embed="og-wide-search"] body {
-        min-height: auto;
-        min-width: 700px;
-        padding: 20px 18px;
-      }
-
-      :root[data-embed="og-wide-search"] .container {
-        max-width: 700px;
-      }
-
-      :root[data-embed="og-wide-search"] .ox-card-inner {
-        padding: 22px;
-      }
-
-      :root[data-embed="og-wide-search"] .result-card {
-        padding: 16px;
-      }
-
-      .ox-card {
-        background: var(--ox-panel); border: 1px solid var(--ox-border); border-radius: 16px; box-shadow: var(--ox-shadow); position: relative; overflow: hidden; margin-bottom: 16px;
-      }
-      .ox-card-inner { padding: 24px; }
-      .ox-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(var(--ox-primary-rgb), 0.5), transparent); opacity: 0.8; }
-      .ox-well { background: var(--ox-well-bg); border: 1px solid var(--ox-border); border-radius: 10px; padding: 16px; box-shadow: var(--ox-well-shadow); }
-      .ox-eyebrow { font-family: var(--ox-mono); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ox-text-muted); font-weight: 600; }
-      .ox-title { font-size: 1.15rem; font-weight: 600; letter-spacing: -0.02em; color: var(--ox-text); line-height: 1.3; }
-      .ox-text { font-size: 0.9rem; line-height: 1.5; color: var(--ox-text); }
-      
-
+    /*
+     * Search results — orgx_search (and decision history / recommendations,
+     * which reuse this widget) as host rows with OrgX strings (canvas F5),
+     * grouped by attention (S5-B): what needs your decision first, then the
+     * rest of the work. Each row is a glyph for the kind of thing, its title,
+     * and one line in OrgX words: "Decision · needs you · 2d".
+     */
     :root { --ox-primary-rgb: 0, 201, 167; }
-    
-    .search-box { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--ox-border); }
-    .search-icon { color: var(--ox-primary); filter: drop-shadow(0 0 10px rgba(var(--ox-primary-rgb), 0.4)); }
-    .search-query { font-family: var(--ox-mono); font-size: 1rem; color: var(--ox-text); font-weight: 500; letter-spacing: -0.02em; }
-    .search-meta { display: flex; flex-direction: column; gap: 8px; }
-    .search-subtitle { font-size: 0.82rem; line-height: 1.45; color: var(--ox-text-muted); }
-    .search-helper {
-      display: inline-flex;
+
+    body {
+      margin: 0;
+      padding: 10px;
+      background: var(--ox-bg);
+      color: var(--ox-text);
+      font-family: var(--ox-font);
+    }
+
+    .container { max-width: 760px; margin: 0 auto; position: relative; }
+
+    :root[data-embed="og-wide-search"] body { min-width: 700px; padding: 20px 18px; }
+    :root[data-embed="og-wide-search"] .container { max-width: 700px; }
+
+    .widget-shell-card { margin: 0; }
+
+    .widget-shell-card .ox-card.sr {
+      display: flex;
+      flex-direction: column;
+      margin: 0;
+      border-radius: 16px;
+    }
+
+    .sr::after {
+      left: 16px !important;
+      right: 16px !important;
+      opacity: 1 !important;
+      background: linear-gradient(90deg, transparent, rgba(var(--sr-edge, var(--ox-edge-teal-rgb)), 0.75), transparent) !important;
+    }
+
+    .sr[data-edge='amber'] { --sr-edge: var(--ox-edge-amber-rgb); }
+    .sr[data-edge='mute'] { --sr-edge: var(--ox-edge-mute-rgb); }
+    .sr[data-edge='red'] { --sr-edge: var(--ox-edge-red-rgb); }
+
+    .sr-hd {
+      display: flex;
       align-items: center;
       gap: 8px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--ox-border);
-      background: rgba(255, 255, 255, 0.03);
-      width: fit-content;
-      font-size: 0.75rem;
+      min-width: 0;
+      padding: 14px 18px 6px;
+      font-size: 12.5px;
       color: var(--ox-text-muted);
     }
-    
-    .result-list { display: flex; flex-direction: column; gap: 12px; }
-    .result-list--recommendations { gap: 14px; }
-    
+
+    .sr-hd ox-glyph { --ox-glyph-size: 16px; flex: none; }
+
+    .sr-kind {
+      flex: none;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .sr-src {
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .sr-src b { color: var(--ox-text-2); font-weight: 600; }
+
+    .sr-count {
+      flex: none;
+      margin-left: auto;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .sr-bd {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+      padding: 4px 8px 10px;
+    }
+
+    .sr-sub {
+      margin: 0 10px 6px;
+      font-size: 12.5px;
+      line-height: 1.45;
+      color: var(--ox-text-muted);
+    }
+
+    .sr-bd ox-attention-line { --ox-attention-padding: 0 10px; }
+
+    .sr-lbl {
+      margin: 0;
+      padding: 10px 10px 4px;
+      font-family: var(--ox-mono);
+      font-size: 10.5px;
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ox-text-muted);
+    }
+
+    .result-list { display: flex; flex-direction: column; gap: 2px; }
+
+    /* One row: glyph, title, one line of OrgX words. The row is the link. */
     .result-card {
-      display: block;
+      display: grid;
+      grid-template-columns: 22px minmax(0, 1fr) auto;
+      column-gap: 12px;
+      align-items: start;
+      min-height: 56px;
+      padding: 10px;
+      border: 1px solid transparent;
+      border-radius: 12px;
       color: inherit;
       text-decoration: none;
-      padding: 18px;
-      background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.04), transparent 45%), var(--ox-well-bg);
-      border: 1px solid var(--ox-border);
-      border-radius: 14px;
-      transition: border-color var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
-        background var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
-        transform var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
-        box-shadow var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
-      position: relative;
-      overflow: hidden;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+      transition: background var(--ox-dur-micro, 160ms), border-color var(--ox-dur-micro, 160ms);
     }
+
+    /* The leading match reads as the selected row (S5-B): only the first row
+       of the first group, never the head of every group. */
+    .sr-bd .result-list:first-of-type > .result-card:first-child {
+      background: var(--ox-hover);
+      border-color: var(--ox-border-strong);
+    }
+
     .result-card:hover,
     .result-card:focus-visible {
-      border-color: rgba(var(--ox-primary-rgb), 0.38);
-      background: rgba(var(--ox-primary-rgb), 0.06);
-      transform: translateY(-1px);
-      box-shadow: 0 16px 28px -24px rgba(0, 0, 0, 0.45);
+      background: var(--ox-hover);
+      border-color: var(--ox-border-strong);
       outline: none;
     }
-    
-    .r-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 10px; }
-    .r-title { font-size: 1rem; font-weight: 600; color: var(--ox-text); display: flex; align-items: flex-start; gap: 10px; flex: 1; line-height: 1.35; }
-    .r-title-copy { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-    .r-kicker { font-family: var(--ox-mono); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ox-text-muted); font-weight: 700; }
-    .r-rank { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 28px; border-radius: 999px; border: 1px solid rgba(var(--ox-primary-rgb), 0.22); background: rgba(var(--ox-primary-rgb), 0.09); color: var(--ox-primary); font-family: var(--ox-mono); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.03em; flex-shrink: 0; }
-    
-    
-    .score-pill { font-family: var(--ox-mono); font-size: 0.65rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; border: 1px solid currentColor; }
-    .score-high { color: var(--ox-lime); background: rgba(212,237,49,0.1); }
-    .score-med { color: var(--ox-primary); background: rgba(var(--ox-primary-rgb), 0.1); }
-    .score-low { color: var(--ox-warning); background: rgba(251,191,36,0.1); }
 
-    
-    .r-snippet { font-size: 0.88rem; color: var(--ox-text-muted); line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-    
-    .r-meta { display: flex; flex-wrap: wrap; gap: 8px; font-family: var(--ox-mono); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ox-text-muted); }
-    .r-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; border: 1px solid var(--ox-border); background: rgba(255, 255, 255, 0.03); }
-    .r-body { display: flex; flex-direction: column; gap: 10px; }
-    .r-reason {
+    .result-card:focus-visible { box-shadow: 0 0 0 2px var(--ox-focus); }
+
+    .r-glyph {
+      display: grid;
+      place-items: center;
+      height: 22px;
+      --ox-glyph-size: 18px;
+    }
+
+    .r-copy {
       display: flex;
-      align-items: baseline;
-      gap: 8px;
-      flex-wrap: wrap;
-      font-size: 0.82rem;
-      line-height: 1.55;
-      color: var(--ox-text);
-      padding: 10px 12px;
-      border-radius: 10px;
-      background: rgba(var(--ox-primary-rgb), 0.07);
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.14);
-    }
-    .r-reason-label {
-      display: inline-flex;
-      align-items: center;
-      font-family: var(--ox-mono);
-      font-size: 0.62rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--ox-primary);
-      font-weight: 700;
-      flex-shrink: 0;
-    }
-    .r-reason-copy {
+      flex-direction: column;
+      gap: 3px;
       min-width: 0;
-      color: var(--ox-text);
     }
-    .r-flag {
+
+    .r-title {
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.3;
+      color: var(--ox-text);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      overflow-wrap: anywhere;
+    }
+
+    .r-meta {
+      font: 500 11.5px/1.35 var(--ox-mono);
+      color: var(--ox-text-muted);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .r-meta .need { color: var(--ox-warning); }
+
+    .r-snippet {
+      font-size: 12.5px;
+      line-height: 1.45;
+      color: var(--ox-text-muted);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .r-reason {
+      font-size: 12.5px;
+      line-height: 1.45;
+      color: var(--ox-text-2);
+    }
+
+    .r-reason b { font-weight: 650; color: var(--ox-text); }
+
+    .highlight { color: var(--ox-text); font-weight: 600; }
+
+    .r-open {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 8px;
-      border-radius: 999px;
-      font-family: var(--ox-mono);
-      font-size: 0.62rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      font-weight: 700;
-      color: var(--ox-primary);
-      background: rgba(var(--ox-primary-rgb), 0.1);
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
-    }
-    .r-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--ox-border); }
-    .r-open-hint { display: inline-flex; align-items: center; gap: 8px; color: var(--ox-primary); font-size: 0.82rem; font-weight: 600; letter-spacing: -0.01em; }
-    .r-open-hint small { color: var(--ox-text-muted); font-size: 0.68rem; font-weight: 500; letter-spacing: 0; }
-    .history-status { padding: 4px 8px; border-radius: 999px; border: 1px solid rgba(var(--ox-primary-rgb), 0.18); background: rgba(var(--ox-primary-rgb), 0.08); color: var(--ox-primary); font-family: var(--ox-mono); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
-    
-    .highlight { color: var(--ox-primary); font-weight: 600; background: rgba(var(--ox-primary-rgb), 0.1); padding: 0 2px; border-radius: 2px; }
-    .r-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-top: 14px;
-    }
-    .r-open-hint {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      min-height: 38px;
-      padding: 0 12px;
-      border-radius: 10px;
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
-      background: rgba(var(--ox-primary-rgb), 0.08);
-      color: var(--ox-text);
-      font-size: 0.78rem;
+      height: 22px;
+      font-size: 12px;
       font-weight: 600;
+      color: var(--ox-text-muted);
       white-space: nowrap;
     }
-    .r-open-hint small {
-      color: var(--ox-text-muted);
-      font-size: 0.68rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .error-state { border-style: solid; border-color: rgba(225,29,72,0.2); background: rgba(225,29,72,0.04); }
-    .error-state .empty-icon { color: var(--ox-danger); background: rgba(225,29,72,0.08); box-shadow: none; }
-    .error-state .empty-title { color: var(--ox-text); }
-    .error-state .empty-desc { max-width: 360px; }
 
+    .r-open svg { width: 12px; height: 12px; }
+
+    .result-card:hover .r-open,
+    .result-card:focus-visible .r-open { color: var(--ox-text); }
+
+    /* Pages: a quiet row, never a second card. */
     .pagination {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 14px 18px;
-      margin-top: 16px;
-      padding: 14px 16px;
-      border: 1px solid var(--ox-border);
-      border-radius: 14px;
-      background: var(--ox-panel);
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
-    }
-
-    .page-info {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      min-width: 0;
-    }
-
-    .page-kicker {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .page-label {
-      font-family: var(--ox-mono);
-      font-size: 0.62rem;
-      font-weight: 700;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--ox-text-muted);
-    }
-
-    .page-count {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-      padding: 6px 11px;
-      border-radius: 999px;
-      background: rgba(var(--ox-primary-rgb), 0.08);
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
-      color: var(--ox-primary);
-      font-family: var(--ox-mono);
-      font-size: 0.72rem;
-      letter-spacing: 0.08em;
-      flex-shrink: 0;
-    }
-
-    .page-summary {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
+      gap: 6px;
+      min-height: 44px;
+      padding: 2px 10px 0;
     }
 
     .page-range {
-      font-size: 0.8rem;
-      line-height: 1.4;
-      color: var(--ox-text);
-      font-weight: 600;
+      flex: 1;
+      min-width: 0;
+      font: 500 11.5px/1.3 var(--ox-mono);
+      color: var(--ox-text-muted);
+      font-variant-numeric: tabular-nums;
     }
 
-    .page-total {
-      font-size: 0.76rem;
-      line-height: 1.4;
+    .page-btn {
+      min-width: 44px;
+      min-height: 36px;
+      padding: 0 10px;
+      border: 1px solid var(--ox-border);
+      border-radius: 9px;
+      background: transparent;
+      color: var(--ox-text);
+      font: inherit;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .page-btn:hover:not(:disabled) { background: var(--ox-hover); border-color: var(--ox-border-strong); }
+    .page-btn:disabled { opacity: 0.42; cursor: default; }
+
+    /* In-widget footer action (no external arrow: it pages, it does not leave). */
+    .sr-alert { margin-top: 6px; color: var(--ox-danger); }
+
+    .sr-more {
+      min-height: 36px;
+      padding: 0 12px;
+      border: 1px solid transparent;
+      border-radius: 9px;
+      background: none;
+      color: var(--ox-text-2);
+      font: inherit;
+      font-size: 12.5px;
+      font-weight: 650;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .sr-more:hover { color: var(--ox-text); background: var(--ox-hover); }
+
+    .sr ox-footer {
+      --ox-primary-rgb: 251, 191, 36;
+      --ox-primary: rgb(251, 191, 36);
+    }
+
+    /* Empty and unavailable: one sentence about the search, in the same card. */
+    .sr-state {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 6px 18px 18px;
+    }
+
+    .sr-state b {
+      font-size: 15px;
+      font-weight: 650;
+      line-height: 1.3;
+      color: var(--ox-text);
+    }
+
+    .sr-state span {
+      font-size: 12.5px;
+      line-height: 1.5;
       color: var(--ox-text-muted);
     }
 
-    .page-progress {
-      position: relative;
-      width: 100%;
-      height: 4px;
-      border-radius: 999px;
-      background: var(--ox-well-bg);
-      overflow: hidden;
+    .sr-sk {
+      display: block;
+      height: 12px;
+      border-radius: 4px;
+      background: var(--ox-skeleton);
     }
 
-    .page-progress-bar {
-      position: absolute;
-      inset: 0 auto 0 0;
-      border-radius: inherit;
-      background: linear-gradient(90deg, rgba(var(--ox-primary-rgb), 0.5), rgba(var(--ox-primary-rgb), 1));
-      box-shadow: 0 0 16px rgba(var(--ox-primary-rgb), 0.24);
-    }
-
-    .page-controls {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      align-self: center;
-    }
-
-    .page-btn {
-      min-width: 96px;
-      min-height: 44px;
-      padding: 0 14px;
-      border-radius: 10px;
-      border: 1px solid var(--ox-border);
-      background: var(--ox-well-bg);
-      color: var(--ox-text);
-      font: inherit;
-      font-size: 0.76rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: border-color var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
-        background var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
-    }
-
-    .page-btn:hover:not(:disabled) {
-      border-color: rgba(var(--ox-primary-rgb), 0.28);
-      background: rgba(var(--ox-primary-rgb), 0.08);
-    }
-
-    .page-btn:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
-
-    @media (max-width: 560px) {
-      .r-header,
-      .r-footer {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-
-      .score-pill {
-        align-self: flex-start;
-      }
-
-      .pagination {
-        grid-template-columns: minmax(0, 1fr);
-      }
-
-      .page-controls {
-        width: 100%;
-        justify-content: stretch;
-      }
-
-      .page-btn {
-        flex: 1;
-        min-width: 0;
-      }
-    }
-
-    .skeleton-line {
-      background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%);
-      background-size: 200% 100%; animation: shimmer 2s infinite linear; border-radius: 4px;
-    }
-    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-
-    /* Compact memory stack: one leading answer, quiet continuation rows. */
-    .result-list {
-      gap: 0;
-      border-top: 1px solid var(--ox-border);
-      border-bottom: 1px solid var(--ox-border);
-    }
-    .result-card {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      column-gap: 14px;
-      padding: 14px 0;
-      border: 0;
-      border-bottom: 1px solid var(--ox-border);
-      border-radius: 0;
-      background: transparent;
-      box-shadow: none;
-      overflow: visible;
-    }
-    .result-card:first-child {
-      padding: 16px 14px;
-      margin: 0 -14px;
-      border: 1px solid rgba(var(--ox-primary-rgb), .24);
-      border-radius: 12px;
-      background: rgba(var(--ox-primary-rgb), .07);
-    }
-    .result-card:last-child { border-bottom: 0; }
-    .result-card:hover,
-    .result-card:focus-visible {
-      transform: none;
-      background: rgba(var(--ox-primary-rgb), .06);
-      box-shadow: none;
-      border-color: rgba(var(--ox-primary-rgb), .32);
-    }
-    .r-header {
-      grid-column: 1 / -1;
-      margin-bottom: 6px;
-      gap: 10px;
-    }
-    .r-title {
-      gap: 8px;
-      font-size: .9rem;
-    }
-    .r-title-copy { gap: 4px; }
-    .r-kicker { font-size: .56rem; }
-    .r-snippet {
-      grid-column: 1;
-      font-size: .78rem;
-      line-height: 1.45;
-      -webkit-line-clamp: 2;
-    }
-    .r-footer {
-      grid-column: 1 / -1;
-      margin: 8px 0 0;
-      padding: 0;
-      border: 0;
-      min-width: 0;
-    }
-    .r-chip {
-      padding: 0;
-      border: 0;
-      background: transparent;
-    }
-    .r-chip + .r-chip::before {
-      content: '·';
-      margin-right: 8px;
-    }
-    .r-open-hint {
-      min-height: 44px;
-      padding: 0 10px;
-      border: 0;
-      background: transparent;
-      color: var(--ox-primary);
-    }
-    .r-open-hint small { display: none; }
-    .score-pill,
-    .history-status {
-      flex-shrink: 0;
-      padding: 3px 6px;
-      background: transparent;
-    }
-    .r-rank {
-      width: 24px;
-      min-width: 24px;
-      height: 24px;
-      border-radius: 8px;
-    }
-    .r-body {
-      grid-column: 1 / -1;
-      gap: 6px;
-    }
-    .r-reason {
-      padding: 6px 0 0;
-      border: 0;
-      border-radius: 0;
-      background: transparent;
-      font-size: .76rem;
-    }
-    .pagination {
-      grid-template-columns: minmax(0, 1fr) auto;
-      margin-top: 10px;
-      padding: 8px 0 0;
-      border: 0;
-      border-radius: 0;
-      background: transparent;
-      box-shadow: none;
-    }
-    .page-info { gap: 5px; }
-    .page-count {
-      padding: 0;
-      border: 0;
-      background: transparent;
-    }
-    .page-summary { display: flex; }
-    .page-controls { gap: 4px; }
-    .page-btn {
-      min-width: 64px;
-      padding-inline: 10px;
-      border-color: transparent;
-      background: transparent;
-    }
-    .search-skeleton {
-      gap: 0 !important;
-      padding: 20px !important;
-    }
     .search-skeleton__row {
       display: grid;
-      gap: 8px;
-      padding: 14px 0;
-      border-top: 1px solid var(--ox-border);
+      grid-template-columns: 22px minmax(0, 1fr);
+      column-gap: 12px;
+      align-items: start;
+      min-height: 56px;
+      padding: 10px;
     }
-    @media (max-width: 560px) {
-      .r-header,
-      .r-footer { flex-direction: row; align-items: center; }
-      .r-header { flex-wrap: wrap; }
-      .r-title { flex-basis: 100%; }
-      .r-open-hint { padding-inline: 4px; }
-      .pagination { grid-template-columns: 1fr; }
+
+    .search-skeleton__row .col { display: grid; gap: 6px; }
+
+    @media (max-width: 420px) {
+      body { padding: 6px; }
+      .sr-hd { padding: 12px 14px 4px; }
+      .sr-bd { padding: 2px 4px 8px; }
+      .sr::after { left: 14px !important; right: 14px !important; }
+      .r-open span { display: none; }
     }
+
     @media (prefers-reduced-motion: reduce) {
-      .skeleton-line { animation: none; }
       .result-card { transition: none; }
     }
   </style>
@@ -613,35 +346,16 @@
 </head>
 <body>
   <div class="container" id="content">
-    <!-- Skeleton shown during loading -->
-    <div class="skeleton-wrapper search-skeleton" style="display:flex; flex-direction:column; gap:16px; padding:24px;" aria-label="Searching organizational memory">
-      <div style="display:flex; align-items:center; gap:12px; padding-bottom:16px; border-bottom:1px solid var(--ox-border);">
-        <div class="skeleton-line" style="width:18px; height:18px; border-radius:5px;"></div>
-        <div class="skeleton-line" style="width:200px; height:18px;"></div>
-      </div>
-      <div class="search-skeleton__row">
-        <div style="display:flex; justify-content:space-between; gap:14px; margin-bottom:12px;">
-          <div class="skeleton-line" style="width:62%; height:16px;"></div>
-          <div class="skeleton-line" style="width:64px; height:16px; border-radius:6px;"></div>
+    <!-- Skeleton shown during loading: the arrived card's own frame. -->
+    <div class="widget-shell-card skeleton-wrapper search-skeleton" aria-label="Searching organizational memory" aria-busy="true">
+      <div class="ox-card sr" data-edge="mute">
+        <div class="sr-hd"><span class="sr-kind">Search</span><span class="sr-sk" style="width:160px"></span></div>
+        <div class="sr-bd">
+          <div class="search-skeleton__row"><span class="sr-sk" style="height:18px"></span><span class="col"><span class="sr-sk" style="width:62%;height:14px"></span><span class="sr-sk" style="width:38%"></span></span></div>
+          <div class="search-skeleton__row"><span class="sr-sk" style="height:18px"></span><span class="col"><span class="sr-sk" style="width:54%;height:14px"></span><span class="sr-sk" style="width:30%"></span></span></div>
+          <div class="search-skeleton__row"><span class="sr-sk" style="height:18px"></span><span class="col"><span class="sr-sk" style="width:58%;height:14px"></span><span class="sr-sk" style="width:34%"></span></span></div>
         </div>
-        <div class="skeleton-line" style="width:92%; height:12px; margin-bottom:6px;"></div>
-        <div class="skeleton-line" style="width:78%; height:12px;"></div>
-      </div>
-      <div class="search-skeleton__row">
-        <div style="display:flex; justify-content:space-between; gap:14px; margin-bottom:12px;">
-          <div class="skeleton-line" style="width:54%; height:16px;"></div>
-          <div class="skeleton-line" style="width:64px; height:16px; border-radius:6px;"></div>
-        </div>
-        <div class="skeleton-line" style="width:88%; height:12px; margin-bottom:6px;"></div>
-        <div class="skeleton-line" style="width:70%; height:12px;"></div>
-      </div>
-      <div class="search-skeleton__row">
-        <div style="display:flex; justify-content:space-between; gap:14px; margin-bottom:12px;">
-          <div class="skeleton-line" style="width:58%; height:16px;"></div>
-          <div class="skeleton-line" style="width:64px; height:16px; border-radius:6px;"></div>
-        </div>
-        <div class="skeleton-line" style="width:84%; height:12px; margin-bottom:6px;"></div>
-        <div class="skeleton-line" style="width:66%; height:12px;"></div>
+        <ox-footer variant="reads" state="loading"></ox-footer>
       </div>
     </div>
   </div>
@@ -654,18 +368,7 @@
       content.innerHTML = html;
     };
 
-    
-      var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true">'+c+'</svg>';};
-      var icons = {
-        agent: function(s){return _svg('<rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><line x1="8" y1="16" x2="8" y2="16"></line><line x1="16" y1="16" x2="16" y2="16"></line>',s);},
-        search: function(s){return _svg('<circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>',s);},
-        file: function(s){return _svg('<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline>',s);},
-        external: function(s){return _svg('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>',s);},
-        sun: function(s){return _svg('<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>',s);},
-        initiative: function(s){return _svg('<circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle>',s);},
-        check: function(s){return _svg('<polyline points="20 6 9 17 4 12"></polyline>',s);},
-        error: function(s){return _svg('<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>',s);}
-      };
+
       var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
       var renderSnippet = (snippet) => {
         var text = typeof snippet === 'string' ? snippet : '';
@@ -795,7 +498,10 @@
           snippet: excerptText(snippet),
           score: coerceScore(item.score ?? item.relevance_score ?? item.vector_score),
           url: buildEntityUrl({ ...item, type }),
-          date: formatRelativeDate(item.updated_at || item.date || item.created_at)
+          date: formatRelativeDate(item.updated_at || item.date || item.created_at),
+          // Status and timestamp drive the OrgX strings ("Decision · needs you · 2d").
+          status: typeof item.status === 'string' ? decodeEscapedText(item.status) : '',
+          at: item.updated_at || item.created_at || item.date || null
         };
       };
       var normalizeDecisionHistoryItem = (item) => {
@@ -919,9 +625,11 @@
         return '';
       };
 
+
     var fixtureState = queryParams.get('state') || (queryParams.get('loading') === 'true' ? 'loading' : queryParams.get('demo') === 'true' ? 'populated' : 'empty');
     var hasFixturePayload = queryParams.get('gallery') === 'true' || queryParams.has('demo') || queryParams.has('state') || queryParams.get('loading') === 'true';
     var isDemo = hasFixturePayload && fixtureState !== 'loading';
+    var minutesAgo = (mins) => new Date(Date.now() - mins * 60000).toISOString();
     var data = isDemo ? {
       query: "founder continuity launch",
       results: [
@@ -930,40 +638,45 @@
           type: 'initiative',
           snippet: 'Cross-domain launch that ties <span class="highlight">founder continuity</span> to live search, scaffolded execution, and approvals in one operator loop.',
           score: 0.98,
+          status: 'active',
           url: 'https://useorgx.com/initiatives/INI-402',
-          date: 'Just now'
+          updated_at: minutesAgo(1)
         },
         {
           title: 'Approve founder continuity launch story',
           type: 'decision',
           snippet: '<span class="highlight">Pace - Product</span> is waiting on founder approval to lock the hero narrative, proof order, and CTA before launch.',
           score: 0.93,
+          status: 'pending',
           url: 'https://useorgx.com/decisions/d1',
-          date: '6 minutes ago'
+          updated_at: minutesAgo(60 * 49)
         },
         {
           title: 'Capture scaffold, search, and decisions stack',
           type: 'task',
           snippet: 'Marketing and engineering need the final <span class="highlight">continuity launch</span> proof image once the widgets are visually aligned.',
           score: 0.88,
+          status: 'in_progress',
           url: 'https://useorgx.com/live?view=mission-control&task=TSK-942',
-          date: '18 minutes ago'
+          updated_at: minutesAgo(18)
         },
         {
           title: 'Founder continuity evidence pack',
           type: 'document',
           snippet: 'Reusable launch proof showing the same initiative, search query, and decision chain across ChatGPT, Claude, and Cursor surfaces.',
           score: 0.84,
+          status: 'approved',
           url: 'https://useorgx.com/artifacts/artifact-1',
-          date: '32 minutes ago'
+          updated_at: minutesAgo(60 * 50)
         },
         {
           title: 'Search relevance threshold locked at 0.82',
           type: 'document',
           snippet: 'Engineering note explaining why the <span class="highlight">founder continuity</span> query should keep the linked decision and initiative above the fold.',
           score: 0.78,
+          status: 'completed',
           url: 'https://useorgx.com/artifacts/artifact-2',
-          date: '1 hour ago'
+          updated_at: minutesAgo(60)
         }
       ]
     } : fixtureState === 'empty' && hasFixturePayload ? { query: '', results: [] } : null;
@@ -977,6 +690,33 @@
       data.results[0].title = 'Launch proof accepted and linked to the founder continuity initiative';
       data.results[0].snippet = 'The accepted artifact, decision receipt, and execution record are connected.';
       data.results[0].score = 1;
+    }
+    if (queryParams.get('state') === 'empty' && data) {
+      // An explicit empty fixture shows the empty state, not the demo rows.
+      data = { query: 'quarterly pricing memo', results: [] };
+    }
+    if (fixtureState === 'more' && data) {
+      // A page of a longer search: the footer offers the next server page.
+      data.pagination = { has_more: true, limit: 5, offset: 0, next_offset: 5 };
+      data.next_call = { tool: 'orgx_search', args: { query: data.query, limit: 5, offset: 5 } };
+    }
+    if (fixtureState === 'history') {
+      data = {
+        topic: 'annual pricing',
+        decisions: [
+          { id: 'd-91', title: 'Ship annual pricing at launch', summary: 'Approved with a 15% annual discount; revisit after 30 days of churn data.', status: 'approved', decided_at: minutesAgo(60 * 24 * 12) },
+          { id: 'd-77', title: 'Hold annual plans until billing migration', summary: 'Rejected: the migration landed early, so the hold was no longer needed.', status: 'rejected', decided_at: minutesAgo(60 * 24 * 30) }
+        ]
+      };
+    }
+    if (fixtureState === 'recommend') {
+      data = {
+        message: 'Two moves unblock the launch this week.',
+        recommendations: [
+          { label: 'Decide the launch-week discount', entityType: 'decision', summary: 'Pricing copy is waiting on the discount ruling before it can ship.', reason: 'Blocks the pricing page and two tasks.', score: 0.92, ready: true, url: 'https://useorgx.com/decisions/d-104' },
+          { label: 'Finish checkout proration', entityType: 'workstream', summary: 'One task left before annual plans can be bought.', score: 0.81, source: 'initiative_pulse', url: 'https://useorgx.com/live/INI-402?workstream=WS-7' }
+        ]
+      };
     }
     if (fixtureState === 'error' || fixtureState === 'degraded') {
       data = { error: 'Organizational memory is temporarily unavailable. Your query was not changed; retry when the connection returns.' };
@@ -1059,20 +799,114 @@
       render();
     };
 
+
+    // ── Rows in OrgX words ─────────────────────────────────────────────────
+
+    var EXT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>';
+
+    var GLYPH_KINDS = ['goal', 'initiative', 'workstream', 'milestone', 'task', 'run', 'decision', 'question', 'artifact', 'receipt'];
+    var glyphKind = (type) => {
+      var t = String(type || '').toLowerCase().replace(/-/g, '_');
+      if (t === 'objective' || t === 'goal') return 'goal';
+      if (t === 'agent_run' || t === 'run') return 'run';
+      if (t === 'document' || t === 'artifact' || t === 'pull_request') return 'artifact';
+      if (t === 'recommendation') return 'task';
+      return GLYPH_KINDS.indexOf(t) === -1 ? 'artifact' : t;
+    };
+
+    var kindLabel = (type) => {
+      var t = String(type || '').toLowerCase().replace(/-/g, '_');
+      if (t === 'document') return 'Artifact';
+      if (t === 'objective') return 'Goal';
+      return titleCase(t || 'result');
+    };
+
+    // Compact age, the canvas way: "now", "6m", "5h", "2d", then a date.
+    var ageOf = (value) => {
+      if (!value) return '';
+      var date = new Date(value);
+      if (isNaN(date.getTime())) return '';
+      var mins = Math.floor((Date.now() - date.getTime()) / 60000);
+      if (mins < 1) return 'now';
+      if (mins < 60) return mins + 'm';
+      if (mins < 60 * 24) return Math.floor(mins / 60) + 'h';
+      if (mins < 60 * 24 * 7) return Math.floor(mins / 1440) + 'd';
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    };
+
+    var NEEDS_YOU_STATUSES = ['pending', 'open', 'proposed', 'needs_you', 'needs_input', 'awaiting_approval', 'pending_approval'];
+    // Only a decision that still waits on a person needs you; nothing is guessed.
+    var needsYou = (r) => String(r.type).toLowerCase() === 'decision' &&
+      NEEDS_YOU_STATUSES.indexOf(String(r.status || '').toLowerCase()) !== -1;
+
+    // The status in the words the person uses: "accepted", "in progress".
+    var statusWords = (r) => {
+      var s = String(r.status || '').toLowerCase();
+      if (!s) return '';
+      if (needsYou(r)) return 'needs you';
+      if (s === 'approved' || s === 'accepted') return 'accepted';
+      if (s === 'completed' || s === 'complete' || s === 'done') return 'completed';
+      return s.replace(/_/g, ' ');
+    };
+
+    var metaLine = (parts) => parts.filter(Boolean).map((part) =>
+      part === 'needs you' ? '<span class="need">needs you</span>' : escapeHtml(part)
+    ).join(' · ');
+
+    var rowHtml = (r, index, options) => {
+      var need = options && options.need;
+      return `
+        <a href="${escapeHtml(r.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${serializeJsString(r.url)}, event)' class="result-card" style="--i:${index}">
+          <span class="r-glyph"><ox-glyph kind="${glyphKind(r.type)}"${need ? ' tone="amber"' : ''}></ox-glyph></span>
+          <span class="r-copy">
+            <span class="r-title">${escapeHtml(r.title)}</span>
+            <span class="r-meta">${options.meta}</span>
+            ${options.snippet ? `<span class="r-snippet">${options.snippet}</span>` : ''}
+            ${options.reason ? `<span class="r-reason"><b>Why now:</b> ${escapeHtml(options.reason)}</span>` : ''}
+          </span>
+          <span class="r-open"><span>${escapeHtml(options.open || 'Open')}</span>${EXT_ICON}</span>
+        </a>`;
+    };
+
+    var cardHtml = (options) => `
+      <div class="widget-shell-card">
+        <div class="ox-card sr" data-edge="${options.edge || 'teal'}">
+          <div class="sr-hd"><ox-glyph kind="${options.glyph || 'question'}"${options.edge === 'amber' ? ' tone="amber"' : ''}></ox-glyph>
+            <span class="sr-kind">${escapeHtml(options.kind)}</span>
+            ${options.source ? `<span class="sr-src">${options.source}</span>` : ''}
+            ${options.count ? `<span class="sr-count">${escapeHtml(options.count)}</span>` : ''}
+          </div>
+          ${options.body}
+          ${options.footer || ''}
+        </div>
+      </div>`;
+
+    var stateCard = (kind, title, message, edge, footer) => cardHtml({
+      kind: kind,
+      edge: edge || 'mute',
+      body: `<div class="sr-state" role="${edge === 'red' ? 'alert' : 'status'}"><b>${escapeHtml(title)}</b><span>${escapeHtml(message)}</span></div>`,
+      footer: footer
+    });
+
+    var unavailable = (message) => stateCard('Search', 'Search unavailable', message, 'red',
+      '<ox-footer variant="reads" state="failed" heading="Couldn’t reach OrgX" detail="your query was not changed" action-label=""></ox-footer>');
+
+    var quoted = (text) => text ? '<b>“' + escapeHtml(text) + '”</b>' : '';
+
     var render = () => {
       if(isLoading) return;
       if(data && data.error) {
         var errorMessage = window.OrgXWidgetRuntime.getErrorMessage(data.error, 'Organizational memory is temporarily unavailable.');
-        injectHtml(`<div class="empty-state error-state animate-in"><div class="empty-icon">${icons.error(24)}</div><div class="empty-title">Search unavailable</div><div class="empty-desc">${escapeHtml(errorMessage)}</div></div>`);
+        injectHtml(unavailable(errorMessage));
         return;
       }
       if (bootError || !data || typeof data !== 'object') {
         var unavailableMessage = bootError || 'OrgX returned an incomplete search response. Retry the search.';
-        injectHtml(`<div class="empty-state error-state animate-in"><div class="empty-icon">${icons.error(24)}</div><div class="empty-title">Search unavailable</div><div class="empty-desc">${escapeHtml(unavailableMessage)}</div></div>`);
+        injectHtml(unavailable(unavailableMessage));
         return;
       }
       if (typeof data.query === 'string' && !Array.isArray(data.results)) {
-        injectHtml(`<div class="empty-state error-state animate-in"><div class="empty-icon">${icons.error(24)}</div><div class="empty-title">Search unavailable</div><div class="empty-desc">OrgX returned an incomplete search response. Retry the search.</div></div>`);
+        injectHtml(unavailable('OrgX returned an incomplete search response. Retry the search.'));
         return;
       }
       var recommendationMode = Array.isArray(data.recommendations) || !!data.next_action;
@@ -1081,48 +915,23 @@
       if (historyMode) {
         var history = (Array.isArray(data.decisions) ? data.decisions : Array.isArray(data.results) ? data.results : []).map(normalizeDecisionHistoryItem);
         if (!history.length) {
-          injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.check(24)}</div><div class="empty-title">No matching decisions</div><div class="empty-desc">${escapeHtml(data.topic ? 'OrgX did not find any prior decisions for \"' + data.topic + '\".' : 'OrgX did not find any historical decisions for this request yet.')}</div></div>`);
+          injectHtml(stateCard('Decision history', 'No matching decisions', data.topic ? 'OrgX did not find any prior decisions for “' + data.topic + '”.' : 'OrgX did not find any historical decisions for this request yet.', 'mute',
+            '<ox-footer variant="reads" state="caught-up" heading="Nothing earlier" detail="no prior ruling on this"></ox-footer>'));
           return;
         }
-        var historyHtml = history.map((r, index) => `
-          <a href="${escapeHtml(r.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${serializeJsString(r.url)}, event)' class="result-card" style="--i:${index}">
-            <div class="r-header">
-              <div class="r-title">
-                <div class="r-rank">${index + 1}</div>
-                <div class="r-title-copy">
-                  <div class="r-kicker">Decision history</div>
-                  <div>${escapeHtml(r.title)}</div>
-                </div>
-              </div>
-              <div class="history-status">${escapeHtml(titleCase(r.status))}</div>
-            </div>
-            <div class="r-snippet">${escapeHtml(r.summary)}</div>
-            <div class="r-footer">
-              <div class="r-meta">
-                <span class="r-chip">Decision</span>
-                ${r.date ? `<span class="r-chip">${escapeHtml(r.date)}</span>` : ''}
-              </div>
-              <div class="r-open-hint">${icons.external(14)} Open in OrgX <small>new tab</small></div>
-            </div>
-          </a>
-        `).join('');
-        injectHtml(`
-          <div class="widget-shell-card animate-in">
-            <div class="ox-card">
-              <div class="ox-card-inner">
-                <div class="widget-hero">
-                  <div class="widget-hero-copy">
-                    <div class="widget-kicker">Org Memory Search</div>
-                    <div class="widget-title-lg">Decision history</div>
-                    <div class="widget-subtitle">Past approvals and rejections that may inform the current call${data.topic ? ' for “' + escapeHtml(data.topic) + '”' : ''}.</div>
-                  </div>
-                  <div class="widget-icon-frame">${icons.search(20)}</div>
-                </div>
-                <div class="result-list result-list--recommendations">${historyHtml}</div>
-              </div>
-            </div>
-          </div>
-        `);
+        var historyHtml = history.map((r, index) => rowHtml(
+          { title: r.title, type: 'decision', url: r.url },
+          index,
+          { meta: metaLine(['Decision', titleCase(r.status).toLowerCase(), r.date]), snippet: escapeHtml(r.summary), open: 'Open in OrgX' }
+        )).join('');
+        injectHtml(cardHtml({
+          kind: 'Decision history',
+          glyph: 'decision',
+          source: data.topic ? quoted(data.topic) : '<b>Past approvals and rejections</b>',
+          count: history.length + (history.length === 1 ? ' ruling' : ' rulings'),
+          body: `<div class="sr-bd"><p class="sr-sub">Past approvals and rejections that may inform the current call.</p><div class="result-list result-list--recommendations">${historyHtml}</div></div>`,
+          footer: '<ox-footer variant="reads" state="fresh" heading="Decision history" detail="from organizational memory" action-label=""></ox-footer>'
+        }));
         return;
       }
 
@@ -1132,140 +941,104 @@
           recommendations = [normalizeRecommendation(data.next_action, 0)];
         }
         if (!recommendations.length) {
-          injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.search(24)}</div><div class="empty-title">No recommendations available</div><div class="empty-desc">${escapeHtml(data.message || 'OrgX did not find a clear next action yet.')}</div></div>`);
+          injectHtml(stateCard('Next action', 'No recommendations available', data.message || 'OrgX did not find a clear next action yet.', 'mute',
+            '<ox-footer variant="reads" state="caught-up" heading="Nothing to start" detail="no clear next action yet"></ox-footer>'));
           return;
         }
-        var recommendationsHtml = recommendations.map((r, index) => `
-          <a href="${escapeHtml(r.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${serializeJsString(r.url)}, event)' class="result-card" style="--i:${index}">
-            <div class="r-header">
-              <div class="r-title">
-                <div class="r-rank">${r.rank}</div>
-                <div class="r-title-copy">
-                  <div class="r-kicker">${r.ready ? 'Ready now' : 'Recommended follow-up'}</div>
-                  <div style="display:flex; align-items:flex-start; gap:8px;"><span style="color:var(--ox-text-muted); display:flex; align-items:center; margin-top:2px;">${r.type === 'decision' ? icons.check(16) : r.type === 'initiative' ? icons.initiative(16) : icons.external(16)}</span><span>${escapeHtml(r.title)}</span></div>
-                </div>
-              </div>
-              ${r.score !== null ? `<div class="score-pill ${r.score >= 0.9 ? 'score-high' : r.score >= 0.7 ? 'score-med' : 'score-low'}">${Math.round(r.score * 100)}% Confidence</div>` : ''}
-            </div>
-            <div class="r-body">
-              <div class="r-snippet">${renderSnippet(r.summary)}</div>
-              <div class="r-reason"><span class="r-reason-label">Why now</span><span class="r-reason-copy">${escapeHtml(r.reason)}</span></div>
-            </div>
-            <div class="r-footer">
-              <div class="r-meta">
-                <span class="r-chip">${escapeHtml(titleCase(r.type))}</span>
-                ${r.source ? `<span class="r-chip">${escapeHtml(String(r.source).replace(/_/g, ' '))}</span>` : ''}
-                ${r.nextTask ? `<span class="r-chip">${escapeHtml(r.nextTask)}</span>` : ''}
-              </div>
-              <div class="r-open-hint">${icons.external(14)} ${r.ready ? 'Start in OrgX' : 'Review in OrgX'} <small>new tab</small></div>
-            </div>
-          </a>
-        `).join('');
-        injectHtml(`
-          <div class="widget-shell-card animate-in">
-            <div class="ox-card">
-              <div class="ox-card-inner">
-                <div class="widget-hero">
-                  <div class="widget-hero-copy">
-                    <div class="widget-kicker">Org Memory Search</div>
-                    <div class="widget-title-lg">Recommended next action</div>
-                    <div class="widget-subtitle">${escapeHtml(data.message || 'Ranked follow-up actions based on current OrgX context. Use the CTA on each card to start the next step directly.')}</div>
-                  </div>
-                  <div class="widget-icon-frame">${icons.search(20)}</div>
-                </div>
-                <div class="result-list result-list--recommendations">
-                  ${recommendationsHtml}
-                </div>
-              </div>
-            </div>
-          </div>
-        `);
+        var recommendationsHtml = recommendations.map((r, index) => rowHtml(
+          r,
+          index,
+          {
+            meta: metaLine([r.ready ? 'Ready now' : 'Recommended', kindLabel(r.type), r.source ? String(r.source).replace(/_/g, ' ') : '', r.nextTask, r.score !== null ? Math.round(r.score * 100) + '% confidence' : '']),
+            snippet: renderSnippet(r.summary),
+            reason: r.reason && r.reason !== r.summary ? r.reason : '',
+            open: r.ready ? 'Start in OrgX' : 'Review in OrgX'
+          }
+        )).join('');
+        injectHtml(cardHtml({
+          kind: 'Next action',
+          glyph: 'task',
+          source: '',
+          count: recommendations.length === 1 ? '' : recommendations.length + ' ranked',
+          body: `<div class="sr-bd"><p class="sr-sub">${escapeHtml(data.message || 'Ranked follow-up actions based on current OrgX context. Use the CTA on each card to start the next step directly.')}</p><div class="result-list result-list--recommendations">${recommendationsHtml}</div></div>`,
+          footer: '<ox-footer variant="reads" state="fresh" heading="Ranked just now" detail="from current OrgX context" action-label=""></ox-footer>'
+        }));
         return;
       }
 
       var normalizedResults = Array.isArray(data.results) ? data.results.map(item => normalizeResult(item, data.type)) : [];
       if (!Array.isArray(data.results)) {
-        injectHtml(`<div class="empty-state error-state animate-in"><div class="empty-icon">${icons.error(24)}</div><div class="empty-title">Search unavailable</div><div class="empty-desc">OrgX returned an incomplete search response. Retry the search.</div></div>`);
+        injectHtml(unavailable('OrgX returned an incomplete search response. Retry the search.'));
         return;
       }
       if (!normalizedResults.length) {
-        injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.search(24)}</div><div class="empty-title">No results found</div><div class="empty-desc">${escapeHtml(data.query ? 'OrgX could not find a strong match for \"' + data.query + '\". Try a broader phrase or a different scope.' : 'Try adjusting your query or expanding your search scope.')}</div></div>`);
+        injectHtml(stateCard('Search', 'No results found', data.query ? 'OrgX could not find a strong match for “' + data.query + '”. Try a broader phrase or a different scope.' : 'Try adjusting your query or expanding your search scope.', 'mute',
+          '<ox-footer variant="reads" state="caught-up" heading="No matches" detail="try a broader phrase"></ox-footer>'));
         return;
       }
 
-      const totalPages = Math.max(1, Math.ceil(normalizedResults.length / itemsPerPage));
+      // S5-B: what needs your decision comes first, in its own group.
+      var waiting = normalizedResults.filter(needsYou);
+      var ordered = waiting.concat(normalizedResults.filter((r) => !needsYou(r)));
+      const totalPages = Math.max(1, Math.ceil(ordered.length / itemsPerPage));
       currentPage = Math.min(currentPage, totalPages);
       const startIdx = (currentPage - 1) * itemsPerPage;
-      const paginatedResults = normalizedResults.slice(startIdx, startIdx + itemsPerPage);
-      const progress = Math.max(14, Math.round((currentPage / totalPages) * 100));
+      const paginatedResults = ordered.slice(startIdx, startIdx + itemsPerPage);
+      var pageNeeds = paginatedResults.filter(needsYou);
+      var pageWork = paginatedResults.filter((r) => !needsYou(r));
+      var oldest = waiting.reduce((acc, r) => {
+        var t = r.at ? new Date(r.at).getTime() : NaN;
+        return isNaN(t) ? acc : (acc === null || t < acc ? t : acc);
+      }, null);
 
-      const resultsHtml = paginatedResults.map((r, index) => `
-        <a href="${escapeHtml(r.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${serializeJsString(r.url)}, event)' class="result-card" style="--i:${index}">
-          
-          <div class="r-header">
-            <div class="r-title">
-              <div class="r-title-copy">
-                <div class="r-kicker">${escapeHtml(r.type)}</div>
-                <div style="display:flex; align-items:flex-start; gap:8px;"><span style="color:var(--ox-text-muted); display:flex; align-items:center; margin-top:2px;">${r.type === 'document' ? icons.file(16) : r.type === 'decision' ? icons.check(16) : r.type === 'initiative' ? icons.initiative(16) : icons.external(16)}</span><span>${escapeHtml(r.title)}</span></div>
-              </div>
-            </div>
-            ${r.score !== null ? `<div class="score-pill ${r.score >= 0.9 ? 'score-high' : r.score >= 0.7 ? 'score-med' : 'score-low'}">${Math.round(r.score * 100)}% Match</div>` : ''}
-          </div>
+      var resultRow = (r, index) => rowHtml(r, index, {
+        need: needsYou(r),
+        meta: metaLine([kindLabel(r.type), statusWords(r), ageOf(r.at), r.score !== null && r.score < 1 ? Math.round(r.score * 100) + '% match' : '']),
+        snippet: r.snippet ? renderSnippet(r.snippet) : ''
+      });
 
-          ${r.snippet ? `<div class="r-snippet">${renderSnippet(r.snippet)}</div>` : ''}
-          <div class="r-footer">
-            <div class="r-meta">
-              <span class="r-chip">${escapeHtml(titleCase(r.type))}</span>
-              ${r.date ? `<span class="r-chip">${escapeHtml(r.date)}</span>` : ''}
-            </div>
-            <div class="r-open-hint">${icons.external(14)} Open in OrgX <small>new tab</small></div>
-          </div>
-        </a>
-      `).join('');
+      var groupsHtml =
+        (pageNeeds.length
+          ? `<ox-attention-line tone="needs-you" count="${waiting.length}"${oldest !== null ? ` oldest="${escapeHtml(ageOf(oldest))}"` : ''}></ox-attention-line>
+             <div class="result-list">${pageNeeds.map(resultRow).join('')}</div>`
+          : '') +
+        (pageWork.length
+          ? `${pageNeeds.length ? '<p class="sr-lbl">Work</p>' : ''}<div class="result-list">${pageWork.map((r, i) => resultRow(r, i + pageNeeds.length)).join('')}</div>`
+          : '');
 
-      injectHtml(`
-        <div class="widget-shell-card animate-in">
-          <div class="ox-card">
-            <div class="ox-card-inner">
-              <div class="widget-hero">
-                <div class="widget-hero-copy">
-                  <div class="widget-kicker">Org Memory Search</div>
-                  <div class="widget-title-lg">Search results</div>
-                  <div class="widget-subtitle">Matching artifacts, initiatives, and decisions from organizational memory${data.query ? ' for “' + escapeHtml(data.query) + '”' : ''}.</div>
-                </div>
-                <div class="widget-icon-frame">${icons.search(20)}</div>
-              </div>
-              <div class="result-list">
-                ${resultsHtml}
-              </div>
-              ${data.pagination && data.pagination.has_more && data.next_call && data.next_call.tool === 'orgx_search' ? `<button type="button" class="page-btn" onclick="loadMoreResults()" ${loadingMore ? 'disabled' : ''}>${loadingMore ? 'Loading more…' : 'Load more results'}</button>` : ''}
-              ${loadMoreError ? `<p role="alert">${escapeHtml(loadMoreError)}</p>` : ''}
-              ${totalPages > 1 ? `
-                <div class="pagination">
-                  <div class="page-info">
-                    <div class="page-kicker">
-                      <span class="page-label">Search results</span>
-                      <span class="page-count">${currentPage}<span>/</span>${totalPages}</span>
-                    </div>
-                    <div class="page-summary">
-                      <span class="page-range">Showing ${startIdx + 1}-${Math.min(startIdx + paginatedResults.length, normalizedResults.length)}</span>
-                      <span class="page-total">${normalizedResults.length} loaded${data.pagination && data.pagination.has_more ? ' · More results available in OrgX' : ' results'}</span>
-                    </div>
-                    <div class="page-progress" aria-hidden="true">
-                      <span class="page-progress-bar" style="width:${progress}%"></span>
-                    </div>
-                  </div>
-                  <div class="page-controls">
-                    <button type="button" class="page-btn" onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}>Previous</button>
-                    <button type="button" class="page-btn" onclick="changePage(1)" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>
-                  </div>
-                </div>
-              ` : ''}
-            </div>
-          </div>
-        </div>
-      `);
+      var hasMore = !!(data.pagination && data.pagination.has_more && data.next_call && data.next_call.tool === 'orgx_search');
+      var footer = loadingMore
+        ? '<ox-footer variant="reads" state="refreshing" heading="Loading more…" detail="your results stay"></ox-footer>'
+        : loadMoreError
+          ? `<ox-footer variant="reads" state="failed" heading="Couldn’t load more" detail="your results are kept" action-label="Load more results"></ox-footer>`
+          : hasMore
+            ? `<ox-footer variant="reads" state="fresh" heading="${normalizedResults.length} loaded" detail="more in OrgX"><button type="button" slot="action" class="sr-more" onclick="loadMoreResults()">Load more results</button></ox-footer>`
+            : `<ox-footer variant="reads" state="fresh" heading="${normalizedResults.length} ${normalizedResults.length === 1 ? 'match' : 'matches'}" detail="from organizational memory" action-label=""></ox-footer>`;
+
+      injectHtml(cardHtml({
+        kind: 'Search',
+        glyph: 'question',
+        edge: waiting.length ? 'amber' : 'teal',
+        source: data.query ? quoted(data.query) : '<b>Organizational memory</b>',
+        count: normalizedResults.length + (normalizedResults.length === 1 ? ' result' : ' results'),
+        body: `<div class="sr-bd">
+            ${groupsHtml}
+            ${loadMoreError ? `<p class="sr-sub sr-alert" role="alert">${escapeHtml(loadMoreError)}</p>` : ''}
+            ${totalPages > 1 ? `
+              <div class="pagination">
+                <span class="page-range">Showing ${startIdx + 1}-${Math.min(startIdx + paginatedResults.length, ordered.length)} of ${ordered.length}${hasMore ? '+' : ''}</span>
+                <button type="button" class="page-btn" onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}>Previous</button>
+                <button type="button" class="page-btn" onclick="changePage(1)" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>
+              </div>` : ''}
+          </div>`,
+        footer: footer
+      }));
     };
+
+    // Footer "Load more results" pages the same search on the server (next_call).
+    document.addEventListener('ox-action', function () {
+      window.loadMoreResults();
+    });
 
     if(isDemo) applyBootPayload(data);
     else initWidget({ render: d => { applyBootPayload(d); } });
