@@ -111,6 +111,11 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     evidence: ['live approve_decision approved disposable decision b26df9ab-f444-4e2b-ad8e-365b88cf4deb, 2026-05-28', 'tests/decisionToolsContract.spec.ts'],
     remaining: 'Prefer orgx_decide for new clients; keep alias callable.',
   },
+  orgx_command_status: {
+    tier: 'contract_and_unit',
+    evidence: ['tests/decisionToolsContract.spec.ts', 'tests/openaiOutputSchemas.spec.ts'],
+    remaining: 'Exercise a live status read once the app side (hopeatina/orgx#3267) is deployed.',
+  },
   orgx_widget_decide: {
     tier: 'contract_and_unit',
     evidence: ['tests/decisionToolsContract.spec.ts', 'tests/widgetApprovalMeta.spec.ts', 'tests/widgetRuntime.spec.ts'],

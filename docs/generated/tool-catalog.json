@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-10-02T00:24:44.989Z",
-  "sourceHash": "9d6d0bd76baed6f8",
+  "generatedAt": "2026-10-02T00:37:49.555Z",
+  "sourceHash": "989cf419cd5941a3",
   "version": "1.0.0",
-  "totalTools": 90,
+  "totalTools": 91,
   "categories": [
     "Agents",
     "Billing",
@@ -4817,6 +4817,46 @@
         "v2",
         "commander",
         "executor"
+      ]
+    },
+    {
+      "id": "orgx_command_status",
+      "title": "Check status of started work",
+      "description": "Read the current state of something already started: a decision waiting on a person, an agent run, or a work command. Also known as: is it done yet, did it go through, run status, poll. USE WHEN: a widget or the user needs to know whether a decision, run or command has settled. NEXT: when next_poll_after_ms is a number, check again after that many milliseconds; when it is null the state is final. DO NOT USE: to start or change work. Read-only.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "decision",
+              "run",
+              "command"
+            ],
+            "description": "What the id refers to"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Decision, run or command UUID"
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "decisions:read"
+      ],
+      "readOnly": true,
+      "source": "chatgpt",
+      "profiles": [
+        "v2",
+        "chatgpt"
       ]
     },
     {

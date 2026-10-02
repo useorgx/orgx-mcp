@@ -188,6 +188,18 @@
         "destructive_justification": "Resolves one pending decision after an explicit click; widget-only and gated by a single-use approval token the model never sees, so a model cannot call it."
       }
     },
+    "orgx_command_status": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Reads the current state of a decision, agent run or work command the person can already see; it changes nothing.",
+        "open_world_justification": "Reads OrgX records only.",
+        "destructive_justification": "Read-only; nothing is changed or deleted."
+      }
+    },
     "get_agent_status": {
       "annotations": {
         "readOnlyHint": false,

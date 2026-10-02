@@ -698,6 +698,24 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     },
   },
   {
+    id: 'orgx_command_status',
+    title: 'Check status of started work',
+    description:
+      'Read the current state of something already started: a decision waiting on a person, an agent run, or a work command. Also known as: is it done yet, did it go through, run status, poll. USE WHEN: a widget or the user needs to know whether a decision, run or command has settled. NEXT: when next_poll_after_ms is a number, check again after that many milliseconds; when it is null the state is final. DO NOT USE: to start or change work. Read-only.',
+    inputSchema: {
+      kind: z.enum(['decision', 'run', 'command']).describe('What the id refers to'),
+      id: z.string().uuid().describe('Decision, run or command UUID'),
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    securitySchemes: SECURITY_SCHEMES.decisionReadRequiresAuth,
+    _meta: {
+      'openai/readOnlyHint': true,
+      'openai/widgetAccessible': true,
+      'openai/toolInvocation/invoking': 'Checking status...',
+      'openai/toolInvocation/invoked': 'Status checked',
+    },
+  },
+  {
     id: 'orgx_widget_decide',
     title: 'Decide from the decisions widget',
     description:
@@ -2797,6 +2815,8 @@ export function expandConsolidatedTool(
   args: Record<string, unknown>
 ): { resolvedToolId: string; resolvedArgs: Record<string, unknown> } {
   switch (toolId) {
+    case 'orgx_command_status':
+      return { resolvedToolId: 'command_status', resolvedArgs: { ...args } };
     case 'orgx_widget_decide':
       return { resolvedToolId: 'widget_decide', resolvedArgs: { ...args } };
     case 'scoring_config': {

@@ -307,6 +307,16 @@
       }
     },
     {
+      "name": "orgx_command_status",
+      "title": "Check status of started work",
+      "description": "Read the current state of something already started: a decision waiting on a person, an agent run, or a work command. Also known as: is it done yet, did it go through, run status, poll. USE WHEN: a widget or the user needs to know whether a decision, run or command has settled. NEXT: when next_poll_after_ms is a number, check again after that many milliseconds; when it is null the state is final. DO NOT USE: to start or change work. Read-only.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
       "name": "get_agent_status",
       "title": "Get Agent Status",
       "description": "Use when the user asks what agents are working on right now, whether delegated work is still running, or why nothing has landed yet. Successful calls record metered MCP allowance usage but do not change business records. NEXT: If agents are stuck, use orgx_search or orgx_inspect to read related blocker context.",
