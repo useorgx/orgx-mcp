@@ -88,6 +88,6 @@
   border-color: rgba(var(--domain-rgb, 20, 184, 166), 0.28);
 }
 .agent-chip:focus-visible {
-  outline: 2px solid rgba(var(--domain-rgb, 20, 184, 166), 0.55);
+  outline: 2px solid var(--ox-focus, rgba(191, 255, 0, 0.8));
   outline-offset: 2px;
 }

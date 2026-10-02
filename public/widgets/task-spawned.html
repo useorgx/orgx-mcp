@@ -192,7 +192,7 @@
     var stateParams = new URLSearchParams(window.location.search);
     var fixtureState = stateParams.get('state') || (stateParams.get('loading') === 'true' ? 'loading' : stateParams.get('demo') === 'true' ? 'progressing' : 'empty');
     if (fixtureState === 'completed') fixtureState = 'resolved';
-    var isDemo = ['estimate', 'guard', 'populated', 'progressing', 'urgent', 'long', 'error', 'degraded', 'blocked', 'stale', 'resolved', 'queued', 'cancelled', 'polling'].includes(fixtureState);
+    var isDemo = ['estimate', 'guard', 'populated', 'progressing', 'urgent', 'long', 'error', 'degraded', 'blocked', 'stale', 'resolved', 'queued', 'cancelled', 'polling', 'unreachable', 'run-failed'].includes(fixtureState);
     var isLoadingOverride = fixtureState === 'loading';
 
     var entity = isDemo ? { id: 'TSK-942', type: 'task', title: 'Implement rate limiting middleware for public API', agent_name: 'Eli', status: 'In Progress', domain: 'Engineering', workspace_name: 'Core Platform', links: [{ platform: 'Task', url: 'https://useorgx.com/live?view=mission-control&task=TSK-942', label: 'ENG-142' }] } : null;
@@ -249,6 +249,12 @@
       entity.run_id = '7f3c2a10-5b1e-4c3d-9a8f-2e6b4d1c0a99';
       entity.updated_at = new Date().toISOString();
       entity.estimate = { recommended_model: 'standard', estimated_cost_usd: 0.42, budget_check: { max_cost_usd: 2, estimated_cost_usd: 0.42, within_cap: true } };
+    }
+    if ((fixtureState === 'unreachable' || fixtureState === 'run-failed') && entity) {
+      // unreachable: this chat can't read run status (tool_unavailable). run-failed: the status read says failed.
+      entity.status = 'in_progress';
+      entity.run_id = '7f3c2a10-5b1e-4c3d-9a8f-2e6b4d1c0a99';
+      entity.updated_at = new Date(Date.now() - 2 * 60 * 1000).toISOString();
     }
     if (fixtureState === 'cancelled' && entity) {
       entity.status = 'cancelled';
@@ -490,6 +496,49 @@
        next_poll_after_ms between checks and stopping when it is null. */
     var runStatus = { runId: null, timer: null, failures: 0, data: null, checkedAt: null, unreachable: false, missing: false };
 
+    // Run outcomes arrive as codes (model_budget_exhausted). Say them in words; an unknown code
+    // becomes plain words too, never snake_case.
+    var REASON_COPY = {
+      model_budget_exhausted: 'the model budget ran out',
+      budget_exhausted: 'the budget ran out',
+      budget_exceeded: 'it went over the spend cap',
+      max_cost_exceeded: 'it went over the spend cap',
+      spend_cap_exceeded: 'it went over the spend cap',
+      rate_limited: 'the provider rate limit',
+      provider_rate_limited: 'the provider rate limit',
+      provider_unavailable: 'the model provider was unavailable',
+      model_unavailable: 'the model was unavailable',
+      context_length_exceeded: 'the input was too long for the model',
+      timeout: 'it timed out',
+      timed_out: 'it timed out',
+      run_timeout: 'it timed out',
+      heartbeat_lost: 'it stopped reporting',
+      no_heartbeat: 'it stopped reporting',
+      cancelled_by_user: 'someone cancelled it',
+      guardrail_blocked: 'a guardrail stopped it',
+      policy_blocked: 'a policy stopped it',
+      authentication_required: 'it needs you to sign in again',
+      tool_unavailable: 'a tool it needed was unavailable',
+    };
+    function humanizeCodes(text) {
+      return String(text || '').replace(/(^|[^\w./:#=?&-])([a-z][a-z0-9]*(?:_[a-z0-9]+)+)(?![\w/=-]|\.\w)/g, function(all, lead, code) {
+        return lead + (REASON_COPY[code] || code.replace(/_/g, ' '));
+      });
+    }
+    function runReason(data) {
+      var raw = data && (firstString([data.outcome, data.message, data.reason, data.error_code, data.code]) || '');
+      return raw ? humanizeCodes(raw).trim() : '';
+    }
+    // The poll's failure in kinds: the host has no such tool, or the call never arrived.
+    function pollFailureKind(error) {
+      var code = String((error && error.code) || '').toLowerCase();
+      if (code === 'tool_unavailable' || code === 'host_unavailable') return 'tool_unavailable';
+      if (code === 'network') return 'network';
+      var raw = [error && error.message, error && error.details && error.details.raw].filter(function(v) { return typeof v === 'string'; }).join(' ');
+      if (/resource not found|tool not found|unknown tool|method not found|no such tool/i.test(raw)) return 'tool_unavailable';
+      return code || 'unknown';
+    }
+
     // Gallery only: a scripted status sequence standing in for the server.
     var galleryStatusSequence = [
       { state: 'queued', next_poll_after_ms: 1600 },
@@ -503,6 +552,12 @@
       if (fixtureState === 'polling') {
         var step = galleryStatusSequence[Math.min(galleryStatusIndex++, galleryStatusSequence.length - 1)];
         return Promise.resolve(Object.assign({ kind: 'run', id: runId, updated_at: new Date().toISOString() }, step));
+      }
+      if (fixtureState === 'unreachable') {
+        return Promise.reject(Object.assign(new Error('This chat can’t reach OrgX run status.'), { code: 'tool_unavailable' }));
+      }
+      if (fixtureState === 'run-failed') {
+        return Promise.resolve({ kind: 'run', id: runId, state: 'failed', outcome: 'model_budget_exhausted', updated_at: new Date().toISOString(), next_poll_after_ms: null });
       }
       var runtime = window.OrgXWidgetRuntime;
       if (!runtime || !runtime.callTool) return Promise.reject(new Error('Status is unavailable here.'));
@@ -522,7 +577,7 @@
     }
 
     function canPollRuns() {
-      if (fixtureState === 'polling') return true;
+      if (fixtureState === 'polling' || fixtureState === 'unreachable' || fixtureState === 'run-failed') return true;
       var runtime = window.OrgXWidgetRuntime;
       return !!(runtime && runtime.detectProtocol && runtime.detectProtocol() !== 'standalone');
     }
@@ -559,9 +614,15 @@
         render();
         var wait = data.next_poll_after_ms;
         if (typeof wait === 'number' && isFinite(wait)) scheduleRunCheck(Math.max(1000, wait));
-      }).catch(function() {
+      }).catch(function(error) {
         if (runStatus.runId !== runId) return;
         runStatus.failures += 1;
+        // A host without the status tool will never answer: stop asking and say what we last knew.
+        if (pollFailureKind(error) === 'tool_unavailable') {
+          runStatus.unreachable = true;
+          render();
+          return;
+        }
         if (runStatus.failures < 3) {
           scheduleRunCheck(4000 * runStatus.failures);
           return;
@@ -631,7 +692,7 @@
         else if (live.state === 'cancelled') state = 'cancelled';
         if (live.waiting_on === 'person' && (state === 'queued' || state === 'in_progress')) state = 'blocked';
         if (live.state === 'held') heading = 'Held before it starts';
-        detail = live.outcome || null;
+        detail = runReason(live) || null;
       } else if (normalizedStatus(model) === 'cancelled' || normalizedStatus(model) === 'canceled') {
         state = 'cancelled';
       }
@@ -640,6 +701,7 @@
       const executionLabel = stateMeta.state === 'completed' ? 'View result' : stateMeta.state === 'stale' || stateMeta.state === 'blocked' ? 'Open current state' : 'Open execution';
       var checked = runStatus.checkedAt ? 'checked ' + formatClock(runStatus.checkedAt) : null;
       var age = window.OrgXWidgetState ? window.OrgXWidgetState.formatAge(model) : null;
+      if (age === 'Sync time unavailable') age = null;
       switch (state) {
         case 'completed':
           view = { chip: 'succeeded', edge: 'teal', footer: { variant: 'queues-work', state: 'done', heading: heading || 'Done', detail: detail || 'Execution complete', action: 'View result ↗' } };
@@ -660,7 +722,7 @@
           view = { chip: 'needs_you', edge: 'amber', footer: { variant: 'confirms-in-orgx', state: 'draft', heading: live && live.waiting_on === 'person' ? 'Waiting on you in OrgX' : 'Waiting on approval', detail: detail || 'nothing runs until it is approved', primary: executionLabel + ' ↗' } };
           break;
         case 'failed':
-          view = { chip: 'failed_step', edge: 'red', footer: { variant: 'finishes-here', state: 'failed', heading: 'Run failed', detail: detail || 'nothing was delivered', primary: executionLabel + ' ↗' } };
+          view = { chip: 'failed_step', edge: 'red', footer: { variant: 'finishes-here', state: 'failed', heading: 'Run failed', detail: 'nothing was delivered', primary: executionLabel + ' ↗' } };
           break;
         case 'cancelled':
           view = { chip: 'cancelled', edge: 'mute', footer: { variant: 'confirms-in-orgx', state: 'rejected', heading: 'Cancelled', detail: detail || 'nothing more will run', action: executionLabel + ' ↗' } };
@@ -675,7 +737,18 @@
       view.note = state === 'in_progress' || state === 'completed' || state === 'queued' ? null : (model.note || stateMeta.description);
       if (state === 'starting' && !model.note) view.note = stateMeta.description + ' The execution link remains the proof boundary.';
       if (runStatus.missing) view.note = 'OrgX has no status for this run yet. Showing what the dispatch reported.';
-      if (runStatus.unreachable) view.note = 'Could not check the run just now. Showing the last known state.';
+      // What OrgX said went wrong, in words, once (the footer stays short at phone width).
+      if (state === 'failed' && live) view.note = detail ? 'The run stopped: ' + detail.replace(/[.!]?$/, '.') : null;
+      if (runStatus.unreachable && ['completed', 'failed', 'cancelled'].indexOf(state) === -1) {
+        // Status can't be read here: show the last known state as last known, with no live spinner.
+        var lastKnown = state === 'in_progress' || state === 'stale' ? 'running' : state === 'blocked' ? 'waiting on approval' : state === 'queued' || state === 'starting' ? 'queued' : 'not reported';
+        view.chip = 'stale';
+        view.chipLabel = 'Last known: ' + lastKnown;
+        view.edge = 'mute';
+        view.footer = { variant: 'reads', state: 'stale', heading: 'Couldn’t check just now', detail: 'showing the last report', action: 'Open ↗' };
+        view.note = null;
+        view.lastKnown = true;
+      }
       view.consoleUrl = consoleUrl;
       return view;
     }
@@ -760,7 +833,8 @@
       if (receiptId) {
         var shortId = UUID_RE.test(receiptId) ? 'run ' + receiptId.slice(0, 8) : receiptId;
         rows.push(receiptRow({
-          status: view.key === 'failed' ? 'fail' : view.key === 'completed' ? 'met' : view.key === 'stale' || view.key === 'cancelled' ? 'unverified' : 'pending',
+          // Last-known (status can't be read here) is not live: no spinner on the receipt either.
+          status: view.key === 'failed' ? 'fail' : view.key === 'completed' ? 'met' : view.lastKnown || view.key === 'stale' || view.key === 'cancelled' ? 'unverified' : 'pending',
           label: 'Receipt · ' + shortId,
           detail: view.key === 'completed' ? 'Execution complete' : runStatus.data ? 'Status from OrgX' : 'Reported by the dispatch',
           value: runStatus.checkedAt ? formatClock(runStatus.checkedAt) : ''
@@ -818,7 +892,7 @@
         + '<div class="bd">'
         + '<h3 class="pk-q">' + escapeHtml(model.title) + '</h3>'
         + (view.chip ? '<div class="status"><ox-state-chip state="' + view.chip + '"' + (view.chipLabel ? ' label="' + escapeHtml(view.chipLabel) + '"' : '') + ' reserve="queued running succeeded failed_step stale needs_you cancelled"></ox-state-chip>'
-          + (model.dispatched !== false && window.OrgXWidgetState && window.OrgXWidgetState.observedAt(runStatus.data || model) !== null ? '<span class="meta">' + escapeHtml(window.OrgXWidgetState.formatAge(runStatus.data || model)) + '</span>' : '') + '</div>' : '')
+          + (model.dispatched !== false && window.OrgXWidgetState && window.OrgXWidgetState.observedAt(runStatus.data || model) !== null ? '<span class="meta">' + escapeHtml(view.lastKnown ? window.OrgXWidgetState.formatAge(runStatus.data || model).replace(/^Updated /, 'reported ') : window.OrgXWidgetState.formatAge(runStatus.data || model)) + '</span>' : '') + '</div>' : '')
         + (view.note ? '<p class="note">' + escapeHtml(view.note) + '</p>' : '')
         + renderModel(info)
         + renderCap(model)
