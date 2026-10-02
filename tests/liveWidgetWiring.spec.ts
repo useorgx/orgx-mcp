@@ -240,7 +240,9 @@ describe('agent-status widget goes live from its grant', () => {
     }
     vi.useRealTimers();
 
-    expect(panelText()).toContain('Disconnected');
+    // Rows it already showed stay as the last known state, with a quiet retry.
+    expect(panelText()).toContain('Last known');
+    expect(panelText()).not.toContain('Disconnected');
     const retry = document.querySelector('#liveFlow .oxlp-retry') as HTMLButtonElement;
     expect(retry).not.toBeNull();
     expect(retry.hidden).toBe(false);

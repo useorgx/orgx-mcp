@@ -122,7 +122,7 @@
     .command-details { display: none; flex-direction: column; gap: 12px; padding: 4px 0 10px; }
     .command-details.is-open { display: flex; }
     .command-detail-label { font-size: 12px; color: var(--ox-text-muted); margin-bottom: 2px; }
-    .command-detail-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: baseline; padding: 7px 0; border-top: 1px solid var(--ox-border); }
+    .command-detail-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 40px; padding: 7px 0; border-top: 1px solid var(--ox-border); }
     .command-detail-row:first-of-type { border-top: 0; }
     .command-detail-title { font-size: 13.5px; line-height: 1.4; color: var(--ox-text); overflow-wrap: anywhere; }
     .command-detail-state { font: 500 11.5px/1.3 var(--ox-mono); color: var(--ox-text-muted); white-space: nowrap; }
@@ -600,15 +600,6 @@
       return 4;
     }
 
-    function statusToneForRow(status) {
-      if (status === 'blocked') return 'blocked';
-      if (status === 'review') return 'review';
-      if (status === 'done' || status === 'approved') return 'done';
-      if (status === 'running') return 'running';
-      if (status === 'queued') return 'queued';
-      return 'idle';
-    }
-
     function summarizeOverview(agent) {
       var parts = [];
       if (agent.blockedCount) parts.push(agent.blockedCount + ' blocked');
@@ -719,6 +710,33 @@
       );
     }
 
+    // Work-detail statuses speak the kit's run-state vocabulary, the same chip
+    // the agent rows use. A task cannot read "Running" under an agent that is
+    // stalled or auto-paused: the agent's stall is the task's truth too.
+    var TASK_CHIPS = {
+      running: { state: 'running', label: 'Running' },
+      verifying: { state: 'verifying', label: 'Verifying' },
+      queued: { state: 'queued', label: 'Queued' },
+      idle: { state: 'queued', label: 'Not started' },
+      blocked: { state: 'blocked', label: 'Blocked' },
+      review: { state: 'needs_you', label: 'Your review' },
+      stalled: { state: 'stale', label: 'Stalled' },
+      done: { state: 'succeeded', label: 'Done' },
+      approved: { state: 'succeeded', label: 'Accepted' },
+    };
+    var TASK_CHIP_RESERVE = 'running queued blocked stale succeeded';
+
+    function taskStatusUnder(agent, status) {
+      if (agent.status === 'stalled' && (status === 'running' || status === 'verifying')) return 'stalled';
+      return status;
+    }
+
+    function taskChipHtml(status, labelOverride) {
+      var chip = TASK_CHIPS[status] || { state: status, label: titleCase(status) };
+      var label = labelOverride || chip.label;
+      return '<ox-state-chip state="' + escapeHtml(chip.state) + '" label="' + escapeHtml(label) + '" reserve="' + TASK_CHIP_RESERVE + '">' + escapeHtml(label) + '</ox-state-chip>';
+    }
+
     function renderCommandDetailGroup(label, rows) {
       if (!rows.length) return '';
       return (
@@ -726,9 +744,11 @@
           '<div class="command-detail-label">' + escapeHtml(label) + '</div>' +
           rows.map(function (row) {
             return (
-              '<div class="command-detail-row">' +
+              '<div class="command-detail-row" data-status="' + escapeHtml(row.status || '') + '">' +
                 '<div class="command-detail-title">' + escapeHtml(row.title) + '</div>' +
-                '<div class="command-detail-state" data-tone="' + escapeHtml(row.tone) + '">' + escapeHtml(row.state) + '</div>' +
+                (row.chip
+                  ? '<div class="command-detail-chip">' + row.chip + '</div>'
+                  : '<div class="command-detail-state" data-tone="' + escapeHtml(row.tone) + '">' + escapeHtml(row.state) + '</div>') +
               '</div>'
             );
           }).join('') +
@@ -738,28 +758,18 @@
 
     function renderCommandDetails(agent, isOpen) {
       var blockerRows = agent.blockers.map(function (blocker) {
-        return { title: String(blocker), state: 'Blocked', tone: 'blocked' };
+        return { title: String(blocker), status: 'blocked', chip: taskChipHtml('blocked') };
       });
       var taskRows = agent.tasks.map(function (task) {
-        return {
-          title: task.title,
-          state: getStatusLabel(task.status),
-          tone: statusToneForRow(task.status)
-        };
+        var status = taskStatusUnder(agent, task.status);
+        return { title: task.title, status: status, chip: taskChipHtml(status) };
       });
       var completedRows = agent.completedTasks.map(function (task) {
-        return {
-          title: task.title,
-          state: 'Completed',
-          tone: 'done'
-        };
+        return { title: task.title, status: 'done', chip: taskChipHtml('done') };
       });
       var artifactRows = agent.artifacts.map(function (artifact) {
-        return {
-          title: artifact.title,
-          state: artifact.status === 'review' ? 'Review' : getStatusLabel(artifact.status),
-          tone: statusToneForRow(artifact.status)
-        };
+        var status = artifact.status === 'done' ? 'approved' : artifact.status;
+        return { title: artifact.title, status: status, chip: taskChipHtml(status) };
       });
       var streamRows = agent.streams.map(function (stream) {
         return { title: stream.name, state: stream.progress + '%', tone: 'running' };
@@ -922,14 +932,15 @@
       );
     }
 
-    function attentionLine(needsAttention, moving, completed) {
+    function attentionLine(needsAttention, moving, completed, queued) {
       var meta = syncedAt ? '<span slot="meta">synced ' + String(syncedAt.getHours()).padStart(2, '0') + ':' + String(syncedAt.getMinutes()).padStart(2, '0') + '</span>' : '';
+      var activity = [moving ? moving + ' working' : '', queued ? queued + ' queued' : ''].filter(Boolean).join(' · ');
       if (needsAttention) {
-        var sentence = needsAttention + ' agent' + (needsAttention === 1 ? ' needs' : 's need') + ' you' + (moving ? ' · ' + moving + ' working' : '');
+        var sentence = needsAttention + ' agent' + (needsAttention === 1 ? ' needs' : 's need') + ' you' + (activity ? ' · ' + activity : '');
         return '<div class="agent-head"><ox-attention-line tone="needs-you" count="' + needsAttention + '"><span>' + escapeHtml(sentence) + '</span>' + meta + '</ox-attention-line></div>';
       }
-      var calm = moving
-        ? 'Nothing needs you · ' + moving + ' working'
+      var calm = activity
+        ? 'Nothing needs you · ' + activity
         : completed
         ? 'Nothing needs you · ' + completed + ' done'
         : 'No agents need you right now';
@@ -958,13 +969,16 @@
       var needsAttention = activeAgents.filter(function (agent) {
         return agent.status === 'blocked' || agent.status === 'review' || agent.status === 'stalled';
       }).length;
+      // "Working" means running now. A queued agent has not started, so it is
+      // counted as queued rather than inflating the working number.
       var moving = activeAgents.filter(function (agent) {
-        return agent.status === 'running' || agent.status === 'verifying' || agent.status === 'queued';
+        return agent.status === 'running' || agent.status === 'verifying';
       }).length;
+      var queuedCount = activeAgents.filter(function (agent) { return agent.status === 'queued'; }).length;
       var completed = activeAgents.filter(function (agent) { return agent.status === 'done'; }).length;
 
       var html = '<div class="agent-command-shell animate-in" data-edge="' + (needsAttention ? 'amber' : 'teal') + '">';
-      html += attentionLine(needsAttention, moving, completed);
+      html += attentionLine(needsAttention, moving, completed, queuedCount);
       if (activeAgents.length) {
         html += '<div class="agent-switcher-list" role="tablist" aria-label="Active agents" aria-orientation="vertical">';
         activeAgents.forEach(function (agent) {

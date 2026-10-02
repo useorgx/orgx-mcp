@@ -102,7 +102,7 @@ describe('rendering', () => {
     // the UA's [hidden] rule, so a stale "1 blocked" kept painting after the
     // work unblocked and the header contradicted the rows beneath it.
     const css = document.getElementById('orgx-live-panel-style')!.textContent!;
-    expect(css).toMatch(/\.oxlp \[hidden\]\{display:none!important\}/);
+    expect(css).toMatch(/\.oxlp \[hidden\],\.oxlp\[hidden\]\{display:none!important\}/);
 
     panel.apply(snapshot([node('a', 'blocked')]));
     expect(panel.element.textContent).toContain('1 blocked');
@@ -132,11 +132,35 @@ describe('rendering', () => {
     );
   });
 
-  it('shows an empty state rather than an empty list', () => {
+  it('shows an empty state rather than an empty list when the surface opts in', () => {
+    panel.destroy();
+    panel = createPanel({ mount, document, showEmpty: true });
     panel.apply(snapshot([]));
     const empty = panel.element.querySelector('.oxlp-empty') as HTMLElement;
+    expect(panel.element.hidden).toBe(false);
     expect(empty.hidden).toBe(false);
     expect((panel.element.querySelector('.oxlp-rows') as HTMLElement).hidden).toBe(true);
+  });
+
+  // The panel mounts above a widget's own card. With nothing live to show it
+  // printed "No workstreams running" and a connection chip outside the card,
+  // which in the ChatGPT sandbox (no stream) was all it ever printed.
+  it('stays out of the page while it has no rows, whatever the connection', () => {
+    for (const connection of ['connecting', 'live', 'reconnecting', 'fatal']) {
+      panel.apply(snapshot([], { connection }));
+      expect(panel.element.hidden).toBe(true);
+      expect(mount.hidden).toBe(true);
+    }
+    panel.apply(snapshot([node('a', 'executing')]));
+    expect(panel.element.hidden).toBe(false);
+    expect(mount.hidden).toBe(false);
+    panel.apply(snapshot([]));
+    expect(panel.element.hidden).toBe(true);
+  });
+
+  it('is hidden before its first snapshot arrives', () => {
+    expect(panel.element.hidden).toBe(true);
+    expect(mount.hidden).toBe(true);
   });
 
   it('labels each row for assistive tech, including its blocker', () => {
@@ -313,7 +337,7 @@ describe('connection state', () => {
     ['stale', 'Reconnecting'],
     ['refreshing', 'Reauthorizing'],
     ['paused', 'Paused'],
-    ['fatal', 'Disconnected'],
+    ['fatal', 'Last known'],
   ])('renders %s as "%s"', (state, label) => {
     panel.apply(snapshot([node('a', 'executing')], { connection: state }));
     expect(panel.element.querySelector('.oxlp-conn-label')!.textContent).toBe(label);
@@ -346,7 +370,17 @@ describe('connection state', () => {
     expect(panel.element.querySelector('.oxlp-conn')!.getAttribute('data-tone')).toBe('warn');
   });
 
+  it('reads a dead stream as last known, not as an alarm', () => {
+    panel.apply(snapshot([node('a', 'executing')], { connection: 'fatal' }));
+    const conn = panel.element.querySelector('.oxlp-conn')!;
+    expect(conn.getAttribute('data-tone')).toBe('idle');
+    expect(panel.element.textContent).not.toContain('Disconnected');
+    expect(rows()).toHaveLength(1);
+  });
+
   it('explains an empty list differently when the connection is dead', () => {
+    panel.destroy();
+    panel = createPanel({ mount, document, showEmpty: true });
     panel.apply(snapshot([], { connection: 'fatal' }));
     expect(panel.element.querySelector('.oxlp-empty')!.textContent).toBe(
       'Live updates unavailable'
