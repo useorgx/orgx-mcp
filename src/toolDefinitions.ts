@@ -789,6 +789,8 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         'decisionHistory'
       )} DO NOT USE: for listing current entities — use list_entities instead. Read-only.`,
     inputSchema: {
+      created_from: z.string().optional().describe('Inclusive ISO creation timestamp with timezone. Retention limits still apply.'),
+      created_to: z.string().optional().describe('Inclusive ISO creation timestamp with timezone. Applied before ranking and result limits.'),
       query: z.string().min(1).describe('Search query for OrgX memory'),
       scope: z
         .enum(['all', 'artifacts', 'decisions', 'initiatives', 'ledger'])

@@ -42,6 +42,8 @@ function canonicalizeAlias(
         args: {
           ...copyDefined(args, [
             'type',
+            'created_from',
+            'created_to',
             'status',
             'initiative_id',
             'workspace_id',
@@ -68,7 +70,7 @@ function canonicalizeAlias(
       return {
         tool: 'orgx_search',
         args: {
-          ...copyDefined(args, ['query', 'limit', 'workspace_id', 'session_id']),
+          ...copyDefined(args, ['query', 'limit', 'workspace_id', 'session_id', 'created_from', 'created_to']),
           ...(type ? { type } : {}),
         },
       };
