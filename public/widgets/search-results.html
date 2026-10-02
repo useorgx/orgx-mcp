@@ -76,14 +76,51 @@
 
     .sr-hd ox-glyph { --ox-glyph-size: 16px; flex: none; }
     .sr-search-icon { width: 16px; height: 16px; flex: none; }
-    .sr-tools { margin: 4px 18px 10px; font-size: 12.5px; color: var(--ox-text-muted); }
-    .sr-tools summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; }
-    .sr-tools p { line-height: 1.5; margin: 4px 0 10px; }
-    .sr-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-    .sr-filters label { display: grid; gap: 5px; min-width: 0; }
-    .sr-filters input, .sr-filters select { width: 100%; box-sizing: border-box; min-width: 0; min-height: 44px; padding: 7px; border: 1px solid var(--ox-border-strong); border-radius: 8px; background: var(--ox-bg); color: var(--ox-text); font: inherit; }
+    /* Search filters and How search works are disclosures: a chevron that turns,
+       a label that reads as a control, and a ring that hugs the label (from the
+       shared focus layer) instead of an input-like box across the card. */
+    .sr-disclosures { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0 4px; margin: 0 10px 4px; }
+    .sr-tools { font-size: 12.5px; color: var(--ox-text-muted); }
+    .sr-tools[open] { flex: 1 0 100%; padding: 0 8px 8px; }
+    .sr-tools summary {
+      display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 8px;
+      border-radius: 8px; cursor: pointer; list-style: none; user-select: none;
+      font-weight: 600; color: var(--ox-text-2);
+    }
+    .sr-tools[open] summary { margin-left: -8px; }
+    .sr-tools summary::-webkit-details-marker { display: none; }
+    .sr-tools summary::marker { content: ''; }
+    .sr-tools summary:focus:not(:focus-visible) { outline: none; }
+    .sr-tools summary svg { width: 14px; height: 14px; flex: none; color: var(--ox-text-muted); transition: transform var(--ox-dur-micro, 160ms) ease; }
+    .sr-tools[open] summary svg { transform: rotate(90deg); }
+    .sr-tools summary .sr-tools-note { font-weight: 500; color: var(--ox-text-muted); }
+    .sr-tools p { line-height: 1.5; margin: 0 0 10px; }
+    .sr-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .sr-filters label { display: grid; gap: 5px; min-width: 0; font-weight: 600; color: var(--ox-text-2); }
+    /* Kit fields in both themes: the well surface, a hairline that firms on
+       hover, and native pickers drawn in the active color scheme. */
+    .sr-filters input, .sr-filters select {
+      -webkit-appearance: none; appearance: none;
+      width: 100%; box-sizing: border-box; min-width: 0; min-height: 44px; padding: 0 12px;
+      border: 1px solid var(--ox-border-strong); border-radius: 10px;
+      background-color: var(--ox-well-bg); color: var(--ox-text);
+      font: 500 13px/1.2 var(--ox-font); color-scheme: inherit;
+      transition: border-color var(--ox-dur-micro, 160ms), background-color var(--ox-dur-micro, 160ms);
+    }
+    .sr-filters select {
+      padding-right: 34px; cursor: pointer;
+      background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+      background-position: right 16px center, right 11px center;
+      background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
+    }
+    .sr-filters input::-webkit-datetime-edit { padding: 0; }
+    .sr-filters input::-webkit-calendar-picker-indicator { opacity: 0.7; cursor: pointer; }
+    .sr-filters input:hover, .sr-filters select:hover { border-color: var(--ox-text-muted); }
     .sr-filter-actions { display: flex; gap: 8px; margin-top: 10px; }
     .sr-filter-actions button { min-height: 44px; }
+    .sr-filter-actions .page-btn[type="submit"] { background: var(--ox-hover); border-color: var(--ox-border-strong); }
+    .sr-tools [role="alert"] { margin: 8px 0 0; color: var(--ox-danger); }
+    @media (max-width: 600px) { .sr-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .sr-filters label:first-child { grid-column: 1 / -1; } }
     @media (max-width: 420px) { .sr-filters { grid-template-columns: 1fr; } }
 
     .sr-kind {
@@ -156,21 +193,16 @@
       transition: background var(--ox-dur-micro, 160ms), border-color var(--ox-dur-micro, 160ms);
     }
 
-    /* The leading match reads as the selected row (S5-B): only the first row
-       of the first group, never the head of every group. */
-    .sr-bd .result-list:first-of-type > .result-card:first-child {
-      background: var(--ox-hover);
-      border-color: var(--ox-border-strong);
-    }
+    /* Every row is drawn the same at rest. A permanently outlined first row,
+       plus a hover that stuck on touch and a focus left on the last row
+       opened, read as three different row styles. Hover only applies where a
+       pointer can hover; keyboard focus uses the shared focus ring. */
+    .result-card:focus:not(:focus-visible) { outline: none; }
+    .result-card:focus-visible { background: var(--ox-hover); }
 
-    .result-card:hover,
-    .result-card:focus-visible {
-      background: var(--ox-hover);
-      border-color: var(--ox-border-strong);
-      outline: none;
+    @media (hover: hover) {
+      .result-card:hover { background: var(--ox-hover); }
     }
-
-    .result-card:focus-visible { box-shadow: 0 0 0 2px var(--ox-focus); }
 
     .r-glyph {
       display: grid;
@@ -242,8 +274,8 @@
 
     .r-open svg { width: 12px; height: 12px; }
 
-    .result-card:hover .r-open,
     .result-card:focus-visible .r-open { color: var(--ox-text); }
+    @media (hover: hover) { .result-card:hover .r-open { color: var(--ox-text); } }
 
     /* Pages: a quiet row, never a second card. */
     .pagination {
@@ -752,6 +784,11 @@
     var bootStartedAt = Date.now();
     var MIN_LOADING_MS = 220;
     var SEARCH_RESPONSE_TIMEOUT_MS = Number(window.__ORGX_SEARCH_RESPONSE_TIMEOUT_MS) || 12000;
+    // A host that mounts the card while the search is still running (ChatGPT
+    // publishes toolInput first and toolOutput when the call returns) gets this
+    // long before the card gives up on a search it can see is in flight.
+    var SEARCH_IN_FLIGHT_MAX_MS = Number(window.__ORGX_SEARCH_IN_FLIGHT_MAX_MS) || 60000;
+    var HOST_POLL_MS = 1000;
     var loadingSettled = false;
     var bootError = '';
     var retrying = false;
@@ -770,6 +807,8 @@
         bootError = '';
         isLoading = false;
         if (bootTimeoutId !== null) window.clearTimeout(bootTimeoutId);
+        bootTimeoutId = null;
+        if (typeof stopHostPoll === 'function') stopHostPoll();
         render();
       };
       if (loadingSettled) {
@@ -780,15 +819,81 @@
       var delay = Math.max(0, MIN_LOADING_MS - (Date.now() - bootStartedAt));
       window.setTimeout(commit, delay);
     };
+    var isCompleteSearchPayload = function(payload) {
+      return !!payload && typeof payload === 'object' && !Array.isArray(payload) &&
+        (payload.error || payload.ok === false || Array.isArray(payload.results) ||
+          Array.isArray(payload.decisions) || Array.isArray(payload.recommendations) || !!payload.next_action);
+    };
+    // Read the result straight from the host globals. ChatGPT can update
+    // window.openai without an openai:set_globals event the card hears (the
+    // event can fire before the runtime's listener exists, or carry only the
+    // metadata half), and the MCP Apps notification can land before the SDK
+    // handshake settles. Either way the result is on the page while the card
+    // still shows a skeleton, and the deadline below used to turn that into
+    // "Search unavailable — results did not arrive in this card".
+    var readHostSearchPayload = function() {
+      var runtime = window.OrgXWidgetRuntime;
+      var openai = window.openai;
+      var candidates = [
+        openai && openai.toolOutput,
+        runtime.getToolResponseMetadata('orgx/searchPayload'),
+        openai && openai.toolResponseMetadata && openai.toolResponseMetadata['orgx/searchPayload']
+      ];
+      for (var i = 0; i < candidates.length; i += 1) {
+        if (candidates[i] === null || candidates[i] === undefined) continue;
+        var payload = runtime.extractSearchWidgetData(candidates[i]);
+        if (isCompleteSearchPayload(payload)) return payload;
+      }
+      return null;
+    };
+    // The search is still running when the host has published the request but
+    // not yet any output for it.
+    var searchInFlight = function() {
+      var openai = window.openai;
+      return !!(openai && openai.toolInput && typeof openai.toolInput === 'object' &&
+        (openai.toolOutput === null || openai.toolOutput === undefined));
+    };
+    var hostPollId = null;
+    // Time already granted to the response, counted by the deadlines themselves
+    // so a throttled background tab cannot make the wait look longer.
+    var deadlineWaitedMs = SEARCH_RESPONSE_TIMEOUT_MS;
+    var stopHostPoll = function() {
+      if (hostPollId !== null) window.clearInterval(hostPollId);
+      hostPollId = null;
+    };
+    var markStillSearching = function() {
+      var footer = document.querySelector('.search-skeleton ox-footer');
+      if (!footer) return;
+      footer.setAttribute('state', 'refreshing');
+      footer.setAttribute('heading', 'Still searching');
+      footer.setAttribute('detail', 'large searches take a little longer');
+    };
+    var onSearchDeadline = function() {
+      bootTimeoutId = null;
+      if (loadingSettled) return;
+      var arrived = readHostSearchPayload();
+      if (arrived) { applyBootPayload(arrived); return; }
+      if (searchInFlight() && deadlineWaitedMs < SEARCH_IN_FLIGHT_MAX_MS) {
+        markStillSearching();
+        var extension = Math.min(SEARCH_RESPONSE_TIMEOUT_MS, SEARCH_IN_FLIGHT_MAX_MS - deadlineWaitedMs);
+        deadlineWaitedMs += extension;
+        bootTimeoutId = window.setTimeout(onSearchDeadline, extension);
+        return;
+      }
+      stopHostPoll();
+      loadingSettled = true;
+      bootError = 'The search results did not arrive in this card. Retry to load them again.';
+      window.OrgXWidgetRuntime.reportSearchWidgetEvent(sawIncompletePayload ? 'incomplete_response' : 'response_timeout');
+      isLoading = false;
+      render();
+    };
     if (!isDemo && !isLoadingOverride) {
-      bootTimeoutId = window.setTimeout(function() {
-        if (loadingSettled) return;
-        loadingSettled = true;
-        bootError = 'The search results did not arrive in this card. Retry to load them again.';
-        window.OrgXWidgetRuntime.reportSearchWidgetEvent(sawIncompletePayload ? 'incomplete_response' : 'response_timeout');
-        isLoading = false;
-        render();
-      }, SEARCH_RESPONSE_TIMEOUT_MS);
+      bootTimeoutId = window.setTimeout(onSearchDeadline, SEARCH_RESPONSE_TIMEOUT_MS);
+      hostPollId = window.setInterval(function() {
+        if (loadingSettled) { stopHostPoll(); return; }
+        var arrived = readHostSearchPayload();
+        if (arrived) { stopHostPoll(); applyBootPayload(arrived); }
+      }, HOST_POLL_MS);
     }
 
 
@@ -861,7 +966,8 @@
       }
       var types = ['initiative', 'workstream', 'milestone', 'task', 'decision', 'artifact', 'objective', 'project', 'workspace'];
       if (filters.type && types.indexOf(filters.type) < 0) types.push(filters.type);
-      return `<details class="sr-tools" ${filterOpen ? 'open' : ''} ontoggle="filterOpen=this.open"><summary>Search filters</summary>
+      var activeFilters = [filters.type, filters.from, filters.to].filter(Boolean).length;
+      return `<div class="sr-disclosures"><details class="sr-tools" ${filterOpen ? 'open' : ''} ontoggle="filterOpen=this.open"><summary>${DISCLOSURE_ICON}<span>Search filters</span>${activeFilters ? `<span class="sr-tools-note">· ${activeFilters} on</span>` : ''}</summary>
         <p>Type and creation dates start a new search, before ranking and result limits. Dates include both endpoints and use your device’s time zone. Retention limits still apply.</p>
         <form onsubmit="applySearchFilters(event)"><div class="sr-filters">
           <label>Type<select name="type" aria-label="Type"><option value="">All types</option>${types.map(type => `<option value="${escapeHtml(type)}" ${filters.type === type ? 'selected' : ''}>${escapeHtml(kindLabel(type))}</option>`).join('')}</select></label>
@@ -869,7 +975,7 @@
           <label>Created to<input name="to" aria-label="Created to" type="datetime-local" value="${escapeHtml(filters.to)}"></label>
         </div><div class="sr-filter-actions"><button class="page-btn" type="submit" ${retrying ? 'disabled' : ''}>Apply filters</button><button class="page-btn" type="button" onclick="clearSearchFilters()" ${retrying ? 'disabled' : ''}>Clear</button></div>
         ${filterError ? `<p role="alert">${escapeHtml(filterError)}</p>` : ''}</form></details>
-        <details class="sr-tools"><summary>How search works</summary><p>A phrase searches organizational memory. Ask for an entity type, status, workspace or initiative to narrow the request. Typed searches can load more pages; memory searches return a ranked selection. Creation-date controls apply to the full search before results are loaded.</p></details>`;
+        <details class="sr-tools"><summary>${DISCLOSURE_ICON}<span>How search works</span></summary><p>A phrase searches organizational memory. Ask for an entity type, status, workspace or initiative to narrow the request. Typed searches can load more pages; memory searches return a ranked selection, best match first. Creation-date controls apply to the full search before results are loaded.</p></details></div>`;
     };
     window.loadMoreResults = async () => {
       if (loadingMore || !data || !data.next_call || data.next_call.tool !== 'orgx_search') return;
@@ -904,6 +1010,7 @@
 
     // ── Rows in OrgX words ─────────────────────────────────────────────────
 
+    var DISCLOSURE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>';
     var EXT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>';
 
     var GLYPH_KINDS = ['goal', 'initiative', 'workstream', 'milestone', 'task', 'run', 'decision', 'question', 'artifact', 'receipt'];
@@ -1096,7 +1203,9 @@
 
       var resultRow = (r, index) => rowHtml(r, index, {
         need: needsYou(r),
-        meta: metaLine([kindLabel(r.type), statusWords(r), ageOf(r.at), r.score !== null && r.score < 1 ? Math.round(r.score * 100) + '% match' : '']),
+        // Raw relevance scores are not shown: an exact title match scored "5%"
+        // next to "2%" for the rest. Order already says which matched best.
+        meta: metaLine([kindLabel(r.type), statusWords(r), ageOf(r.at)]),
         snippet: r.snippet ? renderSnippet(r.snippet) : ''
       });
 
@@ -1123,14 +1232,16 @@
         glyph: 'question',
         edge: waiting.length ? 'amber' : 'teal',
         source: data.query ? quoted(data.query) : '<b>Organizational memory</b>',
-        count: visibleResults.length + ' of ' + normalizedResults.length + ' loaded',
+        // One count everywhere: "20+ results" when OrgX has more pages, the
+        // range below reads "1–3 of 20+", and the footer says how many loaded.
+        count: normalizedResults.length + (hasMore ? '+' : '') + (normalizedResults.length === 1 && !hasMore ? ' result' : ' results'),
         body: `${searchTools(normalizedResults)}<div class="sr-bd">
             ${visibleResults.length ? '' : '<p class="sr-sub" role="status">No loaded results match these filters. Clear the filters or load another page.</p>'}
             ${groupsHtml}
             ${loadMoreError ? `<p class="sr-sub sr-alert" role="alert">${escapeHtml(loadMoreError)}</p>` : ''}
             ${totalPages > 1 ? `
               <div class="pagination">
-                <span class="page-range">Showing ${startIdx + 1}-${Math.min(startIdx + paginatedResults.length, ordered.length)} of ${ordered.length}${hasMore ? '+' : ''}</span>
+                <span class="page-range">${startIdx + 1}–${Math.min(startIdx + paginatedResults.length, ordered.length)} of ${ordered.length}${hasMore ? '+' : ''}</span>
                 <button type="button" class="page-btn" onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}>Previous</button>
                 <button type="button" class="page-btn" onclick="changePage(1)" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>
               </div>` : ''}

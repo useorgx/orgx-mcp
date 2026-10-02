@@ -39,6 +39,10 @@
 
   // Connection copy is deliberately plain. "Live" earns no adornment, and a
   // degraded state says what it means rather than showing a spinner forever.
+  // A dead stream is not an alarm: the card below it still carries the
+  // snapshot, so the rows it kept are simply the last known state. (Hosts such
+  // as the ChatGPT sandbox block the stream outright; a red "Disconnected"
+  // banner above every card there read as a failure of the card itself.)
   var CONNECTION_COPY = {
     idle: { label: 'Idle', tone: 'idle' },
     connecting: { label: 'Connecting', tone: 'pending' },
@@ -47,7 +51,7 @@
     reconnecting: { label: 'Reconnecting', tone: 'warn' },
     refreshing: { label: 'Reauthorizing', tone: 'warn' },
     paused: { label: 'Paused', tone: 'idle' },
-    fatal: { label: 'Disconnected', tone: 'error' },
+    fatal: { label: 'Last known', tone: 'idle' },
     closed: { label: 'Closed', tone: 'idle' },
   };
 
@@ -62,7 +66,7 @@
     // that sets `display` silently beats it: a badge hidden with .hidden kept
     // painting, and the header went on claiming work was blocked after it had
     // unblocked. Scoped and forced so toggling `hidden` actually hides.
-    '.oxlp [hidden]{display:none!important}',
+    '.oxlp [hidden],.oxlp[hidden]{display:none!important}',
     '.oxlp-head{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:22px}',
     '.oxlp-headline{font-size:.78rem;color:var(--ox-text-muted,#526078);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
     '.oxlp-headline[data-blocked="true"]{color:var(--ox-warn,#fbbf24);font-weight:600}',
@@ -100,8 +104,13 @@
     // the bar renders 0px wide however much progress a node reports.
     '.oxlp-fill{display:block;height:100%;width:0;background:rgb(var(--ox-primary-rgb,0,201,167));transition:width .45s cubic-bezier(.4,0,.2,1)}',
     '.oxlp-empty{padding:16px 0;text-align:center;font-size:.78rem;color:var(--ox-text-dim,#657188)}',
-    '.oxlp-retry{appearance:none;border:1px solid var(--ox-border-strong,rgba(0,0,0,.15));background:transparent;',
-    'color:var(--ox-text,#0f172a);font:inherit;font-size:.72rem;padding:3px 10px;border-radius:6px;cursor:pointer}',
+    /* A quiet text action: 44px to hit, but the negative margin keeps the
+       header at its reserved height so revealing it never shifts the rows. */
+    '.oxlp-retry{appearance:none;border:0;background:transparent;color:var(--ox-text-2,var(--ox-text,#0f172a));',
+    'font:inherit;font-size:.68rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;',
+    'min-height:44px;min-width:44px;margin:-11px -6px -11px 2px;padding:0 6px;border-radius:6px;cursor:pointer;',
+    'text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--ox-border-strong,rgba(0,0,0,.2))}',
+    '.oxlp-retry:hover{color:var(--ox-text,#0f172a)}',
     /* Boundary flashes. Kept to opacity/background so they never trigger layout. */
     '@keyframes oxlp-enter{from{opacity:0}to{opacity:1}}',
     '@keyframes oxlp-flash{0%{background:var(--ox-panel,#fff)}18%{background:rgba(var(--ox-primary-rgb,0,201,167),.14)}100%{background:var(--ox-panel,#fff)}}',
@@ -174,6 +183,13 @@
     var onRetry = typeof opts.onRetry === 'function' ? opts.onRetry : null;
     var onSelect = typeof opts.onSelect === 'function' ? opts.onSelect : null;
     var maxRows = opts.maxRows || 0;
+    // Opt back in to an always-visible panel (with its empty label) for a
+    // surface whose only content is the live list.
+    var showEmpty = opts.showEmpty === true;
+    // The mount is a dedicated host (ensureLiveMount) unless it already holds
+    // other content; only a dedicated host is hidden with the panel, so its
+    // margin does not leave a gap above the card.
+    var mountOwned = mount.childNodes.length === 0;
 
     var root = el(doc, 'div', 'oxlp');
     var head = el(doc, 'div', 'oxlp-head');
@@ -196,6 +212,9 @@
     root.appendChild(rowsEl);
     root.appendChild(empty);
     mount.appendChild(root);
+    // Hidden until the first snapshot with rows arrives.
+    root.hidden = !showEmpty;
+    if (mountOwned && !showEmpty) mount.hidden = true;
 
     // Null-prototype maps: a node titled "constructor" gets that as its id (the
     // normalizer falls back to the title), and `rowNodes["constructor"]` on a
@@ -388,6 +407,18 @@
       setText(empty, snapshot.connection === 'fatal' ? 'Live updates unavailable' : emptyLabel);
       empty.hidden = !isEmpty;
       rowsEl.hidden = isEmpty;
+      // Nothing live to show: stay out of the page entirely. The panel mounts
+      // above the widget's own card, so an empty list, a "Connecting" chip, or
+      // a dead stream on a host that blocks streaming (the ChatGPT sandbox)
+      // printed stray status text outside and above the card. The card already
+      // says what is true; the panel only earns space when it has rows.
+      setPanelVisible(!isEmpty || showEmpty);
+    }
+
+    function setPanelVisible(visible) {
+      if (root.hidden === !visible) return;
+      root.hidden = !visible;
+      if (mountOwned) mount.hidden = !visible;
     }
 
     function removeRow(key) {
@@ -414,6 +445,7 @@
       },
       destroy: function destroy() {
         if (root.parentNode) root.parentNode.removeChild(root);
+        if (mountOwned) mount.hidden = false;
         rowNodes = Object.create(null);
         badges = Object.create(null);
       },

@@ -97,6 +97,16 @@
       .pulse-meta-line .tone-warning { color: var(--ox-warning); }
       .pulse-meta-line .tone-danger { color: var(--ox-danger); }
       .pulse-meta-divider { padding: 0 6px; opacity: 0.6; }
+      /* Health: one chip style in every render. */
+      .pulse-health {
+        display: inline-flex; align-items: center; height: 18px; padding: 0 7px; border-radius: 999px;
+        vertical-align: 1px; font: 600 11px/1 var(--ox-mono); letter-spacing: 0.01em; white-space: nowrap;
+        --tone-rgb: var(--ox-mute-rgb, 100, 116, 139); color: var(--ox-text-muted);
+        background: rgba(var(--tone-rgb), 0.08); box-shadow: inset 0 0 0 1px rgba(var(--tone-rgb), 0.32);
+      }
+      .pulse-health[data-tone="good"] { --tone-rgb: var(--ox-teal-rgb); color: var(--ox-teal); }
+      .pulse-health[data-tone="warning"] { --tone-rgb: var(--ox-warning-rgb); color: var(--ox-warning); }
+      .pulse-health[data-tone="danger"] { --tone-rgb: var(--ox-danger-rgb); color: var(--ox-danger); }
 
       /* Q6 population bar: one segment per workstream, each opens the list. */
       .pulse-population { display: flex; flex-direction: column; gap: 6px; }
@@ -114,7 +124,11 @@
       .pulse-signal:hover { opacity: 1; }
       .pulse-signal.seg-accepted::before { background: var(--ox-teal); }
       .pulse-signal.seg-judgment::before { background: repeating-linear-gradient(135deg, var(--ox-warning) 0 3px, transparent 3px 6px); box-shadow: inset 0 0 0 1px var(--ox-warning); }
-      .pulse-signal.seg-active::before { background: color-mix(in srgb, var(--ox-mute) 70%, var(--ox-text) 30%); }
+      /* Active work fills only its done share: 0% is an empty track, not "complete". */
+      .pulse-signal.seg-active::before {
+        background: linear-gradient(90deg, color-mix(in srgb, var(--ox-mute) 70%, var(--ox-text) 30%) calc(var(--p, 0) * 1%), transparent 0);
+        box-shadow: inset 0 0 0 1px var(--ox-border-strong);
+      }
       .pulse-signal.seg-blocked::before { background: var(--ox-danger); }
       .pulse-signal.seg-planned::before { background: transparent; box-shadow: inset 0 0 0 1px var(--ox-border-strong); }
       .pulse-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font: 500 11.5px/1.4 var(--ox-mono); color: var(--ox-text-muted); }
@@ -122,6 +136,7 @@
       .pulse-legend .seg-accepted { background: var(--ox-teal); }
       .pulse-legend .seg-judgment { background: var(--ox-warning); }
       .pulse-legend .seg-active { background: color-mix(in srgb, var(--ox-mute) 70%, var(--ox-text) 30%); }
+      .pulse-legend .seg-active.is-empty { background: transparent; box-shadow: inset 0 0 0 1px var(--ox-border-strong); }
       .pulse-legend .seg-blocked { background: var(--ox-danger); }
       .pulse-legend .seg-planned { box-shadow: inset 0 0 0 1px var(--ox-border-strong); }
 
@@ -743,7 +758,7 @@ external: function (size) {
                 typeof stream.blocked_count === "number"
                   ? stream.blocked_count
                   : blockers.length,
-              summary: readString(stream, ["summary", "reason", "description"]),
+              summary: plainCopy(readString(stream, ["summary", "reason", "description"])),
             };
           })
           .filter(function (stream) {
@@ -867,6 +882,15 @@ external: function (size) {
         return false;
       };
 
+      var readCopyList = function (value) {
+        return (Array.isArray(value) ? value : [])
+          .map(function (item) {
+            var text = typeof item === "string" ? item : readString(asObject(item), ["title", "label", "summary", "reason", "text"]);
+            return text ? plainCopy(text) : "";
+          })
+          .filter(Boolean);
+      };
+
       var normalizePulse = function (payload) {
         if (!payload) return null;
         var record = unwrapPulseRecord(payload);
@@ -881,7 +905,7 @@ external: function (size) {
           id: readString(record, ["id", "initiative_id", "initiativeId"]),
           name: readString(record, ["name", "title"]) || "Initiative",
           status: readString(record, ["status", "state"]) || "active",
-          message: readString(record, ["message", "summary"]),
+          message: plainCopy(readString(record, ["message", "summary"])),
           progress_pct: typeof record.progress_pct === "number" ? record.progress_pct : 0,
           pending_decisions:
             typeof record.pending_decisions === "number" ? record.pending_decisions : 0,
@@ -905,8 +929,8 @@ external: function (size) {
               : 0,
           health_score:
             typeof record.health_score === "number" ? record.health_score : null,
-          blockers: Array.isArray(record.blockers) ? record.blockers : [],
-          next_steps: Array.isArray(record.next_steps) ? record.next_steps : [],
+          blockers: readCopyList(record.blockers),
+          next_steps: readCopyList(record.next_steps),
           roi_summary: asObject(record.roi_summary),
           current_cost:
             typeof record.current_cost === "number" ? record.current_cost : null,
@@ -923,11 +947,57 @@ external: function (size) {
         };
       };
 
+      // Next steps can name tools ("Review pending decisions with
+      // get_pending_decisions"). Tool identifiers are never UI copy.
+      var TOOL_WORDS = {
+        orgx_decide: "decisions", approve_decision: "approval", reject_decision: "rejection",
+        spawn_agent_task: "a new agent task", orgx_spawn: "a new agent task", query_org_memory: "search",
+        recommend_next_action: "recommendations", orgx_recommend: "recommendations", orgx_inspect: "the details",
+        orgx_command_status: "the run status", check_execution_readiness: "the readiness check",
+      };
+      var TOOL_ID_SOURCE = "(?:get|list|orgx|approve|reject|spawn|scaffold|recommend|query|check|manage|track|handoff|resume|request|review|consolidate|delegate)_[a-z0-9]+(?:_[a-z0-9]+)*";
+      var TOOL_REF = "`?" + TOOL_ID_SOURCE + "(?:\\(\\))?`?(?:\\(\\))?";
+      var TOOL_PAREN = new RegExp("\\s*\\(\\s*" + TOOL_REF + "\\s*\\)", "gi");
+      var TOOL_TAIL = new RegExp("\\s+(?:with|using|via|through|by calling|by running)\\s+" + TOOL_REF, "gi");
+      var TOOL_LEAD = new RegExp("^(?:call|run|use)\\s+(" + TOOL_REF + ")", "i");
+      var TOOL_ID = new RegExp("`?\\b" + TOOL_ID_SOURCE + "\\b(?:\\(\\))?`?(?:\\(\\))?", "gi");
+      var toolWords = function (match) {
+        var id = match.replace(/[`()]/g, "").toLowerCase();
+        return TOOL_WORDS[id] || id.replace(/^(?:get|list|orgx)_/, "").replace(/_/g, " ");
+      };
+      var plainCopy = function (value) {
+        if (typeof value !== "string") return value;
+        var text = value
+          .replace(TOOL_PAREN, "")
+          .replace(TOOL_TAIL, "")
+          .replace(TOOL_LEAD, function (_, tool) { return "Check " + toolWords(tool); })
+          .replace(TOOL_ID, toolWords);
+        return text.replace(/\s{2,}/g, " ").replace(/\s+([.,;:!?])/g, "$1").trim();
+      };
+
       // Test surface (mirrors OrgXPlanWidgetModel in plan-session-live.html).
       window.OrgXPulseWidgetModel = {
         normalizePulse: normalizePulse,
         hasPulseSignal: hasPulseSignal,
         unwrapPulseRecord: unwrapPulseRecord,
+        plainCopy: plainCopy,
+        buildAttentionItems: function (pulseData, url) { return buildAttentionItems(pulseData, url); },
+        countNeedsYou: function (pulseData) { return countNeedsYou(pulseData); },
+      };
+
+      // "Needs you" is only what waits on a person: blockers, decisions, reviews.
+      // Next steps are team work and live under Next.
+      var awaitsReview = function (artifact) {
+        var key = toStatusKey(artifact.status);
+        return key === "in_review" || key === "needs_review" || key === "review" || Boolean(artifact.needs_review);
+      };
+
+      var countNeedsYou = function (pulseData) {
+        return (
+          (pulseData.blockers || []).length +
+          Math.max(0, Number(pulseData.pending_decisions) || 0) +
+          (pulseData.recent_artifacts || []).filter(awaitsReview).length
+        );
       };
 
       var buildAttentionItems = function (pulseData, dashboardUrl) {
@@ -942,31 +1012,7 @@ external: function (size) {
           });
         });
 
-        (pulseData.next_steps || []).forEach(function (text, index) {
-          items.push({
-            id: "step-" + index,
-            kind: "decision",
-            label: text,
-            meta: "Next step",
-            url: dashboardUrl,
-          });
-        });
-
-        var reviewArtifacts = (pulseData.recent_artifacts || []).filter(function (artifact) {
-          return ["in_review", "draft", "changes_requested"].indexOf(toStatusKey(artifact.status)) >= 0;
-        });
-
-        reviewArtifacts.forEach(function (artifact, index) {
-          items.push({
-            id: "artifact-review-" + index,
-            kind: "review",
-            label: artifact.title + " is waiting for review.",
-            meta: "Artifact review",
-            url: artifact.primary_url || artifact.live_url || dashboardUrl,
-          });
-        });
-
-        if (items.length === 0 && pulseData.pending_decisions > 0) {
+        if (pulseData.pending_decisions > 0) {
           items.push({
             id: "decision-summary",
             kind: "decision",
@@ -974,20 +1020,28 @@ external: function (size) {
               pulseData.pending_decisions +
               " decision" +
               (pulseData.pending_decisions === 1 ? " is" : "s are") +
-              " waiting in live view.",
-            meta: "Pending decision",
+              " waiting on you.",
+            meta: "Pending decision" + (pulseData.pending_decisions === 1 ? "" : "s"),
             url: dashboardUrl,
           });
         }
+
+        (pulseData.recent_artifacts || []).filter(awaitsReview).forEach(function (artifact, index) {
+          items.push({
+            id: "artifact-review-" + index,
+            kind: "review",
+            label: artifact.title + " is waiting for your review.",
+            meta: "Artifact review",
+            url: artifact.primary_url || artifact.live_url || dashboardUrl,
+          });
+        });
 
         return items.slice(0, 5);
       };
 
       var buildAttentionBanner = function (pulseData, items) {
         if (!items.length) return null;
-        var reviewCount = (pulseData.recent_artifacts || []).filter(function (artifact) {
-          return ["in_review", "draft", "changes_requested"].indexOf(toStatusKey(artifact.status)) >= 0;
-        }).length;
+        var reviewCount = (pulseData.recent_artifacts || []).filter(awaitsReview).length;
         if ((pulseData.blockers || []).length) {
           return {
             eyebrow:
@@ -1099,7 +1153,7 @@ external: function (size) {
       var renderProgressBar = function (progress, tone) {
         var safeProgress = Math.max(0, Math.min(100, Math.round(Number(progress) || 0)));
         return (
-          '<span class="pulse-bar" data-tone="' + escapeHtml(tone) + '" aria-hidden="true"><span style="width:' + Math.max(4, safeProgress) + '%"></span></span>' +
+          '<span class="pulse-bar" data-tone="' + escapeHtml(tone) + '" aria-hidden="true"><span style="width:' + (safeProgress ? Math.max(4, safeProgress) : 0) + '%"></span></span>' +
           '<span class="pulse-pct">' + escapeHtml(String(safeProgress)) + "%</span>"
         );
       };
@@ -1121,6 +1175,7 @@ external: function (size) {
           : pulseData.milestones;
         if (!source.length) return "";
         var counts = {};
+        var activeProgress = 0;
         var segments = source
           .slice(0, 24)
           .map(function (item) {
@@ -1128,8 +1183,11 @@ external: function (size) {
               typeof item.progress_pct === "number" ? item.progress_pct : item.progress;
             var segment = segmentFor(item.status, item.blocker_count || 0);
             counts[segment] = (counts[segment] || 0) + 1;
+            var pct = Math.max(0, Math.min(100, Math.round(Number(progress) || 0)));
+            if (segment === "active") activeProgress += pct;
             return (
-              '<button class="pulse-signal seg-' + segment + '" type="button" title="' +
+              '<button class="pulse-signal seg-' + segment + '" type="button"' +
+              (segment === "active" ? ' style="--p:' + pct + '"' : "") + ' title="' +
               escapeHtml(item.title + ": " + SEGMENT_LABELS[segment] + ", " + Math.round(progress || 0) + "%") +
               '" aria-label="' +
               escapeHtml("View " + item.title + ", " + SEGMENT_LABELS[segment] + ", " + Math.round(progress || 0) + "% complete") +
@@ -1140,7 +1198,8 @@ external: function (size) {
         var legend = ["accepted", "judgment", "active", "blocked", "planned"]
           .filter(function (segment) { return counts[segment]; })
           .map(function (segment) {
-            return '<span><i class="seg-' + segment + '"></i>' + counts[segment] + " " + SEGMENT_LABELS[segment] + "</span>";
+            var emptySwatch = segment === "active" && activeProgress === 0 ? " is-empty" : "";
+            return '<span><i class="seg-' + segment + emptySwatch + '"></i>' + counts[segment] + " " + SEGMENT_LABELS[segment] + "</span>";
           })
           .join("");
         return (
@@ -1653,6 +1712,8 @@ external: function (size) {
 
         var attentionItems = buildAttentionItems(pulse, dashboardUrl);
         var attentionBanner = buildAttentionBanner(pulse, attentionItems);
+        // One number for the header, the rail and the Review button.
+        var needsCount = attentionItems.length ? countNeedsYou(pulse) : 0;
 
         // Economics and ETA move to the footer detail: proof, not a headline.
         var economics = "";
@@ -1682,7 +1743,7 @@ external: function (size) {
         if (pulse.progress_pct) metaTokens.push(escapeHtml(Math.round(pulse.progress_pct) + "% through"));
         if (typeof pulse.health_score === "number") {
           var healthTone = pulse.health_score >= 85 ? "good" : pulse.health_score >= 70 ? "warning" : "danger";
-          metaTokens.push('<span class="tone-' + healthTone + '">health ' + escapeHtml(String(Math.round(pulse.health_score))) + "</span>");
+          metaTokens.push('<span class="pulse-health" data-tone="' + healthTone + '">Health ' + escapeHtml(String(Math.round(pulse.health_score))) + "</span>");
         }
         if (streamCount) metaTokens.push(escapeHtml(String(streamCount)) + " workstreams");
         if (blockedCount) metaTokens.push('<span class="tone-danger">' + escapeHtml(String(blockedCount)) + " blocked</span>");
@@ -1711,7 +1772,7 @@ external: function (size) {
           sections.push({
             key: "actions",
             icon: icons.warning(15),
-            value: attentionItems.length,
+            value: needsCount,
             label: "Needs you",
             alert: true,
           });
@@ -1761,7 +1822,7 @@ external: function (size) {
         var isStale = toStatusKey(pulse.status) === "stale" || (Number.isFinite(updatedAt) && Date.now() - updatedAt > 10 * 60 * 1000);
 
         // The opening line: amber when something waits on you, red when work is blocked.
-        var waiting = attentionItems.length;
+        var waiting = needsCount;
         var lineTone = !waiting ? "calm" : (pulse.blockers || []).length ? "blocking" : "needs-you";
         var blockerTotal = (pulse.blockers || []).length;
         var lineSentence = waiting
