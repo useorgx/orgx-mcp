@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-10-02T22:51:45.756Z",
-  "sourceHash": "b7bc0f8b1f0ab97b",
+  "generatedAt": "2026-10-02T23:02:07.872Z",
+  "sourceHash": "940ea22fcaa568ec",
   "version": "1.0.0",
-  "totalTools": 92,
+  "totalTools": 93,
   "categories": [
     "Agents",
     "Billing",
@@ -6231,6 +6231,42 @@
       "source": "client_integration",
       "profiles": [
         "v2"
+      ]
+    },
+    {
+      "id": "resume_agent_run",
+      "title": "Resume Agent Run",
+      "description": "Widget-only: resumes a paused or TTL auto-closed agent run after the person clicks Resume in the agent-status widget. Hidden from the model; agents use manage_lifecycle level=run action=resume.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Agent run UUID to resume."
+          },
+          "note": {
+            "type": "string",
+            "description": "Optional audit note."
+          }
+        },
+        "required": [
+          "run_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "decisions:write",
+        "agents:write",
+        "initiatives:write"
+      ],
+      "readOnly": false,
+      "source": "inline",
+      "profiles": [
+        "v2",
+        "chatgpt"
       ]
     },
     {

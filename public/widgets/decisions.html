@@ -2307,6 +2307,24 @@
     /* ---------------------------------------------------------------- render -- */
     var linkAttrs = (url) => `href="${escapeHtml(url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(url || ''))}, event)'`;
 
+    // orgx_decide / approve_agent_work approve|reject from a model: nothing was settled and
+    // a person decides in OrgX. Never render this as an empty (“All caught up”) queue.
+    var needsHumanReview = (payload) => {
+      if (!payload || payload.status !== 'needs_human') return null;
+      const url = typeof payload.review_url === 'string' && /^https:\/\//.test(payload.review_url.trim())
+        ? payload.review_url.trim()
+        : buildDecisionsUrl();
+      const action = payload.requested_action === 'reject' ? 'reject' : 'approve';
+      const said = typeof payload.message === 'string'
+        ? payload.message.replace(/:?\s*open https?:\/\/\S+ to decide\./i, '.').trim()
+        : '';
+      return {
+        url,
+        action,
+        message: said || `Only a person can ${action} this decision. Nothing was approved or rejected from this chat.`,
+      };
+    };
+
     var attentionHtml = (pendingCount, oldest, label, tone) => {
       const decisionsUrl = buildDecisionsUrl();
       return `<div class="dq-head">
@@ -2556,6 +2574,20 @@
             <div class="dq-calm-copy">${escapeHtml(errorMessage)}</div>
           </div>
           <ox-footer variant="reads" state="failed" data-queue-retry heading="Couldn’t refresh" detail="No approval or rejection was sent" action-label="Retry queue"></ox-footer>
+        </article></div></div>`);
+        return;
+      }
+      const review = needsHumanReview(data);
+      if (review) {
+        injectHtml(`<div class="decision-shell animate-in"><div class="decision-card"><article class="ox-card" data-edge="amber" data-needs-human>
+          ${attentionHtml(0, '', 'A person decides this in OrgX', 'needs-you')}
+          <div class="dq-calm" role="status">
+            <div class="dq-calm-title">Decide in OrgX</div>
+            <div class="dq-calm-copy">${escapeHtml(review.message)}</div>
+            <div class="dq-calm-links">
+              <a class="dq-all" data-needs-human-link ${linkAttrs(review.url)}>${review.action === 'reject' ? 'Send back in OrgX' : 'Open the decision in OrgX'} ${icons.ext(12)}</a>
+            </div>
+          </div>
         </article></div></div>`);
         return;
       }
