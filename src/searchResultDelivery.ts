@@ -34,6 +34,12 @@ export function prepareSearchResult<T extends SearchResult | null | undefined>(
   const payload = rawPayload ? normalizeMemorySearchPayload(rawPayload) : null;
   // The work ledger uses its own template/contract, not the search widget.
   if (payload?.scope === 'work_ledger') return result;
+  // Legacy memory also returns hydrated entities without search rows.
+  // Preserve that API-owned contract rather than inventing a failure.
+  if (toolId === 'query_org_memory' && !Array.isArray(payload?.results) &&
+      !Array.isArray(payload?.decisions) && !Array.isArray(payload?.recommendations) &&
+      !payload?.next_action && result.isError !== true && root?.ok !== false &&
+      !root?.error && payload?.ok !== false && !payload?.error) return result;
   const failed = result.isError === true || root?.ok === false || Boolean(root?.error) ||
     payload?.ok === false || Boolean(payload?.error);
   const sharedRows = toolId === 'query_org_memory'

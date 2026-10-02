@@ -26,6 +26,8 @@ describe('search delivery through the real ChatGPT widget', () => {
     { structuredContent: payload },
     { ok: true, summary: 'One match', data: payload },
     { structuredContent: { ok: true, data: payload } },
+    { result: { structuredContent: payload } },
+    { output: { ok: true, data: payload } },
     { content: [{ type: 'text', text: 'One match' }, { type: 'text', text: JSON.stringify(payload) }] },
     JSON.stringify(payload),
     { query: 'launch', results_by_type: { initiatives: payload.results } },
@@ -56,6 +58,97 @@ describe('search delivery through the real ChatGPT widget', () => {
     (dom.window as any).openai.toolResponseMetadata = { 'orgx/searchPayload': payload };
     dom.window.dispatchEvent(new dom.window.CustomEvent('openai:set_globals', { detail: { globals: { toolResponseMetadata: (dom.window as any).openai.toolResponseMetadata } } }));
     await vi.advanceTimersByTimeAsync(250);
+    expect(text()).toContain('Launch plan');
+  });
+  it('keeps the globals path working while the SDK handshake never completes', async () => {
+    dom = new JSDOM(html, { url: 'https://mcp.useorgx.com/widgets/search-results.html', runScripts: 'outside-only' });
+    Object.defineProperty(dom.window, 'parent', { value: {} });
+    Object.assign(dom.window, {
+      openai: { toolOutput: payload, setWidgetHeight: vi.fn() },
+      McpApps: { App: class { connect() { return new Promise(() => {}); } } },
+    });
+    dom.window.eval(runtime);
+    for (const script of dom.window.document.querySelectorAll('script:not([src])')) dom.window.eval(script.textContent!);
+    await vi.advanceTimersByTimeAsync(12_100);
+    expect(text()).toContain('Launch plan');
+    expect(text()).not.toContain('Search unavailable');
+  });
+  it('renders a result delivered only by the MCP Apps SDK while globals are incomplete', async () => {
+    dom = new JSDOM(html, { url: 'https://mcp.useorgx.com/widgets/search-results.html', runScripts: 'outside-only' });
+    let app: any;
+    Object.defineProperty(dom.window, 'parent', { value: {} });
+    Object.assign(dom.window, {
+      openai: { toolOutput: { query: 'launch' }, setWidgetHeight: vi.fn() },
+      McpApps: { App: class {
+        constructor() { app = this; }
+        connect() { return Promise.resolve(); }
+        getHostContext() { return {}; }
+      } },
+    });
+    dom.window.eval(runtime);
+    for (const script of dom.window.document.querySelectorAll('script:not([src])')) dom.window.eval(script.textContent!);
+    app.ontoolresult({ structuredContent: { ok: true, data: payload } });
+    await vi.advanceTimersByTimeAsync(250);
+    expect(text()).toContain('Launch plan');
+  });
+  it('can retry through ChatGPT while the SDK handshake is stalled', async () => {
+    dom = new JSDOM(html, { url: 'https://mcp.useorgx.com/widgets/search-results.html', runScripts: 'outside-only' });
+    const callTool = vi.fn().mockResolvedValue({ structuredContent: payload });
+    Object.defineProperty(dom.window, 'parent', { value: {} });
+    Object.assign(dom.window, {
+      openai: { toolOutput: { query: 'launch' }, toolInput: { type: 'initiative', limit: 1 }, callTool, setWidgetHeight: vi.fn() },
+      McpApps: { App: class { connect() { return new Promise(() => {}); } } },
+    });
+    dom.window.eval(runtime);
+    for (const script of dom.window.document.querySelectorAll('script:not([src])')) dom.window.eval(script.textContent!);
+    await vi.advanceTimersByTimeAsync(12_100);
+    await (dom.window as any).retrySearch();
+    expect(callTool).toHaveBeenCalledWith('orgx_search', { type: 'initiative', limit: 1 });
+    expect(text()).toContain('Launch plan');
+  });
+  it('removes markdown and UUID noise from display while keeping the original destination', async () => {
+    const id = 'ff966794-695b-42eb-a5b7-111111111111';
+    boot({ results: [{ id, title: '## **Execute task ' + id + '**', type: 'task' }] });
+    await vi.advanceTimersByTimeAsync(250);
+    expect(text()).toContain('Execute linked task');
+    expect(text()).not.toContain(id);
+    expect(text()).not.toContain('**');
+    expect(dom.window.document.querySelector('.result-card')?.getAttribute('href')).toContain(id);
+    expect(dom.window.document.querySelector('.sr-hd ox-glyph[kind="question"]')).toBeNull();
+    expect(text()).toContain('How search works');
+  });
+  it('filters loaded rows by type and an inclusive date/time range, and can clear filters', async () => {
+    boot({ results: [
+      { title: 'Recent task', type: 'task', updated_at: '2026-10-02T09:00:00' },
+      { title: 'Old task', type: 'task', updated_at: '2026-09-01T09:00:00' },
+      { title: 'Recent initiative', type: 'initiative', updated_at: '2026-10-02T09:00:00' },
+      { title: 'Undated task', type: 'task' },
+    ] });
+    await vi.advanceTimersByTimeAsync(250);
+    const form = dom.window.document.querySelector('form')!;
+    (form.elements.namedItem('type') as HTMLSelectElement).value = 'task';
+    (form.elements.namedItem('from') as HTMLInputElement).value = '2026-10-02T09:00';
+    (form.elements.namedItem('to') as HTMLInputElement).value = '2026-10-02T09:00';
+    // outside-only jsdom does not evaluate HTML event-handler attributes.
+    form.addEventListener('submit', (dom.window as any).applySearchFilters);
+    form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+    expect(text()).toContain('Recent task');
+    expect(text()).not.toContain('Old task');
+    expect(text()).not.toContain('Recent initiative');
+    expect(text()).not.toContain('Undated task');
+    expect(text()).toContain('1 of 4 loaded');
+    (dom.window as any).clearSearchFilters();
+    expect(text()).toContain('Old task');
+  });
+  it('retries the original request after a delivery timeout and renders the recovered result', async () => {
+    const callTool = vi.fn().mockResolvedValue({ structuredContent: payload });
+    boot({ query: 'launch' }, undefined, callTool);
+    (dom.window as any).openai.toolInput = { type: 'initiative', limit: 1 };
+    await vi.advanceTimersByTimeAsync(12_100);
+    expect(text()).toContain('Retry search');
+    expect(text()).not.toContain('Couldn’t reach OrgX');
+    await (dom.window as any).retrySearch();
+    expect(callTool).toHaveBeenCalledWith('orgx_search', { type: 'initiative', limit: 1 });
     expect(text()).toContain('Launch plan');
   });
   it('reports a genuinely incomplete response once, then recovers', async () => {

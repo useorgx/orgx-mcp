@@ -2,6 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { prepareSearchResult } from '../src/searchResultDelivery';
 
 describe('search result delivery contract', () => {
+  it('preserves legacy memory entity hydration without search rows', () => {
+    const result = { structuredContent: { ok: true, data: { initiative_id: 'i-1', live_url: 'https://useorgx.com/live/i-1' } } };
+    expect(prepareSearchResult('query_org_memory', result)).toBe(result);
+  });
   it.each(['orgx_search', 'query_org_memory'])('keeps %s results out of summary-only host failures', (tool) => {
     const payload = { query: 'private query', results: [{ title: 'Private title', type: 'task' }] };
     const observe = vi.fn();
@@ -29,6 +33,10 @@ describe('search result delivery contract', () => {
     expect(prepareSearchResult('orgx_search', ledger, observe)).toBe(ledger);
     expect(prepareSearchResult('orgx_inspect', ledger, observe)).toBe(ledger);
     expect(observe).not.toHaveBeenCalled();
+  });
+  it('preserves legacy memory responses that hydrate an entity instead of search rows', () => {
+    const result = { structuredContent: { ok: true, data: { initiative_id: 'i-1', live_url: 'https://useorgx.com/live/i-1' } } };
+    expect(prepareSearchResult('query_org_memory', result)).toBe(result);
   });
   it.each([{ decisions: [] }, { recommendations: [] }, { next_action: { label: 'Review' } }])('preserves shared memory template modes: %j', payload => {
     expect(prepareSearchResult('query_org_memory', { structuredContent: payload })).not.toHaveProperty('isError');
