@@ -6,6 +6,8 @@ describe('search card browser flow', () => {
     const browser = await chromium.launch({ headless: true });
     try {
       const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+      page.setDefaultTimeout(5_000);
+      await page.route('**/*', route => route.abort());
       await page.route('https://mcp.useorgx.test/**', async route => {
         const pathname = new URL(route.request().url()).pathname;
         if (pathname.includes('..')) return route.abort();
@@ -30,7 +32,7 @@ describe('search card browser flow', () => {
           },
         };
       });
-      await page.goto('https://mcp.useorgx.test/widgets/search-results.html');
+      await page.goto('https://mcp.useorgx.test/widgets/search-results.html', { waitUntil: 'domcontentloaded' });
       await page.getByText('Original result', { exact: true }).waitFor();
       await page.getByText('Search filters', { exact: true }).click();
       await page.getByLabel('Type', { exact: true }).selectOption('task');
@@ -57,4 +59,3 @@ describe('search card browser flow', () => {
     } finally { await browser.close(); }
   }, 30_000);
 });
-
