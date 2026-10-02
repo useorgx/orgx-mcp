@@ -137,8 +137,8 @@
     },
     "index": {
       "file": "public/widgets/index.html",
-      "bytes": 25880,
-      "hash": "2530580ec644",
+      "bytes": 25937,
+      "hash": "8d5cb2bd901a",
       "primaryRgb": "17,24,39",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -313,8 +313,8 @@
     },
     "work-ledger": {
       "file": "public/widgets/work-ledger.html",
-      "bytes": 25709,
-      "hash": "bc135151405d",
+      "bytes": 45618,
+      "hash": "b2ee1dd1b787",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/interaction-kit.css",
