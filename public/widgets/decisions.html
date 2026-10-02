@@ -56,1250 +56,253 @@
     })();
   </script>
   <style>
-      :root, :root[data-theme="light"] {
-        --ox-bg: #f8fafc;
-        --ox-panel: #ffffff;
-        --ox-border: rgba(0, 0, 0, 0.08);
-        --ox-border-strong: rgba(0, 0, 0, 0.15);
-        --ox-text: #0f172a;
-        --ox-text-muted: #64748b;
-        --ox-well-bg: #f1f5f9;
-        --ox-well-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
-      }
-
-      @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) {
-          --ox-bg: #02040a;
-          --ox-panel: rgba(10, 15, 22, 0.95);
-          --ox-border: rgba(255, 255, 255, 0.08);
-          --ox-border-strong: rgba(255, 255, 255, 0.15);
-          --ox-text: #f8fafc;
-          --ox-text-muted: rgba(255, 255, 255, 0.5);
-          --ox-well-bg: rgba(0,0,0,0.3);
-          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
-        }
-      }
-
-      :root[data-theme="dark"] {
-          --ox-bg: #02040a;
-          --ox-panel: rgba(10, 15, 22, 0.95);
-          --ox-border: rgba(255, 255, 255, 0.08);
-          --ox-border-strong: rgba(255, 255, 255, 0.15);
-          --ox-text: #f8fafc;
-          --ox-text-muted: rgba(255, 255, 255, 0.5);
-          --ox-well-bg: rgba(0,0,0,0.3);
-          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
-      }
-
-      :root {
-        --ox-lime: #a3e635; /* Will be overwritten by specific widgets */
-        --ox-teal: #0d9488;
-        --ox-danger: #e11d48;
-        --ox-warning: #d97706;
-        --ox-iris: #4f46e5;
-        --ox-grid: rgba(0, 0, 0, 0.03);
-        --ox-shadow: 0 12px 32px -12px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.04);
-        --ox-font: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
-        --ox-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
-      }
-
-      @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) {
-          --ox-lime: #D4ED31;
-          --ox-teal: #00C9A7;
-          --ox-danger: #F43F5E;
-          --ox-warning: #FBBF24;
-          --ox-iris: #6366f1;
-          --ox-grid: rgba(255, 255, 255, 0.02);
-          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
-        }
-      }
-
-      :root[data-theme="dark"] {
-          --ox-lime: #D4ED31;
-          --ox-teal: #00C9A7;
-          --ox-danger: #F43F5E;
-          --ox-warning: #FBBF24;
-          --ox-iris: #6366f1;
-          --ox-grid: rgba(255, 255, 255, 0.02);
-          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
-      }
-
-      /* Smooth UX Transitions */
-      .skeleton-wrapper { transition: opacity var(--ox-dur-base, 250ms) var(--ox-ease-exit, cubic-bezier(0.4,0,1,1)); }
-      @keyframes fadeSlideUp {
-        from { opacity: 0; transform: translateY(16px) scale(0.98); filter: blur(4px); }
-        to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
-      }
-      .animate-in { opacity: 0; animation: fadeSlideUp var(--ox-dur-slower, 600ms) var(--ox-ease-entry, cubic-bezier(0,0,0.2,1)) forwards; }
-      .delay-1 { animation-delay: 0.1s; }
-      .delay-2 { animation-delay: 0.2s; }
-      .delay-3 { animation-delay: 0.3s; }
-
-      .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 24px; text-align: center; background: var(--ox-well-bg); border: 1px dashed var(--ox-border-strong); border-radius: 16px; margin: 16px 0; }
-      .empty-icon { width: 48px; height: 48px; border-radius: 50%; background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
-      .empty-icon svg { width: 24px; height: 24px; }
-      .empty-title { font-size: 1.1rem; font-weight: 600; color: var(--ox-text); margin-bottom: 8px; }
-      .empty-desc { font-size: 0.9rem; color: var(--ox-text-muted); line-height: 1.5; max-width: 280px; }
-
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-
-      body {
-        font-family: var(--ox-font);
-        background: var(--ox-bg);
-        color: var(--ox-text);
-        padding: 24px 16px;
-        -webkit-font-smoothing: antialiased;
-        min-height: 100vh;
-        overflow-x: hidden;
-      }
-
-      body::before {
-        content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        background: radial-gradient(circle at 50% 0%, rgba(var(--ox-primary-rgb), 0.08), transparent 60%),
-                    linear-gradient(var(--ox-grid) 1px, transparent 1px),
-                    linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px);
-        background-size: 100% 100%, 20px 20px, 20px 20px;
-        z-index: -1; pointer-events: none;
-      }
-
-      .container { max-width: 540px; margin: 0 auto; position: relative; }
-
-      :root[data-embed="og-decision"] body {
-        min-height: auto;
-        padding: 18px 14px;
-      }
-
-      :root[data-embed="og-decision"] .container {
-        max-width: 560px;
-      }
-
-      :root[data-embed="og-decision"] .ox-card-inner {
-        padding: 20px;
-      }
-
-      :root[data-embed="og-decision"] .widget-shell-card {
-        display: none;
-      }
-
-      :root[data-embed="og-decision"] .ox-title {
-        font-size: 1.02rem;
-        line-height: 1.18;
-      }
-
-      /* 100x Structural Components */
-      .ox-card {
-        background: var(--ox-panel);
-        border: 1px solid var(--ox-border);
-        border-radius: 16px;
-        box-shadow: var(--ox-shadow);
-        position: relative;
-        overflow: hidden;
-        margin-bottom: 16px;
-      }
-
-      .ox-card-inner { padding: 24px; }
-
-      .ox-card::after {
-        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(var(--ox-primary-rgb), 0.5), transparent);
-        opacity: 0.8;
-      }
-
-      .ox-well {
-        background: var(--ox-well-bg);
-        border: 1px solid var(--ox-border);
-        border-radius: 10px;
-        padding: 12px 16px;
-        box-shadow: var(--ox-well-shadow);
-      }
-
-      .ox-eyebrow {
-        font-family: var(--ox-mono); font-size: 0.65rem; text-transform: uppercase;
-        letter-spacing: 0.1em; color: var(--ox-text-muted); font-weight: 600;
-      }
-
-      .ox-title { font-size: 1.15rem; font-weight: 600; letter-spacing: -0.02em; color: var(--ox-text); line-height: 1.3; }
-      .ox-value { font-size: 1.5rem; font-weight: 500; font-family: var(--ox-mono); letter-spacing: -0.03em; color: var(--ox-text); }
-      .ox-text { font-size: 0.9rem; line-height: 1.5; color: var(--ox-text-muted); }
-
-      .ox-badge {
-        display: inline-flex; align-items: center; gap: 6px;
-        padding: 4px 10px; border-radius: 6px; font-family: var(--ox-mono); font-size: 0.65rem;
-        text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;
-        background: rgba(var(--ox-color-rgb), 0.1); color: var(--ox-color);
-        border: 1px solid rgba(var(--ox-color-rgb), 0.2);
-      }
-
-      .ox-btn {
-        width: 100%;
-        font-size: 0.85rem;
-        letter-spacing: -0.01em;
-        min-height: 44px;
-        padding: 0 16px;
-        border-radius: 12px;
-        border: 1px solid var(--ox-border);
-        background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015)), var(--ox-well-bg);
-        color: var(--ox-text);
-        box-shadow: 0 14px 30px -24px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255,255,255,0.06);
-        cursor: pointer;
-        transition:
-          transform var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16,1,0.3,1)),
-          box-shadow var(--ox-dur-base, 250ms) var(--ox-ease-standard, cubic-bezier(0.16,1,0.3,1)),
-          border-color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16,1,0.3,1)),
-          opacity var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16,1,0.3,1));
-      }
-
-      .ox-btn-primary {
-        --ox-primary-contrast: #02040a;
-      }
-
-      .ox-btn-primary.is-card-tone {
-        background: linear-gradient(
-          180deg,
-          rgba(var(--ox-button-accent-rgb), 1) 0%,
-          rgba(var(--ox-button-accent-rgb), 0.86) 100%
-        );
-        border-color: rgba(var(--ox-button-accent-rgb), 0.28);
-        color: var(--ox-primary-contrast);
-        box-shadow:
-          0 1px 0 rgba(255, 255, 255, 0.18) inset,
-          0 18px 34px -24px rgba(var(--ox-button-accent-rgb), 0.82);
-      }
-
-      .ox-btn-ghost {
-        background:
-          linear-gradient(
-            180deg,
-            rgba(255, 255, 255, 0.03) 0%,
-            rgba(255, 255, 255, 0.01) 100%
-          ),
-          var(--ox-well-bg);
-        color: var(--ox-text);
-      }
-      .ox-btn:hover:not(:disabled) {
-        transform: translateY(-1px);
-        border-color: var(--ox-border-strong);
-      }
-      .ox-btn:disabled {
-        cursor: not-allowed;
-        opacity: 0.56;
-        transform: none;
-        box-shadow: none;
-      }
-
-      .skeleton-line {
-        background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.14) 50%, var(--ox-border) 75%);
-        background-size: 200% 100%; animation: shimmer 1.6s infinite linear; border-radius: 4px;
-      }
-      @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-
-      .decision-skeleton-card {
-        position: relative;
-        overflow: hidden;
-        background: var(--ox-panel);
-        border: 1px solid var(--ox-border);
-        border-radius: 16px;
-        padding: 24px;
-        box-shadow: var(--ox-shadow);
-      }
-      .decision-skeleton-rule {
-        position: absolute; top: 0; left: 0; right: 0; height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(var(--ox-primary-rgb), 0.4), transparent);
-        background-size: 200% 100%;
-        animation: shimmer 1.6s infinite linear;
-      }
-      .decision-skeleton-head {
-        display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
-      }
-      .decision-skeleton-avatar {
-        width: 24px; height: 24px; border-radius: 6px; flex-shrink: 0;
-      }
-      .decision-skeleton-actions {
-        display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px; margin-top: 22px;
-      }
-      .decision-skeleton-btn {
-        height: 88px; border-radius: 16px;
-      }
-      @media (max-width: 560px) {
-        .decision-skeleton-actions { grid-template-columns: 1fr; }
-      }
-
-
+    /* Canvas: Main (needs you), Q3 (one card, one send), Q8 (after you act), F2 (calm).
+       Surface, text and status colors come from the kit tokens and the widget theme;
+       this sheet only lays the card out. */
     :root { --ox-primary-rgb: 251, 191, 36; }
 
-    .queue-subtitle { font-size: 0.92rem; line-height: 1.6; color: var(--ox-text-muted); max-width: 56ch; }
-
-    .decision-shell {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
+    /* The kit draws its primary (Approve, Retry) in the needs-you amber in every widget. */
+    ox-footer, ox-attention-line, ox-state-chip, ox-receipt-row, ox-glyph, ox-avatar {
+      --ox-primary: rgb(251, 191, 36);
     }
 
-    .decision-shell[data-page-direction="forward"] .decision-card {
-      animation-name: decisionSlideForward;
-      animation-duration: var(--ox-dur-slow, 400ms);
-      animation-timing-function: var(--ox-ease-entry, cubic-bezier(0,0,0.2,1));
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    .decision-shell[data-page-direction="backward"] .decision-card {
-      animation-name: decisionSlideBackward;
-      animation-duration: var(--ox-dur-slow, 400ms);
-      animation-timing-function: var(--ox-ease-entry, cubic-bezier(0,0,0.2,1));
-    }
-
-    .decision-card {
-      margin-bottom: 8px;
-      transition:
-        opacity var(--ox-dur-base, 250ms) var(--ox-ease-exit, cubic-bezier(0.4,0,1,1)),
-        transform var(--ox-dur-base, 250ms) var(--ox-ease-exit, cubic-bezier(0.4,0,1,1)),
-        filter var(--ox-dur-base, 250ms) var(--ox-ease-exit, cubic-bezier(0.4,0,1,1));
-    }
-
-    .decision-card.is-resolving {
-      opacity: 0;
-      transform: translateY(-8px) scale(0.975);
-      filter: blur(6px);
-      pointer-events: none;
-    }
-
-    @keyframes decisionSlideForward {
-      from {
-        opacity: 0;
-        transform: translateX(12px) translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateX(0) translateY(0);
-      }
-    }
-
-    @keyframes decisionSlideBackward {
-      from {
-        opacity: 0;
-        transform: translateX(-12px) translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateX(0) translateY(0);
-      }
-    }
-
-    .decision-card.urgency-critical { --ox-card-color-rgb: 225, 29, 72; --ox-card-color: var(--ox-danger); }
-    .decision-card.urgency-high { --ox-card-color-rgb: 217, 119, 6; --ox-card-color: var(--ox-warning); }
-    .decision-card.urgency-medium { --ox-card-color-rgb: 132, 204, 22; --ox-card-color: var(--ox-lime); }
-    .decision-card.urgency-low { --ox-card-color-rgb: 100, 116, 139; --ox-card-color: var(--ox-text-muted); }
-
-    .decision-card .ox-card {
-      border-color: rgba(var(--ox-card-color-rgb), 0.22);
-      transition:
-        border-color var(--ox-dur-base, 250ms) var(--ox-ease-morph, cubic-bezier(0.4,0,0.2,1)),
-        box-shadow var(--ox-dur-base, 250ms) var(--ox-ease-morph, cubic-bezier(0.4,0,0.2,1));
-    }
-
-    .decision-card.urgency-critical .ox-card,
-    .decision-card.urgency-high .ox-card {
-      box-shadow: var(--ox-shadow), 0 0 0 1px rgba(var(--ox-card-color-rgb), 0.12);
-    }
-
-    .decision-card .ox-card::after {
-      background: linear-gradient(90deg, transparent, rgba(var(--ox-card-color-rgb), 0.6), transparent);
-      transition: background var(--ox-dur-base, 250ms) var(--ox-ease-morph, cubic-bezier(0.4,0,0.2,1));
-    }
-
-    .decision-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 14px;
-      flex-wrap: wrap;
-      margin-bottom: 14px;
-    }
-
-    .decision-header-copy {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      min-width: 0;
-      flex: 1 1 auto;
-    }
-
-    .agent-tag {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      min-width: 0;
-      flex: 0 1 auto;
-      font-weight: 600;
-      font-size: 0.9rem;
-    }
-
-    .agent-tag span {
-      min-width: 0;
-      overflow-wrap: anywhere;
-    }
-    .agent-avatar {
-      width: 24px;
-      height: 24px;
-      border-radius: 6px;
-      background: rgba(var(--ox-card-color-rgb), 0.15);
-      color: var(--ox-card-color);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: var(--ox-mono);
-      font-size: 0.7rem;
-      overflow: hidden;
-      flex-shrink: 0;
-    }
-
-    .agent-avatar:has(ox-avatar) {
-      width: auto;
-      height: auto;
-      background: none;
-      border-radius: 50%;
-      overflow: visible;
-    }
-
-    .agent-avatar--system {
-      background:
-        linear-gradient(180deg, rgba(0, 201, 167, 0.12), rgba(0, 201, 167, 0.06)),
-        rgba(0, 201, 167, 0.06);
-      color: var(--ox-teal);
-      box-shadow: inset 0 0 0 1px rgba(0, 201, 167, 0.18);
-    }
-
-    .agent-avatar img {
-      display: block;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      border-radius: inherit;
-    }
-
-    .decision-header-meta {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      min-width: 0;
-    }
-
-    .decision-open-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      min-height: 46px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(var(--ox-card-color-rgb), 0.2);
-      background: rgba(var(--ox-card-color-rgb), 0.08);
+    body {
+      font-family: var(--ox-font);
+      background: var(--ox-bg);
       color: var(--ox-text);
-      text-decoration: none;
-      font-family: var(--ox-mono);
-      font-size: 0.66rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      white-space: nowrap;
-      transition:
-        transform var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16,1,0.3,1)),
-        border-color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16,1,0.3,1)),
-        background var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16,1,0.3,1));
+      padding: 16px;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
     }
 
-    .decision-open-link:hover {
-      transform: translateY(-1px);
-      border-color: rgba(var(--ox-card-color-rgb), 0.34);
-      background: rgba(var(--ox-card-color-rgb), 0.12);
-    }
+    button { font: inherit; color: inherit; }
+    a { color: inherit; }
 
-    .decision-open-link svg {
-      width: 14px;
-      height: 14px;
-      color: var(--ox-card-color);
-      flex-shrink: 0;
-    }
+    .container { max-width: 640px; margin: 0 auto; }
 
-    .decision-title-link {
-      display: block;
-      min-height: 44px;
-      color: inherit;
-      text-decoration: none;
-      transition:
-        color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16,1,0.3,1)),
-        opacity var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16,1,0.3,1));
-    }
+    .decision-shell { display: flex; flex-direction: column; gap: 12px; }
 
-    .decision-title-link:hover {
-      color: var(--ox-card-color);
-    }
+    @keyframes dqIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .animate-in { animation: dqIn var(--ox-dur-medium, 220ms) var(--ox-ease-out, ease-out) both; }
+    .decision-shell[data-page-direction="forward"] .decision-card,
+    .decision-shell[data-page-direction="backward"] .decision-card { animation: dqIn var(--ox-dur-medium, 220ms) var(--ox-ease-out, ease-out) both; }
+    .skeleton-wrapper { transition: opacity 200ms ease; }
 
-    .actions-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-      margin-top: 22px;
-      align-items: stretch;
-    }
-
-    .actions-grid--handoff { grid-template-columns: minmax(0, 1fr); }
-    .actions-grid--handoff .ox-action-btn { text-decoration: none; }
-    .actions-grid .ox-action-btn,
-    .actions-grid .ox-link-btn {
-      width: 100%;
-    }
-
-    .decision-action-btn {
-      display: flex;
-      align-items: stretch;
-      justify-content: flex-start;
-      min-height: 88px;
-      padding: 0;
-      border-radius: 16px;
-      overflow: hidden;
-      text-align: left;
-    }
-
-    :root[data-embed="og-decision"] .actions-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-      margin-top: 18px;
-    }
-
-    :root[data-embed="og-decision"] .decision-action-btn {
-      min-height: 66px;
-      border-radius: 14px;
-    }
-
-    :root[data-embed="og-decision"] .decision-action-copy {
-      gap: 10px;
-      padding: 12px;
-    }
-
-    :root[data-embed="og-decision"] .decision-action-icon {
-      width: 28px;
-      height: 28px;
-      border-radius: 9px;
-    }
-
-    :root[data-embed="og-decision"] .decision-action-title {
-      font-size: 0.8rem;
-      line-height: 1.05;
-    }
-
-    :root[data-embed="og-decision"] .decision-action-detail {
-      font-size: 0.62rem;
-      line-height: 1.12;
-    }
-
-    :root[data-embed="og-decision"] .decision-open-link {
-      padding: 5px 9px;
-      font-size: 0.62rem;
-    }
-
-    .decision-action-btn.ox-btn-ghost {
-      border-color: rgba(255, 255, 255, 0.08);
-      background:
-        linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)),
-        rgba(255,255,255,0.01);
-    }
-
-    .decision-action-btn.ox-btn-ghost:hover:not(:disabled) {
-      background:
-        linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015)),
-        rgba(255,255,255,0.015);
-    }
-
-    .decision-action-copy {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 12px;
-      align-items: center;
-      width: 100%;
-      min-width: 0;
-      padding: 16px 18px;
-      text-align: left;
-    }
-
-    .decision-action-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 34px;
-      height: 34px;
-      border-radius: 10px;
-      background: rgba(255, 255, 255, 0.08);
-      color: currentColor;
-      flex-shrink: 0;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
-    }
-
-    .decision-action-text {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      min-width: 0;
-    }
-
-    .decision-action-title {
-      display: block;
-      font-size: 1rem;
-      font-weight: 700;
-      line-height: 1.1;
-      letter-spacing: -0.02em;
-    }
-
-    .decision-action-detail {
-      display: block;
-      font-size: 0.76rem;
-      line-height: 1.4;
-      color: currentColor;
-      opacity: 0.76;
-      letter-spacing: 0;
-      text-transform: none;
-      max-width: 100%;
-      overflow-wrap: anywhere;
-    }
-
-    .reject-composer {
-      margin-top: 14px;
-      padding: 14px;
-      border-radius: 14px;
-      border: 1px solid rgba(var(--ox-card-color-rgb), 0.2);
-      background:
-        radial-gradient(circle at top left, rgba(var(--ox-card-color-rgb), 0.12), transparent 50%),
-        var(--ox-well-bg);
-      box-shadow: var(--ox-well-shadow);
-      transform-origin: top center;
-      animation: rejectComposerIn var(--ox-dur-base, 250ms) var(--ox-ease-morph, cubic-bezier(0.4,0,0.2,1)) forwards;
-    }
-
-    @keyframes rejectComposerIn {
-      from {
-        opacity: 0;
-        transform: translateY(-6px) scaleY(0.96);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0) scaleY(1);
-      }
-    }
-
-    .reject-heading {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 10px;
-    }
-
-    .reject-heading h4 {
-      font-size: 0.82rem;
-      font-weight: 700;
-      letter-spacing: -0.01em;
-      color: var(--ox-text);
-    }
-
-    .reject-meta {
-      font-family: var(--ox-mono);
-      font-size: 0.66rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--ox-text-muted);
-    }
-
-    .reject-textarea {
-      width: 100%;
-      min-height: 92px;
-      resize: vertical;
-      border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(2, 6, 14, 0.24);
-      color: var(--ox-text);
-      padding: 12px 14px;
-      font: inherit;
-      font-size: 0.9rem;
-      line-height: 1.45;
-      transition:
-        border-color var(--ox-dur-fast, 150ms) var(--ox-ease-morph, cubic-bezier(0.4,0,0.2,1)),
-        box-shadow var(--ox-dur-fast, 150ms) var(--ox-ease-morph, cubic-bezier(0.4,0,0.2,1)),
-        background var(--ox-dur-fast, 150ms) var(--ox-ease-morph, cubic-bezier(0.4,0,0.2,1));
-    }
-
-    .reject-textarea::placeholder {
-      color: rgba(248, 250, 252, 0.38);
-    }
-
-    @media (prefers-color-scheme: light) {
-      :root:not([data-theme='dark']) .reject-textarea {
-        background: rgba(255, 255, 255, 0.86);
-      }
-
-      :root:not([data-theme='dark']) .reject-textarea::placeholder {
-        color: var(--ox-placeholder);
-      }
-    }
-
-    .reject-textarea:focus {
-      outline: none;
-      border-color: rgba(var(--ox-card-color-rgb), 0.45);
-      box-shadow: 0 0 0 3px rgba(var(--ox-card-color-rgb), 0.12);
-    }
-
-    .reject-toolbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-top: 12px;
-    }
-
-    .reject-toolbar-copy {
-      font-size: 0.78rem;
-      line-height: 1.45;
-      color: var(--ox-text-muted);
-    }
-
-    .reject-toolbar-copy strong {
-      color: var(--ox-text);
-      font-weight: 600;
-    }
-
-    .reject-submit {
-      min-width: 152px;
-    }
-
-    .params-well { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
-    .param-chip {
-      max-width: 100%;
-      background: var(--ox-well-bg);
-      border: 1px solid var(--ox-border);
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-family: var(--ox-mono);
-      font-size: 0.65rem;
-      color: var(--ox-text-muted);
-      text-transform: uppercase;
-      overflow-wrap: anywhere;
-    }
-    .param-chip strong { color: var(--ox-text); margin-left: 4px; }
-
-    .pagination {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 14px 18px;
-      padding: 14px 16px;
-      margin-top: 8px;
-      border: 1px solid var(--ox-border);
-      border-radius: 18px;
-      background:
-        linear-gradient(180deg, rgba(255,255,255,0.022), rgba(255,255,255,0.008)),
-        var(--ox-panel);
-      box-shadow:
-        0 14px 30px -26px rgba(0, 0, 0, 0.68),
-        inset 0 1px 0 rgba(255,255,255,0.04);
-    }
-
-    .page-info {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      min-width: 0;
-    }
-
-    .page-kicker {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      min-width: 0;
-      flex-wrap: wrap;
-    }
-
-    .page-label {
-      font-family: var(--ox-mono);
-      font-size: 0.62rem;
-      text-transform: uppercase;
-      letter-spacing: 0.16em;
-      color: var(--ox-text-muted);
-      font-weight: 700;
-    }
-
-    .page-count {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-      padding: 6px 11px;
-      border-radius: 999px;
-      background:
-        linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.12), rgba(var(--ox-primary-rgb), 0.05)),
-        rgba(var(--ox-primary-rgb), 0.03);
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.2);
-      color: var(--ox-warning);
-      font-family: var(--ox-mono);
-      font-size: 0.72rem;
-      letter-spacing: 0.08em;
-      flex-shrink: 0;
-    }
-
-    .page-summary {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      min-width: 0;
-      flex-wrap: wrap;
-    }
-
-    .page-range {
-      font-size: 0.8rem;
-      line-height: 1.35;
-      color: var(--ox-text);
-      font-weight: 600;
-    }
-
-    .page-total {
-      font-size: 0.76rem;
-      line-height: 1.35;
-      color: var(--ox-text-muted);
-    }
-
-    .page-progress {
+    /* One card: attention line, the decision, the footer. */
+    .ox-card {
       position: relative;
-      width: 100%;
-      height: 4px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.06);
-      overflow: hidden;
-    }
-
-    .page-progress-bar {
-      position: absolute;
-      inset: 0 auto 0 0;
-      border-radius: inherit;
-      background: linear-gradient(90deg, rgba(var(--ox-primary-rgb), 0.54), rgba(var(--ox-primary-rgb), 1));
-      box-shadow: 0 0 18px rgba(var(--ox-primary-rgb), 0.28);
-    }
-
-    .page-controls {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      align-self: center;
-    }
-
-    .page-btn {
-      width: auto;
-      min-width: 96px;
-      min-height: 46px;
-      padding-inline: 14px;
-      font-size: 0.74rem;
-      letter-spacing: 0;
-      justify-content: center;
-      border-radius: 12px;
-      color: var(--ox-text);
-      flex-shrink: 0;
-    }
-
-    .page-btn .ox-action-btn__label {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .page-btn--prev .ox-action-btn__label::before {
-      content: '←';
-      opacity: 0.72;
-    }
-
-    .page-btn--next .ox-action-btn__label::after {
-      content: '→';
-      opacity: 0.72;
-    }
-
-    .resolution-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 16px;
-      justify-content: flex-start;
-    }
-
-    .resolution-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      min-height: 44px;
-      padding: 10px 14px;
-      border-radius: 999px;
-      text-decoration: none;
-      color: var(--ox-primary);
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
-      background: rgba(var(--ox-primary-rgb), 0.08);
-      font-size: 0.82rem;
-      font-weight: 600;
-    }
-
-    .resolution-link--secondary {
-      color: var(--ox-text);
-      border-color: var(--ox-border);
-      background: rgba(255, 255, 255, 0.03);
-    }
-
-    .queue-header-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 16px;
-    }
-
-    .resolution-banner {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-      margin-bottom: 16px;
-      padding: 14px 16px;
+      background: var(--ox-panel);
+      border: 1px solid var(--ox-border);
       border-radius: 16px;
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
-      background:
-        radial-gradient(circle at top left, rgba(var(--ox-primary-rgb), 0.12), transparent 52%),
-        var(--ox-well-bg);
-      box-shadow: var(--ox-well-shadow);
+      box-shadow: var(--ox-shadow);
+      overflow: hidden;
+      --edge-rgb: var(--ox-edge-amber-rgb);
     }
-
-    .resolution-banner-copy {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      min-width: 0;
-      flex: 1 1 240px;
-    }
-
-    .resolution-banner-title {
-      font-size: 0.95rem;
-      font-weight: 700;
-      line-height: 1.25;
-      color: var(--ox-text);
-      overflow-wrap: anywhere;
-    }
-
-    .resolution-banner-detail {
-      font-size: 0.8rem;
-      line-height: 1.45;
-      color: var(--ox-text-muted);
-      overflow-wrap: anywhere;
-    }
-
-    .resolution-banner-meta {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 8px 12px;
-      border-radius: 999px;
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.2);
-      background: rgba(var(--ox-primary-rgb), 0.08);
-      color: var(--ox-primary);
-      font-family: var(--ox-mono);
-      font-size: 0.68rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-
-    .resolution-banner-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      width: 100%;
-    }
-
-    @media (max-width: 560px) {
-      .pagination {
-        grid-template-columns: 1fr;
-      }
-
-      .page-summary {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-
-      .page-controls {
-        width: 100%;
-        justify-content: stretch;
-      }
-
-      .page-btn {
-        width: 100%;
-        min-width: 0;
-        flex: 1 1 0;
-      }
-
-      .actions-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .decision-header {
-        flex-direction: column;
-      }
-
-      .decision-header-meta {
-        width: 100%;
-        justify-content: space-between;
-      }
-
-      .reject-toolbar {
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      .reject-submit {
-        width: 100%;
-        min-width: 0;
-      }
-
-      .resolution-banner {
-        align-items: flex-start;
-      }
-
-      .resolution-banner-meta {
-        width: 100%;
-        white-space: normal;
-        text-align: center;
-      }
-
-      .resolution-actions,
-      .resolution-banner-actions {
-        width: 100%;
-      }
-
-      .resolution-link {
-        width: 100%;
-        justify-content: center;
-      }
-    }
-
-    /* One decision owns the surface; evidence and the remaining queue compress. */
-    .container > .widget-shell-card .ox-card-inner {
-      padding-block: 14px;
-    }
-    .container > .widget-shell-card .widget-hero {
-      margin-bottom: 0;
-    }
-    .container > .widget-shell-card .widget-title-lg {
-      font-size: clamp(1.18rem, 2.5vw, 1.48rem);
-    }
-    .queue-subtitle {
-      max-width: 68ch;
-      font-size: .78rem;
-      line-height: 1.45;
-    }
-    .queue-header-actions { display: none; }
-    .decision-shell { gap: 10px; }
-    .decision-card { margin: 0; }
-    .decision-card .ox-card-inner { padding: 18px; }
-    .decision-header { margin-bottom: 8px; }
-    .decision-header-copy { gap: 5px; }
-    .decision-header .ox-title {
-      font-size: clamp(.98rem, 2vw, 1.14rem);
-      line-height: 1.3;
-    }
-    .decision-open-link {
-      min-height: 46px;
-      border-radius: 10px;
-    }
-    .decision-brief {
-      margin-top: 8px;
-      color: var(--ox-text-muted);
-      font-size: .78rem;
-      line-height: 1.45;
-    }
-    .decision-evidence {
-      margin-top: 12px;
-      border-top: 1px solid var(--ox-border);
-      border-bottom: 1px solid var(--ox-border);
-    }
-    .decision-evidence summary {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      min-height: 44px;
-      color: var(--ox-text);
-      font: 700 .64rem var(--ox-mono);
-      letter-spacing: .08em;
-      text-transform: uppercase;
-      cursor: pointer;
-      list-style: none;
-    }
-    .decision-evidence summary::-webkit-details-marker { display: none; }
-    .decision-evidence summary::after {
-      content: '+';
-      color: var(--ox-card-color);
-      font-size: 1rem;
-      transition: transform 160ms cubic-bezier(0.16,1,.3,1);
-    }
-    .decision-evidence[open] summary::after { transform: rotate(45deg); }
-    .decision-evidence__body {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 14px;
-      padding: 0 0 14px;
-    }
-    .decision-evidence__item { min-width: 0; }
-    .decision-evidence__copy {
-      margin-top: 4px;
-      color: var(--ox-text);
-      font-size: .76rem;
-      line-height: 1.45;
-    }
-    .decision-tradeoffs {
-      grid-column: 1 / -1;
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-    }
-    .decision-tradeoff {
-      position: relative;
-      padding-left: 10px;
-      font-size: .74rem;
-      line-height: 1.4;
-      color: var(--ox-text-muted);
-    }
-    .decision-tradeoff::before {
-      content: '';
+    .ox-card::after {
+      content: "";
       position: absolute;
-      inset: 0 auto 0 0;
-      width: 2px;
-      background: rgba(var(--ox-card-color-rgb), .28);
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(var(--edge-rgb), 0.75), transparent);
+      transition: background var(--ox-dur-edge, 600ms) ease;
     }
-    .decision-tradeoff strong {
-      display: block;
-      color: var(--ox-text);
+    .ox-card[data-edge="teal"] { --edge-rgb: var(--ox-edge-teal-rgb); }
+    .ox-card[data-edge="red"] { --edge-rgb: var(--ox-edge-red-rgb); }
+    .ox-card[data-edge="mute"] { --edge-rgb: var(--ox-edge-mute-rgb); }
+
+    .dq-head { border-bottom: 1px solid var(--ox-border); --ox-attention-padding: 0 8px 0 20px; }
+    .dq-head-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      min-height: 44px; padding: 0 12px; border-radius: 10px;
+      font-size: 12.5px; font-weight: 600; color: var(--ox-text-2); text-decoration: none; white-space: nowrap;
     }
+    .dq-head-link:hover { color: var(--ox-text); background: var(--ox-hover); }
+    .dq-head-link svg { width: 12px; height: 12px; }
+
+    .dq-body { padding: 20px 24px 22px; display: flex; flex-direction: column; gap: 18px; }
+
+    .dq-status {
+      display: flex; align-items: center; gap: 8px; min-width: 0;
+      font: 600 12px/1.3 var(--ox-mono); color: var(--ox-text-muted);
+      white-space: nowrap; font-variant-numeric: tabular-nums;
+    }
+    .dq-status .need { display: inline-flex; align-items: center; gap: 6px; color: var(--ox-warning); }
+    .dq-status .done { display: inline-flex; align-items: center; gap: 6px; color: var(--ox-teal); }
+    .dq-status .ctx-wrap { display: contents; }
+    .dq-status .ctx { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    .dq-status .urg { margin-left: auto; padding-left: 8px; }
+    .dq-status .urg-critical { color: var(--ox-danger); }
+    .dq-status ox-glyph { --ox-glyph-size: 15px; }
+
+    .dq-q { font-size: 26px; line-height: 1.18; font-weight: 700; letter-spacing: -0.025em; text-wrap: balance; overflow-wrap: anywhere; }
+    .dq-q a { color: inherit; text-decoration: none; }
+    .dq-q a:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+
+    .dq-rec { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 650; min-width: 0; }
+    .dq-rec .role { font-weight: 500; color: var(--ox-text-muted); }
+    .dq-why { font-size: 14px; line-height: 1.5; color: var(--ox-text-2); margin-top: 6px; text-wrap: pretty; }
+
+    .agent-avatar { display: inline-flex; flex: none; line-height: 0; }
+    .agent-avatar--system { width: 22px; height: 22px; border-radius: 50%; overflow: hidden; background: rgba(var(--ox-teal-rgb, 0, 201, 167), 0.12); align-items: center; justify-content: center; font: 600 10px/1 var(--ox-mono); color: var(--ox-teal); }
+    .agent-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+    .dq-evidence { display: flex; flex-direction: column; }
+    .dq-all {
+      display: inline-flex; align-items: center; gap: 6px; min-height: 36px;
+      font-size: 12.5px; color: var(--ox-text-2); text-decoration: none; align-self: flex-start;
+    }
+    .dq-all:hover { color: var(--ox-text); }
+    .dq-all svg { width: 12px; height: 12px; }
+
+    .dq-cons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .dq-cons.is-single { grid-template-columns: minmax(0, 1fr); }
+    .dq-cons .k { font-size: 12.5px; color: var(--ox-text-muted); margin-bottom: 3px; }
+    .dq-cons .v { font-size: 13.5px; line-height: 1.45; color: var(--ox-text-2); }
+
+    .decision-evidence { border-top: 1px solid var(--ox-border); }
+    .decision-evidence > summary {
+      display: flex; align-items: center; gap: 8px; min-height: 44px;
+      list-style: none; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--ox-text-2);
+    }
+    .decision-evidence > summary::-webkit-details-marker { display: none; }
+    .decision-evidence > summary::after {
+      content: ""; width: 7px; height: 7px; margin-left: auto; margin-right: 4px;
+      border-right: 1.6px solid currentColor; border-bottom: 1.6px solid currentColor;
+      transform: rotate(45deg) translateY(-2px); transition: transform 160ms ease;
+    }
+    .decision-evidence[open] > summary::after { transform: rotate(-135deg) translateY(-2px); }
+    .decision-evidence > summary:hover { color: var(--ox-text); }
+    .decision-evidence__body { display: flex; flex-direction: column; gap: 12px; padding: 2px 0 6px; }
+    .decision-evidence__item .k { font-size: 12.5px; color: var(--ox-text-muted); margin-bottom: 3px; }
+    .decision-evidence__copy { font-size: 13.5px; line-height: 1.5; color: var(--ox-text-2); overflow-wrap: anywhere; }
+    .decision-tradeoffs { display: grid; gap: 8px; }
+    .decision-tradeoff { font-size: 13px; line-height: 1.45; color: var(--ox-text-2); }
+    .decision-tradeoff strong { display: block; color: var(--ox-text); font-weight: 600; }
     .params-well {
-      margin-top: 10px;
-      padding: 0;
-      border: 0;
-      background: transparent;
-      box-shadow: none;
+      display: flex; flex-wrap: wrap; gap: 4px 14px;
+      font: 500 11.5px/1.5 var(--ox-mono); color: var(--ox-text-muted); font-variant-numeric: tabular-nums;
     }
-    .actions-grid { margin-top: 14px; }
-    .pagination {
-      grid-template-columns: minmax(0, 1fr) auto;
-      margin-top: 0;
-      padding: 8px 0 0;
-      border: 0;
-      border-radius: 0;
-      background: transparent;
-      box-shadow: none;
+    .param-chip strong { font-weight: 600; color: var(--ox-text-2); overflow-wrap: anywhere; }
+
+    /* Decide in OrgX: the fallback when this widget holds no approval token. */
+    .decide-in-orgx {
+      display: flex; align-items: center; gap: 12px; width: 100%; min-height: 72px;
+      padding: 14px 16px; border-radius: 14px; text-decoration: none;
+      background: rgb(251, 191, 36); color: #1a1204; border: 1px solid #e9a800;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+      transition: filter 160ms ease;
     }
-    .pagination .page-info { gap: 5px; }
-    .pagination .page-summary { display: none; }
-    .pagination .page-count {
-      padding: 0;
-      border: 0;
-      background: transparent;
+    .decide-in-orgx:hover { filter: brightness(1.04); }
+    .decide-in-orgx .ic { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: rgba(0, 0, 0, 0.12); flex: none; }
+    .decide-in-orgx .ic svg { width: 16px; height: 16px; }
+    .decide-in-orgx .t { display: block; font-size: 15px; font-weight: 700; }
+    .decide-in-orgx .d { display: block; font-size: 12.5px; line-height: 1.35; opacity: 0.74; margin-top: 2px; }
+
+    /* Send back: the note travels with the rejection. */
+    .reject-composer { display: flex; flex-direction: column; gap: 8px; }
+    .reject-composer label { font-size: 12.5px; color: var(--ox-text-muted); }
+    .reject-textarea {
+      width: 100%; min-height: 88px; resize: vertical; padding: 10px 12px; border-radius: 12px;
+      border: 1px solid var(--ox-border-strong); background: var(--ox-well-bg); color: var(--ox-text);
+      font: 14px/1.5 var(--ox-font);
     }
-    .pagination .page-controls { gap: 4px; }
-    .pagination .page-btn {
-      min-width: 68px;
-      border-color: transparent;
-      background: transparent;
+    .reject-textarea::placeholder { color: var(--ox-placeholder, var(--ox-text-muted)); }
+    .reject-textarea:focus-visible { outline: 2px solid var(--ox-focus, var(--ox-warning)); outline-offset: 1px; }
+
+    /* Slotted footer text action (Reject / Cancel) styled like the kit's text action. */
+    .dq-text-btn {
+      position: relative; min-height: 36px; padding: 0 12px; border-radius: 9px;
+      display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+      font-size: 12.5px; font-weight: 650; background: none; border: 1px solid transparent;
+      color: var(--ox-text-2); cursor: pointer; transition: background 160ms ease;
     }
-    .decision-skeleton-card + .decision-skeleton-card { display: none; }
-    .resolution-banner {
-      margin: 0;
-      padding: 10px 0;
-      border-width: 1px 0;
-      border-radius: 0;
-      background: transparent;
-      box-shadow: none;
+    .dq-text-btn::after { content: ""; position: absolute; inset: -4px -2px; }
+    .dq-text-btn:hover { color: var(--ox-text); background: var(--ox-hover); }
+    .dq-text-btn:disabled { opacity: 0.55; cursor: default; }
+    .dq-text-btn:focus-visible, .dq-row:focus-visible, .dq-head-link:focus-visible, .dq-all:focus-visible, .decide-in-orgx:focus-visible, .dq-q a:focus-visible, .decision-evidence > summary:focus-visible {
+      outline: 2px solid var(--ox-focus, var(--ox-warning)); outline-offset: 2px;
     }
-    @media (max-width: 620px) {
-      .decision-evidence__body { grid-template-columns: 1fr; }
-      .decision-tradeoffs { grid-column: auto; grid-template-columns: 1fr; }
-      .decision-header-meta { width: auto; }
-      .pagination { grid-template-columns: 1fr; }
+
+    /* The rest of the queue: one quiet row each, opened in place. */
+    .dq-queue { display: flex; flex-direction: column; }
+    .dq-row {
+      display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px;
+      padding: 10px 14px; border-radius: 12px; border: 1px solid transparent;
+      background: transparent; text-align: left; cursor: pointer; color: var(--ox-text);
     }
+    .dq-row:hover { background: var(--ox-hover); }
+    .dq-row:disabled { cursor: default; opacity: 0.6; }
+    .dq-row .dot { width: 7px; height: 7px; border-radius: 999px; background: var(--ox-warning); flex: none; }
+    .dq-row .ttl { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dq-row .meta, .dq-meta { font: 500 11.5px/1.3 var(--ox-mono); color: var(--ox-text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .dq-row .chev { width: 14px; height: 14px; color: var(--ox-text-muted); flex: none; }
+    .dq-more { padding: 6px 14px; }
+
+    .dq-history { display: flex; flex-direction: column; padding: 0 2px; }
+    .dq-history-label { font-size: 12.5px; color: var(--ox-text-muted); padding: 4px 12px 2px; }
+    .dq-last {
+      display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 4px 14px;
+      font-size: 12.5px; color: var(--ox-text-muted); text-decoration: none;
+    }
+    .dq-last .t2 { color: var(--ox-text-2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dq-last svg { width: 12px; height: 12px; margin-left: auto; flex: none; }
+    .dq-last:hover .t2 { color: var(--ox-text); }
+
+    /* Calm and error */
+    .dq-calm { padding: 18px 24px 20px; display: flex; flex-direction: column; gap: 4px; }
+    .dq-calm-title { font-size: 17px; font-weight: 650; letter-spacing: -0.015em; }
+    .dq-calm-copy { font-size: 13.5px; line-height: 1.5; color: var(--ox-text-2); }
+    .dq-calm-links { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 6px; }
+
+    /* Loading: the card's own footprint */
+    .sk { display: block; border-radius: 6px; background: var(--ox-skeleton, rgba(127, 127, 127, 0.12)); }
+    .sk-head { height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 20px; border-bottom: 1px solid var(--ox-border); }
+
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+    @media (max-width: 480px) {
+      body { padding: 12px; }
+      .dq-body { padding: 16px 16px 18px; gap: 16px; }
+      .dq-calm { padding: 16px; }
+      .dq-q { font-size: 21px; }
+      .dq-cons { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+      .dq-head { --ox-attention-padding: 0 4px 0 16px; }
+      .dq-status .ctx-wrap { display: none; }
+      .dq-head-link .long, .dq-row .long { display: none; }
+      .dq-row { padding: 10px 12px; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
-      .decision-evidence summary::after,
-      .decision-card,
-      .decision-shell[data-page-direction] .decision-card {
-        animation: none;
-        transition: none;
-      }
-      .decision-card.animate-in {
-        opacity: 1;
-        transform: none;
-        filter: none;
-      }
+      .animate-in, .decision-shell[data-page-direction] .decision-card { animation: none; }
     }
+
+    /* Social preview: one decision, no queue. */
+    :root[data-embed="og-decision"] body { padding: 14px; }
+    :root[data-embed="og-decision"] .container { max-width: 600px; }
+    :root[data-embed="og-decision"] .dq-q { font-size: 22px; }
+    :root[data-embed="og-decision"] .decision-evidence,
+    :root[data-embed="og-decision"] .dq-queue,
+    :root[data-embed="og-decision"] .dq-history,
+    :root[data-embed="og-decision"] .dq-last { display: none; }
   </style>
   <link rel="stylesheet" href="shared/widget-theme.css" />
 </head>
 <body>
   <div class="container">
-    <div class="widget-shell-card animate-in">
-      <div class="ox-card">
-        <div class="ox-card-inner">
-          <div class="widget-hero">
-            <div class="widget-hero-copy">
-              <div class="widget-kicker">Operator Queue</div>
-              <div class="widget-title-lg">Action required</div>
-              <div id="queueSubtitle" class="queue-subtitle">Approve to unblock execution, or reject with clear guidance so the next attempt stays on-rail.</div>
-              <div class="queue-header-actions">
-                <a id="queueDecisionsLink" href="https://useorgx.com/decisions?status=pending" target="_blank" rel="noreferrer" onclick='return openWidgetLink(this.href, event)' class="resolution-link">
-                  <span aria-hidden="true">↗</span>
-                  <span>View all decisions in OrgX</span>
-                </a>
-              </div>
-            </div>
-            <div class="widget-icon-frame" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 3v10"></path>
-                <path d="M12 17h.01"></path>
-                <circle cx="12" cy="12" r="9"></circle>
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
     <div id="content">
-      <!-- Skeleton mirrors a decision card: signature line, agent row, body, action pair -->
-      <div class="skeleton-wrapper" style="display:flex; flex-direction:column; gap:16px;">
-        <div class="decision-skeleton-card">
-          <div class="decision-skeleton-rule"></div>
-          <div class="decision-skeleton-head">
-            <div class="skeleton-line decision-skeleton-avatar"></div>
-            <div class="skeleton-line" style="width:36%; height:12px;"></div>
+      <!-- Skeleton mirrors the decision card: attention line, question, recommendation, footer -->
+      <div class="skeleton-wrapper" aria-busy="true">
+        <div class="ox-card">
+          <div class="sk-head"><span class="sk" style="width:8px;height:8px;border-radius:50%"></span><span class="sk" style="width:38%;height:12px"></span></div>
+          <div class="dq-body">
+            <span class="sk" style="width:34%;height:11px"></span>
+            <span class="sk" style="width:82%;height:24px"></span>
+            <span class="sk" style="width:58%;height:13px"></span>
+            <span class="sk" style="width:90%;height:13px"></span>
           </div>
-          <div class="skeleton-line" style="width:78%; height:18px; margin-bottom:16px;"></div>
-          <div class="skeleton-line" style="width:92%; height:13px; margin-bottom:8px;"></div>
-          <div class="skeleton-line" style="width:70%; height:13px;"></div>
-          <div class="decision-skeleton-actions">
-            <div class="skeleton-line decision-skeleton-btn"></div>
-            <div class="skeleton-line decision-skeleton-btn"></div>
-          </div>
-        </div>
-        <div class="decision-skeleton-card">
-          <div class="decision-skeleton-rule"></div>
-          <div class="decision-skeleton-head">
-            <div class="skeleton-line decision-skeleton-avatar"></div>
-            <div class="skeleton-line" style="width:30%; height:12px;"></div>
-          </div>
-          <div class="skeleton-line" style="width:64%; height:18px; margin-bottom:16px;"></div>
-          <div class="skeleton-line" style="width:88%; height:13px; margin-bottom:8px;"></div>
-          <div class="skeleton-line" style="width:74%; height:13px;"></div>
-          <div class="decision-skeleton-actions">
-            <div class="skeleton-line decision-skeleton-btn"></div>
-            <div class="skeleton-line decision-skeleton-btn"></div>
-          </div>
+          <ox-footer variant="reads" state="loading"></ox-footer>
         </div>
       </div>
     </div>
@@ -1316,34 +319,37 @@
         skeleton.style.opacity = '0';
         setTimeout(() => {
           content.innerHTML = html;
-        }, 300);
+          afterRender();
+        }, 200);
       } else {
         content.innerHTML = html;
+        afterRender();
       }
     };
 
-      var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true">'+c+'</svg>';};
-      var icons = {
-        check: function(s){return _svg('<polyline points="20 6 9 17 4 12"></polyline>',s);},
-        warning: function(s){return _svg('<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>',s);},
-        error: function(s){return _svg('<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>',s);},
-        clock: function(s){return _svg('<circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>',s);},
-        agent: function(s){return _svg('<rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><line x1="8" y1="16" x2="8" y2="16"></line><line x1="16" y1="16" x2="16" y2="16"></line>',s);},
-        search: function(s){return _svg('<circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>',s);},
-        file: function(s){return _svg('<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline>',s);},
-        link: function(s){return _svg('<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>',s);},
-      };
+    var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true">'+c+'</svg>';};
+    var icons = {
+      check: function(s){return _svg('<polyline points="20 6 9 17 4 12"></polyline>',s);},
+      ext: function(s){return _svg('<path d="M14 4h6v6"></path><path d="M20 4l-9 9"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path>',s);},
+      chevron: function(s){return _svg('<polyline points="9 6 15 12 9 18"></polyline>',s);},
+    };
 
-      var escapeHtml = (str) => {
-        if (!str) return '';
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-      };
-      var ORGX_BASE_URL = 'https://useorgx.com';
+    var escapeHtml = (str) => {
+      if (str === null || str === undefined || str === '') return '';
+      const div = document.createElement('div');
+      div.textContent = String(str);
+      return div.innerHTML;
+    };
+    var ORGX_BASE_URL = 'https://useorgx.com';
+    var hasKit = () => Boolean(window.customElements && window.customElements.get && window.customElements.get('ox-footer'));
+    var rt = () => window.OrgXWidgetRuntime || null;
 
     var fixtureState = queryParams.get('state') || (queryParams.get('loading') === 'true' ? 'loading' : queryParams.get('demo') === 'true' ? 'urgent' : 'empty');
-    var isDemo = ['urgent', 'populated', 'long', 'resolved'].includes(fixtureState);
+    // Footer fixtures for the gallery: each one opens decision d2, which this demo can approve here.
+    var FOOTER_FIXTURES = ['decide-here', 'composing', 'sending', 'confirming', 'approved', 'not-sent', 'unconfirmed'];
+    var isFooterFixture = FOOTER_FIXTURES.includes(fixtureState);
+    var isDemo = ['urgent', 'populated', 'long', 'resolved'].includes(fixtureState) || isFooterFixture;
+    var demoNow = Date.now();
     var data = isDemo ? {
       summary: { critical: 1, high: 2 },
       decisions: [
@@ -1352,13 +358,21 @@
           urgency: 'critical',
           agent_name: 'Pace - Product',
           type: 'Launch approval',
+          sourceLabel: 'Founder launch',
+          decide_in_orgx_reason: 'critical',
           summary: 'Approve the founder continuity launch story so the hero, OG preview, and CTA all ship with one narrative.',
-          created_at: new Date().toISOString(),
+          created_at: new Date(demoNow - 2 * 24 * 60 * 60 * 1000).toISOString(),
           expected_cost_usd: 0,
           required_trust_level: 'act_with_approval',
           context: 'Search, scaffolded work, and the decision queue are all demo-ready. The remaining operator call is whether the founder story leads with continuity instead of generic orchestration.',
           recommendation: 'Approve the continuity-led narrative and keep decisions in the foreground so the founder sees exactly what still needs judgment.',
           impact: 'Launch copy, social preview, and founder post stay misaligned if this waits for another async pass.',
+          if_approved: 'The launch pack publishes with the continuity story and Mark schedules the founder post.',
+          if_rejected: 'The launch holds. Pace reworks the story against your note.',
+          evidence: [
+            { label: 'Launch copy review · passed', status: 'met', created_at: new Date(demoNow - 2 * 24 * 60 * 60 * 1000).toISOString() },
+            { label: 'Founder post draft · v3', status: 'unverified', created_at: new Date(demoNow - 3 * 24 * 60 * 60 * 1000).toISOString() }
+          ],
           tradeoffs: [
             {
               option: 'Continuity-led story',
@@ -1375,13 +389,20 @@
           urgency: 'high',
           agent_name: 'Eli - Engineering',
           type: 'Search threshold',
-          summary: 'Lock the launch search relevance threshold at 0.82 so the founder continuity query reliably surfaces the linked initiative and approval.',
-          created_at: new Date(Date.now() - 38 * 60 * 1000).toISOString(),
+          sourceLabel: 'Launch search',
+          summary: 'Lock the launch search relevance threshold at 0.82?',
+          created_at: new Date(demoNow - 5 * 60 * 60 * 1000).toISOString(),
           expected_cost_usd: 0,
           required_trust_level: 'approve_or_adjust',
           context: 'The search widget is pulling the right memory set in staging, but the score cutoff still decides whether the launch decision appears in the first fold.',
           recommendation: 'Keep 0.82 for launch and revisit after real operator traffic gives us edge-case recall data.',
-          impact: 'Too low adds noisy memory; too high hides the decision that makes the founder workflow credible.'
+          impact: 'Too low adds noisy memory; too high hides the decision that makes the founder workflow credible.',
+          if_approved: 'Eli ships 0.82 to production search and records recall for a week.',
+          if_rejected: 'The threshold stays at 0.75. Eli reworks it against your note.',
+          evidence: [
+            { label: 'Staging recall run 214 · passed', status: 'met', created_at: new Date(demoNow - 6 * 60 * 60 * 1000).toISOString() },
+            { label: 'Edge-case query set · 3 misses', status: 'fail', created_at: new Date(demoNow - 6 * 60 * 60 * 1000).toISOString() }
+          ]
         },
         {
           id: 'd3',
@@ -1389,7 +410,7 @@
           agent_name: 'Mark - Marketing',
           type: 'CTA lock',
           summary: 'Approve the founder CTA: “Connect your AI tools to one continuity layer” for launch page, OG copy, and the day-seven post.',
-          created_at: new Date(Date.now() - 96 * 60 * 1000).toISOString(),
+          created_at: new Date(demoNow - 96 * 60 * 1000).toISOString(),
           expected_cost_usd: 0,
           required_trust_level: 'act_with_approval',
           context: 'Marketing has three variants drafted. This is the last manual choice before the launch pack can be published across site and social.',
@@ -1398,6 +419,8 @@
         }
       ]
     } : null;
+    // Demo-only stand-ins for the widget approval tokens a real result carries in its _meta.
+    var demoApprovalTokens = isDemo ? { d2: 'demo-approval-token', d3: 'demo-approval-token' } : null;
     if (fixtureState === 'long' && data) {
       data.decisions[0].summary = 'Approve the founder continuity launch story, linked artifact evidence, decision provenance language, responsive social preview, CTA hierarchy, and cross-agent continuation receipt before the scheduled release window';
       data.decisions[0].context += ' This long-content fixture verifies wrapping and disclosure behavior across compact hosts.';
@@ -1419,11 +442,13 @@
       initWidget = () => { render(); };
     }
     var bootStartedAt = Date.now();
+    var syncedAt = null;
     var MIN_LOADING_MS = 220;
     var loadingSettled = false;
     var applyBootPayload = function(assign) {
       var commit = function() {
         if (typeof assign === 'function') assign();
+        syncedAt = new Date();
         isLoading = false;
         render();
       };
@@ -1436,7 +461,6 @@
       window.setTimeout(commit, delay);
     };
 
-    var ux = window.OrgXWidgetUX || null;
     var rejectComposerId = null;
     var rejectDrafts = {};
     var pendingDecisionId = null;
@@ -1445,6 +469,8 @@
     var itemsPerPage = 1;
     var pageDirection = 'forward';
     var decisionStateTimer = null;
+    // Per-decision footer state after the person acts: sending, confirming, done, waiting, failed, unsettled.
+    var actionStates = {};
 
     var restoredDecisionState = window.openai && window.openai.widgetState;
     if (restoredDecisionState && typeof restoredDecisionState === 'object') {
@@ -1460,6 +486,28 @@
       if (restoredDecisionState.lastResolution && typeof restoredDecisionState.lastResolution === 'object') {
         lastResolution = restoredDecisionState.lastResolution;
       }
+    }
+
+    if (isFooterFixture) {
+      currentPage = 2;
+      if (fixtureState === 'composing') {
+        rejectComposerId = 'd2';
+        rejectDrafts.d2 = 'Hold at 0.80 until the edge-case set passes.';
+      }
+      var fixturePhase = {
+        sending: { phase: 'sending', action: 'approve' },
+        confirming: { phase: 'confirming', action: 'approve', detail: 'Eli is picking it up' },
+        approved: { phase: 'done', action: 'approve', detail: 'Eli continues · 0.82 ships to production' },
+        'not-sent': { phase: 'failed', action: 'approve' },
+        unconfirmed: { phase: 'waiting', action: 'approve' },
+      }[fixtureState];
+      if (fixturePhase) actionStates.d2 = fixturePhase;
+      if (fixtureState === 'approved') {
+        lastResolution = { action: 'approved', summary: 'Lock the launch search relevance threshold at 0.82?', agent_name: 'Eli - Engineering' };
+      }
+    }
+    if (fixtureState === 'resolved') {
+      lastResolution = { action: 'approved', summary: 'Release checklist v3', agent_name: 'Eli - Engineering' };
     }
 
     var persistDecisionState = () => {
@@ -1509,14 +557,8 @@
       ]);
     };
 
-    var notify = (tone, title, message, duration) => {
-      if (ux && ux.toast && typeof ux.toast.show === 'function') {
-        return ux.toast.show({ tone, title, message, duration });
-      }
-      return null;
-    };
     var buildAgentStatusUrl = () => ORGX_BASE_URL + '/settings/agents';
-    var buildDecisionsUrl = () => ORGX_BASE_URL + '/decisions';
+    var buildDecisionsUrl = () => ORGX_BASE_URL + '/decisions?status=pending';
     // Approval tokens arrive in widget-only result metadata. A decision without
     // one is decided in OrgX: the widget never pretends it can settle it.
     var getApprovalToken = (decisionId) => {
@@ -1524,7 +566,9 @@
         ? window.OrgXWidgetRuntime.getToolResponseMetadata('orgx/widgetApproval')
         : null;
       const token = meta && meta.approval_tokens ? meta.approval_tokens[decisionId] : null;
-      return typeof token === 'string' && token ? token : null;
+      if (typeof token === 'string' && token) return token;
+      // Gallery fixtures only: never set for a real tool result.
+      return demoApprovalTokens && demoApprovalTokens[decisionId] ? demoApprovalTokens[decisionId] : null;
     };
 
     var decideInOrgxDetail = (decision) => {
@@ -1547,6 +591,14 @@
         return ORGX_BASE_URL + '/initiatives/' + encodeURIComponent(decision.initiative_id.trim()) + '?focus=decisions&decision=' + encodeURIComponent(decision.id);
       }
       return ORGX_BASE_URL + '/decisions/' + encodeURIComponent(decision.id);
+    };
+
+    // Links leave through the host; standalone previews open a tab.
+    var openExternal = (url, event) => {
+      if (!url) return;
+      if (window.openWidgetLink && openWidgetLink(url, event) === false) return;
+      if (event && event.defaultPrevented) return;
+      try { window.open(url, '_blank', 'noopener,noreferrer'); } catch (_) { /* host owns recovery */ }
     };
 
     var firstString = (...values) => {
@@ -1596,6 +648,36 @@
           pushUniqueText(objectParts, humanizeDecisionKey(key) + ': ' + formatted);
         });
         return objectParts.join(' • ');
+      }
+      return '';
+    };
+
+    // Evidence lists become receipt rows: one line of proof each.
+    var RECEIPT_STATUS = { met: 'met', pass: 'met', passed: 'met', ok: 'met', verified: 'met', succeeded: 'met', fail: 'fail', failed: 'fail', failing: 'fail', yours: 'yours', pending: 'pending', checking: 'pending' };
+    var normalizeEvidenceItems = (value) => {
+      if (!Array.isArray(value)) return [];
+      return value.map((item) => {
+        if (typeof item === 'string') return item.trim() ? { label: item.trim(), status: 'unverified' } : null;
+        if (!item || typeof item !== 'object') return null;
+        const label = firstString(item.label, item.title, item.summary, item.name, item.description);
+        if (!label) return null;
+        const rawStatus = firstString(item.status, item.verdict, item.result).toLowerCase();
+        return {
+          label,
+          status: RECEIPT_STATUS[rawStatus] || 'unverified',
+          at: firstString(item.created_at, item.createdAt, item.at, item.updated_at),
+          url: firstString(item.url, item.href, item.link),
+        };
+      }).filter(Boolean);
+    };
+
+    var pickConsequence = (source, keys) => {
+      if (!source || typeof source !== 'object' || Array.isArray(source)) return '';
+      for (const key of keys) {
+        if (key in source) {
+          const text = formatDecisionField(source[key]);
+          if (text) return text;
+        }
       }
       return '';
     };
@@ -1651,6 +733,9 @@
       const impact =
         (packet && packet.consequences) ??
         decision.impact ?? decision.impact_if_ignored ?? decision.risk_if_ignored ?? decision.consequence ?? null;
+      const consequenceSource = (packet && packet.consequences) || decision.consequences || decision;
+      const ifApproved = pickConsequence(consequenceSource, ['if_approved', 'ifApproved', 'approve', 'approved', 'on_approve']);
+      const ifRejected = pickConsequence(consequenceSource, ['if_rejected', 'ifRejected', 'reject', 'rejected', 'on_reject']);
       const rawOwner = firstString(
         packet && packet.current && packet.current.owner,
         decision.agent_name,
@@ -1678,11 +763,15 @@
         agent_name: isSystemDecision ? 'OrgX System' : rawOwner,
         is_system: isSystemDecision,
         type: firstString(decision.type, decision.entity_type) || 'Decision',
+        source_label: firstString(decision.sourceLabel, decision.source_label, decision.initiative_title, decision.initiative_name),
         summary,
         urgency,
         context: formatDecisionField(context),
         recommendation: formatDecisionField(recommendation),
-        impact: formatDecisionField(impact),
+        impact: ifApproved || ifRejected ? '' : formatDecisionField(impact),
+        if_approved: ifApproved,
+        if_rejected: ifRejected,
+        evidence_items: normalizeEvidenceItems((packet && packet.evidence) || decision.evidence),
         created_at:
           firstString(decision.created_at, decision.createdAt, decision.updated_at) ||
           new Date().toISOString(),
@@ -1705,6 +794,7 @@
 
     var normalizeDecisionQueue = (payload) => {
       if (!payload || typeof payload !== 'object') return null;
+      if (payload.__normalized) return payload;
       const rawDecisions = Array.isArray(payload.decisions) ? payload.decisions : [];
       const seen = new Set();
       const decisions = [];
@@ -1725,29 +815,19 @@
 
       return {
         ...payload,
+        __normalized: true,
         decisions,
         summary,
       };
     };
 
-    var updateSummaryFromDecisions = () => {
-      if (!data || !Array.isArray(data.decisions)) return;
-      const nextSummary = {};
-      data.decisions.forEach((decision) => {
-        const urgency = (decision.urgency || 'low').toLowerCase();
-        nextSummary[urgency] = (nextSummary[urgency] || 0) + 1;
-      });
-      data.summary = nextSummary;
-    };
-
-    var removeDecisionFromState = (id) => {
-      if (!data || !Array.isArray(data.decisions)) return;
-      data.decisions = data.decisions.filter((decision) => decision.id !== id);
-      updateSummaryFromDecisions();
-      const totalPages = Math.max(1, Math.ceil(data.decisions.length / itemsPerPage));
-      currentPage = Math.min(currentPage, totalPages);
-    };
     var getDecisionById = (id) => Array.isArray(data && data.decisions) ? data.decisions.find((decision) => decision.id === id) || null : null;
+    // A decision is settled here once OrgX confirmed it (or recorded it and could not confirm yet).
+    var isSettled = (d) => {
+      const st = actionStates[d.id];
+      return Boolean(st && (st.phase === 'done' || st.phase === 'waiting'));
+    };
+    var pendingDecisions = () => (data && Array.isArray(data.decisions) ? data.decisions.filter((d) => !isSettled(d)) : []);
 
     var setPageButtonsDisabled = (disabled) => {
       document.querySelectorAll('.page-btn').forEach((button) => {
@@ -1755,61 +835,305 @@
       });
     };
 
-    var setCardControlsDisabled = (card, disabled) => {
-      if (!card) return;
-      card.querySelectorAll('button').forEach((button) => {
-        if (button.classList.contains('is-loading')) return;
-        button.disabled = !!disabled;
-      });
-      const textarea = card.querySelector('textarea');
-      if (textarea) textarea.disabled = !!disabled;
+    var getDecisionOwner = (decision) => {
+      const label = firstString(
+        decision.agent_name,
+        decision.owner_agent,
+        decision.assigned_agent,
+        decision.domain
+      );
+      const isSystem = Boolean(decision.is_system) || !label || ['system', 'orgx', 'orgx system'].includes(label.toLowerCase());
+      if (isSystem) return { label: 'OrgX System', name: 'OrgX', role: '', isSystem: true };
+      const parts = label.split(/\s+[-–—·|]\s+|\s*\(|\)/).map((part) => part.trim()).filter(Boolean);
+      const name = parts[0] || label;
+      const role = parts[1] ? parts[1].toLowerCase() : '';
+      return { label, name, role, isSystem: false };
     };
 
-
-
-      var WIDGET_ASSET_BASE = 'https://mcp.useorgx.com/widgets/shared/';
-      var getAvatarUrl = (name) => {
-        const n = (name || '').toLowerCase();
-        if (n.includes('pace') || n.includes('product')) return WIDGET_ASSET_BASE + 'product_orchestrator.png';
-        if (n.includes('eli') || n.includes('engineer')) return WIDGET_ASSET_BASE + 'engineering_autopilot.png';
-        if (n.includes('mark') || n.includes('market')) return WIDGET_ASSET_BASE + 'launch_captain.png';
-        if (n.includes('sage') || n.includes('sale')) return WIDGET_ASSET_BASE + 'pipeline_intelligence.png';
-        if (n.includes('orion') || n.includes('op')) return WIDGET_ASSET_BASE + 'control_tower.png';
-        if (n.includes('dana') || n.includes('design')) return WIDGET_ASSET_BASE + 'design_codex.png';
-        if (n.includes('xandy') || n.includes('orchestrator')) return WIDGET_ASSET_BASE + 'xandy_orchestrator.png';
-        return null;
-      };
-      var getDecisionOwner = (decision) => {
-        const label = firstString(
-          decision.agent_name,
-          decision.owner_agent,
-          decision.assigned_agent,
-          decision.domain
-        );
-        const isSystem = Boolean(decision.is_system) || !label || ['system', 'orgx', 'orgx system'].includes(label.toLowerCase());
-        return {
-          label: isSystem ? 'OrgX System' : label,
-          isSystem,
-        };
-      };
-      var renderAvatar = (name, sizePx, isSystem) => {
-        if (isSystem) {
-          const localUrl = resolveWidgetAsset('orgx-logo.png');
-          const remoteUrl = WIDGET_ASSET_BASE + 'orgx-logo.png';
-          return `<span style="display:none;align-items:center;justify-content:center;width:100%;height:100%;font-family:var(--ox-mono);font-size:0.7rem;">OX</span><img src="${localUrl}" alt="OrgX System" loading="eager" decoding="sync" draggable="false" onerror="if(!this.dataset.retried){this.dataset.retried='1';this.src='${remoteUrl}';return;}this.style.display='none'; if (this.previousElementSibling) this.previousElementSibling.style.display='flex';" />`;
-        }
-        const agentKey = window.OrgXAgentIdentity ? window.OrgXAgentIdentity.resolveAgentKey(name) : null;
-        if (agentKey && window.customElements && window.customElements.get('ox-avatar')) {
-          return `<ox-avatar agent="${agentKey}" form="asking" size="${Math.max(sizePx, 28)}" name="${escapeHtml(name)}"></ox-avatar>`;
-        }
-        const url = getAvatarUrl(name);
-        const fallback = escapeHtml(name ? name[0].toUpperCase() : '?');
-        if (url) return `<span style="display:none;align-items:center;justify-content:center;width:100%;height:100%;font-family:var(--ox-mono);font-size:0.7rem;">${fallback}</span><img src="${url}" alt="${escapeHtml(name)}" loading="eager" decoding="sync" draggable="false" onerror="this.style.display='none'; if (this.previousElementSibling) this.previousElementSibling.style.display='flex';" />`;
-        return fallback;
-      };
+    var renderAvatar = (name, sizePx, isSystem) => {
+      if (isSystem) {
+        const localUrl = resolveWidgetAsset('orgx-logo.png');
+        const remoteUrl = 'https://mcp.useorgx.com/widgets/shared/orgx-logo.png';
+        return `<span class="agent-avatar agent-avatar--system" style="width:${sizePx}px;height:${sizePx}px"><img src="${localUrl}" alt="" loading="eager" decoding="sync" draggable="false" onerror="if(!this.dataset.retried){this.dataset.retried='1';this.src='${remoteUrl}';return;}this.remove();" /></span>`;
+      }
+      const agentKey = window.OrgXAgentIdentity ? window.OrgXAgentIdentity.resolveAgentKey(name) : null;
+      const form = window.OrgXAgentIdentity && window.OrgXAgentIdentity.formForState ? window.OrgXAgentIdentity.formForState('needs_you') : 'asking';
+      if (agentKey) {
+        return `<span class="agent-avatar"><ox-avatar agent="${agentKey}" form="${form}" size="${sizePx}" name="${escapeHtml(getDecisionOwner({ agent_name: name }).name)}"></ox-avatar></span>`;
+      }
+      return '';
+    };
 
     var formatUsd = v => Number.isFinite(Number(v)) ? '$'+Number(v).toFixed(2) : null;
-    var timeAgo = d => { const m = Math.floor((new Date() - new Date(d))/60000); return m<1?'Just now':m<60?m+'m ago':Math.floor(m/60)+'h ago'; };
+    // "5h", "2d": the canvas status-line age.
+    var shortAge = (value) => {
+      const t = new Date(value).getTime();
+      if (!Number.isFinite(t)) return '';
+      const m = Math.max(0, Math.floor((Date.now() - t) / 60000));
+      if (m < 1) return 'now';
+      if (m < 60) return m + 'm';
+      const h = Math.floor(m / 60);
+      if (h < 48) return h + 'h';
+      return Math.floor(h / 24) + 'd';
+    };
+    var timeAgo = d => { const a = shortAge(d); return !a ? '' : a === 'now' ? 'just now' : a + ' ago'; };
+    var clock = (date) => date ? String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0') : '';
+
+    /* ---------------------------------------------------------------- footer -- */
+    // SM3 finishes-here: Approve is hold-to-confirm, the outcome lands in the same row.
+    // There is no server-side hold for decisions yet, so the footer never offers Undo.
+    var footerSpec = (d) => {
+      const who = getDecisionOwner(d).name;
+      const st = actionStates[d.id];
+      const base = { variant: 'finishes-here', heading: '', detail: '', primary: '', action: '', hold: false, disabled: false, slot: '' };
+      if (!st) {
+        if (rejectComposerId === d.id) {
+          const hasNote = Boolean((rejectDrafts[d.id] || '').trim());
+          return { ...base, state: 'needs-you', heading: 'Send back', detail: hasNote ? 'your note goes to ' + who : 'write a note first', primary: 'Send back', disabled: !hasNote, slot: 'cancel' };
+        }
+        return { ...base, state: 'needs-you', heading: 'Finishes here', detail: 'hold Approve to confirm · no undo', primary: 'Approve', hold: true, slot: 'reject' };
+      }
+      const approving = st.action === 'approve';
+      switch (st.phase) {
+        case 'sending':
+          return { ...base, state: 'sending', heading: approving ? 'Approving' : 'Sending back', detail: 'recording it in OrgX', primary: approving ? 'Approving…' : 'Sending…' };
+        case 'confirming':
+          return { ...base, state: 'running', heading: 'Confirming in OrgX', detail: st.detail || 'checking it settled' };
+        case 'done':
+          return { ...base, state: 'done', heading: approving ? 'Approved by you' : 'Sent back to ' + who, detail: st.detail || (approving ? who + ' continues' : who + ' reworks it against your note'), action: 'Receipt ↗' };
+        case 'waiting':
+          return { ...base, variant: 'confirms-in-orgx', state: 'waiting', heading: 'Recorded in OrgX', detail: st.detail || 'not confirmed yet', action: 'Check now' };
+        case 'unsettled':
+          return { ...base, state: 'failed', heading: st.heading || 'Didn’t go through', detail: st.detail || 'nothing changed here', primary: 'Decide in OrgX ↗' };
+        case 'failed':
+        default:
+          return { ...base, state: 'failed', heading: 'Not sent', detail: st.detail || (approving ? 'nothing changed · try again' : 'your note is kept · try again'), primary: 'Retry' };
+      }
+    };
+
+    var footerSlotHtml = (d, spec) => {
+      if (spec.slot === 'reject') {
+        return `<button type="button" slot="action" class="dq-text-btn decision-action-btn" data-reject-id="${escapeHtml(d.id)}" data-action="toggle-reject" onclick="toggleRejectComposer('${escapeHtml(d.id)}', this)" aria-expanded="false" aria-controls="reject-composer-${escapeHtml(d.id)}">Reject</button>`;
+      }
+      if (spec.slot === 'cancel') {
+        return `<button type="button" slot="action" class="dq-text-btn decision-action-btn" data-reject-id="${escapeHtml(d.id)}" data-action="toggle-reject" onclick="toggleRejectComposer('${escapeHtml(d.id)}', this)" aria-expanded="true" aria-controls="reject-composer-${escapeHtml(d.id)}">Cancel</button>`;
+      }
+      return '';
+    };
+
+    var footerAttrs = (spec) => [
+      ['variant', spec.variant],
+      ['state', spec.state],
+      ['heading', spec.heading],
+      ['detail', spec.detail],
+      ['primary-label', spec.primary],
+      ['action-label', spec.action],
+    ];
+
+    var footerHtml = (d) => {
+      const spec = footerSpec(d);
+      const attrs = footerAttrs(spec).map(([k, v]) => `${k}="${escapeHtml(v)}"`).join(' ');
+      return `<ox-footer class="dq-footer" data-decision-id="${escapeHtml(d.id)}" ${attrs}${spec.hold ? ' hold' : ''}${spec.disabled ? ' disabled' : ''}>${footerSlotHtml(d, spec)}</ox-footer>`;
+    };
+
+    // Move the footer in place so the kit crossfades it and focus follows the new control.
+    var syncFooter = (id) => {
+      const d = getDecisionById(id);
+      const footer = document.querySelector(`ox-footer[data-decision-id="${CSS.escape(id)}"]`);
+      if (!d || !footer) return;
+      const spec = footerSpec(d);
+      const note = document.getElementById('reject-note-' + id);
+      if (note) note.readOnly = Boolean(actionStates[id]);
+      footer.innerHTML = footerSlotHtml(d, spec);
+      footer.toggleAttribute('hold', spec.hold);
+      footer.toggleAttribute('disabled', spec.disabled);
+      footerAttrs(spec).forEach(([k, v]) => {
+        if (footer.getAttribute(k) !== v) footer.setAttribute(k, v);
+      });
+      syncChrome();
+    };
+
+    // The attention line, the card edge and the status line follow the queue.
+    var syncChrome = () => {
+      const line = document.getElementById('dqAttention');
+      const pending = pendingDecisions();
+      if (line) {
+        line.setAttribute('count', String(pending.length));
+        line.setAttribute('tone', pending.length ? 'needs-you' : 'calm');
+        const oldest = oldestAge(pending);
+        if (oldest) line.setAttribute('oldest', oldest); else line.removeAttribute('oldest');
+      }
+      document.querySelectorAll('[data-status-for]').forEach((node) => {
+        const d = getDecisionById(node.getAttribute('data-status-for'));
+        if (d) node.innerHTML = statusLineHtml(d);
+      });
+      document.querySelectorAll('.ox-card[data-card-for]').forEach((card) => {
+        const d = getDecisionById(card.getAttribute('data-card-for'));
+        if (d) card.setAttribute('data-edge', edgeFor(d));
+      });
+    };
+
+    var edgeFor = (d) => {
+      const st = actionStates[d.id];
+      if (!st) return 'amber';
+      if (st.phase === 'done' || st.phase === 'confirming') return 'teal';
+      if (st.phase === 'failed' || st.phase === 'unsettled') return 'red';
+      if (st.phase === 'waiting') return 'mute';
+      return 'amber';
+    };
+
+    var oldestAge = (list) => {
+      let oldest = null;
+      list.forEach((d) => {
+        const t = new Date(d.created_at).getTime();
+        if (Number.isFinite(t) && (oldest === null || t < oldest)) oldest = t;
+      });
+      if (oldest === null) return '';
+      const age = shortAge(oldest);
+      return age === 'now' ? '' : age;
+    };
+
+    var statusLineHtml = (d) => {
+      const st = actionStates[d.id];
+      const ctx = d.source_label || (d.type && d.type.toLowerCase() !== 'decision' ? d.type : '');
+      const ctxHtml = ctx ? `<span class="ctx-wrap"><span aria-hidden="true">·</span><span class="ctx">${escapeHtml(ctx)}</span></span>` : '';
+      const urgency = d.urgency === 'critical'
+        ? '<span class="urg urg-critical">Critical</span>'
+        : d.urgency === 'high' ? '<span class="urg">High</span>' : '';
+      if (st && st.phase === 'done') {
+        return `<span class="done"><ox-glyph kind="decision" tone="teal"></ox-glyph>${st.action === 'approve' ? 'Approved' : 'Sent back'} by you · just now</span>${ctxHtml}`;
+      }
+      const age = shortAge(d.created_at);
+      return `<span class="need"><ox-glyph kind="decision" tone="amber"></ox-glyph>Needs you${age && age !== 'now' ? ' · ' + age : ''}</span>${ctxHtml}${urgency}`;
+    };
+
+    /* --------------------------------------------------------------- actions -- */
+    var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    var STATUS_POLL_LIMIT_MS = 120000;
+    var sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+    var setPhase = (id, next) => {
+      if (next) actionStates[id] = next; else delete actionStates[id];
+      syncFooter(id);
+    };
+
+    var shortError = (error, fallback) => {
+      const message = error && typeof error.message === 'string' ? error.message.trim() : '';
+      return message && message.length <= 36 ? message.replace(/\.$/, '') : fallback;
+    };
+
+    // After OrgX records the decision, read its status until it settles (orgx_command_status).
+    // next_poll_after_ms paces the reads; null means the state is final.
+    var confirmDecisionSettled = async (id, onProgress) => {
+      if (!UUID_RE.test(id)) return { state: 'unconfirmed' };
+      const runtime = rt();
+      const deadline = Date.now() + STATUS_POLL_LIMIT_MS;
+      let wait = 0;
+      for (;;) {
+        if (wait) await sleep(wait);
+        let status = null;
+        try {
+          const raw = await callTool('orgx_command_status', { kind: 'decision', id });
+          status = runtime && runtime.extractStructuredWidgetData ? runtime.extractStructuredWidgetData(raw, true) : raw;
+        } catch (_) {
+          return { state: 'unconfirmed' };
+        }
+        if (!status || typeof status !== 'object' || typeof status.state !== 'string') return { state: 'unconfirmed' };
+        if (status.next_poll_after_ms === null || status.next_poll_after_ms === undefined) return status;
+        onProgress(status);
+        if (Date.now() >= deadline) return { state: 'unconfirmed' };
+        wait = Math.min(15000, Math.max(750, Number(status.next_poll_after_ms) || 2000));
+      }
+    };
+
+    var progressDetail = (status, who) => {
+      if (status && status.waiting_on === 'agent') return who + ' is picking it up';
+      if (status && status.waiting_on === 'person') return 'waiting on a person in OrgX';
+      if (status && status.state === 'queued') return 'queued in OrgX';
+      return 'checking it settled';
+    };
+
+    var settleFromStatus = (id, action, status) => {
+      const d = getDecisionById(id);
+      const who = d ? getDecisionOwner(d).name : 'The agent';
+      const outcome = status && typeof status.outcome === 'string' && status.outcome.trim() ? status.outcome.trim() : '';
+      if (status.state === 'succeeded') return setPhase(id, { phase: 'done', action, detail: outcome });
+      if (status.state === 'failed') return setPhase(id, { phase: 'unsettled', action, heading: 'Didn’t go through', detail: outcome || 'OrgX reported a failure' });
+      if (status.state === 'cancelled') return setPhase(id, { phase: 'unsettled', action, heading: 'Cancelled in OrgX', detail: outcome || 'nothing was applied' });
+      return setPhase(id, { phase: 'waiting', action, detail: status.state === 'not_found' ? 'OrgX has no status for it yet' : 'not confirmed yet' });
+    };
+
+    var watchDecision = async (id, action) => {
+      const d = getDecisionById(id);
+      const who = d ? getDecisionOwner(d).name : 'The agent';
+      setPhase(id, { phase: 'confirming', action });
+      const status = await confirmDecisionSettled(id, (progress) => {
+        setPhase(id, { phase: 'confirming', action, detail: progressDetail(progress, who) });
+      });
+      settleFromStatus(id, action, status);
+    };
+
+    var runDecision = async (id, action, reason) => {
+      if (pendingDecisionId) return;
+      const decision = getDecisionById(id);
+      pendingDecisionId = id;
+      setPageButtonsDisabled(true);
+      setPhase(id, { phase: 'sending', action });
+
+      try {
+        const approvalToken = getApprovalToken(id);
+        if (!approvalToken) throw Object.assign(new Error('This decision has to be made in OrgX.'), { code: 'decide_in_orgx' });
+        if (action === 'approve') {
+          await callTool('orgx_widget_decide', { decision_id: id, action: 'approve', approval_token: approvalToken });
+          lastResolution = {
+            action: 'approved',
+            summary: decision && decision.summary ? decision.summary : 'This decision',
+            agent_name: decision && decision.agent_name ? decision.agent_name : 'the assigned agent'
+          };
+        } else {
+          await callTool('orgx_widget_decide', { decision_id: id, action: 'reject', reason, approval_token: approvalToken });
+          lastResolution = {
+            action: 'rejected',
+            summary: decision && decision.summary ? decision.summary : 'This decision',
+            agent_name: decision && decision.agent_name ? decision.agent_name : 'the assigned agent',
+            note: reason
+          };
+        }
+        if (rejectComposerId === id) rejectComposerId = null;
+        void publishDecisionResolution(decision, lastResolution);
+        await watchDecision(id, action);
+        // The composer closes once OrgX has the note.
+        if (action === 'reject') render();
+        if (actionStates[id] && actionStates[id].phase === 'done') delete rejectDrafts[id];
+        scheduleDecisionStatePersistence();
+      } catch (error) {
+        const code = String((error && error.code) || '');
+        if (code === 'decide_in_orgx') {
+          setPhase(id, { phase: 'unsettled', action, heading: 'Decide in OrgX', detail: decideInOrgxDetail(decision) });
+        } else if (/conflict|already|superseded|not_pending/i.test(code)) {
+          // Q8: someone else ruled first. Nothing of yours was applied.
+          setPhase(id, { phase: 'unsettled', action, heading: 'Already decided', detail: 'nothing of yours was applied' });
+        } else if (/expired|approval_token|invalid_token/i.test(code)) {
+          setPhase(id, { phase: 'unsettled', action, heading: 'Decide in OrgX', detail: 'this approval expired here' });
+        } else {
+          setPhase(id, { phase: 'failed', action, detail: shortError(error, action === 'approve' ? 'nothing changed · try again' : 'your note is kept · try again') });
+        }
+      } finally {
+        pendingDecisionId = null;
+        setPageButtonsDisabled(false);
+      }
+    };
+
+    window.approveDecision = async (id) => {
+      if (pendingDecisionId) return;
+      await runDecision(id, 'approve');
+    };
+
+    window.submitReject = async (id) => {
+      const reason = (rejectDrafts[id] || '').trim();
+      if (!reason || pendingDecisionId) return;
+      await runDecision(id, 'reject', reason);
+    };
 
     window.toggleRejectComposer = (id, trigger) => {
       if (pendingDecisionId) return;
@@ -1817,6 +1141,10 @@
       scheduleDecisionStatePersistence();
       render();
       window.requestAnimationFrame(() => {
+        if (rejectComposerId === id) {
+          const field = document.getElementById('reject-note-' + id);
+          if (field) { field.focus(); return; }
+        }
         const nextTrigger = document.querySelector(
           `[data-reject-id="${CSS.escape(id)}"]`
         );
@@ -1827,88 +1155,23 @@
     window.syncRejectDraft = (id, textarea) => {
       rejectDrafts[id] = textarea.value;
       scheduleDecisionStatePersistence();
-      const submitButton = textarea.closest('.reject-composer')?.querySelector('.reject-submit');
-      if (submitButton) submitButton.disabled = !textarea.value.trim();
+      const footer = document.querySelector(`ox-footer[data-decision-id="${CSS.escape(id)}"]`);
+      const hasNote = Boolean(textarea.value.trim());
+      if (footer && footer.hasAttribute('disabled') === hasNote) syncFooter(id);
     };
 
-    window.approveDecision = async (id, btn) => {
-      if (btn.disabled || pendingDecisionId) return;
-      const card = btn.closest('.decision-card');
-      const decision = getDecisionById(id);
-      pendingDecisionId = id;
-      setPageButtonsDisabled(true);
-      setCardControlsDisabled(card, true);
-      if (ux) ux.setLoading(btn, { loadingLabel: 'Approving…' });
-
-      try {
-        const approvalToken = getApprovalToken(id);
-        if (!approvalToken) throw Object.assign(new Error('This decision has to be made in OrgX.'), { code: 'decide_in_orgx' });
-        await callTool('orgx_widget_decide', { decision_id: id, action: 'approve', approval_token: approvalToken });
-        lastResolution = {
-          action: 'approved',
-          summary: decision && decision.summary ? decision.summary : 'This decision',
-          agent_name: decision && decision.agent_name ? decision.agent_name : 'the assigned agent'
-        };
-        await publishDecisionResolution(decision, lastResolution);
-        notify('success', 'Decision approved', 'Recorded and sent to ' + lastResolution.agent_name + ' so execution can continue.');
-        if (card) card.classList.add('is-resolving');
-        window.setTimeout(() => {
-          removeDecisionFromState(id);
-          if (rejectComposerId === id) rejectComposerId = null;
-          delete rejectDrafts[id];
-          pendingDecisionId = null;
-          render();
-        }, 240);
-      } catch (error) {
-        pendingDecisionId = null;
-        setPageButtonsDisabled(false);
-        setCardControlsDisabled(card, false);
-        if (ux) ux.clearLoading(btn);
-        notify('error', 'Approval failed', error?.message || 'Try again in a moment.');
-      }
-    };
-
-    window.submitReject = async (id, btn) => {
-      const reason = (rejectDrafts[id] || '').trim();
-      if (!reason || pendingDecisionId) return;
-      const card = btn.closest('.decision-card');
-      const decision = getDecisionById(id);
-      pendingDecisionId = id;
-      setPageButtonsDisabled(true);
-      setCardControlsDisabled(card, true);
-      if (ux) ux.setLoading(btn, { loadingLabel: 'Sending note…' });
-
-      try {
-        const approvalToken = getApprovalToken(id);
-        if (!approvalToken) throw Object.assign(new Error('This decision has to be made in OrgX.'), { code: 'decide_in_orgx' });
-        await callTool('orgx_widget_decide', { decision_id: id, action: 'reject', reason, approval_token: approvalToken });
-        lastResolution = {
-          action: 'rejected',
-          summary: decision && decision.summary ? decision.summary : 'This decision',
-          agent_name: decision && decision.agent_name ? decision.agent_name : 'the assigned agent',
-          note: reason
-        };
-        await publishDecisionResolution(decision, lastResolution);
-        notify(
-          'success',
-          'Decision rejected',
-          'Guidance sent to ' + lastResolution.agent_name + ' so the next pass can address the issue directly.'
-        );
-        if (card) card.classList.add('is-resolving');
-        window.setTimeout(() => {
-          removeDecisionFromState(id);
-          if (rejectComposerId === id) rejectComposerId = null;
-          delete rejectDrafts[id];
-          pendingDecisionId = null;
-          render();
-        }, 240);
-      } catch (error) {
-        pendingDecisionId = null;
-        setPageButtonsDisabled(false);
-        setCardControlsDisabled(card, false);
-        if (ux) ux.clearLoading(btn);
-        notify('error', 'Rejection failed', error?.message || 'Try again in a moment.');
-      }
+    window.selectDecision = (id) => {
+      if (pendingDecisionId || !data || !Array.isArray(data.decisions)) return;
+      const index = data.decisions.findIndex((d) => d.id === id);
+      if (index < 0) return;
+      pageDirection = index + 1 >= currentPage ? 'forward' : 'backward';
+      currentPage = index + 1;
+      scheduleDecisionStatePersistence();
+      render();
+      window.requestAnimationFrame(() => {
+        const heading = document.querySelector('.dq-q a');
+        if (heading) heading.focus({ preventScroll: false });
+      });
     };
 
     window.changePage = (delta) => {
@@ -1921,268 +1184,279 @@
       render();
     };
 
+    // Footer events bubble out of the kit's shadow root.
+    document.addEventListener('ox-primary', (event) => {
+      const footer = event.target && event.target.closest ? event.target.closest('ox-footer[data-decision-id]') : null;
+      if (!footer) return;
+      const id = footer.getAttribute('data-decision-id');
+      const d = getDecisionById(id);
+      const st = actionStates[id];
+      if (!d) return;
+      if (!st) {
+        if (rejectComposerId === id) void window.submitReject(id);
+        else void window.approveDecision(id);
+        return;
+      }
+      if (st.phase === 'failed') {
+        delete actionStates[id];
+        if (st.action === 'reject') void window.submitReject(id);
+        else void window.approveDecision(id);
+        return;
+      }
+      if (st.phase === 'unsettled') {
+        openExternal(buildDecisionSurfaceUrl(d));
+        // Handing off does not change state here; clear the kit's press lock so it can open again.
+        const detail = footer.getAttribute('detail') || '';
+        footer.setAttribute('state', footer.getAttribute('state') || '');
+        footer.setAttribute('detail', detail + ' ');
+        footer.setAttribute('detail', detail);
+      }
+    });
+
+    document.addEventListener('ox-action', (event) => {
+      const footer = event.target && event.target.closest ? event.target.closest('ox-footer[data-decision-id]') : null;
+      if (!footer) return;
+      const id = footer.getAttribute('data-decision-id');
+      const d = getDecisionById(id);
+      const st = actionStates[id];
+      if (!d || !st) return;
+      if (st.phase === 'done') openExternal(buildDecisionSurfaceUrl(d));
+      if (st.phase === 'waiting') void watchDecision(id, st.action);
+    });
+
+    document.addEventListener('ox-open', (event) => {
+      const href = event.detail && event.detail.href;
+      if (!href) return;
+      if (window.openWidgetLink) openWidgetLink(href, event);
+    });
+
+    document.addEventListener('ox-action', (event) => {
+      const footer = event.target && event.target.closest ? event.target.closest('ox-footer[data-queue-retry]') : null;
+      if (footer) location.reload();
+    });
+
+    /* ---------------------------------------------------------------- render -- */
+    var linkAttrs = (url) => `href="${escapeHtml(url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(url || ''))}, event)'`;
+
+    var attentionHtml = (pendingCount, oldest, label, tone) => {
+      const decisionsUrl = buildDecisionsUrl();
+      return `<div class="dq-head">
+        <ox-attention-line id="dqAttention" tone="${tone || (pendingCount ? 'needs-you' : 'calm')}" count="${tone && !pendingCount ? 1 : pendingCount}"${oldest ? ` oldest="${escapeHtml(oldest)}"` : ''}>${
+          label ? `<span>${escapeHtml(label)}</span>` : ''}${
+          syncedAt ? `<span slot="meta">synced ${clock(syncedAt)}</span>` : ''}<a slot="action" id="queueDecisionsLink" class="dq-head-link" ${linkAttrs(decisionsUrl)} aria-label="View all decisions in OrgX"><span class="long">All in </span>OrgX ${icons.ext(12)}</a></ox-attention-line>
+      </div>`;
+    };
+
+    var decisionBodyHtml = (d) => {
+      const decisionUrl = buildDecisionSurfaceUrl(d);
+      const owner = getDecisionOwner(d);
+      // The note stays on screen while it is sending or after a failure; it clears once OrgX has it.
+      const isRejecting = rejectComposerId === d.id;
+      const noteLocked = Boolean(actionStates[d.id]);
+      const rejectValue = rejectDrafts[d.id] || '';
+      const canDecideHere = isOgDecisionEmbed || Boolean(getApprovalToken(d.id));
+      const evidence = d.evidence_items || [];
+      const shownEvidence = evidence.slice(0, 2);
+      const hasCons = Boolean(d.if_approved || d.if_rejected);
+      const recLine = d.recommendation
+        ? `<div>
+            <div class="dq-rec">${renderAvatar(owner.isSystem ? 'OrgX System' : owner.label, 22, owner.isSystem)}<span>${escapeHtml(owner.name)} recommends</span>${owner.role ? `<span class="role">· ${escapeHtml(owner.role)} agent</span>` : ''}</div>
+            <div class="dq-why">${escapeHtml(d.recommendation)}</div>
+          </div>`
+        : '';
+      const evidenceHtml = shownEvidence.length
+        ? `<div class="dq-evidence" role="list">
+            ${shownEvidence.map((item) => `<ox-receipt-row status="${escapeHtml(item.status)}" label="${escapeHtml(item.label)}"${item.at ? ` value="${escapeHtml(timeAgo(item.at))}"` : ''}${item.url ? ` href="${escapeHtml(item.url)}"` : ''}>${escapeHtml(item.label)}</ox-receipt-row>`).join('')}
+            ${isOgDecisionEmbed ? '' : `<a class="dq-all" ${linkAttrs(decisionUrl)}>All ${evidence.length} evidence item${evidence.length === 1 ? '' : 's'} in OrgX ${icons.ext(12)}</a>`}
+          </div>`
+        : '';
+      const consHtml = hasCons
+        ? `<div class="dq-cons">
+            ${d.if_approved ? `<div><div class="k">If approved</div><div class="v">${escapeHtml(d.if_approved)}</div></div>` : ''}
+            ${d.if_rejected ? `<div><div class="k">If rejected</div><div class="v">${escapeHtml(d.if_rejected)}</div></div>` : ''}
+          </div>`
+        : d.impact
+        ? `<div class="dq-cons is-single"><div><div class="k">If it waits</div><div class="v">${escapeHtml(d.impact)}</div></div></div>`
+        : '';
+      const detailsHtml = isOgDecisionEmbed ? '' : `
+        <details class="decision-evidence">
+          <summary>Evidence and consequence</summary>
+          <div class="decision-evidence__body">
+            ${d.context ? `<div class="decision-evidence__item"><div class="k">Why it matters</div><div class="decision-evidence__copy">${escapeHtml(d.context)}</div></div>` : ''}
+            ${hasCons && formatDecisionField(d.impact_if_ignored || d.risk_if_ignored) ? `<div class="decision-evidence__item"><div class="k">If ignored</div><div class="decision-evidence__copy">${escapeHtml(formatDecisionField(d.impact_if_ignored || d.risk_if_ignored))}</div></div>` : ''}
+            ${d.tradeoffs && d.tradeoffs.length ? `<div class="decision-tradeoffs">${d.tradeoffs.map(t => `<div class="decision-tradeoff"><strong>${escapeHtml(t.option)}</strong>${escapeHtml(t.detail)}</div>`).join('')}</div>` : ''}
+            <div class="params-well">
+              ${d.packet_id ? `<span class="param-chip" title="${escapeHtml(d.packet_id)}">From review packet <strong>${escapeHtml(d.packet_id.slice(-18))}</strong></span>` : ''}
+              <span class="param-chip">Type <strong>${escapeHtml(d.type)}</strong></span>
+              <span class="param-chip">Raised <strong>${escapeHtml(timeAgo(d.created_at) || '—')}</strong></span>
+              ${d.provider && d.model ? `<span class="param-chip">Model <strong>${escapeHtml(d.provider + '/' + d.model)}</strong></span>` : ''}
+              ${d.duplicate_count ? `<span class="param-chip">Collapsed <strong>${escapeHtml(String(d.duplicate_count))} duplicate${d.duplicate_count === 1 ? '' : 's'}</strong></span>` : ''}
+              ${d.expected_cost_usd !== undefined && formatUsd(d.expected_cost_usd) ? `<span class="param-chip">Cost <strong>${formatUsd(d.expected_cost_usd)}</strong></span>` : ''}
+              ${d.required_trust_level ? `<span class="param-chip">Rule <strong>${escapeHtml(humanizeDecisionKey(d.required_trust_level))}</strong></span>` : ''}
+            </div>
+          </div>
+        </details>`;
+      const composerHtml = canDecideHere && isRejecting ? `
+        <div class="reject-composer" id="reject-composer-${escapeHtml(d.id)}">
+          <label for="reject-note-${escapeHtml(d.id)}">Note for ${escapeHtml(owner.name)} · required</label>
+          <textarea
+            id="reject-note-${escapeHtml(d.id)}"
+            class="reject-textarea"
+            placeholder="What changed, which constraint was missed, or which path you want instead."
+            oninput="syncRejectDraft('${escapeHtml(d.id)}', this)"${noteLocked ? ' readonly' : ''}
+          >${escapeHtml(rejectValue)}</textarea>
+        </div>` : '';
+      const handoffHtml = canDecideHere ? '' : `
+        <a ${linkAttrs(decisionUrl)} class="decide-in-orgx decision-action-btn">
+          <span class="ic">${icons.ext(16)}</span>
+          <span>
+            <span class="t">Decide in OrgX</span>
+            <span class="d">${escapeHtml(decideInOrgxDetail(d))} Approve or reject in your signed-in session.</span>
+          </span>
+        </a>`;
+      return `
+        <div class="dq-body">
+          <div>
+            <div class="dq-status" data-status-for="${escapeHtml(d.id)}">${statusLineHtml(d)}</div>
+            <h1 class="dq-q" style="margin-top:8px"><a ${linkAttrs(decisionUrl)} title="Open in OrgX">${escapeHtml(d.summary)}</a></h1>
+          </div>
+          ${recLine}
+          ${evidenceHtml || (isOgDecisionEmbed ? '' : `<a class="dq-all decision-open-link" ${linkAttrs(decisionUrl)}>Open in OrgX ${icons.ext(12)}</a>`)}
+          ${consHtml}
+          ${detailsHtml}
+          ${composerHtml}
+          ${handoffHtml}
+        </div>
+        ${canDecideHere ? footerHtml(d) : ''}`;
+    };
+
+    var queueHtml = (current) => {
+      if (isOgDecisionEmbed) return '';
+      const others = pendingDecisions().filter((d) => d.id !== current.id);
+      if (!others.length) return '';
+      const shown = others.slice(0, 4);
+      const rows = shown.map((d) => {
+        const age = shortAge(d.created_at);
+        return `<button type="button" class="dq-row page-btn" onclick="selectDecision('${escapeHtml(d.id)}')" aria-label="Open: ${escapeHtml(d.summary)}">
+          <span class="dot" aria-hidden="true"></span>
+          <span class="ttl">${escapeHtml(d.summary)}</span>
+          <span class="meta">${age && age !== 'now' ? '<span class="long">Needs you · </span>' + age : 'Needs you'}</span>
+          <span class="chev">${icons.chevron(14)}</span>
+        </button>`;
+      }).join('');
+      const more = others.length - shown.length;
+      return `<nav class="dq-queue" aria-label="Other decisions waiting on you">${rows}${more > 0 ? `<a class="dq-all dq-more" ${linkAttrs(buildDecisionsUrl())}>${more} more in OrgX ${icons.ext(12)}</a>` : ''}</nav>`;
+    };
+
+    var historyHtml = (current) => {
+      if (isOgDecisionEmbed || !data || !Array.isArray(data.decisions)) return '';
+      const settled = data.decisions.filter((d) => d.id !== current.id && isSettled(d));
+      if (!settled.length) return '';
+      return `<div class="dq-history" role="list" aria-label="Decided here">
+        <div class="dq-history-label">Decided here</div>
+        ${settled.map((d) => {
+          const st = actionStates[d.id];
+          const verb = st.phase === 'waiting' ? 'Recorded' : st.action === 'approve' ? 'Approved' : 'Sent back';
+          return `<ox-receipt-row status="${st.phase === 'waiting' ? 'pending' : 'met'}" label="${escapeHtml(verb + ' · ' + d.summary)}" value="by you" href="${escapeHtml(buildDecisionSurfaceUrl(d))}">${escapeHtml(verb + ' · ' + d.summary)}</ox-receipt-row>`;
+        }).join('')}
+      </div>`;
+    };
+
+    var lastDecidedHtml = (current) => {
+      if (!lastResolution || isOgDecisionEmbed || (current && isSettled(current))) return '';
+      const decisionsUrl = buildDecisionsUrl();
+      return `<a class="dq-last" ${linkAttrs(decisionsUrl)}><span>Last decided</span><span class="t2">${escapeHtml(lastResolution.summary)} · ${lastResolution.action === 'approved' ? 'approved' : 'sent back'} by you</span>${icons.ext(12)}</a>`;
+    };
+
+    var focusedFooterId = () => {
+      const active = document.activeElement;
+      return active && active.matches && active.matches('ox-footer[data-decision-id]') ? active.getAttribute('data-decision-id') : null;
+    };
+    var pendingFocusId = null;
+    var lastRenderedId = null;
+    var afterRender = () => {
+      if (!pendingFocusId) return;
+      const footer = document.querySelector(`ox-footer[data-decision-id="${CSS.escape(pendingFocusId)}"]`);
+      pendingFocusId = null;
+      if (footer && footer.shadowRoot) {
+        const target = footer.shadowRoot.querySelector('button:not([hidden])');
+        if (target) target.focus();
+      }
+    };
+
     var render = () => {
       if(isLoading) return;
+      pendingFocusId = focusedFooterId();
+      const agentStatusUrl = buildAgentStatusUrl();
+      const decisionsUrl = buildDecisionsUrl();
       if (data && data.error) {
         var errorMessage = window.OrgXWidgetRuntime.getErrorMessage(data.error, 'The decision queue could not be refreshed.');
-        var queueSubtitleError = document.getElementById('queueSubtitle');
-        if (queueSubtitleError) queueSubtitleError.textContent = 'The queue is unavailable. No action was taken.';
-        injectHtml(`<div class="empty-state error-state animate-in"><div class="empty-icon">${icons.error(24)}</div><div class="empty-title">Decision queue unavailable</div><div class="empty-desc">${escapeHtml(errorMessage)}</div><div class="resolution-actions"><button type="button" class="resolution-link resolution-link--secondary" onclick="location.reload()">Retry queue</button></div></div>`);
+        injectHtml(`<div class="decision-shell animate-in"><div class="decision-card"><article class="ox-card" data-edge="red">
+          <div class="dq-calm" role="alert">
+            <div class="dq-calm-title">Decision queue unavailable</div>
+            <div class="dq-calm-copy">${escapeHtml(errorMessage)}</div>
+          </div>
+          <ox-footer variant="reads" state="failed" data-queue-retry heading="Couldn’t refresh" detail="No approval or rejection was sent" action-label="Retry queue"></ox-footer>
+        </article></div></div>`);
         return;
       }
       data = normalizeDecisionQueue(data);
-      var queueSubtitle = document.getElementById('queueSubtitle');
-      var queueDecisionsLink = document.getElementById('queueDecisionsLink');
-      var decisionsUrl = buildDecisionsUrl();
-      var agentStatusUrl = buildAgentStatusUrl();
-      if (queueDecisionsLink) queueDecisionsLink.href = decisionsUrl;
-      if(!data || !data.decisions || data.decisions.length === 0) {
-        var resolvedHtml = lastResolution
-          ? `<div class="empty-title">${lastResolution.action === 'approved' ? 'Decision approved' : 'Decision sent back'}</div><div class="empty-desc">${escapeHtml(lastResolution.summary)} ${lastResolution.action === 'approved' ? 'is now unblocked and ' + lastResolution.agent_name + ' can keep moving.' : 'was returned to ' + lastResolution.agent_name + ' with your note so the next revision addresses the right constraint.'}</div><div class="resolution-actions"><a href="${decisionsUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(decisionsUrl)}, event)' class="resolution-link">${icons.link(14)} View all decisions in OrgX</a><a href="${agentStatusUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(agentStatusUrl)}, event)' class="resolution-link resolution-link--secondary">${icons.agent(14)} Open agent status</a></div>`
-          : (function emptyQueueCopy() {
-              /* The card renders the tool payload; the panel above renders the
-                 live feed. Both read the same queue, but the payload is a
-                 snapshot from when the tool ran — a decision raised seconds
-                 later shows up live while this card still says the queue is
-                 clear. "All caught up" over a list of pending approvals is
-                 true of the payload and wrong on the screen, so defer to what
-                 the reader can already see. */
-              var liveRows = window.OrgXLiveStore && window.OrgXLiveStore.liveRowCount
-                ? window.OrgXLiveStore.liveRowCount()
-                : 0;
-              if (liveRows) {
-                return `<div class="empty-title">Newer than this snapshot</div><div class="empty-desc">The live queue above has ${liveRows} item${liveRows === 1 ? '' : 's'} that arrived after this result was produced.</div><div class="resolution-actions"><a href="${decisionsUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(decisionsUrl)}, event)' class="resolution-link">${icons.link(14)} View all decisions in OrgX</a></div>`;
-              }
-              return `<div class="empty-title">All caught up</div><div class="empty-desc">No decisions require your attention right now. New approvals will appear here as soon as work needs operator input.</div><div class="resolution-actions"><a href="${decisionsUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(decisionsUrl)}, event)' class="resolution-link">${icons.link(14)} View all decisions in OrgX</a></div>`;
-            })();
-        injectHtml(`<div class="empty-state animate-in"><div class="empty-icon">${icons.check(24)}</div>${resolvedHtml}</div>`);
-        if (queueSubtitle) {
-          var liveWaiting = window.OrgXLiveStore && window.OrgXLiveStore.liveRowCount
+      const all = data && Array.isArray(data.decisions) ? data.decisions : [];
+      const pending = pendingDecisions();
+
+      if (!all.length) {
+        var calmCopy = (function emptyQueueCopy() {
+          /* The card renders the tool payload; the panel above renders the
+             live feed. Both read the same queue, but the payload is a
+             snapshot from when the tool ran — a decision raised seconds
+             later shows up live while this card still says the queue is
+             clear. "All caught up" over a list of pending approvals is
+             true of the payload and wrong on the screen, so defer to what
+             the reader can already see. */
+          var liveRows = window.OrgXLiveStore && window.OrgXLiveStore.liveRowCount
             ? window.OrgXLiveStore.liveRowCount()
             : 0;
-          queueSubtitle.textContent = lastResolution
-            ? 'The queue is clear. You can monitor follow-through in Agent Status.'
-            : liveWaiting
-            ? 'Showing the live queue above; this result predates it.'
-            : 'No operator approvals are waiting right now.';
-        }
+          if (liveRows) {
+            return { edge: 'amber', title: 'Newer than this snapshot', copy: `The live queue above has ${liveRows} item${liveRows === 1 ? '' : 's'} that arrived after this result was produced.`, line: 'Decisions arrived after this result', tone: 'needs-you' };
+          }
+          return { edge: 'teal', title: 'All caught up', copy: lastResolution
+            ? `${lastResolution.summary} was ${lastResolution.action === 'approved' ? 'approved' : 'sent back'} by you. New decisions appear here when work needs you.`
+            : 'New decisions appear here when work needs you.', line: '', tone: '' };
+        })();
+        injectHtml(`<div class="decision-shell animate-in"><div class="decision-card"><article class="ox-card" data-edge="${calmCopy.edge}">
+          ${attentionHtml(0, '', calmCopy.line, calmCopy.tone)}
+          <div class="dq-calm">
+            <div class="dq-calm-title">${escapeHtml(calmCopy.title)}</div>
+            <div class="dq-calm-copy">${escapeHtml(calmCopy.copy)}</div>
+            <div class="dq-calm-links">
+              <a class="dq-all" ${linkAttrs(decisionsUrl)}>View all decisions in OrgX ${icons.ext(12)}</a>
+              <a class="dq-all" ${linkAttrs(agentStatusUrl)}>Open agent status ${icons.ext(12)}</a>
+            </div>
+          </div>
+        </article></div></div>`);
         return;
       }
 
-      if (queueSubtitle) {
-        var pendingCount = data.decisions.length;
-        queueSubtitle.textContent = pendingCount + ' review packet' + (pendingCount === 1 ? '' : 's') + ' need operator judgment. Approve to continue, or request a change with guidance.';
-      }
-
-      const totalPages = Math.ceil(data.decisions.length / itemsPerPage);
+      const totalPages = Math.ceil(all.length / itemsPerPage);
+      currentPage = Math.min(Math.max(1, currentPage), totalPages);
       const startIdx = (currentPage - 1) * itemsPerPage;
-      const paginated = data.decisions.slice(startIdx, startIdx + itemsPerPage);
+      const paginated = all.slice(startIdx, startIdx + itemsPerPage);
+      const current = paginated[0];
 
-      const activeDirection = pageDirection;
+      // Animate only when the card changes; reopening the composer re-renders in place.
+      const activeDirection = lastRenderedId === current.id ? 'still' : pageDirection;
+      lastRenderedId = current.id;
       pageDirection = 'forward';
 
-      let html = paginated.map((d, i) => {
-        const isRejecting = rejectComposerId === d.id;
-        const rejectValue = rejectDrafts[d.id] || '';
-        const rejectEnabled = rejectValue.trim().length > 0;
-        const rejectActionLabel = isRejecting ? 'Hide note' : 'Reject';
-        const approveTitle = isOgDecisionEmbed ? 'Approve' : 'Approve decision';
-        const approveDetail = isOgDecisionEmbed ? 'Continue path.' : 'Continue this path.';
-        const rejectTitle = isOgDecisionEmbed
-          ? (rejectActionLabel === 'Hide note' ? 'Hide note' : 'Request revision')
-          : (rejectActionLabel === 'Hide note' ? 'Hide feedback panel' : 'Request revision');
-        const rejectDetail = isOgDecisionEmbed
-          ? (isRejecting ? 'Back to actions.' : 'Send guidance.')
-          : (isRejecting ? 'Return to actions.' : 'Send revision guidance.');
-        const decisionUrl = buildDecisionSurfaceUrl(d);
-        const canDecideHere = isOgDecisionEmbed || Boolean(getApprovalToken(d.id));
-        const owner = getDecisionOwner(d);
-        return `
-        <div class="decision-card urgency-${escapeHtml(d.urgency)} animate-in" style="animation-delay: ${0.1 * i}s">
-          <div class="ox-card">
-            <div class="ox-card-inner">
-              <div class="decision-header">
-                <div class="decision-header-copy">
-                  <div class="agent-tag">
-                    <div class="agent-avatar ${owner.isSystem ? 'agent-avatar--system' : ''}">${renderAvatar(owner.label, 24, owner.isSystem)}</div>
-                    <span>${escapeHtml(owner.label)}</span>
-                  </div>
-                  <h3 class="ox-title" style="margin-bottom:0;">
-                    <a href="${escapeHtml(decisionUrl)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(decisionUrl || ''))}, event)' class="decision-title-link">
-                      ${escapeHtml(d.summary)}
-                    </a>
-                  </h3>
-                </div>
-                <div class="decision-header-meta">
-                  <div class="ox-eyebrow" style="color: var(--ox-card-color); display:flex; align-items:center; gap:6px;">
-                    <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;"></span>
-                    ${escapeHtml(d.urgency)}
-                  </div>
-                  <a href="${escapeHtml(decisionUrl)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(decisionUrl || ''))}, event)' class="decision-open-link">
-                    ${icons.link(14)}
-                    <span>Open in OrgX</span>
-                  </a>
-                </div>
-              </div>
+      const cardsHtml = paginated.map((d) => `
+        <div class="decision-card urgency-${escapeHtml(d.urgency)}">
+          <article class="ox-card" data-card-for="${escapeHtml(d.id)}" data-edge="${edgeFor(d)}" aria-label="Decision: ${escapeHtml(d.summary)}">
+            ${attentionHtml(pending.length, oldestAge(pending), '')}
+            ${decisionBodyHtml(d)}
+          </article>
+        </div>`).join('');
 
-              ${isOgDecisionEmbed ? '' : `
-                <div class="decision-brief">${escapeHtml(d.recommendation || (d.urgency === 'critical' ? 'A fast operator call keeps critical-path work moving.' : 'Review the recommended path and its downstream consequence.'))}</div>
-                ${(d.context || d.recommendation || d.impact || (d.tradeoffs && d.tradeoffs.length)) ? `
-                <details class="decision-evidence">
-                  <summary>Evidence and consequence</summary>
-                  <div class="decision-evidence__body">
-                    ${d.context ? `<div class="decision-evidence__item"><div class="ox-eyebrow">Why it matters</div><div class="decision-evidence__copy">${escapeHtml(d.context)}</div></div>` : ''}
-                    ${d.recommendation ? `<div class="decision-evidence__item"><div class="ox-eyebrow" style="color:var(--ox-teal)">Recommended path</div><div class="decision-evidence__copy">${escapeHtml(d.recommendation)}</div></div>` : ''}
-                    ${d.impact ? `<div class="decision-evidence__item"><div class="ox-eyebrow" style="color:var(--ox-warning)">If ignored</div><div class="decision-evidence__copy">${escapeHtml(d.impact)}</div></div>` : ''}
-                    ${d.tradeoffs && d.tradeoffs.length ? `<div class="decision-tradeoffs">${d.tradeoffs.map(t => `<div class="decision-tradeoff"><strong>${escapeHtml(t.option)}</strong>${escapeHtml(t.detail)}</div>`).join('')}</div>` : ''}
-                  </div>
-                </details>` : ''}
-              `}
-
-              ${isOgDecisionEmbed ? '' : `<div class="params-well">
-                ${d.packet_id ? `<div class="param-chip" title="${escapeHtml(d.packet_id)}">Packet <strong>${escapeHtml(d.packet_id.slice(-18))}</strong></div>` : ''}
-                <div class="param-chip">Type <strong>${escapeHtml(d.type)}</strong></div>
-                <div class="param-chip">Age <strong>${timeAgo(d.created_at)}</strong></div>
-                ${d.provider && d.model ? `<div class="param-chip">Model <strong>${escapeHtml(d.provider + '/' + d.model)}</strong></div>` : ''}
-                ${d.duplicate_count ? `<div class="param-chip">Collapsed <strong>${escapeHtml(String(d.duplicate_count))} duplicate${d.duplicate_count === 1 ? '' : 's'}</strong></div>` : ''}
-                ${d.expected_cost_usd !== undefined ? `<div class="param-chip">Cost <strong>${formatUsd(d.expected_cost_usd)}</strong></div>` : ''}
-                ${d.required_trust_level ? `<div class="param-chip">Rule <strong>${escapeHtml(d.required_trust_level)}</strong></div>` : ''}
-              </div>`}
-
-              ${canDecideHere ? '' : `
-              <div class="actions-grid actions-grid--handoff">
-                <a
-                  href="${escapeHtml(decisionUrl)}"
-                  target="_blank"
-                  rel="noreferrer"
-                  onclick='return openWidgetLink(${JSON.stringify(String(decisionUrl || ''))}, event)'
-                  class="ox-btn ox-action-btn ox-action-btn--primary ox-btn-primary is-card-tone decision-action-btn"
-                  style="--ox-button-accent-rgb: var(--ox-card-color-rgb);"
-                >
-                  <span class="decision-action-copy">
-                    <span class="decision-action-icon">${icons.link(18)}</span>
-                    <span class="decision-action-text">
-                      <span class="decision-action-title">Decide in OrgX</span>
-                      <span class="decision-action-detail">${escapeHtml(decideInOrgxDetail(d))}</span>
-                    </span>
-                  </span>
-                </a>
-              </div>`}
-              ${canDecideHere ? `<div class="actions-grid">
-                <button
-                  type="button"
-                  class="ox-btn ox-action-btn ox-action-btn--primary ox-btn-primary is-card-tone decision-action-btn"
-                  style="--ox-button-accent-rgb: var(--ox-card-color-rgb); --ox-primary-contrast: ${d.urgency === 'high' || d.urgency === 'critical' ? '#fff' : '#02040a'};"
-                  data-loading-label="Approving…"
-                  onclick="approveDecision('${escapeHtml(d.id)}', this)"
-                >
-                  <span class="decision-action-copy">
-                    <span class="decision-action-icon">${icons.check(18)}</span>
-                    <span class="decision-action-text">
-                      <span class="decision-action-title">${approveTitle}</span>
-                      <span class="decision-action-detail">${approveDetail}</span>
-                    </span>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  class="ox-btn ox-action-btn ox-action-btn--ghost ox-btn-ghost decision-action-btn"
-                  data-reject-id="${escapeHtml(d.id)}"
-                  data-action="toggle-reject"
-                  onclick="toggleRejectComposer('${escapeHtml(d.id)}', this)"
-                  aria-expanded="${isRejecting ? 'true' : 'false'}"
-                  aria-controls="reject-composer-${escapeHtml(d.id)}"
-                >
-                  <span class="decision-action-copy">
-                    <span class="decision-action-icon">${isRejecting ? icons.check(18) : icons.error(18)}</span>
-                    <span class="decision-action-text">
-                      <span class="decision-action-title">${rejectTitle}</span>
-                      <span class="decision-action-detail">${rejectDetail}</span>
-                    </span>
-                  </span>
-                </button>
-              </div>
-
-              ${isRejecting ? `
-                <div class="reject-composer" id="reject-composer-${escapeHtml(d.id)}">
-                  <div class="reject-heading">
-                    <h4>Send a rejection note</h4>
-                    <span class="reject-meta">Visible to ${escapeHtml(owner.label)}</span>
-                  </div>
-                  <textarea
-                    class="reject-textarea"
-                    placeholder="Tell the agent what changed, what constraint was missed, or what decision path you want instead."
-                    oninput="syncRejectDraft('${escapeHtml(d.id)}', this)"
-                  >${escapeHtml(rejectValue)}</textarea>
-                  <div class="reject-toolbar">
-                    <div class="reject-toolbar-copy"><strong>Required.</strong> A clear reason prevents back-and-forth and keeps the next attempt on-rail.</div>
-                    <button
-                      type="button"
-                      class="ox-action-btn ox-action-btn--danger reject-submit"
-                      data-loading-label="Sending note…"
-                      onclick="submitReject('${escapeHtml(d.id)}', this)"
-                      ${rejectEnabled ? '' : 'disabled'}
-                    >
-                      Reject decision
-                    </button>
-                  </div>
-                </div>
-              ` : ''}` : ''}
-            </div>
-          </div>
-        </div>
-      `;
-      }).join('');
-
-      if (lastResolution) {
-        const remainingCount = data.decisions.length;
-        const actionVerb = lastResolution.action === 'approved' ? 'approved' : 'sent back';
-        const followThrough =
-          lastResolution.action === 'approved'
-            ? `${escapeHtml(lastResolution.agent_name)} can keep moving on the next step without waiting on another manual handoff.`
-            : `${escapeHtml(lastResolution.agent_name)} now has your note and can revise against a concrete instruction instead of guessing.`;
-        html = `
-          <div class="resolution-banner animate-in">
-            <div class="resolution-banner-copy">
-              <div class="resolution-banner-title">${escapeHtml(lastResolution.summary)} ${actionVerb}.</div>
-              <div class="resolution-banner-detail">${followThrough}</div>
-            </div>
-            <div class="resolution-banner-meta">${remainingCount} decision${remainingCount === 1 ? '' : 's'} remaining</div>
-            <div class="resolution-banner-actions">
-              <a href="${decisionsUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(decisionsUrl)}, event)' class="resolution-link">${icons.link(14)} View all decisions in OrgX</a>
-            </div>
-          </div>
-        ` + html;
-      }
-
-      if (totalPages > 1) {
-        const start = startIdx + 1;
-        const end = Math.min(startIdx + paginated.length, data.decisions.length);
-        const progress = Math.max(14, Math.round((currentPage / totalPages) * 100));
-        html += `
-          <div class="pagination">
-            <div class="page-info">
-              <div class="page-kicker">
-                <span class="page-label">Decision queue</span>
-                <span class="page-count">${currentPage}<span>/</span>${totalPages}</span>
-              </div>
-              <div class="page-summary">
-                <span class="page-range">Showing ${start}-${end}</span>
-                <span class="page-total">${data.decisions.length} decisions total</span>
-              </div>
-              <div class="page-progress" aria-hidden="true">
-                <span class="page-progress-bar" style="width:${progress}%"></span>
-              </div>
-            </div>
-            <div class="page-controls">
-              <button type="button" class="page-btn page-btn--prev ox-action-btn ox-action-btn--ghost" onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}><span class="ox-action-btn__label">Previous</span></button>
-              <button type="button" class="page-btn page-btn--next ox-action-btn ox-action-btn--ghost" onclick="changePage(1)" ${currentPage === totalPages ? 'disabled' : ''}><span class="ox-action-btn__label">Next</span></button>
-            </div>
-          </div>
-        `;
-      }
-
-      injectHtml(`<div class="decision-shell animate-in" data-page-direction="${activeDirection}">${html}</div>`);
+      injectHtml(`<div class="decision-shell" data-page-direction="${activeDirection}">${cardsHtml}${queueHtml(current)}${historyHtml(current)}${historyHtml(current) ? '' : lastDecidedHtml(current)}</div>`);
     };
 
     document.addEventListener('keydown', (event) => {
@@ -2199,7 +1473,7 @@
 
     if(isDemo) applyBootPayload();
     else initWidget({
-      live: { anchor: '.widget-shell-card', widget: 'decisions', emptyLabel: 'No decisions pending' },
+      live: { anchor: '#content', widget: 'decisions', emptyLabel: 'No decisions pending' },
       render: d => { applyBootPayload(function(){ if(d) data = d; }); }
     });
   </script>
