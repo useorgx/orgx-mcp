@@ -317,6 +317,16 @@
       }
     },
     {
+      "name": "orgx_panel_snapshot",
+      "title": "OrgX panel",
+      "description": "App-only: the OrgX panel in the ChatGPT sidebar and beside a conversation. Returns what needs your decision (at most three, most urgent first), the review packet for one of them, and the last output a person accepted. USE WHEN: the OrgX panel opens or refreshes. NEXT: the panel shows Approve and Send back when the decision can be settled there, otherwise it links to the decision in OrgX. DO NOT USE: from a model; models read decisions with orgx_search. Read-only.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
       "name": "get_agent_status",
       "title": "Get Agent Status",
       "description": "Use when the user asks what agents are working on right now, whether delegated work is still running, or why nothing has landed yet. Successful calls record metered MCP allowance usage but do not change business records. NEXT: If agents are stuck, use orgx_search or orgx_inspect to read related blocker context.",
@@ -636,6 +646,19 @@
       "uri": "ui://widget/plan-session-live.skybridge.html",
       "name": "Plan Session Live Widget (Skybridge)",
       "description": "ChatGPT Apps SDK widget for live tracked planning sessions and co-authored agent reasoning",
+      "mimeType": "text/html+skybridge"
+    }
+,
+    {
+      "uri": "ui://widget/orgx-panel.html",
+      "name": "OrgX Panel",
+      "description": "Panel for the ChatGPT sidebar and beside a conversation: decisions that need you, one review packet, and the last accepted output",
+      "mimeType": "text/html;profile=mcp-app"
+    },
+    {
+      "uri": "ui://widget/orgx-panel.skybridge.html",
+      "name": "OrgX Panel (Skybridge)",
+      "description": "ChatGPT Apps SDK panel for the sidebar and beside a conversation: decisions that need you, one review packet, and the last accepted output",
       "mimeType": "text/html+skybridge"
     }
   ],

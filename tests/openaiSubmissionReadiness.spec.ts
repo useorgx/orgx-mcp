@@ -87,6 +87,7 @@ const expectedChatGptHints = {
   orgx_bootstrap: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
   orgx_widget_decide: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
   orgx_command_status: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+  orgx_panel_snapshot: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
   orgx_search: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
   orgx_inspect: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
   orgx_recommend: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
@@ -152,7 +153,7 @@ describe('OpenAI ChatGPT app submission readiness', () => {
     }
   });
 
-  it('keeps the reviewed 25-tool risk matrix explicit and fail-closed', () => {
+  it('keeps the reviewed 26-tool risk matrix explicit and fail-closed', () => {
     expect(Object.keys(expectedChatGptHints).sort()).toEqual(
       [...CHATGPT_PUBLIC_SURFACE].sort()
     );
@@ -171,7 +172,7 @@ describe('OpenAI ChatGPT app submission readiness', () => {
 
   it('documents the exact read-only and metered informational hint boundary', () => {
     expect(openaiRunbook).toContain(
-      'Six submitted tools are strictly read-only'
+      'Seven submitted tools are strictly read-only'
     );
     expect(openaiRunbook).toContain(
       'Four informational tools use\n' +
@@ -205,7 +206,7 @@ describe('OpenAI ChatGPT app submission readiness', () => {
     }
     expect(openaiRunbook).toContain('blocking current-release gate');
     expect(openaiRunbook).toContain(
-      'all 25 `chatgpt` profile tools publish exact,\n' +
+      'all 26 `chatgpt` profile tools publish exact,\n' +
         'tool-specific schemas'
     );
     expect(openaiRunbook).toMatch(/exact,\s+tool-specific `outputSchema`/i);

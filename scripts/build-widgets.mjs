@@ -54,6 +54,7 @@ const CANONICAL_PRIMARIES = {
   'work-ledger': '0,201,167',
   index: '17,24,39',
   'workspace-map': '191,255,0',
+  'orgx-panel': '251,191,36',
 };
 
 // Widgets that are demo-only (gallery / preview) and therefore exempt
@@ -87,6 +88,7 @@ const SHARED_ALLOWLIST = new Set([
   'shared/icons.js',
   'shared/mcp-apps-sdk.umd.js',
   'shared/widget-runtime.js',
+  'shared/openai-extensions.js',
   'shared/demo-data.js',
 ]);
 
@@ -111,6 +113,7 @@ const RUNTIME_INLINED_PATHS = new Set([
   'shared/icons.js',
   'shared/mcp-apps-sdk.umd.js',
   'shared/widget-runtime.js',
+  'shared/openai-extensions.js',
 ]);
 
 // ── Parse helpers ─────────────────────────────────────────────────

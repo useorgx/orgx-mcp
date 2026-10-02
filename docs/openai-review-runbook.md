@@ -51,7 +51,7 @@ Before opening review, confirm all of the following in the portal:
 - a fresh **Scan Tools** result matches the deployed tool names,
   descriptions, schemas, security schemes, annotations, `_meta`, UI resources,
   CSP, and verified domains;
-- every one of the 25 `chatgpt` profile tools has a non-null, exact
+- every one of the 26 `chatgpt` profile tools has a non-null, exact
   `outputSchema`, and every standard widget resource includes
   `_meta.ui.domain=https://mcp.useorgx.com` on that profile;
 - no other version of this MCP-backed plugin is already under review.
@@ -67,12 +67,19 @@ Current first-party references: [plugin submission](https://developers.openai.co
 [plugin guidelines](https://developers.openai.com/plugins/app-guidelines), and
 [ChatGPT/Codex testing](https://developers.openai.com/plugins/deploy/connect-chatgpt).
 
-Six submitted tools are strictly read-only: `orgx_inspect`,
+Seven submitted tools are strictly read-only: `orgx_inspect`,
 `review_artifact`, `get_morning_brief`, `get_operator_chronicle`,
-`check_execution_readiness`, and `orgx_command_status`. Four informational tools use
+`check_execution_readiness`, `orgx_command_status`, and `orgx_panel_snapshot`. Four informational tools use
 `readOnlyHint: false` because a successful mode records metered MCP allowance
 usage: mixed `orgx_search`, default `orgx_recommend`, `get_agent_status`, and
-`get_initiative_pulse`. All ten are non-destructive and closed-world.
+`get_initiative_pulse`. All eleven are non-destructive and closed-world.
+
+`orgx_panel_snapshot` is app-only (`ui.visibility: ["app"]`) and backs the
+OrgX panel's global (sidebar) and thread entrypoints. It reads the session
+workspace's pending decisions and accepted proof, and never takes a
+workspace argument. Approve and Send back in the panel call
+`orgx_widget_decide` with a single-use token from the result `_meta`, which
+the model never sees.
 
 The consolidated `orgx_decide` and `approve_agent_work` routers also use
 `readOnlyHint: false`, `openWorldHint: false`, and `destructiveHint: false`.
@@ -212,7 +219,7 @@ Allowed when needed for the user request:
 
 OrgX treats a missing or catch-all `outputSchema` on any submitted tool as a
 blocking current-release gate. Do not submit or resubmit until a fresh
-`tools/list` confirms that all 25 `chatgpt` profile tools publish exact,
+`tools/list` confirms that all 26 `chatgpt` profile tools publish exact,
 tool-specific schemas. A permissive catch-all `outputSchema` is not an
 acceptable substitute because it does not describe the object the tool actually
 returns.
@@ -236,7 +243,7 @@ In the OpenAI plugin portal release notes, summarize:
 - submitted test cases rewritten with exact expected tool names and deterministic seeded outputs,
 - enabled ChatGPT/Codex surface verification rerun against the dedicated
   review workspace,
-- all 25 submitted tools published exact `outputSchema` contracts and the
+- all 26 submitted tools published exact `outputSchema` contracts and the
   profile-aware widget domain/CSP contract passed a fresh portal scan,
 - output audit completed to remove unnecessary identifiers and secrets.
 
