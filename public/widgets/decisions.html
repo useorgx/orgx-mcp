@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-accent="amber">
+<html lang="en" data-accent="lime">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -59,12 +59,9 @@
     /* Canvas: Main (needs you), Q3 (one card, one send), Q8 (after you act), F2 (calm).
        Surface, text and status colors come from the kit tokens and the widget theme;
        this sheet only lays the card out. */
-    :root { --ox-primary-rgb: 251, 191, 36; }
-
-    /* The kit draws its primary (Approve, Retry) in the needs-you amber in every widget. */
-    ox-footer, ox-attention-line, ox-state-chip, ox-receipt-row, ox-glyph, ox-avatar {
-      --ox-primary: rgb(251, 191, 36);
-    }
+    /* Primaries (Approve, Confirm, Retry, Decide in OrgX) are the kit's action lime.
+       Amber is only "needs you": the attention line, the status line and the card edge. */
+    :root { --ox-primary-rgb: 191, 255, 0; }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -190,7 +187,7 @@
     .decide-in-orgx {
       display: flex; align-items: center; gap: 12px; width: 100%; min-height: 72px;
       padding: 14px 16px; border-radius: 14px; text-decoration: none;
-      background: rgb(251, 191, 36); color: #1a1204; border: 1px solid #e9a800;
+      background: var(--ox-action); color: var(--ox-action-fg); border: 1px solid var(--ox-action-border);
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
       transition: filter 160ms ease;
     }
@@ -199,6 +196,30 @@
     .decide-in-orgx .ic svg { width: 16px; height: 16px; }
     .decide-in-orgx .t { display: block; font-size: 15px; font-weight: 700; }
     .decide-in-orgx .d { display: block; font-size: 12.5px; line-height: 1.35; opacity: 0.74; margin-top: 2px; }
+
+    /* Options the server sent: one click records the choice; several are toggles plus Confirm. */
+    .dq-options { display: flex; flex-direction: column; gap: 8px; }
+    .dq-options-label { font-size: 12.5px; color: var(--ox-text-muted); }
+    .dq-opt {
+      display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px;
+      padding: 10px 14px; border-radius: 12px; text-align: left; cursor: pointer;
+      border: 1px solid var(--ox-border-strong); background: var(--ox-panel); color: var(--ox-text);
+      transition: background 160ms ease, border-color 160ms ease;
+    }
+    .dq-opt:hover:not(:disabled) { background: var(--ox-hover); border-color: var(--ox-primary); }
+    .dq-opt:disabled { cursor: default; opacity: 0.6; }
+    .dq-opt[aria-pressed="true"], .dq-opt[data-chosen] { border-color: var(--ox-primary); background: rgba(var(--ox-action-rgb), 0.1); opacity: 1; }
+    .dq-opt-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .dq-opt-label { font-size: 14px; font-weight: 650; line-height: 1.3; overflow-wrap: anywhere; }
+    .dq-opt-desc { font-size: 12.5px; line-height: 1.4; color: var(--ox-text-muted); overflow-wrap: anywhere; }
+    .dq-opt-tag { font: 600 11px/1.2 var(--ox-mono); color: var(--ox-text-muted); white-space: nowrap; }
+    .dq-opt-go { width: 14px; height: 14px; color: var(--ox-text-muted); flex: none; }
+    .dq-opt-box {
+      width: 18px; height: 18px; border-radius: 5px; flex: none; display: grid; place-items: center;
+      border: 1.5px solid var(--ox-border-strong); color: transparent;
+    }
+    .dq-opt[aria-pressed="true"] .dq-opt-box { background: var(--ox-action); border-color: var(--ox-action-border); color: var(--ox-action-fg); }
+    .dq-opt-box svg { width: 12px; height: 12px; }
 
     /* Send back: the note travels with the rejection. */
     .reject-composer { display: flex; flex-direction: column; gap: 8px; }
@@ -221,7 +242,7 @@
     .dq-text-btn::after { content: ""; position: absolute; inset: -4px -2px; }
     .dq-text-btn:hover { color: var(--ox-text); background: var(--ox-hover); }
     .dq-text-btn:disabled { opacity: 0.55; cursor: default; }
-    .dq-text-btn:focus-visible, .dq-row:focus-visible, .dq-head-link:focus-visible, .dq-all:focus-visible, .decide-in-orgx:focus-visible, .dq-q a:focus-visible, .decision-evidence > summary:focus-visible {
+    .dq-text-btn:focus-visible, .dq-opt:focus-visible, .dq-row:focus-visible, .dq-head-link:focus-visible, .dq-all:focus-visible, .decide-in-orgx:focus-visible, .dq-q a:focus-visible, .decision-evidence > summary:focus-visible {
       outline: 2px solid var(--ox-focus, var(--ox-warning)); outline-offset: 2px;
     }
 
@@ -348,7 +369,10 @@
     // Footer fixtures for the gallery: each one opens decision d2, which this demo can approve here.
     var FOOTER_FIXTURES = ['decide-here', 'composing', 'sending', 'confirming', 'approved', 'not-sent', 'unconfirmed'];
     var isFooterFixture = FOOTER_FIXTURES.includes(fixtureState);
-    var isDemo = ['urgent', 'populated', 'long', 'resolved'].includes(fixtureState) || isFooterFixture;
+    // Option fixtures: a decision whose options come from the server (one click each), and one that allows several.
+    var OPTION_FIXTURES = ['options', 'multiselect'];
+    var isOptionFixture = OPTION_FIXTURES.includes(fixtureState);
+    var isDemo = ['urgent', 'populated', 'long', 'resolved'].includes(fixtureState) || isFooterFixture || isOptionFixture;
     var demoNow = Date.now();
     var data = isDemo ? {
       summary: { critical: 1, high: 2 },
@@ -419,8 +443,41 @@
         }
       ]
     } : null;
+    if (isOptionFixture && data) {
+      data.decisions.push(fixtureState === 'options' ? {
+        id: 'd4',
+        urgency: 'high',
+        agent_name: 'Mark - Marketing',
+        type: 'Launch date',
+        sourceLabel: 'Founder launch',
+        summary: 'Which day does the founder launch go out?',
+        created_at: new Date(demoNow - 3 * 60 * 60 * 1000).toISOString(),
+        recommendation: 'Tuesday gives the press embargo a full day and avoids the Monday release train.',
+        if_approved: 'Mark schedules the launch pack, OG preview and founder post for the chosen day.',
+        options: [
+          { id: 'opt-tue', label: 'Tuesday, 9:00 PT', description: 'Embargo lifts Monday night; recommended' },
+          { id: 'opt-wed', label: 'Wednesday, 9:00 PT', description: 'One more day for the demo video' },
+          { id: 'opt-thu', label: 'Thursday, 9:00 PT', description: 'Lands after the partner webinar' },
+        ],
+      } : {
+        id: 'd5',
+        urgency: 'medium',
+        agent_name: 'Sage - Sales',
+        type: 'Channels',
+        sourceLabel: 'Founder launch',
+        summary: 'Which channels carry the launch post?',
+        created_at: new Date(demoNow - 50 * 60 * 1000).toISOString(),
+        recommendation: 'LinkedIn and the newsletter reach the design partners; X is optional.',
+        multiselect: true,
+        options: [
+          { id: 'ch-linkedin', label: 'LinkedIn', description: 'Founder and company pages' },
+          { id: 'ch-newsletter', label: 'Newsletter', description: '2,140 subscribers' },
+          { id: 'ch-x', label: 'X', description: 'Founder account' },
+        ],
+      });
+    }
     // Demo-only stand-ins for the widget approval tokens a real result carries in its _meta.
-    var demoApprovalTokens = isDemo ? { d2: 'demo-approval-token', d3: 'demo-approval-token' } : null;
+    var demoApprovalTokens = isDemo ? { d2: 'demo-approval-token', d3: 'demo-approval-token', d4: 'demo-approval-token', d5: 'demo-approval-token' } : null;
     if (fixtureState === 'long' && data) {
       data.decisions[0].summary = 'Approve the founder continuity launch story, linked artifact evidence, decision provenance language, responsive social preview, CTA hierarchy, and cross-agent continuation receipt before the scheduled release window';
       data.decisions[0].context += ' This long-content fixture verifies wrapping and disclosure behavior across compact hosts.';
@@ -463,6 +520,9 @@
 
     var rejectComposerId = null;
     var rejectDrafts = {};
+    // Multiselect toggles per decision, and the choice that went with each ruling (for Retry and the receipt).
+    var optionSelections = {};
+    var decisionChoices = {};
     var pendingDecisionId = null;
     var lastResolution = null;
     var currentPage = 1;
@@ -486,6 +546,9 @@
       if (restoredDecisionState.lastResolution && typeof restoredDecisionState.lastResolution === 'object') {
         lastResolution = restoredDecisionState.lastResolution;
       }
+      if (restoredDecisionState.optionSelections && typeof restoredDecisionState.optionSelections === 'object') {
+        optionSelections = restoredDecisionState.optionSelections;
+      }
     }
 
     if (isFooterFixture) {
@@ -506,6 +569,10 @@
         lastResolution = { action: 'approved', summary: 'Lock the launch search relevance threshold at 0.82?', agent_name: 'Eli - Engineering' };
       }
     }
+    if (isOptionFixture) {
+      currentPage = 4;
+      if (fixtureState === 'multiselect') optionSelections.d5 = ['ch-linkedin', 'ch-newsletter'];
+    }
     if (fixtureState === 'resolved') {
       lastResolution = { action: 'approved', summary: 'Release checklist v3', agent_name: 'Eli - Engineering' };
     }
@@ -519,6 +586,7 @@
         rejectComposerId,
         rejectDrafts,
         lastResolution,
+        optionSelections,
       });
     };
 
@@ -532,7 +600,7 @@
 
     var publishDecisionResolution = async (decision, resolution) => {
       if (!window.OrgXWidgetRuntime || !resolution) return;
-      const verb = resolution.action === 'approved' ? 'approved' : 'sent back';
+      const verb = resolution.action === 'approved' ? (resolution.choice ? 'approved with ' + resolution.choice : 'approved') : 'sent back';
       const owner = resolution.agent_name || 'the assigned agent';
       const summary = resolution.summary || 'Decision';
       const context = {
@@ -543,6 +611,7 @@
         summary,
         owner,
         note: resolution.note || null,
+        choice: resolution.choice || null,
         widget_session_id: window.OrgXWidgetRuntime.getWidgetSessionId(),
       };
       await Promise.allSettled([
@@ -689,6 +758,98 @@
       window.OrgXElements.avatarConfig.baseUrl = resolveWidgetAsset('avatars');
     }
 
+    /* ------------------------------------------------------------- choices -- */
+    // What the person can do here comes from the server, never from the decision's type:
+    // widget_actions when the payload lists them, else options (two or more), else Approve.
+    // Send back is always there for a decision with a token.
+    var normalizeOption = (item, index) => {
+      if (typeof item === 'string') return item.trim() ? { id: 'option-' + (index + 1), label: item.trim(), description: '', recommended: false } : null;
+      if (!item || typeof item !== 'object') return null;
+      const label = firstString(item.label, item.title, item.name, item.action);
+      if (!label) return null;
+      return {
+        id: firstString(item.id, item.option_id, item.action_id) || 'option-' + (index + 1),
+        label,
+        description: firstString(item.description, item.detail),
+        recommended: item.recommended === true || item.is_recommended === true,
+      };
+    };
+    var normalizeOptions = (value) => {
+      if (!Array.isArray(value)) return [];
+      const seen = new Set();
+      return value.map(normalizeOption).filter((o) => o && !seen.has(o.id) && seen.add(o.id)).slice(0, 12);
+    };
+    var actionKind = (item) => {
+      const verb = firstString(item.action, item.kind, item.type, item.verb).toLowerCase();
+      if (/reject|decline|send_back|sendback|request_changes/.test(verb)) return 'reject';
+      if (firstString(item.option_id, item.optionId) || ['option', 'choose', 'select'].includes(verb)) return 'option';
+      if (/approve|accept|confirm/.test(verb)) return 'approve';
+      return '';
+    };
+    var normalizeWidgetActions = (value) => {
+      const list = Array.isArray(value) ? value : value && Array.isArray(value.actions) ? value.actions : null;
+      if (!list) return null;
+      const out = [];
+      list.forEach((item) => {
+        if (!item || typeof item !== 'object') return;
+        const kind = actionKind(item);
+        if (!kind) return;
+        const optionId = kind === 'option' ? firstString(item.option_id, item.optionId, item.id) : '';
+        if (kind === 'option' && !optionId) return;
+        const label = firstString(item.label, item.title, item.name) || (kind === 'reject' ? 'Send back' : kind === 'approve' ? 'Approve' : '');
+        if (!label) return;
+        out.push({ kind, label, option_id: optionId, description: firstString(item.description, item.detail), recommended: item.recommended === true });
+      });
+      return out.length ? out : null;
+    };
+    var readCount = (...values) => {
+      for (const v of values) {
+        const n = Number(v);
+        if (v !== null && v !== undefined && v !== '' && Number.isInteger(n) && n >= 0) return n;
+      }
+      return null;
+    };
+    var isMultiselect = (decision, actionsRaw) => {
+      const mode = firstString(decision.selection, decision.selection_mode, decision.selectionMode, decision.shape,
+        actionsRaw && !Array.isArray(actionsRaw) ? actionsRaw.selection : '').toLowerCase();
+      return decision.multiselect === true || decision.multi_select === true || decision.allow_multiple === true ||
+        Boolean(actionsRaw && !Array.isArray(actionsRaw) && actionsRaw.multiselect === true) ||
+        ['multi', 'multiple', 'multiselect', 'option_multiselect'].includes(mode);
+    };
+    var resolveChoices = (decision, packet) => {
+      const actionsRaw = decision.widget_actions;
+      const actions = normalizeWidgetActions(actionsRaw);
+      const multiselect = isMultiselect(decision, actionsRaw);
+      const shape = decision.shape_context && typeof decision.shape_context === 'object' ? decision.shape_context : {};
+      let options;
+      let approve = { label: 'Approve', option_id: '' };
+      let reject = { label: 'Send back' };
+      if (actions) {
+        options = actions.filter((a) => a.kind === 'option').map((a) => ({ id: a.option_id, label: a.label, description: a.description, recommended: a.recommended }));
+        const approveAction = actions.find((a) => a.kind === 'approve');
+        const rejectAction = actions.find((a) => a.kind === 'reject');
+        // One option and nothing else: it is the approval.
+        if (options.length === 1 && !approveAction) approve = { label: options[0].label, option_id: options[0].id };
+        else if (approveAction) approve = { label: approveAction.label, option_id: '' };
+        else approve = null;
+        reject = rejectAction ? { label: rejectAction.label } : null;
+      } else {
+        options = normalizeOptions(Array.isArray(decision.options) && decision.options.length ? decision.options : packet && packet.options);
+      }
+      if (options.length >= 2) {
+        const max = readCount(decision.max_select, decision.maxSelect, shape.max_select, shape.maxSelect);
+        const min = readCount(decision.min_select, decision.minSelect, shape.min_select, shape.minSelect);
+        return { mode: 'options', options, multiselect, min: Math.max(1, min || 1), max: max || options.length, approve: null, reject };
+      }
+      return { mode: 'approve', options: [], multiselect: false, min: 0, max: 0, approve: approve || { label: 'Approve', option_id: '' }, reject };
+    };
+    var choicesFor = (d) => d.choices || resolveChoices(d, null);
+    var selectedFor = (id) => (Array.isArray(optionSelections[id]) ? optionSelections[id] : []);
+    var optionLabel = (d, optionId) => {
+      const o = choicesFor(d).options.find((opt) => opt.id === optionId);
+      return o ? o.label : '';
+    };
+
     var normalizeDecision = (decision, index) => {
       if (!decision || typeof decision !== 'object') return null;
       const packet =
@@ -772,6 +933,7 @@
         if_approved: ifApproved,
         if_rejected: ifRejected,
         evidence_items: normalizeEvidenceItems((packet && packet.evidence) || decision.evidence),
+        choices: resolveChoices(decision, packet),
         created_at:
           firstString(decision.created_at, decision.createdAt, decision.updated_at) ||
           new Date().toISOString(),
@@ -880,27 +1042,38 @@
     var clock = (date) => date ? String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0') : '';
 
     /* ---------------------------------------------------------------- footer -- */
-    // SM3 finishes-here: Approve is hold-to-confirm, the outcome lands in the same row.
+    // SM3 finishes-here: one click approves (or picks an option), the outcome lands in the same row.
     // There is no server-side hold for decisions yet, so the footer never offers Undo.
     var footerSpec = (d) => {
       const who = getDecisionOwner(d).name;
       const st = actionStates[d.id];
-      const base = { variant: 'finishes-here', heading: '', detail: '', primary: '', action: '', hold: false, disabled: false, slot: '' };
+      const c = choicesFor(d);
+      const base = { variant: 'finishes-here', heading: '', detail: '', primary: '', action: '', disabled: false, slot: '' };
       if (!st) {
         if (rejectComposerId === d.id) {
           const hasNote = Boolean((rejectDrafts[d.id] || '').trim());
           return { ...base, state: 'needs-you', heading: 'Send back', detail: hasNote ? 'your note goes to ' + who : 'write a note first', primary: 'Send back', disabled: !hasNote, slot: 'cancel' };
         }
-        return { ...base, state: 'needs-you', heading: 'Finishes here', detail: 'hold Approve to confirm · no undo', primary: 'Approve', hold: true, slot: 'reject' };
+        const slot = c.reject ? 'reject' : '';
+        if (c.mode === 'options' && c.multiselect) {
+          const n = selectedFor(d.id).length;
+          const range = c.min === c.max ? String(c.min) : c.max >= c.options.length ? (c.min > 1 ? 'at least ' + c.min : 'one or more') : c.min + '–' + c.max;
+          return { ...base, state: 'needs-you', heading: n ? n + ' chosen' : 'Choose ' + range, detail: 'recorded in OrgX', primary: n ? 'Confirm ' + n : 'Confirm', disabled: n < c.min || n > c.max, slot };
+        }
+        if (c.mode === 'options') {
+          return { ...base, state: 'needs-you', heading: 'Choose one', detail: 'recorded in OrgX', slot };
+        }
+        return { ...base, state: 'needs-you', heading: 'Finishes here', detail: 'recorded in OrgX', primary: c.approve.label, slot };
       }
       const approving = st.action === 'approve';
+      const choice = decisionChoices[d.id];
       switch (st.phase) {
         case 'sending':
           return { ...base, state: 'sending', heading: approving ? 'Approving' : 'Sending back', detail: 'recording it in OrgX', primary: approving ? 'Approving…' : 'Sending…' };
         case 'confirming':
           return { ...base, state: 'running', heading: 'Confirming in OrgX', detail: st.detail || 'checking it settled' };
         case 'done':
-          return { ...base, state: 'done', heading: approving ? 'Approved by you' : 'Sent back to ' + who, detail: st.detail || (approving ? who + ' continues' : who + ' reworks it against your note'), action: 'Receipt ↗' };
+          return { ...base, state: 'done', heading: approving ? (choice && choice.label ? 'You chose ' + choice.label : 'Approved by you') : 'Sent back to ' + who, detail: st.detail || (approving ? who + ' continues' : who + ' reworks it against your note'), action: 'Receipt ↗' };
         case 'waiting':
           return { ...base, variant: 'confirms-in-orgx', state: 'waiting', heading: 'Recorded in OrgX', detail: st.detail || 'not confirmed yet', action: 'Check now' };
         case 'unsettled':
@@ -913,7 +1086,8 @@
 
     var footerSlotHtml = (d, spec) => {
       if (spec.slot === 'reject') {
-        return `<button type="button" slot="action" class="dq-text-btn decision-action-btn" data-reject-id="${escapeHtml(d.id)}" data-action="toggle-reject" onclick="toggleRejectComposer('${escapeHtml(d.id)}', this)" aria-expanded="false" aria-controls="reject-composer-${escapeHtml(d.id)}">Reject</button>`;
+        const label = (choicesFor(d).reject || {}).label || 'Send back';
+        return `<button type="button" slot="action" class="dq-text-btn decision-action-btn" data-reject-id="${escapeHtml(d.id)}" data-action="toggle-reject" onclick="toggleRejectComposer('${escapeHtml(d.id)}', this)" aria-expanded="false" aria-controls="reject-composer-${escapeHtml(d.id)}">${escapeHtml(label)}</button>`;
       }
       if (spec.slot === 'cancel') {
         return `<button type="button" slot="action" class="dq-text-btn decision-action-btn" data-reject-id="${escapeHtml(d.id)}" data-action="toggle-reject" onclick="toggleRejectComposer('${escapeHtml(d.id)}', this)" aria-expanded="true" aria-controls="reject-composer-${escapeHtml(d.id)}">Cancel</button>`;
@@ -933,7 +1107,7 @@
     var footerHtml = (d) => {
       const spec = footerSpec(d);
       const attrs = footerAttrs(spec).map(([k, v]) => `${k}="${escapeHtml(v)}"`).join(' ');
-      return `<ox-footer class="dq-footer" data-decision-id="${escapeHtml(d.id)}" ${attrs}${spec.hold ? ' hold' : ''}${spec.disabled ? ' disabled' : ''}>${footerSlotHtml(d, spec)}</ox-footer>`;
+      return `<ox-footer class="dq-footer" data-decision-id="${escapeHtml(d.id)}" ${attrs}${spec.disabled ? ' disabled' : ''}>${footerSlotHtml(d, spec)}</ox-footer>`;
     };
 
     // Move the footer in place so the kit crossfades it and focus follows the new control.
@@ -944,8 +1118,8 @@
       const spec = footerSpec(d);
       const note = document.getElementById('reject-note-' + id);
       if (note) note.readOnly = Boolean(actionStates[id]);
+      syncOptions(id);
       footer.innerHTML = footerSlotHtml(d, spec);
-      footer.toggleAttribute('hold', spec.hold);
       footer.toggleAttribute('disabled', spec.disabled);
       footerAttrs(spec).forEach(([k, v]) => {
         if (footer.getAttribute(k) !== v) footer.setAttribute(k, v);
@@ -1073,10 +1247,12 @@
       settleFromStatus(id, action, status);
     };
 
-    var runDecision = async (id, action, reason) => {
+    // choice: { option_id, label } for one option, { option_ids, label } for several, or null for a plain Approve.
+    var runDecision = async (id, action, reason, choice) => {
       if (pendingDecisionId) return;
       const decision = getDecisionById(id);
       pendingDecisionId = id;
+      decisionChoices[id] = action === 'approve' ? choice || null : null;
       setPageButtonsDisabled(true);
       setPhase(id, { phase: 'sending', action });
 
@@ -1084,11 +1260,15 @@
         const approvalToken = getApprovalToken(id);
         if (!approvalToken) throw Object.assign(new Error('This decision has to be made in OrgX.'), { code: 'decide_in_orgx' });
         if (action === 'approve') {
-          await callTool('orgx_widget_decide', { decision_id: id, action: 'approve', approval_token: approvalToken });
+          const args = { decision_id: id, action: 'approve', approval_token: approvalToken };
+          if (choice && choice.option_id) args.option_id = choice.option_id;
+          if (choice && Array.isArray(choice.option_ids) && choice.option_ids.length) args.option_ids = choice.option_ids.slice();
+          await callTool('orgx_widget_decide', args);
           lastResolution = {
             action: 'approved',
             summary: decision && decision.summary ? decision.summary : 'This decision',
-            agent_name: decision && decision.agent_name ? decision.agent_name : 'the assigned agent'
+            agent_name: decision && decision.agent_name ? decision.agent_name : 'the assigned agent',
+            choice: choice && choice.label ? choice.label : null
           };
         } else {
           await callTool('orgx_widget_decide', { decision_id: id, action: 'reject', reason, approval_token: approvalToken });
@@ -1124,9 +1304,68 @@
       }
     };
 
-    window.approveDecision = async (id) => {
+    window.approveDecision = async (id, choice) => {
       if (pendingDecisionId) return;
-      await runDecision(id, 'approve');
+      const d = getDecisionById(id);
+      const c = d ? choicesFor(d) : null;
+      // A server-listed approve that carries an option records that option.
+      const fallback = c && c.mode === 'approve' && c.approve.option_id ? { option_id: c.approve.option_id, label: c.approve.label } : null;
+      await runDecision(id, 'approve', undefined, choice || fallback);
+    };
+
+    // One option, one click: the choice is the approval.
+    window.chooseOption = (id, optionId) => {
+      const d = getDecisionById(id);
+      if (!d || pendingDecisionId || actionStates[id]) return;
+      const c = choicesFor(d);
+      if (c.mode !== 'options') return;
+      if (c.multiselect) { window.toggleOption(id, optionId); return; }
+      void window.approveDecision(id, { option_id: optionId, label: optionLabel(d, optionId) });
+    };
+
+    // Option buttons are delegated: their ids come from the server and never reach an inline handler.
+    document.getElementById('content').addEventListener('click', (event) => {
+      const button = event.target && event.target.closest ? event.target.closest('.dq-opt[data-option-id]') : null;
+      if (!button || button.disabled) return;
+      window.chooseOption(button.getAttribute('data-decision-id'), button.getAttribute('data-option-id'));
+    });
+
+    window.toggleOption = (id, optionId) => {
+      const d = getDecisionById(id);
+      if (!d || pendingDecisionId || actionStates[id]) return;
+      const c = choicesFor(d);
+      const current = selectedFor(id);
+      const next = current.includes(optionId) ? current.filter((x) => x !== optionId) : current.concat(optionId);
+      if (next.length > c.max) return;
+      optionSelections[id] = c.options.map((o) => o.id).filter((oid) => next.includes(oid));
+      scheduleDecisionStatePersistence();
+      syncFooter(id);
+    };
+
+    window.confirmOptions = (id) => {
+      const d = getDecisionById(id);
+      if (!d || pendingDecisionId) return;
+      const c = choicesFor(d);
+      const ids = selectedFor(id);
+      if (ids.length < c.min || ids.length > c.max) return;
+      const labels = ids.map((oid) => optionLabel(d, oid)).filter(Boolean);
+      void window.approveDecision(id, { option_ids: ids, label: labels.join(', ') });
+    };
+
+    // Toggles, the chosen option and the disabled state follow the footer.
+    var syncOptions = (id) => {
+      const group = document.querySelector(`.dq-options[data-options-for="${CSS.escape(id)}"]`);
+      if (!group) return;
+      const locked = Boolean(actionStates[id]) || Boolean(pendingDecisionId);
+      const picked = selectedFor(id);
+      const chosen = decisionChoices[id];
+      group.querySelectorAll('.dq-opt').forEach((btn) => {
+        const oid = btn.getAttribute('data-option-id');
+        btn.disabled = locked;
+        if (btn.hasAttribute('aria-pressed')) btn.setAttribute('aria-pressed', picked.includes(oid) ? 'true' : 'false');
+        const isChosen = Boolean(chosen && (chosen.option_id === oid || (chosen.option_ids || []).includes(oid)) && actionStates[id]);
+        btn.toggleAttribute('data-chosen', isChosen);
+      });
     };
 
     window.submitReject = async (id) => {
@@ -1193,14 +1432,16 @@
       const st = actionStates[id];
       if (!d) return;
       if (!st) {
+        const c = choicesFor(d);
         if (rejectComposerId === id) void window.submitReject(id);
-        else void window.approveDecision(id);
+        else if (c.mode === 'options' && c.multiselect) window.confirmOptions(id);
+        else if (c.mode === 'approve') void window.approveDecision(id);
         return;
       }
       if (st.phase === 'failed') {
         delete actionStates[id];
         if (st.action === 'reject') void window.submitReject(id);
-        else void window.approveDecision(id);
+        else void window.approveDecision(id, decisionChoices[id] || undefined);
         return;
       }
       if (st.phase === 'unsettled') {
@@ -1306,6 +1547,25 @@
             oninput="syncRejectDraft('${escapeHtml(d.id)}', this)"${noteLocked ? ' readonly' : ''}
           >${escapeHtml(rejectValue)}</textarea>
         </div>` : '';
+      const choices = choicesFor(d);
+      const st = actionStates[d.id];
+      const chosen = decisionChoices[d.id];
+      const picked = selectedFor(d.id);
+      const optionsLocked = Boolean(st) || Boolean(pendingDecisionId);
+      const optionsHtml = canDecideHere && choices.mode === 'options' && !isRejecting ? `
+        <div class="dq-options" role="group" aria-labelledby="dq-opts-${escapeHtml(d.id)}" data-options-for="${escapeHtml(d.id)}">
+          <span class="dq-options-label" id="dq-opts-${escapeHtml(d.id)}">${choices.multiselect ? 'Choose the options to approve' : 'Choose one · recorded in OrgX'}</span>
+          ${choices.options.map((o) => {
+            const isChosen = Boolean(st && chosen && (chosen.option_id === o.id || (chosen.option_ids || []).includes(o.id)));
+            const pressed = choices.multiselect ? ` aria-pressed="${picked.includes(o.id) ? 'true' : 'false'}"` : '';
+            return `<button type="button" class="dq-opt" data-decision-id="${escapeHtml(d.id)}" data-option-id="${escapeHtml(o.id)}"${pressed}${isChosen ? ' data-chosen' : ''}${optionsLocked ? ' disabled' : ''}>
+              ${choices.multiselect ? `<span class="dq-opt-box" aria-hidden="true">${icons.check(12)}</span>` : ''}
+              <span class="dq-opt-text"><span class="dq-opt-label">${escapeHtml(o.label)}</span>${o.description ? `<span class="dq-opt-desc">${escapeHtml(o.description)}</span>` : ''}</span>
+              ${o.recommended ? '<span class="dq-opt-tag">Recommended</span>' : ''}
+              ${choices.multiselect ? '' : `<span class="dq-opt-go" aria-hidden="true">${icons.chevron(14)}</span>`}
+            </button>`;
+          }).join('')}
+        </div>` : '';
       const handoffHtml = canDecideHere ? '' : `
         <a ${linkAttrs(decisionUrl)} class="decide-in-orgx decision-action-btn">
           <span class="ic">${icons.ext(16)}</span>
@@ -1323,6 +1583,7 @@
           ${recLine}
           ${evidenceHtml || (isOgDecisionEmbed ? '' : `<a class="dq-all decision-open-link" ${linkAttrs(decisionUrl)}>Open in OrgX ${icons.ext(12)}</a>`)}
           ${consHtml}
+          ${optionsHtml}
           ${detailsHtml}
           ${composerHtml}
           ${handoffHtml}

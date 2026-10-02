@@ -424,3 +424,105 @@ describe('the panel updates model context only from the Share click', () => {
     expect(calls.updateModelContext).not.toHaveBeenCalled();
   });
 });
+
+describe('panel buttons come from the server', () => {
+  const decided = (calls: { callServerTool: ReturnType<typeof vi.fn> }) =>
+    calls.callServerTool.mock.calls
+      .map((call) => call[0] as { name: string; arguments: Record<string, unknown> })
+      .filter((call) => call.name === 'orgx_widget_decide');
+  const withFocus = (focus: Record<string, unknown>) => {
+    const base = snapshot();
+    return snapshot({ focus: { ...(base.focus as Record<string, unknown>), ...focus } });
+  };
+  const decideResult = async (params: { name: string; arguments: Record<string, unknown> }) => {
+    if (params.name === 'orgx_widget_decide') return { structuredContent: { decision_id: params.arguments.decision_id, action: 'approved' } };
+    if (params.name === 'orgx_command_status') {
+      return { structuredContent: { kind: 'decision', id: params.arguments.id, state: 'succeeded', next_poll_after_ms: null } };
+    }
+    return { structuredContent: snapshot() };
+  };
+
+  it('renders one button per option and sends the option_id with one click', async () => {
+    const { dom, app, calls, flush } = await mountPanel({}, {});
+    calls.callServerTool.mockImplementation(decideResult);
+    const options = [
+      { id: 'tonight', label: 'Tonight' },
+      { id: 'monday', label: 'Monday' },
+    ];
+    app().ontoolresult({ structuredContent: withFocus({ options, multiselect: false, widget_actions: null }), _meta: { 'orgx/widgetApproval': { approval_tokens: { [D1]: 'tok-1' } } } });
+    await flush();
+    const doc = dom.window.document;
+    const buttons = doc.querySelectorAll('.packet .opt[data-action="option"]');
+    expect(Array.from(buttons, (b) => b.textContent?.replace('›', '').trim())).toEqual(['Tonight', 'Monday']);
+    // Empty, not absent: absent would bring back the kit's default primary.
+    expect(doc.querySelector('.packet ox-footer')!.getAttribute('primary-label')).toBe('');
+    expect(doc.querySelector('.packet [data-action="sendback"]')).not.toBeNull();
+    (buttons[1] as HTMLButtonElement).click();
+    await flush();
+    expect(decided(calls)[0]).toEqual({
+      name: 'orgx_widget_decide',
+      arguments: { decision_id: D1, action: 'approve', approval_token: 'tok-1', option_id: 'monday' },
+    });
+  });
+
+  it('turns a multiselect decision into toggles plus Confirm N with option_ids', async () => {
+    const { dom, app, calls, flush } = await mountPanel({}, {});
+    calls.callServerTool.mockImplementation(decideResult);
+    const options = [
+      { id: 'eu', label: 'EU' },
+      { id: 'us', label: 'US' },
+      { id: 'apac', label: 'APAC' },
+    ];
+    app().ontoolresult({ structuredContent: withFocus({ options, multiselect: true, widget_actions: null }), _meta: { 'orgx/widgetApproval': { approval_tokens: { [D1]: 'tok-1' } } } });
+    await flush();
+    const doc = dom.window.document;
+    const footer = () => doc.querySelector('.packet ox-footer')!;
+    expect(footer().hasAttribute('disabled')).toBe(true);
+    (doc.querySelector('.opt[data-option="us"]') as HTMLButtonElement).click();
+    (doc.querySelector('.opt[data-option="eu"]') as HTMLButtonElement).click();
+    expect(doc.querySelector('.opt[data-option="eu"]')!.getAttribute('aria-pressed')).toBe('true');
+    expect(footer().getAttribute('primary-label')).toBe('Confirm 2');
+    expect(decided(calls)).toEqual([]);
+    footer().dispatchEvent(new dom.window.CustomEvent('ox-primary', { bubbles: true, composed: true, detail: {} }));
+    await flush();
+    expect(decided(calls)[0]!.arguments).toEqual({ decision_id: D1, action: 'approve', approval_token: 'tok-1', option_ids: ['eu', 'us'] });
+  });
+
+  it('prefers widget_actions, and shows Approve and Send back for any decision with a token', async () => {
+    const { dom, app, calls, flush } = await mountPanel({}, {});
+    calls.callServerTool.mockImplementation(decideResult);
+    app().ontoolresult({
+      structuredContent: withFocus({
+        urgency: 'critical',
+        options: [{ id: 'x', label: 'Ignored' }, { id: 'y', label: 'Ignored too' }],
+        multiselect: false,
+        widget_actions: [
+          { kind: 'approve', label: 'Accept the plan', option_id: null },
+          { kind: 'reject', label: 'Push back', option_id: null },
+        ],
+      }),
+      _meta: { 'orgx/widgetApproval': { approval_tokens: { [D1]: 'tok-1', [D2]: 'tok-2' } } },
+    });
+    await flush();
+    const doc = dom.window.document;
+    expect(doc.querySelectorAll('.packet .opt')).toHaveLength(0);
+    const footer = doc.querySelector('.packet ox-footer')!;
+    expect(footer.getAttribute('primary-label')).toBe('Accept the plan');
+    expect(doc.querySelector('.packet [data-action="sendback"]')!.textContent).toBe('Push back');
+    // The other row has a token and no options: Approve and Send back.
+    expect(doc.querySelector(`[data-action="approve"][data-id="${D2}"]`)).not.toBeNull();
+    expect(doc.querySelector(`[data-action="sendback"][data-id="${D2}"]`)).not.toBeNull();
+    footer.dispatchEvent(new dom.window.CustomEvent('ox-primary', { bubbles: true, composed: true, detail: {} }));
+    await flush();
+    expect(decided(calls)[0]!.arguments).toEqual({ decision_id: D1, action: 'approve', approval_token: 'tok-1' });
+  });
+
+  it('says Decide in OrgX only when there is no token', async () => {
+    const { dom, app, flush } = await mountPanel({}, {});
+    app().ontoolresult({ structuredContent: withFocus({ options: [], multiselect: false, widget_actions: null }), _meta: { 'orgx/widgetApproval': { approval_tokens: {} } } });
+    await flush();
+    const doc = dom.window.document;
+    expect(doc.querySelector('.packet .primary-btn')!.textContent).toContain('Decide in OrgX');
+    expect(doc.querySelector('.packet ox-footer')).toBeNull();
+  });
+});

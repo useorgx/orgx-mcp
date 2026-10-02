@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-widget-mode="escalation" data-accent="amber">
+<html lang="en" data-widget-mode="escalation" data-accent="lime">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -15,8 +15,9 @@
   <script src="shared/agent-identity.js"></script>
 
   <style>
-    /* Escalation mode: amber. Canvas R2 (review final), K1/K4 (receipts) and Q5 supply the shape. */
-    :root { --ox-primary: #fbbf24; --ox-primary-rgb: 251, 191, 36; }
+    /* Escalation mode. Canvas R2 (review final), K1/K4 (receipts) and Q5 supply the shape.
+       Primaries are the kit's action lime; amber stays on the needs-you edge, glyph and chip. */
+    :root { --ox-primary-rgb: 191, 255, 0; }
 
     [hidden] { display: none !important; }
     * { box-sizing: border-box; }
@@ -29,9 +30,6 @@
       -webkit-font-smoothing: antialiased;
     }
     .widget-shell-card { max-width: 680px; margin: 0 auto; position: relative; }
-
-    /* The footer's primary is the one amber action. */
-    ox-footer { --ox-primary: #fbbf24; }
 
     .wcard {
       position: relative;
@@ -216,7 +214,7 @@
       border-radius: 10px; border: 1px solid var(--ox-border-strong); background: var(--ox-panel);
       color: var(--ox-text); font-family: inherit; font-size: 14px; line-height: 1.5;
     }
-    .composer textarea:focus { outline: 2px solid rgba(251, 191, 36, .55); outline-offset: 1px; }
+    .composer textarea:focus { outline: 2px solid var(--ox-focus); outline-offset: 1px; }
     .review-feedback { min-height: 0; font-size: 12.5px; line-height: 1.45; color: var(--ox-text-muted); }
     .review-feedback:empty { display: none; }
     .review-feedback[data-tone="error"] { color: var(--ox-danger); }
@@ -233,14 +231,11 @@
     .ft-btn::after { content: ""; position: absolute; inset: -4px -2px; }
     .ft-btn--text:hover:not(:disabled) { background: var(--ox-hover); color: var(--ox-text); }
     .ft-btn--primary {
-      background: #fbbf24; color: #1a1204; border-color: var(--ox-primary-border, #e9a800);
+      background: var(--ox-action); color: var(--ox-action-fg); border-color: var(--ox-action-border);
       box-shadow: inset 0 1px rgba(255, 255, 255, .27);
-      touch-action: manipulation; user-select: none; -webkit-user-select: none;
     }
     .ft-btn:disabled { cursor: default; opacity: .55; }
     .ft-btn[aria-busy="true"] { opacity: .85; }
-    .ft-btn__fill { position: absolute; inset: 0; background: var(--ox-primary-hold, #b45309); opacity: .35; transform-origin: left; transform: scaleX(0); transition: transform .16s; pointer-events: none; }
-    .ft-btn.is-holding .ft-btn__fill { transform: none; transition: transform 820ms linear; }
     .ft-btn__label { position: relative; }
     .ft-btn svg { width: 12px; height: 12px; position: relative; }
 
@@ -271,7 +266,6 @@
     }
     @media (prefers-reduced-motion: reduce) {
       .stage.is-resolving { animation: none; }
-      .ft-btn.is-holding .ft-btn__fill { transition-timing-function: steps(4); }
       .artifact-preview__body, .quality-anatomy__chevron { transition: none; }
     }
   </style>
@@ -1465,10 +1459,9 @@
         const approvalDisabled = Boolean(evidence.blocksApproval);
         return (
           '<button class="ft-btn" data-action="approve" type="button"' +
-          (approvalDisabled ? ' disabled aria-describedby="verification-block"' : ' aria-describedby="approve-hint"') + '>' +
-          '<span class="ft-btn__fill" aria-hidden="true"></span><span class="ft-btn__label">Approve</span>' +
+          (approvalDisabled ? ' disabled aria-describedby="verification-block"' : '') + '>' +
+          '<span class="ft-btn__label">Approve</span>' +
           '</button>' +
-          '<span id="approve-hint" hidden>Press and hold to approve</span>' +
           '<button class="ft-btn" data-action="request-changes" type="button" aria-expanded="false" aria-controls="artifact-change-composer">' +
           '<span class="ft-btn__label">Request changes</span>' +
           '</button>' +
@@ -1501,7 +1494,7 @@
       }
 
       /* ── Footer modes (SM3) ──────────────────────────────────────────
-         decide   approve (hold) + request changes, or request changes first
+         decide   approve (one click) + request changes, or request changes first
                   when approval is held by policy
          compose  file decision + cancel
          sending  the control that was pressed stays, busy and locked
@@ -1546,7 +1539,7 @@
         const frames = {
           decide: held
             ? { variant: 'confirms-in-orgx', state: 'draft', heading: 'Approval held', detail: 'evidence is below the bar' }
-            : { variant: 'finishes-here', state: 'needs-you', heading: 'Finishes here', detail: 'hold Approve to sign off' },
+            : { variant: 'finishes-here', state: 'needs-you', heading: 'Finishes here', detail: 'recorded in OrgX' },
           compose: { variant: 'finishes-here', state: 'needs-you', heading: 'Request changes', detail: 'the author is notified' },
           sending: footerAction === 'changes'
             ? { variant: 'finishes-here', state: 'sending', heading: 'Filing change request', detail: 'linking guidance to the artifact' }
@@ -1563,42 +1556,14 @@
       }
 
       // ─── interactions ────────────────────────────────────────────
-      function bindHoldToApprove(card, onCommit) {
-        let timer = null;
-        let committed = false;
-
-        function start(e) {
-          if (committed || card.disabled) return;
-          e.preventDefault();
-          card.classList.add('is-holding');
-          timer = setTimeout(function () {
-            committed = true;
-            card.classList.remove('is-holding');
-            onCommit();
-          }, 820);
-        }
-        function cancel() {
-          if (timer) {
-            clearTimeout(timer);
-            timer = null;
-          }
-          card.classList.remove('is-holding');
-        }
-
-        card.addEventListener('pointerdown', start);
-        card.addEventListener('pointerup', cancel);
-        card.addEventListener('pointerleave', cancel);
-        card.addEventListener('pointercancel', cancel);
-        card.addEventListener('keydown', function (e) {
-          if ((e.key === 'Enter' || e.key === ' ') && !committed) {
-            e.preventDefault();
-            if (!e.repeat) start(e);
-          }
+      // Approval is one click. approveArtifact disables the button before its
+      // first await, so a double click records one approval; a failure hands
+      // the button back.
+      function bindApprove(button, onCommit) {
+        button.addEventListener('click', function () {
+          if (button.disabled || button.getAttribute('aria-busy') === 'true') return;
+          onCommit();
         });
-        card.addEventListener('keyup', cancel);
-        card.addEventListener('contextmenu', function (e) { e.preventDefault(); });
-        // A failed approval hands the button back for another hold.
-        card.addEventListener('ox-rearm', function () { committed = false; });
       }
 
       // Play the decisive exit on the live stage, then re-render the
@@ -1695,7 +1660,6 @@
             button.disabled = false;
             button.removeAttribute('aria-busy');
             setButtonLabel(button, 'Approve');
-            button.dispatchEvent(new CustomEvent('ox-rearm'));
           }
           setFooterMode('failed', 'approve', evidence);
           if (feedback) {
@@ -1909,7 +1873,7 @@
 
         // Wire decisions
         const approveCard = stage.querySelector('[data-action="approve"]');
-        if (approveCard) bindHoldToApprove(approveCard, function () { approveArtifact(artifact); });
+        if (approveCard) bindApprove(approveCard, function () { approveArtifact(artifact); });
 
         const changesCard = stage.querySelector('[data-action="request-changes"]');
         const composer = stage.querySelector('[data-composer]');

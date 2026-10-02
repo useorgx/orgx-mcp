@@ -45,8 +45,9 @@ const CANONICAL_PRIMARIES = {
   'scaffolded-initiative': '99,102,241',
   'scaffold-streaming': '99,102,241',
   'task-spawned': '99,102,241',
-  decisions: '251,191,36',
-  'artifact-review': '251,191,36',
+  // Attention widgets: amber is only "needs you"; accent and primaries are lime.
+  decisions: '191,255,0',
+  'artifact-review': '191,255,0',
   'morning-brief': '0,201,167',
   'search-results': '0,201,167',
   'plan-session-live': '99,102,241',
@@ -54,7 +55,7 @@ const CANONICAL_PRIMARIES = {
   'work-ledger': '0,201,167',
   index: '17,24,39',
   'workspace-map': '191,255,0',
-  'orgx-panel': '251,191,36',
+  'orgx-panel': '191,255,0',
 };
 
 // Widgets that are demo-only (gallery / preview) and therefore exempt

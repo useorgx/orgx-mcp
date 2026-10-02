@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 
 import { CONTRACT_TOOL_DEFINITIONS } from '../src/contractTools';
-import { CHATGPT_TOOL_DEFINITIONS } from '../src/toolDefinitions';
+import { CHATGPT_TOOL_DEFINITIONS, expandConsolidatedTool } from '../src/toolDefinitions';
 
 /**
  * Decision-tools contract.
@@ -208,5 +209,17 @@ describe('decision tools contract', () => {
     expect(meta['openai/readOnlyHint']).toBeUndefined();
     expect(meta['openai/widgetAccessible']).toBe(true);
     expect(Object.keys(widgetDecide.inputSchema)).toContain('approval_token');
+  });
+
+  it('lets the widget send the chosen option or options with an approval', () => {
+    const widgetDecide = findTool('orgx_widget_decide');
+    const schema = z.object(widgetDecide.inputSchema as z.ZodRawShape);
+    const base = { decision_id: 'd-1', action: 'approve', approval_token: 'tok' };
+    expect(schema.parse({ ...base, option_id: 'opt-b' })).toEqual({ ...base, option_id: 'opt-b' });
+    expect(schema.parse({ ...base, option_ids: ['eu', 'us'] })).toEqual({ ...base, option_ids: ['eu', 'us'] });
+    expect(schema.safeParse({ ...base, option_ids: [] }).success).toBe(false);
+    expect(schema.parse(base)).toEqual(base);
+    const args = { ...base, option_id: 'opt-b', option_ids: ['eu'] };
+    expect(expandConsolidatedTool('orgx_widget_decide', args)).toEqual({ resolvedToolId: 'widget_decide', resolvedArgs: args });
   });
 });

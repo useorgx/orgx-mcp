@@ -18,9 +18,10 @@ const interactionKit = readFileSync(
 
 const accents: Record<string, string> = {
   "agent-status.html": "lime",
-  "artifact-review.html": "amber",
+  // Attention widgets keep amber for "needs you" only; their primaries are lime.
+  "artifact-review.html": "lime",
   "entity-card.html": "teal",
-  "decisions.html": "amber",
+  "decisions.html": "lime",
   "index.html": "neutral",
   "initiative-pulse.html": "teal",
   "morning-brief.html": "teal",
@@ -31,7 +32,7 @@ const accents: Record<string, string> = {
   "task-spawned.html": "iris",
   "work-ledger.html": "teal",
   "workspace-map.html": "lime",
-  "orgx-panel.html": "amber",
+  "orgx-panel.html": "lime",
 };
 
 describe("shared widget theme system", () => {
@@ -71,8 +72,10 @@ describe("shared widget theme system", () => {
     expect(themeCss).toContain("--ox-primary-rgb: 0, 201, 167");
     expect(themeCss).toContain("--ox-primary: #4f46e5");
     expect(themeCss).toContain("--ox-primary-rgb: 99, 102, 241");
-    expect(themeCss).toContain("--ox-primary: #a16207");
-    expect(themeCss).toContain("--ox-primary-rgb: 251, 191, 36");
+    // Amber is the needs-you warning tone, never a primary accent.
+    expect(themeCss).not.toContain('[data-accent="amber"]');
+    expect(themeCss).not.toContain("--ox-primary-rgb: 251, 191, 36");
+    expect(themeCss).toContain("--ox-warning: #fbbf24");
   });
 
   it("syncs URL, ChatGPT, MCP Apps, and system theme changes", () => {

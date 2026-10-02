@@ -37,8 +37,7 @@
     [hidden] { display: none !important; }
     .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-    /* The footer's primary is the one amber action, whatever the widget accent. */
-    ox-footer { --ox-primary: #fbbf24; }
+    /* The footer's primary is the kit's action lime, whatever the widget accent. */
 
     .wcard {
       position: relative;
@@ -151,7 +150,7 @@
       border-radius: 10px; border: 1px solid var(--ox-border-strong); background: var(--ox-panel);
       color: var(--ox-text); font-family: inherit; font-size: 14px; line-height: 1.5;
     }
-    .plan-textarea:focus { outline: 2px solid rgba(251, 191, 36, .55); outline-offset: 1px; }
+    .plan-textarea:focus { outline: 2px solid var(--ox-focus); outline-offset: 1px; }
     .plan-feedback { min-height: 18px; font-size: 12.5px; color: var(--ox-text-muted); }
     .plan-feedback[data-tone="error"] { color: var(--ox-danger); }
 

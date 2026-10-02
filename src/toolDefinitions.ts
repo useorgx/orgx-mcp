@@ -734,11 +734,18 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'orgx_widget_decide',
     title: 'Decide from the decisions widget',
     description:
-      'Widget-only: settles one ordinary decision after the person clicks Approve or Send back in the decisions widget. USE WHEN: the decisions widget sends a click with its approval token from result metadata, which models never see. NEXT: the widget shows the decision as settled. DO NOT USE: from a model or without a widget approval token; use approve_decision or reject_decision to point the person to where they decide.',
+      'Widget-only: settles one decision after the person clicks Approve, an option, or Send back in the decisions widget or the OrgX panel. USE WHEN: the widget sends a click with its approval token from result metadata, which models never see. NEXT: the widget shows the decision as settled. DO NOT USE: from a model or without a widget approval token; use approve_decision or reject_decision to point the person to where they decide.',
     inputSchema: {
       decision_id: z.string().min(1).describe('Decision being settled'),
       action: z.enum(['approve', 'reject']).describe('approve or reject'),
       reason: z.string().max(2000).optional().describe('Required when rejecting'),
+      option_id: z.string().min(1).max(200).optional().describe('The option the person chose, when the decision has options'),
+      option_ids: z
+        .array(z.string().min(1).max(200))
+        .min(1)
+        .max(50)
+        .optional()
+        .describe('The options the person chose, when the decision allows several'),
       approval_token: z.string().min(1).max(2048).describe('Widget approval token'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
@@ -2833,6 +2840,8 @@ export function expandConsolidatedTool(
     case 'orgx_command_status':
       return { resolvedToolId: 'command_status', resolvedArgs: { ...args } };
     case 'orgx_widget_decide':
+      // Every argument passes through, option_id / option_ids included: the
+      // app records the chosen option(s) with the approval.
       return { resolvedToolId: 'widget_decide', resolvedArgs: { ...args } };
     case 'scoring_config': {
       const action = args.action as string;
