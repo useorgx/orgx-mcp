@@ -68,7 +68,7 @@ describe('OrgX widget interaction kit', () => {
     document.body.innerHTML = '';
   });
 
-  it('keeps the decision queue shell aligned with card actions and pagination states', () => {
+  it('keeps the decision queue shell aligned with card actions and the queue rows', () => {
     const widgetPath = path.join(
       process.cwd(),
       'public/widgets/decisions.html'
@@ -80,10 +80,12 @@ describe('OrgX widget interaction kit', () => {
     expect(html).toContain('class="decision-card urgency-');
     expect(html).toContain('decision-action-btn');
     expect(html).toContain('class="reject-composer"');
-    expect(html).toContain('class="pagination"');
-    expect(html).toContain('class="page-progress" aria-hidden="true"');
-    expect(html).toContain('class="page-btn page-btn--prev');
-    expect(html).toContain('class="page-btn page-btn--next');
+    // The Main canvas board replaced prev/next paging with one quiet row per
+    // other waiting decision, opened in place.
+    expect(html).toContain('class="dq-queue" aria-label="Other decisions waiting on you"');
+    expect(html).toContain('class="dq-row page-btn"');
+    expect(html).toContain("onclick=\"selectDecision('");
+    expect(html).toContain('<ox-footer class="dq-footer"');
     expect(html).toContain('params-well');
     expect(html).toContain('normalizeDecision');
     expect(html).toContain('approveDecision');
