@@ -308,8 +308,8 @@
     },
     "task-spawned": {
       "file": "public/widgets/task-spawned.html",
-      "bytes": 39320,
-      "hash": "49866c018d52",
+      "bytes": 51698,
+      "hash": "deb02ba0025e",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/agent-identity.js",
