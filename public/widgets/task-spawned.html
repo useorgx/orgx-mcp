@@ -608,7 +608,8 @@
           view = { chip: null, edge: 'mute',
             footer: { variant: 'reads', state: 'caught-up', heading: 'Preflight only · no dispatch', detail: model.action === 'guard' ? 'the guard allows this dispatch' : 'nothing was started' } };
         }
-        view.key = 'preflight';
+        // A denied guard is a blocked dispatch, not a passing preflight.
+        view.key = view.chip === 'blocked' ? 'blocked' : 'preflight';
         view.kind = model.action === 'estimate' ? 'Route estimate' : model.action === 'guard' ? 'Dispatch guard' : 'Agent route';
         view.note = model.action === 'estimate'
           ? 'Routing and cost context only. No agent work was dispatched.'

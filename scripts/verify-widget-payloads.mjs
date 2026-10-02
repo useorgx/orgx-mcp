@@ -18,11 +18,12 @@ try {
         const page = await browser.newPage({ viewport: { width, height: 900 }, reducedMotion: 'reduce' });
         await setup(page, { _action: action, allowed: action === 'guard' ? false : undefined, initiative_name: 'Launch', estimate: { recommended_model: 'standard', estimated_cost_usd: 0.02 } }, theme);
         await page.goto(`${origin}/widgets/task-spawned.html?resource=true&theme=${theme}`);
-        await page.locator('.dispatch-spine').waitFor();
-        const text = await page.locator('#content').innerText();
+        // The kit-built card: its receipt rows replace the old dispatch spine.
+        await page.locator('.wcard[data-state] .rows ox-receipt-row').first().waitFor();
+        const text = await renderedText(page.locator('#content'));
         assert.match(text, /No agent work was dispatched/);
         assert.doesNotMatch(text, /Queued|Routing pending|Sync time unavailable|Awaiting receipt ID|Open execution/i);
-        assert.equal(await page.locator('.widget-shell-card').getAttribute('data-state'), action === 'guard' ? 'blocked' : 'preflight');
+        assert.equal(await page.locator('.wcard').getAttribute('data-state'), action === 'guard' ? 'blocked' : 'preflight');
         if (action === 'guard') assert.match(text, /Dispatch blocked/i);
         await page.screenshot({ path: `${output}/${action}-${theme}-${width}.png`, fullPage: true });
         await page.close(); checks++;
@@ -88,6 +89,38 @@ try {
   }
   console.log(`${checks} payload, pagination, and disclosure cases passed`);
 } finally { await browser.close(); }
+
+// What a reader sees: light DOM text plus the visible text inside the kit
+// elements' shadow roots (chip labels, footer headings, receipt rows).
+// innerText skips hidden text, such as the chip's reserved-width labels.
+async function renderedText(locator) {
+  return locator.evaluate(root => {
+    const parts = [root.innerText];
+    const visit = (element) => {
+      if (element.tagName === 'STYLE' || element.tagName === 'SCRIPT') return;
+      // display: contents has no box of its own; read its children instead.
+      if (getComputedStyle(element).display === 'contents') {
+        for (const node of element.childNodes) {
+          if (node.nodeType === Node.TEXT_NODE) parts.push(node.textContent);
+          else if (node instanceof HTMLElement) visit(node);
+        }
+        return;
+      }
+      // innerText of an unrendered element falls back to its raw text, so skip those.
+      if (!element.checkVisibility({ visibilityProperty: true })) return;
+      parts.push(element.innerText);
+      readShadows(element);
+    };
+    const readShadows = (scope) => {
+      for (const host of scope.querySelectorAll('*')) {
+        if (!host.shadowRoot) continue;
+        for (const child of host.shadowRoot.children) if (child instanceof HTMLElement) visit(child);
+      }
+    };
+    readShadows(root);
+    return parts.join('\n');
+  });
+}
 
 async function setup(page, payload, theme) {
   await page.route(`${origin}/**`, async route => {

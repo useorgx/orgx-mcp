@@ -222,7 +222,7 @@
     /* Footer controls live in the kit footer's slots; they match its buttons. */
     .ft-btn {
       position: relative; overflow: hidden;
-      min-height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid transparent;
+      min-height: 44px; margin: -4px 0; padding: 0 12px; border-radius: 9px; border: 1px solid transparent;
       display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
       background: none; color: var(--ox-text-2);
       font-family: inherit; font-size: 12.5px; font-weight: 650; line-height: 1; cursor: pointer;
@@ -260,6 +260,8 @@
       .quality-anatomy__stage:nth-child(even) { border-inline-start: 0; padding-inline-start: 0; }
       .quality-anatomy__stage:nth-child(n + 2) { border-top: 1px solid var(--ox-border); }
       .hd-link span { display: none; }
+      /* Icon only: a 44px square hit area whose margins keep the 24px footprint. */
+      .hd-link { min-width: 44px; justify-content: center; margin-inline: -10px; }
     }
     @media (max-width: 420px) {
       .ft-btn { padding: 0 8px; gap: 4px; font-size: 12px; }

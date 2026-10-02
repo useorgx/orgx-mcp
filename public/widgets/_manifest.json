@@ -89,8 +89,8 @@
     },
     "artifact-review": {
       "file": "public/widgets/artifact-review.html",
-      "bytes": 104139,
-      "hash": "158032a2afd1",
+      "bytes": 104323,
+      "hash": "98a822ec8cb4",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -201,8 +201,8 @@
     },
     "initiative-pulse": {
       "file": "public/widgets/initiative-pulse.html",
-      "bytes": 85237,
-      "hash": "f21c525aeb63",
+      "bytes": 85781,
+      "hash": "ac4c53c49450",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -237,7 +237,7 @@
     "morning-brief": {
       "file": "public/widgets/morning-brief.html",
       "bytes": 57907,
-      "hash": "ac32d8371497",
+      "hash": "0000713577ea",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -300,8 +300,8 @@
     },
     "plan-session-live": {
       "file": "public/widgets/plan-session-live.html",
-      "bytes": 47701,
-      "hash": "709fe3ad4c45",
+      "bytes": 47717,
+      "hash": "4b8fcf9be32c",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -373,8 +373,8 @@
     },
     "scaffolded-initiative": {
       "file": "public/widgets/scaffolded-initiative.html",
-      "bytes": 64686,
-      "hash": "59c53636cfc9",
+      "bytes": 64709,
+      "hash": "c5991e8748cc",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -405,8 +405,8 @@
     },
     "search-results": {
       "file": "public/widgets/search-results.html",
-      "bytes": 56607,
-      "hash": "253574b5da7c",
+      "bytes": 56629,
+      "hash": "32bc75a38999",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/kit/ox-elements-core.js",
@@ -433,8 +433,8 @@
     },
     "task-spawned": {
       "file": "public/widgets/task-spawned.html",
-      "bytes": 51658,
-      "hash": "514598bc77e5",
+      "bytes": 51770,
+      "hash": "20d1c0d9753a",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/agent-identity.js",
