@@ -250,12 +250,15 @@
     },
     "task-spawned": {
       "file": "public/widgets/task-spawned.html",
-      "bytes": 46028,
-      "hash": "14287bc29bd0",
+      "bytes": 39320,
+      "hash": "49866c018d52",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
+        "shared/agent-identity.js",
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
+        "shared/kit/ox-elements.js",
+        "shared/kit/ox-tokens.css",
         "shared/live-machine.js",
         "shared/live-panel.js",
         "shared/live-store.js",
