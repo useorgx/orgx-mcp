@@ -128,6 +128,7 @@ import {
   buildAgentWorkReceiptImportRequest,
   shouldFallBackToLegacyReceipts,
 } from './agentWorkReceiptV1';
+import { buildReceiptProof } from './receiptProof';
 import {
   buildCompleteWorkCommandRequest,
   buildContextTailRequest,
@@ -6531,6 +6532,8 @@ export class OrgXMcp extends McpAgent<
                 ...(typeof args.verification_status === 'string'
                   ? { verification_status: args.verification_status }
                   : {}),
+                // What was claimed, for the proof-receipt widget (Q5).
+                proof: buildReceiptProof(args),
                 loop_validation: loopValidation,
                 ...(v1Request.warnings.length > 0
                   ? { contract_warnings: v1Request.warnings }
@@ -6589,6 +6592,14 @@ export class OrgXMcp extends McpAgent<
             _v2_tool: 'orgx_submit_receipt',
             path: 'legacy',
             ...(fallbackReason ? { fallback_reason: fallbackReason } : {}),
+            ...(typeof result.summary !== 'string' && typeof args.summary === 'string'
+              ? { summary: args.summary }
+              : {}),
+            ...(typeof result.verification_status !== 'string' &&
+            typeof args.verification_status === 'string'
+              ? { verification_status: args.verification_status }
+              : {}),
+            proof: buildReceiptProof(args),
             loop_validation: loopValidation,
           };
           return {

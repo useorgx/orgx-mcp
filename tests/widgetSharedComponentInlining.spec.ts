@@ -231,7 +231,8 @@ describe('MCP Apps shared-component inlining', () => {
         // under shared/ is fetched.
         const order = [
           'shared/kit/ox-tokens.css',
-          'shared/kit/ox-elements.js',
+          'shared/kit/ox-elements-core.js',
+          'shared/kit/ox-elements-footer.js',
           'shared/mcp-apps-sdk.umd.js',
           'shared/widget-runtime.js',
           'shared/openai-extensions.js',

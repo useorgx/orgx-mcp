@@ -185,6 +185,33 @@ Skybridge (ChatGPT). Resources: `ui://widget/decisions.html`,
 `ui://widget/scaffolded-initiative.html`, `ui://widget/task-spawned.html`,
 `ui://widget/morning-brief.html`, plus their skybridge variants.
 
+### Widget payload size
+
+MCP Apps hosts (Claude, Cursor) get each widget as one self-contained
+document: the server inlines every shared module the widget references
+(`MCP_APPS_SHARED_COMPONENT_PATHS` in `src/widgetConfig.ts`). So every byte a
+widget loads is paid on every render.
+
+- **Design kit.** `pnpm kit:sync` vendors `@useorgx/orgx-ui-kit` into
+  `public/widgets/shared/kit/`: `ox-elements.js` (all six elements) and the
+  split bundles `ox-elements-core.js` (runtime, `ox-state-chip`,
+  `ox-attention-line`, `ox-receipt-row`) plus `ox-elements-footer.js`,
+  `ox-elements-glyph.js`, `ox-elements-avatar.js`, which need core loaded
+  first. A widget loads only what it renders. `pnpm widget:build` fails when
+  a rendered `<ox-*>` element has no bundle, an add-on comes before core, or an
+  add-on is unused, and warns when a smaller choice exists (the manifest
+  records each widget's `kitElements` and `kitBundles`).
+- **Budget.** `scripts/widget-payload-budgets.json` caps each widget's inlined
+  MCP Apps document (UTF-8 bytes, measured with the real sanitizer by
+  `scripts/widget-payload-sizes.ts`). `tests/widgetPayloadBudget.spec.ts`
+  fails when a widget is over its budget or has none, and names the inlined
+  modules. `pnpm widget:payload` prints the table (inlined, budget, HTML, kit,
+  SDK); `pnpm widget:payload --update` resets every budget to today's size +
+  8 KiB. Raise a budget only on purpose, in the change that grows the widget.
+- About 309 KB of every MCP Apps widget is the MCP Apps SDK
+  (`shared/mcp-apps-sdk.umd.js`); ChatGPT's skybridge resource is not inlined
+  and loads it as a cached script.
+
 ## License
 
 TBD — the orgx-mcp repo is currently unlicensed pending an organization-wide

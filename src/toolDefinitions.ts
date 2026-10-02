@@ -92,6 +92,10 @@ export const WIDGET_URIS = {
     'ui://widget/orgx-panel.html',
     WIDGET_BUILD_VERSION
   ), // orgx_panel_snapshot: the ChatGPT sidebar (global) and thread panel
+  proofReceipt: withWidgetResourceVersion(
+    'ui://widget/proof-receipt.html',
+    WIDGET_BUILD_VERSION
+  ), // orgx_submit_receipt: the proof, the gap, the next move
 } as const;
 
 export const OUTPUT_TEMPLATE_URIS = {
@@ -109,6 +113,7 @@ export const OUTPUT_TEMPLATE_URIS = {
   workLedger: toSkybridgeResourceUri(WIDGET_URIS.workLedger),
   workspaceMap: toSkybridgeResourceUri(WIDGET_URIS.workspaceMap),
   orgxPanel: toSkybridgeResourceUri(WIDGET_URIS.orgxPanel),
+  proofReceipt: toSkybridgeResourceUri(WIDGET_URIS.proofReceipt),
 } as const;
 
 export const WIDGET_RESOURCES = [
@@ -171,6 +176,11 @@ export const WIDGET_RESOURCES = [
     name: 'plan-session-live-widget',
     uri: WIDGET_URIS.planSessionLive,
     title: 'Plan Session Live Widget',
+  },
+  {
+    name: 'proof-receipt-widget',
+    uri: WIDGET_URIS.proofReceipt,
+    title: 'Receipt Widget',
   },
   {
     name: 'orgx-panel-widget',

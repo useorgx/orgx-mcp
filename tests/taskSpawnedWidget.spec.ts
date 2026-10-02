@@ -61,3 +61,60 @@ describe('task spawned widget run status', () => {
     expect(callTool).not.toHaveBeenCalled();
   });
 });
+
+describe('task spawned widget model mark (canvas M1)', () => {
+  it('marks the agent with the provider and says the model, tier and who chose it', async () => {
+    const { mountWidget, readSharedScript } = await import('./fixtures/live');
+    mountWidget('task-spawned', {
+      payload: {
+        _action: 'spawn',
+        title: 'Ship the rate limiter',
+        agent_name: 'Eli',
+        run_id: 'run-local-1',
+        status: 'queued',
+        model_tier: 'standard',
+        requested_model_tier: 'precision',
+        resolved_model: 'claude-sonnet-5',
+        provider: 'auto',
+        route_reason: 'precision would pass the cap',
+        budget_mode: 'balanced',
+        max_cost_usd: 2,
+      },
+    });
+    // The served widget inlines agent-identity.js; the card commits after its
+    // minimum loading dwell, so installing it here is in time.
+    window.eval(readSharedScript('agent-identity.js'));
+    await vi.waitFor(() => expect(document.querySelector('.model')).not.toBeNull());
+
+    // auto is not a provider; the model name is.
+    const mark = document.querySelector('.av-mark .pmark')!;
+    expect(mark.getAttribute('data-provider')).toBe('anthropic');
+    expect(mark.getAttribute('aria-label')).toBe('Model: claude-sonnet-5 · Anthropic');
+    expect(document.querySelector('.model')!.textContent).toContain('claude-sonnet-5');
+    expect(document.querySelector('.model')!.textContent).toContain('Standard tier · You picked the tier');
+
+    const details = document.querySelector('.model-kv') as HTMLElement;
+    expect(details.hidden).toBe(true);
+    (document.querySelector('[data-model-toggle]') as HTMLElement).click();
+    const open = document.querySelector('.model-kv') as HTMLElement;
+    expect(open.hidden).toBe(false);
+    expect(document.querySelector('[data-model-toggle]')!.getAttribute('aria-expanded')).toBe('true');
+    const pairs = Array.from(open.querySelectorAll('dt')).map((dt) => [dt.textContent, dt.nextElementSibling?.textContent]);
+    expect(pairs).toEqual([
+      ['Model', 'claude-sonnet-5 · Anthropic'],
+      ['Chosen by', 'You picked the tier · precision would pass the cap'],
+      ['Tier', 'Standard · you asked for Precision'],
+      ['Budget', 'balanced · cap $2.00'],
+    ]);
+  });
+
+  it('shows no model line when the dispatch reported none', async () => {
+    const { mountWidget } = await import('./fixtures/live');
+    mountWidget('task-spawned', {
+      payload: { _action: 'spawn', title: 'Ship the rate limiter', agent_name: 'Eli', run_id: 'run-local-1', status: 'queued' },
+    });
+    await vi.waitFor(() => expect(document.querySelector('ox-footer')).not.toBeNull());
+    expect(document.querySelector('.model')).toBeNull();
+    expect(document.querySelector('.pmark')).toBeNull();
+  });
+});

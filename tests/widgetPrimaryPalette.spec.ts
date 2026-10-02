@@ -49,6 +49,7 @@ const CANONICAL_PRIMARIES: Record<string, string> = {
   index: '17,24,39',
   'workspace-map': '191,255,0',
   'orgx-panel': '191,255,0',
+  'proof-receipt': '0,201,167',
 };
 
 function normalizeRgb(raw: string): string {
