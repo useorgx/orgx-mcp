@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-02T13:26:08.841Z",
-  "sourceHash": "9bd186394fd2072e",
+  "generatedAt": "2026-10-02T13:56:20.957Z",
+  "sourceHash": "fc7fcbc8ebd2dc9f",
   "version": "1.0.0",
   "totalTools": 92,
   "categories": [
@@ -4915,7 +4915,12 @@
       "source": "chatgpt",
       "profiles": [
         "v2",
-        "chatgpt"
+        "chatgpt",
+        "claude-plugin",
+        "commander",
+        "planner",
+        "executor",
+        "observer"
       ]
     },
     {

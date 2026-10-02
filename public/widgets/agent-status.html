@@ -4,10 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Agent Status - OrgX</title>
+  <link rel="stylesheet" href="shared/kit/ox-tokens.css" />
   <link rel="stylesheet" href="shared/tokens.css" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
   <link rel="stylesheet" href="shared/components/domain-accent.css" />
+  <script src="shared/kit/ox-elements.js"></script>
+  <script src="shared/agent-identity.js"></script>
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/widget-state.js"></script>
@@ -18,1635 +21,147 @@
   <script src="shared/live-store.js"></script>
   <script src="shared/live-panel.js"></script>
   <style>
-    
-    :root, :root[data-theme="light"] {
-      --ox-bg: #f8fafc;
-      --ox-panel: #ffffff;
-      --ox-border: rgba(0, 0, 0, 0.08);
-      --ox-border-strong: rgba(0, 0, 0, 0.15);
-      --ox-text: #0f172a;
-      --ox-text-muted: #64748b;
-      --ox-text-dim: #94a3b8;
-      --ox-well-bg: #f1f5f9;
-      --ox-well-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
-      --ox-primary: #bfff00;
-      --ox-primary-rgb: 191, 255, 0;
-      --ox-primary-rgb: 191, 255, 0;
-      --ox-grid: rgba(0, 0, 0, 0.03);
-    }
-    
-    @media (prefers-color-scheme: dark) {
-      :root:not([data-theme="light"]) {
-        --ox-bg: #02040a;
-        --ox-panel: rgba(10, 15, 22, 0.95);
-        --ox-border: rgba(255, 255, 255, 0.08);
-        --ox-border-strong: rgba(255, 255, 255, 0.15);
-        --ox-text: #f8fafc;
-        --ox-text-muted: rgba(255, 255, 255, 0.5);
-        --ox-text-dim: rgba(255, 255, 255, 0.32);
-        --ox-well-bg: rgba(0,0,0,0.3);
-        --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
-        --ox-primary: #bfff00;
-      --ox-primary-rgb: 191, 255, 0;
-      --ox-primary-rgb: 191, 255, 0;
-        --ox-grid: rgba(255, 255, 255, 0.02);
-      }
-    }
-    
-    :root[data-theme="dark"] {
-        --ox-bg: #02040a;
-        --ox-panel: rgba(10, 15, 22, 0.95);
-        --ox-border: rgba(255, 255, 255, 0.08);
-        --ox-border-strong: rgba(255, 255, 255, 0.15);
-        --ox-text: #f8fafc;
-        --ox-text-muted: rgba(255, 255, 255, 0.5);
-        --ox-text-dim: rgba(255, 255, 255, 0.32);
-        --ox-well-bg: rgba(0,0,0,0.3);
-        --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
-        --ox-primary: #bfff00;
-      --ox-primary-rgb: 191, 255, 0;
-      --ox-primary-rgb: 191, 255, 0;
-        --ox-grid: rgba(255, 255, 255, 0.02);
-    }
-    
-    :root {
-      --ox-lime: #d4ed31;
-      --ox-warning: #fbbf24;
-      --ox-danger: #f43f5e;
-      --ox-font: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
-      --ox-mono: "JetBrains Mono", "SF Mono", ui-monospace, SFMono-Regular, monospace;
+    /* Canvas: F2 (calm) and Z1 (who is on it). One card: the attention line, one row
+       per agent with its avatar in the form its state calls for, the selected agent's
+       focus, and the SM3 footer. Surfaces and status colors come from the kit tokens. */
+    :root { --ox-primary-rgb: 191, 255, 0; }
+
+    /* The kit's primaries stay the needs-you amber inside this lime widget. */
+    ox-footer, ox-attention-line, ox-state-chip, ox-receipt-row, ox-glyph, ox-avatar {
+      --ox-primary: rgb(251, 191, 36);
     }
 
-
-    :root {
-      --agent-surface-max: 720px;
-      --agent-running: #10a37f;
-      --agent-blocked: var(--ox-danger);
-      --agent-review: var(--ox-warning);
-      --agent-idle: var(--ox-text-dim);
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: var(--ox-font);
       background: var(--ox-bg);
       color: var(--ox-text);
       padding: 16px;
-      min-height: 100vh;
       -webkit-font-smoothing: antialiased;
       overflow-x: hidden;
     }
-    body::before {
-        content: "";
-        position: fixed;
-        inset: 0;
-        background: radial-gradient(circle at 50% -18%, rgba(var(--ox-primary-rgb), 0.08), transparent 56%),
-                    linear-gradient(var(--ox-grid) 1px, transparent 1px),
-                    linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px);
-        background-size: 100% 100%, 20px 20px, 20px 20px;
-        pointer-events: none;
-        z-index: -1;
-    }
-    
 
-    .agent-board {
-      width: 100%;
-      max-width: var(--agent-surface-max);
-      margin: 0 auto;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
+    button { font: inherit; color: inherit; }
 
-    .surface-label {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      color: var(--ox-text-dim);
-      font-size: 0.75rem;
-      font-weight: 500;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-    }
+    .agent-board { max-width: 640px; margin: 0 auto; }
+    .skeleton-wrapper { transition: opacity 200ms ease; }
 
-    .surface-label::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: var(--ox-border);
-    }
-    .agent-card {
-      --ox-card-color-rgb: var(--agent-accent-rgb, var(--ox-primary-rgb));
-      position: relative;
-      overflow: hidden;
-      margin-bottom: 16px;
-      background: var(--ox-panel);
-      border-color: var(--ox-border);
-      box-shadow: var(--ox-shadow);
-      transition:
-        transform var(--widget-motion-fast) var(--widget-motion-curve),
-        border-color var(--widget-motion-fast) var(--widget-motion-curve),
-        box-shadow var(--widget-motion-fast) var(--widget-motion-curve);
-    }
-
-    .agent-card[data-priority='running'] { --ox-card-color-rgb: 0, 201, 167; }
-    .agent-card[data-priority='blocked'] { --ox-card-color-rgb: 244, 63, 94; }
-    .agent-card[data-priority='review'],
-    .agent-card[data-priority='stalled']   { --ox-card-color-rgb: 251, 191, 36; }
-    .agent-card[data-priority='idle'], .agent-card[data-priority='queued'] { --ox-card-color-rgb: 100, 116, 139; }
-    
-    .agent-card.app-flat-card::after {
-      background: linear-gradient(90deg, transparent, rgba(var(--ox-card-color-rgb), 0.6), transparent);
-    }
-
-    .agent-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 16px 16px 12px;
-    }
-
-    .agent-identity {
-      min-width: 0;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .agent-title-group {
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .agent-name-row {
-      display: flex;
-      align-items: baseline;
-      gap: 8px;
-      min-width: 0;
-      flex-wrap: wrap;
-    }
-
-    .agent-name {
-      font-size: 1rem;
-      font-weight: 600;
-      line-height: 1.2;
-      color: var(--ox-text);
-      min-width: 0;
-    }
-
-    .agent-role {
-      color: rgba(var(--agent-accent-rgb, var(--ox-card-color-rgb)), 0.9);
-      font-size: 0.75rem;
-      font-weight: 500;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .agent-subline {
-      color: var(--ox-text-muted);
-      font-size: 0.875rem;
-      line-height: 1.35;
-      min-width: 0;
-    }
-
-    .agent-subline strong {
-      color: var(--ox-text);
-      font-weight: 500;
-    }
-
-
-    [data-tone="running"], [data-tone="done"], [data-tone="approved"] {
-      --ox-color: var(--ox-primary);
-      --ox-color-rgb: 0, 201, 167;
-    }
-    [data-tone="blocked"] {
-      --ox-color: var(--ox-danger);
-      --ox-color-rgb: 244, 63, 94;
-    }
-    [data-tone="review"] {
-      --ox-color: var(--ox-warning);
-      --ox-color-rgb: 251, 191, 36;
-    }
-    [data-tone="queued"], [data-tone="idle"] {
-      --ox-color: var(--ox-text-muted);
-      --ox-color-rgb: 100, 116, 139;
-    }
-    
-    .agent-chip {
-      --ox-color: var(--ox-primary);
-      --ox-color-rgb: 0, 201, 167;
-      flex-shrink: 0;
-    }
-
-    .agent-attention {
-      margin: 0 12px 12px;
-      box-shadow: none;
-    }
-
-    .attention-copy {
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .attention-title {
-      color: currentColor;
-      font-size: 0.75rem;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .attention-body {
-      color: var(--ox-text);
-      font-size: 0.875rem;
-      line-height: 1.4;
-    }
-
-    .attention-action {
-      flex-shrink: 0;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 32px;
-      padding: 0 12px;
-      border-radius: 999px;
-      border: 1px solid currentColor;
-      background: transparent;
-      color: inherit;
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-decoration: none;
-      white-space: nowrap;
-    }
-
-    .focus-strip {
-      padding: 0 16px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .focus-task {
-      color: var(--ox-text);
-      font-size: 0.95rem;
-      font-weight: 500;
-      line-height: 1.45;
-    }
-
-    .focus-meta {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
-      color: var(--ox-text-muted);
-      font-size: 0.875rem;
-      line-height: 1.35;
-    }
-
-    .focus-meta span {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .focus-meta span + span::before {
-      content: '';
-      width: 3px;
-      height: 3px;
-      border-radius: 999px;
-      background: var(--ox-text-dim);
-      margin-right: 8px;
-    }
-
-    .metric-row {
-      border-top: 1px solid var(--ox-border);
-      border-bottom: 1px solid var(--ox-border);
-    }
-
-    .metric-button {
-      min-height: 72px;
-      padding: 12px 8px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-    }
-
-    .metric-button[data-tone='blocked'] .metric-value {
-      color: var(--agent-blocked);
-    }
-
-    .metric-button[data-tone='review'] .metric-value {
-      color: var(--agent-review);
-    }
-
-    .metric-value {
-      font-size: 1.05rem;
-      font-weight: 600;
-      line-height: 1;
-      color: var(--ox-text);
-    }
-
-    .metric-label {
-      font-size: 0.75rem;
-      font-weight: 500;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--ox-text-dim);
-    }
-
-    .agent-section {
-      display: none;
-      padding-bottom: 16px;
-    }
-    @keyframes sectionFadeIn {
-      from { opacity: 0; transform: translateY(-4px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .agent-section.is-open {
-      display: block;
-      animation: sectionFadeIn var(--ox-dur-base, 250ms) var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) forwards;
-    }
-
-    .agent-section-trigger {
-      border-top: 1px solid var(--ox-border);
-    }
-
-    .disclosure-title {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      min-width: 0;
-    }
-
-    .disclosure-count {
-      color: var(--ox-text-dim);
-      font-size: 0.75rem;
-      font-weight: 500;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .chevron {
-      width: 14px;
-      height: 14px;
-      color: var(--ox-text-dim);
-      transition: transform 160ms ease;
-      flex-shrink: 0;
-    }
-
-    .agent-section.is-open .chevron {
-      transform: rotate(180deg);
-    }
-
-    .section-list {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .section-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 12px;
-      align-items: start;
-      padding: 12px 0;
-    }
-
-    .section-row + .section-row {
-      border-top: 1px solid var(--ox-border);
-    }
-
-    .section-copy {
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .section-heading {
-      color: var(--ox-text);
-      font-size: 0.875rem;
-      font-weight: 500;
-      line-height: 1.4;
-    }
-
-    .section-detail {
-      color: var(--ox-text-muted);
-      font-size: 0.875rem;
-      line-height: 1.45;
-    }
-
-    .section-inline-meta {
-      color: var(--ox-text-dim);
-      font-size: 0.75rem;
-      font-weight: 500;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
-
-    .section-status {
-      flex-shrink: 0;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 28px;
-      padding: 0 10px;
-      border-radius: 999px;
-      background: var(--ox-well-bg);
-      color: var(--ox-text-muted);
-      border: 1px solid var(--ox-border);
-      font-size: 0.75rem;
-      font-weight: 600;
-      white-space: nowrap;
-    }
-
-    .section-status[data-tone='running'],
-    .section-status[data-tone='done'],
-    .section-status[data-tone='approved'] {
-      color: var(--agent-running);
-      background: var(--ox-primary);
-      border-color: rgba(16, 163, 127, 0.2);
-    }
-
-    .section-status[data-tone='blocked'] {
-      color: var(--agent-blocked);
-      background: var(--ox-danger-bg);
-      border-color: rgba(220, 38, 38, 0.2);
-    }
-
-    .section-status[data-tone='review'] {
-      color: var(--agent-review);
-      background: var(--ox-warning-bg);
-      border-color: rgba(217, 119, 6, 0.2);
-    }
-
-    .section-status[data-tone='queued'],
-    .section-status[data-tone='idle'] {
-      color: var(--ox-text-muted);
-    }
-
-    .progress-header {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 12px;
-      padding-top: 12px;
-    }
-
-    .progress-value {
-      color: var(--ox-text);
-      font-size: 1.5rem;
-      font-weight: 600;
-      line-height: 1;
-    }
-
-    .progress-context {
-      color: var(--ox-text-dim);
-      font-size: 0.75rem;
-      font-weight: 500;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      text-align: right;
-    }
-
-    .progress-bar {
-      margin-top: 12px;
-      width: 100%;
-      height: 5px;
-      border-radius: 999px;
-      background: var(--ox-well-bg);
-      overflow: hidden;
-    }
-
-    .progress-fill {
-      height: 100%;
-      border-radius: inherit;
-      background: linear-gradient(90deg, var(--agent-running), #34d399);
-    }
-
-    .progress-note {
-      margin-top: 12px;
-      color: var(--ox-text-muted);
-      font-size: 0.875rem;
-      line-height: 1.45;
-    }
-
-    .empty-slot {
-      padding-top: 12px;
-      color: var(--ox-text-muted);
-      font-size: 0.875rem;
-      line-height: 1.5;
-    }
-
-    .card-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 12px 16px 16px;
-      border-top: 1px solid var(--ox-border);
-    }
-
-    .sync-copy {
-      color: var(--ox-text-dim);
-      font-size: 0.75rem;
-      font-weight: 500;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .footer-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      color: var(--ox-text-muted);
-      font-size: 0.875rem;
-      font-weight: 500;
-      text-decoration: none;
-    }
-
-    .footer-link svg {
-      width: 14px;
-      height: 14px;
-    }
-
-    .empty-state {
-      padding: 40px 32px;
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .empty-state__glyph {
-      width: 44px;
-      height: 44px;
-      margin-bottom: 4px;
-      border-radius: 999px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--ox-text-muted);
-      background: rgba(var(--ox-primary-rgb), 0.06);
-      border: 1px solid var(--ox-border);
-      position: relative;
-    }
-
-    .empty-state__glyph::before {
-      content: "";
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: currentColor;
-      opacity: 0.55;
-      box-shadow: 0 0 0 6px rgba(var(--ox-primary-rgb), 0.05);
-      animation: breathe 2.4s ease-in-out infinite;
-    }
-
-    .empty-state strong {
-      color: var(--ox-text);
-      font-size: 1rem;
-      font-weight: 600;
-    }
-
-    .empty-state p {
-      color: var(--ox-text-muted);
-      font-size: 0.875rem;
-      line-height: 1.5;
-      max-width: 28ch;
-    }
-
-    .skeleton-wrapper {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .skeleton-card {
-      border-radius: 16px;
-      border: 1px solid var(--ox-border);
-      background: var(--ox-panel);
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .skeleton-line {
-      border-radius: 8px;
-      background:
-        linear-gradient(
-          90deg,
-          var(--ox-well-bg) 0%,
-          rgba(var(--ox-primary-rgb), 0.14) 50%,
-          var(--ox-well-bg) 100%
-        );
-      background-size: 200% 100%;
-      animation: shimmer 1.8s linear infinite;
-    }
-
-    @keyframes shimmer {
-      from { background-position: 200% 0; }
-      to { background-position: -200% 0; }
-    }
-
-    @media (max-width: 420px) {
-      body {
-        padding: 16px 8px 24px;
-      }
-
-      .agent-head {
-        align-items: flex-start;
-      }
-
-      .metric-button {
-        min-height: 66px;
-        padding-inline: 6px;
-      }
-
-      .metric-value {
-        font-size: 0.95rem;
-      }
-
-      .metric-label {
-        letter-spacing: 0.05em;
-      }
-    }
-    .ox-metric-rail {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      border-top: 1px solid var(--ox-border);
-      border-bottom: 1px solid var(--ox-border);
-    }
-    
-    .ox-metric-button {
-      appearance: none;
-      background: transparent;
-      border: 0;
-      color: inherit;
-      cursor: pointer;
-      font: inherit;
-      margin: 0;
-      min-height: 72px;
-      padding: 12px 8px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      transition: background 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-      position: relative;
-    }
-    
-    .ox-metric-button + .ox-metric-button::before {
-      content: '';
-      position: absolute;
-      left: 0; top: 20%; bottom: 20%;
-      width: 1px;
-      background: var(--ox-border);
-    }
-    
-    .agent-card .ox-metric-button:hover {
-      background: rgba(var(--agent-accent-rgb, var(--ox-card-color-rgb)), 0.06);
-    }
-    .agent-card .ox-metric-button[aria-pressed='true'] {
-      background: rgba(var(--agent-accent-rgb, var(--ox-card-color-rgb)), 0.13);
-    }
-    /* Active-tab indicator — an accent underline that slides in, so the
-       rail reads as switchable tabs rather than a static stat strip.
-       The bar sits on the rail's bottom edge for a clear tab metaphor. */
-    .ox-metric-button::after {
-      content: '';
-      position: absolute;
-      left: 14px;
-      right: 14px;
-      bottom: -1px;
-      height: 2px;
-      border-radius: 2px 2px 0 0;
-      background: rgb(var(--agent-accent-rgb, var(--ox-card-color-rgb)));
-      transform: scaleX(0);
-      opacity: 0;
-      transition:
-        transform var(--ox-motion-medium, 240ms cubic-bezier(0.16, 1, 0.3, 1)),
-        opacity var(--ox-motion-medium, 240ms cubic-bezier(0.16, 1, 0.3, 1));
-      pointer-events: none;
-    }
-    .agent-card .ox-metric-button[aria-pressed='true']::after {
-      transform: scaleX(1);
-      opacity: 1;
-    }
-    .agent-card .ox-metric-button[aria-pressed='true'] .ox-eyebrow {
-      color: var(--ox-text);
-    }
-
-    .ox-metric-button[data-tone='blocked'] .metric-value {
-      color: var(--ox-danger);
-    }
-    .ox-metric-button[data-tone='review'] .metric-value {
-      color: var(--ox-warning);
-    }
-
-    .agent-section {
-      border-top: 1px solid var(--ox-border);
-      overflow: hidden;
-    }
-    .agent-section:first-child {
-      border-top: none;
-    }
-
-    .ox-disclosure-trigger {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      width: 100%;
-      padding: 14px 24px;
-      background: transparent;
-      border: none;
-      color: var(--ox-text);
-      cursor: pointer;
-      transition: background 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-      text-align: left;
-    }
-
-    .agent-card .ox-disclosure-trigger:hover {
-      background: rgba(var(--agent-accent-rgb, var(--ox-card-color-rgb)), 0.08);
-    }
-
-    .section-badge {
-      font-size: 0.65rem;
-      font-weight: 600;
-      padding: 2px 6px;
-      border-radius: 4px;
-      background: rgba(var(--ox-primary-rgb), 0.12);
-      color: var(--ox-primary);
-      margin-left: 8px;
-    }
-    .section-badge.needs-review {
-      background: rgba(251, 191, 36, 0.12);
-      color: var(--ox-warning);
-    }
-    .section-badge.blocked {
-      background: rgba(244, 63, 94, 0.12);
-      color: var(--ox-danger);
-    }
-
-    .disclosure-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-family: var(--ox-font);
-      font-size: 0.85rem;
-      font-weight: 500;
-    }
-
-    .chevron {
-      width: 16px; height: 16px;
-      color: var(--ox-text-dim);
-      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-      flex-shrink: 0;
-    }
-
-    .agent-section.is-open .chevron {
-      transform: rotate(180deg);
-    }
-
-    .ox-disclosure-body {
-      max-height: 0;
-      opacity: 0;
-      transition: max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), padding 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-      padding: 0 24px;
-    }
-
-    .agent-section.is-open .ox-disclosure-body {
-      max-height: 800px;
-      opacity: 1;
-      padding: 0 24px 16px;
-    }
-    
-    .section-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 12px 0;
-      border-top: 1px solid var(--ox-border);
-    }
-    .section-row:first-child {
-      border-top: none;
-    }
-    
-    .section-heading {
-      font-size: 0.85rem;
-      color: var(--ox-text);
-      line-height: 1.4;
-    }
-    
-    .section-status {
-      font-size: 0.65rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      padding: 3px 8px;
-      border-radius: 5px;
-      white-space: nowrap;
-      flex-shrink: 0;
-      border: none;
-      background: rgba(255,255,255,0.04);
-      color: var(--ox-text-muted);
-    }
-    .section-status[data-tone="running"], .section-status[data-tone="done"], .section-status[data-tone="approved"] {
-      color: var(--ox-primary); background: rgba(var(--ox-primary-rgb), 0.12);
-    }
-    .section-status[data-tone="blocked"] {
-      color: var(--ox-danger); background: rgba(244, 63, 94, 0.12);
-    }
-    .section-status[data-tone="review"] {
-      color: var(--ox-warning); background: rgba(251, 191, 36, 0.12);
-      border: 1px solid rgba(251, 191, 36, 0.16);
-      transition: background 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .section-status[data-tone="review"]:hover {
-      background: rgba(251, 191, 36, 0.18);
-    }
-    
-    .attention-banner {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 16px;
-      padding: 10px 14px;
-      border-radius: 10px;
-      transition: background 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-      text-decoration: none;
-    }
-      50% { opacity: 0.35; }
-    }
-
-    
-    @media (max-width: 420px) {
-      .ox-metric-button {
-        min-height: 66px;
-        padding-inline: 6px;
-      }
-    }
-
-    .ox-metric-rail {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      border-top: 1px solid var(--ox-border);
-      border-bottom: 1px solid var(--ox-border);
-    }
-    
-    .ox-metric-button {
-      appearance: none;
-      background: transparent;
-      border: 0;
-      color: inherit;
-      cursor: pointer;
-      font: inherit;
-      margin: 0;
-      min-height: 72px;
-      padding: 12px 8px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      transition: background 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-      position: relative;
-    }
-    
-    .ox-metric-button + .ox-metric-button::before {
-      content: '';
-      position: absolute;
-      left: 0; top: 20%; bottom: 20%;
-      width: 1px;
-      background: var(--ox-border);
-    }
-    
-    .ox-metric-button:hover,
-    .ox-metric-button[aria-pressed='true'] {
-      background: rgba(var(--ox-primary-rgb), 0.06);
-    }
-    
-    .ox-metric-button[data-tone='blocked'] .metric-value {
-      color: var(--ox-danger);
-    }
-    .ox-metric-button[data-tone='review'] .metric-value {
-      color: var(--ox-warning);
-    }
-
-    .agent-section {
-      border-top: 1px solid var(--ox-border);
-      overflow: hidden;
-    }
-    .agent-section:first-child {
-      border-top: none;
-    }
-
-    .ox-disclosure-trigger {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      width: 100%;
-      padding: 14px 24px;
-      background: transparent;
-      border: none;
-      color: var(--ox-text);
-      cursor: pointer;
-      transition: background 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-      text-align: left;
-    }
-
-    .ox-disclosure-trigger:hover {
-      background: rgba(var(--ox-primary-rgb), 0.06);
-    }
-
-    .section-badge {
-      font-size: 0.65rem;
-      font-weight: 600;
-      padding: 2px 6px;
-      border-radius: 4px;
-      background: rgba(var(--ox-primary-rgb), 0.12);
-      color: var(--ox-primary);
-      margin-left: 8px;
-    }
-    .section-badge.needs-review {
-      background: rgba(251, 191, 36, 0.12);
-      color: var(--ox-warning);
-    }
-    .section-badge.blocked {
-      background: rgba(244, 63, 94, 0.12);
-      color: var(--ox-danger);
-    }
-
-    .disclosure-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-family: var(--ox-font);
-      font-size: 0.85rem;
-      font-weight: 500;
-    }
-
-    .chevron {
-      width: 16px; height: 16px;
-      color: var(--ox-text-dim);
-      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-      flex-shrink: 0;
-    }
-
-    .agent-section.is-open .chevron {
-      transform: rotate(180deg);
-    }
-
-    .ox-disclosure-body {
-      max-height: 0;
-      opacity: 0;
-      transition: max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), padding 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-      padding: 0 24px;
-    }
-
-    .agent-section.is-open .ox-disclosure-body {
-      max-height: 800px;
-      opacity: 1;
-      padding: 0 24px 16px;
-    }
-    
-    .section-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 12px 0;
-      border-top: 1px solid var(--ox-border);
-    }
-    .section-row:first-child {
-      border-top: none;
-    }
-    
-    .section-heading {
-      font-size: 0.85rem;
-      color: var(--ox-text);
-      line-height: 1.4;
-    }
-    
-    .section-status {
-      font-size: 0.65rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      padding: 3px 8px;
-      border-radius: 5px;
-      white-space: nowrap;
-      flex-shrink: 0;
-      border: none;
-      background: rgba(255,255,255,0.04);
-      color: var(--ox-text-muted);
-    }
-    .section-status[data-tone="running"], .section-status[data-tone="done"], .section-status[data-tone="approved"] {
-      color: var(--ox-primary); background: rgba(var(--ox-primary-rgb), 0.12);
-    }
-    .section-status[data-tone="blocked"] {
-      color: var(--ox-danger); background: rgba(244, 63, 94, 0.12);
-    }
-    .section-status[data-tone="review"] {
-      color: var(--ox-warning); background: rgba(251, 191, 36, 0.12);
-      border: 1px solid rgba(251, 191, 36, 0.16);
-      transition: background 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .section-status[data-tone="review"]:hover {
-      background: rgba(251, 191, 36, 0.18);
-    }
-    
-    .attention-banner {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 16px;
-      padding: 10px 14px;
-      border-radius: 10px;
-      transition: background 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-      text-decoration: none;
-    }
-
-    @keyframes breathe {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.35; }
-    }
-    .chip-dot {
-      animation: breathe 2.4s ease-in-out infinite;
-    }
-    
-    .ox-btn-primary.is-card-tone {
-      background: linear-gradient(180deg, rgba(var(--ox-card-color-rgb), 1) 0%, rgba(var(--ox-card-color-rgb), 0.86) 100%);
-      border-color: rgba(var(--ox-card-color-rgb), 0.28);
-      color: #fff;
-      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset, 0 18px 34px -24px rgba(var(--ox-card-color-rgb), 0.82);
-    }
-
-    .agent-section {
-      display: grid;
-      grid-template-rows: auto 0fr;
-      transition:
-        grid-template-rows var(--widget-motion-base) var(--widget-motion-curve),
-        border-color var(--widget-motion-fast) var(--widget-motion-curve);
-    }
-
-    .agent-section.is-open {
-      grid-template-rows: auto 1fr;
-    }
-
-    .ox-disclosure-trigger {
-      transition:
-        background var(--widget-motion-fast) var(--widget-motion-curve),
-        color var(--widget-motion-fast) var(--widget-motion-curve);
-    }
-
-    .ox-disclosure-body {
-      max-height: none;
-      overflow: hidden;
-      opacity: 0;
-      transform: translateY(-6px);
-      padding: 0 24px;
-      transition:
-        opacity var(--widget-motion-fast) var(--widget-motion-curve),
-        transform var(--widget-motion-base) var(--widget-motion-curve),
-        padding var(--widget-motion-fast) var(--widget-motion-curve);
-    }
-
-    .agent-section.is-open .ox-disclosure-body {
-      opacity: 1;
-      transform: translateY(0);
-      padding: 0 24px 16px;
-    }
-
-    @media (max-width: 420px) {
-      .ox-disclosure-trigger {
-        padding: 14px 18px;
-      }
-
-      .ox-disclosure-body {
-        padding-inline: 18px;
-      }
-
-      .agent-section.is-open .ox-disclosure-body {
-        padding: 0 18px 16px;
-      }
-    }
-
-    .agent-avatar {
-      width: 24px;
-      height: 24px;
-      border-radius: 6px;
-      background: rgba(var(--agent-accent-rgb, var(--ox-card-color-rgb)), 0.15);
-      color: rgb(var(--agent-accent-rgb, var(--ox-card-color-rgb)));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: var(--ox-mono);
-      font-size: 0.9rem;
-      overflow: hidden;
-      flex-shrink: 0;
-      border: 1px solid rgba(var(--agent-accent-rgb, var(--ox-card-color-rgb)), 0.25);
-      box-shadow: 0 8px 18px -14px rgba(var(--agent-accent-rgb, var(--ox-card-color-rgb)), 0.58);
-    }
-    
-    .agent-avatar img {
-      display: block;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      border-radius: inherit;
-    }
-
-
-    .skeleton-wrapper { transition: opacity 0.3s ease; }
-    @keyframes fadeSlideUp {
-      from { opacity: 0; transform: translateY(16px) scale(0.98); filter: blur(4px); }
-      to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
-    }
-    .animate-in { opacity: 0; animation: fadeSlideUp var(--ox-dur-slower, 600ms) var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) forwards; }
-
-    /* Command-mode agent status: active work scans in two lines, while the
-       selected agent owns the only expanded detail surface. */
-    .surface-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    .surface-bar .surface-label {
-      flex: 1;
-    }
-
-    .surface-summary {
-      flex-shrink: 0;
-      color: var(--ox-text-muted);
-      font-family: var(--ox-mono);
-      font-size: 0.7rem;
-      letter-spacing: 0.04em;
-    }
+    @keyframes agentIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .animate-in { animation: agentIn var(--ox-dur-medium, 220ms) var(--ox-ease-out, ease-out) both; }
 
     .agent-command-shell {
-      --selected-agent-rgb: 20, 184, 166;
       position: relative;
-      overflow: hidden;
+      background: var(--ox-panel);
       border: 1px solid var(--ox-border);
-      border-radius: 14px;
-      background: color-mix(in srgb, var(--ox-panel) 94%, transparent);
+      border-radius: 16px;
       box-shadow: var(--ox-shadow);
+      overflow: hidden;
+      --edge-rgb: var(--ox-edge-teal-rgb);
     }
-
-    .agent-command-shell::before {
-      content: '';
-      position: absolute;
-      z-index: 2;
-      top: -1px;
-      left: 12%;
-      right: 12%;
-      height: 1px;
-      background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(var(--selected-agent-rgb), 0.82),
-        transparent
-      );
-      pointer-events: none;
+    .agent-command-shell::after {
+      content: "";
+      position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(var(--edge-rgb), 0.75), transparent);
     }
+    .agent-command-shell[data-edge="amber"] { --edge-rgb: var(--ox-edge-amber-rgb); }
 
-    .agent-switcher-list {
-      display: flex;
-      flex-direction: column;
-    }
+    .agent-head { border-bottom: 1px solid var(--ox-border); --ox-attention-padding: 0 18px; }
 
+    /* One row per agent. The row is a tab; the selected one shows its focus below. */
+    .agent-switcher-list { display: flex; flex-direction: column; padding: 6px; }
     .agent-switcher-row {
-      --row-accent-rgb: 20, 184, 166;
-      appearance: none;
-      width: 100%;
-      min-height: 58px;
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      align-items: center;
-      gap: 10px;
-      padding: 9px 14px;
-      border: 0;
-      border-bottom: 1px solid var(--ox-border);
-      background: transparent;
-      color: inherit;
-      cursor: pointer;
-      font: inherit;
-      text-align: left;
-      transition:
-        background var(--widget-motion-fast) var(--widget-motion-curve),
-        box-shadow var(--widget-motion-fast) var(--widget-motion-curve);
+      display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 12px;
+      width: 100%; min-height: 56px; padding: 8px 10px; border-radius: 12px;
+      border: 1px solid transparent; background: transparent; color: var(--ox-text);
+      text-align: left; cursor: pointer; transition: background 160ms ease, border-color 160ms ease;
     }
-
-    .agent-switcher-row:hover {
-      background: rgba(var(--row-accent-rgb), 0.045);
-    }
-
-    .agent-switcher-row[aria-selected='true'] {
-      background: rgba(var(--row-accent-rgb), 0.075);
-      box-shadow: none;
-    }
-
-    .agent-switcher-row[aria-selected='true'] .agent-avatar {
-      box-shadow: 0 0 0 1px rgba(var(--row-accent-rgb), 0.42);
-    }
-
-    .agent-switcher-row .agent-avatar {
-      width: 28px;
-      height: 28px;
-      border-radius: 8px;
-    }
-
-    .switcher-copy {
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-    }
-
-    .switcher-identity {
-      min-width: 0;
-      display: flex;
-      align-items: baseline;
-      gap: 7px;
-    }
-
-    .switcher-name {
-      color: var(--ox-text);
-      font-size: 0.9rem;
-      font-weight: 600;
-      line-height: 1.15;
-    }
-
-    .switcher-role {
-      overflow: hidden;
-      color: var(--ox-text-muted);
-      font-family: var(--ox-mono);
-      font-size: 0.62rem;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-overflow: ellipsis;
-      text-transform: uppercase;
-      white-space: nowrap;
-    }
-
-    .switcher-focus {
-      overflow: hidden;
-      color: var(--ox-text-muted);
-      font-size: 0.78rem;
-      line-height: 1.25;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .switcher-status {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      color: var(--ox-text-muted);
-      font-family: var(--ox-mono);
-      font-size: 0.64rem;
-      font-weight: 650;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      white-space: nowrap;
-    }
-
-    .switcher-status::before {
-      content: '';
-      width: 6px;
-      height: 6px;
-      flex-shrink: 0;
-      border-radius: 999px;
-      background: currentColor;
-      opacity: 0.88;
-    }
-
-    .switcher-status[data-tone='running'] { color: var(--ox-primary); }
-    .switcher-status[data-tone='running']::before { animation: breathe 2.4s ease-in-out infinite; }
-    .switcher-status[data-tone='done'] { color: var(--ox-success, #22c55e); }
-    .switcher-status[data-tone='blocked'] { color: var(--ox-danger); }
-    .switcher-status[data-tone='review'] { color: var(--ox-warning); }
-    .switcher-status[data-tone='idle'] { color: var(--ox-text-dim); }
+    .agent-switcher-row:hover { background: var(--ox-hover); }
+    .agent-switcher-row[aria-selected="true"] { background: var(--ox-hover); border-color: var(--ox-border-strong); }
+    .agent-avatar { display: grid; place-items: center; width: 32px; height: 32px; line-height: 0; }
+    .avatar-fallback { display: grid; place-items: center; border-radius: 50%; background: var(--ox-well-bg); font: 600 13px/1 var(--ox-mono); color: var(--ox-text-2); }
+    .switcher-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .switcher-identity { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+    .switcher-name { font-size: 14px; font-weight: 650; }
+    .switcher-role { font-size: 12.5px; color: var(--ox-text-muted); }
+    .switcher-focus { font-size: 12.5px; color: var(--ox-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .switcher-status { display: flex; justify-content: flex-end; }
 
     .idle-agent-toggle {
-      appearance: none;
-      width: 100%;
-      min-height: 44px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 0 14px;
-      border: 0;
-      border-bottom: 1px solid var(--ox-border);
-      background: rgba(255, 255, 255, 0.012);
-      color: var(--ox-text-muted);
-      cursor: pointer;
-      font: inherit;
-      font-size: 0.78rem;
-      text-align: left;
+      display: flex; align-items: center; gap: 8px; width: calc(100% - 12px); min-height: 44px; margin: 0 6px 6px;
+      padding: 0 10px; border-radius: 10px; border: 0; background: transparent; cursor: pointer;
+      font-size: 12.5px; font-weight: 600; color: var(--ox-text-muted);
     }
+    .idle-agent-toggle:hover { color: var(--ox-text); background: var(--ox-hover); }
+    .idle-agent-toggle .chevron { width: 14px; height: 14px; transition: transform 160ms ease; }
+    .idle-agent-toggle[aria-expanded="true"] .chevron { transform: rotate(180deg); }
 
-    .idle-agent-toggle:hover {
-      color: var(--ox-text);
-      background: rgba(var(--ox-primary-rgb), 0.035);
+    /* The selected agent's focus */
+    .agent-command-panel { border-top: 1px solid var(--ox-border); padding: 16px 20px 6px; display: flex; flex-direction: column; gap: 8px; }
+    .command-eyebrow { font: 500 11.5px/1.3 var(--ox-mono); color: var(--ox-text-muted); }
+    .command-focus-title { font-size: 17px; font-weight: 650; line-height: 1.3; letter-spacing: -0.015em; text-wrap: balance; overflow-wrap: anywhere; }
+    .command-meta { font: 500 11.5px/1.5 var(--ox-mono); color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
+
+    .agent-attention { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; text-align: left; gap: 2px; padding: 10px 12px; border: 0; border-radius: 10px; background: rgba(var(--ox-warning-rgb, 251, 191, 36), 0.08); margin-top: 4px; }
+    .agent-attention .attention-title { font-size: 12.5px; font-weight: 650; color: var(--ox-warning); }
+    .agent-attention .attention-body { font-size: 13.5px; line-height: 1.45; color: var(--ox-text); }
+
+    .command-state-note { font-size: 12.5px; color: var(--ox-text-muted); }
+    .command-state-note strong { color: var(--ox-text-2); font-weight: 600; }
+
+    .command-panel-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 2px -8px 0; }
+    .command-disclosure, .command-live-link {
+      display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 8px; border-radius: 10px;
+      border: 0; background: transparent; cursor: pointer; text-decoration: none;
+      font-size: 13px; font-weight: 600; color: var(--ox-text-2);
     }
+    .command-disclosure:hover, .command-live-link:hover { color: var(--ox-text); background: var(--ox-hover); }
+    .command-disclosure .count { font: 500 11.5px/1 var(--ox-mono); color: var(--ox-text-muted); }
+    .command-disclosure .chevron { width: 14px; height: 14px; transition: transform 160ms ease; }
+    .command-disclosure[aria-expanded="true"] .chevron { transform: rotate(180deg); }
 
-    .idle-agent-toggle .chevron {
-      transform: rotate(0deg);
-    }
-
-    .idle-agent-toggle[aria-expanded='true'] .chevron {
-      transform: rotate(180deg);
-    }
-
-    .agent-command-panel {
-      position: relative;
-      padding: 16px;
-      background: rgba(0, 0, 0, 0.055);
-    }
-
-    .agent-command-panel .agent-attention {
-      margin: 0 0 14px;
-      padding: 10px 12px;
-      box-shadow: none;
-    }
-
-    .agent-command-panel .attention-action {
-      min-height: 44px;
-      padding-inline: 14px;
-    }
-
-    .command-focus-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 6px;
-    }
-
-    .command-focus-title {
-      color: var(--ox-text);
-      font-size: 0.95rem;
-      font-weight: 540;
-      line-height: 1.4;
-    }
-
-    .command-meta {
-      margin-top: 6px;
-      color: var(--ox-text-muted);
-      font-size: 0.78rem;
-      line-height: 1.4;
-    }
-
-    .command-state-note {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
-      gap: 8px;
-      align-items: start;
-      margin-top: 10px;
-      padding: 9px 10px;
-      border: 1px solid var(--ox-border);
-      border-radius: 10px;
-      color: var(--ox-text-muted);
-      font-size: 0.74rem;
-      line-height: 1.4;
-      background: rgba(255, 255, 255, 0.018);
-    }
-
-    .command-state-note strong { color: var(--ox-text); font-weight: 650; }
-    .command-state-note__dot {
-      width: 7px;
-      height: 7px;
-      margin-top: 5px;
-      border-radius: 50%;
-      background: var(--ox-text-muted);
-    }
-    .command-state-note[data-state='starting'],
-    .command-state-note[data-state='queued'] { border-color: rgba(251, 191, 36, .22); }
-    .command-state-note[data-state='starting'] .command-state-note__dot,
-    .command-state-note[data-state='queued'] .command-state-note__dot { background: var(--ox-warning); }
-    .command-state-note[data-state='stale'] { border-color: rgba(251, 191, 36, .28); }
-    .command-state-note[data-state='stale'] .command-state-note__dot { background: var(--ox-warning); }
-    .command-state-note[data-state='blocked'] { border-color: rgba(244, 63, 94, .28); }
-    .command-state-note[data-state='blocked'] .command-state-note__dot { background: var(--ox-danger); }
-
-    .command-facts {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px 14px;
-      margin-top: 14px;
-      padding: 10px 0;
-      border-top: 1px solid var(--ox-border);
-      border-bottom: 1px solid var(--ox-border);
-    }
-
-    .command-fact {
-      color: var(--ox-text-muted);
-      font-family: var(--ox-mono);
-      font-size: 0.68rem;
-      letter-spacing: 0.02em;
-    }
-
-    .command-fact strong {
-      color: var(--ox-text);
-      font-weight: 650;
-    }
-
-    .command-fact[data-tone='blocked'] strong { color: var(--ox-danger); }
-    .command-fact[data-tone='review'] strong { color: var(--ox-warning); }
-    .command-fact[data-tone='done'] strong { color: var(--ox-primary); }
-
-    .command-panel-actions {
-      min-height: 44px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    .command-disclosure,
-    .command-live-link {
-      min-height: 44px;
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      border: 0;
-      background: transparent;
-      color: var(--ox-text-muted);
-      cursor: pointer;
-      font: inherit;
-      font-size: 0.78rem;
-      font-weight: 520;
-      text-decoration: none;
-    }
-
-    .command-disclosure:hover,
-    .command-live-link:hover {
-      color: var(--ox-text);
-    }
-
-    .command-disclosure[aria-expanded='true'] .chevron {
-      transform: rotate(180deg);
-    }
-
-    .command-details {
-      display: none;
-      border-top: 1px solid var(--ox-border);
-    }
-
-    .command-details.is-open {
-      display: block;
-      animation: sectionFadeIn var(--ox-dur-base, 250ms) var(--ox-ease-entry) forwards;
-    }
-
-    .command-detail-group {
-      padding: 12px 0 2px;
-    }
-
-    .command-detail-group + .command-detail-group {
-      border-top: 1px solid var(--ox-border);
-    }
-
-    .command-detail-label {
-      margin-bottom: 5px;
-      color: var(--ox-text-dim);
-      font-family: var(--ox-mono);
-      font-size: 0.62rem;
-      font-weight: 650;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .command-detail-row {
-      min-height: 38px;
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      align-items: center;
-      gap: 12px;
-      padding: 7px 0;
-    }
-
-    .command-detail-row + .command-detail-row {
-      border-top: 1px solid rgba(255, 255, 255, 0.035);
-    }
-
-    .command-detail-title {
-      color: var(--ox-text);
-      font-size: 0.8rem;
-      line-height: 1.35;
-    }
-
-    .command-detail-state {
-      color: var(--ox-text-muted);
-      font-family: var(--ox-mono);
-      font-size: 0.62rem;
-      font-weight: 650;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      white-space: nowrap;
-    }
-
-    .command-detail-state[data-tone='blocked'] { color: var(--ox-danger); }
+    .command-details { display: none; flex-direction: column; gap: 12px; padding: 4px 0 10px; }
+    .command-details.is-open { display: flex; }
+    .command-detail-label { font-size: 12px; color: var(--ox-text-muted); margin-bottom: 2px; }
+    .command-detail-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: baseline; padding: 7px 0; border-top: 1px solid var(--ox-border); }
+    .command-detail-row:first-of-type { border-top: 0; }
+    .command-detail-title { font-size: 13.5px; line-height: 1.4; color: var(--ox-text); overflow-wrap: anywhere; }
+    .command-detail-state { font: 500 11.5px/1.3 var(--ox-mono); color: var(--ox-text-muted); white-space: nowrap; }
+    .command-detail-state[data-tone='done'] { color: var(--ox-teal); }
+    .command-detail-state[data-tone='blocked'] { color: var(--ox-warning); }
     .command-detail-state[data-tone='review'] { color: var(--ox-warning); }
-    .command-detail-state[data-tone='running'] { color: var(--ox-primary); }
-    .command-detail-state[data-tone='done'] { color: var(--ox-primary); }
+    .command-detail-state[data-tone='running'] { color: var(--ox-text-2); }
 
-    .quiet-command-state {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 14px;
-      color: var(--ox-text-muted);
-      font-size: 0.82rem;
-      line-height: 1.4;
+    .quiet-command-state { padding: 16px 20px 18px; font-size: 13.5px; line-height: 1.5; color: var(--ox-text-2); }
+
+    .sk { display: block; border-radius: 6px; background: var(--ox-skeleton, rgba(127, 127, 127, 0.12)); }
+    .sk-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) 72px; align-items: center; gap: 12px; min-height: 56px; padding: 8px 16px; }
+
+    .focusable:focus-visible { outline: 2px solid var(--ox-focus, var(--ox-warning)); outline-offset: -2px; }
+
+    @media (max-width: 480px) {
+      body { padding: 12px; }
+      .agent-head { --ox-attention-padding: 0 14px; }
+      .agent-switcher-list { padding: 4px; }
+      .agent-switcher-row { gap: 10px; padding: 8px; }
+      .switcher-role { display: none; }
+      .agent-command-panel { padding: 14px 16px 4px; }
     }
 
-    .quiet-command-state::before {
-      content: '';
-      width: 7px;
-      height: 7px;
-      flex-shrink: 0;
-      border-radius: 999px;
-      background: var(--ox-primary);
-      box-shadow: 0 0 10px rgba(var(--ox-primary-rgb), 0.55);
-    }
-
-    @media (max-width: 420px) {
-      .surface-bar {
-        align-items: baseline;
-      }
-
-      .agent-switcher-row {
-        min-height: 60px;
-        padding-inline: 11px;
-      }
-
-      .agent-switcher-row .agent-avatar {
-        width: 26px;
-        height: 26px;
-      }
-
-      .switcher-status {
-        font-size: 0.59rem;
-      }
-
-      .agent-command-panel {
-        padding: 14px 12px 12px;
-      }
-
-      .agent-command-panel .agent-attention {
-        align-items: flex-start;
-      }
-
-      .command-panel-actions {
-        align-items: stretch;
-      }
-    }
     @media (prefers-reduced-motion: reduce) {
-      .switcher-status[data-tone='running']::before { animation: none; }
+      .animate-in { animation: none; }
     }
-
-</style>
+  </style>
   <link rel="stylesheet" href="shared/widget-theme.css" />
 </head>
 <body>
   <main class="agent-board" id="content" aria-live="polite">
-    <div class="surface-label">Agent Status</div>
-    <div class="skeleton-wrapper" style="opacity: 1;">
-      <div class="skeleton-card">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-          <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
-            <div class="skeleton-line" style="width:32px;height:32px;border-radius:10px;background:linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.16) 50%, var(--ox-border) 75%);background-size:200% 100%;animation:shimmer 1.8s infinite linear;"></div>
-            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;">
-              <div class="skeleton-line" style="width:42%;height:16px;background:linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.16) 50%, var(--ox-border) 75%);background-size:200% 100%;animation:shimmer 1.8s infinite linear;"></div>
-              <div class="skeleton-line" style="width:68%;height:12px;background:linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.16) 50%, var(--ox-border) 75%);background-size:200% 100%;animation:shimmer 1.8s infinite linear;"></div>
-            </div>
-          </div>
-          <div class="skeleton-line" style="width:88px;height:28px;border-radius:999px;background:linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.16) 50%, var(--ox-border) 75%);background-size:200% 100%;animation:shimmer 1.8s infinite linear;"></div>
-        </div>
-        <div class="skeleton-line" style="width:100%;height:52px;border-radius:12px;background:linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.16) 50%, var(--ox-border) 75%);background-size:200% 100%;animation:shimmer 1.8s infinite linear;"></div>
-        <div class="skeleton-line" style="width:100%;height:40px;border-radius:10px;background:linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.16) 50%, var(--ox-border) 75%);background-size:200% 100%;animation:shimmer 1.8s infinite linear;"></div>
+    <div class="skeleton-wrapper" aria-busy="true">
+      <div class="agent-command-shell">
+        <div class="agent-head" style="height:44px;display:flex;align-items:center;gap:10px;padding:0 18px"><span class="sk" style="width:8px;height:8px;border-radius:50%"></span><span class="sk" style="width:40%;height:12px"></span></div>
+        <div class="sk-row"><span class="sk" style="width:32px;height:32px;border-radius:50%"></span><span style="display:flex;flex-direction:column;gap:6px"><span class="sk" style="width:30%;height:12px"></span><span class="sk" style="width:76%;height:11px"></span></span><span class="sk" style="height:22px;border-radius:999px"></span></div>
+        <div class="sk-row"><span class="sk" style="width:32px;height:32px;border-radius:50%"></span><span style="display:flex;flex-direction:column;gap:6px"><span class="sk" style="width:26%;height:12px"></span><span class="sk" style="width:64%;height:11px"></span></span><span class="sk" style="height:22px;border-radius:999px"></span></div>
+        <ox-footer variant="reads" state="loading"></ox-footer>
       </div>
     </div>
   </main>
@@ -1721,6 +236,7 @@
       // runs the API flagged as having no heartbeat in 30+ minutes. Keep
       // it distinct from 'blocked' so the resume surface is obvious.
       if (['stalled', 'stale'].indexOf(normalized) !== -1) return 'stalled';
+      if (['verifying', 'validating', 'checking', 'testing'].indexOf(normalized) !== -1) return 'verifying';
       if (['blocked', 'waiting', 'at_risk'].indexOf(normalized) !== -1) return 'blocked';
       if (['needs_review', 'review', 'in_review'].indexOf(normalized) !== -1) return 'review';
       if (['queued', 'pending', 'not_started', 'todo', 'draft', 'backlog', 'paused'].indexOf(normalized) !== -1) return 'queued';
@@ -1745,37 +261,88 @@
       if (status === 'queued') return 'Queued';
       if (status === 'idle') return 'Idle';
       if (status === 'stalled') return 'Needs refresh';
+      if (status === 'verifying') return 'Verifying';
       return 'Running';
     }
 
-    /**
-     * Agents surfaced as "stalled" by getAgentStatus have a run_id that
-     * was auto-closed by the TTL cron (or manually paused). A single
-     * Resume button brings them back to running — calls the backing tool
-     * via the appropriate host bridge.
-     */
-    function resumeAgentRun(runId, button) {
-      if (!runId || !button) return;
-      if (button.getAttribute('data-busy') === '1') return;
-      button.setAttribute('data-busy', '1');
-      button.disabled = true;
-      var originalLabel = button.textContent;
-      button.textContent = 'Resuming…';
+    /* ------------------------------------------------------------ resume -- */
+    // Agents surfaced as "stalled" carry the run_id the TTL cron auto-closed.
+    // Resume calls resume_agent_run, then reads orgx_command_status({kind:'run'})
+    // until the run settles, so the footer reports what the run actually did.
+    var resumeStates = {};
+    var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    var STATUS_POLL_LIMIT_MS = 120000;
+
+    function setResumeState(runId, next) {
+      if (next) resumeStates[runId] = next;
+      else delete resumeStates[runId];
+      syncAgentFooter(runId);
+    }
+
+    function readRunStatus(runId) {
+      return window.OrgXWidgetRuntime.callTool('orgx_command_status', { kind: 'run', id: runId }).then(function (raw) {
+        var runtime = window.OrgXWidgetRuntime;
+        return runtime.extractStructuredWidgetData ? runtime.extractStructuredWidgetData(raw, true) : raw;
+      });
+    }
+
+    function watchResumedRun(runId) {
+      if (!UUID_RE.test(runId)) {
+        setResumeState(runId, { phase: 'unconfirmed' });
+        return Promise.resolve();
+      }
+      var deadline = Date.now() + STATUS_POLL_LIMIT_MS;
+      function poll(wait) {
+        return new Promise(function (resolve) { window.setTimeout(resolve, wait); })
+          .then(function () { return readRunStatus(runId); })
+          .then(function (status) {
+            if (!status || typeof status !== 'object' || typeof status.state !== 'string') {
+              setResumeState(runId, { phase: 'unconfirmed' });
+              return;
+            }
+            var outcome = typeof status.outcome === 'string' ? status.outcome.trim() : '';
+            var final = status.next_poll_after_ms === null || status.next_poll_after_ms === undefined;
+            if (status.state === 'succeeded') return setResumeState(runId, { phase: 'done', detail: outcome });
+            if (status.state === 'failed') return setResumeState(runId, { phase: 'run-failed', detail: outcome });
+            if (status.state === 'cancelled') return setResumeState(runId, { phase: 'run-failed', heading: 'Run cancelled', detail: outcome || 'cancelled in OrgX' });
+            if (status.state === 'not_found') return setResumeState(runId, { phase: 'unconfirmed', detail: 'OrgX has no status for it yet' });
+            setResumeState(runId, {
+              phase: status.state === 'queued' || status.state === 'held' ? 'queued' : 'running',
+              detail: status.waiting_on === 'person' ? 'waiting on a person in OrgX' : outcome,
+            });
+            if (final || Date.now() >= deadline) {
+              if (final) return;
+              setResumeState(runId, { phase: 'unconfirmed' });
+              return;
+            }
+            return poll(Math.min(15000, Math.max(750, Number(status.next_poll_after_ms) || 2000)));
+          })
+          .catch(function () {
+            setResumeState(runId, { phase: 'unconfirmed' });
+          });
+      }
+      return poll(0);
+    }
+
+    function resumeAgentRun(runId) {
+      if (!runId) return;
+      var current = resumeStates[runId];
+      if (current && (current.phase === 'sending' || current.phase === 'queued' || current.phase === 'running')) return;
+      setResumeState(runId, { phase: 'sending' });
       var args = { run_id: runId, note: 'Resumed from agent-status widget' };
-      var call = window.OrgXWidgetRuntime.callTool('resume_agent_run', args);
-      Promise.resolve(call)
+      Promise.resolve(window.OrgXWidgetRuntime.callTool('resume_agent_run', args))
         .then(function () {
-          button.textContent = 'Resumed ✓';
-          button.setAttribute('data-resumed', '1');
+          setResumeState(runId, { phase: 'queued' });
+          return watchResumedRun(runId);
         })
         .catch(function (err) {
-          button.textContent = 'Retry';
-          button.removeAttribute('data-busy');
-          button.disabled = false;
+          var message = err && typeof err.message === 'string' ? err.message.trim() : '';
+          setResumeState(runId, { phase: 'failed', detail: message && message.length <= 36 ? message.replace(/\.$/, '') : '' });
           console.warn('[agent-status] resume failed', err);
         });
     }
     window.__orgxResumeAgentRun = resumeAgentRun;
+
 
     function collectionKey(item) {
       if (typeof item === 'string') return item.trim();
@@ -1840,22 +407,6 @@
         accentRgb: (profile && profile.accentRgb) || '20, 184, 166'
       };
     }
-    function renderAvatar(agent) {
-      var profile = resolveAgentProfile(agent);
-      var fallback = escapeHtml(profile.name.charAt(0).toUpperCase() || '?');
-      
-      if (profile.avatarPath) {
-        var remoteUrl = resolveWidgetAsset(profile.avatarPath);
-        
-        return '<span style="display:none;align-items:center;justify-content:center;width:100%;height:100%;font-family:var(--ox-mono);font-size:0.9rem;font-weight:600;">' + fallback + '</span>' +
-               '<img src="' + escapeHtml(remoteUrl) + '" alt="' + escapeHtml(profile.name) + '" loading="eager" decoding="sync" draggable="false" ' +
-               'onerror="this.style.display=\'none\'; if (this.previousElementSibling) this.previousElementSibling.style.display=\'flex\';" />';
-      }
-      return '<span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-family:var(--ox-mono);font-size:0.9rem;font-weight:600;">' + fallback + '</span>';
-    }
-
-
-
     function buildAgentUrl(agentId) {
       return agentId
         ? ORGX_BASE_URL + '/settings/agents?agent=' + encodeURIComponent(agentId)
@@ -1990,7 +541,7 @@
     function mergeAgentAliases(agents) {
       // Stalled outranks running so an auto-closed run stays visible even
       // if a stale duplicate claims 'running'. Blocked still wins overall.
-      var statusWeight = { done: 1, idle: 1, queued: 2, running: 3, stalled: 4, review: 4, blocked: 5 };
+      var statusWeight = { done: 1, idle: 1, queued: 2, running: 3, verifying: 3, stalled: 4, review: 4, blocked: 5 };
       var merged = {};
       agents.forEach(function (agent) {
         var key = (agent.name + '|' + agent.role).toLowerCase();
@@ -2045,7 +596,7 @@
       // stalled run is a broken contract the user should see first.
       if (agent.status === 'review') return 1;
       if (agent.status === 'stalled') return 1;
-      if (agent.status === 'running') return 2;
+      if (agent.status === 'running' || agent.status === 'verifying') return 2;
       if (agent.status === 'queued') return 3;
       return 4;
     }
@@ -2063,79 +614,74 @@
       var parts = [];
       if (agent.blockedCount) parts.push(agent.blockedCount + ' blocked');
       if (agent.reviewCount) parts.push(agent.reviewCount + ' review');
-      if (agent.taskCount) parts.push(agent.taskCount + ' tasks in flight');
+      if (agent.taskCount) parts.push(agent.taskCount + (agent.taskCount === 1 ? ' task' : ' tasks') + ' in flight');
       if (agent.completedCount) parts.push(agent.completedCount + ' completed');
       if (!parts.length) parts.push('No agents need you right now');
       return parts.join(' · ');
     }
 
+
     var widgetState = {};
     var currentAgents = [];
     var currentAgentsById = {};
+    var syncedAt = null;
 
-    function setCardSection(cardId, section) {
-      if (section === 'overview') {
-        widgetState[cardId] = 'overview';
-        syncAgentCard(cardId);
-        return;
-      }
-      widgetState[cardId] = widgetState[cardId] === section ? null : section;
-      syncAgentCard(cardId);
+    // Kit state for an agent: the chip wording and the avatar form both follow it.
+    function displayState(agent) {
+      var resume = agent.runId ? resumeStates[agent.runId] : null;
+      if (resume && (resume.phase === 'queued' || resume.phase === 'sending')) return 'queued';
+      if (resume && resume.phase === 'running') return 'running';
+      if (resume && resume.phase === 'done') return 'succeeded';
+      if (agent.status === 'blocked') return 'needs_you';
+      if (agent.status === 'review') return 'needs_you';
+      if (agent.status === 'verifying') return 'verifying';
+      if (agent.status === 'stalled') return 'stale';
+      if (agent.status === 'running') return 'running';
+      if (agent.status === 'queued') return 'queued';
+      if (agent.status === 'done') return 'succeeded';
+      return 'offline';
     }
+
+    var CHIP_LABELS = { needs_you: 'Needs you', stale: 'Stalled', offline: 'Available' };
+    var CHIP_RESERVE = 'needs_you verifying stale running queued succeeded offline';
+
+    function chipHtml(agent) {
+      var state = displayState(agent);
+      var label = agent.status === 'review' ? 'Your review' : CHIP_LABELS[state];
+      return '<ox-state-chip state="' + state + '"' + (label ? ' label="' + escapeHtml(label) + '"' : '') + ' reserve="' + CHIP_RESERVE + '">' + escapeHtml(label || agent.statusLabel) + '</ox-state-chip>';
+    }
+
+    function renderAvatar(agent, size) {
+      var identity = window.OrgXAgentIdentity;
+      var key = identity ? identity.resolveAgentKey(agent.name, agent.role) : null;
+      var form = identity ? identity.formForState(displayState(agent)) : 'base';
+      if (key) {
+        return '<ox-avatar agent="' + escapeHtml(key) + '" form="' + escapeHtml(form) + '" size="' + (size || 32) + '" name="' + escapeHtml(agent.name) + '"></ox-avatar>';
+      }
+      return '<span class="avatar-fallback" style="width:' + (size || 32) + 'px;height:' + (size || 32) + 'px">' + escapeHtml(agent.name.charAt(0).toUpperCase() || '?') + '</span>';
+    }
+
     function renderAttention(agent) {
       if (agent.status !== 'blocked' && agent.status !== 'review' && agent.status !== 'stalled') return '';
       var isBlocked = agent.status === 'blocked';
       var isStalled = agent.status === 'stalled';
       var tone = isBlocked ? 'blocked' : 'review';
-
-      // Stalled agents surface a Resume button inline — the run was
-      // auto-closed by the TTL cron. Clicking Resume calls
-      // resume_agent_run to flip the row back to running.
       var body;
-      var action;
-      var actionHtml;
       if (isStalled) {
         var stalledMin = typeof agent.stalledMinutes === 'number' ? agent.stalledMinutes : null;
-        var stalledSummary = stalledMin !== null
+        body = stalledMin !== null
           ? 'No heartbeat in ' + formatStalledDuration(stalledMin) + '. Auto-paused.'
           : 'No heartbeat in 30+ min. Auto-paused.';
-        body = stalledSummary;
-        action = 'Resume';
-        actionHtml = '<button type="button" class="attention-action" data-resume-run="' + escapeHtml(agent.runId || '') + '" onclick="window.__orgxResumeAgentRun(this.getAttribute(\'data-resume-run\'), this)" style="border-color: rgba(251, 191, 36, 0.14); cursor: pointer; font: inherit; background: transparent;">Resume</button>';
       } else if (isBlocked) {
-        body = 'Blocked: ' + String(agent.blockers[0] || 'A founder-level decision is blocking progress.');
-        action = 'Resolve';
+        body = String(agent.blockers[0] || 'A founder-level decision is blocking progress.');
       } else {
-        body = 'Review: ' + String((agent.artifacts.find(function (artifact) { return artifact.status === 'review'; }) || {}).title || 'An artifact is ready for review.');
-        action = 'Review';
+        body = String((agent.artifacts.find(function (artifact) { return artifact.status === 'review'; }) || {}).title || 'An artifact is ready for review.');
       }
-
-      var icon = isBlocked
-        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
-        : isStalled
-        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>'
-        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>';
-
-      var bgTone = isBlocked ? 'rgba(244, 63, 94, 0.1)' : 'rgba(251, 191, 36, 0.1)';
-      var borderTone = isBlocked ? 'rgba(244, 63, 94, 0.14)' : 'rgba(251, 191, 36, 0.14)';
-      var textTone = isBlocked ? 'var(--ox-danger)' : 'var(--ox-warning)';
-
-      if (!actionHtml) {
-        actionHtml = '<a class="attention-action" href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(this.href, event)" style="border-color: ' + borderTone + ';">' + action + '</a>';
-      }
-
-      var title = isBlocked ? 'Blocked' : isStalled ? 'Stalled' : 'Needs review';
-
+      var title = isBlocked ? 'Waiting on you' : isStalled ? 'Stalled' : 'Ready for your review';
       return (
-        '<div class="agent-attention app-attention-banner" data-tone="' + tone + '" style="background: ' + bgTone + '; border-color: ' + borderTone + '; color: ' + textTone + ';">' +
-          '<div style="display: flex; align-items: center; gap: 10px; min-width: 0;">' +
-            '<div style="width: 18px; height: 18px; flex-shrink: 0; color: currentColor; opacity: 0.85; display: flex; align-items: center; justify-content: center;">' + icon + '</div>' +
-            '<div class="attention-copy">' +
-              '<span class="attention-title">' + title + '</span>' +
-              '<span class="attention-body">' + escapeHtml(body) + '</span>' +
-            '</div>' +
-          '</div>' +
-          actionHtml +
+        '<div class="agent-attention app-attention-banner" data-tone="' + tone + '">' +
+          '<span class="attention-title">' + title + '</span>' +
+          '<span class="attention-body">' + escapeHtml(body) + '</span>' +
         '</div>'
       );
     }
@@ -2163,13 +709,13 @@
         agent.completedCount ? agent.completedCount + ' completed' : ''
       ].filter(Boolean).join(' · ');
       return (
-        '<button type="button" class="agent-switcher-row focusable" role="tab" data-action="select-agent" data-agent-tab="' + escapeHtml(agent.id) + '" aria-selected="' + String(selected) + '" tabindex="' + (selected ? '0' : '-1') + '" style="--row-accent-rgb:' + escapeHtml(agent.accentRgb) + ';">' +
-          '<span class="agent-avatar" aria-hidden="true">' + renderAvatar(agent) + '</span>' +
+        '<button type="button" class="agent-switcher-row focusable" role="tab" data-action="select-agent" data-agent-tab="' + escapeHtml(agent.id) + '" data-agent-row="' + escapeHtml(agent.runId || '') + '" aria-selected="' + String(selected) + '" tabindex="' + (selected ? '0' : '-1') + '">' +
+          '<span class="agent-avatar" aria-hidden="true">' + renderAvatar(agent, 32) + '</span>' +
           '<span class="switcher-copy">' +
             '<span class="switcher-identity"><span class="switcher-name">' + escapeHtml(agent.name) + '</span><span class="switcher-role">' + escapeHtml(agent.role) + '</span></span>' +
             '<span class="switcher-focus">' + escapeHtml(switcherMeta) + (agent.currentMeta ? ' · ' + escapeHtml(agent.currentMeta) : '') + '</span>' +
           '</span>' +
-          '<span class="switcher-status" data-tone="' + escapeHtml(agent.tone) + '">' + escapeHtml(agent.statusLabel) + '</span>' +
+          '<span class="switcher-status">' + chipHtml(agent) + '</span>' +
         '</button>'
       );
     }
@@ -2234,43 +780,170 @@
       );
     }
 
+    /* SM3 footer for the selected agent. Stalled runs queue work (Resume);
+       blocked and review hand off to OrgX; everything else reads. */
+    function footerSpec(agent) {
+      var spec = { variant: 'reads', state: 'fresh', heading: '', detail: '', primary: '', action: '', url: agent.openUrl, role: 'open' };
+      var resume = agent.runId ? resumeStates[agent.runId] : null;
+      if (agent.status === 'stalled' && agent.runId) {
+        spec.variant = 'queues-work';
+        spec.role = 'resume';
+        if (!resume) return Object.assign(spec, { state: 'needs-you', heading: 'Resume ' + agent.name + '’s run', detail: 'picks up where it stopped', primary: 'Resume' });
+        if (resume.phase === 'sending') return Object.assign(spec, { state: 'queued', heading: 'Resuming', detail: 'asking OrgX to restart the run' });
+        if (resume.phase === 'queued') return Object.assign(spec, { state: 'queued', heading: 'Waiting to start', detail: resume.detail || 'the run is queued in OrgX' });
+        if (resume.phase === 'running') return Object.assign(spec, { state: 'running', heading: agent.name + ' is running again', detail: resume.detail || 'picked up the run', action: 'Watch ↗' });
+        if (resume.phase === 'done') return Object.assign(spec, { state: 'done', heading: 'Run finished', detail: resume.detail || 'resumed from here', action: 'Receipt ↗' });
+        if (resume.phase === 'unconfirmed') return Object.assign(spec, { variant: 'confirms-in-orgx', state: 'waiting', heading: 'Resume sent', detail: resume.detail || 'not confirmed yet', action: 'Check now' });
+        if (resume.phase === 'run-failed') return Object.assign(spec, { variant: 'finishes-here', state: 'failed', heading: resume.heading || 'Run failed', detail: resume.detail || 'OrgX reported a failure', primary: 'Retry' });
+        return Object.assign(spec, { variant: 'finishes-here', state: 'failed', heading: 'Not resumed', detail: resume.detail || 'nothing changed · try again', primary: 'Retry' });
+      }
+      if (agent.status === 'blocked') {
+        return Object.assign(spec, { variant: 'confirms-in-orgx', state: 'needs-you', heading: 'Resolve in OrgX', detail: 'the blocker clears there', primary: 'Resolve ↗', role: 'handoff' });
+      }
+      if (agent.status === 'review') {
+        return Object.assign(spec, { variant: 'confirms-in-orgx', state: 'needs-you', heading: 'Review in OrgX', detail: 'accept or send it back there', primary: 'Review ↗', role: 'handoff' });
+      }
+      var age = agent.observedAt && window.OrgXWidgetState ? window.OrgXWidgetState.formatAge(agent.observedAt) : '';
+      var stateMeta = window.OrgXWidgetState ? window.OrgXWidgetState.derive(agent) : null;
+      if (stateMeta && stateMeta.state === 'stale') {
+        return Object.assign(spec, { state: 'stale', heading: 'Out of date', detail: age || stateMeta.description || 'Last execution needs a refresh' });
+      }
+      return Object.assign(spec, { state: 'fresh', heading: age || 'Live in OrgX', detail: summarizeOverview(agent) });
+    }
+
+    function footerAttrs(spec) {
+      return [
+        ['variant', spec.variant],
+        ['state', spec.state],
+        ['heading', spec.heading],
+        ['detail', spec.detail],
+        ['primary-label', spec.primary],
+        ['action-label', spec.action],
+        ['data-role', spec.role],
+        ['data-url', spec.url || ''],
+      ];
+    }
+
+    function footerHtml(agent) {
+      var spec = footerSpec(agent);
+      return '<ox-footer class="agent-footer" data-agent-id="' + escapeHtml(agent.id) + '" data-run-id="' + escapeHtml(agent.runId || '') + '" ' +
+        footerAttrs(spec).map(function (pair) { return pair[0] + '="' + escapeHtml(pair[1]) + '"'; }).join(' ') + '></ox-footer>';
+    }
+
+    // Move the footer (and the row chip) in place; the kit crossfades and keeps focus.
+    function syncAgentFooter(runId) {
+      currentAgents.forEach(function (agent) {
+        if (agent.runId !== runId) return;
+        var footer = document.querySelector('ox-footer[data-agent-id="' + CSS.escape(agent.id) + '"]');
+        if (footer) {
+          footerAttrs(footerSpec(agent)).forEach(function (pair) {
+            if (footer.getAttribute(pair[0]) !== pair[1]) footer.setAttribute(pair[0], pair[1]);
+          });
+        }
+        var row = document.querySelector('[data-agent-tab="' + CSS.escape(agent.id) + '"] .switcher-status');
+        if (row) row.innerHTML = chipHtml(agent);
+        var avatar = document.querySelector('[data-agent-tab="' + CSS.escape(agent.id) + '"] ox-avatar');
+        if (avatar && window.OrgXAgentIdentity) avatar.setAttribute('form', window.OrgXAgentIdentity.formForState(displayState(agent)));
+      });
+    }
+
+    // The kit locks the primary on press until the state changes. Setting the state
+    // clears the lock; touching the detail repaints the button as pressable again.
+    function rearmFooter(footer) {
+      var detail = footer.getAttribute('detail') || '';
+      footer.setAttribute('state', footer.getAttribute('state') || '');
+      footer.setAttribute('detail', detail + ' ');
+      footer.setAttribute('detail', detail);
+    }
+
+    function openExternal(url, event) {
+      if (!url) return;
+      if (openWidgetLink(url, event) === false) return;
+      try { window.open(url, '_blank', 'noopener,noreferrer'); } catch (_) { /* host owns recovery */ }
+    }
+
+    document.addEventListener('ox-primary', function (event) {
+      var footer = event.target && event.target.closest ? event.target.closest('ox-footer[data-agent-id]') : null;
+      if (!footer) return;
+      var role = footer.getAttribute('data-role');
+      if (role === 'resume') {
+        var runId = footer.getAttribute('data-run-id');
+        if (resumeStates[runId]) delete resumeStates[runId];
+        resumeAgentRun(runId);
+      } else if (role === 'handoff') {
+        openExternal(footer.getAttribute('data-url'));
+        // A handoff does not change state here; re-arm the primary for the next press.
+        rearmFooter(footer);
+      }
+    });
+
+    document.addEventListener('ox-action', function (event) {
+      var footer = event.target && event.target.closest ? event.target.closest('ox-footer[data-agent-id]') : null;
+      if (!footer) return;
+      var runId = footer.getAttribute('data-run-id');
+      var resume = runId ? resumeStates[runId] : null;
+      if (resume && resume.phase === 'unconfirmed') {
+        setResumeState(runId, { phase: 'queued' });
+        watchResumedRun(runId);
+        return;
+      }
+      openExternal(footer.getAttribute('data-url'));
+    });
+
     function renderCommandPanel(agent) {
       var detailsOpen = widgetState[agent.id] === 'details';
       var detailCount = agent.blockers.length + agent.tasks.length + agent.completedTasks.length + agent.artifacts.length + agent.streams.length;
-      var focusMeta = [agent.currentMeta, summarizeOverview(agent), agent.observedAt && window.OrgXWidgetState ? window.OrgXWidgetState.formatAge(agent.observedAt) : 'Sync time unavailable'].filter(Boolean).join(' · ');
+      var facts = [
+        agent.taskCount ? agent.taskCount + ' active' : '',
+        agent.completedCount ? agent.completedCount + ' completed' : '',
+        agent.blockedCount ? agent.blockedCount + ' blocked' : '',
+        agent.artifacts.length ? agent.artifacts.length + ' artifact' + (agent.artifacts.length === 1 ? '' : 's') : '',
+        agent.progress == null ? '' : agent.progress + '% through',
+        agent.currentMeta
+      ].filter(Boolean).join(' · ');
       var stateMeta = window.OrgXWidgetState ? window.OrgXWidgetState.derive(agent) : null;
-      var stateNote = stateMeta && stateMeta.state !== 'in_progress' && stateMeta.state !== 'completed'
-        ? '<div class="command-state-note" data-state="' + escapeHtml(stateMeta.state) + '"><span class="command-state-note__dot"></span><span><strong>' + escapeHtml(stateMeta.label) + '</strong> · ' + escapeHtml(stateMeta.description) + '</span></div>'
+      var stateNote = stateMeta && stateMeta.state !== 'in_progress' && stateMeta.state !== 'completed' && stateMeta.state !== 'stale' && agent.status !== 'blocked' && agent.status !== 'stalled'
+        ? '<div class="command-state-note" data-state="' + escapeHtml(stateMeta.state) + '"><strong>' + escapeHtml(stateMeta.label) + '</strong> · ' + escapeHtml(stateMeta.description) + '</div>'
         : '';
 
       return (
-        '<section class="agent-command-panel" role="tabpanel" aria-label="' + escapeHtml(agent.name) + ' agent details" style="--agent-accent-rgb:' + escapeHtml(agent.accentRgb) + ';">' +
-          renderAttention(agent) +
-          '<div class="command-focus-header"><span class="ox-eyebrow">Current focus</span><span class="switcher-status" data-tone="' + escapeHtml(agent.tone) + '">' + escapeHtml(agent.statusLabel) + '</span></div>' +
+        '<section class="agent-command-panel" role="tabpanel" aria-label="' + escapeHtml(agent.name) + ' agent details">' +
+          '<div class="command-focus-header"><span class="command-eyebrow">' + escapeHtml(agent.name) + ' · current focus</span></div>' +
           '<div class="command-focus-title">' + escapeHtml(agent.currentTask) + '</div>' +
-          '<div class="command-meta">' + escapeHtml(focusMeta || 'Available for the next assignment') + '</div>' +
+          (facts ? '<div class="command-meta">' + escapeHtml(facts) + '</div>' : '') +
+          renderAttention(agent) +
           stateNote +
-          '<div class="command-facts" aria-label="Agent work summary">' +
-            '<span class="command-fact"><strong>' + escapeHtml(String(agent.taskCount)) + '</strong> active</span>' +
-            '<span class="command-fact" data-tone="done"><strong>' + escapeHtml(String(agent.completedCount || 0)) + '</strong> completed</span>' +
-            '<span class="command-fact" data-tone="blocked"><strong>' + escapeHtml(String(agent.blockedCount)) + '</strong> blocked</span>' +
-            '<span class="command-fact" data-tone="review"><strong>' + escapeHtml(String(agent.artifacts.length)) + '</strong> artifacts</span>' +
-            '<span class="command-fact"><strong>' + escapeHtml(agent.progress == null ? '—' : String(agent.progress) + '%') + '</strong> progress</span>' +
-          '</div>' +
           '<div class="command-panel-actions">' +
-            '<button type="button" class="command-disclosure focusable" data-action="toggle-details" data-agent="' + escapeHtml(agent.id) + '" aria-expanded="' + String(detailsOpen) + '" aria-controls="agent-work-details">Work details <span style="color:var(--ox-text-dim);">' + escapeHtml(String(detailCount)) + '</span><svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>' +
+            '<button type="button" class="command-disclosure focusable" data-action="toggle-details" data-agent="' + escapeHtml(agent.id) + '" aria-expanded="' + String(detailsOpen) + '" aria-controls="agent-work-details">Work details <span class="count">' + escapeHtml(String(detailCount)) + '</span><svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>' +
             '<a class="command-live-link focusable" href="' + escapeHtml(agent.openUrl) + '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(this.href, event)">Open live <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"></path><path d="M8 7h9v9"></path></svg></a>' +
           '</div>' +
           renderCommandDetails(agent, detailsOpen) +
-        '</section>'
+        '</section>' +
+        footerHtml(agent)
       );
+    }
+
+    function attentionLine(needsAttention, moving, completed) {
+      var meta = syncedAt ? '<span slot="meta">synced ' + String(syncedAt.getHours()).padStart(2, '0') + ':' + String(syncedAt.getMinutes()).padStart(2, '0') + '</span>' : '';
+      if (needsAttention) {
+        var sentence = needsAttention + ' agent' + (needsAttention === 1 ? ' needs' : 's need') + ' you' + (moving ? ' · ' + moving + ' working' : '');
+        return '<div class="agent-head"><ox-attention-line tone="needs-you" count="' + needsAttention + '"><span>' + escapeHtml(sentence) + '</span>' + meta + '</ox-attention-line></div>';
+      }
+      var calm = moving
+        ? 'Nothing needs you · ' + moving + ' working'
+        : completed
+        ? 'Nothing needs you · ' + completed + ' done'
+        : 'No agents need you right now';
+      return '<div class="agent-head"><ox-attention-line tone="calm" count="0"><span>' + escapeHtml(calm) + '</span>' + meta + '</ox-attention-line></div>';
     }
 
     function renderCurrentBoard() {
       if (!currentAgents.length) {
         injectHtml(
-          '<div class="surface-bar"><div class="surface-label">Agent Status</div><div class="surface-summary">All quiet</div></div>' +
-          '<div class="agent-command-shell animate-in"><div class="quiet-command-state"><span><strong style="color:var(--ox-text);font-weight:600;">No agents need you right now.</strong> Everything is available for the next assignment.</span></div></div>'
+          '<div class="agent-command-shell animate-in" data-edge="teal">' +
+            attentionLine(0, 0, 0) +
+            '<div class="quiet-command-state">Everything is available for the next assignment.</div>' +
+          '</div>'
         );
         return;
       }
@@ -2287,23 +960,14 @@
         return agent.status === 'blocked' || agent.status === 'review' || agent.status === 'stalled';
       }).length;
       var moving = activeAgents.filter(function (agent) {
-        return agent.status === 'running' || agent.status === 'queued';
+        return agent.status === 'running' || agent.status === 'verifying' || agent.status === 'queued';
       }).length;
       var completed = activeAgents.filter(function (agent) { return agent.status === 'done'; }).length;
-      var summary = needsAttention
-        ? needsAttention + ' need' + (needsAttention === 1 ? 's' : '') + ' you' + (moving ? ' · ' + moving + ' active' : '')
-          + (completed ? ' · ' + completed + ' completed' : '')
-        : moving
-        ? moving + ' active' + (completed ? ' · ' + completed + ' completed' : '')
-        : completed
-        ? completed + ' completed'
-        : 'All quiet';
 
-      var selectedAccent = selectedAgent ? selectedAgent.accentRgb : '20, 184, 166';
-      var html = '<div class="surface-bar"><div class="surface-label">Agent Status</div><div class="surface-summary">' + escapeHtml(summary) + '</div></div>';
-      html += '<div class="agent-command-shell animate-in" style="--selected-agent-rgb:' + escapeHtml(selectedAccent) + ';">';
+      var html = '<div class="agent-command-shell animate-in" data-edge="' + (needsAttention ? 'amber' : 'teal') + '">';
+      html += attentionLine(needsAttention, moving, completed);
       if (activeAgents.length) {
-        html += '<div class="agent-switcher-list" role="tablist" aria-label="Active agents">';
+        html += '<div class="agent-switcher-list" role="tablist" aria-label="Active agents" aria-orientation="vertical">';
         activeAgents.forEach(function (agent) {
           html += renderSwitcherRow(agent, selectedAgentId === agent.id);
         });
@@ -2314,9 +978,9 @@
         }
         html += '</div>';
       } else if (!showIdleAgents) {
-        html += '<div class="quiet-command-state"><span><strong style="color:var(--ox-text);font-weight:600;">No active work.</strong> All agents are available.</span></div>';
+        html += '<div class="quiet-command-state">No active work. All agents are available.</div>';
       } else {
-        html += '<div class="agent-switcher-list" role="tablist" aria-label="Available agents">';
+        html += '<div class="agent-switcher-list" role="tablist" aria-label="Available agents" aria-orientation="vertical">';
         idleAgents.forEach(function (agent) {
           html += renderSwitcherRow(agent, selectedAgentId === agent.id);
         });
@@ -2333,6 +997,7 @@
 
     function renderBoard(payload) {
       var normalized = normalizePayload(payload);
+      syncedAt = new Date();
       currentAgents = normalized.agents.sort(function (left, right) {
         return getPriority(left) - getPriority(right) || left.name.localeCompare(right.name);
       });
@@ -2342,6 +1007,7 @@
       });
       renderCurrentBoard();
     }
+
 
     function focusAgentTab(agentId) {
       Array.prototype.some.call(document.querySelectorAll('[data-agent-tab]'), function (button) {
@@ -2394,8 +1060,16 @@
       window.setTimeout(function () { focusAgentTab(selectedAgentId); }, 0);
     });
 
+
+    // Previews served next to the widgets read avatars from the same origin;
+    // host sandboxes use the kit default (mcp.useorgx.com).
+    if (window.OrgXElements && window.OrgXWidgetRuntime && window.OrgXWidgetRuntime.detectProtocol() === 'standalone') {
+      window.OrgXElements.avatarConfig.baseUrl = new URL('shared/avatars', window.location.href).toString();
+    }
+
     var demoParams = new URLSearchParams(window.location.search);
-    var isDemo = demoParams.get('demo') === 'true';
+    // Gallery previews (?gallery=true&state=…) read the same fixtures as ?demo=true.
+    var isDemo = demoParams.get('demo') === 'true' || demoParams.get('gallery') === 'true';
     var demoState = demoParams.get('state') || 'populated';
     var demoPayload = isDemo
       ? {
@@ -2465,7 +1139,14 @@
     } else if (demoPayload && demoState === 'blocked') {
       demoPayload.agents[1].status = 'blocked';
       demoPayload.agents[1].blockers = ['Waiting on the production rollout approval before the next verification pass can begin.'];
-    } else if (demoPayload && demoState === 'resolved') {
+    } else if (demoPayload && demoState === 'empty') {
+      demoPayload.agents = [];
+    } else if (demoPayload && demoState === 'stalled') {
+      demoPayload.agents[1].status = 'stalled';
+      demoPayload.agents[1].run_id = '0f6c2a1e-5b7d-4c3e-9a8b-2d1e0f9c8b7a';
+      demoPayload.agents[1].stalled_minutes = 135;
+      demoPayload.agents[1].artifacts = [];
+    } else if (demoPayload && (demoState === 'resolved' || demoState === 'completed')) {
       demoPayload.agents.forEach(function (agent) {
         agent.status = 'done';
         agent.blockers = [];
@@ -2478,7 +1159,7 @@
         agent.updated_at = new Date().toISOString();
       });
     } else if (demoPayload && demoState === 'progressing') {
-      demoPayload.agents[0].status = 'running';
+      demoPayload.agents[0].status = 'verifying';
       demoPayload.agents[0].blockers = [];
       demoPayload.agents.forEach(function (agent) {
         agent.artifacts = (agent.artifacts || []).map(function (artifact) {
