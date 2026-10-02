@@ -431,6 +431,40 @@ export const artifactSummarySchema = z
     changes_requested: z.number().optional(),
   });
 
+/**
+ * Acceptance-ledger proof the app adds to a pending-decision list on the
+ * widget read channel (orgx_decide list_pending, approve_agent_work list,
+ * get_pending_decisions). Failed reads and bounded counts are nullable.
+ */
+export const approvalListProofSchema = z
+  .object({
+    last_accepted: z
+      .object({
+        artifact_id: z.string(),
+        title: z.string(),
+        accepted_at: z.string(),
+        accepted_by: z.enum(['you', 'workspace_member']),
+        url: z.string(),
+      })
+      .strict()
+      .nullable(),
+    completed_unaccepted: z.number().nullable(),
+  })
+  .strict()
+  .nullable();
+
+/**
+ * A model's approve/reject request answered as a normal result: a person
+ * must decide, here is where (src/directHumanDecisionAction.ts).
+ */
+export const humanDecisionReviewShape = {
+  status: z.literal('needs_human').optional(),
+  decision_id: z.string().optional(),
+  requested_action: z.enum(['approve', 'reject']).optional(),
+  review_url: z.string().optional(),
+  authority_kind: z.literal('human_session').optional(),
+};
+
 export const decisionSchema = z.object({
   id: z.string(),
   short_id: z.string().optional(),

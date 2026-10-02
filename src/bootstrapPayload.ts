@@ -209,11 +209,21 @@ export function getBootstrapRecommendedWorkflows(
 
 export function buildBootstrapToolRouting(params: {
   requestedProfile?: string | null;
+  /** Tools in this connection's tools/list that the model may call. */
   visibleTools: readonly string[];
+  /**
+   * Tools in this connection's tools/list that only widgets may call
+   * (ui.visibility ["app"]). Reported separately so nothing the model cannot
+   * call is ever advertised to it as callable.
+   */
+  widgetOnlyTools?: readonly string[];
 }) {
   const resolved = resolveToolProfile(params.requestedProfile);
   const visibleTools = [...new Set(params.visibleTools)].sort();
   const visibleToolSet = new Set(visibleTools);
+  const widgetOnlyTools = [...new Set(params.widgetOnlyTools ?? [])]
+    .filter((tool) => !visibleToolSet.has(tool))
+    .sort();
 
   return {
     profile: resolved.name,
@@ -235,5 +245,8 @@ export function buildBootstrapToolRouting(params: {
     recommended_workflows: getBootstrapRecommendedWorkflows(visibleToolSet),
     visible_tools_count: visibleTools.length,
     visible_tools: visibleTools,
+    // visible_tools + widget_only_tools is exactly this connection's tools/list.
+    widget_only_tools: widgetOnlyTools,
+    listed_tools_count: visibleTools.length + widgetOnlyTools.length,
   };
 }

@@ -85,11 +85,11 @@ function findUnportableSchemaPositions(
 }
 
 describe('OpenAI public tool output schemas', () => {
-  it('covers exactly the 26 ChatGPT public tools', () => {
+  it('covers exactly the 27 ChatGPT public tools', () => {
     expect(Object.keys(OPENAI_OUTPUT_SCHEMAS)).toEqual([
       ...CHATGPT_PUBLIC_SURFACE,
     ]);
-    expect(Object.keys(OPENAI_OUTPUT_SCHEMAS)).toHaveLength(26);
+    expect(Object.keys(OPENAI_OUTPUT_SCHEMAS)).toHaveLength(27);
     expect(getOpenAiOutputSchema('not_a_public_tool')).toBeUndefined();
   });
 

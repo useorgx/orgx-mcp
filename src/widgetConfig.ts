@@ -106,19 +106,86 @@ function addOrigin(origins: Set<string>, value?: string | null) {
   }
 }
 
-function buildWidgetCsp(env: WidgetEnv) {
-  const connectOrigins = new Set<string>();
-  const resourceOrigins = new Set<string>();
-  addOrigin(connectOrigins, env.MCP_SERVER_URL);
-  addOrigin(resourceOrigins, env.MCP_SERVER_URL);
-  if (connectOrigins.size === 0) {
-    connectOrigins.add('https://mcp.useorgx.com');
-  }
-  if (resourceOrigins.size === 0) {
-    resourceOrigins.add('https://mcp.useorgx.com');
-  }
-  for (const domain of DEFAULT_RESOURCE_DOMAINS) {
-    resourceOrigins.add(domain);
+/**
+ * What a widget really loads or connects to, beyond the host bridge
+ * (postMessage needs no CSP entry).
+ *
+ * - connect: the widget opens a network connection to the MCP origin: a live
+ *   feed (shared/live-store.js EventSource), the scaffold stream, or the
+ *   search diagnostics beacon (fetch). Widgets that only talk to the host
+ *   declare no connect domain at all.
+ * - cdnMedia: the widget renders artifact media from https://cdn.useorgx.com.
+ *
+ * Every widget loads its assets and agent avatars from the MCP origin, so that
+ * origin is always a resource domain. ORGX_API_URL is never a widget domain:
+ * widgets reach the API only through tool calls the host makes.
+ */
+export interface WidgetCspNeeds {
+  connect: boolean;
+  cdnMedia: boolean;
+}
+
+/** The widest set, used when a caller does not name a widget. */
+export const DEFAULT_WIDGET_CSP_NEEDS: WidgetCspNeeds = Object.freeze({
+  connect: true,
+  cdnMedia: true,
+});
+
+/**
+ * Per-widget needs, keyed by the widget file stem. tests/surfaceContract.spec.ts
+ * derives the same answers from each widget's source and fails on drift.
+ */
+export const WIDGET_CSP_NEEDS: Readonly<Record<string, WidgetCspNeeds>> =
+  Object.freeze({
+    decisions: { connect: true, cdnMedia: false },
+    'agent-status': { connect: true, cdnMedia: false },
+    'search-results': { connect: true, cdnMedia: false },
+    'scaffolded-initiative': { connect: true, cdnMedia: false },
+    'initiative-pulse': { connect: true, cdnMedia: false },
+    'task-spawned': { connect: true, cdnMedia: false },
+    'workspace-map': { connect: true, cdnMedia: false },
+    'entity-card': { connect: true, cdnMedia: false },
+    'work-ledger': { connect: true, cdnMedia: false },
+    'morning-brief': { connect: true, cdnMedia: false },
+    'artifact-review': { connect: true, cdnMedia: true },
+    'plan-session-live': { connect: true, cdnMedia: false },
+    'proof-receipt': { connect: false, cdnMedia: false },
+    'orgx-panel': { connect: false, cdnMedia: false },
+  });
+
+export function widgetCspNeedsForUri(uri: string): WidgetCspNeeds {
+  const stem = parseWidgetResourceUri(uri)
+    .widgetFile.replace(/\.skybridge\.html$/, '')
+    .replace(/\.html$/, '');
+  return WIDGET_CSP_NEEDS[stem] ?? DEFAULT_WIDGET_CSP_NEEDS;
+}
+
+function mcpOrigins(env: WidgetEnv): string[] {
+  const origins = new Set<string>();
+  addOrigin(origins, env.MCP_SERVER_URL);
+  if (origins.size === 0) origins.add(DEFAULT_WIDGET_DOMAIN);
+  return Array.from(origins);
+}
+
+/**
+ * Shared widget code loads agent avatars and the OrgX mark from this fixed
+ * origin whatever the deployment (the kit's avatarConfig.baseUrl and the
+ * decisions widget's logo fallback), so it is always a resource domain, also
+ * on staging where MCP_SERVER_URL is a different origin.
+ */
+export const WIDGET_SHARED_ASSET_ORIGIN = 'https://mcp.useorgx.com';
+
+function buildWidgetCsp(
+  env: WidgetEnv,
+  needs: WidgetCspNeeds = DEFAULT_WIDGET_CSP_NEEDS
+) {
+  const mcp = mcpOrigins(env);
+  const connectOrigins = new Set<string>(needs.connect ? mcp : []);
+  const resourceOrigins = new Set<string>([...mcp, WIDGET_SHARED_ASSET_ORIGIN]);
+  if (needs.cdnMedia) {
+    for (const domain of DEFAULT_RESOURCE_DOMAINS) {
+      resourceOrigins.add(domain);
+    }
   }
   const redirectDomains = new Set(DEFAULT_REDIRECT_DOMAINS);
   addOrigin(redirectDomains, env.MCP_SERVER_URL);
@@ -133,11 +200,14 @@ function buildWidgetCsp(env: WidgetEnv) {
   };
 }
 
-export function buildWidgetMeta(env: WidgetEnv) {
+export function buildWidgetMeta(
+  env: WidgetEnv,
+  needs: WidgetCspNeeds = DEFAULT_WIDGET_CSP_NEEDS
+) {
   return {
     'openai/widgetPrefersBorder': true,
     'openai/widgetDomain': resolveWidgetDomain(env),
-    'openai/widgetCSP': buildWidgetCsp(env),
+    'openai/widgetCSP': buildWidgetCsp(env, needs),
   };
 }
 
@@ -149,14 +219,25 @@ export function buildWidgetMeta(env: WidgetEnv) {
  * - resourceDomains: For loading scripts, styles, images
  * - connectDomains: For fetch/WebSocket API calls
  */
-export function buildMcpAppsMeta(env: WidgetEnv, profile?: string) {
-  const csp = buildWidgetCsp(env);
+export function buildMcpAppsMeta(
+  env: WidgetEnv,
+  profile?: string,
+  needs: WidgetCspNeeds = DEFAULT_WIDGET_CSP_NEEDS,
+  options: { chatgptHost?: boolean } = {}
+) {
+  const csp = buildWidgetCsp(env, needs);
   return {
     ui: {
-      // The standard MCP Apps domain is safe only for the explicit ChatGPT
-      // profile. Claude requires a dedicated `{hash}.claudemcpcontent.com`
-      // origin, so every other profile lets the host choose its sandbox.
-      ...(profile === 'chatgpt' ? { domain: resolveWidgetDomain(env) } : {}),
+      // The standard MCP Apps domain is set only for ChatGPT: the explicit
+      // ChatGPT profile, or any profile (such as the default v2 endpoint)
+      // whose connected client identified itself as ChatGPT. ChatGPT reads
+      // ui.* ahead of the openai/* keys, so without ui.domain it ignored
+      // openai/widgetDomain and ran the widget without its declared CSP.
+      // Claude requires a dedicated `{hash}.claudemcpcontent.com` origin, so
+      // every other client lets the host choose its sandbox.
+      ...(profile === 'chatgpt' || options.chatgptHost
+        ? { domain: resolveWidgetDomain(env) }
+        : {}),
       prefersBorder: true,
       csp: {
         // resourceDomains allows loading external scripts/styles/images
@@ -166,7 +247,7 @@ export function buildMcpAppsMeta(env: WidgetEnv, profile?: string) {
         connectDomains: csp.connect_domains,
         // Base URLs stay pinned to the widget server; allowing the media CDN
         // here would broaden navigation without helping resource loads.
-        baseUriDomains: csp.connect_domains,
+        baseUriDomains: mcpOrigins(env),
       },
     },
   };

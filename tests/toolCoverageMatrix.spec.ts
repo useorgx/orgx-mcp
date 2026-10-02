@@ -499,9 +499,9 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     evidence: ['tests/decisionToolsContract.spec.ts'],
   },
   resume_agent_run: {
-    tier: 'local_registered_not_installed_public',
-    evidence: ['tests/toolDiscoverySnapshot.spec.ts', 'tests/contractTools.spec.ts'],
-    remaining: 'Not visible in installed v2 plugin surface on server 0.3.0-7fc0bdc0; exercise against a resumable non-production run.',
+    tier: 'contract_and_unit',
+    evidence: ['tests/surfaceContract.spec.ts', 'tests/toolDiscoverySnapshot.spec.ts', 'tests/contractTools.spec.ts'],
+    remaining: 'Widget-only on the chatgpt and v2 surfaces; press Resume in the agent-status widget against a resumable non-production run.',
   },
   resume_plan_session: {
     tier: 'contract_and_unit',

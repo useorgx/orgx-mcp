@@ -45,7 +45,13 @@ import {
   type SecurityScheme,
 } from './authHelpers';
 import { buildEntityLink, entityLinkMarkdown, buildLiveUrl } from './deepLinks';
-import { directHumanDecisionActionRequired } from './directHumanDecisionAction';
+import {
+  directHumanDecisionActionRequired,
+  directHumanDecisionReviewResult,
+} from './directHumanDecisionAction';
+import { isModelVisibleToolMeta } from './toolVisibility';
+import { applyToolArgumentAliases } from './toolArgumentAliases';
+import { isWidgetOnlyTool } from './widgetToolContract';
 import {
   WIDGET_APPROVAL_META_KEY,
   WIDGET_APPROVAL_SOURCE_TOOLS,
@@ -364,6 +370,7 @@ import { VERIFIABLE_COMPLETION_ENTITY_TYPES } from './shared/entity';
 import { FLYWHEEL_TOOL_DEFINITIONS } from './flywheelTools';
 import {
   buildMcpAppsMeta,
+  widgetCspNeedsForUri,
   MCP_APPS_SHARED_COMPONENT_PATHS,
   buildWidgetMeta,
   parseWidgetResourceUri,
@@ -603,26 +610,6 @@ const SUBMITTED_INFORMATIONAL_TOOL_EXECUTIONS = new Set([
 // to the API so a malformed persisted value never becomes an identity hint.
 const ORGX_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function withAppsSdkVisibility(
-  meta: Record<string, unknown> | undefined,
-  visibility: 'public' | 'private'
-): Record<string, unknown> {
-  const existingUi =
-    meta?.ui && typeof meta.ui === 'object' && !Array.isArray(meta.ui)
-      ? (meta.ui as Record<string, unknown>)
-      : {};
-
-  return {
-    ...meta,
-    // Legacy compatibility alias. New hosts use ui.visibility.
-    'openai/visibility': visibility,
-    ui: {
-      ...existingUi,
-      visibility: visibility === 'public' ? ['model', 'app'] : ['app'],
-    },
-  };
-}
 
 /**
  * Client-integration tools whose input schemas (and app endpoints) accept a
@@ -3285,6 +3272,7 @@ export class OrgXMcp extends McpAgent<
     securitySchemes?: readonly { type: string; scopes?: readonly string[] }[]
   ): Promise<CallToolResult> {
     const startTime = Date.now();
+    args = applyToolArgumentAliases(toolId, args);
 
     const dispatchContract = await this.resolveDispatchContract(toolId, args);
     if (!dispatchContract.ok) return dispatchContract.result;
@@ -3826,16 +3814,6 @@ export class OrgXMcp extends McpAgent<
    * Includes securitySchemes per MCP Authorization Spec (via _meta).
    */
   private registerChatGPTTools(allowedTools: Set<string> | null) {
-    // Tools that use output templates must be visible, otherwise ChatGPT disables the template.
-    // These tools are still protected by OAuth scopes, but we mark them public so their widgets work.
-    // The generic rule below force-publics ANY template-bearing tool; this set is kept for
-    // template-less tools that must still be public for ChatGPT to expose them.
-    const FORCE_PUBLIC_TEMPLATE_TOOLS = new Set([
-      'approve_decision',
-      'reject_decision',
-      'spawn_agent_task',
-    ]);
-
     // These tools are registered inline in registerTools() with custom handlers.
     // Skip them here to avoid "Tool X is already registered" errors from the SDK.
     const INLINE_HANDLED_TOOLS = new Set([
@@ -3850,15 +3828,11 @@ export class OrgXMcp extends McpAgent<
       const metaObj = tool._meta as unknown as
         | Record<string, unknown>
         | undefined;
-      const isReadOnly = metaObj?.['openai/readOnlyHint'] === true;
-      const hasOutputTemplate = Boolean(metaObj?.['openai/outputTemplate']);
-      const visibility =
-        isReadOnly || hasOutputTemplate || FORCE_PUBLIC_TEMPLATE_TOOLS.has(tool.id)
-          ? 'public'
-          : 'private';
 
+      // Visibility (model vs widget-only) is applied to every registration by
+      // the result wrapper from src/toolVisibility.ts; no per-loop rule here.
       const meta: Record<string, unknown> = {
-        ...withAppsSdkVisibility(metaObj, visibility),
+        ...metaObj,
         // Per MCP auth spec, declare security requirements
         'mcp/securitySchemes': tool.securitySchemes,
       };
@@ -3891,10 +3865,9 @@ export class OrgXMcp extends McpAgent<
   private registerPlanSessionTools(allowedTools: Set<string> | null) {
     for (const tool of PLAN_SESSION_TOOLS) {
       if (allowedTools && !allowedTools.has(tool.id)) continue;
-      // Plan session tools modify state / learn from edits; keep them private by default.
+      // Visibility comes from src/toolVisibility.ts via the result wrapper.
       const meta = {
         ...tool._meta,
-        'openai/visibility': 'private',
         'mcp/securitySchemes': tool.securitySchemes,
       };
 
@@ -3932,12 +3905,9 @@ export class OrgXMcp extends McpAgent<
   private registerStreamTools(allowedTools: Set<string> | null) {
     for (const tool of STREAM_TOOL_DEFINITIONS) {
       if (allowedTools && !allowedTools.has(tool.id)) continue;
-      const metaObj = tool._meta as Record<string, unknown> | undefined;
-      const isReadOnly = metaObj?.['openai/readOnlyHint'] === true;
-
+      // Visibility comes from src/toolVisibility.ts via the result wrapper.
       const meta = {
         ...tool._meta,
-        'openai/visibility': isReadOnly ? 'public' : 'private',
         'mcp/securitySchemes': tool.securitySchemes,
       };
 
@@ -4400,9 +4370,9 @@ export class OrgXMcp extends McpAgent<
 
     for (const tool of CLIENT_INTEGRATION_TOOL_DEFINITIONS) {
       if (allowedTools && !allowedTools.has(tool.id)) continue;
+      // Visibility comes from src/toolVisibility.ts via the result wrapper.
       const meta = {
         ...tool._meta,
-        'openai/visibility': 'private',
         'mcp/securitySchemes': tool.securitySchemes,
       };
 
@@ -4922,15 +4892,63 @@ export class OrgXMcp extends McpAgent<
     }
   }
 
+  /**
+   * A model asked to approve or reject: answer with a normal result that
+   * says a person must decide and where (A4). Never an MCP error, never a
+   * settlement.
+   */
+  private humanDecisionReviewResult(
+    decisionId: string,
+    action: 'approve' | 'reject'
+  ): CallToolResult {
+    const payload = directHumanDecisionReviewResult(decisionId, action);
+    return {
+      content: [{ type: 'text', text: payload.message }],
+      structuredContent: payload,
+    };
+  }
+
+  /**
+   * The tools this connection's tools/list returns, read from the server's
+   * own registry so the bootstrap can never advertise a tool the session
+   * cannot list (a profile entry with no registration, or one dropped by the
+   * granted-scope filter).
+   */
+  private listRegisteredTools(): Array<{ name: string; meta: unknown }> {
+    const registry = (
+      this.server as unknown as {
+        _registeredTools?: Record<string, { enabled?: boolean; _meta?: unknown }>;
+      }
+    )?._registeredTools;
+    if (!registry) return [];
+    return Object.entries(registry)
+      .filter(([, tool]) => tool?.enabled !== false)
+      .map(([name, tool]) => ({ name, meta: tool?._meta }));
+  }
+
   private buildBootstrapPayload(allowedTools: Set<string> | null) {
-    const visibleTools = allowedTools
-      ? Array.from(allowedTools).sort()
-      : getKnownToolContracts()
-          .map((tool) => tool.id)
-          .sort();
+    const registered = this.listRegisteredTools();
+    const fallbackTools = allowedTools
+      ? Array.from(allowedTools)
+      : getKnownToolContracts().map((tool) => tool.id);
+    const visibleTools = (
+      registered.length
+        ? registered
+            .filter((tool) => isModelVisibleToolMeta(tool.meta))
+            .map((tool) => tool.name)
+        : fallbackTools.filter((tool) => !isWidgetOnlyTool(tool))
+    ).sort();
+    const widgetOnlyTools = (
+      registered.length
+        ? registered
+            .filter((tool) => !isModelVisibleToolMeta(tool.meta))
+            .map((tool) => tool.name)
+        : fallbackTools.filter((tool) => isWidgetOnlyTool(tool))
+    ).sort();
     const routing = buildBootstrapToolRouting({
       requestedProfile: this.props?.profile,
       visibleTools,
+      widgetOnlyTools,
     });
 
     return {
@@ -5207,6 +5225,7 @@ export class OrgXMcp extends McpAgent<
     securitySchemes?: readonly { type: string; scopes?: readonly string[] }[],
     allowedTools?: Set<string> | null
   ): Promise<CallToolResult> {
+    args = applyToolArgumentAliases(toolId, args);
     const resolvedUserId = this.resolveUserId();
     const invocationSecuritySchemes =
       resolveContractToolInvocationSecuritySchemes(
@@ -7069,11 +7088,7 @@ export class OrgXMcp extends McpAgent<
                 status: 400,
               });
             }
-            const required = directHumanDecisionActionRequired(
-              args.decision_id,
-              'approve'
-            );
-            return this.toolError(required.message, required.options);
+            return this.humanDecisionReviewResult(args.decision_id.trim(), 'approve');
           }
           if (action === 'reject') {
             if (typeof args.decision_id !== 'string' || !args.decision_id.trim()) {
@@ -7088,11 +7103,7 @@ export class OrgXMcp extends McpAgent<
                 status: 400,
               });
             }
-            const required = directHumanDecisionActionRequired(
-              args.decision_id,
-              'reject'
-            );
-            return this.toolError(required.message, required.options);
+            return this.humanDecisionReviewResult(args.decision_id.trim(), 'reject');
           }
           return this.executeChatGPTTool(
             'get_pending_decisions',
@@ -7370,21 +7381,10 @@ export class OrgXMcp extends McpAgent<
     for (const tool of CONTRACT_TOOL_DEFINITIONS) {
       if (allowedTools && !allowedTools.has(tool.id)) continue;
       const metaObj = tool._meta as Record<string, unknown> | undefined;
-      const isReadOnly = metaObj?.['openai/readOnlyHint'] === true;
-      // Any tool that ships an output template MUST be visible, otherwise
-      // ChatGPT hides the tool and disables the template ("Templates tied to
-      // hidden tools won't be usable"). Visibility only controls ChatGPT
-      // rendering — the tool stays protected by its OAuth securitySchemes.
-      const hasOutputTemplate = Boolean(metaObj?.['openai/outputTemplate']);
-      const configuredVisibility = metaObj?.['openai/visibility'];
-      const visibility =
-        configuredVisibility === 'public' || configuredVisibility === 'private'
-          ? configuredVisibility
-          : isReadOnly || hasOutputTemplate
-          ? 'public'
-          : 'private';
+      // Visibility comes from src/toolVisibility.ts (applied by the result
+      // wrapper): every contract tool is model-visible unless widget-only.
       const meta = {
-        ...withAppsSdkVisibility(metaObj, visibility),
+        ...metaObj,
         'mcp/securitySchemes': tool.securitySchemes,
       };
 
@@ -7466,20 +7466,23 @@ export class OrgXMcp extends McpAgent<
     );
   }
 
-  private toolResultGuidanceInstalled = false;
+  private toolResultGuidanceInstalled: unknown = null;
 
   /**
    * Monkey-patches `this.server.registerTool` so profile-invisible tool
    * breadcrumbs are removed from result guidance. Tool schemas and result
    * envelopes remain untouched; output schemas must be exact and per-tool.
    *
-   * Idempotent: only patches once per worker instance.
+   * Idempotent per McpServer: _doInit creates a fresh server on each init,
+   * and every server must carry the wrapper (output schemas and the one
+   * visibility rule are applied here), so the guard tracks the server
+   * instance rather than the worker.
    */
   private installToolResultGuidanceWrapper(
     allowedTools: ReadonlySet<string> | null
   ) {
-    if (this.toolResultGuidanceInstalled) return;
-    this.toolResultGuidanceInstalled = true;
+    if (this.toolResultGuidanceInstalled === this.server) return;
+    this.toolResultGuidanceInstalled = this.server;
     installToolResultGuidanceWrapper(this.server, allowedTools, (toolId, observation) => {
       if (this.isDirectoryReviewProfile() || this.isSubmittedInformationalToolExecution(toolId)) return;
       this.capturePosthogEvent('mcp_search_response', {
@@ -7730,7 +7733,7 @@ export class OrgXMcp extends McpAgent<
           openWorldHint: false,
         },
         inputSchema: {},
-          _meta: { 'openai/visibility': 'private' },
+          _meta: {},
         },
         async () =>
           this.withOrgx(async () => {
@@ -7792,7 +7795,7 @@ export class OrgXMcp extends McpAgent<
               .optional()
               .describe('Optional agent credit pack to buy instead of upgrading a plan.'),
           },
-          _meta: { 'openai/visibility': 'private' },
+          _meta: {},
         },
         async (args) =>
           this.withOrgx(async () => {
@@ -7913,7 +7916,7 @@ export class OrgXMcp extends McpAgent<
           openWorldHint: false,
         },
         inputSchema: {},
-          _meta: { 'openai/visibility': 'private' },
+          _meta: {},
         },
         async () =>
           this.withOrgx(async () => {
@@ -13207,7 +13210,7 @@ export class OrgXMcp extends McpAgent<
       {
         title: 'Resume Agent Run',
         description:
-          'Resume a paused or auto-closed agent run. Flips status back to running, clears TTL auto-close markers, and appends a resume_history entry. USE WHEN: the user wants to continue a reporting session that was auto-closed by the stale-TTL cron, or reactivate any paused run. DO NOT USE: to restart a completed/failed/cancelled run — those are terminal.',
+          'Widget-only: resumes a paused or auto-closed agent run after the person clicks Resume in the agent-status widget. Flips status back to running, clears TTL auto-close markers, and appends a resume_history entry. USE WHEN: the agent-status widget sends a Resume click. NEXT: the widget polls orgx_command_status until the run settles. DO NOT USE: from a model (use manage_lifecycle level=run action=resume), or to restart a completed/failed/cancelled run — those are terminal.',
         annotations: {
           readOnlyHint: false,
           destructiveHint: false,
@@ -13224,6 +13227,7 @@ export class OrgXMcp extends McpAgent<
           'openai/toolInvocation/invoking': 'Resuming run...',
           'openai/toolInvocation/invoked': 'Run resumed',
           securitySchemes: SECURITY_SCHEMES.authRequired,
+          'mcp/securitySchemes': SECURITY_SCHEMES.authRequired,
         },
       },
       async (args) =>
@@ -14091,19 +14095,22 @@ export class OrgXMcp extends McpAgent<
    * These skills can be installed to enhance OrgX MCP workflows.
    */
   private registerSkillResources() {
-    // Downloadable skill packs for OrgX MCP
-    const skillPacks = [
+    // Downloadable skill packs for OrgX MCP. requiredTools name canonical
+    // tools, and a pack is listed only when this connection's tools/list has
+    // every one of them, so a skill never points at a tool the session
+    // cannot call.
+    const allSkillPacks = [
       {
         id: 'morning-briefing',
         name: 'Morning Briefing',
         version: '1.0.0',
         description:
-          'Get your daily OrgX briefing - morning brief value signals, pending decisions via list_entities, blocked work, agent status, and initiative health.',
+          'Get your daily OrgX briefing - morning brief value signals, pending decisions, blocked work, agent status, and initiative health.',
         domain: 'operations',
         requiredTools: [
           'mcp__orgx__get_morning_brief',
           'mcp__orgx__get_agent_status',
-          'mcp__orgx__list_entities',
+          'mcp__orgx__orgx_decide',
           'mcp__orgx__get_initiative_pulse',
         ],
       },
@@ -14115,11 +14122,10 @@ export class OrgXMcp extends McpAgent<
           'From a one-line goal, creates a complete initiative with milestones, workstreams, and agent assignments.',
         domain: 'product',
         requiredTools: [
-          'mcp__orgx__create_entity',
-          'mcp__orgx__list_entities',
-          'mcp__orgx__spawn_agent_task',
-          'mcp__orgx__entity_action',
-          'mcp__orgx__configure_org',
+          'mcp__orgx__scaffold_initiative',
+          'mcp__orgx__orgx_search',
+          'mcp__orgx__orgx_spawn',
+          'mcp__orgx__orgx_act',
         ],
       },
       {
@@ -14130,12 +14136,17 @@ export class OrgXMcp extends McpAgent<
           'Create multiple tasks or milestones from a markdown checklist with automatic priority detection.',
         domain: 'operations',
         requiredTools: [
-          'mcp__orgx__create_entity',
-          'mcp__orgx__list_entities',
-          'mcp__orgx__update_entity',
+          'mcp__orgx__orgx_write',
+          'mcp__orgx__orgx_search',
         ],
       },
     ];
+    const listedTools = new Set(this.listRegisteredTools().map((tool) => tool.name));
+    const skillPacks = allSkillPacks.filter((skill) =>
+      skill.requiredTools.every((tool) =>
+        listedTools.has(tool.replace(/^mcp__orgx__/, ''))
+      )
+    );
 
     // Register skill catalog resource
     this.server.registerResource(
@@ -14228,12 +14239,7 @@ export class OrgXMcp extends McpAgent<
   private registerWidgetResources(
     allowedWidgetUris: ReadonlySet<string> | null = null
   ) {
-    const widgetMeta = buildWidgetMeta(this.env);
     const activeProfile = resolveToolProfile(this.props?.profile).name;
-    const mcpAppsMeta = buildMcpAppsMeta(this.env, activeProfile);
-    const mcpAppsContentMeta = { ...widgetMeta, ...mcpAppsMeta };
-    const skybridgeContentMeta =
-      activeProfile === 'chatgpt' ? mcpAppsContentMeta : widgetMeta;
 
     for (const widget of WIDGET_RESOURCES) {
       if (allowedWidgetUris && !allowedWidgetUris.has(widget.uri)) continue;
@@ -14241,12 +14247,21 @@ export class OrgXMcp extends McpAgent<
       // openai/ui display modes) on top of the shared CSP/domain contract.
       const extraContentMeta =
         'contentMeta' in widget ? (widget.contentMeta as Record<string, unknown>) : null;
-      const widgetMcpAppsMeta = extraContentMeta
-        ? { ...mcpAppsContentMeta, ...extraContentMeta }
-        : mcpAppsContentMeta;
-      const widgetSkybridgeMeta = extraContentMeta
-        ? { ...skybridgeContentMeta, ...extraContentMeta }
-        : skybridgeContentMeta;
+      const needs = widgetCspNeedsForUri(widget.uri);
+      // Recomputed on every read: the MCP initialize handshake (which says
+      // whether the client is ChatGPT) can arrive after registration, and
+      // the resources/read content _meta is what the host applies.
+      const contentMeta = (flavor: 'mcp-apps' | 'skybridge') => {
+        const widgetMeta = buildWidgetMeta(this.env, needs);
+        const chatgptHost = activeProfile === 'chatgpt' || this.isChatGptClient();
+        const mcpAppsMeta = {
+          ...widgetMeta,
+          ...buildMcpAppsMeta(this.env, activeProfile, needs, { chatgptHost }),
+        };
+        const base =
+          flavor === 'mcp-apps' || chatgptHost ? mcpAppsMeta : widgetMeta;
+        return extraContentMeta ? { ...base, ...extraContentMeta } : base;
+      };
 
       registerAppResource(
         this.server,
@@ -14254,14 +14269,14 @@ export class OrgXMcp extends McpAgent<
         widget.uri,
         {
           description: widget.title,
-          _meta: widgetMcpAppsMeta,
+          _meta: contentMeta('mcp-apps'),
         },
         async () =>
           this.buildWidgetResourceResponse(
             widget.uri,
             widget.title,
             RESOURCE_MIME_TYPE,
-            widgetMcpAppsMeta
+            contentMeta('mcp-apps')
           )
       );
 
@@ -14272,14 +14287,14 @@ export class OrgXMcp extends McpAgent<
         {
           description: `${widget.title} (version-tolerant)`,
           mimeType: RESOURCE_MIME_TYPE,
-          _meta: widgetMcpAppsMeta,
+          _meta: contentMeta('mcp-apps'),
         },
         async (uri) =>
           this.buildWidgetResourceResponse(
             uri.toString(),
             widget.title,
             RESOURCE_MIME_TYPE,
-            widgetMcpAppsMeta
+            contentMeta('mcp-apps')
           )
       );
 
@@ -14290,14 +14305,14 @@ export class OrgXMcp extends McpAgent<
         {
           description: `${widget.title} (ChatGPT)`,
           mimeType: SKYBRIDGE_MIME_TYPE,
-          _meta: widgetSkybridgeMeta,
+          _meta: contentMeta('skybridge'),
         },
         async () =>
           this.buildWidgetResourceResponse(
             widget.uri,
             widget.title,
             SKYBRIDGE_MIME_TYPE,
-            widgetSkybridgeMeta,
+            contentMeta('skybridge'),
             outputTemplateUri
           )
       );
@@ -14310,18 +14325,25 @@ export class OrgXMcp extends McpAgent<
         {
           description: `${widget.title} (ChatGPT, version-tolerant)`,
           mimeType: SKYBRIDGE_MIME_TYPE,
-          _meta: widgetSkybridgeMeta,
+          _meta: contentMeta('skybridge'),
         },
         async (uri) =>
           this.buildWidgetResourceResponse(
             toWidgetHtmlResourceUri(uri.toString()),
             widget.title,
             SKYBRIDGE_MIME_TYPE,
-            widgetSkybridgeMeta,
+            contentMeta('skybridge'),
             uri.toString()
           )
       );
     }
+  }
+
+  /** True when the connected MCP client identified itself as ChatGPT. */
+  private isChatGptClient(): boolean {
+    const name =
+      this.readHandshakeClientInfo()?.name ?? this.sessionContext?.clientName;
+    return typeof name === 'string' && detectSourceClient({ name }) === 'chatgpt';
   }
 
   private async buildWidgetResourceResponse(

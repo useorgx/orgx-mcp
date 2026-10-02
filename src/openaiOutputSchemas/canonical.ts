@@ -1,12 +1,14 @@
 import { z } from 'zod';
 
 import {
+  approvalListProofSchema,
   artifactSchema,
   budgetPreflightSchema,
   capabilityGapSchema,
   contextPackSchema,
   decisionSchema,
   estimateSchema,
+  humanDecisionReviewShape,
   lifecycleAffectedSchema,
   loopValidationSchema,
   normalizationWarningSchema,
@@ -70,6 +72,10 @@ export const CANONICAL_OUTPUT_SCHEMAS = {
       }),
       visible_tools_count: z.number(),
       visible_tools: z.array(z.string()),
+      // Widget-only tools on this connection; visible_tools + widget_only_tools
+      // is exactly the connection's tools/list.
+      widget_only_tools: z.array(z.string()).optional(),
+      listed_tools_count: z.number().optional(),
       workspace: z
         .object({ id: z.string(), name: nullableString })
         .nullable(),
@@ -553,6 +559,10 @@ export const CANONICAL_OUTPUT_SCHEMAS = {
         })
         .optional(),
       message: z.string().optional(),
+      // list_pending: acceptance-ledger proof from the widget read channel.
+      proof: approvalListProofSchema.optional(),
+      // approve | reject: a person decides; MCP returns where (A4).
+      ...humanDecisionReviewShape,
     })
     .strict(),
 

@@ -73,16 +73,16 @@ describe('widget resources', () => {
     );
     // Per-widget content meta is layered over the shared CSP/domain meta for
     // every registration of that widget (MCP Apps and skybridge).
-    expect(workerSource).toContain('{ ...mcpAppsContentMeta, ...extraContentMeta }');
-    expect(workerSource).toContain('{ ...skybridgeContentMeta, ...extraContentMeta }');
+    expect(workerSource).toContain('{ ...base, ...extraContentMeta }');
   });
 
-  it('publishes standard ui.domain metadata only through the explicit ChatGPT profile', () => {
+  // Behaviour is covered end to end in tests/surfaceContract.spec.ts (A6).
+  it('publishes standard ui.domain metadata only to ChatGPT (profile or client)', () => {
     expect(workerSource).toContain(
-      'buildMcpAppsMeta(this.env, activeProfile)'
+      'buildMcpAppsMeta(this.env, activeProfile, needs, { chatgptHost })'
     );
     expect(workerSource).toContain(
-      "activeProfile === 'chatgpt' ? mcpAppsContentMeta : widgetMeta"
+      "const chatgptHost = activeProfile === 'chatgpt' || this.isChatGptClient();"
     );
   });
 });

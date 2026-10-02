@@ -12,6 +12,7 @@ import {
 import { CONTRACT_TOOL_DEFINITIONS } from '../src/contractTools';
 import { FLYWHEEL_TOOL_DEFINITIONS } from '../src/flywheelTools';
 import { resolveProfileToolSet } from '../src/toolProfiles';
+import { withConsistentToolVisibility } from '../src/toolVisibility';
 
 type ToolDef = { id: string; _meta?: Record<string, unknown> };
 
@@ -109,18 +110,18 @@ describe('MCP Worker tool registration integrity', () => {
       expect.arrayContaining(['orgx_decide', 'orgx_plan'])
     );
 
-    // The worker source must compute visibility from outputTemplate in BOTH paths.
-    const src = readWorkerSource();
-    const visibilityClauses = src.match(/openai\/outputTemplate'\]\)/g) ?? [];
+    // One visibility rule (src/toolVisibility.ts), applied to every
+    // registration by the result wrapper: a template tool is never widget-only.
+    for (const def of templateToolsInV2) {
+      const meta = withConsistentToolVisibility(def.id, def._meta as Record<string, unknown>);
+      expect(meta['openai/visibility'], def.id).toBe('public');
+      expect((meta.ui as { visibility?: string[] }).visibility, def.id).toEqual(['model', 'app']);
+    }
     expect(
-      src.includes('hasOutputTemplate'),
-      'index.ts must force-public template-bearing tools via hasOutputTemplate in registration'
-    ).toBe(true);
-    expect(
-      visibilityClauses.length,
-      'both registerChatGPTTools and registerContractTools must derive hasOutputTemplate'
-    ).toBeGreaterThanOrEqual(2);
+      readFileSync(resolvePath(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'toolResultRegistration.ts'), 'utf8')
+    ).toContain('withConsistentToolVisibility(');
 
+    const src = readWorkerSource();
     const scaffoldStart = src.search(
       /registerAppTool\(\s*this\.server,\s*'scaffold_initiative'/
     );
