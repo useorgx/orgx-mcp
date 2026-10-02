@@ -25,6 +25,7 @@
     "widget:build": "node scripts/build-widgets.mjs",
     "kit:sync": "node scripts/sync-ui-kit.mjs",
     "widget:verify-payloads": "node scripts/verify-widget-payloads.mjs",
+    "widget:payload": "tsx scripts/widget-payload-sizes.ts",
     "widget:verify-rendering": "tsx scripts/verify-widget-rendering.ts",
     "widget:audit-redesign": "node scripts/audit-widget-redesign.mjs",
     "widget:audit-themes": "node scripts/audit-widget-themes.mjs",

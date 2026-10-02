@@ -16,6 +16,15 @@
  *   3. No reintroduced forks — any widget whose filename ends in
  *      `-stream.html` fails the build (they were collapsed into the
  *      main widgets via ?live=true data-source flags).
+ *   4. Design-kit bundles — a widget that uses <ox-*> elements loads either
+ *      shared/kit/ox-elements.js (all) or ox-elements-core.js followed by
+ *      only the add-ons (footer / glyph / avatar) it uses. A missing or
+ *      out-of-order bundle, or an add-on nothing uses, fails the build; a
+ *      choice that is not the smallest one prints a warning.
+ *
+ * Payload size: every widget's inlined MCP Apps document has a byte budget
+ * (scripts/widget-payload-budgets.json), enforced by
+ * tests/widgetPayloadBudget.spec.ts and `pnpm widget:payload`.
  *
  * The manifest is written to public/widgets/_manifest.json and is the
  * output artifact the runtime serving layer will read in Stage C.
@@ -72,6 +81,10 @@ const DEMO_ONLY_WIDGETS = new Set([
 const SHARED_ALLOWLIST = new Set([
   'shared/kit/ox-tokens.css',
   'shared/kit/ox-elements.js',
+  'shared/kit/ox-elements-core.js',
+  'shared/kit/ox-elements-footer.js',
+  'shared/kit/ox-elements-glyph.js',
+  'shared/kit/ox-elements-avatar.js',
   'shared/agent-identity.js',
   'shared/tokens.css',
   'shared/widget-theme.css',
@@ -102,6 +115,10 @@ const SHARED_ALLOWLIST = new Set([
 const RUNTIME_INLINED_PATHS = new Set([
   'shared/kit/ox-tokens.css',
   'shared/kit/ox-elements.js',
+  'shared/kit/ox-elements-core.js',
+  'shared/kit/ox-elements-footer.js',
+  'shared/kit/ox-elements-glyph.js',
+  'shared/kit/ox-elements-avatar.js',
   'shared/agent-identity.js',
   'shared/tokens.css',
   'shared/widget-theme.css',
@@ -117,6 +134,19 @@ const RUNTIME_INLINED_PATHS = new Set([
   'shared/widget-runtime.js',
   'shared/openai-extensions.js',
 ]);
+
+// ── Contract 4: design-kit bundles ───────────────────────────────
+// What each vendored kit bundle defines (see scripts/sync-ui-kit.mjs and the
+// kit README). The add-ons reuse the core runtime, so core loads first.
+const KIT_FULL = 'shared/kit/ox-elements.js';
+const KIT_CORE = 'shared/kit/ox-elements-core.js';
+const KIT_CORE_ELEMENTS = ['ox-state-chip', 'ox-attention-line', 'ox-receipt-row'];
+const KIT_ADDONS = {
+  'ox-footer': 'shared/kit/ox-elements-footer.js',
+  'ox-glyph': 'shared/kit/ox-elements-glyph.js',
+  'ox-avatar': 'shared/kit/ox-elements-avatar.js',
+};
+const KIT_ELEMENTS = [...KIT_CORE_ELEMENTS, ...Object.keys(KIT_ADDONS)];
 
 // ── Parse helpers ─────────────────────────────────────────────────
 
@@ -171,6 +201,66 @@ function detectProtocolBridge(html, refs) {
     return 'legacy-inline';
   }
   return 'standalone';
+}
+
+/** Kit elements the widget renders: `<ox-x` markup (HTML or JS strings) or createElement('ox-x'). */
+function usedKitElements(html) {
+  return KIT_ELEMENTS.filter((el) =>
+    new RegExp(`<${el}\\b|createElement\\(\\s*['"\`]${el}['"\`]`).test(html)
+  );
+}
+
+/** shared/kit/ox-elements*.js script tags, in document order. */
+function kitScripts(html) {
+  return [...html.matchAll(/<script\b[^>]*\bsrc=("|')([^"']*shared\/kit\/ox-elements[^"']*)\1/gi)].map((m) =>
+    m[2].split(/[?#]/)[0].replace(/^(?:\.\/)+/, '')
+  );
+}
+
+const kitBytes = (paths) => paths.reduce((n, p) => n + statSync(join(WIDGETS_DIR, p)).size, 0);
+
+/** The smallest set of kit bundles that defines `used`, in load order. */
+function smallestKit(used) {
+  if (!used.length) return [];
+  const split = [KIT_CORE, ...used.filter((el) => KIT_ADDONS[el]).map((el) => KIT_ADDONS[el])];
+  return kitBytes(split) < kitBytes([KIT_FULL]) ? split : [KIT_FULL];
+}
+
+function validateKitBundles(widgetName, html, errors, warnings) {
+  const used = usedKitElements(html);
+  const scripts = kitScripts(html);
+  const fix = () => `Load: ${smallestKit(used).map((p) => `<script src="${p}"></script>`).join(' ') || 'nothing from shared/kit/ox-elements*'}`;
+  if (!used.length) {
+    if (scripts.length) errors.push(`[${widgetName}] loads ${scripts.join(', ')} but renders no <ox-*> element. Drop the script.`);
+    return { used, scripts };
+  }
+  if (scripts.includes(KIT_FULL)) {
+    if (scripts.length > 1) errors.push(`[${widgetName}] loads ox-elements.js and split kit bundles; pick one. ${fix()}`);
+  } else {
+    const core = scripts.indexOf(KIT_CORE);
+    if (core === -1) {
+      errors.push(`[${widgetName}] renders ${used.join(', ')} but loads no ox-elements.js or ox-elements-core.js. ${fix()}`);
+    } else if (scripts.slice(0, core).length) {
+      errors.push(`[${widgetName}] loads ${scripts.slice(0, core).join(', ')} before ox-elements-core.js; the add-ons need core first.`);
+    }
+    for (const el of used) {
+      if (KIT_ADDONS[el] && !scripts.includes(KIT_ADDONS[el])) {
+        errors.push(`[${widgetName}] renders <${el}> but does not load ${KIT_ADDONS[el]}. ${fix()}`);
+      }
+    }
+    for (const [el, path] of Object.entries(KIT_ADDONS)) {
+      if (scripts.includes(path) && !used.includes(el)) {
+        errors.push(`[${widgetName}] loads ${path} but renders no <${el}>. Drop the script.`);
+      }
+    }
+  }
+  const best = smallestKit(used);
+  if (kitBytes(scripts) > kitBytes(best)) {
+    warnings.push(
+      `[${widgetName}] kit bundles cost ${kitBytes(scripts)} B; ${best.join(' + ')} defines ${used.join(', ')} in ${kitBytes(best)} B. ${fix()}`
+    );
+  }
+  return { used, scripts };
 }
 
 function sha256(input) {
@@ -290,6 +380,7 @@ function listWidgetFiles() {
 function main() {
   const files = listWidgetFiles();
   const errors = [];
+  const warnings = [];
   const entries = {};
 
   for (const file of files) {
@@ -306,6 +397,7 @@ function main() {
     const sharedRefs = extractSharedRefs(html);
     validateSharedRefs(widgetName, sharedRefs, errors);
     validateProtocolBridge(widgetName, html, sharedRefs, errors);
+    const kit = validateKitBundles(widgetName, html, errors, warnings);
 
     entries[widgetName] = {
       file: relative(REPO_ROOT, full),
@@ -314,6 +406,8 @@ function main() {
       primaryRgb: rgb,
       sharedRefs,
       protocolBridge: detectProtocolBridge(html, sharedRefs),
+      kitElements: kit.used,
+      kitBundles: kit.scripts,
       demoOnly: DEMO_ONLY_WIDGETS.has(widgetName),
     };
   }
@@ -349,6 +443,8 @@ function main() {
       );
     }
   }
+
+  for (const warning of warnings) console.warn('  ! ' + warning);
 
   if (errors.length > 0) {
     console.error('widget build FAILED:\n');
