@@ -4,9 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Initiative Pulse - OrgX</title>
+  <link rel="stylesheet" href="shared/kit/ox-tokens.css" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
   <link rel="stylesheet" href="shared/components/domain-accent.css" />
+  <script src="shared/kit/ox-elements.js"></script>
+  <script src="shared/agent-identity.js"></script>
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/interaction-kit.js"></script>
@@ -20,1324 +23,209 @@
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='15' fill='none' stroke='%2300C9A7' stroke-width='6'/%3E%3Cpath d='M20 34l7-7 6 6 12-12' stroke='%2300C9A7' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"
     />
     <style>
-      :root, :root[data-theme="light"] {
-        --ox-bg: #f8fafc;
-        --ox-panel: #ffffff;
-        --ox-border: rgba(0, 0, 0, 0.08);
-        --ox-border-strong: rgba(0, 0, 0, 0.15);
-        --ox-text: #0f172a;
-        --ox-text-muted: #64748b;
-        --ox-well-bg: #f1f5f9;
-        --ox-well-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
-      }
-      
-      @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) {
-          --ox-bg: #02040a;
-          --ox-panel: rgba(10, 15, 22, 0.95);
-          --ox-border: rgba(255, 255, 255, 0.08);
-          --ox-border-strong: rgba(255, 255, 255, 0.15);
-          --ox-text: #f8fafc;
-          --ox-text-muted: rgba(255, 255, 255, 0.5);
-          --ox-well-bg: rgba(0,0,0,0.3);
-          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
-        }
-      }
-      
-      :root[data-theme="dark"] {
-          --ox-bg: #02040a;
-          --ox-panel: rgba(10, 15, 22, 0.95);
-          --ox-border: rgba(255, 255, 255, 0.08);
-          --ox-border-strong: rgba(255, 255, 255, 0.15);
-          --ox-text: #f8fafc;
-          --ox-text-muted: rgba(255, 255, 255, 0.5);
-          --ox-well-bg: rgba(0,0,0,0.3);
-          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
-      }
-      
-      :root {
-        --ox-primary: #00c9a7;
-        --ox-primary-rgb: 0, 201, 167;
-        --ox-lime: #a3e635; /* Will be overwritten by specific widgets */
-        --ox-teal: #0d9488;
-        --ox-danger: #e11d48;
-        --ox-warning: #d97706;
-        --ox-iris: #4f46e5;
-        --ox-grid: rgba(0, 0, 0, 0.03);
-        --ox-shadow: 0 12px 32px -12px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.04);
-        --ox-font: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
-        --ox-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
-      }
-      
-      @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) {
-          --ox-lime: #D4ED31;
-          --ox-teal: #00C9A7;
-          --ox-danger: #F43F5E;
-          --ox-warning: #FBBF24;
-          --ox-iris: #6366f1;
-          --ox-grid: rgba(255, 255, 255, 0.02);
-          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
-        }
-      }
-      
-      :root[data-theme="dark"] {
-          --ox-lime: #D4ED31;
-          --ox-teal: #00C9A7;
-          --ox-danger: #F43F5E;
-          --ox-warning: #FBBF24;
-          --ox-iris: #6366f1;
-          --ox-grid: rgba(255, 255, 255, 0.02);
-          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+      /* Canvas: Q6 (the whole population, drill to what needs you) and K3 (quality
+         across an initiative). Surfaces, text and status colors come from the kit
+         tokens and the widget theme; this sheet lays the pulse out. */
+      :root { --ox-primary-rgb: 0, 201, 167; }
+
+      /* The kit's primaries stay the needs-you amber inside this teal widget. */
+      ox-footer, ox-attention-line, ox-state-chip, ox-receipt-row, ox-glyph, ox-avatar {
+        --ox-primary: rgb(251, 191, 36);
       }
 
-
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
 
       body {
         font-family: var(--ox-font);
         background: var(--ox-bg);
         color: var(--ox-text);
         padding: 16px;
-        min-height: 100vh;
         -webkit-font-smoothing: antialiased;
         overflow-x: hidden;
       }
 
-      body::before {
-        content: "";
-        position: fixed;
-        inset: 0;
-        background: radial-gradient(
-            circle at 50% -18%,
-            rgba(var(--ox-primary-rgb), 0.1),
-            transparent 56%
-          ),
-          linear-gradient(var(--ox-grid) 1px, transparent 1px),
-          linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px);
-        background-size: 100% 100%, 20px 20px, 20px 20px;
-        pointer-events: none;
-        z-index: -1;
-      }
+      button { font: inherit; color: inherit; }
+      a { color: inherit; }
 
-      .container {
-        max-width: 520px;
-        margin: 0 auto;
-      }
+      .container { max-width: 680px; margin: 0 auto; }
 
-      .widget-shell-card {
-        margin-bottom: 18px;
-      }
+      @keyframes pulseIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+      .animate-in { animation: pulseIn var(--ox-dur-medium, 220ms) var(--ox-ease-out, ease-out) both; }
 
-      .widget-shell-card .deep-link {
-        min-height: 46px;
-      }
-
-      .status-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        min-height: 26px;
-        padding: 0 10px;
-        border-radius: 999px;
-        font-family: var(--ox-mono);
-        font-size: 0.62rem;
-        font-weight: 700;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        border: 1px solid currentColor;
-        white-space: nowrap;
-      }
-
-      .status-badge.status-active,
-      .status-badge.status-in_progress,
-      .status-badge.status-running {
-        color: var(--ox-primary);
-        background: rgba(var(--ox-primary-rgb), 0.11);
-        border-color: rgba(var(--ox-primary-rgb), 0.24);
-      }
-
-      .status-badge.status-completed,
-      .status-badge.status-approved {
-        color: var(--ox-lime);
-        background: rgba(212, 237, 49, 0.1);
-        border-color: rgba(212, 237, 49, 0.18);
-      }
-
-      .status-badge.status-blocked,
-      .status-badge.status-failed,
-      .status-badge.status-at_risk {
-        color: var(--ox-danger);
-        background: rgba(244, 63, 94, 0.1);
-        border-color: rgba(244, 63, 94, 0.2);
-      }
-
-      .status-badge.status-ready,
-      .status-badge.status-pending,
-      .status-badge.status-in_review,
-      .status-badge.status-ramping_up {
-        color: var(--ox-warning);
-        background: rgba(251, 191, 36, 0.1);
-        border-color: rgba(251, 191, 36, 0.22);
-      }
-
-      .status-badge.status-paused,
-      .status-badge.status-draft,
-      .status-badge.status-idle {
-        color: var(--ox-text-muted);
-        background: rgba(148, 163, 184, 0.12);
-        border-color: rgba(148, 163, 184, 0.18);
-      }
-
+      .widget-shell-card { margin: 0; }
       .pulse-shell-card .ox-card {
+        position: relative;
+        background: var(--ox-panel);
+        border: 1px solid var(--ox-border);
+        border-radius: 16px;
+        box-shadow: var(--ox-shadow);
         overflow: hidden;
-        border-color: rgba(var(--ox-primary-rgb), 0.2);
-        box-shadow:
-          var(--ox-shadow),
-          0 0 0 1px rgba(var(--ox-primary-rgb), 0.08),
-          0 0 24px rgba(var(--ox-primary-rgb), 0.06);
+        --edge-rgb: var(--ox-edge-teal-rgb);
       }
-
       .pulse-shell-card .ox-card::after {
         content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 1px;
-        background: linear-gradient(90deg, transparent 6%, rgba(var(--ox-primary-rgb), 0.55) 50%, transparent 94%);
-        opacity: 0.95;
+        position: absolute; top: 0; left: 0; right: 0; height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(var(--edge-rgb), 0.75), transparent);
       }
+      .pulse-shell-card .ox-card[data-edge="amber"] { --edge-rgb: var(--ox-edge-amber-rgb); }
+      .pulse-shell-card .ox-card[data-edge="red"] { --edge-rgb: var(--ox-edge-red-rgb); }
+      .pulse-shell-card .ox-card[data-edge="mute"] { --edge-rgb: var(--ox-edge-mute-rgb); }
 
-      .pulse-shell {
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        gap: 18px;
-        isolation: isolate;
-      }
-
-      .pulse-shell::before {
-        content: "";
-        position: absolute;
-        inset: -24px -24px auto;
-        height: 220px;
-        background:
-          radial-gradient(circle at 22% 0%, rgba(var(--ox-primary-rgb), 0.18), transparent 42%),
-          radial-gradient(circle at 92% 18%, rgba(var(--ox-primary-rgb), 0.08), transparent 30%);
-        opacity: 0.9;
-        pointer-events: none;
-        z-index: -2;
-      }
-
-
-      .pulse-hero {
-        display: grid;
-        grid-template-columns: auto minmax(0, 1fr);
-        gap: 22px;
-        align-items: center;
-      }
-
-      .pulse-health {
-        position: relative;
-        width: 116px;
-        height: 116px;
-        flex: none;
-      }
-
-      .pulse-health::before {
-        content: "";
-        position: absolute;
-        inset: 12px;
-        border-radius: 50%;
-        background: radial-gradient(
-          circle,
-          rgba(var(--ox-primary-rgb), 0.16),
-          transparent 70%
-        );
-        opacity: 0.85;
-        pointer-events: none;
-      }
-
-      .pulse-health svg {
-        width: 100%;
-        height: 100%;
-        display: block;
-        transform: rotate(-90deg);
-        filter: drop-shadow(0 0 24px rgba(var(--ox-primary-rgb), 0.18));
-      }
-
-      .pulse-health__track {
-        fill: none;
-        stroke: rgba(148, 163, 184, 0.2);
-        stroke-width: 5;
-      }
-
-      .pulse-health__bar {
-        fill: none;
-        stroke: var(--ox-primary);
-        stroke-width: 5;
-        stroke-linecap: round;
-        transition:
-          stroke-dashoffset var(--ox-dur-slow, 400ms) var(--ox-ease-morph, cubic-bezier(0.4, 0, 0.2, 1)),
-          stroke var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
-      }
-
-      .pulse-health.tone-warning .pulse-health__bar {
-        stroke: var(--ox-warning);
-      }
-
-      .pulse-health.tone-danger .pulse-health__bar {
-        stroke: var(--ox-danger);
-      }
-
-      /* Health unknown: no arc drawn and a muted dash, so the ring never
-         reads as a score the payload did not actually carry. */
-      .pulse-health.tone-unknown .pulse-health__bar {
-        stroke: transparent;
-      }
-
-      .pulse-health.tone-unknown .pulse-health__number {
-        color: var(--ox-text-tertiary, var(--ox-text-secondary));
-      }
-
-      .pulse-health__value {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        pointer-events: none;
-      }
-
-      .pulse-health__number {
-        font-size: 2rem;
-        line-height: 0.95;
-        letter-spacing: -0.06em;
-        font-weight: 700;
-        color: var(--ox-text);
-      }
-
-      .pulse-health__label {
-        margin-top: 6px;
-        font-family: var(--ox-mono);
-        font-size: 0.56rem;
-        line-height: 1;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        color: var(--ox-text-muted);
-        font-weight: 700;
-      }
-
-      .pulse-copy {
-        min-width: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-
-      .pulse-headline {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 12px;
-      }
-
-      .pulse-brand {
-        display: inline-flex;
-        align-items: center;
-        gap: 9px;
-        min-height: 18px;
-      }
-
-      .pulse-brand-mark {
-        width: 20px;
-        height: 20px;
-        border-radius: 8px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(var(--ox-primary-rgb), 0.1);
-        border: 1px solid rgba(var(--ox-primary-rgb), 0.18);
-        color: var(--ox-primary);
-        box-shadow: 0 12px 24px -18px rgba(var(--ox-primary-rgb), 0.68);
-        flex: none;
-      }
-
-      .pulse-kicker {
-        font-family: var(--ox-mono);
-        font-size: 0.64rem;
-        line-height: 1;
-        text-transform: uppercase;
-        letter-spacing: 0.14em;
-        color: var(--ox-text-muted);
-        font-weight: 700;
-      }
-
-      .pulse-title-wrap {
-        min-width: 0;
-      }
-
-      .pulse-title {
-        margin-top: 8px;
-        font-size: clamp(1.4rem, 3.2vw, 1.92rem);
-        line-height: 1;
-        letter-spacing: -0.05em;
-        font-weight: 700;
-        color: var(--ox-text);
-      }
-
-      .pulse-message {
-        font-size: 0.86rem;
-        line-height: 1.5;
-        color: var(--ox-text-muted);
-      }
-
-      .pulse-economics {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 8px;
-        font-size: 0.92rem;
-        line-height: 1.3;
-        color: var(--ox-text-muted);
-        padding-top: 2px;
-      }
-
-      .pulse-economics strong {
-        color: var(--ox-text);
-        font-weight: 700;
-        letter-spacing: -0.03em;
-      }
-
-      .pulse-economics .is-emphasis strong {
-        color: var(--ox-primary);
-      }
-
-      .pulse-dot-divider {
-        color: rgba(15, 23, 42, 0.35);
-      }
-
-      .pulse-meta-line {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 8px;
-        font-family: var(--ox-mono);
-        font-size: 0.62rem;
-        line-height: 1.15;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: var(--ox-text-muted);
-        font-weight: 700;
-      }
-
-      .pulse-meta-line .pulse-meta-divider {
-        color: rgba(15, 23, 42, 0.35);
-      }
-
+      .pulse-head { border-bottom: 1px solid var(--ox-border); --ox-attention-padding: 0 8px 0 20px; }
       .pulse-attention {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        width: 100%;
-        padding: 13px 14px;
-        border-radius: 14px;
-        border: 1px solid rgba(244, 63, 94, 0.22);
-        background: linear-gradient(
-            135deg,
-            rgba(244, 63, 94, 0.12),
-            rgba(244, 63, 94, 0.03)
-          ),
-          rgba(255, 255, 255, 0.01);
-        color: inherit;
-        text-align: left;
-        cursor: pointer;
-        box-shadow: none;
-        transition:
-          border-color var(--widget-motion-fast) var(--widget-motion-curve),
-          transform var(--widget-motion-fast) var(--widget-motion-curve),
-          background var(--widget-motion-fast) var(--widget-motion-curve),
-          box-shadow var(--widget-motion-fast) var(--widget-motion-curve);
+        display: inline-flex; align-items: center; gap: 6px; min-height: 36px; margin: 4px 0; padding: 0 12px;
+        border-radius: 9px; border: 1px solid #e9a800; background: rgb(251, 191, 36); color: #1a1204;
+        font-size: 12.5px; font-weight: 650; white-space: nowrap; cursor: pointer;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
       }
+      .pulse-attention svg { width: 13px; height: 13px; transition: transform 160ms ease; }
+      .pulse-attention.is-open svg { transform: rotate(180deg); }
 
-      .pulse-attention:hover {
-        transform: translateY(-1px);
-        border-color: rgba(244, 63, 94, 0.34);
-      }
+      .pulse-shell { padding: 18px 22px 8px; display: flex; flex-direction: column; gap: 14px; }
 
-      .pulse-attention__icon {
-        width: 30px;
-        height: 30px;
-        border-radius: 10px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        flex: none;
-        color: var(--ox-danger);
-        background: rgba(244, 63, 94, 0.12);
+      /* The initiative itself: name, where it stands, and its population. */
+      .pulse-hero { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+      .pulse-tile {
+        width: 40px; height: 40px; border-radius: 11px; flex: none; display: grid; place-items: center;
+        border: 1px solid var(--ox-border-strong); color: var(--ox-text-muted); --ox-glyph-size: 20px;
       }
+      .pulse-tile[data-tone="amber"] { color: var(--ox-warning); border-color: rgba(var(--ox-edge-amber-rgb), 0.45); }
+      .pulse-tile[data-tone="red"] { color: var(--ox-danger); border-color: rgba(var(--ox-edge-red-rgb), 0.45); }
+      .pulse-tile[data-tone="teal"] { color: var(--ox-teal); border-color: rgba(var(--ox-edge-teal-rgb), 0.45); }
+      .pulse-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+      .pulse-kicker { font: 600 10.5px/1.2 var(--ox-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ox-text-muted); }
+      .pulse-title { font-size: 22px; font-weight: 700; line-height: 1.2; letter-spacing: -0.025em; overflow-wrap: anywhere; text-wrap: balance; }
+      .pulse-meta-line { font: 500 11.5px/1.5 var(--ox-mono); color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
+      .pulse-meta-line .tone-good { color: var(--ox-teal); }
+      .pulse-meta-line .tone-warning { color: var(--ox-warning); }
+      .pulse-meta-line .tone-danger { color: var(--ox-danger); }
+      .pulse-meta-divider { padding: 0 6px; opacity: 0.6; }
 
-      .pulse-attention__body {
-        min-width: 0;
-        flex: 1 1 auto;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-
-      .pulse-attention__eyebrow {
-        font-family: var(--ox-mono);
-        font-size: 0.58rem;
-        line-height: 1;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: rgba(244, 63, 94, 0.88);
-        font-weight: 700;
-      }
-
-      .pulse-attention__headline {
-        font-size: 0.9rem;
-        line-height: 1.35;
-        color: var(--ox-text);
-        font-weight: 600;
-      }
-
-      .pulse-attention__chevron {
-        color: rgba(15, 23, 42, 0.35);
-        transition: transform var(--widget-motion-fast) var(--widget-motion-curve);
-      }
-
-      .pulse-attention.is-open .pulse-attention__chevron {
-        transform: rotate(180deg);
-      }
-
-      .pulse-rail {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 0;
-        border: none;
-        border-radius: 16px;
-        background:
-          linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.032), transparent 100%),
-          rgba(255, 255, 255, 0.018);
-        overflow: hidden;
-        box-shadow: none;
-        padding: 0;
-      }
-
-      .pulse-rail-button {
-        position: relative;
-        border: none;
-        border-radius: 12px;
-        background: transparent;
-        color: inherit;
-        padding: 11px 8px 13px;
-        min-height: 74px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        cursor: pointer;
-        transition:
-          background var(--widget-motion-fast) var(--widget-motion-curve),
-          transform var(--widget-motion-fast) var(--widget-motion-curve),
-          color var(--widget-motion-fast) var(--widget-motion-curve),
-          box-shadow var(--widget-motion-fast) var(--widget-motion-curve);
-      }
-
-      .pulse-rail-button + .pulse-rail-button::before {
-        content: "";
-        position: absolute;
-        left: 0;
-        top: 18%;
-        bottom: 18%;
-        width: 1px;
-        background: var(--ox-border);
-      }
-
-      .pulse-rail-button::after {
-        content: "";
-        position: absolute;
-        left: 14px;
-        right: 14px;
-        bottom: 0;
-        height: 3px;
-        border-radius: 999px;
-        background: rgba(148, 163, 184, 0.18);
-        transform: scaleX(0.62);
-        transform-origin: center;
-        transition:
-          background var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
-          transform var(--ox-dur-fast, 150ms) var(--ox-ease-morph, cubic-bezier(0.4, 0, 0.2, 1)),
-          opacity var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
-        opacity: 0.95;
-      }
-
-      .pulse-rail-button:hover {
-        transform: translateY(-1px);
-        background: rgba(var(--ox-primary-rgb), 0.06);
-        box-shadow: inset 0 0 0 1px rgba(var(--ox-primary-rgb), 0.12);
-      }
-
-      .pulse-rail-button:hover::after {
-        transform: scaleX(1);
-      }
-
-      .pulse-rail-button.is-active {
-        background: rgba(var(--ox-primary-rgb), 0.08);
-        box-shadow: inset 0 0 0 1px rgba(var(--ox-primary-rgb), 0.14);
-      }
-
-      .pulse-rail-button.is-active::after {
-        background: rgba(var(--ox-primary-rgb), 0.94);
-        transform: scaleX(1);
-      }
-
-      .pulse-rail-button.is-alert.is-active {
-        background: rgba(244, 63, 94, 0.05);
-      }
-
-      .pulse-rail-button.is-alert::after {
-        background: rgba(244, 63, 94, 0.5);
-      }
-
-      .pulse-rail-button.is-alert.is-active::after {
-        background: var(--ox-danger);
-      }
-
-      /* Warning tier — amber, one step below danger. For signals that want
-         attention but aren't blockers (e.g. output awaiting review). */
-      .pulse-rail-button.is-warn.is-active {
-        background: rgba(245, 158, 11, 0.05);
-      }
-      .pulse-rail-button.is-warn::after {
-        background: rgba(245, 158, 11, 0.5);
-      }
-      .pulse-rail-button.is-warn.is-active::after {
-        background: var(--ox-warning);
-      }
-
-      .pulse-rail-icon {
-        color: var(--ox-text-muted);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .pulse-rail-button.is-active .pulse-rail-icon {
-        color: var(--ox-primary);
-      }
-
-      .pulse-rail-button.is-alert .pulse-rail-icon,
-      .pulse-rail-button.is-alert .pulse-rail-value {
-        color: var(--ox-danger);
-      }
-
-      .pulse-rail-button.is-warn .pulse-rail-icon,
-      .pulse-rail-button.is-warn .pulse-rail-value {
-        color: var(--ox-warning);
-      }
-
-      .pulse-rail-value {
-        font-size: 1.14rem;
-        line-height: 1;
-        font-weight: 700;
-        letter-spacing: -0.05em;
-        color: var(--ox-text);
-      }
-
-      .pulse-rail-label {
-        font-family: var(--ox-mono);
-        font-size: 0.58rem;
-        line-height: 1;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: var(--ox-text-muted);
-        font-weight: 700;
-        text-align: center;
-      }
-
-      .pulse-signal-strip {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-      }
-
+      /* Q6 population bar: one segment per workstream, each opens the list. */
+      .pulse-population { display: flex; flex-direction: column; gap: 6px; }
+      .pulse-signal-strip { display: flex; gap: 2px; height: 10px; }
       .pulse-signal {
-        flex: 1 1 0;
-        position: relative;
-        height: 44px;
-        border-radius: 10px;
-        background: transparent;
-        overflow: visible;
-        cursor: pointer;
-        border: none;
+        flex: 1 1 0; min-width: 6px; height: 10px; border-radius: 2px; border: 0; padding: 0; cursor: pointer;
+        position: relative; background: var(--ox-mute); opacity: 0.85;
       }
+      .pulse-signal::after { content: ""; position: absolute; inset: -10px 0; }
+      .pulse-signal:hover { opacity: 1; }
+      .pulse-signal.seg-accepted { background: var(--ox-teal); }
+      .pulse-signal.seg-judgment { background: repeating-linear-gradient(135deg, var(--ox-warning) 0 3px, transparent 3px 6px); box-shadow: inset 0 0 0 1px var(--ox-warning); }
+      .pulse-signal.seg-active { background: color-mix(in srgb, var(--ox-mute) 70%, var(--ox-text) 30%); }
+      .pulse-signal.seg-blocked { background: var(--ox-danger); }
+      .pulse-signal.seg-planned { background: transparent; box-shadow: inset 0 0 0 1px var(--ox-border-strong); }
+      .pulse-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font: 500 11.5px/1.4 var(--ox-mono); color: var(--ox-text-muted); }
+      .pulse-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+      .pulse-legend .seg-accepted { background: var(--ox-teal); }
+      .pulse-legend .seg-judgment { background: var(--ox-warning); }
+      .pulse-legend .seg-active { background: color-mix(in srgb, var(--ox-mute) 70%, var(--ox-text) 30%); }
+      .pulse-legend .seg-blocked { background: var(--ox-danger); }
+      .pulse-legend .seg-planned { box-shadow: inset 0 0 0 1px var(--ox-border-strong); }
 
-      .pulse-signal::before {
-        content: "";
-        position: absolute;
-        inset: 50% 0 auto;
-        height: 7px;
-        border-radius: 999px;
-        background: rgba(148, 163, 184, 0.14);
-        transform: translateY(-50%);
+      /* Drill-down: the rail picks a list, the list opens items in OrgX. */
+      .pulse-rail { display: flex; flex-wrap: wrap; gap: 0 4px; margin: 0 -8px; border-bottom: 1px solid var(--ox-border); }
+      .pulse-rail-button {
+        display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 8px;
+        border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: transparent;
+        color: var(--ox-text-muted); font-size: 13px; font-weight: 600; cursor: pointer;
       }
+      .pulse-rail-button:hover { color: var(--ox-text); }
+      .pulse-rail-button.is-active { color: var(--ox-text); border-bottom-color: var(--ox-text-2); }
+      .pulse-rail-button.is-alert .pulse-rail-value { color: var(--ox-warning); }
+      .pulse-rail-button.is-alert.is-active { border-bottom-color: var(--ox-warning); }
+      .pulse-rail-button.is-warn .pulse-rail-value { color: var(--ox-warning); }
+      .pulse-rail-icon { display: none; }
+      .pulse-rail-value { order: 2; font: 600 12px/1 var(--ox-mono); color: var(--ox-text-2); font-variant-numeric: tabular-nums; }
 
-      .pulse-signal__fill {
-        position: absolute;
-        z-index: 1;
-        left: 0;
-        top: 50%;
-        display: block;
-        height: 7px;
-        border-radius: 999px;
-        background: var(--ox-primary);
-        transform: translateY(-50%);
-        transition:
-          width var(--ox-dur-base, 250ms) var(--ox-ease-morph, cubic-bezier(0.4, 0, 0.2, 1)),
-          background var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
-      }
-
-      .pulse-signal__fill.tone-warning {
-        background: var(--ox-warning);
-      }
-
-      .pulse-signal__fill.tone-danger {
-        background: var(--ox-danger);
-      }
-
-      .pulse-panel {
-        padding-top: 18px;
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-        transform-origin: top center;
-        will-change: transform, opacity;
-        animation: panelSlideDown var(--ox-dur-slow, 400ms)
-          var(--ox-ease-morph, cubic-bezier(0.4, 0, 0.2, 1)) both;
-      }
-
-      .pulse-panel-host {
-        display: grid;
-        overflow: hidden;
-        transition:
-          height var(--ox-dur-slow, 400ms) var(--ox-ease-morph, cubic-bezier(0.4, 0, 0.2, 1)),
-          opacity var(--ox-dur-base, 250ms) var(--ox-ease-morph, cubic-bezier(0.4, 0, 0.2, 1));
-      }
-
-      .pulse-panel-host:empty {
-        display: none;
-      }
-
-      .pulse-panel-header {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-
-      .pulse-panel-icon {
-        width: 28px;
-        height: 28px;
-        border-radius: 10px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--ox-primary);
-        background: rgba(var(--ox-primary-rgb), 0.08);
-        border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
-      }
-
-      .pulse-panel-title {
-        font-family: var(--ox-mono);
-        font-size: 0.62rem;
-        line-height: 1;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        color: var(--ox-text-muted);
-        font-weight: 700;
-      }
-
-      .pulse-list {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-
+      .pulse-panel-host { transition: height 220ms var(--ox-ease-out, ease), opacity 160ms ease; }
+      .pulse-panel { display: flex; flex-direction: column; }
+      .pulse-panel-header { display: none; }
+      .pulse-subsection + .pulse-subsection { margin-top: 10px; }
+      .pulse-subsection-label { font-size: 12px; color: var(--ox-text-muted); padding: 8px 0 2px; }
+      .pulse-list { display: flex; flex-direction: column; }
       .pulse-list-row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 13px 12px;
-        border: 1px solid transparent;
-        border-radius: 16px;
-        text-decoration: none;
-        color: inherit;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.012), rgba(255, 255, 255, 0.008));
-        transition:
-          color var(--widget-motion-fast) var(--widget-motion-curve),
-          transform var(--widget-motion-fast) var(--widget-motion-curve),
-          border-color var(--widget-motion-fast) var(--widget-motion-curve),
-          background var(--widget-motion-fast) var(--widget-motion-curve),
-          box-shadow var(--widget-motion-fast) var(--widget-motion-curve);
+        display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px;
+        min-height: 52px; padding: 9px 2px; border-top: 1px solid var(--ox-border);
+        text-decoration: none; color: var(--ox-text);
       }
+      .pulse-list > .pulse-list-row:first-child { border-top: 0; }
+      .pulse-list-row:hover .pulse-list-title { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--ox-border-strong); }
+      .pulse-list-leading { display: grid; place-items: center; width: 28px; color: var(--ox-text-muted); --ox-glyph-size: 18px; }
+      .pulse-list-leading[data-tone="amber"] { color: var(--ox-warning); }
+      .pulse-list-leading[data-tone="red"] { color: var(--ox-danger); }
+      .pulse-list-leading[data-tone="teal"] { color: var(--ox-teal); }
+      .pulse-list-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+      .pulse-list-title { font-size: 14px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+      .pulse-list-meta { font: 500 11.5px/1.4 var(--ox-mono); color: var(--ox-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .pulse-list-trailing { display: flex; align-items: center; gap: 10px; color: var(--ox-text-muted); }
+      .pulse-list-trailing svg { width: 14px; height: 14px; }
+      .pulse-meta-separator { padding: 0 5px; }
+      .pulse-bar { width: 64px; height: 6px; border-radius: 3px; background: var(--ox-skeleton, rgba(127,127,127,0.14)); overflow: hidden; flex: none; }
+      .pulse-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--ox-text-2); }
+      .pulse-bar[data-tone="danger"] > span { background: var(--ox-danger); }
+      .pulse-bar[data-tone="warning"] > span { background: var(--ox-warning); }
+      .pulse-bar[data-tone="good"] > span { background: var(--ox-teal); }
+      .pulse-pct { font: 500 11.5px/1 var(--ox-mono); color: var(--ox-text-muted); min-width: 30px; text-align: right; font-variant-numeric: tabular-nums; }
 
-      .pulse-list-row:hover .pulse-list-title {
-        color: var(--ox-primary);
-      }
+      /* K3: output quality in one strip. */
+      .pulse-quality { display: flex; flex-direction: column; gap: 6px; padding: 8px 0 10px; }
+      .pulse-quality-strip { display: flex; gap: 2px; height: 8px; }
+      .pulse-quality-strip i { display: block; border-radius: 2px; min-width: 4px; }
+      .pulse-quality-strip .q-met { background: var(--ox-teal); }
+      .pulse-quality-strip .q-you { background: var(--ox-warning); }
+      .pulse-quality-strip .q-fail { background: var(--ox-danger); }
+      .pulse-quality-strip .q-unv { background: repeating-linear-gradient(135deg, var(--ox-text-muted) 0 2px, transparent 2px 4px); }
 
-      .pulse-list-row:hover {
-        transform: translateY(-1px);
-        border-color: rgba(var(--ox-primary-rgb), 0.14);
-        background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.08), rgba(var(--ox-primary-rgb), 0.028));
-        box-shadow: 0 14px 28px -24px rgba(var(--ox-primary-rgb), 0.44);
-      }
+      .pulse-empty { font-size: 13.5px; line-height: 1.5; color: var(--ox-text-2); padding: 10px 0 12px; }
 
-      .pulse-panel.is-active .pulse-list-row {
-        animation: pulseListRowIn var(--ox-dur-slow, 400ms)
-          var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) both;
-      }
-
-      .pulse-panel.is-active .pulse-list-row:nth-child(2) {
-        animation-delay: 56ms;
-      }
-
-      .pulse-panel.is-active .pulse-list-row:nth-child(3) {
-        animation-delay: 112ms;
-      }
-
-      .pulse-panel.is-active .pulse-list-row:nth-child(4) {
-        animation-delay: 168ms;
-      }
-
-      .pulse-panel.is-active .pulse-list-row:nth-child(5) {
-        animation-delay: 224ms;
-      }
-
-      .pulse-list-leading {
-        flex: none;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--ox-text-muted);
-      }
-
-      .pulse-list-copy {
-        min-width: 0;
-        flex: 1 1 auto;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-
-      .pulse-list-title {
-        font-size: 0.92rem;
-        line-height: 1.32;
-        font-weight: 600;
-        color: var(--ox-text);
-        transition: color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
-      }
-
-      .pulse-list-meta {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 7px;
-        font-family: var(--ox-mono);
-        font-size: 0.56rem;
-        line-height: 1;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--ox-text-muted);
-        font-weight: 700;
-      }
-
-      .pulse-list-meta .pulse-meta-separator {
-        color: rgba(15, 23, 42, 0.35);
-      }
-
-      .pulse-list-trailing {
-        flex: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-      }
-
-      .pulse-mini-ring {
-        position: relative;
-        width: 34px;
-        height: 34px;
-        flex: none;
-      }
-
-      .pulse-mini-ring svg {
-        width: 100%;
-        height: 100%;
-        display: block;
-        transform: rotate(-90deg);
-      }
-
-      .pulse-mini-ring__track {
-        fill: none;
-        stroke: rgba(148, 163, 184, 0.2);
-        stroke-width: 2.5;
-      }
-
-      .pulse-mini-ring__bar {
-        fill: none;
-        stroke: var(--ox-primary);
-        stroke-width: 2.5;
-        stroke-linecap: round;
-      }
-
-      .pulse-mini-ring.tone-warning .pulse-mini-ring__bar {
-        stroke: var(--ox-warning);
-      }
-
-      .pulse-mini-ring.tone-danger .pulse-mini-ring__bar {
-        stroke: var(--ox-danger);
-      }
-
-      .pulse-mini-ring__value {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: var(--ox-mono);
-        font-size: 0.5rem;
-        font-weight: 700;
-        color: var(--ox-text);
-      }
-
-      .pulse-avatar {
-        width: 34px;
-        height: 34px;
-        border-radius: 12px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(var(--pulse-domain-rgb, var(--ox-primary-rgb)), 0.12);
-        border: 1px solid rgba(var(--pulse-domain-rgb, var(--ox-primary-rgb)), 0.22);
-        color: rgb(var(--pulse-domain-rgb, var(--ox-primary-rgb)));
-        font-family: var(--ox-mono);
-        font-size: 0.64rem;
-        font-weight: 700;
-        flex: none;
-        overflow: hidden;
-        box-shadow: 0 12px 24px -18px rgba(var(--pulse-domain-rgb, var(--ox-primary-rgb)), 0.52);
-      }
-
-      .pulse-avatar img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display: block;
-      }
-
-      .pulse-status-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        min-height: 24px;
-        padding: 0 9px;
-        border-radius: 999px;
-        font-family: var(--ox-mono);
-        font-size: 0.55rem;
-        line-height: 1;
-        letter-spacing: 0.09em;
-        text-transform: uppercase;
-        font-weight: 700;
-        border: 1px solid currentColor;
-        white-space: nowrap;
-      }
-
-      .pulse-status-pill.tone-good {
-        color: var(--ox-primary);
-        background: rgba(var(--ox-primary-rgb), 0.08);
-        border-color: rgba(var(--ox-primary-rgb), 0.18);
-      }
-
-      .pulse-status-pill.tone-warning {
-        color: var(--ox-warning);
-        background: rgba(251, 191, 36, 0.08);
-        border-color: rgba(251, 191, 36, 0.18);
-      }
-
-      .pulse-status-pill.tone-danger {
-        color: var(--ox-danger);
-        background: rgba(244, 63, 94, 0.08);
-        border-color: rgba(244, 63, 94, 0.2);
-      }
-
-      .pulse-status-pill.tone-muted {
-        color: var(--ox-text-muted);
-        background: rgba(148, 163, 184, 0.1);
-        border-color: rgba(148, 163, 184, 0.18);
-      }
-
-      .pulse-artifact-row .pulse-list-leading {
-        width: 30px;
-        height: 30px;
-        border-radius: 10px;
-        background: rgba(var(--ox-primary-rgb), 0.08);
-        border: 1px solid rgba(var(--ox-primary-rgb), 0.14);
-        color: var(--ox-primary);
-      }
-
-      .pulse-artifact-row.is-review .pulse-list-leading {
-        color: var(--ox-warning);
-        border-color: rgba(251, 191, 36, 0.18);
-        background: rgba(251, 191, 36, 0.08);
-      }
-
-      .pulse-action-row.is-danger .pulse-list-leading {
-        color: var(--ox-danger);
-      }
-
-      .pulse-subsection {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-
-      .pulse-subsection-label {
-        font-family: var(--ox-mono);
-        font-size: 0.56rem;
-        line-height: 1;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        color: rgba(15, 23, 42, 0.35);
-        font-weight: 700;
-      }
-
-      .pulse-milestone-meter {
-        width: 92px;
-        height: 5px;
-        border-radius: 999px;
-        background: rgba(148, 163, 184, 0.18);
-        overflow: hidden;
-      }
-
-      .pulse-milestone-meter > span {
-        display: block;
-        height: 100%;
-        border-radius: inherit;
-        background: var(--ox-primary);
-      }
-
-      .pulse-empty {
-        font-size: 0.84rem;
-        line-height: 1.55;
-        color: var(--ox-text-muted);
-      }
-
-      .widget-footer {
-        margin-top: 6px;
-      }
-
-      .pulse-sync {
-        font-family: var(--ox-mono);
-        font-size: 0.56rem;
-        line-height: 1;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: var(--ox-text-muted);
-        font-weight: 700;
-      }
-
+      /* Empty, error and recovery */
+      .pulse-calm { padding: 18px 22px 20px; display: flex; flex-direction: column; gap: 4px; }
+      .empty-title { font-size: 17px; font-weight: 650; letter-spacing: -0.015em; }
+      .empty-desc { font-size: 13.5px; line-height: 1.5; color: var(--ox-text-2); }
+      .empty-actions { margin-top: 8px; }
       .deep-link {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
+        display: inline-flex; align-items: center; gap: 8px;
         min-height: 44px;
-        max-width: 100%;
-        padding: 12px 16px;
-        border-radius: 14px;
-        border: 1px solid rgba(var(--ox-primary-rgb), 0.26);
-        background: rgba(var(--ox-primary-rgb), 0.08);
-        font-size: 0.82rem;
-        font-weight: 700;
-        color: var(--ox-text);
-        text-decoration: none;
-        line-height: 1.1;
-        transition:
-          transform var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
-          border-color var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
-          background var(--ox-dur-fast, 150ms) var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
+        padding: 0 4px; font-size: 13px; font-weight: 600; color: var(--ox-text-2); text-decoration: none;
+      }
+      .deep-link:hover { color: var(--ox-text); }
+      .deep-link svg { width: 14px; height: 14px; }
+
+      .sk { display: block; border-radius: 6px; background: var(--ox-skeleton, rgba(127, 127, 127, 0.12)); }
+
+      .pulse-attention:focus-visible, .pulse-rail-button:focus-visible, .pulse-list-row:focus-visible, .pulse-signal:focus-visible, .deep-link:focus-visible {
+        outline: 2px solid var(--ox-focus, var(--ox-teal)); outline-offset: 2px; border-radius: 8px;
       }
 
-      .deep-link:hover {
-        transform: translateY(-1px);
-        border-color: rgba(var(--ox-primary-rgb), 0.36);
-        background: rgba(var(--ox-primary-rgb), 0.12);
+      @media (max-width: 480px) {
+        body { padding: 12px; }
+        .pulse-shell { padding: 14px 16px 6px; }
+        .pulse-head { --ox-attention-padding: 0 6px 0 16px; }
+        .pulse-title { font-size: 19px; }
+        .pulse-tile { width: 34px; height: 34px; }
+        .pulse-bar, .pulse-pct { display: none; }
+        .pulse-list-row { gap: 10px; }
+        .pulse-calm { padding: 16px; }
+        .pulse-rail { gap: 0; margin: 0 -6px; }
+        .pulse-rail-button { padding: 0 6px; gap: 5px; font-size: 12.5px; }
       }
 
-      .empty-state {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 12px;
-        padding: 56px 26px;
-        text-align: center;
-        border-radius: 18px;
-        border: 1px dashed var(--ox-border-strong);
-        background: var(--ox-well-bg);
+      @media (prefers-reduced-motion: reduce) {
+        .animate-in { animation: none; }
+        .pulse-panel-host { transition: none; }
       }
-
-      .empty-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 16px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--ox-primary);
-        background: rgba(var(--ox-primary-rgb), 0.1);
-        border: 1px solid rgba(var(--ox-primary-rgb), 0.16);
-      }
-
-      .empty-title {
-        font-size: 1.02rem;
-        line-height: 1.2;
-        font-weight: 600;
-        color: var(--ox-text);
-      }
-
-      .empty-desc {
-        max-width: 34ch;
-        font-size: 0.86rem;
-        line-height: 1.55;
-        color: var(--ox-text-muted);
-      }
-
-      .empty-actions {
-        margin-top: 4px;
-        display: flex;
-        justify-content: center;
-      }
-
-      .error-state {
-        border-color: rgba(244, 63, 94, 0.24);
-        background: rgba(244, 63, 94, 0.04);
-      }
-
-      .error-state .empty-icon {
-        color: var(--ox-danger);
-        background: rgba(244, 63, 94, 0.1);
-        border-color: rgba(244, 63, 94, 0.16);
-      }
-
-      .skeleton-wrapper {
-        transition: opacity var(--ox-dur-base, 250ms) var(--ox-ease-exit, cubic-bezier(0.4, 0, 1, 1));
-      }
-
-      @keyframes fadeSlideUp {
-        from {
-          opacity: 0;
-          transform: translateY(12px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      .animate-in {
-        opacity: 0;
-        animation: fadeSlideUp var(--ox-dur-slow, 400ms)
-          var(--ox-ease-entry, cubic-bezier(0, 0, 0.2, 1)) forwards;
-      }
-
-      .pulse-skeleton {
-        display: flex;
-        flex-direction: column;
-        gap: 18px;
-      }
-
-      .skeleton-line {
-        background: linear-gradient(
-          90deg,
-          rgba(var(--ox-primary-rgb), 0.04) 25%,
-          rgba(var(--ox-primary-rgb), 0.14) 50%,
-          rgba(var(--ox-primary-rgb), 0.04) 75%
-        );
-        background-size: 200% 100%;
-        animation: shimmer 1.6s infinite linear;
-        border-radius: 4px;
-      }
-
-      .skeleton-line.skeleton-ring {
-        border-radius: 50%;
-      }
-
-      @keyframes shimmer {
-        from {
-          background-position: 200% 0;
-        }
-        to {
-          background-position: -200% 0;
-        }
-      }
-
-      @media (max-width: 560px) {
-        body {
-          padding: 12px;
-        }
-
-        .pulse-shell {
-          gap: 16px;
-        }
-
-        .pulse-hero {
-          grid-template-columns: auto minmax(0, 1fr);
-          gap: 14px;
-          align-items: start;
-        }
-
-        .pulse-health {
-          width: 88px;
-          height: 88px;
-          margin-top: 2px;
-        }
-
-        .pulse-health__number {
-          font-size: 1.72rem;
-        }
-
-        .pulse-health__label {
-          margin-top: 5px;
-          font-size: 0.5rem;
-        }
-
-        .pulse-headline {
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 8px;
-        }
-
-        .pulse-title {
-          font-size: 1.55rem;
-        }
-
-        .pulse-copy {
-          gap: 10px;
-        }
-
-        .pulse-economics {
-          gap: 6px;
-          font-size: 0.88rem;
-        }
-
-        .pulse-rail {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 0;
-        }
-
-        .pulse-rail-button {
-          min-height: 64px;
-          padding: 10px 6px 12px;
-          gap: 4px;
-          border-top: 1px solid var(--ox-border);
-        }
-
-        .pulse-rail-value {
-          font-size: 1rem;
-        }
-
-        .pulse-rail-label {
-          font-size: 0.54rem;
-          letter-spacing: 0.08em;
-        }
-
-        .pulse-attention {
-          align-items: flex-start;
-          padding: 12px;
-        }
-
-        .pulse-rail-button:nth-child(-n + 2) {
-          border-top: none;
-        }
-
-        .pulse-rail-button:nth-child(odd) {
-          border-right: 1px solid var(--ox-border);
-        }
-
-        .pulse-rail-button + .pulse-rail-button::before {
-          display: none;
-        }
-
-        .widget-footer {
-          flex-direction: column;
-          align-items: stretch;
-        }
-
-        .widget-footer .deep-link {
-          width: 100%;
-        }
-
-        .pulse-list-row {
-          align-items: flex-start;
-          padding: 12px 11px;
-        }
-      }
-    
-      @keyframes panelSlideDown {
-        from { opacity: 0; transform: translateY(-10px) scale(0.985); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-
-      @keyframes pulseListRowIn {
-        from { opacity: 0.4; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-
-      .pulse-panel.is-active {
-        animation: panelSlideDown var(--ox-dur-base, 250ms)
-          var(--ox-ease-morph, cubic-bezier(0.4, 0, 0.2, 1)) forwards;
-      }
-
-</style>
+    </style>
   <link rel="stylesheet" href="shared/widget-theme.css" />
 </head>
   <body>
     <div class="container" role="region" aria-label="Initiative Status">
       <div id="content" aria-live="polite">
-        <div class="ox-card pulse-shell-card">
-          <div class="ox-card-inner pulse-skeleton" role="status" aria-label="Loading initiative pulse">
-              <div style="display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 22px; align-items: center">
-                <span class="skeleton-line skeleton-ring" style="width: 116px; height: 116px"></span>
-                <div style="display: flex; flex-direction: column; gap: 12px; min-width: 0">
-                  <span class="skeleton-line" style="width: 88px; height: 10px"></span>
-                  <span class="skeleton-line" style="width: 72%; height: 28px"></span>
-                  <span class="skeleton-line" style="width: 58%; height: 14px"></span>
-                </div>
-              </div>
-              <span class="skeleton-line" style="width: 100%; height: 58px; border-radius: 14px"></span>
-              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px">
-                <span class="skeleton-line" style="height: 74px; border-radius: 14px"></span>
-                <span class="skeleton-line" style="height: 74px; border-radius: 14px"></span>
-                <span class="skeleton-line" style="height: 74px; border-radius: 14px"></span>
-                <span class="skeleton-line" style="height: 74px; border-radius: 14px"></span>
-              </div>
-              <div style="display: flex; gap: 8px">
-                <span class="skeleton-line" style="flex: 1; height: 7px; border-radius: 999px"></span>
-                <span class="skeleton-line" style="flex: 1; height: 7px; border-radius: 999px"></span>
-                <span class="skeleton-line" style="flex: 1; height: 7px; border-radius: 999px"></span>
-                <span class="skeleton-line" style="flex: 1; height: 7px; border-radius: 999px"></span>
-              </div>
-              <span class="skeleton-line" style="width: 100%; height: 46px; border-radius: 16px"></span>
-            </div>
-          </div>
+        <div class="pulse-shell-card"><div class="ox-card" role="status" aria-label="Loading initiative pulse">
+          <div class="pulse-head" style="height:44px;display:flex;align-items:center;gap:10px;padding:0 20px"><span class="sk" style="width:8px;height:8px;border-radius:50%"></span><span class="sk" style="width:36%;height:12px"></span></div>
+          <div class="pulse-shell"><span class="sk" style="width:62%;height:22px"></span><span class="sk" style="width:100%;height:10px"></span><span class="sk" style="width:100%;height:52px"></span></div>
+          <ox-footer variant="reads" state="loading"></ox-footer>
+        </div></div>
       </div>
     </div>
 
@@ -1481,8 +369,14 @@ external: function (size) {
       };
 
       var params = new URLSearchParams(window.location.search);
-      var isDemo = params.get("demo") === "true";
-      var isLoadingOverride = params.get("loading") === "true";
+      // Gallery previews (?gallery=true&state=…) read the same fixtures as ?demo=true.
+      var isDemo = params.get("demo") === "true" || params.get("gallery") === "true";
+      var isLoadingOverride = params.get("loading") === "true" || params.get("state") === "loading";
+      // Previews served next to the widgets read avatars from the same origin;
+      // host sandboxes use the kit default (mcp.useorgx.com).
+      if (window.OrgXElements && window.OrgXWidgetRuntime && window.OrgXWidgetRuntime.detectProtocol() === "standalone") {
+        window.OrgXElements.avatarConfig.baseUrl = new URL("shared/avatars", window.location.href).toString();
+      }
 
       var uiState = { panel: null };
       var currentPulseData = null;
@@ -1813,188 +707,6 @@ external: function (size) {
         return (artifact && typeof artifact.primary_label === "string" && artifact.primary_label) || "Open artifact";
       };
 
-      var WIDGET_ASSET_BASE = "https://mcp.useorgx.com/widgets/shared/";
-
-      var avatarInitial = function (name, domain) {
-        var source = typeof name === "string" && name.trim() ? name.trim() : titleCase(domain || "OrgX");
-        return escapeHtml(source.charAt(0).toUpperCase() || "?");
-      };
-
-      var getDomainKey = function (domain) {
-        var key = toStatusKey(domain);
-        return DOMAIN_ACCENTS[key] ? key : "orchestrator";
-      };
-
-      var getDomainRgb = function (domain) {
-        return DOMAIN_ACCENTS[getDomainKey(domain)];
-      };
-
-      var getAvatarUrl = function (name, domain) {
-        var normalizedName = toStatusKey(name);
-        var normalizedDomain = getDomainKey(domain);
-        if (normalizedName.indexOf("pace") >= 0 || normalizedName.indexOf("product") >= 0 || normalizedDomain === "product") {
-          return WIDGET_ASSET_BASE + "product_orchestrator.png";
-        }
-        if (normalizedName.indexOf("eli") >= 0 || normalizedName.indexOf("engineer") >= 0 || normalizedDomain === "engineering") {
-          return WIDGET_ASSET_BASE + "engineering_autopilot.png";
-        }
-        if (normalizedName.indexOf("mark") >= 0 || normalizedName.indexOf("market") >= 0 || normalizedDomain === "marketing") {
-          return WIDGET_ASSET_BASE + "launch_captain.png";
-        }
-        if (normalizedName.indexOf("sage") >= 0 || normalizedName.indexOf("sale") >= 0 || normalizedDomain === "sales") {
-          return WIDGET_ASSET_BASE + "pipeline_intelligence.png";
-        }
-        if (normalizedName.indexOf("orion") >= 0 || normalizedName === "ops" || normalizedDomain === "operations") {
-          return WIDGET_ASSET_BASE + "control_tower.png";
-        }
-        if (normalizedName.indexOf("dana") >= 0 || normalizedName.indexOf("design") >= 0 || normalizedDomain === "design") {
-          return WIDGET_ASSET_BASE + "design_codex.png";
-        }
-        return WIDGET_ASSET_BASE + "xandy_orchestrator.png";
-      };
-
-      var renderPulseAvatar = function (name, domain) {
-        var avatarUrl = getAvatarUrl(name, domain);
-        return (
-          '<span class="pulse-avatar" style="--pulse-domain-rgb:' +
-          escapeHtml(getDomainRgb(domain)) +
-          ';">' +
-          '<img src="' +
-          escapeHtml(avatarUrl) +
-          '" alt="' +
-          escapeHtml(name || titleCase(domain || "Agent")) +
-          '" loading="lazy" onerror="this.remove(); this.parentNode.textContent=\'' +
-          avatarInitial(name, domain) +
-          '\';">' +
-          "</span>"
-        );
-      };
-
-      var toneForStatus = function (status, fallbackProgress, blockerCount) {
-        var key = toStatusKey(status);
-        if (
-          blockerCount > 0 ||
-          key === "blocked" ||
-          key === "failed" ||
-          key === "at_risk"
-        ) {
-          return "danger";
-        }
-        if (
-          key === "ready" ||
-          key === "pending" ||
-          key === "in_review" ||
-          key === "draft" ||
-          key === "ramping_up"
-        ) {
-          return "warning";
-        }
-        if (key === "active" || key === "running" || key === "in_progress") {
-          return "good";
-        }
-        if (key === "completed" || key === "approved") {
-          return "good";
-        }
-        var progress = Number(fallbackProgress);
-        if (Number.isFinite(progress) && progress < 40) return "warning";
-        return "muted";
-      };
-
-      var iconForStatus = function (status, tone) {
-        var key = toStatusKey(status);
-        if (key === "completed" || key === "approved") return icons.check(11);
-        if (key === "paused") return icons.pause(11);
-        if (tone === "danger") return icons.warning(11);
-        if (key === "active" || key === "running" || key === "in_progress") {
-          return icons.play(11);
-        }
-        return icons.pulse(11);
-      };
-
-      var renderStatusPill = function (status, tone) {
-        var label = titleCase(status || (tone === "danger" ? "needs attention" : "active"));
-        return (
-          '<span class="pulse-status-pill tone-' +
-          escapeHtml(tone) +
-          '">' +
-          iconForStatus(status, tone) +
-          escapeHtml(label) +
-          "</span>"
-        );
-      };
-
-      var renderHealthRing = function (score) {
-        // An unknown score must not be drawn as a number. Rendering "100" for a
-        // payload that never carried health is the difference between "we don't
-        // know" and "everything is fine".
-        var known = typeof score === "number" && isFinite(score);
-        var safeScore = known
-          ? Math.max(0, Math.min(100, Math.round(score)))
-          : 0;
-        var tone = !known
-          ? "unknown"
-          : safeScore >= 85 ? "good" : safeScore >= 70 ? "warning" : "danger";
-        var radius = 50;
-        var circumference = 2 * Math.PI * radius;
-        var offset = circumference - (safeScore / 100) * circumference;
-        return (
-          '<div class="pulse-health tone-' +
-          tone +
-          '" aria-label="' +
-          (known
-            ? "Health score " + escapeHtml(String(safeScore)) + " percent"
-            : "Health score unavailable") +
-          '">' +
-          '<svg viewBox="0 0 120 120">' +
-          '<circle class="pulse-health__track" cx="60" cy="60" r="' +
-          radius +
-          '"></circle>' +
-          '<circle class="pulse-health__bar" cx="60" cy="60" r="' +
-          radius +
-          '" style="stroke-dasharray:' +
-          circumference.toFixed(2) +
-          ";stroke-dashoffset:" +
-          offset.toFixed(2) +
-          '"></circle>' +
-          "</svg>" +
-          '<div class="pulse-health__value">' +
-          '<span class="pulse-health__number">' +
-          (known ? escapeHtml(String(safeScore)) : "&mdash;") +
-          "</span>" +
-          '<span class="pulse-health__label">Health</span>' +
-          "</div>" +
-          "</div>"
-        );
-      };
-
-      var renderMiniRing = function (progress, tone) {
-        var safeProgress = Math.max(0, Math.min(100, Math.round(Number(progress) || 0)));
-        var radius = 15;
-        var circumference = 2 * Math.PI * radius;
-        var offset = circumference - (safeProgress / 100) * circumference;
-        return (
-          '<span class="pulse-mini-ring tone-' +
-          escapeHtml(tone) +
-          '">' +
-          '<svg viewBox="0 0 34 34">' +
-          '<circle class="pulse-mini-ring__track" cx="17" cy="17" r="' +
-          radius +
-          '"></circle>' +
-          '<circle class="pulse-mini-ring__bar" cx="17" cy="17" r="' +
-          radius +
-          '" style="stroke-dasharray:' +
-          circumference.toFixed(2) +
-          ";stroke-dashoffset:" +
-          offset.toFixed(2) +
-          '"></circle>' +
-          "</svg>" +
-          '<span class="pulse-mini-ring__value">' +
-          escapeHtml(String(safeProgress)) +
-          "%</span>" +
-          "</span>"
-        );
-      };
-
       var normalizeWorkstreams = function (payload) {
         var raw = Array.isArray(payload && payload.workstreams)
           ? payload.workstreams
@@ -2301,34 +1013,135 @@ external: function (size) {
         };
       };
 
+      // Agents render as kit avatars whose form follows the work's state.
+      var avatarFormFor = function (status, blockerCount) {
+        var key = toStatusKey(status);
+        var identity = window.OrgXAgentIdentity;
+        var state =
+          blockerCount > 0 || key === "blocked" ? "needs_you"
+          : key === "active" || key === "running" || key === "in_progress" ? "running"
+          : key === "in_review" || key === "verifying" ? "verifying"
+          : "base";
+        return identity && identity.formForState ? identity.formForState(state) : "base";
+      };
+
+      var renderPulseAvatar = function (name, domain, status, blockerCount) {
+        var identity = window.OrgXAgentIdentity;
+        var key = identity ? identity.resolveAgentKey(name, domain) : null;
+        if (!key) return "";
+        return (
+          '<ox-avatar agent="' + escapeHtml(key) + '" form="' + escapeHtml(avatarFormFor(status, blockerCount)) +
+          '" size="24"' + (name ? ' name="' + escapeHtml(name) + '"' : "") + "></ox-avatar>"
+        );
+      };
+
+      var toneForStatus = function (status, fallbackProgress, blockerCount) {
+        var key = toStatusKey(status);
+        if (
+          blockerCount > 0 ||
+          key === "blocked" ||
+          key === "failed" ||
+          key === "at_risk"
+        ) {
+          return "danger";
+        }
+        if (
+          key === "ready" ||
+          key === "pending" ||
+          key === "in_review" ||
+          key === "draft" ||
+          key === "ramping_up"
+        ) {
+          return "warning";
+        }
+        if (key === "active" || key === "running" || key === "in_progress") {
+          return "good";
+        }
+        if (key === "completed" || key === "approved") {
+          return "good";
+        }
+        var progress = Number(fallbackProgress);
+        if (Number.isFinite(progress) && progress < 40) return "warning";
+        return "muted";
+      };
+
+      // Status words become kit chips; the chip reserves the widest label so rows hold still.
+      var CHIP_RESERVE = "needs_you running succeeded queued blocked stale draft";
+      var chipFor = function (status, blockerCount, kind) {
+        var key = toStatusKey(status);
+        var state = "queued";
+        var label = "";
+        if (blockerCount > 0 || key === "blocked" || key === "at_risk") { state = "blocked"; label = "Blocked"; }
+        else if (key === "failed") { state = "failed_step"; }
+        else if (key === "in_review" || key === "review" || key === "needs_review") { state = "needs_you"; label = kind === "artifact" ? "Your review" : "Needs you"; }
+        else if (key === "changes_requested") { state = "failed_step"; label = "Changes requested"; }
+        else if (key === "draft") { state = "draft"; label = "Draft"; }
+        else if (key === "completed" || key === "approved" || key === "done") { state = "succeeded"; label = kind === "artifact" ? "Accepted" : "Done"; }
+        else if (key === "active" || key === "running" || key === "in_progress") { state = "running"; label = key === "active" ? "Active" : ""; }
+        else if (key === "stale") { state = "stale"; }
+        else if (key === "ready" || key === "planned" || key === "pending" || key === "not_started") { state = "queued"; label = key === "ready" ? "Ready" : "Planned"; }
+        else if (key === "paused") { state = "handed_off"; label = "Paused"; }
+        return (
+          '<ox-state-chip state="' + state + '"' + (label ? ' label="' + escapeHtml(label) + '"' : "") +
+          ' reserve="' + CHIP_RESERVE + '">' + escapeHtml(label || titleCase(status || "")) + "</ox-state-chip>"
+        );
+      };
+
+      var renderStatusPill = function (status, tone) {
+        return chipFor(status || (tone === "danger" ? "blocked" : "active"), tone === "danger" ? 1 : 0, "stream");
+      };
+
+      var renderProgressBar = function (progress, tone) {
+        var safeProgress = Math.max(0, Math.min(100, Math.round(Number(progress) || 0)));
+        return (
+          '<span class="pulse-bar" data-tone="' + escapeHtml(tone) + '" aria-hidden="true"><span style="width:' + Math.max(4, safeProgress) + '%"></span></span>' +
+          '<span class="pulse-pct">' + escapeHtml(String(safeProgress)) + "%</span>"
+        );
+      };
+
+      // Q6 segment kinds: accepted, awaiting judgment, active, blocked, planned.
+      var segmentFor = function (status, blockerCount) {
+        var key = toStatusKey(status);
+        if (blockerCount > 0 || key === "blocked" || key === "at_risk" || key === "failed") return "blocked";
+        if (key === "completed" || key === "approved" || key === "done") return "accepted";
+        if (key === "in_review" || key === "review" || key === "needs_review") return "judgment";
+        if (key === "active" || key === "running" || key === "in_progress" || key === "stale") return "active";
+        return "planned";
+      };
+      var SEGMENT_LABELS = { accepted: "accepted", judgment: "awaiting judgment", active: "active", blocked: "blocked", planned: "planned" };
+
       var renderSignalStrip = function (pulseData) {
         var source = pulseData.workstreams.length
           ? pulseData.workstreams
           : pulseData.milestones;
         if (!source.length) return "";
+        var counts = {};
+        var segments = source
+          .slice(0, 24)
+          .map(function (item) {
+            var progress =
+              typeof item.progress_pct === "number" ? item.progress_pct : item.progress;
+            var segment = segmentFor(item.status, item.blocker_count || 0);
+            counts[segment] = (counts[segment] || 0) + 1;
+            return (
+              '<button class="pulse-signal seg-' + segment + '" type="button" title="' +
+              escapeHtml(item.title + ": " + SEGMENT_LABELS[segment] + ", " + Math.round(progress || 0) + "%") +
+              '" aria-label="' +
+              escapeHtml("View " + item.title + ", " + SEGMENT_LABELS[segment] + ", " + Math.round(progress || 0) + "% complete") +
+              '" onclick="togglePulsePanel(\'streams\', this)"></button>'
+            );
+          })
+          .join("");
+        var legend = ["accepted", "judgment", "active", "blocked", "planned"]
+          .filter(function (segment) { return counts[segment]; })
+          .map(function (segment) {
+            return '<span><i class="seg-' + segment + '"></i>' + counts[segment] + " " + SEGMENT_LABELS[segment] + "</span>";
+          })
+          .join("");
         return (
-          '<div class="pulse-signal-strip">' +
-          source
-            .slice(0, 4)
-            .map(function (item) {
-              var progress =
-                typeof item.progress_pct === "number" ? item.progress_pct : item.progress;
-              var tone = toneForStatus(item.status, progress, item.blocker_count || 0);
-              return (
-                '<button class="pulse-signal" type="button" title="' +
-                escapeHtml(item.title + ": " + Math.round(progress || 0) + "%") +
-                '" aria-label="' +
-                escapeHtml("View " + item.title + ", " + Math.round(progress || 0) + "% complete") +
-                '" onclick="togglePulsePanel(\'streams\', this)">' +
-                '<span class="pulse-signal__fill tone-' +
-                escapeHtml(tone) +
-                '" style="width:' +
-                Math.max(8, Math.min(100, Math.round(Number(progress) || 0))) +
-                '%"></span>' +
-                "</button>"
-              );
-            })
-            .join("") +
+          '<div class="pulse-population">' +
+            '<div class="pulse-signal-strip">' + segments + "</div>" +
+            '<div class="pulse-legend">' + legend + "</div>" +
           "</div>"
         );
       };
@@ -2336,7 +1149,7 @@ external: function (size) {
       var renderMetrics = function (sections, activePanel) {
         if (!sections.length) return "";
         return (
-          '<div class="pulse-rail">' +
+          '<div class="pulse-rail" role="group" aria-label="Pulse lists">' +
           sections
             .map(function (section) {
               return (
@@ -2370,38 +1183,37 @@ external: function (size) {
         );
       };
 
+      var linkRow = function (url, leading, leadingTone, title, metaHtml, trailing, extraClass) {
+        var href = String(url || "");
+        return (
+          '<a href="' + escapeHtml(href) + '" target="_blank" rel="noreferrer" onclick=\'return openWidgetLink(' +
+          escapeHtml(JSON.stringify(href)).replace(/'/g, "&#39;") + ', event)\' class="pulse-list-row' + (extraClass ? " " + extraClass : "") + '">' +
+            '<span class="pulse-list-leading"' + (leadingTone ? ' data-tone="' + leadingTone + '"' : "") + ">" + leading + "</span>" +
+            '<span class="pulse-list-copy">' +
+              '<span class="pulse-list-title">' + escapeHtml(title) + "</span>" +
+              (metaHtml ? '<span class="pulse-list-meta">' + metaHtml + "</span>" : "") +
+            "</span>" +
+            '<span class="pulse-list-trailing">' + trailing + "</span>" +
+          "</a>"
+        );
+      };
+
       var renderActionsPanel = function (items) {
         if (!items.length) return '<div class="pulse-empty">No decisions, blockers, or reviews are waiting on you right now.</div>';
         return (
           '<div class="pulse-list">' +
           items
             .map(function (item) {
-              var icon = item.kind === "review" ? icons.document(15) : icons.warning(15);
-              var url = item.url || "";
-              var urlAttr = JSON.stringify(String(url));
-              return (
-                '<a href="' +
-                escapeHtml(url) +
-                '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(' +
-                urlAttr +
-                ', event)" class="pulse-list-row pulse-action-row' +
-                (item.kind === "blocker" ? " is-danger" : "") +
-                '">' +
-                '<span class="pulse-list-leading">' +
-                icon +
-                "</span>" +
-                '<span class="pulse-list-copy">' +
-                '<span class="pulse-list-title">' +
-                escapeHtml(item.label) +
-                "</span>" +
-                '<span class="pulse-list-meta">' +
-                escapeHtml(item.meta) +
-                "</span>" +
-                "</span>" +
-                '<span class="pulse-list-trailing">' +
-                icons.external(14) +
-                "</span>" +
-                "</a>"
+              var glyph = item.kind === "review" ? "artifact" : item.kind === "blocker" ? "task" : "decision";
+              var tone = item.kind === "blocker" ? "red" : "amber";
+              return linkRow(
+                item.url,
+                '<ox-glyph kind="' + glyph + '" tone="' + tone + '"></ox-glyph>',
+                tone,
+                item.label,
+                escapeHtml(item.meta) + '<span class="pulse-meta-separator">·</span>opens in OrgX',
+                icons.external(14),
+                "pulse-action-row" + (item.kind === "blocker" ? " is-danger" : "")
               );
             })
             .join("") +
@@ -2419,7 +1231,7 @@ external: function (size) {
             meta:
               (pulseData.total_workstreams || pulseData.active_workstreams || 0) +
               " total workstreams",
-            tone: "good",
+            status: "active",
           });
         }
         if (pulseData.blocked_workstreams) {
@@ -2430,7 +1242,7 @@ external: function (size) {
               (pulseData.blocked_workstreams === 1 ? " is" : "s are") +
               " blocked.",
             meta: "Needs intervention",
-            tone: "danger",
+            status: "blocked",
           });
         }
         if (pulseData.pending_decisions) {
@@ -2441,46 +1253,17 @@ external: function (size) {
               (pulseData.pending_decisions === 1 ? " is" : "s are") +
               " waiting.",
             meta: "Pending decisions",
-            tone: "warning",
+            status: "in_review",
           });
         }
         if (!rows.length) {
           return '<div class="pulse-empty">Stream detail will appear here when the pulse payload includes live stream rows.</div>';
         }
-        var urlAttr = JSON.stringify(String(dashboardUrl || ""));
         return (
           '<div class="pulse-list">' +
           rows
             .map(function (row) {
-              return (
-                '<a href="' +
-                escapeHtml(dashboardUrl || "") +
-                '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(' +
-                urlAttr +
-                ', event)" class="pulse-list-row">' +
-                '<span class="pulse-list-leading">' +
-                renderMiniRing(
-                  row.tone === "danger"
-                    ? 28
-                    : row.tone === "warning"
-                    ? 54
-                    : 78,
-                  row.tone
-                ) +
-                "</span>" +
-                '<span class="pulse-list-copy">' +
-                '<span class="pulse-list-title">' +
-                escapeHtml(row.title) +
-                "</span>" +
-                '<span class="pulse-list-meta">' +
-                escapeHtml(row.meta) +
-                "</span>" +
-                "</span>" +
-                '<span class="pulse-list-trailing">' +
-                renderStatusPill(row.tone === "danger" ? "blocked" : row.tone === "warning" ? "pending" : "active", row.tone) +
-                "</span>" +
-                "</a>"
-              );
+              return linkRow(dashboardUrl, '<ox-glyph kind="workstream"></ox-glyph>', "", row.title, escapeHtml(row.meta), chipFor(row.status, 0, "stream"));
             })
             .join("") +
           "</div>"
@@ -2489,55 +1272,30 @@ external: function (size) {
 
       var renderStreamsPanel = function (pulseData, dashboardUrl) {
         if (!pulseData.workstreams.length) return renderWorkstreamFallback(pulseData, dashboardUrl);
-        var urlAttr = JSON.stringify(String(dashboardUrl || ""));
         return (
           '<div class="pulse-list">' +
           pulseData.workstreams
-            .slice(0, 4)
+            .slice(0, 8)
             .map(function (stream) {
               var tone = toneForStatus(stream.status, stream.progress_pct, stream.blocker_count);
               var metaParts = [];
               if (stream.agent_name) metaParts.push(stream.agent_name);
-              if (stream.agent_domain) metaParts.push(titleCase(stream.agent_domain));
               if (stream.summary) metaParts.push(stream.summary);
               if (stream.blocker_count) {
-                metaParts.push(
-                  stream.blocker_count +
-                    " blocker" +
-                    (stream.blocker_count === 1 ? "" : "s")
-                );
+                metaParts.push(stream.blocker_count + " blocker" + (stream.blocker_count === 1 ? "" : "s"));
               }
-              return (
-                '<a href="' +
-                escapeHtml(dashboardUrl || "") +
-                '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(' +
-                urlAttr +
-                ', event)" class="pulse-list-row">' +
-                '<span class="pulse-list-leading">' +
-                renderMiniRing(stream.progress_pct, tone) +
-                "</span>" +
-                (stream.agent_name || stream.agent_domain
-                  ? renderPulseAvatar(stream.agent_name, stream.agent_domain)
-                  : "") +
-                '<span class="pulse-list-copy">' +
-                '<span class="pulse-list-title">' +
-                escapeHtml(stream.title) +
-                "</span>" +
-                '<span class="pulse-list-meta">' +
+              var avatar = renderPulseAvatar(stream.agent_name, stream.agent_domain, stream.status, stream.blocker_count);
+              return linkRow(
+                dashboardUrl,
+                avatar || '<ox-glyph kind="workstream"></ox-glyph>',
+                "",
+                stream.title,
                 metaParts
                   .map(function (part, index) {
-                    return (
-                      (index ? '<span class="pulse-meta-separator">·</span>' : "") +
-                      escapeHtml(part)
-                    );
+                    return (index ? '<span class="pulse-meta-separator">·</span>' : "") + escapeHtml(part);
                   })
-                  .join("") +
-                "</span>" +
-                "</span>" +
-                '<span class="pulse-list-trailing">' +
-                renderStatusPill(stream.status, tone) +
-                "</span>" +
-                "</a>"
+                  .join(""),
+                renderProgressBar(stream.progress_pct, tone) + chipFor(stream.status, stream.blocker_count, "stream")
               );
             })
             .join("") +
@@ -2547,7 +1305,6 @@ external: function (size) {
 
       var renderFocusPanel = function (pulseData, dashboardUrl) {
         var parts = [];
-        var urlAttr = JSON.stringify(String(dashboardUrl || ""));
 
         if ((pulseData.next_steps || []).length) {
           parts.push(
@@ -2557,26 +1314,7 @@ external: function (size) {
                 pulseData.next_steps
                   .slice(0, 4)
                   .map(function (step) {
-                    return (
-                      '<a href="' +
-                      escapeHtml(dashboardUrl || "") +
-                      '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(' +
-                      urlAttr +
-                      ', event)" class="pulse-list-row">' +
-                        '<span class="pulse-list-leading">' +
-                        icons.task(15) +
-                        "</span>" +
-                        '<span class="pulse-list-copy">' +
-                          '<span class="pulse-list-title">' +
-                          escapeHtml(step) +
-                          "</span>" +
-                          '<span class="pulse-list-meta">Use the live view to resolve or delegate</span>' +
-                        "</span>" +
-                        '<span class="pulse-list-trailing">' +
-                        icons.external(14) +
-                        "</span>" +
-                      "</a>"
-                    );
+                    return linkRow(dashboardUrl, '<ox-glyph kind="task"></ox-glyph>', "", step, "resolve or delegate in the live view", icons.external(14));
                   })
                   .join("") +
               "</div>" +
@@ -2593,38 +1331,13 @@ external: function (size) {
                   .slice(0, 4)
                   .map(function (milestone) {
                     var tone = toneForStatus(milestone.status, milestone.progress, 0);
-                    return (
-                      '<a href="' +
-                      escapeHtml(dashboardUrl || "") +
-                      '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(' +
-                      urlAttr +
-                      ', event)" class="pulse-list-row">' +
-                        '<span class="pulse-list-leading">' +
-                        icons.flag(15) +
-                        "</span>" +
-                        '<span class="pulse-list-copy">' +
-                          '<span class="pulse-list-title">' +
-                          escapeHtml(milestone.title) +
-                          "</span>" +
-                          '<span class="pulse-list-meta">' +
-                            escapeHtml(titleCase(milestone.status || "planned")) +
-                          "</span>" +
-                        "</span>" +
-                        '<span class="pulse-list-trailing">' +
-                          '<span class="pulse-milestone-meter"><span style="width:' +
-                          Math.max(4, Math.min(100, Math.round(Number(milestone.progress) || 0))) +
-                          '%; background:' +
-                          (tone === "danger"
-                            ? "var(--ox-danger)"
-                            : tone === "warning"
-                            ? "var(--ox-warning)"
-                            : "var(--ox-primary)") +
-                          '"></span></span>' +
-                          '<span class="pulse-list-meta">' +
-                          escapeHtml(String(Math.round(Number(milestone.progress) || 0))) +
-                          "%</span>" +
-                        "</span>" +
-                      "</a>"
+                    return linkRow(
+                      dashboardUrl,
+                      '<ox-glyph kind="milestone"></ox-glyph>',
+                      "",
+                      milestone.title,
+                      escapeHtml(titleCase(milestone.status || "planned")),
+                      renderProgressBar(milestone.progress, tone)
                     );
                   })
                   .join("") +
@@ -2640,47 +1353,67 @@ external: function (size) {
         return parts.join("");
       };
 
+      // K3 in miniature: every output item, worst first, with one quality strip on top.
       var renderArtifactsPanel = function (pulseData, dashboardUrl) {
         if (!pulseData.recent_artifacts.length) {
           return '<div class="pulse-empty">No recent output was attached to this initiative pulse.</div>';
         }
+        var rank = function (artifact) {
+          var key = toStatusKey(artifact.status);
+          return key === "changes_requested" ? 0 : key === "in_review" || artifact.needs_review ? 1 : key === "draft" ? 2 : 3;
+        };
+        var counts = { fail: 0, you: 0, unv: 0, met: 0 };
+        pulseData.recent_artifacts.forEach(function (artifact) {
+          var key = toStatusKey(artifact.status);
+          if (key === "changes_requested") counts.fail += 1;
+          else if (key === "in_review" || artifact.needs_review) counts.you += 1;
+          else if (key === "approved" || key === "completed") counts.met += 1;
+          else counts.unv += 1;
+        });
+        var summary = pulseData.artifact_summary || {};
+        var strip =
+          '<div class="pulse-quality">' +
+            '<div class="pulse-quality-strip" aria-hidden="true">' +
+              (counts.fail ? '<i class="q-fail" style="flex:' + counts.fail + ' 0 0"></i>' : "") +
+              (counts.you ? '<i class="q-you" style="flex:' + counts.you + ' 0 0"></i>' : "") +
+              (counts.unv ? '<i class="q-unv" style="flex:' + counts.unv + ' 0 0"></i>' : "") +
+              (counts.met ? '<i class="q-met" style="flex:' + counts.met + ' 0 0"></i>' : "") +
+            "</div>" +
+            '<div class="pulse-legend">' +
+              (counts.fail ? "<span>" + counts.fail + " changes requested</span>" : "") +
+              (counts.you ? "<span>" + counts.you + " your review</span>" : "") +
+              (counts.unv ? "<span>" + counts.unv + " draft</span>" : "") +
+              (counts.met ? "<span>" + counts.met + " accepted</span>" : "") +
+              (typeof summary.total === "number" && summary.total > pulseData.recent_artifacts.length
+                ? "<span>" + (summary.total - pulseData.recent_artifacts.length) + " more in OrgX</span>"
+                : "") +
+            "</div>" +
+          "</div>";
 
         return (
+          strip +
           '<div class="pulse-list">' +
           pulseData.recent_artifacts
-            .slice(0, 4)
+            .slice()
+            .sort(function (a, b) { return rank(a) - rank(b); })
+            .slice(0, 6)
             .map(function (artifact) {
               var key = toStatusKey(artifact.status);
-              var tone = toneForStatus(artifact.status, 0, 0);
               var age = formatRelative(artifact.created_at);
               var url = artifact.primary_url || artifact.live_url || dashboardUrl || "";
-              var urlAttr = JSON.stringify(String(url));
-              return (
-                '<a href="' +
-                escapeHtml(url) +
-                '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(' +
-                urlAttr +
-                ', event)" class="pulse-list-row pulse-artifact-row' +
-                (key === "in_review" || key === "draft" ? " is-review" : "") +
-                '">' +
-                '<span class="pulse-list-leading">' +
-                icons.document(15) +
-                "</span>" +
-                '<span class="pulse-list-copy">' +
-                '<span class="pulse-list-title">' +
-                escapeHtml(artifact.title) +
-                "</span>" +
-                '<span class="pulse-list-meta">' +
-                escapeHtml(titleCase(artifact.status)) +
-                (age
-                  ? '<span class="pulse-meta-separator">·</span>' + escapeHtml(age)
-                  : "") +
-                "</span>" +
-                "</span>" +
-                '<span class="pulse-list-trailing">' +
-                renderStatusPill(artifact.status, tone) +
-                "</span>" +
-                "</a>"
+              var meta = [artifact.artifact_type ? titleCase(String(artifact.artifact_type).split(".").pop()) : "", artifact.created_by_name || "", age || ""]
+                .filter(Boolean)
+                .map(escapeHtml)
+                .join('<span class="pulse-meta-separator">·</span>');
+              var tone = key === "changes_requested" ? "red" : key === "in_review" || artifact.needs_review ? "amber" : key === "approved" ? "teal" : "";
+              return linkRow(
+                url,
+                '<ox-glyph kind="artifact"' + (tone ? ' tone="' + tone + '"' : "") + "></ox-glyph>",
+                tone,
+                artifact.title,
+                meta,
+                chipFor(artifact.status, 0, "artifact"),
+                "pulse-artifact-row" + (key === "in_review" || key === "draft" ? " is-review" : "")
               );
             })
             .join("") +
@@ -2794,7 +1527,7 @@ external: function (size) {
           }
         );
 
-        var attentionBanner = shell.querySelector(".pulse-attention");
+        var attentionBanner = document.querySelector(".pulse-attention");
         if (attentionBanner) {
           attentionBanner.classList.toggle("is-open", activePanel === "actions");
           attentionBanner.setAttribute("aria-expanded", String(activePanel === "actions"));
@@ -2817,34 +1550,36 @@ external: function (size) {
         if (trigger && typeof trigger.focus === "function") trigger.focus();
       };
 
+      var renderSkeleton = function () {
+        injectHtml(
+          '<div class="pulse-shell-card"><div class="ox-card" role="status" aria-label="Loading initiative pulse">' +
+            '<div class="pulse-head" style="height:44px;display:flex;align-items:center;gap:10px;padding:0 20px"><span class="sk" style="width:8px;height:8px;border-radius:50%"></span><span class="sk" style="width:36%;height:12px"></span></div>' +
+            '<div class="pulse-shell">' +
+              '<div class="pulse-hero"><span class="sk" style="width:40px;height:40px;border-radius:11px"></span><span style="display:flex;flex-direction:column;gap:8px;flex:1"><span class="sk" style="width:30%;height:10px"></span><span class="sk" style="width:62%;height:22px"></span><span class="sk" style="width:48%;height:11px"></span></span></div>' +
+              '<span class="sk" style="width:100%;height:10px"></span>' +
+              '<span class="sk" style="width:100%;height:44px"></span>' +
+              '<span class="sk" style="width:100%;height:52px"></span>' +
+            "</div>" +
+            '<ox-footer variant="reads" state="loading"></ox-footer>' +
+          "</div></div>"
+        );
+      };
+
+      var calmCard = function (edge, title, desc, cta, role) {
+        return (
+          '<div class="pulse-shell-card animate-in"><div class="ox-card" data-edge="' + edge + '">' +
+            '<div class="pulse-calm"' + (role ? ' role="' + role + '"' : "") + ">" +
+              '<div class="empty-title">' + escapeHtml(title) + "</div>" +
+              '<div class="empty-desc">' + escapeHtml(desc) + "</div>" +
+              cta +
+            "</div>" +
+          "</div></div>"
+        );
+      };
+
       var render = function () {
         if (isLoading) {
-          injectHtml(
-            '<div class="ox-card pulse-shell-card"><div class="ox-card-inner pulse-skeleton" role="status" aria-label="Loading initiative pulse">' +
-              '<div style="display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 22px; align-items: center">' +
-                '<span class="skeleton-line skeleton-ring" style="width: 116px; height: 116px"></span>' +
-                '<div style="display: flex; flex-direction: column; gap: 12px; min-width: 0">' +
-                  '<span class="skeleton-line" style="width: 88px; height: 10px"></span>' +
-                  '<span class="skeleton-line" style="width: 72%; height: 28px"></span>' +
-                  '<span class="skeleton-line" style="width: 58%; height: 14px"></span>' +
-                '</div>' +
-              '</div>' +
-              '<span class="skeleton-line" style="width: 100%; height: 58px; border-radius: 14px"></span>' +
-              '<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px">' +
-                '<span class="skeleton-line" style="height: 74px; border-radius: 14px"></span>' +
-                '<span class="skeleton-line" style="height: 74px; border-radius: 14px"></span>' +
-                '<span class="skeleton-line" style="height: 74px; border-radius: 14px"></span>' +
-                '<span class="skeleton-line" style="height: 74px; border-radius: 14px"></span>' +
-              '</div>' +
-              '<div style="display: flex; gap: 8px">' +
-                '<span class="skeleton-line" style="flex: 1; height: 7px; border-radius: 999px"></span>' +
-                '<span class="skeleton-line" style="flex: 1; height: 7px; border-radius: 999px"></span>' +
-                '<span class="skeleton-line" style="flex: 1; height: 7px; border-radius: 999px"></span>' +
-                '<span class="skeleton-line" style="flex: 1; height: 7px; border-radius: 999px"></span>' +
-              '</div>' +
-              '<span class="skeleton-line" style="width: 100%; height: 46px; border-radius: 16px"></span>' +
-            "</div></div>"
-          );
+          renderSkeleton();
           return;
         }
 
@@ -2863,20 +1598,7 @@ external: function (size) {
           var errorCta = /multiple initiatives match/i.test(errorMessage)
             ? buildRecoveryCta(null, "Browse initiatives in OrgX")
             : buildRecoveryCta(pulse, /not found/i.test(errorMessage) ? "Browse initiatives in OrgX" : "Open initiative in OrgX");
-          injectHtml(
-            '<div class="empty-state error-state">' +
-              '<div class="empty-icon">' +
-              icons.warning(24) +
-              "</div>" +
-              '<div class="empty-title">' +
-              escapeHtml(errorTitle) +
-              "</div>" +
-              '<div class="empty-desc">' +
-              escapeHtml(errorDesc) +
-              "</div>" +
-              errorCta +
-            "</div>"
-          );
+          injectHtml(calmCard("red", errorTitle, errorDesc, errorCta, "alert"));
           return;
         }
 
@@ -2893,17 +1615,11 @@ external: function (size) {
           var desc = liveRows
             ? "Current workstreams are shown above. The pulse snapshot for this initiative has not been recorded yet."
             : "No recent pulse data was found for this initiative.";
-          return (
-            '<div class="empty-state">' +
-            '<div class="empty-icon">' +
-            icons.pulse(24) +
-            "</div>" +
-            '<div class="empty-title">' + title + "</div>" +
-            '<div class="empty-desc">' + desc + "</div>" +
-            (recoveryLabel
-              ? buildRecoveryCta(recoveryFor, recoveryLabel)
-              : buildRecoveryCta(recoveryFor)) +
-            "</div>"
+          return calmCard(
+            "mute",
+            title,
+            desc,
+            recoveryLabel ? buildRecoveryCta(recoveryFor, recoveryLabel) : buildRecoveryCta(recoveryFor)
           );
         }
 
@@ -2925,7 +1641,6 @@ external: function (size) {
           (pulse.id
             ? "https://useorgx.com/live/" + encodeURIComponent(pulse.id)
             : "https://useorgx.com/live?view=mission-control");
-        var dashboardUrlAttr = JSON.stringify(String(dashboardUrl));
 
         var reviewCount = (pulse.recent_artifacts || []).filter(function (artifact) {
           return ["in_review", "draft", "changes_requested"].indexOf(toStatusKey(artifact.status)) >= 0;
@@ -2933,8 +1648,9 @@ external: function (size) {
 
         var attentionItems = buildAttentionItems(pulse, dashboardUrl);
         var attentionBanner = buildAttentionBanner(pulse, attentionItems);
-        var economics = "";
 
+        // Economics and ETA move to the footer detail: proof, not a headline.
+        var economics = "";
         if (pulse.roi_summary) {
           var roiValue =
             pulse.roi_summary.total_cost > 0
@@ -2943,69 +1659,33 @@ external: function (size) {
               : pulse.roi_summary.total_value > 0
               ? 1
               : null;
-          economics =
-            '<div class="pulse-economics">' +
-            '<span><strong>' +
-            escapeHtml(formatUsdRounded(pulse.roi_summary.total_cost) || "N/A") +
-            "</strong> cost</span>" +
-            '<span class="pulse-dot-divider">·</span>' +
-            '<span class="is-emphasis"><strong>' +
-            escapeHtml(formatUsdRounded(pulse.roi_summary.total_value) || "N/A") +
-            "</strong> value</span>" +
-            '<span class="pulse-dot-divider">·</span>' +
-            '<span class="is-emphasis"><strong>' +
-            escapeHtml(formatRoi(roiValue) || "N/A") +
-            "</strong> ROI</span>" +
-            "</div>";
+          economics = [
+            (formatUsdRounded(pulse.roi_summary.total_cost) || "N/A") + " cost",
+            (formatUsdRounded(pulse.roi_summary.total_value) || "N/A") + " value",
+            (formatRoi(roiValue) || "N/A") + " ROI",
+          ].join(" · ");
         } else {
           var fallbackParts = [];
-          if (formatEta(pulse.eta_seconds)) {
-            fallbackParts.push(
-              "<span><strong>" + escapeHtml(formatEta(pulse.eta_seconds)) + "</strong> ETA</span>"
-            );
-          }
-          if (formatUsdRounded(pulse.current_cost)) {
-            fallbackParts.push(
-              "<span><strong>" +
-                escapeHtml(formatUsdRounded(pulse.current_cost)) +
-                "</strong> cost so far</span>"
-            );
-          }
-          if (fallbackParts.length) {
-            economics =
-              '<div class="pulse-economics">' +
-              fallbackParts.join('<span class="pulse-dot-divider">·</span>') +
-              "</div>";
-          }
+          if (formatEta(pulse.eta_seconds)) fallbackParts.push(formatEta(pulse.eta_seconds) + " ETA");
+          if (formatUsdRounded(pulse.current_cost)) fallbackParts.push(formatUsdRounded(pulse.current_cost) + " cost so far");
+          economics = fallbackParts.join(" · ");
         }
 
-        var metaTokens = [];
         var streamCount = pulse.total_workstreams || pulse.active_workstreams || pulse.workstreams.length;
-        if (streamCount) {
-          metaTokens.push(
-            escapeHtml(String(streamCount)) +
-              " workstreams"
-          );
+        var blockedCount = pulse.blocked_workstreams || (pulse.blockers || []).length;
+        var metaTokens = [];
+        if (pulse.progress_pct) metaTokens.push(escapeHtml(Math.round(pulse.progress_pct) + "% through"));
+        if (typeof pulse.health_score === "number") {
+          var healthTone = pulse.health_score >= 85 ? "good" : pulse.health_score >= 70 ? "warning" : "danger";
+          metaTokens.push('<span class="tone-' + healthTone + '">health ' + escapeHtml(String(Math.round(pulse.health_score))) + "</span>");
         }
-        if (pulse.blocked_workstreams || (pulse.blockers || []).length) {
-          metaTokens.push(
-            escapeHtml(
-              String(pulse.blocked_workstreams || (pulse.blockers || []).length) + " blocked"
-            )
-          );
-        }
-        if (pulse.pending_decisions) {
-          metaTokens.push(
-            escapeHtml(String(pulse.pending_decisions) + " decisions pending")
-          );
-        }
+        if (streamCount) metaTokens.push(escapeHtml(String(streamCount)) + " workstreams");
+        if (blockedCount) metaTokens.push('<span class="tone-danger">' + escapeHtml(String(blockedCount)) + " blocked</span>");
+        if (pulse.pending_decisions) metaTokens.push(escapeHtml(String(pulse.pending_decisions) + " decisions pending"));
         if (pulse.recent_artifacts.length) {
           metaTokens.push(
             escapeHtml(
-              String(
-                (pulse.artifact_summary && pulse.artifact_summary.total) ||
-                  pulse.recent_artifacts.length
-              ) + " output items"
+              String((pulse.artifact_summary && pulse.artifact_summary.total) || pulse.recent_artifacts.length) + " output items"
             )
           );
         }
@@ -3016,10 +1696,9 @@ external: function (size) {
             key: "streams",
             icon: icons.workstream(15),
             value: streamCount || pulse.workstreams.length || pulse.milestones.length,
-            label: "Workstreams",
-            // The blocked child is already loud via the attention banner, the
-            // red "Needs you" metric, and the red bar in the signal strip /
-            // list. Keep the aggregate count neutral so red stays meaningful.
+            label: "Streams",
+            // The blocked child is already loud in the attention line and the
+            // population bar. Keep the aggregate count neutral so red stays meaningful.
             alert: false,
           });
         }
@@ -3073,96 +1752,80 @@ external: function (size) {
             pulse.recent_artifacts.length ? pulse.recent_artifacts[0].created_at : null
           ) ||
           "now";
+        var updatedAt = pulse.updated_at ? new Date(pulse.updated_at).getTime() : NaN;
+        var isStale = toStatusKey(pulse.status) === "stale" || (Number.isFinite(updatedAt) && Date.now() - updatedAt > 10 * 60 * 1000);
+
+        // The opening line: amber when something waits on you, red when work is blocked.
+        var waiting = attentionItems.length;
+        var lineTone = !waiting ? "calm" : (pulse.blockers || []).length ? "blocking" : "needs-you";
+        var blockerTotal = (pulse.blockers || []).length;
+        var lineSentence = waiting
+          ? waiting + (waiting === 1 ? " needs" : " need") + " you" + (blockerTotal ? " · " + blockerTotal + " blocking" : "")
+          : toStatusKey(pulse.status) === "completed"
+          ? "Complete · nothing needs you"
+          : "Nothing needs you";
+        var edge = !waiting ? "teal" : lineTone === "blocking" ? "red" : "amber";
+        var tileTone = lineTone === "blocking" ? "red" : waiting ? "amber" : "teal";
+        var actionsOpen = uiState.panel === "actions";
+
+        var footerState = isStale ? "stale" : "fresh";
+        var footerHeading = isStale ? "Out of date" : "Synced " + syncLabel;
+        var footerDetail = isStale ? "as of " + syncLabel + " · refresh before deciding" : economics || "up to date";
+        var footerAction = (attentionItems.length ? "Resolve in live view" : "Open live view") + " ↗";
 
         injectHtml(
           '<div class="widget-shell-card pulse-shell-card animate-in">' +
-            '<div class="ox-card">' +
-            '<div class="ox-card-inner">' +
-                '<div class="pulse-shell">' +
-                  '<div class="pulse-hero">' +
-                    renderHealthRing(pulse.health_score) +
-                    '<div class="pulse-copy">' +
-                      '<div class="pulse-headline">' +
-                        '<div class="pulse-title-wrap">' +
-                          '<div class="pulse-brand">' +
-                            '<span class="pulse-brand-mark">' +
-                              icons.initiative(11) +
-                            '</span>' +
-                            '<span class="pulse-kicker">Initiative pulse</span>' +
-                          '</div>' +
-                          '<div class="pulse-title">' +
-                            escapeHtml(pulse.name) +
-                          "</div>" +
-                        "</div>" +
-                        '<span class="status-badge status-' +
-                          escapeHtml(toStatusKey(pulse.status) || "active") +
-                          '">' +
-                          icons.pulse(12) +
-                          escapeHtml(titleCase(pulse.status || "active")) +
-                        "</span>" +
-                      "</div>" +
-                    "</div>" +
-                  "</div>" +
-                  economics +
-                  (metaTokens.length
-                    ? '<div class="pulse-meta-line">' +
-                      metaTokens
-                        .map(function (token, index) {
-                          return (
-                            (index
-                              ? '<span class="pulse-meta-divider">·</span>'
-                              : "") + token
-                          );
-                        })
-                        .join("") +
-                      "</div>"
-                    : "") +
+            '<div class="ox-card" data-edge="' + edge + '">' +
+              '<div class="pulse-head">' +
+                '<ox-attention-line tone="' + lineTone + '" count="' + waiting + '">' +
+                  '<span>' + escapeHtml(lineSentence) + "</span>" +
+                  '<span slot="meta">synced ' + escapeHtml(syncLabel) + "</span>" +
                   (attentionBanner
-                    ? '<button type="button" class="pulse-attention' +
-                      (uiState.panel === "actions" ? " is-open" : "") +
-                      '" onclick="togglePulsePanel(\'actions\', this)" aria-controls="pulse-panel-host" aria-expanded="' + String(uiState.panel === "actions") + '">' +
-                        '<span class="pulse-attention__icon">' +
-                          icons.warning(16) +
-                        "</span>" +
-                        '<span class="pulse-attention__body">' +
-                          '<span class="pulse-attention__eyebrow">' +
-                            escapeHtml(attentionBanner.eyebrow) +
-                          "</span>" +
-                          '<span class="pulse-attention__headline">' +
-                            escapeHtml(attentionBanner.headline) +
-                          "</span>" +
-                        "</span>" +
-                        '<span class="pulse-attention__chevron">' +
-                          icons.chevronDown(15) +
-                        "</span>" +
-                      "</button>"
+                    ? '<button slot="action" type="button" class="pulse-attention' + (actionsOpen ? " is-open" : "") +
+                      '" onclick="togglePulsePanel(\'actions\', this)" aria-controls="pulse-panel-host" aria-expanded="' + String(actionsOpen) +
+                      '" title="' + escapeHtml(attentionBanner.headline) + '">Review ' + escapeHtml(String(waiting)) + " " + icons.chevronDown(13) + "</button>"
                     : "") +
-                  renderMetrics(sections, uiState.panel) +
-                  renderSignalStrip(pulse) +
-                  '<div class="pulse-panel-host" id="pulse-panel-host">' +
-                    (uiState.panel
-                      ? renderPanel(uiState.panel, pulse, dashboardUrl, attentionItems)
+                "</ox-attention-line>" +
+              "</div>" +
+              '<div class="pulse-shell">' +
+                '<div class="pulse-hero">' +
+                  '<span class="pulse-tile" data-tone="' + tileTone + '"><ox-glyph kind="initiative"></ox-glyph></span>' +
+                  '<div class="pulse-copy">' +
+                    '<span class="pulse-kicker">Initiative · ' + escapeHtml(titleCase(pulse.status || "active")) + "</span>" +
+                    '<h1 class="pulse-title">' + escapeHtml(pulse.name) + "</h1>" +
+                    (metaTokens.length
+                      ? '<div class="pulse-meta-line">' +
+                        metaTokens
+                          .map(function (token, index) {
+                            return (index ? '<span class="pulse-meta-divider">·</span>' : "") + token;
+                          })
+                          .join("") +
+                        "</div>"
                       : "") +
                   "</div>" +
-                  '<div class="widget-footer">' +
-                    '<span class="pulse-sync">Synced ' +
-                      escapeHtml(syncLabel) +
-                    "</span>" +
-                    '<a href="' +
-                      escapeHtml(dashboardUrl) +
-                      '" target="_blank" rel="noreferrer" onclick="return openWidgetLink(' +
-                      dashboardUrlAttr +
-                      ', event)" class="deep-link">' +
-                      escapeHtml(attentionItems.length ? "Resolve in live view" : "Open live view") +
-                      icons.external(14) +
-                    "</a>" +
+                "</div>" +
+                renderSignalStrip(pulse) +
+                renderMetrics(sections, uiState.panel) +
+                '<div class="pulse-panel-host" id="pulse-panel-host">' +
+                  (uiState.panel ? renderPanel(uiState.panel, pulse, dashboardUrl, attentionItems) : "") +
                 "</div>" +
               "</div>" +
+              '<ox-footer variant="reads" class="pulse-footer" state="' + footerState + '" heading="' + escapeHtml(footerHeading) +
+                '" detail="' + escapeHtml(footerDetail) + '" action-label="' + escapeHtml(footerAction) +
+                '" data-url="' + escapeHtml(dashboardUrl) + '"></ox-footer>' +
             "</div>" +
-            "</div>" +
-            "</div>"
+          "</div>"
         );
       };
+
+      // The footer's text action opens the live view through the host.
+      document.addEventListener("ox-action", function (event) {
+        var footer = event.target && event.target.closest ? event.target.closest("ox-footer[data-url]") : null;
+        if (!footer) return;
+        var url = footer.getAttribute("data-url");
+        if (openWidgetLink(url, event) === false) return;
+        try { window.open(url, "_blank", "noopener,noreferrer"); } catch (_) { /* host owns recovery */ }
+      });
 
       if (isDemo) {
         applyBootPayload();
