@@ -270,12 +270,14 @@
     },
     "work-ledger": {
       "file": "public/widgets/work-ledger.html",
-      "bytes": 20366,
-      "hash": "0d0ba45cb324",
+      "bytes": 25694,
+      "hash": "9399569924b3",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
+        "shared/kit/ox-elements.js",
+        "shared/kit/ox-tokens.css",
         "shared/live-machine.js",
         "shared/live-panel.js",
         "shared/live-store.js",

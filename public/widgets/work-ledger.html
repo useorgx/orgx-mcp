@@ -5,8 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Work Ledger - OrgX</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Cpath d='M18 20h28M18 32h28M18 44h18' stroke='%2300c9a7' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="shared/kit/ox-tokens.css" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
+  <script src="shared/kit/ox-elements.js"></script>
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/interaction-kit.js"></script>
@@ -15,278 +17,233 @@
   <script src="shared/live-panel.js"></script>
   <style>
     /*
-     * Work Ledger — the get_operator_chronicle result as the app's Work Ledger
-     * page draws it: one window, the totals that count as proof, which
-     * clients wrote to the record, the latest entries, and the flywheel
-     * scoreboard lines the app computes (the worker only renders them).
+     * Work Ledger — the get_operator_chronicle result drawn as a receipt card
+     * (canvas K1 "receipt at volume", K4 "every way the card can arrive"):
+     * one card that carries its window and time, because it stays in the chat
+     * after the ledger moves on; the headline; what was produced; which
+     * clients wrote to the record and on what evidence; the latest entries.
+     * Inline lists never pass three rows; the rest is one link away.
      */
     :root {
       --ox-primary-rgb: 0, 201, 167;
-      --wl-amber: #f59e0b;
+    }
+
+    .wl-page {
+      padding: 10px;
     }
 
     .wl {
-      display: grid;
-      gap: 16px;
-      /* Extra bottom room: the host floats a scroll chevron over the widget's
-         lower edge, and it was landing on the last flywheel line. */
-      padding: 18px 18px 34px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
       min-width: 0;
-      font-family: var(--ox-font);
+      border: 1px solid var(--ox-border);
+      border-radius: 16px;
+      background: var(--ox-panel);
+      box-shadow: var(--ox-shadow);
       color: var(--ox-text);
+      font-family: var(--ox-font);
     }
 
-    .wl-kicker,
-    .wl h2 {
+    /* The one edge that says how the card arrived: amber needs you, teal
+       recorded, mute when there is nothing to judge or the copy is old. */
+    .wl::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 16px;
+      right: 16px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(var(--wl-edge, var(--ox-edge-teal-rgb)), 0.75), transparent);
+    }
+
+    .wl[data-edge='amber'] { --wl-edge: var(--ox-edge-amber-rgb); }
+    .wl[data-edge='mute'] { --wl-edge: var(--ox-edge-mute-rgb); }
+
+    .wl-hd {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      padding: 14px 18px 0;
+      font-size: 12.5px;
+      color: var(--ox-text-muted);
+    }
+
+    .wl-hd ox-glyph { --ox-glyph-size: 16px; flex: none; }
+
+    .wl-kind {
+      flex: none;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .wl-src {
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .wl-src b {
+      color: var(--ox-text-2);
+      font-weight: 600;
+    }
+
+    .wl-asof {
+      flex: none;
+      margin-left: auto;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .wl-bd {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-width: 0;
+      padding: 12px 18px 16px;
+    }
+
+    .wl-bd > * { min-width: 0; }
+
+    .wl-headline {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.3;
+      letter-spacing: -0.015em;
+      text-wrap: balance;
+    }
+
+    .wl-bd ox-attention-line {
+      --ox-attention-padding: 0;
+      margin: -8px 0 -6px;
+    }
+
+    .wl-lbl {
       margin: 0;
       font-family: var(--ox-mono);
-      font-size: 11px;
-      font-weight: 500;
-      letter-spacing: 0.14em;
+      font-size: 10.5px;
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
       color: var(--ox-text-muted);
-    }
-
-    .wl-head {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    /*
-     * A flex item will not shrink below its content width without this, and the
-     * kicker is a long uppercase string with wide letter-spacing. At phone
-     * width it pushed the header past the viewport and took the whole document
-     * with it — wrapping on .wl-head alone could not help, because the item
-     * itself refused to narrow.
-     */
-    .wl-head > div {
-      flex: 1 1 200px;
-      min-width: 0;
-    }
-
-    .wl-kicker {
-      overflow-wrap: anywhere;
-    }
-
-    .wl-head h1 {
-      margin: 6px 0 0;
-      font-size: 18px;
-      font-weight: 650;
-      line-height: 1.3;
-      letter-spacing: -0.02em;
-    }
-
-    /*
-     * The headline and these numbers answer different questions over different
-     * spans — the headline is a standing backlog ("57 items need a decision"),
-     * these are what happened inside the window. Printed adjacently with no
-     * label they read as one set, and "57 items need a decision" above
-     * "Decisions 2" looks like a contradiction rather than two facts.
-     */
-    /*
-     * Grid items default to min-width:auto, so they refuse to shrink below
-     * their min-content width and push the whole document sideways instead.
-     * The header row is the widest — a nowrap button beside an unbreakable
-     * headline — so without this the widget scrolls horizontally at phone
-     * width no matter what the container does.
-     */
-    .wl > *,
-    .wl-section > * {
-      min-width: 0;
-    }
-
-    /*
-     * Phone width: a ledger row is a name and its counts, and the counts are
-     * nowrap so the row's minimum width is the sum of both. Below this the two
-     * no longer fit side by side and the row used to force the whole document
-     * to scroll sideways rather than give way. Stacking keeps the pair legible
-     * and lets the row narrow.
-     */
-    @media (max-width: 430px) {
-      .wl-list li {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 3px;
-      }
-
-      .wl-list small {
-        white-space: normal;
-      }
-
-      .wl-open {
-        width: 100%;
-        text-align: center;
-      }
-    }
-
-    .wl-stats-label {
-      margin: 2px 0 -6px;
-      font-size: 11px;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--ox-text-dim);
-    }
-
-    .wl-stats {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-      gap: 10px;
-      margin: 0;
-    }
-
-    .wl-stats div {
-      padding: 10px 12px;
-      border: 1px solid var(--ox-border);
-      border-radius: 10px;
-      background: var(--ox-panel);
-    }
-
-    .wl-stats dt {
-      font-size: 12px;
-      color: var(--ox-text-muted);
-    }
-
-    .wl-stats dd {
-      margin: 2px 0 0;
-      font-size: 20px;
-      font-weight: 650;
-      font-variant-numeric: tabular-nums;
     }
 
     .wl-section {
-      display: grid;
-      gap: 8px;
-    }
-
-    .wl-list {
-      margin: 0;
-      padding: 0;
-      list-style: none;
-      border: 1px solid var(--ox-border);
-      border-radius: 12px;
-      background: var(--ox-panel);
-    }
-
-    .wl-list li {
       display: flex;
-      justify-content: space-between;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    /* What the window produced, as one quiet line of numbers. */
+    .wl-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 18px;
+      margin: 2px 0 0;
+    }
+
+    .wl-stats div {
+      display: flex;
       align-items: baseline;
-      gap: 12px;
-      padding: 9px 14px;
-      font-size: 13px;
-      border-bottom: 1px solid var(--ox-divider);
+      gap: 6px;
     }
 
-    .wl-list li:last-child {
-      border-bottom: 0;
-    }
-
-    .wl-list small {
-      font-size: 12px;
-      color: var(--ox-text-muted);
-      white-space: nowrap;
-    }
-
-    /*
-     * The evidence label is a trust tier, not part of the client's name.
-     *
-     * The server sends three of them — "Verified work", "Activity observed",
-     * "Seen earlier" — and they used to render as bare text right after the
-     * client name, where they read as a continuation of it. A chip separates
-     * the claim from the name and lets the tier be scanned down the column.
-     */
-    .wl-evidence {
-      display: inline-block;
-      margin-left: 8px;
-      padding: 1px 7px;
-      border-radius: 999px;
-      border: 1px solid var(--ox-border);
-      font-size: 10.5px;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-      text-transform: uppercase;
-      color: var(--ox-text-dim);
-      white-space: nowrap;
-      vertical-align: 1px;
-    }
-
-    .wl-evidence[data-tier='verified'] {
-      color: rgb(var(--ox-primary-rgb));
-      border-color: rgba(var(--ox-primary-rgb), 0.35);
-      background: rgba(var(--ox-primary-rgb), 0.08);
-    }
-
-    /* A repeated entry collapsed into one row. */
-    .wl-repeat {
-      margin-left: 6px;
-      font-style: normal;
-      font-size: 11px;
+    .wl-stats dd {
+      order: -1;
+      margin: 0;
+      font-size: 16px;
+      font-weight: 650;
       font-variant-numeric: tabular-nums;
-      color: var(--ox-text-dim);
     }
 
-    .wl-entry {
-      display: inline-flex;
-      align-items: baseline;
-      gap: 8px;
-      min-width: 0;
+    .wl-stats dt {
+      font-size: 12.5px;
+      color: var(--ox-text-muted);
     }
 
-    .wl-marker {
-      flex: none;
-      width: 6px;
-      height: 6px;
-      border-radius: 2px;
-      background: var(--ox-text-dim);
+    .wl-rows {
+      display: block;
     }
 
-    .wl-marker[data-kind='decision'] { background: var(--wl-amber); }
-    .wl-marker[data-kind='artifact'],
-    .wl-marker[data-kind='pull_request'] { background: var(--ox-teal); }
-    .wl-marker[data-kind='run'] { background: var(--ox-iris); }
+    .wl-more,
+    .wl-note {
+      margin: 0;
+      font-size: 12.5px;
+      line-height: 1.45;
+      color: var(--ox-text-muted);
+    }
 
     .wl-flywheel {
       margin: 0;
-      padding-left: 18px;
-      font-size: 13px;
-      line-height: 1.6;
-      color: var(--ox-text-muted);
+      padding: 0;
+      list-style: none;
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: var(--ox-text-2);
     }
 
     .wl-next {
-      padding: 10px 14px;
-      border: 1px solid var(--ox-border);
-      border-radius: 10px;
-      font-size: 13px;
+      margin: 0;
+      font-size: 13.5px;
+      line-height: 1.45;
+      color: var(--ox-text);
     }
 
     .wl-next b {
-      color: var(--ox-teal);
+      font-weight: 650;
     }
 
-    .wl-open {
-      font-size: 12px;
-      white-space: nowrap;
+    .wl ox-footer {
+      /* The primary is always the canvas amber, whatever the widget accent. */
+      --ox-primary-rgb: 251, 191, 36;
+      --ox-primary: rgb(251, 191, 36);
     }
 
-    .wl-empty {
-      padding: 18px;
-      font-size: 13px;
-      color: var(--ox-text-muted);
+    /* Loading: the same frame as the arrived card, so nothing moves when it lands. */
+    .wl-sk {
+      display: block;
+      height: 12px;
+      border-radius: 4px;
+      background: var(--ox-skeleton);
+    }
+
+    .wl-sk.h { height: 18px; width: 72%; }
+
+    .wl-strip-sk {
+      display: flex;
+      gap: 18px;
+    }
+
+    .wl-strip-sk .wl-sk { width: 76px; height: 20px; }
+
+    @media (max-width: 420px) {
+      .wl-page { padding: 6px; }
+      .wl-hd { padding: 12px 14px 0; }
+      .wl-bd { padding: 10px 14px 14px; }
+      .wl::after { left: 14px; right: 14px; }
+      .wl-stats { gap: 6px 14px; }
     }
   </style>
   <link rel="stylesheet" href="shared/widget-theme.css" />
 </head>
 <body>
-  <div class="container" id="content">
-    <div class="skeleton-wrapper" style="display:grid; gap:12px; padding:18px;">
-      <div class="skeleton-line" style="width:60%; height:18px;"></div>
-      <div class="skeleton-line" style="width:100%; height:56px; border-radius:10px;"></div>
-      <div class="skeleton-line" style="width:100%; height:96px; border-radius:12px;"></div>
-    </div>
+  <div class="container wl-page" id="content">
+    <article class="wl" data-edge="mute" aria-busy="true" aria-label="Loading the Work Ledger">
+      <div class="wl-hd"><span class="wl-kind">Work Ledger</span></div>
+      <div class="wl-bd">
+        <span class="wl-sk h"></span>
+        <div class="wl-strip-sk"><span class="wl-sk"></span><span class="wl-sk"></span><span class="wl-sk"></span></div>
+        <span class="wl-sk" style="width:92%"></span>
+        <span class="wl-sk" style="width:64%"></span>
+      </div>
+      <ox-footer variant="reads" state="loading"></ox-footer>
+    </article>
   </div>
   <script>
     var params = new URLSearchParams(window.location.search);
@@ -297,6 +254,8 @@
 
     var LEDGER_URL = 'https://useorgx.com/work-ledger';
     var PERIOD_LABEL = { day: 'Last 24 hours', week: 'Last 7 days', '30d': 'Last 30 days' };
+    // The inline lists never pass three rows (K4); the rest is in the ledger.
+    var INLINE_ROWS = 3;
 
     var escapeHtml = function (value) {
       if (value === null || value === undefined) return '';
@@ -317,6 +276,8 @@
       chronicle: {
         workspaceName: 'Atina Labs',
         period: 'week',
+        generatedAt: '2026-09-24T19:02:00Z',
+        attentionState: 'needs_you',
         headline: 'Launch work moved in three clients; one decision waits on you.',
         metrics: {
           decisionsResolved: 4,
@@ -364,6 +325,8 @@
       chronicle: {
         workspaceName: 'OrgX Business',
         period: 'week',
+        generatedAt: '2026-09-28T21:14:00Z',
+        attentionState: 'needs_you',
         headline: '57 items need a decision or unblock',
         metrics: {
           receiptsProduced: 7,
@@ -384,11 +347,11 @@
           ],
           events: [
             { kind: 'session', title: 'claude-code session: 5 step(s)', sourceLabel: 'Claude Code', occurredAt: '2026-09-28' },
-            { kind: 'report', title: 'Reporting \u00b7 claude-code', sourceLabel: 'Claude Code', occurredAt: '2026-09-28' },
-            { kind: 'report', title: 'Reporting \u00b7 codex', sourceLabel: 'Codex', occurredAt: '2026-09-28' },
-            { kind: 'report', title: 'Reporting \u00b7 codex', sourceLabel: 'Codex', occurredAt: '2026-09-28' },
-            { kind: 'report', title: 'Reporting \u00b7 codex', sourceLabel: 'Codex', occurredAt: '2026-09-28' },
-            { kind: 'report', title: 'Reporting \u00b7 codex', sourceLabel: 'Codex', occurredAt: '2026-09-28' }
+            { kind: 'report', title: 'Reporting · claude-code', sourceLabel: 'Claude Code', occurredAt: '2026-09-28' },
+            { kind: 'report', title: 'Reporting · codex', sourceLabel: 'Codex', occurredAt: '2026-09-28' },
+            { kind: 'report', title: 'Reporting · codex', sourceLabel: 'Codex', occurredAt: '2026-09-28' },
+            { kind: 'report', title: 'Reporting · codex', sourceLabel: 'Codex', occurredAt: '2026-09-28' },
+            { kind: 'report', title: 'Reporting · codex', sourceLabel: 'Codex', occurredAt: '2026-09-28' }
           ]
         },
         flywheel: {
@@ -401,8 +364,33 @@
       }
     };
 
+    // A quiet window: everything recorded, nothing waits on you.
+    var CALM = {
+      chronicle: {
+        workspaceName: 'Atina Labs',
+        period: 'day',
+        generatedAt: '2026-09-24T19:02:00Z',
+        attentionState: 'complete',
+        headline: 'Checkout fix shipped with its receipts. Nothing waits on you.',
+        metrics: { receiptsProduced: 3, decisionsResolved: 1, artifactsProduced: 2, prReceipts: 2, pendingDecisions: 0 },
+        continuity: {
+          clients: [
+            { label: 'Claude Code', evidenceLabel: 'Verified work', sessions: 4, artifacts: 2, decisions: 1, pullRequests: 2 }
+          ],
+          events: [
+            { kind: 'pull_request', title: 'Checkout latency fix', sourceLabel: 'Claude Code', occurredAt: '2026-09-24T17:40:00Z' }
+          ]
+        }
+      }
+    };
+
     var state = params.get('state') || (params.get('demo') === 'true' ? 'populated' : null);
-    var data = state === 'populated' ? DEMO : state === 'messy' ? MESSY : state === 'empty' ? {} : null;
+    var FIXTURES = { populated: DEMO, messy: MESSY, calm: CALM, offline: MESSY, empty: {} };
+    var data = Object.prototype.hasOwnProperty.call(FIXTURES, state) ? FIXTURES[state] : null;
+    // Offline (K4): the last copy stays, the footer says it could not refresh.
+    var refreshFailed = state === 'offline';
+    var refreshing = false;
+    var lastPayload = null;
 
     var count = function (value, noun) {
       var n = num(value);
@@ -424,7 +412,7 @@
       if (num(client.artifacts)) parts.push(count(client.artifacts, 'artifact'));
       if (num(client.decisions)) parts.push(count(client.decisions, 'decision'));
       if (num(client.pullRequests)) parts.push(count(client.pullRequests, 'PR'));
-      return parts.join(' \u00b7 ');
+      return parts.join(' · ');
     };
 
     /*
@@ -465,17 +453,90 @@
         : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     };
 
+    // Same day: the time; otherwise the date. The card stays in the chat, so it
+    // always says when it was true.
+    var shortTime = function (value) {
+      if (typeof value !== 'string') return '';
+      var date = new Date(value);
+      if (isNaN(date.getTime())) return '';
+      return new Date().toDateString() === date.toDateString()
+        ? date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+        : shortDate(value);
+    };
+
+    /*
+     * The evidence label is a trust tier, not part of the client's name. The
+     * server sends three of them — "Verified work", "Activity observed",
+     * "Seen earlier" — and the receipt row states it as proof: verified work
+     * is met (teal check), anything weaker is unverified (hatched).
+     */
+    var tierOf = function (label) {
+      return /verif/i.test(String(label || '')) ? 'verified' : 'observed';
+    };
+
+    // Entries that carry their own record read as met; bare activity reads unverified.
+    var entryStatus = function (kind) {
+      return /^(decision|artifact|pull_request|receipt|run)$/.test(String(kind || '')) ? 'met' : 'unverified';
+    };
+
+    var row = function (attrs) {
+      return '<ox-receipt-row' + Object.keys(attrs).map(function (key) {
+        var value = attrs[key];
+        return value === null || value === undefined || value === '' ? '' : ' ' + key + '="' + escapeHtml(value) + '"';
+      }).join('') + '></ox-receipt-row>';
+    };
+
+    var moreLine = function (hidden, singular, plural) {
+      return hidden > 0
+        ? '<p class="wl-more">+' + hidden + ' more ' + (hidden === 1 ? singular : plural) + ' in the Work Ledger</p>'
+        : '';
+    };
+
+    var isStandalone = function () {
+      return !window.OrgXWidgetRuntime || window.OrgXWidgetRuntime.detectProtocol() === 'standalone';
+    };
+
+    // Raw anchors are not allowed in MCP widgets: links go through the host.
+    var openLink = function (url) {
+      if (!url) return;
+      if (isStandalone()) {
+        try { window.open(url, '_blank', 'noopener,noreferrer'); } catch (_) { /* preview only */ }
+        return;
+      }
+      openWidgetLink(url);
+    };
+
+    var footerFor = function (chronicle, period) {
+      var asOf = shortTime(chronicle.generatedAt);
+      if (refreshing) {
+        return '<ox-footer variant="reads" state="refreshing" heading="Refreshing" detail="keeps what you see"></ox-footer>';
+      }
+      if (refreshFailed) {
+        return '<ox-footer variant="reads" state="failed" heading="Couldn’t refresh" detail="' +
+          escapeHtml(asOf ? 'showing what we had at ' + asOf : 'showing the last copy') + '" action-label="Retry"></ox-footer>';
+      }
+      return '<ox-footer variant="reads" state="fresh" heading="' +
+        escapeHtml(asOf ? 'As of ' + asOf : 'From this request') + '" detail="' + escapeHtml(period) +
+        '" action-label="Open Work Ledger ↗"></ox-footer>';
+    };
+
     var render = function (payload) {
       var content = document.getElementById('content');
       if (!payload) {
         if (state === 'loading' || !state) return;
       }
+      lastPayload = payload;
       var chronicle = payload && payload.chronicle && typeof payload.chronicle === 'object'
         ? payload.chronicle
         : null;
       if (!chronicle) {
         content.innerHTML =
-          '<div class="wl-empty">No ledger entries for this window yet. Work lands here when a connected client records a session, receipt, decision, or artifact.</div>';
+          '<article class="wl" data-edge="mute" aria-label="OrgX Work Ledger">' +
+          '<div class="wl-hd"><ox-glyph kind="receipt"></ox-glyph><span class="wl-kind">Work Ledger</span></div>' +
+          '<div class="wl-bd"><h1 class="wl-headline">Nothing recorded in this window yet.</h1>' +
+          '<p class="wl-note">No ledger entries for this window yet. Work lands here when a connected client records a session, receipt, decision, or artifact.</p></div>' +
+          '<ox-footer variant="reads" state="fresh" heading="No entries yet" detail="fills as clients report" action-label="Open Work Ledger ↗"></ox-footer>' +
+          '</article>';
         return;
       }
       var metrics = chronicle.metrics || {};
@@ -483,70 +544,121 @@
       var clients = asArray(continuity.clients).filter(function (client) {
         return num(client.sessions) + num(client.artifacts) + num(client.decisions) + num(client.pullRequests) > 0;
       });
-      var events = collapseEvents(asArray(continuity.events)).slice(0, 6);
+      var events = collapseEvents(asArray(continuity.events));
       var flywheel = asArray(chronicle.flywheel && chronicle.flywheel.summary).filter(function (line) {
         return typeof line === 'string' && line.trim();
       });
       var narrative = chronicle.reportingNarrative || payload.reportingNarrative || {};
       var nextAction = typeof narrative.nextAction === 'string' ? narrative.nextAction.trim() : '';
+      var pending = num(metrics.pendingDecisions);
+      var needsYou = pending > 0 || chronicle.attentionState === 'needs_you';
+      var period = PERIOD_LABEL[chronicle.period] || 'This window';
+      var asOf = shortTime(chronicle.generatedAt);
       var stats = [
-        ['Receipts', num(metrics.receiptsProduced)],
-        ['Decisions', num(metrics.decisionsResolved)],
-        ['Artifacts', num(metrics.artifactsProduced)],
+        ['receipts', num(metrics.receiptsProduced)],
+        ['decisions', num(metrics.decisionsResolved)],
+        ['artifacts', num(metrics.artifactsProduced)],
         ['PR receipts', num(metrics.prReceipts)]
       ];
       if (num(metrics.valueCreatedUsd) > 0) {
-        stats.push(['Value', '$' + Math.round(num(metrics.valueCreatedUsd)).toLocaleString()]);
+        stats.push(['value', '$' + Math.round(num(metrics.valueCreatedUsd)).toLocaleString()]);
       }
+      var edge = refreshFailed ? 'mute' : needsYou ? 'amber' : 'teal';
 
       content.innerHTML =
-        '<section class="wl" aria-label="OrgX Work Ledger">' +
-        '<div class="wl-head"><div>' +
-        '<div class="wl-kicker">Work Ledger · ' + escapeHtml(PERIOD_LABEL[chronicle.period] || 'This window') +
-        (chronicle.workspaceName ? ' · ' + escapeHtml(chronicle.workspaceName) : '') + '</div>' +
-        '<h1>' + escapeHtml(chronicle.headline || payload.headline || 'The record of agent work') + '</h1>' +
+        '<article class="wl" data-edge="' + edge + '" aria-label="OrgX Work Ledger">' +
+        '<div class="wl-hd"><ox-glyph kind="receipt"' + (needsYou && !refreshFailed ? ' tone="amber"' : '') + '></ox-glyph>' +
+        '<span class="wl-kind">Work Ledger</span>' +
+        '<span class="wl-src"><b>' + escapeHtml(chronicle.workspaceName || 'This workspace') + '</b> · ' + escapeHtml(period) + '</span>' +
+        (asOf ? '<span class="wl-asof">as of ' + escapeHtml(asOf) + '</span>' : '') +
         '</div>' +
-        '<a class="wl-open ox-link-btn" href="' + LEDGER_URL + '" target="_blank" rel="noreferrer" onclick=\'return openWidgetLink(' + JSON.stringify(LEDGER_URL) + ', event)\'>Open Work Ledger</a>' +
-        '</div>' +
-        '<p class="wl-stats-label">Produced in this window</p>' +
+        '<div class="wl-bd">' +
+        '<h1 class="wl-headline">' + escapeHtml(chronicle.headline || payload.headline || 'The record of agent work') + '</h1>' +
+        (pending > 0
+          ? '<ox-attention-line tone="needs-you" count="' + pending + '"></ox-attention-line>'
+          : '') +
+        // The headline is a standing backlog; these numbers are the window.
+        '<div class="wl-section"><p class="wl-lbl">Produced in this window</p>' +
         '<dl class="wl-stats">' +
         stats.map(function (stat) {
           return '<div><dt>' + escapeHtml(stat[0]) + '</dt><dd>' + escapeHtml(stat[1]) + '</dd></div>';
         }).join('') +
-        '</dl>' +
+        '</dl></div>' +
         (clients.length
-          ? '<div class="wl-section"><h2>By client</h2><ul class="wl-list">' +
-            clients.map(function (client) {
-              return '<li><span>' + escapeHtml(client.label || client.sourceClient) +
-                (client.evidenceLabel
-                  ? '<span class="wl-evidence" data-tier="' +
-                    (/verif/i.test(client.evidenceLabel) ? 'verified' : 'observed') + '">' +
-                    escapeHtml(client.evidenceLabel) + '</span>'
-                  : '') +
-                '</span><small>' + escapeHtml(countSummary(client)) + '</small></li>';
+          ? '<div class="wl-section"><p class="wl-lbl">By client</p><div class="wl-rows" role="list">' +
+            clients.slice(0, INLINE_ROWS).map(function (client) {
+              var tier = tierOf(client.evidenceLabel);
+              return row({
+                class: 'wl-client',
+                'data-tier': client.evidenceLabel ? tier : '',
+                status: tier === 'verified' ? 'met' : 'unverified',
+                label: client.label || client.sourceClient,
+                // Counts first: at phone width the tier is what may clip, and
+                // the status mark already states it.
+                detail: [countSummary(client), client.evidenceLabel].filter(Boolean).join(' · ')
+              });
             }).join('') +
-            '</ul></div>'
+            '</div>' + moreLine(clients.length - INLINE_ROWS, 'client', 'clients') + '</div>'
           : '') +
         (events.length
-          ? '<div class="wl-section"><h2>Latest entries</h2><ul class="wl-list">' +
-            events.map(function (event) {
-              return '<li><span class="wl-entry"><i class="wl-marker" data-kind="' + escapeHtml(event.kind || '') + '"></i>' +
-                escapeHtml(event.title) +
-                (event.repeats > 1 ? '<em class="wl-repeat">\u00d7' + event.repeats + '</em>' : '') +
-                '</span><small>' +
-                escapeHtml([event.sourceLabel, shortDate(event.occurredAt)].filter(Boolean).join(' · ')) +
-                '</small></li>';
+          ? '<div class="wl-section"><p class="wl-lbl">Latest entries</p><div class="wl-rows" role="list">' +
+            events.slice(0, INLINE_ROWS).map(function (event) {
+              return row({
+                class: 'wl-entry',
+                status: entryStatus(event.kind),
+                label: String(event.title || '') + (event.repeats > 1 ? ' ×' + event.repeats : ''),
+                detail: [event.sourceLabel, shortDate(event.occurredAt)].filter(Boolean).join(' · ')
+              });
             }).join('') +
-            '</ul></div>'
+            '</div>' + moreLine(events.length - INLINE_ROWS, 'entry', 'entries') + '</div>'
           : '') +
         (flywheel.length
-          ? '<div class="wl-section"><h2>Flywheel</h2><ul class="wl-flywheel">' +
+          ? '<div class="wl-section"><p class="wl-lbl">Flywheel</p><ul class="wl-flywheel">' +
             flywheel.map(function (line) { return '<li>' + escapeHtml(line) + '</li>'; }).join('') +
             '</ul></div>'
           : '') +
-        (nextAction ? '<div class="wl-next"><b>Next:</b> ' + escapeHtml(nextAction) + '</div>' : '') +
-        '</section>';
+        (nextAction ? '<p class="wl-next"><b>Next:</b> ' + escapeHtml(nextAction) + '</p>' : '') +
+        '</div>' +
+        footerFor(chronicle, period) +
+        '</article>';
     };
+
+    /*
+     * Retry is a real read: it asks for the same window again and keeps the
+     * last copy on screen until the answer lands. Nothing here guesses.
+     */
+    var refresh = function () {
+      if (refreshing || !lastPayload) return;
+      var chronicle = lastPayload.chronicle;
+      var period = chronicle && chronicle.period ? chronicle.period : 'week';
+      refreshing = true;
+      render(lastPayload);
+      Promise.resolve()
+        .then(function () { return callTool('get_operator_chronicle', { period: period }); })
+        .then(function (result) {
+          var next = window.OrgXWidgetRuntime.extractStructuredWidgetData(result, true);
+          if (!next || !next.chronicle) throw new Error('No ledger in the response.');
+          refreshFailed = false;
+          refreshing = false;
+          render(next);
+        })
+        .catch(function () {
+          refreshFailed = true;
+          refreshing = false;
+          render(lastPayload);
+        });
+    };
+
+    // Footer: "Open Work Ledger ↗" opens the ledger; "Retry" re-reads it.
+    document.addEventListener('ox-action', function (event) {
+      var footer = event.target;
+      if (footer && footer.getAttribute && footer.getAttribute('state') === 'failed') refresh();
+      else openLink(LEDGER_URL);
+    });
+    document.addEventListener('ox-open', function (event) {
+      event.preventDefault();
+      openLink(event.detail && event.detail.href);
+    });
 
     if (state === 'loading') {
       // Keep the skeleton.

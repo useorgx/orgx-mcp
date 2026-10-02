@@ -84,8 +84,10 @@ describe('work-ledger survives untidy production data', () => {
     mountWidget('work-ledger', { payload: MESSY });
     // Assert on the client rows, and with a word boundary: a plain substring
     // check for "0 sessions" also matches the tail of "80 sessions".
-    const rows = Array.from(document.querySelectorAll('.wl-list li')).map(
-      (el) => (el.textContent ?? '').replace(/\s+/g, ' ')
+    // Client rows are <ox-receipt-row>s: the name is the label, the counts and
+    // evidence tier are the detail line.
+    const rows = Array.from(document.querySelectorAll('ox-receipt-row.wl-client')).map(
+      (el) => `${el.getAttribute('label')} ${el.getAttribute('detail')}`.replace(/\s+/g, ' ')
     );
     const clientRows = rows.filter((row) => /Claude Code|OrgX/.test(row));
     expect(clientRows.some((row) => row.includes('80 sessions'))).toBe(true);
@@ -97,8 +99,8 @@ describe('work-ledger survives untidy production data', () => {
 
   it('collapses a repeated entry into one row with its count', () => {
     mountWidget('work-ledger', { payload: MESSY });
-    const entries = Array.from(document.querySelectorAll('.wl-entry')).map(
-      (el) => el.textContent ?? ''
+    const entries = Array.from(document.querySelectorAll('ox-receipt-row.wl-entry')).map(
+      (el) => el.getAttribute('label') ?? ''
     );
     const reporting = entries.filter((t) => t.includes('Reporting'));
     expect(reporting).toHaveLength(1);
@@ -115,7 +117,7 @@ describe('work-ledger survives untidy production data', () => {
 
   it('marks a verified client differently from an observed one', () => {
     mountWidget('work-ledger', { payload: MESSY });
-    const tiers = Array.from(document.querySelectorAll('.wl-evidence')).map((el) =>
+    const tiers = Array.from(document.querySelectorAll('.wl-client[data-tier]')).map((el) =>
       el.getAttribute('data-tier')
     );
     expect(tiers.length).toBeGreaterThan(0);
