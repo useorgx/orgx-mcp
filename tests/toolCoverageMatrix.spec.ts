@@ -111,6 +111,11 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     evidence: ['live approve_decision approved disposable decision b26df9ab-f444-4e2b-ad8e-365b88cf4deb, 2026-05-28', 'tests/decisionToolsContract.spec.ts'],
     remaining: 'Prefer orgx_decide for new clients; keep alias callable.',
   },
+  orgx_widget_decide: {
+    tier: 'contract_and_unit',
+    evidence: ['tests/decisionToolsContract.spec.ts', 'tests/widgetApprovalMeta.spec.ts', 'tests/widgetRuntime.spec.ts'],
+    remaining: 'Exercise a live widget approval in ChatGPT and Claude once the app side (hopeatina/orgx#3265) is deployed.',
+  },
   batch_action: {
     tier: 'local_registered_not_installed_public',
     evidence: ['tests/toolDiscoverySnapshot.spec.ts', 'tests/contractTools.spec.ts'],

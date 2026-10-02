@@ -532,6 +532,8 @@
       align-items: stretch;
     }
 
+    .actions-grid--handoff { grid-template-columns: minmax(0, 1fr); }
+    .actions-grid--handoff .ox-action-btn { text-decoration: none; }
     .actions-grid .ox-action-btn,
     .actions-grid .ox-link-btn {
       width: 100%;
@@ -1504,6 +1506,28 @@
     };
     var buildAgentStatusUrl = () => ORGX_BASE_URL + '/settings/agents';
     var buildDecisionsUrl = () => ORGX_BASE_URL + '/decisions';
+    // Approval tokens arrive in widget-only result metadata. A decision without
+    // one is decided in OrgX: the widget never pretends it can settle it.
+    var getApprovalToken = (decisionId) => {
+      const meta = window.OrgXWidgetRuntime && window.OrgXWidgetRuntime.getToolResponseMetadata
+        ? window.OrgXWidgetRuntime.getToolResponseMetadata('orgx/widgetApproval')
+        : null;
+      const token = meta && meta.approval_tokens ? meta.approval_tokens[decisionId] : null;
+      return typeof token === 'string' && token ? token : null;
+    };
+
+    var decideInOrgxDetail = (decision) => {
+      switch (decision && decision.decide_in_orgx_reason) {
+        case 'critical': return 'Critical decisions are made in OrgX.';
+        case 'choice_required': return 'Choose between the options in OrgX.';
+        case 'agent_run_approval': return 'Agent run approvals are made in OrgX.';
+        case 'protected_decision_type':
+        case 'specialized_lifecycle':
+        case 'artifact_review_lifecycle': return 'This one needs the full review in OrgX.';
+        default: return 'Open it in OrgX to decide.';
+      }
+    };
+
     var buildDecisionSurfaceUrl = (decision) => {
       if (!decision || !decision.id) return ORGX_BASE_URL + '/decisions';
       if (typeof decision.url === 'string' && decision.url.trim()) return decision.url.trim();
@@ -1797,7 +1821,9 @@
       if (ux) ux.setLoading(btn, { loadingLabel: 'Approving…' });
 
       try {
-        await callTool('approve_decision', { decision_id: id });
+        const approvalToken = getApprovalToken(id);
+        if (!approvalToken) throw Object.assign(new Error('This decision has to be made in OrgX.'), { code: 'decide_in_orgx' });
+        await callTool('orgx_widget_decide', { decision_id: id, action: 'approve', approval_token: approvalToken });
         lastResolution = {
           action: 'approved',
           summary: decision && decision.summary ? decision.summary : 'This decision',
@@ -1833,7 +1859,9 @@
       if (ux) ux.setLoading(btn, { loadingLabel: 'Sending note…' });
 
       try {
-        await callTool('reject_decision', { decision_id: id, reason });
+        const approvalToken = getApprovalToken(id);
+        if (!approvalToken) throw Object.assign(new Error('This decision has to be made in OrgX.'), { code: 'decide_in_orgx' });
+        await callTool('orgx_widget_decide', { decision_id: id, action: 'reject', reason, approval_token: approvalToken });
         lastResolution = {
           action: 'rejected',
           summary: decision && decision.summary ? decision.summary : 'This decision',
@@ -1947,6 +1975,7 @@
           ? (isRejecting ? 'Back to actions.' : 'Send guidance.')
           : (isRejecting ? 'Return to actions.' : 'Send revision guidance.');
         const decisionUrl = buildDecisionSurfaceUrl(d);
+        const canDecideHere = isOgDecisionEmbed || Boolean(getApprovalToken(d.id));
         const owner = getDecisionOwner(d);
         return `
         <div class="decision-card urgency-${escapeHtml(d.urgency)} animate-in" style="animation-delay: ${0.1 * i}s">
@@ -2000,7 +2029,26 @@
                 ${d.required_trust_level ? `<div class="param-chip">Rule <strong>${escapeHtml(d.required_trust_level)}</strong></div>` : ''}
               </div>`}
 
-              <div class="actions-grid">
+              ${canDecideHere ? '' : `
+              <div class="actions-grid actions-grid--handoff">
+                <a
+                  href="${escapeHtml(decisionUrl)}"
+                  target="_blank"
+                  rel="noreferrer"
+                  onclick='return openWidgetLink(${JSON.stringify(String(decisionUrl || ''))}, event)'
+                  class="ox-btn ox-action-btn ox-action-btn--primary ox-btn-primary is-card-tone decision-action-btn"
+                  style="--ox-button-accent-rgb: var(--ox-card-color-rgb);"
+                >
+                  <span class="decision-action-copy">
+                    <span class="decision-action-icon">${icons.link(18)}</span>
+                    <span class="decision-action-text">
+                      <span class="decision-action-title">Decide in OrgX</span>
+                      <span class="decision-action-detail">${escapeHtml(decideInOrgxDetail(d))}</span>
+                    </span>
+                  </span>
+                </a>
+              </div>`}
+              ${canDecideHere ? `<div class="actions-grid">
                 <button
                   type="button"
                   class="ox-btn ox-action-btn ox-action-btn--primary ox-btn-primary is-card-tone decision-action-btn"
@@ -2059,7 +2107,7 @@
                     </button>
                   </div>
                 </div>
-              ` : ''}
+              ` : ''}` : ''}
             </div>
           </div>
         </div>

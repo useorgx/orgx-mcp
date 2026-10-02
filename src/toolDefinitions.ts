@@ -653,7 +653,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'approve_decision',
     title: 'Approve Decision',
     description:
-      'Use when the user has reviewed a pending decision that is blocking agent work and gives explicit confirmation to approve it. Also known as: sign off, approve AI work, unblock agent, accept decision. USE WHEN: user says to approve a decision returned from list_entities with type=decision and status=pending (or the legacy get_pending_decisions alias). Approval can resume or continue connected agent execution. NEXT: Confirm approval to user; agent is notified automatically. DO NOT USE: without showing the decision to the user first. Requires decisions:write.',
+      'Use when the user asks to approve a pending decision. Also known as: sign off, approve AI work, unblock agent, accept decision. A model cannot settle a decision: this returns where the person decides, either the Approve button in the decisions widget (ordinary decisions) or the decision page in OrgX (review_url). USE WHEN: user says to approve a decision returned from list_entities with type=decision and status=pending (or the legacy get_pending_decisions alias). NEXT: Show the decisions widget or give the user the review_url; never say the decision was approved. DO NOT USE: to claim an approval happened. Requires decisions:write.',
     inputSchema: {
       decision_id: z.string().min(1).describe('Decision ID to approve'),
       note: z.string().optional().describe('Optional note recorded with the approval'),
@@ -668,8 +668,8 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.decisions,
-      'openai/toolInvocation/invoking': 'Approving decision...',
-      'openai/toolInvocation/invoked': 'Decision approved',
+      'openai/toolInvocation/invoking': 'Opening the decision...',
+      'openai/toolInvocation/invoked': 'Decision ready for you',
       ui: { resourceUri: WIDGET_URIS.decisions },
     },
   },
@@ -677,7 +677,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'reject_decision',
     title: 'Reject Decision',
     description:
-      'Use when the user has reviewed a pending decision and wants to reject it or send the agent back with revisions. Also known as: request revisions, send feedback, decline decision. USE WHEN: user wants to reject or request revisions on a decision. NEXT: Agent will revise their approach based on the reason. DO NOT USE: without a reason — always include why. Requires decisions:write.',
+      'Use when the user wants to reject a pending decision or send the agent back with revisions. Also known as: request revisions, send feedback, decline decision. A model cannot settle a decision: this returns where the person decides, either the decisions widget (ordinary decisions) or the decision page in OrgX (review_url). USE WHEN: user wants to reject or request revisions on a decision. NEXT: Show the decisions widget or give the user the review_url; never say the decision was rejected. DO NOT USE: without a reason, and never to claim a rejection happened. Requires decisions:write.',
     inputSchema: {
       decision_id: z.string().min(1).describe('Decision ID to reject'),
       reason: z.string().min(1).describe('Reason for rejecting the decision'),
@@ -692,9 +692,28 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
     _meta: {
       'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.decisions,
-      'openai/toolInvocation/invoking': 'Rejecting decision...',
-      'openai/toolInvocation/invoked': 'Decision rejected',
+      'openai/toolInvocation/invoking': 'Opening the decision...',
+      'openai/toolInvocation/invoked': 'Decision ready for you',
       ui: { resourceUri: WIDGET_URIS.decisions },
+    },
+  },
+  {
+    id: 'orgx_widget_decide',
+    title: 'Decide from the decisions widget',
+    description:
+      'Widget-only: settles one ordinary decision after the person clicks Approve or Send back in the decisions widget. USE WHEN: the decisions widget sends a click with its approval token from result metadata, which models never see. NEXT: the widget shows the decision as settled. DO NOT USE: from a model or without a widget approval token; use approve_decision or reject_decision to point the person to where they decide.',
+    inputSchema: {
+      decision_id: z.string().min(1).describe('Decision being settled'),
+      action: z.enum(['approve', 'reject']).describe('approve or reject'),
+      reason: z.string().max(2000).optional().describe('Required when rejecting'),
+      approval_token: z.string().min(1).max(2048).describe('Widget approval token'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    securitySchemes: SECURITY_SCHEMES.writeRequiresAuth,
+    _meta: {
+      'openai/widgetAccessible': true,
+      'openai/toolInvocation/invoking': 'Recording your decision...',
+      'openai/toolInvocation/invoked': 'Decision recorded',
     },
   },
   {
@@ -2778,6 +2797,8 @@ export function expandConsolidatedTool(
   args: Record<string, unknown>
 ): { resolvedToolId: string; resolvedArgs: Record<string, unknown> } {
   switch (toolId) {
+    case 'orgx_widget_decide':
+      return { resolvedToolId: 'widget_decide', resolvedArgs: { ...args } };
     case 'scoring_config': {
       const action = args.action as string;
       const resolvedArgs = { ...args };

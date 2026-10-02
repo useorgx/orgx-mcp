@@ -46,6 +46,11 @@ import {
 import { buildEntityLink, entityLinkMarkdown, buildLiveUrl } from './deepLinks';
 import { directHumanDecisionActionRequired } from './directHumanDecisionAction';
 import {
+  WIDGET_APPROVAL_META_KEY,
+  WIDGET_APPROVAL_SOURCE_TOOLS,
+  splitWidgetApprovalMeta,
+} from './widgetApprovalMeta';
+import {
   resolveSessionUserEmail,
   resolveSessionUserId,
 } from './sessionIdentity';
@@ -3351,6 +3356,11 @@ export class OrgXMcp extends McpAgent<
         // Fall back to generic /api/tools/execute for others
         // Use resolvedToolId/expandedArgs from expandConsolidatedTool
         const { endpoint, body } = this.getToolEndpoint(resolvedToolId, expandedArgs);
+        if (WIDGET_APPROVAL_SOURCE_TOOLS.has(resolvedToolId) && isWidgetTool) {
+          // Ask the app for widget approval tokens; they are lifted into the
+          // widget-only result _meta below and never reach the model.
+          body.args = { ...(body.args as Record<string, unknown>), _widget_meta_channel: true };
+        }
         if (resolvedUserId) {
           // Prefer the login-verified Supabase UUID in the body when the call
           // acts as the current session owner. The external identity remains
@@ -3410,6 +3420,17 @@ export class OrgXMcp extends McpAgent<
             isWidgetTool,
           });
           const errorMessage = result.error ?? 'Tool execution failed';
+          if (
+            (resolvedToolId === 'approve_decision' || resolvedToolId === 'reject_decision') &&
+            typeof expandedArgs.decision_id === 'string' &&
+            expandedArgs.decision_id.trim()
+          ) {
+            const required = directHumanDecisionActionRequired(
+              expandedArgs.decision_id.trim(),
+              resolvedToolId === 'approve_decision' ? 'approve' : 'reject'
+            );
+            return this.toolError(required.message, required.options);
+          }
           if (isWidgetTool) {
             return this.widgetToolError(
               toolId,
@@ -3454,7 +3475,8 @@ export class OrgXMcp extends McpAgent<
         }
 
         // Extract message if present, otherwise use imported summarizer
-        let data = result.data ?? {};
+        const widgetApproval = splitWidgetApprovalMeta(result.data ?? {});
+        let data: Record<string, unknown> = widgetApproval.data;
         if (budgetPreflight) {
           data = {
             ...data,
@@ -3648,6 +3670,9 @@ export class OrgXMcp extends McpAgent<
           return {
             content,
             structuredContent: data,
+            ...(widgetApproval.meta
+              ? { _meta: { [WIDGET_APPROVAL_META_KEY]: widgetApproval.meta } }
+              : {}),
           } as CallToolResult;
         }
 

@@ -51,7 +51,7 @@ Before opening review, confirm all of the following in the portal:
 - a fresh **Scan Tools** result matches the deployed tool names,
   descriptions, schemas, security schemes, annotations, `_meta`, UI resources,
   CSP, and verified domains;
-- every one of the 23 `chatgpt` profile tools has a non-null, exact
+- every one of the 24 `chatgpt` profile tools has a non-null, exact
   `outputSchema`, and every standard widget resource includes
   `_meta.ui.domain=https://mcp.useorgx.com` on that profile;
 - no other version of this MCP-backed plugin is already under review.
@@ -212,7 +212,7 @@ Allowed when needed for the user request:
 
 OrgX treats a missing or catch-all `outputSchema` on any submitted tool as a
 blocking current-release gate. Do not submit or resubmit until a fresh
-`tools/list` confirms that all 23 `chatgpt` profile tools publish exact,
+`tools/list` confirms that all 24 `chatgpt` profile tools publish exact,
 tool-specific schemas. A permissive catch-all `outputSchema` is not an
 acceptable substitute because it does not describe the object the tool actually
 returns.
@@ -236,7 +236,7 @@ In the OpenAI plugin portal release notes, summarize:
 - submitted test cases rewritten with exact expected tool names and deterministic seeded outputs,
 - enabled ChatGPT/Codex surface verification rerun against the dedicated
   review workspace,
-- all 23 submitted tools published exact `outputSchema` contracts and the
+- all 24 submitted tools published exact `outputSchema` contracts and the
   profile-aware widget domain/CSP contract passed a fresh portal scan,
 - output audit completed to remove unnecessary identifiers and secrets.
 

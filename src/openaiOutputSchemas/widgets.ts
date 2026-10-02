@@ -50,6 +50,16 @@ export const WIDGET_OUTPUT_SCHEMAS = {
     })
     .strict(),
 
+  orgx_widget_decide: z
+    .object({
+      decision_id: z.string().optional(),
+      action: z.enum(['approved', 'rejected']).optional(),
+      status: z.string().optional(),
+      surface: z.string().optional(),
+      message: z.string().optional(),
+    })
+    .strict(),
+
   get_agent_status: z
     .object({
       agents: z.array(agentSchema),
