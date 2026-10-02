@@ -3,6 +3,16 @@
 
   if (global.OrgXWidgetRuntime) return;
 
+  // Last input on <html> (same tracker and guard as interaction-kit.js):
+  // widget-theme.css hides focus rings after a pointer press.
+  (function (doc) {
+    if (!doc || doc.__oxInput) return;
+    doc.__oxInput = 1;
+    var set = function (m) { doc.documentElement.setAttribute('data-ox-input', m); };
+    doc.addEventListener('pointerdown', function () { set('pointer'); }, true);
+    doc.addEventListener('keydown', function (e) { if (!e.metaKey && !e.ctrlKey && !e.altKey) set('keyboard'); }, true);
+  })(global.document || null);
+
   var protocol = null;
   var bridge = null;
   var chatGptActionsFallback = false;
@@ -327,6 +337,40 @@
     }
   }
 
+  // Tool input seen, no result yet: initWidget({ onToolInput }) or getToolCallState().
+  var toolCallState = { inputSeen: false, resultSeen: false, inputAt: null, resultAt: null };
+  var toolInputListeners = [];
+
+  function markToolInput() {
+    if (toolCallState.inputSeen) return;
+    toolCallState.inputSeen = true;
+    toolCallState.inputAt = Date.now();
+    var snapshot = getToolCallState();
+    toolInputListeners.slice().forEach(function notify(listener) {
+      try {
+        listener(snapshot);
+      } catch (error) {
+        console.error('[OrgX Widget] Tool input listener failed:', error);
+      }
+    });
+  }
+
+  function markToolResult() {
+    if (toolCallState.resultSeen) return;
+    toolCallState.resultSeen = true;
+    toolCallState.resultAt = Date.now();
+  }
+
+  function getToolCallState() {
+    return {
+      inputSeen: toolCallState.inputSeen,
+      resultSeen: toolCallState.resultSeen,
+      awaitingResult: toolCallState.inputSeen && !toolCallState.resultSeen,
+      inputAt: toolCallState.inputAt,
+      resultAt: toolCallState.resultAt,
+    };
+  }
+
   function LegacyBridge() {
     this.pending = new Map();
     this.nextId = 1;
@@ -389,8 +433,16 @@
     if (data.id != null && this.pending.has(data.id)) {
       var pending = this.pending.get(data.id);
       this.pending.delete(data.id);
-      if (data.error) pending.reject(new Error(getErrorMessage(data.error, 'Host request failed')));
+      if (data.error) {
+        var hostError = new Error(getErrorMessage(data.error, 'Host request failed'));
+        hostError.raw = rawErrorText(data.error);
+        pending.reject(hostError);
+      }
       else pending.resolve(data.result);
+      return;
+    }
+    if (data.method === 'ui/notifications/tool-input') {
+      markToolInput();
       return;
     }
     if (
@@ -399,6 +451,7 @@
       data.params &&
       this.toolResultCallback
     ) {
+      markToolResult();
       rememberResultMeta(data.params);
       this.toolResultCallback(extractStructuredWidgetData(data.params));
     }
@@ -454,7 +507,11 @@
       name: 'OrgX Widget',
       version: '2.0.0',
     });
+    this.app.ontoolinput = function onToolInput() {
+      markToolInput();
+    };
     this.app.ontoolresult = function onToolResult(result) {
+      markToolResult();
       rememberResultMeta(result);
       if (self.toolResultCallback) {
         self.toolResultCallback(extractStructuredWidgetData(result));
@@ -593,6 +650,9 @@
     if (typeof options.onHostContext === 'function') {
       hostContextListeners.push(options.onHostContext);
     }
+    if (typeof options.onToolInput === 'function') {
+      toolInputListeners.push(options.onToolInput);
+    }
     document.documentElement.setAttribute('data-protocol', activeProtocol);
 
     function showDataAvailability(decoded) {
@@ -646,7 +706,8 @@
           alert.appendChild(title);
           alert.appendChild(document.createElement('p'));
         }
-        alert.querySelector('p').textContent = getErrorMessage(decoded.error || decoded, 'The tool request failed. Try the request again.');
+        // Never print a raw host payload: the same contract as callTool.
+        alert.querySelector('p').textContent = normalizeToolError(toolFailureError(decoded)).message;
         // Renderers replace their own content. An initial failure must never
         // look like a successful empty result or remain a loading skeleton.
         // Preserve the last data internally so a subsequent success recovers.
@@ -680,6 +741,8 @@
       chatGptStarted = true;
       applyTheme(global.openai && global.openai.theme, 'host');
       var initialOutput = global.openai && global.openai.toolOutput;
+      if (initialOutput !== null && initialOutput !== undefined) markToolResult();
+      else if (global.openai && global.openai.toolInput) markToolInput();
       if (initialOutput !== null && initialOutput !== undefined || options.getData) receiveResult(initialOutput);
       else render(null);
       observeChatGPTSize();
@@ -689,6 +752,7 @@
           var globals = event.detail && event.detail.globals;
           if (!globals) return;
           if (globals.theme !== undefined) applyTheme(globals.theme, 'host');
+          if (globals.toolInput !== undefined && globals.toolInput !== null) markToolInput();
           if (globals.toolOutput === undefined) {
             if (options.getData && globals.toolResponseMetadata !== undefined) {
               receiveResult(global.openai && global.openai.toolOutput);
@@ -698,6 +762,7 @@
           // A host may briefly publish null while it rehydrates. Keep the
           // last known result visible instead of replacing it with an empty
           // or loading-looking card.
+          if (globals.toolOutput !== null) markToolResult();
           receiveResult(globals.toolOutput);
         },
         { passive: true }
@@ -741,16 +806,135 @@
   // An action only counts as done when the host returns a result that is not
   // a failure. A missing host bridge is a failure, never a silent success.
   function hostUnavailableError(name) {
-    var error = new Error('This view cannot act here. Open it in ChatGPT, Claude, or OrgX to continue.');
+    var error = new Error(TOOL_ERROR_COPY.host_unavailable);
     error.code = 'host_unavailable';
     error.tool = name;
     return error;
   }
 
+  /* ------------------------------------------------------ tool errors -- */
+  // callTool/callToolResult reject with Error { code, message, details }:
+  // message is always human, raw host text only in details.raw. Codes:
+  // tool_unavailable (host lacks the tool, e.g. ChatGPT's "MCP Resource not
+  // found"), network, host_unavailable, tool_failed; any other code is the
+  // OrgX server's refusal, unchanged.
+  var TOOL_ERROR_COPY = {
+    tool_unavailable: 'This chat\u2019s OrgX connection can\u2019t do this here. Open it in OrgX to continue.',
+    network: 'Couldn\u2019t reach OrgX. Check the connection and try again.',
+    host_unavailable: 'This view cannot act here. Open it in ChatGPT, Claude, or OrgX to continue.',
+    tool_failed: 'That didn\u2019t go through. Try again, or open it in OrgX.',
+  };
+  var TOOL_ERROR_CODES = ['tool_unavailable', 'network', 'host_unavailable', 'tool_failed'];
+  var GENERIC_TOOL_ERROR_CODES = { tool_failed: true, tool_execution_failed: true };
+  var TOOL_UNAVAILABLE_PATTERN = /resource not found|\btool\b[^.\n]{0,120}\bnot found\b|unknown tool|no such tool|\btool\b[^.\n]{0,60}\b(?:is )?not (?:available|enabled|allowed|registered)\b|\btool\b[^.\n]{0,60}\bdisabled\b|not in the (?:imported )?tool list/i;
+  var NETWORK_PATTERN = /failed to fetch|networkerror|network ?error|network request failed|load failed|fetch failed|timed out|\btimeout\b|\becon(?:nreset|nrefused|naborted)\b|enotfound|socket hang up|connection (?:reset|refused|closed|lost)|\boffline\b|bad gateway|gateway time-?out|service unavailable|\b50[234]\b/i;
+
+  function rawErrorText(value) {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'string') return value;
+    // Duck-typed: errors may come from another realm (the host frame).
+    if (typeof value === 'object' && typeof value.message === 'string') {
+      var parts = [value.message];
+      if (value.raw && typeof value.raw === 'string') parts.push(value.raw);
+      return parts.filter(Boolean).join(' ');
+    }
+    try {
+      return JSON.stringify(value);
+    } catch (_) {
+      return String(value);
+    }
+  }
+
+  // Host text is often a JSON body (it rendered as a lone "{"); read it first.
+  function readableHostText(text) {
+    var trimmed = String(text || '').trim();
+    if (/^[\[{]/.test(trimmed)) {
+      try {
+        var parsed = JSON.parse(trimmed);
+        var said = getErrorMessage(parsed, '');
+        if (said) return said;
+      } catch (_) {
+        // Truncated JSON: classify the raw text as-is.
+      }
+    }
+    return trimmed;
+  }
+
+  function looksRaw(message) {
+    var text = String(message || '').trim();
+    return !text || /^[\[{<]/.test(text) || text.length > 300 || /\n/.test(text);
+  }
+
+  function classifyHostText(text) {
+    var readable = readableHostText(text) + ' ' + String(text || '');
+    if (TOOL_UNAVAILABLE_PATTERN.test(readable)) return 'tool_unavailable';
+    if (NETWORK_PATTERN.test(readable)) return 'network';
+    return null;
+  }
+
+  function normalizeToolError(error, toolName) {
+    if (error && error.orgxNormalized === true) return error;
+    var raw = rawErrorText(error).slice(0, 2000);
+    var incomingCode = error && typeof error.code === 'string' ? error.code : '';
+    var details = error && error.details && typeof error.details === 'object' ? Object.assign({}, error.details) : {};
+    var code;
+    var message;
+    if (incomingCode && !GENERIC_TOOL_ERROR_CODES[incomingCode]) {
+      // Server refusal (or host_unavailable): keep the code; replace only raw text.
+      code = incomingCode;
+      message = error.message;
+      if (looksRaw(message)) {
+        if (raw) details.raw = raw;
+        message = TOOL_ERROR_COPY[code] || TOOL_ERROR_COPY.tool_failed;
+      }
+    } else {
+      code = classifyHostText(raw) || 'tool_failed';
+      if (code === 'tool_failed' && error && error.message && !looksRaw(error.message) && !TOOL_UNAVAILABLE_PATTERN.test(error.message)) {
+        // An unclassified failure the server already worded for people.
+        message = error.message;
+      } else {
+        message = TOOL_ERROR_COPY[code];
+        if (raw) details.raw = raw;
+      }
+    }
+    var normalized = new Error(message);
+    normalized.code = code;
+    normalized.details = details;
+    normalized.tool = toolName || (error && error.tool) || null;
+    if (error && error.result !== undefined) normalized.result = error.result;
+    Object.defineProperty(normalized, 'orgxNormalized', { value: true });
+    return normalized;
+  }
+
+  // A host error body resolved as a result ({"detail": ...}) is a failure.
+  function hostErrorBody(result) {
+    if (!result || typeof result !== 'object' || Array.isArray(result)) return null;
+    if (result.structuredContent !== undefined || Array.isArray(result.content)) return null;
+    if (typeof result.detail === 'string' && Object.keys(result).length <= 2) return result.detail;
+    return null;
+  }
+
   function rejectToolFailure(result) {
+    var hostDetail = hostErrorBody(result);
+    if (hostDetail !== null) {
+      var hostError = new Error(hostDetail);
+      hostError.raw = JSON.stringify(result);
+      throw hostError;
+    }
     var data = extractStructuredWidgetData(result, true);
     if (data && data.ok === false) throw toolFailureError(data);
     return result;
+  }
+
+  // Legacy names rewritten to listed tools; = WIDGET_RUNTIME_TOOL_ALIASES (CI).
+  var TOOL_ALIASES = {
+    get_pending_decisions: { tool: 'orgx_decide', args: { action: 'list_pending' } },
+  };
+
+  function resolveToolCall(name, args) {
+    var alias = Object.prototype.hasOwnProperty.call(TOOL_ALIASES, name) ? TOOL_ALIASES[name] : null;
+    if (!alias) return { name: name, args: args || {} };
+    return { name: alias.tool, args: Object.assign({}, args || {}, alias.args) };
   }
 
   // Result `_meta` is handed to the widget only, never to the model. Widgets
@@ -789,17 +973,32 @@
     }).catch(function () { /* reporting must not break search */ });
   }
 
+  // Starts the host call; a synchronous throw from the host becomes a rejection.
+  function attemptHostCall(start) {
+    try {
+      return Promise.resolve(start());
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  }
+
   function callTool(name, args) {
+    var call = resolveToolCall(name, args);
+    var normalize = function normalize(error) { throw normalizeToolError(error, name); };
     var activeProtocol = getProtocol();
     if (activeProtocol === 'chatgpt' || (chatGptActionsFallback && (!bridge || !bridge.connected) && global.openai && global.openai.callTool)) {
       if (!global.openai || !global.openai.callTool) return Promise.reject(hostUnavailableError(name));
-      return Promise.resolve(global.openai.callTool(name, args || {})).then(rejectToolFailure);
+      return attemptHostCall(function () { return global.openai.callTool(call.name, call.args); })
+        .then(rejectToolFailure)
+        .catch(normalize);
     }
     if (activeProtocol === 'mcp-apps-sdk' || activeProtocol === 'mcp-apps') {
-      return Promise.resolve(getBridge(activeProtocol === 'mcp-apps-sdk').callServerTool({
-        name: name,
-        arguments: args || {},
-      })).then(rejectToolFailure);
+      return attemptHostCall(function () {
+        return getBridge(activeProtocol === 'mcp-apps-sdk').callServerTool({
+          name: call.name,
+          arguments: call.args,
+        });
+      }).then(rejectToolFailure).catch(normalize);
     }
     return Promise.reject(hostUnavailableError(name));
   }
@@ -807,6 +1006,8 @@
   // Like callTool, but resolves to { data, meta } so a widget can read the
   // widget-only result _meta (approval tokens) of a refresh it started.
   function callToolResult(name, args) {
+    var call = resolveToolCall(name, args);
+    var normalize = function normalize(error) { throw normalizeToolError(error, name); };
     var activeProtocol = getProtocol();
     var finish = function finish(result) {
       rejectToolFailure(result);
@@ -817,13 +1018,17 @@
     };
     if (activeProtocol === 'chatgpt') {
       if (!global.openai || !global.openai.callTool) return Promise.reject(hostUnavailableError(name));
-      return Promise.resolve(global.openai.callTool(name, args || {})).then(finish);
+      return attemptHostCall(function () { return global.openai.callTool(call.name, call.args); })
+        .then(finish)
+        .catch(normalize);
     }
     if (activeProtocol === 'mcp-apps-sdk' || activeProtocol === 'mcp-apps') {
-      return Promise.resolve(getBridge(activeProtocol === 'mcp-apps-sdk').callServerToolRaw({
-        name: name,
-        arguments: args || {},
-      })).then(finish);
+      return attemptHostCall(function () {
+        return getBridge(activeProtocol === 'mcp-apps-sdk').callServerToolRaw({
+          name: call.name,
+          arguments: call.args,
+        });
+      }).then(finish).catch(normalize);
     }
     return Promise.reject(hostUnavailableError(name));
   }
@@ -913,6 +1118,8 @@
     protocol = null;
     lastResultMeta = null;
     hostContextListeners = [];
+    toolInputListeners = [];
+    toolCallState = { inputSeen: false, resultSeen: false, inputAt: null, resultAt: null };
     reportedSearchEvents = {};
   }
 
@@ -929,8 +1136,12 @@
     extractLifecycleRank: extractLifecycleRank,
     getApp: getApp,
     getErrorMessage: getErrorMessage,
+    normalizeToolError: normalizeToolError,
+    TOOL_ERROR_CODES: TOOL_ERROR_CODES.slice(),
+    TOOL_ALIASES: TOOL_ALIASES,
     getTheme: getTheme,
     getToolResponseMetadata: getToolResponseMetadata,
+    getToolCallState: getToolCallState,
     getWidgetSessionId: getWidgetSessionId,
     initWidget: initWidget,
     openWidgetLink: openWidgetLink,

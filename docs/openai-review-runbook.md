@@ -51,7 +51,7 @@ Before opening review, confirm all of the following in the portal:
 - a fresh **Scan Tools** result matches the deployed tool names,
   descriptions, schemas, security schemes, annotations, `_meta`, UI resources,
   CSP, and verified domains;
-- every one of the 26 `chatgpt` profile tools has a non-null, exact
+- every one of the 27 `chatgpt` profile tools has a non-null, exact
   `outputSchema`, and every standard widget resource includes
   `_meta.ui.domain=https://mcp.useorgx.com` on that profile;
 - no other version of this MCP-backed plugin is already under review.
@@ -118,6 +118,44 @@ Before review, request `https://mcp.useorgx.com/healthz?check=upstream` and
 confirm the primary upstream is healthy at `https://useorgx.com`. A
 `fallback_healthy` result proves failover, not reviewer-ready primary latency;
 fix or deploy the primary configuration before submitting.
+
+## One Contract, Widget-Only Tools, and Connector Refresh
+
+`tests/surfaceContract.spec.ts` runs the real worker per profile and fails CI
+when any of these drift: the runtime `tools/list`, the bootstrap's
+`visible_tools` + `widget_only_tools`, `chatgpt-app-submission.json`,
+`server.json` (v2), the output schemas, the widget templates (every
+`outputTemplate` is a served resource), and the tools each served widget calls
+(`src/widgetToolContract.ts`).
+
+Visibility has one rule (`src/toolVisibility.ts`): every listed tool is
+model-callable (`ui.visibility: ["model","app"]`, `openai/visibility:
+"public"`) except the three widget-only tools, which are hidden from the model
+and callable by widgets (`ui.visibility: ["app"]`, `openai/visibility:
+"private"`, `openai/widgetAccessible: true`):
+
+- `orgx_widget_decide` — settles a decision after a person clicks; it also
+  requires the single-use HMAC widget approval token the model never sees;
+- `orgx_panel_snapshot` — the OrgX panel's read;
+- `resume_agent_run` — the agent-status widget's Resume button.
+
+Every tool a widget calls is also `openai/widgetAccessible: true`. The
+widget runtime rewrites the legacy `get_pending_decisions` refresh to
+`orgx_decide action=list_pending`, which is on every profile that serves the
+decisions widget.
+
+`orgx_decide` and `approve_agent_work` with `action=approve|reject` return a
+normal result, `status: "needs_human"` with `review_url`; the decision is
+never settled from MCP.
+
+ChatGPT imports a connector's tool list when the connector is created or
+refreshed, and a widget call to a tool missing from that import fails inside
+ChatGPT with `{"detail":"MCP Resource not found"}` before reaching OrgX. After
+any deploy that adds, removes, renames, or changes the visibility of a tool,
+open the connector in ChatGPT, select **Refresh**, and start a new
+conversation. Point developer-mode connectors at
+`https://mcp.useorgx.com/mcp?profile=chatgpt` (the reviewed surface); the
+default `/mcp` (v2) also carries every widget-called tool.
 
 ## Optional Domain Challenge Route
 
@@ -229,7 +267,7 @@ Allowed when needed for the user request:
 
 OrgX treats a missing or catch-all `outputSchema` on any submitted tool as a
 blocking current-release gate. Do not submit or resubmit until a fresh
-`tools/list` confirms that all 26 `chatgpt` profile tools publish exact,
+`tools/list` confirms that all 27 `chatgpt` profile tools publish exact,
 tool-specific schemas. A permissive catch-all `outputSchema` is not an
 acceptable substitute because it does not describe the object the tool actually
 returns.

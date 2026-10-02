@@ -110,6 +110,7 @@ const expectedChatGptHints = {
   get_morning_brief: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
   get_operator_chronicle: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
   check_execution_readiness: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+  resume_agent_run: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
 } satisfies Record<(typeof CHATGPT_PUBLIC_SURFACE)[number], ToolHints>;
 
 const serverToolsByName = new Map(
@@ -153,7 +154,7 @@ describe('OpenAI ChatGPT app submission readiness', () => {
     }
   });
 
-  it('keeps the reviewed 26-tool risk matrix explicit and fail-closed', () => {
+  it('keeps the reviewed 27-tool risk matrix explicit and fail-closed', () => {
     expect(Object.keys(expectedChatGptHints).sort()).toEqual(
       [...CHATGPT_PUBLIC_SURFACE].sort()
     );
@@ -206,7 +207,7 @@ describe('OpenAI ChatGPT app submission readiness', () => {
     }
     expect(openaiRunbook).toContain('blocking current-release gate');
     expect(openaiRunbook).toContain(
-      'all 26 `chatgpt` profile tools publish exact,\n' +
+      'all 27 `chatgpt` profile tools publish exact,\n' +
         'tool-specific schemas'
     );
     expect(openaiRunbook).toMatch(/exact,\s+tool-specific `outputSchema`/i);

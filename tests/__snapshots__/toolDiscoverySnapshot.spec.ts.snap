@@ -242,6 +242,7 @@ exports[`tool discovery snapshot > per-profile snapshots > profile "chatgpt" exp
   "orgx_widget_decide",
   "orgx_write",
   "reject_decision",
+  "resume_agent_run",
   "review_artifact",
   "scaffold_initiative",
 ]
@@ -445,6 +446,7 @@ exports[`tool discovery snapshot > per-profile snapshots > profile "v2" exposes 
   "recommend_next_action",
   "reject_decision",
   "request_independent_artifact_review",
+  "resume_agent_run",
   "review_artifact",
   "scaffold_initiative",
   "spawn_agent_task",

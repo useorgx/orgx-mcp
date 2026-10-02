@@ -974,6 +974,12 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         .describe(
           'Handoff note: what to do, constraints, context, definition of done'
         ),
+      reason: z
+        .string()
+        .optional()
+        .describe(
+          'Alias for note, accepted from older callers. note wins when both are sent.'
+        ),
       spawn: z
         .boolean()
         .optional()
@@ -1009,6 +1015,12 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         .optional()
         .describe(
           'Entity ID. For workspace, use "default" or a workspace ID.'
+        ),
+      initiative_id: z
+        .string()
+        .optional()
+        .describe(
+          'Shortcut for entity_type="initiative" with entity_id=<this id>. Ignored when entity_type or entity_id is set.'
         ),
       workspace_id: z
         .string()

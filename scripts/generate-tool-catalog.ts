@@ -294,6 +294,19 @@ const INLINE_TOOL_METADATA: Array<{
     readOnly: false,
   },
   {
+    // Widget-only (the agent-status Resume button); see src/widgetToolContract.ts.
+    id: 'resume_agent_run',
+    title: 'Resume Agent Run',
+    description:
+      'Widget-only: resumes a paused or TTL auto-closed agent run after the person clicks Resume in the agent-status widget. Hidden from the model; agents use manage_lifecycle level=run action=resume.',
+    inputSchema: z.object({
+      run_id: z.string().min(1).describe('Agent run UUID to resume.'),
+      note: z.string().optional().describe('Optional audit note.'),
+    }),
+    securityScopes: ['decisions:write', 'agents:write', 'initiatives:write'],
+    readOnly: false,
+  },
+  {
     id: 'remember_decision',
     title: 'Remember Decision',
     description:

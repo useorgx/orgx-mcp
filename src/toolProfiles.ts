@@ -77,6 +77,7 @@ export const WIDGET_AFFORDANCE_SURFACE = [
   'track_project_progress',
   'review_artifact',
   'get_morning_brief',
+  'resume_agent_run',
 ] as const;
 
 export const CLIENT_INTEGRATION_PUBLIC_SURFACE = [
@@ -122,6 +123,9 @@ export const CHATGPT_PUBLIC_SURFACE = [
   'get_morning_brief',
   'get_operator_chronicle',
   'check_execution_readiness',
+  // Widget-only (ui.visibility ["app"]): the agent-status widget's Resume
+  // button. See src/widgetToolContract.ts.
+  'resume_agent_run',
 ] as const;
 
 /**

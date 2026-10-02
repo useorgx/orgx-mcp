@@ -67,6 +67,9 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     inputSchema: {
       workspace_id: z.string().optional().describe('Canonical workspace UUID to bind as the active session workspace'),
       initiative_id: z.string().optional().describe('Optional initiative UUID to bind and hydrate as the active work context'),
+      initiativeId: z.string().optional().describe('Alias for initiative_id, accepted from older callers. initiative_id wins when both are sent.'),
+      initiative: z.string().optional().describe('Alias for initiative_id (an initiative UUID), accepted from older callers. initiative_id wins when both are sent.'),
+      command_center_id: z.string().optional().describe('Deprecated alias for workspace_id. workspace_id wins when both are sent.'),
       conversation_id: z.string().optional().describe('Optional client conversation/session identifier for continuity'),
       client_name: z.string().optional().describe('Optional MCP client name, such as codex, chatgpt, cursor, or claude'),
       timezone: z.string().optional().describe('Optional user timezone for date-sensitive readouts'),
@@ -174,6 +177,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       period: z.enum(['day', 'week', '30d']).optional().describe('Reporting period for mode=morning_brief; default 30d'),
       entity_type: z.enum(['workspace', 'initiative', 'workstream', 'milestone', 'task']).optional().describe('Recommendation scope type'),
       entity_id: z.string().optional().describe('Scoped entity ID'),
+      initiative_id: z.string().optional().describe('Shortcut for entity_type="initiative" with entity_id=<this id>. Ignored when entity_type or entity_id is set.'),
       workspace_id: z.string().optional().describe('Workspace UUID'),
       limit: z.number().int().min(1).max(20).optional().describe('Maximum recommendations'),
       session_id: z.string().optional().describe('Optional bootstrap/session identifier'),
@@ -1278,11 +1282,15 @@ export const INLINE_TOOL_CONTRACTS = {
     id: 'resume_agent_run',
     title: 'Resume Agent Run',
     description:
-      'Inline worker tool for resuming a paused or TTL auto-closed agent run.',
+      'Widget-only: resumes a paused or TTL auto-closed agent run after the person clicks Resume in the agent-status widget.',
     inputSchema: {
       run_id: z.string().min(1).describe('Agent run UUID to resume.'),
       note: z.string().optional().describe('Optional audit note.'),
     },
+    // Without a declared scheme the scope-aware tools/list filter dropped
+    // this tool from every OAuth session, so the widget's Resume always failed.
+    securitySchemes: SECURITY_SCHEMES.authRequired,
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   },
   // App-only OrgX panel (registered from src/panelSurface.ts).
   orgx_panel_snapshot: {

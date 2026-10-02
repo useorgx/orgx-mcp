@@ -9,6 +9,8 @@ import {
   decisionSchema,
   nullableNumber,
   nullableString,
+  approvalListProofSchema,
+  humanDecisionReviewShape,
   proofHandoffSchema,
   resourceSchema,
   scaffoldContractWarningSchema,
@@ -439,29 +441,25 @@ export const WIDGET_OUTPUT_SCHEMAS = {
     })
     .strict(),
 
+  // action=list returns the pending list; action=approve|reject returns
+  // status "needs_human" with the review URL (a person decides, never MCP),
+  // so the list fields are optional.
   approve_agent_work: z
     .object({
-      decisions: z.array(decisionSchema),
-      total_pending: z.number(),
-      summary: z.object({
-        critical: z.number(),
-        high: z.number(),
-        medium: z.number(),
-        low: z.number(),
-      }),
+      decisions: z.array(decisionSchema).optional(),
+      total_pending: z.number().optional(),
+      summary: z
+        .object({
+          critical: z.number(),
+          high: z.number(),
+          medium: z.number(),
+          low: z.number(),
+        })
+        .optional(),
       message: z.string(),
       // The app adds acceptance-ledger proof on the widget read channel.
-      // Failed reads and bounded counts are explicitly nullable.
-      proof: z.object({
-        last_accepted: z.object({
-          artifact_id: z.string(),
-          title: z.string(),
-          accepted_at: z.string(),
-          accepted_by: z.enum(['you', 'workspace_member']),
-          url: z.string(),
-        }).strict().nullable(),
-        completed_unaccepted: z.number().nullable(),
-      }).strict().nullable().optional(),
+      proof: approvalListProofSchema.optional(),
+      ...humanDecisionReviewShape,
     })
     .strict(),
 
@@ -631,6 +629,23 @@ export const WIDGET_OUTPUT_SCHEMAS = {
         cursor_background_agents: z.boolean(),
       }),
       setup_url: z.string(),
+    })
+    .strict(),
+
+  // POST /api/agent-runs/:id/resume (app/api/agent-runs/[id]/resume/route.ts):
+  // the already-running no-op, the continue-required park, and the resume.
+  resume_agent_run: z
+    .object({
+      ok: z.boolean().optional(),
+      noop: z.boolean().optional(),
+      run_id: z.string().optional(),
+      status: z.string().optional(),
+      prior_status: z.string().optional(),
+      was_auto_closed: z.boolean().optional(),
+      continue_action: z.enum(['accept', 'continue']).optional(),
+      completed_at: z.string().nullable().optional(),
+      updated_at: z.string().optional(),
+      message: z.string().optional(),
     })
     .strict(),
 } as const;

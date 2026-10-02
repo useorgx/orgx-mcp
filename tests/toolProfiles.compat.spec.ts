@@ -37,7 +37,7 @@ describe('toolProfiles backward compatibility', () => {
     const chatgptTools = resolveProfileToolSet('chatgpt');
 
     expect([...(chatgptTools ?? [])]).toEqual([...CHATGPT_PUBLIC_SURFACE]);
-    expect(chatgptTools!.size).toBe(26);
+    expect(chatgptTools!.size).toBe(27);
     expect(chatgptTools!.has('orgx_bootstrap')).toBe(true);
     expect(chatgptTools!.has('get_initiative_pulse')).toBe(true);
     expect(chatgptTools!.has('consolidate_pr')).toBe(false);

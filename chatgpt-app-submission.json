@@ -319,6 +319,18 @@
         "open_world_justification": "Reads private OrgX workspace configuration and does not publish to external systems.",
         "destructive_justification": "Does not dispatch, delete, overwrite, or irreversibly change workspace state."
       }
+    },
+    "resume_agent_run": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Sets one paused or auto-closed agent run back to running after the person clicks Resume in the agent-status widget.",
+        "open_world_justification": "Changes only the OrgX agent run record; it does not act in external systems.",
+        "destructive_justification": "Resuming is reversible (the run can be paused again) and deletes nothing; widget-only, hidden from the model."
+      }
     }
   },
   "test_cases": [

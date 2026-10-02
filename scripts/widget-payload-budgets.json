@@ -1,21 +1,21 @@
 {
   "about": "Max bytes of each widget's inlined MCP Apps resource (UTF-8), measured by scripts/widget-payload-sizes.ts and enforced by tests/widgetPayloadBudget.spec.ts. Set from measured sizes + 8 KiB headroom, rounded up to a KiB. Raise one only on purpose (pnpm widget:payload --update) in the change that grows the widget.",
   "widgets": {
-    "agent-status": 615424,
-    "artifact-review": 625664,
-    "decisions": 672768,
-    "entity-card": 552960,
+    "agent-status": 628736,
+    "artifact-review": 635904,
+    "decisions": 684032,
+    "entity-card": 565248,
     "index": 73728,
-    "initiative-pulse": 617472,
-    "morning-brief": 618496,
-    "orgx-panel": 551936,
-    "plan-session-live": 561152,
-    "proof-receipt": 438272,
-    "scaffold-streaming": 417792,
-    "scaffolded-initiative": 583680,
-    "search-results": 462848,
-    "task-spawned": 583680,
-    "work-ledger": 561152,
-    "workspace-map": 535552
+    "initiative-pulse": 634880,
+    "morning-brief": 627712,
+    "orgx-panel": 559104,
+    "plan-session-live": 572416,
+    "proof-receipt": 447488,
+    "scaffold-streaming": 427008,
+    "scaffolded-initiative": 595968,
+    "search-results": 479232,
+    "task-spawned": 593920,
+    "work-ledger": 573440,
+    "workspace-map": 547840
   }
 }

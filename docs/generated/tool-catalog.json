@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-10-02T16:02:47.492Z",
-  "sourceHash": "b6000c17d02a1cff",
+  "generatedAt": "2026-10-02T23:07:10.055Z",
+  "sourceHash": "940ea22fcaa568ec",
   "version": "1.0.0",
-  "totalTools": 92,
+  "totalTools": 93,
   "categories": [
     "Agents",
     "Billing",
@@ -101,6 +101,10 @@
           "note": {
             "type": "string",
             "description": "Handoff note: what to do, constraints, context, definition of done"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Alias for note, accepted from older callers. note wins when both are sent."
           },
           "spawn": {
             "type": "boolean",
@@ -247,6 +251,10 @@
           "entity_id": {
             "type": "string",
             "description": "Entity ID. For workspace, use \"default\" or a workspace ID."
+          },
+          "initiative_id": {
+            "type": "string",
+            "description": "Shortcut for entity_type=\"initiative\" with entity_id=<this id>. Ignored when entity_type or entity_id is set."
           },
           "workspace_id": {
             "type": "string",
@@ -3234,6 +3242,18 @@
             "type": "string",
             "description": "Optional initiative UUID to bind and hydrate as the active work context"
           },
+          "initiativeId": {
+            "type": "string",
+            "description": "Alias for initiative_id, accepted from older callers. initiative_id wins when both are sent."
+          },
+          "initiative": {
+            "type": "string",
+            "description": "Alias for initiative_id (an initiative UUID), accepted from older callers. initiative_id wins when both are sent."
+          },
+          "command_center_id": {
+            "type": "string",
+            "description": "Deprecated alias for workspace_id. workspace_id wins when both are sent."
+          },
           "conversation_id": {
             "type": "string",
             "description": "Optional client conversation/session identifier for continuity"
@@ -3630,6 +3650,10 @@
           "entity_id": {
             "type": "string",
             "description": "Scoped entity ID"
+          },
+          "initiative_id": {
+            "type": "string",
+            "description": "Shortcut for entity_type=\"initiative\" with entity_id=<this id>. Ignored when entity_type or entity_id is set."
           },
           "workspace_id": {
             "type": "string",
@@ -6207,6 +6231,42 @@
       "source": "client_integration",
       "profiles": [
         "v2"
+      ]
+    },
+    {
+      "id": "resume_agent_run",
+      "title": "Resume Agent Run",
+      "description": "Widget-only: resumes a paused or TTL auto-closed agent run after the person clicks Resume in the agent-status widget. Hidden from the model; agents use manage_lifecycle level=run action=resume.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Agent run UUID to resume."
+          },
+          "note": {
+            "type": "string",
+            "description": "Optional audit note."
+          }
+        },
+        "required": [
+          "run_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "decisions:write",
+        "agents:write",
+        "initiatives:write"
+      ],
+      "readOnly": false,
+      "source": "inline",
+      "profiles": [
+        "v2",
+        "chatgpt"
       ]
     },
     {

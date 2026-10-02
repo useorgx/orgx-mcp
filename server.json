@@ -495,6 +495,16 @@
         "openWorldHint": false,
         "destructiveHint": false
       }
+    },
+    {
+      "name": "resume_agent_run",
+      "title": "Resume Agent Run",
+      "description": "Widget-only: resumes a paused or auto-closed agent run after the person clicks Resume in the agent-status widget. Hidden from the model; agents use manage_lifecycle.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
     }
   ],
   "resources": [
@@ -659,8 +669,7 @@
       "name": "Receipt Widget (Skybridge)",
       "description": "ChatGPT Apps SDK widget showing a submitted receipt: how far the proof got, the evidence, what is missing, and the next move",
       "mimeType": "text/html+skybridge"
-    }
-,
+    },
     {
       "uri": "ui://widget/orgx-panel.html",
       "name": "OrgX Panel",

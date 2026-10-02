@@ -2,11 +2,16 @@ import { checkAuthRequirements, type GrantedScopes } from './authHelpers';
 import { SECURITY_SCHEMES, WIDGET_URIS } from './toolDefinitions';
 import { READ_ONLY_FALLBACK_PROFILE, resolveToolProfile } from './toolProfiles';
 
+// One widget per template a directory tool declares (orgx_inspect renders the
+// entity card, get_operator_chronicle the work ledger), so no listed tool
+// points at a resource the profile does not serve.
 export const CLAUDE_DIRECTORY_WIDGET_URIS = [
   WIDGET_URIS.agentStatus,
   WIDGET_URIS.searchResults,
   WIDGET_URIS.initiativePulse,
   WIDGET_URIS.morningBrief,
+  WIDGET_URIS.entityCard,
+  WIDGET_URIS.workLedger,
 ] as const;
 
 export interface ProfileDiscoveryPolicy {
@@ -31,7 +36,7 @@ export interface ProfileDiscoveryAuthorization {
  * fallback (unknown profile names) shares that restricted discovery because
  * it exposes the same seven read tools. The ChatGPT review profile keeps its
  * authorized initiative resource and full widget set, but suppresses legacy
- * prompts and skill packs whose required tools are not in its 26-tool surface.
+ * prompts and skill packs whose required tools are not on its surface.
  */
 export function resolveProfileDiscoveryPolicy(
   profileName: string | undefined | null,

@@ -17,7 +17,7 @@ describe('profile auxiliary discovery policy', () => {
     expect([...(policy.widgetUris ?? [])]).toEqual([
       ...CLAUDE_DIRECTORY_WIDGET_URIS,
     ]);
-    expect(policy.widgetUris?.size).toBe(4);
+    expect(policy.widgetUris?.size).toBe(6);
   });
 
   it('preserves the established auxiliary surface for general profiles', () => {

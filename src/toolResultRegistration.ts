@@ -3,11 +3,14 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { getToolOutputSchema } from './openaiOutputSchemas';
 import { sanitizeToolResultGuidance } from './toolGuidance';
 import { prepareSearchResult, type SearchDeliveryObservation } from './searchResultDelivery';
+import { withConsistentToolVisibility } from './toolVisibility';
 
 /**
  * Apply profile-aware guidance filtering to subsequently registered tools.
  *
- * Tool configuration and result envelopes are otherwise preserved verbatim.
+ * Every registration also gets the one visibility rule from
+ * ./toolVisibility (model-visible unless widget-only). Tool configuration and
+ * result envelopes are otherwise preserved verbatim.
  * In particular, this wrapper never invents an outputSchema: it attaches one
  * only for a tool with a verified contract in the reviewed ChatGPT registry or
  * the v2 registry (see ./openaiOutputSchemas/v2.ts). An explicit schema on a
@@ -34,10 +37,18 @@ export function installToolResultGuidanceWrapper(
     handler: (...args: unknown[]) => unknown
   ) => {
     const registeredSchema = getToolOutputSchema(name);
+    // One visibility rule for every registration path (src/toolVisibility.ts).
+    const visibleConfig = {
+      ...config,
+      _meta: withConsistentToolVisibility(
+        name,
+        config._meta as Record<string, unknown> | undefined
+      ),
+    };
     const nextConfig =
       registeredSchema && config.outputSchema === undefined
-        ? { ...config, outputSchema: registeredSchema }
-        : config;
+        ? { ...visibleConfig, outputSchema: registeredSchema }
+        : visibleConfig;
     const wrappedHandler = async (...args: unknown[]) => {
       const result = prepareSearchResult(name, sanitizeToolResultGuidance(
         (await handler(...args)) as
