@@ -997,7 +997,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'validate_studio_content',
     title: 'Validate Studio Content',
     description:
-      'Use when a studio content spec must pass validation before rendering or publication. Validates the studio_content entity without composing entity_action manually. USE WHEN: checking a studio content spec before rendering or publication.',
+      'Use when a studio content spec must pass validation before rendering or publication. Validates the studio_content entity without composing entity_action manually. USE WHEN: checking a studio content spec before rendering or publication. Alias of orgx_act (type=studio_content, action=validate).',
     inputSchema: {
       id: z.string().uuid().describe('studio_content entity UUID'),
       spec: z
