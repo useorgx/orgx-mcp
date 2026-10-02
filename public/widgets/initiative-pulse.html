@@ -70,7 +70,7 @@
 
       .pulse-head { border-bottom: 1px solid var(--ox-border); --ox-attention-padding: 0 8px 0 20px; }
       .pulse-attention {
-        display: inline-flex; align-items: center; gap: 6px; min-height: 36px; margin: 4px 0; padding: 0 12px;
+        display: inline-flex; align-items: center; gap: 6px; min-height: 44px; margin: 0; padding: 0 12px;
         border-radius: 9px; border: 1px solid var(--ox-action-border); background: var(--ox-action); color: var(--ox-action-fg);
         font-size: 12.5px; font-weight: 650; white-space: nowrap; cursor: pointer;
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
@@ -100,18 +100,23 @@
 
       /* Q6 population bar: one segment per workstream, each opens the list. */
       .pulse-population { display: flex; flex-direction: column; gap: 6px; }
-      .pulse-signal-strip { display: flex; gap: 2px; height: 10px; }
+      /* Each segment is a 44px-tall button that paints only its 10px bar;
+         the strip's negative margins keep the 10px footprint in the layout. */
+      .pulse-signal-strip { display: flex; gap: 2px; height: 44px; margin: -17px 0; }
       .pulse-signal {
-        flex: 1 1 0; min-width: 6px; height: 10px; border-radius: 2px; border: 0; padding: 0; cursor: pointer;
-        position: relative; background: var(--ox-mute); opacity: 0.85;
+        flex: 1 1 0; min-width: 6px; height: 44px; border-radius: 2px; border: 0; padding: 0; cursor: pointer;
+        position: relative; background: transparent; opacity: 0.85;
       }
-      .pulse-signal::after { content: ""; position: absolute; inset: -10px 0; }
+      .pulse-signal::before {
+        content: ""; position: absolute; left: 0; right: 0; top: 17px; height: 10px; border-radius: 2px;
+        background: var(--ox-mute);
+      }
       .pulse-signal:hover { opacity: 1; }
-      .pulse-signal.seg-accepted { background: var(--ox-teal); }
-      .pulse-signal.seg-judgment { background: repeating-linear-gradient(135deg, var(--ox-warning) 0 3px, transparent 3px 6px); box-shadow: inset 0 0 0 1px var(--ox-warning); }
-      .pulse-signal.seg-active { background: color-mix(in srgb, var(--ox-mute) 70%, var(--ox-text) 30%); }
-      .pulse-signal.seg-blocked { background: var(--ox-danger); }
-      .pulse-signal.seg-planned { background: transparent; box-shadow: inset 0 0 0 1px var(--ox-border-strong); }
+      .pulse-signal.seg-accepted::before { background: var(--ox-teal); }
+      .pulse-signal.seg-judgment::before { background: repeating-linear-gradient(135deg, var(--ox-warning) 0 3px, transparent 3px 6px); box-shadow: inset 0 0 0 1px var(--ox-warning); }
+      .pulse-signal.seg-active::before { background: color-mix(in srgb, var(--ox-mute) 70%, var(--ox-text) 30%); }
+      .pulse-signal.seg-blocked::before { background: var(--ox-danger); }
+      .pulse-signal.seg-planned::before { background: transparent; box-shadow: inset 0 0 0 1px var(--ox-border-strong); }
       .pulse-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font: 500 11.5px/1.4 var(--ox-mono); color: var(--ox-text-muted); }
       .pulse-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
       .pulse-legend .seg-accepted { background: var(--ox-teal); }
@@ -194,6 +199,9 @@
       .pulse-attention:focus-visible, .pulse-rail-button:focus-visible, .pulse-list-row:focus-visible, .pulse-signal:focus-visible, .deep-link:focus-visible {
         outline: 2px solid var(--ox-focus, var(--ox-teal)); outline-offset: 2px; border-radius: 8px;
       }
+      /* The ring hugs the painted bar, not the taller hit area. */
+      .pulse-signal:focus-visible { outline: none; }
+      .pulse-signal:focus-visible::before { outline: 2px solid var(--ox-focus, var(--ox-teal)); outline-offset: 2px; }
 
       @media (max-width: 480px) {
         body { padding: 12px; }
