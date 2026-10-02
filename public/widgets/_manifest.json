@@ -66,13 +66,14 @@
     },
     "artifact-review": {
       "file": "public/widgets/artifact-review.html",
-      "bytes": 108830,
-      "hash": "8570eceb0944",
+      "bytes": 105792,
+      "hash": "f862996ccc25",
       "primaryRgb": "251,191,36",
       "sharedRefs": [
-        "shared/components/domain-accent.css",
-        "shared/components/domain-accent.js",
+        "shared/agent-identity.js",
         "shared/interaction-kit.css",
+        "shared/kit/ox-elements.js",
+        "shared/kit/ox-tokens.css",
         "shared/live-machine.js",
         "shared/live-panel.js",
         "shared/live-store.js",
