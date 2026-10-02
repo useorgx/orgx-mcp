@@ -904,9 +904,9 @@
 
     var render = () => {
       if(isLoading) return;
-      if(data && data.error) {
+      if(data && (data.error || data.ok === false)) {
         window.OrgXWidgetRuntime.reportSearchWidgetEvent('tool_error');
-        var errorMessage = window.OrgXWidgetRuntime.getErrorMessage(data.error, 'Organizational memory is temporarily unavailable.');
+        var errorMessage = window.OrgXWidgetRuntime.getErrorMessage(data.error || data, 'Organizational memory is temporarily unavailable.');
         injectHtml(unavailable(errorMessage));
         return;
       }

@@ -34,7 +34,12 @@ export function prepareSearchResult<T extends SearchResult | null | undefined>(
   if (payload?.scope === 'work_ledger') return result;
   const failed = result.isError === true || root?.ok === false || Boolean(root?.error) ||
     payload?.ok === false || Boolean(payload?.error);
-  const telemetry = summarizeSearchPayload(payload, payload?.type ?? payload?.scope);
+  const sharedRows = toolId === 'query_org_memory'
+    ? Array.isArray(payload?.decisions) ? payload.decisions :
+      Array.isArray(payload?.recommendations) ? payload.recommendations :
+      record(payload?.next_action) ? [payload!.next_action] : null
+    : null;
+  const telemetry = summarizeSearchPayload(sharedRows ? { ...payload, results: sharedRows } : payload, payload?.type ?? payload?.scope);
   const invalid = !failed && telemetry.search_outcome === 'missing_results';
   const observation: SearchDeliveryObservation = {
     failed: failed || invalid,

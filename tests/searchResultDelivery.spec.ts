@@ -30,4 +30,7 @@ describe('search result delivery contract', () => {
     expect(prepareSearchResult('orgx_inspect', ledger, observe)).toBe(ledger);
     expect(observe).not.toHaveBeenCalled();
   });
+  it.each([{ decisions: [] }, { recommendations: [] }, { next_action: { label: 'Review' } }])('preserves shared memory template modes: %j', payload => {
+    expect(prepareSearchResult('query_org_memory', { structuredContent: payload })).not.toHaveProperty('isError');
+  });
 });
