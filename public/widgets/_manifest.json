@@ -89,8 +89,8 @@
     },
     "artifact-review": {
       "file": "public/widgets/artifact-review.html",
-      "bytes": 107751,
-      "hash": "e9bfa97b526c",
+      "bytes": 107735,
+      "hash": "01f0aff9431f",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",

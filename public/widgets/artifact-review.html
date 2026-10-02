@@ -318,8 +318,8 @@
       // Focus rings follow the keyboard (widget-theme.css keys on data-ox-input). This widget
       // doesn't load interaction-kit.js, which records it for the others.
       (function trackInputModality(doc) {
-        if (!doc || doc.__oxInputModality) return;
-        doc.__oxInputModality = true;
+        if (!doc || doc.__oxInput) return;
+        doc.__oxInput = true;
         const set = function (mode) { if (doc.documentElement.getAttribute('data-ox-input') !== mode) doc.documentElement.setAttribute('data-ox-input', mode); };
         doc.addEventListener('pointerdown', function () { set('pointer'); }, true);
         doc.addEventListener('keydown', function (event) { if (!event.metaKey && !event.ctrlKey && !event.altKey) set('keyboard'); }, true);

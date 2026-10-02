@@ -372,7 +372,7 @@ describe('B5 · one focus ring, keyboard only', () => {
     expect(theme).toMatch(/:focus-visible \{\s*outline: 2px solid var\(--ox-focus\);\s*outline-offset: 2px;\s*\}/);
     expect(theme).toMatch(/:focus-visible,[\s\S]*?\{\s*outline-color: var\(--ox-focus\) !important;\s*\}/);
     expect(theme).toMatch(/:focus:not\(:focus-visible\) \{\s*outline: none;\s*\}/);
-    expect(theme).toMatch(/:root\[data-ox-input="pointer"\] \{\s*--ox-focus: transparent;/);
+    expect(theme).toMatch(/:root\[data-ox-input="pointer"\] \{\s*--ox-focus: transparent;\s*\}/);
     // Text fields keep their ring after a click.
     expect(theme).toMatch(/:root\[data-ox-input="pointer"\] :is\(input, textarea, select, \[contenteditable\]\):focus-visible/);
   });
@@ -411,7 +411,7 @@ describe('B5 · one focus ring, keyboard only', () => {
   });
 
   it('keeps announcements for screen readers only', () => {
-    expect(theme).toMatch(/\[data-orgx-live-region\] \{[\s\S]*?clip-path: inset\(50%\);/);
+    expect(kitCss).toMatch(/\[data-orgx-live-region\] \{[\s\S]*?clip-path: inset\(50%\);/);
   });
 });
 

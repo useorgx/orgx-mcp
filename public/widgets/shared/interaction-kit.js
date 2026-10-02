@@ -1,17 +1,11 @@
 (function (global) {
-  // Last input on <html> (widget-theme.css hides focus rings after a pointer press).
-  (function trackInputModality(doc) {
-    if (!doc || !doc.documentElement || doc.__oxInputModality) return;
-    doc.__oxInputModality = true;
-    var root = doc.documentElement;
-    function set(mode) {
-      if (root.getAttribute('data-ox-input') !== mode) root.setAttribute('data-ox-input', mode);
-    }
+  // Last input on <html>: widget-theme.css hides focus rings after a pointer press.
+  (function (doc) {
+    if (!doc || doc.__oxInput) return;
+    doc.__oxInput = 1;
+    var set = function (m) { doc.documentElement.setAttribute('data-ox-input', m); };
     doc.addEventListener('pointerdown', function () { set('pointer'); }, true);
-    doc.addEventListener('keydown', function (event) {
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
-      set('keyboard');
-    }, true);
+    doc.addEventListener('keydown', function (e) { if (!e.metaKey && !e.ctrlKey && !e.altKey) set('keyboard'); }, true);
   })(typeof document !== 'undefined' ? document : null);
 
   function escapeHtml(value) {
