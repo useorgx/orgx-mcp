@@ -96,7 +96,12 @@
   function extractStructuredWidgetData(result, plainTextObject) {
     if (result && result.isError === true) {
       var decoded = extractStructuredWidgetData(Object.assign({}, result, { isError: false }), true);
-      return { ok: false, error: getErrorMessage(decoded, 'The tool request failed. Try the request again.') };
+      var decodedError = decoded && typeof decoded === 'object' ? (decoded.error || decoded) : null;
+      var failure = { ok: false, error: getErrorMessage(decoded, 'The tool request failed. Try the request again.') };
+      if (decodedError && typeof decodedError === 'object' && typeof decodedError.code === 'string') {
+        failure.code = decodedError.code;
+      }
+      return failure;
     }
     if (result && result.structuredContent !== undefined) {
       return result.structuredContent;
@@ -122,9 +127,16 @@
     return result;
   }
 
+  function toolFailureError(data) {
+    var error = new Error(getErrorMessage(data.error || data, 'The tool request failed.'));
+    error.code = (data.error && typeof data.error === 'object' && data.error.code) || data.code || 'tool_failed';
+    error.result = data;
+    return error;
+  }
+
   function unpackToolResult(result) {
     var data = extractStructuredWidgetData(result, true);
-    if (data && data.ok === false) throw new Error(getErrorMessage(data.error || data, 'The tool request failed.'));
+    if (data && data.ok === false) throw toolFailureError(data);
     return data;
   }
 
@@ -590,23 +602,34 @@
     };
   }
 
+  // An action only counts as done when the host returns a result that is not
+  // a failure. A missing host bridge is a failure, never a silent success.
+  function hostUnavailableError(name) {
+    var error = new Error('This view cannot act here. Open it in ChatGPT, Claude, or OrgX to continue.');
+    error.code = 'host_unavailable';
+    error.tool = name;
+    return error;
+  }
+
+  function rejectToolFailure(result) {
+    var data = extractStructuredWidgetData(result, true);
+    if (data && data.ok === false) throw toolFailureError(data);
+    return result;
+  }
+
   function callTool(name, args) {
     var activeProtocol = getProtocol();
     if (activeProtocol === 'chatgpt') {
-      if (!global.openai || !global.openai.callTool) return Promise.resolve(null);
-      return Promise.resolve(global.openai.callTool(name, args || {})).then(function rejectToolFailure(result) {
-        var data = extractStructuredWidgetData(result, true);
-        if (data && data.ok === false) throw new Error(getErrorMessage(data.error || data, 'The tool request failed.'));
-        return result;
-      });
+      if (!global.openai || !global.openai.callTool) return Promise.reject(hostUnavailableError(name));
+      return Promise.resolve(global.openai.callTool(name, args || {})).then(rejectToolFailure);
     }
     if (activeProtocol === 'mcp-apps-sdk' || activeProtocol === 'mcp-apps') {
-      return getBridge(activeProtocol === 'mcp-apps-sdk').callServerTool({
+      return Promise.resolve(getBridge(activeProtocol === 'mcp-apps-sdk').callServerTool({
         name: name,
         arguments: args || {},
-      });
+      })).then(rejectToolFailure);
     }
-    return Promise.resolve(null);
+    return Promise.reject(hostUnavailableError(name));
   }
 
   function openWidgetLink(url, event) {

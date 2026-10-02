@@ -63,6 +63,38 @@ describe('shared OrgX widget runtime', () => {
     await expect(runtime.callTool('approve_decision', { decision_id: 'd-1' })).rejects.toThrow('Approval rejected');
   });
 
+  it('rejects instead of resolving null when the ChatGPT bridge cannot call tools', async () => {
+    (window as unknown as { openai: unknown }).openai = { toolOutput: {} };
+    await expect(runtime.callTool('approve_decision', { decision_id: 'd-1' })).rejects.toMatchObject({
+      code: 'host_unavailable',
+    });
+  });
+
+  it('rejects in standalone mode so a preview never reports an action as done', async () => {
+    await expect(runtime.callTool('reject_decision', { decision_id: 'd-1', reason: 'x' })).rejects.toMatchObject({
+      code: 'host_unavailable',
+    });
+  });
+
+  it.each([
+    { isError: true, content: [{ type: 'text', text: '{"error":{"code":"human_session_required","message":"Approval requires a signed-in person"}}' }] },
+    { structuredContent: { ok: false, error: { code: 'human_session_required', message: 'Approval requires a signed-in person' } } },
+  ])('rejects a failed MCP Apps action result: %j', async (result) => {
+    class FakeApp {
+      connect = vi.fn().mockResolvedValue(undefined);
+      getHostContext = vi.fn().mockReturnValue({});
+      callServerTool = vi.fn().mockResolvedValue(result);
+      close = vi.fn();
+    }
+    Object.defineProperty(window, 'parent', { configurable: true, value: { postMessage: vi.fn() } });
+    (window as unknown as { McpApps: unknown }).McpApps = { App: FakeApp, applyDocumentTheme: vi.fn() };
+    runtime.initWidget({ render: vi.fn() });
+    await expect(runtime.callTool('approve_decision', { decision_id: 'd-1' })).rejects.toMatchObject({
+      code: 'human_session_required',
+      message: 'Approval requires a signed-in person',
+    });
+  });
+
   it.each([
     { degraded: ['brief_route_timeout'], metrics: { completed: 0 } },
     { degraded: true, results: [{ id: 'partial-result' }] },
