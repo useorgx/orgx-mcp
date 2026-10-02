@@ -315,6 +315,10 @@
     });
   };
 
+  LegacyBridge.prototype.callServerToolRaw = function callServerToolRaw(params) {
+    return this.request('tools/call', params);
+  };
+
   LegacyBridge.prototype.openLink = function openLink(url) {
     return this.request('ui/open-link', { url: url });
   };
@@ -352,6 +356,27 @@
     global.removeEventListener('message', this.handleMessage);
   };
 
+  // Opt-in host-context listeners (initWidget options.onHostContext). Widgets
+  // that do not pass one see no change.
+  var hostContextListeners = [];
+
+  function notifyHostContext(app) {
+    if (!hostContextListeners.length) return;
+    var context = null;
+    try {
+      context = app && app.getHostContext ? app.getHostContext() : null;
+    } catch (_) {
+      context = null;
+    }
+    hostContextListeners.slice().forEach(function callListener(listener) {
+      try {
+        listener(context, app);
+      } catch (error) {
+        console.error('[OrgX Widget] Host context listener failed:', error);
+      }
+    });
+  }
+
   function McpAppsSDKBridge() {
     this.app = null;
     this.connected = false;
@@ -383,7 +408,10 @@
         self.toolResultCallback(extractStructuredWidgetData(result));
       }
     };
-    this.app.onhostcontextchanged = applyHostContext;
+    this.app.onhostcontextchanged = function onHostContextChanged(params) {
+      applyHostContext(params);
+      notifyHostContext(self.app);
+    };
     await this.app.connect();
     this.connected = true;
     try {
@@ -391,12 +419,18 @@
     } catch (_) {
       // Host context is optional.
     }
+    notifyHostContext(this.app);
   };
 
   McpAppsSDKBridge.prototype.callServerTool = async function callServerTool(params) {
     await this.connect();
     var result = await this.app.callServerTool(params);
     return unpackToolResult(result);
+  };
+
+  McpAppsSDKBridge.prototype.callServerToolRaw = async function callServerToolRaw(params) {
+    await this.connect();
+    return this.app.callServerTool(params);
   };
 
   McpAppsSDKBridge.prototype.openLink = async function openLink(url) {
@@ -483,6 +517,14 @@
     return state.attached;
   }
 
+  // Opt-in (options.bridge === 'mcp-apps-sdk'): prefer the official MCP Apps
+  // bridge even when window.openai exists, so a widget can read MCP Apps host
+  // context (for example OpenAI extension fields). Every other widget keeps
+  // the ChatGPT bridge whenever window.openai exists.
+  function canUseSdkBridge() {
+    return Boolean(global.McpApps && global.McpApps.App && global.parent && global.parent !== global);
+  }
+
   function initWidget(options) {
     var render = options.render;
     var getData = options.getData || extractStructuredWidgetData;
@@ -490,9 +532,19 @@
     var resultGate = createResultGate();
     var liveState = { attached: null };
     var activeProtocol = getProtocol();
+    var chatGptFallback = false;
+    if (options.bridge === 'mcp-apps-sdk' && activeProtocol === 'chatgpt' && canUseSdkBridge()) {
+      protocol = 'mcp-apps-sdk';
+      activeProtocol = protocol;
+      chatGptFallback = true;
+    }
+    if (typeof options.onHostContext === 'function') {
+      hostContextListeners.push(options.onHostContext);
+    }
     document.documentElement.setAttribute('data-protocol', activeProtocol);
 
     function showDataAvailability(decoded) {
+      if (options.dataAvailabilityNotice === false) return;
       var records = [decoded, decoded && decoded.data];
       var degraded = records.some(function isPartial(record) {
         return record && (record.degraded === true ||
@@ -524,6 +576,11 @@
       var decoded = extractStructuredWidgetData(result, true);
       var failure = decoded && typeof decoded === 'object' && decoded.ok === false;
       var alert = document.getElementById('orgx-tool-error');
+      if (failure && typeof options.onFailure === 'function' && options.onFailure(decoded) === true) {
+        // The widget renders this failure itself (opt-in).
+        reportSize();
+        return;
+      }
       if (failure) {
         var notice = document.getElementById('orgx-data-availability');
         if (notice) notice.remove();
@@ -565,7 +622,7 @@
       reportSize();
     }
 
-    if (activeProtocol === 'chatgpt') {
+    function startChatGPT() {
       applyTheme(global.openai && global.openai.theme, 'host');
       var initialOutput = global.openai && global.openai.toolOutput;
       if (initialOutput !== null && initialOutput !== undefined) receiveResult(initialOutput);
@@ -585,6 +642,10 @@
         },
         { passive: true }
       );
+    }
+
+    if (activeProtocol === 'chatgpt') {
+      startChatGPT();
     } else if (activeProtocol === 'mcp-apps-sdk' || activeProtocol === 'mcp-apps') {
       render(null);
       var activeBridge = getBridge(activeProtocol === 'mcp-apps-sdk');
@@ -593,6 +654,13 @@
       };
       activeBridge.connect().catch(function onConnectionFailure(error) {
         console.error('[OrgX Widget] Host connection failed:', error);
+        if (!chatGptFallback || !global.openai) return;
+        // The opted-in SDK bridge could not connect: fall back to ChatGPT.
+        if (activeBridge.destroy) activeBridge.destroy();
+        bridge = null;
+        protocol = 'chatgpt';
+        document.documentElement.setAttribute('data-protocol', 'chatgpt');
+        startChatGPT();
       });
     } else {
       render(null);
@@ -653,6 +721,35 @@
       })).then(rejectToolFailure);
     }
     return Promise.reject(hostUnavailableError(name));
+  }
+
+  // Like callTool, but resolves to { data, meta } so a widget can read the
+  // widget-only result _meta (approval tokens) of a refresh it started.
+  function callToolResult(name, args) {
+    var activeProtocol = getProtocol();
+    var finish = function finish(result) {
+      rejectToolFailure(result);
+      var meta = result && typeof result === 'object' && result._meta && typeof result._meta === 'object'
+        ? result._meta
+        : null;
+      return { data: extractStructuredWidgetData(result, true), meta: meta };
+    };
+    if (activeProtocol === 'chatgpt') {
+      if (!global.openai || !global.openai.callTool) return Promise.reject(hostUnavailableError(name));
+      return Promise.resolve(global.openai.callTool(name, args || {})).then(finish);
+    }
+    if (activeProtocol === 'mcp-apps-sdk' || activeProtocol === 'mcp-apps') {
+      return Promise.resolve(getBridge(activeProtocol === 'mcp-apps-sdk').callServerToolRaw({
+        name: name,
+        arguments: args || {},
+      })).then(finish);
+    }
+    return Promise.reject(hostUnavailableError(name));
+  }
+
+  // The connected MCP Apps App instance, or null (ChatGPT, legacy, standalone).
+  function getApp() {
+    return bridge && bridge.app && bridge.connected ? bridge.app : null;
   }
 
   function openWidgetLink(url, event) {
@@ -734,17 +831,20 @@
     bridge = null;
     protocol = null;
     lastResultMeta = null;
+    hostContextListeners = [];
   }
 
   var runtime = {
     LegacyBridge: LegacyBridge,
     McpAppsSDKBridge: McpAppsSDKBridge,
     callTool: callTool,
+    callToolResult: callToolResult,
     detectProtocol: detectProtocol,
     applyTheme: applyTheme,
     extractStructuredWidgetData: extractStructuredWidgetData,
     extractResultTimestamp: extractResultTimestamp,
     extractLifecycleRank: extractLifecycleRank,
+    getApp: getApp,
     getErrorMessage: getErrorMessage,
     getTheme: getTheme,
     getToolResponseMetadata: getToolResponseMetadata,
