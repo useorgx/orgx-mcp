@@ -8,6 +8,9 @@ import {
 } from '../src/orgxSearch';
 
 describe('orgx search pagination', () => {
+  it('rejects malformed collection responses instead of manufacturing zero results', () => {
+    expect(() => normalizeEntitySearchPage({ pagination: { total: 0 } }, {})).toThrow('incomplete search response');
+  });
   it('preserves API cursor pagination in the exact canonical next call', () => {
     const page = normalizeEntitySearchPage(
       {

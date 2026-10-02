@@ -107,15 +107,18 @@
       return result.structuredContent;
     }
     if (result && Array.isArray(result.content)) {
+      var firstText = null;
       for (var index = 0; index < result.content.length; index += 1) {
         var item = result.content[index];
         if (!item || item.type !== 'text' || !item.text) continue;
+        if (firstText === null) firstText = item.text;
         try {
           return JSON.parse(item.text);
         } catch (_) {
-          if (plainTextObject) return { text: item.text };
+          // A host may prepend a summary before the structured JSON block.
         }
       }
+      if (plainTextObject && firstText !== null) return { text: firstText };
     }
     if (typeof result === 'string') {
       try {
@@ -125,6 +128,43 @@
       }
     }
     return result;
+  }
+
+  // Search shares a template with decision history and recommendations. The
+  // host can deliver their payload directly, as MCP JSON, or inside the
+  // standard {ok, data, summary} envelope. Keep this specific to search:
+  // other templates intentionally read their own `data` property.
+  function extractSearchWidgetData(result) {
+    var value = extractStructuredWidgetData(result, true);
+    for (var depth = 0; depth < 5; depth += 1) {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) break;
+      if (value.ok === false || value.error || value.isError === true) return value;
+      if (Array.isArray(value.results) || Array.isArray(value.decisions) ||
+          Array.isArray(value.recommendations) || value.next_action) return value;
+      var groups = value.results_by_type;
+      if (groups && typeof groups === 'object' && !Array.isArray(groups) &&
+          Object.keys(groups).every(function(kind) { return Array.isArray(groups[kind]); })) {
+        var rows = [];
+        Object.keys(groups).forEach(function(kind) {
+          groups[kind].forEach(function(row) {
+            if (row && typeof row === 'object' && !Array.isArray(row)) {
+              rows.push(Object.assign({}, row, { type: typeof row.type === 'string' ? row.type : kind.replace(/s$/, '') }));
+            }
+          });
+        });
+        return Object.assign({}, value, { results: rows });
+      }
+      if (value._meta && value._meta['orgx/searchPayload']) {
+        value = value._meta['orgx/searchPayload'];
+        continue;
+      }
+      if (value.data && typeof value.data === 'object' && !Array.isArray(value.data)) {
+        value = extractStructuredWidgetData(value.data, true);
+        continue;
+      }
+      break;
+    }
+    return value;
   }
 
   function toolFailureError(data) {
@@ -625,7 +665,7 @@
     function startChatGPT() {
       applyTheme(global.openai && global.openai.theme, 'host');
       var initialOutput = global.openai && global.openai.toolOutput;
-      if (initialOutput !== null && initialOutput !== undefined) receiveResult(initialOutput);
+      if (initialOutput !== null && initialOutput !== undefined || options.getData) receiveResult(initialOutput);
       else render(null);
       observeChatGPTSize();
       global.addEventListener(
@@ -634,7 +674,12 @@
           var globals = event.detail && event.detail.globals;
           if (!globals) return;
           if (globals.theme !== undefined) applyTheme(globals.theme, 'host');
-          if (globals.toolOutput === undefined) return;
+          if (globals.toolOutput === undefined) {
+            if (options.getData && globals.toolResponseMetadata !== undefined) {
+              receiveResult(global.openai && global.openai.toolOutput);
+            }
+            return;
+          }
           // A host may briefly publish null while it rehydrates. Keep the
           // last known result visible instead of replacing it with an empty
           // or loading-looking card.
@@ -706,6 +751,21 @@
     }
     if (!meta || typeof meta !== 'object') return null;
     return key ? (meta[key] === undefined ? null : meta[key]) : meta;
+  }
+
+  var reportedSearchEvents = {};
+  function reportSearchWidgetEvent(code) {
+    if (['rendered', 'response_timeout', 'incomplete_response', 'tool_error', 'page_error'].indexOf(code) === -1 || reportedSearchEvents[code]) return;
+    var meta = getToolResponseMetadata('orgx/widgetDiagnostics');
+    if (!meta || typeof meta.grant !== 'string' || typeof meta.endpoint !== 'string' || !global.fetch) return;
+    // Only the configured MCP origins may receive the scoped telemetry grant.
+    if (!/^https:\/\/mcp(?:-staging)?\.useorgx\.com\/telemetry\/search-widget$/.test(meta.endpoint)) return;
+    reportedSearchEvents[code] = true;
+    global.fetch(meta.endpoint, {
+      method: 'POST', credentials: 'omit',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ grant: meta.grant, code: code, protocol: getProtocol() }),
+    }).catch(function () { /* reporting must not break search */ });
   }
 
   function callTool(name, args) {
@@ -832,6 +892,7 @@
     protocol = null;
     lastResultMeta = null;
     hostContextListeners = [];
+    reportedSearchEvents = {};
   }
 
   var runtime = {
@@ -842,6 +903,7 @@
     detectProtocol: detectProtocol,
     applyTheme: applyTheme,
     extractStructuredWidgetData: extractStructuredWidgetData,
+    extractSearchWidgetData: extractSearchWidgetData,
     extractResultTimestamp: extractResultTimestamp,
     extractLifecycleRank: extractLifecycleRank,
     getApp: getApp,
@@ -853,6 +915,7 @@
     openWidgetLink: openWidgetLink,
     persistWidgetState: persistWidgetState,
     reportSize: reportSize,
+    reportSearchWidgetEvent: reportSearchWidgetEvent,
     requestDisplayMode: requestDisplayMode,
     sendFollowUpMessage: sendFollowUpMessage,
     updateModelContext: updateModelContext,

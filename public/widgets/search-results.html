@@ -739,8 +739,15 @@
     var loadingSettled = false;
     var bootError = '';
     var bootTimeoutId = null;
+    var sawIncompletePayload = false;
     var applyBootPayload = function(payload) {
+      payload = window.OrgXWidgetRuntime.extractSearchWidgetData(payload);
       if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return;
+      // In-progress host globals are not a completed search. Wait for a
+      // supported result/error, and keep any last good result visible.
+      if (!payload.error && payload.ok !== false && !Array.isArray(payload.results) &&
+          !Array.isArray(payload.decisions) && !Array.isArray(payload.recommendations) &&
+          !payload.next_action) { sawIncompletePayload = true; return; }
       var commit = function() {
         data = payload;
         bootError = '';
@@ -761,6 +768,7 @@
         if (loadingSettled) return;
         loadingSettled = true;
         bootError = 'OrgX did not receive a search response. Check the connection and retry the search.';
+        window.OrgXWidgetRuntime.reportSearchWidgetEvent(sawIncompletePayload ? 'incomplete_response' : 'response_timeout');
         isLoading = false;
         render();
       }, SEARCH_RESPONSE_TIMEOUT_MS);
@@ -778,12 +786,13 @@
       render();
       try {
         const response = await callTool('orgx_search', previous.next_call.args || {});
-        const next = response && (response.structuredContent || response);
+        const next = window.OrgXWidgetRuntime.extractSearchWidgetData(response);
         if (!next || next.error || response.isError || !Array.isArray(next.results)) throw new Error('Search did not return a result page.');
         if (data !== previous) return;
         data = { ...previous, ...next, results: previous.results.concat(next.results) };
         currentPage = Math.floor(previous.results.length / itemsPerPage) + 1;
       } catch (_) {
+        window.OrgXWidgetRuntime.reportSearchWidgetEvent('page_error');
         loadMoreError = 'More results could not be loaded. Your current results are preserved. Try again.';
       } finally {
         loadingMore = false;
@@ -895,8 +904,9 @@
 
     var render = () => {
       if(isLoading) return;
-      if(data && data.error) {
-        var errorMessage = window.OrgXWidgetRuntime.getErrorMessage(data.error, 'Organizational memory is temporarily unavailable.');
+      if(data && (data.error || data.ok === false)) {
+        window.OrgXWidgetRuntime.reportSearchWidgetEvent('tool_error');
+        var errorMessage = window.OrgXWidgetRuntime.getErrorMessage(data.error || data, 'Organizational memory is temporarily unavailable.');
         injectHtml(unavailable(errorMessage));
         return;
       }
@@ -905,10 +915,7 @@
         injectHtml(unavailable(unavailableMessage));
         return;
       }
-      if (typeof data.query === 'string' && !Array.isArray(data.results)) {
-        injectHtml(unavailable('OrgX returned an incomplete search response. Retry the search.'));
-        return;
-      }
+      window.OrgXWidgetRuntime.reportSearchWidgetEvent('rendered');
       var recommendationMode = Array.isArray(data.recommendations) || !!data.next_action;
       var historyMode = Array.isArray(data.decisions) || data.scope === 'decisions' || !!data.topic;
 
@@ -1041,7 +1048,18 @@
     });
 
     if(isDemo) applyBootPayload(data);
-    else initWidget({ render: d => { applyBootPayload(d); } });
+    else initWidget({
+      onFailure: function(failure) { applyBootPayload(failure); return true; },
+      getData: function(result) {
+        var payload = window.OrgXWidgetRuntime.extractSearchWidgetData(result);
+        if (payload && (payload.error || payload.ok === false || Array.isArray(payload.results) ||
+            Array.isArray(payload.decisions) || Array.isArray(payload.recommendations) || payload.next_action)) return payload;
+        // Widget-only copy survives hosts that expose only the summary as
+        // toolOutput. Never use it to replace an explicit failure.
+        return window.OrgXWidgetRuntime.getToolResponseMetadata('orgx/searchPayload') || payload;
+      },
+      render: d => { applyBootPayload(d); }
+    });
   </script>
 </body>
 </html>
