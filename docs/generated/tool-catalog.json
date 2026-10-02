@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-02T15:16:15.919Z",
-  "sourceHash": "ad8b57564407bc80",
+  "generatedAt": "2026-10-02T16:02:47.492Z",
+  "sourceHash": "b6000c17d02a1cff",
   "version": "1.0.0",
   "totalTools": 92,
   "categories": [
@@ -6403,7 +6403,7 @@
     {
       "id": "improve_plan",
       "title": "Improve Plan",
-      "description": "Improve a plan with AI suggestions based on prior patterns and best practices. Also known as: plan critique, planning feedback, refine roadmap. USE WHEN: user wants feedback on a plan draft. NEXT: Apply suggestions via record_plan_edit. DO NOT USE: without an active plan session — call start_plan_session first.",
+      "description": "Improve a plan with AI suggestions based on prior patterns and best practices. Also known as: plan critique, planning feedback, refine roadmap. USE WHEN: user wants feedback on a plan draft. NEXT: Apply suggestions via record_plan_edit. DO NOT USE: without an active plan session — call start_plan_session first. Alias of orgx_plan (action=improve).",
       "category": "Planning",
       "inputSchema": {
         "type": "object",
@@ -6512,7 +6512,7 @@
     {
       "id": "start_plan_session",
       "title": "Start Plan Session",
-      "description": "Start a multi-agent planning session that breaks a goal into projects, tasks, owners, and agent assignments. Also known as: feature planning, roadmap planning, planning workflow. USE WHEN: user begins planning a new feature or initiative. NEXT: Use improve_plan for suggestions, record_plan_edit to track changes, complete_plan when done. DO NOT USE: for creating initiative hierarchies — use scaffold_initiative instead.",
+      "description": "Start a multi-agent planning session that breaks a goal into projects, tasks, owners, and agent assignments. Also known as: feature planning, roadmap planning, planning workflow. USE WHEN: user begins planning a new feature or initiative. NEXT: Use improve_plan for suggestions, record_plan_edit to track changes, complete_plan when done. DO NOT USE: for creating initiative hierarchies — use scaffold_initiative instead. Alias of orgx_plan (action=start).",
       "category": "Planning",
       "inputSchema": {
         "type": "object",
