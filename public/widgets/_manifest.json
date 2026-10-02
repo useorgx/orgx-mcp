@@ -217,12 +217,15 @@
     },
     "scaffolded-initiative": {
       "file": "public/widgets/scaffolded-initiative.html",
-      "bytes": 145689,
-      "hash": "1d1358c52f2f",
+      "bytes": 64726,
+      "hash": "2237da2ecc7e",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
+        "shared/agent-identity.js",
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
+        "shared/kit/ox-elements.js",
+        "shared/kit/ox-tokens.css",
         "shared/live-machine.js",
         "shared/live-panel.js",
         "shared/live-store.js",

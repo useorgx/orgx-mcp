@@ -45,11 +45,11 @@ describe('widget disclosure UX', () => {
     expect(source).toContain('(nextTrigger || trigger)?.focus();');
   });
 
-  it('keeps scaffold walkthrough controls touch-sized', () => {
+  it('keeps scaffold workstream disclosure touch-sized', () => {
     const source = readWidget('scaffolded-initiative');
-
-    expect(source).toMatch(/\.scaffold-state__dot\s*\{[\s\S]*?width:\s*44px;[\s\S]*?height:\s*44px;/);
-    expect(source).toContain('.scaffold-state__dot::before');
+    expect(source).toMatch(/\.node-toggle\s*\{[\s\S]*?width:\s*44px;[\s\S]*?height:\s*44px;/);
+    expect(source).toContain('aria-expanded="${open}"');
+    expect(source).toContain("btn.addEventListener('click', () => window.toggleNode(btn))");
   });
 
   it('requires an explicit live scaffold stream before connecting', () => {
