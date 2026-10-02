@@ -45,14 +45,33 @@ describe('artifact review actions in the kit footer', () => {
     expect(changes.getAttribute('aria-controls')).toBe('artifact-change-composer');
   });
 
-  it('approves on a full hold with the same orgx_act call', async () => {
-    const { dom, doc, callTool } = mount('state=ready');
-    const approve = doc.querySelector('[data-action="approve"]')!;
-    approve.dispatchEvent(new dom.window.Event('pointerdown', { bubbles: true, cancelable: true }));
-    await wait(900);
+  it('approves on a single click with the same orgx_act call, once', async () => {
+    const { doc, callTool } = mount('state=ready');
+    const footer = doc.getElementById('reviewFooter')!;
+    expect(footer.getAttribute('detail')).toBe('recorded in OrgX');
+    expect(footer.hasAttribute('hold')).toBe(false);
+    const approve = doc.querySelector<HTMLButtonElement>('[data-action="approve"]')!;
+    expect(approve.hasAttribute('aria-describedby')).toBe(false);
+    approve.click();
+    approve.click();
+    await wait(20);
+    expect(callTool).toHaveBeenCalledTimes(1);
     expect(callTool).toHaveBeenCalledWith('orgx_act', { type: 'artifact', id: 'ART-DEMO', action: 'approve' });
     await wait(400);
     expect(doc.body.textContent).toContain('Approval recorded');
+  });
+
+  it('hands Approve back after a failure so one more click retries', async () => {
+    const callTool = vi.fn().mockRejectedValueOnce(new Error('refused')).mockResolvedValue({});
+    const { doc } = mount('state=ready', callTool);
+    const approve = () => doc.querySelector<HTMLButtonElement>('[data-action="approve"]')!;
+    approve().click();
+    await wait(20);
+    expect(doc.getElementById('reviewFooter')!.getAttribute('state')).toBe('failed');
+    expect(approve().disabled).toBe(false);
+    approve().click();
+    await wait(20);
+    expect(callTool).toHaveBeenCalledTimes(2);
   });
 
   it('puts request changes first when approval is held, and files the same decision', async () => {

@@ -56,6 +56,8 @@ export const WIDGET_OUTPUT_SCHEMAS = {
       action: z.enum(['approved', 'rejected']).optional(),
       status: z.string().optional(),
       surface: z.string().optional(),
+      option_id: z.string().nullable().optional(),
+      option_ids: z.array(z.string()).nullable().optional(),
       message: z.string().optional(),
     })
     .strict(),
@@ -101,6 +103,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
             initiative_title: z.string().nullable(),
             blocked: z.boolean(),
             decide_in_orgx_reason: z.string().nullable(),
+            option_count: z.number(),
             url: z.string(),
           })
           .strict()
@@ -131,6 +134,19 @@ export const WIDGET_OUTPUT_SCHEMAS = {
           consequence_if_rejected: z.string().nullable(),
           blocked: z.boolean(),
           decide_in_orgx_reason: z.string().nullable(),
+          options: z.array(z.object({ id: z.string(), label: z.string() }).strict()),
+          multiselect: z.boolean(),
+          widget_actions: z
+            .array(
+              z
+                .object({
+                  kind: z.enum(['approve', 'reject', 'option']),
+                  label: z.string(),
+                  option_id: z.string().nullable(),
+                })
+                .strict()
+            )
+            .nullable(),
           url: z.string(),
         })
         .strict()

@@ -8,6 +8,7 @@ import {
   buildPanelSnapshot,
   handlePanelSnapshot,
   PANEL_EVIDENCE_TITLE_MAX,
+  PANEL_OPTION_LABEL_MAX,
   PANEL_TITLE_MAX,
   summarizePanelProof,
   type PanelSurfaceHost,
@@ -170,6 +171,56 @@ describe('buildPanelSnapshot', () => {
     expect(snapshot.focus!.evidence[0]!.source_url).toBe('https://github.com/acme/repo/actions/runs/1');
     expect(snapshot.focus!.evidence[1]!.source_url).toBeNull();
     expect(snapshot.focus!.consequence_if_approved).toBe('The deploy job starts.');
+  });
+
+  it('carries the options, multiselect flag and widget actions the server lists, clipped', () => {
+    const snapshot = buildPanelSnapshot({
+      workspace: { id: SESSION_WS, name: 'Acme' },
+      decisions: [
+        decision(D2, 'critical', '2026-09-30T10:00:00.000Z', {
+          options: [
+            { id: 'eu', label: 'EU', description: 'not carried' },
+            { id: 'us', label: `US ${'x'.repeat(200)}` },
+            'Third as a string',
+          ],
+          selection: 'multi',
+        }),
+        decision(D3, 'high', '2026-09-29T10:00:00.000Z', {
+          widget_actions: [
+            { action: 'approve', option_id: 'ship', label: 'Ship it' },
+            { action: 'approve', option_id: 'wait', label: 'Wait' },
+            { action: 'reject', label: 'Push back' },
+            { action: 'mystery', label: 'Dropped' },
+          ],
+        }),
+        decision(D1, 'medium', '2026-09-27T10:00:00.000Z'),
+      ],
+      artifacts: [],
+    });
+    expect(snapshot.focus!.options.map((o) => o.id)).toEqual(['eu', 'us', 'option-3']);
+    expect(snapshot.focus!.options[2]!.label).toBe('Third as a string');
+    expect(Array.from(snapshot.focus!.options[1]!.label).length).toBeLessThanOrEqual(PANEL_OPTION_LABEL_MAX);
+    expect(JSON.stringify(snapshot.focus)).not.toContain('not carried');
+    expect(snapshot.focus!.multiselect).toBe(true);
+    expect(snapshot.focus!.widget_actions).toBeNull();
+    expect(snapshot.queue.map((item) => item.option_count)).toEqual([3, 2, 0]);
+
+    const second = buildPanelSnapshot({
+      workspace: { id: SESSION_WS, name: 'Acme' },
+      decisions: [decision(D3, 'high', '2026-09-29T10:00:00.000Z', {
+        widget_actions: [
+          { action: 'approve', option_id: 'ship', label: 'Ship it' },
+          { action: 'reject', label: 'Push back' },
+          { action: 'mystery', label: 'Dropped' },
+        ],
+      })],
+      artifacts: [],
+    });
+    expect(second.focus!.widget_actions).toEqual([
+      { kind: 'option', label: 'Ship it', option_id: 'ship' },
+      { kind: 'reject', label: 'Push back', option_id: null },
+    ]);
+    expect(second.focus!.multiselect).toBe(false);
   });
 
   it('never carries evidence bodies, rationale, notes, emails, costs or tokens', () => {

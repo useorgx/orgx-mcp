@@ -46,6 +46,9 @@ export const PANEL_TITLE_MAX = 160;
 export const PANEL_QUESTION_MAX = 500;
 export const PANEL_EVIDENCE_TITLE_MAX = 80;
 export const PANEL_TEXT_MAX = 280;
+/** Options the panel can render as buttons for one decision. */
+export const PANEL_OPTION_LIMIT = 12;
+export const PANEL_OPTION_LABEL_MAX = 80;
 /** Pending decisions read per snapshot: enough to find a selected item. */
 export const PANEL_DECISION_READ_LIMIT = 25;
 export const PANEL_ARTIFACT_READ_LIMIT = 50;
@@ -112,7 +115,25 @@ export interface PanelQueueItem {
   blocked: boolean;
   /** Present only when OrgX says this one has to be decided in the app. */
   decide_in_orgx_reason: string | null;
+  /** How many options the server offers; a row with options opens the packet to choose. */
+  option_count: number;
   url: string;
+}
+
+/** One option the person can pick, as the server sent it. */
+export interface PanelOption {
+  id: string;
+  label: string;
+}
+
+/**
+ * One action the pending list says the person can take here. The panel
+ * renders these instead of deciding from the decision's type.
+ */
+export interface PanelWidgetAction {
+  kind: 'approve' | 'reject' | 'option';
+  label: string;
+  option_id: string | null;
 }
 
 export interface PanelFocus {
@@ -133,6 +154,12 @@ export interface PanelFocus {
   consequence_if_rejected: string | null;
   blocked: boolean;
   decide_in_orgx_reason: string | null;
+  /** The decision's options (buttons when there are two or more). */
+  options: PanelOption[];
+  /** True when the person may choose several options and confirm them together. */
+  multiselect: boolean;
+  /** The actions the server lists for this decision, when it lists them; preferred over options. */
+  widget_actions: PanelWidgetAction[] | null;
   url: string;
 }
 
@@ -227,7 +254,79 @@ interface NormalizedDecision {
   initiativeTitle: string | null;
   blocked: boolean;
   decideInOrgxReason: string | null;
+  options: PanelOption[];
+  multiselect: boolean;
+  widgetActions: PanelWidgetAction[] | null;
   packet: Record<string, unknown> | null;
+}
+
+/** Options as the pending list carries them (strings or {id,label}). */
+export function normalizePanelOptions(value: unknown): PanelOption[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  const options: PanelOption[] = [];
+  value.forEach((item, index) => {
+    const record = asRecord(item);
+    const id =
+      (record && (str(record.id) ?? str(record.option_id) ?? str(record.action_id))) ??
+      `option-${index + 1}`;
+    const label = clipText(
+      record
+        ? record.label ?? record.title ?? record.name ?? record.action
+        : item,
+      PANEL_OPTION_LABEL_MAX
+    );
+    if (!label || seen.has(id)) return;
+    seen.add(id);
+    options.push({ id, label });
+  });
+  return options.slice(0, PANEL_OPTION_LIMIT);
+}
+
+/** True when the payload marks the decision as choose-several. */
+export function isPanelMultiselect(record: Record<string, unknown>): boolean {
+  const mode = [record.selection, record.selection_mode, record.selectionMode, record.shape]
+    .map((value) => (typeof value === 'string' ? value.trim().toLowerCase() : ''))
+    .find(Boolean);
+  return (
+    record.multiselect === true ||
+    record.multi_select === true ||
+    record.allow_multiple === true ||
+    mode === 'multi' ||
+    mode === 'multiple' ||
+    mode === 'multiselect' ||
+    mode === 'option_multiselect'
+  );
+}
+
+/** The server's list of actions for a decision, or null when it sends none. */
+export function normalizePanelWidgetActions(value: unknown): PanelWidgetAction[] | null {
+  const list = Array.isArray(value) ? value : asRecord(value)?.actions;
+  if (!Array.isArray(list)) return null;
+  const actions: PanelWidgetAction[] = [];
+  for (const raw of list) {
+    const record = asRecord(raw);
+    if (!record) continue;
+    const verb = (str(record.action) ?? str(record.kind) ?? str(record.type) ?? '').toLowerCase();
+    const optionId = str(record.option_id) ?? str(record.optionId);
+    const kind: PanelWidgetAction['kind'] | null = /reject|decline|send_back|sendback|request_changes/.test(verb)
+      ? 'reject'
+      : optionId || verb === 'option' || verb === 'choose' || verb === 'select'
+        ? 'option'
+        : /approve|accept|confirm/.test(verb)
+          ? 'approve'
+          : null;
+    if (!kind) continue;
+    const resolvedOption = kind === 'option' ? optionId ?? str(record.id) : null;
+    if (kind === 'option' && !resolvedOption) continue;
+    const label =
+      clipText(record.label ?? record.title ?? record.name, PANEL_OPTION_LABEL_MAX) ??
+      (kind === 'reject' ? 'Send back' : kind === 'approve' ? 'Approve' : null);
+    if (!label) continue;
+    actions.push({ kind, label, option_id: resolvedOption });
+    if (actions.length >= PANEL_OPTION_LIMIT + 2) break;
+  }
+  return actions.length ? actions : null;
 }
 
 function normalizeDecision(input: unknown): NormalizedDecision | null {
@@ -257,6 +356,11 @@ function normalizeDecision(input: unknown): NormalizedDecision | null {
     initiativeTitle: clipText(initiativeRef?.label, PANEL_TITLE_MAX),
     blocked: current.blocked === true,
     decideInOrgxReason: str(record.decide_in_orgx_reason),
+    options: normalizePanelOptions(
+      Array.isArray(record.options) && record.options.length ? record.options : packet?.options
+    ),
+    multiselect: isPanelMultiselect(record),
+    widgetActions: normalizePanelWidgetActions(record.widget_actions),
     packet,
   };
 }
@@ -277,6 +381,9 @@ function toQueueItem(decision: NormalizedDecision): PanelQueueItem {
     initiative_title: decision.initiativeTitle,
     blocked: decision.blocked,
     decide_in_orgx_reason: decision.decideInOrgxReason,
+    option_count: decision.widgetActions
+      ? decision.widgetActions.filter((action) => action.kind === 'option').length
+      : decision.options.length,
     url: decisionUrl(decision),
   };
 }
@@ -315,6 +422,9 @@ function toFocus(decision: NormalizedDecision): PanelFocus {
     consequence_if_rejected: clipText(consequences.reject, PANEL_TEXT_MAX),
     blocked: decision.blocked,
     decide_in_orgx_reason: decision.decideInOrgxReason,
+    options: decision.options,
+    multiselect: decision.multiselect,
+    widget_actions: decision.widgetActions,
     url: decisionUrl(decision),
   };
 }
