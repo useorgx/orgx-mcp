@@ -493,6 +493,11 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  /* A widget that turns the entrance off (`animation: none`) must still
+     show the element the animation would have revealed. */
+  .animate-in {
+    opacity: 1;
+  }
 }
 /* Shared tool failures replace misleading empty/loading states in every host. */
 .widget-tool-error,
