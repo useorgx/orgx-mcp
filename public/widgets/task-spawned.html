@@ -5,8 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Entity Spawned - OrgX</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='15' fill='none' stroke='%236366f1' stroke-width='6'/%3E%3Cpath d='M24 32h16' stroke='%236366f1' stroke-width='6' stroke-linecap='round'/%3E%3Cpath d='M32 24v16' stroke='%236366f1' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="shared/kit/ox-tokens.css" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
+  <script src="shared/kit/ox-elements.js"></script>
+  <script src="shared/agent-identity.js"></script>
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/widget-state.js"></script>
@@ -15,544 +18,108 @@
   <script src="shared/live-store.js"></script>
   <script src="shared/live-panel.js"></script>
   <style>
-      :root, :root[data-theme="light"] {
-        --ox-bg: #f8fafc;
-        --ox-panel: #ffffff;
-        --ox-border: rgba(0, 0, 0, 0.08);
-        --ox-border-strong: rgba(0, 0, 0, 0.15);
-        --ox-text: #0f172a;
-        --ox-text-muted: #64748b;
-        --ox-well-bg: #f1f5f9;
-        --ox-well-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
-      }
-      
-      @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) {
-          --ox-bg: #02040a;
-          --ox-panel: rgba(10, 15, 22, 0.95);
-          --ox-border: rgba(255, 255, 255, 0.08);
-          --ox-border-strong: rgba(255, 255, 255, 0.15);
-          --ox-text: #f8fafc;
-          --ox-text-muted: rgba(255, 255, 255, 0.5);
-          --ox-well-bg: rgba(0,0,0,0.3);
-          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
-        }
-      }
-      
-      :root[data-theme="dark"] {
-          --ox-bg: #02040a;
-          --ox-panel: rgba(10, 15, 22, 0.95);
-          --ox-border: rgba(255, 255, 255, 0.08);
-          --ox-border-strong: rgba(255, 255, 255, 0.15);
-          --ox-text: #f8fafc;
-          --ox-text-muted: rgba(255, 255, 255, 0.5);
-          --ox-well-bg: rgba(0,0,0,0.3);
-          --ox-well-shadow: inset 0 2px 10px rgba(0,0,0,0.4);
-      }
-      
-      :root {
-        --ox-lime: #a3e635; /* Will be overwritten by specific widgets */
-        --ox-teal: #0d9488;
-        --ox-danger: #e11d48;
-        --ox-warning: #d97706;
-        --ox-iris: #4f46e5;
-        --ox-grid: rgba(0, 0, 0, 0.03);
-        --ox-shadow: 0 12px 32px -12px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.04);
-        --ox-font: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
-        --ox-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
-      }
-      
-      @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) {
-          --ox-lime: #D4ED31;
-          --ox-teal: #00C9A7;
-          --ox-danger: #F43F5E;
-          --ox-warning: #FBBF24;
-          --ox-iris: #6366f1;
-          --ox-grid: rgba(255, 255, 255, 0.02);
-          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
-        }
-      }
-      
-      :root[data-theme="dark"] {
-          --ox-lime: #D4ED31;
-          --ox-teal: #00C9A7;
-          --ox-danger: #F43F5E;
-          --ox-warning: #FBBF24;
-          --ox-iris: #6366f1;
-          --ox-grid: rgba(255, 255, 255, 0.02);
-          --ox-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
-      }
-
-      /* Smooth UX Transitions */
-      .skeleton-wrapper { transition: opacity 0.3s ease; }
-      @keyframes fadeSlideUp {
-        from { opacity: 0; transform: translateY(16px) scale(0.98); filter: blur(4px); }
-        to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
-      }
-      .animate-in { opacity: 0; animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-      .delay-1 { animation-delay: 0.1s; }
-      .delay-2 { animation-delay: 0.2s; }
-      .delay-3 { animation-delay: 0.3s; }
-      
-      .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 24px; text-align: center; background: var(--ox-well-bg); border: 1px dashed var(--ox-border-strong); border-radius: 16px; margin: 16px 0; }
-      .empty-icon { width: 48px; height: 48px; border-radius: 50%; background: rgba(var(--ox-primary-rgb), 0.1); color: var(--ox-primary); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; box-shadow: 0 0 20px rgba(var(--ox-primary-rgb), 0.2); }
-      .empty-icon svg { width: 24px; height: 24px; }
-      .empty-title { font-size: 1.1rem; font-weight: 600; color: var(--ox-text); margin-bottom: 8px; }
-      .empty-desc { font-size: 0.9rem; color: var(--ox-text-muted); line-height: 1.5; max-width: 280px; }
-
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-
-      body {
-        font-family: var(--ox-font);
-        background: var(--ox-bg);
-        color: var(--ox-text);
-        padding: 12px 12px 18px;
-        -webkit-font-smoothing: antialiased;
-        min-height: 100vh;
-        overflow-x: hidden;
-      }
-
-      body::before {
-        content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        background: radial-gradient(circle at 50% 0%, rgba(var(--ox-primary-rgb), 0.08), transparent 60%),
-                    linear-gradient(var(--ox-grid) 1px, transparent 1px),
-                    linear-gradient(90deg, var(--ox-grid) 1px, transparent 1px);
-        background-size: 100% 100%, 20px 20px, 20px 20px;
-        z-index: -1; pointer-events: none;
-      }
-
-      .container { max-width: 620px; margin: 0 auto; position: relative; }
-
-      /* 100x Structural Components */
-      .ox-card {
-        background: var(--ox-panel);
-        border: 1px solid var(--ox-border);
-        border-radius: 16px;
-        box-shadow: var(--ox-shadow);
-        position: relative;
-        overflow: hidden;
-        margin-bottom: 16px;
-      }
-      
-      .ox-card-inner { padding: 20px; }
-
-      .ox-card::after {
-        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(var(--ox-primary-rgb), 0.5), transparent);
-        opacity: 0.8;
-      }
-
-      .ox-well {
-        background: var(--ox-well-bg);
-        border: 1px solid var(--ox-border);
-        border-radius: 10px;
-        padding: 12px 16px;
-        box-shadow: var(--ox-well-shadow);
-      }
-
-      .ox-eyebrow {
-        font-family: var(--ox-mono); font-size: 0.65rem; text-transform: uppercase;
-        letter-spacing: 0.1em; color: var(--ox-text-muted); font-weight: 600;
-      }
-      
-      .ox-title { font-size: 1.15rem; font-weight: 600; letter-spacing: -0.02em; color: var(--ox-text); line-height: 1.3; }
-      .ox-value { font-size: 1.5rem; font-weight: 500; font-family: var(--ox-mono); letter-spacing: -0.03em; color: var(--ox-text); }
-      .ox-text { font-size: 0.9rem; line-height: 1.5; color: var(--ox-text-muted); }
-
-      .ox-badge {
-        display: inline-flex; align-items: center; gap: 6px;
-        padding: 4px 10px; border-radius: 6px; font-family: var(--ox-mono); font-size: 0.65rem;
-        text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;
-        background: rgba(var(--ox-color-rgb), 0.1); color: var(--ox-color);
-        border: 1px solid rgba(var(--ox-color-rgb), 0.2);
-      }
-
-      .skeleton-line {
-        background: linear-gradient(90deg, var(--ox-border) 25%, rgba(var(--ox-primary-rgb),0.1) 50%, var(--ox-border) 75%);
-        background-size: 200% 100%; animation: shimmer 2s infinite linear; border-radius: 4px;
-      }
-      @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-      
-
+    /* Creation mode keeps its iris identity; the canvas Q2 card supplies the shape. */
     :root { --ox-primary: #6366f1; --ox-primary-rgb: 99, 102, 241; }
-    
-    .radar-container { position: relative; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; }
-    .radar-dot { width: 12px; height: 12px; background: var(--ox-primary); border-radius: 50%; box-shadow: 0 0 15px var(--ox-primary); position: relative; z-index: 10; }
-    .radar-ring { position: absolute; inset: 0; border: 2px solid var(--ox-primary); border-radius: 50%; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
-    @keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }
 
-    .task-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
-    .well-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px; }
-    
-    .platform-links {
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 12px 12px 18px;
+      min-height: 100vh;
+      overflow-x: hidden;
+      font-family: var(--ox-font);
+      -webkit-font-smoothing: antialiased;
+    }
+    .container { max-width: 640px; margin: 0 auto; position: relative; }
+
+    /* The footer's primary is the one amber action, whatever the widget accent. */
+    ox-footer { --ox-primary: #fbbf24; }
+
+    /* Q2: one card. Header line, the work, its consequence, its rows, one footer. */
+    .wcard {
+      position: relative;
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      margin-top: 24px;
-      padding-top: 24px;
-      border-top: 1px solid var(--ox-border);
+      background: var(--ox-panel);
+      border: 1px solid var(--ox-border);
+      border-radius: 16px;
+      box-shadow: var(--ox-shadow);
+      --edge-rgb: 100, 116, 139;
     }
-
-    .platform-link {
-      width: 100%;
-      justify-content: space-between;
-      font-size: 0.86rem;
-      font-weight: 600;
-      color: var(--ox-text);
-    }
-
-    .platform-link__meta {
-      opacity: 0.68;
-      font-family: var(--ox-mono);
-      font-size: 0.7rem;
-      letter-spacing: 0.03em;
-    }
-
-    .dispatch-note {
-      margin-bottom: 18px;
-      padding: 12px 14px;
-      border-radius: 12px;
-      border: 1px solid rgba(var(--ox-primary-rgb), 0.2);
-      background: rgba(var(--ox-primary-rgb), 0.08);
-      color: var(--ox-text);
-      line-height: 1.5;
-    }
-
-    .dispatch-value {
-      font-size: 0.95rem;
-      font-weight: 500;
-      color: var(--ox-text);
-      line-height: 1.4;
-    }
-
-    .dispatch-value--pending {
-      color: var(--ox-text-muted);
-      font-style: italic;
-    }
-
-    .avatar-image {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    .avatar-fallback {
+    .wcard::after {
+      content: "";
       position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: var(--ox-mono);
-      font-weight: 700;
-      color: var(--ox-primary);
-      background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), 0.12), rgba(var(--ox-primary-rgb), 0.04));
-    }
-
-    .spawn-avatar {
-      position: relative;
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      overflow: hidden;
-      border: 1px solid rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.24);
-      box-shadow:
-        0 0 0 1px rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.1) inset,
-        0 0 18px rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.18);
-      flex-shrink: 0;
-      background: linear-gradient(180deg, rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.14), rgba(var(--agent-accent-rgb, var(--ox-primary-rgb)), 0.05));
-    }
-
-    .deep-link {
-      color: var(--ox-primary);
-      min-height: 40px;
-      padding-inline: 14px;
-      font-size: 0.82rem;
-    }
-
-    @media (max-width: 560px) {
-      .dispatch-header {
-        flex-direction: column;
-        align-items: flex-start !important;
-      }
-
-      .agent-row {
-        align-items: flex-start !important;
-      }
-
-      .meta-grid {
-        grid-template-columns: 1fr !important;
-      }
-
-      .ox-title {
-        overflow-wrap: anywhere;
-      }
-
-      .widget-footer {
-        flex-direction: column;
-        align-items: stretch !important;
-        gap: 12px;
-      }
-
-      .deep-link {
-        width: 100%;
-      }
-    }
-
-    /* Dispatch receipt: one execution spine, no nested metadata cards. */
-    .dispatch-receipt {
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-    }
-    .dispatch-hero {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 12px;
-      align-items: start;
-      padding-bottom: 14px;
-    }
-    .dispatch-state {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      min-height: 32px;
-      padding: 0 10px;
-      border: 1px solid currentColor;
-      border-radius: 999px;
-      background: color-mix(in srgb, currentColor 10%, transparent);
-      color: var(--ox-primary);
-      font: 700 0.64rem var(--ox-mono);
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-    }
-    .dispatch-state__dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: currentColor;
-      box-shadow: 0 0 0 5px rgba(var(--ox-primary-rgb), 0.1);
-      animation: receiptPulse 2.2s ease-in-out infinite;
-    }
-    .dispatch-state--complete {
-      color: var(--ox-teal);
-    }
-    .dispatch-state--complete .dispatch-state__dot { animation: none; }
-    @keyframes receiptPulse { 50% { opacity: .45; } }
-    .dispatch-spine {
-      position: relative;
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
-      border-top: 1px solid var(--ox-border);
-      border-bottom: 1px solid var(--ox-border);
-    }
-    .dispatch-spine::before {
-      content: '';
-      position: absolute;
-      left: 16.66%;
-      right: 16.66%;
-      top: 31px;
+      top: 0; left: 16px; right: 16px;
       height: 1px;
-      background: linear-gradient(90deg, rgba(var(--ox-primary-rgb), .2), rgba(var(--ox-primary-rgb), .65), rgba(var(--ox-primary-rgb), .2));
+      background: linear-gradient(90deg, transparent, rgba(var(--edge-rgb), .7), transparent);
       pointer-events: none;
     }
-    .dispatch-node {
-      position: relative;
-      z-index: 1;
-      min-width: 0;
-      padding: 14px 12px;
+    .wcard[data-edge="amber"] { --edge-rgb: 251, 191, 36; }
+    .wcard[data-edge="teal"] { --edge-rgb: 0, 201, 167; }
+    .wcard[data-edge="red"] { --edge-rgb: 244, 63, 94; }
+    .hd { display: flex; align-items: center; gap: 10px; padding: 14px 18px 0; min-width: 0; }
+    .hd > ox-glyph { --ox-glyph-size: 18px; flex: none; }
+    .kind {
+      font-size: 11px; font-weight: 600; line-height: 1;
+      letter-spacing: .04em; text-transform: uppercase;
+      color: var(--ox-text-muted); white-space: nowrap;
     }
-    .dispatch-node:first-child { padding-left: 0; }
-    .dispatch-node:last-child { padding-right: 0; }
-    .dispatch-node__signal {
-      display: grid;
-      place-items: center;
-      width: 34px;
-      height: 34px;
-      margin-bottom: 8px;
-      border-radius: 10px;
-      border: 1px solid rgba(var(--ox-primary-rgb), .26);
-      background: var(--ox-panel);
-      color: var(--ox-primary);
+    .src {
+      display: inline-flex; align-items: center; gap: 5px;
+      min-width: 0; font-size: 12.5px; color: var(--ox-text-muted);
+      white-space: nowrap; overflow: hidden;
     }
-    .dispatch-node__label {
-      color: var(--ox-text-muted);
-      font: 700 .58rem var(--ox-mono);
-      letter-spacing: .1em;
-      text-transform: uppercase;
+    .src ox-glyph { --ox-glyph-size: 15px; flex: none; }
+    .src b { color: var(--ox-text-2); font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+    .sp { flex: 1; }
+    .who2 { display: inline-flex; align-items: center; gap: 8px; flex: none; font-size: 12.5px; color: var(--ox-text-muted); white-space: nowrap; }
+    .who2 b { color: var(--ox-text-2); font-weight: 600; }
+    .bd { padding: 12px 18px 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+    .pk-q {
+      margin: 0; font-size: 20px; font-weight: 700; line-height: 1.18;
+      letter-spacing: -.025em; color: var(--ox-text);
+      text-wrap: balance; overflow-wrap: anywhere;
     }
-    .dispatch-node__value {
-      margin-top: 4px;
-      color: var(--ox-text);
-      font-size: .82rem;
-      font-weight: 650;
-      line-height: 1.35;
-      overflow-wrap: anywhere;
-    }
-    .dispatch-proof {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding-top: 14px;
-    }
-    .widget-title-lg {
-      max-width: 48ch;
-      margin-top: 8px;
-      font-size: clamp(1.15rem, 2.2vw, 1.5rem);
-      line-height: 1.18;
-      letter-spacing: -.03em;
-    }
-    .dispatch-state--starting,
-    .dispatch-state--queued,
-    .dispatch-state--stale,
-    .dispatch-state--blocked,
-    .dispatch-state--failed {
-      animation: none;
-    }
-    .dispatch-state--starting,
-    .dispatch-state--queued { color: var(--ox-warning); }
-    .dispatch-state--stale { color: var(--ox-warning); }
-    .dispatch-state--blocked,
-    .dispatch-state--failed { color: var(--ox-danger); }
-    .dispatch-state--in_progress { color: var(--ox-teal); }
-    .dispatch-state--in_progress .dispatch-state__dot { animation: breathe 2.4s ease-in-out infinite; }
-    @keyframes breathe {
-      0%, 100% { opacity: 1; }
-      50% { opacity: .35; }
-    }
-    .dispatch-decision {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
-      gap: 10px;
-      align-items: start;
-      margin: 0 0 14px;
-      padding: 11px 12px;
-      border: 1px solid rgba(var(--ox-primary-rgb), .16);
-      border-radius: 12px;
-      background: rgba(var(--ox-primary-rgb), .055);
-      color: var(--ox-text-muted);
-      font-size: .78rem;
-      line-height: 1.45;
-    }
-    .dispatch-decision strong { color: var(--ox-text); font-weight: 650; }
-    .dispatch-sync {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      margin-top: 10px;
-      color: var(--ox-text-muted);
-      font: 600 .62rem var(--ox-mono);
-      letter-spacing: .04em;
-    }
-    .dispatch-sync__dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: currentColor;
-      box-shadow: 0 0 0 4px rgba(var(--ox-primary-rgb), .1);
-    }
-    .dispatch-proof__meta {
-      color: var(--ox-text-muted);
-      font: 600 .62rem var(--ox-mono);
-      letter-spacing: .08em;
-      text-transform: uppercase;
-    }
-    .dispatch-links {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .dispatch-links .ox-link-btn { min-height: 44px; }
-    .dispatch-links .ox-link-btn--primary {
-      color: var(--ox-primary-contrast);
-    }
-    .dispatch-degraded {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
-      gap: 10px;
-      align-items: start;
-      margin: 0 0 14px;
-      padding: 10px 0;
-      border-top: 1px solid rgba(217,119,6,.25);
-      border-bottom: 1px solid rgba(217,119,6,.25);
-      color: var(--ox-warning);
-      font-size: .78rem;
-      line-height: 1.45;
-    }
-    .dispatch-empty {
-      padding: 20px 0;
-      text-align: left;
-      align-items: flex-start;
-    }
-    .dispatch-skeleton {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      padding: 20px;
-    }
-    .dispatch-skeleton__spine {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      padding: 14px 0;
-      border-top: 1px solid var(--ox-border);
-      border-bottom: 1px solid var(--ox-border);
-    }
-    @media (max-width: 560px) {
-      .dispatch-hero { grid-template-columns: 1fr; }
-      .dispatch-state { justify-self: start; }
-      .dispatch-spine { grid-template-columns: 1fr; }
-      .dispatch-spine::before {
-        left: 16px;
-        right: auto;
-        top: 34px;
-        bottom: 34px;
-        width: 1px;
-        height: auto;
-        background: linear-gradient(180deg, rgba(var(--ox-primary-rgb), .2), rgba(var(--ox-primary-rgb), .65), rgba(var(--ox-primary-rgb), .2));
-      }
-      .dispatch-node,
-      .dispatch-node:first-child,
-      .dispatch-node:last-child {
-        display: grid;
-        grid-template-columns: 34px minmax(0, 1fr);
-        column-gap: 12px;
-        padding: 10px 0;
-      }
-      .dispatch-node__signal { grid-row: 1 / span 2; margin: 0; }
-      .dispatch-proof { align-items: stretch; flex-direction: column; }
-      .dispatch-state { justify-self: start; }
-      .dispatch-links { width: 100%; }
-      .dispatch-links .ox-link-btn { flex: 1 1 100%; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .dispatch-state__dot { animation: none; }
+    .status { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; min-height: 22px; }
+    .meta { font-size: 11.5px; line-height: 1.3; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
+    .note { margin: 0; font-size: 13px; line-height: 1.45; color: var(--ox-text-muted); text-wrap: pretty; }
+    .cap { display: flex; flex-direction: column; gap: 6px; }
+    .segbar { display: flex; gap: 2px; height: 10px; border-radius: 999px; overflow: hidden; background: var(--ox-hover, rgba(127, 127, 127, .1)); }
+    .segbar i { display: block; height: 100%; }
+    .segbar .est { background: rgba(148, 163, 184, .75); }
+    .segbar .over { background: var(--ox-danger); }
+    .cap-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; font-size: 12.5px; line-height: 1.45; font-variant-numeric: tabular-nums; }
+    .cap-row .v { color: var(--ox-text); }
+    .cap-row .muted { color: var(--ox-text-muted); }
+    .cap-row .meta { margin-left: auto; }
+    .rows { display: flex; flex-direction: column; }
+
+    /* Loading keeps the populated footprint so the card never jumps. */
+    .sk { display: block; height: 10px; border-radius: 4px; background: var(--ox-skeleton, rgba(127, 127, 127, .12)); }
+    .empty { padding: 18px; display: flex; flex-direction: column; gap: 6px; }
+    .empty b { font-size: 15px; color: var(--ox-text); }
+    .empty span { font-size: 13px; line-height: 1.45; color: var(--ox-text-muted); }
+
+    @media (max-width: 480px) {
+      .hd { flex-wrap: wrap; row-gap: 6px; padding: 12px 14px 0; }
+      .bd { padding: 10px 14px 12px; }
+      .pk-q { font-size: 18px; }
+      .cap-row .meta { margin-left: 0; flex-basis: 100%; }
     }
   </style>
   <link rel="stylesheet" href="shared/widget-theme.css" />
 </head>
 <body>
   <div class="container" id="content">
-    <!-- Skeleton shown during loading -->
-    <div class="skeleton-wrapper" style="display:flex; flex-direction:column; gap:16px; padding:24px;">
-      <div style="display:flex; align-items:center; gap:12px;">
-        <div class="skeleton-line" style="width:40px; height:40px; border-radius:50%;"></div>
-        <div style="flex:1;">
-          <div class="skeleton-line" style="width:60%; height:16px; margin-bottom:6px;"></div>
-          <div class="skeleton-line" style="width:40%; height:12px;"></div>
-        </div>
+    <article class="wcard" aria-busy="true" aria-label="Loading dispatch receipt">
+      <div class="hd"><span class="sk" style="width:40%"></span></div>
+      <div class="bd">
+        <span class="sk" style="width:78%;height:22px"></span>
+        <span class="sk" style="width:30%"></span>
+        <span class="sk" style="width:100%;height:44px"></span>
       </div>
-      <div class="skeleton-line" style="width:100%; height:20px;"></div>
-      <div class="skeleton-line" style="width:85%; height:14px;"></div>
-      <div class="skeleton-line" style="width:90%; height:14px;"></div>
-      <div style="display:flex; gap:12px; margin-top:8px;">
-        <div class="skeleton-line" style="width:100px; height:36px; border-radius:8px;"></div>
-        <div class="skeleton-line" style="width:100px; height:36px; border-radius:8px;"></div>
-      </div>
-    </div>
+      <ox-footer variant="reads" state="loading"></ox-footer>
+    </article>
   </div>
   <script>
 
@@ -572,25 +139,16 @@
       content.innerHTML = html;
     };
 
-      var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true">'+c+'</svg>';};
-    var icons = {
-      external: function(s){return _svg('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>',s);},
-      check: function(s){return _svg('<polyline points="20 6 9 17 4 12"></polyline>',s);},
-      initiative: function(s){return _svg('<circle cx="12" cy="12" r="9" fill="currentColor" fill-opacity="0.1"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"></circle>',s);},
-      workstream: function(s){return _svg('<rect x="2" y="2" width="20" height="20" rx="6" fill="currentColor" fill-opacity="0.1" stroke="none"></rect><path d="M6 6c3 0 5 6 8 6"></path><path d="M6 18c3 0 5-6 8-6"></path><path d="M6 12h12"></path><path d="m14 8 4 4-4 4"></path><circle cx="6" cy="6" r="1.5" fill="currentColor" stroke="none"></circle><circle cx="6" cy="12" r="1.5" fill="currentColor" stroke="none"></circle><circle cx="6" cy="18" r="1.5" fill="currentColor" stroke="none"></circle>',s);},
-      milestone: function(s){return _svg('<path d="M5 3v18"></path><path d="m5 4 12 1-2 4 2 4-12-1z" fill="currentColor" fill-opacity="0.1"></path>',s);},
-      task: function(s){return _svg('<rect x="4" y="4" width="16" height="16" rx="4" fill="currentColor" fill-opacity="0.12"></rect><path d="M9 12.2 11 14.2 15.2 10"></path>',s);}
-    };
-    var escapeHtml = (str) => { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; };
+    var escapeHtml = (str) => { if (str === null || str === undefined || str === '') return ''; const div = document.createElement('div'); div.textContent = String(str); return div.innerHTML; };
     var firstString = (values) => values.find((value) => typeof value === 'string' && value.trim()) || null;
-
+    var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
     var stateParams = new URLSearchParams(window.location.search);
     var fixtureState = stateParams.get('state') || (stateParams.get('loading') === 'true' ? 'loading' : stateParams.get('demo') === 'true' ? 'progressing' : 'empty');
     if (fixtureState === 'completed') fixtureState = 'resolved';
-    var isDemo = ['estimate', 'guard', 'populated', 'progressing', 'urgent', 'long', 'error', 'degraded', 'blocked', 'stale', 'resolved'].includes(fixtureState);
+    var isDemo = ['estimate', 'guard', 'populated', 'progressing', 'urgent', 'long', 'error', 'degraded', 'blocked', 'stale', 'resolved', 'queued', 'cancelled', 'polling'].includes(fixtureState);
     var isLoadingOverride = fixtureState === 'loading';
-    
+
     var entity = isDemo ? { id: 'TSK-942', type: 'task', title: 'Implement rate limiting middleware for public API', agent_name: 'Eli', status: 'In Progress', domain: 'Engineering', workspace_name: 'Core Platform', links: [{ platform: 'Task', url: 'https://useorgx.com/live?view=mission-control&task=TSK-942', label: 'ENG-142' }] } : null;
     if (fixtureState === 'long' && entity) {
       entity.title = 'Implement tenant-aware rate limiting middleware, observability receipts, rollback controls, and adversarial load verification for the public API';
@@ -618,12 +176,28 @@
       entity.run_id = 'run-live-942';
       entity.last_heartbeat_at = new Date().toISOString();
     }
-      if (fixtureState === 'resolved' && entity) {
-        entity.status = 'completed';
-        entity.completed_at = new Date().toISOString();
-      }
-    if (fixtureState === 'estimate') entity = { action: 'estimate', estimate: { recommended_model: 'standard', estimated_cost_usd: 0.02 } };
-    if (fixtureState === 'guard') entity = { action: 'guard', allowed: false };
+    if (fixtureState === 'resolved' && entity) {
+      entity.status = 'completed';
+      entity.run_id = 'run-live-942';
+      entity.completed_at = new Date().toISOString();
+    }
+    if (fixtureState === 'queued' && entity) {
+      entity.status = 'queued';
+      entity.updated_at = new Date().toISOString();
+    }
+    if (fixtureState === 'polling' && entity) {
+      // A real run id: the card asks orgx_command_status instead of guessing.
+      entity.status = 'queued';
+      entity.run_id = '7f3c2a10-5b1e-4c3d-9a8f-2e6b4d1c0a99';
+      entity.updated_at = new Date().toISOString();
+      entity.estimate = { recommended_model: 'standard', estimated_cost_usd: 0.42, budget_check: { max_cost_usd: 2, estimated_cost_usd: 0.42, within_cap: true } };
+    }
+    if (fixtureState === 'cancelled' && entity) {
+      entity.status = 'cancelled';
+      entity.run_id = 'run-live-942';
+    }
+    if (fixtureState === 'estimate') entity = { action: 'estimate', title: 'Implement rate limiting middleware for public API', estimate: { recommended_model: 'standard', estimated_cost_usd: 0.02, budget_check: { max_cost_usd: 0.5, estimated_cost_usd: 0.02, within_cap: true } } };
+    if (fixtureState === 'guard') entity = { action: 'guard', allowed: false, blockedReason: 'Over the daily spend cap for this workspace.' };
     var isLoading = !isDemo;
     if (isLoadingOverride) { isLoading = true; isDemo = false; }
     var bootStartedAt = Date.now();
@@ -650,45 +224,9 @@
             return 'https://mcp.useorgx.com/widgets/shared/' + path;
         }
     }
-    var REMOTE_WIDGET_ASSET_BASE = 'https://mcp.useorgx.com/widgets/shared/';
-    var AGENT_DIRECTORY = {
-      pace: { name: 'Pace', role: 'Product', avatarPath: 'product_orchestrator.png', accentRgb: '22, 163, 74' },
-      product: { name: 'Pace', role: 'Product', avatarPath: 'product_orchestrator.png', accentRgb: '22, 163, 74' },
-      eli: { name: 'Eli', role: 'Engineering', avatarPath: 'engineering_autopilot.png', accentRgb: '6, 182, 212' },
-      engineering: { name: 'Eli', role: 'Engineering', avatarPath: 'engineering_autopilot.png', accentRgb: '6, 182, 212' },
-      mark: { name: 'Mark', role: 'Marketing', avatarPath: 'launch_captain.png', accentRgb: '249, 115, 22' },
-      marketing: { name: 'Mark', role: 'Marketing', avatarPath: 'launch_captain.png', accentRgb: '249, 115, 22' },
-      sage: { name: 'Sage', role: 'Sales', avatarPath: 'pipeline_intelligence.png', accentRgb: '168, 85, 247' },
-      sales: { name: 'Sage', role: 'Sales', avatarPath: 'pipeline_intelligence.png', accentRgb: '168, 85, 247' },
-      orion: { name: 'Orion', role: 'Operations', avatarPath: 'control_tower.png', accentRgb: '245, 158, 11' },
-      operations: { name: 'Orion', role: 'Operations', avatarPath: 'control_tower.png', accentRgb: '245, 158, 11' },
-      dana: { name: 'Dana', role: 'Design', avatarPath: 'design_codex.png', accentRgb: '236, 72, 153' },
-      design: { name: 'Dana', role: 'Design', avatarPath: 'design_codex.png', accentRgb: '236, 72, 153' },
-      xandy: { name: 'Xandy', role: 'Orchestrator', avatarPath: 'xandy_orchestrator.png', accentRgb: '20, 184, 166' },
-      orchestrator: { name: 'Xandy', role: 'Orchestrator', avatarPath: 'xandy_orchestrator.png', accentRgb: '20, 184, 166' }
-    };
-    var resolveAgentProfile = (name) => {
-      const safeName = String(name || '').trim();
-      const key = safeName.toLowerCase();
-      const matchedKey = Object.keys(AGENT_DIRECTORY).find((candidate) => key.includes(candidate));
-      const profile = AGENT_DIRECTORY[key] || (matchedKey ? AGENT_DIRECTORY[matchedKey] : null);
-      return {
-        name: safeName || (profile && profile.name) || 'Agent',
-        role: (profile && profile.role) || null,
-        avatarPath: (profile && profile.avatarPath) || null,
-        accentRgb: (profile && profile.accentRgb) || '99, 102, 241'
-      };
-    };
-    var renderAvatar = (name) => {
-        const profile = resolveAgentProfile(name);
-        const fallback = escapeHtml(profile.name ? profile.name[0].toUpperCase() : '?');
-        if (profile.avatarPath) {
-            const localSrc = resolveWidgetAsset(profile.avatarPath);
-            const remoteSrc = REMOTE_WIDGET_ASSET_BASE + profile.avatarPath;
-            return `<img src="${localSrc}" data-remote-src="${remoteSrc}" alt="${escapeHtml(profile.name)}" class="avatar-image" loading="eager" decoding="sync" draggable="false" onerror="if(!this.dataset.remoteTried){this.dataset.remoteTried='1';this.src=this.dataset.remoteSrc;return;} this.style.display='none';this.nextElementSibling.style.display='flex';" /><span class="avatar-fallback" style="display:none;">${fallback}</span>`;
-        }
-        return `<span class="avatar-fallback" style="display:flex;">${fallback}</span>`;
-    };
+    if (window.OrgXElements && window.OrgXWidgetRuntime && window.OrgXWidgetRuntime.detectProtocol() === 'standalone') {
+      window.OrgXElements.avatarConfig.baseUrl = resolveWidgetAsset('avatars');
+    }
     var ORGX_BASE_URL = 'https://useorgx.com';
     var buildEntityUrl = (type, id, initiativeId) => {
       if (!id) return ORGX_BASE_URL;
@@ -741,15 +279,22 @@
       if (source.includes('xandy') || source.includes('orchestr')) return 'Xandy';
       return null;
     };
+    var resolveRunId = payload => firstString([
+      payload.run_id, payload.runId, payload.spawned_run_id,
+      payload.entity && payload.entity.run_id
+    ]);
     var normalizeEntityPayload = payload => {
       if (!payload) return null;
       const action = String(payload._action || payload.action || 'spawn').toLowerCase();
       const dispatched = action === 'spawn' || action === 'handoff';
       const estimate = payload.estimate && typeof payload.estimate === 'object'
         ? payload.estimate
+        : payload.budget_preflight && payload.budget_preflight.estimate
+        ? payload.budget_preflight.estimate
         : null;
+      const runId = resolveRunId(payload);
       if (payload.title && payload.agent_name && (payload.workspace_name || payload.id || payload.task_id || payload.run_id)) {
-        return { ...payload, action, dispatched, estimate, agent_ready: true, workspace_ready: true, domain_ready: !!payload.domain, initiative_name: payload.initiative_name || null };
+        return { ...payload, action, dispatched, estimate, run_id: runId, agent_ready: true, workspace_ready: !!payload.workspace_name, domain_ready: !!payload.domain, initiative_name: payload.initiative_name || null };
       }
       var inferredAgentName = payload.agent_name || inferAgentName(payload);
       var inferredDomain = payload.domain || inferDomain(payload);
@@ -766,6 +311,7 @@
           initiative_name: initiativeName,
           initiative_id: payload.initiative_id || payload.entity.initiative_id || null,
           status: payload.status || payload.entity.status || 'queued',
+          run_id: runId,
           links: Array.isArray(payload.links) ? payload.links : [],
           console_url: payload.live_url || payload.url || null,
           agent_ready: !!(inferredAgentName || payload.entity.agent_name),
@@ -773,6 +319,7 @@
           domain_ready: !!inferredDomain,
           note: payload.message || null,
           allowed: typeof payload.allowed === 'boolean' ? payload.allowed : null,
+          blocked_reason: payload.blockedReason || payload.reason || null,
           action,
           dispatched,
           estimate
@@ -794,6 +341,9 @@
         initiative_name: initiativeName,
         initiative_id: payload.initiative_id || null,
         status: payload.status || 'queued',
+        run_id: runId,
+        last_heartbeat_at: payload.last_heartbeat_at || null,
+        updated_at: payload.updated_at || null,
         links: [
           payload.task_id ? { platform: 'Task', url: buildEntityUrl('task', payload.task_id, payload.initiative_id), label: payload.task_short_id || payload.task_id.slice(0, 8) } : null,
           payload.run_id ? { platform: 'Run', url: payload.live_url || buildEntityUrl('run', payload.run_id), label: payload.run_short_id || payload.run_id.slice(0, 8) } : null
@@ -804,168 +354,355 @@
         domain_ready: !!inferredDomain,
         note: payload.message || null,
         allowed: typeof payload.allowed === 'boolean' ? payload.allowed : null,
+        blocked_reason: payload.blockedReason || payload.reason || null,
         action,
         dispatched,
         estimate
       };
     };
 
-    var render = () => {
-      if (isLoading) {
-        injectHtml(`
-          <div class="widget-shell-card"><div class="ox-card"><div class="dispatch-skeleton" aria-label="Loading dispatch receipt">
-            <div class="skeleton-line" style="width:26%;height:10px"></div>
-            <div class="skeleton-line" style="width:78%;height:28px"></div>
-            <div class="dispatch-skeleton__spine">
-              <div class="skeleton-line" style="height:58px"></div>
-              <div class="skeleton-line" style="height:58px"></div>
-              <div class="skeleton-line" style="height:58px"></div>
-            </div>
-            <div class="skeleton-line" style="width:42%;height:12px"></div>
-          </div></div></div>`);
-        return;
-      }
-      entity = normalizeEntityPayload(entity);
-      if (!entity) { injectHtml(`<div class="widget-shell-card animate-in"><div class="ox-card"><div class="ox-card-inner"><div class="empty-state dispatch-empty"><div class="empty-icon">${icons.check(24)}</div><div class="empty-title">No dispatch receipt</div><div class="empty-desc">No agent handoff was returned. Nothing is presented as running until OrgX supplies a task or run receipt.</div></div></div></div></div>`); return; }
-      const stateMeta = window.OrgXWidgetState
-        ? window.OrgXWidgetState.derive(entity)
-        : { state: String(entity.status || 'unknown').toLowerCase(), label: 'Awaiting state', description: 'OrgX has not returned a reliable execution state yet.', hasExecutionEvidence: false };
-      const agentProfile = resolveAgentProfile(entity.agent_name || entity.domain || '');
+    /* ── Run status: ask OrgX, never guess ─────────────────────────────
+       A spawn result is a snapshot from the moment the tool ran. When it
+       carries a run id the card polls orgx_command_status and shows what
+       the server says (queued, running, done, failed, cancelled), waiting
+       next_poll_after_ms between checks and stopping when it is null. */
+    var runStatus = { runId: null, timer: null, failures: 0, data: null, checkedAt: null, unreachable: false, missing: false };
 
-      const usableLinks = (entity.links || []).map(l => {
+    // Gallery only: a scripted status sequence standing in for the server.
+    var galleryStatusSequence = [
+      { state: 'queued', next_poll_after_ms: 1600 },
+      { state: 'running', outcome: 'step 2 of 4', next_poll_after_ms: 1600 },
+      { state: 'running', outcome: 'step 4 of 4', next_poll_after_ms: 1600 },
+      { state: 'succeeded', outcome: 'checks passed', next_poll_after_ms: null }
+    ];
+    var galleryStatusIndex = 0;
+
+    function fetchRunStatus(runId) {
+      if (fixtureState === 'polling') {
+        var step = galleryStatusSequence[Math.min(galleryStatusIndex++, galleryStatusSequence.length - 1)];
+        return Promise.resolve(Object.assign({ kind: 'run', id: runId, updated_at: new Date().toISOString() }, step));
+      }
+      var runtime = window.OrgXWidgetRuntime;
+      if (!runtime || !runtime.callTool) return Promise.reject(new Error('Status is unavailable here.'));
+      return Promise.resolve(runtime.callTool('orgx_command_status', { kind: 'run', id: runId })).then(function(result) {
+        return runtime.extractStructuredWidgetData ? runtime.extractStructuredWidgetData(result, true) : result;
+      });
+    }
+
+    function stopRunPolling() {
+      if (runStatus.timer) window.clearTimeout(runStatus.timer);
+      runStatus.timer = null;
+    }
+
+    function scheduleRunCheck(ms) {
+      stopRunPolling();
+      runStatus.timer = window.setTimeout(checkRunStatus, Math.max(0, ms));
+    }
+
+    function canPollRuns() {
+      if (fixtureState === 'polling') return true;
+      var runtime = window.OrgXWidgetRuntime;
+      return !!(runtime && runtime.detectProtocol && runtime.detectProtocol() !== 'standalone');
+    }
+
+    function watchRun(runId) {
+      if (!runId || !UUID_RE.test(runId) || !canPollRuns()) return;
+      if (runStatus.runId === runId) return;
+      stopRunPolling();
+      runStatus = { runId: runId, timer: null, failures: 0, data: null, checkedAt: null, unreachable: false, missing: false };
+      scheduleRunCheck(fixtureState === 'polling' ? 900 : 0);
+    }
+
+    function checkRunStatus() {
+      var runId = runStatus.runId;
+      if (!runId) return;
+      runStatus.timer = null;
+      fetchRunStatus(runId).then(function(data) {
+        if (runStatus.runId !== runId) return;
+        runStatus.failures = 0;
+        runStatus.unreachable = false;
+        runStatus.checkedAt = Date.now();
+        if (!data || typeof data !== 'object' || typeof data.state !== 'string') {
+          runStatus.unreachable = true;
+          render();
+          return;
+        }
+        if (data.state === 'not_found') {
+          runStatus.missing = true;
+          runStatus.data = null;
+          render();
+          return;
+        }
+        runStatus.data = data;
+        render();
+        var wait = data.next_poll_after_ms;
+        if (typeof wait === 'number' && isFinite(wait)) scheduleRunCheck(Math.max(1000, wait));
+      }).catch(function() {
+        if (runStatus.runId !== runId) return;
+        runStatus.failures += 1;
+        if (runStatus.failures < 3) {
+          scheduleRunCheck(4000 * runStatus.failures);
+          return;
+        }
+        runStatus.unreachable = true;
+        render();
+      });
+    }
+
+    function formatClock(ms) {
+      try {
+        return new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } catch (_) {
+        return '';
+      }
+    }
+
+    function formatUsd(value) {
+      if (typeof value !== 'number' || !isFinite(value)) return null;
+      if (value === 0) return '$0';
+      if (value < 0.1) return '$' + value.toFixed(value < 0.01 ? 4 : 3);
+      return '$' + value.toFixed(2);
+    }
+
+    function normalizedStatus(model) {
+      return String(model.status || '').toLowerCase().replace(/[^a-z]+/g, '_');
+    }
+
+    /* One description of the card for the current truth. Every visible
+       status (edge, chip, avatar form, footer) reads from it. */
+    function describeDispatch(model, stateMeta) {
+      var isDispatch = model.dispatched !== false;
+      var agent = model.agent_name || 'The agent';
+      var live = runStatus.runId && runStatus.data ? runStatus.data : null;
+      // The execution link is the same one the card always opened.
+      var consoleUrl = model.console_url || (model.id ? buildEntityUrl(model.type, model.id, model.initiative_id) : ORGX_BASE_URL);
+      var view;
+
+      if (!isDispatch) {
+        if (model.action === 'guard' && model.allowed === false) {
+          view = { chip: 'blocked', chipLabel: 'Dispatch blocked', edge: 'red',
+            footer: { variant: 'confirms-in-orgx', state: 'rejected', heading: 'Dispatch blocked', detail: model.blocked_reason || 'nothing was started', action: '' } };
+        } else {
+          view = { chip: null, edge: 'mute',
+            footer: { variant: 'reads', state: 'caught-up', heading: 'Preflight only · no dispatch', detail: model.action === 'guard' ? 'the guard allows this dispatch' : 'nothing was started' } };
+        }
+        view.key = 'preflight';
+        view.kind = model.action === 'estimate' ? 'Route estimate' : model.action === 'guard' ? 'Dispatch guard' : 'Agent route';
+        view.note = model.action === 'estimate'
+          ? 'Routing and cost context only. No agent work was dispatched.'
+          : model.action === 'guard'
+          ? 'OrgX checked whether this delegation can proceed. No agent work was dispatched.'
+          : 'OrgX classified the best execution route. No agent work was dispatched.';
+        view.consoleUrl = consoleUrl;
+        return view;
+      }
+
+      var state = stateMeta.state;
+      var heading = null;
+      var detail = null;
+      if (live) {
+        if (live.state === 'queued' || live.state === 'held') state = 'queued';
+        else if (live.state === 'running') state = 'in_progress';
+        else if (live.state === 'succeeded') state = 'completed';
+        else if (live.state === 'failed') state = 'failed';
+        else if (live.state === 'cancelled') state = 'cancelled';
+        if (live.waiting_on === 'person' && (state === 'queued' || state === 'in_progress')) state = 'blocked';
+        if (live.state === 'held') heading = 'Held before it starts';
+        detail = live.outcome || null;
+      } else if (normalizedStatus(model) === 'cancelled' || normalizedStatus(model) === 'canceled') {
+        state = 'cancelled';
+      }
+
+      // The same action the card has always carried, named for the state.
+      const executionLabel = stateMeta.state === 'completed' ? 'View result' : stateMeta.state === 'stale' || stateMeta.state === 'blocked' ? 'Open current state' : 'Open execution';
+      var checked = runStatus.checkedAt ? 'checked ' + formatClock(runStatus.checkedAt) : null;
+      var age = window.OrgXWidgetState ? window.OrgXWidgetState.formatAge(model) : null;
+      switch (state) {
+        case 'completed':
+          view = { chip: 'succeeded', edge: 'teal', footer: { variant: 'queues-work', state: 'done', heading: heading || 'Done', detail: detail || 'Execution complete', action: 'View result ↗' } };
+          break;
+        case 'in_progress':
+          view = { chip: 'running', edge: 'teal', footer: { variant: 'queues-work', state: 'running', heading: heading || agent + ' is running', detail: detail || checked || (age ? age.replace(/^Updated/, 'updated') : 'heartbeat current'), action: 'Watch ↗' } };
+          break;
+        case 'queued':
+          view = { chip: 'queued', edge: 'teal', footer: { variant: 'queues-work', state: 'queued', heading: heading || 'Waiting to start', detail: detail || 'waiting for an execution slot', action: executionLabel + ' ↗' } };
+          break;
+        case 'starting':
+          view = { chip: 'queued', chipLabel: 'Accepted', edge: 'teal', footer: { variant: 'queues-work', state: 'queued', heading: 'Dispatch accepted', detail: 'waiting for the execution receipt', action: executionLabel + ' ↗' } };
+          break;
+        case 'stale':
+          view = { chip: 'stale', edge: 'amber', footer: { variant: 'reads', state: 'stale', heading: 'Out of date', detail: age ? age.replace(/^Updated /, '') : 'no current heartbeat', action: executionLabel + ' ↗' } };
+          break;
+        case 'blocked':
+          view = { chip: 'needs_you', edge: 'amber', footer: { variant: 'confirms-in-orgx', state: 'draft', heading: live && live.waiting_on === 'person' ? 'Waiting on you in OrgX' : 'Waiting on approval', detail: detail || 'nothing runs until it is approved', primary: executionLabel + ' ↗' } };
+          break;
+        case 'failed':
+          view = { chip: 'failed_step', edge: 'red', footer: { variant: 'finishes-here', state: 'failed', heading: 'Run failed', detail: detail || 'nothing was delivered', primary: executionLabel + ' ↗' } };
+          break;
+        case 'cancelled':
+          view = { chip: 'cancelled', edge: 'mute', footer: { variant: 'confirms-in-orgx', state: 'rejected', heading: 'Cancelled', detail: detail || 'nothing more will run', action: executionLabel + ' ↗' } };
+          break;
+        default:
+          view = { chip: 'handed_off', chipLabel: 'Awaiting state', edge: 'mute', footer: { variant: 'queues-work', state: 'queued', heading: 'Awaiting state', detail: 'OrgX has not reported a state yet', action: executionLabel + ' ↗' } };
+      }
+      view.key = state;
+      view.kind = model.action === 'handoff' ? 'Handed off' : 'Dispatched';
+      // Say it once: the footer carries the short state; the note explains
+      // only what the footer cannot (why it is waiting, what went wrong).
+      view.note = state === 'in_progress' || state === 'completed' || state === 'queued' ? null : (model.note || stateMeta.description);
+      if (state === 'starting' && !model.note) view.note = stateMeta.description + ' The execution link remains the proof boundary.';
+      if (runStatus.missing) view.note = 'OrgX has no status for this run yet. Showing what the dispatch reported.';
+      if (runStatus.unreachable) view.note = 'Could not check the run just now. Showing the last known state.';
+      view.consoleUrl = consoleUrl;
+      return view;
+    }
+
+    function renderCap(model) {
+      var est = model.estimate || {};
+      var check = est.budget_check || {};
+      var cost = typeof check.estimated_cost_usd === 'number' ? check.estimated_cost_usd : est.estimated_cost_usd;
+      var cap = typeof check.max_cost_usd === 'number' ? check.max_cost_usd : est.max_cost_usd;
+      var route = [est.recommended_tier || est.model_tier || est.tier, est.recommended_model || est.model, est.provider].filter(Boolean).join(' · ');
+      if (typeof cost !== 'number' && !route) return '';
+      var costLabel = formatUsd(cost);
+      if (typeof cap === 'number' && cap > 0 && typeof cost === 'number') {
+        var over = cost > cap;
+        var estPct = Math.min(100, (Math.min(cost, cap) / Math.max(cost, cap)) * 100);
+        var tail = over ? '· over the cap by ' + formatUsd(cost - cap) : '· ' + formatUsd(cap - cost) + ' left';
+        return '<div class="cap">'
+          + '<div class="segbar" role="img" aria-label="Estimated ' + escapeHtml(costLabel) + ' of a ' + escapeHtml(formatUsd(cap)) + ' cap"><i class="est" style="width:' + estPct.toFixed(1) + '%"></i>' + (over ? '<i class="over" style="width:' + (100 - estPct).toFixed(1) + '%"></i>' : '') + '</div>'
+          + '<div class="cap-row"><span class="v">Est. ' + escapeHtml(costLabel) + ' of ' + escapeHtml(formatUsd(cap)) + '</span><span class="muted">' + escapeHtml(tail + (route ? ' · ' + route : '')) + '</span><span class="meta">Spend cap for this run</span></div>'
+          + '</div>';
+      }
+      return '<div class="cap-row">' + (costLabel ? '<span class="v">Est. ' + escapeHtml(costLabel) + '</span>' : '') + (route ? '<span class="muted">' + escapeHtml((costLabel ? '· ' : '') + route) + '</span>' : '') + '</div>';
+    }
+
+    function receiptRow(attrs) {
+      var out = '<ox-receipt-row';
+      Object.keys(attrs).forEach(function(key) {
+        if (attrs[key] === null || attrs[key] === undefined || attrs[key] === '') return;
+        out += ' ' + key + '="' + escapeHtml(attrs[key]) + '"';
+      });
+      return out + '></ox-receipt-row>';
+    }
+
+    function usableLinks(model) {
+      return (model.links || []).map(function(l) {
         const rawUrl = typeof l.url === 'string' ? l.url.trim() : '';
         const hasRealUrl = /^https?:\/\//i.test(rawUrl) && rawUrl !== '#';
-        const fallbackUrl = buildEntityUrl(entity.type, entity.id, entity.initiative_id);
+        const fallbackUrl = buildEntityUrl(model.type, model.id, model.initiative_id);
         if (!hasRealUrl && !fallbackUrl) return null;
         return Object.assign({}, l, {
           url: hasRealUrl ? rawUrl : fallbackUrl,
           platform: hasRealUrl ? (l.platform || 'OrgX') : 'Task',
         });
       }).filter(Boolean);
-      const linksHtml = usableLinks.map(l => `
-        <a href="${escapeHtml(l.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(l.url || ''))}, event)' class="ox-link-btn ox-link-btn--ghost">
-          ${icons.external(13)} <span>Open ${escapeHtml(l.platform)}</span><span class="platform-link__meta">${escapeHtml(l.label)}</span>
-        </a>
-      `).join('');
-      
-      const typeRaw = (entity.type || 'task').toLowerCase();
-      let typeIcon = icons.task(16);
-      if (typeRaw === 'initiative') typeIcon = icons.initiative(16);
-      if (typeRaw === 'workstream') typeIcon = icons.workstream(16);
-      if (typeRaw === 'milestone') typeIcon = icons.milestone(16);
+    }
 
-      const typeDisplay = escapeHtml(entity.type || 'Entity').toUpperCase();
-      const consoleUrl = entity.console_url || (entity.id ? buildEntityUrl(entity.type, entity.id, entity.initiative_id) : ORGX_BASE_URL);
-      const isDispatch = entity.dispatched !== false;
-      const route = entity.estimate || {};
-      const routeParts = [
-        route.recommended_tier || route.model_tier || route.tier,
-        route.recommended_model || route.model,
-        route.provider
-      ].filter(Boolean);
-      if (typeof route.estimated_cost_usd === 'number') {
-        routeParts.push('$' + route.estimated_cost_usd.toFixed(4));
+    function renderRows(model, view) {
+      var isDispatch = model.dispatched !== false;
+      var rows = usableLinks(model).map(function(l) {
+        return receiptRow({ status: 'met', label: 'Open ' + l.platform + ' · ' + (l.label || model.id || 'OrgX'), detail: [model.workspace_name, model.domain].filter(Boolean).join(' · '), href: l.url });
+      });
+      if (!isDispatch) {
+        rows.push(receiptRow({ status: 'unverified', label: 'Result · No dispatch', detail: model.agent_name ? 'Requested owner · ' + model.agent_name : 'Requested owner · Automatic' }));
+        return rows.join('');
       }
-      const routeValue = routeParts.join(' · ') || (entity.action === 'guard'
-        ? entity.allowed === false
-          ? 'Dispatch blocked'
-          : entity.allowed === true
-          ? 'Dispatch allowed'
-          : 'Guard check complete'
-        : 'Automatic routing');
-      const completionCopy = 'Execution complete';
-      const proofBoundaryCopy = 'The execution link remains the proof boundary.';
-      const kicker = isDispatch
-        ? stateMeta.state === 'completed'
-          ? completionCopy
-          : stateMeta.state === 'in_progress'
-          ? 'Execution In Progress'
-          : stateMeta.state === 'starting'
-          ? 'Dispatch Accepted'
-          : stateMeta.state === 'queued'
-          ? 'Queued for Execution'
-          : stateMeta.state === 'stale'
-          ? 'Execution Needs Refresh'
-          : stateMeta.state === 'blocked'
-          ? 'Dispatch Blocked'
-          : stateMeta.state === 'failed'
-          ? 'Execution Failed'
-          : 'Agent Dispatch'
-        : entity.action === 'estimate'
-        ? 'Route Estimate'
-        : entity.action === 'guard'
-        ? 'Dispatch Guard'
-        : 'Agent Route';
-      const heroSubtitle = isDispatch
-        ? (entity.note || 'OrgX accepted the dispatch and is handing the work to the assigned execution surface.')
-        : entity.action === 'estimate'
-        ? 'Routing and cost context only. No agent work was dispatched.'
-        : entity.action === 'guard'
-        ? 'OrgX checked whether this delegation can proceed. No agent work was dispatched.'
-        : 'OrgX classified the best execution route. No agent work was dispatched.';
-      const preflightCopy = 'Preflight only · no dispatch';
-      const isComplete = isDispatch && stateMeta.state === 'completed';
-      const displayState = isDispatch ? stateMeta.state : entity.allowed === false ? 'blocked' : 'preflight';
-      const statusLabel = isDispatch ? stateMeta.label : entity.allowed === false ? 'Dispatch blocked' : 'Preflight complete';
-      const receiptId = firstString([entity.receipt_id, entity.receiptId, entity.run_id, entity.runId, entity.execution_id, entity.executionId, entity.id]);
-      const executionLabel = stateMeta.state === 'completed' ? 'View result' : stateMeta.state === 'stale' || stateMeta.state === 'blocked' ? 'Open current state' : 'Open execution';
-      const stateNotice = !isDispatch || stateMeta.state === 'in_progress'
-        ? ''
-        : `<div class="dispatch-decision" role="status">${icons.external(16)}<span><strong>${escapeHtml(stateMeta.label)}.</strong> ${escapeHtml(stateMeta.description)}${stateMeta.state === 'starting' ? ' ' + escapeHtml(proofBoundaryCopy) : ''}</span></div>`;
+      var receiptId = firstString([model.receipt_id, model.receiptId, model.run_id, model.runId, model.execution_id, model.executionId]);
+      if (receiptId) {
+        var shortId = UUID_RE.test(receiptId) ? 'run ' + receiptId.slice(0, 8) : receiptId;
+        rows.push(receiptRow({
+          status: view.key === 'failed' ? 'fail' : view.key === 'completed' ? 'met' : view.key === 'stale' || view.key === 'cancelled' ? 'unverified' : 'pending',
+          label: 'Receipt · ' + shortId,
+          detail: view.key === 'completed' ? 'Execution complete' : runStatus.data ? 'Status from OrgX' : 'Reported by the dispatch',
+          value: runStatus.checkedAt ? formatClock(runStatus.checkedAt) : ''
+        }));
+      } else {
+        rows.push(receiptRow({ status: 'pending', label: 'Receipt · awaiting receipt ID', detail: model.workspace_ready ? model.workspace_name : 'Context syncing' }));
+      }
+      return rows.join('');
+    }
 
-      injectHtml(`
-        <div class="widget-shell-card animate-in" data-state="${escapeHtml(displayState)}" style="--agent-accent-rgb:${agentProfile.accentRgb};">
-          <div class="ox-card">
-            <div class="ox-card-inner">
-              <div class="dispatch-receipt">
-              <div class="dispatch-hero">
-                <div class="widget-hero-copy" style="min-width:0">
-                  <div class="widget-kicker">${kicker}</div>
-                  <div class="widget-title-lg">${escapeHtml(entity.title)}</div>
-                  <div class="widget-subtitle">${escapeHtml(entity.initiative_name ? entity.initiative_name + ' · ' + (isDispatch ? entity.note || stateMeta.description : heroSubtitle) : (isDispatch ? entity.note || stateMeta.description : heroSubtitle))}</div>
-                  ${isDispatch ? `<div class="dispatch-sync"><span class="dispatch-sync__dot"></span>${escapeHtml(window.OrgXWidgetState ? window.OrgXWidgetState.formatAge(entity) : 'Sync time unavailable')}</div>` : ''}
-                </div>
-                <div class="dispatch-state dispatch-state--${escapeHtml(displayState)}" role="status" aria-label="${escapeHtml(statusLabel)}">
-                  <span class="dispatch-state__dot"></span>${statusLabel}
-                </div>
-              </div>
+    var currentView = null;
 
-              ${stateNotice}
-              ${isDispatch && (!entity.agent_ready || !entity.workspace_ready) && ['starting', 'queued'].includes(stateMeta.state) ? `<div class="dispatch-degraded">${icons.external(16)}<span>Some handoff context is still syncing. The card will not claim live work until a current receipt or heartbeat arrives.</span></div>` : ''}
+    var render = () => {
+      if (isLoading) return;
+      var model = normalizeEntityPayload(entity);
+      if (!model) {
+        stopRunPolling();
+        injectHtml('<article class="wcard"><div class="empty"><b>No dispatch receipt</b><span>No agent handoff was returned. Nothing is presented as running until OrgX supplies a task or run receipt.</span></div></article>');
+        return;
+      }
+      if (model.dispatched !== false) watchRun(model.run_id);
+      const stateMeta = window.OrgXWidgetState
+        ? window.OrgXWidgetState.derive(model)
+        : { state: String(model.status || 'unknown').toLowerCase(), label: 'Awaiting state', description: 'OrgX has not returned a reliable execution state yet.', hasExecutionEvidence: false };
+      var view = describeDispatch(model, stateMeta);
+      currentView = view;
 
-              <div class="dispatch-spine" aria-label="Dispatch route">
-                <div class="dispatch-node">
-                  <div class="dispatch-node__signal" style="overflow:hidden">${entity.agent_name || isDispatch ? renderAvatar(entity.agent_name || entity.domain || 'Pending') : typeIcon}</div>
-                  <div class="dispatch-node__label">${isDispatch ? 'Owner' : 'Requested owner'}</div>
-                  <div class="dispatch-node__value">${escapeHtml(entity.agent_name || (isDispatch ? 'Confirming agent' : 'Automatic'))}</div>
-                </div>
-                <div class="dispatch-node">
-                  <div class="dispatch-node__signal">${typeIcon}</div>
-                  <div class="dispatch-node__label">${isDispatch ? 'Execution surface' : 'Route'}</div>
-                  <div class="dispatch-node__value">${escapeHtml(isDispatch ? (entity.workspace_name || 'Context syncing') : routeValue)}</div>
-                </div>
-                <div class="dispatch-node">
-                  <div class="dispatch-node__signal">${icons.check(16)}</div>
-                  <div class="dispatch-node__label">${isDispatch ? 'Receipt' : 'Result'}</div>
-                  <div class="dispatch-node__value">${escapeHtml(isDispatch ? receiptId || 'Awaiting receipt ID' : 'No dispatch')}</div>
-                </div>
-              </div>
+      var identity = window.OrgXAgentIdentity;
+      var agentKey = identity ? identity.resolveAgentKey(model.agent_name, model.domain) : null;
+      var form = identity && view.chip ? identity.formForState(view.chip) : 'base';
+      var typeKey = String(model.type || '').toLowerCase();
+      var glyphKind = model.run_id ? 'run' : ['initiative', 'workstream', 'milestone', 'task'].indexOf(typeKey) !== -1 ? typeKey : 'task';
+      var glyphTone = view.edge === 'mute' ? '' : view.edge;
+      var place = model.initiative_name || model.workspace_name;
+      var who = model.agent_name
+        ? '<span class="who2">' + (agentKey ? '<ox-avatar agent="' + agentKey + '" form="' + form + '" size="20" name="' + escapeHtml(model.agent_name) + '"></ox-avatar>' : '') + '<b>' + escapeHtml(model.agent_name) + '</b></span>'
+        : model.dispatched !== false ? '<span class="who2">Confirming agent</span>' : '';
+      var ft = view.footer;
+      var footerAttrs = 'variant="' + ft.variant + '" state="' + ft.state + '" heading="' + escapeHtml(ft.heading) + '" detail="' + escapeHtml(ft.detail || '') + '"'
+        + (ft.primary !== undefined ? ' primary-label="' + escapeHtml(ft.primary) + '"' : '')
+        + (ft.action !== undefined ? ' action-label="' + escapeHtml(ft.action) + '"' : '');
 
-              <div class="dispatch-proof">
-                <div class="dispatch-proof__meta">${escapeHtml(isDispatch ? (entity.domain || 'Routing pending') + ' · ' + (isComplete ? 'proof recorded' : stateMeta.label.toLowerCase()) : preflightCopy)}</div>
-                <div class="dispatch-links">
-                  ${linksHtml}
-                  ${isDispatch && consoleUrl ? `<a href="${consoleUrl}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(consoleUrl || ''))}, event)' class="deep-link ox-link-btn ox-link-btn--primary">
-                    ${executionLabel} ${icons.external(14)}
-                  </a>` : ''}
-                </div>
-              </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      `);
+      injectHtml(
+        '<article class="wcard" data-edge="' + view.edge + '" data-state="' + escapeHtml(view.key) + '">'
+        + '<div class="hd">'
+        + '<ox-glyph kind="' + glyphKind + '"' + (glyphTone ? ' tone="' + glyphTone + '"' : '') + '></ox-glyph>'
+        + '<span class="kind">' + escapeHtml(view.kind) + '</span>'
+        + (place ? '<span class="src">in <ox-glyph kind="' + (model.initiative_name ? 'initiative' : 'workstream') + '"></ox-glyph><b>' + escapeHtml(place) + '</b></span>' : '')
+        + '<span class="sp"></span>' + who
+        + '</div>'
+        + '<div class="bd">'
+        + '<h3 class="pk-q">' + escapeHtml(model.title) + '</h3>'
+        + (view.chip ? '<div class="status"><ox-state-chip state="' + view.chip + '"' + (view.chipLabel ? ' label="' + escapeHtml(view.chipLabel) + '"' : '') + ' reserve="queued running succeeded failed_step stale needs_you cancelled"></ox-state-chip>'
+          + (model.dispatched !== false && window.OrgXWidgetState && window.OrgXWidgetState.observedAt(runStatus.data || model) !== null ? '<span class="meta">' + escapeHtml(window.OrgXWidgetState.formatAge(runStatus.data || model)) + '</span>' : '') + '</div>' : '')
+        + (view.note ? '<p class="note">' + escapeHtml(view.note) + '</p>' : '')
+        + renderCap(model)
+        + '<div class="rows" role="list" aria-label="Dispatch receipts">' + renderRows(model, view) + '</div>'
+        + '</div>'
+        + '<ox-footer id="dispatchFooter" ' + footerAttrs + '></ox-footer>'
+        + '</article>'
+      );
+      var footer = document.getElementById('dispatchFooter');
+      if (footer) {
+        footer.addEventListener('ox-primary', onFooterAction);
+        footer.addEventListener('ox-action', onFooterAction);
+      }
     };
+
+    function openExecution(href, footer) {
+      if (!href) return;
+      var proceed = window.openWidgetLink ? window.openWidgetLink(href) : true;
+      if (proceed) {
+        try { window.open(href, '_blank', 'noopener,noreferrer'); } catch (_) { /* host owns navigation */ }
+      }
+      // The kit locks the primary until the state changes; opening OrgX does
+      // not change the run, so hand the button back.
+      if (footer) footer.setAttribute('state', footer.getAttribute('state') || '');
+    }
+
+    function onFooterAction(event) {
+      if (!currentView) return;
+      openExecution(currentView.consoleUrl, event.currentTarget);
+    }
+
+    // Receipt rows are links; route them through the host instead of a raw navigation.
+    document.addEventListener('ox-open', function(event) {
+      var href = event.detail && event.detail.href;
+      if (!href || !window.openWidgetLink) return;
+      if (window.openWidgetLink(href, event) === false) event.preventDefault();
+    });
 
     if (isLoadingOverride) render();
     else if (isDemo) applyBootPayload();
