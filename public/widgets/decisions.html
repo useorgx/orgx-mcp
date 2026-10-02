@@ -5,8 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Pending Decisions - OrgX</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='15' fill='none' stroke='%23FBBF24' stroke-width='6'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%23FBBF24'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="shared/kit/ox-tokens.css" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
+  <script src="shared/kit/ox-elements.js"></script>
+  <script src="shared/agent-identity.js"></script>
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/interaction-kit.js"></script>
@@ -449,6 +452,14 @@
       font-size: 0.7rem;
       overflow: hidden;
       flex-shrink: 0;
+    }
+
+    .agent-avatar:has(ox-avatar) {
+      width: auto;
+      height: auto;
+      background: none;
+      border-radius: 50%;
+      overflow: visible;
     }
 
     .agent-avatar--system {
@@ -1590,6 +1601,11 @@
     };
 
     var resolveWidgetAsset = (path) => new URL('shared/' + path, window.location.href).toString();
+    // Previews served next to the widgets read avatars from the same origin;
+    // host sandboxes use the kit default (mcp.useorgx.com).
+    if (window.OrgXElements && window.OrgXWidgetRuntime && window.OrgXWidgetRuntime.detectProtocol() === 'standalone') {
+      window.OrgXElements.avatarConfig.baseUrl = resolveWidgetAsset('avatars');
+    }
 
     var normalizeDecision = (decision, index) => {
       if (!decision || typeof decision !== 'object') return null;
@@ -1781,6 +1797,10 @@
           const localUrl = resolveWidgetAsset('orgx-logo.png');
           const remoteUrl = WIDGET_ASSET_BASE + 'orgx-logo.png';
           return `<span style="display:none;align-items:center;justify-content:center;width:100%;height:100%;font-family:var(--ox-mono);font-size:0.7rem;">OX</span><img src="${localUrl}" alt="OrgX System" loading="eager" decoding="sync" draggable="false" onerror="if(!this.dataset.retried){this.dataset.retried='1';this.src='${remoteUrl}';return;}this.style.display='none'; if (this.previousElementSibling) this.previousElementSibling.style.display='flex';" />`;
+        }
+        const agentKey = window.OrgXAgentIdentity ? window.OrgXAgentIdentity.resolveAgentKey(name) : null;
+        if (agentKey && window.customElements && window.customElements.get('ox-avatar')) {
+          return `<ox-avatar agent="${agentKey}" form="asking" size="${Math.max(sizePx, 28)}" name="${escapeHtml(name)}"></ox-avatar>`;
         }
         const url = getAvatarUrl(name);
         const fallback = escapeHtml(name ? name[0].toUpperCase() : '?');

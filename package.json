@@ -23,6 +23,7 @@
     "widget:version": "node scripts/generate-widget-build-info.mjs",
     "widget:theme": "node scripts/generate-widget-theme.mjs",
     "widget:build": "node scripts/build-widgets.mjs",
+    "kit:sync": "node scripts/sync-ui-kit.mjs",
     "widget:verify-payloads": "node scripts/verify-widget-payloads.mjs",
     "widget:verify-rendering": "tsx scripts/verify-widget-rendering.ts",
     "widget:audit-redesign": "node scripts/audit-widget-redesign.mjs",
