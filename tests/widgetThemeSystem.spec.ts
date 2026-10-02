@@ -32,6 +32,7 @@ const accents: Record<string, string> = {
   "work-ledger.html": "teal",
   "workspace-map.html": "lime",
   "orgx-panel.html": "amber",
+  "proof-receipt.html": "teal",
 };
 
 describe("shared widget theme system", () => {

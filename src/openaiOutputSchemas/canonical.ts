@@ -19,6 +19,35 @@ import {
 } from './shared';
 import { chronicleSchema } from './presentation';
 
+const receiptProofSchema = z
+  .object({
+    receipt_type: nullableString,
+    status: z.enum(['in_progress', 'completed', 'failed', 'cancelled']),
+    anchor: z
+      .object({
+        entity_type: nullableString,
+        entity_id: nullableString,
+        artifact_id: nullableString,
+      })
+      .strict(),
+    artifact_type: nullableString,
+    agent_type: nullableString,
+    business_outcome: nullableString,
+    model_tier: nullableString,
+    evidence: z.array(
+      z
+        .object({
+          kind: z.enum(['pr', 'deploy', 'test_run', 'metric', 'link', 'note']),
+          label: z.string(),
+          url: nullableString,
+          value: nullableString,
+        })
+        .strict()
+    ),
+    evidence_total: z.number(),
+  })
+  .strict();
+
 export const CANONICAL_OUTPUT_SCHEMAS = {
   orgx_bootstrap: z
     .object({
@@ -545,6 +574,18 @@ export const CANONICAL_OUTPUT_SCHEMAS = {
       verification_status: z.string().optional(),
       fallback_reason: z.string().optional(),
       message: z.string().optional(),
+      // The v1 import route's response (POST /api/v1/agent-work-receipts).
+      external_receipt_id: z.string().optional(),
+      schema_version: z.string().optional(),
+      idempotent: z.boolean().optional(),
+      imported_at: z.string().optional(),
+      pilot: z
+        .object({ cohort_id: z.string(), partner_ref: nullableString })
+        .partial()
+        .nullable()
+        .optional(),
+      // What the receipt claimed, echoed for the proof-receipt widget.
+      proof: receiptProofSchema.optional(),
       loop_validation: loopValidationSchema,
       contract_warnings: z.array(z.string()).optional(),
     })
