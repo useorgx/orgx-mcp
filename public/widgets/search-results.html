@@ -73,6 +73,16 @@
     }
 
     .sr-hd ox-glyph { --ox-glyph-size: 16px; flex: none; }
+    .sr-search-icon { width: 16px; height: 16px; flex: none; }
+    .sr-tools { margin: 4px 18px 10px; font-size: 12.5px; color: var(--ox-text-muted); }
+    .sr-tools summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; }
+    .sr-tools p { line-height: 1.5; margin: 4px 0 10px; }
+    .sr-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .sr-filters label { display: grid; gap: 5px; min-width: 0; }
+    .sr-filters input, .sr-filters select { width: 100%; box-sizing: border-box; min-width: 0; min-height: 40px; padding: 7px; border: 1px solid var(--ox-border-strong); border-radius: 8px; background: var(--ox-bg); color: var(--ox-text); font: inherit; }
+    .sr-filter-actions { display: flex; gap: 8px; margin-top: 10px; }
+    .sr-filter-actions button { min-height: 40px; }
+    @media (max-width: 420px) { .sr-filters { grid-template-columns: 1fr; } }
 
     .sr-kind {
       flex: none;
@@ -481,6 +491,14 @@
         .replace(/\[([^\]]+)\]\(https?:\/\/[^)]+\)/g, '$1')
         .replace(/(\*\*|__|`)/g, '')
         .replace(/\s+/g, ' ').trim();
+      var readableText = (value, item) => {
+        var text = excerptText(value);
+        var uuid = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+        text = text.replace(new RegExp('\\b(task|run|initiative|artifact|workstream|decision|milestone)\\s+' + uuid + '\\b', 'gi'), function(_, type) { return 'linked ' + type.toLowerCase(); });
+        return text.replace(new RegExp('\\b' + uuid + '\\b', 'gi'), function(id) {
+          return item && id.toLowerCase() === String(item.id || '').toLowerCase() && item.short_id ? item.short_id : 'linked record';
+        });
+      };
       var normalizeResult = (item, fallbackType) => {
         item = item || {};
         var type = item.type || item.entity_type || fallbackType || 'result';
@@ -493,9 +511,9 @@
         ].find(value => typeof value === 'string' && value.trim() && !/^untitled$/i.test(value.trim()));
         var normalizedType = String(type).toLowerCase().replace(/-/g, '_');
         return {
-          title: decodeEscapedText(title || (normalizedType === 'initiative' ? 'Initiative title unavailable' : normalizedType === 'artifact' ? 'Artifact title unavailable' : normalizedType === 'decision' ? 'Decision title unavailable' : 'Result title unavailable')),
+          title: readableText(title || (normalizedType === 'initiative' ? 'Initiative title unavailable' : normalizedType === 'artifact' ? 'Artifact title unavailable' : normalizedType === 'decision' ? 'Decision title unavailable' : 'Result title unavailable'), item),
           type: decodeEscapedText(type),
-          snippet: excerptText(snippet),
+          snippet: readableText(snippet, item),
           score: coerceScore(item.score ?? item.relevance_score ?? item.vector_score),
           url: buildEntityUrl({ ...item, type }),
           date: formatRelativeDate(item.updated_at || item.date || item.created_at),
@@ -738,9 +756,17 @@
     var SEARCH_RESPONSE_TIMEOUT_MS = Number(window.__ORGX_SEARCH_RESPONSE_TIMEOUT_MS) || 12000;
     var loadingSettled = false;
     var bootError = '';
+    var retrying = false;
     var bootTimeoutId = null;
+    var sawIncompletePayload = false;
     var applyBootPayload = function(payload) {
+      payload = window.OrgXWidgetRuntime.extractSearchWidgetData(payload);
       if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return;
+      // In-progress host globals are not a completed search. Wait for a
+      // supported result/error, and keep any last good result visible.
+      if (!payload.error && payload.ok !== false && !Array.isArray(payload.results) &&
+          !Array.isArray(payload.decisions) && !Array.isArray(payload.recommendations) &&
+          !payload.next_action) { sawIncompletePayload = true; return; }
       var commit = function() {
         data = payload;
         bootError = '';
@@ -760,7 +786,8 @@
       bootTimeoutId = window.setTimeout(function() {
         if (loadingSettled) return;
         loadingSettled = true;
-        bootError = 'OrgX did not receive a search response. Check the connection and retry the search.';
+        bootError = 'The search results did not arrive in this card. Retry to load them again.';
+        window.OrgXWidgetRuntime.reportSearchWidgetEvent(sawIncompletePayload ? 'incomplete_response' : 'response_timeout');
         isLoading = false;
         render();
       }, SEARCH_RESPONSE_TIMEOUT_MS);
@@ -770,6 +797,59 @@
     
     var loadingMore = false;
     var loadMoreError = '';
+    var filters = { type: '', from: '', to: '' };
+    var filterError = '';
+    var filterOpen = false;
+    window.applySearchFilters = function(event) {
+      event.preventDefault();
+      var form = event.currentTarget;
+      var next = { type: form.elements.namedItem('type').value, from: form.elements.namedItem('from').value, to: form.elements.namedItem('to').value };
+      filterError = next.from && next.to && new Date(next.from) > new Date(next.to) ? 'Choose an end time after the start time.' : '';
+      if (!filterError) filters = next;
+      filterOpen = true;
+      currentPage = 1;
+      render();
+    };
+    window.clearSearchFilters = function() { filters = { type: '', from: '', to: '' }; filterError = ''; currentPage = 1; render(); };
+    window.retrySearch = async function() {
+      if (retrying) return;
+      var args = window.openai && window.openai.toolInput;
+      if (!args || typeof args !== 'object') {
+        try { await window.OrgXWidgetRuntime.sendFollowUpMessage('Retry the most recent OrgX search using its original query and filters.'); }
+        catch (_) { bootError = 'Ask ChatGPT to retry this search. This card cannot start a request here.'; render(); }
+        return;
+      }
+      retrying = true;
+      render();
+      try {
+        var result = await callTool('orgx_search', args);
+        var payload = window.OrgXWidgetRuntime.extractSearchWidgetData(result);
+        if (!payload || (!payload.error && !Array.isArray(payload.results))) throw new Error('incomplete_response');
+        applyBootPayload(payload);
+      } catch (_) { bootError = 'The search could not be loaded. Try again in a moment.'; }
+      finally { retrying = false; render(); }
+    };
+
+    var filterResults = function(results) {
+      return results.filter(function(item) {
+        if (filters.type && item.type !== filters.type) return false;
+        var at = item.at ? new Date(item.at).getTime() : NaN;
+        if ((filters.from || filters.to) && !Number.isFinite(at)) return false;
+        return (!filters.from || at >= new Date(filters.from).getTime()) && (!filters.to || at <= new Date(filters.to).getTime());
+      });
+    };
+    var searchTools = function(results) {
+      var types = Array.from(new Set(results.map(r => r.type))).sort();
+      return `<details class="sr-tools" ${filterOpen ? 'open' : ''} ontoggle="filterOpen=this.open"><summary>Filter loaded results</summary>
+        <p>Type and updated date/time narrow the results already loaded. Load more results to include another page. Times use your device’s timezone.</p>
+        <form onsubmit="applySearchFilters(event)"><div class="sr-filters">
+          <label>Type<select name="type"><option value="">All types</option>${types.map(type => `<option value="${escapeHtml(type)}" ${filters.type === type ? 'selected' : ''}>${escapeHtml(kindLabel(type))}</option>`).join('')}</select></label>
+          <label>Updated from<input name="from" type="datetime-local" value="${escapeHtml(filters.from)}"></label>
+          <label>Updated to<input name="to" type="datetime-local" value="${escapeHtml(filters.to)}"></label>
+        </div><div class="sr-filter-actions"><button class="page-btn" type="submit">Apply filters</button><button class="page-btn" type="button" onclick="clearSearchFilters()">Clear</button></div>
+        ${filterError ? `<p role="alert">${escapeHtml(filterError)}</p>` : ''}</form></details>
+        <details class="sr-tools"><summary>How search works</summary><p>A phrase searches organizational memory. Ask for an entity type, status, workspace or initiative to narrow the request. Typed searches can load more pages; memory searches return a ranked selection. Date/time controls here filter loaded results.</p></details>`;
+    };
     window.loadMoreResults = async () => {
       if (loadingMore || !data || !data.next_call || data.next_call.tool !== 'orgx_search') return;
       const previous = data;
@@ -778,12 +858,13 @@
       render();
       try {
         const response = await callTool('orgx_search', previous.next_call.args || {});
-        const next = response && (response.structuredContent || response);
+        const next = window.OrgXWidgetRuntime.extractSearchWidgetData(response);
         if (!next || next.error || response.isError || !Array.isArray(next.results)) throw new Error('Search did not return a result page.');
         if (data !== previous) return;
         data = { ...previous, ...next, results: previous.results.concat(next.results) };
         currentPage = Math.floor(previous.results.length / itemsPerPage) + 1;
       } catch (_) {
+        window.OrgXWidgetRuntime.reportSearchWidgetEvent('page_error');
         loadMoreError = 'More results could not be loaded. Your current results are preserved. Try again.';
       } finally {
         loadingMore = false;
@@ -871,7 +952,7 @@
     var cardHtml = (options) => `
       <div class="widget-shell-card">
         <div class="ox-card sr" data-edge="${options.edge || 'teal'}">
-          <div class="sr-hd"><ox-glyph kind="${options.glyph || 'question'}"${options.edge === 'amber' ? ' tone="amber"' : ''}></ox-glyph>
+          <div class="sr-hd">${options.kind === 'Search' ? '<svg class="sr-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 5 5"/></svg>' : `<ox-glyph kind="${options.glyph || 'artifact'}"${options.edge === 'amber' ? ' tone="amber"' : ''}></ox-glyph>`}
             <span class="sr-kind">${escapeHtml(options.kind)}</span>
             ${options.source ? `<span class="sr-src">${options.source}</span>` : ''}
             ${options.count ? `<span class="sr-count">${escapeHtml(options.count)}</span>` : ''}
@@ -889,14 +970,15 @@
     });
 
     var unavailable = (message) => stateCard('Search', 'Search unavailable', message, 'red',
-      '<ox-footer variant="reads" state="failed" heading="Couldn’t reach OrgX" detail="your query was not changed" action-label=""></ox-footer>');
+      `<ox-footer variant="reads" state="failed" heading="Results could not be displayed" detail="your query was not changed" action-label=""><button class="sr-more" slot="action" type="button" onclick="retrySearch()" ${retrying ? 'disabled' : ''}>${retrying ? 'Retrying…' : 'Retry search'}</button></ox-footer>`);
 
     var quoted = (text) => text ? '<b>“' + escapeHtml(text) + '”</b>' : '';
 
     var render = () => {
       if(isLoading) return;
-      if(data && data.error) {
-        var errorMessage = window.OrgXWidgetRuntime.getErrorMessage(data.error, 'Organizational memory is temporarily unavailable.');
+      if(data && (data.error || data.ok === false)) {
+        window.OrgXWidgetRuntime.reportSearchWidgetEvent('tool_error');
+        var errorMessage = window.OrgXWidgetRuntime.getErrorMessage(data.error || data, 'Organizational memory is temporarily unavailable.');
         injectHtml(unavailable(errorMessage));
         return;
       }
@@ -905,14 +987,11 @@
         injectHtml(unavailable(unavailableMessage));
         return;
       }
-      if (typeof data.query === 'string' && !Array.isArray(data.results)) {
-        injectHtml(unavailable('OrgX returned an incomplete search response. Retry the search.'));
-        return;
-      }
       var recommendationMode = Array.isArray(data.recommendations) || !!data.next_action;
       var historyMode = Array.isArray(data.decisions) || data.scope === 'decisions' || !!data.topic;
 
       if (historyMode) {
+        window.OrgXWidgetRuntime.reportSearchWidgetEvent('rendered');
         var history = (Array.isArray(data.decisions) ? data.decisions : Array.isArray(data.results) ? data.results : []).map(normalizeDecisionHistoryItem);
         if (!history.length) {
           injectHtml(stateCard('Decision history', 'No matching decisions', data.topic ? 'OrgX did not find any prior decisions for “' + data.topic + '”.' : 'OrgX did not find any historical decisions for this request yet.', 'mute',
@@ -936,6 +1015,7 @@
       }
 
       if (recommendationMode) {
+        window.OrgXWidgetRuntime.reportSearchWidgetEvent('rendered');
         var recommendations = (data.recommendations || []).map(normalizeRecommendation);
         if (!recommendations.length && data.next_action) {
           recommendations = [normalizeRecommendation(data.next_action, 0)];
@@ -971,6 +1051,7 @@
         injectHtml(unavailable('OrgX returned an incomplete search response. Retry the search.'));
         return;
       }
+      window.OrgXWidgetRuntime.reportSearchWidgetEvent('rendered');
       if (!normalizedResults.length) {
         injectHtml(stateCard('Search', 'No results found', data.query ? 'OrgX could not find a strong match for “' + data.query + '”. Try a broader phrase or a different scope.' : 'Try adjusting your query or expanding your search scope.', 'mute',
           '<ox-footer variant="reads" state="caught-up" heading="No matches" detail="try a broader phrase"></ox-footer>'));
@@ -978,8 +1059,9 @@
       }
 
       // S5-B: what needs your decision comes first, in its own group.
-      var waiting = normalizedResults.filter(needsYou);
-      var ordered = waiting.concat(normalizedResults.filter((r) => !needsYou(r)));
+      var visibleResults = filterResults(normalizedResults);
+      var waiting = visibleResults.filter(needsYou);
+      var ordered = waiting.concat(visibleResults.filter((r) => !needsYou(r)));
       const totalPages = Math.max(1, Math.ceil(ordered.length / itemsPerPage));
       currentPage = Math.min(currentPage, totalPages);
       const startIdx = (currentPage - 1) * itemsPerPage;
@@ -1020,8 +1102,9 @@
         glyph: 'question',
         edge: waiting.length ? 'amber' : 'teal',
         source: data.query ? quoted(data.query) : '<b>Organizational memory</b>',
-        count: normalizedResults.length + (normalizedResults.length === 1 ? ' result' : ' results'),
-        body: `<div class="sr-bd">
+        count: visibleResults.length + ' of ' + normalizedResults.length + ' loaded',
+        body: `${searchTools(normalizedResults)}<div class="sr-bd">
+            ${visibleResults.length ? '' : '<p class="sr-sub" role="status">No loaded results match these filters. Clear the filters or load another page.</p>'}
             ${groupsHtml}
             ${loadMoreError ? `<p class="sr-sub sr-alert" role="alert">${escapeHtml(loadMoreError)}</p>` : ''}
             ${totalPages > 1 ? `
@@ -1041,7 +1124,20 @@
     });
 
     if(isDemo) applyBootPayload(data);
-    else initWidget({ render: d => { applyBootPayload(d); } });
+    else initWidget({
+      bridge: 'mcp-apps-sdk',
+      observeChatGPTGlobals: true,
+      onFailure: function(failure) { applyBootPayload(failure); return true; },
+      getData: function(result) {
+        var payload = window.OrgXWidgetRuntime.extractSearchWidgetData(result);
+        if (payload && (payload.error || payload.ok === false || Array.isArray(payload.results) ||
+            Array.isArray(payload.decisions) || Array.isArray(payload.recommendations) || payload.next_action)) return payload;
+        // Widget-only copy survives hosts that expose only the summary as
+        // toolOutput. Never use it to replace an explicit failure.
+        return window.OrgXWidgetRuntime.getToolResponseMetadata('orgx/searchPayload') || payload;
+      },
+      render: d => { applyBootPayload(d); }
+    });
   </script>
 </body>
 </html>
