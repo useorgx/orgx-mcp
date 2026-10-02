@@ -595,7 +595,7 @@ describe('OpenAI public tool output schemas', () => {
     }
   });
 
-  it('rejects malformed structured output through the registration wrapper', async () => {
+  it('rejects malformed search output at the delivery boundary with a useful error', async () => {
     const server = new McpServer({
       name: 'orgx-openai-malformed-output',
       version: '1.0.0',
@@ -617,10 +617,11 @@ describe('OpenAI public tool output schemas', () => {
         arguments: {},
       });
       expect(result.isError).toBe(true);
+      expect(result.structuredContent).toMatchObject({ ok: false, error: { code: 'invalid_search_response' } });
       expect(result.content).toEqual([
         expect.objectContaining({
           type: 'text',
-          text: expect.stringContaining('Output validation error'),
+          text: expect.stringContaining('incomplete search response'),
         }),
       ]);
     } finally {

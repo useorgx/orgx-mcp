@@ -33,6 +33,13 @@ runs:
       shell: bash
       run: pnpm install --frozen-lockfile
 
+    - name: Refresh widget build version
+      # `pnpm exec tsc` skips the package pretype-check hook. Regenerate the
+      # asset hash here so validation and deployment use the widget we ship.
+      # The hash assertion in Vitest remains the guard for stale builds.
+      shell: bash
+      run: node scripts/generate-widget-build-info.mjs
+
     - name: Type-check
       shell: bash
       run: pnpm exec tsc --noEmit

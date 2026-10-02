@@ -1,4 +1,5 @@
 import { summarizeSearchPayload, type SearchTelemetry } from './searchTelemetry';
+import { normalizeMemorySearchPayload } from './orgxSearch';
 
 const SEARCH_TOOLS = new Set(['orgx_search', 'query_org_memory']);
 
@@ -29,7 +30,8 @@ export function prepareSearchResult<T extends SearchResult | null | undefined>(
 ): T {
   if (!SEARCH_TOOLS.has(toolId) || !result) return result;
   const root = record(result.structuredContent);
-  const payload = Array.isArray(root?.results) ? root : record(root?.data) ?? root;
+  const rawPayload = Array.isArray(root?.results) ? root : record(root?.data) ?? root;
+  const payload = rawPayload ? normalizeMemorySearchPayload(rawPayload) : null;
   // The work ledger uses its own template/contract, not the search widget.
   if (payload?.scope === 'work_ledger') return result;
   const failed = result.isError === true || root?.ok === false || Boolean(root?.error) ||

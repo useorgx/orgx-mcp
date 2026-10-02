@@ -28,6 +28,7 @@ describe('search delivery through the real ChatGPT widget', () => {
     { structuredContent: { ok: true, data: payload } },
     { content: [{ type: 'text', text: 'One match' }, { type: 'text', text: JSON.stringify(payload) }] },
     JSON.stringify(payload),
+    { query: 'launch', results_by_type: { initiatives: payload.results } },
   ])('renders a completed response without the screenshot failure: %j', async (output) => {
     boot(output);
     await vi.advanceTimersByTimeAsync(250);

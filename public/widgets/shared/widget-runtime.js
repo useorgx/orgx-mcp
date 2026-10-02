@@ -141,6 +141,19 @@
       if (value.ok === false || value.error || value.isError === true) return value;
       if (Array.isArray(value.results) || Array.isArray(value.decisions) ||
           Array.isArray(value.recommendations) || value.next_action) return value;
+      var groups = value.results_by_type;
+      if (groups && typeof groups === 'object' && !Array.isArray(groups) &&
+          Object.keys(groups).every(function(kind) { return Array.isArray(groups[kind]); })) {
+        var rows = [];
+        Object.keys(groups).forEach(function(kind) {
+          groups[kind].forEach(function(row) {
+            if (row && typeof row === 'object' && !Array.isArray(row)) {
+              rows.push(Object.assign({}, row, { type: typeof row.type === 'string' ? row.type : kind.replace(/s$/, '') }));
+            }
+          });
+        });
+        return Object.assign({}, value, { results: rows });
+      }
       if (value._meta && value._meta['orgx/searchPayload']) {
         value = value._meta['orgx/searchPayload'];
         continue;

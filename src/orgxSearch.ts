@@ -1,5 +1,19 @@
 export type OrgxSearchArgs = Record<string, unknown>;
 
+/** The memory API also returns grouped matches; preserve their entity kinds. */
+export function normalizeMemorySearchPayload(payload: Record<string, unknown>): Record<string, unknown> {
+  if (Array.isArray(payload.results)) return payload;
+  const groups = payload.results_by_type;
+  if (!groups || typeof groups !== 'object' || Array.isArray(groups) ||
+      !Object.values(groups).every(Array.isArray)) return payload;
+  const results = Object.entries(groups).flatMap(([kind, rows]) =>
+    (rows as unknown[]).filter((row): row is Record<string, unknown> =>
+      Boolean(row && typeof row === 'object' && !Array.isArray(row))).map(row => ({
+        ...row, type: typeof row.type === 'string' ? row.type : kind.replace(/s$/, ''),
+      })));
+  return { ...payload, results };
+}
+
 export type EntitySearchPagination = {
   total: number | null;
   limit: number;
@@ -167,4 +181,3 @@ export function buildBroadSearchPagination(limit: number, returned: number) {
     exhaustive: false,
   };
 }
-

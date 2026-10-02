@@ -4,7 +4,7 @@ vi.mock('../src/toolGuidance', () => ({ sanitizeToolResultGuidance: (result: unk
 import { installToolResultGuidanceWrapper } from '../src/toolResultRegistration';
 
 describe('search result registration', () => {
-  it('adds diagnostics and its verified health field to successful search only', async () => {
+  it('adds widget-only diagnostics without changing the search output contract', async () => {
     let wrapped: (...args: unknown[]) => Promise<any>;
     const registerTool = vi.fn((_name, _config, handler) => { wrapped = handler; });
     const context = vi.fn().mockResolvedValue({ meta: { grant: 'signed' }, health: { failed: 1 } });
@@ -12,7 +12,7 @@ describe('search result registration', () => {
     installToolResultGuidanceWrapper(server as any, null, undefined, context);
     server.registerTool('orgx_search', {}, async () => ({ structuredContent: { results: [] } }));
     const result = await wrapped!();
-    expect(result.structuredContent.search_widget_health).toEqual({ failed: 1 });
+    expect(result.structuredContent).toEqual({ results: [] });
     expect(result._meta['orgx/searchPayload']).toEqual({ results: [] });
     expect(result._meta['orgx/widgetDiagnostics']).toEqual({ grant: 'signed' });
     server.registerTool('orgx_inspect', {}, async () => ({ structuredContent: { entity: {} } }));

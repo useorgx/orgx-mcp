@@ -17,7 +17,7 @@ export function installToolResultGuidanceWrapper(
   mcpServer: McpServer,
   allowedTools: ReadonlySet<string> | null,
   onSearchResult?: (toolId: string, observation: SearchDeliveryObservation) => void,
-  searchContext?: () => Promise<{ meta: Record<string, unknown>; health: Record<string, unknown> } | null>
+  searchContext?: () => Promise<{ meta: Record<string, unknown> } | null>
 ) {
   const server = mcpServer as unknown as {
     registerTool: (
@@ -52,9 +52,6 @@ export function installToolResultGuidanceWrapper(
         if (!context) return result;
         return {
           ...result,
-          structuredContent: name === 'orgx_search' && Array.isArray((result.structuredContent as Record<string, unknown>)?.results)
-            ? { ...result.structuredContent as Record<string, unknown>, search_widget_health: context.health }
-            : result.structuredContent,
           _meta: { ...(result as { _meta?: Record<string, unknown> })._meta, 'orgx/widgetDiagnostics': context.meta },
         };
       } catch {

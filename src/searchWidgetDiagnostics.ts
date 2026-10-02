@@ -27,20 +27,22 @@ export async function buildSearchDiagnosticsContext(env: DiagnosticEnv, now = Da
   const grant: Grant = { version: 1, audience: 'orgx-search-widget-diagnostics', nonce: crypto.randomUUID(), exp: Math.floor(now / 1000) + TTL_SECONDS };
   const payload = encode(new TextEncoder().encode(JSON.stringify(grant)));
   const signature = await crypto.subtle.sign('HMAC', await key(env.MCP_JWT_SECRET), new TextEncoder().encode(payload));
+  return { meta: { endpoint: origin + PATH, grant: payload + '.' + encode(new Uint8Array(signature)) } };
+}
+
+export async function readSearchWidgetHealth(env: DiagnosticEnv, now = Date.now()) {
+  if (!env.OAUTH_KV) return null;
   const days = await Promise.all([now, now - 3_600_000].flatMap(at =>
     ['failed', 'rendered'].map(kind => env.OAUTH_KV!.get(healthKey(at) + ':' + kind))));
   const health = days.map(raw => {
     try { return raw ? JSON.parse(raw) as Health : emptyHealth(); } catch { return emptyHealth(); }
   });
   return {
-    meta: { endpoint: origin + PATH, grant: payload + '.' + encode(new Uint8Array(signature)) },
-    health: {
       window_minutes: 120,
       rendered: health.reduce((n, h) => n + h.rendered, 0),
       failed: health.reduce((n, h) => n + h.failed, 0),
       latest_failure_at: health[0].latest_failure_at ?? health[2].latest_failure_at,
       latest_failure_code: health[0].latest_failure_code ?? health[2].latest_failure_code,
-    },
   };
 }
 
@@ -51,6 +53,12 @@ export async function handleSearchWidgetDiagnostics(
   report: (event: { code: string; protocol: string; failed: boolean }) => void,
   now = Date.now()
 ): Promise<Response | null> {
+  if (new URL(request.url).pathname === '/status/search' && request.method === 'GET') {
+    const health = await readSearchWidgetHealth(env, now);
+    return Response.json(health ?? { error: 'search diagnostics unavailable' }, {
+      status: health ? 200 : 503, headers: { 'cache-control': 'no-store' },
+    });
+  }
   if (new URL(request.url).pathname !== PATH) return null;
   const headers = {
     'access-control-allow-origin': '*',

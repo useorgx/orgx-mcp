@@ -33,4 +33,10 @@ describe('search result delivery contract', () => {
   it.each([{ decisions: [] }, { recommendations: [] }, { next_action: { label: 'Review' } }])('preserves shared memory template modes: %j', payload => {
     expect(prepareSearchResult('query_org_memory', { structuredContent: payload })).not.toHaveProperty('isError');
   });
+  it('preserves the grouped memory API contract and sends flattened rows to the widget', () => {
+    const payload = { total_found: 1, results_by_type: { decisions: [{ id: 'd-1', title: 'Rate limits' }] } };
+    const result = prepareSearchResult('query_org_memory', { structuredContent: payload, _meta: {} });
+    expect(result.structuredContent).toBe(payload);
+    expect(result._meta['orgx/searchPayload']).toMatchObject({ results: [{ id: 'd-1', type: 'decision' }] });
+  });
 });

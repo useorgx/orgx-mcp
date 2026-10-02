@@ -98,13 +98,6 @@ export const CANONICAL_OUTPUT_SCHEMAS = {
       results: z.array(resourceSchema),
       pagination: paginationSchema,
       next_call: toolCallSchema.nullable(),
-      search_widget_health: z.object({
-        window_minutes: z.number(),
-        rendered: z.number(),
-        failed: z.number(),
-        latest_failure_at: nullableString,
-        latest_failure_code: nullableString,
-      }).strict().optional(),
     })
     .strict(),
 

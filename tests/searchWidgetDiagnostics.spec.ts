@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildSearchDiagnosticsContext, handleSearchWidgetDiagnostics } from '../src/searchWidgetDiagnostics';
+import { buildSearchDiagnosticsContext, handleSearchWidgetDiagnostics, readSearchWidgetHealth } from '../src/searchWidgetDiagnostics';
 
 const now = Date.parse('2026-10-02T04:00:00Z');
 function environment() {
@@ -19,8 +19,8 @@ describe('signed search widget diagnostics', () => {
     expect((await handleSearchWidgetDiagnostics(request(body), env, report, now))!.status).toBe(204);
     expect((await handleSearchWidgetDiagnostics(request(body), env, report, now))!.status).toBe(204);
     expect(report).toHaveBeenCalledTimes(1);
-    const next = (await buildSearchDiagnosticsContext(env, now + 1000))!;
-    expect(next.health).toMatchObject({ failed: 1, latest_failure_code: 'incomplete_response' });
+    const next = (await readSearchWidgetHealth(env, now + 1000))!;
+    expect(next).toMatchObject({ failed: 1, latest_failure_code: 'incomplete_response' });
     expect(JSON.stringify(report.mock.calls)).not.toContain(context.meta.grant);
   });
   it('rejects forged/expired grants and free text without reporting', async () => {

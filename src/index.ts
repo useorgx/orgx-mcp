@@ -239,6 +239,7 @@ import {
   buildOrgxSearchNextCall,
   filterEntitySearchRecords,
   normalizeEntitySearchPage,
+  normalizeMemorySearchPayload,
   type EntitySearchPage,
 } from './orgxSearch';
 import {
@@ -2694,11 +2695,12 @@ export class OrgXMcp extends McpAgent<
     if (result.ok === false) {
       throw new Error(result.error ?? 'Broad OrgX search failed');
     }
-    if (!Array.isArray(result.data?.results)) {
+    const searchData = normalizeMemorySearchPayload(result.data ?? {});
+    if (!Array.isArray(searchData.results)) {
       throw new Error('OrgX returned an incomplete search response');
     }
-    return Array.isArray(result.data?.results)
-      ? result.data.results.filter(
+    return Array.isArray(searchData.results)
+      ? searchData.results.filter(
           (record): record is Record<string, unknown> =>
             Boolean(record && typeof record === 'object' && !Array.isArray(record))
         )
@@ -7382,7 +7384,7 @@ export class OrgXMcp extends McpAgent<
     if (this.toolResultGuidanceInstalled) return;
     this.toolResultGuidanceInstalled = true;
     installToolResultGuidanceWrapper(this.server, allowedTools, (toolId, observation) => {
-      if (this.isDirectoryReviewProfile()) return;
+      if (this.isDirectoryReviewProfile() || this.isSubmittedInformationalToolExecution(toolId)) return;
       this.capturePosthogEvent('mcp_search_response', {
         distinctId: this.resolveUserId() ?? this.resolveAnonymousDistinctId(),
         properties: {
