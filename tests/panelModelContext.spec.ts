@@ -372,7 +372,7 @@ describe('the panel updates model context only from the Share click', () => {
     ]);
     expect(calls.callServerTool.mock.calls[0]![0]).toEqual({
       name: 'orgx_widget_decide',
-      arguments: { decision_id: D1, action: 'approve', approval_token: 'tok-1' },
+      arguments: { decision_id: D1, action: 'approve', approval_token: 'tok-1', kind: 'decision' },
     });
     expect(calls.callServerTool.mock.calls[1]![0]).toEqual({
       name: 'orgx_command_status',
@@ -413,7 +413,7 @@ describe('the panel updates model context only from the Share click', () => {
     await flush();
     expect(calls.callServerTool.mock.calls[0]![0]).toEqual({
       name: 'orgx_widget_decide',
-      arguments: { decision_id: D2, action: 'reject', approval_token: 'tok-2', reason: 'Use the staging keys first.' },
+      arguments: { decision_id: D2, action: 'reject', approval_token: 'tok-2', kind: 'decision', reason: 'Use the staging keys first.' },
     });
     await new Promise((r) => dom.window.setTimeout(r, 600));
     await flush();
@@ -461,7 +461,7 @@ describe('panel buttons come from the server', () => {
     await flush();
     expect(decided(calls)[0]).toEqual({
       name: 'orgx_widget_decide',
-      arguments: { decision_id: D1, action: 'approve', approval_token: 'tok-1', option_id: 'monday' },
+      arguments: { decision_id: D1, action: 'approve', approval_token: 'tok-1', kind: 'decision', option_id: 'monday' },
     });
   });
 
@@ -485,7 +485,7 @@ describe('panel buttons come from the server', () => {
     expect(decided(calls)).toEqual([]);
     footer().dispatchEvent(new dom.window.CustomEvent('ox-primary', { bubbles: true, composed: true, detail: {} }));
     await flush();
-    expect(decided(calls)[0]!.arguments).toEqual({ decision_id: D1, action: 'approve', approval_token: 'tok-1', option_ids: ['eu', 'us'] });
+    expect(decided(calls)[0]!.arguments).toEqual({ decision_id: D1, action: 'approve', approval_token: 'tok-1', kind: 'decision', option_ids: ['eu', 'us'] });
   });
 
   it('prefers widget_actions, and shows Approve and Send back for any decision with a token', async () => {
@@ -514,7 +514,7 @@ describe('panel buttons come from the server', () => {
     expect(doc.querySelector(`[data-action="sendback"][data-id="${D2}"]`)).not.toBeNull();
     footer.dispatchEvent(new dom.window.CustomEvent('ox-primary', { bubbles: true, composed: true, detail: {} }));
     await flush();
-    expect(decided(calls)[0]!.arguments).toEqual({ decision_id: D1, action: 'approve', approval_token: 'tok-1' });
+    expect(decided(calls)[0]!.arguments).toEqual({ decision_id: D1, action: 'approve', approval_token: 'tok-1', kind: 'decision' });
   });
 
   it('says Decide in OrgX only when there is no token', async () => {
@@ -524,5 +524,229 @@ describe('panel buttons come from the server', () => {
     const doc = dom.window.document;
     expect(doc.querySelector('.packet .primary-btn')!.textContent).toContain('Decide in OrgX');
     expect(doc.querySelector('.packet ox-footer')).toBeNull();
+  });
+});
+
+describe('panel: the per-item contract and every refusal', () => {
+  type Call = { name: string; arguments: Record<string, unknown> };
+  const decided = (calls: { callServerTool: ReturnType<typeof vi.fn> }) =>
+    calls.callServerTool.mock.calls.map((call) => call[0] as Call).filter((call) => call.name === 'orgx_widget_decide');
+  const contract = (extra: Record<string, unknown> = {}) => ({
+    kind: 'decision',
+    actions: ['approve', 'reject'],
+    labels: { approve: 'Approve', reject: 'Send back' },
+    reject_requires_reason: true,
+    answer: null,
+    selection: null,
+    ...extra,
+  });
+  const refusal = (code: string, message: string, details?: Record<string, unknown>) => ({
+    isError: true,
+    content: [{ type: 'text', text: message }],
+    structuredContent: { error: { code, message, ...(details ? { details } : {}) } },
+  });
+  const withFocus = (focus: Record<string, unknown>, rest: Record<string, unknown> = {}) => {
+    const base = snapshot();
+    return snapshot({ focus: { ...(base.focus as Record<string, unknown>), options: [], multiselect: false, widget_actions: null, ...focus }, ...rest });
+  };
+  async function open(structured: Record<string, unknown>, decide?: (args: Record<string, unknown>) => unknown, tokens: Record<string, string> = { [D1]: 'tok-1' }) {
+    const mounted = await mountPanel({}, {});
+    mounted.calls.callServerTool.mockImplementation(async (params: Call) => {
+      if (params.name === 'orgx_widget_decide') {
+        return decide ? decide(params.arguments) : { structuredContent: { decision_id: params.arguments.decision_id, action: 'approved' } };
+      }
+      if (params.name === 'orgx_command_status') {
+        return { structuredContent: { kind: 'decision', id: params.arguments.id, state: 'succeeded', next_poll_after_ms: null } };
+      }
+      return new Promise(() => undefined);
+    });
+    mounted.app().ontoolresult({ structuredContent: structured, _meta: { 'orgx/widgetApproval': { approval_tokens: tokens } } });
+    await mounted.flush();
+    const doc = mounted.dom.window.document;
+    const footer = () => doc.querySelector('.packet ox-footer') as HTMLElement | null;
+    const press = () => footer()!.dispatchEvent(new mounted.dom.window.CustomEvent('ox-primary', { bubbles: true, composed: true, detail: {} }));
+    const type = (selector: string, value: string) => {
+      const area = doc.querySelector(selector) as HTMLTextAreaElement;
+      area.value = value;
+      area.dispatchEvent(new mounted.dom.window.Event('input', { bubbles: true }));
+    };
+    const settle = async () => { for (let i = 0; i < 6; i += 1) await mounted.flush(); };
+    return { ...mounted, doc, footer, press, type, settle };
+  }
+
+  it('asks for a typed answer and sends it with the server labels', async () => {
+    const p = await open(withFocus({
+      widget_actions: contract({ labels: { approve: 'Send answer', reject: 'Decline' }, reject_requires_reason: false, answer: { required_for: ['approve'], max_length: 300 } }),
+    }));
+    const answer = p.doc.querySelector(`textarea[data-field="answer"][data-id="${D1}"]`) as HTMLTextAreaElement;
+    expect(answer.getAttribute('maxlength')).toBe('300');
+    expect(p.footer()!.getAttribute('primary-label')).toBe('Send answer');
+    expect(p.footer()!.hasAttribute('disabled')).toBe(true);
+    expect(p.doc.querySelector('.packet [data-action="sendback"]')!.textContent).toBe('Decline');
+    p.type(`textarea[data-field="answer"][data-id="${D1}"]`, 'staging-eu-2');
+    expect(p.footer()!.hasAttribute('disabled')).toBe(false);
+    p.press();
+    await p.settle();
+    expect(decided(p.calls)[0]!.arguments).toEqual({ decision_id: D1, action: 'approve', approval_token: 'tok-1', kind: 'decision', answer: 'staging-eu-2' });
+    expect(p.footer()!.getAttribute('heading')).toBe('Answer sent by you');
+  });
+
+  it('honours min and max on a multiple selection and sends option_ids', async () => {
+    const selection = {
+      mode: 'multiple', min: 1, max: 2, required_for: ['approve'],
+      options: ['eu', 'us', 'apac'].map((id) => ({ id, label: id.toUpperCase(), description: null, implied_action: null, requires_reason: false })),
+    };
+    const p = await open(withFocus({ widget_actions: contract({ labels: { approve: 'Confirm selection', reject: 'Request changes' }, selection }) }));
+    expect(p.footer()!.getAttribute('heading')).toBe('Choose 1–2');
+    for (const id of ['eu', 'us', 'apac']) (p.doc.querySelector(`.opt[data-option="${id}"]`) as HTMLButtonElement).click();
+    expect(p.doc.querySelector('.opt[data-option="apac"]')!.getAttribute('aria-pressed')).toBe('false');
+    expect(p.footer()!.getAttribute('primary-label')).toBe('Confirm selection');
+    p.press();
+    await p.settle();
+    expect(decided(p.calls)[0]!.arguments).toEqual({ decision_id: D1, action: 'approve', approval_token: 'tok-1', kind: 'decision', option_ids: ['eu', 'us'] });
+  });
+
+  it('lets implied_action decide an option click and asks why when the option requires it', async () => {
+    const selection = {
+      mode: 'single', min: 1, max: 1, required_for: ['approve'],
+      options: [
+        { id: 'other', label: 'Something else', description: null, implied_action: null, requires_reason: true },
+        { id: 'stop', label: 'Stop', description: null, implied_action: 'reject', requires_reason: false },
+      ],
+    };
+    const p = await open(withFocus({ widget_actions: contract({ selection }) }));
+    (p.doc.querySelector('.opt[data-option="stop"]') as HTMLButtonElement).click();
+    await p.flush();
+    // Sending back needs a note here: the composer opens with Stop chosen.
+    expect(p.doc.querySelector('.opt[data-action="reject-option"][data-option="stop"]')!.getAttribute('aria-pressed')).toBe('true');
+    expect(decided(p.calls)).toHaveLength(0);
+    (p.doc.querySelector('[data-action="cancel-sendback"]') as HTMLButtonElement).click();
+    (p.doc.querySelector('.opt[data-option="other"]') as HTMLButtonElement).click();
+    await p.flush();
+    expect(p.footer()!.getAttribute('heading')).toBe('You picked Something else');
+    expect(p.footer()!.hasAttribute('disabled')).toBe(true);
+    p.type(`textarea[data-field="note"][data-id="${D1}"]`, 'Thursday works better.');
+    p.press();
+    await p.settle();
+    expect(decided(p.calls)[0]!.arguments).toEqual({
+      decision_id: D1, action: 'approve', approval_token: 'tok-1', kind: 'decision', option_id: 'other', reason: 'Thursday works better.',
+    });
+  });
+
+  it('sends back without a note when the server does not require one, with the server label', async () => {
+    const p = await open(withFocus({ widget_actions: contract({ labels: { approve: 'Grant access', reject: 'Deny' }, reject_requires_reason: false }) }));
+    (p.doc.querySelector('.packet [data-action="sendback"]') as HTMLButtonElement).click();
+    await p.flush();
+    expect(p.doc.querySelector(`label[for="reason-${D1}"]`)!.textContent).toBe('What should change? · optional');
+    const submit = p.doc.querySelector('[data-action="submit-sendback"]') as HTMLButtonElement;
+    expect(submit.textContent).toBe('Deny');
+    expect(submit.disabled).toBe(false);
+    submit.click();
+    await p.settle();
+    expect(decided(p.calls)[0]!.arguments).toEqual({ decision_id: D1, action: 'reject', approval_token: 'tok-1', kind: 'decision' });
+    expect(p.footer()!.getAttribute('heading')).toBe('Denied by you');
+  });
+
+  it('settles gateway actions and agent-run approvals with their kind, without a decision status poll', async () => {
+    const p = await open(
+      withFocus(
+        { kind: 'action', question: 'send_email (gmail.send)', widget_actions: contract({ kind: 'action', labels: { approve: 'Approve', reject: 'Deny' }, reject_requires_reason: false }) },
+        {
+          queue: [
+            { id: D1, version: 'v1', title: 'send_email (gmail.send)', urgency: 'high', waiting_since: null, initiative_title: null, blocked: false, decide_in_orgx_reason: null, option_count: 0, kind: 'action', widget_actions: null, url: 'https://useorgx.com/decisions?status=pending' },
+            { id: D2, version: 'v1', title: 'Resume the import run?', urgency: 'high', waiting_since: null, initiative_title: null, blocked: false, decide_in_orgx_reason: null, option_count: 0, kind: 'approval', widget_actions: null, url: 'https://useorgx.com/agents/runs/x' },
+          ],
+        }
+      ),
+      undefined,
+      { [D1]: 'tok-1', [D2]: 'tok-2' }
+    );
+    expect(p.doc.querySelector('.packet .meta')!.textContent).toContain('Action approval');
+    expect(p.doc.querySelector(`[data-row="${D2}"] .row-meta`)!.textContent).toContain('Run approval');
+    p.press();
+    await p.settle();
+    (p.doc.querySelector(`[data-action="approve"][data-id="${D2}"]`) as HTMLButtonElement).click();
+    await p.settle();
+    expect(decided(p.calls).map((call) => call.arguments)).toEqual([
+      { decision_id: D1, action: 'approve', approval_token: 'tok-1', kind: 'action' },
+      { decision_id: D2, action: 'approve', approval_token: 'tok-2', kind: 'approval' },
+    ]);
+    expect(p.calls.callServerTool.mock.calls.some((call) => (call[0] as Call).name === 'orgx_command_status')).toBe(false);
+    expect(p.footer()!.getAttribute('detail')).toBe('the action can run');
+    expect(p.doc.querySelector(`[data-row="${D2}"] ox-state-chip`)!.getAttribute('label')).toBe('Approved');
+  });
+
+  it('puts a validation refusal on the field, keeps the token and re-renders from the returned widget_actions', async () => {
+    let attempt = 0;
+    const p = await open(withFocus({ widget_actions: contract() }), (args) => {
+      attempt += 1;
+      return attempt === 1
+        ? refusal('answer_required', 'Type an answer to send.', {
+            widget_actions: contract({ labels: { approve: 'Send answer', reject: 'Decline' }, reject_requires_reason: false, answer: { required_for: ['approve'], max_length: 2000 } }),
+          })
+        : { structuredContent: { decision_id: args.decision_id, action: 'approved' } };
+    });
+    p.press();
+    await p.settle();
+    expect(p.doc.querySelector('.packet .error-line')!.textContent).toBe('Type an answer to send.');
+    expect(p.footer()!.getAttribute('primary-label')).toBe('Send answer');
+    p.type(`textarea[data-field="answer"][data-id="${D1}"]`, 'staging-eu-2');
+    expect(p.doc.querySelector('.packet .error-line')).toBeNull();
+    p.press();
+    await p.settle();
+    expect(decided(p.calls)[1]!.arguments).toMatchObject({ approval_token: 'tok-1', answer: 'staging-eu-2' });
+  });
+
+  const staleCases: Array<[string, string, string]> = [
+    ['widget_approval_token_expired', 'This view is out of date. Refresh it to decide.', 'This view is out of date. Refresh to decide.'],
+    ['widget_decision_conflict', 'This view is out of date. Refresh it to decide.', 'Changed since you opened it'],
+    ['widget_decision_not_found', 'Decision not found or inaccessible.', 'No longer open here. It may be settled or moved.'],
+  ];
+  it.each(staleCases)('says %s plainly and offers Refresh', async (code, message, copy) => {
+    const p = await open(withFocus({}), () => refusal(code, message));
+    p.press();
+    await p.settle();
+    const line = p.doc.querySelector('.packet .error-line')!;
+    expect(line.textContent).toBe(copy + ' Refresh');
+    expect(line.querySelector('[data-action="refresh"]')).not.toBeNull();
+  });
+
+  it('shows an item already settled in OrgX as settled', async () => {
+    const p = await open(withFocus({}), () => refusal('decision_already_resolved', 'This decision was already settled.', { status: 'declined' }));
+    p.press();
+    await p.settle();
+    expect(p.footer()!.getAttribute('heading')).toBe('Already declined in OrgX');
+    expect(p.footer()!.getAttribute('detail')).toBe('nothing of yours was applied');
+    expect(p.calls.callServerTool.mock.calls.at(-1)![0]).toEqual({ name: 'orgx_panel_snapshot', arguments: {} });
+  });
+
+  const inOrgx: Array<[ReturnType<typeof refusal>, string]> = [
+    [refusal('widget_approval_ineligible', 'This decision has to be made in OrgX.', { reason: 'form_input_required' }), 'It asks for several answers. Fill them in OrgX.'],
+    [refusal('widget_approval_disabled', 'Deciding from chat is switched off for this workspace.'), 'Deciding from chat is off for this workspace.'],
+    [refusal('action_authority_denied', 'This decision has to be made in OrgX.'), 'Your role can’t approve this from chat. OrgX shows who can.'],
+  ];
+  it.each(inOrgx)('hands %j to OrgX with the reason', async (result, copy) => {
+    const p = await open(withFocus({}), () => result);
+    p.press();
+    await p.settle();
+    expect(p.doc.querySelector('.packet .primary-btn')!.textContent).toContain('Decide in OrgX');
+    expect(p.doc.querySelector('.packet .handoff-detail')!.textContent).toBe(copy);
+    expect(p.footer()).toBeNull();
+  });
+
+  const reasons: Array<[string, string]> = [
+    ['credential_required', 'It needs a credential, and credentials are entered only in OrgX.'],
+    ['integration_connection_required', 'It settles when you connect the integration in OrgX.'],
+    ['form_input_required', 'It asks for several answers. Fill them in OrgX.'],
+    ['options_unavailable', 'Its options could not be read here. Choose in OrgX.'],
+    ['artifact_reference_invalid', 'The artifact under review could not be opened here. Review it in OrgX.'],
+    ['specialized_lifecycle', 'This type runs its own review in OrgX.'],
+    ['requester_cannot_approve', 'You requested this action, so another approver decides it.'],
+    ['widget_approvals_disabled', 'Deciding from chat is off for this workspace.'],
+  ];
+  it.each(reasons)('says why %s is decided in OrgX', async (reason, copy) => {
+    const p = await open(withFocus({ decide_in_orgx_reason: reason }), undefined, {});
+    expect(p.doc.querySelector('.packet .handoff-detail')!.textContent).toBe(copy);
+    expect(p.doc.querySelector('.packet .primary-btn')!.textContent).toContain(reason === 'requester_cannot_approve' ? 'Open in OrgX' : 'Decide in OrgX');
   });
 });
