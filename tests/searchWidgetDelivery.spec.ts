@@ -200,3 +200,89 @@ describe('search delivery through the real ChatGPT widget', () => {
     expect(text()).toContain('current results are preserved');
   });
 });
+
+// Live QA (ChatGPT, 2026-10-02): one call rendered "Search unavailable — The
+// search results did not arrive in this card" while the same search worked
+// elsewhere. The card started a fixed 12 s deadline when the iframe booted and
+// only heard results through events. A host that mounts the card while the
+// search is still running, or updates window.openai without an event the card
+// hears, turned a healthy search into that failure.
+describe('search delivery races (C5)', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => { dom?.window.close(); vi.useRealTimers(); });
+  it('renders a result the host published without an event the card heard', async () => {
+    boot(null);
+    (dom.window as any).openai.toolInput = { query: 'launch' };
+    await vi.advanceTimersByTimeAsync(250);
+    expect(dom.window.document.querySelector('.search-skeleton')).not.toBeNull();
+    (dom.window as any).openai.toolOutput = { structuredContent: payload };
+    await vi.advanceTimersByTimeAsync(1_300);
+    expect(text()).toContain('Launch plan');
+    expect(text()).not.toContain('Search unavailable');
+  });
+  it('recovers widget-only metadata that arrived without an event', async () => {
+    boot({ query: 'launch' });
+    (dom.window as any).openai.toolResponseMetadata = { 'orgx/searchPayload': payload };
+    await vi.advanceTimersByTimeAsync(1_300);
+    expect(text()).toContain('Launch plan');
+  });
+  it('keeps searching while the call is still in flight past the first deadline', async () => {
+    boot(null);
+    (dom.window as any).openai.toolInput = { query: 'launch' };
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(text()).not.toContain('Search unavailable');
+    const footer = dom.window.document.querySelector('.search-skeleton ox-footer')!;
+    expect(footer.getAttribute('heading')).toBe('Still searching');
+    update(payload);
+    await vi.advanceTimersByTimeAsync(250);
+    expect(text()).toContain('Launch plan');
+  });
+  it('gives up on a search that never returns, with a retry', async () => {
+    boot(null);
+    (dom.window as any).openai.toolInput = { query: 'launch' };
+    await vi.advanceTimersByTimeAsync(59_000);
+    expect(text()).not.toContain('Search unavailable');
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(text()).toContain('Search unavailable');
+    expect(text()).toContain('Retry search');
+  });
+  it('still reports a delivered but incomplete response at the first deadline', async () => {
+    boot({ query: 'launch' });
+    (dom.window as any).openai.toolInput = { query: 'launch' };
+    await vi.advanceTimersByTimeAsync(12_100);
+    expect(text()).toContain('Search unavailable');
+  });
+});
+
+describe('search results read consistently (C6, C8)', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => { dom?.window.close(); vi.useRealTimers(); });
+  const rows = Array.from({ length: 20 }, (_, i) => ({
+    id: `r-${i}`, title: i === 0 ? 'Exact title' : `Record ${i}`, type: 'artifact', score: i === 0 ? 0.05 : 0.02,
+  }));
+  it('shows no raw relevance scores', async () => {
+    boot({ query: 'Exact title', results: rows });
+    await vi.advanceTimersByTimeAsync(250);
+    expect(text()).toContain('Exact title');
+    expect(text()).not.toMatch(/\d+% match/);
+  });
+  it('agrees on one count in the header, the range and the footer', async () => {
+    boot({ query: 'Exact title', results: rows, pagination: { has_more: true }, next_call: { tool: 'orgx_search', args: { type: 'artifact', offset: 20 } } });
+    await vi.advanceTimersByTimeAsync(250);
+    const doc = dom.window.document;
+    expect(doc.querySelector('.sr-count')!.textContent).toBe('20+ results');
+    expect(doc.querySelector('.page-range')!.textContent).toBe('1–3 of 20+');
+    expect(doc.querySelector('ox-footer')!.getAttribute('heading')).toBe('20 loaded');
+    expect(text()).not.toContain('of 20 loaded');
+  });
+  it('makes filters and help real disclosures with styled fields', async () => {
+    boot({ query: 'Exact title', results: rows });
+    await vi.advanceTimersByTimeAsync(250);
+    const summaries = Array.from(dom.window.document.querySelectorAll('.sr-tools summary'));
+    expect(summaries.map((summary) => summary.textContent!.trim())).toEqual(['Search filters', 'How search works']);
+    for (const summary of summaries) expect(summary.querySelector('svg')).not.toBeNull();
+    expect(html).toContain('.sr-tools summary:focus:not(:focus-visible) { outline: none; }');
+    expect(html).toMatch(/\.sr-filters input, \.sr-filters select \{[^}]*appearance: none;[^}]*background-color: var\(--ox-well-bg\)/);
+    expect(html).not.toContain('.sr-bd .result-list:first-of-type > .result-card:first-child');
+  });
+});

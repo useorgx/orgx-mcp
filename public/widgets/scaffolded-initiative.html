@@ -657,8 +657,12 @@
       if (FIXTURE_STATUS[demoState] === 'scaffolded' && data.streams && Array.isArray(data.streams.items)) {
         data.streams.items = data.streams.items.map(function(item) { return Object.assign({}, item, { status: 'ready', progress_pct: 0 }); });
       }
+      // Not ready: one workstream (which is fine on its own) whose milestone
+      // has no tasks seeded yet.
       if (demoState === 'not-ready' && data.hierarchy && Array.isArray(data.hierarchy.workstreams)) {
-        data.hierarchy.workstreams = data.hierarchy.workstreams.slice(0, 1);
+        data.hierarchy.workstreams = data.hierarchy.workstreams.slice(0, 1).map(function(ws) {
+          return Object.assign({}, ws, { milestones: (ws.milestones || []).map(function(ms) { return Object.assign({}, ms, { tasks: [] }); }) });
+        });
       }
     }
     var isLoading = !isDemo;
@@ -701,9 +705,12 @@
 
       const checks = [
         {
+          // One workstream is a complete plan: a focused initiative is not
+          // "not ready" for having a single stream. (This rule lived only here;
+          // the scaffold payload carries no workstream minimum.)
           id: 'workstreams',
           label: 'Workstreams',
-          ok: sections.length >= 2,
+          ok: sections.length >= 1,
           detail: sections.length + ' defined',
         },
         {
@@ -1124,7 +1131,7 @@
         </div>`;
     };
 
-    var READINESS_NEEDS = { workstreams: 'needs at least 2', milestones: 'needs at least 1', tasks: 'needs at least 1', assignees: 'every workstream needs an owner', objective: 'name the initiative' };
+    var READINESS_NEEDS = { workstreams: 'needs at least 1', milestones: 'needs at least 1', tasks: 'needs at least 1', assignees: 'every workstream needs an owner', objective: 'name the initiative' };
     var renderReadinessGaps = (view) => {
       if (!view.draft || view.readiness.ready || launch.phase !== 'idle') return '';
       var rows = view.readiness.checks.filter((c) => !c.ok).map((c) =>

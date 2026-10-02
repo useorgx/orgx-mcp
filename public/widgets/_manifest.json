@@ -49,8 +49,8 @@
   "widgets": {
     "agent-status": {
       "file": "public/widgets/agent-status.html",
-      "bytes": 62687,
-      "hash": "13ac68e551d5",
+      "bytes": 64209,
+      "hash": "12fd9acefc3f",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -201,8 +201,8 @@
     },
     "initiative-pulse": {
       "file": "public/widgets/initiative-pulse.html",
-      "bytes": 85781,
-      "hash": "ac4c53c49450",
+      "bytes": 89911,
+      "hash": "e12a99af22c4",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -373,8 +373,8 @@
     },
     "scaffolded-initiative": {
       "file": "public/widgets/scaffolded-initiative.html",
-      "bytes": 64709,
-      "hash": "c5991e8748cc",
+      "bytes": 65220,
+      "hash": "14ca5cda1b19",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -405,8 +405,8 @@
     },
     "search-results": {
       "file": "public/widgets/search-results.html",
-      "bytes": 56629,
-      "hash": "32bc75a38999",
+      "bytes": 63702,
+      "hash": "a9cfe9ca6800",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/kit/ox-elements-core.js",
