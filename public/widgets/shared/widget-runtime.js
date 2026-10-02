@@ -327,9 +327,7 @@
     }
   }
 
-  // "The host sent the tool input but no result yet": a widget can say it is
-  // waiting instead of looking empty. Opt in with initWidget({ onToolInput })
-  // or read getToolCallState(); nothing changes for widgets that do neither.
+  // Tool input seen, no result yet: initWidget({ onToolInput }) or getToolCallState().
   var toolCallState = { inputSeen: false, resultSeen: false, inputAt: null, resultAt: null };
   var toolInputListeners = [];
 
@@ -805,17 +803,11 @@
   }
 
   /* ------------------------------------------------------ tool errors -- */
-  // Every rejection from callTool / callToolResult is an Error with
-  // { code, message, details }. `message` is always human; the raw host or
-  // transport text goes only in details.raw. Codes:
-  //   tool_unavailable  the host has no such tool for this connection (for
-  //                     example ChatGPT's {"detail":"MCP Resource not found"},
-  //                     or MCP "Tool X not found"). Retrying will not help.
-  //   network           the request did not reach OrgX or timed out.
-  //   host_unavailable  no host bridge (opened outside ChatGPT/Claude/OrgX).
-  //   tool_failed       an unclassified failure.
-  //   anything else     a refusal code the OrgX server returned, unchanged
-  //                     (for example approval_token_expired, conflict).
+  // callTool/callToolResult reject with Error { code, message, details }:
+  // message is always human, raw host text only in details.raw. Codes:
+  // tool_unavailable (host lacks the tool, e.g. ChatGPT's "MCP Resource not
+  // found"), network, host_unavailable, tool_failed; any other code is the
+  // OrgX server's refusal, unchanged.
   var TOOL_ERROR_COPY = {
     tool_unavailable: 'This chat\u2019s OrgX connection can\u2019t do this here. Open it in OrgX to continue.',
     network: 'Couldn\u2019t reach OrgX. Check the connection and try again.',
@@ -843,8 +835,7 @@
     }
   }
 
-  // Host text is often a JSON body ({"detail": "..."} or pretty-printed) that
-  // rendered as a lone "{". Read what it says before classifying it.
+  // Host text is often a JSON body (it rendered as a lone "{"); read it first.
   function readableHostText(text) {
     var trimmed = String(text || '').trim();
     if (/^[\[{]/.test(trimmed)) {
@@ -879,8 +870,7 @@
     var code;
     var message;
     if (incomingCode && !GENERIC_TOOL_ERROR_CODES[incomingCode]) {
-      // A refusal from the OrgX server (or the runtime's own host_unavailable):
-      // the code is the contract; keep it. Only a raw message is replaced.
+      // Server refusal (or host_unavailable): keep the code; replace only raw text.
       code = incomingCode;
       message = error.message;
       if (looksRaw(message)) {
@@ -906,8 +896,7 @@
     return normalized;
   }
 
-  // A host may resolve (not reject) with its own error body, e.g. ChatGPT's
-  // {"detail": "MCP Resource not found"}. That is a failure, never a success.
+  // A host error body resolved as a result ({"detail": ...}) is a failure.
   function hostErrorBody(result) {
     if (!result || typeof result !== 'object' || Array.isArray(result)) return null;
     if (result.structuredContent !== undefined || Array.isArray(result.content)) return null;
@@ -927,9 +916,7 @@
     return result;
   }
 
-  // Legacy tool names the widgets still call, rewritten to the canonical tool
-  // the connection actually lists. Mirrors WIDGET_RUNTIME_TOOL_ALIASES in
-  // src/widgetToolContract.ts (CI keeps them equal).
+  // Legacy names rewritten to listed tools; = WIDGET_RUNTIME_TOOL_ALIASES (CI).
   var TOOL_ALIASES = {
     get_pending_decisions: { tool: 'orgx_decide', args: { action: 'list_pending' } },
   };

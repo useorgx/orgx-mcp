@@ -207,7 +207,7 @@ describe('OpenAI ChatGPT app submission readiness', () => {
     }
     expect(openaiRunbook).toContain('blocking current-release gate');
     expect(openaiRunbook).toContain(
-      'all 26 `chatgpt` profile tools publish exact,\n' +
+      'all 27 `chatgpt` profile tools publish exact,\n' +
         'tool-specific schemas'
     );
     expect(openaiRunbook).toMatch(/exact,\s+tool-specific `outputSchema`/i);
