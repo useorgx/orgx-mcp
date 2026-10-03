@@ -11,12 +11,12 @@ describe('orgx mcp deep links', () => {
     ).toBe('https://useorgx.com/live/initiative-456?task=task-123');
   });
 
-  it('builds milestone links with initiative context', () => {
+  it('builds milestone links to the milestone page', () => {
     expect(
       buildEntityLink('milestone', 'milestone-123', {
         initiativeId: 'initiative-456',
       }).url
-    ).toBe('https://useorgx.com/live/initiative-456?milestone=milestone-123');
+    ).toBe('https://useorgx.com/milestones/milestone-123');
   });
 
   it('builds workstream links with initiative context', () => {

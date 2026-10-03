@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import '../public/widgets/shared/agent-identity.js';
 import '../public/widgets/shared/widget-runtime.js';
-import fixture from './fixtures/orgx-app-routes.json';
+import { resolveRoute } from './fixtures/orgxAppRoutes';
 
 /**
  * Every URL the widget link builder produces must land on a real OrgX app
@@ -18,39 +18,6 @@ import fixture from './fixtures/orgx-app-routes.json';
 type Links = Record<string, (...args: unknown[]) => string> & { origin: string };
 const runtime = (window as unknown as { OrgXWidgetRuntime: { links: Links; __resetForTests(): void } }).OrgXWidgetRuntime;
 const links = runtime.links;
-
-function routePattern(route: string): RegExp {
-  const body = route
-    .split('/')
-    .map((segment) => {
-      if (/^\[\[\.\.\..+\]\]$/.test(segment)) return '(?:/.*)?';
-      if (/^\[\.\.\..+\]$/.test(segment)) return '/.+';
-      if (/^\[.+\]$/.test(segment)) return '/[^/]+';
-      return segment ? '/' + segment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '';
-    })
-    .join('');
-  return new RegExp(`^${body || '/'}$`);
-}
-
-const routes = fixture.routes.map((route) => ({ route, pattern: routePattern(route) }));
-const redirectSources = fixture.redirects.map((r) => routePattern(r.source.replace(/:(\w+)\*?/g, '[$1]')));
-
-/** The app route a URL lands on, or a reason it does not. */
-function resolveRoute(url: string): { route?: string; problem?: string } {
-  const parsed = new URL(url);
-  if (parsed.origin !== 'https://useorgx.com') return { problem: `origin ${parsed.origin}` };
-  if (redirectSources.some((p) => p.test(parsed.pathname))) return { problem: `${parsed.pathname} is a redirect source` };
-  // Static segments beat dynamic ones (Next.js precedence).
-  const matches = routes.filter((r) => r.pattern.test(parsed.pathname));
-  const weight = (route: string) => (route.match(/\[/g)?.length ?? 0) + (route.includes('...') ? 10 : 0);
-  const match = matches.sort((a, b) => weight(a.route) - weight(b.route))[0];
-  if (!match) return { problem: `no app page for ${parsed.pathname}` };
-  const allowed = (fixture.query as Record<string, string[]>)[match.route] ?? [];
-  for (const key of parsed.searchParams.keys()) {
-    if (!allowed.includes(key)) return { problem: `${match.route} does not read ?${key}` };
-  }
-  return { route: match.route };
-}
 
 const ID = '7d3f0c2e-5b1a-4c8e-9f21-0a6b3e4d2c11';
 const INI = '8a7baebd-2da5-4584-9e32-5b081b830d84';
