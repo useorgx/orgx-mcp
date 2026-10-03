@@ -956,6 +956,7 @@
         plainCopy: plainCopy,
         buildAttentionItems: function (pulseData, url) { return buildAttentionItems(pulseData, url); },
         countNeedsYou: function (pulseData) { return countNeedsYou(pulseData); },
+        decisionCountIsExact: function (pulseData) { return decisionCountIsExact(pulseData); },
       };
 
       // "Needs you" is only what waits on a person: blockers, decisions, reviews.
@@ -984,11 +985,23 @@
         if (level === "workspace") return "across the workspace";
         return "";
       };
+      // Only a review_packet count (or no scope, from older apps) is exact. A fallback scope
+      // (unit "decision_record": raw rows that may include duplicates and system items) is
+      // said approximately, never with the capped "+".
+      var decisionCountIsExact = function (pulseData) {
+        var scope = pulseData && pulseData.pending_decisions_scope;
+        return !scope || scope.unit === "review_packet";
+      };
       var decisionCountLabel = function (pulseData) {
         var count = Math.max(0, Number(pulseData.pending_decisions) || 0);
         var scope = pulseData.pending_decisions_scope;
+        var noun = count === 1 ? "decision" : "decisions";
+        if (!decisionCountIsExact(pulseData)) return "about " + count + " " + noun;
         var capped = scope && scope.capped === true && typeof scope.total === "number" && scope.total <= count;
-        return (capped ? count + "+" : String(count)) + " " + (count === 1 ? "decision" : "decisions");
+        return (capped ? count + "+" : String(count)) + " " + noun;
+      };
+      var sentenceCase = function (text) {
+        return text ? text.charAt(0).toUpperCase() + text.slice(1) : text;
       };
 
       var buildAttentionItems = function (pulseData, dashboardUrl) {
@@ -1008,8 +1021,10 @@
           items.push({
             id: "decision-summary",
             kind: "decision",
-            label: decisionCountLabel(pulseData) + " waiting on you",
-            meta: scopePhrase ? "Pending " + scopePhrase : "Pending decisions",
+            label: sentenceCase(decisionCountLabel(pulseData)) + " waiting on you",
+            meta: !decisionCountIsExact(pulseData)
+              ? "Count may include duplicates"
+              : scopePhrase ? "Pending " + scopePhrase : "Pending decisions",
             url: dashboardUrl,
           });
         }
@@ -1278,7 +1293,7 @@
         if (decisions) parts.push(decisionCountLabel(pulseData));
         if (reviews) parts.push(plural(reviews, "review"));
         if (parts.length < 2 && total < 2) return "";
-        return total + " " + (total === 1 ? "waits" : "wait") + " on you: " + parts.join(", ");
+        return (decisions && !decisionCountIsExact(pulseData) ? "About " : "") + total + " " + (total === 1 ? "waits" : "wait") + " on you: " + parts.join(", ");
       };
       var renderActionsPanel = function (items, pulseData) {
         if (!items.length) return '<div class="pulse-empty">No decisions, blockers, or reviews are waiting on you right now.</div>';
@@ -1783,8 +1798,9 @@
         var waiting = needsCount;
         var lineTone = !waiting ? "calm" : (pulse.blockers || []).length ? "blocking" : "needs-you";
         var blockerTotal = (pulse.blockers || []).length;
+        var approxWaiting = (Number(pulse.pending_decisions) || 0) > 0 && !decisionCountIsExact(pulse);
         var lineHtml = waiting
-          ? escapeHtml(waiting + (waiting === 1 ? " needs" : " need") + " you") +
+          ? escapeHtml((approxWaiting ? "About " : "") + waiting + (waiting === 1 ? " needs" : " need") + " you") +
             (blockerTotal ? '<span class="pulse-line-extra"> · ' + escapeHtml(blockerTotal + " blocking") + "</span>" : "")
           : statusKey === "completed"
           ? "Complete · nothing needs you"

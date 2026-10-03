@@ -182,6 +182,23 @@ describe('initiative pulse: health and progress read honestly (C4)', () => {
     expect(pageText()).toContain('Pending in this initiative');
   });
 
+  it('says a fallback decision_record count approximately, without the capped "+"', async () => {
+    mountWidget('initiative-pulse', {
+      payload: qaPulse({ pending_decisions: 4, pending_decisions_scope: { level: 'initiative', total: 4, capped: true, kinds: ['decision'], urgency: 'all', includes_system: true, unit: 'decision_record', workspace_id: null, initiative_id: 'init-1' } }),
+    });
+    await settle();
+    (window as unknown as { togglePulsePanel(key: string): void }).togglePulsePanel('actions');
+    await settle();
+    expect(pageText()).toContain('About 4 decisions waiting on you');
+    expect(pageText()).toContain('Count may include duplicates');
+    expect(pageText()).toContain('About 4 need you');
+    expect(pageText()).not.toContain('4+');
+    const model = (window as unknown as { OrgXPulseWidgetModel: { decisionCountIsExact(p: unknown): boolean } }).OrgXPulseWidgetModel;
+    expect(model.decisionCountIsExact({ pending_decisions_scope: { unit: 'review_packet' } })).toBe(true);
+    expect(model.decisionCountIsExact({ pending_decisions_scope: null })).toBe(true);
+    expect(model.decisionCountIsExact({ pending_decisions_scope: { unit: 'decision_record' } })).toBe(false);
+  });
+
   it('gives every known stream owner a hover card outside the row link', async () => {
     mountWidget('initiative-pulse', { payload: qaPulse() });
     await settle();

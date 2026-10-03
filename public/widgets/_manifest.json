@@ -125,8 +125,8 @@
     },
     "decisions": {
       "file": "public/widgets/decisions.html",
-      "bytes": 164805,
-      "hash": "8b77940c70a1",
+      "bytes": 165268,
+      "hash": "ca2e9698ccfd",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -213,8 +213,8 @@
     },
     "initiative-pulse": {
       "file": "public/widgets/initiative-pulse.html",
-      "bytes": 94069,
-      "hash": "24b65fb8965b",
+      "bytes": 95145,
+      "hash": "2b56870a4677",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -252,8 +252,8 @@
     },
     "morning-brief": {
       "file": "public/widgets/morning-brief.html",
-      "bytes": 62532,
-      "hash": "a1099f862506",
+      "bytes": 63043,
+      "hash": "3932978c934e",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",

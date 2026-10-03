@@ -2454,7 +2454,10 @@
       if (!raw || typeof raw !== 'object') return null;
       const total = Number(raw.total);
       if (!Number.isFinite(total) || total < 0) return null;
-      return { level: raw.level === 'initiative' ? 'initiative' : 'workspace', total: Math.floor(total), capped: raw.capped === true };
+      // Only a review_packet count is exact; a fallback scope (unit 'decision_record': raw rows that
+      // may include duplicates and system items) is said approximately, without the capped "+".
+      const exact = raw.unit === 'review_packet';
+      return { level: raw.level === 'initiative' ? 'initiative' : 'workspace', total: Math.floor(total), capped: exact && raw.capped === true, exact };
     };
     var scopeLabel = (pendingCount) => {
       const scoped = queueScope();
@@ -2462,7 +2465,7 @@
       const where = scoped.level === 'initiative' ? 'in this initiative' : 'across the workspace';
       const total = scoped.total + (scoped.capped ? '+' : '');
       if (scoped.total <= pendingCount) return `${pendingCount} need${pendingCount === 1 ? 's' : ''} your decision ${where}`;
-      return `${pendingCount} here · ${total} ${where}`;
+      return `${pendingCount} here · ${scoped.exact ? '' : 'about '}${total} ${where}`;
     };
     var attentionHtml = (pendingCount, oldest, label, tone) => {
       const decisionsUrl = buildDecisionsUrl();
@@ -2681,7 +2684,8 @@
       const scoped = queueScope();
       const more = Math.max(others.length - shown.length, scoped ? scoped.total - pendingDecisions().length : 0);
       const where = scoped ? (scoped.level === 'initiative' ? ' in this initiative' : ' across the workspace') : '';
-      return `<nav class="dq-queue" aria-label="Other decisions waiting on you">${rows}${more > 0 ? `<a class="ox-open dq-more" ${linkAttrs(buildDecisionsUrl())}>${more} more${escapeHtml(where)} in OrgX</a>` : ''}</nav>`;
+      const about = scoped && !scoped.exact && more > others.length - shown.length ? 'About ' : '';
+      return `<nav class="dq-queue" aria-label="Other decisions waiting on you">${rows}${more > 0 ? `<a class="ox-open dq-more" ${linkAttrs(buildDecisionsUrl())}${about ? ' title="The count may include duplicates"' : ''}>${about}${more} more${escapeHtml(where)} in OrgX</a>` : ''}</nav>`;
     };
 
     var historyHtml = (current) => {
