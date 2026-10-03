@@ -20,9 +20,7 @@
   <style>
     /* Escalation mode. Canvas R2 (review final), K1/K4 (receipts) and Q5 supply the shape.
        Primaries are the kit's action lime; amber stays on the needs-you edge, glyph and chip. */
-    :root { --ox-primary-rgb: 191, 255, 0; --ar-code: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; }
-    /* Meta reads in the sans scale; mono stays for code and diffs (--ar-code). */
-    ox-receipt-row, ox-state-chip, ox-footer { --ox-mono: var(--ox-font); }
+    :root { --ox-primary-rgb: 191, 255, 0; }
     .ox-icon { display: block; flex: none; }
 
     [hidden] { display: none !important; }
@@ -69,16 +67,8 @@
     .sp { flex: 1; }
     .who2 { display: inline-flex; align-items: center; gap: 8px; flex: none; font-size: 12.5px; color: var(--ox-text-muted); white-space: nowrap; }
     .who2 b { color: var(--ox-text-2); font-weight: 600; }
-    /* Open in OrgX reads as a control: outlined, full-contrast, 44px hit area. */
-    .hd-link {
-      position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none;
-      min-height: 44px; margin: -10px 0; padding: 0 12px; border-radius: 12px;
-      border: 1px solid var(--ox-border-strong); background: var(--ox-surface-subtle, transparent);
-      color: var(--ox-text); font-size: 13px; font-weight: 650; text-decoration: none; white-space: nowrap;
-      transition: background .16s, border-color .16s;
-    }
-    .hd-link:hover { background: var(--ox-hover); border-color: var(--ox-text-muted); }
-    .hd-link .ox-icon { color: var(--ox-text-2); }
+    /* Open in OrgX is the shared .ox-open; it keeps the header line compact. */
+    .hd .ox-open { margin: -10px 0; }
     .bd { padding: 10px 18px 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
     .meta { font-size: 12.5px; line-height: 1.35; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
 
@@ -169,7 +159,7 @@
     .artifact-preview__body img, .artifact-preview__body video { display: block; max-width: 100%; max-height: 220px; margin: 0 auto; border-radius: 8px; }
     .artifact-preview.is-expanded .artifact-preview__body img,
     .artifact-preview.is-expanded .artifact-preview__body video { max-height: 600px; }
-    .artifact-preview__body pre { margin: 0; font: 12px/1.55 var(--ar-code); white-space: pre-wrap; color: var(--ox-text); }
+    .artifact-preview__body pre { margin: 0; font: 12px/1.55 var(--ox-font-code); white-space: pre-wrap; color: var(--ox-text); }
     .diff-preview span { display: block; }
     .diff-preview .is-add { color: var(--ox-teal); }
     .diff-preview .is-remove { color: var(--ox-danger); }
@@ -251,9 +241,9 @@
       .qv-facts { grid-template-columns: minmax(0, 1fr); gap: 0; }
       .qv-facts dd + dt { margin-top: 6px; }
       .who2 b { display: none; }
-      .hd-link span { display: none; }
-      /* Phone: a 44px outlined icon button. */
-      .hd-link { width: 44px; padding: 0; }
+      /* Phone: the link is its icon in a 44px target. */
+      .hd .ox-open span { display: none; }
+      .hd .ox-open { min-width: 44px; justify-content: center; }
     }
     @media (max-width: 420px) {
       /* The kit gives its actions 62% of the footer: both controls fit at 375 px. */
@@ -1511,7 +1501,7 @@
           (new RegExp('\\bv' + (artifact.version || 1) + '$').test(String(artifact.name || '')) ? '' : ' · v' + escapeHtml(String(artifact.version || 1))) + ' · ' + escapeHtml(status) + '</span>' +
           '<span class="sp"></span>' +
           renderAuthor(artifact, form) +
-          (deepLink ? '<a class="hd-link" data-deeplink href="' + escapeAttribute(deepLink) + '" aria-label="Open in OrgX"><span>Open in OrgX</span>' + oxIcon('open-external', 14) + '</a>' : '') +
+          (deepLink ? '<a class="ox-open" data-deeplink href="' + escapeAttribute(deepLink) + '" aria-label="Open in OrgX"><span>Open in OrgX</span></a>' : '') +
           '</div>'
         );
       }

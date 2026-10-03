@@ -23,8 +23,6 @@
   <style>
     /* Creation mode keeps its iris identity; the canvas Q2 card supplies the shape. */
     :root { --ox-primary: #6366f1; --ox-primary-rgb: 99, 102, 241; }
-    /* Meta reads in the sans scale; model ids are the only code-like text. */
-    ox-receipt-row, ox-state-chip, ox-footer { --ox-mono: var(--ox-font); }
     .ox-icon { display: block; flex: none; }
 
     * { box-sizing: border-box; }
@@ -97,18 +95,10 @@
     .cap-row .muted { color: var(--ox-text-muted); }
     .cap-row .meta { margin-left: auto; }
     .rows { display: flex; flex-direction: column; }
-    /* Where to go next: outlined 44px links, not rows dressed as met criteria. */
-    .links { display: flex; flex-wrap: wrap; gap: 8px; }
-    .ts-link {
-      display: inline-flex; align-items: center; gap: 8px; min-height: 44px; max-width: 100%; padding: 0 14px; border-radius: 12px;
-      border: 1px solid var(--ox-border-strong); background: var(--ox-surface-subtle, transparent);
-      color: var(--ox-text); font-size: 13px; font-weight: 650; text-decoration: none; transition: background .16s, border-color .16s;
-    }
-    .ts-link:hover { background: var(--ox-hover); border-color: var(--ox-text-muted); }
-    .ts-link .ox-icon { color: var(--ox-text-2); }
-    .ts-link span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .ts-link small { font-size: 12.5px; font-weight: 500; color: var(--ox-text-muted); }
-
+    /* Where to go next: the shared .ox-open link, not a row dressed as a met criterion. */
+    .links { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+    .links .ox-open span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .links .ox-open small { font-size: 12.5px; font-weight: 500; color: var(--ox-text-muted); }
     /*
      * M1: the agent is the face; the model is the mark. A provider mark sits
      * on the avatar, cut out by a ring in the surface colour; the model line
@@ -144,7 +134,7 @@
       font: 600 12.5px/1 var(--ox-font); color: var(--ox-text-2);
       cursor: pointer;
     }
-    .model-toggle:focus-visible, .ts-link:focus-visible { outline: 2px solid var(--ox-focus); outline-offset: 2px; border-radius: 6px; }
+    .model-toggle:focus-visible { outline: 2px solid var(--ox-focus); outline-offset: 2px; border-radius: 6px; }
     .model-kv {
       display: grid; grid-template-columns: auto minmax(0, 1fr);
       gap: 6px 14px; margin: 0; padding: 10px 12px;
@@ -820,7 +810,7 @@
 
     function linkHtml(url, label, sub) {
       var attrs = window.OrgXLinks.attrs(url) || ('href="' + escapeHtml(url) + '" target="_blank" rel="noopener noreferrer" data-ox-link');
-      return '<a class="ts-link" ' + attrs + '><span>' + escapeHtml(label) + (sub ? ' <small>' + escapeHtml(sub) + '</small>' : '') + '</span>' + window.OrgXIcons.icon('open-external', { size: 14 }) + '</a>';
+      return '<a class="ox-open" ' + attrs + '><span>' + escapeHtml(label) + (sub ? ' <small>' + escapeHtml(sub) + '</small>' : '') + '</span></a>';
     }
 
     function renderLinks(model) {

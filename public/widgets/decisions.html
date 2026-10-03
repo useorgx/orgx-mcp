@@ -64,9 +64,7 @@
        this sheet only lays the card out. */
     /* Primaries (Approve, Confirm, Retry, Decide in OrgX) are the kit's action lime.
        Amber is only "needs you": the attention line, the status line and the card edge. */
-    :root { --ox-primary-rgb: 191, 255, 0; --dq-code: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; }
-    /* Meta reads in the sans scale; mono is kept for code and ids (--dq-code). */
-    ox-receipt-row, ox-attention-line, ox-state-chip, ox-footer { --ox-mono: var(--ox-font); }
+    :root { --ox-primary-rgb: 191, 255, 0; }
     .ox-icon { display: block; flex: none; }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -116,17 +114,8 @@
     .ox-card[data-edge="mute"] { --edge-rgb: var(--ox-edge-mute-rgb); }
 
     .dq-head { border-bottom: 1px solid var(--ox-border); --ox-attention-padding: 0 8px 0 20px; }
-    /* OrgX links read as controls: 44px, full-contrast label, a hairline edge. */
-    .dq-head-link, .dq-all {
-      display: inline-flex; align-items: center; gap: 6px; flex: none;
-      min-height: 44px; padding: 0 14px; border-radius: 12px;
-      border: 1px solid var(--ox-border-strong); background: var(--ox-surface-subtle, transparent);
-      font-size: 13px; font-weight: 650; line-height: 1.2; color: var(--ox-text); text-decoration: none; white-space: nowrap;
-      transition: background 160ms ease, border-color 160ms ease;
-    }
-    .dq-head-link { padding: 0 12px; margin: 4px 0; }
-    .dq-head-link:hover, .dq-all:hover { background: var(--ox-hover); border-color: var(--ox-text-muted); }
-    .dq-head-link svg, .dq-all svg { width: 14px; height: 14px; color: var(--ox-text-2); }
+    /* OrgX links are the shared .ox-open (44px, text colour, open-external icon). */
+    .dq-head-link { margin-right: 8px; }
     .dq-head [slot="meta"] { font: 500 12px/1.3 var(--ox-font); font-variant-numeric: tabular-nums; }
 
     .dq-body { padding: 20px 24px 22px; display: flex; flex-direction: column; gap: 18px; }
@@ -173,9 +162,9 @@
     .dq-cmd pre {
       margin: 0; padding: 9px 12px; border-radius: 10px; overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere;
       background: var(--ox-well-bg, rgba(127, 127, 127, .08)); box-shadow: var(--ox-well-shadow, none);
-      font: 500 12.5px/1.5 var(--dq-code); color: var(--ox-text);
+      font: 500 12.5px/1.5 var(--ox-font-code); color: var(--ox-text);
     }
-    .dq-detail code, .decision-evidence__copy code, .dq-why code { font: 500 0.92em/1 var(--dq-code); padding: 1px 5px; border-radius: 5px; background: var(--ox-hover, rgba(127, 127, 127, .1)); color: var(--ox-text); }
+    .dq-detail code, .decision-evidence__copy code, .dq-why code { font: 500 0.92em/1 var(--ox-font-code); padding: 1px 5px; border-radius: 5px; background: var(--ox-hover, rgba(127, 127, 127, .1)); color: var(--ox-text); }
     .dq-detail a, .decision-evidence__copy a, .dq-why a { color: var(--ox-text); text-decoration: underline; text-decoration-color: var(--ox-border-strong); text-underline-offset: 3px; overflow-wrap: anywhere; }
     .dq-detail a:hover, .decision-evidence__copy a:hover, .dq-why a:hover { text-decoration-color: currentColor; }
     .dq-q a { color: inherit; text-decoration: none; }
@@ -191,7 +180,7 @@
 
     .dq-evidence { display: flex; flex-direction: column; gap: 8px; }
     .dq-evidence > [role="list"] { display: flex; flex-direction: column; }
-    .dq-all { align-self: flex-start; }
+    .dq-evidence .ox-open, .dq-cons + .ox-open { align-self: flex-start; }
 
     .dq-cons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
     .dq-cons.is-single { grid-template-columns: minmax(0, 1fr); }
@@ -226,7 +215,7 @@
     }
     .param-chip + .param-chip::before { content: "·"; margin-right: 6px; }
     .param-chip strong { font-weight: 600; color: var(--ox-text-2); overflow-wrap: anywhere; }
-    .param-chip code { font: 500 12px/1.4 var(--dq-code); }
+    .param-chip code { font: 500 12px/1.4 var(--ox-font-code); }
 
     /* Decide in OrgX: the fallback when this widget holds no approval token. */
     .decide-in-orgx {
@@ -368,8 +357,8 @@
       .dq-head { --ox-attention-padding: 0 4px 0 16px; }
       .dq-status .ctx-wrap { display: none; }
       .dq-row .long, .dq-head-link .long { display: none; }
-      /* Phone: the header link is a 44px outlined icon button. */
-      .dq-head-link { width: 44px; padding: 0; justify-content: center; }
+      /* Phone: the header link is its icon in a 44px target. */
+      .dq-head-link { min-width: 44px; justify-content: center; }
       .dq-row { padding: 10px 12px; }
     }
 
@@ -2478,7 +2467,7 @@
       return `<div class="dq-head">
         <ox-attention-line id="dqAttention" tone="${tone || (pendingCount ? 'needs-you' : 'calm')}" count="${tone && !pendingCount ? 1 : pendingCount}">${
           sentence ? `<span>${escapeHtml(sentence)}</span>` : ''}${
-          syncedAt ? `<span slot="meta">${window.OrgXTime.html(syncedAt, 'synced')}</span>` : ''}<a slot="action" id="queueDecisionsLink" class="dq-head-link" ${linkAttrs(decisionsUrl)} aria-label="All decisions in OrgX"><span class="long">All in OrgX</span>${icons.ext(14)}</a></ox-attention-line>
+          syncedAt ? `<span slot="meta">${window.OrgXTime.html(syncedAt, 'synced')}</span>` : ''}<a slot="action" id="queueDecisionsLink" class="dq-head-link ox-open" ${linkAttrs(decisionsUrl)} aria-label="All decisions in OrgX"><span class="long">All in OrgX</span></a></ox-attention-line>
       </div>`;
     };
 
@@ -2515,7 +2504,7 @@
       const evidenceHtml = shownEvidence.length
         ? `<div class="dq-evidence" role="list">
             ${shownEvidence.map((item) => `<ox-receipt-row status="${escapeHtml(item.status)}" label="${escapeHtml(item.label)}"${item.at ? ` value="${escapeHtml(timeAgo(item.at))}"` : ''}${item.url ? ` href="${escapeHtml(item.url)}"` : ''}>${escapeHtml(item.label)}</ox-receipt-row>`).join('')}
-            ${isOgDecisionEmbed || evidence.length <= shownEvidence.length ? '' : `<a class="dq-all" ${linkAttrs(decisionUrl)}>All ${evidence.length} evidence items in OrgX ${icons.ext(14)}</a>`}
+            ${isOgDecisionEmbed || evidence.length <= shownEvidence.length ? '' : `<a class="ox-open" ${linkAttrs(decisionUrl)}>All ${evidence.length} evidence items in OrgX</a>`}
           </div>`
         : '';
       const consHtml = hasCons
@@ -2658,7 +2647,7 @@
           ${recLine}
           ${evidenceHtml}
           ${consHtml}
-          ${evidenceHtml || isOgDecisionEmbed || !canDecideHere ? '' : `<a class="dq-all decision-open-link" ${linkAttrs(decisionUrl)}>Open in OrgX ${icons.ext(14)}</a>`}
+          ${evidenceHtml || isOgDecisionEmbed || !canDecideHere ? '' : `<a class="ox-open decision-open-link" ${linkAttrs(decisionUrl)}>Open in OrgX</a>`}
           ${optionsHtml}
           ${answerHtml}
           ${approveNoteHtml}
@@ -2689,7 +2678,7 @@
       const scoped = queueScope();
       const more = Math.max(others.length - shown.length, scoped ? scoped.total - pendingDecisions().length : 0);
       const where = scoped ? (scoped.level === 'initiative' ? ' in this initiative' : ' across the workspace') : '';
-      return `<nav class="dq-queue" aria-label="Other decisions waiting on you">${rows}${more > 0 ? `<a class="dq-all dq-more" ${linkAttrs(buildDecisionsUrl())}>${more} more${escapeHtml(where)} in OrgX ${icons.ext(14)}</a>` : ''}</nav>`;
+      return `<nav class="dq-queue" aria-label="Other decisions waiting on you">${rows}${more > 0 ? `<a class="ox-open dq-more" ${linkAttrs(buildDecisionsUrl())}>${more} more${escapeHtml(where)} in OrgX</a>` : ''}</nav>`;
     };
 
     var historyHtml = (current) => {
@@ -2775,7 +2764,7 @@
             <div class="dq-calm-title">Decide in OrgX</div>
             <div class="dq-calm-copy">${escapeHtml(review.message)}</div>
             <div class="dq-calm-links">
-              <a class="dq-all" data-needs-human-link ${linkAttrs(review.url)}>${review.action === 'reject' ? 'Send back in OrgX' : 'Open the decision in OrgX'} ${icons.ext(12)}</a>
+              <a class="ox-open" data-needs-human-link ${linkAttrs(review.url)}>${review.action === 'reject' ? 'Send back in OrgX' : 'Open the decision in OrgX'}</a>
             </div>
           </div>
         </article></div></div>`);
@@ -2810,8 +2799,8 @@
             <div class="dq-calm-title">${escapeHtml(calmCopy.title)}</div>
             <div class="dq-calm-copy">${escapeHtml(calmCopy.copy)}</div>
             <div class="dq-calm-links">
-              <a class="dq-all" ${linkAttrs(decisionsUrl)}>View all decisions in OrgX ${icons.ext(12)}</a>
-              <a class="dq-all" ${linkAttrs(agentStatusUrl)}>Open agent status ${icons.ext(12)}</a>
+              <a class="ox-open" ${linkAttrs(decisionsUrl)}>View all decisions in OrgX</a>
+              <a class="ox-open" ${linkAttrs(agentStatusUrl)}>Open agent status</a>
             </div>
           </div>
         </article></div></div>`);
