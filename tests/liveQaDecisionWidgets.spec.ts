@@ -6,6 +6,7 @@ import { JSDOM } from 'jsdom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { mountWidget, readSharedScript, WIDGETS_DIR } from './fixtures/live';
+import { installSharedFoundations } from './fixtures/sharedFoundations';
 
 /**
  * Live QA in ChatGPT (2026-10-02, ledger items B1–B8): the decision-facing
@@ -203,9 +204,11 @@ describe('B2 · decisions: no "status: unavailable", and the OrgX mark renders',
     expect(rec.textContent).toContain('No recommendation yet');
     expect(visibleText()).not.toMatch(/status:\s*unavailable/i);
     expect(visibleText()).not.toContain('recommends');
-    const avatar = rec.querySelector('.agent-avatar--system')!;
-    expect(avatar.querySelector('svg')).not.toBeNull();
-    expect(avatar.querySelector('img')).toBeNull();
+    // The kit avatar draws the OrgX mark (never an empty circle) at the inline size (28 px).
+    const avatar = rec.querySelector('.agent-avatar--system ox-avatar')!;
+    expect(avatar.getAttribute('agent')).toBe('system');
+    expect(avatar.getAttribute('size')).toBe('inline');
+    expect(rec.querySelector('img')).toBeNull();
   });
 
   it('keeps a real packet recommendation and marks an unverified one', async () => {
@@ -467,6 +470,7 @@ describe('B7 · artifact-review: codes read as words', () => {
 
   it('humanizes the title, summary and preview of a blocker artifact', () => {
     const dom = new JSDOM(html, { url: 'https://example.test/widgets/artifact-review.html?state=blocker', runScripts: 'outside-only', pretendToBeVisual: true });
+    installSharedFoundations(dom.window);
     Object.defineProperty(dom.window, 'OrgXWidgetRuntime', {
       configurable: true,
       value: { detectProtocol: () => 'standalone', reportSize: vi.fn(), callTool: vi.fn(), openWidgetLink: vi.fn(), initWidget: vi.fn() },

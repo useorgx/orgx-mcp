@@ -452,7 +452,7 @@
 </head>
 <body>
   <div class="container wl-page" id="content">
-    <article class="wl" data-edge="mute" aria-busy="true" aria-label="Loading the Work Ledger">
+    <article class="wl ox-surface" data-edge="mute" aria-busy="true" aria-label="Loading the Work Ledger">
       <div class="wl-hd"><span class="wl-kind">Work Ledger</span></div>
       <div class="wl-bd">
         <span class="wl-sk h"></span>
@@ -470,7 +470,7 @@
       if (theme) document.documentElement.setAttribute('data-theme', theme);
     })();
 
-    var LEDGER_URL = 'https://useorgx.com/work-ledger';
+    var LEDGER_URL = window.OrgXLinks.workLedger();
     var PERIOD_LABEL = { day: 'Last 24 hours', week: 'Last 7 days', '30d': 'Last 30 days' };
     // The inline lists never pass three rows (K4); the rest is in the ledger.
     var INLINE_ROWS = 3;
@@ -675,23 +675,18 @@
       return out;
     };
 
+    // Dates and times in the viewer's locale and zone (shared formatter).
     var shortDate = function (value) {
-      if (typeof value !== 'string') return '';
-      var date = new Date(value);
-      return isNaN(date.getTime())
-        ? ''
-        : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      return typeof value === 'string' ? window.OrgXTime.day(value) : '';
     };
 
-    // Same day: the time; otherwise the date. The card stays in the chat, so it
-    // always says when it was true.
+    // Same day: the time ("5:05 PM" / "17:05"); otherwise the date. The card
+    // stays in the chat, so it always says when it was true.
     var shortTime = function (value) {
       if (typeof value !== 'string') return '';
-      var date = new Date(value);
-      if (isNaN(date.getTime())) return '';
-      return new Date().toDateString() === date.toDateString()
-        ? date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
-        : shortDate(value);
+      var date = window.OrgXTime.toDate(value);
+      if (!date) return '';
+      return new Date().toDateString() === date.toDateString() ? window.OrgXTime.clock(date) : shortDate(value);
     };
 
     /*
@@ -723,16 +718,10 @@
      * https on an origin the widget may open (the resource's declared
      * redirect domains); anything else stays a plain row.
      */
-    var LINK_ORIGINS = ['https://useorgx.com', 'https://www.useorgx.com', 'https://mcp.useorgx.com', 'https://github.com'];
     var entryHref = function (event) {
-      var url = event && typeof event.url === 'string' ? event.url.trim() : '';
-      if (!url) return '';
-      if (/^\/[^/]/.test(url)) return 'https://useorgx.com' + url;
-      try {
-        return LINK_ORIGINS.indexOf(new URL(url).origin) !== -1 ? url : '';
-      } catch (_) {
-        return '';
-      }
+      // Relative OrgX paths resolve on useorgx.com; legacy shapes are rewritten
+      // to real app routes; other origins stay plain rows.
+      return window.OrgXLinks.normalize(event && event.url);
     };
 
     var KIND_LABEL = {
@@ -906,7 +895,7 @@
       }).join('');
 
       var edge = refreshFailed ? 'mute' : tally.fail ? 'red' : attention ? 'amber' : 'teal';
-      return '<article class="wl" data-view="explore" data-edge="' + edge + '" aria-label="Every Work Ledger entry">' +
+      return '<article class="wl ox-surface" data-view="explore" data-edge="' + edge + '" aria-label="Every Work Ledger entry">' +
         '<div class="wl-hd"><ox-glyph kind="receipt"' + (attention && !refreshFailed ? ' tone="amber"' : '') + '></ox-glyph>' +
         '<span class="wl-kind">Work Ledger</span>' +
         '<span class="wl-src"><b>' + escapeHtml(chronicle.workspaceName || 'This workspace') + '</b> · ' + escapeHtml(period) + '</span>' +
@@ -998,7 +987,7 @@
         : null;
       if (!chronicle) {
         content.innerHTML =
-          '<article class="wl" data-edge="mute" aria-label="OrgX Work Ledger">' +
+          '<article class="wl ox-surface" data-edge="mute" aria-label="OrgX Work Ledger">' +
           '<div class="wl-hd"><ox-glyph kind="receipt"></ox-glyph><span class="wl-kind">Work Ledger</span></div>' +
           '<div class="wl-bd"><h1 class="wl-headline">Nothing recorded in this window yet.</h1>' +
           '<p class="wl-note">No ledger entries for this window yet. Work lands here when a connected client records a session, receipt, decision, or artifact.</p></div>' +
@@ -1033,7 +1022,7 @@
       var edge = refreshFailed ? 'mute' : needsYou ? 'amber' : 'teal';
 
       content.innerHTML =
-        '<article class="wl" data-edge="' + edge + '" aria-label="OrgX Work Ledger">' +
+        '<article class="wl ox-surface" data-edge="' + edge + '" aria-label="OrgX Work Ledger">' +
         '<div class="wl-hd"><ox-glyph kind="receipt"' + (needsYou && !refreshFailed ? ' tone="amber"' : '') + '></ox-glyph>' +
         '<span class="wl-kind">Work Ledger</span>' +
         '<span class="wl-src"><b>' + escapeHtml(chronicle.workspaceName || 'This workspace') + '</b> · ' + escapeHtml(period) + '</span>' +

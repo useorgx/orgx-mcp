@@ -157,7 +157,7 @@
 </head>
 <body>
   <div class="container" id="content">
-    <article class="wcard" aria-busy="true" aria-label="Loading dispatch receipt">
+    <article class="wcard ox-surface" aria-busy="true" aria-label="Loading dispatch receipt">
       <div class="hd"><span class="sk" style="width:40%"></span></div>
       <div class="bd">
         <span class="sk" style="width:78%;height:22px"></span>
@@ -291,35 +291,13 @@
     if (window.OrgXElements && window.OrgXWidgetRuntime && window.OrgXWidgetRuntime.detectProtocol() === 'standalone') {
       window.OrgXElements.avatarConfig.baseUrl = resolveWidgetAsset('avatars');
     }
-    var ORGX_BASE_URL = 'https://useorgx.com';
+    // Every OrgX URL comes from the shared link builder (real app routes only).
     var buildEntityUrl = (type, id, initiativeId) => {
-      if (!id) return ORGX_BASE_URL;
-      var normalizedType = String(type || '').toLowerCase();
-      if (normalizedType === 'run' || normalizedType === 'agent_run') {
-        return ORGX_BASE_URL + '/agents/runs/' + encodeURIComponent(id);
-      }
-      if (normalizedType === 'task') {
-        return initiativeId
-          ? ORGX_BASE_URL + '/live/' + encodeURIComponent(initiativeId) + '?task=' + encodeURIComponent(id)
-          : ORGX_BASE_URL + '/live?view=mission-control&task=' + encodeURIComponent(id);
-      }
-      if (normalizedType === 'initiative') {
-        return ORGX_BASE_URL + '/live/' + encodeURIComponent(id);
-      }
-      if (normalizedType === 'workstream') {
-        return initiativeId
-          ? ORGX_BASE_URL + '/live/' + encodeURIComponent(initiativeId) + '?workstream=' + encodeURIComponent(id)
-          : ORGX_BASE_URL + '/live?view=mission-control&workstream=' + encodeURIComponent(id);
-      }
-      if (normalizedType === 'milestone') {
-        return initiativeId
-          ? ORGX_BASE_URL + '/live/' + encodeURIComponent(initiativeId) + '?milestone=' + encodeURIComponent(id)
-          : ORGX_BASE_URL + '/live?view=mission-control&milestone=' + encodeURIComponent(id);
-      }
-      if (normalizedType === 'agent') {
-        return ORGX_BASE_URL + '/settings/agents?agent=' + encodeURIComponent(id);
-      }
-      return ORGX_BASE_URL;
+      var links = window.OrgXLinks;
+      if (!id) return links.command();
+      // The execution console: an initiative opens its live room.
+      if (String(type || '').toLowerCase() === 'initiative') return links.live(id);
+      return links.entity(type, id, { initiativeId: initiativeId });
     };
     var inferDomain = payload => {
       const source = [payload.domain, payload.agent_name, payload.agent_id].filter(Boolean).join(' ').toLowerCase();
@@ -632,12 +610,9 @@
       });
     }
 
+    // The viewer's locale and zone: "5:05 PM" (en-US), "17:05" (en-GB).
     function formatClock(ms) {
-      try {
-        return new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      } catch (_) {
-        return '';
-      }
+      return window.OrgXTime.clock(ms);
     }
 
     function formatUsd(value) {
@@ -658,7 +633,7 @@
       var agent = model.agent_name || 'The agent';
       var live = runStatus.runId && runStatus.data ? runStatus.data : null;
       // The execution link is the same one the card always opened.
-      var consoleUrl = model.console_url || (model.id ? buildEntityUrl(model.type, model.id, model.initiative_id) : ORGX_BASE_URL);
+      var consoleUrl = window.OrgXLinks.normalize(model.console_url) || buildEntityUrl(model.type, model.id, model.initiative_id);
       var view;
 
       if (!isDispatch) {
@@ -852,7 +827,7 @@
       var model = normalizeWithModel(entity);
       if (!model) {
         stopRunPolling();
-        injectHtml('<article class="wcard"><div class="empty"><b>No dispatch receipt</b><span>No agent handoff was returned. Nothing is presented as running until OrgX supplies a task or run receipt.</span></div></article>');
+        injectHtml('<article class="wcard ox-surface"><div class="empty"><b>No dispatch receipt</b><span>No agent handoff was returned. Nothing is presented as running until OrgX supplies a task or run receipt.</span></div></article>');
         return;
       }
       if (model.dispatched !== false) watchRun(model.run_id);
@@ -874,7 +849,14 @@
         ? '<span class="pmark" data-provider="' + info.provider + '" role="img" aria-label="' + escapeHtml('Model: ' + (info.name || tierLabel(info.tier) + ' tier') + ' · ' + PROVIDERS[info.provider].name) + '">' + providerSvg(info.provider) + '</span>'
         : '';
       var who = model.agent_name
-        ? '<span class="who2">' + (agentKey ? '<span class="av-mark"><ox-avatar agent="' + agentKey + '" form="' + form + '" size="20" name="' + escapeHtml(model.agent_name) + '"></ox-avatar>' + mark + '</span>' : '') + '<b>' + escapeHtml(model.agent_name) + '</b></span>'
+        ? '<span class="who2"><span class="av-mark">' + window.OrgXAgentIdentity.agentCard({
+            agent: agentKey || model.agent_name,
+            name: model.agent_name,
+            size: 'inline',
+            state: view.chip || '',
+            statusLabel: view.chipLabel || '',
+            task: model.title,
+          }) + mark + '</span><b>' + escapeHtml(model.agent_name) + '</b></span>'
         : model.dispatched !== false ? '<span class="who2">Confirming agent</span>' : '';
       var ft = view.footer;
       var footerAttrs = 'variant="' + ft.variant + '" state="' + ft.state + '" heading="' + escapeHtml(ft.heading) + '" detail="' + escapeHtml(ft.detail || '') + '"'
@@ -882,7 +864,7 @@
         + (ft.action !== undefined ? ' action-label="' + escapeHtml(ft.action) + '"' : '');
 
       injectHtml(
-        '<article class="wcard" data-edge="' + view.edge + '" data-state="' + escapeHtml(view.key) + '">'
+        '<article class="wcard ox-surface" data-edge="' + view.edge + '" data-state="' + escapeHtml(view.key) + '">'
         + '<div class="hd">'
         + '<ox-glyph kind="' + glyphKind + '"' + (glyphTone ? ' tone="' + glyphTone + '"' : '') + '></ox-glyph>'
         + '<span class="kind">' + escapeHtml(view.kind) + '</span>'

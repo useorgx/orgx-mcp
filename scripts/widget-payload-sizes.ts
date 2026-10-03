@@ -24,6 +24,7 @@ import {
   MCP_APPS_SHARED_COMPONENT_PATHS,
   rewriteWidgetHtmlAssetUrls,
   sanitizeMcpAppsHtml,
+  mcpAppsInlineAssetPath,
 } from '../src/widgetConfig';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -59,7 +60,8 @@ const ABOUT =
   'Set from measured sizes + 8 KiB headroom, rounded up to a KiB. Raise one only on purpose (pnpm widget:payload --update) in the change that grows the widget.';
 
 const byteLength = (s: string) => Buffer.byteLength(s, 'utf8');
-const readShared = (path: string) => readFileSync(resolve(WIDGETS_DIR, path), 'utf8');
+// What the worker inlines: the minified copy widget:build writes (inline/<path>).
+const readShared = (path: string) => readFileSync(resolve(WIDGETS_DIR, mcpAppsInlineAssetPath(path)), 'utf8');
 
 /** The widgets the build ships, from public/widgets/_manifest.json. */
 export function manifestWidgets(): Record<string, { file: string }> {

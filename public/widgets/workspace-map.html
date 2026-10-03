@@ -241,7 +241,7 @@
 </head>
 <body>
   <div class="container wm-page" id="content">
-    <section class="wm" data-edge="mute" aria-busy="true" aria-label="Loading the workspace map">
+    <section class="wm ox-surface" data-edge="mute" aria-busy="true" aria-label="Loading the workspace map">
       <div class="wm-head"><span class="wm-sk" style="width:90px"></span><span class="wm-sk" style="height:18px;width:46%"></span></div>
       <div class="wm-list">
         <div class="wm-surface"><span class="wm-sk" style="width:70%"></span></div>
@@ -258,7 +258,8 @@
       if (theme) document.documentElement.setAttribute('data-theme', theme);
     })();
 
-    var ORGX_URL = 'https://useorgx.com';
+    // "Open OrgX" lands on Command (what needs you now), via the shared link builder.
+    var ORGX_URL = window.OrgXLinks.command();
 
     var escapeHtml = function (value) {
       if (value === null || value === undefined) return '';
@@ -318,8 +319,9 @@
      */
     var view = { payload: null, asOf: null, phase: null, degraded: false, checking: false };
 
+    // The viewer's locale and zone: "5:05 PM" (en-US), "17:05" (en-GB); a date when not today.
     var hhmm = function (date) {
-      return date ? date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+      return date ? window.OrgXTime.when(date) : '';
     };
 
     /*
@@ -344,7 +346,7 @@
     };
 
     var shell = function (edge, inner, footer) {
-      return '<section class="wm" data-edge="' + edge + '" aria-label="OrgX workspace map">' + inner + (footer || '') + '</section>';
+      return '<section class="wm ox-surface" data-edge="' + edge + '" aria-label="OrgX workspace map">' + inner + (footer || '') + '</section>';
     };
 
     var renderSignedOut = function () {
@@ -470,6 +472,7 @@
 
     // Raw anchors are not allowed in MCP widgets: links go through the host.
     var openLink = function (url) {
+      url = window.OrgXLinks.normalize(url);
       if (!url) return;
       if (isStandalone()) {
         try { window.open(url, '_blank', 'noopener,noreferrer'); } catch (_) { /* preview only */ }

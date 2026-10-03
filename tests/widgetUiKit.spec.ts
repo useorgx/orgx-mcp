@@ -20,11 +20,13 @@ describe('vendored OrgX design kit', () => {
   // Every MCP Apps payload inlines the bundles it uses; per-widget totals are
   // budgeted in tests/widgetPayloadBudget.spec.ts.
   const BUNDLES: Record<string, number> = {
-    'ox-elements.js': 26 * 1024,
+    // 0.3.0-alpha.0: photo avatars with OrgX-mark/initials fallbacks (+1.4 KB)
+    // and the <ox-agent-card> hover card (+5.7 KB). Was 26 KB / 3 KB.
+    'ox-elements.js': 34 * 1024,
     'ox-elements-core.js': 12 * 1024,
     'ox-elements-footer.js': 10.5 * 1024,
     'ox-elements-glyph.js': 3 * 1024,
-    'ox-elements-avatar.js': 3 * 1024,
+    'ox-elements-avatar.js': 10 * 1024,
   };
 
   it('stays inside the widget size budget', () => {

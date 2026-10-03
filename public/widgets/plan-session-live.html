@@ -187,7 +187,7 @@
 <body>
   <main class="container" aria-live="polite">
     <div class="widget-shell-card plan-shell" data-widget-root>
-      <article class="wcard" data-loading role="status" aria-live="polite">
+      <article class="wcard ox-surface" data-loading role="status" aria-live="polite">
         <span class="sr-only">Loading plan session…</span>
         <div class="hd"><span class="sk" style="width:30%"></span></div>
         <div class="bd">
@@ -386,6 +386,7 @@
 
         return {
           id: firstString([source.session_id, source.id, source.uuid]),
+          initiativeId: firstString([source.initiative_id, source.initiativeId, source.initiative && source.initiative.id]),
           uri: firstString([source.uri]),
           title: documentModel.title || fallbackTitle,
           status: normalizeStatus(source.status),
@@ -402,17 +403,11 @@
         };
       }
 
+      // Shared formatter: "updated 2m ago", "updated yesterday", then the date in the viewer's locale.
       function formatRelative(value) {
         if (!value) return 'not yet updated';
-        var time = new Date(value).getTime();
-        if (!Number.isFinite(time)) return 'recently updated';
-        var minutes = Math.max(0, Math.round((Date.now() - time) / 60000));
-        if (minutes < 1) return 'updated just now';
-        if (minutes < 60) return 'updated ' + minutes + 'm ago';
-        var hours = Math.round(minutes / 60);
-        if (hours < 24) return 'updated ' + hours + 'h ago';
-        var days = Math.round(hours / 24);
-        return 'updated ' + days + 'd ago';
+        var label = window.OrgXTime.relative(value, { inline: true });
+        return label ? 'updated ' + label : 'recently updated';
       }
 
       function renderInline(value) {
@@ -502,7 +497,7 @@
       function renderError(plan) {
         var content = showContent();
         content.innerHTML =
-          '<article class="wcard" data-edge="red">' +
+          '<article class="wcard ox-surface" data-edge="red">' +
             '<div class="hd"><ox-glyph kind="artifact" tone="red"></ox-glyph><span class="kind">Plan</span></div>' +
             '<div class="bd">' +
               '<h1 class="pk-q">' + escapeHtml(plan.title || 'Plan unavailable') + '</h1>' +
@@ -577,10 +572,10 @@
         }).join('') + '</div>';
       }
 
+      // OrgX has no plan-session page: the builder opens the plan's initiative,
+      // or mission control carrying the session (was /planning/sessions/:id, a 404).
       function buildPlanUrl(plan) {
-        return plan.id
-          ? 'https://useorgx.com/planning/sessions/' + encodeURIComponent(plan.id)
-          : 'https://useorgx.com/planning';
+        return window.OrgXLinks.planSession(plan.id, { initiativeId: plan.initiativeId });
       }
 
       function renderComposer(plan) {
@@ -643,7 +638,7 @@
         var edge = isComplete ? 'teal' : guidance.phase === 'failed' ? 'red' : 'amber';
 
         content.innerHTML =
-          '<article class="wcard" data-plan-status="' + plan.status + '" data-edge="' + edge + '">' +
+          '<article class="wcard ox-surface" data-plan-status="' + plan.status + '" data-edge="' + edge + '">' +
             '<div class="hd">' +
               '<ox-glyph kind="artifact"' + (isComplete ? ' tone="teal"' : ' tone="amber"') + '></ox-glyph>' +
               '<span class="kind">Plan</span>' +

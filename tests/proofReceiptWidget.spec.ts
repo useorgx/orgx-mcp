@@ -124,7 +124,7 @@ describe('proof receipt widget', () => {
     expect(footer.getAttribute('detail')).toBe('hash-chained · receipt 3f9c1d2e');
     footer.dispatchEvent(new CustomEvent('ox-action', { bubbles: true, composed: true }));
     expect(openExternal).toHaveBeenCalledWith({
-      url: `https://useorgx.com/live?view=mission-control&task=${TASK_ID}`,
+      url: `https://useorgx.com/tasks/${TASK_ID}`,
     });
     const pr = document.querySelector('ox-receipt-row[href]')!;
     pr.dispatchEvent(new CustomEvent('ox-open', { bubbles: true, composed: true, cancelable: true, detail: { href: pr.getAttribute('href') } }));

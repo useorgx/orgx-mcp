@@ -135,8 +135,12 @@
     if (seconds < 60) return 'Updated ' + seconds + 's ago';
     var minutes = Math.round(seconds / 60);
     if (minutes < 60) return 'Updated ' + minutes + 'm ago';
+    // Past an hour, read like a person: "3h ago", "yesterday", "4d ago",
+    // "Oct 2" (the shared formatter, in the viewer's locale), never "106h ago".
+    var time = global.OrgXTime;
+    if (time) return 'Updated ' + time.relative(at, { now: now || Date.now(), inline: true });
     var hours = Math.round(minutes / 60);
-    return 'Updated ' + hours + 'h ago';
+    return 'Updated ' + (hours < 24 ? hours + 'h' : Math.round(hours / 24) + 'd') + ' ago';
   }
 
   global.OrgXWidgetState = Object.freeze({

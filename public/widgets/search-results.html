@@ -12,6 +12,7 @@
   <script src="shared/kit/ox-elements-glyph.js"></script>
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
+  <script src="shared/orgx-icons.js"></script>
   <script>
     (function() {
       const params = new URLSearchParams(window.location.search);
@@ -208,8 +209,10 @@
       display: grid;
       place-items: center;
       height: 22px;
-      --ox-glyph-size: 18px;
+      color: var(--ox-text-muted);
     }
+
+    .r-glyph[data-tone="amber"] { color: var(--ox-warning); }
 
     .r-copy {
       display: flex;
@@ -388,7 +391,7 @@
   <div class="container" id="content">
     <!-- Skeleton shown during loading: the arrived card's own frame. -->
     <div class="widget-shell-card skeleton-wrapper search-skeleton" aria-label="Searching organizational memory" aria-busy="true">
-      <div class="ox-card sr" data-edge="mute">
+      <div class="ox-card sr ox-surface" data-edge="mute">
         <div class="sr-hd"><span class="sr-kind">Search</span><span class="sr-sk" style="width:160px"></span></div>
         <div class="sr-bd">
           <div class="search-skeleton__row"><span class="sr-sk" style="height:18px"></span><span class="col"><span class="sr-sk" style="width:62%;height:14px"></span><span class="sr-sk" style="width:38%"></span></span></div>
@@ -424,20 +427,7 @@
       };
       var serializeJsString = (value) => JSON.stringify(String(value || ''));
       var titleCase = value => String(value || '').replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-      var formatRelativeDate = (value) => {
-        if (!value) return '';
-        var date = new Date(value);
-        if (isNaN(date.getTime())) return '';
-        var diffMs = Date.now() - date.getTime();
-        var diffMins = Math.floor(diffMs / 60000);
-        var diffHours = Math.floor(diffMs / 3600000);
-        var diffDays = Math.floor(diffMs / 86400000);
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return diffMins + 'm ago';
-        if (diffHours < 24) return diffHours + 'h ago';
-        if (diffDays < 7) return diffDays + 'd ago';
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      };
+      var formatRelativeDate = (value) => window.OrgXTime.relative(value);
       var coerceScore = (value) => {
         if (value === null || value === undefined || value === '') return null;
         var num = Number(value);
@@ -447,7 +437,6 @@
         if (num > 1) num = 1;
         return num;
       };
-      var ORGX_BASE_URL = 'https://useorgx.com';
       var decodeEscapedText = (value) => {
         if (typeof value !== 'string' || !value) return '';
         return value
@@ -459,13 +448,10 @@
           .replace(/\\'/g, "'")
           .replace(/\\\\/g, '\\');
       };
-      var buildObjectiveUrl = (objectiveId, commandCenterId) => {
-        if (!objectiveId) return ORGX_BASE_URL + '/settings/goals';
-        var query = '?objective=' + encodeURIComponent(objectiveId);
-        if (commandCenterId) query += '&center=' + encodeURIComponent(commandCenterId);
-        return ORGX_BASE_URL + '/settings/goals' + query;
-      };
+      /* Every OrgX URL comes from the shared link builder (OrgXLinks), which
+         only produces routes the app has; payload URLs are normalized. */
       var buildEntityUrl = (item) => {
+        var links = window.OrgXLinks;
         var explicitCandidates = [
           item && item.url,
           item && item.live_url,
@@ -474,47 +460,16 @@
           item && item.link,
           item && item._link,
         ];
-        var explicitUrl = explicitCandidates.find(function (candidate) {
-          if (typeof candidate !== 'string') return false;
-          var value = candidate.trim();
-          return /^https?:\/\//i.test(value) && value !== '#';
-        });
-        if (explicitUrl) return explicitUrl;
-
-        var type = item && typeof item.type === 'string'
-          ? item.type.toLowerCase().replace(/-/g, '_')
-          : '';
+        for (var i = 0; i < explicitCandidates.length; i += 1) {
+          var explicitUrl = typeof explicitCandidates[i] === 'string' ? links.normalize(explicitCandidates[i]) : '';
+          if (explicitUrl) return explicitUrl;
+        }
         var id = item && typeof item.id === 'string' ? item.id : '';
-        var initiativeId = item && typeof item.initiative_id === 'string' ? item.initiative_id : '';
-        if (!id) return ORGX_BASE_URL;
-
-        if (type === 'initiative') return ORGX_BASE_URL + '/initiatives/' + encodeURIComponent(id);
-        if (type === 'objective') return buildObjectiveUrl(id, item && typeof item.command_center_id === 'string' ? item.command_center_id : '');
-        if (type === 'decision') {
-          return initiativeId
-            ? ORGX_BASE_URL + '/initiatives/' + encodeURIComponent(initiativeId) + '?focus=decisions&decision=' + encodeURIComponent(id)
-            : ORGX_BASE_URL + '/decisions/' + encodeURIComponent(id);
-        }
-        if (type === 'artifact') return ORGX_BASE_URL + '/artifacts/' + encodeURIComponent(id);
-        if (type === 'task') {
-          return initiativeId
-            ? ORGX_BASE_URL + '/live/' + encodeURIComponent(initiativeId) + '?task=' + encodeURIComponent(id)
-            : ORGX_BASE_URL + '/live?view=mission-control&task=' + encodeURIComponent(id);
-        }
-        if (type === 'workstream') {
-          return initiativeId
-            ? ORGX_BASE_URL + '/live/' + encodeURIComponent(initiativeId) + '?workstream=' + encodeURIComponent(id)
-            : ORGX_BASE_URL + '/live?view=mission-control&workstream=' + encodeURIComponent(id);
-        }
-        if (type === 'milestone') {
-          return initiativeId
-            ? ORGX_BASE_URL + '/live/' + encodeURIComponent(initiativeId) + '?milestone=' + encodeURIComponent(id)
-            : ORGX_BASE_URL + '/live?view=mission-control&milestone=' + encodeURIComponent(id);
-        }
-        if (type === 'agent') return ORGX_BASE_URL + '/settings/agents?agent=' + encodeURIComponent(id);
-        if (type === 'run' || type === 'agent_run') return ORGX_BASE_URL + '/agents/runs/' + encodeURIComponent(id);
-        if (type === 'workspace' || type === 'command_center') return ORGX_BASE_URL + '/command?center=' + encodeURIComponent(id);
-        return ORGX_BASE_URL;
+        if (!id) return links.command();
+        return links.entity(item && item.type, id, {
+          initiativeId: item && typeof item.initiative_id === 'string' ? item.initiative_id : '',
+          center: item && typeof item.command_center_id === 'string' ? item.command_center_id : '',
+        });
       };
       var excerptText = (value) => decodeEscapedText(value)
         .replace(/^\s{0,3}#{1,6}\s+/gm, '')
@@ -1066,7 +1021,7 @@
       var need = options && options.need;
       return `
         <a href="${escapeHtml(r.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${serializeJsString(r.url)}, event)' class="result-card" style="--i:${index}">
-          <span class="r-glyph"><ox-glyph kind="${glyphKind(r.type)}"${need ? ' tone="amber"' : ''}></ox-glyph></span>
+          <span class="r-glyph"${need ? ' data-tone="amber"' : ''}>${window.OrgXIcons.icon(window.OrgXIcons.forEntity(r.type) || window.OrgXIcons.forEntity(glyphKind(r.type)) || 'artifact', 18)}</span>
           <span class="r-copy">
             <span class="r-title">${escapeHtml(r.title)}</span>
             <span class="r-meta">${options.meta}</span>
@@ -1079,7 +1034,7 @@
 
     var cardHtml = (options) => `
       <div class="widget-shell-card">
-        <div class="ox-card sr" data-edge="${options.edge || 'teal'}">
+        <div class="ox-card sr ox-surface" data-edge="${options.edge || 'teal'}">
           <div class="sr-hd">${options.kind === 'Search' ? '<svg class="sr-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 5 5"/></svg>' : `<ox-glyph kind="${options.glyph || 'artifact'}"${options.edge === 'amber' ? ' tone="amber"' : ''}></ox-glyph>`}
             <span class="sr-kind">${escapeHtml(options.kind)}</span>
             ${options.source ? `<span class="sr-src">${options.source}</span>` : ''}

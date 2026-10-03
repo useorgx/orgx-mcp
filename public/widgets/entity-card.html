@@ -322,7 +322,7 @@
 </head>
 <body>
   <div class="container ec-page" id="content">
-    <article class="ec" aria-busy="true" aria-label="Loading">
+    <article class="ec ox-surface" aria-busy="true" aria-label="Loading">
       <div class="ec-hd"><span class="ec-sk" style="width:90px"></span></div>
       <div class="ec-bd">
         <span class="ec-sk" style="height:20px;width:70%"></span>
@@ -463,8 +463,15 @@
 
     var FIXTURE_TIME = new Date('2026-09-30T13:58:00');
 
+    // The viewer's locale and zone: "5:05 PM" (en-US), "17:05" (en-GB);
+    // "Yesterday, 5:05 PM" or "Oct 2, 5:05 PM" when it is not today.
     var hhmm = function (date) {
-      return date ? date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+      return date ? window.OrgXTime.when(date) : '';
+    };
+    // The header has less room: the clock today, else just the date ("Sep 30").
+    var shortAsOf = function (date) {
+      if (!date) return '';
+      return new Date().toDateString() === new Date(date).toDateString() ? window.OrgXTime.clock(date) : window.OrgXTime.day(date);
     };
 
     var humanize = function (value) {
@@ -569,11 +576,6 @@
       return identity && typeof identity.resolveAgentKey === 'function' ? identity.resolveAgentKey(value) : null;
     };
 
-    var formFor = function (chipState) {
-      var identity = window.OrgXAgentIdentity;
-      return identity && typeof identity.formForState === 'function' ? identity.formForState(chipState) : 'base';
-    };
-
     var stripHtml = function () {
       if (view.strip === 'changed') {
         return '<div class="ec-strip" role="status">' + ICON.share +
@@ -633,7 +635,7 @@
       var card = view.card;
       if (!card) {
         content.innerHTML =
-          '<article class="ec" aria-label="OrgX">' +
+          '<article class="ec ox-surface" aria-label="OrgX">' +
           '<div class="ec-empty">' +
           '<b>Nothing to show here</b>' +
           '<span>This result did not carry an entity to display. Search for the ' +
@@ -652,10 +654,12 @@
 
       var factsHtml = facts.length
         ? '<dl class="ec-facts">' + facts.map(function (fact) {
-            var agent = fact.label === 'Owner' ? agentFor(fact.value) : null;
-            return '<div><dt>' + escapeHtml(fact.label) + '</dt><dd>' +
-              (agent ? '<ox-avatar' + attrs({ agent: agent, form: formFor(chip ? chip.state : ''), size: '20', name: fact.value }) + '></ox-avatar>' : '') +
-              escapeHtml(fact.value) + '</dd></div>';
+            // Owners always get a face: an agent's headshot and hover card, the
+            // OrgX mark for system owners, initials for a person.
+            var owner = fact.label === 'Owner'
+              ? window.OrgXAgentIdentity.agentCard({ agent: agentFor(fact.value) || fact.value, name: fact.value, size: 'inline', state: chip ? chip.state : '', task: card.title })
+              : '';
+            return '<div><dt>' + escapeHtml(fact.label) + '</dt><dd>' + owner + escapeHtml(fact.value) + '</dd></div>';
           }).join('') + '</dl>'
         : '';
 
@@ -689,14 +693,14 @@
         : '';
 
       content.innerHTML =
-        '<article class="ec" data-edge="' + edge + '" data-waiting="' + (view.ruling === 'waiting') + '" aria-label="OrgX ' + escapeHtml(humanize(card.type)) + '">' +
+        '<article class="ec ox-surface" data-edge="' + edge + '" data-waiting="' + (view.ruling === 'waiting') + '" aria-label="OrgX ' + escapeHtml(humanize(card.type)) + '">' +
         stripHtml() +
         '<div class="ec-hd"><ox-glyph kind="' + glyphKind(card.type) + '"' + (chip && chip.edge === 'amber' ? ' tone="amber"' : '') + '></ox-glyph>' +
         '<span class="ec-kind">' + escapeHtml(humanize(card.type)) + '</span>' +
         (chip
           ? '<ox-state-chip class="ec-status"' + attrs({ state: chip.state, label: chip.label, reserve: card.type === 'decision' ? 'needs_you handed_off' : '' }) + '></ox-state-chip>'
           : '') +
-        (asOf ? '<span class="ec-asof">' + (view.strip === 'degraded' ? 'snapshot ' : 'as of ') + escapeHtml(hhmm(asOf)) + '</span>' : '') +
+        (asOf ? '<span class="ec-asof">' + (view.strip === 'degraded' ? 'snapshot ' : 'as of ') + escapeHtml(shortAsOf(asOf)) + '</span>' : '') +
         '</div>' +
         '<div class="ec-bd"><div class="ec-dim-wrap ec-body-dim">' +
         '<h1 class="ec-title">' + escapeHtml(card.title) + '</h1>' +
@@ -719,6 +723,8 @@
 
     // Raw anchors are not allowed in MCP widgets: links go through the host.
     var openLink = function (url) {
+      // Payload URLs go through the shared normalizer: real app routes only.
+      url = window.OrgXLinks.normalize(url) || '';
       if (!url) return;
       if (isStandalone()) {
         try { window.open(url, '_blank', 'noopener,noreferrer'); } catch (_) { /* preview only */ }
